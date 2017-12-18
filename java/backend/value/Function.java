@@ -12,6 +12,7 @@ import backend.type.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This class is representation at the Module(high-level IR) of a function or method.
@@ -125,6 +126,16 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     public LinkedList<BasicBlock> getBasicBlockList()
     {
         return basicBlockList;
+    }
+
+    public void setBasicBlockList(List<BasicBlock> bbs)
+    {
+        basicBlockList.clear();
+        if (bbs == null || bbs.isEmpty())
+        {
+            return;
+        }
+        basicBlockList.addAll(bbs);
     }
 
     public boolean empty()

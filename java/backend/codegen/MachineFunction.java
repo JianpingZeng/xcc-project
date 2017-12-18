@@ -9,6 +9,7 @@ import tools.Pair;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Xlous.zeng
@@ -81,6 +82,16 @@ public class MachineFunction
 
 	public ArrayList<MachineBasicBlock> getBasicBlocks() {return mbbNumber;}
 
+	public void setBasicBlocks(List<MachineBasicBlock> mbbs)
+	{
+		mbbNumber.clear();
+		if (mbbs == null || mbbs.isEmpty())
+			return;
+		mbbNumber.addAll(mbbs);
+		for (int i = 0, e = mbbNumber.size(); i < e; i++)
+			mbbNumber.get(i).setNumber(i);
+	}
+
 	public void erase(MachineBasicBlock mbb)
 	{
 		mbbNumber.remove(mbb);
@@ -100,6 +111,12 @@ public class MachineFunction
 		assert blockNo >= 0 && blockNo < mbbNumber.size();
 		return mbbNumber.get(blockNo);
 	}
+
+	public MachineBasicBlock removeMBBAt(int blockNo)
+    {
+        assert blockNo >= 0 && blockNo < mbbNumber.size();
+        return mbbNumber.remove(blockNo);
+    }
 
 	public boolean isEmpty() {return mbbNumber.isEmpty();}
 

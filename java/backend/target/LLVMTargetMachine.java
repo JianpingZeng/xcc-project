@@ -20,6 +20,7 @@ import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.passManaging.PassManagerBase;
 import backend.support.BackendCmdOptions;
+import backend.codegen.RearrangementMBB;
 
 import java.io.OutputStream;
 
@@ -96,6 +97,9 @@ public abstract class LLVMTargetMachine extends TargetMachine
         // Ask the target for an isel.
         if (addInstSelector(pm, level))
             return true;
+
+        // Before instruction selection, rearragement blocks.
+        pm.add(RearrangementMBB.createRearrangeemntPass());
 
         // print the machine instructions.
         printAndVerify(pm, true,

@@ -252,7 +252,7 @@ public class MachineBasicBlock
 		if (parent != null && mbb.getParent() != null && parent == mbb.getParent())
 		{
 			ArrayList<MachineBasicBlock> mbbs = parent.getBasicBlocks();
-			for (int i = 0, e = mbb.size(); i < e; i++)
+			for (int i = 0, e = mbbs.size(); i < e; i++)
 			{
 				if (mbbs.get(i) == this)
 				{
