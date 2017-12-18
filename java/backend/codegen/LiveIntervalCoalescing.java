@@ -38,6 +38,7 @@ import java.util.Iterator;
 
 import static backend.codegen.LiveIntervalAnalysis.getDefIndex;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
+import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 import static tools.commandline.Desc.desc;
@@ -163,9 +164,12 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
             }
         }
 
-        createMachineFunctionPrinterPass(System.err,
-                "# *** IR dump after register coalescing ***:\n")
-                .runOnMachineFunction(mf);
+        if (PrintMachineCode.value)
+        {
+            createMachineFunctionPrinterPass(System.err,
+            "# *** IR dump after register coalescing ***:\n")
+                    .runOnMachineFunction(mf);
+        }
         return true;
     }
 
