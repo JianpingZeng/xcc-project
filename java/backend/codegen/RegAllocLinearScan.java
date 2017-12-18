@@ -22,6 +22,7 @@ import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
+import tools.Util;
 
 import java.util.*;
 
@@ -214,11 +215,13 @@ public class RegAllocLinearScan extends MachineFunctionPass
             return;
         }
 
-        System.err.print("no free register\n");
-        System.err.print("\tassigning stack slot at interval");
-        cur.print(System.err, tri);
-        System.err.println(":");
-
+        if (Util.DEBUG)
+        {
+            System.err.print("no free register\n");
+            System.err.print("\tassigning stack slot at interval");
+            cur.print(System.err, tri);
+            System.err.println(":");
+        }
         float minWeigth = Float.MAX_VALUE;
         int minReg = 0;
         TargetRegisterClass rc = mri.getRegClass(cur.register);
@@ -231,18 +234,24 @@ public class RegAllocLinearScan extends MachineFunctionPass
             }
         }
 
-        System.err.printf("\tregister with min weight: %s (%f)\n",
-                tri.getName(minReg),
-                minWeigth);
+        if (Util.DEBUG)
+        {
+            System.err.printf("\tregister with min weight: %s (%f)\n",
+                    tri.getName(minReg),
+                    minWeigth);
+        }
 
         // if the current has the minimum weight, we need to spill it and
         // add any added intervals back to unhandled, and restart
         // linearscan.
         if (cur.weight <= minWeigth)
         {
-            System.err.print("\t\t\tspilling(c):");
-            cur.print(System.err, tri);
-            System.err.println();
+            if (Util.DEBUG)
+            {
+                System.err.print("\t\t\tspilling(c):");
+                cur.print(System.err, tri);
+                System.err.println();
+            }
 
             int slot = vrm.assignVirt2StackSlot(cur.register);
             ArrayList<LiveInterval> added = li.addIntervalsForSpills(cur, vrm, slot);
@@ -288,9 +297,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
             if (isVirtualRegister(reg) && toSpill[vrm.getPhys(reg)]
                     && cur.overlaps(interval))
             {
-                System.err.print("\t\t\tspilling(a): ");
-                interval.print(System.err, tri);
-                System.err.println();
+                if (Util.DEBUG)
+                {
+                    System.err.print("\t\t\tspilling(a): ");
+                    interval.print(System.err, tri);
+                    System.err.println();
+                }
                 earliestStart = Math.min(earliestStart, interval.beginNumber());
                 int slot = vrm.assignVirt2StackSlot(reg);
                 ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
@@ -305,9 +317,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
             if (isVirtualRegister(reg) && toSpill[vrm.getPhys(reg)]
                     && cur.overlaps(interval))
             {
-                System.err.print("\t\t\tspilling(a): ");
-                interval.print(System.err, tri);
-                System.err.println();
+                if (Util.DEBUG)
+                {
+                    System.err.print("\t\t\tspilling(a): ");
+                    interval.print(System.err, tri);
+                    System.err.println();
+                }
                 earliestStart = Math.min(earliestStart, interval.beginNumber());
                 int slot = vrm.assignVirt2StackSlot(reg);
                 ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
@@ -317,7 +332,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
         }
 
         // Starting to rollback.
-        System.err.printf("\t\trolling back to: %d\n", earliestStart);
+        if (Util.DEBUG)
+            System.err.printf("\t\trolling back to: %d\n", earliestStart);
 
         /**
          * Scan handled in reverse order up to the earliest start of a spilled live
@@ -393,7 +409,9 @@ public class RegAllocLinearScan extends MachineFunctionPass
             {
                 active.add(interval);
                 int reg = interval.register;
-                System.err.printf("\t\t\tundo register: %s\n", li.getRegisterName(reg));
+                if (Util.DEBUG)
+                    System.err.printf("\t\t\tundo register: %s\n",
+                            li.getRegisterName(reg));
                 if (isPhysicalRegister(reg))
                     prt.addRegUse(reg);
                 else

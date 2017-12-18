@@ -626,9 +626,12 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         assert interval.weight != Float.MAX_VALUE
                 : "attempt to spill already spilled interval";
 
-        System.err.printf("\t\t\tadding interals for spills for interval: ");
-        interval.print(System.err, tri);
-        System.err.println();
+        if (Util.DEBUG)
+        {
+            System.err.printf("\t\t\tadding interals for spills for interval: ");
+            interval.print(System.err, tri);
+            System.err.println();
+        }
 
         TargetRegisterClass rc = mri.getRegClass(interval.register);
 
