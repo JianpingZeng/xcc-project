@@ -140,6 +140,29 @@ public final class DepthFirstOrder
         return result;
     }
 
+    private static void visitDFS(BasicBlock start,
+            ArrayList<BasicBlock> result,
+            HashSet<BasicBlock> visited)
+    {
+        if (visited.add(start))
+        {
+            result.add(start);
+            SuccIterator itr = start.succIterator();
+            while (itr.hasNext())
+            {
+                visitDFS(itr.next(), result, visited);
+            }
+        }
+    }
+
+    public static ArrayList<BasicBlock> dfs(BasicBlock entry)
+    {
+        ArrayList<BasicBlock> result = new ArrayList<>();
+        HashSet<BasicBlock> visited = new HashSet<>();
+        visitDFS(entry, result, visited);
+        return result;
+    }
+
     public static ArrayList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)
     {
         return reversePostOrder(entry);

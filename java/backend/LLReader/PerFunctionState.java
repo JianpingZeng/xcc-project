@@ -207,12 +207,14 @@ public final class PerFunctionState
             return null;
         }
 
+
         // Otherwise, create a new forward reference for this value and remember it.
         Value fwdVal;
         if (ty.equals(LLVMContext.LabelTy))
             fwdVal = BasicBlock.createBasicBlock("", fn);
         else
             fwdVal = new Argument(ty,"", fn);
+
         forwardRefValIDs.put(id, Pair.get(fwdVal, loc));
         return fwdVal;
     }
