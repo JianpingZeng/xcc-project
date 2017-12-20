@@ -239,7 +239,7 @@ public final class LiveVariables extends MachineFunctionPass
         // But there is a exception that PHI node, that will be handled specially
         // later.
         ArrayList<MachineBasicBlock> visited = DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
-               for (MachineBasicBlock mbb : visited)
+        for (MachineBasicBlock mbb : visited)
         {
             distanceMap.clear();
             for (int i = 0, e = mbb.getLiveIns().size(); i < e; i++)
@@ -321,7 +321,7 @@ public final class LiveVariables extends MachineFunctionPass
 
             // Finally, if the last instruction in the block is a return,
             // make sure it as using all of the live out values in the fucntion.
-            TargetInstrDesc tid = mbb.getInsts().getLast().getDesc();
+            TargetInstrDesc tid = mbb.getLastInst().getDesc();
             if (!mbb.isEmpty() && tid.isReturn())
             {
                 MachineInstr ret = mbb.getInsts().getLast();

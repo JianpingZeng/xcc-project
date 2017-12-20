@@ -99,6 +99,12 @@ public class BackendCmdOptions
                     new OptionHiddenApplicator(Hidden),
                     desc("Use dfs order to number machine instr(default to true)"),
                     init(true));
+
+    public static final BooleanOpt DisableRearrangementMBB =
+            new BooleanOpt(optionName("disable-rearrangement-mbb"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Disable rearrangement on machine function(default to true)"),
+                    init(true));
     /**
      * Choose an appropriate register allocator according command line option.
      * @return

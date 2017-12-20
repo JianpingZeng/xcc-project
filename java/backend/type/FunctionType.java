@@ -111,7 +111,7 @@ public class FunctionType extends DerivedType
         return argTy.isFirstClassType() || (argTy instanceof OpaqueType);
     }
 
-    public boolean isValidReturnType(Type retType)
+    public static boolean isValidReturnType(Type retType)
     {
         if (retType.isFirstClassType())
         {
