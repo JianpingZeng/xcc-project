@@ -58,9 +58,14 @@ public abstract class User extends Value
      */
     public void setOperand(int index, Use use)
     {
+        assert use != null;
         if (operandList == null)
             operandList = new ArrayList<>();
-        assert (index >= 0 && index < getNumOfOperands() && use != null);
+        if (index >= getNumOfOperands())
+        {
+            for (int i = getNumOfOperands()-1; i < index; i++)
+                operandList.add(null);
+        }
         operandList.set(index, use);
     }
 

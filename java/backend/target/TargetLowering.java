@@ -141,7 +141,7 @@ public abstract class TargetLowering
     public EVT getValueType(Type type, boolean allowUnknown)
     {
         EVT vt = EVT.getEVT(type, allowUnknown);
-        return vt == new EVT(new MVT(MVT.iPTR)) ? new EVT(pointerTy) : vt;
+        return vt.equals(new EVT(new MVT(MVT.iPTR))) ? new EVT(pointerTy) : vt;
     }
 
     /*

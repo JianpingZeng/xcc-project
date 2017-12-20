@@ -21,6 +21,7 @@ import backend.pass.AnalysisResolver;
 import backend.support.DepthFirstOrder;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 /**
  * This file defines a class used for reorder the basic blocks listed in Function
@@ -33,6 +34,39 @@ public class RearrangementMBB extends MachineFunctionPass
 {
     private AnalysisResolver resolver;
 
+    private void collapseMBB(MachineBasicBlock mbb)
+    {
+        if (mbb.getNumSuccessors() > 1) return;
+        MachineBasicBlock succ = mbb.suxAt(0);
+        mbb.removeSuccessor(succ);
+
+        // Avoiding cocurrentModificationException
+        HashSet<MachineBasicBlock> handled = new HashSet<>();
+        handled.addAll(mbb.getPredecessors());
+        for (MachineBasicBlock pred : handled)
+        {
+            pred.removeSuccessor(mbb);
+            pred.addSuccessor(succ);
+        }
+
+        MachineFunction mf = mbb.getParent();
+        // Replace all mbb operand reference to mbb with succ.
+        for (MachineBasicBlock mb : mf.getBasicBlocks())
+        {
+            for (MachineInstr mi : mb.getInsts())
+            {
+                for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+                {
+                    MachineOperand mo = mi.getOperand(i);
+                    if (mo.isMBB() && mo.getMBB() == mbb)
+                        mo.setMBB(succ);
+                }
+            }
+        }
+        mbb.eraseFromParent();
+        mf.renumberBlocks();
+    }
+
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
@@ -44,6 +78,12 @@ public class RearrangementMBB extends MachineFunctionPass
         for (int j = 0, sz = mbbs.size(); j < sz; j++)
         {
             MachineBasicBlock mbb = mbbs.get(j);
+            // merge the empty mbb into it's successor.
+            if (mbb.isEmpty())
+            {
+                collapseMBB(mbb);
+                continue;
+            }
             for (int i = 0, e = mbb.size(); i < e; i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
@@ -65,6 +105,9 @@ public class RearrangementMBB extends MachineFunctionPass
                     }
                 }
             }
+            // merge the empty mbb into it's successor.
+            if (mbb.isEmpty())
+                collapseMBB(mbb);
         }
         return true;
     }

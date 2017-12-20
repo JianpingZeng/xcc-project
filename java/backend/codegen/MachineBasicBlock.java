@@ -113,18 +113,21 @@ public class MachineBasicBlock
 	{
 		assert succ != null :"Can not add a null succ into succ list";
 		successors.add(succ);
+		succ.addPredecessor(this);
 	}
 
 	public void removeSuccessor(MachineBasicBlock succ)
 	{
-		assert predecessors.contains(succ)
-				: "The pred to be removed not contained in succ list";
+		assert successors.contains(succ)
+				: "The succ to be removed not contained in succ list";
 		successors.remove(succ);
+		succ.removePredecessor(this);
 	}
 
 	public void removeSuccessor(int idx)
 	{
 		assert idx>= 0 && idx < getNumSuccessors();
+		suxAt(idx).removePredecessor(this);
 		successors.remove(idx);
 	}
 
@@ -282,6 +285,7 @@ public class MachineBasicBlock
 
 	public MachineInstr getLastInst()
     {
+    	assert !insts.isEmpty();
         return insts.getLast();
     }
 

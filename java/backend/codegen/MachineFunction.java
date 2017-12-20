@@ -147,23 +147,9 @@ public class MachineFunction
 		if (i != 0)
 			blockNo = mbbNumber.get(i-1).getNumber() + 1;
 
-		for (int e = mbbNumber.size(); i < e; i++, blockNo++)
+		for (; i < mbbNumber.size(); i++, blockNo++)
 		{
-			MachineBasicBlock mbb = mbbNumber.get(i);
-
-			if (mbb.getNumber() != blockNo)
-			{
-				// remove the old number and let a new number to it.
-				if (mbb.getNumber() != -1)
-				{
-					mbbNumber.set(mbb.getNumber(), null);
-				}
-				if (mbbNumber.get(blockNo) != null)
-					mbbNumber.get(blockNo).setNumber(-1);
-
-				mbbNumber.set(blockNo, mbb);
-				mbb.setNumber(blockNo);
-			}
+			mbbNumber.get(i).setNumber(blockNo);
 		}
 
 		assert blockNo <= mbbNumber.size():"Mismatch!";

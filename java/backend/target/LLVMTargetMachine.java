@@ -18,15 +18,16 @@ package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
+import backend.codegen.RearrangementMBB;
 import backend.passManaging.PassManagerBase;
 import backend.support.BackendCmdOptions;
-import backend.codegen.RearrangementMBB;
 
 import java.io.OutputStream;
 
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
+import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
@@ -98,12 +99,16 @@ public abstract class LLVMTargetMachine extends TargetMachine
         if (addInstSelector(pm, level))
             return true;
 
-        // Before instruction selection, rearragement blocks.
-        pm.add(RearrangementMBB.createRearrangeemntPass());
-
         // print the machine instructions.
         printAndVerify(pm, true,
                 "# *** IR dump after Instruction Selection ***:\n");
+        if (!DisableRearrangementMBB.value)
+        {
+            // Before instruction selection, rearragement blocks.
+            pm.add(RearrangementMBB.createRearrangeemntPass());
+            printAndVerify(pm, true,
+                "# *** IR dump after RearragementMBB pass ***:\n");
+        }
 
         if (addPreRegAlloc(pm, level))
         {

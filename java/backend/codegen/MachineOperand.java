@@ -584,11 +584,6 @@ public class MachineOperand
 		return offsetedInfo.val.symbolName;
 	}
 
-	public void setMbb(MachineBasicBlock mbb)
-	{
-		this.mbb = mbb;
-	}
-
 	public void setImm(long imm)
 	{
 		assert isImm(): "Wrong MachineOperand accessor";

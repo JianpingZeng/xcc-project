@@ -59,8 +59,8 @@ public class SequentialType extends CompositeType
     @Override
     public boolean indexValid(Value v)
     {
-        // must be a 'long' index.
-        return v.getType() == LLVMContext.Int64Ty;
+        // must be a integral index.
+        return v.getType().isIntegerType();
     }
 
     @Override

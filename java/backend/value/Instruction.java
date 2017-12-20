@@ -2,6 +2,7 @@ package backend.value;
 
 import backend.ir.AllocationInst;
 import backend.support.*;
+import backend.type.CompositeType;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -1730,7 +1731,7 @@ public abstract class Instruction extends User
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():
                     "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType():
+            assert lhs.getType().isIntegerType() || lhs.getType() instanceof PointerType:
                     "Invalid operand types for ICmp instruction";
         }
 
@@ -3212,7 +3213,7 @@ public abstract class Instruction extends User
             super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
                     GetElementPtr, name, insertBefore);
             reserve(indices.size());
-            setOperand(0, ptr);
+            setOperand(0, ptr, this);
             int i = 1;
             for (Value idx : indices)
             {
@@ -3246,14 +3247,23 @@ public abstract class Instruction extends User
                 return null;
             PointerType pt = (PointerType)ptrType;
 
-            // Check the pointer index.
-            for (Value idx : indices)
+            Type aggTy = pt.getElementType();
+            if (indices.isEmpty()) return aggTy;
+            if (!aggTy.isSized() && !aggTy.isAbstract())
+                return null;
+            int idx = 1;
+            for (int e = indices.size(); idx < e; idx++)
             {
-                if (!pt.indexValid(idx))
+                if (!(aggTy instanceof CompositeType))
                     return null;
+                CompositeType ct = (CompositeType)aggTy;
+                if (ct instanceof PointerType) return null;
+                Value index = indices.get(idx);
+                if (!ct.indexValid(index)) return null;
+                aggTy = ct.getTypeAtIndex(index);
             }
 
-            return pt.getElementType();
+            return idx == indices.size() ? aggTy : null;
         }
 
         public static Type getIndexedType(Type ptrType, Value idx)

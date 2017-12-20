@@ -730,7 +730,7 @@ public final class LLParser
                 return error(linkageLoc, "invalid function linkage type");
         }
 
-        if (!FunctionType.isValidArgumentType(resultTy.get()) ||
+        if (!FunctionType.isValidReturnType(resultTy.get()) ||
                 resultTy.get() instanceof OpaqueType)
             return error(retTypeLoc, "invalid function return type");
 
@@ -1940,7 +1940,7 @@ public final class LLParser
             if (parseTypeAndValue(val, eltLoc, pfs))
                 return true;
             if (!val.get().getType().isInteger())
-                return error(eltLoc.get(), "indeex of getelementptr must be an integer");
+                return error(eltLoc.get(), "index of getelementptr must be an integer");
 
             indices.add(val.get());
         }
@@ -2396,8 +2396,8 @@ public final class LLParser
         else
         {
             assert opc == Operator.ICmp;
-            if (!lhs.getType().isInteger())
-                return error(lhsLoc, "icmp op requires floating point operand");
+            if (!lhs.getType().isInteger() && !(lhs.getType() instanceof PointerType))
+                return error(lhsLoc, "icmp op requires integral operand");
         }
         inst.set(CmpInst.create(opc, pred, lhs, rhs, "", null));
         return false;
