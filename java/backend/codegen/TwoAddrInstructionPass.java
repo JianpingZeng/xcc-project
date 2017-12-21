@@ -206,7 +206,9 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                             sunk = sink3AddrInstruction(mbb,
                                                     newMI, regB, i+1);
                                         }
-                                        mbb.remove(oldMI);  // Nuke the old mi.
+                                        oldMI.removeFromParent();
+
+                                        //mbb.remove(oldMI);  // Nuke the old mi.
 
                                         if (!sunk)
                                         {
@@ -261,21 +263,21 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                         }
                         else
                         {
-                            // tii.copyRegToReg(mbb, i, regA, regB, rc, rc);
+                            tii.copyRegToReg(mbb, i, regA, regB, rc, rc);
 
                             // Uses another method to reduce 3-addr instruction
                             // to 2-addr instruction.
                             // Replace all of using of destination register(ti)
                             // with si register
-                            int srcReg = mi.getOperand(si).getReg();
-                            int destReg = mi.getOperand(ti).getReg();
+                            //int srcReg = mi.getOperand(si).getReg();
+                            //int destReg = mi.getOperand(ti).getReg();
                             // Step#1, unlink this machine operand for it's SSA chain
                             //mi.getOperand(ti).removeRegOperandFromRegInfo();
-                            mi.getOperand(ti).setReg(srcReg);
+                            //mi.getOperand(ti).setReg(srcReg);
                             // Step#2, link this with another chain corresponding to
                             // srcReg.
                             //mi.getOperand(ti).addRegOperandToRegInfo(mri);
-
+                            /*
                             DefUseChainIterator itr = mri.getUseIterator(destReg);
                             while (itr.hasNext())
                             {
@@ -284,10 +286,10 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
                                 //itr.getOpearnd().addRegOperandToRegInfo(mri);
                                 itr.next();
-                            }
+                            }*/
                         }
 
-                        /*
+
                         // After insert a copy instruction, the index of current
                         // mi is i+1, inserted instr is i.
                         MachineInstr prevMI = mbb.getInstAt(i);
@@ -306,6 +308,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                 lv.addVirtualRegisterKilled(regB, prevMI);
                             if (lv.removeVirtualRegisterDead(regB, mi))
                                 lv.addVirtualRegisterDead(regB, prevMI);
+
+                            lv.getVarInfo(regA).defInst = prevMI;
                         }
 
                         if (Util.DEBUG)
@@ -321,12 +325,9 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                             if (mi.getOperand(j).isRegister() && mi.getOperand(j).getReg() == regB)
                                 mi.getOperand(j).setReg(regA);
                         }
-                        */
                     }
-                    /*
                     assert mi.getOperand(ti).isDef() && mi.getOperand(si).isUse();
                     mi.getOperand(ti).setReg(mi.getOperand(si).getReg());
-                    */
                     madeChange = true;
 
                     if (Util.DEBUG)

@@ -108,18 +108,6 @@ public final class LiveVariables extends MachineFunctionPass
         }
 
         /**
-         * Remove the usage corresponding to {@code mi}. Return true if
-         * the {@code mi} contained in {@linkplain #kills} otherwise
-         * return false.
-         * @param mi
-         * @return
-         */
-        public boolean removeLastUse(MachineInstr mi)
-        {
-            return kills.remove(mi);
-        }
-
-        /**
          * Remove the specified machine instr from kills set.
          * @param mi
          * @return
@@ -145,21 +133,6 @@ public final class LiveVariables extends MachineFunctionPass
      *
      */
     private VarInfo[] virRegInfo;
-
-    /**
-     * This map keeps track of all of the registers that
-     * are dead immediately after an instruction reads its operands.  If an
-     * instruction does not have an entry in this map, it kills no registers.
-     */
-    private HashMap<MachineInstr, TIntArrayList> registerKilled;
-
-    /**
-     * This map keeps track of all of the registers that are
-     * dead immediately after an instruction executes, which are not dead after
-     * the operands are evaluated.  In practice, this only contains registers
-     * which are defined by an instruction, but never used.
-     */
-    private HashMap<MachineInstr, TIntArrayList> registerDeaded;
 
     /**
      * Records which instruction was the last use of a physical register.
@@ -219,9 +192,6 @@ public final class LiveVariables extends MachineFunctionPass
         virRegInfo = new VarInfo[machineRegInfo.getLastVirReg()-FirstVirtualRegister+1];
 
         allocatablePhyRegs = regInfo.getAllocatableSet(mf);
-        TargetInstrInfo instInfo = mf.getTarget().getInstrInfo();
-        registerDeaded = new HashMap<>();
-        registerKilled = new HashMap<>();
 
         int numRegs = regInfo.getNumRegs();
         phyRegDef = new MachineInstr[numRegs];
@@ -360,17 +330,13 @@ public final class LiveVariables extends MachineFunctionPass
                 {
                     // this instruction defines this virtual register and use it,
                     // also there is no other inst use it later.
-                    if (!registerDeaded.containsKey(mi))
-                        registerDeaded.put(mi, new TIntArrayList());
-                    registerDeaded.get(mi).add(i+FirstVirtualRegister);
+                    mi.addRegisterDead(i+FirstVirtualRegister, regInfo);
                 }
                 else
                 {
                     // otherwise, this instruction is the last use of the
                     // virtual register.
-                    if (!registerKilled.containsKey(mi))
-                        registerKilled.put(mi, new TIntArrayList());
-                    registerKilled.get(mi).add(i+FirstVirtualRegister);
+                    mi.addRegisterKilled(i+FirstVirtualRegister, regInfo);
                 }
             }
         }
@@ -858,41 +824,6 @@ public final class LiveVariables extends MachineFunctionPass
         }
     }
 
-    private static TIntArrayList dummmy = new TIntArrayList();
-
-    public TIntArrayList getKillsList(MachineInstr mi)
-    {
-        return registerKilled.getOrDefault(mi, dummmy);
-    }
-
-    public TIntArrayList getDeadedDefList(MachineInstr mi)
-    {
-        return registerDeaded.getOrDefault(mi, dummmy);
-    }
-
-    /**
-     * Checks to see if the specified mi kills this reg.
-     * @param mi
-     * @param reg
-     * @return
-     */
-    public boolean killRegister(MachineInstr mi, int reg)
-    {
-        return getKillsList(mi).contains(reg);
-    }
-
-    /**
-     * Checks to see if this reg is deaded after this mi. That means
-     * the reg is defined by this mi and not used later.
-     * @param mi
-     * @param reg
-     * @return
-     */
-    public boolean registerDefIsDeaded(MachineInstr mi, int reg)
-    {
-        return getDeadedDefList(mi).contains(reg);
-    }
-
     /**
      * When the address of an instruction changes, this
      * method should be called so that live variables can update its internal
@@ -922,20 +853,6 @@ public final class LiveVariables extends MachineFunctionPass
                 }
             }
         }
-
-        TIntArrayList newKills = getKillsList(newMI);
-        boolean empty = newKills.isEmpty();
-        newKills.addAll(registerKilled.get(oldMI));
-        if (!empty)
-            newKills.sort();
-        registerKilled.remove(oldMI);
-
-        TIntArrayList newDeads = getDeadedDefList(newMI);
-        empty = newDeads.isEmpty();
-        newDeads.addAll(registerDeaded.get(oldMI));
-        if (!empty)
-            newDeads.sort();
-        registerDeaded.remove(oldMI);
     }
 
     /**
@@ -946,26 +863,8 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void addVirtualRegisterKilled(int incomingReg, MachineInstr mi)
     {
-        // handle the special common case.
-        if (!registerKilled.containsKey(mi))
-            registerKilled.put(mi, new TIntArrayList());
-
-        TIntArrayList list = registerKilled.get(mi);
-        if (list.isEmpty() || incomingReg > list.get(list.size() - 1))
-            list.add(incomingReg);
-        // sort the order.
-        for (int i = 0; i < list.size(); i++)
-        {
-            if (list.get(i) < incomingReg)
-                continue;
-            // avoids duplicate insertion.
-            if (incomingReg != list.get(i))
-            {
-                list.insert(i, incomingReg);
-                break;
-            }
-        }
-        getVarInfo(incomingReg).kills.add(mi);
+        if (mi.addRegisterKilled(incomingReg, regInfo))
+            getVarInfo(incomingReg).kills.add(mi);
     }
 
     /**
@@ -977,19 +876,21 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public boolean removeVirtualRegisterKilled(int reg, MachineInstr mi)
     {
-        if (!getVarInfo(reg).removeLastUse(mi))
+        if (!getVarInfo(reg).removeKill(mi))
             return false;
 
-        TIntArrayList list = getKillsList(mi);
-        for (int i = 0; i < list.size(); i++)
+        boolean removed = false;
+        int e = mi.getNumOperands();
+        for (int i = 0; i < e; i++)
         {
-            if (list.get(i) == reg)
+            MachineOperand op = mi.getOperand(i);
+            if (op.isRegister() && op.isUse() && op.getReg() == reg)
             {
-                list.remove(i);
-                return true;
+                op.setIsKill(false);
+                removed = true;
             }
         }
-        return false;
+        return removed;
     }
 
     /**
@@ -998,15 +899,15 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void removeVirtualRegisterKilled(MachineInstr mi)
     {
-        if (registerKilled.containsKey(mi))
+        int e = mi.getNumOperands();
+        for (int i = 0; i < e; i++)
         {
-             TIntArrayList list = registerKilled.get(mi);
-            for (int i = 0, e = list.size(); i< e; i++)
+            MachineOperand op = mi.getOperand(i);
+            if (op.isRegister() && op.isUse() && isVirtualRegister(op.getReg()))
             {
-                boolean removed = removeVirtualRegisterKilled(list.get(i), mi);
-                assert removed :"Removed vir reg is not existed";
+                op.setIsKill(false);
+                getVarInfo(op.getReg()).removeKill(mi);
             }
-            registerKilled.remove(mi);
         }
     }
 
@@ -1018,27 +919,8 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void addVirtualRegisterDead(int reg, MachineInstr mi)
     {
-        if (!registerDeaded.containsKey(mi))
-            registerDeaded.put(mi, new TIntArrayList());
-
-        TIntArrayList list = registerDeaded.get(mi);
-        // handles the special common cases.
-        if (list.isEmpty() || reg > list.size())
-            list.add(reg);
-
-        for (int i = 0, e = list.size(); i < e; i++)
-        {
-            if (list.get(i) < reg)
-                continue;
-
-            // avoids duplicate insertion.
-            if (list.get(i) != reg)
-            {
-                list.insert(i, reg);
-                break;
-            }
-        }
-        getVarInfo(reg).kills.add(mi);
+        if (mi.addRegisterDead(reg, regInfo))
+            getVarInfo(reg).kills.add(mi);
     }
 
     /**
@@ -1051,19 +933,21 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public boolean removeVirtualRegisterDead(int reg, MachineInstr mi)
     {
-        if (!getVarInfo(reg).removeLastUse(mi))
+        if (!getVarInfo(reg).removeKill(mi))
             return false;
 
-        TIntArrayList list = getDeadedDefList(mi);
-        for (int i = 0, e = list.size(); i < e; i++)
+        int e = mi.getNumOperands();
+        boolean removed = false;
+        for (int i = 0; i < e; i++)
         {
-            if (list.get(i) == reg)
+            MachineOperand op = mi.getOperand(i);
+            if (op.isRegister() && op.isDef() && op.getReg() == reg)
             {
-                list.remove(i);
-                return true;
+                op.setIsDead(false);
+                removed = true;
             }
         }
-        return false;
+        return removed;
     }
 
     /**
@@ -1073,15 +957,15 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void removeVirtualRegisterDead(MachineInstr mi)
     {
-        if (registerDeaded.containsKey(mi))
+        int e = mi.getNumOperands();
+        for (int i = 0; i < e; i++)
         {
-            TIntArrayList list = registerDeaded.get(mi);
-            for (int i = 0, e = list.size(); i < e; i++)
+            MachineOperand op = mi.getOperand(i);
+            if (op.isRegister() && op.isDef() && isVirtualRegister(op.getReg()))
             {
-                boolean removed = removeVirtualRegisterDead(list.get(i), mi);
-                assert removed :"Virtual register is not existed!";
+                op.setIsDead(false);
+                getVarInfo(op.getReg()).removeKill(mi);
             }
-            registerDeaded.remove(mi);
         }
     }
 
@@ -1089,14 +973,11 @@ public final class LiveVariables extends MachineFunctionPass
             MachineInstr newMI)
     {
         VarInfo vi = getVarInfo(reg);
-
-        vi.kills.replaceAll(machineInstr ->
+        for (int i = 0, e = vi.kills.size(); i < e; i++)
         {
-            if (machineInstr == oldMI)
-                return newMI;
-            else
-                return oldMI;
-        });
+            if (vi.kills.get(i) == oldMI)
+                vi.kills.set(i, newMI);
+        }
     }
 
     public BitMap getAllocatablePhyRegs()

@@ -143,7 +143,7 @@ public final class PhiElimination extends MachineFunctionPass
 			lv.removeVirtualRegisterKilled(phiMI);
 
 			// if the result is dead, update live analysis.
-			if (lv.registerDefIsDeaded(phiMI, destReg))
+			if (phiMI.registerDefIsDead(destReg, regInfo))
 			{
 				lv.addVirtualRegisterDead(destReg, copyInst);
 				lv.removeVirtualRegisterDead(phiMI);

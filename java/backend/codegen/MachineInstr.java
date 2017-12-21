@@ -517,81 +517,94 @@ public class MachineInstr implements Cloneable
         }
 	}
 
-    boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo)
+	/**
+	 * We have determined MI kills a register. Look for the
+	 * operand that uses it and mark it as IsKill. If addIfNotFound is true,
+	 * add a implicit operand if it's not found. Returns true if the operand
+	 * exists / is added.
+	 * @param incomingReg
+	 * @param regInfo*
+	 * @return  Return true if the operand exists/ is killed.
+	 */
+    public boolean addRegisterKilled(int incomingReg,
+		    TargetRegisterInfo regInfo)
     {
-        return addRegisterKilled(IncomingReg, RegInfo, false);
+        return addRegisterKilled(incomingReg, regInfo, false);
     }
 
-	/// addRegisterKilled - We have determined MI kills a register. Look for the
-	/// operand that uses it and mark it as IsKill. If AddIfNotFound is true,
-	/// add a implicit operand if it's not found. Returns true if the operand
-	/// exists / is added.
-	public boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo,
-			boolean AddIfNotFound)
+	/**
+	 * We have determined MI kills a register. Look for the
+	 * operand that uses it and mark it as IsKill. If addIfNotFound is true,
+	 * add a implicit operand if it's not found. Returns true if the operand
+	 * exists / is added.
+	 * @param incomingReg
+	 * @param regInfo
+	 * @param addIfNotFound
+	 * @return  Return true if the operand exists/ is killed.
+	 */
+	public boolean addRegisterKilled(int incomingReg,
+            TargetRegisterInfo regInfo,
+			boolean addIfNotFound)
 	{
-        boolean isPhysReg = isPhysicalRegister(IncomingReg);
-        int[] alias = RegInfo.getAliasSet(IncomingReg);
-        boolean hasAliases = isPhysReg && alias != null && alias.length >= 0;
-        boolean Found = false;
-        LinkedList<Integer> DeadOps = new LinkedList<>();
-        for (int i = 0, e = getNumOperands(); i != e; ++i) {
-            MachineOperand MO = getOperand(i);
-            if (!MO.isRegister() || !MO.isUse() || MO.isUndef())
+        boolean isPhysReg = isPhysicalRegister(incomingReg);
+        int[] alias = isPhysReg ? regInfo.getAliasSet(incomingReg) : null;
+        boolean hasAliases = isPhysReg && alias != null && alias.length > 0;
+        boolean found = false;
+        LinkedList<Integer> deadOps = new LinkedList<>();
+        for (int i = 0, e = getNumOperands(); i != e; ++i)
+        {
+            MachineOperand mo = getOperand(i);
+            if (!mo.isRegister() || !mo.isUse() ||
+                    mo.isUndef() || mo.getReg() <= 0)
                 continue;
-            int Reg = MO.getReg();
-            if (Reg == 0)
-                continue;
-
-            if (Reg == IncomingReg) {
-                if (!Found) {
-                    if (MO.isKill())
+            int reg = mo.getReg();
+            if (reg == incomingReg)
+            {
+                if (!found)
+                {
+                    if (mo.isKill())
                         // The register is already marked kill.
                         return true;
                     if (isPhysReg && isRegTiedToDefOperand(i))
                         // Two-address uses of physregs must not be marked kill.
                         return true;
-                    MO.setIsKill(true);
-                    Found = true;
+                    mo.setIsKill(true);
+                    found = true;
                 }
-            } else if (hasAliases && MO.isKill() &&
-                    isPhysicalRegister(Reg)) {
+            }
+            else if (hasAliases && mo.isKill() && isPhysicalRegister(reg))
+            {
                 // A super-register kill already exists.
-                if (RegInfo.isSuperRegister(IncomingReg, Reg))
+                if (regInfo.isSuperRegister(incomingReg, reg))
                     return true;
-                if (RegInfo.isSubRegister(IncomingReg, Reg))
-                    DeadOps.add(i);
+                if (regInfo.isSubRegister(incomingReg, reg))
+                    deadOps.add(i);
             }
         }
 
         // Trim unneeded kill operands.
-        while (!DeadOps.isEmpty())
+        while (!deadOps.isEmpty())
         {
-            int OpIdx = DeadOps.removeLast();
-            if (getOperand(OpIdx).isImplicit())
-                removeOperand(OpIdx);
+            int opIdx = deadOps.removeLast();
+            if (getOperand(opIdx).isImplicit())
+                removeOperand(opIdx);
             else
-                getOperand(OpIdx).setIsKill(false);
+                getOperand(opIdx).setIsKill(false);
         }
 
         // If not found, this means an alias of one of the operands is killed. Add a
         // new implicit operand if required.
-        if (!Found && AddIfNotFound)
+        if (!found && addIfNotFound)
         {
-            addOperand(MachineOperand.createReg(
-                    IncomingReg,
-                    false /*IsDef*/,
-                    true  /*IsImp*/,
-                    true  /*IsKill*/,
-                    false,
-                    false,
-                    false,
-                    0));
+            addOperand(MachineOperand
+                    .createReg(incomingReg, false /*isDef*/, true  /*isImp*/,
+                            true/*isKill*/, false, false, false, 0));
             return true;
         }
-        return Found;
-	}
+        return found;
+    }
 
-    boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo)
+    public boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo)
     {
         return addRegisterDead(IncomingReg, RegInfo, false);
     }
@@ -606,7 +619,7 @@ public class MachineInstr implements Cloneable
 			boolean addIfNotFound)
 	{
 	    boolean isPhyReg = isPhysicalRegister(incomingReg);
-	    int[] alias = regInfo.getAliasSet(incomingReg);
+	    int[] alias = isPhyReg ?regInfo.getAliasSet(incomingReg):null;
 	    boolean hasAlias = isPhyReg && alias != null && alias.length > 0;
 	    boolean found = false;
 
