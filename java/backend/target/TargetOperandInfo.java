@@ -1,6 +1,6 @@
 package backend.target;
 /*
- * Xlous C language Compiler
+ * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

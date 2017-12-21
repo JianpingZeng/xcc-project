@@ -241,6 +241,7 @@ public class MachineBasicBlock
 	{
 		int index = insts.indexOf(miToDelete);
 		insts.remove(miToDelete);
+		miToDelete.setParent(null);
 		return index;
 	}
 
