@@ -398,11 +398,14 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             // If it is the result of 2-addr instruction elimination, the first
             // operand must be register and it is def-use.
             MachineInstr mi = mbb.getInstAt(index);
-            MachineOperand mo = mi.getOperand(0);
-            if (mo.isRegister()
+            //MachineOperand mo = mi.getOperand(0);
+
+            /*if (mo.isRegister()
                 && mo.getReg() == li.register
                 && mo.isDef()
                 && mo.isUse())
+                */
+            if (mi.isRegTiedToUseOperand(0, null))
             {
                 int defIndex = getDefIndex(getInstructionIndex(vi.defInst));
                 int redefIndex = getDefIndex(getInstructionIndex(mi));
@@ -415,7 +418,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
                 // If this redefinition is dead, we need to add a dummy unit live
                 // range covering the def slot.
-                if (lv.registerDefIsDeaded(mi, li.register))
+                if (mi.registerDefIsDead(li.register, tri))
                     li.addRange(new LiveRange(redefIndex, redefIndex + 1, li.getNextValue()));
             }
             else
@@ -528,7 +531,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             // If it is not used after definition, it is considered dead at
             // the instruction defining it. Hence its interval is:
             // [defSlot(def), defSlot(def)+1)
-            if (lv.registerDefIsDeaded(mi, interval.register))
+            if (mi.registerDefIsDead(interval.register, tri))
             {
                 end = getDefIndex(start) + 1;
                 break exit;

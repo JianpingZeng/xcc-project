@@ -58,7 +58,6 @@ public class LiveInterval implements Comparable<LiveInterval>
     public void removeRange(int begin, int end)
     {
         int idx = upperBound(ranges, 0, begin);
-        assert idx != ranges.size() :"Range is not in interval";
 
         --idx;
         assert  ranges.get(idx).contains(end-1)
