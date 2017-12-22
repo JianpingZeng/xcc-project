@@ -177,4 +177,14 @@ public abstract class TargetRegisterClass
                 return true;
         return false;
     }
+
+    public TargetRegisterClass[] getSubClasses()
+    {
+        return subClasses;
+    }
+
+    public TargetRegisterClass[] getSuperClasses()
+    {
+        return superClasses;
+    }
 }

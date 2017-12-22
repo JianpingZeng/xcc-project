@@ -56,17 +56,21 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private MachineFunction mf;
     private float[] spillWeights;
     private VirtRegRewriter rewriter;
+    private LiveStackSlot ls;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.setPreservesCFG();
         au.addRequired(LiveIntervalAnalysis.class);
+        au.addRequired(LiveIntervalCoalescing.class);
+
+        au.addRequired(LiveStackSlot.class);
+        au.addPreserved(LiveStackSlot.class);
 
         au.addRequired(MachineLoop.class);
         au.addPreserved(MachineLoop.class);
         au.addPreserved(MachineDomTree.class);
-        au.addRequired(LiveIntervalCoalescing.class);
         super.getAnalysisUsage(au);
     }
 
@@ -93,6 +97,37 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 unhandled.add(interval);
             }
         }
+    }
+
+    /**
+     * Create a live Interval for a stack slot if the specified live interval has
+     * been spilled.
+     * @param cur
+     * @param ls
+     * @param li
+     * @param mri
+     * @param vrm
+     */
+    private static void addStackInterval(
+            LiveInterval cur,
+            LiveStackSlot ls,
+            LiveIntervalAnalysis li,
+            MachineRegisterInfo mri,
+            VirtRegMap vrm)
+    {
+        if (!vrm.hasStackSlot(cur.register))
+            return;
+        int ss = vrm.getStackSlot(cur.register);
+        TargetRegisterClass rc = mri.getRegClass(cur.register);
+        LiveInterval slotInterval = ls.getOrCreateInterval(ss, rc);
+        int valNumber;
+        if (slotInterval.hasAtLeastOneValue())
+            valNumber = slotInterval.getRange(0).valId;
+        else
+            valNumber = slotInterval.getNextValue();
+
+        LiveInterval regInterval = li.getInterval(cur.register);
+        slotInterval.mergeRangesInAsValue(regInterval, valNumber);
     }
 
     private void linearScan()
@@ -255,6 +290,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
             int slot = vrm.assignVirt2StackSlot(cur.register);
             ArrayList<LiveInterval> added = li.addIntervalsForSpills(cur, vrm, slot);
+            addStackInterval(cur, ls, li, mri, vrm);
             if (added.isEmpty())
                 return;     // Early exit if all spills were folded.
 
@@ -306,6 +342,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 earliestStart = Math.min(earliestStart, interval.beginNumber());
                 int slot = vrm.assignVirt2StackSlot(reg);
                 ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
+                addStackInterval(interval, ls, li, mri, vrm);
                 added.addAll(newIS);
                 spilled.add(reg);
             }
@@ -326,6 +363,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 earliestStart = Math.min(earliestStart, interval.beginNumber());
                 int slot = vrm.assignVirt2StackSlot(reg);
                 ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
+                addStackInterval(interval, ls, li, mri, vrm);
                 added.addAll(newIS);
                 spilled.add(reg);
             }

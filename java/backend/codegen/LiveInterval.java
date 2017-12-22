@@ -32,12 +32,23 @@ public class LiveInterval implements Comparable<LiveInterval>
     float weight;
     ArrayList<LiveRange> ranges;
     private int numValues;
+    /**
+     * If this live interval represents a stack slot, so {@linkplain #isStackSlot}
+     * is true and {@linkplain #register} indicates the stack slot.
+     */
+    private boolean isStackSlot;
 
-    public LiveInterval(int reg, float weight)
+    public LiveInterval(int reg, float weight, boolean isSlot)
     {
         this.register = reg;
         this.weight = weight;
         ranges = new ArrayList<>();
+        isStackSlot = isSlot;
+    }
+
+    public LiveInterval(int reg, float weight)
+    {
+        this(reg, weight, false);
     }
 
     public boolean isEmpty()
@@ -82,6 +93,11 @@ public class LiveInterval implements Comparable<LiveInterval>
         ranges.get(idx).end = begin;
 
         ranges.add(idx+1, new LiveRange(end, oldEnd, ranges.get(idx).valId));
+    }
+
+    public boolean hasAtLeastOneValue()
+    {
+        return numValues >= 1;
     }
 
     public int getNextValue()
@@ -622,5 +638,15 @@ public class LiveInterval implements Comparable<LiveInterval>
         int num = numValues;
         numValues = other.numValues;
         other.numValues = num;
+    }
+
+    public void mergeRangesInAsValue(LiveInterval rhs, int lhsValNumber)
+    {
+        int insertPos = beginNumber();
+        for (LiveRange r : rhs.getRanges())
+        {
+            r.valId = lhsValNumber;
+            insertPos = addRangeFrom(r, insertPos);
+        }
     }
 }
