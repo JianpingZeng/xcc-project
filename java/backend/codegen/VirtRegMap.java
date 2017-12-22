@@ -31,13 +31,6 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  */
 public class VirtRegMap
 {
-    public interface ModRef
-    {
-        int isRef = 1;
-        int isMod = 2;
-        int isModRef = 3;
-    }
-
     private MachineFunction mf;
     private TIntIntHashMap v2pMap;
     private TIntIntHashMap v2StackSlotMap;

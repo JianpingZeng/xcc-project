@@ -597,4 +597,36 @@ public abstract class TargetRegisterInfo
 	{
 		return false;
 	}
+
+	public static TargetRegisterClass getCommonSubClass(
+			TargetRegisterClass rc1,
+			TargetRegisterClass rc2)
+	{
+		if (rc1 == rc2) return rc1;
+		if (rc1 == null || rc2 == null) return null;
+
+		if (rc2.hasSubClass(rc1)) return rc1;
+
+		TargetRegisterClass bestRC = null;
+		for (TargetRegisterClass rc : rc1.getSubClasses())
+		{
+			if (rc == rc2) return rc;
+
+			if (!rc2.hasSubClass(rc)) continue;
+
+			if (bestRC == null || bestRC.hasSuperClass(rc))
+			{
+				bestRC = rc;
+				continue;
+			}
+
+			if (bestRC.hasSubClass(rc))
+				continue;
+			int nb = bestRC.getNumRegs();
+			int ni = rc.getNumRegs();
+			if (ni > nb || (ni == nb && rc.getRegSize() < bestRC.getRegSize()))
+				bestRC = rc;
+		}
+		return bestRC;
+	}
 }

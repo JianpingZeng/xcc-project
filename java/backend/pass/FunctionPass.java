@@ -47,7 +47,8 @@ public interface FunctionPass extends Pass
         return false;
     }
 
-    @Override default PassManagerType getPotentialPassManagerType()
+    @Override
+    default PassManagerType getPotentialPassManagerType()
     {
         return PassManagerType.PMT_FunctionPassManager;
     }
@@ -64,7 +65,8 @@ public interface FunctionPass extends Pass
         return false;
     }
 
-    @Override default void assignPassManager(PMStack pms, PassManagerType pmt)
+    @Override
+    default void assignPassManager(PMStack pms, PassManagerType pmt)
     {
         while (!pms.isEmpty())
         {
