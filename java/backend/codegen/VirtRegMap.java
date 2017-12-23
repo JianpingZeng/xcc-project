@@ -50,6 +50,12 @@ public class VirtRegMap
         return v2pMap.get(virReg);
     }
 
+    public boolean isAssignedReg(int virtReg)
+    {
+        assert isVirtualRegister(virtReg);
+        return v2pMap.containsKey(virtReg);
+    }
+
     public void assignVirt2Phys(int virtReg, int phyReg)
     {
         assert isVirtualRegister(virtReg) && isPhysicalRegister(phyReg);

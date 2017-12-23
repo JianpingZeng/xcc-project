@@ -1,5 +1,8 @@
 package tools;
 
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.set.hash.TIntHashSet;
+
 import java.util.BitSet;
 
 /**
@@ -71,6 +74,7 @@ public final class BitMap extends BitSet implements Cloneable
 	public boolean contains(BitMap rhs)
 	{
 		// TODO: 17-8-6
+		Util.shouldNotReachHere("No implemented");
 		return false;
 	}
 
@@ -99,5 +103,25 @@ public final class BitMap extends BitSet implements Cloneable
 				return i;
 		return -1;
 	}
+
+    /**
+     * Retrieves all of indices of element that is true into a HashSet.
+     * @return
+     */
+	public TIntHashSet toHashSet()
+    {
+        TIntHashSet res = new TIntHashSet();
+        for (int i = 0, e = size(); i < e; i++)
+            if (get(i)) res.add(i);
+        return res;
+    }
+
+    public TIntArrayList toList()
+    {
+        TIntArrayList res = new TIntArrayList();
+        for (int i = 0, e = size(); i < e; i++)
+            if (get(i)) res.add(i);
+        return res;
+    }
 }
 
