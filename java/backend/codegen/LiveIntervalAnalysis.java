@@ -27,6 +27,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Util;
@@ -34,6 +35,7 @@ import tools.Util;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeMap;
 
 import static backend.support.BackendCmdOptions.UseDFSOnNumberMI;
@@ -83,6 +85,9 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
     private ArrayList<MachineBasicBlock> numberOrder;
+
+    private TreeMap<Integer, MachineBasicBlock> idx2MBBs;
+    private TObjectIntHashMap<MachineBasicBlock> mbb2Idx;
 
     public LiveIntervalAnalysis()
     {
@@ -163,9 +168,15 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         }
         idx2MI = new MachineInstr[numOfMI];
 
+        idx2MBBs = new TreeMap<>();
+        mbb2Idx = new TObjectIntHashMap<>();
+
         // Step#3: Walk through each MachineInstr to compute live interval.
         for (MachineBasicBlock mbb : numberOrder)
         {
+            idx2MBBs.put(idx, mbb);
+            mbb2Idx.put(mbb, idx/InstrSlots.NUM);
+
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
@@ -715,6 +726,24 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         }
 
         return added;
+    }
+
+    public boolean findLiveinMBBs(
+            int start,
+            int end,
+            ArrayList<MachineBasicBlock> liveMBBs)
+    {
+        boolean resVal = false;
+        for (Map.Entry<Integer, MachineBasicBlock> pair : idx2MBBs.entrySet())
+        {
+            if (pair.getKey() < start)
+                continue;
+            if (pair.getKey() >= end)
+                break;
+            liveMBBs.add(pair.getValue());
+            resVal = true;
+        }
+        return resVal;
     }
 
     public void print(PrintStream os, Module m)
