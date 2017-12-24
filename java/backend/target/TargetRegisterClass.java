@@ -163,6 +163,8 @@ public abstract class TargetRegisterClass
 
     public boolean hasSuperClass(TargetRegisterClass rc)
     {
+        if (superClasses == null) return false;
+
         for (TargetRegisterClass superRC : superRegClasses)
             if (superRC.equals(rc))
                 return true;

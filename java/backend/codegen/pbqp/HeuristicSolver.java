@@ -162,8 +162,8 @@ public class HeuristicSolver implements PBQPSolver
         for (int r = 0; r < rows; r++)
         {
             double min = costs.getRowMin(r);
-            u.getData()[r] += min;
-            if (!Double.isFinite(min))
+            u.set(r, u.get(r) + min);
+            if (min != Double.MAX_VALUE)
                 costs.subRow(r, min);
             else
             {
@@ -174,8 +174,8 @@ public class HeuristicSolver implements PBQPSolver
         for (int c = 0; c < rows; c++)
         {
             double min = costs.getColumnMin(c);
-            v.getData()[c] += min;
-            if (!Double.isFinite(min))
+            v.set(c, v.get(c) + min);
+            if (min != Double.MAX_VALUE)
                 costs.subCol(c, min);
             else
             {
@@ -195,7 +195,7 @@ public class HeuristicSolver implements PBQPSolver
                 maxDeg = deg;
         }
         graph.maxDegree = maxDeg;
-        graph.bucketNodes = new BucketNode[maxDeg+1];
+        graph.bucketList = new BucketNode[maxDeg+1];
 
         // insert nodes to the bucketlist
         for (int u = 0; u < graph.numNodes; u++)

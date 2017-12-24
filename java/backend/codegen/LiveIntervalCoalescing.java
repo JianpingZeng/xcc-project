@@ -157,6 +157,8 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                                 mi.setMachineOperandReg(i, reg);
 
                             LiveInterval interval = li.getInterval(reg);
+                            if(interval == null)
+                                continue;
                             interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
                         }
                     }
@@ -305,13 +307,14 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                     {
                         r2rMap.remove(regA);
                         r2rMap.put(regA, regB);
+                        li.reg2LiveInterval.remove(regA, li.reg2LiveInterval.get(regA));
                     }
                     else
                     {
                         r2rMap.put(regB, regA);
                         intervalB.register = regA;
                         intervalA.swap(intervalB);
-                        li.reg2LiveInterval.remove(regB);
+                        li.reg2LiveInterval.remove(regB, li.reg2LiveInterval.get(regB));
                     }
                     numJoins.inc();
                 }

@@ -154,6 +154,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         tii = tm.getInstrInfo();
         allocatableRegs = tri.getAllocatableSet(mf);
         mri = mf.getMachineRegisterInfo();
+        MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
 
         // Step#1: Handle live-in regs of mf.
         // Step#2: Numbering each MachineInstr in each MachineBasicBlock.
@@ -202,7 +203,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         computeLiveIntervals();
 
         numIntervals.add(getNumIntervals());
-
         if (Util.DEBUG)
         {
             System.err.printf("*********** Intervals *************\n");
@@ -211,12 +211,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 interval.print(System.err, tri);
             }
         }
-
-        // If acquired by command line argument, join intervals.
-        /* FIXME currently disable, it is possible to perform register coalescing in a standalone pass
-        if (EnableJoining.value)
-            joinIntervals();
-        */
 
         if (Util.DEBUG)
         {

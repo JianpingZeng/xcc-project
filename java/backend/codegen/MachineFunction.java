@@ -59,6 +59,8 @@ public class MachineFunction
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
+		alignment = tm.getTargetLowering().getFunctionAlignment(fn);
+
 		// associate this machine function with HIR function.
 		fn.setMachineFunc(this);
 	}

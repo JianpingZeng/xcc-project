@@ -18,6 +18,7 @@ package backend.target;
 
 import backend.codegen.*;
 import backend.type.Type;
+import backend.value.Function;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
@@ -492,4 +493,12 @@ public abstract class TargetLowering
             }
         }
     }
+
+    /**
+     * Computing the assembly alignment for specified function with target-specific
+     * method.
+     * @param fn
+     * @return
+     */
+    public abstract int getFunctionAlignment(Function fn);
 }
