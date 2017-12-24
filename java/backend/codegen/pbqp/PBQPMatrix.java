@@ -17,6 +17,7 @@
 
 package backend.codegen.pbqp;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 
 /**
@@ -108,7 +109,7 @@ public class PBQPMatrix
     {
         assert row >= 0 && row < rows;
         for (int i = 0; i < columns; i++)
-                data[row*columns + i] -= val;
+                data[row*columns + i] += -val;
     }
 
     public void setRow(int row, double val)
@@ -132,7 +133,7 @@ public class PBQPMatrix
     {
         assert col >= 0 && col < columns;
         for (int i = 0; i < rows; i++)
-            data[i*columns + col] -= val;
+            data[i*columns + col] += -val;
     }
 
     public void setCol(int col, double val)
@@ -144,11 +145,10 @@ public class PBQPMatrix
 
     public boolean isZero()
     {
-        boolean isZero = true;
         for(double val : data)
             if (!(-0.0000001 <= val && val <= 0.0000001))
-                isZero = false;
-        return isZero;
+                return false;
+        return true;
     }
 
     /**
@@ -161,5 +161,29 @@ public class PBQPMatrix
         assert vec.getLength() == columns;
         for (int i = 0; i < columns; i++)
             data[row*columns + i] += vec.get(i);
+    }
+
+    public void print(PrintStream os)
+    {
+        if (os != null)
+        {
+            for (int i = 0; i < data.length; i++)
+            {
+                if (i % columns == 0)
+                    os.println();
+                if (data[i] == Double.MAX_VALUE)
+                    os.print("+Inf");
+                else
+                    os.printf("%.2f", data[i]);
+                if (i % columns != columns - 1)
+                    os.print(",");
+            }
+            os.println();
+        }
+    }
+
+    public void dump()
+    {
+        print(System.err);
     }
 }

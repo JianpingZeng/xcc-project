@@ -17,6 +17,8 @@
 
 package backend.codegen.pbqp;
 
+import java.io.PrintStream;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -57,6 +59,13 @@ public class PBQPVector implements Cloneable
         assert other!= null && other.data.length == data.length;
         for (int i = 0; i < data.length; i++)
             data[i] += other.data[i];
+    }
+
+    public void add(double[] row)
+    {
+        assert row != null && row.length == data.length;
+        for (int i = 0; i < data.length; i++)
+            data[i] += row[i];
     }
 
     public int getLength()
@@ -100,5 +109,23 @@ public class PBQPVector implements Cloneable
                 min = data[i];
         }
         return min;
+    }
+
+    public void print(PrintStream os)
+    {
+        if (os != null)
+        {
+            os.printf("[");
+            if (data.length != 0)
+                os.printf("%f", data[0]);
+            for (int i = 1; i < data.length; i++)
+                os.printf(", %f", data[i]);
+            os.println("]");
+        }
+    }
+
+    public void dump()
+    {
+        print(System.err);
     }
 }

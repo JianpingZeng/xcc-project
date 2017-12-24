@@ -57,9 +57,9 @@ public class PBQPGraph
         adjList = new AdjNode[numNodes];
         nodeDegrees = new int[numNodes];
         solution = new int[numNodes];
-        bucketNodes = null;
+        bucketNodes = new BucketNode[numNodes];
         nodeCosts = new PBQPVector[numNodes];
-        bucketList = new BucketNode[numNodes];
+        bucketList = null;
         Arrays.fill(solution, -1);
     }
 
@@ -219,6 +219,7 @@ public class PBQPGraph
 
         if (bucket.next != null)
             bucket.next.prev = bucket.prev;
+        bucket.next = bucket.prev = null;
     }
 
     public void reinsertNode(int u)
@@ -246,7 +247,7 @@ public class PBQPGraph
 
             PBQPMatrix m = getCostMatrix(v, u);
             assert vSol >= 0 && vSol < nodeCosts[v].getLength();
-            m.addRow(vSol, vec);
+            vec.add(m.getRows(vSol));
         }
         solution[u] = vec.minIndex();
     }
@@ -298,11 +299,16 @@ public class PBQPGraph
 
     public void addToBucketList(BucketNode node, int degree)
     {
+        assert node != null;
+        assert degree >= 0 && degree <= maxDegree;
+        assert bucketList != null;
+
+        nodeDegrees[node.u] = degree;
+
+        node.prev = null;
         node.next = bucketList[degree];
         if (node.next != null)
             node.next.prev = node;
-        if (node.prev != null)
-            node.prev.next = node;
 
         bucketList[degree] = node;
     }

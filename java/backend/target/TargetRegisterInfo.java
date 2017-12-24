@@ -137,7 +137,7 @@ public abstract class TargetRegisterInfo
 
 	public TargetRegisterClass getPhysicalRegisterRegClass(int reg)
 	{
-		return getPhysicalRegisterRegClass(reg, new EVT(new MVT(MVT.Other)));
+		return getPhysicalRegisterRegClass(reg, new EVT(MVT.Other));
 	}
 
 	public TargetRegisterClass getPhysicalRegisterRegClass(int reg, EVT vt)
@@ -147,7 +147,7 @@ public abstract class TargetRegisterInfo
 		TargetRegisterClass bestRC = null;
 		for (TargetRegisterClass rc : regClasses)
 		{
-			if ((vt.equals(new EVT(new MVT(MVT.Other))) || rc.hasType(vt)) &&
+			if ((vt.equals(new EVT(MVT.Other)) || rc.hasType(vt)) &&
 					rc.contains(reg) && (bestRC == null || bestRC.hasSuperClass(rc)))
 			{
 				bestRC = rc;
@@ -240,6 +240,13 @@ public abstract class TargetRegisterInfo
 		return desc.length;
 	}
 
+	/**
+	 * Returns true if the two registers are equal or alias each
+	 * other. The registers may be virtual register.
+	 * @param regA
+	 * @param regB
+	 * @return
+	 */
 	public boolean regsOverlap(int regA, int regB)
 	{
 		if (regA == regB)
@@ -249,6 +256,9 @@ public abstract class TargetRegisterInfo
 			return false;
 
 		int index = (regA + regB * 37) & (aliasesHash.length - 1);
+		if (index*2 >= aliasesHash.length - 1)
+		    return false;
+
 		int probeAmt = 0;
 		while (aliasesHash[index * 2] != 0 && aliasesHash[index * 2 + 1] != 0)
 		{

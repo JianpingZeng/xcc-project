@@ -18,8 +18,10 @@ package backend.target.x86;
 
 import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
+import backend.support.Attribute;
 import backend.target.TargetLowering;
 import backend.target.TargetRegisterInfo;
+import backend.value.Function;
 
 /**
  * @author Xlous.zeng
@@ -111,5 +113,11 @@ public class X86TargetLowering extends TargetLowering
     public X86MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf)
     {
         return new X86MachineFunctionInfo(mf);
+    }
+
+    @Override
+    public int getFunctionAlignment(Function fn)
+    {
+        return fn.hasFnAttr(Attribute.OptimizeForSize) ? 0 : 4;
     }
 }
