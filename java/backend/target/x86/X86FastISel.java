@@ -1288,19 +1288,22 @@ public class X86FastISel extends FastISel
             u = ce;
         }
 
-        switch (opcode)
+        if (opcode != null)
         {
-            case BitCast:
-                return x86SelectCallAddress(u.operand(0), am);
+            switch (opcode)
+            {
+                case BitCast:
+                    return x86SelectCallAddress(u.operand(0), am);
 
-            case IntToPtr:
-                if (tli.getValueType(u.operand(0).getType()).equals(new EVT(tli.getPointerTy())))
-                    return x86SelectCallAddress(u.operand(0), am);
-                break;
-            case PtrToInt:
-                if (tli.getValueType(u.getType()).equals(new EVT(tli.getPointerTy())))
-                    return x86SelectCallAddress(u.operand(0), am);
-                break;
+                case IntToPtr:
+                    if (tli.getValueType(u.operand(0).getType()).equals(new EVT(tli.getPointerTy())))
+                        return x86SelectCallAddress(u.operand(0), am);
+                    break;
+                case PtrToInt:
+                    if (tli.getValueType(u.getType()).equals(new EVT(tli.getPointerTy())))
+                        return x86SelectCallAddress(u.operand(0), am);
+                    break;
+            }
         }
 
         if (v instanceof GlobalValue)
@@ -1397,29 +1400,29 @@ public class X86FastISel extends FastISel
 
         // Materialize callee address in a register. FIXME: GV address can be
         // handled with a CALLpcrel32 instead.
-        X86AddressMode CalleeAM = new X86AddressMode();
-        if (!x86SelectCallAddress(Callee, CalleeAM))
+        X86AddressMode calleeAM = new X86AddressMode();
+        if (!x86SelectCallAddress(Callee, calleeAM))
             return false;
-        int CalleeOp = 0;
-        GlobalValue GV = null;
+        int calleeOp = 0;
+        GlobalValue gv = null;
 
-        if (CalleeAM.gv != null)
+        if (calleeAM.gv != null)
         {
-            GV = CalleeAM.gv;
+            gv = calleeAM.gv;
         }
-        else if (CalleeAM.base.getBase() != 0)
+        else if (calleeAM.base.getBase() != 0)
         {
-            CalleeOp = CalleeAM.base.getBase();
+            calleeOp = calleeAM.base.getBase();
         }
         else
             return false;
 
         // Allow calls which produce i1 results.
-        boolean AndToI1 = false;
+        boolean andToI1 = false;
         if (retVT.equals(new EVT(MVT.i1)))
         {
             retVT = new EVT(MVT.i8);
-            AndToI1 = true;
+            andToI1 = true;
         }
 
         // Deal with call operands first.
@@ -1440,11 +1443,11 @@ public class X86FastISel extends FastISel
         for (int i = 0, e = cs.getNumOfArguments(); i < e; i++)
         {
             Value arg = cs.getArgument(i);
-            int Arg = getRegForValue(arg);
-            if (Arg == 0)
+            int argReg = getRegForValue(arg);
+            if (argReg == 0)
                 return false;
-            ArgFlagsTy Flags = new ArgFlagsTy();
-            int AttrInd = i + 1;
+            ArgFlagsTy flags = new ArgFlagsTy();
+            int attrInd = i + 1;
 
             Type argTy = arg.getType();
             EVT argVT = new EVT();
@@ -1453,120 +1456,119 @@ public class X86FastISel extends FastISel
                 return false;
             argVT = x.get();
             int OriginalAlignment = td.getABITypeAlignment(argTy);
-            Flags.setOrigAlign(OriginalAlignment);
+            flags.setOrigAlign(OriginalAlignment);
 
-            args.add(Arg);
+            args.add(argReg);
             argVals.add(arg);
             argVTs.add(argVT);
-            argFlags.add(Flags);
+            argFlags.add(flags);
         }
 
         // Analyze operands of the call, assigning locations to each operand.
-        ArrayList<CCValAssign> ArgLocs = new ArrayList<>();
+        ArrayList<CCValAssign> argLocs = new ArrayList<>();
 
-        CCState CCInfo = new CCState(cc, false, tm, ArgLocs);
-        CCInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(cc));
+        CCState ccInfo = new CCState(cc, false, tm, argLocs);
+        ccInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(cc));
 
         // Get a count of how many bytes are to be pushed on the stack.
-        int NumBytes = CCInfo.getNextStackOffset();
+        int numBytes = ccInfo.getNextStackOffset();
 
         // Issue CALLSEQ_START
-        int AdjStackDown = tm.getRegisterInfo().getCallFrameSetupOpcode();
-        buildMI(mbb, instrInfo.get(AdjStackDown)).addImm(NumBytes);
+        int adjStackDown = tm.getRegisterInfo().getCallFrameSetupOpcode();
+        buildMI(mbb, instrInfo.get(adjStackDown)).addImm(numBytes);
 
         // Process argument: walk the register/memloc assignments, inserting
         // copies / loads.
-        TIntArrayList RegArgs = new TIntArrayList();
-        for (int i = 0, e = ArgLocs.size(); i != e; ++i)
+        TIntArrayList regArgs = new TIntArrayList();
+        for (int i = 0, e = argLocs.size(); i != e; ++i)
         {
-            CCValAssign VA = ArgLocs.get(i);
-            int Arg = args.get(VA.getValNo());
-            EVT ArgVT = argVTs.get(VA.getValNo());
+            CCValAssign vassign = argLocs.get(i);
+            int arg = args.get(vassign.getValNo());
+            EVT argVT = argVTs.get(vassign.getValNo());
 
             // Promote the value if needed.
-            switch (VA.getLocInfo())
+            switch (vassign.getLocInfo())
             {
                 default:
                     Util.shouldNotReachHere("Undefined loc info!");
-
                 case Full:
                     break;
                 case SExt:
                 {
-                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
+                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(arg);
                     boolean Emitted = X86FastEmitExtend(ISD.SIGN_EXTEND,
-                            VA.getLocVT(), Arg, ArgVT, xx);
-                    Arg = xx.get();
+                            vassign.getLocVT(), arg, argVT, xx);
+                    arg = xx.get();
                     assert Emitted : "Failed to emit a sext!";
                     Emitted = true;
-                    ArgVT = VA.getLocVT();
+                    argVT = vassign.getLocVT();
                     break;
                 }
                 case ZExt:
                 {
-                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
+                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(arg);
                     boolean Emitted = X86FastEmitExtend(ISD.ZERO_EXTEND,
-                            VA.getLocVT(), Arg, ArgVT, xx);
-                    Arg = xx.get();
+                            vassign.getLocVT(), arg, argVT, xx);
+                    arg = xx.get();
                     assert Emitted : "Failed to emit a zext!";
                     Emitted = true;
-                    ArgVT = VA.getLocVT();
+                    argVT = vassign.getLocVT();
                     break;
                 }
                 case AExt:
                 {
-                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
+                    OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(arg);
                     boolean Emitted = X86FastEmitExtend(ISD.ANY_EXTEND,
-                            VA.getLocVT(), Arg, ArgVT, xx);
+                            vassign.getLocVT(), arg, argVT, xx);
                     if (!Emitted)
-                        Emitted = X86FastEmitExtend(ISD.ZERO_EXTEND, VA.getLocVT(),
-                                Arg, ArgVT, xx);
+                        Emitted = X86FastEmitExtend(ISD.ZERO_EXTEND, vassign.getLocVT(),
+                                arg, argVT, xx);
                     if (!Emitted)
-                        Emitted = X86FastEmitExtend(ISD.SIGN_EXTEND, VA.getLocVT(),
-                                Arg, ArgVT, xx);
+                        Emitted = X86FastEmitExtend(ISD.SIGN_EXTEND, vassign.getLocVT(),
+                                arg, argVT, xx);
 
-                    Arg = xx.get();
+                    arg = xx.get();
                     assert Emitted : "Failed to emit a aext!";
 
-                    ArgVT = VA.getLocVT();
+                    argVT = vassign.getLocVT();
                     break;
                 }
                 case BCvt:
                 {
-                    int BC = fastEmit_r(ArgVT.getSimpleVT(),
-                            VA.getLocVT().getSimpleVT(), ISD.BIT_CONVERT, Arg);
+                    int BC = fastEmit_r(argVT.getSimpleVT(),
+                            vassign.getLocVT().getSimpleVT(), ISD.BIT_CONVERT, arg);
                     assert BC != 0 : "Failed to emit a bitcast!";
-                    Arg = BC;
-                    ArgVT = VA.getLocVT();
+                    arg = BC;
+                    argVT = vassign.getLocVT();
                     break;
                 }
             }
 
-            if (VA.isRegLoc())
+            if (vassign.isRegLoc())
             {
-                TargetRegisterClass RC = tli.getRegClassFor(ArgVT);
-                boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
-                        VA.getLocReg(), Arg, RC, RC);
-                assert Emitted : "Failed to emit a copy instruction!";
-                Emitted = true;
-                RegArgs.add(VA.getLocReg());
+                TargetRegisterClass rc = tli.getRegClassFor(argVT);
+                boolean emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
+                        vassign.getLocReg(), arg, rc, rc);
+                assert emitted : "Failed to emit a copy instruction!";
+                emitted = true;
+                regArgs.add(vassign.getLocReg());
             }
             else
             {
-                int LocMemOffset = VA.getLocMemOffset();
-                X86AddressMode AM = new X86AddressMode();
-                AM.base.setBase(stackPtr);
-                AM.disp = LocMemOffset;
-                Value ArgVal = argVals.get(VA.getValNo());
+                int locMemOffset = vassign.getLocMemOffset();
+                X86AddressMode am = new X86AddressMode();
+                am.base.setBase(stackPtr);
+                am.disp = locMemOffset;
+                Value argVal = argVals.get(vassign.getValNo());
 
                 // If this is a really simple value, emit this with the Value* version of
                 // X86FastEmitStore.  If it isn't simple, we don't want to do this, as it
                 // can cause us to reevaluate the argument.
-                if (ArgVal instanceof ConstantInt
-                        || ArgVal instanceof ConstantPointerNull)
-                    x86FastEmitStore(ArgVT, ArgVal, AM);
+                if (argVal instanceof ConstantInt
+                        || argVal instanceof ConstantPointerNull)
+                    x86FastEmitStore(argVT, argVal, am);
                 else
-                    x86FastEmitStore(ArgVT, Arg, AM);
+                    x86FastEmitStore(argVT, arg, am);
             }
         }
 
@@ -1574,132 +1576,131 @@ public class X86FastISel extends FastISel
         // GOT pointer.
         if (subtarget.isPICStyleGOT())
         {
-            TargetRegisterClass RC = GR32RegisterClass;
-            int Base = getInstrInfo().getGlobalBaseReg(mf);
-            boolean Emitted = instrInfo
-                    .copyRegToReg(mbb, mbb.size(), EBX, Base, RC, RC);
-            assert Emitted : "Failed to emit a copy instruction!";
-            Emitted = true;
+            TargetRegisterClass rc = GR32RegisterClass;
+            int base = getInstrInfo().getGlobalBaseReg(mf);
+            boolean emitted = instrInfo
+                    .copyRegToReg(mbb, mbb.size(), EBX, base, rc, rc);
+            assert emitted : "Failed to emit a copy instruction!";
+            emitted = true;
         }
 
         // Issue the call.
-        MachineInstrBuilder MIB;
-        if (CalleeOp == 0)
+        MachineInstrBuilder mib;
+        if (calleeOp == 0)
         {
             // Register-indirect call.
-            int CallOpc = subtarget.is64Bit() ? CALL64r : CALL32r;
-            MIB = buildMI(mbb, DL, instrInfo.get(CallOpc)).addReg(CalleeOp);
+            int callOpc = subtarget.is64Bit() ? CALL64r : CALL32r;
+            mib = buildMI(mbb, DL, instrInfo.get(callOpc)).addReg(calleeOp);
 
         }
         else
         {
             // Direct call.
-            assert GV != null : "Not a direct call";
-            int CallOpc = subtarget.is64Bit() ? CALL64pcrel32 : CALLpcrel32;
+            assert gv != null : "Not a direct call";
+            int callOpc = subtarget.is64Bit() ? CALL64pcrel32 : CALLpcrel32;
 
             // See if we need any target-specific flags on the GV operand.
-            int OpFlags = 0;
+            int opFlags = 0;
 
             // On ELF targets, in both X86-64 and X86-32 mode, direct calls to
             // external symbols most go through the PLT in PIC mode.  If the symbol
             // has hidden or protected visibility, or if it is static or local, then
             // we don't need to use the PLT - we can directly call it.
-            if (subtarget.isTargetELF() && tm.getRelocationModel() == PIC_ && GV
-                    .hasDefaultVisibility() && !GV.hasLocalLinkage())
+            if (subtarget.isTargetELF() && tm.getRelocationModel() == PIC_ && gv
+                    .hasDefaultVisibility() && !gv.hasLocalLinkage())
             {
-                OpFlags = MO_PLT;
+                opFlags = MO_PLT;
             }
-            else if (subtarget.isPICStyleStubAny() && (GV.isDeclaration() || GV
+            else if (subtarget.isPICStyleStubAny() && (gv.isDeclaration() || gv
                     .isWeakForLinker()) && subtarget.getDarwinVers() < 9)
             {
                 // PC-relative references to external symbols should go through $stub,
                 // unless we're building with the leopard linker or later, which
                 // automatically synthesizes these stubs.
-                OpFlags = MO_DARWIN_STUB;
+                opFlags = MO_DARWIN_STUB;
             }
 
-            MIB = buildMI(mbb, DL, instrInfo.get(CallOpc))
-                    .addGlobalAddress(GV, 0, OpFlags);
+            mib = buildMI(mbb, DL, instrInfo.get(callOpc))
+                    .addGlobalAddress(gv, 0, opFlags);
         }
 
         // Add an implicit use GOT pointer in EBX.
         if (subtarget.isPICStyleGOT())
-            MIB.addReg(EBX);
+            mib.addReg(EBX);
 
         // Add implicit physical register uses to the call.
-        for (int i = 0, e = RegArgs.size(); i != e; ++i)
-            MIB.addReg(RegArgs.get(i));
+        for (int i = 0, e = regArgs.size(); i != e; ++i)
+            mib.addReg(regArgs.get(i));
 
         // Issue CALLSEQ_END
-        int AdjStackUp = tm.getRegisterInfo().getCallFrameDestroyOpcode();
-        buildMI(mbb, DL, instrInfo.get(AdjStackUp)).addImm(NumBytes).addImm(0);
+        int adjStackUp = tm.getRegisterInfo().getCallFrameDestroyOpcode();
+        buildMI(mbb, DL, instrInfo.get(adjStackUp)).addImm(numBytes).addImm(0);
 
         // Now handle call return value (if any).
         if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
         {
-            ArrayList<CCValAssign> RVLocs = new ArrayList<>();
-            CCInfo = new CCState(cc, false, tm, RVLocs);
-            CCInfo.analyzeCallResult(retVT, RetCC_X86);
+            ArrayList<CCValAssign> rvLocs = new ArrayList<>();
+            ccInfo = new CCState(cc, false, tm, rvLocs);
+            ccInfo.analyzeCallResult(retVT, RetCC_X86);
 
             // Copy all of the result registers out of their specified physreg.
-            assert RVLocs.size() == 1 : "Can't handle multi-value calls!";
-            EVT CopyVT = RVLocs.get(0).getValVT();
-            TargetRegisterClass DstRC = tli.getRegClassFor(CopyVT);
-            TargetRegisterClass SrcRC = DstRC;
+            assert rvLocs.size() == 1 : "Can't handle multi-value calls!";
+            EVT copyVT = rvLocs.get(0).getValVT();
+            TargetRegisterClass dstRC = tli.getRegClassFor(copyVT);
+            TargetRegisterClass srcRC = dstRC;
 
             // If this is a call to a function that returns an fp value on the x87 fp
             // stack, but where we prefer to use the value in xmm registers, copy it
             // out as F80 and use a truncate to move it from fp stack reg to xmm reg.
-            if ((RVLocs.get(0).getLocReg() == ST0
-                    || RVLocs.get(0).getLocReg() == ST1)
-                    && isScalarFPTypeInSSEReg(RVLocs.get(0).getValVT()))
+            if ((rvLocs.get(0).getLocReg() == ST0
+                    || rvLocs.get(0).getLocReg() == ST1)
+                    && isScalarFPTypeInSSEReg(rvLocs.get(0).getValVT()))
             {
-                CopyVT = new EVT(MVT.f80);
-                SrcRC = RSTRegisterClass;
-                DstRC = RFP80RegisterClass;
+                copyVT = new EVT(MVT.f80);
+                srcRC = RSTRegisterClass;
+                dstRC = RFP80RegisterClass;
             }
 
-            int ResultReg = createResultReg(DstRC);
-            boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(), ResultReg,
-                    RVLocs.get(0).getLocReg(), DstRC, SrcRC);
-            assert Emitted : "Failed to emit a copy instruction!";
-            Emitted = true;
-            if (CopyVT != RVLocs.get(0).getValVT())
+            int resultReg = createResultReg(dstRC);
+            boolean emitted = instrInfo.copyRegToReg(mbb, mbb.size(), resultReg,
+                    rvLocs.get(0).getLocReg(), dstRC, srcRC);
+            assert emitted : "Failed to emit a copy instruction!";
+            emitted = true;
+            if (copyVT != rvLocs.get(0).getValVT())
             {
                 // Round the F80 the right size, which also moves to the appropriate xmm
                 // register. This is accomplished by storing the F80 value in memory and
                 // then loading it back. Ewww...
-                EVT ResVT = RVLocs.get(0).getValVT();
-                int Opc = ResVT.equals(new EVT(MVT.f32)) ?
+                EVT resVT = rvLocs.get(0).getValVT();
+                int opc = resVT.equals(new EVT(MVT.f32)) ?
                         ST_Fp80m32 :
                         ST_Fp80m64;
-                int MemSize = ResVT.getSizeInBits() / 8;
-                int FI = mfi.createStackObject(MemSize, MemSize);
+                int memSize = resVT.getSizeInBits() / 8;
+                int fi = mfi.createStackObject(memSize, memSize);
                 MachineInstrBuilder
-                        .addFrameReference(buildMI(mbb, DL, instrInfo.get(Opc)), FI)
-                        .addReg(ResultReg);
-                DstRC = ResVT.equals(new EVT(MVT.f32)) ?
+                        .addFrameReference(buildMI(mbb, DL, instrInfo.get(opc)), fi)
+                        .addReg(resultReg);
+                dstRC = resVT.equals(new EVT(MVT.f32)) ?
                         FR32RegisterClass :
                         FR64RegisterClass;
-                Opc = ResVT.equals(new EVT(MVT.f32)) ?
+                opc = resVT.equals(new EVT(MVT.f32)) ?
                         MOVSSrm :
                         MOVSDrm;
-                ResultReg = createResultReg(DstRC);
+                resultReg = createResultReg(dstRC);
                 MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, instrInfo
-                                .get(Opc), ResultReg),
-                        FI);
+                                .get(opc), resultReg), fi);
             }
 
-            if (AndToI1)
+            if (andToI1)
             {
                 // Mask out all but lowest bit for some call which produces an i1.
-                int AndResult = createResultReg(GR8RegisterClass);
-                buildMI(mbb, DL, instrInfo.get(AND8ri), AndResult).addReg(ResultReg)
+                int andResult = createResultReg(GR8RegisterClass);
+                buildMI(mbb, DL, instrInfo.get(AND8ri), andResult)
+                        .addReg(resultReg)
                         .addImm(1);
-                ResultReg = AndResult;
+                resultReg = andResult;
             }
-
-            updateValueMap(inst, ResultReg);
+            updateValueMap(inst, resultReg);
         }
 
         return true;

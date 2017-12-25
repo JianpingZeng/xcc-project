@@ -89,13 +89,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private TreeMap<Integer, MachineBasicBlock> idx2MBBs;
     private TObjectIntHashMap<MachineBasicBlock> mbb2Idx;
 
-    public LiveIntervalAnalysis()
-    {
-        mi2Idx = new HashMap<>();
-        reg2LiveInterval = new TreeMap<>();
-        liveInterval2Reg = new HashMap<>();
-    }
-
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
@@ -154,6 +147,12 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         tii = tm.getInstrInfo();
         allocatableRegs = tri.getAllocatableSet(mf);
         mri = mf.getMachineRegisterInfo();
+        mi2Idx = new HashMap<>();
+        reg2LiveInterval = new TreeMap<>();
+        liveInterval2Reg = new HashMap<>();
+        idx2MBBs = new TreeMap<>();
+        mbb2Idx = new TObjectIntHashMap<>();
+
         MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
 
         // Step#1: Handle live-in regs of mf.
@@ -168,9 +167,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             numOfMI += mbb.size();
         }
         idx2MI = new MachineInstr[numOfMI];
-
-        idx2MBBs = new TreeMap<>();
-        mbb2Idx = new TObjectIntHashMap<>();
 
         // Step#3: Walk through each MachineInstr to compute live interval.
         for (MachineBasicBlock mbb : numberOrder)

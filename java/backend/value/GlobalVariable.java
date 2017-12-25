@@ -45,6 +45,7 @@ public class GlobalVariable extends GlobalValue
         }
         else
         {
+            m.addGlobalVariable(this);
             m.getGlobalVariableList().add(this);
         }
     }
