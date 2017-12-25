@@ -36,7 +36,6 @@ public class MachineFunctionAnalysis implements FunctionPass
     }
     private TargetMachine tm;
     private TargetMachine.CodeGenOpt optLevel;
-    private MachineFunction mf;
     private AnalysisResolver resolver;
 
     @Override
@@ -63,7 +62,6 @@ public class MachineFunctionAnalysis implements FunctionPass
     {
         this.tm = tm;
         optLevel = level;
-        mf = null;
     }
 
     @Override
@@ -75,8 +73,9 @@ public class MachineFunctionAnalysis implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
-        assert mf == null:"MachineFunctionAnalysis already initialized!";
-        mf = new MachineFunction(f, tm);
+        assert f.getMachineFunc() == null :
+                "MachineFunctionAnalysis already initialized!";
+        new MachineFunction(f, tm);
         return false;
     }
 }

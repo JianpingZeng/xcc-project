@@ -236,8 +236,19 @@ public final class Module implements Iterable<Function>
 
     public void addFunction(Function fn)
     {
-        assert fn != null;
+        assert fn != null && !functionList.contains(fn) &&
+                fn.getName() != null && !fn.getName().isEmpty();
         functionList.add(fn);
         fn.setParent(this);
+        valSymTable.createValueName(fn.getName(), fn);
+    }
+
+    public void addGlobalVariable(GlobalVariable gv)
+    {
+        assert gv != null && !globalVariableList.contains(gv)
+                && gv.getName() != null && !gv.getName().isEmpty();
+        globalVariableList.add(gv);
+        valSymTable.createValueName(gv.getName(), gv);
+        gv.setParent(this);
     }
 }

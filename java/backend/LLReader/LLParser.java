@@ -624,7 +624,7 @@ public final class LLParser
             if (!gv.getType().getElementType().equals(globalTy))
                 return error(tyLoc, "forward reference and definition of global have different types");
 
-            m.getGlobalVariableList().add(gv);
+            m.addGlobalVariable(gv);
         }
 
         if (name == null || name.isEmpty())
@@ -2253,7 +2253,6 @@ public final class LLParser
         while (lexer.getTokKind() != rparen)
         {
             SMLoc loc = lexer.getLoc();
-
             if (parseType(argTy, false)
                     || parseOptionalAttrs(attrsBeforeVal, 0)
                     || parseValue(argTy.get(), val, pfs)
@@ -2264,12 +2263,10 @@ public final class LLParser
 
             argList.add(new ParamInfo(loc, val.get(),
                     attrsBeforeVal.get() | attrsAfterVal.get()));
-
-            lexer.lex();
+            if (!expectToken(comma) && lexer.getTokKind() != rparen)
+                break;
         }
-        // eat the ')'
-        lexer.lex();
-        return false;
+        return parseToken(rparen, "expected a ')' in function call expression");
     }
 
     /**

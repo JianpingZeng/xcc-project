@@ -138,6 +138,7 @@ public final class LLLexer
         keywords.put("asm", kw_asm);
         keywords.put("sideeffect", kw_sideeffect);
         keywords.put("gc", kw_gc);
+        keywords.put("select", kw_select);
 
         keywords.put("ccc", kw_ccc);
         keywords.put("fastcc", kw_fastcc);
