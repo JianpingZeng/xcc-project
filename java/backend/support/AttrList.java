@@ -25,6 +25,10 @@ import java.util.List;
  */
 public final class AttrList
 {
+    public static final int ReturnIndex = 0;
+    public static final int FunctionIndex = ~0;
+    public static final int FirstArgIndex = 1;
+
     private ArrayList<AttributeWithIndex> attrs;
 
     public AttrList(List<AttributeWithIndex> indices)
@@ -60,18 +64,19 @@ public final class AttrList
 
     public int getParamAttriute(int index)
     {
-        assert index != 0 && index != ~0:"invalid parameter index!";
+        assert index != ReturnIndex && index != FunctionIndex
+                :"invalid parameter index!";
         return getAttribute(index);
     }
 
     public int getRetAttribute()
     {
-        return getAttribute(0);
+        return getAttribute(ReturnIndex);
     }
 
     public int getFnAttribute()
     {
-        return getAttribute(~0);
+        return getAttribute(FunctionIndex);
     }
 
     public boolean isEmpty()

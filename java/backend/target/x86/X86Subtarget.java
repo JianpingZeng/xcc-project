@@ -16,6 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import backend.support.CallingConv;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
@@ -23,9 +24,7 @@ import tools.CPUInfoUtility;
 import tools.Util;
 
 import static backend.target.x86.X86Subtarget.TargetType.*;
-import static backend.target.x86.X86Subtarget.X863DNowEnum.NoThreeDNow;
-import static backend.target.x86.X86Subtarget.X863DNowEnum.ThreeDNow;
-import static backend.target.x86.X86Subtarget.X863DNowEnum.ThreeDNowA;
+import static backend.target.x86.X86Subtarget.X863DNowEnum.*;
 import static backend.target.x86.X86Subtarget.X86SSEEnum.*;
 
 /**
@@ -727,6 +726,20 @@ public class X86Subtarget extends TargetSubtarget
         else
         {
             return "generic";
+        }
+    }
+
+    public boolean isCallingConvWin64(CallingConv cc)
+    {
+        switch (cc)
+        {
+            case C:
+            case Fast:
+            case X86_FastCall:
+            case X86_StdCall:
+                return isTargetWin64();
+            default:
+                return false;
         }
     }
 }

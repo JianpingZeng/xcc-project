@@ -107,8 +107,6 @@ public class X86FastISel extends FastISel
                 return x86SelectZExt(inst);
             case Br:
                 return x86SelectBranch(inst);
-            case Call:
-                return x86SelectCall(inst);
             case LShr:
             case AShr:
             case Shl:
@@ -463,7 +461,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86FastEmitStore(EVT vt, Value val, X86AddressMode am)
+    public boolean x86FastEmitStore(EVT vt, Value val, X86AddressMode am)
     {
         if (val instanceof ConstantPointerNull)
         {
@@ -506,7 +504,7 @@ public class X86FastISel extends FastISel
         return x86FastEmitStore(vt, valReg, am);
     }
 
-    private boolean x86FastEmitStore(EVT vt, int val,
+    public boolean x86FastEmitStore(EVT vt, int val,
                          X86AddressMode am)
     {
         int opc = 0;
@@ -548,7 +546,7 @@ public class X86FastISel extends FastISel
      * @param resultReg
      * @return
      */
-    boolean X86FastEmitExtend(int opc,
+    public boolean X86FastEmitExtend(int opc,
             EVT dstVT,
             int src,
             EVT srcVT,
@@ -1309,9 +1307,10 @@ public class X86FastISel extends FastISel
         if (v instanceof GlobalValue)
         {
             GlobalValue gv = (GlobalValue)v;
+            /*
             if (tm.getCodeModel() != Small)
                 return false;
-
+            */
             if (subtarget.isPICStyleRIPRel() &&
                     (am.base.getBase() != 0 || am.indexReg != 0))
                 return false;
@@ -1430,15 +1429,6 @@ public class X86FastISel extends FastISel
         TIntArrayList args = new TIntArrayList();
         ArrayList<EVT> argVTs = new ArrayList<>();
         ArrayList<ArgFlagsTy> argFlags = new ArrayList<>();
-
-        // Fill the number of arguments zero.
-        for (int i = cs.getNumOfArguments(); i > 0; i--)
-        {
-            args.add(0);
-            argVals.add(null);
-            argVTs.add(null);
-            argFlags.add(null);
-        }
 
         for (int i = 0, e = cs.getNumOfArguments(); i < e; i++)
         {
@@ -1590,7 +1580,7 @@ public class X86FastISel extends FastISel
         {
             // Register-indirect call.
             int callOpc = subtarget.is64Bit() ? CALL64r : CALL32r;
-            mib = buildMI(mbb, DL, instrInfo.get(callOpc)).addReg(calleeOp);
+            mib = buildMI(mbb, instrInfo.get(callOpc)).addReg(calleeOp);
 
         }
         else
@@ -1620,7 +1610,7 @@ public class X86FastISel extends FastISel
                 opFlags = MO_DARWIN_STUB;
             }
 
-            mib = buildMI(mbb, DL, instrInfo.get(callOpc))
+            mib = buildMI(mbb, instrInfo.get(callOpc))
                     .addGlobalAddress(gv, 0, opFlags);
         }
 
@@ -1634,7 +1624,7 @@ public class X86FastISel extends FastISel
 
         // Issue CALLSEQ_END
         int adjStackUp = tm.getRegisterInfo().getCallFrameDestroyOpcode();
-        buildMI(mbb, DL, instrInfo.get(adjStackUp)).addImm(numBytes).addImm(0);
+        buildMI(mbb, instrInfo.get(adjStackUp)).addImm(numBytes).addImm(0);
 
         // Now handle call return value (if any).
         if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
@@ -1678,7 +1668,7 @@ public class X86FastISel extends FastISel
                 int memSize = resVT.getSizeInBits() / 8;
                 int fi = mfi.createStackObject(memSize, memSize);
                 MachineInstrBuilder
-                        .addFrameReference(buildMI(mbb, DL, instrInfo.get(opc)), fi)
+                        .addFrameReference(buildMI(mbb, instrInfo.get(opc)), fi)
                         .addReg(resultReg);
                 dstRC = resVT.equals(new EVT(MVT.f32)) ?
                         FR32RegisterClass :
@@ -1687,7 +1677,7 @@ public class X86FastISel extends FastISel
                         MOVSSrm :
                         MOVSDrm;
                 resultReg = createResultReg(dstRC);
-                MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, instrInfo
+                MachineInstrBuilder.addFrameReference(buildMI(mbb, instrInfo
                                 .get(opc), resultReg), fi);
             }
 
@@ -1695,7 +1685,7 @@ public class X86FastISel extends FastISel
             {
                 // Mask out all but lowest bit for some call which produces an i1.
                 int andResult = createResultReg(GR8RegisterClass);
-                buildMI(mbb, DL, instrInfo.get(AND8ri), andResult)
+                buildMI(mbb, instrInfo.get(AND8ri), andResult)
                         .addReg(resultReg)
                         .addImm(1);
                 resultReg = andResult;

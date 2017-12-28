@@ -839,7 +839,7 @@ public final class LLParser
             {
                 // If this was a definition of a forward reference, remove the definition
                 // from the forward reference table and fill in the forward ref.
-                fn = m.getFunction(functionName);
+                fn = (Function) forwardRefVals.get(functionName).first;
                 forwardRefVals.remove(functionName);
             }
             else if ((fn = m.getFunction(functionName)) != null)
@@ -3174,7 +3174,7 @@ public final class LLParser
                 return null;
             }
 
-            fwdVal = new Function(ft, LinkageType.ExternalLinkage, "", m);
+            fwdVal = new Function(ft, LinkageType.ExternalLinkage, name, null);
         }
         else
         {

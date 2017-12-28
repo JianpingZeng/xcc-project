@@ -2304,15 +2304,13 @@ public abstract class Instruction extends User
 
         public void setArgument(int index, Value val)
         {
-            assert index + ArgumentOffset >= 0 &&
-                    index + ArgumentOffset < getNumsOfArgs();
+            assert index >= 0 && index < getNumsOfArgs();
             setOperand(index + ArgumentOffset, val, this);
         }
 
         public Value argumentAt(int index)
         {
-            assert index + ArgumentOffset >= 0 &&
-                    index + ArgumentOffset < getNumsOfArgs();
+            assert index >= 0 && index < getNumsOfArgs();
             return operand(index + ArgumentOffset);
         }
 

@@ -4,6 +4,7 @@ import backend.type.Type;
 import backend.value.Function;
 import backend.value.Instruction.CallInst;
 import backend.value.Value;
+import com.sun.javafx.binding.StringFormatter;
 
 /**
  * @author Xlous.zeng
@@ -68,8 +69,8 @@ public class CallSite
 
 	public Value getArgument(int idx)
 	{
-		assert idx + ArgumentOffset >=1 && idx + ArgumentOffset < inst.getNumsOfArgs()
-				:"Argument # out of range!";
+		assert idx>=0 && idx < inst.getNumsOfArgs()
+				: StringFormatter.format("Argument #%d out of range!", idx).getValue();
 		return inst.operand(ArgumentOffset+idx);
 	}
 
