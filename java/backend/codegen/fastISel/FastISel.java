@@ -17,12 +17,11 @@ package backend.codegen.fastISel;
  */
 
 import backend.codegen.*;
+import backend.support.ErrorHandling;
 import backend.target.*;
 import backend.value.*;
-import backend.value.Instruction.AllocaInst;
-import backend.value.Instruction.BranchInst;
-import backend.value.Instruction.PhiNode;
-import backend.value.Instruction.TerminatorInst;
+import backend.value.Instruction.*;
+import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
 import java.util.ArrayList;
@@ -69,6 +68,8 @@ public abstract class FastISel extends MachineFunctionPass
     protected FunctionLoweringInfo funcInfo;
 
     private ArrayList<Pair<MachineInstr, Integer>> phiNodeToUpdate;
+
+    private CallLowering cli;
 
     public void startNewBlock(MachineBasicBlock mbb)
     {
@@ -350,6 +351,8 @@ public abstract class FastISel extends MachineFunctionPass
         tm = mf.getTarget();
         td = tm.getTargetData();
         instrInfo = tm.getInstrInfo();
+        cli = mf.getTarget().getCallLowering();
+        cli.setIsel(this);
 
         // for debug.
         if (Util.DEBUG)
@@ -1027,17 +1030,24 @@ public abstract class FastISel extends MachineFunctionPass
 
     private boolean selectCall(User u)
     {
-        Function f = ((Instruction.CallInst)u).getCalledFunction();
-        if (f == null)
-            return false;
+        CallInst ci = (CallInst)u;
+        Function f = ci.getCalledFunction();
+        assert f!= null:"The function to be called must be not null!";
 
         int iid = f.getIntrinsicID();
-        switch (iid)
+        if (iid != 0)
         {
-            default: break;
-            // TODO: 17-7-17 Handle calling to intrinsic function.
+            ErrorHandling.llvmReportError("Calling to intrinsic is not supported!");
+            return false;
         }
-        return false;
+
+        int res = ci.getType().isVoidType() ? 0 : getRegForValue(ci);
+        TIntArrayList args = new TIntArrayList();
+        for (int i = 0, e = ci.getNumsOfArgs(); i < e; i++)
+            args.add(getRegForValue(ci.argumentAt(i)));
+
+        mf.getFrameInfo().setHasCalls(true);
+        return cli.lowerCall(mbb, ci, res, args, getRegForValue(ci.getCalledValue()));
     }
 
     private boolean selectBitCast(User u)
