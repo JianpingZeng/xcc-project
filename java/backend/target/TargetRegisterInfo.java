@@ -59,15 +59,18 @@ public abstract class TargetRegisterInfo
 	protected int[] subregHash;
 	protected int[] superregHash;
 	protected int[] aliasesHash;
+	int subregHashSize;
+	int superregHashSize;
+	int aliasHashSize;
 
 	protected TargetRegisterInfo(
 			TargetRegisterDesc[] desc,
 			TargetRegisterClass[] regClasses,
 			int callFrameSetupOpCode,
 			int callFrameDestroyOpCode,
-			int[] subregs,
-			int[] superregs,
-			int[] aliases)
+			int[] subregs, int subregHashSize,
+			int[] superregs, int superregHashSize,
+			int[] aliases, int aliasHashSize)
 	{
 		this.desc = desc;
 		this.regClasses = regClasses;
@@ -105,8 +108,11 @@ public abstract class TargetRegisterInfo
 		this.callFrameSetupOpcode = callFrameSetupOpCode;
 		this.callFrameDestroyOpcode = callFrameDestroyOpCode;
 		subregHash = subregs;
+		this.subregHashSize = subregHashSize;
 		superregHash = superregs;
+		this.superregHashSize = superregHashSize;
 		aliasesHash = aliases;
+		this.aliasHashSize = aliasHashSize;
 	}
 
 	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
@@ -120,7 +126,7 @@ public abstract class TargetRegisterInfo
 			int callFrameDestroyOpCode)
 	{
 		this(desc, regClasses, callFrameSetupOpCode, callFrameDestroyOpCode,
-				null, null, null);
+				null, 0, null,0, null, 0);
 	}
 
 	public static boolean isPhysicalRegister(int reg)
@@ -255,9 +261,7 @@ public abstract class TargetRegisterInfo
 		if (isVirtualRegister(regA) || isVirtualRegister(regB))
 			return false;
 
-		int index = (regA + regB * 37) & (aliasesHash.length - 1);
-		if (index*2 >= aliasesHash.length - 1)
-		    return false;
+		int index = (regA + regB * 37) & (aliasHashSize - 1);
 
 		int probeAmt = 0;
 		while (aliasesHash[index * 2] != 0 && aliasesHash[index * 2 + 1] != 0)
@@ -265,7 +269,7 @@ public abstract class TargetRegisterInfo
 			if (aliasesHash[index * 2] == regA && aliasesHash[index * 2 + 1] == regB)
 				return true;
 
-			index = (index + probeAmt) & (aliasesHash.length - 1);
+			index = (index + probeAmt) & (aliasHashSize - 1);
 			probeAmt += 2;
 		}
 		return false;
@@ -280,7 +284,7 @@ public abstract class TargetRegisterInfo
 	 */
 	public boolean isSubRegister(int regA, int regB)
 	{
-		int index = (regA + regB * 37) & (subregHash.length - 1);
+		int index = (regA + regB * 37) & (subregHashSize - 1);
 
 		int probeAmt = 2;
 		while (subregHash[index * 2] != 0 && subregHash[index * 2 + 1] != 0)
@@ -288,7 +292,7 @@ public abstract class TargetRegisterInfo
 			if (subregHash[index * 2] == regA && subregHash[index * 2 + 1] == regB)
 				return true;
 
-			index = (index + probeAmt) & (subregHash.length - 1);
+			index = (index + probeAmt) & (subregHashSize - 1);
 			probeAmt += 2;
 		}
 		return false;
@@ -303,7 +307,8 @@ public abstract class TargetRegisterInfo
 	 */
 	public boolean isSuperRegister(int regA, int regB)
 	{
-		int index = (regA + regB * 37) & (superregHash.length - 1);
+		//System.err.printf("%d, %d. %s, %s%n", regA, regB, getName(regA), getName(regB));
+		int index = (regA + regB * 37) & (superregHashSize - 1);
 
 		int probeAmt = 2;
 		while (superregHash[index * 2] != 0 && superregHash[index * 2 + 1] != 0)
@@ -312,7 +317,7 @@ public abstract class TargetRegisterInfo
 					&& superregHash[index * 2 + 1] == regB)
 				return true;
 
-			index = (index + probeAmt) & (superregHash.length - 1);
+			index = (index + probeAmt) & (superregHashSize - 1);
 			probeAmt += 2;
 		}
 		return false;

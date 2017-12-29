@@ -2253,4 +2253,85 @@ public class X86FastISel extends FastISel
 
         return (allowI1 && vt.get().equals(new EVT(MVT.i1))) || tli.isTypeLegal(vt.get());
     }
+
+    private boolean miIsADDri(int machineOpc)
+    {
+        switch (machineOpc)
+        {
+            case ADD8ri:
+            case ADD16ri:
+            case ADD32ri:
+            case ADD64ri8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean miIsSUBri(int machineOpc)
+    {
+        switch (machineOpc)
+        {
+            case SUB8ri:
+            case SUB16ri:
+            case SUB32ri:
+            case SUB64ri8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * This method overrides the super's method to emit inc or dec in X86 instead emitting add instruction.
+     * @param machineInstOpcode
+     * @param rc
+     * @param op0
+     * @param imm
+     * @return
+     */
+    @Override
+    public int fastEmitInst_ri(
+            int machineInstOpcode,
+            TargetRegisterClass rc,
+            int op0,
+            long imm)
+    {
+        if (miIsADDri(machineInstOpcode) && imm == 1)
+        {
+            int opc = 0;
+            if (rc == GR8RegisterClass)
+                opc = INC8r;
+            else if (rc == GR16RegisterClass)
+                opc = INC16r;
+            else if (rc == GR32RegisterClass)
+                opc = INC32r;
+            else if (rc == GR64RegisterClass)
+                opc = INC64r;
+            else
+                Util.shouldNotReachHere("Illegal register class:" + rc.getName());
+
+            int resultReg = createResultReg(rc);
+            buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0);
+            return resultReg;
+        }
+        else if (miIsSUBri(machineInstOpcode) && imm == -1) {
+            int opc = 0;
+            if (rc == GR8RegisterClass)
+                opc = DEC8r;
+            else if (rc == GR16RegisterClass)
+                opc = DEC16r;
+            else if (rc == GR32RegisterClass)
+                opc = DEC32r;
+            else if (rc == GR64RegisterClass)
+                opc = DEC64r;
+            else
+                Util.shouldNotReachHere("Illegal register class:" + rc.getName());
+
+            int resultReg = createResultReg(rc);
+            buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0);
+            return resultReg;
+        }
+        return super.fastEmitInst_ri(machineInstOpcode, rc, op0, imm);
+    }
 }

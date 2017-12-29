@@ -757,7 +757,8 @@ public abstract class FastISel extends MachineFunctionPass
         return resultReg;
     }
 
-    public int fastEmitInst_ri(int machineInstOpcode,
+    public int fastEmitInst_ri(
+            int machineInstOpcode,
             TargetRegisterClass rc,
             int op0,
             long imm)
