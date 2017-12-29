@@ -80,7 +80,18 @@ public class MachineBasicBlock
 		addNodeToList(instr);
 	}
 
-	public void erase(int idx) {insts.remove(idx);}
+	public void insert(MachineInstr itr, MachineInstr instr)
+    {
+        int idx = insts.indexOf(itr);
+        assert idx >= 0 && idx < size();
+        insert(idx, instr);
+    }
+
+	public void erase(int idx)
+	{
+		if (idx >= 0 && idx < size())
+			insts.remove(idx);
+	}
 
 	public void erase(int start, int end)
 	{

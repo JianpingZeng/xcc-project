@@ -237,7 +237,7 @@ public class CallLowering
         public int createStackSlot(int locMemOffset, int size)
         {
             stackSize += size;
-            return mfi.createStackObject(size, locMemOffset);
+            return mfi.createFixedObject(size, locMemOffset);
         }
 
         public abstract int assignCustomValue(ArgInfo argInfo,

@@ -508,8 +508,9 @@ public abstract class TargetRegisterInfo
 	 * need only be implemented if using call frame setup/destroy pseudo
 	 * instructions.
 	 */
-	public void eliminateCallFramePseudoInstr(MachineFunction mf,
-			MachineBasicBlock mbb, int idx)
+    public void eliminateCallFramePseudoInstr(
+            MachineFunction mf,
+            MachineInstr old)
 	{
 		assert (getCallFrameSetupOpcode() == -1
 				&& getCallFrameDestroyOpcode() == -1) :
