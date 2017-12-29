@@ -1865,6 +1865,7 @@ public class X86FastISel extends FastISel
                         {
                             case SExt:
                                 opc = MOVSX16rm8;
+                                break;
                             case ZExt:
                             case AExt:
                                 opc = MOVZX16rm8;
@@ -1883,6 +1884,7 @@ public class X86FastISel extends FastISel
                                     opc = MOVSX32rm8;
                                 else if (locVT == MVT.i16)
                                     opc = MOVSX32rm16;
+                                break;
                             case ZExt:
                             case AExt:
                                 if (locVT == MVT.i8)
@@ -1906,6 +1908,7 @@ public class X86FastISel extends FastISel
                                     opc = MOVSX64rm16;
                                 else if (locVT == MVT.i32)
                                     opc = MOVSX64rm32;
+                                break;
                             case ZExt:
                             case AExt:
                                 if (locVT == MVT.i8)

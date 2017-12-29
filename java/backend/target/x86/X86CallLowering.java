@@ -273,24 +273,24 @@ public class X86CallLowering extends CallLowering
                 OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(
                         valReg);
                 emitted = getISel()
-                        .X86FastEmitExtend(opc, ca.getLocVT(), valReg, ca.getValVT(), xx);
-                valReg = xx.get();
+                        .X86FastEmitExtend(opc, ca.getValVT(), locReg, ca.getLocVT(), xx);
+                locReg = xx.get();
                 if (ca.getLocInfo() == CCValAssign.LocInfo.AExt)
                 {
                     if (!emitted)
-                        emitted = getISel().X86FastEmitExtend(ISD.ZERO_EXTEND, ca.getLocVT(),
-                                valReg, ca.getValVT(), xx);
+                        emitted = getISel().X86FastEmitExtend(ISD.ZERO_EXTEND,
+                                ca.getValVT(), locReg, ca.getLocVT(), xx);
                     if (!emitted)
-                        emitted = getISel().X86FastEmitExtend(ISD.SIGN_EXTEND, ca.getLocVT(),
-                                valReg, ca.getValVT(), xx);
+                        emitted = getISel().X86FastEmitExtend(ISD.SIGN_EXTEND,
+                                ca.getValVT(), locReg, ca.getLocVT(), xx);
 
-                    valReg = xx.get();
+                    locReg = xx.get();
                     assert emitted : "Failed to emit a aext!";
                 }
             }
-            tii.copyRegToReg(mbb, mbb.size(), locReg, valReg,
-                    tli.getRegClassFor(ca.getLocVT()),
-                    tli.getRegClassFor(ca.getValVT()));
+            tii.copyRegToReg(mbb, mbb.size(), valReg, locReg,
+                    tli.getRegClassFor(ca.getValVT()),
+                    tli.getRegClassFor(ca.getLocVT()));
             isel.updateValueMap(argInfo.val, valReg);
         }
 
@@ -310,20 +310,19 @@ public class X86CallLowering extends CallLowering
             int fi = mfi.createFixedObject(valVT.getSizeInBits()/8,
                     ca.getLocMemOffset(), isImmutable);
             int opc = 0;
-            TargetRegisterClass rc;
             int locVT = ca.getLocVT().getSimpleVT().simpleVT;
             X86Subtarget subtarget = getSubtarget();
             switch (valVT.getSimpleVT().simpleVT)
             {
                 case MVT.i8:
                     opc = MOV8rm;
-                    rc = GR8RegisterClass;
                     break;
                 case MVT.i16:
                     switch (ca.getLocInfo())
                     {
                         case SExt:
                             opc = MOVSX16rm8;
+                            break;
                         case ZExt:
                         case AExt:
                             opc = MOVZX16rm8;
@@ -332,7 +331,6 @@ public class X86CallLowering extends CallLowering
                             opc = MOV8rm;
                             break;
                     }
-                    rc = GR16RegisterClass;
                     break;
                 case MVT.i32:
                     switch (ca.getLocInfo())
@@ -353,7 +351,6 @@ public class X86CallLowering extends CallLowering
                             opc = MOV32rm;
                             break;
                     }
-                    rc = GR32RegisterClass;
                     break;
                 case MVT.i64:
                     switch (ca.getLocInfo())
@@ -378,18 +375,15 @@ public class X86CallLowering extends CallLowering
                             opc = MOV64rm;
                             break;
                     }
-                    rc = GR64RegisterClass;
                     break;
                 case MVT.f32:
                     if (!subtarget.hasSSE1())
                     {
                         opc = LD_Fp32m;
-                        rc = RFP32RegisterClass;
                     }
                     else
                     {
                         opc = MOVSSrm;
-                        rc = VR64RegisterClass;
                     }
                     break;
                 case MVT.f64:
@@ -404,7 +398,6 @@ public class X86CallLowering extends CallLowering
                             assert locVT == MVT.f64;
                             opc = LD_Fp64m;
                         }
-                        rc = RFP64RegisterClass;
                     }
                     else
                     {
@@ -417,7 +410,6 @@ public class X86CallLowering extends CallLowering
                             assert locVT == MVT.f64;
                             opc = MOVSDrm;
                         }
-                        rc = VR64RegisterClass;
                     }
                     break;
                 case MVT.f80:
@@ -436,7 +428,6 @@ public class X86CallLowering extends CallLowering
                             assert false:"Invalid value type";
                             break;
                     }
-                    rc = RFP80RegisterClass;
                     break;
                 case MVT.v4i32:
                 case MVT.v1i64:
