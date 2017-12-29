@@ -2,16 +2,21 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
+import backend.support.Attribute;
+import backend.target.TargetData;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.type.Type;
+import backend.value.Function;
 import tools.BitMap;
 import tools.OutParamWrapper;
+import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
 
+import static backend.codegen.MachineInstrBuilder.addRegOffset;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetOptions.DisableFramePointerElim;
 import static backend.target.TargetOptions.EnableRealignStack;
@@ -38,6 +43,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		int ESI = 6;
 		int EDI = 7;
 	}
+
 	/**
 	 * The index of various sized subregister classes. Note that
 	 * these indices must be kept in sync with the class indices in the
@@ -47,7 +53,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public final static int SUBREG_8BIT_HI = 2;
 	public final static int SUBREG_16BIT = 3;
 	public final static int SUBREG_32BIT = 4;
-
 
 	private X86TargetMachine tm;
 	private TargetInstrInfo tii;
@@ -84,11 +89,10 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public X86RegisterInfo(X86TargetMachine tm, TargetInstrInfo tii)
 	{
 		super(tm.getSubtarget().is64Bit() ?
-						ADJCALLSTACKDOWN64 :
-						ADJCALLSTACKDOWN32,
-				tm.getSubtarget().is64Bit() ?
-						ADJCALLSTACKUP64 :
-						ADJCALLSTACKUP32);
+				ADJCALLSTACKDOWN64 :
+				ADJCALLSTACKDOWN32, tm.getSubtarget().is64Bit() ?
+				ADJCALLSTACKUP64 :
+				ADJCALLSTACKUP32);
 		this.tm = tm;
 		this.tii = tii;
 		X86Subtarget subtarget = tm.getSubtarget();
@@ -112,62 +116,141 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	public static int getX86RegNum(int regNo)
 	{
-		switch(regNo) 
+		switch (regNo)
 		{
-			case RAX: case EAX: case AX: case AL: return N86.EAX;
-			case RCX: case ECX: case CX: case CL: return N86.ECX;
-			case RDX: case EDX: case DX: case DL: return N86.EDX;
-			case RBX: case EBX: case BX: case BL: return N86.EBX;
-			case RSP: case ESP: case SP: case SPL: case AH:
-				return N86.ESP;
-			case RBP: case EBP: case BP: case BPL: case CH:
-				return N86.EBP;
-			case RSI: case ESI: case SI: case SIL: case DH:
-				return N86.ESI;
-			case RDI: case EDI: case DI: case DIL: case BH:
-				return N86.EDI;
-
-			case R8:  case R8D:  case R8W:  case R8B:
+			case RAX:
+			case EAX:
+			case AX:
+			case AL:
 				return N86.EAX;
-			case R9:  case R9D:  case R9W:  case R9B:
+			case RCX:
+			case ECX:
+			case CX:
+			case CL:
 				return N86.ECX;
-			case R10: case R10D: case R10W: case R10B:
+			case RDX:
+			case EDX:
+			case DX:
+			case DL:
 				return N86.EDX;
-			case R11: case R11D: case R11W: case R11B:
+			case RBX:
+			case EBX:
+			case BX:
+			case BL:
 				return N86.EBX;
-			case R12: case R12D: case R12W: case R12B:
+			case RSP:
+			case ESP:
+			case SP:
+			case SPL:
+			case AH:
 				return N86.ESP;
-			case R13: case R13D: case R13W: case R13B:
+			case RBP:
+			case EBP:
+			case BP:
+			case BPL:
+			case CH:
 				return N86.EBP;
-			case R14: case R14D: case R14W: case R14B:
+			case RSI:
+			case ESI:
+			case SI:
+			case SIL:
+			case DH:
 				return N86.ESI;
-			case R15: case R15D: case R15W: case R15B:
+			case RDI:
+			case EDI:
+			case DI:
+			case DIL:
+			case BH:
 				return N86.EDI;
 
-			case ST0: case ST1: case ST2: case ST3:
-			case ST4: case ST5: case ST6: case ST7:
-				return regNo-ST0;
+			case R8:
+			case R8D:
+			case R8W:
+			case R8B:
+				return N86.EAX;
+			case R9:
+			case R9D:
+			case R9W:
+			case R9B:
+				return N86.ECX;
+			case R10:
+			case R10D:
+			case R10W:
+			case R10B:
+				return N86.EDX;
+			case R11:
+			case R11D:
+			case R11W:
+			case R11B:
+				return N86.EBX;
+			case R12:
+			case R12D:
+			case R12W:
+			case R12B:
+				return N86.ESP;
+			case R13:
+			case R13D:
+			case R13W:
+			case R13B:
+				return N86.EBP;
+			case R14:
+			case R14D:
+			case R14W:
+			case R14B:
+				return N86.ESI;
+			case R15:
+			case R15D:
+			case R15W:
+			case R15B:
+				return N86.EDI;
 
-			case XMM0: case XMM8: case MM0:
+			case ST0:
+			case ST1:
+			case ST2:
+			case ST3:
+			case ST4:
+			case ST5:
+			case ST6:
+			case ST7:
+				return regNo - ST0;
+
+			case XMM0:
+			case XMM8:
+			case MM0:
 				return 0;
-			case XMM1: case XMM9: case MM1:
+			case XMM1:
+			case XMM9:
+			case MM1:
 				return 1;
-			case XMM2: case XMM10: case MM2:
+			case XMM2:
+			case XMM10:
+			case MM2:
 				return 2;
-			case XMM3: case XMM11: case MM3:
+			case XMM3:
+			case XMM11:
+			case MM3:
 				return 3;
-			case XMM4: case XMM12: case MM4:
+			case XMM4:
+			case XMM12:
+			case MM4:
 				return 4;
-			case XMM5: case XMM13: case MM5:
+			case XMM5:
+			case XMM13:
+			case MM5:
 				return 5;
-			case XMM6: case XMM14: case MM6:
+			case XMM6:
+			case XMM14:
+			case MM6:
 				return 6;
-			case XMM7: case XMM15: case MM7:
+			case XMM7:
+			case XMM15:
+			case MM7:
 				return 7;
 
 			default:
 				assert isVirtualRegister(regNo) : "Undefined physical register!";
-				Util.shouldNotReachHere("Register allocator hasn't allocated reg correctly yet!");
+				Util.shouldNotReachHere(
+						"Register allocator hasn't allocated reg correctly yet!");
 				return 0;
 		}
 	}
@@ -180,167 +263,149 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	/**
 	 * allows modification of X86GenRegisterInfo::getDwarfRegNum
 	 * (created by TableGen) for target dependencies.
+	 *
 	 * @param regNum
 	 * @param isEH
 	 * @return
 	 */
 	public int getDwarfRegNum(int regNum, boolean isEH)
 	{
-		assert false:"Shoult not reaching here!";
+		assert false : "Shoult not reaching here!";
 		return 0;
 	}
 
 	public TargetRegisterClass getMatchingSuperRegClass(TargetRegisterClass a,
-			TargetRegisterClass b,
-			int subIdx)
+			TargetRegisterClass b, int subIdx)
 	{
-        switch (subIdx)
-        {
-            default:
-                return null;
-            case 1:
-                // 8-bit
-                if (b == GR8RegisterClass)
-                {
-                    if (a.getRegSize() == 2 || a.getRegSize() == 4
-                            || a.getRegSize() == 8)
-                        return a;
-                }
-                else if (b == GR8_ABCD_LRegisterClass
-                        || b == GR8_ABCD_HRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
-                            || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                    else if (a == GR32RegisterClass
-                            || a == GR32_ABCDRegisterClass
-                            || a == GR32_NOREXRegisterClass
-                            || a == GR32_NOSPRegisterClass)
-                        return GR32_ABCDRegisterClass;
-                    else if (a == GR16RegisterClass
-                            || a == GR16_ABCDRegisterClass
-                            || a == GR16_NOREXRegisterClass)
-                        return GR16_ABCDRegisterClass;
-                }
-                else if (b == GR8_NOREXRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_NOREXRegisterClass;
-                    else if (a == GR64_ABCDRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                    else if (a == GR32RegisterClass
-                            || a == GR32_NOREXRegisterClass
-                            || a == GR32_NOSPRegisterClass)
-                        return GR32_NOREXRegisterClass;
-                    else if (a == GR32_ABCDRegisterClass)
-                        return GR32_ABCDRegisterClass;
-                    else if (a == GR16RegisterClass
-                            || a == GR16_NOREXRegisterClass)
-                        return GR16_NOREXRegisterClass;
-                    else if (a == GR16_ABCDRegisterClass)
-                        return GR16_ABCDRegisterClass;
-                }
-                break;
-            case 2:
-                // 8-bit hi
-                if (b == GR8_ABCD_HRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
-                            || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                    else if (a == GR32RegisterClass
-                            || a == GR32_ABCDRegisterClass
-                            || a == GR32_NOREXRegisterClass
-                            || a == GR32_NOSPRegisterClass)
-                        return GR32_ABCDRegisterClass;
-                    else if (a == GR16RegisterClass
-                            || a == GR16_ABCDRegisterClass
-                            || a == GR16_NOREXRegisterClass)
-                        return GR16_ABCDRegisterClass;
-                }
-                break;
-            case 3:
-                // 16-bit
-                if (b == GR16RegisterClass)
-                {
-                    if (a.getRegSize() == 4 || a.getRegSize() == 8)
-                        return a;
-                }
-                else if (b == GR16_ABCDRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
-                            || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                    else if (a == GR32RegisterClass
-                            || a == GR32_ABCDRegisterClass
-                            || a == GR32_NOREXRegisterClass
-                            || a == GR32_NOSPRegisterClass)
-                        return GR32_ABCDRegisterClass;
-                }
-                else if (b == GR16_NOREXRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_NOREXRegisterClass;
-                    else if (a == GR64_ABCDRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                    else if (a == GR32RegisterClass
-                            || a == GR32_NOREXRegisterClass
-                            || a == GR32_NOSPRegisterClass)
-                        return GR32_NOREXRegisterClass;
-                    else if (a == GR32_ABCDRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                }
-                break;
-            case 4:
-                // 32-bit
-                if (b == GR32RegisterClass || b == GR32_NOSPRegisterClass)
-                {
-                    if (a.getRegSize() == 8)
-                        return a;
-                }
-                else if (b == GR32_ABCDRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
-                            || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                }
-                else if (b == GR32_NOREXRegisterClass)
-                {
-                    if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
-                            || a == GR64_NOSPRegisterClass
-                            || a == GR64_NOREX_NOSPRegisterClass)
-                        return GR64_NOREXRegisterClass;
-                    else if (a == GR64_ABCDRegisterClass)
-                        return GR64_ABCDRegisterClass;
-                }
-                break;
-        }
-        return null;
-    }
+		switch (subIdx)
+		{
+			default:
+				return null;
+			case 1:
+				// 8-bit
+				if (b == GR8RegisterClass)
+				{
+					if (a.getRegSize() == 2 || a.getRegSize() == 4
+							|| a.getRegSize() == 8)
+						return a;
+				}
+				else if (b == GR8_ABCD_LRegisterClass || b == GR8_ABCD_HRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
+							|| a == GR64_NOREXRegisterClass || a == GR64_NOSPRegisterClass
+							|| a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_ABCDRegisterClass;
+					else if (a == GR32RegisterClass || a == GR32_ABCDRegisterClass
+							|| a == GR32_NOREXRegisterClass || a == GR32_NOSPRegisterClass)
+						return GR32_ABCDRegisterClass;
+					else if (a == GR16RegisterClass || a == GR16_ABCDRegisterClass
+							|| a == GR16_NOREXRegisterClass)
+						return GR16_ABCDRegisterClass;
+				}
+				else if (b == GR8_NOREXRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
+							|| a == GR64_NOSPRegisterClass || a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_NOREXRegisterClass;
+					else if (a == GR64_ABCDRegisterClass)
+						return GR64_ABCDRegisterClass;
+					else if (a == GR32RegisterClass || a == GR32_NOREXRegisterClass
+							|| a == GR32_NOSPRegisterClass)
+						return GR32_NOREXRegisterClass;
+					else if (a == GR32_ABCDRegisterClass)
+						return GR32_ABCDRegisterClass;
+					else if (a == GR16RegisterClass || a == GR16_NOREXRegisterClass)
+						return GR16_NOREXRegisterClass;
+					else if (a == GR16_ABCDRegisterClass)
+						return GR16_ABCDRegisterClass;
+				}
+				break;
+			case 2:
+				// 8-bit hi
+				if (b == GR8_ABCD_HRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
+							|| a == GR64_NOREXRegisterClass || a == GR64_NOSPRegisterClass
+							|| a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_ABCDRegisterClass;
+					else if (a == GR32RegisterClass || a == GR32_ABCDRegisterClass
+							|| a == GR32_NOREXRegisterClass || a == GR32_NOSPRegisterClass)
+						return GR32_ABCDRegisterClass;
+					else if (a == GR16RegisterClass || a == GR16_ABCDRegisterClass
+							|| a == GR16_NOREXRegisterClass)
+						return GR16_ABCDRegisterClass;
+				}
+				break;
+			case 3:
+				// 16-bit
+				if (b == GR16RegisterClass)
+				{
+					if (a.getRegSize() == 4 || a.getRegSize() == 8)
+						return a;
+				}
+				else if (b == GR16_ABCDRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
+							|| a == GR64_NOREXRegisterClass || a == GR64_NOSPRegisterClass
+							|| a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_ABCDRegisterClass;
+					else if (a == GR32RegisterClass || a == GR32_ABCDRegisterClass
+							|| a == GR32_NOREXRegisterClass || a == GR32_NOSPRegisterClass)
+						return GR32_ABCDRegisterClass;
+				}
+				else if (b == GR16_NOREXRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
+							|| a == GR64_NOSPRegisterClass || a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_NOREXRegisterClass;
+					else if (a == GR64_ABCDRegisterClass)
+						return GR64_ABCDRegisterClass;
+					else if (a == GR32RegisterClass || a == GR32_NOREXRegisterClass
+							|| a == GR32_NOSPRegisterClass)
+						return GR32_NOREXRegisterClass;
+					else if (a == GR32_ABCDRegisterClass)
+						return GR64_ABCDRegisterClass;
+				}
+				break;
+			case 4:
+				// 32-bit
+				if (b == GR32RegisterClass || b == GR32_NOSPRegisterClass)
+				{
+					if (a.getRegSize() == 8)
+						return a;
+				}
+				else if (b == GR32_ABCDRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
+							|| a == GR64_NOREXRegisterClass || a == GR64_NOSPRegisterClass
+							|| a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_ABCDRegisterClass;
+				}
+				else if (b == GR32_NOREXRegisterClass)
+				{
+					if (a == GR64RegisterClass || a == GR64_NOREXRegisterClass
+							|| a == GR64_NOSPRegisterClass || a == GR64_NOREX_NOSPRegisterClass)
+						return GR64_NOREXRegisterClass;
+					else if (a == GR64_ABCDRegisterClass)
+						return GR64_ABCDRegisterClass;
+				}
+				break;
+		}
+		return null;
+	}
 
 	public TargetRegisterClass getPointerRegClass()
 	{
 		return getPointerRegClass(0);
 	}
 
-	@Override
-	public TargetRegisterClass getPointerRegClass(int kind)
+	@Override public TargetRegisterClass getPointerRegClass(int kind)
 	{
 		switch (kind)
 		{
-			default:Util.shouldNotReachHere("Unexpected kind in getPointerRegClass()!");
+			default:
+				Util.shouldNotReachHere(
+						"Unexpected kind in getPointerRegClass()!");
 			case 0:
 				if (tm.getSubtarget().is64Bit())
 					return GR64RegisterClass;
@@ -365,8 +430,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		return null;
 	}
 
-	@Override
-	public int[] getCalleeSavedRegs(MachineFunction mf)
+	@Override public int[] getCalleeSavedRegs(MachineFunction mf)
 	{
 		final int[] calleeSavedRegs32Bit = { ESI, EDI, EBX, EBP };
 
@@ -426,23 +490,20 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			return calleeSavedRegClasses32Bit;
 	}
 
-	@Override
-	public boolean needsStackRealignment(MachineFunction mf)
+	@Override public boolean needsStackRealignment(MachineFunction mf)
 	{
 		MachineFrameInfo mfi = mf.getFrameInfo();
 
-		return EnableRealignStack.value && mfi.getMaxAlignment() > stackAlign &&
-				!mfi.hasVarSizedObjects();
+		return EnableRealignStack.value && mfi.getMaxAlignment() > stackAlign
+				&& !mfi.hasVarSizedObjects();
 	}
 
-	@Override
-	public boolean hasReservedCallFrame(MachineFunction mf)
+	@Override public boolean hasReservedCallFrame(MachineFunction mf)
 	{
 		return !mf.getFrameInfo().hasVarSizedObjects();
 	}
 
-	@Override
-	public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
+	@Override public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
 			OutParamWrapper<Integer> frameIdx)
 	{
 		if (reg == framePtr && hasFP(mf))
@@ -463,7 +524,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	{
 		int maxAlign = 0;
 
-		for (int i = mfi.getObjectIndexBegin(), e = mfi.getObjectIndexEnd(); i != e; i++)
+		for (int i = mfi.getObjectIndexBegin(), e = mfi.getObjectIndexEnd();
+		     i != e; i++)
 		{
 			if (mfi.isDeadObjectIndex(i))
 				continue;
@@ -480,7 +542,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	{
 		MachineFrameInfo mfi = mf.getFrameInfo();
 
-		int maxAlign = Math.max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
+		int maxAlign = Math
+				.max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
 
 		mfi.setMaxCallFrameSize(maxAlign);
 
@@ -488,9 +551,9 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		{
 			TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 			int frameIndex = mfi.createFixedObject(slotSize,
-					-slotSize+tfi.getLocalAreaOffset());
-			assert frameIndex == mfi.getObjectIndexBegin():
-					"Slot for EBP register must be last in order to be found!";
+					-slotSize + tfi.getLocalAreaOffset());
+			assert frameIndex == mfi
+					.getObjectIndexBegin() : "Slot for EBP register must be last in order to be found!";
 		}
 	}
 
@@ -498,23 +561,20 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			int framePtr)
 	{
 		// TODO: 17-7-20
-		assert false:"Should not reaching here";
+		assert false : "Should not reaching here";
 	}
 
-	@Override
-	public int getRARegister()
+	@Override public int getRARegister()
 	{
-		return is64Bit? RIP : EIP;
+		return is64Bit ? RIP : EIP;
 	}
 
-	@Override
-	public int getFrameRegister(MachineFunction mf)
+	@Override public int getFrameRegister(MachineFunction mf)
 	{
 		return hasFP(mf) ? framePtr : stackPtr;
 	}
 
-	@Override
-	public int getFrameIndexOffset(MachineFunction mf, int fi)
+	@Override public int getFrameIndexOffset(MachineFunction mf, int fi)
 	{
 		TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 		MachineFrameInfo mfi = mf.getFrameInfo();
@@ -547,232 +607,229 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	public void getInitialFrameState(ArrayList<MachineMove> moves)
 	{
-	    int stackGrowth = is64Bit ? -8 : -4;
+		int stackGrowth = is64Bit ? -8 : -4;
 
-	    MachineLocation dst = new MachineLocation(MachineLocation.VirtualFP);
-	    MachineLocation src = new MachineLocation(stackPtr, stackGrowth);
-	    moves.add(new MachineMove(0, dst, src));
+		MachineLocation dst = new MachineLocation(MachineLocation.VirtualFP);
+		MachineLocation src = new MachineLocation(stackPtr, stackGrowth);
+		moves.add(new MachineMove(0, dst, src));
 
-	    MachineLocation csdst = new MachineLocation(stackPtr, stackGrowth);
-	    MachineLocation cssrc = new MachineLocation(getRARegister());
-	    moves.add(new MachineMove(0, csdst, cssrc));
-    }
+		MachineLocation csdst = new MachineLocation(stackPtr, stackGrowth);
+		MachineLocation cssrc = new MachineLocation(getRARegister());
+		moves.add(new MachineMove(0, csdst, cssrc));
+	}
 
-    /**
-     * Test if the given register is a physical h register.
-     * @param reg
-     * @return
-     */
-    private static boolean isHReg(int reg)
-    {
-        return GR8_ABCD_HRegisterClass.contains(reg);
-    }
+	/**
+	 * Test if the given register is a physical h register.
+	 *
+	 * @param reg
+	 * @return
+	 */
+	private static boolean isHReg(int reg)
+	{
+		return GR8_ABCD_HRegisterClass.contains(reg);
+	}
 
-    private static int getStoreRegOpcode(int srcReg, TargetRegisterClass rc,
-            boolean isStackAligned, X86TargetMachine tm)
-    {
-        int opc = 0;
-        if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass)
-        {
-            opc = MOV64mr;
-        }
-        else if (rc == GR32RegisterClass || rc == GR32_NOSPRegisterClass)
-        {
-            opc = MOV32mr;
-        }
-        else if (rc == GR16RegisterClass)
-        {
-            opc = MOV16mr;
-        }
-        else if (rc == GR8RegisterClass)
-        {
-            // Copying to or from a physical H register on x86-64 requires a NOREX
-            // move.  Otherwise use a normal move.
-            if (isHReg(srcReg) && tm.getSubtarget().is64Bit())
-                opc = MOV8mr_NOREX;
-            else
-                opc = MOV8mr;
-        }
-        else if (rc == GR64_ABCDRegisterClass)
-        {
-            opc = MOV64mr;
-        }
-        else if (rc == GR32_ABCDRegisterClass)
-        {
-            opc = MOV32mr;
-        }
-        else if (rc == GR16_ABCDRegisterClass)
-        {
-            opc = MOV16mr;
-        }
-        else if (rc == GR8_ABCD_LRegisterClass)
-        {
-            opc = MOV8mr;
-        }
-        else if (rc == GR8_ABCD_HRegisterClass)
-        {
-            if (tm.getSubtarget().is64Bit())
-                opc = MOV8mr_NOREX;
-            else
-                opc = MOV8mr;
-        }
-        else if (rc == GR64_NOREXRegisterClass
-                || rc == GR64_NOREX_NOSPRegisterClass)
-        {
-            opc = MOV64mr;
-        }
-        else if (rc == GR32_NOREXRegisterClass)
-        {
-            opc = MOV32mr;
-        }
-        else if (rc == GR16_NOREXRegisterClass)
-        {
-            opc = MOV16mr;
-        }
-        else if (rc == GR8_NOREXRegisterClass)
-        {
-            opc = MOV8mr;
-        }
-        else if (rc == RFP80RegisterClass)
-        {
-            opc = ST_FpP80m;   // pops
-        }
-        else if (rc == RFP64RegisterClass)
-        {
-            opc = ST_Fp64m;
-        }
-        else if (rc == RFP32RegisterClass)
-        {
-            opc = ST_Fp32m;
-        }
-        else if (rc == FR32RegisterClass)
-        {
-            opc = MOVSSmr;
-        }
-        else if (rc == FR64RegisterClass)
-        {
-            opc = MOVSDmr;
-        }
-        else if (rc == VR128RegisterClass)
-        {
-            // If stack is realigned we can use aligned stores.
-            opc = isStackAligned ? MOVAPSmr : MOVUPSmr;
-        }
-        else if (rc == VR64RegisterClass)
-        {
-            opc = MMX_MOVQ64mr;
-        }
-        else
-        {
-            Util.shouldNotReachHere("Undefined regclass");
-        }
+	private static int getStoreRegOpcode(int srcReg, TargetRegisterClass rc,
+			boolean isStackAligned, X86TargetMachine tm)
+	{
+		int opc = 0;
+		if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass)
+		{
+			opc = MOV64mr;
+		}
+		else if (rc == GR32RegisterClass || rc == GR32_NOSPRegisterClass)
+		{
+			opc = MOV32mr;
+		}
+		else if (rc == GR16RegisterClass)
+		{
+			opc = MOV16mr;
+		}
+		else if (rc == GR8RegisterClass)
+		{
+			// Copying to or from a physical H register on x86-64 requires a NOREX
+			// move.  Otherwise use a normal move.
+			if (isHReg(srcReg) && tm.getSubtarget().is64Bit())
+				opc = MOV8mr_NOREX;
+			else
+				opc = MOV8mr;
+		}
+		else if (rc == GR64_ABCDRegisterClass)
+		{
+			opc = MOV64mr;
+		}
+		else if (rc == GR32_ABCDRegisterClass)
+		{
+			opc = MOV32mr;
+		}
+		else if (rc == GR16_ABCDRegisterClass)
+		{
+			opc = MOV16mr;
+		}
+		else if (rc == GR8_ABCD_LRegisterClass)
+		{
+			opc = MOV8mr;
+		}
+		else if (rc == GR8_ABCD_HRegisterClass)
+		{
+			if (tm.getSubtarget().is64Bit())
+				opc = MOV8mr_NOREX;
+			else
+				opc = MOV8mr;
+		}
+		else if (rc == GR64_NOREXRegisterClass || rc == GR64_NOREX_NOSPRegisterClass)
+		{
+			opc = MOV64mr;
+		}
+		else if (rc == GR32_NOREXRegisterClass)
+		{
+			opc = MOV32mr;
+		}
+		else if (rc == GR16_NOREXRegisterClass)
+		{
+			opc = MOV16mr;
+		}
+		else if (rc == GR8_NOREXRegisterClass)
+		{
+			opc = MOV8mr;
+		}
+		else if (rc == RFP80RegisterClass)
+		{
+			opc = ST_FpP80m;   // pops
+		}
+		else if (rc == RFP64RegisterClass)
+		{
+			opc = ST_Fp64m;
+		}
+		else if (rc == RFP32RegisterClass)
+		{
+			opc = ST_Fp32m;
+		}
+		else if (rc == FR32RegisterClass)
+		{
+			opc = MOVSSmr;
+		}
+		else if (rc == FR64RegisterClass)
+		{
+			opc = MOVSDmr;
+		}
+		else if (rc == VR128RegisterClass)
+		{
+			// If stack is realigned we can use aligned stores.
+			opc = isStackAligned ? MOVAPSmr : MOVUPSmr;
+		}
+		else if (rc == VR64RegisterClass)
+		{
+			opc = MMX_MOVQ64mr;
+		}
+		else
+		{
+			Util.shouldNotReachHere("Undefined regclass");
+		}
 
-        return opc;
-    }
+		return opc;
+	}
 
-    private static int getLoadRegOpcode(int DestReg,
-            TargetRegisterClass rc,
-            boolean isStackAligned,
-            X86TargetMachine tm)
-    {
-        int opc = 0;
-        if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass)
-        {
-            opc = MOV64rm;
-        }
-        else if (rc == GR32RegisterClass || rc == GR32_NOSPRegisterClass)
-        {
-            opc = MOV32rm;
-        }
-        else if (rc == GR16RegisterClass)
-        {
-            opc = MOV16rm;
-        }
-        else if (rc == GR8RegisterClass)
-        {
-            // Copying to or from a physical H register on x86-64 requires a NOREX
-            // move.  Otherwise use a normal move.
-            if (isHReg(DestReg) && tm.getSubtarget().is64Bit())
-                opc = MOV8rm_NOREX;
-            else
-                opc = MOV8rm;
-        }
-        else if (rc == GR64_ABCDRegisterClass)
-        {
-            opc = MOV64rm;
-        }
-        else if (rc == GR32_ABCDRegisterClass)
-        {
-            opc = MOV32rm;
-        }
-        else if (rc == GR16_ABCDRegisterClass)
-        {
-            opc = MOV16rm;
-        }
-        else if (rc == GR8_ABCD_LRegisterClass)
-        {
-            opc = MOV8rm;
-        }
-        else if (rc == GR8_ABCD_HRegisterClass)
-        {
-            if (tm.getSubtarget().is64Bit())
-                opc = MOV8rm_NOREX;
-            else
-                opc = MOV8rm;
-        }
-        else if (rc == GR64_NOREXRegisterClass
-                || rc == GR64_NOREX_NOSPRegisterClass)
-        {
-            opc = MOV64rm;
-        }
-        else if (rc == GR32_NOREXRegisterClass)
-        {
-            opc = MOV32rm;
-        }
-        else if (rc == GR16_NOREXRegisterClass)
-        {
-            opc = MOV16rm;
-        }
-        else if (rc == GR8_NOREXRegisterClass)
-        {
-            opc = MOV8rm;
-        }
-        else if (rc == RFP80RegisterClass)
-        {
-            opc = LD_Fp80m;
-        }
-        else if (rc == RFP64RegisterClass)
-        {
-            opc = LD_Fp64m;
-        }
-        else if (rc == RFP32RegisterClass)
-        {
-            opc = LD_Fp32m;
-        }
-        else if (rc == FR32RegisterClass)
-        {
-            opc = MOVSSrm;
-        }
-        else if (rc == FR64RegisterClass)
-        {
-            opc = MOVSDrm;
-        }
-        else if (rc == VR128RegisterClass)
-        {
-            // If stack is realigned we can use aligned loads.
-            opc = isStackAligned ? MOVAPSrm : MOVUPSrm;
-        }
-        else if (rc == VR64RegisterClass)
-        {
-            opc = MMX_MOVQ64rm;
-        }
-        else
-        {
-            Util.shouldNotReachHere("Unknown regclass");
-        }
+	private static int getLoadRegOpcode(int DestReg, TargetRegisterClass rc,
+			boolean isStackAligned, X86TargetMachine tm)
+	{
+		int opc = 0;
+		if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass)
+		{
+			opc = MOV64rm;
+		}
+		else if (rc == GR32RegisterClass || rc == GR32_NOSPRegisterClass)
+		{
+			opc = MOV32rm;
+		}
+		else if (rc == GR16RegisterClass)
+		{
+			opc = MOV16rm;
+		}
+		else if (rc == GR8RegisterClass)
+		{
+			// Copying to or from a physical H register on x86-64 requires a NOREX
+			// move.  Otherwise use a normal move.
+			if (isHReg(DestReg) && tm.getSubtarget().is64Bit())
+				opc = MOV8rm_NOREX;
+			else
+				opc = MOV8rm;
+		}
+		else if (rc == GR64_ABCDRegisterClass)
+		{
+			opc = MOV64rm;
+		}
+		else if (rc == GR32_ABCDRegisterClass)
+		{
+			opc = MOV32rm;
+		}
+		else if (rc == GR16_ABCDRegisterClass)
+		{
+			opc = MOV16rm;
+		}
+		else if (rc == GR8_ABCD_LRegisterClass)
+		{
+			opc = MOV8rm;
+		}
+		else if (rc == GR8_ABCD_HRegisterClass)
+		{
+			if (tm.getSubtarget().is64Bit())
+				opc = MOV8rm_NOREX;
+			else
+				opc = MOV8rm;
+		}
+		else if (rc == GR64_NOREXRegisterClass || rc == GR64_NOREX_NOSPRegisterClass)
+		{
+			opc = MOV64rm;
+		}
+		else if (rc == GR32_NOREXRegisterClass)
+		{
+			opc = MOV32rm;
+		}
+		else if (rc == GR16_NOREXRegisterClass)
+		{
+			opc = MOV16rm;
+		}
+		else if (rc == GR8_NOREXRegisterClass)
+		{
+			opc = MOV8rm;
+		}
+		else if (rc == RFP80RegisterClass)
+		{
+			opc = LD_Fp80m;
+		}
+		else if (rc == RFP64RegisterClass)
+		{
+			opc = LD_Fp64m;
+		}
+		else if (rc == RFP32RegisterClass)
+		{
+			opc = LD_Fp32m;
+		}
+		else if (rc == FR32RegisterClass)
+		{
+			opc = MOVSSrm;
+		}
+		else if (rc == FR64RegisterClass)
+		{
+			opc = MOVSDrm;
+		}
+		else if (rc == VR128RegisterClass)
+		{
+			// If stack is realigned we can use aligned loads.
+			opc = isStackAligned ? MOVAPSrm : MOVUPSrm;
+		}
+		else if (rc == VR64RegisterClass)
+		{
+			opc = MMX_MOVQ64rm;
+		}
+		else
+		{
+			Util.shouldNotReachHere("Unknown regclass");
+		}
 
-        return opc;
-    }
+		return opc;
+	}
 
 	/**
 	 * This method is called during prolog/epilog code insertion to eliminate
@@ -782,9 +839,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 * need only be implemented if using call frame setup/destroy pseudo
 	 * instructions.
 	 */
-	@Override
-	public void eliminateCallFramePseudoInstr(
-			MachineFunction mf,
+	@Override public void eliminateCallFramePseudoInstr(MachineFunction mf,
 			MachineInstr old)
 	{
 		MachineInstr newOne = null;
@@ -803,7 +858,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				// stack setup pseudo instrcution.
 				if (old.getOpcode() == getCallFrameSetupOpcode())
 				{
-					newOne = buildMI(tii.get(is64Bit ? SUB64ri32 : SUB32ri), stackPtr).
+					newOne = buildMI(tii.get(is64Bit ? SUB64ri32 : SUB32ri),
+							stackPtr).
 							addReg(stackPtr).
 							addImm(amount).getMInstr();
 				}
@@ -842,7 +898,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			long calleeAmt = old.getOperand(1).getImm();
 			if (calleeAmt != 0)
 			{
-				int opc = (calleeAmt < 128 ) ?
+				int opc = (calleeAmt < 128) ?
 						(is64Bit ? SUB64ri8 : SUB32ri8) :
 						(is64Bit ? SUB64ri32 : SUB32ri);
 				newOne = buildMI(tii.get(opc), stackPtr).
@@ -863,175 +919,315 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 * MO_FrameIndex operands are replaced with direct ants.  This method is
 	 * optional.
 	 */
-	@Override
-	public void processFunctionBeforeFrameFinalized(
+	@Override public void processFunctionBeforeFrameFinalized(
 			MachineFunction mf)
 	{
 		if (hasFP(mf))
 		{
 			// creates a stack object for saving EBP.
 			int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
-			assert frameIndex == mf.getFrameInfo().getObjectIndexEnd() - 1
-					:"The slot for EBP must be last";
+			assert frameIndex == mf.getFrameInfo().getObjectIndexEnd()
+					- 1 : "The slot for EBP must be last";
 		}
 	}
 
-    @Override
-    public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs)
-    {
-	    int i = 0;
-	    while(!mi.getOperand(i).isFrameIndex())
-	    {
-		    i++;
-		    assert i < mi.getNumOperands():"Instr have not frame index operand!";
-	    }
+	@Override public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi,
+			RegScavenger rs)
+	{
+		int i = 0;
+		while (!mi.getOperand(i).isFrameIndex())
+		{
+			i++;
+			assert i < mi
+					.getNumOperands() : "Instr have not frame index operand!";
+		}
 
-	    int frameIndex = mi.getOperand(i).getIndex();
-	    int basePtr;
-	    if (needsStackRealignment(mf))
-		    basePtr = frameIndex < 0 ? framePtr : stackPtr;
-	    else
-		    basePtr = hasFP(mf) ? framePtr : stackPtr;
+		int frameIndex = mi.getOperand(i).getIndex();
+		int basePtr;
+		if (needsStackRealignment(mf))
+			basePtr = frameIndex < 0 ? framePtr : stackPtr;
+		else
+			basePtr = hasFP(mf) ? framePtr : stackPtr;
 
-	    mi.getOperand(i).changeToRegister(basePtr, false);
-	    if (mi.getOperand(i + 3).isImm())
-	    {
-		    int offset = getFrameIndexOffset(mf, frameIndex) +
-				    (int) mi.getOperand(i + 3).getImm();
-		    mi.getOperand(i + 3).changeToImmediate(offset);
-	    }
-	    else
-	    {
-		    long offset = getFrameIndexOffset(mf, frameIndex) +
-				    mi.getOperand(i+3).getOffset();
-		    mi.getOperand(i+3).setOffset(offset);
-	    }
-    }
+		mi.getOperand(i).changeToRegister(basePtr, false);
+		if (mi.getOperand(i + 3).isImm())
+		{
+			int offset = getFrameIndexOffset(mf, frameIndex) + (int) mi
+					.getOperand(i + 3).getImm();
+			mi.getOperand(i + 3).changeToImmediate(offset);
+		}
+		else
+		{
+			long offset =
+					getFrameIndexOffset(mf, frameIndex) + mi.getOperand(i + 3).getOffset();
+			mi.getOperand(i + 3).setOffset(offset);
+		}
+	}
 
-    @Override
-    public BitMap getReservedRegs(MachineFunction mf)
-    {
-        BitMap reserved = new BitMap(getNumRegs());
+	@Override public BitMap getReservedRegs(MachineFunction mf)
+	{
+		BitMap reserved = new BitMap(getNumRegs());
 
-	    // Set the stack-pointer register and its aliases as reserved.
-	    reserved.set(RSP);
-	    reserved.set(ESP);
-	    reserved.set(SP);
-	    reserved.set(SPL);
+		// Set the stack-pointer register and its aliases as reserved.
+		reserved.set(RSP);
+		reserved.set(ESP);
+		reserved.set(SP);
+		reserved.set(SPL);
 
-	    // Set the frame-pointer register and its aliases as reserved if needed.
-	    if (hasFP(mf))
-	    {
-		    reserved.set(RBP);
-		    reserved.set(EBP);
-		    reserved.set(BP);
-		    reserved.set(BPL);
-	    }
+		// Set the frame-pointer register and its aliases as reserved if needed.
+		if (hasFP(mf))
+		{
+			reserved.set(RBP);
+			reserved.set(EBP);
+			reserved.set(BP);
+			reserved.set(BPL);
+		}
 
-	    // Mark the x87 stack registers as reserved, since they don't behave normally
-	    // with respect to liveness. We don't fully model the effects of x87 stack
-	    // pushes and pops after stackification.
-	    reserved.set(ST0);
-	    reserved.set(ST1);
-	    reserved.set(ST2);
-	    reserved.set(ST3);
-	    reserved.set(ST4);
-	    reserved.set(ST5);
-	    reserved.set(ST6);
-	    reserved.set(ST7);
-	    return reserved;
-    }
+		// Mark the x87 stack registers as reserved, since they don't behave normally
+		// with respect to liveness. We don't fully model the effects of x87 stack
+		// pushes and pops after stackification.
+		reserved.set(ST0);
+		reserved.set(ST1);
+		reserved.set(ST2);
+		reserved.set(ST3);
+		reserved.set(ST4);
+		reserved.set(ST5);
+		reserved.set(ST6);
+		reserved.set(ST7);
+		return reserved;
+	}
 
-    @Override
-    public int getSubReg(int regNo, int index)
-    {
-        return 0;
-    }
+	@Override public int getSubReg(int regNo, int index)
+	{
+		return 0;
+	}
 
-    /**
+	/**
 	 * Return true if the specified function should have a dedicated stack pointer
 	 * register. This is true if function has variable sized objects or if frame
 	 * pointer elimination is disabled.
-	 *
+	 * <p>
 	 * the frame pointer is usually EBP in X86 target machine.
+	 *
 	 * @param mf
 	 * @return
 	 */
 	public boolean hasFP(MachineFunction mf)
 	{
 		MachineFrameInfo mfi = mf.getFrameInfo();
-		return (DisableFramePointerElim.value ||
-				needsStackRealignment(mf) ||
-				mfi.hasVarSizedObjects() ||
-				mfi.isFrameAddressTaken());
+		return (DisableFramePointerElim.value || needsStackRealignment(mf)
+				|| mfi.hasVarSizedObjects() || mfi.isFrameAddressTaken());
 	}
 
 	/**
-	 * This method insert prologue code into the function.
+	 * This method insert prologue code into the function. Such as push callee-saved
+	 * registers onto the stack, which automatically adjust the stack pointer.
+	 * Adjust the stack pointer to space for local variables. Also emit labels
+	 * used by the exception handler to generate the exception handling frames.
+	 *
 	 * @param mf
 	 */
-	@Override
-	public void emitPrologue(MachineFunction mf)
+	@Override public void emitPrologue(MachineFunction mf)
 	{
 		MachineBasicBlock mbb = mf.getEntryBlock();
+		Function fn = mf.getFunction();
 		int mbbi = 0;  // a index position where a new instr will inserts.
 		MachineFrameInfo mfi = mf.getFrameInfo();
 		MachineInstr mi;
+		X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
+		int maxAlign = mfi.getMaxAlignment();
+		int stackSize = mfi.getStackSize();
+		boolean hasFP = hasFP(mf);
+		X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
+
+		int tailCallReturnAddrDelta = x86FI.getTCReturnAddrDelta();
+		if (tailCallReturnAddrDelta < 0)
+		{
+			x86FI.setCalleeSavedFrameSize(x86FI.getCalleeSavedFrameSize() - tailCallReturnAddrDelta);
+		}
+
+		if (is64Bit && !fn.hasFnAttr(Attribute.NoRedZone) && !needsStackRealignment(mf) && !mfi.hasVarSizedObjects()
+				&& !mfi.hasCalls() && !subtarget.isTargetWin64())
+		{
+			int minSize = x86FI.getCalleeSavedFrameSize();
+			if (hasFP)
+				minSize += slotSize;
+			stackSize = Math.max(minSize, stackSize > 128 ? stackSize - 128 : 0);
+			mfi.setStackSize(stackSize);
+		}
+		else if (subtarget.isTargetWin64())
+		{
+			stackSize += 32;
+			mfi.setStackSize(stackSize);
+		}
+
+		if (tailCallReturnAddrDelta < 0)
+		{
+			mi = buildMI(mbb, mbbi, tii.get(is64Bit ? SUB64ri32 : SUB32ri),
+					stackPtr).addReg(stackPtr).addImm(-tailCallReturnAddrDelta).getMInstr();
+			mi.getOperand(3).setIsDead(true);   // The EFLAGS implicit def is dead.
+		}
 
 		// Get the number of bytes to allocate from the FrameInfo.
-		int numBytes = mfi.getStackSize();
-		if (hasFP(mf))
+		int numBytes = 0;
+		TargetData td = tm.getTargetData();
+
+		int stackGrowth = (tm.getFrameInfo().getStackGrowDirection()
+				== TargetFrameInfo.StackDirection.StackGrowUp ?
+				td.getPointerSize() : -td.getPointerSize());
+
+		if (hasFP)
 		{
 			// get the offset of the stack slot for the %ebp register.
 			// Note that: this offset is away from ESP.
-			int ebpOffset = mfi.getObjectOffset(mfi.getObjectIndexEnd()-1) + 4;
-			if (numBytes != 0)
+			int frameSize = stackSize - slotSize;
+			if (needsStackRealignment(mf))
+				frameSize = (frameSize + maxAlign - 1) / maxAlign * maxAlign;
+			numBytes = frameSize - x86FI.getCalleeSavedFrameSize();
+			mfi.setOffsetAdjustment(-numBytes);
+
+			buildMI(mbb, mbbi, tii.get(is64Bit ? PUSH64r : PUSH32r))
+					.addReg(framePtr, RegState.Kill);
+			buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rr : MOV32rr), framePtr).addReg(stackPtr);
+
+			// mark the frameptr as live-in in every block excepts the entry.
+			for (int i = 1, e = mf.getNumBlockIDs(); i < e; i++)
 			{
-				// adjust stack pointer: %esp -= numBytes.
-				mi = buildMI(tii.get(is64Bit? SUB64ri32 : SUB32ri), stackPtr).
-						addReg(stackPtr, RegState.Kill).
-						addImm(numBytes).
-						getMInstr();
-				// The EFLAGS implicit def is dead.
-				mi.getOperand(3).setIsDead(true);
-				mbb.insert(mbbi++, mi);
+				mf.getBasicBlocks().get(i).addLiveIn(framePtr);
+
+				// realign stack.
+				if (needsStackRealignment(mf))
+				{
+					mi = buildMI(mbb, mbbi,
+							tii.get(is64Bit ? AND64ri32 : AND32ri), stackPtr).addReg(stackPtr).addImm(-maxAlign).getMInstr();
+					mi.getOperand(3).setIsDead(true);
+				}
 			}
-
-			// Save %ebp into the properly stack slot.
-			// mov %ebp, ebpOffset+numBytes(%esp).
-			buildMI(mbb, mbbi++, tii.get(is64Bit ? PUSH64r : PUSH32r)).
-					addReg(framePtr, RegState.Kill).getMInstr();
-
-			// Update %ebp with new base value.
-
-			buildMI(mbb, mbbi++, tii.get(is64Bit? MOV64rr:MOV32rr), framePtr).
-				addReg(stackPtr).getMInstr();
 		}
 		else
 		{
-			// When we have no frame pointer, we reserve argument space for call sites
-			// in the function immediately on entry to the current function.  This
-			// eliminates the need for add/sub ESP brackets around call sites.
-			// numBytes += mfi.getMaxCallFrameSize();
+			numBytes = stackSize - x86FI.getCalleeSavedFrameSize();
+		}
 
-			// round the getNumOfSubLoop to a multiple of the alignment.
-			int align = mf.getTarget().getFrameInfo().getStackAlignment();
-			numBytes = Util.roundUp(numBytes, align);
+		boolean pushedRegs = false;
+		int stackOffset = 2 * stackGrowth;
+		while (mbbi < mbb.size() && mbb.getInstAt(mbbi).getOpcode() == PUSH32r
+				|| mbb.getInstAt(mbbi).getOpcode() == PUSH64r)
+		{
+			pushedRegs = true;
+			++mbbi;
+		}
+		if (numBytes >= 4096 && subtarget.isTargetCygMing())
+		{
+			boolean isEAXLive = false;
+			for (Pair<Integer, Integer> intPair : mf.getMachineRegisterInfo().getLiveIns())
+			{
+				int reg = intPair.first;
+				isEAXLive = reg == EAX || reg == AX || reg == AH || reg == AL;
+			}
+			if (!isEAXLive)
+			{
+				buildMI(mbb, mbbi, tii.get(MOV32ri), EAX).addImm(numBytes);
+				buildMI(mbb, mbbi, tii.get(CALLpcrel32))
+						.addExternalSymbol("_alloca", 0, 0);
+			}
+			else
+			{
+				buildMI(mbb, mbbi, tii.get(PUSH32r)).addReg(EAX, RegState.Kill);
 
-			// update the frame info to pretend that this is part of stack.
-			mfi.setStackSize(numBytes);
+				buildMI(mbb, mbbi, tii.get(MOV32ri), EAX).addImm(numBytes - 4);
+				buildMI(mbb, mbbi, tii.get(CALLpcrel32))
+						.addExternalSymbol("_alloca", 0, 0);
+
+				mi = addRegOffset(buildMI(tii.get(MOV32rm), EAX), stackPtr,
+						false, numBytes - 4).getMInstr();
+				mbb.insert(mbbi, mi);
+			}
+		}
+		else if (numBytes != 0)
+		{
+			OutParamWrapper<Integer> x = new OutParamWrapper<>(mbbi);
+			numBytes -= mergeSPUpdates(mbb, x, stackPtr, true);
+			mbbi = x.get();
+			x = new OutParamWrapper<>(numBytes);
+			mergeSPUpdatesDown(mbb, new OutParamWrapper<>(mbbi), stackPtr, x);
+			numBytes = x.get();
 
 			if (numBytes != 0)
-			{
-				// adjust stack pointer: %esp -= numbetes.
-				int opc = numBytes < 128 ?
-						is64Bit ? SUB64ri8 : SUB32ri8 :
-						is64Bit ? SUB64ri32 : SUB32ri;
-				mi = buildMI(mbb, mbbi++, tii.get(opc), stackPtr).
-						addReg(stackPtr, RegState.Kill).
-						addImm(numBytes).getMInstr();
-				mi.getOperand(3).setIsDead(true);
-			}
+				emitSPUpdate(mbb, mbbi, stackPtr, -numBytes, is64Bit, tii);
+		}
+	}
+
+	private int mergeSPUpdates(
+			MachineBasicBlock mbb,
+			OutParamWrapper<Integer> mbbi,
+			int stackPtr,
+			boolean doMergeWithPrevious)
+	{
+		if ((doMergeWithPrevious && mbbi.get() == 0) ||
+				(!doMergeWithPrevious && mbbi.get() == mbb.size()))
+		{
+			return 0;
+		}
+
+		int prev = doMergeWithPrevious ? mbbi.get()-1 : mbbi.get();
+		int next = doMergeWithPrevious ? -1 : mbbi.get()+1;
+		int opc = mbb.getInstAt(prev).getOpcode();
+		int offset = 0;
+		if ((opc== ADD64ri32 || opc == ADD64ri8 ||
+				opc == ADD32ri || opc == ADD32ri8) &&
+				mbb.getInstAt(prev).getOperand(0).getReg() == stackPtr)
+		{
+			offset += mbb.getInstAt(prev).getOperand(2).getImm();
+			mbb.remove(prev);
+			if (!doMergeWithPrevious)
+				mbbi.set(next);
+		}
+		else if ((opc == SUB64ri32 || opc == SUB64ri8 ||
+		opc == SUB32ri || opc == SUB32ri8) && mbb.getInstAt(prev).getOperand(0)
+				.getReg() == stackPtr)
+
+		{
+			offset -= mbb.getInstAt(prev).getOperand(2).getImm();
+			mbb.remove(prev);
+			if (!doMergeWithPrevious)
+				mbbi.set(next);
+		}
+		return offset;
+	}
+
+	private void mergeSPUpdatesDown(
+			MachineBasicBlock mbb,
+			OutParamWrapper<Integer> mbbi,
+			int stackPtr,
+			OutParamWrapper<Integer> numBytes)
+	{
+		return;
+	}
+
+	private void emitSPUpdate(MachineBasicBlock mbb,
+			int mbbi,
+			int stackPtr, int numBytes, boolean is64Bit,
+			TargetInstrInfo tii)
+	{
+		boolean isSub = numBytes < 0;
+		long offset = isSub ? -numBytes : numBytes;
+		int opc = isSub
+				? ((offset < 128) ?
+			(is64Bit ? SUB64ri8 : SUB32ri8) :
+			(is64Bit ? SUB64ri32 : SUB32ri))
+		: ((offset < 128) ?
+			(is64Bit ? ADD64ri8 : ADD32ri8) :
+			(is64Bit ? ADD64ri32 : ADD32ri));
+		long chunk = (1L << 31) - 1;
+		while (offset != 0)
+		{
+			long thisVal = (offset > chunk) ? chunk : offset;
+			MachineInstr mi = buildMI(mbb, mbbi,
+					tii.get(opc), stackPtr).addReg(stackPtr)
+					.addImm(thisVal).getMInstr();
+			mi.getOperand(3).setIsDead(true);
+			offset -= thisVal;
 		}
 	}
 

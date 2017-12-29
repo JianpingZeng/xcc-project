@@ -352,6 +352,11 @@ public class TargetData implements ImmutablePass
         return pointerMemSize *8;
     }
 
+    public int getPointerSize()
+    {
+    	return pointerMemSize;
+    }
+
 	public long getTypeSizeInBits(Type type)
 	{
         assert type.isSized() :"Can not getTypeInfo for unsized type";
