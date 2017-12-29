@@ -68,6 +68,10 @@ public final class RegisterInfoEmitter extends TableGenBackend
             os.printf("public interface %s \n{" + "\n\tint NoRegister = %d;\n",
                     className, initValue);
             initValue++;
+            registers.sort((r1, r2)->
+            {
+                return r1.getName().compareTo(r2.getName());
+            });
             for (Record reg : registers)
             {
                 os.printf("\tint %s = %d;", reg.getName(), initValue);
@@ -413,6 +417,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         HashMap<Record, ArrayList<Pair<Integer, Record>>> subRegList = new HashMap<>();
 
         ArrayList<CodeGenRegister> regs = target.getRegisters();
+        regs.sort((r1, r2)->r1.getName().compareTo(r2.getName()));
 
         try
         {
@@ -919,9 +924,9 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 + "int callFrameDestroyOpCode)\n\t{\n\t\t", className);
         os.println("super(registerDescriptors, registerClasses,"
                 + "\n\t\t\t\tcallFrameSetupOpCode, callFrameDestroyOpCode,"
-                + "\n\t\t\t\tSubregHashTable,"
-                + "\n\t\t\t\tSuperregHashTable,"
-                + "\n\t\t\t\tAliasesHashTable);");
+                + "\n\t\t\t\tSubregHashTable, SubregHashTableSize,"
+                + "\n\t\t\t\tSuperregHashTable, SuperregHashTableSize,"
+                + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize);");
 
         os.println("\t}");
         os.println("}");

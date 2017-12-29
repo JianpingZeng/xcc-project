@@ -29,6 +29,7 @@ import backend.value.ConstantPointerNull;
 import backend.value.Function;
 import backend.value.Value;
 import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,10 +39,10 @@ import static backend.codegen.MachineOperand.RegState.Define;
 import static backend.codegen.MachineOperand.RegState.Implicit;
 import static backend.support.CallingConv.Fast;
 import static backend.support.CallingConv.X86_FastCall;
+import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86GenInstrNames.*;
-import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 import static backend.target.x86.X86InstrBuilder.addFullAddress;
 
@@ -122,7 +123,6 @@ public class X86CallLowering extends CallLowering
                 CCAssignFn assignFn)
         {
             super(isel, mbb, assignFn);
-            stackPtr = getSubtarget().is64Bit() ? RSP : ESP;
             x86ScalarSSEf32 = getSubtarget().hasSSE1();
             x86ScalarSSEf64 = getSubtarget().hasSSE2();
         }
@@ -151,14 +151,14 @@ public class X86CallLowering extends CallLowering
         @Override
         public void assignValueToStackAddress(
                 ArgInfo argInfo,
-                int locMemOffset,
+                int frameIndex,
                 CCValAssign ca)
         {
             int reg = argInfo.reg;
             Value argVal = argInfo.val;
             X86AddressMode am = new X86AddressMode();
-            am.base.setBase(stackPtr);
-            am.disp = locMemOffset;
+            am.baseType = FrameIndexBase;
+            am.base = new X86AddressMode.FrameIndexBase(frameIndex);
 
             // If this is a really simple value, emit this with the Value* version of
             // X86FastEmitStore.  If it isn't simple, we don't want to do this, as it
@@ -183,6 +183,8 @@ public class X86CallLowering extends CallLowering
         MachineFunction mf = handler.getMBB().getParent();
         Function f = mf.getFunction();
         TargetMachine tm = mf.getTarget();
+        TargetData td = tm.getTargetData();
+
         ArrayList<CCValAssign> argLocs = new ArrayList<>();
         CCState ccInfo = new CCState(f.getCallingConv(), f.isVarArg(), tm, argLocs);
         int numArgs = args.size();
@@ -193,7 +195,6 @@ public class X86CallLowering extends CallLowering
                 return true;
         }
 
-        handler.setStackSize(ccInfo.getNextStackOffset());
         for (int i = 0, j = 0, e = argLocs.size(); i < numArgs; i++, j++)
         {
             assert j < e:"Skipped too many arguments";
@@ -209,8 +210,12 @@ public class X86CallLowering extends CallLowering
             }
             else if (ca.isMemLoc())
             {
-                handler.assignValueToStackAddress(args.get(i),
-                        ca.getLocMemOffset(), ca);
+                int size = ca.getValVT().equals(new EVT(MVT.iPTR))
+                        ? td.getPointerSizeInBits()/8
+                        : Util.roundUp(ca.getValVT().getSizeInBits(), 8)/8;
+
+                int fi = handler.createStackSlot(ca.getLocMemOffset(), size);
+                handler.assignValueToStackAddress(args.get(i), fi, ca);
             }
             else
             {
@@ -221,10 +226,10 @@ public class X86CallLowering extends CallLowering
         return false;
     }
 
-    abstract static class IncomingValueHander extends ValueHandler
+    abstract static class IncomingValueHandler extends ValueHandler
     {
         private MachineFrameInfo mfi;
-        public IncomingValueHander(
+        public IncomingValueHandler(
                 FastISel isel,
                 MachineBasicBlock mbb,
                 CCAssignFn assignFn)
@@ -457,7 +462,7 @@ public class X86CallLowering extends CallLowering
         public abstract void markPhysicalRegUsed(int preg);
     }
 
-    static class CallReturnHandler extends IncomingValueHander
+    static class CallReturnHandler extends IncomingValueHandler
     {
         public CallReturnHandler(FastISel isel,
                 MachineBasicBlock mbb,
@@ -469,11 +474,11 @@ public class X86CallLowering extends CallLowering
         @Override
         public void markPhysicalRegUsed(int preg)
         {
-            mbb.getLastInst().addOperand(MachineOperand.createReg(preg, true, true));
+            //mbb.getLastInst().addOperand(MachineOperand.createReg(preg, true, true));
         }
     }
 
-    static class FormalArgHandler extends IncomingValueHander
+    static class FormalArgHandler extends IncomingValueHandler
     {
         public FormalArgHandler(FastISel isel, MachineBasicBlock mbb,
                 CCAssignFn assignFn)
@@ -515,17 +520,21 @@ public class X86CallLowering extends CallLowering
             return false;
         }
 
-        // Analyze operands of the call, assigning locations to each operand.
-        OutgoingValueHandler handler = new OutgoingValueHandler(getIsel(), mbb, RetCC_X86);
-        if (handleAssignments(orignArgs, handler))
-            return true;
-
         // Issue CALLSEQ_START
         TargetInstrInfo tii = tm.getInstrInfo();
         TargetRegisterInfo tri = tm.getRegisterInfo();
         int adjStackDown = tri.getCallFrameSetupOpcode();
-        MachineInstr setupFrame = buildMI(mbb, tii.get(adjStackDown))
-                .addImm(handler.getStackSize()).getMInstr();
+        MachineInstr setupFrame = buildMI(mbb, tii.get(adjStackDown)).getMInstr();
+
+        // Analyze operands of the call, assigning locations to each operand.
+        OutgoingValueHandler handler = new OutgoingValueHandler(getIsel(), mbb, CC_X86_32_C);
+        if (handleAssignments(orignArgs, handler))
+            return true;
+
+        if (handler.getStackSize() <= 0)
+            setupFrame.removeFromParent();
+        else
+            setupFrame.addOperand(MachineOperand.createImm(handler.getStackSize()));
 
         boolean is64Bit = subtarget.is64Bit();
         int callOpc = callee.isRegister() ? (is64Bit ? CALL64r : CALL32r)

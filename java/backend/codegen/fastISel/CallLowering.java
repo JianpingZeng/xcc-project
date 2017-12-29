@@ -190,10 +190,10 @@ public class CallLowering
         protected TargetLowering tli;
         protected TargetInstrInfo tii;
         protected TargetMachine tm;
-        protected int stackPtr;
         protected TargetSubtarget subtarget;
         protected long stackSize;
         protected FastISel isel;
+        protected MachineFrameInfo mfi;
 
         public ValueHandler(FastISel isel, MachineBasicBlock mbb, CCAssignFn assignFn)
         {
@@ -205,6 +205,7 @@ public class CallLowering
             tli = tm.getTargetLowering();
             tii = tm.getInstrInfo();
             subtarget = tm.getSubtarget();
+            mfi = mbb.getParent().getFrameInfo();
         }
 
         public FastISel getISel()
@@ -221,7 +222,7 @@ public class CallLowering
 
         public abstract void assignValueToStackAddress(
                 ArgInfo argInfo,
-                int locMemOffset,
+                int frameIndex,
                 CCValAssign ca);
 
         public boolean assignArg(int valNo,
@@ -231,6 +232,12 @@ public class CallLowering
                 CCState ccInfo)
         {
             return assignFn.apply(valNo, valVT, locVT, locInfo, argInfo.flags, ccInfo);
+        }
+
+        public int createStackSlot(int locMemOffset, int size)
+        {
+            stackSize += size;
+            return mfi.createStackObject(size, locMemOffset);
         }
 
         public abstract int assignCustomValue(ArgInfo argInfo,
@@ -244,11 +251,6 @@ public class CallLowering
         public MachineBasicBlock getMBB()
         {
             return mbb;
-        }
-
-        public void setStackSize(int stackSize)
-        {
-            this.stackSize = stackSize;
         }
     }
 }

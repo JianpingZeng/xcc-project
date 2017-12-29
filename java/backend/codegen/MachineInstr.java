@@ -646,7 +646,7 @@ public class MachineInstr implements Cloneable
             else if (hasAlias && mo.isDead() &&
                     isPhysicalRegister(reg))
             {
-                if(regInfo.isSubRegister(incomingReg, reg))
+                if(regInfo.isSuperRegister(incomingReg, reg))
                 {
                     return true;
                 }
