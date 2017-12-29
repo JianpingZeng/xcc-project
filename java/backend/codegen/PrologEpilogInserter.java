@@ -1428,34 +1428,6 @@ public class PrologEpilogInserter extends MachineFunctionPass
      */
     private void calculateFrameObjectOffsets(MachineFunction mf)
     {
-        /*
-        TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
-        boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
-
-        assert stackGrowDown :"Only tested on stack down growing machien!";
-
-        MachineFrameInfo mfi = mf.getFrameInfo();
-        int stackAlign = tfi.getStackAlignment();
-        int offset = tfi.getLocalAreaOffset();
-        for (int i = 0, e = mfi.getObjectIndexEnd(); i< e; i++)
-        {
-            offset += mfi.getObjectSize(i);
-
-            int align = mfi.getObjectAlignment(i);
-            assert align <= stackAlign: "Cannot align stack object to higher "
-                + "alignment boundary than the stack itself!";
-
-            // add space padding.
-            offset = Util.roundUp(offset, align);
-            mfi.setObjectOffset(i, offset);
-        }
-
-        // align the final stack pointer offset.
-        offset = Util.roundUp(offset, stackAlign);
-
-        // set the final getNumOfSubLoop of the current function stack frame.
-        mfi.setStackSize(offset-tfi.getLocalAreaOffset());
-        */
         TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
         boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
 

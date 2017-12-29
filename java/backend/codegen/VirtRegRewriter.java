@@ -92,6 +92,8 @@ public abstract class VirtRegRewriter
 
             TargetMachine tm = mf.getTarget();
             MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+            if (mri.getLastVirReg() < FirstVirtualRegister)
+                return false;
 
             // Map the virtual register to it's used or not.
             boolean[] loaded = new boolean[mri.getLastVirReg() - FirstVirtualRegister];
