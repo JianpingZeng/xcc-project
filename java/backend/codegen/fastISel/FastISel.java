@@ -1041,7 +1041,7 @@ public abstract class FastISel extends MachineFunctionPass
             return false;
         }
 
-        int res = ci.getType().isVoidType() ? 0 : getRegForValue(ci);
+        int res = ci.getType().isVoidType() ? 0 : createResultReg(tli.getRegClassFor(tli.getValueType(ci.getType())));
         TIntArrayList args = new TIntArrayList();
         for (int i = 0, e = ci.getNumsOfArgs(); i < e; i++)
             args.add(getRegForValue(ci.argumentAt(i)));
