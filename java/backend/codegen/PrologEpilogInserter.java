@@ -188,7 +188,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
             return;
 
         // A list for keeping track of frame setup/destroy operation.
-        ArrayList<Pair<MachineInstr, Integer>> frameSDOps = new ArrayList<>();
+        ArrayList<MachineInstr> frameSDOps = new ArrayList<>();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             for (int i = 0, e = mbb.size(); i != e; i++)
@@ -202,7 +202,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                     if (size > maxCallFrameSize)
                         maxCallFrameSize = size;
                     hasCalls = true;
-                    frameSDOps.add(Pair.get(mi, i));
+                    frameSDOps.add(mi);
                 }
             }
         }
@@ -211,15 +211,14 @@ public class PrologEpilogInserter extends MachineFunctionPass
         mfi.setHasCalls(hasCalls);
         mfi.setMaxCallFrameSize(maxCallFrameSize);
 
-        for (Pair<MachineInstr, Integer> pair : frameSDOps)
+        for (MachineInstr mi : frameSDOps)
         {
-            MachineInstr mi = pair.first;
             // If call frames are not being included as part of the stack frame,
             // and there is no dynamic allocation(therefore referencing frame
             // slots off sp), leave the psedo ops alone. we'll eliminate them
             // later.
             if (tri.hasReservedCallFrame(mf) || tri.hasFP(mf))
-                tri.eliminateCallFramePseudoInstr(mf, mi.getParent(), pair.second);
+                tri.eliminateCallFramePseudoInstr(mf, mi);
         }
     }
 
@@ -1525,7 +1524,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
         }
 
         //todo if (mfi.getStackProtectorIndex()>0) for StackProtector.
-
+        OutParamWrapper<Long> t1 = new OutParamWrapper<>();
+        OutParamWrapper<Integer> t2 = new OutParamWrapper<>();
         for (int i = 0, e = mfi.getObjectIndexEnd(); i != e; i++)
         {
             if (i >= minCSFrameIndex && i <= maxCSFrameIndex)
@@ -1537,8 +1537,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
                 continue;
             //todo if (mfi.getStackProtectorIndex() == i) continue;
 
-            OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
-            OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+            t1.set(offset);
+            t2.set(maxAlign);
             adjustStackOffset(mfi, i, stackGrowDown, t1, t2);
             offset = t1.get();
             maxAlign = t2.get();
@@ -1549,8 +1549,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
             int sfi = rs.getScavengingFrameIndex();
             if (sfi >= 0)
             {
-                OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
-                OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+                t1.set(offset);
+                t2.set(maxAlign);
                 adjustStackOffset(mfi, sfi, stackGrowDown, t1, t2);
                 offset = t1.get();
                 maxAlign = t2.get();
@@ -1582,7 +1582,9 @@ public class PrologEpilogInserter extends MachineFunctionPass
      * @param offset
      * @param maxAlign
      */
-    private static void adjustStackOffset(MachineFrameInfo mfi, int frameIdx,
+    private static void adjustStackOffset(
+            MachineFrameInfo mfi,
+            int frameIdx,
             boolean stackGrowDown,
             OutParamWrapper<Long> offset,
             OutParamWrapper<Integer> maxAlign)

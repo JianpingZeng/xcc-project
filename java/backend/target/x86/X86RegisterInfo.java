@@ -783,10 +783,12 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 * instructions.
 	 */
 	@Override
-	public void eliminateCallFramePseudoInstr(MachineFunction mf,
-			MachineBasicBlock mbb, int idx)
+	public void eliminateCallFramePseudoInstr(
+			MachineFunction mf,
+			MachineInstr old)
 	{
-		MachineInstr newOne = null, old = mbb.getInstAt(idx);
+		MachineInstr newOne = null;
+		MachineBasicBlock mbb = old.getParent();
 		if (!hasReservedCallFrame(mf))
 		{
 			// If we have a frame pointer, turn the adjcallstackup instruction into a
@@ -828,7 +830,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 					newOne.getOperand(3).setIsDead(true);
 
 					// Replace the pseudo instruction with a new instruction.
-					mbb.insert(idx, newOne);
+					mbb.insert(old, newOne);
 				}
 			}
 		}
@@ -849,11 +851,12 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 				// The EFLAGS implicit def is dead.
 				newOne.getOperand(3).setIsDead(true);
-				mbb.insert(idx, newOne);
+				mbb.insert(old, newOne);
 			}
 		}
-		mbb.erase(idx);
+		old.removeFromParent();
 	}
+
 	/**
 	 * This method is called immediately before the specified functions frame
 	 * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
