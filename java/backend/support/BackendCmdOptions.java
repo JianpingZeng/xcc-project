@@ -21,6 +21,8 @@ import backend.passManaging.PMDataManager;
 import tools.commandline.*;
 
 import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
+import static backend.codegen.AsmWriterFlavorTy.ATT;
+import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
 import static tools.commandline.Desc.desc;
@@ -105,6 +107,18 @@ public class BackendCmdOptions
                     new OptionHiddenApplicator(Hidden),
                     desc("Disable rearrangement on machine function(default to true)"),
                     init(true));
+    /**
+     * A command line option to control what assembly dialect would be emitedd.
+     */
+    public static final Opt<AsmWriterFlavorTy> AsmWriterFlavor =
+            new Opt<AsmWriterFlavorTy>(new Parser<>(),
+                    optionName("x86-asm-syntax"),
+                    init(ATT),
+                    new ValueClass<>(
+                            new ValueClass.Entry<>(ATT, "att", "Emit AT&T-style assembly"),
+                            new ValueClass.Entry<>(Intel, "intel", "Emit Intel-style assembly"))
+                    );
+
     /**
      * Choose an appropriate register allocator according command line option.
      * @return

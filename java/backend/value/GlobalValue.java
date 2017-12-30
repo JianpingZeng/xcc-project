@@ -71,6 +71,7 @@ public abstract class GlobalValue extends Constant
         super(ty, valueType);
         this.name = name;
         linkageType = linkage;
+        section = "";
     }
 
     public boolean isDeclaration()

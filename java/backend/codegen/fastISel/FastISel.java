@@ -367,7 +367,7 @@ public abstract class FastISel extends MachineFunctionPass
         {
             mf.getEntryBlock().addLiveIn(entry.first);
         }
-        funcInfo.clear();
+        phiNodeToUpdate.clear();
         return false;
     }
 

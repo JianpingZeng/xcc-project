@@ -348,7 +348,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         os.printf("%s:", curFnName);
         if (verboseAsm)
         {
-            os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
+            os.padToColumn(tai.getCommentColumn());
             os.printf("%s ", tai.getCommentString());
             writeAsOperand(os, f, false, f.getParent());
         }
@@ -502,7 +502,8 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
 
                 boolean isThreadLocal = gvar != null && gvar.isThreadLocal();
                 String name = mangler.getValueName(gv);
-                name = decorateName(name, gv);
+                if (subtarget.isTargetCygMing())
+                    name = decorateName(name, gv);
 
                 if (!isCallOp && !isMemOp)
                     os.print("$");
@@ -511,6 +512,8 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                     os.print("(");
                     needCloseParen = true;
                 }
+                else
+                    os.print(name);
 
                 printOffset(mo.getOffset());
 

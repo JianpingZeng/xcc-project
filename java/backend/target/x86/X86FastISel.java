@@ -584,6 +584,14 @@ public class X86FastISel extends FastISel
             opcode = ce.getOpcode();
         }
 
+        if (val.getType() instanceof PointerType)
+        {
+            PointerType pty = (PointerType)val.getType();
+            // Fast isel doesn't support special address space.
+            if (pty.getAddressSpace() > 255)
+                return false;
+        }
+
     Unsupported:
         if (u != null)
         {

@@ -137,6 +137,41 @@ public final class FormattedOutputStream implements AutoCloseable
         printf("%n");
     }
 
+    public void println(int val)
+    {
+        printf("%d%n", val);
+    }
+
+    public void println(short val)
+    {
+        printf("%d%n", val);
+    }
+
+    public void println(char val)
+    {
+        printf("%c%n", val);
+    }
+
+    public void println(long val)
+    {
+        printf("%d%n", val);
+    }
+
+    public void println(byte val)
+    {
+        printf("%d%n", val);
+    }
+
+    public void println(float val)
+    {
+        printf("%f%n", val);
+    }
+
+    public void println(double val)
+    {
+        printf("%f%n", val);
+    }
+
     public void println(String string)
     {
         printf("%s%n", string);

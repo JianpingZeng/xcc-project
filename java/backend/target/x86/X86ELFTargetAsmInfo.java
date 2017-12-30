@@ -16,17 +16,9 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.AsmWriterFlavorTy;
+import backend.support.BackendCmdOptions;
 import backend.support.Triple;
 import backend.target.TargetAsmInfo;
-import tools.commandline.Initializer;
-import tools.commandline.Opt;
-import tools.commandline.Parser;
-import tools.commandline.ValueClass;
-
-import static backend.codegen.AsmWriterFlavorTy.ATT;
-import static backend.codegen.AsmWriterFlavorTy.Intel;
-import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Xlous.zeng
@@ -34,18 +26,6 @@ import static tools.commandline.OptionNameApplicator.optionName;
  */
 public class X86ELFTargetAsmInfo extends TargetAsmInfo
 {
-    /**
-     * A command line option to control what assembly dialect would be emitedd.
-     */
-    public static final Opt<AsmWriterFlavorTy> AsmWriterFlavor =
-            new Opt<AsmWriterFlavorTy>(new Parser<>(),
-                    optionName("x86-asm-syntax"),
-                    Initializer.init(ATT),
-                    new ValueClass<>(
-                            new ValueClass.Entry<>(ATT, "att", "Emit AT&T-style assembly"),
-                            new ValueClass.Entry<>(Intel, "intel", "Emit Intel-style assembly"))
-                    );
-
     private static String[] x86_asm_table = {
             "{si}", "S",
             "{di}", "D",
@@ -62,7 +42,7 @@ public class X86ELFTargetAsmInfo extends TargetAsmInfo
     public X86ELFTargetAsmInfo(Triple theTriple)
     {
         AsmTransCBE = x86_asm_table;
-        AssemblerDialect = AsmWriterFlavor.value;
+        AssemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
 
         PrivateGlobalPrefix = ".L";
         WeakRefDirective = "\t.weak\t";
