@@ -29,7 +29,6 @@ import backend.value.ConstantPointerNull;
 import backend.value.Function;
 import backend.value.Value;
 import tools.OutParamWrapper;
-import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +38,6 @@ import static backend.codegen.MachineOperand.RegState.Define;
 import static backend.codegen.MachineOperand.RegState.Implicit;
 import static backend.support.CallingConv.Fast;
 import static backend.support.CallingConv.X86_FastCall;
-import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86GenInstrNames.*;
@@ -113,9 +111,7 @@ public class X86CallLowering extends CallLowering
 
     static class OutgoingValueHandler extends ValueHandler
     {
-        private boolean x86ScalarSSEf32;
-        private boolean x86ScalarSSEf64;
-        private TargetData td;
+        private int stackPtr;
 
         public OutgoingValueHandler(
                 X86FastISel isel,
@@ -123,8 +119,7 @@ public class X86CallLowering extends CallLowering
                 CCAssignFn assignFn)
         {
             super(isel, mbb, assignFn);
-            x86ScalarSSEf32 = getSubtarget().hasSSE1();
-            x86ScalarSSEf64 = getSubtarget().hasSSE2();
+            stackPtr = isel.stackPtr;
         }
 
         public X86Subtarget getSubtarget()
@@ -151,14 +146,14 @@ public class X86CallLowering extends CallLowering
         @Override
         public void assignValueToStackAddress(
                 ArgInfo argInfo,
-                int frameIndex,
+                int locMemOffset,
                 CCValAssign ca)
         {
             int reg = argInfo.reg;
             Value argVal = argInfo.val;
             X86AddressMode am = new X86AddressMode();
-            am.baseType = FrameIndexBase;
-            am.base = new X86AddressMode.FrameIndexBase(frameIndex);
+            am.base = new X86AddressMode.FrameIndexBase(stackPtr);
+            am.disp = locMemOffset;
 
             // If this is a really simple value, emit this with the Value* version of
             // X86FastEmitStore.  If it isn't simple, we don't want to do this, as it
@@ -183,7 +178,6 @@ public class X86CallLowering extends CallLowering
         MachineFunction mf = handler.getMBB().getParent();
         Function f = mf.getFunction();
         TargetMachine tm = mf.getTarget();
-        TargetData td = tm.getTargetData();
 
         ArrayList<CCValAssign> argLocs = new ArrayList<>();
         CCState ccInfo = new CCState(f.getCallingConv(), f.isVarArg(), tm, argLocs);
@@ -195,6 +189,7 @@ public class X86CallLowering extends CallLowering
                 return true;
         }
 
+        handler.setStackSize(ccInfo.getNextStackOffset());
         for (int i = 0, j = 0, e = argLocs.size(); i < numArgs; i++, j++)
         {
             assert j < e:"Skipped too many arguments";
@@ -210,12 +205,7 @@ public class X86CallLowering extends CallLowering
             }
             else if (ca.isMemLoc())
             {
-                int size = ca.getValVT().equals(new EVT(MVT.iPTR))
-                        ? td.getPointerSizeInBits()/8
-                        : Util.roundUp(ca.getValVT().getSizeInBits(), 8)/8;
-
-                int fi = handler.createStackSlot(ca.getLocMemOffset(), size);
-                handler.assignValueToStackAddress(args.get(i), fi, ca);
+                handler.assignValueToStackAddress(args.get(i), ca.getLocMemOffset(), ca);
             }
             else
             {
@@ -566,8 +556,11 @@ public class X86CallLowering extends CallLowering
         //setupFrame.addOperand(MachineOperand.createImm(handler.getStackSize()));
 
         // Issue CALLSEQ_END
-        int adjStackUp = tri.getCallFrameDestroyOpcode();
-        buildMI(mbb, tii.get(adjStackUp)).addImm(handler.getStackSize()).addImm(0);
+        if (handler.getStackSize() > 0)
+        {
+            int adjStackUp = tri.getCallFrameDestroyOpcode();
+            buildMI(mbb, tii.get(adjStackUp)).addImm(handler.getStackSize()).addImm(0);
+        }
         return false;
     }
 }

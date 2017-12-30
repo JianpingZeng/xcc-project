@@ -1045,7 +1045,13 @@ public abstract class FastISel extends MachineFunctionPass
         int res = ci.getType().isVoidType() ? 0 : createResultReg(tli.getRegClassFor(tli.getValueType(ci.getType())));
         TIntArrayList args = new TIntArrayList();
         for (int i = 0, e = ci.getNumsOfArgs(); i < e; i++)
-            args.add(getRegForValue(ci.argumentAt(i)));
+        {
+            // ConstantInt argument is not needed to reside in virt register.
+            if (ci.argumentAt(i) instanceof ConstantInt)
+                args.add(0);
+            else
+                args.add(getRegForValue(ci.argumentAt(i)));
+        }
 
         mf.getFrameInfo().setHasCalls(true);
         return cli.lowerCall(mbb, ci, res, args, getRegForValue(ci.getCalledValue()));

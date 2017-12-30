@@ -222,7 +222,7 @@ public class CallLowering
 
         public abstract void assignValueToStackAddress(
                 ArgInfo argInfo,
-                int frameIndex,
+                int locMemOffset,
                 CCValAssign ca);
 
         public boolean assignArg(int valNo,
@@ -234,18 +234,17 @@ public class CallLowering
             return assignFn.apply(valNo, valVT, locVT, locInfo, argInfo.flags, ccInfo);
         }
 
-        public int createStackSlot(int locMemOffset, int size)
-        {
-            stackSize += size;
-            return mfi.createFixedObject(size, locMemOffset);
-        }
-
         public abstract int assignCustomValue(ArgInfo argInfo,
                 List<CCValAssign> ccValAssigns);
 
         public long getStackSize()
         {
             return stackSize;
+        }
+
+        public void setStackSize(int stackSize)
+        {
+            this.stackSize = stackSize;
         }
 
         public MachineBasicBlock getMBB()

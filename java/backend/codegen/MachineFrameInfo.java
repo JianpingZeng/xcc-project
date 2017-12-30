@@ -284,9 +284,9 @@ public class MachineFrameInfo
         return maxCallFrameSize;
     }
 
-    public void setMaxCallFrameSize(long S)
+    public void setMaxCallFrameSize(long size)
     {
-        maxCallFrameSize = S;
+        maxCallFrameSize = size;
     }
 
     /**

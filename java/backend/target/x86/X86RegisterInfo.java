@@ -498,12 +498,14 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				&& !mfi.hasVarSizedObjects();
 	}
 
-	@Override public boolean hasReservedCallFrame(MachineFunction mf)
+	@Override
+    public boolean hasReservedCallFrame(MachineFunction mf)
 	{
 		return !mf.getFrameInfo().hasVarSizedObjects();
 	}
 
-	@Override public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
+	@Override
+    public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
 			OutParamWrapper<Integer> frameIdx)
 	{
 		if (reg == framePtr && hasFP(mf))
@@ -545,7 +547,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		int maxAlign = Math
 				.max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
 
-		mfi.setMaxCallFrameSize(maxAlign);
+		mfi.setMaxAlignment(maxAlign);
 
 		if (hasFP(mf))
 		{
@@ -569,12 +571,14 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		return is64Bit ? RIP : EIP;
 	}
 
-	@Override public int getFrameRegister(MachineFunction mf)
+	@Override
+    public int getFrameRegister(MachineFunction mf)
 	{
 		return hasFP(mf) ? framePtr : stackPtr;
 	}
 
-	@Override public int getFrameIndexOffset(MachineFunction mf, int fi)
+	@Override
+    public int getFrameIndexOffset(MachineFunction mf, int fi)
 	{
 		TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 		MachineFrameInfo mfi = mf.getFrameInfo();
@@ -839,7 +843,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 * need only be implemented if using call frame setup/destroy pseudo
 	 * instructions.
 	 */
-	@Override public void eliminateCallFramePseudoInstr(MachineFunction mf,
+	@Override
+    public void eliminateCallFramePseudoInstr(MachineFunction mf,
 			MachineInstr old)
 	{
 		MachineInstr newOne = null;
@@ -931,15 +936,16 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		}
 	}
 
-	@Override public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi,
+	@Override
+    public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi,
 			RegScavenger rs)
 	{
 		int i = 0;
 		while (!mi.getOperand(i).isFrameIndex())
 		{
 			i++;
-			assert i < mi
-					.getNumOperands() : "Instr have not frame index operand!";
+			assert i < mi.getNumOperands()
+                    : "Instr have not frame index operand!";
 		}
 
 		int frameIndex = mi.getOperand(i).getIndex();
@@ -1027,7 +1033,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 *
 	 * @param mf
 	 */
-	@Override public void emitPrologue(MachineFunction mf)
+	@Override
+    public void emitPrologue(MachineFunction mf)
 	{
 		MachineBasicBlock mbb = mf.getEntryBlock();
 		Function fn = mf.getFunction();
@@ -1046,7 +1053,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			x86FI.setCalleeSavedFrameSize(x86FI.getCalleeSavedFrameSize() - tailCallReturnAddrDelta);
 		}
 
-		if (is64Bit && !fn.hasFnAttr(Attribute.NoRedZone) && !needsStackRealignment(mf) && !mfi.hasVarSizedObjects()
+		if (is64Bit && !fn.hasFnAttr(Attribute.NoRedZone) &&
+                !needsStackRealignment(mf) && !mfi.hasVarSizedObjects()
 				&& !mfi.hasCalls() && !subtarget.isTargetWin64())
 		{
 			int minSize = x86FI.getCalleeSavedFrameSize();
@@ -1099,7 +1107,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				if (needsStackRealignment(mf))
 				{
 					mi = buildMI(mbb, mbbi,
-							tii.get(is64Bit ? AND64ri32 : AND32ri), stackPtr).addReg(stackPtr).addImm(-maxAlign).getMInstr();
+							tii.get(is64Bit ? AND64ri32 : AND32ri), stackPtr)
+							.addReg(stackPtr).addImm(-maxAlign).getMInstr();
 					mi.getOperand(3).setIsDead(true);
 				}
 			}
@@ -1202,7 +1211,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			int stackPtr,
 			OutParamWrapper<Integer> numBytes)
 	{
-		return;
 	}
 
 	private void emitSPUpdate(MachineBasicBlock mbb,

@@ -22,10 +22,12 @@ import backend.analysis.MachineLoopInfo;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.support.Attribute;
 import backend.support.BackendCmdOptions;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.target.*;
+import backend.value.Function;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -127,6 +129,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
+        Function f = mf.getFunction();
         TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
         rs = tri.requireRegisterScavenging(mf) ? new RegScavenger() : null;
 
@@ -150,7 +153,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
         placeCSRSpillsAndRestores(mf);
 
         // Add the code to save and restore the callee saved registers
-        insertCSRSpillsAndRestores(mf);
+        if (!f.hasFnAttr(Attribute.Naked))
+            insertCSRSpillsAndRestores(mf);
 
         // ALlow target machine to make final modification to the function
         // before the frame layout is finalized.
@@ -160,7 +164,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
         calculateFrameObjectOffsets(mf);
 
         // add prolog and epilog code to the function.
-        insertPrologEpilogCode(mf);
+        if (!f.hasFnAttr(Attribute.Naked))
+            insertPrologEpilogCode(mf);
 
         // Replace all MO_FrameIndex operands with physical register
         // references and actual offsets.
@@ -1593,7 +1598,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            if (!mbb.isEmpty() && mbb.getInsts().getLast().getDesc().isReturn())
+            if (!mbb.isEmpty() && mbb.getLastInst().getDesc().isReturn())
                 regInfo.emitEpilogue(mf, mbb);
         }
     }

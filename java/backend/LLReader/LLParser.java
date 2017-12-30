@@ -905,7 +905,7 @@ public final class LLParser
 
             fnArgs.get(idx++).setName(ai.name);
         }
-        assert idx == fnArgs.size();
+
         f.set(fn);
 
         return false;
@@ -1437,6 +1437,19 @@ public final class LLParser
         return false;
     }
 
+    /**
+     * Parse the argument list in function declaration of LLVM IR as follows.
+     * <pre>
+     * ArgList::= 'empty'
+     *            '...'
+     *            'ArgListEnt[,...]'
+     * ArgListEnt::= 'Arg' (', Arg')*
+     * </pre>
+     * @param argList
+     * @param isVarArg
+     * @param inType
+     * @return
+     */
     private boolean parseArgumentList(ArrayList<ArgInfo> argList,
             OutParamWrapper<Boolean> isVarArg, boolean inType)
     {
