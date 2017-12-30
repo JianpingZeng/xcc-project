@@ -26,4 +26,19 @@ public abstract class TargetSubtarget
     {
         return 0;
     }
+
+    public boolean isTargetDarwin()
+    {
+        return false;
+    }
+
+    public boolean isTargetELF()
+    {
+        return false;
+    }
+
+    public boolean isTargetCygMing()
+    {
+        return false;
+    }
 }

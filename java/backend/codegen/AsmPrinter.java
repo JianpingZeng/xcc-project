@@ -38,6 +38,7 @@ import java.util.Objects;
 
 import static backend.MC.MCStreamer.createAsmStreamer;
 import static backend.support.AssemblyWriter.writeAsOperand;
+import static backend.target.TargetMachine.RelocModel.Static;
 import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;
 import static backend.value.GlobalValue.VisibilityTypes.ProtectedVisibility;
 
@@ -94,6 +95,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     protected MCContext outContext;
 
     protected MCStreamer outStreamer;
+    private TargetSubtarget subtarget;
 
     public enum BoolOrDefault
     {
@@ -109,6 +111,8 @@ public abstract class AsmPrinter extends MachineFunctionPass
         this.tm = tm;
         this.tai = tai;
         this.tri = tm.getRegisterInfo();
+        subtarget = tm.getSubtarget();
+
         outContext = new MCContext();
         outStreamer = createAsmStreamer(outContext, this.os, tai, this);
         switch (BackendCmdOptions.AsmVerbose.value)
@@ -131,6 +135,163 @@ public abstract class AsmPrinter extends MachineFunctionPass
         if (verboseAsm)
             au.addRequired(MachineLoop.class);
         super.getAnalysisUsage(au);
+    }
+
+    @Override
+    public boolean doInitialization(Module m)
+    {
+        mangler = new NameMangler(m);
+
+        if (tai.doesAllowQuotesInName())
+            mangler.setUseQuotes(true);
+        if (tai.hasSingleParameterDotFile())
+        {
+            os.printf("\t.file\t\"%s\"%n", m.getModuleIdentifier());
+        }
+        return false;
+    }
+
+    @Override
+    public boolean doFinalization(Module m)
+    {
+        // Emit global variables.
+        for (GlobalVariable gv : m.getGlobalVariableList())
+        {
+            printModuleLevelGV(gv);
+        }
+        // TODO Emit debug information
+
+        // If the target wants to know about weak references, print them all.
+        if (tai.getWeakDefDirective() != null)
+        {
+            return false;
+        }
+        if (tai.getSetDirective() != null)
+            os.println();
+
+        os.flush();
+        return false;
+    }
+
+    private static void printUnmangledNameSafely(Value v, PrintStream os)
+    {
+        String name = v.getName();
+        for (int i = 0,e = name.length(); i != e; i++)
+        {
+            if (TextUtils.isPrintable(name.charAt(i)))
+                os.print(name.charAt(0));
+        }
+    }
+
+    public void printModuleLevelGV(GlobalVariable gv)
+    {
+        TargetData td = tm.getTargetData();
+
+        // External global require no code
+        if (!gv.hasInitializer())
+            return;
+
+        // Check to see if this is a special global used by LLVM, if so, emit it.
+        if (emitSpecialLLVMGlobal(gv))
+        {
+            if (subtarget.isTargetDarwin() && tm.getRelocationModel() == Static)
+            {
+                if (gv.getName().equals("llvm.global_ctors"))
+                    os.printf(".reference .constructors_used\n");
+                else if (gv.getName().equals("llvm.global_dtors"))
+                    os.printf(".reference .destructors_used\n");
+            }
+            return;
+        }
+
+        String name = mangler.getValueName(gv);
+        Constant c = gv.getInitializer();
+        Type ty = c.getType();
+        long size = td.getTypePaddedSize(ty);
+        long align = td.getPrefTypeAlignment(ty);
+
+        printVisibility(name, gv.getVisibility());
+        if (subtarget.isTargetELF())
+            os.printf("\t.type\t%s,@object\n", name);
+
+        switchSection(tai.getSectionForGlobal(gv));
+
+        if (c.isNullValue() && !gv.hasSection())
+        {
+            if (gv.hasExternalLinkage())
+            {
+                String directive = tai.getZeroFillDirective();
+                if (directive != null)
+                {
+                    os.printf("\t.global %s\n", name);
+                    os.printf("%s__DATA, __common, %s, %d, %d\n", directive,
+                            name, size, align);
+                    return;
+                }
+            }
+
+            if (!gv.isThreadLocal() && (gv.hasLocalLinkage()))
+            {
+                if (size == 0)
+                    size = 1;
+
+                if (tai.getLCOMMDirective() != null)
+                {
+                    if (gv.hasLocalLinkage())
+                    {
+                        os.printf("%s%s,%d", tai.getLCOMMDirective(), name, size);
+                        if (subtarget.isTargetDarwin())
+                            os.printf(",%d", align);
+                    }
+                    else
+                    {
+                        os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
+                        if (tai.getCOMMDirectiveTakesAlignment())
+                            os.printf(",%d", tai.getAlignmentIsInBytes() ?
+                                    (1 << align) :
+                                    align);
+                    }
+                }
+                else
+                {
+                    if (!subtarget.isTargetCygMing())
+                    {
+                        if (gv.hasLocalLinkage())
+                            os.printf("\t.local\t%s\n", name);
+                    }
+
+                    os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
+                    if (tai.getCOMMDirectiveTakesAlignment())
+                        os.printf(",%d", tai.getAlignmentIsInBytes() ?
+                                (1 << align) :
+                                align);
+                }
+                os.printf("\t\t%s ", tai.getCommentString());
+                printUnmangledNameSafely(gv, os);
+                os.println();
+                return;
+            }
+        }
+
+        switch (gv.getLinkage())
+        {
+            case ExternalLinkage:
+                os.printf("\t.globl%s\n", name);
+            case PrivateLinkage:
+            case InteralLinkage:
+                break;
+            default:
+                assert false : "Unknown linkage type!";
+        }
+
+        emitAlignment((int) align, gv);
+        os.printf("%s:\t\t\t%s ", name, tai.getCommentString());
+        printUnmangledNameSafely(gv, os);
+        os.println();
+        if (tai.hasDotTypeDotSizeDirective())
+            os.printf("\t.size\t%s, %d\n", name, size);
+
+        emitGlobalConstant(c);
     }
 
     public static boolean isScale(MachineOperand mo)

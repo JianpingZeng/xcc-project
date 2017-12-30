@@ -239,4 +239,9 @@ public class NameMangler
     {
         return null;
     }
+
+    public void setUseQuotes(boolean val)
+    {
+        useQuotes = val;
+    }
 }
