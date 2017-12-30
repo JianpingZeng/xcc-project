@@ -262,7 +262,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
         boolean alignIsInByte = tai.isAlignIsInByte();
         if (alignIsInByte) numBits = 1 << numBits;
-        os.println(tai.getAlignDirective() + numBits);
+        os.println(tai.getAlignDirective() + (1<<numBits));
     }
 
     /**
