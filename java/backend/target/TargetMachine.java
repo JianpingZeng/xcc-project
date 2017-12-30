@@ -68,6 +68,8 @@ public abstract class TargetMachine
 	protected TargetMachine(Target target)
     {
         theTarget = target;
+        codeModel = CodeModel.Default;
+        relocModel = RelocModel.Default;
     }
 
     public Target getTarget()

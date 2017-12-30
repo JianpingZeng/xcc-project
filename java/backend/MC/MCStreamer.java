@@ -17,9 +17,8 @@ package backend.MC;
  */
 
 import backend.codegen.AsmPrinter;
+import backend.support.FormattedOutputStream;
 import backend.target.TargetAsmInfo;
-
-import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -29,7 +28,7 @@ public class MCStreamer
 {
     public static MCStreamer createAsmStreamer(
             MCContext context,
-            PrintStream os,
+            FormattedOutputStream os,
             TargetAsmInfo tai,
             AsmPrinter printer)
     {

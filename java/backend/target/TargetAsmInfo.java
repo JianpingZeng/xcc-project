@@ -35,17 +35,17 @@ public class TargetAsmInfo
 {
     /// TextSection - Section directive for standard text.
     ///
-    protected Section TextSection;           // Defaults to ".text".
+    protected Section TextSection = new Section(".text");           // Defaults to ".text".
 
     /// DataSection - Section directive for standard data.
     ///
-    protected Section DataSection;           // Defaults to ".data".
+    protected Section DataSection = new Section(".data");           // Defaults to ".data".
 
     /// BSSSection - Section directive for uninitialized data.  Null if this
     /// target doesn't support a BSS section.
     ///
-    protected String BSSSection;               // Default to ".bss".
-    protected Section BSSSection_;
+    protected String BSSSection = ".bss";               // Default to ".bss".
+    protected Section BSSSection_ = new Section(".bss");
 
     /// ReadOnlySection - This is the directive that is emitted to switch to a
     /// read-only section for constant data (e.g. data declared const,
@@ -69,12 +69,12 @@ public class TargetAsmInfo
 
     /// TLSDataSection - Section directive for Thread Local data.
     ///
-    protected Section TLSDataSection;        // Defaults to ".tdata".
+    protected Section TLSDataSection = new Section(".tdata");        // Defaults to ".tdata".
 
     /// TLSBSSSection - Section directive for Thread Local uninitialized data.
     /// Null if this target doesn't support a BSS section.
     ///
-    protected Section TLSBSSSection;         // Defaults to ".tbss".
+    protected Section TLSBSSSection = new Section(".tbss");         // Defaults to ".tbss".
     //===------------------------------------------------------------------===//
     // Properties to be set by the target writer, used to configure asm printer.
     //
@@ -217,7 +217,7 @@ public class TargetAsmInfo
      *
      * Default to "\t.section .rodata\n".
      */
-    protected String constantPoolSection;
+    protected String constantPoolSection = ".section .rodata";
 
     protected String textSectionStartSuffix;
 
@@ -416,6 +416,8 @@ public class TargetAsmInfo
         Data16bitsDirective = "\t.short\t";
         Data32bitsDirective = "\t.long\t";
         Data64bitsDirective = "\t.quad\t";
+        AlignmentIsInBytes = true;
+        switchToSectionDirective = "\t.section\t";
         SunStyleELFSectionSwitchSyntax = false;
         UsesELFSectionDirectiveForBSS = false;
         AlignDirective = "\t.align\t";
@@ -491,7 +493,7 @@ public class TargetAsmInfo
     //
     public String getData8bitsDirective(int AS)
     {
-        return AS != 0? Data8bitsDirective : getDataASDirective(8, AS);
+        return AS == 0? Data8bitsDirective : getDataASDirective(8, AS);
     }
 
     public String getData16bitsDirective()
@@ -501,7 +503,7 @@ public class TargetAsmInfo
 
     public String getData16bitsDirective(int AS)
     {
-        return AS != 0? Data16bitsDirective : getDataASDirective(16, AS);
+        return AS == 0? Data16bitsDirective : getDataASDirective(16, AS);
     }
 
     public String getData32bitsDirective()
@@ -511,7 +513,7 @@ public class TargetAsmInfo
 
     public String getData32bitsDirective(int AS)
     {
-        return AS != 0? Data32bitsDirective : getDataASDirective(32, AS);
+        return AS == 0? Data32bitsDirective : getDataASDirective(32, AS);
     }
 
     public String getData64bitsDirective()
@@ -521,7 +523,7 @@ public class TargetAsmInfo
 
     public String getData64bitsDirective(int AS)
     {
-        return AS != 0? Data64bitsDirective : getDataASDirective(64, AS);
+        return AS == 0? Data64bitsDirective : getDataASDirective(64, AS);
     }
 
     public boolean usesSunStyleELFSectionSwitchSyntax()

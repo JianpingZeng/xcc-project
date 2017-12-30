@@ -28,51 +28,11 @@ define i32 @max(i32 %a, i32 %b) nounwind {
   ret i32 %10
 }
 
-define i32 @sum(i32 %len) nounwind {
-  %1 = alloca i32                                 ; <i32*> [#uses=2]
-  %len.addr = alloca i32                          ; <i32*> [#uses=2]
-  %res = alloca i32, align 4                      ; <i32*> [#uses=4]
-  %i = alloca i32, align 4                        ; <i32*> [#uses=5]
-  store i32 %len, i32* %len.addr
-  store i32 0, i32* %res
-  store i32 0, i32* %i
-  br label %2
-
-; <label>:2                                       ; preds = %10, %0
-  %3 = load i32* %i                               ; <i32> [#uses=1]
-  %4 = load i32* %len.addr                        ; <i32> [#uses=1]
-  %5 = icmp slt i32 %3, %4                        ; <i1> [#uses=1]
-  br i1 %5, label %6, label %13
-
-; <label>:6                                       ; preds = %2
-  %7 = load i32* %i                               ; <i32> [#uses=1]
-  %8 = load i32* %res                             ; <i32> [#uses=1]
-  %9 = add nsw i32 %8, %7                         ; <i32> [#uses=1]
-  store i32 %9, i32* %res
-  br label %10
-
-; <label>:10                                      ; preds = %6
-  %11 = load i32* %i                              ; <i32> [#uses=1]
-  %12 = add nsw i32 %11, 1                        ; <i32> [#uses=1]
-  store i32 %12, i32* %i
-  br label %2
-
-; <label>:13                                      ; preds = %2
-  %14 = load i32* %res                            ; <i32> [#uses=1]
-  store i32 %14, i32* %1
-  %15 = load i32* %1                              ; <i32> [#uses=1]
-  ret i32 %15
-}
-
 define i32 @main() nounwind {
   %1 = alloca i32                                 ; <i32*> [#uses=3]
-  %a = alloca i32, align 4                        ; <i32*> [#uses=2]
   store i32 0, i32* %1
   %2 = call i32 @max(i32 1, i32 2)                ; <i32> [#uses=1]
-  store i32 %2, i32* %a
-  %3 = load i32* %a                               ; <i32> [#uses=1]
-  %4 = call i32 @sum(i32 %3)                      ; <i32> [#uses=1]
-  store i32 %4, i32* %1
-  %5 = load i32* %1                               ; <i32> [#uses=1]
-  ret i32 %5
+  store i32 %2, i32* %1
+  %3 = load i32* %1                               ; <i32> [#uses=1]
+  ret i32 %3
 }

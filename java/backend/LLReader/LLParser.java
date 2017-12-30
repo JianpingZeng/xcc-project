@@ -551,6 +551,7 @@ public final class LLParser
                 break;
             case kw_global:
                 isConstant.set(false);
+                break;
             default:
                 isConstant.set(false);
                 return tokError("expected 'global' or 'constant'");
@@ -564,10 +565,10 @@ public final class LLParser
             SMLoc nameLoc, LinkageType linkage,
             boolean hasLinkage, VisibilityTypes visibility)
     {
-        OutParamWrapper<Integer> val = new OutParamWrapper<>();
-        OutParamWrapper<Boolean> val2 = new OutParamWrapper<>();
-        OutParamWrapper<Boolean> val3 = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> tmpLoc = new OutParamWrapper<>();
+        OutParamWrapper<Integer> val = new OutParamWrapper<>(0);
+        OutParamWrapper<Boolean> val2 = new OutParamWrapper<>(false);
+        OutParamWrapper<Boolean> val3 = new OutParamWrapper<>(false);
+        OutParamWrapper<SMLoc> tmpLoc = new OutParamWrapper<>(null);
 
         OutParamWrapper<Type> ty = new OutParamWrapper<>();
         if (parseOptionalToken(kw_thread_local, val2)
@@ -576,7 +577,7 @@ public final class LLParser
                 || parseType(ty, tmpLoc, false))
             return true;
 
-        OutParamWrapper<Constant> c = new OutParamWrapper<>();
+        OutParamWrapper<Constant> c = new OutParamWrapper<>(null);
         if (!hasLinkage || (linkage != LinkageType.ExternalLinkage))
         {
             if (parseGlobalValue(ty.get(), c))

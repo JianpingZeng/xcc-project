@@ -22,6 +22,7 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.BackendCmdOptions;
+import backend.support.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.support.NameMangler;
 import backend.target.*;
@@ -32,7 +33,6 @@ import tools.TextUtils;
 import tools.Util;
 
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -70,7 +70,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     /**
      * The output stream on which the assembly code will be emitted.
      */
-    protected PrintStream os;
+    protected FormattedOutputStream os;
     /**
      * The target machine text.
      */
@@ -107,7 +107,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     protected AsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v)
     {
         functionNumber = 0;
-        this.os = new PrintStream(os);
+        this.os = new FormattedOutputStream(os);
         this.tm = tm;
         this.tai = tai;
         this.tri = tm.getRegisterInfo();
@@ -157,7 +157,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         // Emit global variables.
         for (GlobalVariable gv : m.getGlobalVariableList())
         {
-            printModuleLevelGV(gv);
+            printGlobalVariable(gv);
         }
         // TODO Emit debug information
 
@@ -169,21 +169,10 @@ public abstract class AsmPrinter extends MachineFunctionPass
         if (tai.getSetDirective() != null)
             os.println();
 
-        os.flush();
         return false;
     }
 
-    private static void printUnmangledNameSafely(Value v, PrintStream os)
-    {
-        String name = v.getName();
-        for (int i = 0,e = name.length(); i != e; i++)
-        {
-            if (TextUtils.isPrintable(name.charAt(i)))
-                os.print(name.charAt(0));
-        }
-    }
-
-    public void printModuleLevelGV(GlobalVariable gv)
+    public void printGlobalVariable(GlobalVariable gv)
     {
         TargetData td = tm.getTargetData();
 
@@ -223,7 +212,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 String directive = tai.getZeroFillDirective();
                 if (directive != null)
                 {
-                    os.printf("\t.global %s\n", name);
+                    os.printf("\t.globl %s\n", name);
                     os.printf("%s__DATA, __common, %s, %d, %d\n", directive,
                             name, size, align);
                     return;
@@ -266,8 +255,11 @@ public abstract class AsmPrinter extends MachineFunctionPass
                                 (1 << align) :
                                 align);
                 }
-                os.printf("\t\t%s ", tai.getCommentString());
-                printUnmangledNameSafely(gv, os);
+                if (verboseAsm)
+                {
+                    os.padToColumn(tai.getCommentColumn());
+                    os.printf("%s ", tai.getCommentString());
+                }
                 os.println();
                 return;
             }
@@ -276,7 +268,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         switch (gv.getLinkage())
         {
             case ExternalLinkage:
-                os.printf("\t.globl%s\n", name);
+                os.printf("\t.globl %s\n", name);
             case PrivateLinkage:
             case InteralLinkage:
                 break;
@@ -285,13 +277,18 @@ public abstract class AsmPrinter extends MachineFunctionPass
         }
 
         emitAlignment((int) align, gv);
-        os.printf("%s:\t\t\t%s ", name, tai.getCommentString());
-        printUnmangledNameSafely(gv, os);
+        os.printf("%s:", name);
+        if (verboseAsm)
+        {
+            os.padToColumn(tai.getCommentColumn());
+            os.printf("%s ", tai.getCommentString());
+            writeAsOperand(os, gv, false, gv.getParent());
+        }
         os.println();
+        emitGlobalConstant(c);
+
         if (tai.hasDotTypeDotSizeDirective())
             os.printf("\t.size\t%s, %d\n", name, size);
-
-        emitGlobalConstant(c);
     }
 
     public static boolean isScale(MachineOperand mo)
@@ -391,7 +388,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         Util.shouldNotReachHere("Target does not support EmitMachineConstantPoolValue");
     }
 
-    public static PrintStream writeTypeSymbol(PrintStream os, Type ty, Module m)
+    public static FormattedOutputStream writeTypeSymbol(FormattedOutputStream os, Type ty, Module m)
     {
         os.print(" ");
         if (m != null)
@@ -595,7 +592,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         switch (type.getTypeID())
         {
             case Type.IntegerTyID:
-                int sz = (int)td.getTypeSize(type);
+                int sz = (int)td.getTypeSizeInBits(type);
                 switch(sz)
                 {
                     case 8:
@@ -715,7 +712,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      * @param ca
      * @param lastIndex
      */
-    private void printAsCString(PrintStream os, ConstantArray ca, int lastIndex)
+    private void printAsCString(FormattedOutputStream os, ConstantArray ca, int lastIndex)
     {
         assert ca.isString() :"Array is not string!";
 
@@ -772,6 +769,19 @@ public abstract class AsmPrinter extends MachineFunctionPass
         Util.shouldNotReachHere("Target can not support inline asm");
     }
 
+    private boolean shouldOmitSectionDirective(String name, TargetAsmInfo tai)
+    {
+        switch (name)
+        {
+            case ".text":
+            case ".data":
+                return true;
+            case ".bss":
+                return !tai.usesELFSectionDirectiveForBSS();
+        }
+        return false;
+    }
+
     public void switchSection(Section ns)
     {
         String newSection = ns.getName();
@@ -786,6 +796,12 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
         currentSection = newSection;
         currentSection_ = ns;
+
+        if (shouldOmitSectionDirective(newSection, tai))
+        {
+            os.printf("\t%s%n", currentSection);
+            return;
+        }
 
         if (!currentSection.isEmpty())
         {
@@ -992,13 +1008,15 @@ public abstract class AsmPrinter extends MachineFunctionPass
         // TODO: 17-7-31  emit debug information for each MachineInstr.
     }
 
-    private static PrintStream indent(PrintStream os,
+    private static FormattedOutputStream indent(
+            FormattedOutputStream os,
             int level)
     {
         return indent(os, level, 2);
     }
 
-    private static PrintStream indent(PrintStream os,
+    private static FormattedOutputStream indent(
+            FormattedOutputStream os,
             int level,
             int scale)
     {
@@ -1009,7 +1027,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     }
 
     private static void printChildLoopComment(
-            PrintStream os,
+            FormattedOutputStream os,
             MachineLoopInfo loop,
             TargetAsmInfo tai,
             int functionNumber)
