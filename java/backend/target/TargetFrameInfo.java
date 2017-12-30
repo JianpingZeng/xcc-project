@@ -23,8 +23,22 @@ public class TargetFrameInfo
 		StackGrowDown
 	}
 
+	/**
+	 * The direction of stack growth, downward or upward?.
+	 */
 	private StackDirection direction;
+	/**
+	 * The alignemnt size of function.
+	 */
 	private int stackAlignment;
+	/**
+	 * The offset to the local area is the offset from the stack pointer on
+	 * function entry to the first location where function data (local variables,
+	 * spill locations) can be stored.
+	 * <p>
+	 * It is negative if stack grow downward. Otherwise it is positive.
+	 * </p>
+	 */
 	private int localAreaOffset;
 
 	public TargetFrameInfo(StackDirection dir, int stackAlign, int lao)

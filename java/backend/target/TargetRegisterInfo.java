@@ -455,7 +455,7 @@ public abstract class TargetRegisterInfo
 
 	public boolean hasReservedCallFrame(MachineFunction mf)
 	{
-		return !mf.getFrameInfo().hasVarSizedObjects();
+		return !hasFP(mf);
 	}
 
 	public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
