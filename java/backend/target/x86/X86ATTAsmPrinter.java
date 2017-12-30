@@ -20,7 +20,6 @@ import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
-import backend.support.NameMangler;
 import backend.target.TargetAsmInfo;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
@@ -29,11 +28,9 @@ import backend.type.FunctionType;
 import backend.type.Type;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.TextUtils;
 import tools.Util;
 
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.TreeMap;
 
@@ -97,141 +94,16 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     }
 
     @Override
-    public boolean doInitialization(Module m)
-    {
-        mangler = new NameMangler(m);
-        return super.doInitialization(m);
-    }
-
-    @Override
     public boolean doFinalization(Module m)
     {
-        m.getGlobalVariableList().forEach(this::printModuleLevelGV);
-
+        if (subtarget.isTargetDarwin() || subtarget.isTargetCygMing())
+        {
+            assert false:"Currently, Darwin, Cygin, MinGW not supported";
+        }
         super.doFinalization(m);
         return false;
     }
 
-    private void printModuleLevelGV(GlobalVariable gv)
-    {
-        TargetData td = tm.getTargetData();
-
-        // External global require no code
-        if (!gv.hasInitializer())
-            return;
-
-        // Check to see if this is a special global used by LLVM, if so, emit it.
-        if (emitSpecialLLVMGlobal(gv))
-        {
-            if (subtarget.isTargetDarwin() && tm.getRelocationModel() == Static)
-            {
-                if (gv.getName().equals("llvm.global_ctors"))
-                    os.printf(".reference .constructors_used\n");
-                else if (gv.getName().equals("llvm.global_dtors"))
-                    os.printf(".reference .destructors_used\n");
-            }
-            return;
-        }
-
-        String name = mangler.getValueName(gv);
-        Constant c = gv.getInitializer();
-        Type ty = c.getType();
-        long size = td.getTypePaddedSize(ty);
-        long align = td.getPrefTypeAlignment(ty);
-
-        printVisibility(name, gv.getVisibility());
-        if (subtarget.isTargetELF())
-            os.printf("\t.type\t%s,@object\n", name);
-
-        switchSection(tai.getSectionForGlobal(gv));
-
-        if (c.isNullValue() && !gv.hasSection())
-        {
-            if (gv.hasExternalLinkage())
-            {
-                String directive = tai.getZeroFillDirective();
-                if (directive != null)
-                {
-                    os.printf("\t.global %s\n", name);
-                    os.printf("%s__DATA, __common, %s, %d, %d\n", directive,
-                            name, size, align);
-                    return;
-                }
-            }
-
-            if (!gv.isThreadLocal() && (gv.hasLocalLinkage()))
-            {
-                if (size == 0)
-                    size = 1;
-
-                if (tai.getLCOMMDirective() != null)
-                {
-                    if (gv.hasLocalLinkage())
-                    {
-                        os.printf("%s%s,%d", tai.getLCOMMDirective(), name, size);
-                        if (subtarget.isTargetDarwin())
-                            os.printf(",%d", align);
-                    }
-                    else
-                    {
-                        os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
-                        if (tai.getCOMMDirectiveTakesAlignment())
-                            os.printf(",%d", tai.getAlignmentIsInBytes() ?
-                                    (1 << align) :
-                                    align);
-                    }
-                }
-                else
-                {
-                    if (!subtarget.isTargetCygMing())
-                    {
-                        if (gv.hasLocalLinkage())
-                            os.printf("\t.local\t%s\n", name);
-                    }
-
-                    os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
-                    if (tai.getCOMMDirectiveTakesAlignment())
-                        os.printf(",%d", tai.getAlignmentIsInBytes() ?
-                                (1 << align) :
-                                align);
-                }
-                os.printf("\t\t%s ", tai.getCommentString());
-                printUnmangledNameSafely(gv, os);
-                os.println();
-                return;
-            }
-        }
-
-        switch (gv.getLinkage())
-        {
-            case ExternalLinkage:
-                os.printf("\t.globl%s\n", name);
-            case PrivateLinkage:
-            case InteralLinkage:
-                break;
-            default:
-                assert false : "Unknown linkage type!";
-        }
-
-        emitAlignment((int) align, gv);
-        os.printf("%s:\t\t\t%s ", name, tai.getCommentString());
-        printUnmangledNameSafely(gv, os);
-        os.println();
-        if (tai.hasDotTypeDotSizeDirective())
-            os.printf("\t.size\t%s, %d\n", name, size);
-
-        emitGlobalConstant(c);
-    }
-
-    private static void printUnmangledNameSafely(Value v, PrintStream os)
-    {
-        String name = v.getName();
-        for (int i = 0,e = name.length(); i != e; i++)
-        {
-            if (TextUtils.isPrintable(name.charAt(i)))
-                os.print(name.charAt(0));
-        }
-    }
     public void printi8mem(MachineInstr mi, int opNo)
     {
         printMemReference(mi, opNo);
@@ -456,7 +328,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
             case ExternalLinkage:
                 switchSection(".text", f);
                 emitAlignment(fnAlign, f);
-                os.println("\t.global\t" + curFnName);
+                os.println("\t.globl\t" + curFnName);
                 break;
             default:
                 assert false : "Undefined linkage type!";
