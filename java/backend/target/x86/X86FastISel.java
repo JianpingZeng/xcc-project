@@ -467,8 +467,7 @@ public class X86FastISel extends FastISel
         {
             val = backend.value.Constant.getNullValue(td.getIntPtrType());
         }
-
-        if (val instanceof ConstantInt)
+        else if (val instanceof ConstantInt)
         {
             ConstantInt ci = (ConstantInt)val;
             int opc = 0;
@@ -492,7 +491,8 @@ public class X86FastISel extends FastISel
             }
             if (opc != 0)
             {
-                addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addImm(ci.getSExtValue());
+                addFullAddress(buildMI(mbb, instrInfo.get(opc)), am)
+                        .addImm(ci.getZExtValue());
                 return true;
             }
         }
@@ -507,7 +507,7 @@ public class X86FastISel extends FastISel
     public boolean x86FastEmitStore(EVT vt, int val,
                          X86AddressMode am)
     {
-        int opc = 0;
+        int opc;
         switch (vt.getSimpleVT().simpleVT)
         {
             case MVT.f80:   // unsupported as yet.
@@ -2249,11 +2249,11 @@ public class X86FastISel extends FastISel
         if (vt.get().equals(new EVT(MVT.Other)) || !vt.get().isSimple())
             return false;
 
-        if (vt.get().equals(new EVT(MVT.f64)) && !x86ScalarSSEf64)
-            return false;
+        if (vt.get().equals(new EVT(MVT.f64))/*&& !x86ScalarSSEf64*/)
+            return true;
 
-        if (vt.get().equals(new EVT(MVT.f32)) && !x86ScalarSSEf32)
-            return false;
+        if (vt.get().equals(new EVT(MVT.f32))/* && !x86ScalarSSEf32*/)
+            return true;
 
         // Currently, f80 is not supported.
         if (vt.get().equals(new EVT(MVT.f80)))

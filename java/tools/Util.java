@@ -328,6 +328,55 @@ public class Util
         return countLeadingZeros64(~val);
     }
 
+    private static int[] mod37BitPosition =
+    {
+		    32, 0, 1, 26, 2, 23, 27, 0, 3, 16, 24, 30, 28, 11, 0, 13,
+		    4, 7, 17, 0, 25, 22, 31, 15, 29, 10, 12, 6, 0, 21, 14, 9,
+		    5, 20, 8, 19, 18
+    };
+	public static int countTrailingZeros(int value)
+	{
+		return mod37BitPosition[(-value & value) % 37];
+	}
+
+	public static int countTrailingOnes(int value)
+	{
+		return countTrailingZeros(~value);
+	}
+
+	private static int[] mod67Position =
+	{
+			64, 0, 1, 39, 2, 15, 40, 23, 3, 12, 16, 59, 41, 19, 24, 54,
+			4, 64, 13, 10, 17, 62, 60, 28, 42, 30, 20, 51, 25, 44, 55,
+			47, 5, 32, 65, 38, 14, 22, 11, 58, 18, 53, 63, 9, 61, 27,
+			29, 50, 43, 46, 31, 37, 21, 57, 52, 8, 26, 49, 45, 36, 56,
+			7, 48, 35, 6, 34, 33, 0
+	};
+	public static int countTrailingZeros(long value)
+	{
+		return mod67Position[(int)((-value & value) % 67)];
+	}
+
+	public static int countTrailingOnes(long value)
+	{
+		return countTrailingZeros(~value);
+	}
+
+	public static int countPoplutation(int value)
+	{
+		int v = value - ((value >> 1) & 0x55555555);
+		v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+		return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+	}
+
+	public static int countPopulation(long value)
+	{
+		long v = value - ((value >> 1) & 0x5555555555555555L);
+		v = (v & 0x3333333333333333L) + ((v >> 2) & 0x3333333333333333L);
+		v = (v + (v >> 4)) & 0x0F0F0F0F0F0F0F0FL;
+		return (int)(v * 0x0101010101010101L >> 56);
+	}
+
 	public static void Debug(Object... args)
 	{
 		if(Util.DEBUG)

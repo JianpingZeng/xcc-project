@@ -807,15 +807,16 @@ public final class LLLexer
         if (buffer.getCharAt(curPtr) == 'e' || buffer.getCharAt(curPtr) == 'E')
         {
             ch = buffer.getCharAt(curPtr+1);
-            if (((ch == '-' || ch == '+') && Character.isDigit(buffer.getCharAt(curPtr+2)))
-                    && Character.isDigit(ch))
+            if (((ch == '-' || ch == '+') && curPtr < buffer.length() - 2 &&
+                    Character.isDigit(buffer.getCharAt(curPtr+2))))
             {
                 curPtr += 2;
-                while (Character.isDigit(buffer.getCharAt(curPtr)))
+                while (curPtr < buffer.length() &&
+                        Character.isDigit(buffer.getCharAt(curPtr)))
                     ++curPtr;
             }
         }
-        floatVal = new APFloat(Float.parseFloat(buffer.getSubString(tokStart, curPtr-1)));
+        floatVal = new APFloat(Float.parseFloat(buffer.getSubString(tokStart, curPtr)));
         return APFloat;
     }
 

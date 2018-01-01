@@ -111,11 +111,10 @@ public abstract class LLVMTargetMachine extends TargetMachine
         }
 
         if (addPreRegAlloc(pm, level))
-        {
-            printAndVerify(pm, true,
-                    "# *** IR dump after Pre-Register allocation ***:\n");
             return true;
-        }
+
+        printAndVerify(pm, true,
+                "# *** IR dump after Pre-Register allocation ***:\n");
 
         // Perform register allocation to convert to a concrete x86 representation
         pm.add(BackendCmdOptions.createRegisterAllocator());
@@ -125,9 +124,10 @@ public abstract class LLVMTargetMachine extends TargetMachine
                 "# *** IR dump after Register Allocator ***:\n");
 
         if (addPostRegAlloc(pm, level))
-        {
             return true;
-        }
+
+        printAndVerify(pm, true,
+                "# *** IR dump after Post-Register allocation ***:\n");
 
         pm.add(createPrologEpilogEmitter());
         printAndVerify(pm, false,

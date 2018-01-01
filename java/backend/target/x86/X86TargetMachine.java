@@ -16,6 +16,7 @@ import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.x86.X86ATTAsmPrinter.createX86AsmCodeEmitter;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86FastISel.createX86FastISel;
+import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
@@ -189,7 +190,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level)
 	{
 		// converts virtual register in X86 FP inst into floating point stack slot.
-		// todo 2017-10-14 pm.add(createX86FloatingPointStackitifierPass());
+		pm.add(createX86FPStackifierPass());
 		return false;
 	}
 	

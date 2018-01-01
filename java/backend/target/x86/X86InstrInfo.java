@@ -3226,7 +3226,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case EH_LABEL:
                         break;
                     case IMPLICIT_DEF:
-                    case DECLARE:
+                    case KILL:
                     case DWARF_LOC:
                     case FP_REG_KILL:
                         break;

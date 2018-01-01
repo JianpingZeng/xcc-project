@@ -437,4 +437,13 @@ public class MachineBasicBlock
             os.printf(" %%reg%d", reg);
         }
     }
+
+	public String getName()
+	{
+		BasicBlock bb = getBasicBlock();
+		if (bb != null)
+			return bb.getName();
+
+		return "(null)";
+	}
 }

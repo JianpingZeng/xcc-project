@@ -3115,7 +3115,7 @@ public final class LLParser
                             new OutParamWrapper<>(false));
                 }
                 val.set(ConstantFP.get(id.apFloatVal));
-                if (val.get().getType().equals(ty))
+                if (!val.get().getType().equals(ty))
                     return error(id.loc, "floating point constant does not have"
                     + " type '" + ty.getDescription() + "'");
                 return false;
