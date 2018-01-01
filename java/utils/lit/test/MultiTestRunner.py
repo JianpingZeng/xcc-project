@@ -313,9 +313,9 @@ def main():
     cfg.environment['SYSTEMROOT'] = os.environ.get('SYSTEMROOT','')
 
     if opts.jlang is None:
-        opts.jlang = TestRunner.inferClang(cfg)
+        opts.jlang = TestRunner.inferJlang(cfg)
     if opts.jlangcc is None:
-        opts.jlangcc = TestRunner.inferClangCC(cfg, opts.jlang)
+        opts.jlangcc = TestRunner.inferJlangCC(cfg, opts.jlang)
 
     cfg.jlang = opts.jlang
     cfg.jlangcc = opts.jlangcc
