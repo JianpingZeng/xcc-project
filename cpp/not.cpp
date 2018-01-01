@@ -20,6 +20,7 @@
 #include <sys/wait.h>
 #include <string>
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -54,7 +55,7 @@ static bool findProgramByName(string& progName)
     return false;
 }
 
-static int executeAndWait(char* progName, string &msg)
+static int executeAndWait(const char* progName, string &msg)
 {
     int child = fork();
     int res;
@@ -91,7 +92,7 @@ int main(int argc, char* argv[])
         return 1;
 
     string progName(argv[0]);
-    if (!findProgramByName(progName)
+    if (!findProgramByName(progName))
     {
         cerr<<"Error: Unable to find '" << progName <<"' in PATH\n";
         return 1;
