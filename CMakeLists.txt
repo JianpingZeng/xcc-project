@@ -275,5 +275,9 @@ target_link_libraries(tablegen jvm)
 target_link_libraries(opt jvm)
 target_link_libraries(llc jvm)
 
+add_executable(count ${XCC_SOURCE_DIR}/cpp/count.c)
+add_executable(FileCheck ${XCC_SOURCE_DIR}/cpp/FileCheck.cpp)
+add_executable(not ${XCC_SOURCE_DIR}/cpp/not.cpp)
+
 add_subdirectory(java/test)
 add_subdirectory(java/utils/xcc-lit)
