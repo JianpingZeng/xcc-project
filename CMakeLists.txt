@@ -48,6 +48,9 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "DEBUG")
 endif()
 
+#Set BUILD_MODE for llvm-lit tools.
+set(BUILD_MODE ${CMAKE_BUILD_TYPE})
+
 if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Og -Wall")
 else()
@@ -71,10 +74,21 @@ message(STATUS "JDK_HOME: ${JDK_HOME}")
 message(STATUS "JDK_LIBS: ${JDK_LIBS}")
 message(STATUS "JDK_INCLUDES: ${JDK_INCLUDES}")
 
+set(XCC_TARGETS_TO_BUILD
+    X86)
+set(XCC_TARGET_ARCH "host"
+  CACHE STRING "Set target to use for LLVM JIT or use \"host\" for automatic detection.")
+
+
+# Add path for custom modules
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+
 link_directories(${JDK_LIBS})
 include_directories(${JDK_INCLUDES})
 include_directories(${OUT_INCLUDE_DIR})
-
 #file(MAKE_DIRECTORY ${OUT_JAVADOC})
 
 set(CPUInfoUtility_PATH "${OUT_LIB_DIR}")
@@ -90,6 +104,39 @@ add_custom_target(xcc_config
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
     DEPENDS ${CONFIG_SRC}
     COMMENT "Compiling XCC configuration file...")
+
+
+include(addXCC)
+
+# All options referred to from HandleXCCOptions have to be specified
+# BEFORE this include, otherwise options will not be correctly set on
+# first cmake run
+include(config-ix)
+
+string(REPLACE "Native" ${XCC_NATIVE_ARCH}
+  XCC_TARGETS_TO_BUILD "${XCC_TARGETS_TO_BUILD}")
+list(REMOVE_DUPLICATES XCC_TARGETS_TO_BUILD)
+
+# By default, we target the host, but this can be overridden at CMake
+# invocation time.
+set(XCC_DEFAULT_TARGET_TRIPLE "${XCC_HOST_TRIPLE}" CACHE STRING
+  "Default target for which XCC will generate code." )
+set(TARGET_TRIPLE "${XCC_DEFAULT_TARGET_TRIPLE}")
+
+# Verify that we can find a Python 2 interpreter.  Python 3 is unsupported.
+set(Python_ADDITIONAL_VERSIONS 2.7)
+include(FindPythonInterp)
+if( NOT PYTHONINTERP_FOUND )
+  message(FATAL_ERROR
+"Unable to find Python interpreter, required for builds and testing.
+
+Please install Python or specify the PYTHON_EXECUTABLE CMake variable.")
+endif()
+
+if( ${PYTHON_VERSION_STRING} VERSION_LESS 2.7 )
+  message(FATAL_ERROR "Python 2.7 or newer is required")
+endif()
+
 
 set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
 # Generate tools_CPUInfoUtility.h header file.
@@ -227,3 +274,6 @@ target_link_libraries(jlang-cc jvm)
 target_link_libraries(tablegen jvm)
 target_link_libraries(opt jvm)
 target_link_libraries(llc jvm)
+
+add_subdirectory(java/test)
+add_subdirectory(java/utils/xcc-lit)

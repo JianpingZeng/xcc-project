@@ -276,7 +276,7 @@ def capture(args):
     out,_ = p.communicate()
     return out
 
-def inferClang(cfg):
+def inferJlang(cfg):
     # Determine which jlang to use.
     jlang = os.getenv('JLANG')
     
@@ -294,7 +294,7 @@ def inferClang(cfg):
         
     return jlang
 
-def inferClangCC(cfg, jlang):
+def inferJlangCC(cfg, jlang):
     jlangcc = os.getenv('JLANGCC')
 
     # If the user set jlang in the environment, definitely use that and don't
