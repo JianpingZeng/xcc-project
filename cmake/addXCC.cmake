@@ -47,9 +47,6 @@ function(add_lit_target target comment)
   foreach(param ${ARG_PARAMS})
     list(APPEND LIT_COMMAND --param ${param})
   endforeach()
-  message(STATUS "${LIT_COMMAND}")
-
-    message(STATUS "${ARG_UNPARSED_ARGUMENTS}")
 
   if (ARG_UNPARSED_ARGUMENTS)
     add_custom_target(${target}
