@@ -55,12 +55,12 @@ public class MachineInstr implements Cloneable
 
 	private ArrayList<MachineMemOperand> memOperands = new ArrayList<>();
 
-    /**
-     * The value records the sum of implicitOps and real operands.
-     * Note that it is different with operands.size() which reflect current
-     * number of operands been added into operands list, but totalOperands means
-     * finally number after complete operands add.
-     */
+	/**
+	 * The value records the sum of implicitOps and real operands.
+	 * Note that it is different with operands.size() which reflect current
+	 * number of operands been added into operands list, but totalOperands means
+	 * finally number after complete operands add.
+	 */
 	private int totalOperands;
 
 	/**
@@ -92,7 +92,7 @@ public class MachineInstr implements Cloneable
 		{
 			numImplicitOps += tid.getImplicitUses().length;
 		}
-        totalOperands = numImplicitOps + tid.getNumOperands();
+		totalOperands = numImplicitOps + tid.getNumOperands();
 		operands = new ArrayList<>();
 
 		if (!noImp)
@@ -126,60 +126,62 @@ public class MachineInstr implements Cloneable
 	public void addOperand(MachineOperand mo)
 	{
 		boolean isImpReg = mo.isRegister() && mo.isImplicit();
-		assert isImpReg || !operandsComplete() :
-                "Try to add an operand to a machine instr that is already done!";
+		assert isImpReg
+				|| !operandsComplete() : "Try to add an operand to a machine instr that is already done!";
 
 		MachineRegisterInfo regInfo = getRegInfo();
-        // If we are adding the operand to the end of the list, our job is simpler.
-        // This is true most of the time, so this is a reasonable optimization.
+		// If we are adding the operand to the end of the list, our job is simpler.
+		// This is true most of the time, so this is a reasonable optimization.
 		if (isImpReg || numImplicitOps == 0)
-        {
-            if (operands.isEmpty() || operands.size() < totalOperands)
-            {
-                mo.setParentMI(this);
-                operands.add(mo);
-                if (mo.isRegister())
-                    mo.addRegOperandToRegInfo(regInfo);
-                return;
-            }
-        }
-        // Otherwise, we have to insert a real operand before any implicit ones.
-        int opNo = operands.size() - numImplicitOps;
+		{
+			if (operands.isEmpty() || operands.size() < totalOperands)
+			{
+				mo.setParentMI(this);
+				operands.add(mo);
+				if (mo.isRegister())
+					mo.addRegOperandToRegInfo(regInfo);
+				return;
+			}
+		}
+		// Otherwise, we have to insert a real operand before any implicit ones.
+		int opNo = operands.size() - numImplicitOps;
 		if (regInfo == null)
-        {
-            mo.setParentMI(this);
-            operands.add(opNo, mo);
+		{
+			mo.setParentMI(this);
+			operands.add(opNo, mo);
 
-            if (mo.isRegister())
-                mo.addRegOperandToRegInfo(null);
-        }
-        else if (operands.size() < totalOperands)
-        {
-            for (int i = opNo; i < operands.size(); i++)
-            {
-                assert operands.get(i).isRegister():"Should only be an implicit register!";
-                operands.get(i).removeRegOperandFromRegInfo();
-            }
+			if (mo.isRegister())
+				mo.addRegOperandToRegInfo(null);
+		}
+		else if (operands.size() < totalOperands)
+		{
+			for (int i = opNo; i < operands.size(); i++)
+			{
+				assert operands.get(i)
+						.isRegister() : "Should only be an implicit register!";
+				operands.get(i).removeRegOperandFromRegInfo();
+			}
 
-            operands.add(opNo, mo);
-            mo.setParentMI(this);
-            if (mo.isRegister())
-                mo.addRegOperandToRegInfo(regInfo);
+			operands.add(opNo, mo);
+			mo.setParentMI(this);
+			if (mo.isRegister())
+				mo.addRegOperandToRegInfo(regInfo);
 
-            // re-add all the implicit ops.
-            for (int i = opNo+1; i < operands.size(); i++)
-            {
-                assert operands.get(i).isRegister():"Should only be an implicit register!";
-                operands.get(i).addRegOperandToRegInfo(regInfo);
-            }
-        }
-        else
-        {
-            removeRegOperandsFromUseList();
-            operands.add(opNo, mo);
-            mo.setParentMI(this);
-            addRegOperandsToUseLists(regInfo);
-        }
+			// re-add all the implicit ops.
+			for (int i = opNo + 1; i < operands.size(); i++)
+			{
+				assert operands.get(i)
+						.isRegister() : "Should only be an implicit register!";
+				operands.get(i).addRegOperandToRegInfo(regInfo);
+			}
+		}
+		else
+		{
+			removeRegOperandsFromUseList();
+			operands.add(opNo, mo);
+			mo.setParentMI(this);
+			addRegOperandsToUseLists(regInfo);
+		}
 	}
 
 	public void removeOperand(int opNo)
@@ -279,11 +281,76 @@ public class MachineInstr implements Cloneable
 				|| op == TargetInstrInfo.GC_LABEL;
 	}
 
+	public boolean isGCLabel()
+	{
+		return getOpcode() == TargetInstrInfo.GC_LABEL;
+	}
+	public boolean isEHLabel()
+	{
+		return getOpcode() == TargetInstrInfo.EH_LABEL;
+	}
+
 	public boolean isDebugLabel()
 	{
 		return getOpcode() == TargetInstrInfo.DBG_LABEL;
 	}
 
+	public boolean isPHI()
+	{
+		return getOpcode() == TargetInstrInfo.PHI;
+	}
+
+	public boolean isKill()
+	{
+		return getOpcode() == TargetInstrInfo.KILL;
+	}
+
+	public boolean isImplicitDef()
+	{
+		return getOpcode() == TargetInstrInfo.IMPLICIT_DEF;
+	}
+
+	public boolean isInlineAsm()
+	{
+		return getOpcode() == TargetInstrInfo.INLINEASM;
+	}
+
+	public boolean isInsertSubreg()
+	{
+		return getOpcode() == TargetInstrInfo.INSERT_SUBREG;
+	}
+
+	public boolean isSubregToReg()
+	{
+		return getOpcode() == TargetInstrInfo.SUBREG_TO_REG;
+	}
+
+	public boolean isRegSequence()
+	{
+		return getOpcode() == TargetInstrInfo.REG_SEQUENCE;
+	}
+
+	public boolean isCopy()
+	{
+		return getOpcode() == TargetInstrInfo.COPY;
+	}
+
+	public boolean isFullCopy()
+	{
+		return isCopy() && getOperand(0).getSubReg() == 0 &&
+				getOperand(1).getSubReg() == 0;
+	}
+
+	public boolean isCopyLike()
+	{
+		return isCopy() || isSubregToReg();
+	}
+
+	public boolean isIdentityCopy()
+	{
+		return isCopy() && getOperand(0).getReg() == getOperand(1).getReg()
+				&& getOperand(0).getSubReg() == getOperand(1).getSubReg();
+	}
 	public boolean readsRegister(int reg, TargetRegisterInfo tri)
 	{
 		return findRegisterUseOperandIdx(reg, false, tri) != -1;
