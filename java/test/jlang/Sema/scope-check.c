@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -fblocks -std=gnu99 %s
+// RUN: jlang-cc -fsyntax-only -verify -fblocks -std=gnu99 %s
 
 int test1(int x) {
   goto L;    // expected-error{{illegal goto into protected scope}}

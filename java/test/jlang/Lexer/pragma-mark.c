@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify
+// RUN: jlang-cc %s -fsyntax-only -verify
 
 // Lexer diagnostics shouldn't be included in #pragma mark.
 #pragma mark Mike's world

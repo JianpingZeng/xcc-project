@@ -1,4 +1,4 @@
-// RUN: clang-cc -x assembler-with-cpp -fdollars-in-identifiers=0 -E %s > %t &&
+// RUN: jlang-cc -x assembler-with-cpp -fdollars-in-identifiers=0 -E %s > %t &&
 
 #ifndef __ASSEMBLER__
 #error "__ASSEMBLER__ not defined"
@@ -49,7 +49,7 @@
 #define FOO(name)  name ## $foo
 6: FOO(blarg)
 
-// RUN: clang-cc -x assembler-with-cpp -fdollars-in-identifiers=1 -E %s > %t &&
+// RUN: jlang-cc -x assembler-with-cpp -fdollars-in-identifiers=1 -E %s > %t &&
 // RUN: grep -F "7: blarg$foo" %t &&
 #define FOO(name)  name ## $foo
 7: FOO(blarg)

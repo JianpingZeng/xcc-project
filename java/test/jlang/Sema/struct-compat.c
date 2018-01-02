@@ -1,4 +1,4 @@
-/* RUN: clang-cc %s -fsyntax-only -pedantic -verify
+/* RUN: jlang-cc %s -fsyntax-only -pedantic -verify
  */
 
 extern struct {int a;} x; // expected-note {{previous definition is here}}

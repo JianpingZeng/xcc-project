@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 struct {unsigned x : 2;} x;
 __typeof__((x.x+=1)+1) y;
 __typeof__(x.x<<1) y;

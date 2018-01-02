@@ -1,4 +1,4 @@
-// RUN: clang-cc -Wall -fsyntax-only -verify %s
+// RUN: jlang-cc -Wall -fsyntax-only -verify %s
 
 #include <limits.h>
 

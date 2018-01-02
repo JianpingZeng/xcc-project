@@ -1,4 +1,4 @@
-/* RUN: clang-cc %s -std=c89 -Eonly -verify -pedantic-errors 
+/* RUN: jlang-cc %s -std=c89 -Eonly -verify -pedantic-errors
  */
 
 /* PR3919 */

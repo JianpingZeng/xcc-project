@@ -1,4 +1,4 @@
-// RUN: clang-cc -E -dM %s -o %t &&
+// RUN: jlang-cc -E -dM %s -o %t &&
 
 // Space even without expansion tokens
 // RUN: grep "#define A(x) " %t &&

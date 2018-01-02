@@ -10,12 +10,14 @@ import backend.value.Module;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
+import static backend.codegen.DeadMachineInstructionElim.createDeadMachineInstructionElimPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.x86.X86ATTAsmPrinter.createX86AsmCodeEmitter;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86FastISel.createX86FastISel;
+import static backend.target.x86.X86FloatingPointRegKill.createX86FPRegKillPass;
 import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
@@ -176,6 +178,8 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
 	{
 		pm.add(createX86FastISel(this, level));
+		pm.add(createDeadMachineInstructionElimPass());
+		pm.add(createX86FPRegKillPass());
 		return false;
 	}
 

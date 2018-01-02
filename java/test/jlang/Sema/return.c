@@ -1,6 +1,6 @@
-// RUN: clang-cc %s -fsyntax-only -verify -fblocks
+// RUN: jlang-cc %s -fsyntax-only -verify -fblocks
 
-// clang emits the following warning by default.
+// jlang emits the following warning by default.
 // With GCC, -pedantic, -Wreturn-type or -Wall are required to produce the 
 // following warning.
 int t14() {

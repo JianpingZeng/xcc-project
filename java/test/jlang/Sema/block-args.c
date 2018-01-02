@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify -fblocks
+// RUN: jlang-cc %s -fsyntax-only -verify -fblocks
 
 void take(void*);
 

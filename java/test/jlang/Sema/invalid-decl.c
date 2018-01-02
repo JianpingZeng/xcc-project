@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify
+// RUN: jlang-cc %s -fsyntax-only -verify
 
 void test() {
     char = 4;  // expected-error {{expected identifier}}

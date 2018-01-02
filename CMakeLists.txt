@@ -260,7 +260,7 @@ endmacro()
 
 add_jlang_target(jlang ${JLANG_SRCS})
 add_jlang_target(jlang-cc ${JLANG_CC_SRCS})
-add_jlang_target(tablegen ${TABLEGEN_SRCS})
+add_jlang_target(tblgen ${TABLEGEN_SRCS})
 add_jlang_target(opt ${OPT_SRCS})
 add_jlang_target(llc ${LLC_SRCS})
 
@@ -271,7 +271,7 @@ add_dependencies(${CPUInfoUtility_NAME} GenCpuInfoHeader)
 
 target_link_libraries(jlang jvm)
 target_link_libraries(jlang-cc jvm)
-target_link_libraries(tablegen jvm)
+target_link_libraries(tblgen jvm)
 target_link_libraries(opt jvm)
 target_link_libraries(llc jvm)
 

@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 int f3(y, x, 
        x)          // expected-error {{redefinition of parameter}}

@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify -pedantic
+// RUN: jlang-cc %s -fsyntax-only -verify -pedantic
 // PR1892
 void f(double a[restrict][5]);  // should promote to restrict ptr.
 void f(double (* restrict a)[5]);

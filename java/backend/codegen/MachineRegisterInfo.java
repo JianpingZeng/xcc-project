@@ -418,4 +418,17 @@ public final class MachineRegisterInfo
         }
         return false;
     }
+
+    /**
+     * Determines the virtual register set for the specified Target register class.
+     * @param rc
+     * @return
+     */
+    public TIntArrayList getRegClassVirReg(TargetRegisterClass rc)
+    {
+        if (rc == null || !regClass2VRegMap.contains(rc.getID()))
+            return null;
+
+        return regClass2VRegMap.get(rc.getID());
+    }
 }

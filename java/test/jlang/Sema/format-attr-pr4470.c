@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -Wformat=2 %s
+// RUN: jlang-cc -fsyntax-only -verify -Wformat=2 %s
 
 #include <stdio.h>
 #include <stdarg.h>

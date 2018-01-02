@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify
+// RUN: jlang-cc %s -fsyntax-only -verify
 
 typedef union   {
 	union wait *__uptr;

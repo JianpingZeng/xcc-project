@@ -1,4 +1,4 @@
-// RUN: clang-cc -triple i386-apple-darwin9 -fsyntax-only -verify %s
+// RUN: jlang-cc -triple i386-apple-darwin9 -fsyntax-only -verify %s
 
 // PR3433
 double g1;

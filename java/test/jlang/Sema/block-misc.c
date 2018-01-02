@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s -fblocks
+// RUN: jlang-cc -fsyntax-only -verify %s -fblocks
 void donotwarn();
 
 int (^IFP) ();

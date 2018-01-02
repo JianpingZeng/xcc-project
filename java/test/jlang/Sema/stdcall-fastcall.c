@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 // CC qualifier can be applied only to functions
 int __attribute__((stdcall)) var1; // expected-warning{{'stdcall' attribute only applies to function types}}

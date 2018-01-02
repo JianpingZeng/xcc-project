@@ -1,4 +1,4 @@
-// RUN: clang-cc -verify -fsyntax-only %s
+// RUN: jlang-cc -verify -fsyntax-only %s
 
 static void (*fp0)(void) __attribute__((unused));
 

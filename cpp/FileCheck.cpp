@@ -23,5 +23,3 @@ int main(int argc, char **argv)
     invokeClass((char*)cmdPath.c_str(), "utils/filecheck/FileCheck", argc, argv);
     return 0;
 }
-
-

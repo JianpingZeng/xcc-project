@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s | grep -F 'static int glob = (1 + 1 );'
+// RUN: jlang-cc -E %s | grep -F 'static int glob = (1 + 1 );'
 
 #define R_PAREN ) 
 

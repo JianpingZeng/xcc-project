@@ -1,8 +1,8 @@
-// RUN: clang-cc %s -E | grep 'V);' &&
-// RUN: clang-cc %s -E | grep 'W, 1, 2);' &&
-// RUN: clang-cc %s -E | grep 'X, 1, 2);' &&
-// RUN: clang-cc %s -E | grep 'Y, );' &&
-// RUN: clang-cc %s -E | grep 'Z, );'
+// RUN: jlang-cc %s -E | grep 'V);' &&
+// RUN: jlang-cc %s -E | grep 'W, 1, 2);' &&
+// RUN: jlang-cc %s -E | grep 'X, 1, 2);' &&
+// RUN: jlang-cc %s -E | grep 'Y, );' &&
+// RUN: jlang-cc %s -E | grep 'Z, );'
 
 #define debug(format, ...) format, ## __VA_ARGS__)
 debug(V);

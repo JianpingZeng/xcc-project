@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s -pedantic -std=c99
+// RUN: jlang-cc -fsyntax-only -verify %s -pedantic -std=c99
 
 int __attribute__(()) x;
 

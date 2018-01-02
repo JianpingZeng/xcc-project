@@ -300,6 +300,11 @@ public class MachineInstr implements Cloneable
 		return getOpcode() == TargetInstrInfo.PHI;
 	}
 
+	public boolean isReturn()
+	{
+		return getDesc().isReturn();
+	}
+
 	public boolean isKill()
 	{
 		return getOpcode() == TargetInstrInfo.KILL;

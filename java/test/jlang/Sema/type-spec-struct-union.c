@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -pedantic -verify %s
+// RUN: jlang-cc -fsyntax-only -pedantic -verify %s
 
 /* This test checks the introduction of struct and union types based
    on a type specifier of the form "struct-or-union identifier" when they
@@ -36,7 +36,7 @@ int test_struct_scope_3(struct S4 * s4) { // expected-warning{{declaration of 's
 
 void f(struct S5 { int y; } s5); // expected-warning{{declaration of 'struct S5' will not be visible outside of this function}}
 
-// PR clang/3312
+// PR jlang/3312
 struct S6 {
         enum { BAR } e;
 };

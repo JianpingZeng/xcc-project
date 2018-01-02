@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only %s
+// RUN: jlang-cc -fsyntax-only %s
 
 typedef struct foo T0;
 typedef const struct foo T1;

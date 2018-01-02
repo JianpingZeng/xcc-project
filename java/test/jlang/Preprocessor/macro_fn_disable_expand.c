@@ -1,5 +1,5 @@
-// RUN: clang-cc %s -E | grep 'bar foo (2)' &&
-// RUN: clang-cc %s -E | grep 'm(ABCD)'
+// RUN: jlang-cc %s -E | grep 'bar foo (2)' &&
+// RUN: jlang-cc %s -E | grep 'm(ABCD)'
 
 #define foo(x) bar x
 foo(foo) (2)

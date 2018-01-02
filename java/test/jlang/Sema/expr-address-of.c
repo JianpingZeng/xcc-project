@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -verify -fsyntax-only
+// RUN: jlang-cc %s -verify -fsyntax-only
 struct xx { int bitf:1; };
 
 struct entry { struct xx *whatever; 

@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -verify -Wall
+// RUN: jlang-cc %s -verify -Wall
 
 _Pragma ("GCC system_header")  // expected-warning {{system_header ignored in main file}}
 

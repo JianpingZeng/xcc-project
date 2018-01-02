@@ -1,4 +1,4 @@
-// RUN: clang -fblocks -fsyntax-only -Wunused-parameter %s -Xclang -verify
+// RUN: jlang -fblocks -fsyntax-only -Wunused-parameter %s -Xclang -verify
 
 int f0(int x,
        int y, // expected-warning{{unused}}
