@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s -o %t &&
+// RUN: jlang-cc -E %s -o %t &&
 // This should print as ".. ." to avoid turning into ...
 // RUN: grep -F 'A: . . .' %t &&
 #define y(a) ..a

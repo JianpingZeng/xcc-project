@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s
+// RUN: jlang-cc -E %s
 
 #define test
 #include "pr2086.h"

@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s 2>&1 | not grep "warning\|error"
+// RUN: jlang-cc -E %s 2>&1 | not grep "warning\|error"
 
 #if 0
 

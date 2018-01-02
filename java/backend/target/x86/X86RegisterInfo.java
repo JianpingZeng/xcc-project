@@ -970,7 +970,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		}
 	}
 
-	@Override public BitMap getReservedRegs(MachineFunction mf)
+	@Override
+	public BitMap getReservedRegs(MachineFunction mf)
 	{
 		BitMap reserved = new BitMap(getNumRegs());
 
@@ -1003,7 +1004,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		return reserved;
 	}
 
-	@Override public int getSubReg(int regNo, int index)
+	@Override
+	public int getSubReg(int regNo, int index)
 	{
 		return 0;
 	}

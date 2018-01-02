@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -fmath-errno=0 %s
+// RUN: jlang-cc -fsyntax-only -verify -fmath-errno=0 %s
 
 int foo(int X, int Y);
 

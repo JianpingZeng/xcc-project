@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only %s -verify -fblocks
+// RUN: jlang-cc -fsyntax-only %s -verify -fblocks
 
 int j;
 void foo() {

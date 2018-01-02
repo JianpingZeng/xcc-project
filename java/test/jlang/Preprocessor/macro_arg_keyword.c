@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s | grep xxx-xxx
+// RUN: jlang-cc -E %s | grep xxx-xxx
 
 #define foo(return) return-return
 

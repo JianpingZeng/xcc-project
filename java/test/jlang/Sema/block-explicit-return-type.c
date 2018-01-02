@@ -1,4 +1,4 @@
-// RUN: clang-cc -ObjC -fsyntax-only %s -verify -fblocks
+// RUN: jlang-cc -ObjC -fsyntax-only %s -verify -fblocks
 // FIXME: should compile
 // Test for blocks with explicit return type specified.
 

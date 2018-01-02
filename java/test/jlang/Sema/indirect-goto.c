@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 struct c {int x;};
 int a(struct c x, long long y) {

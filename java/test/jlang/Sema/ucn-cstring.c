@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -verify -fsyntax-only -pedantic
+// RUN: jlang-cc %s -verify -fsyntax-only -pedantic
 
 #include <stdio.h>
 

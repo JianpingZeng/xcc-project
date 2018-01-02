@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -pedantic -trigraphs %s
+// RUN: jlang-cc -fsyntax-only -verify -pedantic -trigraphs %s
 
 int x = 000000080;  // expected-error {{invalid digit}}
 
@@ -25,11 +25,11 @@ t',
 };
 
 
-#pragma clang diagnostic ignored "-Wmultichar"
+#pragma jlang diagnostic ignored "-Wmultichar"
 
 char d = 'df'; // no warning.
 char e = 'abcd';  // still warn: expected-warning {{multi-character character constant}}
 
-#pragma clang diagnostic ignored "-Wfour-char-constants"
+#pragma jlang diagnostic ignored "-Wfour-char-constants"
 
 char f = 'abcd';  // ignored.

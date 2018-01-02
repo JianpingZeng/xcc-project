@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s -triple pic16-unknown-unknown
+// RUN: jlang-cc -fsyntax-only -verify %s -triple pic16-unknown-unknown
 
 // Check that unsigned short promotes to unsigned int on targets where
 // sizeof(unsigned short) == sizeof(unsigned int)

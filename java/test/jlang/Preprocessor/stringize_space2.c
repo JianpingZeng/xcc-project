@@ -1,4 +1,4 @@
-/* RUN: clang-cc -E %s | grep 'a c'
+/* RUN: jlang-cc -E %s | grep 'a c'
  */
 #define t(x) #x
 t(a

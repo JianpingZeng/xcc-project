@@ -1,3 +1,3 @@
-// RUN: clang-cc -E %s
+// RUN: jlang-cc -E %s
 
 #include <limits.h>

@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 typedef const int x; // expected-note {{previous definition is here}}
 extern x a;

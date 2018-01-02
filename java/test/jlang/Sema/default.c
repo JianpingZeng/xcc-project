@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 void f5 (int z) { 
   if (z) 

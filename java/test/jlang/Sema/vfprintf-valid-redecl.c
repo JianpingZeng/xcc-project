@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -pedantic -verify
+// RUN: jlang-cc %s -fsyntax-only -pedantic -verify
 // PR4290
 
 // The following declaration is compatible with vfprintf, so we shouldn't

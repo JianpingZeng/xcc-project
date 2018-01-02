@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -verify -fsyntax-only -fblocks
+// RUN: jlang-cc %s -verify -fsyntax-only -fblocks
 
 #include <stdarg.h>
 

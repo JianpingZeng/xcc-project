@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s | grep bark
+// RUN: jlang-cc -E %s | grep bark
 
 #if 0
 blah

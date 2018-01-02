@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -fsyntax-only -verify -fblocks
+// RUN: jlang-cc %s -fsyntax-only -verify -fblocks
 
 #include <stdio.h>
 void _Block_byref_release(void*src){}

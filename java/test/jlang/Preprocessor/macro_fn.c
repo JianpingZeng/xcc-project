@@ -1,4 +1,4 @@
-/* RUN: clang-cc %s -Eonly -std=c89 -pedantic -verify
+/* RUN: jlang-cc %s -Eonly -std=c89 -pedantic -verify
 */
 /* PR3937 */
 #define zero() 0

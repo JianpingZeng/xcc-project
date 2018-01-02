@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 struct X { // expected-note{{previous definition is here}}
   struct X { } x; // expected-error{{nested redefinition of 'X'}}
 }; 

@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only %s
+// RUN: jlang-cc -fsyntax-only %s
 unsigned char *foo = "texto\
 que continua\
 e continua";

@@ -1,4 +1,4 @@
-// RUN: clang-cc -verify -fsyntax-only %s
+// RUN: jlang-cc -verify -fsyntax-only %s
 
 static void (*fp0)(void) __attribute__((noreturn));
 
@@ -18,7 +18,7 @@ void f3() {
   return;  // expected-error {{function 'f3' declared 'noreturn' should not return}}
 }
 
-#pragma clang diagnostic warning "-Winvalid-noreturn"
+#pragma jlang diagnostic warning "-Winvalid-noreturn"
 
 void f4() __attribute__((noreturn));
 void f4() {

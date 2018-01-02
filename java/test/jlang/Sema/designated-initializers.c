@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -triple x86_64-unknown-unknown %s
+// RUN: jlang-cc -fsyntax-only -verify -triple x86_64-unknown-unknown %s
 
 int complete_array_from_init[] = { 1, 2, [10] = 5, 1, 2, [5] = 2, 6 };
 
@@ -114,7 +114,7 @@ struct disklabel_ops disklabel64_ops = {
   .labelsize = sizeof(struct disklabel_ops)
 };
 
-// PR clang/3378
+// PR jlang/3378
 int bitwidth[] = { [(long long int)1] = 5, [(short int)2] = 2 };
 int a[]= { [sizeof(int)] = 0 };
 int a2[]= { [0 ... sizeof(int)] = 0 };

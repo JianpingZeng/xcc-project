@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -pedantic -verify %s
+// RUN: jlang-cc -fsyntax-only -pedantic -verify %s
 
 int test['\\' == 92 ? 1 : -1];
 int test['\"' == 34 ? 1 : -1];

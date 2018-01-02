@@ -1,4 +1,4 @@
-// RUN: clang-cc -E %s | grep 'FUNC (3 +1);'
+// RUN: jlang-cc -E %s | grep 'FUNC (3 +1);'
 
 #define F(a) a 
 #define FUNC(a) (a+1) 

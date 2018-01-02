@@ -1,4 +1,4 @@
-// RUN: clang-cc %s -verify -fsyntax-only
+// RUN: jlang-cc %s -verify -fsyntax-only
 
 typedef int int32_t;
 typedef unsigned char Boolean;

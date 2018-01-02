@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -Wformat-nonliteral %s
+// RUN: jlang-cc -fsyntax-only -verify -Wformat-nonliteral %s
 
 // Define this to get vasprintf on Linux
 #define _GNU_SOURCE

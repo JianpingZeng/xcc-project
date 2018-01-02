@@ -1,4 +1,4 @@
-// RUN: clang -fsyntax-only %s 
+// RUN: jlang -fsyntax-only %s
 // rdar://6757323
 // foo \
 

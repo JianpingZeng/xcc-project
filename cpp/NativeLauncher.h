@@ -36,7 +36,7 @@ JNIEnv* createVM(char* cmdPath);
  * Call the specified main method in the main class, like utils.tablegen.TableGen
  * with specified commands line arguments.
  */
-void invokeClass(char* cmdPath, char* mainClassName, int argc, char** argv);
+void invokeClass(char* cmdPath, const char* mainClassName, int argc, char** argv);
 
 /**
  * Obtains the absolute path to the native launcher.

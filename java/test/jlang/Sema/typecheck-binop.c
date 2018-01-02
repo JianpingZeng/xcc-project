@@ -1,4 +1,4 @@
-/* RUN: clang-cc %s -fsyntax-only -pedantic -verify
+/* RUN: jlang-cc %s -fsyntax-only -pedantic -verify
  */
 struct incomplete; // expected-note{{forward declaration of 'struct incomplete'}}
 

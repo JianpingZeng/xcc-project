@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only %s -verify
+// RUN: jlang-cc -fsyntax-only %s -verify
 
 struct S {
  int one;

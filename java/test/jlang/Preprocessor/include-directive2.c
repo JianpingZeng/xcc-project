@@ -1,4 +1,4 @@
-// RUN: clang-cc -Eonly -verify %s 
+// RUN: jlang-cc -Eonly -verify %s
 #  define HEADER <float.h>
 
 #  include HEADER

@@ -1,5 +1,5 @@
-// RUN: clang-cc %s -Eonly -Werror=undef -verify &&
-// RUN: clang-cc %s -Eonly -Werror-undef -verify
+// RUN: jlang-cc %s -Eonly -Werror=undef -verify &&
+// RUN: jlang-cc %s -Eonly -Werror-undef -verify
 
 extern int x;
 

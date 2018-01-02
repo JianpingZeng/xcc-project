@@ -1,4 +1,4 @@
-// RUN: clang -fsyntax-only -Wno-deprecated-declarations -verify %s
+// RUN: jlang -fsyntax-only -Wno-deprecated-declarations -verify %s
 extern void OldFunction() __attribute__((deprecated));
 
 int main (int argc, const char * argv[]) {

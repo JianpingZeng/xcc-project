@@ -6,10 +6,10 @@ int main()
      */
     #if defined(__clang__)
     # define __unreachable_ok_push \
-             _Pragma("clang diagnostic push") \
-             _Pragma("clang diagnostic ignored \"-Wunreachable-code\"")
+             _Pragma("jlang diagnostic push") \
+             _Pragma("jlang diagnostic ignored \"-Wunreachable-code\"")
     # define __unreachable_ok_pop \
-             _Pragma("clang diagnostic pop")
+             _Pragma("jlang diagnostic pop")
     #elif defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
     # define __unreachable_ok_push \
              _Pragma("GCC diagnostic push") \

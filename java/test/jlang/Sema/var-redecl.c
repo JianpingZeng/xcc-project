@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 int outer1; // expected-note{{previous definition is here}}
 extern int outer2; // expected-note{{previous definition is here}}

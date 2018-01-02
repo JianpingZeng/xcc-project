@@ -1,4 +1,4 @@
-// RUN: clang-cc -fsyntax-only -verify -pedantic %s
+// RUN: jlang-cc -fsyntax-only -verify -pedantic %s
 // PR4287
 
 #include <stdarg.h>
