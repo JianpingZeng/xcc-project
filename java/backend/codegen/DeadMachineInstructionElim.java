@@ -75,11 +75,10 @@ public class DeadMachineInstructionElim extends MachineFunctionPass
         tii = tm.getInstrInfo();
         mri = mf.getMachineRegisterInfo();
 
-        livePhysReg = new BitMap();
-
         // First, view all non-allocatable registers as live
         BitMap noAllocatableSet = tri.getAllocatableSet(mf);
 
+        livePhysReg = new BitMap(noAllocatableSet.length());
         // walk through all of basic blocks from bottom to top to compute
         // live register set for making decision about what mi should be
         // removed.

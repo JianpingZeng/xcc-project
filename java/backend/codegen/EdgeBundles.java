@@ -69,6 +69,9 @@ public class EdgeBundles extends MachineFunctionPass
             }
         }
         blocks = new TIntArrayList[getNumBundles()];
+        for (int i = 0, e; i < getNumBundles(); i++)
+            blocks[i] = new TIntArrayList();
+
         for (int i = 0, e = mf.getNumBlockIDs(); i < e; i++)
         {
             int b0 = getBundles(i, false);

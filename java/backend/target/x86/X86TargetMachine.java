@@ -10,7 +10,6 @@ import backend.value.Module;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-import static backend.codegen.DeadMachineInstructionElim.createDeadMachineInstructionElimPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
@@ -178,7 +177,8 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
 	{
 		pm.add(createX86FastISel(this, level));
-		pm.add(createDeadMachineInstructionElimPass());
+		// FIXME dead mi elim pass eliminates used instr. 2018/1/6
+		//pm.add(createDeadMachineInstructionElimPass());
 		pm.add(createX86FPRegKillPass());
 		return false;
 	}
