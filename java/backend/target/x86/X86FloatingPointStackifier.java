@@ -21,6 +21,7 @@ import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
 import gnu.trove.iterator.TIntIterator;
@@ -28,6 +29,7 @@ import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.support.ErrorHandling.llvmReportError;
@@ -94,6 +96,11 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
     }
 
     private ArrayList<LiveBundle> liveBundles;
+
+    public X86FloatingPointStackifier()
+    {
+        liveBundles = new ArrayList<>();
+    }
 
     private void setupBlockStack()
     {
@@ -803,8 +810,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         int opcode = lookup(instTable, mi.getOpcode());
         assert opcode != -1 :"Unknown TwoArgFP pseudo instruction!";
         int notTOS = (tos == op0) ? op1:op0;
-        mbb.remove(itr);
-        ++itr;
+        mi.removeFromParent();
         buildMI(mbb, itr, tii.get(opcode)).addReg(getSTReg(notTOS));
 
         if (killsOp0 && killsOp1 && op0 != op1)
@@ -817,7 +823,6 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         assert updateSlot < stackTop && dest < 7;
         stack[updateSlot] = dest;
         regMap[dest] = updateSlot;
-        mbb.eraseFromParent();
         return itr;
     }
 
@@ -1205,7 +1210,34 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         if (!fpIsUsed)
             return false;
 
-        return false;
+        edgeBundles = (EdgeBundles) getAnalysisToUpDate(EdgeBundles.class);
+        tii = mf.getTarget().getInstrInfo();
+
+        bundleCFG(mf);
+
+        stackTop = 0;
+
+        boolean changed = false;
+        // Process the function's machine basic block in depth first order.
+        ArrayList<MachineBasicBlock> processed = DepthFirstOrder.dfs(mf.getEntryBlock());
+        for (MachineBasicBlock mbb : processed)
+        {
+            changed |= processBasicBlock(mf, mbb);
+        }
+
+        // Process any unreachable basic block.
+        if (processed.size() != mf.getNumBlockIDs())
+        {
+            HashSet<MachineBasicBlock> set = new HashSet<>();
+            set.addAll(processed);
+            for (MachineBasicBlock mbb : mf.getBasicBlocks())
+            {
+                if (!set.contains(mbb))
+                    changed |= processBasicBlock(mf, mbb);
+            }
+        }
+        liveBundles.clear();
+        return changed;
     }
 
     @Override
