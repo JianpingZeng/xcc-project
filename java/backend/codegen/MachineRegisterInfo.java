@@ -427,7 +427,7 @@ public final class MachineRegisterInfo
     public TIntArrayList getRegClassVirReg(TargetRegisterClass rc)
     {
         if (rc == null || !regClass2VRegMap.contains(rc.getID()))
-            return null;
+            return new TIntArrayList();
 
         return regClass2VRegMap.get(rc.getID());
     }

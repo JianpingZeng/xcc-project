@@ -551,7 +551,7 @@ public final class LLLexer
 
     private static boolean isHexDigit(char ch)
     {
-        return (ch >= '0' && ch <='0') || (ch >= 'a' && ch < 'f') || (ch >='A' && ch <= 'F');
+        return (ch >= '0' && ch <='9') || (ch >= 'a' && ch < 'f') || (ch >='A' && ch <= 'F');
     }
 
     private static String unEscapeLexed(String str)
@@ -778,6 +778,7 @@ public final class LLLexer
         {
             if (buffer.getCharAt(tokStart) == '0' && buffer.getCharAt(tokStart+1) == 'x')
             {
+                ++curPtr;   // skip the 'x' after '0'.
                 return lex0x();
             }
             int len = curPtr - tokStart;
@@ -818,6 +819,31 @@ public final class LLLexer
         }
         floatVal = new APFloat(Float.parseFloat(buffer.getSubString(tokStart, curPtr)));
         return APFloat;
+    }
+
+    private long hexToInt(String str)
+    {
+        long result = 0;
+        for (int i = 0, e = str.length(); i < e; i++)
+        {
+            long oldResult = result;
+            char ch = str.charAt(i);
+            result *= 16;
+            if (ch >= '0' && ch <='9')
+                result += ch - '0';
+            else if (ch >= 'a' && ch <= 'f')
+                result += ch - 'a' + 10;
+            else if (ch >= 'A' && ch <= 'F')
+                result += ch - 'A' + 10;
+            else
+            {
+                error("illegal hex number!");
+                return 0;
+            }
+            if(oldResult > result)
+                error("constant bigger than 64 bits detected!");
+        }
+        return result;
     }
 
     /**
@@ -873,6 +899,7 @@ public final class LLLexer
             if (!isHexDigit((char)ch))
             {
                 // done!
+                --curPtr;   // backward one character.
                 break;
             }
         }
@@ -882,7 +909,8 @@ public final class LLLexer
         switch (kind)
         {
             case 'J':
-                floatVal = new APFloat(Float.parseFloat(buffer.getSubString(tokStart+2, curPtr)));
+                long val = hexToInt(buffer.getSubString(tokStart+2, curPtr));
+                floatVal = new APFloat(Util.bitsToDouble(val));
                 break;
             case 'K':
                 fp80HexFPToIntPair(buffer.getSubString(tokStart+3, curPtr), pair);

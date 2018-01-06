@@ -3459,9 +3459,9 @@ public class APInt implements Cloneable
         n = shiftCount / 64;
         mask = (long) 1 << (shiftCount % 64);
 
-        tcAssign(srhs, rhs, parts);
+        tcAssign(rhs, srhs, parts);
         tcShiftLeft(srhs, parts, shiftCount);
-        tcAssign(remainder, lhs, parts);
+        tcAssign(lhs, remainder, parts);
         tcSet(lhs, 0, parts);
 
   /* Loop, subtracting SRHS if REMAINDER is greater and adding that to

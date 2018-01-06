@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.support.CallingConv.Fast;
 import static backend.support.CallingConv.X86_FastCall;
+import static backend.support.ErrorHandling.llvmReportError;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
@@ -493,6 +494,32 @@ public class X86FastISel extends FastISel
             {
                 addFullAddress(buildMI(mbb, instrInfo.get(opc)), am)
                         .addImm(ci.getZExtValue());
+                return true;
+            }
+        }
+        else if (val instanceof ConstantFP)
+        {
+            ConstantFP fp = (ConstantFP)val;
+            long zval = fp.getValueAPF().bitcastToAPInt().getZExtValue();
+            long sval = fp.getValueAPF().bitcastToAPInt().getSExtValue();
+            int opc = 0;
+            switch (vt.getSimpleVT().simpleVT)
+            {
+                case MVT.f32:
+                    opc = MOV32mi;
+                    break;
+                case MVT.f64:
+                    if (zval == sval)
+                        opc = MOV64mi32;
+                    break;
+                default:
+                    llvmReportError("Can not isel on float instr");
+                    return false;
+            }
+            if (opc != 0)
+            {
+                addFullAddress(buildMI(mbb, instrInfo.get(opc)), am)
+                        .addImm(zval);
                 return true;
             }
         }

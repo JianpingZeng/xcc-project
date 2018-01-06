@@ -608,7 +608,7 @@ public class APFloat implements Cloneable
 
             sign = true;
             copy = new long[srcCount];
-            APInt.tcAssign(copy, src, srcCount);
+            APInt.tcAssign(src, copy, srcCount);
             APInt.tcNegate(copy, srcCount);
             status = convertFromUnsignedParts(copy, srcCount, rm);
         }
@@ -1147,7 +1147,7 @@ public class APFloat implements Cloneable
             exponent += bits;
         }
 
-        APInt.tcAssign(lhsSignificand, fullSignificand, partCounts);
+        APInt.tcAssign(fullSignificand, lhsSignificand, partCounts);
 
         return LostFraction;
     }
@@ -1833,29 +1833,97 @@ public class APFloat implements Cloneable
     private int convertToSignExtendedInteger(long[] parts, int width,
             boolean isSigned, RoundingMode rm, OutParamWrapper<Boolean> isExact)
     {
-        int fs;
+        LostFraction lostFraction;
+        assertArithmeticOK(semantics);
 
-        fs = convertToSignExtendedInteger(parts, width, isSigned, rm, isExact);
+        if (isExact != null)
+            isExact.set(false);
+        // Handle the three special cases first.
+        if (category == fcInfinity || category == fcNaN)
+            return opInvalidOp;
 
-        if (fs == opInvalidOp)
+        int truncatedBits = 0;
+        int destPartsCount = partCountForBits(width);
+        if (category == fcZero)
         {
-            int bits, dstPartsCount;
-
-            dstPartsCount = partCountForBits(width);
-
-            if (category == fcNaN)
-                bits = 0;
-            else if (sign)
-                bits = isSigned ? 1 : 0;
-            else
-                bits = width - (isSigned ? 1 : 0);
-
-            APInt.tcSetLeastSignificantBits(parts, dstPartsCount, bits);
-            if (sign && isSigned)
-                APInt.tcShiftLeft(parts, dstPartsCount, width - 1);
+            APInt.tcSet(parts, 0, destPartsCount);
+            if (isExact != null)
+                isExact.set(!sign);
+            return opOK;
         }
 
-        return fs;
+        long[] src = significandParts();
+        if (exponent < 0)
+        {
+            APInt.tcSet(parts, 0, destPartsCount);
+            truncatedBits = semantics.precision -1 - exponent;
+        }
+        else
+        {
+            int bits = exponent + 1;
+            if (bits > width)
+                return opInvalidOp;
+
+            if (bits < semantics.precision)
+            {
+                truncatedBits = semantics.precision - bits;
+                APInt.tcExtract(parts, destPartsCount, src, bits, truncatedBits);
+            }
+            else
+            {
+                APInt.tcExtract(parts, destPartsCount, src, semantics.precision, 0);;
+                APInt.tcShiftLeft(parts, destPartsCount, bits - semantics.precision);;
+                truncatedBits = 0;
+            }
+        }
+
+        if (truncatedBits != 0)
+        {
+            lostFraction = lostFractionThroughTruncation(src, partCount(), truncatedBits);
+
+            if (lostFraction != LostFraction.lfExactlyZero &&
+                    roundAwayFromZero(rm, lostFraction, truncatedBits))
+            {
+                if (APInt.tcIncrement(parts, destPartsCount) != 0)
+                    return opInvalidOp;
+            }
+        }
+        else
+        {
+            lostFraction = LostFraction.lfExactlyZero;
+        }
+
+        int omsb = APInt.tcMSB(parts, destPartsCount) + 1;
+        if (sign)
+        {
+            if (!isSigned)
+            {
+                if (omsb != 0) return opInvalidOp;
+            }
+            else
+            {
+                if (omsb == width && APInt.tcLSB(parts, destPartsCount) +1 != omsb)
+                    return opInvalidOp;
+
+                if (omsb > width)
+                    return opInvalidOp;
+            }
+
+            APInt.tcNegate(parts, destPartsCount);
+        }
+        else
+        {
+            if (omsb >= width + (isSigned?0:1))
+                return opInvalidOp;
+        }
+        if (lostFraction == LostFraction.lfExactlyZero)
+        {
+            if (isExact != null)
+                isExact.set(true);
+            return opOK;
+        }
+        else
+            return opInexact;
     }
 
     private int convertFromUnsignedParts(long[] src, int srcCount,
@@ -2391,7 +2459,7 @@ public class APFloat implements Cloneable
         }
 
         if (p1 != dst)
-            APInt.tcAssign(dst, p1, result);
+            APInt.tcAssign(p1, dst, result);
 
         return result;
     }
@@ -3034,7 +3102,7 @@ public class APFloat implements Cloneable
         assert (category == fcNormal || category == fcNaN);
         assert (rhs.partCount() >= partCount());
 
-        APInt.tcAssign(significandParts(), rhs.significandParts(), partCount());
+        APInt.tcAssign(rhs.significandParts(), significandParts(), partCount());
     }
 
     /* What kind of semantics does this value obey?  */

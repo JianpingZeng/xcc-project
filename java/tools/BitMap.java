@@ -44,9 +44,9 @@ public final class BitMap extends BitSet implements Cloneable
 
 	public void setFrom(BitMap other)
 	{
-		assert length() == other.length() :
-				"must have same getArraySize";
-		for (int i = 0; i < length(); i++)
+		//assert length() == other.length() :
+		//		"must have same size";
+		for (int i = 0; i < other.length(); i++)
 			set(i, other.get(i));
 	}
 
