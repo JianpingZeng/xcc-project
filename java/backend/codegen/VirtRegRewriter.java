@@ -138,6 +138,7 @@ public abstract class VirtRegRewriter
                                 numStores.inc();
                             }
                             mi.setMachineOperandReg(j, physReg);
+                            mri.setPhysRegUsed(physReg);
                         }
                     }
                     if (Util.DEBUG)
