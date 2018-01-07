@@ -479,7 +479,7 @@ public final class LLLexer
                 return Error;
             }
         }
-        floatVal = new APFloat(Float.valueOf(buffer.getSubString(tokStart, curPtr)));
+        floatVal = new APFloat(Double.valueOf(buffer.getSubString(tokStart, curPtr)));
         return tokKind = APFloat;
     }
 
@@ -817,7 +817,7 @@ public final class LLLexer
                     ++curPtr;
             }
         }
-        floatVal = new APFloat(Float.parseFloat(buffer.getSubString(tokStart, curPtr)));
+        floatVal = new APFloat(Double.valueOf(buffer.getSubString(tokStart, curPtr)));
         return APFloat;
     }
 

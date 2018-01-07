@@ -39,4 +39,15 @@ public class MDString extends MetadataBase
     {
         return getUniqueImpl().getOrCreate(name);
     }
+
+    public String getString()
+    {
+        return name;
+    }
+
+    @Override
+    public String toString()
+    {
+        return getString();
+    }
 }

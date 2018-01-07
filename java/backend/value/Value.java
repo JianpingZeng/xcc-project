@@ -1,13 +1,14 @@
 package backend.value;
 
-import backend.support.FormattedOutputStream;
-import backend.support.LLVMContext;
-import backend.support.ValueSymbolTable;
+import backend.support.*;
 import backend.type.Type;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.LinkedList;
+
+import static backend.support.AssemblyWriter.*;
 
 /**
  * @author xlous.zeng
@@ -269,19 +270,91 @@ public class Value implements Cloneable
         return name == null ?"": name;
     }
 
-	public boolean hasName() {return name != null && !name.isEmpty();}
+	public boolean hasName()
+    {
+        return name != null && !name.isEmpty();
+    }
 
 	public void print(FormattedOutputStream os)
     {
-        os.printf("0x%x", hashCode());
+        if(this instanceof Instruction)
+        {
+            Instruction inst = (Instruction)this;
+            Function f = inst.getParent() != null ? inst.getParent().getParent():null;
+            SlotTracker slotTable = new SlotTracker(f);
+            AssemblyWriter writer = new AssemblyWriter(os, f.getParent(), slotTable);
+            writer.write(inst);
+        }
+        else if (this instanceof GlobalValue)
+        {
+            GlobalValue gv = (GlobalValue)this;
+            SlotTracker slotTable = new SlotTracker(gv.getParent());
+            AssemblyWriter writer = new AssemblyWriter(os, gv.getParent(), slotTable);
+            writer.write(gv);
+        }
+        else if (this instanceof MDString)
+        {
+            MDString mds = (MDString)this;
+            TypePrinting printer = new TypePrinting();
+            printer.print(mds.getType(), os);
+            os.print(" !\"");
+            printEscapedString(mds.getString(), os);
+            os.print('"');
+        }
+        else if (this instanceof MDNode)
+        {
+            MDNode node = (MDNode)this;
+            SlotTracker slotTable = new SlotTracker(node);
+            TypePrinting printer = new TypePrinting();
+            slotTable.initialize();
+            writeMDNodes(os, printer, slotTable);
+        }
+        else if (this instanceof NamedMDNode)
+        {
+            NamedMDNode node = (NamedMDNode)this;
+            SlotTracker slotTable = new SlotTracker(node);
+            TypePrinting printer = new TypePrinting();
+            slotTable.initialize();
+            os.printf("!%s = !{", node.getName());
+            for (int i = 0, e = node.getNumOfNode(); i < e; i++)
+            {
+                if (i != 0) os.printf(", ");
+                Value val = node.getNode(i);
+                if (val instanceof MDNode)
+                    os.printf("!%d", slotTable.getMetadataSlot((MDNode)val));
+                else
+                    os.printf("null");
+            }
+            os.println("}");
+            writeMDNodes(os, printer, slotTable);
+        }
+        else if (this instanceof Constant)
+        {
+            Constant c = (Constant)this;
+            TypePrinting printer = new TypePrinting();
+            printer.print(c.getType(), os);
+            os.print(' ');
+            writeConstantInt(os, c, printer, null);
+        }
+        else if (this instanceof Argument)
+        {
+            Argument arg = (Argument)this;
+            writeAsOperand(os, this, true,
+                    arg.getParent() != null ? arg.getParent().getParent():null);
+        }
+        else
+        {
+            Util.shouldNotReachHere("Unknown value to print out!");
+        }
     }
 
 	public void print(PrintStream os)
 	{
-        try(FormattedOutputStream out = new FormattedOutputStream(os))
-        {
-            print(out);
-        }
+		try
+		{
+			FormattedOutputStream out = new FormattedOutputStream(os);
+			print(out);
+		}
         catch (Exception e)
         {
             e.printStackTrace();

@@ -33,7 +33,6 @@ import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
  */
 public class ConstantFP extends Constant
 {
-
     private APFloat val;
 
     /**
@@ -45,6 +44,7 @@ public class ConstantFP extends Constant
     ConstantFP(Type ty, APFloat v)
     {
         super(ty, ValueKind.ConstantFPVal);
+        assert v.getSemantics() == typeToFloatSemantics(ty):"FP type mismatch!";
         val = v;
     }
 
@@ -80,7 +80,6 @@ public class ConstantFP extends Constant
 
     public static Constant get(APFloat flt)
     {
-        ConstantFP fp;
         APFloatKeyType key = new APFloatKeyType(flt);
         return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
     }

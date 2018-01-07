@@ -52,4 +52,15 @@ public final class NamedMDNode extends MetadataBase
     {
         return new NamedMDNode(name, elts, m);
     }
+
+    public int getNumOfNode()
+    {
+        return node.size();
+    }
+
+    public Value getNode(int index)
+    {
+        assert index >= 0 && index < getNumOfNode();
+        return node.get(index);
+    }
 }

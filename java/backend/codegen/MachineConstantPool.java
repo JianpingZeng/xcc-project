@@ -94,7 +94,7 @@ public final class MachineConstantPool
 
         for (int i = 0, e = constants.size(); i < e; i++)
         {
-            os.printf("  <cp#%d> is", i);
+            os.printf(" <cp#%d> is", i);
             if (constants.get(i).isMachineConstantPoolEntry())
                 constants.get(i).getValueAsCPV().print(os);
             else

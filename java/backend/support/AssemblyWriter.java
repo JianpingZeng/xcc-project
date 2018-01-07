@@ -26,10 +26,8 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import tools.APFloat;
-import tools.APInt;
-import tools.OutParamWrapper;
-import tools.Util;
+import gnu.trove.iterator.TObjectIntIterator;
+import tools.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -40,6 +38,7 @@ import java.util.Map;
 
 import static backend.support.AssemblyWriter.PrefixType.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
+import static tools.Util.hexDigit;
 
 public class AssemblyWriter
 {
@@ -60,10 +59,8 @@ public class AssemblyWriter
         addModuleTypesToPrinter(typePrinter, numberedTypes, m);
     }
 
-    private static void addModuleTypesToPrinter(
-            TypePrinting printer,
-            ArrayList<Type> numberedTypes,
-            Module m)
+    private static void addModuleTypesToPrinter(TypePrinting printer,
+            ArrayList<Type> numberedTypes, Module m)
     {
         if (m == null)
             return;
@@ -74,7 +71,7 @@ public class AssemblyWriter
             Type ty = entry.getValue();
             if (ty instanceof PointerType)
             {
-                PointerType ptr = (PointerType)ty;
+                PointerType ptr = (PointerType) ty;
                 Type eleTy = ptr.getElementType();
                 if ((eleTy.isPrimitiveType() || eleTy.isInteger())
                         && !(eleTy instanceof OpaqueType))
@@ -86,7 +83,7 @@ public class AssemblyWriter
             if (ty.isInteger() || ty.isPrimitiveType())
                 continue;
 
-            try(ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     FormattedOutputStream os = new FormattedOutputStream(baos))
             {
                 printLLVMName(os, entry.getKey(), LocalPrefix);
@@ -107,42 +104,37 @@ public class AssemblyWriter
 
     enum PrefixType
     {
-        GlobalPrefix,
-        LabelPrefix,
-        LocalPrefix,
-        NoPrefix
+        GlobalPrefix, LabelPrefix, LocalPrefix, NoPrefix
     }
 
-    private static void printLLVMName(FormattedOutputStream os,
-                                      Value val)
+    private static void printLLVMName(FormattedOutputStream os, Value val)
     {
-        printLLVMName(os, val.getName(), val instanceof GlobalValue ? GlobalPrefix
-            : LocalPrefix);
+        printLLVMName(os, val.getName(),
+                val instanceof GlobalValue ? GlobalPrefix : LocalPrefix);
     }
 
-    private static void printLLVMName(PrintStream os,
-            Value val)
+    private static void printLLVMName(PrintStream os, Value val)
     {
-        printLLVMName(os, val.getName(), val instanceof GlobalValue ? GlobalPrefix
-                : LocalPrefix);
+        printLLVMName(os, val.getName(),
+                val instanceof GlobalValue ? GlobalPrefix : LocalPrefix);
     }
 
     /**
      * Turn the specified name into "LLVM name", which is either
      * prefixed with % or is surrounded with ""'s. Print it now.
+     *
      * @param os
      * @param name
      * @param pt
      */
-    private static void printLLVMName(PrintStream os,
-            String name,
+    private static void printLLVMName(PrintStream os, String name,
             PrefixType pt)
     {
-        assert name != null && !name.isEmpty():"Cannot get empty name!";
+        assert name != null && !name.isEmpty() : "Cannot get empty name!";
         switch (pt)
         {
             default:
-                assert false:"Unknown PrefixType";
+                assert false : "Unknown PrefixType";
                 break;
             case NoPrefix:
                 break;
@@ -180,19 +172,19 @@ public class AssemblyWriter
     /**
      * Turn the specified name into "LLVM name", which is either
      * prefixed with % or is surrounded with ""'s. Print it now.
+     *
      * @param os
      * @param name
      * @param pt
      */
-    private static void printLLVMName(FormattedOutputStream os,
-                               String name,
-                               PrefixType pt)
+    private static void printLLVMName(FormattedOutputStream os, String name,
+            PrefixType pt)
     {
-        assert name != null && !name.isEmpty():"Cannot get empty name!";
+        assert name != null && !name.isEmpty() : "Cannot get empty name!";
         switch (pt)
         {
             default:
-                assert false:"Unknown PrefixType";
+                assert false : "Unknown PrefixType";
                 break;
             case NoPrefix:
                 break;
@@ -236,17 +228,28 @@ public class AssemblyWriter
     {
         if (gv instanceof GlobalVariable)
         {
-            printGlobal((GlobalVariable)gv);
+            printGlobal((GlobalVariable) gv);
         }
         else
         {
-            assert gv instanceof Function :"Unknown global value kind";
-            printFunction((Function)gv);
+            assert gv instanceof Function : "Unknown global value kind";
+            printFunction((Function) gv);
         }
+    }
+
+    public void write(Instruction inst)
+    {
+        printInstruction(inst);
+    }
+
+    public void write(BasicBlock bb)
+    {
+        printBasicBlock(bb);
     }
 
     /**
      * Output all global variables into ouput stream.
+     *
      * @param gv
      */
     private void printGlobal(GlobalVariable gv)
@@ -296,34 +299,32 @@ public class AssemblyWriter
     {
         if (val instanceof Argument)
         {
-            return new SlotTracker(((Argument)val).getParent());
+            return new SlotTracker(((Argument) val).getParent());
         }
         if (val instanceof BasicBlock)
         {
-            BasicBlock bb = (BasicBlock)val;
+            BasicBlock bb = (BasicBlock) val;
             return new SlotTracker(bb.getParent());
         }
         if (val instanceof Instruction)
         {
-            Instruction inst = (Instruction)val;
+            Instruction inst = (Instruction) val;
             return new SlotTracker(inst.getParent().getParent());
         }
         if (val instanceof GlobalVariable)
         {
-            GlobalVariable gv = (GlobalVariable)val;
+            GlobalVariable gv = (GlobalVariable) val;
             return new SlotTracker(gv.getParent());
         }
         if (val instanceof Function)
         {
-            return new SlotTracker((Function)val);
+            return new SlotTracker((Function) val);
         }
         return null;
     }
 
-    public static void writeAsOperandInternal(PrintStream out,
-            Value val,
-            TypePrinting printer,
-            SlotTracker tracker)
+    public static void writeAsOperandInternal(PrintStream out, Value val,
+            TypePrinting printer, SlotTracker tracker)
     {
         if (val.hasName())
         {
@@ -331,10 +332,10 @@ public class AssemblyWriter
             return;
         }
 
-        Constant cv = val instanceof Constant ? (Constant)val : null;
+        Constant cv = val instanceof Constant ? (Constant) val : null;
         if (cv != null && !(cv instanceof GlobalValue))
         {
-            assert printer != null:"Constants require TypePrintering";
+            assert printer != null : "Constants require TypePrintering";
             writeConstantInt(out, cv, printer, tracker);
             return;
         }
@@ -346,7 +347,9 @@ public class AssemblyWriter
 
         if (tracker != null)
         {
-            GlobalValue gv = val instanceof GlobalValue ? (GlobalValue)val : null;
+            GlobalValue gv = val instanceof GlobalValue ?
+                    (GlobalValue) val :
+                    null;
             if (gv != null)
             {
                 slot = tracker.getGlobalSlot(gv);
@@ -363,10 +366,8 @@ public class AssemblyWriter
             out.print("<badref>");
     }
 
-    public static void writeAsOperandInternal(FormattedOutputStream out,
-                                        Value val,
-                                        TypePrinting printer,
-                                        SlotTracker tracker)
+    public static void writeAsOperandInternal(FormattedOutputStream out, Value val,
+            TypePrinting printer, SlotTracker tracker)
     {
         if (val.hasName())
         {
@@ -374,10 +375,10 @@ public class AssemblyWriter
             return;
         }
 
-        Constant cv = val instanceof Constant ? (Constant)val : null;
+        Constant cv = val instanceof Constant ? (Constant) val : null;
         if (cv != null && !(cv instanceof GlobalValue))
         {
-            assert printer != null:"Constants require TypePrintering";
+            assert printer != null : "Constants require TypePrintering";
             writeConstantInt(out, cv, printer, tracker);
             return;
         }
@@ -389,7 +390,9 @@ public class AssemblyWriter
 
         if (tracker != null)
         {
-            GlobalValue gv = val instanceof GlobalValue ? (GlobalValue)val : null;
+            GlobalValue gv = val instanceof GlobalValue ?
+                    (GlobalValue) val :
+                    null;
             if (gv != null)
             {
                 slot = tracker.getGlobalSlot(gv);
@@ -413,32 +416,31 @@ public class AssemblyWriter
     {
         if (val instanceof Argument)
         {
-            Argument arg = (Argument)val;
+            Argument arg = (Argument) val;
             return arg.getParent() != null ? arg.getParent().getParent() : null;
         }
         if (val instanceof BasicBlock)
         {
-            BasicBlock bb = (BasicBlock)val;
+            BasicBlock bb = (BasicBlock) val;
             return bb.getParent() != null ? bb.getParent().getParent() : null;
         }
         if (val instanceof Instruction)
         {
-            Instruction inst = (Instruction)val;
-            Function f = inst.getParent() != null ? inst.getParent().getParent() : null;
+            Instruction inst = (Instruction) val;
+            Function f = inst.getParent() != null ?
+                    inst.getParent().getParent() :
+                    null;
             return f != null ? f.getParent() : null;
         }
         if (val instanceof GlobalValue)
-            return ((GlobalValue)val).getParent();
+            return ((GlobalValue) val).getParent();
         return null;
     }
 
-    public static void writeAsOperand(PrintStream out,
-            Value val,
-            boolean printType,
-            Module context)
+    public static void writeAsOperand(PrintStream out, Value val,
+            boolean printType, Module context)
     {
-        if (!printType && (!(val instanceof Constant)) ||
-                val.hasName() || val instanceof GlobalValue)
+        if (!printType && (!(val instanceof Constant)) || val.hasName() || val instanceof GlobalValue)
         {
             writeAsOperandInternal(out, val, null, null);
             return;
@@ -458,13 +460,10 @@ public class AssemblyWriter
         writeAsOperandInternal(out, val, printer, null);
     }
 
-    public static void writeAsOperand(FormattedOutputStream out,
-                                       Value val,
-                                       boolean printType,
-                                       Module context)
+    public static void writeAsOperand(FormattedOutputStream out, Value val,
+            boolean printType, Module context)
     {
-        if (!printType && (!(val instanceof Constant)) ||
-                val.hasName() || val instanceof GlobalValue)
+        if (!printType && (!(val instanceof Constant)) || val.hasName() || val instanceof GlobalValue)
         {
             writeAsOperandInternal(out, val, null, null);
             return;
@@ -484,28 +483,26 @@ public class AssemblyWriter
         writeAsOperandInternal(out, val, printer, null);
     }
 
-    public static void writeConstantInt(PrintStream out,
-            Constant cv,
-            TypePrinting printer,
-            SlotTracker tracker)
+    public static void writeConstantInt(PrintStream out, Constant cv,
+            TypePrinting printer, SlotTracker tracker)
     {
-        ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt)cv:null;
+        ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
         if (ci != null)
         {
             if (ci.getType().equals(LLVMContext.Int1Ty))
             {
-                out.print(ci.getZExtValue() != 0 ?"true":"false");
+                out.print(ci.getZExtValue() != 0 ? "true" : "false");
                 return;
             }
             ci.getValue().print(out);
             return;
         }
 
-        ConstantFP fp = (cv instanceof ConstantFP)?(ConstantFP)cv : null;
+        ConstantFP fp = (cv instanceof ConstantFP) ? (ConstantFP) cv : null;
         if (fp != null)
         {
-            if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble ||
-                    fp.getValueAPF().getSemantics() == APFloat.IEEEsingle)
+            if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble
+                    || fp.getValueAPF().getSemantics() == APFloat.IEEEsingle)
             {
                 boolean ignored = false;
                 boolean isDouble = fp.getValueAPF().getSemantics() == APFloat.IEEEdouble;
@@ -513,9 +510,9 @@ public class AssemblyWriter
                         fp.getValueAPF().convertToFloat();
                 String strVal = String.valueOf(val);
 
-                if ((strVal.charAt(0)>='0' && strVal.charAt(0) <='9') ||
-                        (strVal.charAt(0) == '-' || strVal.charAt(0) == '+') &&
-                                (strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9'))
+                if ((strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9')
+                        || (strVal.charAt(0) == '-' || strVal.charAt(0) == '+')
+                        && (strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9'))
                 {
                     if (Double.parseDouble(strVal) == val)
                     {
@@ -546,11 +543,11 @@ public class AssemblyWriter
                 long word = p[1];
                 int width = api.getBitWidth();
                 int shiftcount = 12;
-                for (int j = 0; j < width; j+=4, shiftcount -= 4)
+                for (int j = 0; j < width; j += 4, shiftcount -= 4)
                 {
                     int nibble = (int) ((word >> shiftcount) & 15);
                     if (nibble < 10)
-                        out.print((char)(nibble + '0'));
+                        out.print((char) (nibble + '0'));
                     else
                     {
                         out.print((char) (nibble - 10 + 'A'));
@@ -582,11 +579,11 @@ public class AssemblyWriter
             long word = p[idx];
             int shiftcount = 60;
             int width = api.getBitWidth();
-            for (int j = 0; j < width; j+= 4, shiftcount-=4)
+            for (int j = 0; j < width; j += 4, shiftcount -= 4)
             {
                 int nibble = (int) ((word >> shiftcount) & 15);
                 if (nibble < 10)
-                    out.print((char)(nibble + '0'));
+                    out.print((char) (nibble + '0'));
                 else
                 {
                     out.print((char) (nibble - 10 + 'A'));
@@ -612,7 +609,7 @@ public class AssemblyWriter
 
         if (cv instanceof ConstantArray)
         {
-            ConstantArray ca = (ConstantArray)cv;
+            ConstantArray ca = (ConstantArray) cv;
             Type elty = ca.getType().getElementType();
             if (ca.isString())
             {
@@ -627,14 +624,14 @@ public class AssemblyWriter
                 {
                     printer.print(elty, out);
                     out.print(' ');
-                    writeAsOperandInternal(out, ca.operand(0),
-                            printer, tracker);
+                    writeAsOperandInternal(out, ca.operand(0), printer, tracker);
                     for (int i = 1, e = ca.getNumOfOperands(); i != e; i++)
                     {
                         out.print(", ");
                         printer.print(elty, out);
                         out.print(' ');
-                        writeAsOperandInternal(out, ca.operand(i), printer, tracker);
+                        writeAsOperandInternal(out, ca.operand(i), printer,
+                                tracker);
                     }
                 }
                 out.print("]");
@@ -644,7 +641,7 @@ public class AssemblyWriter
 
         if (cv instanceof ConstantStruct)
         {
-            ConstantStruct cs = (ConstantStruct)cv;
+            ConstantStruct cs = (ConstantStruct) cv;
             if (cs.getType().isPacked())
                 out.print('<');
             out.print('{');
@@ -685,7 +682,7 @@ public class AssemblyWriter
         }
         if (cv instanceof ConstantExpr)
         {
-            ConstantExpr ce = (ConstantExpr)cv;
+            ConstantExpr ce = (ConstantExpr) cv;
             out.print(ce.getOpcode().opName);
             writeOptimizationInfo(out, ce);
             if (ce.isCompare())
@@ -715,28 +712,26 @@ public class AssemblyWriter
         out.printf("<placeholder or erroneous Constant>");
     }
 
-    public static void writeConstantInt(FormattedOutputStream out,
-                                  Constant cv,
-                                  TypePrinting printer,
-                                  SlotTracker tracker)
+    public static void writeConstantInt(FormattedOutputStream out, Constant cv,
+            TypePrinting printer, SlotTracker tracker)
     {
-        ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt)cv:null;
+        ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
         if (ci != null)
         {
             if (ci.getType().equals(LLVMContext.Int1Ty))
             {
-                out.print(ci.getZExtValue() != 0 ?"true":"false");
+                out.print(ci.getZExtValue() != 0 ? "true" : "false");
                 return;
             }
             ci.getValue().print(out);
             return;
         }
 
-        ConstantFP fp = (cv instanceof ConstantFP)?(ConstantFP)cv : null;
+        ConstantFP fp = (cv instanceof ConstantFP) ? (ConstantFP) cv : null;
         if (fp != null)
         {
-            if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble ||
-                    fp.getValueAPF().getSemantics() == APFloat.IEEEsingle)
+            if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble
+                    || fp.getValueAPF().getSemantics() == APFloat.IEEEsingle)
             {
                 boolean ignored = false;
                 boolean isDouble = fp.getValueAPF().getSemantics() == APFloat.IEEEdouble;
@@ -744,9 +739,9 @@ public class AssemblyWriter
                         fp.getValueAPF().convertToFloat();
                 String strVal = String.valueOf(val);
 
-                if ((strVal.charAt(0)>='0' && strVal.charAt(0) <='9') ||
-                    (strVal.charAt(0) == '-' || strVal.charAt(0) == '+') &&
-                    (strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9'))
+                if ((strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9')
+                        || (strVal.charAt(0) == '-' || strVal.charAt(0) == '+')
+                        && (strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9'))
                 {
                     if (Double.parseDouble(strVal) == val)
                     {
@@ -762,7 +757,7 @@ public class AssemblyWriter
                     apf.convert(APFloat.IEEEdouble, rmNearestTiesToEven, x);
                     ignored = x.get();
                 }
-                out.printf("0x%d", apf.bitcastToAPInt().getZExtValue());
+                out.printf("0x%x", apf.bitcastToAPInt().getZExtValue());
                 return;
             }
 
@@ -777,11 +772,11 @@ public class AssemblyWriter
                 long word = p[1];
                 int width = api.getBitWidth();
                 int shiftcount = 12;
-                for (int j = 0; j < width; j+=4, shiftcount -= 4)
+                for (int j = 0; j < width; j += 4, shiftcount -= 4)
                 {
                     int nibble = (int) ((word >> shiftcount) & 15);
                     if (nibble < 10)
-                        out.print((char)(nibble + '0'));
+                        out.print((char) (nibble + '0'));
                     else
                     {
                         out.print((char) (nibble - 10 + 'A'));
@@ -813,11 +808,11 @@ public class AssemblyWriter
             long word = p[idx];
             int shiftcount = 60;
             int width = api.getBitWidth();
-            for (int j = 0; j < width; j+= 4, shiftcount-=4)
+            for (int j = 0; j < width; j += 4, shiftcount -= 4)
             {
                 int nibble = (int) ((word >> shiftcount) & 15);
                 if (nibble < 10)
-                    out.print((char)(nibble + '0'));
+                    out.print((char) (nibble + '0'));
                 else
                 {
                     out.print((char) (nibble - 10 + 'A'));
@@ -843,7 +838,7 @@ public class AssemblyWriter
 
         if (cv instanceof ConstantArray)
         {
-            ConstantArray ca = (ConstantArray)cv;
+            ConstantArray ca = (ConstantArray) cv;
             Type elty = ca.getType().getElementType();
             if (ca.isString())
             {
@@ -858,14 +853,14 @@ public class AssemblyWriter
                 {
                     printer.print(elty, out);
                     out.print(' ');
-                    writeAsOperandInternal(out, ca.operand(0),
-                            printer, tracker);
+                    writeAsOperandInternal(out, ca.operand(0), printer, tracker);
                     for (int i = 1, e = ca.getNumOfOperands(); i != e; i++)
                     {
                         out.print(", ");
                         printer.print(elty, out);
                         out.print(' ');
-                        writeAsOperandInternal(out, ca.operand(i), printer, tracker);
+                        writeAsOperandInternal(out, ca.operand(i), printer,
+                                tracker);
                     }
                 }
                 out.print("]");
@@ -875,7 +870,7 @@ public class AssemblyWriter
 
         if (cv instanceof ConstantStruct)
         {
-            ConstantStruct cs = (ConstantStruct)cv;
+            ConstantStruct cs = (ConstantStruct) cv;
             if (cs.getType().isPacked())
                 out.print('<');
             out.print('{');
@@ -916,7 +911,7 @@ public class AssemblyWriter
         }
         if (cv instanceof ConstantExpr)
         {
-            ConstantExpr ce = (ConstantExpr)cv;
+            ConstantExpr ce = (ConstantExpr) cv;
             out.print(ce.getOpcode().opName);
             writeOptimizationInfo(out, ce);
             if (ce.isCompare())
@@ -948,35 +943,87 @@ public class AssemblyWriter
 
     private static String getPredicateText(Predicate pred)
     {
-        String res= "unknown";
+        String res = "unknown";
         switch (pred)
         {
-            case FCMP_FALSE: res = "false"; break;
-            case FCMP_OEQ:   res = "oeq"; break;
-            case FCMP_OGT:   res = "ogt"; break;
-            case FCMP_OGE:   res = "oge"; break;
-            case FCMP_OLT:   res = "olt"; break;
-            case FCMP_OLE:   res = "ole"; break;
-            case FCMP_ONE:   res = "one"; break;
-            case FCMP_ORD:   res = "ord"; break;
-            case FCMP_UNO:   res = "uno"; break;
-            case FCMP_UEQ:   res = "ueq"; break;
-            case FCMP_UGT:   res = "ugt"; break;
-            case FCMP_UGE:   res = "uge"; break;
-            case FCMP_ULT:   res = "ult"; break;
-            case FCMP_ULE:   res = "ule"; break;
-            case FCMP_UNE:   res = "une"; break;
-            case FCMP_TRUE:  res = "true"; break;
-            case ICMP_EQ:    res = "eq"; break;
-            case ICMP_NE:    res = "ne"; break;
-            case ICMP_SGT:   res = "sgt"; break;
-            case ICMP_SGE:   res = "sge"; break;
-            case ICMP_SLT:   res = "slt"; break;
-            case ICMP_SLE:   res = "sle"; break;
-            case ICMP_UGT:   res = "ugt"; break;
-            case ICMP_UGE:   res = "uge"; break;
-            case ICMP_ULT:   res = "ult"; break;
-            case ICMP_ULE:   res = "ule"; break;
+            case FCMP_FALSE:
+                res = "false";
+                break;
+            case FCMP_OEQ:
+                res = "oeq";
+                break;
+            case FCMP_OGT:
+                res = "ogt";
+                break;
+            case FCMP_OGE:
+                res = "oge";
+                break;
+            case FCMP_OLT:
+                res = "olt";
+                break;
+            case FCMP_OLE:
+                res = "ole";
+                break;
+            case FCMP_ONE:
+                res = "one";
+                break;
+            case FCMP_ORD:
+                res = "ord";
+                break;
+            case FCMP_UNO:
+                res = "uno";
+                break;
+            case FCMP_UEQ:
+                res = "ueq";
+                break;
+            case FCMP_UGT:
+                res = "ugt";
+                break;
+            case FCMP_UGE:
+                res = "uge";
+                break;
+            case FCMP_ULT:
+                res = "ult";
+                break;
+            case FCMP_ULE:
+                res = "ule";
+                break;
+            case FCMP_UNE:
+                res = "une";
+                break;
+            case FCMP_TRUE:
+                res = "true";
+                break;
+            case ICMP_EQ:
+                res = "eq";
+                break;
+            case ICMP_NE:
+                res = "ne";
+                break;
+            case ICMP_SGT:
+                res = "sgt";
+                break;
+            case ICMP_SGE:
+                res = "sge";
+                break;
+            case ICMP_SLT:
+                res = "slt";
+                break;
+            case ICMP_SLE:
+                res = "sle";
+                break;
+            case ICMP_UGT:
+                res = "ugt";
+                break;
+            case ICMP_UGE:
+                res = "uge";
+                break;
+            case ICMP_ULT:
+                res = "ult";
+                break;
+            case ICMP_ULE:
+                res = "ule";
+                break;
         }
         return res;
     }
@@ -1013,12 +1060,13 @@ public class AssemblyWriter
         }
     }
 
-    private static void printVisibility(VisibilityTypes vt, FormattedOutputStream out)
+    private static void printVisibility(VisibilityTypes vt,
+            FormattedOutputStream out)
     {
         switch (vt)
         {
             default:
-                assert false:"Invalid visibility style";
+                assert false : "Invalid visibility style";
             case DefaultVisibility:
                 break;
             case HiddenVisibility:
@@ -1061,7 +1109,8 @@ public class AssemblyWriter
         // print out the calling convention.
         switch (f.getCallingConv())
         {
-            case C: break;  // default.
+            case C:
+                break;  // default.
             case Fast:
                 out.print("fastcc ");
                 break;
@@ -1202,6 +1251,7 @@ public class AssemblyWriter
 
     /**
      * Emit the instruction information.
+     *
      * @param inst
      */
     private void printInstruction(Instruction inst)
@@ -1217,7 +1267,7 @@ public class AssemblyWriter
         else if (!inst.getType().equals(LLVMContext.VoidTy))
         {
             int slot = slotTracker.getLocalSlot(inst);
-            if (slot == - 1)
+            if (slot == -1)
             {
                 out.print("<badref> = ");
             }
@@ -1229,8 +1279,8 @@ public class AssemblyWriter
 
         // if this is a volatile store or load instruction,
         // just print out the volatile marker.
-        if (inst instanceof LoadInst && ((LoadInst)inst).isVolatile() ||
-                (inst instanceof StoreInst) && ((StoreInst)inst).isVolatile())
+        if (inst instanceof LoadInst && ((LoadInst) inst).isVolatile()
+                || (inst instanceof StoreInst) && ((StoreInst) inst).isVolatile())
         {
             out.print("volatile ");
         }
@@ -1245,7 +1295,7 @@ public class AssemblyWriter
 
         if (inst instanceof CmpInst)
         {
-            CmpInst ci = (CmpInst)inst;
+            CmpInst ci = (CmpInst) inst;
             out.printf(" %s", getPredicateText(ci.getPredicate()));
         }
 
@@ -1253,9 +1303,9 @@ public class AssemblyWriter
         Value operand = inst.getNumOfOperands() != 0 ? inst.operand(0) : null;
 
         // Special handling for BranchInst, SwitchInst etc.
-        if (inst instanceof BranchInst && ((BranchInst)inst).isConditional())
+        if (inst instanceof BranchInst && ((BranchInst) inst).isConditional())
         {
-            BranchInst bi = (BranchInst)inst;
+            BranchInst bi = (BranchInst) inst;
             out.print(' ');
             writeOperand(bi.getCondition(), true);
             out.print(", ");
@@ -1271,12 +1321,12 @@ public class AssemblyWriter
             writeOperand(inst.operand(1), true);
             out.print("[");
 
-            for (int i = 2, e = inst.getNumOfOperands(); i < e; i+=2)
+            for (int i = 2, e = inst.getNumOfOperands(); i < e; i += 2)
             {
                 out.println();
                 writeOperand(inst.operand(i), true);
                 out.print(", ");
-                writeOperand(inst.operand(i+1), true);
+                writeOperand(inst.operand(i + 1), true);
             }
             out.print("\n ]");
         }
@@ -1286,14 +1336,14 @@ public class AssemblyWriter
             typePrinter.print(inst.getType(), out);
             out.print(' ');
 
-            for (int op = 0, e = inst.getNumOfOperands(); op != e; op+=2)
+            for (int op = 0, e = inst.getNumOfOperands(); op != e; op += 2)
             {
                 if (op != 0)
                     out.print(", ");
                 out.print("[ ");
                 writeOperand(inst.operand(op), false);
                 out.print(", ");
-                writeOperand(inst.operand(op+1), false);
+                writeOperand(inst.operand(op + 1), false);
                 out.print(" ]");
             }
         }
@@ -1303,28 +1353,39 @@ public class AssemblyWriter
         }
         else if (inst instanceof CallInst)
         {
-            assert operand != null:"No called function for CallInst";
+            assert operand != null : "No called function for CallInst";
 
-            CallInst ci = (CallInst)inst;
+            CallInst ci = (CallInst) inst;
             CallingConv cc = ci.getCallingConv();
             switch (cc)
             {
-                case C: break;
-                case Fast: out.print(" fastcc"); break;
-                case Cold: out.print(" coldcc"); break;
-                case X86_StdCall: out.print(" x86_stdcallcc"); break;
-                case X86_FastCall: out.print(" x86_fastcallcc"); break;
-                default: out.print(" cc" + cc.name());break;
+                case C:
+                    break;
+                case Fast:
+                    out.print(" fastcc");
+                    break;
+                case Cold:
+                    out.print(" coldcc");
+                    break;
+                case X86_StdCall:
+                    out.print(" x86_stdcallcc");
+                    break;
+                case X86_FastCall:
+                    out.print(" x86_fastcallcc");
+                    break;
+                default:
+                    out.print(" cc" + cc.name());
+                    break;
             }
 
-            PointerType pty = (PointerType)operand.getType();
+            PointerType pty = (PointerType) operand.getType();
             FunctionType fty = (FunctionType) pty.getElementType();
             Type retTy = fty.getReturnType();
 
             out.print(' ');
 
-            if (!fty.isVarArg() && (!(retTy instanceof PointerType) ||
-                    !(((PointerType)(retTy)).getElementType() instanceof FunctionType )))
+            if (!fty.isVarArg() && (!(retTy instanceof PointerType)
+                    || !(((PointerType) (retTy)).getElementType() instanceof FunctionType)))
             {
                 typePrinter.print(retTy, out);
                 out.print(' ');
@@ -1345,10 +1406,9 @@ public class AssemblyWriter
         }
         else if (inst instanceof AllocaInst)
         {
-            AllocaInst ai = (AllocaInst)inst;
+            AllocaInst ai = (AllocaInst) inst;
             out.print(' ');
             typePrinter.print(ai.getType().getElementType(), out);
-
 
             if (ai.getArraySize() != null && ai.isArrayAllocation())
             {
@@ -1378,7 +1438,7 @@ public class AssemblyWriter
             }
             else
             {
-                for (int i = 1,e = inst.getNumOfOperands(); i != e; i++)
+                for (int i = 1, e = inst.getNumOfOperands(); i != e; i++)
                 {
                     operand = inst.operand(i);
                     if (operand != null && !operand.getType().equals(theType))
@@ -1405,11 +1465,13 @@ public class AssemblyWriter
 
         // print post operand alignment for load/store.
         int align = 0;
-        if (inst instanceof LoadInst && (align = ((LoadInst)inst).getAlignment()) != 0)
+        if (inst instanceof LoadInst
+                && (align = ((LoadInst) inst).getAlignment()) != 0)
         {
             out.printf(" ,align %d", align);
         }
-        else if (inst instanceof StoreInst && (align = ((StoreInst)inst).getAlignment()) != 0)
+        else if (inst instanceof StoreInst
+                && (align = ((StoreInst) inst).getAlignment()) != 0)
         {
             out.printf(" ,align %d", align);
         }
@@ -1469,10 +1531,10 @@ public class AssemblyWriter
         }
     }
 
-    private void printTypeSymbolTable(HashMap<String,Type> st)
+    private void printTypeSymbolTable(HashMap<String, Type> st)
     {
         // Emit all numbered types.
-        for (int i = 0, e = numberedTypes.size(); i !=e; i++)
+        for (int i = 0, e = numberedTypes.size(); i != e; i++)
         {
             out.printf("%%%d = type ", i);
 
@@ -1488,6 +1550,56 @@ public class AssemblyWriter
 
             typePrinter.printAtLeastOneLevel(entry.getValue(), out);
             out.println();
+        }
+    }
+
+    public static void printEscapedString(String name, FormattedOutputStream os)
+    {
+        for (int i = 0, e = name.length(); i < e; i++)
+        {
+            char ch = name.charAt(i);
+            if (TextUtils.isPrintable(ch) && ch != '\\' && ch != '"')
+                os.print(ch);
+            else
+                os.printf("\\%d%d", hexDigit(ch >> 4), hexDigit(ch & 0xF));
+        }
+    }
+
+    public static void writeMDNodes(FormattedOutputStream os,
+            TypePrinting printer,
+            SlotTracker slotTable)
+    {
+        MDNode[] nodes = new MDNode[slotTable.getMdnMap().size()];
+        TObjectIntIterator<Value> itr = slotTable.getMdnMap().iterator();
+        while (itr.hasNext())
+        {
+            nodes[itr.value()] = (MDNode) itr.key();
+        }
+
+        for (int i = 0; i < nodes.length; i++)
+        {
+            os.printf("!%d = metadata ", i);
+            MDNode node = nodes[i];
+            os.printf("!{");
+            for (int j = 0, e = node.getNumOfNode(); j < e; j++)
+            {
+                Value val = node.getNode(j);
+                if (val == null) os.printf("null");
+                else if (val instanceof MDNode)
+                {
+                    MDNode n = (MDNode)val;
+                    os.printf("metadata !%d", slotTable.getMetadataSlot(n));
+                }
+                else
+                {
+                    printer.print(val.getType(), os);
+                    os.print(' ');
+                    writeAsOperandInternal(os, val, printer, slotTable);
+                }
+                if (j < e-1)
+                    os.print(", ");
+            }
+            os.println("}");
         }
     }
 }

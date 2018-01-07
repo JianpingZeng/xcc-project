@@ -35,6 +35,16 @@ public final class SlotTracker
      */
     private Function theFunction;
 
+    /**
+     * The MDNode for which we are holding slot numbers.
+     */
+    private MDNode mNode;
+
+    /**
+     * The NamedMDNode for which we are holding slot numbers.
+     */
+    private NamedMDNode nNode;
+
     private boolean functionProcessed;
     /**
      * The mapping from Value to its slot number in module level.
@@ -53,9 +63,13 @@ public final class SlotTracker
      */
     private int fNext;
 
+    private TObjectIntHashMap<Value> mdnMap;
+    private int mdnNext;
+
     public SlotTracker(Module m)
     {
         theModule = m;
+        mdnMap = new TObjectIntHashMap<>();
         mMap = new TObjectIntHashMap<>();
         fMap = new TObjectIntHashMap<>();
     }
@@ -63,6 +77,23 @@ public final class SlotTracker
     public SlotTracker(Function f)
     {
         this.theFunction = f;
+        mdnMap = new TObjectIntHashMap<>();
+        mMap = new TObjectIntHashMap<>();
+        fMap = new TObjectIntHashMap<>();
+    }
+
+    public SlotTracker(MDNode mnode)
+    {
+        mNode = mnode;
+        mdnMap = new TObjectIntHashMap<>();
+        mMap = new TObjectIntHashMap<>();
+        fMap = new TObjectIntHashMap<>();
+    }
+
+    public SlotTracker(NamedMDNode nnode)
+    {
+        nNode = nnode;
+        mdnMap = new TObjectIntHashMap<>();
         mMap = new TObjectIntHashMap<>();
         fMap = new TObjectIntHashMap<>();
     }
@@ -100,7 +131,43 @@ public final class SlotTracker
         functionProcessed = false;
     }
 
-    private void initialize()
+    private void createMetadataSlot(MDNode node)
+    {
+        assert node != null:"Can't insert a null value into slotTracker!";
+        if (mdnMap.containsKey(node))
+            return;
+
+        int slot = mdnNext++;
+        mdnMap.put(node, slot);
+
+        for (int i =0, e = node.getNumOfNode(); i < e; i++)
+        {
+            Value val = node.getNode(i);
+            if (val != null && val instanceof MDNode)
+                createMetadataSlot((MDNode)val);
+        }
+    }
+
+    private void processMDNode()
+    {
+        mdnNext = 0;
+        createMetadataSlot(mNode);
+        mNode = null;
+    }
+
+    private void processNamedMDNode()
+    {
+        mdnNext = 0;
+        for (int i = 0, e = nNode.getNumOfNode(); i < e; i++)
+        {
+            Value val = nNode.getNode(i);
+            if (val instanceof MDNode)
+                createMetadataSlot((MDNode)val);
+        }
+        nNode = null;
+    }
+
+    public void initialize()
     {
         if (theModule != null)
         {
@@ -112,6 +179,12 @@ public final class SlotTracker
         {
             processFunction();
         }
+
+        if (mNode != null)
+            processMDNode();
+
+        if (nNode != null)
+            processNamedMDNode();
     }
 
     private void createModuleSlot(GlobalValue gv)
@@ -176,5 +249,16 @@ public final class SlotTracker
             }
         }
         functionProcessed = true;
+    }
+
+    public int getMetadataSlot(MDNode node)
+    {
+        initialize();
+        return mdnMap.containsKey(node) ? mdnMap.get(node):-1;
+    }
+
+    public TObjectIntHashMap<Value> getMdnMap()
+    {
+        return mdnMap;
     }
 }

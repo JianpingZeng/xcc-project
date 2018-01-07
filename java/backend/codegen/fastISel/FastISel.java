@@ -380,8 +380,7 @@ public abstract class FastISel extends MachineFunctionPass
             mbb = funcInfo.mbbmap.get(llvmBB);
             startNewBlock(mbb);
 
-            int begin = 0, end = llvmBB.size();
-            int bi = begin;
+            int bi = 0, end = llvmBB.size();
 
             // Lower any arguments needed in this block if this is entry block.
             if (llvmBB.equals(fn.getEntryBlock()))
@@ -428,15 +427,14 @@ public abstract class FastISel extends MachineFunctionPass
                 {
                     // TODO: 2017/11/17
                     assert false:"TerminatorInst waited to be finished!";
-                    System.exit(-1);
                 }
                 break;
             }
 
             if (bi != end)
             {
-                assert false:"Must run SelectionDAG instruction selection on "
-                        + "the remainder of the block not handled by FastISel";
+                assert false:"FastIsel can not gen code for those instruction "
+                        + llvmBB.getInstAt(bi).getName();
             }
 
             // add operand for machine phinode
@@ -904,7 +902,6 @@ public abstract class FastISel extends MachineFunctionPass
             instrInfo.insertBranch(mbb, msucc, null, new ArrayList<>());
         }
         mbb.addSuccessor(msucc);
-        msucc.addPredecessor(mbb);
     }
 
     public int updateValueMap(Value val, int reg)
