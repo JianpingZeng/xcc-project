@@ -1,7 +1,7 @@
 package backend.codegen;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2017, Xlous Zeng.
+ * Copyright (c) 2015-2018, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
 public class RegAllocLinearScan extends MachineFunctionPass
 {
     private TreeSet<LiveInterval> unhandled;
-    private TreeSet<LiveInterval> fixed;
+    private ArrayList<LiveInterval> fixed;
 
     private ArrayList<LiveInterval> active;
     private ArrayList<LiveInterval> inactive;
@@ -84,6 +84,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
     {
         assert unhandled.isEmpty() && fixed.isEmpty() &&
                 active.isEmpty() && inactive.isEmpty();
+
         for (LiveInterval interval : li.getReg2LiveInterval().values())
         {
             // Add live interval of physical register to fixed set.
@@ -462,12 +463,36 @@ public class RegAllocLinearScan extends MachineFunctionPass
         unhandled.addAll(added);
     }
 
+    private boolean usedBefore(int reg)
+    {
+        assert isPhysicalRegister(reg):"Must be physical register";
+
+        for (int i = 0; i < active.size(); i++)
+        {
+            LiveInterval li = active.get(i);
+            if (vrm.getPhys(li.register) == reg)
+                return false;
+        }
+
+        for (int i = 0; i < inactive.size(); i++)
+        {
+            LiveInterval li = inactive.get(i);
+            if (vrm.getPhys(li.register) == reg)
+                return false;
+        }
+        return true;
+    }
+
     private int getFreePhysReg(LiveInterval cur)
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
         for (int reg : rc.getAllocableRegs(mf))
         {
-            if (prt.isRegAvail(reg))
+            // If the reg is free or used but it's corresponding interval not overlap cur,
+            // we choose reg as candidate.
+            if (prt.isRegAvail(reg) || (li.getInterval(reg) != null &&
+                    !li.getInterval(reg).overlaps(cur) &&
+                    !usedBefore(reg)))
                 return reg;
         }
         return 0;
@@ -477,8 +502,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
     {
         unhandled = new TreeSet<>(
                 Comparator.comparingInt(LiveInterval::beginNumber));
-        fixed = new TreeSet<>(
-                Comparator.comparingInt(LiveInterval::beginNumber));
+        fixed = new ArrayList<>();
 
         active = new ArrayList<>();
         inactive = new ArrayList<>();
