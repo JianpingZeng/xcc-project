@@ -854,7 +854,9 @@ public class X86FastISel extends FastISel
 
         // If there is only one use of this cmp instr and the use is branch.
         // Performs some peephole optimization on conditional branch
-        if (ci.hasOneUses() && ci.useAt(0).getUser() instanceof BranchInst)
+        // Note that floating point comparison must be handled specially.
+        if (ci.getOpcode() == Operator.ICmp && ci.hasOneUses() &&
+                ci.useAt(0).getUser() instanceof BranchInst)
         {
             return true;
         }
@@ -1048,9 +1050,19 @@ public class X86FastISel extends FastISel
 
                 fastEmitBranch(falseBB);
                 mbb.addSuccessor(trueBB);
-                trueBB.addPredecessor(mbb);
                 return true;
             }
+        }
+
+        // Do conditional constant folding if condition is constant.
+        Value cond = bi.getCondition();
+        if (cond instanceof ConstantInt)
+        {
+            ConstantInt ci = (ConstantInt)cond;
+            MachineBasicBlock targetBB = ci.getZExtValue() != 0 ? trueBB : falseBB;
+            fastEmitBranch(targetBB);
+            mbb.addSuccessor(targetBB);
+            return true;
         }
 
         int opReg = getRegForValue(bi.getCondition());
@@ -1061,7 +1073,6 @@ public class X86FastISel extends FastISel
         buildMI(mbb, instrInfo.get(JNE)).addMBB(trueBB);
         fastEmitBranch(falseBB);
         mbb.addSuccessor(trueBB);
-        trueBB.addPredecessor(mbb);
         return true;
     }
 
@@ -1251,21 +1262,33 @@ public class X86FastISel extends FastISel
     private boolean x86SelectFPExt(Instruction inst)
     {
         // fpext from float to double.
-        if (subtarget.hasSSE2() &&
-                inst.getType().equals(LLVMContext.DoubleTy))
+        if (inst.getType().equals(LLVMContext.DoubleTy))
         {
             Value v = inst.operand(0);
-            if (v.getType().equals(LLVMContext.FloatTy))
-            {
-                int opReg = getRegForValue(v);
-                if (opReg == 0)
-                    return false;
+            if (!v.getType().equals(LLVMContext.FloatTy))
+                return false;
 
-                int resultReg = createResultReg(FR64RegisterClass);
-                buildMI(mbb, instrInfo.get(CVTSS2SDrr), resultReg).addReg(opReg);
-                updateValueMap(inst, resultReg);
-                return true;
+            int opc;
+            TargetRegisterClass rc;
+            if (subtarget.hasSSE2())
+            {
+                opc = CVTSS2SDrr;
+                rc = FR64RegisterClass;
             }
+            else
+            {
+                opc = MOV_Fp3264;
+                rc = RFP64RegisterClass;
+            }
+
+            int opReg = getRegForValue(v);
+            if (opReg == 0)
+                return false;
+
+            int resultReg = createResultReg(rc);
+            buildMI(mbb, instrInfo.get(opc), resultReg).addReg(opReg);
+            updateValueMap(inst, resultReg);
+            return true;
         }
         return false;
     }
@@ -2368,5 +2391,101 @@ public class X86FastISel extends FastISel
             return resultReg;
         }
         return super.fastEmitInst_ri(machineInstOpcode, rc, op0, imm);
+    }
+
+    public int fastEmit_rf(MVT vt, MVT retVT, int opcode, int op0, ConstantFP fpImm)
+    {
+        int opc;
+        TargetRegisterClass rc;
+        switch (opcode)
+        {
+            case ISD.ConstantFP:
+                switch (vt.simpleVT)
+                {
+                    case MVT.f32:
+                        if (subtarget.hasSSE1())
+                        {
+                            opc = MOVSSrm;
+                            rc = FR32RegisterClass;
+                        }
+                        else
+                        {
+                            opc = LD_Fp32m;
+                            rc = RFP32RegisterClass;
+                        }
+                        break;
+                    case MVT.f64:
+                        if (subtarget.hasSSE2())
+                        {
+                            opc = MOVSDrm;
+                            rc = FR64RegisterClass;
+                        }
+                        else
+                        {
+                            opc = LD_Fp64m;
+                            rc = RFP64RegisterClass;
+                        }
+                        break;
+                    default:
+                        return 0;
+                }
+                int resultReg = createResultReg(rc);
+                int align = td.getPrefTypeAlignment(fpImm.getType());
+                // Emit a Constant Pool before load a constant fp from memory.
+                int idx = mf.getConstantPool().getConstantPoolIndex(fpImm, align);
+                buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0)
+                        .addConstantPoolIndex(idx, 0, 0);
+                return resultReg;
+            default:
+                return 0;
+        }
+    }
+
+    public int fastEmit_f(MVT vt, MVT retVT, int opcode, ConstantFP fpImm)
+    {
+        int opc;
+        TargetRegisterClass rc;
+        switch (opcode)
+        {
+            case ISD.ConstantFP:
+                switch (vt.simpleVT)
+                {
+                    case MVT.f32:
+                        if (subtarget.hasSSE1())
+                        {
+                            opc = MOVSSrm;
+                            rc = FR32RegisterClass;
+                        }
+                        else
+                        {
+                            opc = LD_Fp32m;
+                            rc = RFP32RegisterClass;
+                        }
+                        break;
+                    case MVT.f64:
+                        if (subtarget.hasSSE2())
+                        {
+                            opc = MOVSDrm;
+                            rc = FR64RegisterClass;
+                        }
+                        else
+                        {
+                            opc = LD_Fp64m;
+                            rc = RFP64RegisterClass;
+                        }
+                        break;
+                    default:
+                        return 0;
+                }
+                int resultReg = createResultReg(rc);
+                int align = td.getPrefTypeAlignment(fpImm.getType());
+                // Emit a Constant Pool before load a constant fp from memory.
+                int idx = mf.getConstantPool().getConstantPoolIndex(fpImm, align);
+                buildMI(mbb, instrInfo.get(opc), resultReg)
+                        .addConstantPoolIndex(idx, 0, 0);
+                return resultReg;
+            default:
+                return 0;
+        }
     }
 }

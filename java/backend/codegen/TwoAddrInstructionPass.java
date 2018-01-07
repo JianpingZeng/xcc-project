@@ -120,7 +120,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
                 distanceMap.put(i, i + 1);
                 int sz = mi.getOpcode() == INLINEASM ?
-                        mi.getNumOperands() : tid.getNumOperands();
+                        tid.getNumOperands() : mi.getNumOperands();
                 // Walk through operand but skips defined operand.
                 for (int si = 1; si < sz; ++si)
                 {

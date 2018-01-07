@@ -615,4 +615,9 @@ public class Util
 	{
 		return Double.doubleToRawLongBits(val);
 	}
+
+	public static char hexDigit(int x)
+	{
+		return x < 10 ? (char)('0' + x) :(char)('A' + x - 10);
+	}
 }
