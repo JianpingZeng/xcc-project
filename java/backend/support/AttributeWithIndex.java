@@ -1,7 +1,7 @@
 package backend.support;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2017, Xlous Zeng.
+ * Copyright (c) 2015-2018, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
