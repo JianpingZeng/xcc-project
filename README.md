@@ -54,6 +54,8 @@ should be added to avoiding redundant move instruction. Another point should be
 improved is peephole optimization after instruction inselection, currently naive
 instruction selection generates very poorly machine code.
 
+Supports generation of conversion instruction between fp and integer for FastISel.
+
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 64 bit OS with OracleJDK/OpenJDK 1.8, GCC 5.4/6.3 or Clang 3.9/4.0 successfully.
