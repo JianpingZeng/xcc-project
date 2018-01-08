@@ -220,7 +220,7 @@ public abstract class FastISel extends MachineFunctionPass
         if (!tli.isTypeLegal(realVT))
         {
             // Promote i1 to a legal type, because it is common and easy.
-            if (vt.equals(new MVT(MVT.i1)))
+            if (vt.simpleVT == MVT.i1)
                 vt = tli.getTypeForTransformTo(realVT).getSimpleVT();
             else
                 return 0;

@@ -2481,8 +2481,13 @@ public class X86FastISel extends FastISel
                 int align = td.getPrefTypeAlignment(fpImm.getType());
                 // Emit a Constant Pool before load a constant fp from memory.
                 int idx = mf.getConstantPool().getConstantPoolIndex(fpImm, align);
-                buildMI(mbb, instrInfo.get(opc), resultReg)
-                        .addConstantPoolIndex(idx, 0, 0);
+
+                MachineInstrBuilder mib = buildMI(mbb, instrInfo.get(opc), resultReg);
+                mib.addReg(0);  // base register
+                mib.addImm(1);  // scale
+                mib.addReg(0);  // index register
+                mib.addConstantPoolIndex(idx, 0, 0);
+                mib.addReg(0);  // segment register
                 return resultReg;
             default:
                 return 0;

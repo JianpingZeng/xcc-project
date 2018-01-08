@@ -41,7 +41,7 @@ public class MachineConstantPoolEntry
     {
         val = v;
         alignemnt = align;
-        alignemnt |= 1 << (32 -1);
+        alignemnt |= (1 << 31);
     }
 
     public boolean isMachineConstantPoolEntry()
@@ -52,14 +52,16 @@ public class MachineConstantPoolEntry
 
     public Type getType()
     {
-        // TODO: 17-8-3
-        return null;
+        if (isMachineConstantPoolEntry())
+            return getValueAsCPV().getType();
+        return getValueAsConstant().getType();
     }
 
     public int getRelocationInfo()
     {
-        // TODO: 17-8-3
-        return 0;
+        if (isMachineConstantPoolEntry())
+            return getValueAsCPV().getRelocationInfo();
+        return getValueAsConstant().getRelocationInfo();
     }
 
     public int getAlignment()
