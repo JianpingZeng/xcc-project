@@ -254,7 +254,7 @@ public final class ConstantFolder
         {
             if (operands.get(0) instanceof ConstantFP)
             {
-                ConstantFP op = (ConstantFP)operands.get(0);
+                ConstantFP op = (ConstantFP) operands.get(0);
                 double v = op.getValue();
                 switch (name)
                 {
@@ -300,30 +300,30 @@ public final class ConstantFolder
                         break;
                 }
             }
-            else if (operands.size() == 2)
+        }
+        else if (operands.size() == 2)
+        {
+            if (operands.get(0) instanceof ConstantFP)
             {
-                if (operands.get(0) instanceof ConstantFP)
+                ConstantFP op1 = (ConstantFP)operands.get(0);
+                if (operands.get(1) instanceof ConstantFP)
                 {
-                    ConstantFP op1 = (ConstantFP)operands.get(0);
-                    if (operands.get(1) instanceof ConstantFP)
-                    {
-                        ConstantFP op2 = (ConstantFP)operands.get(1);
-                        double op1Val = op1.getValue(), op2Val = op2.getValue();
+                    ConstantFP op2 = (ConstantFP)operands.get(1);
+                    double op1Val = op1.getValue(), op2Val = op2.getValue();
 
-                        if (name.equals("pow"))
-                        {
-                            double res = Math.pow(op1Val, op2Val);
-                            return ConstantFP.get(ty, res);
-                        }
-                        else if (name.equals("fmod"))
-                        {
-                            // TODO fmod intrisinc function.
-                            return null;
-                        }
-                        else if (name.equals("atan2"))
-                        {
-                            return ConstantFP.get(ty, Math.atan2(op1Val, op2Val));
-                        }
+                    if (name.equals("pow"))
+                    {
+                        double res = Math.pow(op1Val, op2Val);
+                        return ConstantFP.get(ty, res);
+                    }
+                    else if (name.equals("fmod"))
+                    {
+                        // TODO fmod intrisinc function.
+                        return null;
+                    }
+                    else if (name.equals("atan2"))
+                    {
+                        return ConstantFP.get(ty, Math.atan2(op1Val, op2Val));
                     }
                 }
             }

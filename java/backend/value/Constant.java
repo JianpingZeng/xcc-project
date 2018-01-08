@@ -106,4 +106,24 @@ public abstract class Constant extends User
     }
 
     public void destroyConstant() {}
+
+    public static final int NoRelocation = 0;
+    public static final int LocalRelocation = 1;
+    public static final int GlobalRelocations = 2;
+
+    public int getRelocationInfo()
+    {
+        if (this instanceof GlobalValue)
+        {
+            GlobalValue gv = (GlobalValue)this;
+            if (gv.hasLocalLinkage() || gv.hasHiddenVisibility())
+                return LocalRelocation;
+            return GlobalRelocations;
+        }
+
+        int result = NoRelocation;
+        for (int i = 0, e = getNumOfOperands(); i < e;i++)
+            result = Math.max(result, operand(i).getRelocationInfo());
+        return result;
+    }
 }

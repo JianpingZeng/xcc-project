@@ -20,6 +20,7 @@ package backend.codegen;
 import backend.pass.AnalysisUsage;
 import backend.support.IntEqClasses;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Iterator;
 
@@ -47,6 +48,12 @@ public class EdgeBundles extends MachineFunctionPass
      * It size is same as number equivalence set.
      */
     private TIntArrayList[] blocks;
+
+
+    private TIntIntHashMap groupID;
+
+    private int nextID;
+
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
@@ -72,6 +79,14 @@ public class EdgeBundles extends MachineFunctionPass
         for (int i = 0, e; i < getNumBundles(); i++)
             blocks[i] = new TIntArrayList();
 
+        groupID = new TIntIntHashMap();
+        for (int i = 0; i < ec.getNumIds(); i++)
+        {
+            int leading = ec.findLeader(i);
+            if (!groupID.containsKey(leading))
+                groupID.put(leading, nextID++);
+        }
+
         for (int i = 0, e = mf.getNumBlockIDs(); i < e; i++)
         {
             int b0 = getBundles(i, false);
@@ -85,7 +100,9 @@ public class EdgeBundles extends MachineFunctionPass
 
     public int getBundles(int n, boolean out)
     {
-        return ec.findLeader(n*2 + (out?1:0));
+        int leading = ec.findLeader(n*2 + (out?1:0));
+        assert groupID.containsKey(leading);
+        return groupID.get(leading);
     }
 
     public int getNumBundles()

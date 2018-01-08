@@ -41,6 +41,8 @@ import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.Static;
 import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;
 import static backend.value.GlobalValue.VisibilityTypes.ProtectedVisibility;
+import static tools.Util.doubleToBits;
+import static tools.Util.floatToBits;
 
 /**
  * This is a common base class be used for target-specific asmwriters. This
@@ -450,7 +452,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
     protected void emitGlobalConstant(Constant c)
     {
         TargetData td = tm.getTargetData();
-
         String data64BitDirective = tai.getData64bitsDirective();
         String data32BitDirective = tai.getData32bitsDirective();
         String data8BitDirective = tai.getData8bitsDirective();
@@ -519,10 +520,9 @@ public abstract class AsmPrinter extends MachineFunctionPass
             // FP Constants are printed as integer constants to avoid losing
             // precision.
             ConstantFP fp = (ConstantFP)c;
-            double val = fp.getValue();
-
             if (fp.getType() == LLVMContext.DoubleTy)
             {
+                double val = fp.getValueAPF().convertToDouble();
                 if (data64BitDirective != null)
                 {
                     os.println(data64BitDirective + doubleToBits(val)
@@ -530,7 +530,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 }
                 else if (td.isLittleEndian())
                 {
-                    os.print(data32BitDirective + (int)doubleToBits(val));
+                    os.print(data32BitDirective + (int)(doubleToBits(val)));
                     os.print("\t" + commentString + "double least significant word");
                     os.println(val);
 
@@ -554,6 +554,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             }
             else
             {
+                float val = fp.getValueAPF().convertToFloat();
                 os.print(data32BitDirective + floatToBits((float) val));
                 os.println("\t" + commentString + " float " + val);
                 return;
@@ -688,16 +689,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
         }
         else
             assert false:"Unknown constant expre!";
-    }
-
-    private long doubleToBits(double val)
-    {
-        return (long)val;
-    }
-
-    private int floatToBits(float val)
-    {
-        return (int)val;
     }
 
     private static char toOctal(int x)

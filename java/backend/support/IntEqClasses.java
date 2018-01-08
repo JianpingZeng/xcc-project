@@ -40,6 +40,7 @@ public class IntEqClasses
 
     public IntEqClasses(int n)
     {
+        assert n >= 0:"Can not allocate N(less than 0)'s elements";
         id = new int[n];
         size = new int[n];
         numClasses = n;
@@ -79,5 +80,16 @@ public class IntEqClasses
     public int getNumClasses()
     {
         return numClasses;
+    }
+
+    public int getNumIds()
+    {
+        return id.length;
+    }
+
+    public int getIDAt(int index)
+    {
+        assert index >= 0 && index < getNumIds();
+        return id[index];
     }
 }

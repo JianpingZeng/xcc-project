@@ -91,7 +91,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             if (TargetRegisterInfo.isPhysicalRegister(interval.register))
             {
                 fixed.add(interval);
-                prt.addRegUse(interval.register);
+                mri.setPhysRegUsed(interval.register);
             }
             else
             {
@@ -463,36 +463,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
         unhandled.addAll(added);
     }
 
-    private boolean usedBefore(int reg)
-    {
-        assert isPhysicalRegister(reg):"Must be physical register";
-
-        for (int i = 0; i < active.size(); i++)
-        {
-            LiveInterval li = active.get(i);
-            if (vrm.getPhys(li.register) == reg)
-                return false;
-        }
-
-        for (int i = 0; i < inactive.size(); i++)
-        {
-            LiveInterval li = inactive.get(i);
-            if (vrm.getPhys(li.register) == reg)
-                return false;
-        }
-        return true;
-    }
-
     private int getFreePhysReg(LiveInterval cur)
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
         for (int reg : rc.getAllocableRegs(mf))
         {
-            // If the reg is free or used but it's corresponding interval not overlap cur,
-            // we choose reg as candidate.
-            if (prt.isRegAvail(reg) || (li.getInterval(reg) != null &&
-                    !li.getInterval(reg).overlaps(cur) &&
-                    !usedBefore(reg)))
+            if (prt.isRegAvail(reg))
                 return reg;
         }
         return 0;
