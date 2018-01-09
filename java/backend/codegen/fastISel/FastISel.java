@@ -1149,9 +1149,20 @@ public abstract class FastISel extends MachineFunctionPass
                 dstVT.getSimpleVT(),
                 opcode, inputReg);
         if (resultReg == 0)
-            return false;
+        {
+            resultReg = selectIntToFP((Instruction) u);
+            if (resultReg == 0) return false;
+        }
 
         updateValueMap(u, resultReg);
         return true;
     }
+
+    /**
+     * This method is called when {@linkplain #selectCast(User, int)} fail to
+     * generate code for Int2FP conversion operation.
+     * @param inst  Int to FP conversion.
+     * @return  The result register.
+     */
+    public abstract int selectIntToFP(Instruction inst);
 }
