@@ -20,7 +20,7 @@ public class MachineFrameInfo
     public static class StackObject
     {
         /**
-         * The getNumOfSubLoop of this object on the stack.
+         * The size of this object on the stack.
          * 0 means variable object.
          */
         public long size;

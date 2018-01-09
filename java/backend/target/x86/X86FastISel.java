@@ -2493,4 +2493,41 @@ public class X86FastISel extends FastISel
                 return 0;
         }
     }
+
+    @Override
+    public int selectIntToFP(Instruction inst)
+    {
+        assert inst != null && (inst.getOpcode() == Operator.SIToFP
+                || inst.getOpcode() == Operator.UIToFP);
+
+        EVT vt;
+        OutParamWrapper<EVT> x = new OutParamWrapper<>();
+        if (!isTypeLegal(inst.operand(0).getType(), x))
+            return 0;
+
+        vt = x.get();
+        // Since X86 can't support directly convert int to fp, we implement it's
+        // semantics as follow.
+        // First, store the integral value into stack slot
+        X86AddressMode am = new X86AddressMode();
+        long size = td.getTypeSize(inst.operand(0).getType());
+        int align = td.getPrefTypeAlignment(inst.operand(0).getType());
+        int fi = mfi.createStackObject(size, align);
+        am.base = new X86AddressMode.FrameIndexBase(fi);
+        am.baseType = FrameIndexBase;
+        am.indexReg = 0;
+        am.scale = 1;
+        am.disp = 0;
+        if (!x86FastEmitStore(vt, inst.operand(0), am))
+            return 0;
+
+        // Second, load the integral value from stack slot to FP stack.
+        if (!isTypeLegal(inst.getType(), x))
+            return 0;
+        vt = x.get();
+        OutParamWrapper<Integer> resultReg = new OutParamWrapper<>(0);
+        if (!x86FastEmitLoad(vt, am, resultReg))
+            return 0;
+        return resultReg.get();
+    }
 }

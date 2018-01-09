@@ -95,6 +95,7 @@ public class EdgeBundles extends MachineFunctionPass
             if (b1 != b0)
                 blocks[b1].add(i);
         }
+        nextID = 0;
         return false;
     }
 
