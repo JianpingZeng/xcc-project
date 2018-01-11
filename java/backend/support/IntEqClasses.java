@@ -17,6 +17,8 @@
 
 package backend.support;
 
+import java.util.Arrays;
+
 /**
  * This file defines a class used for representing the equivalent class between
  * different integral pair.
@@ -43,6 +45,7 @@ public class IntEqClasses
         assert n >= 0:"Can not allocate N(less than 0)'s elements";
         id = new int[n];
         size = new int[n];
+        Arrays.fill(size, 1);
         numClasses = n;
         for (int i = 0; i < n; i++)
             id[i] = i;
