@@ -364,9 +364,9 @@ public class Util
 
 	public static int countPoplutation(int value)
 	{
-		int v = value - ((value >> 1) & 0x55555555);
-		v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-		return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+		int v = value - ((value >>> 1) & 0x55555555);
+		v = (v & 0x33333333) + ((v >>> 2) & 0x33333333);
+		return ((v + (v >>> 4) & 0xF0F0F0F) * 0x1010101) >>> 24;
 	}
 
 	public static int countPopulation(long value)
