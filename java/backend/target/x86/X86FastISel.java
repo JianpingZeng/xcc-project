@@ -269,13 +269,22 @@ public class X86FastISel extends FastISel
         int opc;
         boolean isSigned = retTy.isSigned();
         int destReg = va.getLocReg();
+
+        // Only handle register returns.
+        if (!va.isRegLoc()) return false;
+
         if (va.getLocReg() == ST0 || va.getLocReg() == ST1)
         {
             if (isScalarFPTypeInSSEReg(va.getValVT()))
                 assert false:"Unsupported value type and operation!";
         }
+
         switch (retVT.getSimpleVT().simpleVT)
         {
+            case MVT.i1:
+                opc = isSigned? OR8ri:X86GenInstrNames.AND8ri;
+                int rem = isSigned ? 0xF7:0x1;
+                srcReg = fastEmitInst_ri(opc, GR8RegisterClass, srcReg, rem);
             case MVT.i8:
                 opc = isSigned ? MOVSX32rr8:MOVZX32rr8;
                 buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
@@ -294,7 +303,15 @@ public class X86FastISel extends FastISel
                 }
                 else
                 {
-                    buildMI(mbb, instrInfo.get(FsFLD0SS)).addReg(srcReg);
+                    // It is needed to specially handle FP stack as return location.
+                    // We just return a pseudo register which is replaced by X86
+                    // FP stackifier pass.
+                    if (va.getLocReg() == X86GenRegisterNames.ST0 ||
+                            va.getLocReg() == X86GenRegisterNames.ST1)
+                    {
+                        buildMI(mbb, instrInfo.get(RET)).addReg(srcReg);
+                        return true;
+                    }
                 }
                 break;
             case MVT.f64:
@@ -304,7 +321,15 @@ public class X86FastISel extends FastISel
                 }
                 else
                 {
-                    buildMI(mbb, instrInfo.get(FsFLD0SD)).addReg(srcReg);
+                    // It is needed to specially handle FP stack as return location.
+                    // We just return a pseudo register which is replaced by X86
+                    // FP stackifier pass.
+                    if (va.getLocReg() == X86GenRegisterNames.ST0 ||
+                            va.getLocReg() == X86GenRegisterNames.ST1)
+                    {
+                        buildMI(mbb, instrInfo.get(RET)).addReg(srcReg);
+                        return true;
+                    }
                 }
                 break;
             case MVT.i64:
@@ -313,6 +338,7 @@ public class X86FastISel extends FastISel
                 return false;
         }
         buildMI(mbb, instrInfo.get(RET));
+        mri.addLiveOut(va.getLocReg());
         return true;
     }
 
@@ -1701,19 +1727,26 @@ public class X86FastISel extends FastISel
             // stack, but where we prefer to use the value in xmm registers, copy it
             // out as F80 and use a truncate to move it from fp stack reg to xmm reg.
             if ((rvLocs.get(0).getLocReg() == ST0
-                    || rvLocs.get(0).getLocReg() == ST1)
-                    && isScalarFPTypeInSSEReg(rvLocs.get(0).getValVT()))
+                    || rvLocs.get(0).getLocReg() == ST1))
+            {
+                if (!isScalarFPTypeInSSEReg(rvLocs.get(0).getValVT()))
+                {
+                    updateValueMap(inst, rvLocs.get(0).getLocReg());
+                    return true;
+                }
+            }
+            if (isScalarFPTypeInSSEReg(rvLocs.get(0).getValVT()))
             {
                 copyVT = new EVT(MVT.f80);
                 srcRC = RSTRegisterClass;
                 dstRC = RFP80RegisterClass;
             }
-
             int resultReg = createResultReg(dstRC);
-            boolean emitted = instrInfo.copyRegToReg(mbb, mbb.size(), resultReg,
-                    rvLocs.get(0).getLocReg(), dstRC, srcRC);
+            boolean emitted = instrInfo
+                    .copyRegToReg(mbb, mbb.size(), resultReg, rvLocs.get(0).getLocReg(), dstRC, srcRC);
             assert emitted : "Failed to emit a copy instruction!";
             emitted = true;
+
             if (copyVT != rvLocs.get(0).getValVT())
             {
                 // Round the F80 the right size, which also moves to the appropriate xmm
