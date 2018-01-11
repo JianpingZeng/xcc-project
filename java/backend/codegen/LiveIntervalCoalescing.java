@@ -34,7 +34,6 @@ import tools.commandline.Initializer;
 import tools.commandline.OptionNameApplicator;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import static backend.codegen.LiveIntervalAnalysis.getDefIndex;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
@@ -121,9 +120,9 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
         {
             int loopDepth = loopInfo.getLoopDepth(mbb);
 
-            for (Iterator<MachineInstr> itr = mbb.getInsts().iterator(); itr.hasNext(); )
+            for (int i = 0; i < mbb.size(); i++)
             {
-                MachineInstr mi = itr.next();
+                MachineInstr mi = mbb.getInstAt(i);
                 OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
                 OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
                 int regRep;
@@ -141,20 +140,21 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                                 LiveIntervalAnalysis.InstrSlots.NUM, null);
                         li.mi2Idx.remove(mi);
                     }
-                    itr.remove();
+                    mi.removeFromParent();
+                    --i;
                     numPeep.inc();
                 }
                 else
                 {
-                    for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+                    for (int j = 0, e = mi.getNumOperands(); j < e; j++)
                     {
-                        MachineOperand mo = mi.getOperand(i);
+                        MachineOperand mo = mi.getOperand(j);
                         if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
                         {
                             // Replace register with representative register.
                             int reg = rep(mo.getReg());
                             if (reg != mo.getReg())
-                                mi.setMachineOperandReg(i, reg);
+                                mi.setMachineOperandReg(j, reg);
 
                             LiveInterval interval = li.getInterval(reg);
                             if(interval == null)
@@ -281,7 +281,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                 LiveInterval intervalA = li.getInterval(regA);
                 LiveInterval intervalB = li.getInterval(regB);
                 assert intervalA.register == regA && intervalB.register == regB
-                        :"Regiser diagMapping is horribly borken!";
+                        :"Regiser mapping is horribly broken!";
 
                 if (Util.DEBUG)
                 {
