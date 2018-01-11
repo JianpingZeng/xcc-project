@@ -283,9 +283,28 @@ public class X86CallLowering extends CallLowering
                     assert emitted : "Failed to emit a aext!";
                 }
             }
-            tii.copyRegToReg(mbb, mbb.size(), valReg, locReg,
-                    tli.getRegClassFor(ca.getValVT()),
-                    tli.getRegClassFor(ca.getLocVT()));
+            if (locReg == X86GenRegisterNames.ST0 || locReg == X86GenRegisterNames.ST1)
+            {
+                int bitsIndex = 0;
+                if (ca.getLocVT().equals(new EVT(MVT.f32)))
+                    bitsIndex  = 0;
+                else if (ca.getLocVT().equals(new EVT(MVT.f64)))
+                    bitsIndex = 1;
+                else if (ca.getLocVT().equals(new EVT(MVT.f80)))
+                    bitsIndex = 2;
+                else
+                    assert false:"Unsupported return value type!";
+                int opcs[][] = {{FpGET_ST0_32, FpGET_ST0_64, FpGET_ST0_80}, // first line for ST0 as return register.
+                                {FpGET_ST1_32, FpGET_ST1_64, FpGET_ST1_80}};    // first line for ST1 as return register.
+                opc = opcs[locReg - X86GenRegisterNames.ST0][bitsIndex];
+                buildMI(mbb, tii.get(opc), valReg);
+            }
+            else
+            {
+                tii.copyRegToReg(mbb, mbb.size(), valReg, locReg,
+                        tli.getRegClassFor(ca.getValVT()),
+                        tli.getRegClassFor(ca.getLocVT()));
+            }
             isel.updateValueMap(argInfo.val, valReg);
         }
 
