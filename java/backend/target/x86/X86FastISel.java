@@ -377,8 +377,8 @@ public class X86FastISel extends FastISel
             case MVT.i16: return CMP16rr;
             case MVT.i32: return CMP32rr;
             case MVT.i64: return CMP64rr;
-            case MVT.f32: return UCOMISSrr;
-            case MVT.f64: return UCOMISDrr;
+            case MVT.f32: return UCOM_FpIr32;
+            case MVT.f64: return UCOM_FpIr64;
             default: return 0;
         }
     }
@@ -881,8 +881,7 @@ public class X86FastISel extends FastISel
         // If there is only one use of this cmp instr and the use is branch.
         // Performs some peephole optimization on conditional branch
         // Note that floating point comparison must be handled specially.
-        if (ci.getOpcode() == Operator.ICmp && ci.hasOneUses() &&
-                ci.useAt(0).getUser() instanceof BranchInst)
+        if (ci.hasOneUses() && ci.useAt(0).getUser() instanceof BranchInst)
         {
             return true;
         }

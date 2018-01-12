@@ -407,6 +407,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
         if (Util.DEBUG)
             dumpStack();
+        if (!(stackTop == Util.countPoplutation(mask)))
+            dumpStack();
         assert stackTop == Util.countPoplutation(mask) : "Live count mismatch";
     }
 
@@ -791,9 +793,6 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             op0 = tos = dest;
             killsOp0 = true;
         }
-
-        assert (tos == op0 || tos == op1) && (killsOp0 || killsOp1)
-                :"Stack conditions not set up right!";
 
         TableEntry[] instTable;
         boolean isForward = tos == op0;

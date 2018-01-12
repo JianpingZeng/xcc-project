@@ -390,8 +390,8 @@ public class EVT
             case IntegerTyID:
                 return getIntegerVT(((IntegerType)(ty)).getBitWidth());
             case FloatTyID: return new EVT(new MVT(f32));
-            case DoubleTyID: return new EVT(new MVT(f32));
-            case X86_FP80TyID: return new EVT(new MVT(f80));
+            case DoubleTyID: return new EVT(new MVT(f64));
+            case X86_FP80TyID: return new EVT(new MVT(f 80));
             case FP128TyID: return new EVT(new MVT(f128));
             case PointerTyID: return new EVT(new MVT(iPTR));
         }
