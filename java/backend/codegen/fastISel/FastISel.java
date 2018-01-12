@@ -969,6 +969,16 @@ public abstract class FastISel extends MachineFunctionPass
                 return false;
         }
 
+        // transform the constant as rhs operand.
+        if (u.operand(0) instanceof Constant &&
+                !(u.operand(1) instanceof Constant))
+        {
+            // swap lhs and rhs.
+            Value temp = u.operand(0);
+            u.setOperand(0, u.operand(1));
+            u.setOperand(1, temp);
+        }
+
         // obtain the assigned register of the first operand.
         int op0 = getRegForValue(u.operand(0));
         if (op0 == 0)
@@ -995,12 +1005,18 @@ public abstract class FastISel extends MachineFunctionPass
         if (u.operand(1) instanceof ConstantFP)
         {
             ConstantFP cf = (ConstantFP)u.operand(1);
+            if(cf.isNullValue())
+            {
+                u.replaceAllUsesWith(cf);
+                return true;
+            }
+
             int resultReg = fastEmit_rf(vt.getSimpleVT(), vt.getSimpleVT(),
                     opcode, op0, cf);
 
             if (resultReg != 0)
             {
-                // We successfully emitted code for the gien LLVM instruction.
+                // We successfully emitted code for the given LLVM instruction.
                 updateValueMap(u, resultReg);
                 return true;
             }

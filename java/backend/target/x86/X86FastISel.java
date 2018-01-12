@@ -32,6 +32,7 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.CmpInst;
 import gnu.trove.list.array.TIntArrayList;
+import tools.APFloat;
 import tools.OutParamWrapper;
 import tools.Util;
 
@@ -2425,49 +2426,100 @@ public class X86FastISel extends FastISel
         return super.fastEmitInst_ri(machineInstOpcode, rc, op0, imm);
     }
 
-    public int fastEmit_rf(MVT vt, MVT retVT, int opcode, int op0, ConstantFP fpImm)
+    public int fastEmit_rf_ConstantFP(MVT vt, MVT retVT, int op0, ConstantFP fpImm)
     {
         int opc;
         TargetRegisterClass rc;
+        switch (vt.simpleVT)
+        {
+            case MVT.f32:
+                if (subtarget.hasSSE1())
+                {
+                    opc = MOVSSrm;
+                    rc = FR32RegisterClass;
+                }
+                else
+                {
+                    opc = LD_Fp32m;
+                    rc = RFP32RegisterClass;
+                }
+                break;
+            case MVT.f64:
+                if (subtarget.hasSSE2())
+                {
+                    opc = MOVSDrm;
+                    rc = FR64RegisterClass;
+                }
+                else
+                {
+                    opc = LD_Fp64m;
+                    rc = RFP64RegisterClass;
+                }
+                break;
+            default:
+                return 0;
+        }
+        int resultReg = createResultReg(rc);
+        int align = td.getPrefTypeAlignment(fpImm.getType());
+        // Emit a Constant Pool before load a constant fp from memory.
+        int idx = mf.getConstantPool().getConstantPoolIndex(fpImm, align);
+        buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0)
+                .addConstantPoolIndex(idx, 0, 0);
+        return resultReg;
+    }
+
+    public int fastEmit_rf_FMul(MVT vt, MVT retVT, int op0, ConstantFP fpImm)
+    {
+        boolean isF64;
+        switch (vt.simpleVT)
+        {
+            case MVT.f32:
+                isF64 = false;
+                break;
+            case MVT.f64:
+                isF64 = true;
+            default:
+                return 0;
+        }
+        // Currently only transforming expression like op * 2.0 into op + op.
+        if(fpImm.getValueAPF().bitwiseIsEqual(new APFloat(isF64?2.0:2.0f)))
+        {
+            int opc;
+            TargetRegisterClass rc;
+            switch (vt.simpleVT)
+            {
+                case MVT.f32:
+                        opc = ADD_Fp32;
+                        rc = RFP32RegisterClass;
+                    break;
+                case MVT.f64:
+                    {
+                        opc = ADD_Fp64;
+                        rc = RFP64RegisterClass;
+                    }
+                    break;
+                default:
+                    return 0;
+            }
+            int resultReg = createResultReg(rc);
+            buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0).addReg(op0);
+            return resultReg;
+        }
+        else if (fpImm.getValueAPF().equals(new APFloat(isF64?1.0:1.0f)))
+        {
+            return op0;
+        }
+        return 0;
+    }
+
+    public int fastEmit_rf(MVT vt, MVT retVT, int opcode, int op0, ConstantFP fpImm)
+    {
         switch (opcode)
         {
             case ISD.ConstantFP:
-                switch (vt.simpleVT)
-                {
-                    case MVT.f32:
-                        if (subtarget.hasSSE1())
-                        {
-                            opc = MOVSSrm;
-                            rc = FR32RegisterClass;
-                        }
-                        else
-                        {
-                            opc = LD_Fp32m;
-                            rc = RFP32RegisterClass;
-                        }
-                        break;
-                    case MVT.f64:
-                        if (subtarget.hasSSE2())
-                        {
-                            opc = MOVSDrm;
-                            rc = FR64RegisterClass;
-                        }
-                        else
-                        {
-                            opc = LD_Fp64m;
-                            rc = RFP64RegisterClass;
-                        }
-                        break;
-                    default:
-                        return 0;
-                }
-                int resultReg = createResultReg(rc);
-                int align = td.getPrefTypeAlignment(fpImm.getType());
-                // Emit a Constant Pool before load a constant fp from memory.
-                int idx = mf.getConstantPool().getConstantPoolIndex(fpImm, align);
-                buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op0)
-                        .addConstantPoolIndex(idx, 0, 0);
-                return resultReg;
+                return fastEmit_rf_ConstantFP(vt, retVT, op0, fpImm);
+            case ISD.FMUL:
+                return fastEmit_rf_FMul(vt, retVT, op0, fpImm);
             default:
                 return 0;
         }
