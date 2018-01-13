@@ -172,6 +172,9 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
             "# *** IR dump after register coalescing ***:\n")
                     .runOnMachineFunction(mf);
         }
+        // The r2rMap is not cleared after this pass be run which causes performancing
+        // incorrect interval coalescing on %vreg1027 and %vreg1029.
+        r2rMap.clear();
         return true;
     }
 

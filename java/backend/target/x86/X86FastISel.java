@@ -582,7 +582,7 @@ public class X86FastISel extends FastISel
                 opc = subtarget.hasSSE1() ? MOVSSmr : ST_Fp32m;
                 break;
             case MVT.f64:
-                opc = subtarget.hasSSE2() ? MOVSDmr : ST_FP64m;
+                opc = subtarget.hasSSE2() ? MOVSDmr : ST_Fp64m;
                 break;
         }
         addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addReg(val);
@@ -2525,8 +2525,21 @@ public class X86FastISel extends FastISel
         }
     }
 
+    public int fastEmit_f_0_1(MVT vt, MVT retVT, int opcode, ConstantFP fpImm)
+    {
+        return 0;
+    }
+
+    private boolean isSpecialValueOntoFPStack(ConstantFP fpImm)
+    {
+        return false;
+    }
+
     public int fastEmit_f(MVT vt, MVT retVT, int opcode, ConstantFP fpImm)
     {
+        if (isSpecialValueOntoFPStack(fpImm))
+            return fastEmit_f_0_1(vt, retVT, opcode, fpImm);
+
         int opc;
         TargetRegisterClass rc;
         switch (opcode)
