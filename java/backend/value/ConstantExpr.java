@@ -223,7 +223,7 @@ public abstract class ConstantExpr extends Constant
         assert ty.isFirstClassType():"Cannot cast to an aggregate type!";
         // TODO fold a few common cases.
 
-        ExprMapKeyType key = new ExprMapKeyType(op, c);
+        ExprMapKeyType key = new ExprMapKeyType(op, c, ty);
         return getUniqueImpl().getOrCreate(key);
     }
 
@@ -274,7 +274,7 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> list = new ArrayList<>(2);
         list.add(c1);
         list.add(c2);
-        ExprMapKeyType key = new ExprMapKeyType(op, list);
+        ExprMapKeyType key = new ExprMapKeyType(op, list, c1.getType());
         return getUniqueImpl().getOrCreate(key);
     }
 
@@ -429,7 +429,7 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> elts = new ArrayList<>();
         elts.add(c);
         indices.forEach(ind->elts.add((Constant)ind));
-        ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts);
+        ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts, ty);
         return getUniqueImpl().getOrCreate(key);
     }
 

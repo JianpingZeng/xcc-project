@@ -85,7 +85,7 @@ public final class UniqueConstantValueImpl
         {
             assert key.operands.size() == 2;
             Constant lhs = key.operands.get(0), rhs = key.operands.get(1);
-            ce = new CmpConstantExpr(lhs.getType(), opc, lhs, rhs, key.predicate);
+            ce = new CmpConstantExpr(key.ty, opc, lhs, rhs, key.predicate);
             ExprConstantMaps.put(key, ce);
             return ce;
         }
@@ -101,7 +101,7 @@ public final class UniqueConstantValueImpl
         {
             assert key.operands.size() == 1;
             Constant op = key.operands.get(0);
-            ce = new UnaryConstExpr(opc, op, op.getType());
+            ce = new UnaryConstExpr(opc, op, key.ty);
             ExprConstantMaps.put(key, ce);
             return ce;
         }
@@ -112,7 +112,7 @@ public final class UniqueConstantValueImpl
             Constant base = key.operands.get(0);
             ArrayList<Constant> idx = new ArrayList<>();
             idx.addAll(key.operands.subList(1, key.operands.size()));
-            ce = new GetElementPtrConstantExpr(base, idx, base.getType());
+            ce = new GetElementPtrConstantExpr(base, idx, key.ty);
             ExprConstantMaps.put(key, ce);
             return ce;
         }
@@ -247,18 +247,19 @@ public final class UniqueConstantValueImpl
         Predicate predicate;
         ArrayList<Constant> operands;
         TIntArrayList indices;
+        Type ty;
 
-        public ExprMapKeyType(Operator opc, Constant op)
+        public ExprMapKeyType(Operator opc, Constant op, Type ty)
         {
-            this(opc, op, FCMP_FALSE);
+            this(opc, op, FCMP_FALSE, ty);
         }
 
-        public ExprMapKeyType(Operator opc, Constant op, Predicate pred)
+        public ExprMapKeyType(Operator opc, Constant op, Predicate pred, Type ty)
         {
-            this(opc, op, pred, new TIntArrayList());
+            this(opc, op, pred, new TIntArrayList(), ty);
         }
 
-        public ExprMapKeyType(Operator opc, Constant op, Predicate pred, TIntArrayList indices)
+        public ExprMapKeyType(Operator opc, Constant op, Predicate pred, TIntArrayList indices, Type ty)
         {
             opcode = opc;
             predicate = pred;
@@ -266,20 +267,21 @@ public final class UniqueConstantValueImpl
             operands.add(op);
             this.indices = new TIntArrayList();
             this.indices.addAll(indices);
+            this.ty = ty;
         }
 
-        public ExprMapKeyType(Operator opc, List<Constant> ops, Predicate pred)
+        public ExprMapKeyType(Operator opc, List<Constant> ops, Predicate pred, Type ty)
         {
-            this(opc, ops, pred, new TIntArrayList());
+            this(opc, ops, pred, new TIntArrayList(), ty);
         }
 
-        public ExprMapKeyType(Operator opc, List<Constant> ops)
+        public ExprMapKeyType(Operator opc, List<Constant> ops, Type ty)
         {
-            this(opc, ops, Predicate.FCMP_FALSE);
+            this(opc, ops, Predicate.FCMP_FALSE, ty);
         }
 
         public ExprMapKeyType(Operator opc, List<Constant> ops,
-                Predicate pred, TIntArrayList indices)
+                Predicate pred, TIntArrayList indices, Type ty)
         {
             opcode = opc;
             predicate = pred;
@@ -287,6 +289,7 @@ public final class UniqueConstantValueImpl
             operands.addAll(ops);
             this.indices = new TIntArrayList();
             this.indices.addAll(indices);
+            this.ty = ty;
         }
 
         @Override
@@ -300,7 +303,8 @@ public final class UniqueConstantValueImpl
                 return false;
             ExprMapKeyType key = (ExprMapKeyType)obj;
             return opcode == key.opcode && predicate == key.predicate
-                    && operands.equals(key.operands) && indices.equals(key.indices);
+                    && operands.equals(key.operands) && indices.equals(key.indices)
+                    && (ty == key.ty || ty.equals(key.ty));
         }
 
         @Override
@@ -314,6 +318,7 @@ public final class UniqueConstantValueImpl
             id.addInteger(indices.size());
             for (int i = 0, e = indices.size(); i < e; i++)
                 id.addInteger(indices.get(i));
+            id.addInteger(ty.hashCode());
             return id.computeHash();
         }
     }

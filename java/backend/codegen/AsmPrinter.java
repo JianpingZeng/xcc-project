@@ -490,8 +490,8 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 {
                     emitGlobalConstant(ca.operand(i));
                 }
-                return;
             }
+            return;
         }
         else if (c instanceof ConstantStruct)
         {
@@ -512,7 +512,8 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 emitGlobalConstant(field);
                 emitZero(padSize);
             }
-            assert sizeSoFar == layout.structSize:"layout of constant struct may be incorrect!";
+            assert sizeSoFar == layout.structSize :
+                    "layout of constant struct may be incorrect!";
             return;
         }
         else if (c instanceof ConstantFP)
@@ -688,7 +689,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             }
         }
         else
-            assert false:"Unknown constant expre!";
+            assert false:"Unknown constant expression!";
     }
 
     private static char toOctal(int x)
@@ -716,7 +717,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             else if (c == '\\')
                 os.print("\\\\");
             else if (TextUtils.isPrintable(c))
-                os.print(c);
+                os.print((char)c);
             else
             {
                 switch(c)

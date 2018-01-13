@@ -2886,7 +2886,7 @@ public final class LLParser
                 ArrayList<Value> tmp = new ArrayList<>();
                 tmp.addAll(elts);
 
-                if (Instruction.GetElementPtrInst.getIndexedType(elts.get(0).getType(),
+                if (GetElementPtrInst.getIndexedType(elts.get(0).getType(),
                         tmp.subList(1, tmp.size())) == null)
                     return error(id.loc, "invalid indices for getelementptr");
 

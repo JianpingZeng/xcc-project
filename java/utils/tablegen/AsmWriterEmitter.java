@@ -664,8 +664,49 @@ public final class AsmWriterEmitter extends TableGenBackend
         os.printf("\t\tint asmStrIdx = (int)bits&0x%x, len = (int)opInfo[mi.getOpcode()][1];\n",
                 asmStrBitsMask);
         os.println("\t\tString asmName = asmStrs.substring(asmStrIdx, asmStrIdx + len);");
-        os.println("\t\tif (asmName.endsWith(\"\\\\t\"))");
-        os.println("\t\t\tasmName = asmName.substring(0, asmName.indexOf(\"\\\\t\")) + \"\\t\";");
+        os.println("\t\tStringBuilder buf = new StringBuilder();\n"
+                + "\t\tfor (int i = 0, e = asmName.length(); i < e; i++)\n"
+                + "        {\n"
+                + "            if (asmName.charAt(i) == '\\\\' && i < e - 1)\n"
+                + "            {\n"
+                + "                switch (asmName.charAt(i+1))\n"
+                + "                {\n" + "                    case 't':\n"
+                + "                        buf.append('\\t');\n"
+                + "                        break;\n"
+                + "                    case 'n':\n"
+                + "                        buf.append('\\n');\n"
+                + "                        break;\n"
+                + "                    case 'v':\n"
+                + "                        buf.append(11);\n"
+                + "                    case 'a':\n"
+                + "                        buf.append(7);\n"
+                + "                        break;\n"
+                + "                    case 'f':\n"
+                + "                        buf.append('\\f');\n"
+                + "                        break;\n"
+                + "                    case 'r':\n"
+                + "                        buf.append('\\r');\n"
+                + "                        break;\n"
+                + "                    case '\\\\':\n"
+                + "                        buf.append('\\\\');\n"
+                + "                        break;\n"
+                + "                    case '\\'':\n"
+                + "                        buf.append('\\'');\n"
+                + "                        break;\n"
+                + "                    case '\"':\n"
+                + "                        buf.append('\"');\n"
+                + "                        break;\n"
+                + "                    case '?':\n"
+                + "                        buf.append('?');\n"
+                + "                        break;\n"
+                + "                    default:\n"
+                + "                        buf.append('\\\\');\n"
+                + "                        buf.append(asmName.charAt(i+1));\n"
+                + "                        break;\n" + "                }\n"
+                + "                i += 1;\n" + "                continue;\n"
+                + "            }\n"
+                + "            buf.append(asmName.charAt(i));\n" + "        }\n"
+                + "        asmName = buf.toString();");
 
         os.println("\n\t\tos.print(asmName);");
 
