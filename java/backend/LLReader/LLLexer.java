@@ -379,7 +379,7 @@ public final class LLLexer
                     strVal = buffer.getSubString(tokStart, curPtr - 1);
                     return LabelStr;
                 }
-                if (buffer.getCharAt(ptr) == '.' && buffer.getCharAt(ptr + 1) == '.')
+                if (buffer.getCharAt(curPtr) == '.' && buffer.getCharAt(curPtr + 1) == '.')
                 {
                     curPtr += 2;
                     return dotdotdot;

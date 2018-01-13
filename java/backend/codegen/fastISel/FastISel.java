@@ -208,7 +208,12 @@ public abstract class FastISel extends MachineFunctionPass
         }
     }
 
-    public abstract boolean targetSelectInstruction(Instruction inst);
+    public boolean targetSelectInstruction(Instruction inst)
+    {
+        return targetSelectOperation(inst, inst.getOpcode());
+    }
+
+    public abstract boolean targetSelectOperation(User inst, Operator opc);
 
     public int getRegForValue(Value v)
     {
@@ -276,14 +281,21 @@ public abstract class FastISel extends MachineFunctionPass
         else if (v instanceof ConstantExpr)
         {
             ConstantExpr ce = (ConstantExpr)v;
-            if (!selectOperator(ce, ce.getOpcode()))
+            if (!selectOperator(ce, ce.getOpcode()) &&
+                    !targetSelectOperation(ce, ce.getOpcode()))
                 return 0;
+
             reg = localValueMap.get(ce);
         }
         else if (v instanceof Value.UndefValue)
         {
             reg = createResultReg(tli.getRegClassFor(realVT));
             buildMI(mbb, instrInfo.get(TargetInstrInfo.IMPLICIT_DEF), reg);
+        }
+        else if (v instanceof GlobalVariable)
+        {
+            // handle global value.
+            reg = loadFromValue((GlobalVariable)v);
         }
 
         // If target-independent code couldn't handle the value, give target-specific
@@ -297,6 +309,11 @@ public abstract class FastISel extends MachineFunctionPass
             localValueMap.put(v, reg);
 
         return reg;
+    }
+
+    public int loadFromValue(GlobalVariable addr)
+    {
+        return 0;
     }
 
     public int lookupRegForValue(Value v)

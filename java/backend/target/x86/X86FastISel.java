@@ -93,10 +93,9 @@ public class X86FastISel extends FastISel
         return new X86GenFastISel(tm, level);
     }
 
-    @Override
-    public boolean targetSelectInstruction(Instruction inst)
+    public boolean targetSelectOperation(User inst, Operator opc)
     {
-        switch (inst.getOpcode())
+        switch (opc)
         {
             case Load:
                 return x86SelectLoad(inst);
@@ -112,7 +111,7 @@ public class X86FastISel extends FastISel
             case LShr:
             case AShr:
             case Shl:
-                return x86SelectShift(inst);
+                return x86SelectShift(inst, opc);
             case Trunc:
                 return x86SelectTrunc(inst);
             case FPExt:
@@ -220,7 +219,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectRet(Instruction inst)
+    private boolean x86SelectRet(User inst)
     {
         // Now handle call return value (if any).
         Type retTy = fn.getReturnType();
@@ -582,7 +581,7 @@ public class X86FastISel extends FastISel
                 opc = subtarget.hasSSE1() ? MOVSSmr : ST_Fp32m;
                 break;
             case MVT.f64:
-                opc = subtarget.hasSSE2() ? MOVSDmr : ST_Fp64m;
+                opc = subtarget.hasSSE2() ? MOVSDmr : ST_F64m;
                 break;
         }
         addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addReg(val);
@@ -644,6 +643,11 @@ public class X86FastISel extends FastISel
             // Fast isel doesn't support special address space.
             if (pty.getAddressSpace() > 255)
                 return false;
+        }
+        else if (val instanceof GlobalVariable)
+        {
+            am.indexReg = loadFromValue((GlobalVariable) val);
+            return true;
         }
 
     Unsupported:
@@ -837,7 +841,44 @@ public class X86FastISel extends FastISel
         return false;
     }
 
-    private boolean x86SelectLoad(Instruction inst)
+    /**
+     * Load it's address into register.
+     * @param addr
+     * @return
+     */
+    @Override
+    public int loadFromValue(GlobalVariable addr)
+    {
+        EVT pty = new EVT(tli.getPointerTy());
+        X86AddressMode am = new X86AddressMode();
+
+        am.gv = addr;
+        TargetRegisterClass rc = tli.getRegClassFor(pty);
+        int resultReg = createResultReg(rc);
+        switch (pty.getSimpleVT().simpleVT)
+        {
+            case MVT.i32:
+                buildMI(mbb, instrInfo.get(LEA32r), resultReg)
+                        .addReg(0)
+                        .addImm(1)
+                        .addReg(0)
+                        .addGlobalAddress(addr, 0, 0);
+                break;
+            case MVT.i64:
+                buildMI(mbb, instrInfo.get(LEA64r), resultReg)
+                        .addReg(X86GenRegisterNames.RIP)
+                        .addReg(0)
+                        .addImm(1)
+                        .addReg(0)
+                        .addGlobalAddress(addr, 0, 0);
+                break;
+            default:
+                return 0;
+        }
+        return resultReg;
+    }
+
+    private boolean x86SelectLoad(User inst)
     {
         EVT vt;
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
@@ -860,7 +901,7 @@ public class X86FastISel extends FastISel
         return false;
     }
 
-    private boolean x86SelectStore(Instruction inst)
+    private boolean x86SelectStore(User inst)
     {
         EVT vt;
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
@@ -875,7 +916,7 @@ public class X86FastISel extends FastISel
         return x86FastEmitStore(vt, inst.operand(0), am);
     }
 
-    private boolean x86SelectCmp(Instruction inst)
+    private boolean x86SelectCmp(User inst)
     {
         CmpInst ci = (CmpInst)inst;
 
@@ -968,7 +1009,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectZExt(Instruction inst)
+    private boolean x86SelectZExt(User inst)
     {
         // Handle zero-extension from i1 to i8, which is common.
         if (inst.getType().equals(LLVMContext.Int8Ty) &&
@@ -988,7 +1029,7 @@ public class X86FastISel extends FastISel
         return false;
     }
 
-    private boolean x86SelectBranch(Instruction inst)
+    private boolean x86SelectBranch(User inst)
     {
         BranchInst bi = (BranchInst)inst;
         MachineBasicBlock trueBB = mbbMap.get(bi.getSuccessor(0));
@@ -1102,15 +1143,15 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectShift(Instruction inst)
+    private boolean x86SelectShift(User inst, Operator opc)
     {
-        int creg = 0, opReg = 0, opImm = 0;
-        TargetRegisterClass rc = null;
+        int creg, opReg, opImm;
+        TargetRegisterClass rc;
         if (inst.getType().equals(LLVMContext.Int8Ty))
         {
             creg = CL;
             rc = GR8RegisterClass;
-            switch (inst.getOpcode()) 
+            switch (opc)
             {
                 case LShr: opReg = SHR8rCL; opImm = SHR8ri; break;
                 case AShr: opReg = SAR8rCL; opImm = SAR8ri; break;
@@ -1122,7 +1163,7 @@ public class X86FastISel extends FastISel
         {
             creg = CX;
             rc = GR16RegisterClass;
-            switch (inst.getOpcode()) 
+            switch (opc)
             {
                 case LShr: opReg = SHR16rCL; opImm = SHR16ri; break;
                 case AShr: opReg = SAR16rCL; opImm = SAR16ri; break;
@@ -1134,7 +1175,7 @@ public class X86FastISel extends FastISel
         {
             creg = ECX;
             rc = GR32RegisterClass;
-            switch (inst.getOpcode())
+            switch (opc)
             {
                 case LShr: opReg = SHR32rCL; opImm = SHR32ri; break;
                 case AShr: opReg = SAR32rCL; opImm = SAR32ri; break;
@@ -1146,7 +1187,7 @@ public class X86FastISel extends FastISel
         {
             creg = RCX;
             rc = GR64RegisterClass;
-            switch (inst.getOpcode())
+            switch (opc)
             {
                 case LShr: opReg = SHR64rCL; opImm = SHR64ri; break;
                 case AShr: opReg = SAR64rCL; opImm = SAR64ri; break;
@@ -1245,7 +1286,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectTrunc(Instruction inst)
+    private boolean x86SelectTrunc(User inst)
     {
         if (subtarget.is64Bit())
             // All other cases should be handled by the tblgen generated code.
@@ -1285,7 +1326,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectFPExt(Instruction inst)
+    private boolean x86SelectFPExt(User inst)
     {
         // fpext from float to double.
         if (inst.getType().equals(LLVMContext.DoubleTy))
@@ -1319,7 +1360,7 @@ public class X86FastISel extends FastISel
         return false;
     }
 
-    private boolean x86SelectFPTrunc(Instruction inst)
+    private boolean x86SelectFPTrunc(User inst)
     {
         // fptrunc from double to float.
         if (subtarget.hasSSE2() &&

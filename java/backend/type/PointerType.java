@@ -41,7 +41,7 @@ public class PointerType extends SequentialType
         setAbstract(elemType.isAbstract());
     }
 
-    public static PointerType get(final Type valueType, int addrSpace)
+    public static PointerType get(Type valueType, int addrSpace)
     {
         assert valueType != null:"Can't get a pointer to <null> type";
         PointerType pt = pointerTypes.get(valueType);
@@ -72,5 +72,18 @@ public class PointerType extends SequentialType
     public int getAddressSpace()
     {
         return addressSpace;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if(obj == null) return false;
+        if(this == obj) return true;
+        if(getClass() != obj.getClass())
+            return false;
+
+        PointerType ptr = (PointerType)obj;
+        return addressSpace == ptr.addressSpace &&
+                getElementType().equals(ptr.getElementType());
     }
 }
