@@ -467,7 +467,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                     reg = getX86SubSuperRegister(reg, vt);
                 }
 
-                os.print(regInfo.getName(mo.getReg()).toLowerCase());
+                os.print(regInfo.getAsmName(reg).toLowerCase());
                 return;
             }
             case MO_Immediate:

@@ -29,6 +29,7 @@ import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
@@ -816,11 +817,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         int notTOS = (tos == op0) ? op1:op0;
         mi.removeFromParent();
         buildMI(mbb, itr, tii.get(opcode)).addReg(getSTReg(notTOS));
-
         if (killsOp0 && killsOp1 && op0 != op1)
         {
             assert !updateST0:"Should have updated other operand!";
-            popStackAfter(itr);
+            itr = popStackAfter(itr);
         }
 
         int updateSlot = getSlot(updateST0?tos:notTOS);
@@ -1347,6 +1347,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             }
         }
         liveBundles.clear();
+        Arrays.fill(stack, 0);
+        Arrays.fill(regMap, 0);
+        Arrays.fill(pendingST, 0);
+        stackTop = 0;
         return changed;
     }
 

@@ -236,6 +236,13 @@ public abstract class TargetRegisterInfo
 		return get(regNo).asmName;
 	}
 
+	/**
+	 * Note that the returned register name of this method can't used as
+	 * AsmPrinter. If you want to do that, just use {@linkplain #getAsmName(int)}
+	 * instead.
+	 * @param regNo
+	 * @return
+	 */
 	public String getName(int regNo)
 	{
 		return get(regNo).name;
