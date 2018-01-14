@@ -2230,7 +2230,7 @@ public abstract class Instruction extends User
                             getElementType()).getReturnType(),
                     Operator.Call, name, insertBefore);
 
-            setName(name == null || name.isEmpty() ?
+            setName((name == null || name.isEmpty()) ?
                     Operator.Call.opName:name);
 
             reserve(ArgumentOffset + args.size());
@@ -3208,7 +3208,7 @@ public abstract class Instruction extends User
         public GetElementPtrInst(Value ptr, List<Value> indices,
                 String name, Instruction insertBefore)
         {
-            super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
+            super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices))),
                     GetElementPtr, name, insertBefore);
             reserve(indices.size());
             setOperand(0, ptr, this);

@@ -91,4 +91,17 @@ public final class ArrayType extends SequentialType
     {
         return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
     }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj) return true;
+        if (obj == null) return false;
+
+        if (getClass() != obj.getClass())
+            return false;
+        ArrayType at = (ArrayType)obj;
+        return getNumElements() == at.getNumElements() &&
+                getElementType().equals(at.getElementType());
+    }
 }

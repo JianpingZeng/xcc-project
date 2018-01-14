@@ -108,7 +108,8 @@ public class FunctionType extends DerivedType
 
     public static boolean isValidArgumentType(Type argTy)
     {
-        return argTy.isFirstClassType() || (argTy instanceof OpaqueType);
+        return argTy.isFirstClassType() || (argTy instanceof OpaqueType)
+                || argTy == LLVMContext.VoidTy;
     }
 
     public static boolean isValidReturnType(Type retType)
