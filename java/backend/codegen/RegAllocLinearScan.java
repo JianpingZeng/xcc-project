@@ -19,6 +19,7 @@ package backend.codegen;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
+import backend.support.EquivalenceClass;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
@@ -57,6 +58,14 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private float[] spillWeights;
     private VirtRegRewriter rewriter;
     private LiveStackSlot ls;
+    /**
+     * This structure is built the first time a function is
+     * compiled, and keeps track of which register classes have registers that
+     * belong to multiple classes or have aliases that are in other classes.
+     */
+    private EquivalenceClass<TargetRegisterClass> relatedRegisterClasses;
+
+    private HashMap<Integer, TargetRegisterClass> oneClassForEachPhysReg;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -202,6 +211,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private void assignRegOrStackSlot(LiveInterval cur)
     {
         spillWeights = new float[tri.getNumRegs()];
+        // The register class for current live interval.
+        TargetRegisterClass rc1 = mri.getRegClass(cur.register);
 
         // Update spill weight.
         for (LiveInterval li : active)
@@ -214,9 +225,14 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
         // for every interval in inactive we overlap with, mark the
         // register as not free and update spill weights.
+        EquivalenceClass.ECNode<TargetRegisterClass> node =
+                relatedRegisterClasses.findLeading(rc1), node2;
+        TargetRegisterClass leadingRC = node != null?node.getValue():null;
         for (LiveInterval li : inactive)
         {
-            if (cur.overlaps(li))
+            node2 = relatedRegisterClasses.findLeading(mri.getRegClass(li.register));
+            TargetRegisterClass rcs = node2 != null ?node2.getValue():null;
+            if (leadingRC == rcs && leadingRC != null && cur.overlaps(li))
             {
                 int reg = li.register;
                 if (isVirtualRegister(reg))
@@ -228,9 +244,13 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
         // for every interval in fixed we overlap with,
         // mark the register as not free and update spill weights
+        node = relatedRegisterClasses.findLeading(rc1);
+        leadingRC = node != null?node.getValue():null;
         for (LiveInterval li : fixed)
         {
-            if (li.overlaps(cur))
+            node2 = relatedRegisterClasses.findLeading(tri.getRegClass(li.register));
+            TargetRegisterClass rcs = node2 != null ?node2.getValue():null;
+            if (leadingRC == rcs && leadingRC != null && cur.overlaps(li))
             {
                 int reg = li.register;
                 updateSpillWeights(reg, li.weight);
@@ -483,6 +503,49 @@ public class RegAllocLinearScan extends MachineFunctionPass
         active = new ArrayList<>();
         inactive = new ArrayList<>();
         handled = new LinkedList<>();
+        relatedRegisterClasses = new EquivalenceClass<>();
+        oneClassForEachPhysReg = new HashMap<>();
+    }
+
+    /**
+     * Build related register class equivalence classes for checking exactly
+     * overlapping between different live interval.
+     */
+    private void buildRelatedRegClasses()
+    {
+        if (tri.getRegClasses() == null || tri.getRegClasses().length <= 0)
+            return;
+
+        boolean hasAlias = false;
+        for (TargetRegisterClass rc : tri.getRegClasses())
+        {
+            if (rc.getRegs() == null || rc.getRegs().length <= 0)
+                continue;
+            for (int reg : rc.getRegs())
+            {
+                hasAlias = hasAlias || tri.getAliasSet(reg) != null
+                        && tri.getAliasSet(reg).length > 0;
+                if (!oneClassForEachPhysReg.containsKey(reg))
+                    oneClassForEachPhysReg.put(reg, rc);
+                else
+                {
+                    relatedRegisterClasses.union(oneClassForEachPhysReg.get(reg), rc);
+                }
+            }
+        }
+        if (hasAlias)
+        {
+            for (int reg : oneClassForEachPhysReg.keySet())
+            {
+                TargetRegisterClass rc = oneClassForEachPhysReg.get(reg);
+                int[] alias = tri.getAliasSet(reg);
+                if (alias != null && alias.length > 0)
+                {
+                    for (int aliasReg : alias)
+                        relatedRegisterClasses.union(rc, oneClassForEachPhysReg.get(aliasReg));
+                }
+            }
+        }
     }
 
     @Override
@@ -493,6 +556,9 @@ public class RegAllocLinearScan extends MachineFunctionPass
         tri = mf.getTarget().getRegisterInfo();
         mri = mf.getMachineRegisterInfo();
         prt = new PhysRegTracker(tri);
+
+        if (relatedRegisterClasses.isEmpty())
+            buildRelatedRegClasses();
 
         // Step#1: Initialize interval set.
         initIntervalSet();
@@ -513,7 +579,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
         active.clear();
         inactive.clear();
         handled.clear();
-
+        relatedRegisterClasses.clear();
+        oneClassForEachPhysReg.clear();
         return true;
     }
 

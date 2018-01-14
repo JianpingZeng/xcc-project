@@ -92,7 +92,7 @@ public class Value implements Cloneable
 		/*
 		if (this instanceof Instruction)
 		{
-			BasicBlock BB = ((Instruction)this).getParent();
+			BasicBlock BB = ((Instruction)this).getLeading();
             SuccIterator itr = BB.succIterator();
 			while (itr.hasNext())
 			{
