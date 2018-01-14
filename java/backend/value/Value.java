@@ -250,10 +250,11 @@ public class Value implements Cloneable
      */
 	public void setName(String newName)
 	{
-	    if (newName == null || newName.isEmpty())
+		// Name of void return is not needed.
+	    if (newName == null || newName.isEmpty() ||
+			    getType().equals(LLVMContext.VoidTy))
 	        return;
-	    assert !getType().equals(LLVMContext.VoidTy):
-                "Can not assign name to void values!";
+
 	    // get the symbol table to update for this object.
         ValueSymbolTable vt = getSymTab(this);
         if (vt == null)

@@ -28,7 +28,7 @@ import backend.value.Value;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class SequentialType extends CompositeType
+public abstract class SequentialType extends CompositeType
 {
     protected int numElts;
     protected SequentialType(int primitiveID, Type elemType)

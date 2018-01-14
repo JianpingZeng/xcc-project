@@ -1963,8 +1963,7 @@ public final class LLParser
             return error(loc.get(), "invalid getelementptr indices");
 
         GetElementPtrInst gep = new GetElementPtrInst(ptr.get(), indices, "", null);
-        if (inBounds)
-            gep.setInbounds(inBounds);
+        gep.setInbounds(inBounds);
 
         inst.set(gep);
         return false;
