@@ -248,7 +248,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
         leadingRC = node != null?node.getValue():null;
         for (LiveInterval li : fixed)
         {
-            node2 = relatedRegisterClasses.findLeading(tri.getRegClass(li.register));
+            assert oneClassForEachPhysReg.containsKey(li.register);
+            node2 = relatedRegisterClasses.findLeading(oneClassForEachPhysReg.get(li.register));
             TargetRegisterClass rcs = node2 != null ?node2.getValue():null;
             if (leadingRC == rcs && leadingRC != null && cur.overlaps(li))
             {
