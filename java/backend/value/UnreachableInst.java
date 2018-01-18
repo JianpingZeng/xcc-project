@@ -48,7 +48,7 @@ public class UnreachableInst extends Instruction.TerminatorInst
     @Override
     public int getNumOfSuccessors()
     {
-        assert false:"UnreachableInst has no successor";
+        //assert false:"UnreachableInst has no successor";
         return 0;
     }
 
