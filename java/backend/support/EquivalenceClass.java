@@ -65,7 +65,7 @@ public class EquivalenceClass<T>
         {
             if (isLeading()) return parent;
             if (parent.isLeading()) return parent;
-            return parent = getLeading();
+            return parent.getLeading();
         }
 
         public T getValue()

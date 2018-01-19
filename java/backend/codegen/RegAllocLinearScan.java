@@ -251,7 +251,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             assert oneClassForEachPhysReg.containsKey(li.register);
             node2 = relatedRegisterClasses.findLeading(oneClassForEachPhysReg.get(li.register));
             TargetRegisterClass rcs = node2 != null ?node2.getValue():null;
-            if (leadingRC == rcs && leadingRC != null && cur.overlaps(li))
+            if (leadingRC != null && leadingRC == rcs && cur.overlaps(li))
             {
                 int reg = li.register;
                 updateSpillWeights(reg, li.weight);
@@ -522,6 +522,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         {
             if (rc.getRegs() == null || rc.getRegs().length <= 0)
                 continue;
+            relatedRegisterClasses.insert(rc);
             for (int reg : rc.getRegs())
             {
                 hasAlias = hasAlias || tri.getAliasSet(reg) != null
@@ -529,9 +530,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 if (!oneClassForEachPhysReg.containsKey(reg))
                     oneClassForEachPhysReg.put(reg, rc);
                 else
-                {
                     relatedRegisterClasses.union(oneClassForEachPhysReg.get(reg), rc);
-                }
             }
         }
         if (hasAlias)
