@@ -1050,9 +1050,10 @@ public class X86FastISel extends FastISel
                     MachineBasicBlock temp = trueBB;
                     trueBB = falseBB;
                     falseBB = temp;
+                    pred = ci.getSwappedPredicate();
                 }
 
-                boolean swapArgs = false;
+                boolean swapArgs;
                 int branchOpc;
 
                 switch (pred)

@@ -187,7 +187,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
     private void joinIntervals()
     {
         if (Util.DEBUG)
-            System.err.printf("************ Joining Intervals *************\n");
+            System.err.println("************ Joining Intervals *************");
 
         MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
         if (loopInfo != null)
@@ -211,11 +211,12 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                 });
 
                 // Sort mbb by loop depth.
-                mbbs.sort((lhs, rhs) -> {
+                mbbs.sort((lhs, rhs) ->
+                {
                     if (lhs.first > rhs.first)
                         return -1;
                     if (lhs.first.equals(rhs.first) && lhs.second.getNumber() < rhs.second.getNumber())
-                        return -1;
+                        return 0;
                     return 1;
                 });
 
@@ -229,7 +230,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
 
         if (Util.DEBUG)
         {
-            System.err.printf("**** Register mapping ***\n");
+            System.err.println("**** Register mapping ***");
             for (int key : r2rMap.keys())
             {
                 System.err.printf(" reg %d -> reg %d\n", key, r2rMap.get(key));
@@ -262,7 +263,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                     && (isVirtualRegister(dstReg.get())
                     || lv.getAllocatablePhyRegs().get(dstReg.get())))
             {
-                // Get representaive register.
+                // Get representative register.
                 int regA = rep(srcReg.get());
                 int regB = rep(dstReg.get());
 
@@ -284,11 +285,11 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                 LiveInterval intervalA = li.getInterval(regA);
                 LiveInterval intervalB = li.getInterval(regB);
                 assert intervalA.register == regA && intervalB.register == regB
-                        :"Regiser mapping is horribly broken!";
+                        :"Regitser mapping is horribly broken!";
 
                 if (Util.DEBUG)
                 {
-                    System.err.printf("Inspecting ");
+                    System.err.print("Inspecting ");
                     intervalA.print(System.err, tri);
                     System.err.print(" and ");
                     intervalB.print(System.err, tri);
@@ -301,7 +302,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                         intervalB.containsOneValue();
 
                 int midDefIdx = getDefIndex(li.getInstructionIndex(mi));
-                if (triviallyJoinable || intervalB.joinable(intervalA, midDefIdx)
+                if ((triviallyJoinable || intervalB.joinable(intervalA, midDefIdx))
                         && !overlapsAliases(intervalA, intervalB))
                 {
                     intervalB.join(intervalA, midDefIdx);
