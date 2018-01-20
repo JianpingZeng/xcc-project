@@ -1,10 +1,9 @@
 package jlang.codegen;
 
+import backend.intrinsic.Intrinsic;
+import backend.support.AttrList;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
-import backend.value.Module;
-import backend.value.Operator;
-import backend.intrinsic.Intrinsic;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
@@ -14,14 +13,14 @@ import backend.value.Instruction.CallInst;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
 import jlang.ast.Tree.StringLiteral;
-import jlang.support.CompileOptions;
-import jlang.support.LangOptions;
-import jlang.support.SourceLocation;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FunctionDecl;
 import jlang.sema.Decl.VarDecl;
+import jlang.support.CompileOptions;
+import jlang.support.LangOptions;
+import jlang.support.SourceLocation;
 import jlang.type.QualType;
 
 import java.util.ArrayList;
@@ -469,6 +468,10 @@ public class HIRModuleGenerator
             setLLVMFunctionAttributes(fd, getCodeGenTypes().getFunctionInfo(fd), f);
         // TODO set linkage according to Attribute, current just set it as ExternalLinkage.
         f.setLinkage(ExternalLinkage);
+        /*
+        if (fd.hasAttr(AttrKind.Section))
+            f.setSection(((SectionAttr)fd.getAttr(AttrKind.Section)).getName());
+        */
     }
 
     private void setLLVMFunctionAttributes(
@@ -476,6 +479,8 @@ public class HIRModuleGenerator
             CodeGenTypes.CGFunctionInfo fi,
             Function f)
     {
+        // TODO Currently, don't attach any attributes to each LLVM function. 2018/1/20
+        f.setAttributes(new AttrList(new ArrayList<>()));
         //FIXME Set the calling convention default to standard C. 2017/10/12
         f.setCallingConv(CallingConv.C);
     }

@@ -34,7 +34,8 @@ public final class AttrList
     public AttrList(List<AttributeWithIndex> indices)
     {
         attrs = new ArrayList<>();
-        attrs.addAll(indices);
+        if (indices != null && !indices.isEmpty())
+            attrs.addAll(indices);
     }
 
     public boolean paramHasAttr(int index, int attr)

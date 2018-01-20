@@ -143,7 +143,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
     public static BooleanOpt PrintDiagnosticOption =
             new BooleanOpt(new OptionNameApplicator("fdiagnostics-show-option"),
-            desc("Print diagnostic asmName with mappable diagnostics"),
+            desc("Print diagnostic name with mappable diagnostics"),
             init(false));
 
     public static IntOpt MessageLength =
@@ -214,8 +214,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             init(false));
 
     public static StringOpt MainFileName =
-            new StringOpt(new OptionNameApplicator("main-file-asmName"),
-            desc("JlangCC file asmName to use for debug info"),
+            new StringOpt(new OptionNameApplicator("main-file-name"),
+            desc("JlangCC file name to use for debug info"),
             init(""));
 
     public static class OptLevelParser extends ParserUInt
@@ -307,8 +307,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     public static ListOpt<String> InputFilenames = new ListOpt<String>(
             new ParserString(),
             new FormattingFlagsApplicator(Positional),
-            desc("<input files>"),
-            init("-"));
+            desc("<input files>"));
 
     public static StringOpt Isysroot = new StringOpt(
         new OptionNameApplicator("isysroot"),

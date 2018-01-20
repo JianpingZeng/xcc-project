@@ -236,8 +236,8 @@ public final class Module implements Iterable<Function>
 
     public void addFunction(Function fn)
     {
-        assert fn != null && !functionList.contains(fn) &&
-                fn.getName() != null && !fn.getName().isEmpty();
+        assert fn != null && !functionList.contains(fn)
+		        && fn.getName() != null;
         functionList.add(fn);
         fn.setParent(this);
         valSymTable.createValueName(fn.getName(), fn);
