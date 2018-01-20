@@ -28,4 +28,9 @@ public class Config
      */
     public static final String CPUInfoUtility_Path = "@CPUInfoUtility_PATH@";
     public static final String CPUInfoUtility_Name = "@CPUInfoUtility_NAME@";
+
+    /**
+     * The path to generated executable file.
+     */
+    public static final String BinaryPath = "@OUT_BIN_DIR@";
 }

@@ -4,15 +4,9 @@ import jlang.driver.JlangCC;
 
 public class Jlang
 {
-    public Jlang()
+    private Jlang()
     {
         super();
-    }
-    static
-    {
-        ClassLoader loader = Jlang.class.getClassLoader();
-        if (loader != null)
-            loader.setPackageAssertionStatus(JlangCC.NAME, true);
     }
 
     /**

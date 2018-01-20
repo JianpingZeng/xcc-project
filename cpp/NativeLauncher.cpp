@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "version.h"
 
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
@@ -58,8 +59,8 @@ JNIEnv* createVM(char* cmdPath)
 	string path(dir, end);
 	*/
     string path(dir);
-    path += "/lib";
-    string cp = path + "/xcc-0.1.jar";
+    path += "/lib/";
+    string cp = path + XCC_PACKAGE_NAME;
     cp = "-Djava.class.path=" + cp;
     //cp = "-Djava.class.path=/home/xlous/Development/Compiler/xcc/out/lib/xcc-0.1.jar:"
     //                         "/home/xlous/Development/Compiler/xcc/out/lib/trove-3.0.3.jar";// + cp;
