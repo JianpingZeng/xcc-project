@@ -23,6 +23,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Attr;
+import jlang.ast.AttrKind;
 import jlang.ast.DeclPrinter;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
@@ -341,6 +342,26 @@ public abstract class Decl
         ctx.putDeclAttrs(rhs, lhsVec);
         hasAttrs = false;
         rhs.hasAttrs = true;
+    }
+
+    public boolean hasAttr(AttrKind kind)
+    {
+        for (Attr a : getAttrs())
+        {
+            if (a.getKind() == kind)
+                return true;
+        }
+        return false;
+    }
+
+    public Attr getAttr(AttrKind kind)
+    {
+        for (Attr a : getAttrs())
+        {
+            if (a.getKind() == kind)
+                return a;
+        }
+        return null;
     }
 
     /**
