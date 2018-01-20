@@ -10,7 +10,7 @@ project(Jlang)
 
 set(PACKAGE_NAME "xcc")
 set(XCC_MAJOR_VERSION 0)
-set(XCC_MINOR_VERSION 1)
+set(XCC_MINOR_VERSION 4)
 set(PACKAGE_VERSION "${XCC_MAJOR_VERSION}.${XCC_MINOR_VERSION}")
 set(PACKAGE_STRING "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 
@@ -96,9 +96,16 @@ set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
 # Produce ${GEN_SOURCES_DIR}/config/Config.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
+
+# Generate configuration files.
 configure_file(
   ${XCC_SOURCE_DIR}/config/Config.java.in
   ${CONFIG_SRC})
+
+configure_file(
+  ${XCC_SOURCE_DIR}/config/version.h
+  ${OUT_INCLUDE_DIR}
+)
 
 add_custom_target(xcc_config
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}

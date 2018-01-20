@@ -18,6 +18,7 @@ package tools.commandline;
 
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
+import config.Config;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
@@ -865,7 +866,7 @@ public final class CL
         public void print()
         {
             out.println("Extremely C compiler");
-            out.println("  xcc version 0.1");
+            out.printf("  %s%n", Config.XCC_Full_Name);
 
             ArrayList<Pair<String, Target>> targets = new ArrayList<>();
             int width = 0;

@@ -22,6 +22,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetOptions;
 import backend.target.TargetSelect;
 import backend.value.Module;
+import config.Config;
 import jlang.ast.ASTConsumer;
 import jlang.ast.PrettyASTConsumer;
 import jlang.basic.HeaderSearch;
@@ -397,9 +398,6 @@ public class JlangCC implements DiagnosticFrontendKindsTag
      */
     private static final int EXIT_ABNORMAL = 4;
 
-    public static final String VERSION = "0.1";
-    public static final String NAME = "xcc";
-
     private Function<Module, TargetMachine> targetMachineAllocator;
 
     private void printUsage(String msg)
@@ -418,7 +416,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
     private void version()
     {
-        java.lang.System.err.printf("%s version %s\n", NAME, VERSION);
+        java.lang.System.err.printf("%s version\n", Config.XCC_Full_Name);
     }
 
     private void error(String msg, String arg)
@@ -1176,7 +1174,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 "Extremely C Compiler: https://github.com/JianpingZeng/xcc");
         if (Verbose.value)
         {
-            java.lang.System.err.println(NAME +  " version " + VERSION + " on X86 machine");
+            java.lang.System.err.println(Config.XCC_Full_Name + " on X86 machine");
         }
 
         if (MessageLength.getNumOccurrences() == 0)
