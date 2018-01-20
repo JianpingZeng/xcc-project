@@ -92,7 +92,10 @@ public enum Operator
 	// other operation
 	Phi("phi", Load.index + 1, 0),
 	Call("call", Phi.index + 1, 0),
-	GetElementPtr("getelementptr", Call.index + 1, 0);
+	GetElementPtr("getelementptr", Call.index + 1, 0),
+
+	// Select instruction acts as ?: operator in C language.
+	Select("select", GetElementPtr.index + 1, 0);
 
 	public final String opName;
 	public final int index;

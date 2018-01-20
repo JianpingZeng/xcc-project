@@ -139,6 +139,8 @@ public class X86FastISel extends FastISel
             case Switch:
                 assert false:"Switch should already be handled by LowerSwitch pass!";
                 break;
+            case Select:
+                return x86SelectSelect(inst);
             case Unreachable:
                 assert false:"Unreachable instruction should be removed!";
                 break;
@@ -1240,7 +1242,7 @@ public class X86FastISel extends FastISel
         return true;
     }
 
-    private boolean x86SelectSelect(Instruction inst)
+    private boolean x86SelectSelect(User inst)
     {
         EVT vt = tli.getValueType(inst.getType(), true);
         OutParamWrapper<EVT> x = new OutParamWrapper<>(vt);
@@ -1249,8 +1251,8 @@ public class X86FastISel extends FastISel
 
         vt = x.get();
 
-        int opc = 0;
-        TargetRegisterClass rc = null;
+        int opc;
+        TargetRegisterClass rc;
         switch (vt.getSimpleVT().simpleVT)
         {
             case MVT.i16:
