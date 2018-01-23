@@ -36,7 +36,7 @@ public class Initializer<T> implements Modifier
 
     /**
      * This is a static factory method served as creating an instance of {@linkplain
-     * Initializer} to specify the initial value of Option.
+     * Initializer} to specify the initial value of OptionInfo.
      * @param val
      * @param <T>
      * @return

@@ -72,7 +72,7 @@ public class Parser<T> implements ParserInterface<T>
 
     public void addLiteralOption(String name, T val, String helpStr)
     {
-        assert findOption(name) < 0 : "Option already exists!";
+        assert findOption(name) < 0 : "OptionInfo already exists!";
         values.add(Pair.get(name, Pair.get(val, helpStr)));
         markOptionsChanged();
     }
@@ -84,7 +84,7 @@ public class Parser<T> implements ParserInterface<T>
     public void removeLiteralOption(String name)
     {
         int index = findOption(name);
-        assert index >= 0 : "Option not found!";
+        assert index >= 0 : "OptionInfo not found!";
         values.remove(index);
     }
 

@@ -175,17 +175,17 @@ public class JlangOptionsEmitter extends TableGenBackend
     }
 
     /**
-     * Emit Option ID for each option.
+     * Emit OptionInfo ID for each option.
      * @param options
      * @param os
      */
     private void emitOptionIDs(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        emitSourceFileHeaderComment("Option ID definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("OptionInfo ID definitions for Jlang driver", os);
 
         os.printf("package xcc;%n%n");
-        os.println("//This class defines some sort of static Constant for representing Option ID.");
+        os.println("//This class defines some sort of static Constant for representing OptionInfo ID.");
         os.println("public interface OptionID");
         os.println("{");
         os.printf("\tint OPT_INVALID = -1;%n");
@@ -203,11 +203,11 @@ public class JlangOptionsEmitter extends TableGenBackend
     private void emitOptionKind(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        emitSourceFileHeaderComment("Option Kinds definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("OptionInfo Kinds definitions for Jlang driver", os);
 
         os.printf("package xcc;%n%n");
 
-        os.println("//This class defines some sort of static Constant for representing Option Kind.");
+        os.println("//This class defines some sort of static Constant for representing OptionInfo Kind.");
         os.println("public interface OptionKind");
         os.println("{");
         int i = 0;
@@ -307,6 +307,18 @@ public class JlangOptionsEmitter extends TableGenBackend
         return path.substring(0, lastBlash);
     }
 
+    public String getBasename(String path)
+    {
+        assert path != null;
+        int lastBlash = path.lastIndexOf('/');
+        assert lastBlash >= 0:"No basename!";
+        ++lastBlash;
+        int lastDot = path.lastIndexOf('.', lastBlash);
+        if (lastDot < 0)
+            lastDot = path.length();
+        return path.substring(lastBlash, lastDot);
+    }
+
     private String computeOptionName(Record option) throws Exception
     {
         String name = "OPTION_" + manglingValidID(option.getValueAsString("Name"));
@@ -319,7 +331,7 @@ public class JlangOptionsEmitter extends TableGenBackend
         assert outputFile != null && !outputFile.isEmpty()
                 :"Invalid path to output file";
 
-        ArrayList<Record> options = records.getAllDerivedDefinition("Option");
+        ArrayList<Record> options = records.getAllDerivedDefinition("OptionInfo");
         ArrayList<Record> groups = records.getAllDerivedDefinition("OptionGroup");
         options.sort(OptionComparator);
 
@@ -356,7 +368,7 @@ public class JlangOptionsEmitter extends TableGenBackend
         try (PrintStream os = outputFile.equals("-") ?
                 System.out:new PrintStream(new FileOutputStream(outputFile)))
         {
-            String className = "Option";
+            String className = getBasename(outputFile);
             emitSourceFileHeaderComment("Options definitions for Jlang driver", os);
 
             os.printf("package xcc;%n%n");
@@ -385,7 +397,7 @@ public class JlangOptionsEmitter extends TableGenBackend
                     Init.DefInit li = (Init.DefInit) opt.getValueInit("Alias");
                     aliasName = "OPT_" + manglingValidID(li.getDef().getValueAsString("Name"));
                 }
-                // Option flags.
+                // OptionInfo flags.
                 StringBuilder flags = new StringBuilder();
                 Init.ListInit li = opt.getValueAsListInit("Flags");
                 if (li.getSize() > 0)
@@ -449,7 +461,7 @@ public class JlangOptionsEmitter extends TableGenBackend
 
             // Emission for constructor.
             os.println("\t// Constructor");
-            os.printf("\tOption(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, String flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
+            os.printf("\tOptionInfo(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, String flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
             os.println("\t\t\toptionName = name;");
             os.println("\t\t\tid = optID;");
             os.println("\t\t\tkind = kindID;");

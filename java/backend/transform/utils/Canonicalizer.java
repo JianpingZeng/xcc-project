@@ -6,7 +6,7 @@ import backend.value.Constant;
 import backend.value.Instruction;
 import backend.value.Instruction.*;
 import backend.value.Value;
-import tools.Util;
+import tool.Util;
 
 /**
  * <p>This file defines a class for folding an instruction into a constant.

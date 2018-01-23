@@ -17,7 +17,13 @@
 
 package xcc;
 
+import backend.support.Triple;
 import jlang.diag.Diagnostic;
+import xcc.Action.JobAction;
+
+import static xcc.HostInfo.createLinuxHostInfo;
+import static xcc.HostInfo.createUnknownHostInfo;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -28,6 +34,9 @@ public class Driver
     private String defaultDirname;
     private String defaultImagename;
     private Diagnostic theDiags;
+    private String triple;
+    private HostInfo host;
+    private OptTable optTable;
 
     public Driver(String basename, String dirname,
             String hostTriple, String imageName, Diagnostic diags)
@@ -36,10 +45,43 @@ public class Driver
         defaultDirname = dirname;
         defaultImagename = imageName;
         theDiags = diags;
+        triple = hostTriple;
+        optTable = new OptTable();
     }
 
-    public Compilation buildComilation(String[] args)
+    private InputArgList parseArgList(String[] args)
     {
+        return null;
+    }
+
+    private HostInfo getHostInfo(String tripleStr)
+    {
+        Triple defaultTriple = new Triple(tripleStr);
+        if (defaultTriple.getArchName().equals("i686"))
+            defaultTriple.setArchName("i386");
+        else if (defaultTriple.getArchName().equals("amd64"))
+            defaultTriple.setArchName("x86_64");
+        else
+            assert false:"Unknown architecture name!";
+        switch (defaultTriple.getOS())
+        {
+            case Linux:
+                return createLinuxHostInfo(this, defaultTriple);
+            default:
+                return createUnknownHostInfo(this, defaultTriple);
+        }
+    }
+
+    public boolean useJlangAsCompiler(Compilation comp, JobAction ja, String archName)
+    {
+        return true;
+    }
+
+    public Compilation buildCompilation(String[] args)
+    {
+        InputArgList argList = parseArgList(args);
+        host = getHostInfo(triple);
+
         return null;
     }
 
