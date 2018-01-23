@@ -22,7 +22,7 @@ import jlang.support.SourceLocation;
 /**
  * This interface provides a way to observe the actions of the
  * preprocessor as it does its thing.  Clients can define their hooks here to
- * implement preprocessor level tools.
+ * implement preprocessor level tool.
  * @author Xlous.zeng
  * @version 0.1
  */

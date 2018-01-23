@@ -112,7 +112,7 @@ public class Jlang
         Driver driver = new Driver(executableBasename, executableDirname,
                 getHostTriple(), "a.out", diags);
 
-        Compilation compilation = driver.buildComilation(args);
+        Compilation compilation = driver.buildCompilation(args);
         return driver.executeCompilation(compilation);
     }
 }

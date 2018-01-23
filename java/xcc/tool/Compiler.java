@@ -1,7 +1,6 @@
-package tools.commandline;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +15,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-/**
- * @author Xlous.zeng
- * @version 0.1
- */
-public class ValueExpectedApplicator implements Modifier
-{
-    private ValueExpected ve;
-    public ValueExpectedApplicator(ValueExpected ve)
-    {
-        this.ve = ve;
-    }
+package xcc.tool;
 
-    /**
-     * Update the value expected flag for the specified OptionInfo {@code opt}.
-     * @param opt
-     */
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setValueExpectedFlag(ve);
-    }
+public class Compiler {
 }

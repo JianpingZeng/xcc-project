@@ -242,10 +242,7 @@ macro(JlangTableGen ofn)
   ${GEN_OPTIONS_SRCS}/GroupID.java )
 endmacro(JlangTableGen)
 
-message(STATUS ${TABLEGEN_OUTPUT})
-message(STATUS ${GEN_OPTIONS_SRCS})
-
-JlangTableGen(Option.java -gen-jlang-options)
+JlangTableGen(OptionInfo.java -gen-jlang-options)
 
 # Compiling collection of generated java source code by TableGen tool.
 macro(add_gen_tblgen target_name)

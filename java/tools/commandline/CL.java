@@ -298,7 +298,7 @@ public final class CL
                                 // we don't need to pass args.length/args in...
                                 //
                                 assert PGOpt.getValueExpectedFlag()
-                                        != ValueRequired : "Option can not be Grouping AND ValueRequired!";
+                                        != ValueRequired : "OptionInfo can not be Grouping AND ValueRequired!";
                                 OutParamWrapper<Integer> Dummy = new OutParamWrapper<>();
                                 ErrorParsing |= ProvideOption(PGOpt,
                                         RealArgName, null, null, Dummy);
@@ -667,7 +667,7 @@ public final class CL
                 Arg,null, new OutParamWrapper<>(i));
     }
 
-    // Option predicates...
+    // OptionInfo predicates...
     static Function<Option, Boolean> isGrouping = option ->
     {
         return option.getFormattingFlag() == Grouping;
