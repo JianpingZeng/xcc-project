@@ -21,12 +21,14 @@ import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.IDomTreeInfo;
 import backend.value.BasicBlock;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
 import static backend.support.AssemblyWriter.createSlotTracker;
+import static backend.support.GraphWriter.escapeString;
 
 /**
  * A specialized graph trait provider for DomTree.
@@ -99,7 +101,7 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
 
             if (!renderGraphFromBottomUp())
             {
-                os.printf("%s", GraphWriter.escapeString(
+                os.printf("%s", escapeString(
                         getNodeLabel(cur.getBlock(), writer.shortName)));
                 if (hasNodeAddressLabel(cur.getBlock()))
                     os.printf("|0x%x", cur.getBlock().hashCode());

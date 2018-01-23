@@ -37,6 +37,7 @@ set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
 set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/x86")
+set(GEN_OPTIONS_SRCS "${GEN_SOURCES_DIR}/xcc")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
@@ -93,6 +94,7 @@ include_directories(${OUT_INCLUDE_DIR})
 
 set(CPUInfoUtility_PATH "${OUT_LIB_DIR}")
 set(CPUInfoUtility_NAME GetCpuIDAndInfo)
+
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
 # Produce ${GEN_SOURCES_DIR}/config/Config.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
@@ -100,18 +102,18 @@ set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
 # Generate configuration files.
 configure_file(
   ${XCC_SOURCE_DIR}/config/Config.java.in
-  ${CONFIG_SRC})
+  ${CONFIG_SRC}
+  )
 
 configure_file(
-  ${XCC_SOURCE_DIR}/config/version.h
-  ${OUT_INCLUDE_DIR}
+  ${XCC_SOURCE_DIR}/config/version.h.in
+  ${OUT_INCLUDE_DIR}/version.h
 )
 
 add_custom_target(xcc_config
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
     DEPENDS ${CONFIG_SRC}
     COMMENT "Compiling XCC configuration file...")
-
 
 include(addXCC)
 
@@ -143,7 +145,6 @@ endif()
 if( ${PYTHON_VERSION_STRING} VERSION_LESS 2.7 )
   message(FATAL_ERROR "Python 2.7 or newer is required")
 endif()
-
 
 set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
 # Generate tools_CPUInfoUtility.h header file.
@@ -224,6 +225,29 @@ tablegen(X86GenInstrNames.java -gen-instr-names)
 tablegen(X86GenSubtarget.java -gen-subtarget)
 tablegen(X86GenCallingConv.java -gen-callingconv)
 
+# Generates jlang options for jlang driver.
+file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})
+macro(JlangTableGen ofn)
+  set(local_tds "${XCC_SOURCE_DIR}/java/xcc")
+  add_custom_command(OUTPUT ${GEN_OPTIONS_SRCS}/${ofn}
+  COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
+  -o ${GEN_OPTIONS_SRCS}/${ofn} ${ARGN} -I ${local_tds} ${local_tds}/Options.td
+  DEPENDS classes_no_target
+  COMMENT "Building ${ofn}...")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+  ${GEN_OPTIONS_SRCS}/${ofn}
+  ${GEN_OPTIONS_SRCS}/OptionID.java
+  ${GEN_OPTIONS_SRCS}/OptionKind.java
+  ${GEN_OPTIONS_SRCS}/Group.java
+  ${GEN_OPTIONS_SRCS}/GroupID.java )
+endmacro(JlangTableGen)
+
+message(STATUS ${TABLEGEN_OUTPUT})
+message(STATUS ${GEN_OPTIONS_SRCS})
+
+JlangTableGen(Option.java -gen-jlang-options)
+
+# Compiling collection of generated java source code by TableGen tool.
 macro(add_gen_tblgen target_name)
     if (TABLEGEN_OUTPUT)
         add_custom_target(${target_name}

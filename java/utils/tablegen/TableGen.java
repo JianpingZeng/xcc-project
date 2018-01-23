@@ -78,7 +78,7 @@ public final class TableGen
                     new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
                             "Generate subtarget enumerations"),
                     new ValueClass.Entry<>(GenJlangOptions, "gen-jlang-options",
-                            "Gnerate Jlang options")
+                            "Generate Jlang options")
             ));
 
     private static StringOpt outputFileName = new StringOpt(
@@ -151,6 +151,7 @@ public final class TableGen
                     break;
                 case GenJlangOptions:
                     new JlangOptionsEmitter(records).run(outputFile);
+                    break;
                 default:
                     assert false : "Invalid action type!";
                     System.exit(1);

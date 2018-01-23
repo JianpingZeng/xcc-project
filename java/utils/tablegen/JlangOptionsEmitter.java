@@ -16,11 +16,11 @@
  */
 
 package utils.tablegen;
-
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.TreeSet;
 
 /**
  * @author Xlous.zeng
@@ -41,19 +41,27 @@ public class JlangOptionsEmitter extends TableGenBackend
         {
             try
             {
+                if (r1 == r2)
+                    return 0;
+
                 boolean sen1 = r1.getValueAsDef("Kind").getValueAsBit("Sentinel");
-                boolean sen2 = r2.getValueAsDef("kind").getValueAsBit("Sentinel");
+                boolean sen2 = r2.getValueAsDef("Kind").getValueAsBit("Sentinel");
                 if (sen1 != sen2)
                     return sen1 ? -1 : 1;
                 if (!sen1)
                 {
-                    String name1 = r1.getValueAsDef("Kind").getValueAsString("Name");
-                    String name2 = r2.getValueAsDef("Kind").getValueAsString("Name");
+                    String name1 = r1.getValueAsString("Name");
+                    String name2 = r2.getValueAsString("Name");
                     if (!name1.equals(name2))
                         return name1.compareTo(name2);
                 }
                 long pred1 = r1.getValueAsDef("Kind").getValueAsInt("Precedence");
                 long pred2 = r2.getValueAsDef("Kind").getValueAsInt("Precedence");
+                if (pred1 == pred2)
+                {
+                    r1.getValueAsDef("Kind").dump();
+                    r2.getValueAsDef("Kind").dump();
+                }
                 assert pred1 != pred2:"Two equivalent options";
                 return pred1 < pred2 ? -1 : 1;
             }
@@ -74,6 +82,99 @@ public class JlangOptionsEmitter extends TableGenBackend
     }
 
     /**
+     * <pre>
+     * The mangling scheme is to ignore the leading '-', and perform the
+     * following substitutions:
+     *   _ => __
+     *   - => _
+     *   < => _
+     *   > => _
+     *   # => _HASH
+     *   , => _COMMA
+     *   = => _EQ
+     *   C++ => CXX
+     * </pre>
+     * @param id
+     * @return
+     */
+    private String manglingValidID(String id)
+    {
+        StringBuilder buf = new StringBuilder();
+        int i = 0, e = id.length();
+        for (; i < e; i++)
+        {
+            char ch = id.charAt(i);
+            switch (ch)
+            {
+                case '_':
+                    buf.append("__");
+                    break;
+                case '-':
+                case '<':
+                case '>':
+                case ' ':
+                case '(':
+                case ')':
+                case '/':
+                case '.':
+                    buf.append('_');
+                    break;
+                case '#':
+                    buf.append("_HASH");
+                    break;
+                case ',':
+                    buf.append("_COMMA");
+                    break;
+                case '=':
+                    buf.append("_EQ");
+                    break;
+                case 'c':
+                case 'C':
+                    if (i+2 < e && id.substring(i+1, i+3).equals("++"))
+                    {
+                        buf.append("CXX");
+                        i += 2;
+                        break;
+                    }
+                    // fall through
+                default:
+                    buf.append(ch);
+                    break;
+            }
+        }
+        return buf.toString();
+    }
+
+    private static String escapeString(String str)
+    {
+        if (str == null || str.isEmpty()) return "";
+
+        StringBuilder buf = new StringBuilder();
+        buf.append(str);
+        for (int i = 0; i < buf.length(); i++)
+        {
+            switch (buf.charAt(i))
+            {
+                case '\n':
+                    buf.insert(i, '\\');
+                    ++i;
+                    buf.setCharAt(i, 'n');
+                    break;
+                case '\t':
+                    buf.insert(i, ' '); // convert to two spaces.
+                    ++i;
+                    buf.setCharAt(i, ' ');
+                    break;
+                case '"':
+                    buf.insert(i, '\\');
+                    ++i;
+                    break;
+            }
+        }
+        return buf.toString();
+    }
+
+    /**
      * Emit Option ID for each option.
      * @param options
      * @param os
@@ -81,34 +182,135 @@ public class JlangOptionsEmitter extends TableGenBackend
     private void emitOptionIDs(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        os.println("\t This class defines some sort of static Constant for representing Option ID.");
-        os.println("\tpublic interface OptionID");
-        os.println("\t{");
+        emitSourceFileHeaderComment("Option ID definitions for Jlang driver", os);
+
+        os.printf("package xcc;%n%n");
+        os.println("//This class defines some sort of static Constant for representing Option ID.");
+        os.println("public interface OptionID");
+        os.println("{");
+        os.printf("\tint OPT_INVALID = -1;%n");
         int i = 0;
+        TreeSet<String> ids = new TreeSet<>();
         for (Record opt : options)
         {
-            os.printf("\t\tint OPT_%s = %d;", getOptionName(opt), i++);
+            ids.add(manglingValidID(opt.getValueAsString("Name")));
         }
-        os.println("\t}\n\n");
+        for (String id : ids)
+            os.printf("\tint OPT_%s = %d;%n", id, i++);
+        os.println("}\n\n");
     }
 
     private void emitOptionKind(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        os.println("\t This class defines some sort of static Constant for representing Option Kind.");
-        os.println("\tpublic interface OptionKind");
-        os.println("\t{");
+        emitSourceFileHeaderComment("Option Kinds definitions for Jlang driver", os);
+
+        os.printf("package xcc;%n%n");
+
+        os.println("//This class defines some sort of static Constant for representing Option Kind.");
+        os.println("public interface OptionKind");
+        os.println("{");
         int i = 0;
+        TreeSet<String> kinds = new TreeSet<>();
         for (Record opt : options)
         {
-            os.printf("\t\tint KIND_%s = %d;", opt.getValueAsDef("Kind").getValueAsString("Name"), i++);
+            kinds.add(opt.getValueAsDef("Kind").getValueAsString("Name"));
         }
-        os.println("\t}\n\n");
+        for (String kind : kinds)
+        {
+            os.printf("\tint KIND_%s = %d;%n", kind, i++);
+        }
+        os.println("}\n\n");
     }
 
-    private void emitGroup(ArrayList<Record> groups, PrintStream os)
+    private void emitGroupID(ArrayList<Record> groups, PrintStream os) throws Exception
     {
+        os.printf("public interface GroupID%n\t{%n");
+        os.println("\tint GRP_INVALID = -1;");
+        int i = 0;
+        TreeSet<String> ids = new TreeSet<>();
+
+        for (Record r : groups)
+            ids.add(manglingValidID(getOptionName(r)));
+        for (String id : ids)
+            os.printf("\tint GRP_%s = %d;%n", id, i++);
+        os.println("}");
+    }
+
+    private void emitGroup(ArrayList<Record> groups, PrintStream os) throws Exception
+    {
+        emitSourceFileHeaderComment("Group ID definitions for Jlang driver", os);
+
+        os.printf("package xcc;%n%n");
+        os.println("// Emission for Group ID.");
+        emitGroupID(groups, os);
+    }
+
+    private void emitGroup2(ArrayList<Record> groups, PrintStream os) throws Exception
+    {
+        emitSourceFileHeaderComment("Group definitions for Jlang driver", os);
+
+        os.printf("package xcc;%n%n");
+        os.println("import static xcc.GroupID.*;");
         os.println("// Emission for Groups.");
+        os.println("public enum Group {");
+        int i = 0;
+        int e = groups.size();
+        for (Record r : groups)
+        {
+            String name = "INVALID";
+            if (r.getValueInit("Group") instanceof Init.DefInit)
+            {
+                Init.DefInit di = (Init.DefInit)r.getValueInit("Group");
+                name = getOptionName(di.getDef());
+            }
+
+            String helpText = "null";
+            if (!(r.getValueInit("HelpText") instanceof Init.UnsetInit))
+            {
+                helpText = escapeString(r.getValueAsString("HelpText"));
+            }
+
+            os.printf("\tGROUP_%s(\"%s\", %s, %s, \"%s\")",
+                    manglingValidID(r.getValueAsString("Name")),
+                    "GRP_" + manglingValidID(r.getValueAsString("Name")),
+                    "GRP_"+manglingValidID(getOptionName(r)),
+                    "GRP_" + manglingValidID(name),
+                    helpText);
+            if (i < e - 1)
+                os.println(",");
+            else
+                os.println(";");
+            ++i;
+        }
+
+        os.println();
+        os.println("\tpublic String name;");
+        os.println("\tpublic int id;");
+        os.println("\tpublic int group;");
+        os.println("\tpublic String helpText;");
+        os.println("\tGroup(String name, int id, int group, String helpText)\n\t{");
+        os.println("\t\tthis.name = name;");
+        os.println("\t\tthis.id = id;");
+        os.println("\t\tthis.group = group;");
+        os.println("\t\tthis.helpText = helpText;");
+        os.println("\t}");
+        os.println("}");
+    }
+
+    public String getDirname(String path)
+    {
+        assert path != null;
+        int lastBlash = path.lastIndexOf('/');
+        if (lastBlash < 0)
+            lastBlash = path.length();
+        return path.substring(0, lastBlash);
+    }
+
+    private String computeOptionName(Record option) throws Exception
+    {
+        String name = "OPTION_" + manglingValidID(option.getValueAsString("Name"));
+        return name + option.getValueAsDef("Kind").getValueAsString("Name");
     }
 
     @Override
@@ -116,43 +318,75 @@ public class JlangOptionsEmitter extends TableGenBackend
     {
         assert outputFile != null && !outputFile.isEmpty()
                 :"Invalid path to output file";
-        String className = "Option";
+
+        ArrayList<Record> options = records.getAllDerivedDefinition("Option");
+        ArrayList<Record> groups = records.getAllDerivedDefinition("OptionGroup");
+        options.sort(OptionComparator);
+
+        String dirname = getDirname(outputFile);
+        String pathToOptionID = dirname + "/OptionID.java";
+
+        try(PrintStream os = outputFile.equals("-") ?
+                System.out:new PrintStream(new FileOutputStream(pathToOptionID)))
+        {
+            emitOptionIDs(options, os);
+        }
+
+        String pathToOptionKind = dirname + "/OptionKind.java";
+        try(PrintStream os = outputFile.equals("-") ?
+                System.out:new PrintStream(new FileOutputStream(pathToOptionKind)))
+        {
+            emitOptionKind(options, os);
+        }
+
+        String pathToGroupID = dirname + "/GroupID.java";
+        try(PrintStream os = outputFile.equals("-") ?
+                System.out:new PrintStream(new FileOutputStream(pathToGroupID)))
+        {
+            emitGroup(groups, os);
+        }
+
+        String pathToGroup = dirname + "/Group.java";
+        try(PrintStream os = outputFile.equals("-") ?
+                System.out:new PrintStream(new FileOutputStream(pathToGroup)))
+        {
+            emitGroup2(groups, os);
+        }
+
         try (PrintStream os = outputFile.equals("-") ?
                 System.out:new PrintStream(new FileOutputStream(outputFile)))
         {
-            ArrayList<Record> options = records.getAllDerivedDefinition("Option");
-            ArrayList<Record> groups = records.getAllDerivedDefinition("OptionGroup");
-            options.sort(OptionComparator);
-
+            String className = "Option";
             emitSourceFileHeaderComment("Options definitions for Jlang driver", os);
 
-            os.printf("public class %s\n", className);
-            os.println("{%n");
-            emitOptionIDs(options, os);
-            emitOptionKind(options, os);
+            os.printf("package xcc;%n%n");
+            os.println("import static xcc.OptionKind.*;");
+            os.println("import static xcc.OptionID.*;");
+            os.println("import static xcc.GroupID.*;");
 
-            emitGroup(groups, os);
+            os.printf("public enum %s\n", className);
+            os.printf("{%n");
 
-            os.println("// Emission for Options.");
+            os.println("\t// Emission for Options.\n");
             for (int i = 0, e = options.size(); i < e; i++)
             {
                 Record opt = options.get(i);
-                String groupName = "INVALID";
+                String groupName = "GRP_INVALID";
 
                 if (opt.getValueInit("Group") instanceof Init.DefInit)
                 {
                     Init.DefInit di = (Init.DefInit)opt.getValueInit("Group");
-                    groupName = getOptionName(di.getDef());
+                    groupName = "GRP_" + manglingValidID(getOptionName(di.getDef()));
                 }
 
-                String aliasName = "INVALID";
+                String aliasName = "OPT_INVALID";
                 if (opt.getValueInit("Alias") instanceof Init.DefInit)
                 {
                     Init.DefInit li = (Init.DefInit) opt.getValueInit("Alias");
-                    aliasName = getOptionName(li.getDef());
+                    aliasName = "OPT_" + manglingValidID(li.getDef().getValueAsString("Name"));
                 }
                 // Option flags.
-                StringBuilder flags = new StringBuilder("null");
+                StringBuilder flags = new StringBuilder();
                 Init.ListInit li = opt.getValueAsListInit("Flags");
                 if (li.getSize() > 0)
                 {
@@ -165,45 +399,67 @@ public class JlangOptionsEmitter extends TableGenBackend
                 }
 
                 // Help information.
-                String helpText = "null";
+                String helpText = null;
                 if (!(opt.getValueInit("HelpText") instanceof Init.UnsetInit))
                 {
-                    helpText = "        " + opt.getValueAsString("HelpText");
+                    helpText = "        " + escapeString(opt.getValueAsString("HelpText"));
                 }
 
                 // Metavarname.
-                String metaVarName = "null";
+                String metaVarName = null;
                 if (!(opt.getValueInit("MetaVarName") instanceof Init.UnsetInit))
                 {
                     metaVarName = opt.getValueAsString("MetaVarName");
                 }
 
-                os.printf("Option(\"%s\", %s, %s, %s, %s, %s, %d, \"%s\", \"%s\")",
+                os.printf("\t%s(\"%s\", %s, %s, %s, %s, \"%s\", %d",
+                        computeOptionName(opt),
                         opt.getValueAsString("Name"),
-                        "OPT_" + getOptionName(opt),
+                        "OPT_" + manglingValidID(opt.getValueAsString("Name")),
                         "KIND_" + opt.getValueAsDef("Kind").getValueAsString("Name"),
-                        "GROUP_" + groupName,
-                        "OPT_" + aliasName,
+                        groupName,
+                        aliasName,
                         flags.toString(),
-                        opt.getValueAsInt("NumArgs"),
-                        helpText,
-                        metaVarName);
+                        opt.getValueAsInt("NumArgs"));
+                if (helpText == null)
+                    os.print(", null");
+                else
+                    os.printf(", \"%s\"", helpText);
+                if (metaVarName == null)
+                    os.print(", null)");
+                else
+                    os.printf(", \"%s\")", metaVarName);
+
                 if (i < e - 1)
                     os.println(",");
                 else
                     os.println(";");
             }
 
-            os.println("\tpublic final String optionName;");
-            os.println("\tpublic final int id;");
-            os.println("\tpublic final int kind;");
-            os.println("\tpublic final int group;");
-            os.println("\tpublic final int alias;");
-            os.println("\tpublic final String flags;");
-            os.println("\tpublic final int param;");
-            os.println("\tpublic final String helpText;");
-            os.println("\tpublic final String emtaVarName;");
+            os.println("\tpublic String optionName;");
+            os.println("\tpublic int id;");
+            os.println("\tpublic int kind;");
+            os.println("\tpublic int group;");
+            os.println("\tpublic int alias;");
+            os.println("\tpublic String flags;");
+            os.println("\tpublic int param;");
+            os.println("\tpublic String helpText;");
+            os.println("\tpublic String metaVarName;");
             os.println("\t");
+
+            // Emission for constructor.
+            os.println("\t// Constructor");
+            os.printf("\tOption(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, String flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
+            os.println("\t\t\toptionName = name;");
+            os.println("\t\t\tid = optID;");
+            os.println("\t\t\tkind = kindID;");
+            os.println("\t\t\tgroup = groupID;");
+            os.println("\t\t\talias = aliasID;");
+            os.println("\t\t\tthis.flags = flags;");
+            os.println("\t\t\tthis.param = param;");
+            os.println("\t\t\thelpText = helpMsg;");
+            os.println("\t\t\tthis.metaVarName = metaVarName;");
+            os.println("\t}");
             os.println("}");
         }
     }
