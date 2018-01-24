@@ -33,6 +33,13 @@ public abstract class Option
     private boolean forceJoinRender;
     private boolean driverOption;
     private boolean noArgumentUnused;
+    private boolean cc1Option;
+    private boolean CLOption;
+    private boolean coreOption;
+    private boolean helpHidden;
+    private boolean noForward;
+    private boolean renderJoined;
+    private boolean renderAsInput;
 
     public Option(OptionClass kind, int id, String name,
                   OptionGroup group, Option alias)
@@ -107,6 +114,86 @@ public abstract class Option
 
     public abstract Arg accept(InputArgList list, int index);
 
+    public void setCC1Option(boolean val)
+    {
+        this.cc1Option = val;
+    }
+
+    public boolean isCC1Option()
+    {
+        return cc1Option;
+    }
+
+    public void setCLOption(boolean CLOption)
+    {
+        this.CLOption = CLOption;
+    }
+
+    public void setCoreOption(boolean coreOption)
+    {
+        this.coreOption = coreOption;
+    }
+
+    public void setDriverOption(boolean val)
+    {
+        driverOption = val;
+    }
+
+    public void setLinkerInput(boolean val)
+    {
+        linkerInput = val;
+    }
+
+    public void setNoArgumentUnused(boolean val)
+    {
+        noArgumentUnused = val;
+    }
+
+    public void setUnsupported(boolean val)
+    {
+        unsupported = true;
+    }
+
+    public void setHelpHidden(boolean val)
+    {
+        helpHidden = val;
+    }
+
+    public boolean isHelpHidden()
+    {
+        return helpHidden;
+    }
+
+    public void setNoForward(boolean noForward)
+    {
+        this.noForward = noForward;
+    }
+
+    public boolean isNoForward()
+    {
+        return noForward;
+    }
+
+    public void setRenderJoined(boolean renderJoined)
+    {
+        this.renderJoined = renderJoined;
+    }
+
+    public boolean isRenderJoined()
+    {
+        return renderJoined;
+    }
+
+    public void setRenderAsInput(boolean renderAsInput)
+    {
+        this.renderAsInput = renderAsInput;
+    }
+
+    public boolean isRenderAsInput()
+    {
+        return renderAsInput;
+    }
+
     public static class OptionGroup extends Option
     {
         public OptionGroup(int id, String name, OptionGroup group)
@@ -124,7 +211,9 @@ public abstract class Option
 
     public static class InputOption extends Option
     {
-        public InputOption()
+        private static final InputOption opt = new InputOption();
+
+        private InputOption()
         {
             super(OptionClass.InputClass, OptionID.OPT__input_,
                     OptionInfo.OPTION__input_Input.optionName, null, null);
@@ -136,11 +225,22 @@ public abstract class Option
             assert false;
             return null;
         }
+
+        public static Option staticFactory()
+        {
+            return opt;
+        }
     }
 
     public static class UnknownOption extends Option
     {
-        public UnknownOption()
+        private static final UnknownOption opt = new UnknownOption();
+        public static UnknownOption staticFactory()
+        {
+            return opt;
+        }
+
+        private UnknownOption()
         {
             super(OptionClass.UnknownClass, OptionID.OPT__unknown_,
                     OPTION__unknown_Unknown.optionName, null, null);
