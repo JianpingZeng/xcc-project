@@ -44,6 +44,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(EXCLUDE_TARGET "${SRC_DIR}/backend/target/x86")
+set(EXCLUDE_JLANG_DRIVER "${SRC_DIR}/xcc")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "DEBUG")
@@ -158,10 +159,16 @@ file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
 file(GLOB TARGET_SRCS
     ${SRC_DIR}/backend/target/x86/*.java)
 
-# Remove target-specific source files.
+# The jlang driver relatied sources
+file(GLOB JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
+
+# Remove target-specific or jlang driver related source files.
 foreach (file ${SRCS_NO_TARGET})
     if ("${file}" MATCHES "(.*)${EXCLUDE_TARGET}(.*)")
         #message(STATUS "Remove Item from List:${file}")
+        list (REMOVE_ITEM SRCS_NO_TARGET ${file})
+    endif ()
+    if ("${file}" MATCHES "(.*)${EXCLUDE_JLANG_DRIVER}(.*)")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
 endforeach()
@@ -236,10 +243,7 @@ macro(JlangTableGen ofn)
   COMMENT "Building ${ofn}...")
   set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
   ${GEN_OPTIONS_SRCS}/${ofn}
-  ${GEN_OPTIONS_SRCS}/OptionID.java
-  ${GEN_OPTIONS_SRCS}/OptionKind.java
-  ${GEN_OPTIONS_SRCS}/Group.java
-  ${GEN_OPTIONS_SRCS}/GroupID.java )
+  )
 endmacro(JlangTableGen)
 
 JlangTableGen(OptionInfo.java -gen-jlang-options)
@@ -248,7 +252,12 @@ JlangTableGen(OptionInfo.java -gen-jlang-options)
 macro(add_gen_tblgen target_name)
     if (TABLEGEN_OUTPUT)
         add_custom_target(${target_name}
-            COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS} ${TABLEGEN_OUTPUT} ${TARGET_SRCS}
+            COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
+            ${TABLEGEN_OUTPUT} ${TARGET_SRCS} ${JLANG_DRIVER_SRCS}
+            ${GEN_OPTIONS_SRCS}/OptionID.java
+            ${GEN_OPTIONS_SRCS}/OptionKind.java
+            ${GEN_OPTIONS_SRCS}/Group.java
+            ${GEN_OPTIONS_SRCS}/GroupID.java
         DEPENDS ${TABLEGEN_OUTPUT}
         COMMENT "Compiling taraget-specific source files")
     else()
