@@ -197,6 +197,7 @@ public class JlangOptionsEmitter extends TableGenBackend
         }
         for (String id : ids)
             os.printf("\tint OPT_%s = %d;%n", id, i++);
+        os.printf("\tint OPT_LastOption = %d;%n", i);
         os.println("}\n\n");
     }
 
@@ -313,9 +314,10 @@ public class JlangOptionsEmitter extends TableGenBackend
         int lastBlash = path.lastIndexOf('/');
         assert lastBlash >= 0:"No basename!";
         ++lastBlash;
-        int lastDot = path.lastIndexOf('.', lastBlash);
+        int lastDot = path.lastIndexOf('.');
         if (lastDot < 0)
             lastDot = path.length();
+        assert lastDot >= lastBlash:"Invalid OptionInfo filename!";
         return path.substring(lastBlash, lastDot);
     }
 
@@ -331,7 +333,7 @@ public class JlangOptionsEmitter extends TableGenBackend
         assert outputFile != null && !outputFile.isEmpty()
                 :"Invalid path to output file";
 
-        ArrayList<Record> options = records.getAllDerivedDefinition("OptionInfo");
+        ArrayList<Record> options = records.getAllDerivedDefinition("Option");
         ArrayList<Record> groups = records.getAllDerivedDefinition("OptionGroup");
         options.sort(OptionComparator);
 
