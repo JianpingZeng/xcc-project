@@ -189,11 +189,16 @@ public class JlangOptionsEmitter extends TableGenBackend
         os.println("public interface OptionID");
         os.println("{");
         os.printf("\tint OPT_INVALID = -1;%n");
-        int i = 0;
+        os.printf("\tint OPT__unknown_ = 0;%n");
+        os.printf("\tint OPT__input_ = 1;%n");
+        int i = 2;
         TreeSet<String> ids = new TreeSet<>();
         for (Record opt : options)
         {
-            ids.add(manglingValidID(opt.getValueAsString("Name")));
+            String name = manglingValidID(opt.getValueAsString("Name"));
+            if (name.equals("_unknown_") || name.equals("_input_"))
+                continue;
+            ids.add(name);
         }
         for (String id : ids)
             os.printf("\tint OPT_%s = %d;%n", id, i++);
@@ -377,6 +382,7 @@ public class JlangOptionsEmitter extends TableGenBackend
             os.println("import static xcc.OptionKind.*;");
             os.println("import static xcc.OptionID.*;");
             os.println("import static xcc.GroupID.*;");
+            os.println("import static xcc.JlangFlags.*;");
 
             os.printf("public enum %s\n", className);
             os.printf("{%n");
@@ -411,6 +417,8 @@ public class JlangOptionsEmitter extends TableGenBackend
                         flags.append(((Init.DefInit) li.getElement(j)).getDef().getName());
                     }
                 }
+                else
+                    flags.append('0');
 
                 // Help information.
                 String helpText = null;
@@ -426,7 +434,7 @@ public class JlangOptionsEmitter extends TableGenBackend
                     metaVarName = opt.getValueAsString("MetaVarName");
                 }
 
-                os.printf("\t%s(\"%s\", %s, %s, %s, %s, \"%s\", %d",
+                os.printf("\t%s(\"%s\", %s, %s, %s, %s, %s, %d",
                         computeOptionName(opt),
                         opt.getValueAsString("Name"),
                         "OPT_" + manglingValidID(opt.getValueAsString("Name")),
@@ -455,7 +463,7 @@ public class JlangOptionsEmitter extends TableGenBackend
             os.println("\tpublic int kind;");
             os.println("\tpublic int group;");
             os.println("\tpublic int alias;");
-            os.println("\tpublic String flags;");
+            os.println("\tpublic int flags;");
             os.println("\tpublic int param;");
             os.println("\tpublic String helpText;");
             os.println("\tpublic String metaVarName;");
@@ -463,7 +471,7 @@ public class JlangOptionsEmitter extends TableGenBackend
 
             // Emission for constructor.
             os.println("\t// Constructor");
-            os.printf("\tOptionInfo(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, String flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
+            os.printf("\tOptionInfo(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, int flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
             os.println("\t\t\toptionName = name;");
             os.println("\t\t\tid = optID;");
             os.println("\t\t\tkind = kindID;");
