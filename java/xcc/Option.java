@@ -112,8 +112,6 @@ public abstract class Option
         return noArgumentUnused;
     }
 
-    public abstract Arg accept(InputArgList list, int index);
-
     public void setCC1Option(boolean val)
     {
         this.cc1Option = val;
@@ -194,6 +192,13 @@ public abstract class Option
         return renderAsInput;
     }
 
+    /**
+     * Checks if the option can accepts the specified argument string as a valid 
+     * option value.
+     * @return Return a null if input argument is invalid for this option.
+     */
+    public abstract Arg accept(ArgList argList);
+
     public static class OptionGroup extends Option
     {
         public OptionGroup(int id, String name, OptionGroup group)
@@ -202,9 +207,9 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            assert false;
+            assert false:"Shouldn't call accept method in OptionGroup";
             return null;
         }
     }
@@ -220,9 +225,9 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            assert false;
+            assert false:"Shouldn't call accept method in InputOption";
             return null;
         }
 
@@ -247,7 +252,9 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index) {
+        public Arg accept(InputArgList list)
+        {
+            assert false:"Shouldn't call accept method in UnknownOption";
             return null;
         }
     }
@@ -262,8 +269,14 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index) {
-            return null;
+        public Arg accept(InputArgList list)
+        {
+            int idx = list.getIndex();
+            if (!getOptionName().equals(list.getArgString(idx)))
+                return null;
+
+            list.setIndex(idx+1);
+            return new FlagArg(this, idx);
         }
     }
 
@@ -276,9 +289,18 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            int idx = list.getIndex();
+            String argStr = list.getArgString(idx);
+            String optName = getOptionName();
+            
+            if (optName.length() < argStr.length() || 
+                !argStr.substring(0, optName.length()).equals(optName))
+                return null;
+
+            list.setIndex(idx+1);
+            return new JoinedArg(this, idx);
         }
     }
 
@@ -291,9 +313,18 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            int idx = list.getIndex();
+            String argStr = list.getArgString(idx);
+            String optName = getOptionName();
+                      
+            if (!argStr.equals(optName) || (idx + 1) >= list.getInputStrings())
+                return null;
+
+            String val = list.getArgString(idx+1);
+            list.setIndex(idx+2);
+            return new SeparateArg(this, idx, val);
         }
     }
 
@@ -306,23 +337,46 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            int idx = list.getIndex();
+            String argStr = list.getArgString(idx);
+            String optName = getOptionName();
+                      
+            if (optName.length() < argStr.length() || 
+                !argStr.substring(0, optName.length()).equals(optName))
+                return null;
+
+            list.setIndex(idx+1);
+            String suffix = argStr.substring(optName.length());
+            return new CommaJoinedArg(this, idx, suffix);
         }
     }
 
     public static class MultArgsOption extends Option
     {
+        private int numArgs;
+
         public MultArgsOption(int id, String name,
-                              OptionGroup group, Option alias)
+                              OptionGroup group, Option alias, int numArgs)
         {
             super(OptionClass.MultiArgClass, id, name, group, alias);
+            assert numArgs >= 0:"Invalid numArgs";
+            this.numArgs = numArgs;
         }
+
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            int idx = list.getIndex();
+            String argStr = list.getArgString(idx);
+            String optName = getOptionName();
+                      
+            if (!argStr.equals(optName) || (idx + numArgs) >= list.getInputStrings())
+                return null;
+
+            list.setIndex(idx + numArgs + 1);
+            return new MultiArg(this, idx, numArgs);
         }
     }
 
@@ -335,9 +389,20 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            int idx = list.getIndex();
+            if (getOptionName().equals(list.getArgString(idx)))
+            {
+                list.setIndex(idx+1);
+                return new JoinedArg(this, idx);
+            }
+            idx += 2;
+            if (idx > list.getInputStrings())
+              return null;
+
+            list.setIndex(idx);
+            return new SeparateArg(this, idx - 2, 1);
         }
     }
 
@@ -350,9 +415,15 @@ public abstract class Option
         }
 
         @Override
-        public Arg accept(InputArgList list, int index)
+        public Arg accept(InputArgList list)
         {
-            return null;
+            // Always matched.
+            int idx = list.getIndex();
+            if (idx + 2 > list.getInputStrings())
+              return null;
+
+            list.setIndex(idx + 2);
+            return new JoinedAndSeparatedArg(this, idx, 1);
         }
     }
 }

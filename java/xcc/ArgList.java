@@ -22,6 +22,10 @@ import java.util.ArrayList;
 public abstract class ArgList
 {
     private ArrayList<Arg> list;
+    /**
+     * The index into Arg being parsed in args list.
+     */
+    private int index;
 
     public ArgList(ArrayList<Arg> list)
     {
@@ -38,9 +42,25 @@ public abstract class ArgList
         return list.size();
     }
 
+    public int getIndex()
+    {
+        return index;
+    }
+
+    public void setIndex(int idx)
+    {
+        index = idx;
+    }
+
     public ArrayList<Arg> getArgs()
     {
         return list;
+    }
+
+    public Option getOption(int index)
+    {
+        assert index >= 0 && index < size();
+        return list.get(index).getOption();
     }
 
     public void setArg(ArrayList<Arg> list)

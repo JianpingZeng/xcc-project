@@ -153,7 +153,7 @@ public abstract class Arg
         @Override
         public int getNumValues()
         {
-            return 0;
+            return 1;
         }
 
         @Override
@@ -165,15 +165,19 @@ public abstract class Arg
 
     public static class SeparateArg extends Arg
     {
-        public SeparateArg(Option opt, int index, Arg baseArg)
+        private int numValues;
+
+        public SeparateArg(Option opt, int index, int numValues, Arg baseArg)
         {
             super(SeparateClass, opt, index, baseArg);
+            this.numValues = numValues;
+            assert numValues > 0;
         }
 
         @Override
         public int getNumValues()
         {
-            return 0;
+            return numValues;
         }
 
         @Override
@@ -185,15 +189,31 @@ public abstract class Arg
 
     public static class CommaJoinedArg extends Arg
     {
-        public CommaJoinedArg(Option opt, int index, Arg baseArg)
+        private ArrayList<String> values;
+        public CommaJoinedArg(Option opt, int index, String val, Arg baseArg)
         {
             super(CommaJoinedClass, opt, index, baseArg);
+            values = new ArrayList<>();
+            int i = 0;
+            int prev = i;
+            int len = val.length();
+            while (true)
+            {
+                if (i >= e)
+                    break;
+                if (val.chatAt(i) == ',')
+                {
+                    values.add(val.substring(prev, i));
+                    prev = i+1;
+                }
+                ++i;
+            }
         }
 
         @Override
         public int getNumValues()
         {
-            return 0;
+            return values.size();
         }
 
         @Override
