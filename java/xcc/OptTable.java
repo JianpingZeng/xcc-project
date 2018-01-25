@@ -35,7 +35,7 @@ public class OptTable
         options = new Option[infos.length];
         for (int i = OptionID.OPT__unknown_ + 2; i < OPT_LastOption; i++)
         {
-            if (getOption(i).getKind() == OptionClass.GroupClass)
+            if (getOption(i).getKind() != OptionClass.GroupClass)
             {
                 firstSearchableOption = i;
                 break;
@@ -107,7 +107,7 @@ public class OptTable
                 res = new Option.JoinedOrSeparatedOption(id, info.optionName, group, alias);
                 break;
             case KIND_MultiArg:
-                res = new Option.MultArgsOption(id, info.optionName, group, alias);
+                res = new Option.MultArgsOption(id, info.optionName, group, alias, info.param);
                 break;
             case KIND_Separate:
                 res = new Option.SeparateOption(id, info.optionName, group, alias);
@@ -143,5 +143,34 @@ public class OptTable
         if ((flags & RenderAsInput) != 0)
             res.setRenderAsInput(true);
         return res;
+    }
+
+    public Arg parseOneArg(ArgList argList)
+    {
+      int idx = argList.getIndex();
+      String name = argList.getArgString(idx);
+      if (!name.startsWith("-"))
+      {
+        argList.setIndex(idx+1);
+        return new PositionalArg(getOption(OPT__input_), idx);
+      }
+
+      OptionInfo[] opts = OptionInfo.values();
+
+      // looking for the specified OptionInfo matches with option name.
+      int i = 0;
+      for (; i < opts.length; i++)
+        if (opts[i].optionName.equals(name))
+          target = opts[i];
+
+      // If specified Option not found, just treat it as PositionalArg with
+      // OPT__unknown_.
+      if (i == opts.length)
+      {
+        argList.setIndex(idx+1);
+        return new PositionalArg(getOption(OPT__unknown_), idx);
+      }
+      Option opt = getOption(i-1);
+      return opt.accept(argList);
     }
 }

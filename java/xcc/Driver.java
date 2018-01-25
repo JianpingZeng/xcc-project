@@ -49,9 +49,40 @@ public class Driver
         optTable = new OptTable();
     }
 
+    public OptTable getOptTable()
+    {
+        return optTable;
+    }
+
     private InputArgList parseArgList(String[] args)
     {
-        return null;
+        InputArgList args = new InputArgList(args);
+        for (int index = 0, sz = args.getInputStrings(); index < sz;)
+        {
+          if (args.getArgString(index).isEmpty())
+          {
+            ++index;
+            continue;
+          }
+
+          int prev = args.getIndex();
+          Arg arg = getOptTable().parseOneArg(args);
+          int after = args.getIndex();
+          assert after >= prev;
+          if (arg == null)
+          {
+              // TODO
+              diag().emit();
+              continue;
+          }
+          if (arg.getOption().isNotSupported())
+          {
+              diag().emit();
+              continue;
+          }
+          args.add(arg);
+      }
+        return args;
     }
 
     private HostInfo getHostInfo(String tripleStr)
@@ -76,17 +107,140 @@ public class Driver
     {
         return true;
     }
+  
+    /**
+     * Constructs an Action for each Compilation phase as follow.
+     */
+    private Action constructAction(CompilationPhase phase, Action input)
+    {
+        if (phase == Preprocess)
+        {
+            return new PreprocessAction(input, TY_Preprocess);
+        }
+        else if (phase == Compile)
+        {
+            return new CompileAction(input, TY_Assemble);            
+        }
+        else if (phase == Assembly)
+        {
+            return new AssemblyAction(input, TY_Object);
+        }
+        else 
+        {
+            assert phase == Linking;
+            assert false:"Linking should be handled in method buildActions!";
+            return null;
+        }
+    }
+
+    private void buildActions(Compilation c)
+    {
+        ArgList args = c.getArgs();
+        ToolChain tc = c.getToolChain();
+        ArrayList<Option> linkerInputs = new ArrayList<>();
+
+        ArrayList<Pair<Arg, InputFileType>> inputs = new ArrayList<>();
+
+        for (int i = 0, e = args.size(); i < e; i++)
+        {
+            Option opt = args.getOption(i);
+            if (opt == null) continue;
+
+            if (opt instanceof InputOption)
+            {
+                InputOption io = (InputOption)opt;
+
+            }
+            else if (opt.isLinkerInput())
+            {
+            }
+            else if ()
+        }
+
+        // Compute the final compilatio phase.
+        CompilationPhase finalPhase;
+        if (args.hasArg(OPT__e_))
+        {
+            finalPhase = Preprocess;
+        }
+        else if (args.hasArg(OPT__c_))
+        {
+            finalPhase = Assembly;
+        }
+        else if (args.hasArg(OPT__S_))
+        {
+            if (args.hasArg(OPT__emit_llvm_))
+              finalPhase = Compile;
+            else 
+              finalPhase = Assembly;
+        }
+        else 
+          // Other cases which we always treat as linker input.
+          finalPhase = Linking;
+
+        for (Pair<Arg, InputFileType> entity : inputs)
+        {
+            InputFileType filetype = entity.second;
+
+            int numSteps = computeCompilationSteps(filetype, 0);
+            CompilationPhase initialPhase = computeInitialPhase(filetype);
+
+            if (initialPhase > finalPhase)
+            {
+                diag(unused_file).emit();
+                continue;
+            }
+
+            InputAction current = new InputAction(arg.getValue(), filetype);
+            for (int i = 0; i < numSteps; i++)
+            {
+                if (i + initialPhase > finalPhase)
+                  break;
+
+                if(i + initialPhase === Linking)
+                  linkerInputs.add(current);
+
+                current = constructAction(i+initialPhase, current);
+            }
+            if (current != null)
+              c.addAction(current);
+        }
+        if (!linkerInputs.isEmpty())
+            c.addAction(new LinkerAction(linkerInputs, TY_Image));
+    }
+
+    private void buildJobs(Compilation c)
+    {}
 
     public Compilation buildCompilation(String[] args)
     {
         InputArgList argList = parseArgList(args);
         host = getHostInfo(triple);
 
-        return null;
+        Compilation c = new Compilation(this, host.selectToolChain(argList), argList);
+      
+        // Builds a sequence of Actions to be performed, like preprocess,
+        // precompile, compile, assembly, linking etc.        
+        buildActions(c);
+
+        buildJobs(c);
+        return c;
     }
 
-    public int executeCompilation(Compilation compilation)
+    public int executeCompilation(Compilation c)
     {
-        return 0;
+        OutPutPrameterWrapper<Command> failureCmd = new OutPutPrameterWrapper<>();
+
+        int res = c.executeCommands(failureCmd);
+        if (res != 0)
+        {
+           clearTemporaryFiles();
+        }
+
+        if (res != 0)
+        {
+          diag().emit();
+        }
+        return res;
     }
 }

@@ -39,9 +39,26 @@ public class Job
 
     public static class Command extends Job
     {
-        public Command()
+        private Action source;
+        private String executable;
+        private ArrayList<String> args;
+
+        public Command(Action source, String executable, ArrayList<String> args)
         {
             super(CommandClass);
+            this.source = source;
+            this.executable = executable;
+            this.args = args;
+        }
+
+        public String getExecutable()
+        {
+            return executable;
+        }
+
+        public ArrayList<String> getArgs()
+        {
+            return args;
         }
     }
 
@@ -55,9 +72,28 @@ public class Job
 
     public static class JobList extends Job
     {
+        private ArrayList<Job> jobs;
+
         public JobList()
         {
             super(JobListClass);
+            jobs = new ArrayList<>();
+        }
+
+        public ArrayList<Job> getJobs()
+        {
+            return jobs;
+        }
+
+        public void addJob(Job job)
+        {
+            if (jobs.contains(job)) return;
+            jobs.add(job);
+        }
+
+        public int size()
+        {
+            return jobs.size();
         }
     }
 }
