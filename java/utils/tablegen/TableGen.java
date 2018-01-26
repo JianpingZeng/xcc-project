@@ -78,7 +78,7 @@ public final class TableGen
                     new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
                             "Generate subtarget enumerations"),
                     new ValueClass.Entry<>(GenJlangOptions, "gen-jlang-options",
-                            "Generate Jlang options")
+                            "Generate JlangTool options")
             ));
 
     private static StringOpt outputFileName = new StringOpt(

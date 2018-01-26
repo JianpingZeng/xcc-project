@@ -204,6 +204,18 @@ public abstract class Option
      */
     public abstract Arg accept(InputArgList argList);
 
+    public boolean matches(int id)
+    {
+        if (alias != null)
+            return alias.matches(id);
+
+        if (id == getID())
+            return true;
+        if (group != null)
+            return group.matches(id);
+        return false;
+    }
+
     public static class OptionGroup extends Option
     {
         public OptionGroup(int id, String name, OptionGroup group)

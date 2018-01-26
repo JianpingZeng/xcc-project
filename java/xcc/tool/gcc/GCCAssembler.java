@@ -17,6 +17,48 @@
 
 package xcc.tool.gcc;
 
-public class GCCAssembler
+import backend.support.Triple;
+import xcc.*;
+import xcc.tool.Tool;
+
+import java.util.ArrayList;
+
+import static xcc.OptionID.OPT__Wa_COMMA;
+import static xcc.OptionID.OPT__Xassembler;
+
+public class GCCAssembler extends Tool
 {
+    public GCCAssembler(ToolChain tc)
+    {
+        super("linux::Assemble", "assemble", tc);
+    }
+
+    @Override
+    public Job constructJob(Compilation c, Action.JobAction ja,
+            InputInfo output, ArrayList<InputInfo> inputs, ArgList args,
+            String linkerOutput)
+    {
+        ArrayList<String> cmdArgs = new ArrayList<>();
+        LinuxToolChain tc = (LinuxToolChain)getToolChain();
+
+        if (getToolChain().getArch() == Triple.ArchType.x86)
+        {
+            cmdArgs.add("--32");
+        }
+        else if (getToolChain().getArch() == Triple.ArchType.x86_64)
+        {
+            cmdArgs.add("--64");
+        }
+
+        args.addAllArgValues(cmdArgs, OPT__Wa_COMMA, OPT__Xassembler);
+        cmdArgs.add("-o");
+        cmdArgs.add(output.getFilename());
+
+        for (InputInfo ii : inputs)
+        {
+            cmdArgs.add(ii.getFilename());
+        }
+
+        return new Job.Command(ja, tc.getAssembler(), cmdArgs);
+    }
 }

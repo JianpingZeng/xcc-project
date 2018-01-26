@@ -365,7 +365,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                     init(false));
 
     /**
-     * This static code block is attempted to add some desired Jlang command line
+     * This static code block is attempted to add some desired JlangTool command line
      * options into CommandLine DataBase.
      */
     static

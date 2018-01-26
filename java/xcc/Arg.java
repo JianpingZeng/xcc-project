@@ -23,11 +23,6 @@ import static xcc.Arg.ArgClass.*;
 
 public abstract class Arg
 {
-    public String getAsSTring(ArgList args)
-    {
-        return null;
-    }
-
     enum ArgClass
     {
         FlagClass,
@@ -107,6 +102,35 @@ public abstract class Arg
 
     public abstract String getValue(ArgList list, int index);
 
+
+    public String getAsString(ArgList args)
+    {
+        StringBuilder sb = new StringBuilder();
+        ArrayList<String> outputs = new ArrayList<>();
+        render(args, outputs);
+        for (int i = 0, e = outputs.size(); i < e; i++)
+        {
+            if (i != 0)
+                sb.append(" ");
+            sb.append(outputs.get(i));
+        }
+        return sb.toString();
+    }
+
+    public void renderAsInput(ArgList args, ArrayList<String> outputs)
+    {
+        if (!getOption().isNoOptAsInput())
+        {
+            render(args, outputs);
+        }
+
+        for (int i = 0, e = getNumValues(); i < e; i++)
+            outputs.add(getValue(args, i));
+    }
+
+    public abstract void render(ArgList args, ArrayList<String> outputs);
+
+
     public static class FlagArg extends Arg
     {
         public FlagArg(Option opt, int index)
@@ -130,6 +154,12 @@ public abstract class Arg
         {
             assert false:"Invalid index!";
             return null;
+        }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            outputs.add(args.getArgString(getIndex()));
         }
     }
 
@@ -157,6 +187,12 @@ public abstract class Arg
             assert index < getNumValues();
             return list.getArgString(getIndex());
         }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            outputs.add(args.getArgString(getIndex()));
+        }
     }
 
     public static class JoinedArg extends Arg
@@ -182,6 +218,20 @@ public abstract class Arg
         {
             assert index < getNumValues();
             return list.getArgString(getIndex()).substring(getOption().getName().length());
+        }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            if (getOption().isForceSeparateRender())
+            {
+                outputs.add(getOption().getName());
+                outputs.add(getValue(args, 0));
+            }
+            else
+            {
+                outputs.add(args.getArgString(getIndex()));
+            }
         }
     }
 
@@ -212,6 +262,24 @@ public abstract class Arg
         {
             assert index < getNumValues();
             return list.getArgString(getIndex()+index+1);
+        }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            if (getOption().isForceJoinRender())
+            {
+                assert getNumValues() == 1;
+                String joind = getOption().getName();
+                joind += args.getArgString(getIndex());
+                outputs.add(joind);
+            }
+            else
+            {
+                outputs.add(args.getArgString(getIndex()));
+                for (int i = 0, e = getNumValues(); i < e; i++)
+                    outputs.add(args.getArgString(getIndex() + i + 1));
+            }
         }
     }
 
@@ -255,6 +323,12 @@ public abstract class Arg
             assert index < getNumValues();
             return values.get(index);
         }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            outputs.add(args.getArgString(getIndex()));
+        }
     }
 
     public static class JoinedAndSeparateArg extends Arg
@@ -283,6 +357,13 @@ public abstract class Arg
                 return list.getArgString(index).substring(getOption().getName().length());
 
             return list.getArgString(getIndex()+1);
+        }
+
+        @Override
+        public void render(ArgList args, ArrayList<String> outputs)
+        {
+            outputs.add(args.getArgString(getIndex()));
+            outputs.add(args.getArgString(getIndex() + 1));
         }
     }
 }

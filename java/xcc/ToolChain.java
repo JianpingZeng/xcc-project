@@ -19,7 +19,9 @@ package xcc;
 
 import backend.support.Triple;
 
-import javax.tools.Tool;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 public abstract class ToolChain
@@ -35,6 +37,11 @@ public abstract class ToolChain
         this.triple = triple;
         filePaths = new ArrayList<>();
         programPaths = new ArrayList<>();
+    }
+
+    public Driver getDriver()
+    {
+        return host.getDriver();
     }
 
     public String getTripleString()
@@ -77,5 +84,51 @@ public abstract class ToolChain
         return triple.getOSName();
     }
 
-    public abstract Tool selectTool(Compilation c, Action.JobAction ja);
+    public abstract xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja);
+
+    public Triple.ArchType getArch()
+    {
+        return triple.getArch();
+    }
+
+    public String getProgramPath(String executable)
+    {
+        for (String path : programPaths)
+        {
+            Path p = Paths.get(path, executable);
+            if (Files.exists(p))
+                return p.toAbsolutePath().toString();
+        }
+        return null;
+    }
+
+    public String getFilePath(String name)
+    {
+        for (String path : filePaths)
+        {
+            Path p = Paths.get(path, name);
+            if (Files.exists(p))
+                return p.toAbsolutePath().toString();
+        }
+        return null;
+    }
+
+    /**
+     * Get the nameof linker.
+     * @return
+     */
+    public abstract String getLinker();
+
+    public abstract String getAssembler();
+
+    public abstract String getForcedPicModel();
+
+    public abstract String getDefaultRelocationModel();
+
+    public String getCompiler()
+    {
+        return getFilePath("jlang-cc");
+    }
+
+    public abstract void addSystemIncludeDir(ArrayList<String> cmdStrings);
 }
