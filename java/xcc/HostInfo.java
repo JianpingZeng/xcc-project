@@ -19,7 +19,6 @@ package xcc;
 
 import backend.support.Triple;
 
-import java.util.HashMap;
 import java.util.TreeMap;
 
 import static xcc.OptionID.OPT__m32;
@@ -64,6 +63,8 @@ public abstract class HostInfo
         return new LinuxHostInfo(driver, defaultTriple);
     }
 
+    public abstract ToolChain selectToolChain(InputArgList args);
+
     public static class LinuxHostInfo extends HostInfo
     {
 
@@ -95,6 +96,12 @@ public abstract class HostInfo
                 toolChains.put(archName, tc);
                 return tc;
             }
+        }
+
+        @Override
+        public ToolChain selectToolChain(InputArgList args)
+        {
+            return null;
         }
     }
 
@@ -129,6 +136,12 @@ public abstract class HostInfo
                 toolChains.put(archName, tc);
                 return tc;
             }
+        }
+
+        @Override
+        public ToolChain selectToolChain(InputArgList args)
+        {
+            return null;
         }
     }
 }

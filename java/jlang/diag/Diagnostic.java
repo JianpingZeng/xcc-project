@@ -22,6 +22,7 @@ import jlang.sema.Decl;
 import jlang.support.SourceRange;
 import jlang.type.QualType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -51,7 +52,7 @@ public final class Diagnostic
 
     public static final int DIAG_UPPER_LIMIT = DiagnosticSemaKindsEnd;
 
-    static class StaticDiagInfoRec implements Comparable<StaticDiagInfoRec>
+    public static class StaticDiagInfoRec implements Comparable<StaticDiagInfoRec>
     {
         int diagID;
         Mapping mapping;
@@ -60,11 +61,8 @@ public final class Diagnostic
         String description;
         String optionGroup;
 
-        StaticDiagInfoRec(int diagID,
-                Mapping mapping,
-                DiagnosticClass diagClass,
-                boolean sfinae,
-                String description,
+        public StaticDiagInfoRec(int diagID, Mapping mapping,
+                DiagnosticClass diagClass, boolean sfinae, String description,
                 String optionGroup)
         {
             this.diagID = diagID;
@@ -82,17 +80,45 @@ public final class Diagnostic
         }
     }
 
+    public interface DiagInitializer
+    {
+        StaticDiagInfoRec[] getDiagKinds();
+    }
+
+    private static ArrayList<DiagInitializer> initializers = new ArrayList<>();
+
+    public static void registerDiagInitialize(DiagInitializer initializer)
+    {
+        if (initializer == null || initializers.contains(initializer))
+            return;
+        initializers.add(initializer);
+    }
+
     private static final StaticDiagInfoRec[] staticDiagInfos;
     static
     {
+        int totalLen = 0;
+        for (DiagInitializer init : initializers)
+            totalLen += init.getDiagKinds().length;
+
         int frontendLen = DiagnosticFrontendKinds.values().length;
         int commonLen = DiagnosticCommonKinds.values().length;
         int lexLen = DiagnosticLexKinds.values().length;
         int parseLen = DiagnosticParseKinds.values().length;
         int semaLen = DiagnosticSemaKinds.values().length;
 
-        staticDiagInfos = new StaticDiagInfoRec[frontendLen + commonLen + lexLen + parseLen + semaLen];
+        staticDiagInfos = new StaticDiagInfoRec[totalLen + frontendLen + commonLen
+                + lexLen + parseLen + semaLen];
         int idx = 0;
+        for (DiagInitializer init : initializers)
+        {
+            StaticDiagInfoRec[] recs = init.getDiagKinds();
+            System.arraycopy(recs, 0, staticDiagInfos, idx, recs.length);
+            idx += recs.length;
+        }
+
+        assert idx == totalLen:"Illegal states!";
+
         for (DiagnosticFrontendKinds kinds : DiagnosticFrontendKinds.values())
         {
             staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,

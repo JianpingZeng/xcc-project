@@ -20,10 +20,18 @@ package xcc;
 import backend.support.Triple;
 import xcc.HostInfo.LinuxHostInfo;
 
+import javax.tools.Tool;
+
 public class LinuxToolChain extends ToolChain
 {
     public LinuxToolChain(LinuxHostInfo linuxHostInfo, Triple triple)
     {
+        super(linuxHostInfo, triple);
+    }
 
+    @Override
+    public Tool selectTool(Compilation c, Action.JobAction ja)
+    {
+        return null;
     }
 }

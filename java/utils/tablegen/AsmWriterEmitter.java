@@ -436,7 +436,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 + "import backend.target.TargetAsmInfo;\n\n"
                 + "import java.io.OutputStream;");
 
-        emitSourceFileHeaderComment("Assembly Writer Source Fragment", os);
+        emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
         CodeGenTarget target = new CodeGenTarget();
         Record asmWriter = target.getAsmWriter();
 

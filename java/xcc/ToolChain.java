@@ -17,7 +17,65 @@
 
 package xcc;
 
-public class ToolChain
-{
+import backend.support.Triple;
 
+import javax.tools.Tool;
+import java.util.ArrayList;
+
+public abstract class ToolChain
+{
+    private HostInfo host;
+    private Triple triple;
+    private ArrayList<String> filePaths;
+    private ArrayList<String> programPaths;
+
+    public ToolChain(HostInfo host, Triple triple)
+    {
+        this.host = host;
+        this.triple = triple;
+        filePaths = new ArrayList<>();
+        programPaths = new ArrayList<>();
+    }
+
+    public String getTripleString()
+    {
+        return triple.getTriple();
+    }
+
+    public ArrayList<String> getFilePaths()
+    {
+        return filePaths;
+    }
+
+    public ArrayList<String> getProgramPaths()
+    {
+        return programPaths;
+    }
+
+    public Triple getTriple()
+    {
+        return triple;
+    }
+
+    public HostInfo getHost()
+    {
+        return host;
+    }
+
+    public String getArchName()
+    {
+        return triple.getArchName();
+    }
+
+    public String getPlatform()
+    {
+        return triple.getVendorName();
+    }
+
+    public String getOS()
+    {
+        return triple.getOSName();
+    }
+
+    public abstract Tool selectTool(Compilation c, Action.JobAction ja);
 }

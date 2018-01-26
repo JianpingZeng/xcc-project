@@ -17,6 +17,12 @@
 
 package xcc;
 
+import xcc.Job.Command;
+import xcc.Job.PipedJob;
+
+import java.io.IOException;
+import java.util.ArrayList;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -56,21 +62,26 @@ public class Compilation
             sb.append(" ");
             sb.append(arg);
         }
-        int res = Runtime.getRuntime().execute(sb.toString());
-        if (res != 0)
+        try
         {
-
+            Process p = Runtime.getRuntime().exec(sb.toString());
+            int res = p.waitFor();
+            return res;
         }
-        return res;
+        catch (IOException | InterruptedException e)
+        {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
-    private int executeSingleJob(Job job)
+    private int executeSingleJob(Job j)
     {
         if (j instanceof Command)
               return executeCommand((Command)j);
-        else if (j instanceof JobList)
+        else if (j instanceof Job.JobList)
         {
-            JobList jlist = (JobList)j;
+            Job.JobList jlist = (Job.JobList)j;
             int res = 0;
             for (Job job : jlist.getJobs())
             {
@@ -80,7 +91,7 @@ public class Compilation
         }
         else
         {
-            assert job instanceof PipedJob;
+            assert j instanceof PipedJob;
             assert false:"Currently PipedJob not supported!";
             return 0;
         }
@@ -88,7 +99,7 @@ public class Compilation
 
     public int executeJob()
     {
-        res = 0;
+        int res = 0;
         for (Job j : jobs)
         {
             res |= executeSingleJob(j);
@@ -132,5 +143,15 @@ public class Compilation
     public ArgList getArgs()
     {
         return args;
+    }
+
+    public ToolChain getToolChain()
+    {
+        return tc;
+    }
+
+    public Command getFailureCommand()
+    {
+        return failureCmd;
     }
 }

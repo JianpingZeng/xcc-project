@@ -17,11 +17,17 @@
 
 package xcc;
 
+import java.util.ArrayList;
 
 import static xcc.Arg.ArgClass.*;
 
 public abstract class Arg
 {
+    public String getAsSTring(ArgList args)
+    {
+        return null;
+    }
+
     enum ArgClass
     {
         FlagClass,
@@ -103,6 +109,10 @@ public abstract class Arg
 
     public static class FlagArg extends Arg
     {
+        public FlagArg(Option opt, int index)
+        {
+            this(opt, index, null);
+        }
 
         public FlagArg(Option opt, int index, Arg baseArg)
         {
@@ -118,12 +128,17 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
+            assert false:"Invalid index!";
             return null;
         }
     }
 
     public static class PositionalArg extends Arg
     {
+        public PositionalArg(Option opt, int index)
+        {
+            this(opt, index, null);
+        }
 
         public PositionalArg(Option opt, int index, Arg baseArg)
         {
@@ -139,12 +154,18 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            return null;
+            assert index < getNumValues();
+            return list.getArgString(getIndex());
         }
     }
 
     public static class JoinedArg extends Arg
     {
+        public JoinedArg(Option opt, int index)
+        {
+            this(opt, index, null);
+        }
+
         public JoinedArg(Option opt, int index, Arg baseArg)
         {
             super(JoinedClass, opt, index, baseArg);
@@ -159,13 +180,19 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            return null;
+            assert index < getNumValues();
+            return list.getArgString(getIndex()).substring(getOption().getName().length());
         }
     }
 
     public static class SeparateArg extends Arg
     {
         private int numValues;
+
+        public SeparateArg(Option opt, int index, int numValues)
+        {
+            this(opt, index, numValues, null);
+        }
 
         public SeparateArg(Option opt, int index, int numValues, Arg baseArg)
         {
@@ -183,13 +210,19 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            return null;
+            assert index < getNumValues();
+            return list.getArgString(getIndex()+index+1);
         }
     }
 
     public static class CommaJoinedArg extends Arg
     {
         private ArrayList<String> values;
+        public CommaJoinedArg(Option opt, int index, String val)
+        {
+            this(opt, index, val, null);
+        }
+
         public CommaJoinedArg(Option opt, int index, String val, Arg baseArg)
         {
             super(CommaJoinedClass, opt, index, baseArg);
@@ -199,9 +232,9 @@ public abstract class Arg
             int len = val.length();
             while (true)
             {
-                if (i >= e)
+                if (i >= len)
                     break;
-                if (val.chatAt(i) == ',')
+                if (val.charAt(i) == ',')
                 {
                     values.add(val.substring(prev, i));
                     prev = i+1;
@@ -219,12 +252,18 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            return null;
+            assert index < getNumValues();
+            return values.get(index);
         }
     }
 
     public static class JoinedAndSeparateArg extends Arg
     {
+        public JoinedAndSeparateArg(Option opt, int index)
+        {
+            this(opt, index, null);
+        }
+
         public JoinedAndSeparateArg(Option opt, int index, Arg baseArg)
         {
             super(JoinedAndSeparateClass, opt, index, baseArg);
@@ -233,13 +272,17 @@ public abstract class Arg
         @Override
         public int getNumValues()
         {
-            return 0;
+            return 2;
         }
 
         @Override
         public String getValue(ArgList list, int index)
         {
-            return null;
+            assert index < getNumValues();
+            if (index == 0)
+                return list.getArgString(index).substring(getOption().getName().length());
+
+            return list.getArgString(getIndex()+1);
         }
     }
 }

@@ -17,12 +17,12 @@
 
 package xcc;
 
+import xcc.Arg.PositionalArg;
 import xcc.Option.OptionGroup;
 
 import static xcc.JlangFlags.RenderAsInput;
 import static xcc.JlangFlags.RenderJoined;
-import static xcc.OptionID.OPT_INVALID;
-import static xcc.OptionID.OPT_LastOption;
+import static xcc.OptionID.*;
 import static xcc.OptionKind.*;
 
 public class OptTable
@@ -33,7 +33,7 @@ public class OptTable
     public OptTable()
     {
         options = new Option[infos.length];
-        for (int i = OptionID.OPT__unknown_ + 2; i < OPT_LastOption; i++)
+        for (int i = OPT__unknown_ + 2; i < OPT_LastOption; i++)
         {
             if (getOption(i).getKind() != OptionClass.GroupClass)
             {
@@ -145,7 +145,7 @@ public class OptTable
         return res;
     }
 
-    public Arg parseOneArg(ArgList argList)
+    public Arg parseOneArg(InputArgList argList)
     {
       int idx = argList.getIndex();
       String name = argList.getArgString(idx);
@@ -161,7 +161,7 @@ public class OptTable
       int i = 0;
       for (; i < opts.length; i++)
         if (opts[i].optionName.equals(name))
-          target = opts[i];
+          break;
 
       // If specified Option not found, just treat it as PositionalArg with
       // OPT__unknown_.
@@ -172,5 +172,20 @@ public class OptTable
       }
       Option opt = getOption(i-1);
       return opt.accept(argList);
+    }
+
+    public String getOptionHelpText(int id)
+    {
+        return infos[id].helpText;
+    }
+
+    public int getOptionKind(int id)
+    {
+        return infos[id].kind;
+    }
+
+    public String getOptionMetaVar(int id)
+    {
+        return infos[id].metaVarName;
     }
 }
