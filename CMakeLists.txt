@@ -160,7 +160,7 @@ file(GLOB TARGET_SRCS
     ${SRC_DIR}/backend/target/x86/*.java)
 
 # The jlang driver relatied sources
-file(GLOB JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
+file(GLOB_RECURSE JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
 
 # Remove target-specific or jlang driver related source files.
 foreach (file ${SRCS_NO_TARGET})
