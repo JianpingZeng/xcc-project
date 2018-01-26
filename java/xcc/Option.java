@@ -17,6 +17,11 @@
 
 package xcc;
 
+import xcc.Arg.CommaJoinedArg;
+import xcc.Arg.FlagArg;
+import xcc.Arg.JoinedArg;
+import xcc.Arg.SeparateArg;
+
 import static xcc.OptionInfo.OPTION__unknown_Unknown;
 
 public abstract class Option
@@ -197,7 +202,7 @@ public abstract class Option
      * option value.
      * @return Return a null if input argument is invalid for this option.
      */
-    public abstract Arg accept(ArgList argList);
+    public abstract Arg accept(InputArgList argList);
 
     public static class OptionGroup extends Option
     {
@@ -272,7 +277,7 @@ public abstract class Option
         public Arg accept(InputArgList list)
         {
             int idx = list.getIndex();
-            if (!getOptionName().equals(list.getArgString(idx)))
+            if (!getName().equals(list.getArgString(idx)))
                 return null;
 
             list.setIndex(idx+1);
@@ -293,7 +298,7 @@ public abstract class Option
         {
             int idx = list.getIndex();
             String argStr = list.getArgString(idx);
-            String optName = getOptionName();
+            String optName = getName();
             
             if (optName.length() < argStr.length() || 
                 !argStr.substring(0, optName.length()).equals(optName))
@@ -317,14 +322,13 @@ public abstract class Option
         {
             int idx = list.getIndex();
             String argStr = list.getArgString(idx);
-            String optName = getOptionName();
+            String optName = getName();
                       
-            if (!argStr.equals(optName) || (idx + 1) >= list.getInputStrings())
+            if (!argStr.equals(optName) || (idx + 1) >= list.getNumInputStrings())
                 return null;
-
-            String val = list.getArgString(idx+1);
+            
             list.setIndex(idx+2);
-            return new SeparateArg(this, idx, val);
+            return new SeparateArg(this, idx, 1);
         }
     }
 
@@ -341,7 +345,7 @@ public abstract class Option
         {
             int idx = list.getIndex();
             String argStr = list.getArgString(idx);
-            String optName = getOptionName();
+            String optName = getName();
                       
             if (optName.length() < argStr.length() || 
                 !argStr.substring(0, optName.length()).equals(optName))
@@ -370,13 +374,13 @@ public abstract class Option
         {
             int idx = list.getIndex();
             String argStr = list.getArgString(idx);
-            String optName = getOptionName();
+            String optName = getName();
                       
-            if (!argStr.equals(optName) || (idx + numArgs) >= list.getInputStrings())
+            if (!argStr.equals(optName) || (idx + numArgs) >= list.getNumInputStrings())
                 return null;
 
             list.setIndex(idx + numArgs + 1);
-            return new MultiArg(this, idx, numArgs);
+            return new SeparateArg(this, idx, numArgs);
         }
     }
 
@@ -392,13 +396,13 @@ public abstract class Option
         public Arg accept(InputArgList list)
         {
             int idx = list.getIndex();
-            if (getOptionName().equals(list.getArgString(idx)))
+            if (getName().equals(list.getArgString(idx)))
             {
                 list.setIndex(idx+1);
                 return new JoinedArg(this, idx);
             }
             idx += 2;
-            if (idx > list.getInputStrings())
+            if (idx > list.getNumInputStrings())
               return null;
 
             list.setIndex(idx);
@@ -419,11 +423,11 @@ public abstract class Option
         {
             // Always matched.
             int idx = list.getIndex();
-            if (idx + 2 > list.getInputStrings())
+            if (idx + 2 > list.getNumInputStrings())
               return null;
 
             list.setIndex(idx + 2);
-            return new JoinedAndSeparatedArg(this, idx, 1);
+            return new Arg.JoinedAndSeparateArg(this, idx);
         }
     }
 }

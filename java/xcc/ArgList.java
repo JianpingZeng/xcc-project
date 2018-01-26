@@ -123,4 +123,10 @@ public abstract class ArgList
     }
 
     public abstract String getArgString(int index);
+
+    public Arg getArgs(int index)
+    {
+        assert index >= 0 && index < list.size();
+        return list.get(index);
+    }
 }

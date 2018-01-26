@@ -20,10 +20,18 @@ package xcc;
 import backend.support.Triple;
 import xcc.HostInfo.UnknownHostInfo;
 
+import javax.tools.Tool;
+
 public class GenericGCCToolChain extends ToolChain
 {
     public GenericGCCToolChain(UnknownHostInfo unknownHostInfo, Triple triple)
     {
+        super(unknownHostInfo, triple);
+    }
 
+    @Override
+    public Tool selectTool(Compilation c, Action.JobAction ja)
+    {
+        return null;
     }
 }

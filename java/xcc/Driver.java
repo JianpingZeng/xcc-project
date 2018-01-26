@@ -18,11 +18,30 @@
 package xcc;
 
 import backend.support.Triple;
+import config.Config;
+import jlang.diag.CompilationPhase;
 import jlang.diag.Diagnostic;
-import xcc.Action.JobAction;
+import jlang.diag.Diagnostic.DiagnosticBuilder;
+import jlang.diag.Diagnostic.StaticDiagInfoRec;
+import jlang.diag.FullSourceLoc;
+import tools.Pair;
+import tools.Util;
+import xcc.Action.*;
+import xcc.Option.InputOption;
 
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+
+import static jlang.diag.CompilationPhase.*;
+import static xcc.DiagnosticJlangDriverTag.*;
 import static xcc.HostInfo.createLinuxHostInfo;
 import static xcc.HostInfo.createUnknownHostInfo;
+import static xcc.InputType.getNumCompilationPhases;
+import static xcc.OptionID.*;
+import static xcc.OptionKind.*;
+import static xcc.TypeID.*;
 
 /**
  * @author Xlous.zeng
@@ -30,6 +49,31 @@ import static xcc.HostInfo.createUnknownHostInfo;
  */
 public class Driver
 {
+    /**
+     * An static interface used for registering a initializer for the purpose of
+     * adding some diagnostic kinds into Diagnostic related with Jlang driver.
+     */
+    static
+    {
+        Diagnostic.DiagInitializer initializer = new Diagnostic.DiagInitializer()
+        {
+            @Override public StaticDiagInfoRec[] getDiagKinds()
+            {
+                DiagnosticJlangDriverKinds[] kinds = DiagnosticJlangDriverKinds.values();
+                StaticDiagInfoRec[] recs = new StaticDiagInfoRec[kinds.length];
+                int idx = 0;
+                for (DiagnosticJlangDriverKinds kind : kinds)
+                {
+                    recs[idx++] = new StaticDiagInfoRec(kind.diagID,
+                            kind.diagMapping, kind.diagClass, kind.sfinae, kind.text, kind.optionGroup);
+                }
+                return recs;
+            }
+        };
+
+        Diagnostic.registerDiagInitialize(initializer);
+    }
+
     private String defaultBasename;
     private String defaultDirname;
     private String defaultImagename;
@@ -37,9 +81,10 @@ public class Driver
     private String triple;
     private HostInfo host;
     private OptTable optTable;
+    private boolean suppressMissingInputWarning;
 
-    public Driver(String basename, String dirname,
-            String hostTriple, String imageName, Diagnostic diags)
+    public Driver(String basename, String dirname, String hostTriple,
+            String imageName, Diagnostic diags)
     {
         defaultBasename = basename;
         defaultDirname = dirname;
@@ -49,6 +94,11 @@ public class Driver
         optTable = new OptTable();
     }
 
+    private DiagnosticBuilder diag(int diagID)
+    {
+        return theDiags.report(new FullSourceLoc(), diagID);
+    }
+
     public OptTable getOptTable()
     {
         return optTable;
@@ -56,33 +106,35 @@ public class Driver
 
     private InputArgList parseArgList(String[] args)
     {
-        InputArgList args = new InputArgList(args);
-        for (int index = 0, sz = args.getInputStrings(); index < sz;)
+        InputArgList argList = new InputArgList(args);
+        for (int index = 0, sz = argList.getNumInputStrings(); index < sz; )
         {
-          if (args.getArgString(index).isEmpty())
-          {
-            ++index;
-            continue;
-          }
+            if (argList.getArgString(index).isEmpty())
+            {
+                ++index;
+                continue;
+            }
 
-          int prev = args.getIndex();
-          Arg arg = getOptTable().parseOneArg(args);
-          int after = args.getIndex();
-          assert after >= prev;
-          if (arg == null)
-          {
-              // TODO
-              diag().emit();
-              continue;
-          }
-          if (arg.getOption().isNotSupported())
-          {
-              diag().emit();
-              continue;
-          }
-          args.add(arg);
-      }
-        return args;
+            int prev = argList.getIndex();
+            Arg arg = getOptTable().parseOneArg(argList);
+            int after = argList.getIndex();
+            assert after >= prev;
+            if (arg == null)
+            {
+                diag(err_drv_missing_argument)
+                        .addString(argList.getArgString(prev))
+                        .addTaggedVal(after - prev - 1).emit();
+                continue;
+            }
+            if (arg.getOption().isUnsupported())
+            {
+                diag(err_drv_jlang_unsupported)
+                        .addString(argList.getArgString(prev)).emit();
+                continue;
+            }
+            argList.add(arg);
+        }
+        return argList;
     }
 
     private HostInfo getHostInfo(String tripleStr)
@@ -93,7 +145,7 @@ public class Driver
         else if (defaultTriple.getArchName().equals("amd64"))
             defaultTriple.setArchName("x86_64");
         else
-            assert false:"Unknown architecture name!";
+            assert false : "Unknown architecture name!";
         switch (defaultTriple.getOS())
         {
             case Linux:
@@ -103,33 +155,60 @@ public class Driver
         }
     }
 
-    public boolean useJlangAsCompiler(Compilation comp, JobAction ja, String archName)
+    public boolean useJlangAsCompiler(Compilation comp, JobAction ja,
+            String archName)
     {
         return true;
     }
-  
+
     /**
      * Constructs an Action for each Compilation phase as follow.
      */
-    private Action constructAction(CompilationPhase phase, Action input)
+    private Action constructAction(ArgList args, int phase, Action input)
     {
-        if (phase == Preprocess)
+        switch (phase)
         {
-            return new PreprocessAction(input, TY_Preprocess);
-        }
-        else if (phase == Compile)
-        {
-            return new CompileAction(input, TY_Assemble);            
-        }
-        else if (phase == Assembly)
-        {
-            return new AssemblyAction(input, TY_Object);
-        }
-        else 
-        {
-            assert phase == Linking;
-            assert false:"Linking should be handled in method buildActions!";
-            return null;
+            case Preprocess:
+            {
+                int outputTy;
+                if (args.hasArg(OPT__M) || args.hasArg(OPT__MM))
+                    outputTy = TY_Dependencies;
+                else
+                {
+                    outputTy = InputType
+                            .getPreprocessedType(input.getOutputType());
+                    assert outputTy
+                            != TY_INVALID : "can't preprocess this input type!";
+                }
+                return new PreprocessJobAction(input, outputTy);
+            }
+            case Precompile:
+                return new PrecompileJobAction(input, TY_PCH);
+            case Compile:
+            {
+                if (args.hasArg(OPT__fsyntax_only))
+                {
+                    return new CompileJobAction(input, TY_Nothing);
+                }
+                else if (args.hasArg(OPT__emit_llvm) || args.hasArg(OPT__flto)
+                        || args.hasArg(OPT__O4))
+                {
+                    int outputTy = args.hasArg(OPT__S) ? TY_LLVMAsm : TY_LLVMBC;
+                    return new CompileJobAction(input, outputTy);
+                }
+                else
+                    return new CompileJobAction(input, TY_PP_Asm);
+            }
+            case Assemble:
+            {
+                return new AssembleJobAction(input, TY_Object);
+            }
+            default:
+            {
+                assert phase == Link;
+                assert false : "Link should be handled in method buildActions!";
+                return null;
+            }
         }
     }
 
@@ -137,88 +216,275 @@ public class Driver
     {
         ArgList args = c.getArgs();
         ToolChain tc = c.getToolChain();
-        ArrayList<Option> linkerInputs = new ArrayList<>();
+        ArrayList<Action> linkerInputs = new ArrayList<>();
 
-        ArrayList<Pair<Arg, InputFileType>> inputs = new ArrayList<>();
+        int inputType = TY_Nothing;
+        Arg inputTypeArg = null;
+
+        ArrayList<Pair<Arg, Integer>> inputs = new ArrayList<>();
 
         for (int i = 0, e = args.size(); i < e; i++)
         {
+            Arg arg = args.getArgs(i);
             Option opt = args.getOption(i);
-            if (opt == null) continue;
+            if (opt == null)
+                continue;
 
             if (opt instanceof InputOption)
             {
-                InputOption io = (InputOption)opt;
+                String value = arg.getValue(args, 0);
+                int ty = TY_INVALID;
 
+                if (inputType == TY_Nothing)
+                {
+                    if (inputTypeArg != null)
+                        inputTypeArg.claim();
+
+                    if (value.equals("-"))
+                    {
+                        if (!args.hasArg(OPT__E, false))
+                            diag(err_drv_unknown_stdin_type).emit();
+                        ty = TY_C;
+                    }
+                    else
+                    {
+                        int lastDot = value.lastIndexOf('.');
+                        if (lastDot >= 0)
+                            ty = InputType.lookupTypeForExtension(
+                                    value.substring(lastDot + 1));
+                        if (ty == TY_INVALID)
+                            ty = TY_Object;
+                    }
+
+                    if (ty != TY_Object)
+                    {
+                        if (args.hasArg(OPT__ObjC))
+                            ty = TY_ObjC;
+                        else if (args.hasArg(OPT__ObjCXX))
+                            ty = TY_ObjCXX;
+                    }
+                }
+                else
+                {
+                    inputTypeArg.claim();
+                    ty = inputType;
+                }
+
+                if (!value.equals("-") && !Files.exists(Paths.get(value)))
+                {
+                    diag(err_drv_no_such_file).addString(arg.getValue(args, 0)).emit();
+                }
+                else
+                {
+                    inputs.add(Pair.get(arg, ty));
+                }
             }
             else if (opt.isLinkerInput())
             {
+                inputs.add(Pair.get(arg, TY_Object));
             }
-            else if ()
+            else if (arg.getOption().getID() == OPT__x)
+            {
+                inputTypeArg = arg;
+                inputType = InputType.lookupTypeForExtension(
+                        arg.getValue(args, arg.getIndex() + 1));
+            }
         }
 
         // Compute the final compilatio phase.
-        CompilationPhase finalPhase;
-        if (args.hasArg(OPT__e_))
+        int finalPhase;
+        Arg finalPhaseArg = null;
+        if ((finalPhaseArg = args.getLastArg(OPT__E, true)) != null
+                || (finalPhaseArg = args.getLastArg(OPT__M, true)) != null
+                || (finalPhaseArg = args.getLastArg(OPT__MM, true)) != null)
         {
             finalPhase = Preprocess;
         }
-        else if (args.hasArg(OPT__c_))
+        else if ((finalPhaseArg = args.getLastArg(OPT__c, true)) != null)
         {
-            finalPhase = Assembly;
+            finalPhase = Assemble;
         }
-        else if (args.hasArg(OPT__S_))
+        else if ((finalPhaseArg = args.getLastArg(OPT__S, true)) != null
+                || (finalPhaseArg = args.getLastArg(OPT__fsyntax_only, true)) != null)
         {
-            if (args.hasArg(OPT__emit_llvm_))
-              finalPhase = Compile;
-            else 
-              finalPhase = Assembly;
+            finalPhase = Compile;
         }
-        else 
-          // Other cases which we always treat as linker input.
-          finalPhase = Linking;
+        else
+            // Other cases which we always treat as linker input.
+            finalPhase = Link;
 
-        for (Pair<Arg, InputFileType> entity : inputs)
+        for (Pair<Arg, Integer> entity : inputs)
         {
-            InputFileType filetype = entity.second;
+            int filetype = entity.second;
+            Arg inputArg = entity.first;
 
-            int numSteps = computeCompilationSteps(filetype, 0);
-            CompilationPhase initialPhase = computeInitialPhase(filetype);
+            int numSteps = getNumCompilationPhases(filetype);
+            assert numSteps > 0 : "Invalid number of steps!";
+
+            int initialPhase = InputType.getCompilationPhase(filetype, 0);
 
             if (initialPhase > finalPhase)
             {
-                diag(unused_file).emit();
+                inputArg.claim();
+                diag(warn_drv_input_file_unused).addString(inputArg.getAsSTring(args))
+                        .addString(getPhaseName(initialPhase))
+                        .addString(finalPhaseArg.getOption().getName()).emit();
                 continue;
             }
 
-            InputAction current = new InputAction(arg.getValue(), filetype);
+            Action current = new InputAction(inputArg, filetype);
             for (int i = 0; i < numSteps; i++)
             {
-                if (i + initialPhase > finalPhase)
-                  break;
+                int phase = InputType.getCompilationPhase(inputType, i);
+                if (phase > finalPhase)
+                    break;
 
-                if(i + initialPhase === Linking)
-                  linkerInputs.add(current);
+                if (phase == Link)
+                {
+                    assert i + 1
+                            == numSteps : "Linker must be final compilation step!";
+                    linkerInputs.add(current);
+                    current = null;
+                    break;
+                }
+                if (phase == CompilationPhase.Assemble
+                        && current.getOutputType() != TY_PP_Asm)
+                    continue;
 
-                current = constructAction(i+initialPhase, current);
+                current = constructAction(args, phase, current);
+                assert current != null;
+                if (current.getOutputType() == TY_Nothing)
+                    break;
+
             }
             if (current != null)
-              c.addAction(current);
+                c.addAction(current);
         }
         if (!linkerInputs.isEmpty())
-            c.addAction(new LinkerAction(linkerInputs, TY_Image));
+            c.addAction(new LinkJobAction(linkerInputs, TY_Image));
+    }
+
+    private String getPhaseName(int phase)
+    {
+        switch (phase)
+        {
+            case Preprocess:
+                return "preprocess";
+            case Precompile:
+                return "precompile";
+            case Compile:
+                return "compile";
+            case Assemble:
+                return "assemble";
+            case Link:
+                return "link";
+            default:
+                assert false : "Invalid phase";
+                return "";
+        }
     }
 
     private void buildJobs(Compilation c)
-    {}
+    {
+    }
+
+    private static String getOptionHelpName(OptTable table, int id)
+    {
+        String name = table.getOptionName(id);
+
+        switch (table.getOptionKind(id))
+        {
+            case KIND_Input:
+            case KIND_Unknown:
+                assert false:"Invalid option with help text";
+            case KIND_MultiArg:
+            case KIND_JoinedAndSeparate:
+                assert false:"Can't print metavar for this kind of option";
+            case KIND_Flag:
+                break;
+            case KIND_Separate:
+            case KIND_JoinedOrSeparate:
+                name += " ";
+            case KIND_Joined:
+            case KIND_CommaJoined:
+                name += table.getOptionMetaVar(id);
+                break;
+        }
+        return name;
+    }
+
+    private void printHelp(boolean printHidden)
+    {
+        System.out.println("OVERVIEW: jlang compiler driver");
+        System.out.println();
+        System.out.printf("USAGE: %s [options] <input files>%n%n",
+                defaultBasename);
+        System.out.println("OPTIONS:");
+
+        ArrayList<Pair<String, String>> optionHelp = new ArrayList<>();
+        int maximumOptionWidth = 0;
+        for (int i = OPT__input_; i < OPT_LastOption; i++)
+        {
+            String text = getOptTable().getOptionHelpText(i);
+            if (text != null)
+            {
+                String info = getOptionHelpName(getOptTable(), i);
+                int length = info.length();
+                if (length <= 23)
+                    maximumOptionWidth = Math.max(length, maximumOptionWidth);
+
+                optionHelp.add(Pair.get(info, text));
+            }
+        }
+        for (int i = 0, e = optionHelp.size(); i < e; i++)
+        {
+            String option = optionHelp.get(i).first;
+            System.out.printf("  %s%s", option, Util.fixedLengthString(maximumOptionWidth, ' '));
+            System.out.printf(" %s%n", optionHelp.get(i).second);
+        }
+    }
+
+    private void printVersion(Compilation c, PrintStream os)
+    {
+        os.printf("jlang version %s.%s", Config.XCC_Major, Config.XCC_Minor);
+        ToolChain tc = c.getToolChain();
+        os.printf("Target: %s%n", tc.getTripleString());
+    }
+
+    private boolean handleVersion(Compilation c)
+    {
+        if (c.getArgs().hasArg(OPT___help)
+                || c.getArgs().hasArg(OPT___help_hidden))
+        {
+            printHelp(c.getArgs().hasArg(OPT___help_hidden));
+            return false;
+        }
+
+        if (c.getArgs().hasArg(OPT___version))
+        {
+            printVersion(c, System.out);
+            return false;
+        }
+
+        if (c.getArgs().hasArg(OPT__v) || c.getArgs().hasArg(OPT___HASH_HASH_HASH))
+        {
+            printVersion(c, System.err);
+            suppressMissingInputWarning = true;
+        }
+        return true;
+    }
 
     public Compilation buildCompilation(String[] args)
     {
         InputArgList argList = parseArgList(args);
         host = getHostInfo(triple);
 
-        Compilation c = new Compilation(this, host.selectToolChain(argList), argList);
-      
+        Compilation c = new Compilation(this, host.selectToolChain(argList),
+                argList);
+
+        if (!handleVersion(c))
+            return c;
+
         // Builds a sequence of Actions to be performed, like preprocess,
         // precompile, compile, assembly, linking etc.        
         buildActions(c);
@@ -229,18 +495,36 @@ public class Driver
 
     public int executeCompilation(Compilation c)
     {
-        OutPutPrameterWrapper<Command> failureCmd = new OutPutPrameterWrapper<>();
+        Job.Command failureCmd = null;
 
-        int res = c.executeCommands(failureCmd);
+        int res = c.executeJob();
+        failureCmd = c.getFailureCommand();
         if (res != 0)
         {
-           clearTemporaryFiles();
+            clearTemporaryFiles();
         }
 
         if (res != 0)
         {
-          diag().emit();
+            Action source = failureCmd.getSource();
+            boolean isFriendlyTool = source instanceof PreprocessJobAction ||
+                    source instanceof PrecompileJobAction ||
+                    source instanceof CompileJobAction;
+            if (!isFriendlyTool || res != 1)
+            {
+                if (res < 0)
+                    diag(err_drv_command_signalled)
+                    .addString(source.getClassName()).emit();
+                else
+                    diag(err_drv_command_failed)
+                    .addString(source.getClassName()).emit();
+            }
         }
         return res;
+    }
+
+    private void clearTemporaryFiles()
+    {
+
     }
 }

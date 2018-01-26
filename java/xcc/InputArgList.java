@@ -18,12 +18,21 @@
 package xcc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class InputArgList extends ArgList
 {
     private ArrayList<String> argStrings;
     private ArrayList<Arg> actualArgs;
 
+    public InputArgList(String[] args)
+    {
+        super(null);
+        actualArgs = new ArrayList<>();
+        setArg(actualArgs);
+        argStrings = new ArrayList<>();
+        argStrings.addAll(Arrays.asList(args));
+    }
     public InputArgList(ArrayList<String> argStrings)
     {
         super(null);

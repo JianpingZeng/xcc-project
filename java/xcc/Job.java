@@ -17,9 +17,9 @@
 
 package xcc;
 
-import static xcc.Job.JobClass.CommandClass;
-import static xcc.Job.JobClass.JobListClass;
-import static xcc.Job.JobClass.PipedJobClass;
+import java.util.ArrayList;
+
+import static xcc.Job.JobClass.*;
 
 public class Job
 {
@@ -59,6 +59,11 @@ public class Job
         public ArrayList<String> getArgs()
         {
             return args;
+        }
+
+        public Action getSource()
+        {
+            return source;
         }
     }
 
