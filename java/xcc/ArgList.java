@@ -129,4 +129,80 @@ public abstract class ArgList
         assert index >= 0 && index < list.size();
         return list.get(index);
     }
+
+    public void addAllArgValues(ArrayList<String> cmdArgs, int id)
+    {
+        addAllArgValues(cmdArgs, id, 0);
+    }
+
+    public void addAllArgValues(ArrayList<String> cmdArgs, int id1, int id2)
+    {
+        for (Arg arg : getArgs())
+        {
+            if (arg.getOption().matches(id1) || arg.getOption().matches(id2))
+            {
+                arg.claim();
+                for (int i = 0, e = arg.getNumValues(); i < e;i++)
+                    cmdArgs.add(arg.getValue(this, i));
+            }
+        }
+    }
+    public void addAllArgs(ArrayList<String> cmdArgs, int id, int id2)
+    {
+        for (Arg arg : getArgs())
+        {
+            if (arg.getOption().matches(id) || arg.getOption().matches(id2))
+            {
+                arg.claim();
+                for (int i = 0, e = arg.getNumValues(); i < e;i++)
+                    cmdArgs.add(arg.getValue(this, i));
+            }
+        }
+    }
+
+    public void addAllArgs(ArrayList<String> cmdArgs, int id)
+    {
+        addAllArgs(cmdArgs, id, 0);
+    }
+
+    public boolean hasFlag(int pos, int neg)
+    {
+        Arg arg = getLastArg(pos, neg);
+        if (arg != null)
+            return arg.getOption().matches(pos);
+        return true;
+    }
+
+    public void addAllArgsTranslated(ArrayList<String> outputs, int id, String optionName, boolean joined)
+    {
+        for (Arg arg : getArgs())
+        {
+            if (arg.getOption().matches(id))
+            {
+                arg.claim();
+
+                if (joined)
+                {
+                    StringBuilder sb = new StringBuilder(optionName);
+                    sb.append(arg.getValue(this, 0));
+                    outputs.add(sb.toString());
+                }
+                else
+                {
+                    outputs.add(optionName);
+                    outputs.add(arg.getValue(this, 0));
+                }
+            }
+        }
+    }
+
+    public void addLastArg(ArrayList<String> outputs, int id)
+    {
+        Arg arg = getLastArg(id, true);
+        if (arg != null)
+        {
+            arg.claim();
+            arg.render(this, outputs);
+        }
+    }
 }

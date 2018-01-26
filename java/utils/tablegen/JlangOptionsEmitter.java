@@ -182,7 +182,7 @@ public class JlangOptionsEmitter extends TableGenBackend
     private void emitOptionIDs(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        emitSourceFileHeaderComment("OptionInfo ID definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("OptionInfo ID definitions for JlangTool driver", os);
 
         os.printf("package xcc;%n%n");
         os.println("//This class defines some sort of static Constant for representing OptionInfo ID.");
@@ -209,7 +209,7 @@ public class JlangOptionsEmitter extends TableGenBackend
     private void emitOptionKind(ArrayList<Record> options, PrintStream os)
             throws Exception
     {
-        emitSourceFileHeaderComment("OptionInfo Kinds definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("OptionInfo Kinds definitions for JlangTool driver", os);
 
         os.printf("package xcc;%n%n");
 
@@ -245,7 +245,7 @@ public class JlangOptionsEmitter extends TableGenBackend
 
     private void emitGroup(ArrayList<Record> groups, PrintStream os) throws Exception
     {
-        emitSourceFileHeaderComment("Group ID definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("Group ID definitions for JlangTool driver", os);
 
         os.printf("package xcc;%n%n");
         os.println("// Emission for Group ID.");
@@ -254,7 +254,7 @@ public class JlangOptionsEmitter extends TableGenBackend
 
     private void emitGroup2(ArrayList<Record> groups, PrintStream os) throws Exception
     {
-        emitSourceFileHeaderComment("Group definitions for Jlang driver", os);
+        emitSourceFileHeaderComment("Group definitions for JlangTool driver", os);
 
         os.printf("package xcc;%n%n");
         os.println("import static xcc.GroupID.*;");
@@ -376,7 +376,7 @@ public class JlangOptionsEmitter extends TableGenBackend
                 System.out:new PrintStream(new FileOutputStream(outputFile)))
         {
             String className = getBasename(outputFile);
-            emitSourceFileHeaderComment("Options definitions for Jlang driver", os);
+            emitSourceFileHeaderComment("Options definitions for JlangTool driver", os);
 
             os.printf("package xcc;%n%n");
             os.println("import static xcc.OptionKind.*;");

@@ -86,6 +86,11 @@ public class Action
             super(InputClass, outputType);
             this.input = input;
         }
+
+        public Arg getInputArgs()
+        {
+            return input;
+        }
     }
 
     public static class BindArchAction extends Action
@@ -95,6 +100,11 @@ public class Action
         {
             super(BindArchClass, input, input.getOutputType());
             this.archName = archName;
+        }
+
+        public String getArchName()
+        {
+            return archName;
         }
     }
 

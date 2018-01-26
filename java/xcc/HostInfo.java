@@ -65,6 +65,11 @@ public abstract class HostInfo
 
     public abstract ToolChain selectToolChain(InputArgList args);
 
+    public Driver getDriver()
+    {
+        return driver;
+    }
+
     public static class LinuxHostInfo extends HostInfo
     {
 

@@ -20,7 +20,7 @@ package xcc;
 import backend.support.Triple;
 import xcc.HostInfo.UnknownHostInfo;
 
-import javax.tools.Tool;
+import java.util.ArrayList;
 
 public class GenericGCCToolChain extends ToolChain
 {
@@ -30,8 +30,33 @@ public class GenericGCCToolChain extends ToolChain
     }
 
     @Override
-    public Tool selectTool(Compilation c, Action.JobAction ja)
+    public xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja)
     {
         return null;
+    }
+
+    @Override public String getLinker()
+    {
+        return null;
+    }
+
+    @Override public String getAssembler()
+    {
+        return null;
+    }
+
+    @Override public String getForcedPicModel()
+    {
+        return null;
+    }
+
+    @Override public String getDefaultRelocationModel()
+    {
+        return null;
+    }
+
+    @Override public void addSystemIncludeDir(ArrayList<String> cmdStrings)
+    {
+
     }
 }

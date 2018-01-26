@@ -28,9 +28,12 @@ import tools.Pair;
 import tools.Util;
 import xcc.Action.*;
 import xcc.Option.InputOption;
+import xcc.tool.Tool;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
@@ -51,7 +54,7 @@ public class Driver
 {
     /**
      * An static interface used for registering a initializer for the purpose of
-     * adding some diagnostic kinds into Diagnostic related with Jlang driver.
+     * adding some diagnostic kinds into Diagnostic related with JlangTool driver.
      */
     static
     {
@@ -82,6 +85,7 @@ public class Driver
     private HostInfo host;
     private OptTable optTable;
     private boolean suppressMissingInputWarning;
+    private ArrayList<String> installedDir, dir;
 
     public Driver(String basename, String dirname, String hostTriple,
             String imageName, Diagnostic diags)
@@ -92,9 +96,11 @@ public class Driver
         theDiags = diags;
         triple = hostTriple;
         optTable = new OptTable();
+        installedDir = new ArrayList<>();
+        dir = new ArrayList<>();
     }
 
-    private DiagnosticBuilder diag(int diagID)
+    public DiagnosticBuilder diag(int diagID)
     {
         return theDiags.report(new FullSourceLoc(), diagID);
     }
@@ -326,7 +332,7 @@ public class Driver
             if (initialPhase > finalPhase)
             {
                 inputArg.claim();
-                diag(warn_drv_input_file_unused).addString(inputArg.getAsSTring(args))
+                diag(warn_drv_input_file_unused).addString(inputArg.getAsString(args))
                         .addString(getPhaseName(initialPhase))
                         .addString(finalPhaseArg.getOption().getName()).emit();
                 continue;
@@ -386,6 +392,180 @@ public class Driver
 
     private void buildJobs(Compilation c)
     {
+        Arg finalOutput = c.getArgs().getLastArg(OPT__o, true);
+        if (finalOutput != null)
+        {
+            long numOutputs = c.getActions().stream()
+                    .filter(act->act.getOutputType() != TY_Nothing).count();
+            if (numOutputs > 1)
+            {
+                diag(err_drv_output_argument_with_multiple_files).emit();
+                finalOutput = null;
+            }
+        }
+
+        for (Action act : c.getActions())
+        {
+            String linkerOutput;
+            if (finalOutput != null)
+                linkerOutput = finalOutput.getValue(c.getArgs(), 0);
+            else
+                linkerOutput = defaultImagename;
+
+            buildJobsForAction(c, act, c.getToolChain(), true, linkerOutput);
+        }
+
+        if (theDiags.getNumErrors() != 0 ||
+                c.getArgs().hasArg(OPT__Qunused_arguments))
+            return;
+
+        // claim the option -###
+        c.getArgs().hasArg(OPT___HASH_HASH_HASH);
+
+        for (Arg arg : c.getArgs().getArgs())
+        {
+            if (!arg.isClaimed())
+            {
+                if (arg.getOption().isNoArgumentUnused())
+                    continue;
+
+                Option opt = arg.getOption();
+                if (opt instanceof Option.FlagOption)
+                {
+                    boolean duplicatedClaimed = false;
+                    for (Arg a : c.getArgs().getArgs())
+                    {
+                        if (a.isClaimed() && a.getOption().matches(opt.getID()))
+                        {
+                            duplicatedClaimed = true;
+                            break;
+                        }
+                    }
+                    if (duplicatedClaimed)
+                        continue;
+                }
+                diag(warn_drv_unused_argument)
+                        .addString(arg.getAsString(c.getArgs())).emit();
+            }
+        }
+    }
+
+    private InputInfo buildJobsForAction(Compilation c, Action act,
+            ToolChain toolChain, boolean atTopLevel, String linkerOutput)
+    {
+        InputInfo result;
+        if (act instanceof InputAction)
+        {
+            InputAction ia = (InputAction) act;
+            Arg arg = ia.getInputArgs();
+            if (arg instanceof Arg.PositionalArg)
+            {
+                String name = arg.getValue(c.getArgs(), 0);
+                result = new InputInfo(name, act.getOutputType(), name);
+            }
+            else
+            {
+                result = new InputInfo(arg, act.getOutputType(), "");
+            }
+            return result;
+        }
+        if (act instanceof BindArchAction)
+        {
+            BindArchAction ba = (BindArchAction) act;
+            String archNaem = ba.getArchName();
+            if (archNaem == null || archNaem.isEmpty())
+                archNaem = c.getToolChain().getArchName();
+
+            return buildJobsForAction(c, ba.getInputs().get(0),
+                    host.getToolChain(c.getArgs(), archNaem), atTopLevel,
+                    linkerOutput);
+        }
+
+        JobAction ja = (JobAction) act;
+        Tool t = toolChain.selectTool(c, ja);
+
+        ArrayList<Action> inputs = act.getInputs();
+        if (inputs.size() == 1 && inputs.get(0) instanceof PreprocessJobAction)
+        {
+            inputs = inputs.get(0).getInputs();
+        }
+
+        ArrayList<InputInfo> inputInfos = new ArrayList<>();
+        for (Action action : inputs)
+        {
+            inputInfos.add(buildJobsForAction(c, action, toolChain, false,
+                    linkerOutput));
+        }
+
+        ArrayList<Job> jobs = c.getJobs();
+        String baseInput = inputInfos.get(0).getBaseInput();
+
+        if (ja.getOutputType() == TY_Nothing)
+            result = new InputInfo(act.getOutputType(), baseInput);
+        {
+            assert !inputInfos.get(0).isPipe():"PipedJob not supported!";
+            result = new InputInfo(
+                    getNamedOutputPath(c, ja, baseInput, atTopLevel),
+                    act.getOutputType(), baseInput);
+        }
+
+        jobs.add(t.constructJob(c, ja, result, inputInfos, c.getArgs(), linkerOutput));
+        return result;
+    }
+
+    private String getNamedOutputPath(Compilation c, JobAction ja,
+            String baseInput, boolean atTopLevel)
+    {
+        if (atTopLevel)
+        {
+            Arg finalOutput = c.getArgs().getLastArg(OPT__o, true);
+            if (finalOutput != null)
+                return c.addResultFile(finalOutput.getValue(c.getArgs(), 0));
+        }
+
+        if (!atTopLevel)
+        {
+            String tempName = getTemporaryPath(InputType.getTypeTempSuffix(ja.getOutputType()));;
+            return c.addTempFile(tempName);
+        }
+
+        Path basePath = Paths.get(baseInput);
+        String baseName = basePath.getFileName().toString();
+        String namedOutput;
+        if (ja.getOutputType() == TY_Image)
+            namedOutput= defaultImagename;
+        else
+        {
+            String suffix = InputType.getTypeTempSuffix(ja.getOutputType());
+            assert suffix != null;
+            int end = baseName.lastIndexOf('.');
+            if (end < 0)
+                end = baseName.length();
+            String prefix = baseName.substring(0, end);
+            namedOutput = prefix + "." + suffix;
+        }
+
+        return c.addResultFile(namedOutput);
+    }
+
+    private String getTemporaryPath(String suffix)
+    {
+        String tmpDir = System.getenv("TMPDIR");
+        if (tmpDir == null)
+            tmpDir = System.getenv("TEMP");
+        if (tmpDir == null)
+            tmpDir = System.getenv("TMP");
+        if (tmpDir == null)
+            tmpDir = "/tmp";
+        try
+        {
+            return Files.createTempFile(tmpDir, suffix).toAbsolutePath().toString();
+        }
+        catch (IOException e)
+        {
+            diag(err_drv_unable_to_make_temp).addString(e.getMessage()).emit();
+        }
+        return "";
     }
 
     private static String getOptionHelpName(OptTable table, int id)
@@ -501,7 +681,7 @@ public class Driver
         failureCmd = c.getFailureCommand();
         if (res != 0)
         {
-            clearTemporaryFiles();
+            clearTemporaryFiles(c);
         }
 
         if (res != 0)
@@ -523,8 +703,25 @@ public class Driver
         return res;
     }
 
-    private void clearTemporaryFiles()
+    private void clearTemporaryFiles(Compilation c)
     {
+        c.clearTemporaryFiles();
+    }
 
+    public ArrayList<String> getInstalledDir()
+    {
+        if (!installedDir.isEmpty())
+            return installedDir;
+        return dir;
+    }
+
+    public ArrayList<String> getDir()
+    {
+        return dir;
+    }
+
+    public String getHostTriple()
+    {
+        return triple;
     }
 }

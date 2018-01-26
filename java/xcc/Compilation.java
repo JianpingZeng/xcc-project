@@ -21,6 +21,9 @@ import xcc.Job.Command;
 import xcc.Job.PipedJob;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 /**
@@ -107,10 +110,12 @@ public class Compilation
         return res;
     }
 
-    public void addTempFile(String file)
+    public String addTempFile(String file)
     {
         assert file != null && !file.isEmpty():"No valid filename";
+        assert !tempFiles.contains(file):"Can't add a exist temporary file!";
         tempFiles.add(file);
+        return file;
     }
 
     public void addJob(Job job)
@@ -153,5 +158,32 @@ public class Compilation
     public Command getFailureCommand()
     {
         return failureCmd;
+    }
+
+    public String addResultFile(String filename)
+    {
+        assert !((filename == null || filename.isEmpty()
+                || resultFiles.contains(filename)));
+        resultFiles.add(filename);
+        return filename;
+    }
+
+    public void clearTemporaryFiles()
+    {
+        for (String file : tempFiles)
+        {
+            Path p = Paths.get(file);
+            if (Files.exists(p))
+            {
+                try
+                {
+                    Files.delete(p);
+                }
+                catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

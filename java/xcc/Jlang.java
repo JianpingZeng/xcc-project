@@ -30,7 +30,7 @@ public class Jlang
     private String executableBasename;
 
     /**
-     * A diagnostic implementation for Jlang command.
+     * A diagnostic implementation for JlangTool command.
      */
     private static class DriverDiagnosticClient implements DiagnosticClient
     {
