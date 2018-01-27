@@ -30,6 +30,7 @@ import xcc.Action.*;
 import xcc.Option.InputOption;
 import xcc.tool.Tool;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -98,6 +99,7 @@ public class Driver
         optTable = new OptTable();
         installedDir = new ArrayList<>();
         dir = new ArrayList<>();
+        installedDir.add(defaultDirname);
     }
 
     public DiagnosticBuilder diag(int diagID)
@@ -139,6 +141,7 @@ public class Driver
                 continue;
             }
             argList.add(arg);
+            index = after;
         }
         return argList;
     }
@@ -146,12 +149,19 @@ public class Driver
     private HostInfo getHostInfo(String tripleStr)
     {
         Triple defaultTriple = new Triple(tripleStr);
-        if (defaultTriple.getArchName().equals("i686"))
-            defaultTriple.setArchName("i386");
-        else if (defaultTriple.getArchName().equals("amd64"))
-            defaultTriple.setArchName("x86_64");
-        else
-            assert false : "Unknown architecture name!";
+        switch (defaultTriple.getArchName())
+        {
+            case "i686":
+            case "i386":
+                defaultTriple.setArchName("i386");
+                break;
+            case "amd64":
+            case "x86_64":
+                defaultTriple.setArchName("x86_64");
+                break;
+            default:
+                assert false : "Unknown architecture name!";
+        }
         switch (defaultTriple.getOS())
         {
             case Linux:
@@ -610,23 +620,22 @@ public class Driver
             {
                 String info = getOptionHelpName(getOptTable(), i);
                 int length = info.length();
-                if (length <= 23)
-                    maximumOptionWidth = Math.max(length, maximumOptionWidth);
-
+                maximumOptionWidth = Math.max(length, maximumOptionWidth);
                 optionHelp.add(Pair.get(info, text));
             }
         }
         for (int i = 0, e = optionHelp.size(); i < e; i++)
         {
             String option = optionHelp.get(i).first;
-            System.out.printf("  %s%s", option, Util.fixedLengthString(maximumOptionWidth, ' '));
+            int length = option.length();
+            System.out.printf("  %s%s", option, Util.fixedLengthString(maximumOptionWidth-length, ' '));
             System.out.printf(" %s%n", optionHelp.get(i).second);
         }
     }
 
     private void printVersion(Compilation c, PrintStream os)
     {
-        os.printf("jlang version %s.%s", Config.XCC_Major, Config.XCC_Minor);
+        os.printf("jlang version %s.%s%n", Config.XCC_Major, Config.XCC_Minor);
         ToolChain tc = c.getToolChain();
         os.printf("Target: %s%n", tc.getTripleString());
     }
@@ -659,7 +668,7 @@ public class Driver
         InputArgList argList = parseArgList(args);
         host = getHostInfo(triple);
 
-        Compilation c = new Compilation(this, host.selectToolChain(argList),
+        Compilation c = new Compilation(this, host.getToolChain(argList, host.getArchName()),
                 argList);
 
         if (!handleVersion(c))

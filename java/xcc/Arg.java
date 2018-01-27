@@ -75,7 +75,7 @@ public abstract class Arg
 
     public boolean match(int id)
     {
-        return false;
+        return getOption().getID() == id;
     }
 
     public int getIndex()

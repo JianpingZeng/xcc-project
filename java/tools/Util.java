@@ -453,7 +453,7 @@ public class Util
 			if (delims.indexOf(src.charAt(i)) == -1)
 				return i;
 
-		return -1;
+		return src.length();
     }
 
     public static int findFirstOf(String src, String delims, int startIdx)

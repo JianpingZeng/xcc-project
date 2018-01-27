@@ -42,15 +42,17 @@ public class GCCVersion implements Comparable<GCCVersion>
 
     public static GCCVersion parse(String versionText)
     {
-        String[] parts = versionText.split(".");
+        String[] parts = versionText.split("\\.");
         GCCVersion badVersion = new GCCVersion(versionText, -1, -1, -1, "");
         GCCVersion goodVersion = new GCCVersion(versionText, -1, -1, -1, "");
+        if (parts.length <= 0) return badVersion;
+
         try
         {
             if ((goodVersion.major = Integer.parseInt(parts[0])) < 0)
                 return badVersion;
 
-            if ((goodVersion.minor = Integer.parseInt(parts[1])) < 0)
+            if (parts.length > 1 && (goodVersion.minor = Integer.parseInt(parts[1])) < 0)
                 return badVersion;
             //   4.4
             //   4.4.0
@@ -61,12 +63,10 @@ public class GCCVersion implements Comparable<GCCVersion>
             if (!patchText.isEmpty())
             {
                 int endNumber = Util.findFirstNonOf(patchText, "12345677890");
-                if (endNumber != -1)
-                {
-                    if ((goodVersion.patch = Integer.parseInt(patchText.substring(0, endNumber))) < 0)
-                        return badVersion;
+                if ((goodVersion.patch = Integer.parseInt(patchText.substring(0, endNumber))) < 0)
+                    return badVersion;
+                if (endNumber < patchText.length())
                     goodVersion.patchSuffix = patchText.substring(endNumber);
-                }
             }
             return goodVersion;
         }

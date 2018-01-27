@@ -117,7 +117,7 @@ public abstract class ArgList
             res = arg1.getIndex() > arg2.getIndex() ? arg2 : arg1;
         else
             res = arg1 != null ? arg1 : arg2;
-        if (claim)
+        if (claim && res != null)
             res.claim();
         return res;
     }

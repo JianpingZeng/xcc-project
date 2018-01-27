@@ -16,6 +16,7 @@ package jlang.system;
  * permissions and limitations under the License.
  */
 
+import config.Config;
 import tools.OSInfo;
 import tools.Pair;
 
@@ -67,11 +68,9 @@ public class Process
 
     public static String getHostTriple()
     {
-        String hostTripleString = "i686-unknown-linux-gnu";
+        String hostTripleString = Config.HostTriple;
         Pair<String, String> archSplit = split(hostTripleString, "-");
-        String arch = archSplit.first;
-
-        String triple = arch;
+        String triple = archSplit.first;
         triple += "-";
         triple += archSplit.second;
         char[] temp = triple.toCharArray();

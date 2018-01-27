@@ -50,7 +50,8 @@ public class GCCInstallationDetector
 
         ArrayList<String> prefixes = new ArrayList<>();
         prefixes.add("/usr");
-        prefixes.add(driver.getInstalledDir() + "/..");
+        for (String prefix : driver.getInstalledDir())
+            prefixes.add(prefix + "/..");
 
         version = GCCVersion.parse("0.0.0");
         for (int i = 0, e = prefixes.size(); i < e; i++)
@@ -159,9 +160,8 @@ public class GCCInstallationDetector
             String[] entries = new File(libDir + suffix).list();
             if (entries == null) continue;
 
-            for (String entry : entries)
+            for (String versionText : entries)
             {
-                String versionText = new File(entry).getName();
                 GCCVersion candidateVersion = GCCVersion.parse(versionText);
                 GCCVersion minVersion = new GCCVersion("4.1.1", 4, 1, 1, "");
                 if (candidateVersion.compareTo(minVersion) < 0)
@@ -169,7 +169,7 @@ public class GCCInstallationDetector
                 if (candidateVersion.compareTo(version) <= 0)
                     continue;
 
-                if (!Files.exists(Paths.get(entry, "/crtbegin.o")))
+                if (!Files.exists(Paths.get(libDir, suffix, versionText, "/crtbegin.o")))
                     continue;
 
                 version = candidateVersion;
