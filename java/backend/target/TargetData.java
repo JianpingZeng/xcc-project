@@ -283,8 +283,6 @@ public class TargetData implements ImmutablePass
     {
     	String src = str.toString();
     	int start = Util.findFirstNonOf(src, delimiters);
-    	if (start < 0)
-    		start = src.length();
     	int end = Util.findFirstOf(src, delimiters, start);
     	if (end < 0)
     		end = src.length();

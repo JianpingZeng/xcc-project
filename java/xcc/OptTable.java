@@ -69,18 +69,19 @@ public class OptTable
         if (id == OPT_INVALID)
             return null;
 
-        assert id < getNumOptions() - 1;
-        if (options[id - 1] != null)
-            return options[id - 1];
+        assert id < getNumOptions();
+        if (options[id] != null)
+            return options[id];
         else
         {
-            return options[id - 1] = constructOption(id);
+            return options[id] = constructOption(id);
         }
     }
 
-    public Option constructOption(int id)
+    public Option constructOption(int index)
     {
-        OptionInfo info = infos[id];
+        OptionInfo info = infos[index];
+        int id = info.id;
         Option opt =  getOption(info.group);
         OptionGroup group = opt instanceof OptionGroup ? (OptionGroup)opt : null;
         Option alias = getOption(info.alias);
@@ -170,7 +171,7 @@ public class OptTable
         argList.setIndex(idx+1);
         return new PositionalArg(getOption(OPT__unknown_), idx);
       }
-      Option opt = getOption(i-1);
+      Option opt = getOption(i);
       return opt.accept(argList);
     }
 

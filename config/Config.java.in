@@ -33,4 +33,6 @@ public class Config
      * The path to generated executable file.
      */
     public static final String BinaryPath = "@OUT_BIN_DIR@";
+
+    public static final String HostTriple = "@TARGET_TRIPLE@";
 }
