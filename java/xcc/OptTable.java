@@ -33,7 +33,7 @@ public class OptTable
     public OptTable()
     {
         options = new Option[infos.length];
-        for (int i = OPT__unknown_ + 2; i < OPT_LastOption; i++)
+        for (int i = OPT__unknown_; i < OPT_LastOption; i++)
         {
             if (getOption(i).getKind() != OptionClass.GroupClass)
             {
