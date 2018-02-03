@@ -1,6 +1,10 @@
 package backend.transform.scalars;
 
-import backend.analysis.*;
+import backend.analysis.DomTree;
+import backend.analysis.DomTreeNodeBase;
+import backend.analysis.DominanceFrontier;
+import backend.analysis.LoopInfo;
+import backend.analysis.aa.AliasAnalysis;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
