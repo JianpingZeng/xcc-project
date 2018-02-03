@@ -184,7 +184,6 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert index < getNumValues();
             return list.getArgString(getIndex());
         }
 
