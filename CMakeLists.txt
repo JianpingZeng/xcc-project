@@ -100,17 +100,6 @@ set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Produce ${GEN_SOURCES_DIR}/config/Config.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
 
-# Generate configuration files.
-configure_file(
-  ${XCC_SOURCE_DIR}/config/Config.java.in
-  ${CONFIG_SRC}
-  )
-
-configure_file(
-  ${XCC_SOURCE_DIR}/config/version.h.in
-  ${OUT_INCLUDE_DIR}/version.h
-)
-
 add_custom_target(xcc_config
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
     DEPENDS ${CONFIG_SRC}
@@ -132,6 +121,17 @@ list(REMOVE_DUPLICATES XCC_TARGETS_TO_BUILD)
 set(XCC_DEFAULT_TARGET_TRIPLE "${XCC_HOST_TRIPLE}" CACHE STRING
   "Default target for which XCC will generate code." )
 set(TARGET_TRIPLE "${XCC_DEFAULT_TARGET_TRIPLE}")
+
+# Generate configuration files.
+configure_file(
+  ${XCC_SOURCE_DIR}/config/Config.java.in
+  ${CONFIG_SRC}
+  )
+
+configure_file(
+  ${XCC_SOURCE_DIR}/config/version.h.in
+  ${OUT_INCLUDE_DIR}/version.h
+)
 
 # Verify that we can find a Python 2 interpreter.  Python 3 is unsupported.
 set(Python_ADDITIONAL_VERSIONS 2.7)

@@ -63,8 +63,6 @@ public abstract class HostInfo
         return new LinuxHostInfo(driver, defaultTriple);
     }
 
-    public abstract ToolChain selectToolChain(InputArgList args);
-
     public Driver getDriver()
     {
         return driver;
@@ -102,12 +100,6 @@ public abstract class HostInfo
                 return tc;
             }
         }
-
-        @Override
-        public ToolChain selectToolChain(InputArgList args)
-        {
-            return null;
-        }
     }
 
     public static class UnknownHostInfo extends HostInfo
@@ -141,12 +133,6 @@ public abstract class HostInfo
                 toolChains.put(archName, tc);
                 return tc;
             }
-        }
-
-        @Override
-        public ToolChain selectToolChain(InputArgList args)
-        {
-            return null;
         }
     }
 }
