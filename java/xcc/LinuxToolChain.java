@@ -49,8 +49,11 @@ public class LinuxToolChain extends ToolChain
             getProgramPaths().addAll(getDriver().getDir());
 
         ArrayList<String> programPaths = getProgramPaths();
-        programPaths.add(gccInstallation.getGccParentLibPath() + "/../" +
-                gccInstallation.getGccTriple() + "/bin");
+        addPathIfExists(gccInstallation.getGccInstallPath() + "/bin", programPaths);
+        addPathIfExists("/usr/bin", programPaths);
+        addPathIfExists("/usr/local/bin", programPaths);
+        addPathIfExists("/bin", programPaths);
+        addPathIfExists("/sbin", programPaths);
 
         extraOpts.add("-z");
         boolean is32Bit = getArch() == Triple.ArchType.x86;
