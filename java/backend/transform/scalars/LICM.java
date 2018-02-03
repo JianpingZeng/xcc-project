@@ -1,8 +1,13 @@
 package backend.transform.scalars;
 
-import backend.analysis.*;
-import backend.analysis.AliasAnalysis.ModRefBehavior;
-import backend.analysis.AliasSetTracker.AliasSet;
+import backend.analysis.DomTree;
+import backend.analysis.DomTreeNodeBase;
+import backend.analysis.DominanceFrontier;
+import backend.analysis.LoopInfo;
+import backend.analysis.aa.AliasAnalysis;
+import backend.analysis.aa.AliasSetTracker;
+import backend.analysis.aa.AliasSetTracker.AliasSet;
+import backend.analysis.aa.ModRefBehavior;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
@@ -17,8 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import static backend.analysis.AliasAnalysis.ModRefBehavior.DoesNotAccessMemory;
-import static backend.analysis.AliasAnalysis.ModRefBehavior.OnlyReadsMemory;
+import static backend.analysis.aa.ModRefBehavior.DoesNotAccessMemory;
+import static backend.analysis.aa.ModRefBehavior.OnlyReadsMemory;
 import static backend.transform.utils.PromoteMemToReg.promoteMemToReg;
 
 /** 

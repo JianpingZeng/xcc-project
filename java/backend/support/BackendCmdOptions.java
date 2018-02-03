@@ -25,6 +25,8 @@ import static backend.codegen.AsmWriterFlavorTy.ATT;
 import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
+import static backend.support.BackendCmdOptions.AliasAnalyzerKind.BasicAA;
+import static backend.support.BackendCmdOptions.AliasAnalyzerKind.PoorMan;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -119,6 +121,24 @@ public class BackendCmdOptions
                             new ValueClass.Entry<>(Intel, "intel", "Emit Intel-style assembly"))
                     );
 
+    public enum AliasAnalyzerKind
+    {
+        BasicAA,
+        PoorMan
+    }
+
+    /**
+     * This command line option used for selecting a suitable alias analyzer for
+     * specified purpose.
+     */
+    public static final Opt<AliasAnalyzerKind> AliasAnalyzer =
+            new Opt<AliasAnalyzerKind>(new Parser<>(),
+                    optionName("aa"),
+                    init(BasicAA),
+                    new ValueClass<>(
+                            new ValueClass.Entry<>(BasicAA, "basic-aa", "Basic Analyzer"),
+                            new ValueClass.Entry<>(PoorMan, "poor-man", "Poor man Analyzer")
+                    ));
     /**
      * Choose an appropriate register allocator according command line option.
      * @return

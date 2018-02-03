@@ -17,7 +17,7 @@
 
 package backend.transform.utils;
 
-import backend.analysis.AliasSetTracker;
+import backend.analysis.aa.AliasSetTracker;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
 import backend.codegen.PrintModulePass;

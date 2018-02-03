@@ -1,13 +1,12 @@
-package backend.analysis;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous
+ * Copyright (c) 2015-2018, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,12 +15,16 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
-import backend.support.CallSite;
+package backend.analysis.aa;
+
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.Pass;
+import backend.support.BackendCmdOptions;
+import backend.support.CallSite;
 import backend.target.TargetData;
 import backend.type.Type;
+import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.CallInst;
@@ -31,23 +34,23 @@ import backend.value.Value;
 
 import java.util.ArrayList;
 
-import static backend.analysis.AliasAnalysis.AliasResult.NoAlias;
-import static backend.analysis.AliasAnalysis.ModRefBehavior.*;
-import static backend.analysis.AliasAnalysis.ModRefResult.*;
+import static backend.analysis.aa.AliasResult.NoAlias;
+import static backend.analysis.aa.ModRefBehavior.*;
+import static backend.analysis.aa.ModRefResult.*;
 
 /**
  * <p>
  * This file defines a class named of {@code AliasAnalysis} as an interface for
  * examining if the two memory object is alias each other or not. For precision,
  * the address of a memory object is represented as a pair of the base address
- * and its getNumOfSubLoop, like (Pointer, Sze). The {@code Pointer} base component specifies
+ * and its size, like (Pointer, Sze). The {@code Pointer} base component specifies
  * the memory address of a region, the {@code Size} specifies how large of an area
  * being queried.
  * </p>
  * <p>
- * If the getNumOfSubLoop is 0, the two pointers only alais if they are exactly equal.
- * If getNumOfSubLoop is greater than zero, but small, the two pointers alias if the areas
- * pointed to overlap.  If the getNumOfSubLoop is very large (ie, ~0U), then the two pointers
+ * If the size is 0, the two pointers only alais if they are exactly equal.
+ * If size is greater than zero, but small, the two pointers alias if the areas
+ * pointed to overlap.  If the size is very large (ie, ~0U), then the two pointers
  * alias if they may be pointing to components of the same memory object.
  * Pointers that point to two completely different objects in memory never alias,
  * regardless of the value of the Size component.
@@ -63,55 +66,70 @@ import static backend.analysis.AliasAnalysis.ModRefResult.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface AliasAnalysis extends Pass
+public class AliasAnalysis implements Pass
 {
-    /**
-     * Represents the alias query result of two pointer by invoking method
-     * .
-     */
-    enum AliasResult
+    private AliasAnalysis aa;
+    private TargetData td;
+    private AnalysisResolver resolver;
+
+    @Override
+    public String getPassName()
     {
-        NoAlias, MayAlias, MustAlias,
+        return aa.getPassName();
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        assert resolver != null:"Must calling this function after setter!";
+        return resolver;
+    }
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.setPreservesCFG();
+        au.addRequired(TargetData.class);
     }
 
     /**
-     * Subclasses must implements this method for initializing the AlalisAnalysis
-     * and TargetData.
-     * @param p
+     * The constructor that construct an instance of alias analysis according to
+     * the value specified by command line option.
      */
-    void initializeAliasAnalysis(Pass p);
-
-    /**
-     * All alias analysis implementations should invoke this
-     * directly.
-     *
-     * @param au
-     */
-    default void getAnalysisUsage(AnalysisUsage au)
+    public AliasAnalysis()
     {
-        au.addRequired(AliasAnalysis.class);
+        td = (TargetData) getAnalysisToUpDate(TargetData.class);
+        assert td != null:"TargetData not available!";
+        switch (BackendCmdOptions.AliasAnalyzer.value)
+        {
+            case BasicAA:
+                aa = new BasicAliasAnalysis();
+                break;
+            case PoorMan:
+                aa = new PoorManAliasAnalysis();
+                break;
+            default:
+                 aa = null;
+                 assert false:"Unknown alias analysis pass";
+                 break;
+        }
     }
 
     /**
-     * Return a pointer to the current TargetData object, or
-     * null if no TargetData object is available.
-     *
-     * @return
-     */
-    TargetData getTargetData();
-
-    AliasAnalysis getAliasAnalysis();
-
-    /**
-     * Return the TargetData store getNumOfSubLoop for the given type,
+     * Return the TargetData store size for the given type,
      * if known, or a conservative value otherwise.
      *
      * @param ty
      * @return
      */
-    default int getTypeStoreSize(Type ty)
+    public int getTypeStoreSize(Type ty)
     {
-        TargetData td = getTargetData();
         return td != null ? (int) td.getTypeSize(ty) : ~0;
     }
 
@@ -127,10 +145,8 @@ public interface AliasAnalysis extends Pass
      * @param size2
      * @return
      */
-    default AliasResult alias(Value ptr1, int size1, Value ptr2, int size2)
+    public AliasResult alias(Value ptr1, int size1, Value ptr2, int size2)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
         return aa.alias(ptr1, size1, ptr2, size2);
     }
 
@@ -144,10 +160,8 @@ public interface AliasAnalysis extends Pass
      * @param ptr
      * @param retVals
      */
-    default void getMustAliases(Value ptr, ArrayList<Value> retVals)
+    public void getMustAliases(Value ptr, ArrayList<Value> retVals)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
         aa.getMustAliases(ptr, retVals);
     }
 
@@ -159,112 +173,9 @@ public interface AliasAnalysis extends Pass
      * @param ptr
      * @return
      */
-    default boolean pointsToConstantMemory(Value ptr)
+    public boolean pointsToConstantMemory(Value ptr)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
         return aa.pointsToConstantMemory(ptr);
-    }
-
-    /**
-     * Represent the result of a mod/ref query.
-     */
-    enum ModRefResult
-    {
-        NoModRef, Ref, Mod, ModRef,
-    }
-
-    /**
-     * Summary of how a function affects memory in the program.
-     * Loads from constant globals are not considered memory accesses for this
-     * interface.  Also, functions may freely modify stack space local to their
-     * invocation without having to report it through these interfaces.
-     */
-    enum ModRefBehavior
-    {
-        /**
-         * This function does not perform any non-local loads
-         * or stores to memory.
-         * </p>
-         * This property corresponds to the GCC 'const' attribute.
-         */
-        DoesNotAccessMemory,
-
-        /**
-         * This function accesses function arguments in well
-         * known (possibly volatile) ways, but does not access any other memory.
-         * <p>
-         * Clients may use the Info parameter of getModRefBehavior to get specific
-         * information about how pointer arguments are used.
-         */
-        AccessArguments,
-
-        /**
-         * This function has accesses function
-         * arguments and global variables well known (possibly volatile) ways, but
-         * does not access any other memory.
-         * <p>
-         * Clients may use the Info parameter of getModRefBehavior to get specific
-         * information about how pointer arguments are used.
-         */
-        AccessArgumentsAndGlobals,
-
-        /**
-         * This function does not perform any non-local stores or
-         * volatile loads, but may read from any memory location.
-         * </p>
-         * This property corresponds to the GCC 'pure' attribute.
-         */
-        OnlyReadsMemory,
-
-        /**
-         * This indicates that the function could not be
-         * classified into one of the behaviors above.
-         */
-        UnknownModRefBehavior
-    }
-
-    /**
-     * This struct is used to return results for pointers,
-     * globals, and the return value of a function.
-     */
-    class PointerAccessInfo
-    {
-        /**
-         * This may be an Argument for the function, a GlobalVariable, or null,
-         * corresponding to the return value for the function.
-         */
-        Value val;
-
-        /**
-         * Whether the pointer is loaded or stored to/from.
-         */
-        ModRefResult modRefInfo;
-
-        /**
-         * Specific fine-grained access information for the argument.
-         * If none of these classifications is general enough, the
-         * getModRefBehavior method should not return AccessesArguments.
-         * If a record is not returned for a particular argument, the argument
-         * is never dead and never dereferenced.
-         */
-        enum AccessType
-        {
-            /**
-             * The pointer is dereferenced.
-             */
-            ScalarAccess,
-
-            /**
-             * The pointer is indexed through as an array of elements.
-             */
-            ArrayAccess,
-
-            /**
-             * Indirect calls are made through the specified function pointer.
-             */
-            CallsThrough
-        }
     }
 
     /**
@@ -274,7 +185,7 @@ public interface AliasAnalysis extends Pass
      * @param info
      * @return
      */
-    default ModRefBehavior getModRefBehavior(CallSite cs,
+    public ModRefBehavior getModRefBehavior(CallSite cs,
             ArrayList<PointerAccessInfo> info)
     {
         if (cs.doesNotAccessMemory())
@@ -285,7 +196,7 @@ public interface AliasAnalysis extends Pass
         return mrb;
     }
 
-    default ModRefBehavior getModRefBehavior(CallSite cs)
+    public ModRefBehavior getModRefBehavior(CallSite cs)
     {
         return getModRefBehavior(cs, null);
     }
@@ -298,7 +209,7 @@ public interface AliasAnalysis extends Pass
      * @param info
      * @return
      */
-    default ModRefBehavior getModRefBehavior(Function f,
+    public ModRefBehavior getModRefBehavior(Function f,
             ArrayList<PointerAccessInfo> info)
     {
         if (f != null)
@@ -316,7 +227,7 @@ public interface AliasAnalysis extends Pass
         return UnknownModRefBehavior;
     }
 
-    default ModRefBehavior getModRefBehavior(Function f)
+    public ModRefBehavior getModRefBehavior(Function f)
     {
         return getModRefBehavior(f, null);
     }
@@ -333,7 +244,7 @@ public interface AliasAnalysis extends Pass
      * <p>
      * This property corresponds to the GCC 'const' attribute.
      */
-    default boolean doesNotAccessMemory(CallSite cs)
+    public boolean doesNotAccessMemory(CallSite cs)
     {
         return getModRefBehavior(cs) == DoesNotAccessMemory;
     }
@@ -342,7 +253,7 @@ public interface AliasAnalysis extends Pass
      * If the specified function is known to never read or
      * write memory, return true.  For use when the call site is not known.
      */
-    default boolean doesNotAccessMemory(Function f)
+    public boolean doesNotAccessMemory(Function f)
     {
         return getModRefBehavior(f) == DoesNotAccessMemory;
     }
@@ -357,7 +268,7 @@ public interface AliasAnalysis extends Pass
      * <p>
      * This property corresponds to the GCC 'pure' attribute.
      */
-    default boolean onlyReadsMemory(CallSite cs)
+    public boolean onlyReadsMemory(CallSite cs)
     {
         ModRefBehavior MRB = getModRefBehavior(cs);
         return MRB == DoesNotAccessMemory || MRB == OnlyReadsMemory;
@@ -368,7 +279,7 @@ public interface AliasAnalysis extends Pass
      * (or not access memory at all), return true.  For use when the call site
      * is not known.
      */
-    default boolean onlyReadsMemory(Function f)
+    public boolean onlyReadsMemory(Function f)
     {
         ModRefBehavior MRB = getModRefBehavior(f);
         return MRB == DoesNotAccessMemory || MRB == OnlyReadsMemory;
@@ -383,9 +294,8 @@ public interface AliasAnalysis extends Pass
      * a particular call site modifies or reads the memory specified by the
      * pointer.
      */
-    default ModRefResult getModRefInfo(CallSite cs, Value ptr, int size)
+    public ModRefResult getModRefInfo(CallSite cs, Value ptr, int size)
     {
-        AliasAnalysis aa = getAliasAnalysis();
         ModRefResult mask = ModRef;
         ModRefBehavior mrb = getModRefBehavior(cs);
         if (mrb == DoesNotAccessMemory)
@@ -408,13 +318,11 @@ public interface AliasAnalysis extends Pass
             if (!doesAlias)
                 return NoModRef;
         }
-        if (aa == null)
-            return mask;
 
-        if ((mask.ordinal() & Mod.ordinal()) != 0 && aa.pointsToConstantMemory(ptr))
+        if ((mask.ordinal() & Mod.ordinal()) != 0 && pointsToConstantMemory(ptr))
             mask = ModRefResult.values()[mask.ordinal() & ~Mod.ordinal()];
 
-        return ModRefResult.values()[mask.ordinal() & aa.getModRefInfo(cs, ptr, size).ordinal()];
+        return ModRefResult.values()[mask.ordinal() & getModRefInfo(cs, ptr, size).ordinal()];
     }
 
     /**
@@ -425,10 +333,8 @@ public interface AliasAnalysis extends Pass
      * {@code cs2}, or ModRef if {@code cs1} might read or write memory accessed
      * by {@code cs2}.
      */
-    default ModRefResult getModRefInfo(CallSite cs1, CallSite cs2)
+    public ModRefResult getModRefInfo(CallSite cs1, CallSite cs2)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
         return aa.getModRefInfo(cs1, cs2);
     }
 
@@ -439,20 +345,18 @@ public interface AliasAnalysis extends Pass
      * override this and chain to another analysis, you must make sure that it
      * doesn't have mod/ref info either.
      */
-    default boolean hasNoModRefInfoForCalls()
+    public boolean hasNoModRefInfoForCalls()
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
         return aa.hasNoModRefInfoForCalls();
     }
 
-    default ModRefResult getModRefInfo(LoadInst inst, Value ptr, int size)
+    public ModRefResult getModRefInfo(LoadInst inst, Value ptr, int size)
     {
         return alias(inst.operand(0), getTypeStoreSize(inst.getType()), ptr, size)
                 != NoAlias ? Ref : NoModRef;
     }
 
-    default ModRefResult getModRefInfo(StoreInst inst, Value ptr, int size)
+    public ModRefResult getModRefInfo(StoreInst inst, Value ptr, int size)
     {
         // If the stored address cannot alias the pointer in question, then the
         // pointer cannot be modified by the store.
@@ -464,12 +368,12 @@ public interface AliasAnalysis extends Pass
         return pointsToConstantMemory(ptr) ? NoModRef : Mod;
     }
 
-    default ModRefResult getModRefInfo(CallInst inst, Value ptr, int size)
+    public ModRefResult getModRefInfo(CallInst inst, Value ptr, int size)
     {
         return getModRefInfo(new CallSite(inst), ptr, size);
     }
 
-    default ModRefResult getModRefInfo(Instruction inst, Value ptr, int size)
+    public ModRefResult getModRefInfo(Instruction inst, Value ptr, int size)
     {
         switch (inst.getOpcode())
         {
@@ -488,7 +392,7 @@ public interface AliasAnalysis extends Pass
      * @param size
      * @return
      */
-    default boolean canBasicBlockModify(BasicBlock bb, Value ptr, int size)
+    public boolean canBasicBlockModify(BasicBlock bb, Value ptr, int size)
     {
         return canInstructionRangeModify(bb, 0, bb.getNumOfInsts(), ptr, size);
     }
@@ -504,7 +408,7 @@ public interface AliasAnalysis extends Pass
      * @param size
      * @return
      */
-    default boolean canInstructionRangeModify(BasicBlock bb, int i, int j,
+    public boolean canInstructionRangeModify(BasicBlock bb, int i, int j,
             Value ptr, int size)
     {
         assert i >= 0 && i <= j && j < bb.getNumOfInsts()
@@ -515,21 +419,17 @@ public interface AliasAnalysis extends Pass
         return false;
     }
 
-    default void deleteValue(Value val)
+    public void deleteValue(Value val)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null: "AA did not initialized";
         aa.deleteValue(val);
     }
 
-    default void copyValue(Value from, Value to)
+    public void copyValue(Value from, Value to)
     {
-        AliasAnalysis aa = getAliasAnalysis();
-        assert aa != null: "AA did not initialized";
         aa.copyValue(from, to);
     }
 
-    default void replaceWithNewValue(Value oldOne, Value newOne)
+    public void replaceWithNewValue(Value oldOne, Value newOne)
     {
         copyValue(oldOne, newOne);
         deleteValue(oldOne);

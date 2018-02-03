@@ -1,13 +1,12 @@
-package backend.analysis;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous
+ * Copyright (c) 2015-2018, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +14,8 @@ package backend.analysis;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
+package backend.analysis.aa;
 
 import backend.value.BasicBlock;
 import backend.support.CallSite;
@@ -32,10 +33,10 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static backend.analysis.AliasAnalysis.AliasResult.NoAlias;
-import static backend.analysis.AliasSetTracker.AliasSet.AccessType.*;
-import static backend.analysis.AliasSetTracker.AliasSet.AliasType.MayAlias;
-import static backend.analysis.AliasSetTracker.AliasSet.AliasType.MustAlias;
+import static backend.analysis.aa.AliasResult.NoAlias;
+import static backend.analysis.aa.AliasSetTracker.AliasSet.AccessType.*;
+import static backend.analysis.aa.AliasSetTracker.AliasSet.AliasType.MayAlias;
+import static backend.analysis.aa.AliasSetTracker.AliasSet.AliasType.MustAlias;
 
 /**
  * These interface are used to classify a collection of pointer references
@@ -662,9 +663,9 @@ public final class AliasSetTracker
                 if (p != null)
                 {
                     AliasAnalysis aa = ast.getAliasAnalysis();
-                    AliasAnalysis.AliasResult result = aa.alias(p.getPointer(),
+                    AliasResult result = aa.alias(p.getPointer(),
                             p.getSize(), entry.getPointer(), entry.getSize());
-                    if (result == AliasAnalysis.AliasResult.MayAlias)
+                    if (result == AliasResult.MayAlias)
                         aliasTy = MayAlias;
                     else
                         p.updateSize(size);
@@ -688,10 +689,10 @@ public final class AliasSetTracker
         private void addCallSite(CallSite cs, AliasAnalysis aa)
         {
             callSites.add(cs);
-            AliasAnalysis.ModRefBehavior behavior = aa.getModRefBehavior(cs);
-            if (behavior == AliasAnalysis.ModRefBehavior.DoesNotAccessMemory)
+            ModRefBehavior behavior = aa.getModRefBehavior(cs);
+            if (behavior == ModRefBehavior.DoesNotAccessMemory)
                 return;
-            else if (behavior == AliasAnalysis.ModRefBehavior.OnlyReadsMemory)
+            else if (behavior == ModRefBehavior.OnlyReadsMemory)
             {
                 aliasTy = MayAlias;
                 accessTy |= Refs;
@@ -748,7 +749,7 @@ public final class AliasSetTracker
                     return true;
 
                 for (CallSite cs : callSites)
-                    if (aa.getModRefInfo(cs, ptr, size) != AliasAnalysis.ModRefResult.NoModRef)
+                    if (aa.getModRefInfo(cs, ptr, size) != ModRefResult.NoModRef)
                         return true;
             }
             return false;
@@ -772,13 +773,13 @@ public final class AliasSetTracker
                 return true;
 
             for (CallSite CS : callSites)
-                if (aa.getModRefInfo(CS, cs) != AliasAnalysis.ModRefResult.NoModRef
-                        || aa.getModRefInfo(cs, CS) != AliasAnalysis.ModRefResult.NoModRef)
+                if (aa.getModRefInfo(CS, cs) != ModRefResult.NoModRef
+                        || aa.getModRefInfo(cs, CS) != ModRefResult.NoModRef)
                     return true;
 
             for (PointerRec rec : pointerRecs)
                 if (aa.getModRefInfo(cs, rec.getPointer(), rec.getSize())
-                        != AliasAnalysis.ModRefResult.NoModRef)
+                        != ModRefResult.NoModRef)
                     return true;
 
             return false;
