@@ -21,6 +21,7 @@ import xcc.Job.Command;
 import xcc.Job.PipedJob;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,7 +39,7 @@ public class Compilation
     private ArrayList<String> tempFiles;
     private ArrayList<String> resultFiles;
     private Command failureCmd;
-    private ArrayList<Job> jobs;
+    private Job.JobList jobs;
     private ArrayList<Action> actions;
 
     public Compilation(Driver driver, ToolChain tc, ArgList args)
@@ -46,9 +47,9 @@ public class Compilation
         this.driver = driver;
         this.tc = tc;
         this.args = args;
-        tempFiles = new ArrayList();
-        resultFiles = new ArrayList();
-        jobs = new ArrayList<>();
+        tempFiles = new ArrayList<>();
+        resultFiles = new ArrayList<>();
+        jobs = new Job.JobList();
         actions = new ArrayList<>();
     }
 
@@ -68,8 +69,7 @@ public class Compilation
         try
         {
             Process p = Runtime.getRuntime().exec(sb.toString());
-            int res = p.waitFor();
-            return res;
+            return p.waitFor();
         }
         catch (IOException | InterruptedException e)
         {
@@ -103,7 +103,7 @@ public class Compilation
     public int executeJob()
     {
         int res = 0;
-        for (Job j : jobs)
+        for (Job j : jobs.getJobs())
         {
             res |= executeSingleJob(j);
         }
@@ -125,7 +125,7 @@ public class Compilation
         jobs.add(job);
     }
 
-    public ArrayList<Job> getJobs()
+    public Job.JobList getJobs()
     {
         return jobs;
     }
@@ -184,6 +184,37 @@ public class Compilation
                     e.printStackTrace();
                 }
             }
+        }
+    }
+
+    /**
+     * Prints out all of commands to be performed for finishing a series of compilation.
+     * @param os
+     */
+    public void printJobs(PrintStream os, Job job, boolean quote)
+    {
+        if (job instanceof Command)
+        {
+            Command c = (Command)job;
+            os.printf(" \"%s\"", c.getExecutable());
+            for (String arg : c.getArgs())
+            {
+                if (quote)
+                    os.printf(" \"%s\"", arg);
+                else
+                    os.printf(" %s", arg);
+            }
+            os.println();
+        }
+        else if (job instanceof PipedJob)
+        {
+            assert false:"PipedJob is not supported currently!";
+        }
+        else
+        {
+            Job.JobList jl = (Job.JobList)job;
+            for (Job j : jl)
+                printJobs(os, j, quote);
         }
     }
 }

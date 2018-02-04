@@ -127,7 +127,7 @@ public abstract class ToolChain
 
     public String getCompiler()
     {
-        return getFilePath("jlang-cc");
+        return getProgramPath("jlang-cc");
     }
 
     public abstract void addSystemIncludeDir(ArrayList<String> cmdStrings);

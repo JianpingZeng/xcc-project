@@ -170,13 +170,13 @@ public class LinuxToolChain extends ToolChain
     @Override
     public String getLinker()
     {
-        return getFilePath("ld");
+        return getProgramPath("ld");
     }
 
     @Override
     public String getAssembler()
     {
-        return getFilePath("as");
+        return getProgramPath("as");
     }
 
     @Override

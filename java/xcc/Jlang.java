@@ -107,10 +107,23 @@ public class Jlang
                 executableBasename, System.err);
 
         Diagnostic diags = new Diagnostic(diagClient);
-
+        boolean cccPrintPhases = false;
+        int startOfArgs = 0;
+        switch (args[0])
+        {
+            case "-ccc-print-phases":
+                cccPrintPhases = true;
+                startOfArgs = 1;
+                break;
+            default:
+                break;
+        }
+        String[] temp = new String[args.length - startOfArgs];
+        System.arraycopy(args, startOfArgs, temp, 0, temp.length);
+        args = temp;
         // Create a driver to run a sort of pipelines of compilation.
         Driver driver = new Driver(executableBasename, executableDirname,
-                getHostTriple(), "a.out", diags);
+                getHostTriple(), "a.out", diags, cccPrintPhases);
 
         Compilation compilation = driver.buildCompilation(args);
         return driver.executeCompilation(compilation);

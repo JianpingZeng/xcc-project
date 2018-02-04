@@ -22,10 +22,7 @@ import jlang.sema.Decl;
 import jlang.support.SourceRange;
 import jlang.type.QualType;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedList;
+import java.util.*;
 
 import static jlang.diag.Diagnostic.ArgumentKind.*;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Error;
@@ -85,39 +82,60 @@ public final class Diagnostic
         StaticDiagInfoRec[] getDiagKinds();
     }
 
-    private static ArrayList<DiagInitializer> initializers = new ArrayList<>();
+    private static HashSet<DiagInitializer> initializers = new HashSet<>();
 
     public static void registerDiagInitialize(DiagInitializer initializer)
     {
-        if (initializer == null || initializers.contains(initializer))
+        if (initializer == null || !initializers.add(initializer))
             return;
-        initializers.add(initializer);
+        StaticDiagInfoRec[] recs = initializer.getDiagKinds();
+        if (recs == null || recs.length <= 0)
+            return;
+        if (staticDiagInfos == null)
+        {
+            // This is first registeration before static initializer.
+            staticDiagInfos = recs;
+            return;
+        }
+        // Otherise, this method is called after performacing initializer block.
+        int firstID = recs[0].diagID;
+        int lastID = recs[recs.length - 1].diagID;
+        StaticDiagInfoRec[] temp = new StaticDiagInfoRec[recs.length + staticDiagInfos.length];
+        if (firstID > staticDiagInfos[staticDiagInfos.length -1].diagID)
+        {
+            System.arraycopy(staticDiagInfos, 0, temp, 0, staticDiagInfos.length);
+            System.arraycopy(recs, 0, temp, staticDiagInfos.length, recs.length);
+            staticDiagInfos = temp;
+        }
+        else if (staticDiagInfos[0].diagID > lastID)
+        {
+            System.arraycopy(recs, 0, temp, 0, recs.length);
+            System.arraycopy(staticDiagInfos, 0, temp, recs.length, staticDiagInfos.length);
+            staticDiagInfos = temp;
+        }
+        else
+        {
+            int i = 0;
+            for (; i < staticDiagInfos.length && staticDiagInfos[i].diagID <= firstID; i++);
+            assert i < staticDiagInfos.length;
+            System.arraycopy(staticDiagInfos, 0, temp, 0, i);
+            System.arraycopy(recs, 0, staticDiagInfos, i, recs.length);
+            System.arraycopy(staticDiagInfos, i, temp, i + recs.length, staticDiagInfos.length - i);
+        }
     }
 
-    private static final StaticDiagInfoRec[] staticDiagInfos;
+    private static StaticDiagInfoRec[] staticDiagInfos;
     static
     {
-        int totalLen = 0;
-        for (DiagInitializer init : initializers)
-            totalLen += init.getDiagKinds().length;
-
         int frontendLen = DiagnosticFrontendKinds.values().length;
         int commonLen = DiagnosticCommonKinds.values().length;
         int lexLen = DiagnosticLexKinds.values().length;
         int parseLen = DiagnosticParseKinds.values().length;
         int semaLen = DiagnosticSemaKinds.values().length;
 
-        staticDiagInfos = new StaticDiagInfoRec[totalLen + frontendLen + commonLen
+        staticDiagInfos = new StaticDiagInfoRec[frontendLen + commonLen
                 + lexLen + parseLen + semaLen];
         int idx = 0;
-        for (DiagInitializer init : initializers)
-        {
-            StaticDiagInfoRec[] recs = init.getDiagKinds();
-            System.arraycopy(recs, 0, staticDiagInfos, idx, recs.length);
-            idx += recs.length;
-        }
-
-        assert idx == totalLen:"Illegal states!";
 
         for (DiagnosticFrontendKinds kinds : DiagnosticFrontendKinds.values())
         {
@@ -680,10 +698,15 @@ public final class Diagnostic
         {
             return DiagnosticSemaKinds.values()[diagID - DiagnosticSemaKindsBegin].text;
         }
+        else if (isDiagnosticCommonKinds(diagID))
+        {
+            return DiagnosticCommonKinds.values()[diagID - DiagnosticCommonKindsBegin].text;
+        }
         else
         {
-            assert isDiagnosticCommonKinds(diagID);
-            return DiagnosticCommonKinds.values()[diagID - DiagnosticCommonKindsBegin].text;
+            int idx = Arrays.binarySearch(staticDiagInfos, new StaticDiagInfoRec(diagID, null, null, false, "", ""));
+            assert idx != -1:"Unknown diagnostic id!";
+            return staticDiagInfos[idx].description;
         }
     }
     
