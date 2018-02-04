@@ -18,6 +18,7 @@
 package xcc;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import static xcc.Job.JobClass.*;
 
@@ -75,7 +76,7 @@ public class Job
         }
     }
 
-    public static class JobList extends Job
+    public static class JobList extends Job implements Iterable<Job>
     {
         private ArrayList<Job> jobs;
 
@@ -99,6 +100,22 @@ public class Job
         public int size()
         {
             return jobs.size();
+        }
+
+        public boolean contains(Job job)
+        {
+            return jobs.contains(job);
+        }
+
+        public void add(Job job)
+        {
+            jobs.add(job);
+        }
+
+        @Override
+        public Iterator<Job> iterator()
+        {
+            return jobs.iterator();
         }
     }
 }

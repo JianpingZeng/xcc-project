@@ -30,7 +30,6 @@ import xcc.Action.*;
 import xcc.Option.InputOption;
 import xcc.tool.Tool;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -61,7 +60,8 @@ public class Driver
     {
         Diagnostic.DiagInitializer initializer = new Diagnostic.DiagInitializer()
         {
-            @Override public StaticDiagInfoRec[] getDiagKinds()
+            @Override
+            public StaticDiagInfoRec[] getDiagKinds()
             {
                 DiagnosticJlangDriverKinds[] kinds = DiagnosticJlangDriverKinds.values();
                 StaticDiagInfoRec[] recs = new StaticDiagInfoRec[kinds.length];
@@ -87,9 +87,14 @@ public class Driver
     private OptTable optTable;
     private boolean suppressMissingInputWarning;
     private ArrayList<String> installedDir, dir;
+    private boolean cccPrintPhases;
 
-    public Driver(String basename, String dirname, String hostTriple,
-            String imageName, Diagnostic diags)
+    public Driver(String basename,
+            String dirname,
+            String hostTriple,
+            String imageName,
+            Diagnostic diags,
+            boolean cccPrintPhases)
     {
         defaultBasename = basename;
         defaultDirname = dirname;
@@ -100,6 +105,7 @@ public class Driver
         installedDir = new ArrayList<>();
         dir = new ArrayList<>();
         installedDir.add(defaultDirname);
+        this.cccPrintPhases = cccPrintPhases;
     }
 
     public DiagnosticBuilder diag(int diagID)
@@ -174,7 +180,12 @@ public class Driver
     public boolean useJlangAsCompiler(Compilation comp, JobAction ja,
             String archName)
     {
-        return true;
+        if (!archName.equals("x86_64") && !archName.equals("x86"))
+            return false;
+        if (ja instanceof PreprocessJobAction || ja instanceof PrecompileJobAction
+                || ja instanceof CompileJobAction)
+            return true;
+        return false;
     }
 
     /**
@@ -507,11 +518,12 @@ public class Driver
                     linkerOutput));
         }
 
-        ArrayList<Job> jobs = c.getJobs();
+        Job.JobList jobs = c.getJobs();
         String baseInput = inputInfos.get(0).getBaseInput();
 
         if (ja.getOutputType() == TY_Nothing)
             result = new InputInfo(act.getOutputType(), baseInput);
+        else
         {
             assert !inputInfos.get(0).isPipe():"PipedJob not supported!";
             result = new InputInfo(
@@ -535,7 +547,7 @@ public class Driver
 
         if (!atTopLevel)
         {
-            String tempName = getTemporaryPath(InputType.getTypeTempSuffix(ja.getOutputType()));;
+            String tempName = getTemporaryPath("." + InputType.getTypeTempSuffix(ja.getOutputType()));;
             return c.addTempFile(tempName);
         }
 
@@ -560,16 +572,9 @@ public class Driver
 
     private String getTemporaryPath(String suffix)
     {
-        String tmpDir = System.getenv("TMPDIR");
-        if (tmpDir == null)
-            tmpDir = System.getenv("TEMP");
-        if (tmpDir == null)
-            tmpDir = System.getenv("TMP");
-        if (tmpDir == null)
-            tmpDir = "/tmp";
         try
         {
-            return Files.createTempFile(tmpDir, suffix).toAbsolutePath().toString();
+            return Files.createTempFile(null, suffix).toAbsolutePath().toString();
         }
         catch (IOException e)
         {
@@ -678,16 +683,28 @@ public class Driver
         // precompile, compile, assembly, linking etc.        
         buildActions(c);
 
+        if (cccPrintPhases)
+        {
+            printActions(c);
+            return c;
+        }
         buildJobs(c);
         return c;
     }
 
+    private void printActions(Compilation c)
+    {}
+
     public int executeCompilation(Compilation c)
     {
-        Job.Command failureCmd = null;
+        if (c.getArgs().hasArg(OPT___HASH_HASH_HASH))
+        {
+            c.printJobs(System.err, c.getJobs(), true);
+            return 0;
+        }
 
         int res = c.executeJob();
-        failureCmd = c.getFailureCommand();
+        Job.Command failureCmd = c.getFailureCommand();
         if (res != 0)
         {
             clearTemporaryFiles(c);
