@@ -89,16 +89,15 @@ public class Jlang
     public int compile(String[] args)
     {
         assert !(args == null || args.length <= 0);
+
         String executableFilePath;
         if (args[0].equals("-launcher"))
         {
-            executableFilePath = args[1];
-            String[] temp = new String[args.length-1];
-            System.arraycopy(args, 1, temp, 0, temp.length);
+            String[] temp = new String[args.length-2];
+            System.arraycopy(args, 2, temp, 0, temp.length);
             args = temp;
         }
-        else
-            executableFilePath = Config.BinaryPath + "/jlang";
+        executableFilePath = Config.BinaryPath + "/jlang";
 
         // Compute the name of main program according to native launcher or
         // hardcoded.

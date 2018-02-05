@@ -50,20 +50,10 @@ JNIEnv* createVM(char* cmdPath)
     #endif
 
     char* dir = dirname(absolute);
-    /*
-	size_t len = strlen(dir);
-	char *end = dir + len - 1;
-	while (*end != '/' && end >= dir)
-	   	--end;
-
-	string path(dir, end);
-	*/
     string path(dir);
     path += "/lib/";
     string cp = path + XCC_PACKAGE_NAME;
     cp = "-Djava.class.path=" + cp;
-    //cp = "-Djava.class.path=/home/xlous/Development/Compiler/xcc/out/lib/xcc-0.1.jar:"
-    //                         "/home/xlous/Development/Compiler/xcc/out/lib/trove-3.0.3.jar";// + cp;
 #ifdef NDEBUG
     cout<<"classpath: "<<cp<<endl;
 #endif
@@ -74,7 +64,6 @@ JNIEnv* createVM(char* cmdPath)
     JavaVMInitArgs vm_args;                        // Initialization arguments
     JavaVMOption* options = new JavaVMOption[1];   // JVM invocation options
     options[0].optionString = (char*)cp.c_str();   // where to find java .class
-    //该参数可以用来观察C++调用JAVA的过程，设置该参数后，程序会在标准输出设备上打印调用的相关信息
     vm_args.version = JNI_VERSION_1_2;             // minimum Java version
     vm_args.nOptions = 1;                          // number of options
     vm_args.options = options;
@@ -84,7 +73,6 @@ JNIEnv* createVM(char* cmdPath)
     delete[] options;    // we then no longer need the initialisation options.
     if (rc != JNI_OK) 
     {
-          // TO DO: error processing...
          cin.get();
          exit(EXIT_FAILURE);
     }
@@ -94,7 +82,6 @@ JNIEnv* createVM(char* cmdPath)
     jint ver = env->GetVersion();
     cout << ((ver>>16)&0x0f) << "."<<(ver&0x0f) << endl;
     #endif
-    // TO DO: add the code that will use JVM <============  (see next steps)
     return env;
 }
 

@@ -98,6 +98,7 @@ public class JlangTool extends Tool
         cmdStrings.add("-main-file-name");
         cmdStrings.add(inputs.get(0).getFilename());
 
+        /*
         if (args.hasArg(OPT__static))
             cmdStrings.add("-static-define");
 
@@ -131,6 +132,7 @@ public class JlangTool extends Tool
             cmdStrings.add("--disable-fp-elim");
         if (!args.hasFlag(OPT__fzero_initialized_in_bss, OPT__fno_zero_initialized_in_bss))
             cmdStrings.add("--nozero-initialized-in-bss");
+        */
         if (args.hasArg(OPT__dA) || args.hasArg(OPT__fverbose_asm))
             cmdStrings.add("=-asm-verbose");
         if (args.hasArg(OPT__fdebug_pass_structure))
@@ -153,13 +155,14 @@ public class JlangTool extends Tool
             else if (getToolChain().getArchName().equals("x86_64"))
                 cmdStrings.add("-mcpu=x86-64");
         }
+        /*
         arg = args.getLastArg(OPT__mcmodel_EQ, true);
         if (arg != null)
         {
             cmdStrings.add("-code-model");
             cmdStrings.add(arg.getValue(args, 0));
         }
-
+        */
         if ((arg = args.getLastArg(OPT__O4, true)) != null)
             cmdStrings.add("-O3");
         if ((arg = args.getLastArg(OPT__O, true)) != null)

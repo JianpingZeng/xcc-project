@@ -475,6 +475,7 @@ public class Driver
         {
             InputAction ia = (InputAction) act;
             Arg arg = ia.getInputArgs();
+            arg.claim();
             if (arg instanceof Arg.PositionalArg)
             {
                 String name = arg.getValue(c.getArgs(), 0);

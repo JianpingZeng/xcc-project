@@ -49,41 +49,66 @@ public class OptTable
         return infos.length;
     }
 
-    public String getOptionName(int id)
+    public String getOptionName(int index)
     {
-        return infos[id].optionName;
+        return infos[index].optionName;
     }
 
-    public String getHelpText(int id)
+    public String getHelpText(int index)
     {
-        return infos[id].helpText;
+        return infos[index].helpText;
     }
 
-    public String getMetaVarName(int id)
+    public String getMetaVarName(int index)
     {
-        return infos[id].metaVarName;
+        return infos[index].metaVarName;
     }
 
-    public Option getOption(int id)
+    public Option getOption(int index)
     {
-        if (id == OPT_INVALID)
+        if (index == OPT_INVALID)
             return null;
 
-        assert id < getNumOptions();
-        if (options[id] != null)
-            return options[id];
+        assert index < getNumOptions();
+        if (options[index] != null)
+            return options[index];
         else
         {
-            return options[id] = constructOption(id);
+            return options[index] = constructOption(index);
         }
+    }
+
+    private OptionGroup[] groups;
+
+    public OptionGroup getOptionGroup(int groupID)
+    {
+        assert groupID >= GroupID.GRP_INVALID && groupID < GroupID.GRP_Last;
+        if (groupID == GroupID.GRP_INVALID)
+            return null;
+
+        if (groups == null)
+            groups = new OptionGroup[GroupID.GRP_Last - GroupID.GRP_INVALID];
+        if (groups[groupID] != null)
+            return groups[groupID];
+        Group grp = null;
+        for (Group itr : Group.values())
+        {
+            if (itr.id == groupID)
+            {
+                grp = itr;
+                break;
+            }
+        }
+        assert grp != null:"Unknown group id!";
+        groups[groupID] = new OptionGroup(groupID, grp.name, getOptionGroup(grp.group));
+        return groups[groupID];
     }
 
     public Option constructOption(int index)
     {
         OptionInfo info = infos[index];
         int id = info.id;
-        Option opt =  getOption(info.group);
-        OptionGroup group = opt instanceof OptionGroup ? (OptionGroup)opt : null;
+        OptionGroup group =  getOptionGroup(info.group);
         Option alias = getOption(info.alias);
 
         Option res = null;

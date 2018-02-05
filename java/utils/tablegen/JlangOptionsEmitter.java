@@ -240,6 +240,7 @@ public class JlangOptionsEmitter extends TableGenBackend
             ids.add(manglingValidID(getOptionName(r)));
         for (String id : ids)
             os.printf("\tint GRP_%s = %d;%n", id, i++);
+        os.printf("\tint GRP_Last = %d;%n", i);
         os.println("}");
     }
 
@@ -259,7 +260,7 @@ public class JlangOptionsEmitter extends TableGenBackend
         os.printf("package xcc;%n%n");
         os.println("import static xcc.GroupID.*;");
         os.println("// Emission for Groups.");
-        os.println("public enum Group {");
+        os.println("public enum Group \n{");
         int i = 0;
         int e = groups.size();
         for (Record r : groups)
@@ -271,18 +272,21 @@ public class JlangOptionsEmitter extends TableGenBackend
                 name = getOptionName(di.getDef());
             }
 
-            String helpText = "null";
+            String helpText = null;
             if (!(r.getValueInit("HelpText") instanceof Init.UnsetInit))
             {
                 helpText = escapeString(r.getValueAsString("HelpText"));
             }
 
-            os.printf("\tGROUP_%s(\"%s\", %s, %s, \"%s\")",
+            os.printf("\tGROUP_%s(\"%s\", %s, %s, ",
                     manglingValidID(r.getValueAsString("Name")),
                     "GRP_" + manglingValidID(r.getValueAsString("Name")),
                     "GRP_"+manglingValidID(getOptionName(r)),
-                    "GRP_" + manglingValidID(name),
-                    helpText);
+                    "GRP_" + manglingValidID(name));
+            if (helpText == null)
+                os.printf("null)");
+            else
+                os.printf("\"%s\")", helpText);
             if (i < e - 1)
                 os.println(",");
             else
