@@ -79,8 +79,23 @@ public class JlangTool extends Tool
                 cmdStrings.add("-S");
         }
 
-        cmdStrings.add("-disable-free");
-        cmdStrings.add("=main-file-name");
+        //cmdStrings.add("-disable-free");
+
+        if (output.isPipe())
+        {
+            cmdStrings.add("-o");
+            cmdStrings.add("-");
+        }
+        else if (output.isFilename())
+        {
+            cmdStrings.add("-o");
+            cmdStrings.add(output.getFilename());
+        }
+        else
+        {
+            assert output.isNothing()||output.isInputArg():"Unknown output type!";
+        }
+        cmdStrings.add("-main-file-name");
         cmdStrings.add(inputs.get(0).getFilename());
 
         if (args.hasArg(OPT__static))

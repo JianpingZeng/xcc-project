@@ -92,7 +92,7 @@ public class Jlang
         String executableFilePath;
         if (args[0].equals("-launcher"))
         {
-            executableFilePath = args[0];
+            executableFilePath = args[1];
             String[] temp = new String[args.length-1];
             System.arraycopy(args, 1, temp, 0, temp.length);
             args = temp;
