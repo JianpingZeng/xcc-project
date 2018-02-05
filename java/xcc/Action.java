@@ -30,8 +30,22 @@ public class Action
 
     public enum ActionClass
     {
-        InputClass, BindArchClass, PreprocessJobClass, PrecompileJobClass, AnalyzeJobClass, CompileJobClass, AssembleJobClass, LinkJobClass, LipoJobClass;
+        InputClass("Input"),
+        BindArchClass("bind-arch"),
+        PreprocessJobClass("preprocess"),
+        PrecompileJobClass("precompile"),
+        AnalyzeJobClass("analyzer"),
+        CompileJobClass("compile"),
+        AssembleJobClass("assemble"),
+        LinkJobClass("link"),
+        LipoJobClass("lipo");
 
+        public String name;
+
+        ActionClass(String name)
+        {
+            this.name = name;
+        }
         public static final ActionClass JobClassFirst = PreprocessJobClass;
         public static final ActionClass JobClassLast = LipoJobClass;
     }

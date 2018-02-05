@@ -408,11 +408,6 @@ public abstract class Option
         public Arg accept(InputArgList list)
         {
             int idx = list.getIndex();
-            if (getName().equals(list.getArgString(idx)))
-            {
-                list.setIndex(idx+1);
-                return new JoinedArg(this, idx);
-            }
             idx += 2;
             if (idx > list.getNumInputStrings())
               return null;

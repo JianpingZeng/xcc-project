@@ -194,7 +194,8 @@ public class LinuxToolChain extends ToolChain
     @Override
     public void addSystemIncludeDir(ArrayList<String> cmdStrings)
     {
-        cmdStrings.add("-I " + gccInstallation.getGccInstallPath() + "/include");
+        cmdStrings.add("-I");
+        cmdStrings.add(gccInstallation.getGccInstallPath() + "/include");
     }
 
     public ArrayList<String> getExtraOpts()

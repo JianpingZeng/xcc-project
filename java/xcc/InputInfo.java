@@ -125,7 +125,7 @@ public class InputInfo
             case Pipe:
                 return "(pipe)";
             case Filename:
-                return "\"" + getFilename() + "\"";
+                return getFilename();
             case InputArg:
                 return "(input arg)";
             default:

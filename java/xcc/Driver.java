@@ -36,12 +36,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import static jlang.diag.CompilationPhase.*;
 import static xcc.DiagnosticJlangDriverTag.*;
 import static xcc.HostInfo.createLinuxHostInfo;
 import static xcc.HostInfo.createUnknownHostInfo;
 import static xcc.InputType.getNumCompilationPhases;
+import static xcc.InputType.getTypeName;
 import static xcc.OptionID.*;
 import static xcc.OptionKind.*;
 import static xcc.TypeID.*;
@@ -362,7 +364,7 @@ public class Driver
             Action current = new InputAction(inputArg, filetype);
             for (int i = 0; i < numSteps; i++)
             {
-                int phase = InputType.getCompilationPhase(inputType, i);
+                int phase = InputType.getCompilationPhase(filetype, i);
                 if (phase > finalPhase)
                     break;
 
@@ -427,13 +429,7 @@ public class Driver
 
         for (Action act : c.getActions())
         {
-            String linkerOutput;
-            if (finalOutput != null)
-                linkerOutput = finalOutput.getValue(c.getArgs(), 0);
-            else
-                linkerOutput = defaultImagename;
-
-            buildJobsForAction(c, act, c.getToolChain(), true, linkerOutput);
+            buildJobsForAction(c, act, c.getToolChain(), true, null);
         }
 
         if (theDiags.getNumErrors() != 0 ||
@@ -691,15 +687,65 @@ public class Driver
         buildJobs(c);
         return c;
     }
+    private static int printAction2(Compilation c, Action act, HashMap<Action, Integer> ids)
+    {
+        if (ids.containsKey(act))
+            return ids.get(act);
+
+        StringBuilder buf = new StringBuilder();
+        buf.append(act.getKind().name);
+        buf.append(", ");
+        if (act instanceof InputAction)
+        {
+            InputAction ia = (InputAction)act;
+            buf.append('"');
+            buf.append(ia.getInputArgs().getValue(c.getArgs(), 0));
+            buf.append('"');
+        }
+        else if (act instanceof BindArchAction)
+        {
+            BindArchAction ba = (BindArchAction)act;
+            buf.append('"');
+            buf.append(ba.getArchName() != null?ba.getArchName() :
+                c.getToolChain().getArchName());
+            buf.append('"');
+            buf.append(", {");
+            buf.append(printAction2(c, ba.getInputs().get(0), ids));
+            buf.append("}");
+        }
+        else
+        {
+            buf.append("{");
+            for (int i = 0, e = act.getInputs().size(); i < e; i++)
+            {
+                Action a = act.getInputs().get(i);
+                buf.append(printAction2(c, a, ids));
+                if (i != e -1)
+                    buf.append(", ");
+            }
+            buf.append("}");
+        }
+        int id = ids.size();
+        ids.put(act, id);
+        System.err.printf("%d: %s, %s%n", id, buf.toString(),
+                getTypeName(act.getOutputType()));
+        return id;
+    }
 
     private void printActions(Compilation c)
-    {}
+    {
+        HashMap<Action, Integer> ids = new HashMap<>();
+        for (Action act : c.getActions())
+        {
+            printAction2(c, act, ids);
+        }
+    }
 
     public int executeCompilation(Compilation c)
     {
         if (c.getArgs().hasArg(OPT___HASH_HASH_HASH))
         {
-            c.printJobs(System.err, c.getJobs(), true);
+            c.printJobs(System.err, c.getJobs(), false);
             return 0;
         }
 
