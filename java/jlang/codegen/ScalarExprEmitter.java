@@ -84,7 +84,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     {
         assert srcTy.isCanonical() : "EmitScalarConversion strips typedefs";
 
-        if (srcTy.isRealType())
+        if (srcTy.isFloatingType())
         {
             // Compare against 0.0 for fp scalar.
             Value zero = Constant.getNullValue(v.getType());

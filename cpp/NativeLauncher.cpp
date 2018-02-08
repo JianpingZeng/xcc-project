@@ -118,8 +118,7 @@ void invokeClass(char* cmdPath, const char* mainClassName, int argc, char** argv
         env->SetObjectArrayElement(applicationArgs, 0, env->NewStringUTF("launcher"));
         for (int i = 0; i != argc; i++)
         {
-            jstring applicationArg0;
-            applicationArg0 = env->NewStringUTF(argv[i]);
+            jstring applicationArg0 = env->NewStringUTF(argv[i]);
             env->SetObjectArrayElement(applicationArgs, i+1, applicationArg0);
         }
         env->CallStaticVoidMethod(mainClass, mainMethod, applicationArgs);

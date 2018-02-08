@@ -205,7 +205,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			BasicBlock insertBefore)
 	{
 		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal);
-        parent = newParent;
 		this.idNumber = 0;
 		this.instructions = new LinkedList<>();
 		this.bbName = bbName;
@@ -219,7 +218,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
             list.add(idx, this);
         }
         else if (newParent != null)
-            newParent.appendBB(this);
+        	newParent.addBasicBlock(this);
         name = bbName;
 	}
 
@@ -399,6 +398,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public void insertBefore(Instruction inst, Instruction insertBefore)
 	{
+		if (insertBefore == null)
+		{
+			appendInst(inst);
+			return;
+		}
 		int index = instructions.indexOf(insertBefore);
 		assert index != - 1:"InsertBefore is not exists in Instruction list";
 		insertBefore(inst, index);
@@ -534,7 +538,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void eraseFromParent()
 	{
-		parent.getBasicBlockList().remove(this);
+	    if (parent != null)
+		    parent.getBasicBlockList().remove(this);
 	}
 	/**
 	 * Returns the terminator instruction if the block is well formed or
@@ -543,6 +548,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public TerminatorInst getTerminator()
 	{
+	    if (instructions.isEmpty()) return null;
+
 		Instruction inst = instructions.getLast();
 		if (inst instanceof TerminatorInst)
             return (TerminatorInst)inst;

@@ -179,8 +179,7 @@ public final class BreakCriticalEdge implements FunctionPass
         ti.setSuxAt(succNum, newBB);
 
         // Insert the newBB into the correct position right after tibb.
-        int insertPos = f.getBasicBlockList().indexOf(tibb);
-        f.getBasicBlockList().add(insertPos+1, newBB);
+        f.addBasicBlockBefore(tibb, newBB);
 
         // If there are any PHI nodes in DestBB, we need to update them so that they
         // merge incoming values from NewBB instead of from TIBB.
