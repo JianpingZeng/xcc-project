@@ -105,13 +105,6 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         return basicBlockList.getFirst();
     }
 
-    public void appendBB(BasicBlock bb)
-    {
-        assert bb != null;
-        basicBlockList.addLast(bb);
-        bb.setParent(this);
-    }
-
     /**
      * Returns an iterator over elements of jlang.type {@code T}.
      *
@@ -121,6 +114,35 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     public Iterator<BasicBlock> iterator()
     {
         return basicBlockList.iterator();
+    }
+
+    /**
+     * Add Basic block into this function's block list.
+     * @param bb
+     */
+    public void addBasicBlock(BasicBlock bb)
+    {
+        assert bb != null && !basicBlockList.contains(bb):"Can't add a null or duplicate block!";
+        basicBlockList.add(bb);
+        bb.setParent(this);
+    }
+
+    public void addBasicBlockBefore(BasicBlock beforePos, BasicBlock bb)
+    {
+        assert beforePos != null && basicBlockList.contains(beforePos);
+        assert bb != null && !basicBlockList.contains(bb);
+        int idx = basicBlockList.indexOf(beforePos);
+        basicBlockList.add(idx, bb);
+        bb.setParent(this);
+    }
+
+    public void addBasicBlockAfter(BasicBlock afterPos, BasicBlock bb)
+    {
+        assert afterPos != null && basicBlockList.contains(afterPos);
+        assert bb != null && !basicBlockList.contains(bb);
+        int idx = basicBlockList.indexOf(afterPos);
+        basicBlockList.add(idx+1, bb);
+        bb.setParent(this);
     }
 
     public LinkedList<BasicBlock> getBasicBlockList()

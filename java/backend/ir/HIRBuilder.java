@@ -56,7 +56,7 @@ public class HIRBuilder
 	{
 		curBB = insertPoint;
 		insertPtr = insertPoint.getLastInst();
-		assert insertPtr != null:"Can not the empty BasicBlock as insert point";
+		//assert insertPtr != null:"Can not set an empty BasicBlock as insert point";
 	}
 
 	public void setInsertPoint(BasicBlock theBB, Instruction pos)

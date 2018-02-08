@@ -1499,11 +1499,11 @@ public final class CodeGenFunction
 	private void emitBlock(BasicBlock bb, boolean isFinished)
 	{
 		// fall out of the current block if necessary.
-		emitBranch(bb);
+		//emitBranch(bb);
 
 		if (isFinished && bb.isUseEmpty())
 			return;
-		curFn.getBasicBlockList().add(bb);
+		curFn.addBasicBlock(bb);
 		builder.setInsertPoint(bb);
 	}
 
@@ -1842,12 +1842,12 @@ public final class CodeGenFunction
 
 	public BasicBlock createBasicBlock()
 	{
-		return createBasicBlock("", curFn, null);
+		return createBasicBlock("", null, null);
 	}
 
 	public BasicBlock createBasicBlock(String name)
 	{
-		return createBasicBlock(name, curFn, null);
+		return createBasicBlock(name, null, null);
 	}
 
 	private BasicBlock createBasicBlock(String name, Function parent,
