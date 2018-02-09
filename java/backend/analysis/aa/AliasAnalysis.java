@@ -75,6 +75,7 @@ public class AliasAnalysis implements Pass
     @Override
     public String getPassName()
     {
+        assert false:"Should be overrided by concrete subclass";
         return aa.getPassName();
     }
 
@@ -113,6 +114,9 @@ public class AliasAnalysis implements Pass
                 break;
             case PoorMan:
                 aa = new PoorManAliasAnalysis();
+                break;
+            case Steensgaard:
+                aa = new SteensgaardAliasAnalysis();
                 break;
             default:
                  aa = null;

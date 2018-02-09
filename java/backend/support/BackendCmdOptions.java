@@ -27,6 +27,7 @@ import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
 import static backend.support.BackendCmdOptions.AliasAnalyzerKind.BasicAA;
 import static backend.support.BackendCmdOptions.AliasAnalyzerKind.PoorMan;
+import static backend.support.BackendCmdOptions.AliasAnalyzerKind.Steensgaard;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -124,7 +125,8 @@ public class BackendCmdOptions
     public enum AliasAnalyzerKind
     {
         BasicAA,
-        PoorMan
+        PoorMan,
+        Steensgaard,
     }
 
     /**
@@ -136,8 +138,9 @@ public class BackendCmdOptions
                     optionName("aa"),
                     init(BasicAA),
                     new ValueClass<>(
-                            new ValueClass.Entry<>(BasicAA, "basic-aa", "Basic Analyzer"),
-                            new ValueClass.Entry<>(PoorMan, "poor-man", "Poor man Analyzer")
+                            new ValueClass.Entry<>(BasicAA, "basic-aa", "Basic alias analysis"),
+                            new ValueClass.Entry<>(PoorMan, "poor-man", "Poor man alias analysis"),
+                            new ValueClass.Entry<>(Steensgaard, "steensgaard", "Steensgaard alias analysis")
                     ));
     /**
      * Choose an appropriate register allocator according command line option.
