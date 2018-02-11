@@ -177,12 +177,11 @@ public class MachineLoop extends MachineFunctionPass
                         blockLoop = childLoop;
                     else if (blockLoop != childLoop)
                     {
-                        MachineLoopInfo subLoop = blockLoop;
-                        for (int j = 0, sz = subLoop.blocks.size(); j < sz; j++)
+                        for (int j = 0, sz = blockLoop.blocks.size(); j < sz; j++)
                         {
-                            containingLoops.put(subLoop.blocks.get(j), childLoop);
+                            containingLoops.put(blockLoop.blocks.get(j), childLoop);
 
-                            moveSiblingLoopInto(subLoop, childLoop);
+                            moveSiblingLoopInto(blockLoop, childLoop);
                             --i;
                         }
                     }
