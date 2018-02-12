@@ -382,18 +382,18 @@ public class SCCPSolver implements InstVisitor<Void>
         });
     }
 
-    private void visitBinaryOp(Instruction.BinaryOps inst)
+    public Void visitBinaryOp(Instruction.BinaryOps inst)
     {
         LatticeStatus ls = getLatticeStatus(inst);
         if (ls.isOverdefined())
-            return;
+            return null;
 
         LatticeStatus op1Status = getLatticeStatus(inst.operand(0));
         LatticeStatus op2Status = getLatticeStatus(inst.operand(1));
         if (op1Status.isOverdefined() || op2Status.isOverdefined())
         {
             markOverdefined(inst);
-            return;
+            return null;
         }
 
         if (op1Status.isConstant() && op2Status.isConstant())
@@ -401,6 +401,7 @@ public class SCCPSolver implements InstVisitor<Void>
             Constant val = ConstantExpr.get(inst.getOpcode(), op1Status.constVal, op2Status.constVal);
             markConstant(ls, inst, val);
         }
+        return null;
     }
 
     private void visitCmpInst(Instruction.CmpInst inst)
@@ -425,23 +426,24 @@ public class SCCPSolver implements InstVisitor<Void>
         }
     }
 
-    private void visitCastInst(Instruction.CastInst inst)
+    public Void visitCastInst(Instruction.CastInst inst)
     {
         LatticeStatus ls = getLatticeStatus(inst);
         if (ls.isOverdefined())
-            return;
+            return null;
 
         LatticeStatus op1Status = getLatticeStatus(inst.operand(0));
         if (op1Status.isOverdefined())
         {
             markOverdefined(inst);
-            return;
+            return null;
         }
         if (op1Status.isConstant())
         {
             markConstant(ls, inst, ConstantExpr.getCast(inst.getOpcode(),
                     op1Status.constVal, inst.getType()));
         }
+        return null;
     }
 
     @Override
