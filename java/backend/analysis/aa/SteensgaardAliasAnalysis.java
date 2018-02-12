@@ -20,6 +20,7 @@ package backend.analysis.aa;
 import backend.ir.AllocationInst;
 import backend.pass.ModulePass;
 import backend.support.CallSite;
+import backend.utils.InstVisitor;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
@@ -38,7 +39,7 @@ import java.util.ArrayList;
  * @version 0.1
  */
 public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
-        ModulePass
+        ModulePass, InstVisitor<Void>
 {
     /**
      * This class used for representing a node in constraint graph.
@@ -50,11 +51,12 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
          * This points to it's representative node.
          * I uses a union-find set to operate on constraint.
          */
+        int id;
         Node rep;
         Node pointsTo;
         Value value;
 
-        Node(Value val)
+        Node(int id , Value val)
         {
             value = val;
             rep = this;
@@ -73,6 +75,8 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
 
         void setRepresentative(Node rep)
         {
+            if (this.rep != null)
+                this.rep.setRepresentative(rep);
             this.rep = rep;
         }
     }
@@ -130,7 +134,8 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     private static final int NullObject = 0;
-    private static final int Universal = 1;
+    private static final int NullPtr = 1;
+    private static final int Universal = 2;
     private static final int NumSpecialValue = Universal + 1;
 
     private void identifyObjects()
@@ -178,22 +183,74 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         assert val != null && valueNodes.containsKey(val);
         int id = valueNodes.get(val);
         if (nodes[id] != null) return nodes[id];
-        return nodes[id] = new Node(val);
+        return nodes[id] = new Node(id, val);
     }
 
+    private Node getNullPointerNode()
+    {
+        if (nodes[NullPtr] != null)
+            return nodes[NullPtr];
+        return nodes[NullPtr] = new Node(NullPtr, null);
+    }
+
+    private Node getNullObjecteNode()
+    {
+        if (nodes[NullObject] != null)
+            return nodes[NullObject];
+        return nodes[NullObject] = new Node(NullObject,null);
+    }
     private Node getPointerNode(Value val)
     {
         assert val != null && pointerNodes.containsKey(val);
         int id = pointerNodes.get(val);
         if (nodes[id] != null) return nodes[id];
-        return nodes[id] = new Node(val);
+        return nodes[id] = new Node(id, val);
+    }
+
+    private Node getUniversalValueNode()
+    {
+        if (nodes[Universal] != null)
+            return nodes[Universal];
+        return nodes[Universal] = new Node(Universal, null);
     }
 
     private Node getValueNodeOfConstant(Constant c)
     {
-        // TODO: 18-2-11
-        assert false;
+        if (c instanceof ConstantPointerNull)
+            return getNullPointerNode();
+        else if (c instanceof GlobalVariable)
+        {
+            getValueNode(c);
+        }
+        else if (c instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr)c;
+            switch (ce.getOpcode())
+            {
+                case GetElementPtr:
+                    return getValueNodeOfConstant(ce.operand(0));
+                case BitCast:
+                    return getValueNodeOfConstant(ce.operand(0));
+                case IntToPtr:
+                    return getUniversalValueNode();
+            }
+        }
+        assert false:"Unknown constant node!";
         return null;
+    }
+
+    private void addConstraintsOnGlobalVariable(Node dest, Constant c)
+    {
+        if (c.getType().isSingleValueType())
+            dest.setRepresentative(getValueNodeOfConstant(c));
+        else if (c.isNullValue())
+            dest.setRepresentative(getNullObjecteNode());
+        else if (!(c instanceof Value.UndefValue))
+        {
+            assert c instanceof ConstantArray || c instanceof ConstantStruct;
+            for (int i = 0, e = c.getNumOfOperands(); i < e; i++)
+                addConstraintsOnGlobalVariable(dest, c.operand(i));
+        }
     }
 
     private void collectConstraints()
@@ -202,11 +259,14 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         {
             // LLVM IR "@x = global i32 1, align 4" could be abstracted into following
             // constraint.
-            getValueNode(gv).setRepresentative(getPointerNode(gv));
+            Node ptrNode = getPointerNode(gv);
+            getValueNode(gv).setRepresentative(ptrNode);
             if (gv.getInitializer() != null)
-                getPointerNode(gv).setRepresentative(getValueNodeOfConstant(gv.getInitializer()));
+                addConstraintsOnGlobalVariable(ptrNode, gv.getInitializer());
         }
-        // TODO: 18-2-11
+        // Walk through each function to collect constraints on each LLVM instruction.
+        for (Function f : m.getFunctionList())
+            visit(f);
     }
 
     @Override
@@ -254,6 +314,78 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     @Override
     public String getPassName()
     {
-        return "Steensgaard alias analysis";
+        return "Steensgaard's style alias analysis";
+    }
+
+    @Override
+    public Void visitRet(Instruction.ReturnInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitBr(Instruction.BranchInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitSwitch(Instruction.SwitchInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitICmp(Instruction.ICmpInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitFCmp(Instruction.FCmpInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitCastInst(Instruction.CastInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitAlloca(Instruction.AllocaInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitLoad(Instruction.LoadInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitStore(Instruction.StoreInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitCall(Instruction.CallInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitGetElementPtr(Instruction.GetElementPtrInst inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Void visitPhiNode(Instruction.PhiNode inst)
+    {
+        return null;
     }
 }

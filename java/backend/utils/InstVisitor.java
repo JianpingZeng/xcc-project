@@ -117,47 +117,106 @@ public interface InstVisitor<RetTy>
 	//===============================================//
 	// arithmetic instr.
 	//===============================================//
-	RetTy visitAdd(BinaryOps inst);
+	default RetTy visitAdd(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitFAdd(BinaryOps inst);
+	default RetTy visitFAdd(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitSub(BinaryOps inst);
+	default RetTy visitSub(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitFSub(BinaryOps inst);
+	default RetTy visitFSub(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitMul(BinaryOps inst);
+	default RetTy visitMul(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitFMul(BinaryOps inst);
+	default RetTy visitFMul(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitUDiv(BinaryOps inst);
+	default RetTy visitUDiv(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitSDiv(BinaryOps inst);
+	default RetTy visitSDiv(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitFDiv(BinaryOps inst);
+	default RetTy visitFDiv(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitURem(BinaryOps inst);
+	default RetTy visitURem(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitSRem(BinaryOps inst);
+	default RetTy visitSRem(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitFRem(BinaryOps inst);
+	default RetTy visitFRem(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
+
+	default RetTy visitBinaryOp(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
 	//===============================================//
 	// bitwise operator.
 	//===============================================//
-	RetTy visitAnd(BinaryOps inst);
+	default RetTy visitAnd(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitOr(BinaryOps inst);
+	default RetTy visitOr(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitXor(BinaryOps inst);
+	default RetTy visitXor(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
 	//=============================================//
 	// shift operators.
 	//============================================//
-	RetTy visitShl(BinaryOps inst);
+	default RetTy visitShl(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitLShr(BinaryOps inst);
+	default RetTy visitLShr(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
-	RetTy visitAShr(BinaryOps inst);
+	default RetTy visitAShr(BinaryOps inst)
+	{
+		return visitBinaryOp(inst);
+	}
 
 	//===============================================//
 	// comparison instr.
@@ -169,29 +228,67 @@ public interface InstVisitor<RetTy>
 	//==============================================//
 	// cast operators.
 	//=============================================//
-	RetTy visitTrunc(CastInst inst);
+	default RetTy visitTrunc(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitZExt(CastInst inst);
+	default RetTy visitZExt(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitSExt(CastInst inst);
+	default RetTy visitSExt(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitFPToUI(CastInst inst);
+	default RetTy visitFPToUI(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitFPToSI(CastInst inst);
+	default RetTy visitFPToSI(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitUIToFP(CastInst inst);
+	default RetTy visitUIToFP(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitSIToFP(CastInst inst);
+	default RetTy visitSIToFP(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitFPTrunc(CastInst inst);
+	default RetTy visitFPTrunc(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visistFPExt(CastInst inst);
+	default RetTy visistFPExt(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitPtrToInt(CastInst inst);
+	default RetTy visitPtrToInt(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitIntToPtr(CastInst inst);
+	default RetTy visitIntToPtr(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
 
-	RetTy visitBitCast(CastInst inst);
+	default RetTy visitBitCast(CastInst inst)
+	{
+		return visitCastInst(inst);
+	}
+
+	RetTy visitCastInst(CastInst inst);
 
 	//===============================================//
 	// memory operator.
