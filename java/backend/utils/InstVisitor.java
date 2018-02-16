@@ -1,5 +1,8 @@
 package backend.utils;
 
+import backend.ir.AllocationInst;
+import backend.ir.MallocInst;
+import backend.ir.SelectInst;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -293,7 +296,20 @@ public interface InstVisitor<RetTy>
 	//===============================================//
 	// memory operator.
 	//===============================================//
-	RetTy visitAlloca(AllocaInst inst);
+	default RetTy visitAlloca(AllocaInst inst)
+	{
+		return visitAllocationInst(inst);
+	}
+
+	default RetTy visitMalloc(MallocInst inst)
+	{
+		return visitAllocationInst(inst);
+	}
+
+	default RetTy visitAllocationInst(AllocationInst inst)
+	{
+		return null;
+	}
 
 	RetTy visitLoad(LoadInst inst);
 
@@ -307,4 +323,11 @@ public interface InstVisitor<RetTy>
 	RetTy visitGetElementPtr(GetElementPtrInst inst);
 
 	RetTy visitPhiNode(PhiNode inst);
+
+	/**
+	 * Visit Select instruciton in LLVM IR programming reference.
+	 * @param inst
+	 * @return
+	 */
+	RetTy visitSelect(SelectInst inst);
 }

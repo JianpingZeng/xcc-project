@@ -16,6 +16,8 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.ir.MallocInst;
+import backend.ir.SelectInst;
 import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
@@ -699,6 +701,13 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
+    public Void visitMalloc(MallocInst inst)
+    {
+        markOverdefined(inst);
+        return null;
+    }
+
+    @Override
     public Void visitLoad(Instruction.LoadInst inst)
     {
         markOverdefined(inst);
@@ -875,6 +884,13 @@ public class SCCPSolver implements InstVisitor<Void>
         {
             markConstant(phiLS, inst, uniqueConstant);
         }
+        return null;
+    }
+
+    @Override
+    public Void visitSelect(SelectInst inst)
+    {
+        assert false:"SCCP not support select instruction currently!";
         return null;
     }
 }
