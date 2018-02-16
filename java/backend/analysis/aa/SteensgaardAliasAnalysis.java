@@ -18,6 +18,8 @@
 package backend.analysis.aa;
 
 import backend.ir.AllocationInst;
+import backend.ir.MallocInst;
+import backend.ir.SelectInst;
 import backend.pass.ModulePass;
 import backend.support.CallSite;
 import backend.utils.InstVisitor;
@@ -53,7 +55,6 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
          */
         int id;
         Node rep;
-        Node pointsTo;
         Value value;
 
         Node(int id , Value val)
@@ -186,6 +187,12 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         return nodes[id] = new Node(id, val);
     }
 
+    private Node getReturnNode(int id)
+    {
+        if (nodes[id] != null) return nodes[id];
+        return nodes[id] = new Node(id, null);
+    }
+
     private Node getNullPointerNode()
     {
         if (nodes[NullPtr] != null)
@@ -272,13 +279,40 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     @Override
     public AliasResult alias(Value ptr1, int size1, Value ptr2, int size2)
     {
-        return null;
+        if (ptr1 == null || ptr2 == null)
+            return AliasResult.NoAlias;
+        if (!ptr1.getType().isPointerType() || !ptr2.getType().isPointerType())
+            return AliasResult.NoAlias;
+        Node node1 = getPointerNode(ptr1);
+        Node node2 = getPointerNode(ptr2);
+        if (node1 == null || node2 == null)
+            return AliasResult.NoAlias;
+        if (node1.getRepresentativeNode() == node2.getRepresentativeNode())
+            return AliasResult.MustAlias;
+        return AliasResult.NoAlias;
     }
 
+    /**
+     * Note that, we just take conservative consideration upon must alias collection.
+     * If one node is equivalent with other so that we would think the first node
+     * must alias with second one.
+     * @param ptr
+     * @param retVals
+     */
     @Override
     public void getMustAliases(Value ptr, ArrayList<Value> retVals)
     {
-
+        // Non pointer type would not points to anything.
+        if (ptr == null || !ptr.getType().isPointerType())
+            return;
+        Node node = getPointerNode(ptr);
+        if (node == null) return;
+        retVals.add(node.value);
+        for (Node n : nodes)
+        {
+            if (n.getRepresentativeNode() == node)
+                retVals.add(n.value);
+        }
     }
 
     @Override
@@ -302,7 +336,13 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     @Override
     public void deleteValue(Value val)
     {
-
+        if (val == null || !val.getType().isPointerType())
+            return;
+        if (!pointerNodes.containsKey(val))
+            return;
+        int id = pointerNodes.get(val);
+        nodes[id] = null;
+        pointerNodes.remove(val);
     }
 
     @Override
@@ -317,9 +357,23 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         return "Steensgaard's style alias analysis";
     }
 
+    /**
+     * We could collapse all return values of Function into a single one when
+     * there are many return statement in this LLVM Function.
+     * So that this strategy would be helpful for handling CallInst.
+     * @param inst
+     * @return
+     */
     @Override
     public Void visitRet(Instruction.ReturnInst inst)
     {
+        Function fn = inst.getParent().getParent();
+        assert fn != null:"Instruction isn't attacted into a Function!";
+        assert returnNodes.containsKey(fn):
+                "ReturnInst must be handled in collectConstraints() method before!";
+        Node valueNode = getValueNode(inst);
+        Node returnNode = getReturnNode(returnNodes.get(fn));
+        returnNode.setRepresentative(valueNode);
         return null;
     }
 
@@ -350,42 +404,166 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     @Override
     public Void visitCastInst(Instruction.CastInst inst)
     {
+        // We just needs to handle such instruction of type pointer type.
+        if (!inst.getType().isPointerType())
+            return null;
+
+        switch (inst.getOpcode())
+        {
+            case IntToPtr:
+            {
+                Node destNode = getPointerNode(inst);
+                destNode.setRepresentative(getUniversalValueNode());
+                break;
+            }
+            case BitCast:
+            {
+                Node destNode = getPointerNode(inst);
+                destNode.setRepresentative(getPointerNode(inst.operand(0)));
+                break;
+            }
+        }
         return null;
     }
 
     @Override
-    public Void visitAlloca(Instruction.AllocaInst inst)
+    public Void visitAllocationInst(AllocationInst inst)
     {
+        Node srcNode = getPointerNode(inst);
+        assert srcNode != null:"The operand of allocation inst isn't collected in identifyObjects method!";
+        Node destNode = getValueNode(inst);
+        destNode.setRepresentative(srcNode);
         return null;
     }
 
+    /**
+     * This LLVM instruction is viewed as "a = *b" constraint in original
+     * Steensgaard's paper.
+     * @param inst
+     * @return
+     */
     @Override
     public Void visitLoad(Instruction.LoadInst inst)
     {
+        Node valNode = getValueNode(inst);
+        Node ptrNode = getPointerNode(inst.operand(0));
+        Node derefNode = ptrNode.getRepresentativeNode();
+        assert derefNode != null:"Deref Node shouldn't be null!";
+        valNode.setRepresentative(derefNode);
         return null;
     }
 
+    /**
+     * This LLVM instruction is viewed as "*a = b" constraint in original
+     * Steensgaard's paper.
+     * @param inst
+     * @return
+     */
     @Override
     public Void visitStore(Instruction.StoreInst inst)
     {
+        Node valNode = getValueNode(inst.operand(0));
+        Node ptrNode = getPointerNode(inst.operand(1));
+        assert valNode != null && ptrNode != null;
+
+        Node derefNode = ptrNode.getRepresentativeNode();
+        if (derefNode == null)
+        {
+            ptrNode.setRepresentative(valNode);
+            return null;
+        }
+        derefNode.setRepresentative(valNode);
         return null;
     }
 
     @Override
     public Void visitCall(Instruction.CallInst inst)
     {
+        // We would take two steps to handle constraints on the Call instruction as follows.
+        // Step 1: treat all passing argument as copy constraint.
+        if (inst.getCalledFunction().isVarArg())
+        {
+            assert false:"We currently don't handle vararg function call!";
+            return null;
+        }
+        Function calledFn = inst.getCalledFunction();
+        for (int i = 0, e = inst.getNumsOfArgs(); i < e; i++)
+        {
+            Value arg = inst.argumentAt(i);
+            if (!arg.getType().isPointerType())
+                continue;
+            Value param = calledFn.argAt(i);
+            getPointerNode(param).setRepresentative(getValueNode(arg));
+        }
+        // Step 2: treat the return value as copy constraint.
+        if (!inst.getType().isPointerType())
+            return null;
+        Node destNode = getPointerNode(inst);
+        assert returnNodes.containsKey(calledFn):"Called Function has been identified yet?";
+        int retId = returnNodes.get(calledFn);
+        Node returnNode = getReturnNode(retId);
+        assert destNode != null && returnNode != null;
+        destNode.setRepresentative(returnNode);
         return null;
     }
 
+    /**
+     * Since the field-insensitive of Steensgaard's algorithm, we don't discriminate
+     * each field of aggregate object, such as Array, struct or union. So that the
+     * pointer node of each aggregate is represented by the first operand's node.
+     * @param inst
+     * @return
+     */
     @Override
     public Void visitGetElementPtr(Instruction.GetElementPtrInst inst)
     {
+        Node destNode = getPointerNode(inst);
+        assert destNode != null:"The GEP instruction isn't handled yet in identifyObjects() method!";
+        Node srcNode = getPointerNode(inst.operand(0));
+        destNode.setRepresentative(srcNode);
         return null;
     }
 
     @Override
     public Void visitPhiNode(Instruction.PhiNode inst)
     {
+        // Only those phi node with type of pointer are needed to be handled.
+        if (!inst.getType().isPointerType())
+            return null;
+
+        Node srcNode = null;
+        for (int i = 0, e = inst.getNumberIncomingValues(); i < e; i++)
+        {
+            if (srcNode == null)
+                srcNode = getValueNode(inst.getIncomingValue(i));
+            else
+            {
+                srcNode.setRepresentative(getValueNode(inst.getIncomingValue(i)));
+            }
+        }
+        Node destNode = getPointerNode(inst);
+        assert srcNode != null:"A null phi?";
+        destNode.setRepresentative(srcNode);
+        return null;
+    }
+
+    /**
+     * This method works as same as {@linkplain #visitPhiNode(Instruction.PhiNode)}.
+     * It simplicitly merge all values into a representative one.
+     * @param inst
+     * @return
+     */
+    @Override
+    public Void visitSelect(SelectInst inst)
+    {
+        if (!inst.getType().isPointerType())
+            return null;
+        Node destNode = getPointerNode(inst);
+        Node src1Node = getValueNode(inst.getTrueValue());
+        Node src2Node = getValueNode(inst.getFalseValue());
+        assert destNode != null && src1Node != null && src2Node != null;
+        src2Node.setRepresentative(src1Node);
+        destNode.setRepresentative(src1Node);
         return null;
     }
 }
