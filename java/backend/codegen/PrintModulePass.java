@@ -19,7 +19,7 @@ package backend.codegen;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.value.Module;
 
 import java.io.IOException;

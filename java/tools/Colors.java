@@ -1,4 +1,3 @@
-package backend.MC;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Xlous Zeng.
@@ -7,7 +6,7 @@ package backend.MC;
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,22 +15,22 @@ package backend.MC;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.AsmPrinter;
-import tools.FormattedOutputStream;
-import backend.target.TargetAsmInfo;
-
+package tools;
 /**
+ * This class defines various of colors used for setting the background or
+ * foreground color of output stream.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MCStreamer
+public enum Colors
 {
-    public static MCStreamer createAsmStreamer(
-            MCContext context,
-            FormattedOutputStream os,
-            TargetAsmInfo tai,
-            AsmPrinter printer)
-    {
-        return new MCStreamer();
-    }
+    BLACK,
+    RED,
+    GREEN,
+    YELLOW,
+    BLUE,
+    MAGENTA,
+    CYAN,
+    WHITE,
+    SAVEDCOLOR
 }

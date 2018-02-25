@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;

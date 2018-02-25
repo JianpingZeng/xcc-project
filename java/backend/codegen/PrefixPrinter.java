@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 
 import java.io.PrintStream;
 

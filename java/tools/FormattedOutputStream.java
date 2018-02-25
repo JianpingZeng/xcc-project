@@ -1,12 +1,12 @@
 /*
- * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous zeng.
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2018, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,11 +15,12 @@
  * permissions and limitations under the License.
  */
 
-package backend.support;
+package tools;
 
-import tools.Util;
-
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -202,5 +203,41 @@ public final class FormattedOutputStream implements AutoCloseable
         int num = newCols - curCol;
         if (num <= 1) num = 1;
         print(Util.fixedLengthString(num, ' '));
+    }
+    /**
+     * Changes the foreground or background color of this output stream.
+     * This version differs from {@linkplain #changeColor(Colors, boolean, boolean)}
+     * in the third argument which set in false by default.
+     * @param colors    The color which stream would be set.
+     * @param bold  Indicates if the font is bold in screen.
+     */
+    public void changeColor(Colors colors, boolean bold)
+    {
+        changeColor(colors, bold, false);
+    }
+    /**
+     * Changes the foreground or background color of this output stream.
+     * @param colors    The color which stream would be set.
+     * @param bold  Indicates if the font is bold in screen.
+     * @param foreground    Indicates we should change the color of foreground or background.
+     */
+    public FormattedOutputStream changeColor(Colors colors, boolean bold, boolean foreground)
+    {
+        String colorCode = colors == Colors.SAVEDCOLOR?ColorCode.getWhiteBold():
+                ColorCode.getColorCode(colors, bold, foreground);
+        return changeColorInternal(colorCode);
+    }
+
+    public FormattedOutputStream resetColor()
+    {
+        return changeColorInternal(ColorCode.getResetColor());
+    }
+
+    private FormattedOutputStream changeColorInternal(String colorCode)
+    {
+        int len = colorCode.length();
+        print(colorCode);
+        curPos -= len;
+        return this;
     }
 }

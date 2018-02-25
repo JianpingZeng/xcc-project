@@ -17,6 +17,7 @@ package backend.support;
  */
 
 import backend.type.*;
+import tools.FormattedOutputStream;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

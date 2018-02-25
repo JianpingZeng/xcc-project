@@ -22,7 +22,7 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.BackendCmdOptions;
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.support.NameMangler;
 import backend.target.*;

@@ -445,10 +445,13 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
         while (!parser.parseTopLevel(declsGroup)) // Not end of file.
         {
-            consumer.handleTopLevelDecls(declsGroup);
+            // If There are error occur or no non-null top level declaration found,
+            // it is not needed to continue next step.
+            if (!pp.getDiagnostics().hasErrorOccurred() && !declsGroup.isEmpty())
+                consumer.handleTopLevelDecls(declsGroup);
         }
-
-        consumer.handleTranslationUnit(ctx);
+        if (!pp.getDiagnostics().hasErrorOccurred())
+            consumer.handleTranslationUnit(ctx);
     }
 
     private PrintStream computeOutFile(
