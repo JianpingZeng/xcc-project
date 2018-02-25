@@ -2,6 +2,7 @@ package backend.value;
 
 import backend.support.*;
 import backend.type.Type;
+import tools.FormattedOutputStream;
 import tools.Util;
 
 import java.io.PrintStream;

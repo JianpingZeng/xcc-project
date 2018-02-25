@@ -1,7 +1,7 @@
 package backend.value;
 
 import backend.support.AssemblyWriter;
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.support.SlotTracker;
 import backend.support.ValueSymbolTable;
 import backend.type.FunctionType;

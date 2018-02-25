@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;

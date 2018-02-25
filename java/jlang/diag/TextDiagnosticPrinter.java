@@ -16,9 +16,11 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.*;
+import jlang.basic.SourceManager;
 import jlang.clex.Lexer;
 import jlang.support.*;
+import tools.Colors;
+import tools.FormattedOutputStream;
 import tools.Pair;
 import tools.Util;
 
@@ -31,25 +33,16 @@ import java.util.Arrays;
  */
 public final class TextDiagnosticPrinter implements DiagnosticClient
 {
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_PURPLE = "\u001B[35m";
-    public static final String ANSI_CYAN = "\u001B[36m";
-    public static final String ANSI_WHITE = "\u001B[37m";
-
-    static final String CaretColor = ANSI_RED;
-    static final String noteColor = ANSI_CYAN;
-    static final String fixItColor = ANSI_GREEN;
-    static final String warnColor = ANSI_PURPLE;
-    static final String errorColor = ANSI_RED;
-    static final String fatalColor = ANSI_RED;
+    private static final Colors CaretColor = Colors.GREEN;
+    private static final Colors noteColor = Colors.CYAN;
+    private static final Colors fixItColor = Colors.GREEN;
+    private static final Colors warnColor = Colors.MAGENTA;
+    private static final Colors errorColor = Colors.RED;
+    private static final Colors fatalColor = Colors.RED;
+    private static final Colors SavedColor = Colors.SAVEDCOLOR;
 
 
-    private PrintStream os;
+    private FormattedOutputStream os;
     private LangOptions langOpts;
     private SourceLocation lastWarningLoc;
     private FullSourceLoc lastLoc;
@@ -79,7 +72,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             boolean printRangeInfo, boolean printDiagnosticOption,
             boolean printFixItInfo, int messageLength, boolean useColors)
     {
-        this.os = os;
+        this.os = new FormattedOutputStream(os);
         lastWarningLoc = SourceLocation.NOPOS;
         lastLoc = new FullSourceLoc();
         this.lastCaretDiagnosticWasNote = false;
@@ -233,15 +226,18 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
 
             if (showLocation)
             {
+                if (useColors)
+                    os.changeColor(Colors.SAVEDCOLOR, true);
                 Pair<FileID, Integer> locInfo = sgr.getDecomposedInstantiationLoc(loc);
 
                 os.printf("%s:%d:", sgr.getBuffer(locInfo.first).getBufferName(),
                         sgr.getLineNumber(locInfo.first, locInfo.second));
                 if (showColumn)
                     os.printf("%d:", sgr.getColumnNumber(locInfo.first, locInfo.second));
-                ;
                 os.print(' ');
             }
+            if (useColors)
+                os.resetColor();
             os.println("note: instantiated from:");
 
             emitCaretDiagnostic(loc, ranges, sgr, hints, columns);
@@ -356,17 +352,24 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         // Emit what we have computed.
         os.println(sourceLine.toString());
         if (useColors)
-            os.println(CaretColor + caretLine.toString() + ANSI_RESET);
+            os.changeColor(SavedColor, true);
+
+        if (useColors)
+            os.changeColor(CaretColor, true);
+        os.println(caretLine.toString());
+
+        if (useColors)
+            os.resetColor();
 
         if (fixtItInsertionLine.length() != 0)
         {
             if (useColors)
-                os.print(fixItColor);
+                os.changeColor(fixItColor, true);
             if (printRangeInfo)
                 os.print(' ');
             os.print(fixtItInsertionLine.toString());
             if (useColors)
-                os.print(ANSI_RESET);
+                os.resetColor();
             os.println();
         }
     }
@@ -551,6 +554,9 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
 
             if (showLocation)
             {
+                if (useColors)
+                    os.changeColor(SavedColor, true);
+
                 os.printf("%s:%d:", ploc.getFilename(), lineNo);
                 if (showColumn)
                 {
@@ -603,15 +609,18 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         }
 
         if (useColors)
+            os.resetColor();
+
+        if (useColors)
         {
             // Print diagnostic category in bold and color
             switch (diagLevel)
             {
                 case Ignored: assert false:"Invalid diagnostic type!";
-                case Note: os.print(noteColor); break;
-                case Warning: os.print(warnColor); break;
-                case Error: os.print(errorColor); break;
-                case Fatal: os.print(fatalColor); break;
+                case Note: os.changeColor(noteColor, true); break;
+                case Warning: os.changeColor(warnColor, true); break;
+                case Error: os.changeColor(errorColor, true); break;
+                case Fatal: os.changeColor(fatalColor, true); break;
             }
         }
 
@@ -625,7 +634,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         }
 
         if (useColors)
-            os.print(ANSI_RESET);
+            os.resetColor();
 
         StringBuilder outStr = new StringBuilder();
         info.formatDiagnostic(outStr);
@@ -640,11 +649,23 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                 outStr.append(']');
             }
         }
-
+        if (useColors)
+        {
+            switch (diagLevel)
+            {
+                case Warning:
+                case Error:
+                case Fatal:
+                    os.changeColor(SavedColor, true);
+                    break;
+                default:
+                    break;
+            }
+        }
         os.println(outStr.toString());
-
         if(useColors)
-            os.print(ANSI_RESET);
+            os.resetColor();
+
         if (((!lastLoc.equals(info.getLocation())) || info.getNumRanges() != 0
                 || (lastCaretDiagnosticWasNote
                 && diagLevel != Diagnostic.Level.Note)
@@ -679,7 +700,5 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                         info.getFixItHints(), messageLength);
             }
         }
-
-        os.flush();
     }
 }

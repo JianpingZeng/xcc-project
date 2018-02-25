@@ -109,7 +109,7 @@ class PreprocessorFactory
         });
 
         // Append a line terminator into predefinedBuffer.
-        predefinedBuffer.append('\n');
+        predefinedBuffer.append("\n");
 
         pp.setPredefines(predefinedBuffer.toString());
         // Once we are reaching this, done!

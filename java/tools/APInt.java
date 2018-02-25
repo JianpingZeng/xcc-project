@@ -17,8 +17,6 @@
 
 package tools;
 
-import backend.support.FormattedOutputStream;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;

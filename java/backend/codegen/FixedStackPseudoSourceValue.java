@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 
 /**
  * A specialized PseudoSourceValue for holding FixedStack values, which must

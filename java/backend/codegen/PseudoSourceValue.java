@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.support.FormattedOutputStream;
+import tools.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.value.Value;
 import gnu.trove.map.hash.TIntObjectHashMap;
