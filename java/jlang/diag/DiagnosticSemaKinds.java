@@ -615,7 +615,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_UNINTIALIZED_MEMBER(err_unintialized_member,CLASS_ERROR, MAP_ERROR, "cannot define the implicit default constructor for %0, because %select{reference|const}1 member %2 cannot be default-initialized"),
 	ERR_UNION_AS_BASE_CLASS(err_union_as_base_class,CLASS_ERROR, MAP_ERROR, "unions cannot be base classes"),
 	ERR_UNKNOWN_MACHINE_MODE(err_unknown_machine_mode,CLASS_ERROR, MAP_ERROR, "unknown machine mode %0"),
-	ERR_UNSUPPORTED_GLOBAL_REGISTER(err_unsupported_global_register,CLASS_ERROR, MAP_ERROR, "global register variables are not supported"),
+	ERR_UNSUPPORTED_GLOBAL_REGISTER(err_unsupported_global_register,CLASS_ERROR, MAP_ERROR, "illegal storage class on file-scoped variable"),
 	ERR_UNSUPPORTED_MACHINE_MODE(err_unsupported_machine_mode,CLASS_ERROR, MAP_ERROR, "unsupported machine mode %0"),
 	ERR_UNSUPPORTED_PRAGMA_WEAK(err_unsupported_pragma_weak,CLASS_ERROR, MAP_ERROR, "using '#pragma weak' to refer to an undeclared identifier is not yet supported"),
 	ERR_UNSUPPORTED_VECTOR_SIZE(err_unsupported_vector_size,CLASS_ERROR, MAP_ERROR, "unsupported type %0 for vector_size attribute, please use on typedef"),

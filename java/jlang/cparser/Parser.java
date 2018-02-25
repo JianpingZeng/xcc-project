@@ -4977,6 +4977,7 @@ public class Parser implements Tag,
             case sub:
             case tilde:
             case bar:
+            case bang:
             case __Real__:  // unary-expression: '__real' cast-expresion [GNU]
             case __Imag:    // unary-expression: '__imag' cast-expresion [GNU]
             {
