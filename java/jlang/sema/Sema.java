@@ -5131,7 +5131,7 @@ public final class Sema implements DiagnosticParseTag,
                 break;
             case BO_LAnd:
             case BO_LOr:
-                resultTy = checkLogicalOperands(x, y, opLoc, opc);
+                resultTy = checkLogicalOperands(lhs, rhs, opLoc);
                 break;
             case BO_MulAssign:
             case BO_DivAssign:
@@ -5201,7 +5201,7 @@ public final class Sema implements DiagnosticParseTag,
                 break;
             }
             case BO_Comma:
-                resultTy = checkCommaOperands(x, y, opLoc);
+                resultTy = checkCommaOperands(lhs, y, opLoc);
                 break;
         }
 
@@ -7353,27 +7353,35 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation opLoc,
             boolean isCompAssign)
     {
-        // TODO: 2017/3/28
-        return null;
+        QualType compType = usualArithmeticConversions(lhs, rhs, isCompAssign);
+        QualType lhsType = lhs.get().get().getType();
+        QualType rhsType = rhs.get().get().getType();
+        if (lhsType.isIntegerType() && rhsType.isIntegerType())
+            return compType;
+
+        return invalidOperands(opLoc, lhs.get().get(), rhs.get().get());
     }
 
     private QualType checkLogicalOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
-            SourceLocation opLoc,
-            BinaryOperatorKind opc)
+            Expr lhs,
+            Expr rhs,
+            SourceLocation opLoc)
     {
-        // TODO: 2017/3/28
-        return null;
+        lhs = usualUnaryConversions(lhs).get();
+        rhs = usualUnaryConversions(rhs).get();
+        if (rhs.getType().isScalarType() && rhs.getType().isScalarType())
+            return context.IntTy;
+
+        return invalidOperands(opLoc, lhs, rhs);
     }
 
     private QualType checkCommaOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
+            Expr lhs,
             OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation loc)
     {
-        // TODO: 2017/4/9
-        return null;
+        rhs.set(defaultFunctionArrayConversion(rhs.get().get()));
+        return rhs.get().get().getType();
     }
 
     public static BinaryOperatorKind convertTokenKindToBinaryOpcode(TokenKind tokenKind)
