@@ -145,7 +145,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         backend.type.Type dstTy = convertType(destTy);
 
         // Ignore conversions like int -> uint.
-        if(v.getType() == dstTy)
+        if(v.getType().equals(dstTy))
             return v;
 
         // Handle pointer conversions: pointer can only be converted
@@ -991,7 +991,17 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         return emitCastExpr(op, expr.getType());
     }
 
-	/**
+    @Override
+    public Value visitExplicitCastExpr(Tree.ExplicitCastExpr expr)
+    {
+        if (expr.getType().isVariablyModifiedType())
+        {
+            assert false:"VLA not supported yet!";
+        }
+        return emitCastExpr(expr.getSubExpr(), expr.getType());
+    }
+
+    /**
      * emit code for an explicit or implicit cast.  Implicit casts
      * have to handle a more broad range of conversions than explicit casts, as they
      * handle things like function to ptr-to-function decay etc.
@@ -1004,7 +1014,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (!destTy.isVoidType())
             testAndClearIgnoreResultAssign();
 
-        if (!cgf.hasAggregateBackendType(expr.getType()))
+        if (!CodeGenFunction.hasAggregateLLVMType(expr.getType()))
         {
             Value src = visit(expr);
             // Use EmitScalarConversion to perform the conversion.

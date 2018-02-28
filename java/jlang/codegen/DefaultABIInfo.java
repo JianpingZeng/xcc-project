@@ -30,7 +30,7 @@ public class DefaultABIInfo implements ABIInfo
 {
     private ABIArgInfo classifyReturnType(QualType retType)
     {
-        if (CodeGenFunction.hasAggregateBackendType(retType))
+        if (CodeGenFunction.hasAggregateLLVMType(retType))
             return ABIArgInfo.getIndirect(0);
 
         return retType.isPromotableIntegerType() ? ABIArgInfo.getExtend()
@@ -39,7 +39,7 @@ public class DefaultABIInfo implements ABIInfo
 
     private ABIArgInfo classifyArgumentType(QualType argType)
     {
-        if (CodeGenFunction.hasAggregateBackendType(argType))
+        if (CodeGenFunction.hasAggregateLLVMType(argType))
             return ABIArgInfo.getIndirect(0);
 
         return argType.isPromotableIntegerType() ? ABIArgInfo.getExtend()

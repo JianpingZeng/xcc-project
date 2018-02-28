@@ -290,7 +290,7 @@ public final class CodeGenFunction
 				case Indirect:
 				{
 					Value v = fn.argAt(ai);
-					if (hasAggregateBackendType(ty))
+					if (hasAggregateLLVMType(ty))
 					{
 						// Do nothing, aggregates and complex variables are accessed by
 						// reference.
@@ -317,7 +317,7 @@ public final class CodeGenFunction
 				{
 					assert ai != aiEnd : "Argument mismatch!";
 					Value v = fn.argAt(ai);
-					if (hasAggregateBackendType(ty))
+					if (hasAggregateLLVMType(ty))
 					{
 						// Create a temporary alloca to hold the argument; the rest of
 						// codegen expects to access aggregates & complex values by
@@ -356,7 +356,7 @@ public final class CodeGenFunction
 				case Ignore:
 				{
 					// Initialize the local variable appropriately.
-					if (hasAggregateBackendType(ty))
+					if (hasAggregateLLVMType(ty))
 						emitParamDecl(arg, createTempAlloca(convertTypeForMem(ty)));
 					else
 						emitParamDecl(arg, Value.UndefValue.get(convertType(arg.getType())));
@@ -370,7 +370,7 @@ public final class CodeGenFunction
 
                     Value temp = createTempAlloca(convertTypeForMem(ty), "coerce");
                     createCoercedStore(fn.argAt(ai), temp, this);
-                    if (!hasAggregateBackendType(ty))
+                    if (!hasAggregateLLVMType(ty))
                     {
                         temp = emitLoadOfScalar(temp, false, ty);
                         if (!getContext().isCompatible(ty, arg.getType()))
@@ -448,7 +448,7 @@ public final class CodeGenFunction
             QualType ft = fd.getType();
 
             LValue lv = emitLValueForField(addr, fd, false, 0);
-            if (hasAggregateBackendType(ft))
+            if (hasAggregateLLVMType(ft))
                 ai = expandTypeFromArgs(ft, lv, fn, ai);
             else
             {
@@ -471,7 +471,7 @@ public final class CodeGenFunction
 	 */
 	private Value emitScalarConversion(Value v, QualType srcTy, QualType destTy)
 	{
-		assert !hasAggregateBackendType(srcTy) && !hasAggregateBackendType(
+		assert !hasAggregateLLVMType(srcTy) && !hasAggregateLLVMType(
 				destTy) : "Invalid scalar expression to emit!";
 		return new ScalarExprEmitter(this)
 				.emitScalarConversion(v, srcTy, destTy);
@@ -527,7 +527,7 @@ public final class CodeGenFunction
 		return generator.getCodeGenTypes().convertTypeForMem(ty);
 	}
 
-	public static boolean hasAggregateBackendType(QualType ty)
+	public static boolean hasAggregateLLVMType(QualType ty)
 	{
 		return !ty.isPointerType() && !ty.isRealType() && !ty.isVoidType()
 				&& !ty.isFunctionType();
@@ -994,7 +994,7 @@ public final class CodeGenFunction
 		{
 			// Do nothing.
 		}
-		else if (!hasAggregateBackendType(resultVal.getType()))
+		else if (!hasAggregateLLVMType(resultVal.getType()))
 		{
 			// The type of return stmt is not aggregate type.
 			builder.createStore(emitScalarExpr(resultVal), returnValue);
@@ -1023,7 +1023,7 @@ public final class CodeGenFunction
 	public RValue emitAnyExpr(Expr e, Value aggLoc, boolean isAggLocVolatile,
 			boolean ignoreResult, boolean isInitializer)
 	{
-		if (!hasAggregateBackendType(e.getType()))
+		if (!hasAggregateLLVMType(e.getType()))
 			return get(emitScalarExpr(e));
 		else if (e.getType().isComplexType())
 		{
@@ -1303,7 +1303,7 @@ public final class CodeGenFunction
 
 		if (init != null)
 		{
-            if (!hasAggregateBackendType(init.getType()))
+            if (!hasAggregateLLVMType(init.getType()))
 			{
 				Value v = emitScalarExpr(init);
 				emitStoreOfScalar(v, declPtr, vd.getType());
@@ -1368,7 +1368,7 @@ public final class CodeGenFunction
 
 	public Value emitScalarExpr(Tree.Expr expr)
 	{
-		assert expr != null && !hasAggregateBackendType(
+		assert expr != null && !hasAggregateLLVMType(
 				expr.getType()) : "Invalid scalar expression to emit";
 		return new ScalarExprEmitter(this).visit(expr);
 	}
@@ -1391,7 +1391,7 @@ public final class CodeGenFunction
 	public void emitAggExpr(Tree.Expr expr, Value destPtr, boolean ignoreResult,
 			boolean isInitializer)
 	{
-		assert expr != null && hasAggregateBackendType(expr.getType())
+		assert expr != null && hasAggregateLLVMType(expr.getType())
 				: "Invalid aggregate expression to emit";
 		if (destPtr == null)
 			return;
@@ -1717,7 +1717,7 @@ public final class CodeGenFunction
                     {
                         // TODO complex type.
                     }
-                    else if (hasAggregateBackendType(retTy))
+                    else if (hasAggregateLLVMType(retTy))
                     {
                         emitAggregateCopy(curFn.getArgumentList().get(0),
                                 returnValue, retTy, false);
@@ -2161,6 +2161,8 @@ public final class CodeGenFunction
 		CallSite cs = new CallSite(builder.createCall(callee, args));
 
 		Instruction.CallInst ci = cs.getInstruction();
+		ci.setCallingConv(curFn.getCallingConv());
+
 		if (ci.getType() != LLVMContext.VoidTy)
 			ci.setName("call");
 
@@ -2172,7 +2174,7 @@ public final class CodeGenFunction
 					// TODO complex type.
 					return null;
 				}
-				if (hasAggregateBackendType(retType))
+				if (hasAggregateLLVMType(retType))
 				{
 					// Handles return value as aggregate type.
 					return getAggregate(args.get(0));
@@ -2185,7 +2187,7 @@ public final class CodeGenFunction
 					// TODO complex type.
 					return null;
 				}
-				if (hasAggregateBackendType(retType))
+				if (hasAggregateLLVMType(retType))
 				{
 					// emit the returned value of type aggregate type.
 					Value v = createTempAlloca(convertTypeForMem(retType),
@@ -2206,7 +2208,7 @@ public final class CodeGenFunction
                 {
                     assert false:"Complex type is unsupported!";
                 }
-                if (hasAggregateBackendType(retType))
+                if (hasAggregateLLVMType(retType))
                 {
                     return RValue.getAggregate(v);
                 }
@@ -2237,7 +2239,7 @@ public final class CodeGenFunction
             QualType ft = fd.getType();
 
             LValue lv = emitLValueForField(addr, fd, false, 0);
-            if (hasAggregateBackendType(ft))
+            if (hasAggregateLLVMType(ft))
             {
                 expandTypeToArgs(ft, getAggregate(lv.getAddress()), args);
             }
@@ -2262,7 +2264,7 @@ public final class CodeGenFunction
 			Value u = Value.UndefValue.get(eltType);
 			return getComplex(u, u);
 		}
-		else if (hasAggregateBackendType(type))
+		else if (hasAggregateLLVMType(type))
 		{
 			Type lty = PointerType.getUnqual(convertType(type));
 			return getAggregate(Value.UndefValue.get(lty));
@@ -2548,7 +2550,7 @@ public final class CodeGenFunction
 		{
 			// TODO complex type.
 		}
-		else if (hasAggregateBackendType(expr.getType()))
+		else if (hasAggregateLLVMType(expr.getType()))
 			emitAnyExpr(initExpr, declPtr, false, false,false);
 		else
 			emitStoreThroughLValue(emitAnyExpr(initExpr), result, expr.getType());;
@@ -2571,7 +2573,7 @@ public final class CodeGenFunction
 			boolean isInitializer)
 	{
 		Value aggLoc = null;
-		if (hasAggregateBackendType(expr.getType()) && !expr.getType()
+		if (hasAggregateLLVMType(expr.getType()) && !expr.getType()
 				.isComplexType())
 		{
 			aggLoc = createTempAlloca(convertType(expr.getType()));
