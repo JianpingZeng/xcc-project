@@ -406,6 +406,14 @@ public class StmtDumper extends StmtVisitor<Void>
     }
 
     @Override
+    public Void visitImplicitCastExpr(Tree.ImplicitCastExpr expr)
+    {
+        dumpExpr(expr);
+        os.printf(" <%s>", expr.getCastKind().getName());
+        return null;
+    }
+
+    @Override
     public Void visitMemberExpr(Tree.MemberExpr expr)
     {
         dumpExpr(expr);

@@ -276,7 +276,7 @@ public class Parser implements Tag,
     public boolean parseTopLevel(ArrayList<Decl> result)
     {
         assert result != null;
-
+        result.clear();
         if (nextTokenIs(eof))
         {
             action.actOnEndOfTranslationUnit();
