@@ -156,6 +156,9 @@ public class CallLowering
     public void setArgFlags(ArgInfo argInfo, int opIdx, TargetData td, CallInst ci)
     {
         AttrList attrs = ci.getAttributes();
+        // FIXME atts would be used in future! 2018/2/28
+        if (attrs == null) return;
+
         if (attrs.paramHasAttr(opIdx,Attribute.ZExt))
             argInfo.flags.setZExt();
         if (attrs.paramHasAttr(opIdx, Attribute.SExt))

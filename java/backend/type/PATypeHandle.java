@@ -65,4 +65,9 @@ public class PATypeHandle
     {
         return ty;
     }
+
+    public void setType(Type newTy)
+    {
+        ty = newTy;
+    }
 }

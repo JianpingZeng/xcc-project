@@ -341,7 +341,7 @@ public class CodeGenTypes
             assert !fd.isBitField():"Canot expand structure with bit field members";
 
             QualType fdTy = fd.getType();
-            if (CodeGenFunction.hasAggregateBackendType(fdTy))
+            if (CodeGenFunction.hasAggregateLLVMType(fdTy))
             {
                 getExpandedTypes(fdTy, argTys);
             }

@@ -365,7 +365,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         {
             // // TODO: 2016/11/9
         }
-        else if (cgf.hasAggregateBackendType(init.getType()))
+        else if (cgf.hasAggregateLLVMType(init.getType()))
             cgf.emitAnyExpr(init, lv.getAddress(), false, false, false);
         else
             cgf.emitStoreThroughLValue(cgf.emitAnyExpr(init), lv, init.getType());
@@ -379,7 +379,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
      */
     public void emitNullInitializationToLValue(LValue lv, QualType ty)
     {
-        if (!cgf.hasAggregateBackendType(ty))
+        if (!cgf.hasAggregateLLVMType(ty))
         {
             // For non-aggregate type, directly store zero.
             Value zero = Constant.getNullValue(cgf.convertType(ty));

@@ -77,13 +77,26 @@ public class PointerType extends SequentialType
     @Override
     public boolean equals(Object obj)
     {
-        if(obj == null) return false;
-        if(this == obj) return true;
-        if(getClass() != obj.getClass())
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (getClass() != obj.getClass())
             return false;
+        PointerType ty = (PointerType) obj;
+        return numElts == ty.getNumContainedTypes() && isAbstract == ty.isAbstract
+                && getAddressSpace() == ty.getAddressSpace() &&
+                (getElementType() == ty.getElementType() || getElementType().equals(ty.getElementType()));
+    }
 
-        PointerType ptr = (PointerType)obj;
-        return addressSpace == ptr.addressSpace &&
-                getElementType().equals(ptr.getElementType());
+    @Override
+    public void refineAbstractType(DerivedType oldTy, Type newTy)
+    {
+        assert oldTy != newTy;
+        for (int i = 0, e = getNumContainedTypes(); i < e; i++)
+        {
+            if (containedTys[i].getType() == oldTy)
+                containedTys[i].setType(newTy);
+        }
+        oldTy.abstractTypeUsers.remove(this);
+        isAbstract = false;
     }
 }

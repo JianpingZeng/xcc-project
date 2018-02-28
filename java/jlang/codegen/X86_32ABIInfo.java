@@ -144,7 +144,7 @@ public class X86_32ABIInfo implements ABIInfo
                 ft = cat.getElementType();
             }
 
-            if (!CodeGenFunction.hasAggregateBackendType(ft))
+            if (!CodeGenFunction.hasAggregateLLVMType(ft))
             {
                 found = ft.getType();
             }
@@ -204,7 +204,7 @@ public class X86_32ABIInfo implements ABIInfo
     {
         if (retType.isVoidType())
             return ABIArgInfo.getIgnore();
-        else if (CodeGenFunction.hasAggregateBackendType(retType))
+        else if (CodeGenFunction.hasAggregateLLVMType(retType))
         {
             // Structures with flexible arrays are always indirect.
             RecordType rt = retType.getAsStructureType();
@@ -265,7 +265,7 @@ public class X86_32ABIInfo implements ABIInfo
 
     private ABIArgInfo classifyArgumentType(QualType argType)
     {
-        if (CodeGenFunction.hasAggregateBackendType(argType))
+        if (CodeGenFunction.hasAggregateLLVMType(argType))
         {
             RecordType rt = argType.getAsStructureType();
             if (rt != null && rt.getDecl().hasFlexibleArrayNumber())
