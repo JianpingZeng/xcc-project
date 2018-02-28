@@ -45,11 +45,13 @@ public class JlangTool extends Tool
         Driver driver = c.getDriver();
         ArrayList<String> cmdStrings = new ArrayList<>();
 
-        assert inputs.size() == 1:"Unableto compile multiple files!";
+        assert inputs.size() == 1:"Unable to compile multiple files!";
 
         cmdStrings.add("-triple");
         cmdStrings.add(getToolChain().getTripleString());
 
+        // Add filename to be compiled.
+        cmdStrings.add(inputs.get(0).getFilename());
         if (ja instanceof Action.PreprocessJobAction)
         {
             if (output.getOutputType() == TY_Dependencies)
@@ -197,12 +199,11 @@ public class JlangTool extends Tool
                 cmdStrings.add("-fsigned-char=0");
         }
 
-        if (args.hasArg(OPT__fdiagnostics_show_option,
-                OPT__fno_diagnostics_show_option))
+        if (args.hasArg(OPT__fdiagnostics_show_option))
             cmdStrings.add("-fdiagnostics-show-option");
-        if (!args.hasArg(OPT__fcolor_diagnostics, OPT__fno_color_diagnostics))
+        if (args.hasArg(OPT__fno_color_diagnostics))
             cmdStrings.add("-fno-color-diagnostics");
-        if (!args.hasFlag(OPT__fshow_source_location, OPT__fno_show_source_location))
+        if (!args.hasArg(OPT__fno_show_source_location))
             cmdStrings.add("-fno-show-source-location");
 
         if ((arg = args.getLastArg(OPT__fdollars_in_identifiers,
@@ -211,7 +212,7 @@ public class JlangTool extends Tool
             if (arg.getOption().matches(OPT__fdollars_in_identifiers))
                 cmdStrings.add("-fdollars-in-identifiers=1");
             else
-                cmdStrings.add("-fdollars-in-identifiers=0");
+                cmdStrings.add("-fno-dollars-in-identifiers=0");
         }
         addPreprocessingOptions(driver, args, cmdStrings, output, inputs);
         return new Job.Command(ja, getToolChain().getCompiler(), cmdStrings);
