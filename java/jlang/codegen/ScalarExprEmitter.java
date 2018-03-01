@@ -972,7 +972,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 assert v.getType() instanceof PointerType;
                 assert ((PointerType)v.getType()).getElementType() instanceof backend.type.ArrayType;
 
-                v = null; //TODO builder.createStructGEP(v, 0, "arraydecay");
+                v = null; //TODO builder.createStructGEPInbounds(v, 0, "arraydecay");
             }
 
             Type destTy = convertType(expr.getType());

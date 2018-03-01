@@ -298,7 +298,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
 
             for (int i = 0; i < numArrayElts; i++)
             {
-                Value nextValue = builder.createStructGEP(destPtr, i, ".array");
+                Value nextValue = builder.createStructGEPInbounds(destPtr, i, ".array");
                 if (i < numInitElements)
                     emitInitializationToLValue(expr.getInitAt(i),
                             LValue.makeAddr(nextValue, cvrQualifiers));
