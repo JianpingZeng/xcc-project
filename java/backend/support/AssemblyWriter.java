@@ -1546,7 +1546,7 @@ public class AssemblyWriter
         for (Map.Entry<String, Type> entry : st.entrySet())
         {
             printLLVMName(out, entry.getKey(), LocalPrefix);
-            out.print(" = type");
+            out.print(" = type ");
 
             typePrinter.printAtLeastOneLevel(entry.getValue(), out);
             out.println();

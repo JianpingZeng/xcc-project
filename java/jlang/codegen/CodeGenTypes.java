@@ -449,7 +449,7 @@ public class CodeGenTypes
         cgRecordLayout.put(key, layout);
         backend.type.Type resType = layout.getLLVMType();
         placeHolderType.refineAbstractTypeTo(resType);
-        return placeHolderType;
+        return placeHolderType.getForwardType();
     }
 
     private backend.type.Type convertNewType(QualType t)
