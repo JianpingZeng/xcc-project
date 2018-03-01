@@ -21,7 +21,6 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import tools.APInt;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -742,7 +741,9 @@ public class HIRBuilder
 
 	public Value createInBoundsGEP(Value ptr, Value idx, String name)
 	{
-		return insert(new GetElementPtrInst(ptr, idx, name));
+		GetElementPtrInst gep = new GetElementPtrInst(ptr, idx, name);
+		gep.setInbounds(true);
+		return insert(gep);
 	}
 
     /**
@@ -795,17 +796,34 @@ public class HIRBuilder
 		return insert(new CallInst(temp, callee));
 	}
 
-	public Value createStructGEP(Value base, int idx, String name)
+	public Value createStructGEPInbounds(Value base, int idx, String name)
 	{
-		return createStructGEP_32(base, 0, idx, name);
+		return createStructGEP32Inbounds(base, 0, idx, name);
 	}
 
-	private Value createStructGEP_32(Value base, int idx1, int idx2, String name)
+	public Value createStructGEP32Inbounds(Value base, int idx1, int idx2, String name)
 	{
 		ArrayList<Value> indices = new ArrayList<>();
 		indices.add(ConstantInt.get(LLVMContext.Int32Ty,idx1));
 		indices.add(ConstantInt.get(LLVMContext.Int32Ty,idx2));
-		return insert(new GetElementPtrInst(base, indices, name));
+		GetElementPtrInst gep = new GetElementPtrInst(base, indices, name);
+		gep.setInbounds(true);
+		return insert(gep);
+	}
+
+	public Value createStructGEPInbounds(Value base, long idx, String name)
+	{
+		return createStructGEP64Inbounds(base, 0, idx, name);
+	}
+
+	public Value createStructGEP64Inbounds(Value base, long idx1, long idx2, String name)
+	{
+		ArrayList<Value> indices = new ArrayList<>();
+		indices.add(ConstantInt.get(LLVMContext.Int64Ty,idx1));
+		indices.add(ConstantInt.get(LLVMContext.Int64Ty,idx2));
+		GetElementPtrInst gep = new GetElementPtrInst(base, indices, name);
+		gep.setInbounds(true);
+		return insert(gep);
 	}
 
 	/**

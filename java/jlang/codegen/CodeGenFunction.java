@@ -2493,7 +2493,7 @@ public final class CodeGenFunction
 			return emitLValueForBitField(baseValue, field, cvrQualifiers);
 
 		int idx = generator.getCodeGenTypes().getFieldNo(field);
-		Value v = builder.createStructGEP(baseValue, idx, "tmp");
+		Value v = builder.createStructGEPInbounds(baseValue, idx, "tmp");
 
 		// Match union field type.
 		if (isUnion)
