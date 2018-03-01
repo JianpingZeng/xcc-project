@@ -896,9 +896,8 @@ public class CodeGenTypes
 
     public int getFieldNo(FieldDecl field)
     {
-        assert field.isBitField():"Don't use getFieldNo on non-bitfield.";
+        assert !field.isBitField():"Don't use getFieldNo on bitfield.";
         assert fieldInfo.containsKey(field):"Unable to find field no!";
-
         return fieldInfo.get(field);
     }
 

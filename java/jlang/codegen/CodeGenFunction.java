@@ -264,9 +264,9 @@ public final class CodeGenFunction
 			Constant zero = Constant.getNullValue(backendTy);
 			builder.createStore(zero, returnValue);
 		}
-
-		assert fn.getNumOfArgs() == args.size()
-                : "Mismatch between function signature and argumens";
+		// Comment this because there is argument expansion of aggregate type.
+		//assert fn.getNumOfArgs() == args.size()
+        //        : "Mismatch between function signature and argumens";
 
         // emit alloca inst for param decls.  Give the HIR argument nodes names.
 		int ai = 0, aiEnd = fn.getNumOfArgs();

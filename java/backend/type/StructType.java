@@ -77,8 +77,7 @@ public class StructType extends CompositeType
 
     public static boolean isValidElementType(backend.type.Type elemTy)
     {
-        return  !(elemTy.equals(LLVMContext.VoidTy) || !elemTy.equals(
-                LLVMContext.LabelTy));
+        return !elemTy.equals(LLVMContext.VoidTy) && !elemTy.equals(LLVMContext.LabelTy);
     }
 
     protected StructType(ArrayList<Type> memberTypes, boolean packed)
