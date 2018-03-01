@@ -16,11 +16,14 @@ package backend.ir;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import tools.APInt;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -792,9 +795,17 @@ public class HIRBuilder
 		return insert(new CallInst(temp, callee));
 	}
 
-	public Value createStructGEP(Value baseValue, int idx, String name)
+	public Value createStructGEP(Value base, int idx, String name)
 	{
-		return null;
+		return createStructGEP_32(base, 0, idx, name);
+	}
+
+	private Value createStructGEP_32(Value base, int idx1, int idx2, String name)
+	{
+		ArrayList<Value> indices = new ArrayList<>();
+		indices.add(ConstantInt.get(LLVMContext.Int32Ty,idx1));
+		indices.add(ConstantInt.get(LLVMContext.Int32Ty,idx2));
+		return insert(new GetElementPtrInst(base, indices, name));
 	}
 
 	/**

@@ -331,7 +331,8 @@ public final class ASTRecordLayout
 	    public long[] getFieldOffsets()
 	    {
 		    long[] res = new long[fieldOffsets.size()];
-		    System.arraycopy(fieldOffsets.toArray(), 0, res, 0, res.length);
+        for (int i = 0; i < res.length; i++)
+          res[i] = fieldOffsets.get(i);
 		    return res;
 	    }
     }

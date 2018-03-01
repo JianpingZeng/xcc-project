@@ -43,8 +43,7 @@ JNIEnv* createVM(char* cmdPath)
     #else
         char absolute[4086] = {0};
     #endif
-    char* res = realpath(cmdPath, absolute);
-    res = res;  // to avoid warning on unused result
+    realpath(cmdPath, absolute);
     #ifdef NDEBUG
     cout<<absolute<<endl;
     #endif

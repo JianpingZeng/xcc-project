@@ -41,7 +41,7 @@ public class CGRecordLayoutBuilder
     private int alignment;
     private int alignmentAsLLVMStruct;
     private int bitsAvailableInLastField;
-    private long nextFielOffsetInBytes;
+    private long nextFieldOffsetInBytes;
     private ArrayList<backend.type.Type> fieldTypes;
 
     private ArrayList<Pair<Decl.FieldDecl, Integer>> llvmFields;
@@ -71,7 +71,7 @@ public class CGRecordLayoutBuilder
         alignment = 0;
         alignmentAsLLVMStruct = 1;
         bitsAvailableInLastField = 0;
-        nextFielOffsetInBytes = 0;
+        nextFieldOffsetInBytes = 0;
         fieldTypes = new ArrayList<>();
         llvmFields = new ArrayList<>();
         llvmBitFields = new ArrayList<>();
@@ -97,7 +97,7 @@ public class CGRecordLayoutBuilder
         // We weren't able to layout the struct, try again with a packed struct.
         packed = true;
         alignmentAsLLVMStruct = 1;
-        nextFielOffsetInBytes = 0;
+        nextFieldOffsetInBytes = 0;
         fieldTypes.clear();
         llvmFields.clear();
         llvmBitFields.clear();
@@ -187,8 +187,10 @@ public class CGRecordLayoutBuilder
         {
             Decl.FieldDecl field = d.getDeclAt(i);
             if (!layoutField(field, layout.getFieldOffsetAt(i)))
-                assert !packed :"Could not layout fields even with a packed LLVM struct!";
-            return false;
+            {
+                assert !packed : "Could not layout fields even with a packed LLVM struct!";
+                return false;
+            }
         }
 
         // Append tail padding if necessary.
@@ -222,7 +224,7 @@ public class CGRecordLayoutBuilder
             return false;
         }
 
-        long alignedNextFieldOffsetInBytes = roundUpAlignment(nextFielOffsetInBytes, typeAlignment);
+        long alignedNextFieldOffsetInBytes = roundUpAlignment(nextFieldOffsetInBytes, typeAlignment);
 
         if (fieldOffsetInBytes < alignedNextFieldOffsetInBytes)
         {
@@ -231,7 +233,7 @@ public class CGRecordLayoutBuilder
 
         if (alignedNextFieldOffsetInBytes < fieldOffsetInBytes)
         {
-            long paddingInBytes = fieldOffsetInBytes - nextFielOffsetInBytes;
+            long paddingInBytes = fieldOffsetInBytes - nextFieldOffsetInBytes;
             appendBytes(paddingInBytes);
         }
 
@@ -252,13 +254,13 @@ public class CGRecordLayoutBuilder
         if (fieldSize == 0)
             return;
 
-        long nextFieldOffset = nextFielOffsetInBytes * 8;
+        long nextFieldOffset = nextFieldOffsetInBytes * 8;
         int numBytesToAppend;
 
         if (fieldOffset < nextFieldOffset)
         {
             assert bitsAvailableInLastField != 0 :"Bitfield size mismatch";
-            assert nextFielOffsetInBytes != 0 :"Must have laid out at least one bytes!";
+            assert nextFieldOffsetInBytes != 0 :"Must have laid out at least one bytes!";
 
             numBytesToAppend = (int)roundUpAlignment(fieldSize - bitsAvailableInLastField, 8)/ 8;
         }
@@ -277,7 +279,7 @@ public class CGRecordLayoutBuilder
         llvmBitFields.add(new LLVMBitFieldInfo(d, (int)(fieldOffset / typeSizeInBits),
                 (int)(fieldOffset % typeSizeInBits),
                 (int)fieldSize));
-        bitsAvailableInLastField = (int)(nextFielOffsetInBytes * 8 - (fieldOffset + fieldSize));
+        bitsAvailableInLastField = (int)(nextFieldOffsetInBytes * 8 - (fieldOffset + fieldSize));
     }
 
     /**
@@ -290,7 +292,7 @@ public class CGRecordLayoutBuilder
         alignmentAsLLVMStruct = Math.max(alignmentAsLLVMStruct, getTypeAlignment(fieldTy));
         long fieldSizeInBytes = getTypeSizeInBytes(fieldTy);
         fieldTypes.add(fieldTy);
-        nextFielOffsetInBytes = fieldOffsetInBytes + fieldSizeInBytes;
+        nextFieldOffsetInBytes = fieldOffsetInBytes + fieldSizeInBytes;
         bitsAvailableInLastField = 0;
     }
 
@@ -314,12 +316,12 @@ public class CGRecordLayoutBuilder
      */
     private void appendPadding(long fieldOffsetInBytes, int fieldAlignment)
     {
-        assert nextFielOffsetInBytes <= fieldOffsetInBytes;
+        assert nextFieldOffsetInBytes <= fieldOffsetInBytes;
 
-        long alignedNextFieldOffsetInBytes = roundUpAlignment(nextFielOffsetInBytes, fieldAlignment);
+        long alignedNextFieldOffsetInBytes = roundUpAlignment(nextFieldOffsetInBytes, fieldAlignment);
         if (alignedNextFieldOffsetInBytes < fieldOffsetInBytes)
         {
-            long paddingInBytes = fieldOffsetInBytes - nextFielOffsetInBytes;
+            long paddingInBytes = fieldOffsetInBytes - nextFieldOffsetInBytes;
             appendBytes(paddingInBytes);
         }
     }
@@ -336,7 +338,7 @@ public class CGRecordLayoutBuilder
         if (numBytes > 1)
             ty = ArrayType.get(ty, numBytes);
 
-        appendField(nextFielOffsetInBytes, ty);
+        appendField(nextFieldOffsetInBytes, ty);
     }
 
     /**
@@ -349,9 +351,9 @@ public class CGRecordLayoutBuilder
         assert recordSize % 8 == 0:"Invalid record size";
 
         long recordSizeInBytes = recordSize / 8;
-        assert nextFielOffsetInBytes <= recordSizeInBytes :"Size mismatch!";
+        assert nextFieldOffsetInBytes <= recordSizeInBytes :"Size mismatch!";
 
-        int numPadBytes = (int)(recordSizeInBytes - nextFielOffsetInBytes);
+        int numPadBytes = (int)(recordSizeInBytes - nextFieldOffsetInBytes);
         appendBytes(numPadBytes);
     }
 
@@ -362,7 +364,7 @@ public class CGRecordLayoutBuilder
 
     private long getTypeSizeInBytes(backend.type.Type ty)
     {
-        return types.getTargetData().getTypeSizeInBits(ty);
+        return types.getTargetData().getTypeSizeInBits(ty)/8;
     }
 
     /**

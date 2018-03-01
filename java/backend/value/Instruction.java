@@ -3205,6 +3205,11 @@ public abstract class Instruction extends User
             this(ptr, idx, "", (Instruction)null);
         }
 
+        public GetElementPtrInst(Value ptr, List<Value> indices, String name)
+        {
+            this(ptr, indices, name, null);
+        }
+
         public GetElementPtrInst(Value ptr, List<Value> indices,
                 String name, Instruction insertBefore)
         {

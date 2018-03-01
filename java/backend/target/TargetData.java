@@ -454,7 +454,7 @@ public class TargetData implements ImmutablePass
 		{
 			structAlignment = 0;
 			structSize = 0;
-
+			memberOffsets = new ArrayList<>();
 			// Loop over each element in struct type, placing them in memory.
 			for (int i = 0,e = st.getNumOfElements(); i != e; i++)
 			{
