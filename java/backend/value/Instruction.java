@@ -1653,7 +1653,7 @@ public abstract class Instruction extends User
         public FCmpInst(Predicate pred, Value lhs,
                 Value rhs, String name, BasicBlock insertAtEnd)
         {
-            super(lhs.getType(), FCmp, pred, lhs, rhs, name, insertAtEnd);
+            super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, insertAtEnd);
             assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
                     :"Invalid FCmp predicate value";
             assert lhs.getType() == rhs.getType():
@@ -1664,7 +1664,7 @@ public abstract class Instruction extends User
 
         public FCmpInst(Predicate pred, Value lhs, Value rhs)
         {
-            super(lhs.getType(), FCmp, pred, lhs, rhs, "", (Instruction)null);
+            super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, "", (Instruction)null);
             assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
                     :"Invalid FCmp predicate value";
             assert lhs.getType() == rhs.getType():
@@ -1675,7 +1675,7 @@ public abstract class Instruction extends User
 
         public FCmpInst(Predicate pred, Value lhs, Value rhs, String name)
         {
-            super(lhs.getType(), FCmp, pred, lhs, rhs, name, (Instruction)null);
+            super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, (Instruction)null);
             assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
                     :"Invalid FCmp predicate value";
             assert lhs.getType() == rhs.getType():
@@ -1738,7 +1738,7 @@ public abstract class Instruction extends User
         public ICmpInst( Predicate pred, Value lhs,
                 Value rhs, String name, BasicBlock insertAtEnd)
         {
-            super(lhs.getType(), ICmp, pred, lhs, rhs, name, insertAtEnd);
+            super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, insertAtEnd);
             assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():
@@ -1750,7 +1750,7 @@ public abstract class Instruction extends User
         public ICmpInst( Predicate pred, Value lhs,
                 Value rhs)
         {
-            super(lhs.getType(), ICmp, pred, lhs, rhs, "", (Instruction) null);
+            super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, "", (Instruction) null);
             assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():
@@ -1759,22 +1759,10 @@ public abstract class Instruction extends User
                     "Invalid operand types for ICmp instruction";
         }
 
-        public ICmpInst( Predicate pred, Value lhs,
+        public ICmpInst(Predicate pred, Value lhs,
                 Value rhs, String name)
         {
-            super(lhs.getType(), ICmp, pred, lhs, rhs, name, (Instruction) null);
-            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
-                    :"Invalid ICmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType():
-                    "Invalid operand types for ICmp instruction";
-        }
-
-        public ICmpInst(Type ty, Predicate pred, Value lhs,
-                Value rhs, String name)
-        {
-            super(ty, ICmp, pred, lhs, rhs, name, (Instruction) null);
+            super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, (Instruction) null);
             assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():

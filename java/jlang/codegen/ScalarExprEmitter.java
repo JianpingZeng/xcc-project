@@ -132,7 +132,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         srcTy = cgf.getContext().getCanonicalType(srcTy);
         destTy = cgf.getContext().getCanonicalType(destTy);
 
-        if (srcTy == destTy)
+        if (srcTy.equals(destTy))
             return v;
 
         if (destTy.isVoidType()) return null;
@@ -739,8 +739,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
     public Value visitBinLE(BinaryExpr expr)
     {
-        // TODO: 2017/9/24
-        return null;
+        return emitCompare(expr, ICMP_ULE, ICMP_SLE, FCMP_OLE);
     }
 
     public Value visitBinGE(BinaryExpr expr)
@@ -1109,5 +1108,34 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // if this is a postfix increment or decrement, return the value read from
         // memory, otherwise use the updated value.
         return isPrec ? nextVal : inVal;
+    }
+
+
+    @Override
+    public Value visitConditionalExpr(Tree.ConditionalExpr expr)
+    {
+        BasicBlock lhsBlock = cgf.createBasicBlock("cond.true");
+        BasicBlock rhsBlock = cgf.createBasicBlock("cond.false");
+        BasicBlock endBlock = cgf.createBasicBlock("cond.end");
+
+        Value cond = cgf.evaluateExprAsBool(expr.getCond());
+        builder.createCondBr(cond, lhsBlock, rhsBlock);
+
+        // emit the block that it will branch to, when condition is evaluated
+        // as true.
+        cgf.emitBlock(lhsBlock);
+        visit(expr.getTrueExpr());
+        cgf.emitBranch(endBlock);
+
+
+        // emit the block that it will branch to, when condition is evaluated
+        // as false.
+        cgf.emitBlock(rhsBlock);
+        visit(expr.getFalseExpr());
+        cgf.emitBranch(endBlock);
+
+        // enter the exit block.
+        cgf.emitBlock(endBlock);
+        return null;
     }
 }
