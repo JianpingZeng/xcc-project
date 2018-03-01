@@ -16,12 +16,21 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
 public class DerivedType extends Type
 {
+    /**
+     * This field used to implement the abstract type refine system.
+     * When an abstract type be used to concreted, this field would be set as
+     * the corresponding new type.
+     */
+    private Type forwardType;
+
     protected DerivedType(int typeID)
     {
         super(typeID);
@@ -45,6 +54,9 @@ public class DerivedType extends Type
         assert isAbstract():"refinedAbstractTypeto: Current type is not abstract";
         assert this !=newType:"Can not refine to itself!";
 
+        forwardType = newType;
+
+        dropAllTypeUses();
         while (!abstractTypeUsers.isEmpty() && newType != this)
         {
             AbstractTypeUser user = abstractTypeUsers.getLast();
@@ -56,6 +68,17 @@ public class DerivedType extends Type
         }
     }
 
+    public void dropAllTypeUses()
+    {
+        if (getNumContainedTypes() > 0)
+        {
+            containedTys[0] = new PATypeHandle(OpaqueType.get(), this);
+
+            for (int i = 0, e = getNumContainedTypes(); i < e; i++)
+                containedTys[i] = new PATypeHandle(LLVMContext.Int32Ty, this);
+        }
+    }
+
     public void refineAbstractTypeTo(Type newType)
     {
         unlockRefineAbstractTypeTo(newType);
@@ -64,5 +87,10 @@ public class DerivedType extends Type
     public void dump()
     {
         super.dump();
+    }
+
+    public Type getForwardType()
+    {
+        return forwardType;
     }
 }

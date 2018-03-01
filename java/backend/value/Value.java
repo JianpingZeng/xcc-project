@@ -274,7 +274,8 @@ public class Value implements Cloneable
 
 	public boolean hasName()
     {
-        return name != null && !name.isEmpty();
+        return name != null && !name.isEmpty() &&
+		        !name.equalsIgnoreCase("tmp") && !name.startsWith("tmp");
     }
 
 	public void print(FormattedOutputStream os)

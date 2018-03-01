@@ -281,6 +281,7 @@ public final class CodeGenFunction
 			VarDecl arg = pair.first;
 			QualType ty = fi.getArgInfoAt(infoItr).type;
 			ABIArgInfo argAI = fi.getArgInfoAt(infoItr).info;
+            ++infoItr;
 
 			boolean isPromoted = arg instanceof ParamVarDecl;
 			assert ai != aiEnd: "Argument mismatch!";
@@ -290,12 +291,10 @@ public final class CodeGenFunction
 				case Indirect:
 				{
 					Value v = fn.argAt(ai);
-					if (hasAggregateLLVMType(ty))
-					{
-						// Do nothing, aggregates and complex variables are accessed by
-						// reference.
-					}
-					else
+					//if (hasAggregateLLVMType(ty))
+                    // Do nothing, aggregates and complex variables are accessed by
+                    // reference.
+                    if (!hasAggregateLLVMType(ty))
 					{
 						// Load a scalar value from indirect argument.
 						//int align = QualType.getTypeAlignInBytes(ty);
@@ -315,7 +314,6 @@ public final class CodeGenFunction
 				case Direct:
                 case Extend:
 				{
-					assert ai != aiEnd : "Argument mismatch!";
 					Value v = fn.argAt(ai);
 					if (hasAggregateLLVMType(ty))
 					{
@@ -350,7 +348,7 @@ public final class CodeGenFunction
                     {
                         fn.argAt(index).setName(name + "." + index);
                     }
-
+                    emitParamDecl(arg, temp);
                     continue;
                 }
 				case Ignore:
@@ -366,8 +364,6 @@ public final class CodeGenFunction
 				}
                 case Coerce:
                 {
-                    assert ai != aiEnd :"Argument mismatch!";
-
                     Value temp = createTempAlloca(convertTypeForMem(ty), "coerce");
                     createCoercedStore(fn.argAt(ai), temp, this);
                     if (!hasAggregateLLVMType(ty))
@@ -488,7 +484,7 @@ public final class CodeGenFunction
                 : "Invalid argument to emitParamDecl()";
 
 		QualType ty = param.getType();
-		Value destPtr = null;
+		Value destPtr;
 		if (!ty.isConstantSizeType())
 		{
 			// Variable sized values always passed by reference.
@@ -514,12 +510,8 @@ public final class CodeGenFunction
 			}
 			arg.setName(param.getNameAsString());
 		}
-
-		Value entry = localVarMaps.get(param);
-		assert entry == null :"Decl already existing in localVarMaps";
-
-		entry = destPtr;
-		localVarMaps.put(param, entry);
+        assert !localVarMaps.containsKey(param):"Decl already existing in localVarMaps";
+		localVarMaps.put(param, destPtr);
 	}
 
 	private backend.type.Type convertTypeForMem(QualType ty)
