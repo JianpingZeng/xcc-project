@@ -124,4 +124,9 @@ public class SCCP implements FunctionPass
         }
         return madeChanged;
     }
+
+    public static FunctionPass createSparseConditionalConstantPropagatePass()
+    {
+        return new SCCP();
+    }
 }

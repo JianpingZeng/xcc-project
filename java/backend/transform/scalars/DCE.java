@@ -290,4 +290,9 @@ public class DCE implements FunctionPass
 	{
 		return "Dead code elimination pass";
 	}
+
+	public static FunctionPass createDeadCodeEliminationPass()
+	{
+		return new DCE();
+	}
 }

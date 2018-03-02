@@ -768,4 +768,9 @@ public final class LoopSimplify implements FunctionPass
 
 		return newBB;
 	}
+
+	public static FunctionPass createLoopSimplifyPass()
+	{
+		return new LoopSimplify();
+	}
 }

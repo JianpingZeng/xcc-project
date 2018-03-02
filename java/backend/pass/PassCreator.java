@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.transform.scalars.*;
 
 /**
  * @author Xlous.zeng
@@ -40,6 +41,40 @@ public class PassCreator
 			boolean unrollLoops,
 			Pass inliningPass)
 	{
+		if (optimizationLevel == 0)
+		{
+			if (inliningPass != null)
+				pm.add(inliningPass);
+		}
+		else
+		{
+			// remove useless Basic block.
+			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			// remove redundant alloca.
+			pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 
+			pm.add(InstructionCombine.createInstructionCombinePass());
+			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+
+			if (inliningPass != null)
+				pm.add(inliningPass);
+			/*pm.add(SROA.createScalarRreplacementOfAggregatePass());
+			pm.add(InstructionCombine.createInstructionCombinePass());
+			pm.add(ConditionalPropagate.createCondPropagatePass());
+			pm.add(TailCallElim.createTailCallElimination());
+			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			pm.add(DCE.createDeadCodeEliminationPass());
+			pm.add(GVNPRE.createGVNPREPass());
+			pm.add(LoopSimplify.createLoopSimplifyPass());
+			pm.add(LCSSA.createLCSSAPass());
+			pm.add(IndVarSimplify.createIndVarSimplifyPass());
+			pm.add(LICM.createLICMPass());
+			pm.add(LoopDeletion.createLoopDeletionPass());
+			pm.add(GVNPRE.createGVNPREPass());
+			pm.add(SCCP.createSparseConditionalConstantPropagatePass());
+			pm.add(DCE.createDeadCodeEliminationPass());
+			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			*/
+		}
 	}
 }

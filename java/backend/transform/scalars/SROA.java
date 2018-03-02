@@ -348,4 +348,9 @@ public final class SROA implements FunctionPass
         }
         return true;
     }
+
+    public static FunctionPass createScalarRreplacementOfAggregatePass()
+    {
+        return new SROA();
+    }
 }
