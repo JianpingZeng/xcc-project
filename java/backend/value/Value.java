@@ -182,6 +182,13 @@ public class Value implements Cloneable
 		usesList.remove(use);
 	}
 
+	public void killUse(User u)
+	{
+		if (usesList.isEmpty())
+			return;
+		usesList.removeIf(cur -> cur.getUser().equals(u));
+	}
+
 	public boolean isConstant(){return this instanceof Constant;}
 	
 	public Constant asConstant()

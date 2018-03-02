@@ -86,6 +86,12 @@ public abstract class Instruction extends User
         assert parent != null :
                 "The basic block where the instruction reside to be erased!";
         parent.removeInst(this);
+        parent = null;
+        // FIXME, remove this instruction from def-use.
+        for (int i = 0; i < getNumOfOperands(); i++)
+        {
+            operand(i).killUse(this);
+        }
     }
 
     /**

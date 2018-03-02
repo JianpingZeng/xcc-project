@@ -88,8 +88,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     public static StringOpt OutputFile =
             new StringOpt(new OptionNameApplicator("o"),
             valueDesc("path"),
-            desc("Specify the output file"),
-            init("-"));
+            desc("Specify the output file"));
 
     public static Opt<ProgramAction> ProgAction
              = new Opt<ProgramAction>(new Parser<>(),
