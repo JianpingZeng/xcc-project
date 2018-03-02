@@ -18,6 +18,7 @@ package jlang.codegen;
 
 import backend.ir.HIRBuilder;
 import backend.support.LLVMContext;
+import jlang.ast.Tree.*;
 import tools.APFloat;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
@@ -29,10 +30,6 @@ import backend.value.Instruction.PhiNode;
 import jlang.ast.CastKind;
 import jlang.ast.StmtVisitor;
 import jlang.ast.Tree;
-import jlang.ast.Tree.BinaryExpr;
-import jlang.ast.Tree.CompoundAssignExpr;
-import jlang.ast.Tree.Expr;
-import jlang.ast.Tree.UnaryExpr;
 import jlang.sema.BinaryOperatorKind;
 import jlang.sema.Decl;
 import jlang.type.QualType;
@@ -875,7 +872,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         return null;
     }
     @Override
-    public Value visitParenExpr(Tree.ParenExpr expr)
+    public Value visitParenExpr(ParenExpr expr)
     {
         return visit(expr.getSubExpr());
     }
@@ -1114,6 +1111,15 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     @Override
     public Value visitConditionalExpr(Tree.ConditionalExpr expr)
     {
+        if (expr.getTrueExpr() != null &&
+                isCheapEnoughToEvaluateUnconditionally(expr.getTrueExpr())
+                && isCheapEnoughToEvaluateUnconditionally(expr.getFalseExpr()))
+        {
+            Value cond = cgf.evaluateExprAsBool(expr.getCond());
+            Value lhs = visit(expr.getTrueExpr());
+            Value rhs = visit(expr.getFalseExpr());
+            return builder.createSelect(cond, lhs, rhs, "select.cond");
+        }
         BasicBlock lhsBlock = cgf.createBasicBlock("cond.true");
         BasicBlock rhsBlock = cgf.createBasicBlock("cond.false");
         BasicBlock endBlock = cgf.createBasicBlock("cond.end");
@@ -1137,5 +1143,49 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // enter the exit block.
         cgf.emitBlock(endBlock);
         return null;
+    }
+
+    /**
+     * To Check if the specified expression can be evaluated unconditionally.
+     * An expression could be evaluated unconditionally if the expression is cheap
+     * enough to compute and without side effect, such as integral, floating point
+     * constant etc.
+     * @param expr
+     * @return
+     */
+    private static boolean isCheapEnoughToEvaluateUnconditionally(Expr expr)
+    {
+        assert expr != null:"Can't evaluate a null expression!";
+        if (expr instanceof ParenExpr)
+            return isCheapEnoughToEvaluateUnconditionally(((ParenExpr)expr).getSubExpr());
+
+        if (expr instanceof CastExpr)
+        {
+            CastExpr ce = (CastExpr)expr;
+            switch (ce.getCastKind())
+            {
+                case CK_LValueToRValue:
+                case CK_NoOp:
+                case CK_NullToPointer:
+                    return isCheapEnoughToEvaluateUnconditionally(ce.getSubExpr());
+                default:
+                    break;
+            }
+        }
+        if (expr instanceof Tree.IntegerLiteral || expr instanceof Tree.FloatingLiteral
+                || expr instanceof Tree.CharacterLiteral)
+            return true;
+
+        if (expr instanceof Tree.DeclRefExpr)
+        {
+            Tree.DeclRefExpr declRef = (Tree.DeclRefExpr)expr;
+            if (declRef.getDecl() instanceof Decl.VarDecl)
+            {
+                Decl.VarDecl vd = (Decl.VarDecl)declRef.getDecl();
+                if (vd.hasLocalStorage() && !vd.getType().isVolatileQualified())
+                    return true;
+            }
+        }
+        return false;
     }
 }

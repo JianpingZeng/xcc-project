@@ -845,4 +845,17 @@ public class HIRBuilder
 	{
 		return insert(new ReturnInst());
 	}
+
+	/**
+	 * Create a select LLVM instruction.
+	 * @param cond  The condition of this instruction.
+	 * @param lhs   The left hand expression.
+	 * @param rhs   The right hand expression.
+	 * @param name  The name of this instruction would be printed out into assembly.
+	 * @return
+	 */
+	public Value createSelect(Value cond, Value lhs, Value rhs, String name)
+	{
+		return insert(new SelectInst(cond, lhs, rhs, name));
+	}
 }
