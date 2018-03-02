@@ -419,4 +419,9 @@ public final class CFGSimplifyPass implements FunctionPass
     {
         return "Simplify CFG pass";
     }
+
+    public static FunctionPass createCFGSimplificationPass()
+    {
+        return new CFGSimplifyPass();
+    }
 }

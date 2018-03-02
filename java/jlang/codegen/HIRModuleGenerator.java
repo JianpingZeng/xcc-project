@@ -468,6 +468,9 @@ public class HIRModuleGenerator
             setLLVMFunctionAttributes(fd, getCodeGenTypes().getFunctionInfo(fd), f);
         // TODO set linkage according to Attribute, current just set it as ExternalLinkage.
         f.setLinkage(ExternalLinkage);
+        f.setVisibility(GlobalValue.VisibilityTypes.DefaultVisibility);
+        if (fd.getStorageClass() == Decl.StorageClass.SC_static)
+            f.setVisibility(GlobalValue.VisibilityTypes.HiddenVisibility);
         /*
         if (fd.hasAttr(AttrKind.Section))
             f.setSection(((SectionAttr)fd.getAttr(AttrKind.Section)).getName());

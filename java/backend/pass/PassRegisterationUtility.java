@@ -18,8 +18,7 @@
 package backend.pass;
 
 import backend.analysis.*;
-import backend.analysis.aa.BasicAliasAnalysis;
-import backend.analysis.aa.PoorManAliasAnalysis;
+import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.support.DomTreePrinter;
 import backend.support.ErrorHandling;
@@ -48,9 +47,8 @@ public final class PassRegisterationUtility
         new RegisterPass( "Machine Dominator Tree Construction", "machinedomtree", MachineDomTree.class, true);
         new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoop.class, true);
         new RegisterPass( "Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
-        new RegisterPass("Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
-        new RegisterPass("Basic Analysis Pass", "basic-aa", BasicAliasAnalysis.class, false, true);
-        new RegisterPass("Poor man's Analysis Pass", "basic-aa", PoorManAliasAnalysis.class, false, true);
+        new RegisterPass( "Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
+        new RegisterPass( "Alias Analysis Pass", "alias-analysis", AliasAnalysis.class, false, true);
 
         // IPO transformation
         new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);
@@ -75,6 +73,7 @@ public final class PassRegisterationUtility
         new RegisterPass("Tail Call Elimination", "tailcallelim", TailCallElim.class);
         new RegisterPass("Unify function exit nodes", "mergereturn", UnifyFunctionExitNodes.class);
         new RegisterPass("Remove unreachable basic block from CFG", "unreachableblockelim", UnreachableBlockElim.class);
+        new RegisterPass("Combine redundant instruction", "instcombine", InstructionCombine.class, false, false);
 
         // Machine Function Passes
         new RegisterPass("Eliminate PHI nodes for register allocation", "phi-node-elimination",  PhiElimination.class);

@@ -650,8 +650,8 @@ public final class PromoteMemToReg
             AllocaInfo info,
 			LargeBlockInfo lbi)
 	{
+		info.usingBlocks.clear();
 		// sort the stores by their index, making it efficient to do lookup.
-
 		TreeSet<Pair<Integer, Instruction>> storesByIndex =
                 new TreeSet<>((o1, o2) ->
                 {
@@ -743,10 +743,10 @@ public final class PromoteMemToReg
 
         int currentVersion = 0;
         HashSet<PhiNode> insertedPHINodes = new HashSet<>();
-        ArrayList<Pair<Integer, BasicBlock>> dfBlocks = new ArrayList<>();
+        Iterator<BasicBlock> defItr = info.definingBlocks.iterator();
         while (!info.definingBlocks.isEmpty())
         {
-            BasicBlock bb = info.definingBlocks.removeLast();
+            BasicBlock bb = info.definingBlocks.pollFirst();
 
             HashSet<BasicBlock> dfs = df.find(bb);
             if (dfs == null)
@@ -756,12 +756,14 @@ public final class PromoteMemToReg
             // specified bb.
             dfs.removeIf(b->!liveInBlocks.contains(b));
 
-            OutParamWrapper<Integer> res = new OutParamWrapper<>(currentVersion);;
+            OutParamWrapper<Integer> res = new OutParamWrapper<>(currentVersion);
             for (BasicBlock b : dfs)
             {
                 res.set(currentVersion);
                 if (queuePhiNode(b, allocaNum, res, insertedPHINodes))
-                    info.definingBlocks.add(b);
+                {
+	                info.definingBlocks.add(b);
+                }
             }
         }
 	}
@@ -846,15 +848,19 @@ public final class PromoteMemToReg
 			{
 				if (inst instanceof StoreInst)
 				{
-				    StoreInst si = (StoreInst)inst;
+					StoreInst si = (StoreInst) inst;
 					if (!si.operand(1).equals(ai))
 						continue;
 
 					// We found a store to the alloca before a load.  The alloca is not
 					// actually live-in here.
-					liveBlockWorkList.set(idx, liveBlockWorkList.pollLast());
-					--idx;
-					break;
+					if (liveBlockWorkList.size() > 1)
+					{
+						liveBlockWorkList.set(idx, liveBlockWorkList.pollLast());
+
+						--idx;
+						break;
+					}
 				}
 				if (inst instanceof LoadInst)
 				{
@@ -867,28 +873,28 @@ public final class PromoteMemToReg
 					break;
 				}
 			}
-		}
-		// Now that we have a set of blocks where the phi is live-in, recursively add
-		// their predecessors until we find the full region the value is live.
-		while (!liveBlockWorkList.isEmpty())
-		{
-			BasicBlock BB = liveBlockWorkList.pollLast();
-			// if BB is already in the set, then it has already been processed.
-			if (!liveInBlocks.add(BB))
-				continue;
-
-			// Since the value is live in the BB, so it is either defined in a
-			// predesessor or live in it. Add the preds to the worklist unless
-			// they are a defined block.
-            PredIterator<BasicBlock> itr = BB.predIterator();
-			while (itr.hasNext())
+			// Now that we have a set of blocks where the phi is live-in, recursively add
+			// their predecessors until we find the full region the value is live.
+			while (!liveBlockWorkList.isEmpty())
 			{
-                BasicBlock pred = itr.next();
-				// exclude defined block
-				if (defBlocks.contains(pred))
+				BasicBlock bb = liveBlockWorkList.pollLast();
+				// if BB is already in the set, then it has already been processed.
+				if (!liveInBlocks.add(bb))
 					continue;
 
-				liveBlockWorkList.addLast(pred);
+				// Since the value is live in the BB, so it is either defined in a
+				// predesessor or live in it. Add the preds to the worklist unless
+				// they are a defined block.
+				PredIterator<BasicBlock> itr = BB.predIterator();
+				while (itr.hasNext())
+				{
+					BasicBlock pred = itr.next();
+					// exclude defined block
+					if (defBlocks.contains(pred))
+						continue;
+
+					liveBlockWorkList.addLast(pred);
+				}
 			}
 		}
 	}
@@ -906,11 +912,11 @@ public final class PromoteMemToReg
 	 * and thus must be phi-ed with undef. We fall back to the standard alloca
 	 * </p>
 	 *
-	 * @param AI   The alloca instruction.
+	 * @param ai   The alloca instruction.
 	 * @param info AllocaInst information analysis for rewriting.
 	 * @param lbi  The large block information for backend.transform.
 	 */
-	private void rewriteSingleStoreAlloca(AllocaInst AI,
+	private void rewriteSingleStoreAlloca(AllocaInst ai,
             AllocaInfo info,
 			LargeBlockInfo lbi)
 	{
@@ -924,7 +930,9 @@ public final class PromoteMemToReg
 		info.usingBlocks.clear();
 
 		// handle loads to store by traveling over usesList list
-		for (Use u : AI.usesList)
+		ArrayList<Use> tempList = new ArrayList<>();
+		tempList.addAll(ai.usesList);
+		for (Use u : tempList)
 		{
 			User user = u.getUser();
 			if (!(user instanceof LoadInst))
@@ -1128,7 +1136,7 @@ public final class PromoteMemToReg
 		 * The list of blocks where there is a loads to alloca (also, it is a usesList
 		 * to defined variable).
 		 */
-		ArrayList<BasicBlock> usingBlocks = new ArrayList<>(32);
+		LinkedList<BasicBlock> usingBlocks = new LinkedList<>();
 
 		/**
 		 * The last definition of this alloca among subsequnce of stores.

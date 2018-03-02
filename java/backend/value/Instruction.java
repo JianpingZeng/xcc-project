@@ -92,6 +92,20 @@ public abstract class Instruction extends User
         {
             operand(i).killUse(this);
         }
+        operandList.clear();
+
+        if (usesList != null && !usesList.isEmpty())
+        {
+            for (Use u : usesList)
+            {
+                Instruction inst = ((Instruction)u.getUser());
+                for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
+                {
+                    if (inst.operand(i) == this)
+                        inst.setOperand(i, UndefValue.get(getType()));
+                }
+            }
+        }
     }
 
     /**
