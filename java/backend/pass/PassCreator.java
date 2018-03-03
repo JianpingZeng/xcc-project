@@ -49,7 +49,7 @@ public class PassCreator
 		else
 		{
 			// remove useless Basic block.
-			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 			// remove redundant alloca.
 			pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 

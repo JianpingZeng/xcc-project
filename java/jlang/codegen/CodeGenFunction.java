@@ -588,6 +588,14 @@ public final class CodeGenFunction
 		switch (stmt.getStmtClass())
 		{
 			default:
+			    assert stmt instanceof Expr:"Unknown kind of statement";
+			    emitAnyExpr((Expr)stmt, null, false, true, false);
+			    BasicBlock bb = builder.getInsertBlock();
+			    if (bb != null && bb.getNumUses() <= 0 && bb.isEmpty())
+                {
+                    bb.eraseFromParent();
+                    builder.clearInsertPoint();
+                }
 				break;
 			case IfStmtClass:
 				emitIfStmt((IfStmt) stmt);
@@ -1016,7 +1024,7 @@ public final class CodeGenFunction
 			boolean ignoreResult, boolean isInitializer)
 	{
 		if (!hasAggregateLLVMType(e.getType()))
-			return get(emitScalarExpr(e));
+			return get(emitScalarExpr(e, ignoreResult));
 		else if (e.getType().isComplexType())
 		{
 			// TODO.
@@ -1358,12 +1366,17 @@ public final class CodeGenFunction
 		return null;
 	}
 
-	public Value emitScalarExpr(Tree.Expr expr)
+	public Value emitScalarExpr(Tree.Expr expr, boolean ignoreResult)
 	{
 		assert expr != null && !hasAggregateLLVMType(
 				expr.getType()) : "Invalid scalar expression to emit";
-		return new ScalarExprEmitter(this).visit(expr);
+		return new ScalarExprEmitter(this, ignoreResult).visit(expr);
 	}
+
+    public Value emitScalarExpr(Tree.Expr expr)
+    {
+        return emitScalarExpr(expr, false);
+    }
 
 	public void emitAggExpr(Tree.Expr expr, Value destPtr)
 	{

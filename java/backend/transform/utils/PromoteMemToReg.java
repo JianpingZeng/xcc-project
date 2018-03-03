@@ -252,11 +252,11 @@ public final class PromoteMemToReg
 		{
             AllocaInst ai = allocas.get(allocaNum);
 			assert isAllocaPromotable(ai)
-                    : "Cann't promote non-promotable alloca";
+                    : "Can't promote non-promotable alloca";
 			assert ai.getParent().getParent().equals(f)
                     : "All allocas should in the same method, which is same as DF!";
 
-			// if it's use isDeclScope intrinsic instruction, just remove it from
+			// if it's use an intrinsic instruction, just remove it from
 			// attached basic block.
 			// However, it is not finished currently
 			if (ai.usesList.isEmpty())
@@ -489,7 +489,7 @@ public final class PromoteMemToReg
 					phiNode.addIncoming(undef, pred);
 			}
 		}
-
+		allocas.clear();
 		newPhiNodes.clear();
 	}
 
@@ -571,10 +571,9 @@ public final class PromoteMemToReg
 				return;
 
 			// handles subsequnce instruction at control flow graph.
-			Iterator<Instruction> it = curBB.iterator();
-			while (it.hasNext())
+			for (int i = 0, e = curBB.size(); i < e; i++)
 			{
-				inst = it.next();
+				inst = curBB.getInstAt(i);
 
 				// Only load and store to alloca instruction will be handled,
 				// because at our Module, the usesList of alloca just isDeclScope laods
@@ -597,6 +596,8 @@ public final class PromoteMemToReg
 					li.replaceAllUsesWith(value);
 
 					li.eraseFromParent();
+					--i;
+					--e;
 					if (ast != null && li.getType() instanceof PointerType)
 					    ast.deleteValue(li);
 				}
@@ -614,8 +615,9 @@ public final class PromoteMemToReg
 
 					// what value were we writing?
 					incomgingValues.set(index, si.operand(0));
-
 					si.eraseFromParent();
+					--i;
+					--e;
 				}
 			}
 
@@ -739,11 +741,10 @@ public final class PromoteMemToReg
 		defBlocks.addAll(info.definingBlocks);
 
 		HashSet<BasicBlock> liveInBlocks = new HashSet<>();
-		computeLifenessBlocks(ai, info, defBlocks, liveInBlocks);
+		computeLivenessBlocks(ai, info, defBlocks, liveInBlocks);
 
         int currentVersion = 0;
         HashSet<PhiNode> insertedPHINodes = new HashSet<>();
-        Iterator<BasicBlock> defItr = info.definingBlocks.iterator();
         while (!info.definingBlocks.isEmpty())
         {
             BasicBlock bb = info.definingBlocks.pollFirst();
@@ -824,7 +825,7 @@ public final class PromoteMemToReg
 	 * @param defBlocks
 	 * @param liveInBlocks
 	 */
-	private void computeLifenessBlocks(AllocaInst ai,
+	private void computeLivenessBlocks(AllocaInst ai,
             AllocaInfo info,
             HashSet<BasicBlock> defBlocks,
             HashSet<BasicBlock> liveInBlocks)
@@ -873,30 +874,31 @@ public final class PromoteMemToReg
 					break;
 				}
 			}
-			// Now that we have a set of blocks where the phi is live-in, recursively add
-			// their predecessors until we find the full region the value is live.
-			while (!liveBlockWorkList.isEmpty())
+		}
+		// Now that we have a set of blocks where the phi is live-in, recursively add
+		// their predecessors until we find the full region the value is live.
+		while (!liveBlockWorkList.isEmpty())
+		{
+			BasicBlock bb = liveBlockWorkList.pollLast();
+			// if BB is already in the set, then it has already been processed.
+			if (!liveInBlocks.add(bb))
+				continue;
+
+			// Since the value is live in the BB, so it is either defined in a
+			// predesessor or live in it. Add the preds to the worklist unless
+			// they are a defined block.
+			PredIterator<BasicBlock> itr = bb.predIterator();
+			while (itr.hasNext())
 			{
-				BasicBlock bb = liveBlockWorkList.pollLast();
-				// if BB is already in the set, then it has already been processed.
-				if (!liveInBlocks.add(bb))
+				BasicBlock pred = itr.next();
+				// exclude defined block
+				if (defBlocks.contains(pred))
 					continue;
 
-				// Since the value is live in the BB, so it is either defined in a
-				// predesessor or live in it. Add the preds to the worklist unless
-				// they are a defined block.
-				PredIterator<BasicBlock> itr = BB.predIterator();
-				while (itr.hasNext())
-				{
-					BasicBlock pred = itr.next();
-					// exclude defined block
-					if (defBlocks.contains(pred))
-						continue;
-
-					liveBlockWorkList.addLast(pred);
-				}
+				liveBlockWorkList.addLast(pred);
 			}
 		}
+
 	}
 
 	/**
