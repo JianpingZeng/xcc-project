@@ -49,7 +49,7 @@ public class SuccIterator implements Iterator<BasicBlock>
     @Override
     public boolean hasNext()
     {
-        return idx<endInst.getNumOfSuccessors();
+        return endInst != null && idx<endInst.getNumOfSuccessors();
     }
 
     /**

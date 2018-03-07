@@ -380,7 +380,7 @@ public class HIRBuilder
 		return createFCmp(FCMP_UNE, lhs, rhs, name);
 	}
 
-	public Value createICmp(Predicate P, Value lhs, Value rhs, final String name)
+	public Value createICmp(Predicate pred, Value lhs, Value rhs, final String name)
 	{
 		if (lhs instanceof Constant)
 		{
@@ -391,7 +391,7 @@ public class HIRBuilder
 				return null; // TODO folder.createICmp(P, LC, RC);
 			}
 		}
-		return insert(new Instruction.ICmpInst(P, lhs, rhs, name), name);
+		return insert(new Instruction.ICmpInst(pred, lhs, rhs, name), name);
 	}
 
 	public Value createFCmp(Predicate P, Value lhs, Value rhs, final String name)

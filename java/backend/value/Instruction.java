@@ -1787,7 +1787,7 @@ public abstract class Instruction extends User
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():
                     "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType():
+            assert lhs.getType().isIntegerType() || lhs.getType().isPointerType():
                     "Invalid operand types for ICmp instruction";
         }
 
