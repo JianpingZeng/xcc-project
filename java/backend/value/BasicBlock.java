@@ -396,6 +396,16 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		inst.setParent(this);
 	}
 
+	public void insertAfter(Instruction inst, Instruction insertAfter)
+	{
+		assert inst != null && insertAfter != null:"Can't use null inst";
+		assert insertAfter != null:"May use append method to add it to the last!";
+		int index = instructions.indexOf(insertAfter);
+		assert index != -1 :"insertAfter isn't exists in current basic block!";
+		insertAfter(inst, index);
+		inst.setParent(this);
+	}
+
 	public void insertBefore(Instruction inst, Instruction insertBefore)
 	{
 		if (insertBefore == null)

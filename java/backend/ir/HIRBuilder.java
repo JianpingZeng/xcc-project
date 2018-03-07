@@ -57,7 +57,8 @@ public class HIRBuilder
 	public void setInsertPoint(BasicBlock insertPoint)
 	{
 		curBB = insertPoint;
-		insertPtr = insertPoint.getLastInst();
+		// null indicates the new instruction should be inserted at the end of block.
+		insertPtr = null;
 		//assert insertPtr != null:"Can not set an empty BasicBlock as insert point";
 	}
 
@@ -86,7 +87,10 @@ public class HIRBuilder
 			BasicBlock bb,
 			Instruction insertPtr)
 	{
-		bb.insertBefore(inst, insertPtr);
+		if (insertPtr == null)
+			bb.appendInst(inst);
+		else
+			bb.insertBefore(inst, insertPtr);
 	}
 
 	public BasicBlock getInsertBlock()

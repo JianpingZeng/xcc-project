@@ -79,8 +79,6 @@ public final class CodeGenFunction
 	 */
 	private Instruction allocaInstPtr;
 
-	private int nextCleanupDestIndex;
-
 	HIRBuilder builder;
 
 	/**
@@ -989,6 +987,7 @@ public final class CodeGenFunction
 			// return expression due to side effect.
 			if (resultVal != null)
 				emitAnyExpr(resultVal);
+			builder.createRetVoid();
 		}
 		else if (resultVal == null)
 		{
