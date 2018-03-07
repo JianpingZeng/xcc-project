@@ -747,7 +747,7 @@ public final class CodeGenFunction
 					return;
 				}
 
-				// emit the branch as regural conditional.
+				// emit the branch as regular conditional.
 				BasicBlock lhsFalse = createBasicBlock("lor.lhs.false");
 				emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, lhsFalse);
 				emitBlock(lhsFalse);
@@ -763,7 +763,7 @@ public final class CodeGenFunction
 			// br(!x, t, f) -> br(x, f, t).
 			if (condUOp.getOpCode() == UnaryOperatorKind.UO_LNot)
 			{
-				emitBranchOnBoolExpr(condUOp.getSubExpr(), trueBB, falseBB);
+				emitBranchOnBoolExpr(condUOp.getSubExpr(), falseBB, trueBB);
 				return;
 			}
 		}
