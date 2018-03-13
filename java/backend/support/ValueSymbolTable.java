@@ -18,6 +18,8 @@
 package backend.support;
 
 import backend.value.Value;
+import gnu.trove.map.hash.TObjectIntHashMap;
+
 import java.util.TreeMap;
 
 /**
@@ -27,12 +29,15 @@ import java.util.TreeMap;
 public class ValueSymbolTable
 {
     private TreeMap<String, Value> map;
-    private int lastUnique;
+    /**
+     * Keeps a suffix number for those value with same name.
+     */
+    private TObjectIntHashMap<String> lastUnique;
 
     public ValueSymbolTable()
     {
         map = new TreeMap<>();
-        lastUnique = 0;
+        lastUnique = new TObjectIntHashMap<>();
     }
 
     /**
@@ -62,13 +67,16 @@ public class ValueSymbolTable
         if (!map.containsKey(name))
         {
             map.put(name, value);
+            lastUnique.put(name, 1);
             return name;
         }
 
         // Otherwise, there is a naming conflict. Rename this value.
         while (true)
         {
-            String uniqueName = name + (++lastUnique);
+            int suffix = lastUnique.get(name);
+            String uniqueName = name + suffix;
+            lastUnique.put(name, suffix + 1);
             if (!map.containsKey(uniqueName))
             {
                 map.put(uniqueName, value);

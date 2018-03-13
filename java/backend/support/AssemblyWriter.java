@@ -187,12 +187,12 @@ public class AssemblyWriter
                 assert false : "Unknown PrefixType";
                 break;
             case NoPrefix:
+            case LabelPrefix:
                 break;
             case GlobalPrefix:
                 os.print("@");
                 break;
             case LocalPrefix:
-            case LabelPrefix:
                 os.print("%");
                 break;
         }
@@ -1201,7 +1201,6 @@ public class AssemblyWriter
         if (bb.hasName())
         {
             out.println();
-            out.print(";");
             printLLVMName(out, bb.getName(), LabelPrefix);
             out.print(':');
         }
