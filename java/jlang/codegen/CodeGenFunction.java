@@ -1503,7 +1503,7 @@ public final class CodeGenFunction
 	private void emitBlock(BasicBlock bb, boolean isFinished)
 	{
 		// fall out of the current block if necessary.
-		//emitBranch(bb);
+		emitBranch(bb);
 
 		if (isFinished && bb.isUseEmpty())
 			return;
