@@ -161,19 +161,20 @@ public final class PerFunctionState
             Pair<Value, SMLoc> itr = forwardRefVals.get(nameStr);
             if (!itr.first.getType().equals(inst.getType()))
             {
-                return parser.error(nameLoc, StringFormatter.format("instruction forward refernced with type '$$$s'",
+                return parser.error(nameLoc, StringFormatter.format("instruction forward referenced with type '%%%s'",
                         itr.first.getType().getDescription()).getValue());
             }
             itr.first.replaceAllUsesWith(inst);
             forwardRefVals.remove(nameStr);
         }
         // set the name of instruction.
+        /*
         if (inst.getName().equals(nameStr))
         {
             return parser.error(nameLoc, StringFormatter
                     .format("multiple definition of local value named '%%%s'",
-                            nameStr).toString());
-        }
+                            nameStr).getValue());
+        }*/
         inst.setName(nameStr);
         return false;
     }

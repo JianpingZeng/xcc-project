@@ -724,7 +724,7 @@ public class HIRBuilder
 
 	public LoadInst createLoad(Value addr, boolean isVolatile, String name)
 	{
-		return insert(new LoadInst(addr, "", false, 0), "");
+		return insert(new LoadInst(addr, name, false, 0), name);
 	}
 
 	public Instruction.StoreInst createStore(Value val, Value ptr)
