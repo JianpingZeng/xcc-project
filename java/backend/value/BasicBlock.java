@@ -49,11 +49,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	private final LinkedList<Instruction> instructions;
 
-	/**
-	 * The getIdentifier of this block.
-	 */
-	public String bbName;
-
 	private int blockFlags;
 
 	public int loopIndex = -1;
@@ -204,10 +199,9 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Function newParent,
 			BasicBlock insertBefore)
 	{
-		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal);
+		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal, bbName);
 		this.idNumber = 0;
 		this.instructions = new LinkedList<>();
-		this.bbName = bbName;
 
         if (insertBefore != null)
         {
@@ -219,7 +213,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
         }
         else if (newParent != null)
         	newParent.addBasicBlock(this);
-        name = bbName;
 	}
 
 	private BasicBlock(

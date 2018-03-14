@@ -1076,13 +1076,14 @@ public final class LLLexer
             if (!isLabelChar(ch))
             {
                 // discard the invalid char for label.
-                --curPtr;
                 break;
             }
         }
-        strVal = buffer.getSubString(tokStart, curPtr);
-        if (nonKeyword)
+        strVal = buffer.getSubString(tokStart, curPtr-1);
+        if (nonKeyword || buffer.getCharAt(curPtr)==':')
         {
+            // If the ending character is ':', it is exactly a Label.
+            if (buffer.getCharAt(curPtr)==':') ++curPtr;
             return LabelStr;
         }
         else

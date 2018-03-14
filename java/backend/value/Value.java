@@ -39,11 +39,17 @@ public class Value implements Cloneable
 
     private Type ty;
 
-	public Value(Type ty, int valueType)
+	public Value(Type ty, int valueType, String name)
 	{
 		this.ty = ty;
-        subclassID = valueType;
+		subclassID = valueType;
 		this.usesList = new LinkedList<>();
+		this.name = name;
+	}
+
+	public Value(Type ty, int valueType)
+	{
+		this(ty, valueType, "");
 	}
 
 	public Type getType() { return ty;}

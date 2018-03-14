@@ -125,6 +125,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         assert bb != null && !basicBlockList.contains(bb):"Can't add a null or duplicate block!";
         basicBlockList.add(bb);
         bb.setParent(this);
+        symTab.createValueName(bb.getName(), bb);
     }
 
     public void addBasicBlockBefore(BasicBlock beforePos, BasicBlock bb)
