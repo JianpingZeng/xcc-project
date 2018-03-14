@@ -33,7 +33,7 @@ public class DefaultDotGraphTrait<T>
 
     public static DefaultDotGraphTrait createCFGTrait(Function fn)
     {
-        return new ControlFlowGraphTrait(fn);
+        return new CFGDotGraphTrait(fn);
     }
 
     public String getGraphName()

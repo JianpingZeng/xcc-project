@@ -49,6 +49,7 @@ public final class DomTreePrinter implements FunctionPass
 
         try(PrintStream out = new PrintStream(new File(filename)))
         {
+            System.err.printf("Writing '%s'...%n", filename);
             writeGraph(out, DefaultDotGraphTrait.createDotTrait(dt, funcName));
         }
         catch (FileNotFoundException e)

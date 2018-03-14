@@ -23,11 +23,13 @@ import backend.analysis.IDomTreeInfo;
 import backend.value.BasicBlock;
 import tools.Util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
 import static backend.support.AssemblyWriter.createSlotTracker;
+import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.support.GraphWriter.escapeString;
 
 /**
@@ -55,14 +57,16 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     @Override
     public String getNodeLabel(BasicBlock node, boolean shortName)
     {
-        if (shortName && !node.getName().isEmpty())
-            return node.getName();
+        if (!node.getName().isEmpty())
+            return node.getName() + ":";
 
-        SlotTracker slot = createSlotTracker(node);
-        int machineSlot = slot.getLocalSlot(node);
-        if (machineSlot != -1)
-            return "%"+machineSlot;
-        return "<badref>";
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try(PrintStream ps = new PrintStream(baos))
+        {
+            writeAsOperand(new PrintStream(baos), node, false, null);
+            ps.print(":");
+        }
+        return baos.toString();
     }
 
     private static class QueueData
