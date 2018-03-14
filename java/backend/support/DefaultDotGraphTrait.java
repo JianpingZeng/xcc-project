@@ -17,7 +17,10 @@
 
 package backend.support;
 
-import backend.analysis.DomTree; /**
+import backend.analysis.DomTree;
+import backend.value.Function;
+
+/**
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -26,6 +29,11 @@ public class DefaultDotGraphTrait<T>
     public static DefaultDotGraphTrait createDotTrait(DomTree dt, String funcName)
     {
         return new DomTreeDotGraphTrait(dt, funcName);
+    }
+
+    public static DefaultDotGraphTrait createCFGTrait(Function fn)
+    {
+        return new ControlFlowGraphTrait(fn);
     }
 
     public String getGraphName()

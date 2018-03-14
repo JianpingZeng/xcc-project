@@ -22,6 +22,12 @@ import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+
+import static backend.support.GraphWriter.writeGraph;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -39,6 +45,18 @@ public final class CFGPrinter implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
+        String funcName = f.getName();
+        String filename = "cfg." + funcName + ".dot";
+
+        try(PrintStream out = new PrintStream(new File(filename)))
+        {
+            System.err.printf("Writing '%s'...%n", filename);
+            writeGraph(out, DefaultDotGraphTrait.createCFGTrait(f));
+        }
+        catch (FileNotFoundException e)
+        {
+            System.err.println(" error opening file for writing!");
+        }
         return false;
     }
 

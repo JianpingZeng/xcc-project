@@ -20,6 +20,7 @@ package backend.pass;
 import backend.analysis.*;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
+import backend.support.CFGPrinter;
 import backend.support.DomTreePrinter;
 import backend.support.ErrorHandling;
 import backend.target.TargetData;
@@ -48,6 +49,7 @@ public final class PassRegisterationUtility
         new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoop.class, true);
         new RegisterPass( "Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
         new RegisterPass( "Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
+        new RegisterPass("Print out cfg into dot file", "dot-cfg", CFGPrinter.class, false, true);
         new RegisterPass( "Alias Analysis Pass", "alias-analysis", AliasAnalysis.class, false, true);
 
         // IPO transformation

@@ -40,7 +40,7 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     private DomTree dt;
     private String funcName;
 
-    public DomTreeDotGraphTrait(DomTree dt, String fnName)
+    DomTreeDotGraphTrait(DomTree dt, String fnName)
     {
         this.dt = dt;
         funcName = fnName;
@@ -49,7 +49,7 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     @Override
     public String getGraphName()
     {
-        return "Dom Tree for '" + funcName + " function";
+        return "Dom Tree for '" + funcName + "' function";
     }
 
     @Override
@@ -97,7 +97,7 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
             os.printf("\tNode0x%x [shape=record,", cur.getBlock().hashCode());
             if (!nodeAttrites.isEmpty())
                 os.printf("%s,", nodeAttrites);
-            os.printf("label=\"{");
+            os.print("label=\"{");
 
             if (!renderGraphFromBottomUp())
             {
@@ -113,25 +113,25 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
             if (!children.isEmpty())
             {
                 if (!renderGraphFromBottomUp())
-                    os.printf("|");
-                os.printf("{");
+                    os.print("|");
+                os.print("{");
 
                 if (e <= 64)
                 {
                     for (int i = 0; i < e; i++)
                     {
                         if (i != 0)
-                            os.printf("|");
+                            os.print("|");
                         os.printf("<s%d>", i);
                     }
                 }
                 else
                 {
-                    os.printf("|<s64>truncated...");
+                    os.print("|<s64>truncated...");
                 }
-                os.printf("}");
+                os.print("}");
                 if (renderGraphFromBottomUp())
-                    os.printf("|");
+                    os.print("|");
             }
 
             os.println("}\"];");
