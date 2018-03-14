@@ -199,20 +199,19 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Function newParent,
 			BasicBlock insertBefore)
 	{
-		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal, bbName);
+		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal);
 		this.idNumber = 0;
 		this.instructions = new LinkedList<>();
-
         if (insertBefore != null)
         {
-            assert newParent!=null:"Cann't insert block before another block";
-            LinkedList<BasicBlock> list = newParent.getBasicBlockList();
-
-            int idx = list.indexOf(insertBefore);
-            list.add(idx, this);
+            assert newParent!=null:"Can't insert block before another block";
+            newParent.addBasicBlockBefore(insertBefore, this);
         }
         else if (newParent != null)
-        	newParent.addBasicBlock(this);
+        {
+            newParent.addBasicBlock(this);
+        }
+        setName(bbName);
 	}
 
 	private BasicBlock(

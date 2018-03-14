@@ -268,12 +268,14 @@ public class Value implements Cloneable
 	    if (newName == null || newName.isEmpty() ||
 			    getType().equals(LLVMContext.VoidTy))
 	        return;
+        if (newName.equals(getName()))
+            return;
 
 	    // get the symbol table to update for this object.
         ValueSymbolTable vt = getSymTab(this);
         if (vt == null)
         {
-            name = newName;
+            name = LLVMNameMangling.computeUniqueName(newName);
             return;
         }
 
