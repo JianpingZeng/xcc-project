@@ -2238,9 +2238,6 @@ public abstract class Instruction extends User
                             getElementType()).getReturnType(),
                     Operator.Call, name, insertBefore);
 
-            setName((name == null || name.isEmpty()) ?
-                    Operator.Call.opName:name);
-
             reserve(ArgumentOffset + args.size());
             assert (getNumOfOperands() == ArgumentOffset + args.size())
                     : "NumOperands not set up?";
@@ -2275,8 +2272,6 @@ public abstract class Instruction extends User
             super(((FunctionType)((PointerType)target.getType()).
                             getElementType()).getReturnType(),
                     Operator.Call, name, insertBefore);
-            setName(name == null || name.isEmpty() ?
-                    Operator.Call.opName:name);
             init(target, args);
         }
 
@@ -2286,8 +2281,6 @@ public abstract class Instruction extends User
             super(((FunctionType)((PointerType)target.getType()).
                             getElementType()).getReturnType(),
                     Operator.Call, name, insertAtEnd);
-            setName(name == null || name.isEmpty() ?
-                    Operator.Call.opName:name);
             init(target, args);
         }
 
