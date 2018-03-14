@@ -298,8 +298,18 @@ public class Value implements Cloneable
             Instruction inst = (Instruction)this;
             Function f = inst.getParent() != null ? inst.getParent().getParent():null;
             SlotTracker slotTable = new SlotTracker(f);
-            AssemblyWriter writer = new AssemblyWriter(os, f.getParent(), slotTable);
+            AssemblyWriter writer = new AssemblyWriter(os,
+                    f != null?f.getParent():null, slotTable);
             writer.write(inst);
+        }
+        else if (this instanceof BasicBlock)
+        {
+            BasicBlock bb = (BasicBlock)this;
+            Function f = bb.getParent();
+            SlotTracker slot = new SlotTracker(f);
+            AssemblyWriter writer = new AssemblyWriter(os,
+                    f != null? f.getParent():null, slot);
+            writer.write(bb);
         }
         else if (this instanceof GlobalValue)
         {

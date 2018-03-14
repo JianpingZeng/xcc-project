@@ -112,6 +112,7 @@ public final class GraphWriter
                                 break;
                         }
                     }
+                    break;
                 case '{':
                 case '}':
                 case '<':
