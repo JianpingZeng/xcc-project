@@ -45,9 +45,12 @@ public class ConstantAggregateZero extends Constant
     public static ConstantAggregateZero get(Type ty)
     {
         assert ty.isArrayType() || ty.isStructType():"Invalid aggregate type!";
+        if (aggZeroConstants.containsKey(ty))
+            return aggZeroConstants.get(ty);
 
-        ConstantAggregateZero res = aggZeroConstants.get(ty);
-        return res!=null? res : aggZeroConstants.put(ty, new ConstantAggregateZero(ty));
+        ConstantAggregateZero res = new ConstantAggregateZero(ty);
+        aggZeroConstants.put(ty, res);
+        return res;
     }
 
     @Override

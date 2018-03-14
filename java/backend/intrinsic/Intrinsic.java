@@ -4,6 +4,7 @@ import backend.value.Module;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -50,6 +51,7 @@ public class Intrinsic
 
 	public static backend.type.FunctionType getType(ID id, ArrayList<Type> types)
 	{
+		Util.shouldNotReachHere("getType() in Intrinsic isn't implemented!");
 		return null;//TODO
 	}
 
