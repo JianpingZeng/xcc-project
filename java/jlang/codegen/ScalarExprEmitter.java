@@ -731,7 +731,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
     public Value visitBinGT(BinaryExpr expr)
     {
-        return emitCompare(expr, ICMP_ULT, ICMP_SLT, FCMP_OLT);
+        return emitCompare(expr, ICMP_UGT, ICMP_SGT, FCMP_OGT);
     }
 
     public Value visitBinLE(BinaryExpr expr)
@@ -740,13 +740,19 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
 
     public Value visitBinGE(BinaryExpr expr)
-    {return null;}
+    {
+        return emitCompare(expr, ICMP_UGE, ICMP_SGE, FCMP_OGE);
+    }
 
     public Value visitBinEQ(BinaryExpr expr)
-    {return null;}
+    {
+        return emitCompare(expr, ICMP_EQ, ICMP_EQ, FCMP_OEQ);
+    }
 
     public Value visitBinNE(BinaryExpr expr)
-    {return null;}
+    {
+        return emitCompare(expr, ICMP_NE, ICMP_NE, FCMP_ONE);
+    }
 
     public Value visitBinMulAssign(CompoundAssignExpr expr)
     {
@@ -967,15 +973,14 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             {
                 assert v.getType() instanceof PointerType;
                 assert ((PointerType)v.getType()).getElementType() instanceof backend.type.ArrayType;
-
-                v = null; //TODO builder.createStructGEPInbounds(v, 0, "arraydecay");
+                v = builder.createStructGEPInbounds(v, 0, "arraydecay");
             }
 
             Type destTy = convertType(expr.getType());
             if (v.getType() != destTy)
             {
                 if (destTy instanceof PointerType)
-                    v = builder.createBitCast(v, destTy, "  ptrconv");
+                    v = builder.createBitCast(v, destTy, "ptrconv");
                 else
                 {
                     assert destTy instanceof IntegerType;
