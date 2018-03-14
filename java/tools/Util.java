@@ -89,24 +89,24 @@ public class Util
 		return val != 0 && (val & val -1) == 0;
 	}
 
-	public static RuntimeException shouldNotReachHere()
+	public static void shouldNotReachHere()
 	{
-		throw new InternalError("should not reach here");
+		assert false:"should not reach here";
 	}
 
-	public static RuntimeException shouldNotReachHere(String msg)
+	public static void shouldNotReachHere(String msg)
 	{
-		throw new InternalError("should not reach here, " + msg);
+		assert false: "should not reach here, " + msg;
 	}
 
-	public static RuntimeException unimplemented()
+	public static void unimplemented()
 	{
-		throw new InternalError("unimplemented");
+		assert false:"Unimplemented method";
 	}
 
 	/**
-	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
-	 * not less than {@code getNumOfSubLoop}.
+	 * Rounds the input size up to the most least size of pow of align,  which
+	 * not less than {@code size}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -114,12 +114,12 @@ public class Util
 	public static int roundUp(int size, int align)
 	{
 		// insufficient algorithm
-		// return (getNumOfSubLoop/align + 1) * align;
+		// return (size/align + 1) * align;
 		return (size+(align-1))&~(align-1);
 	}
 	/**
-	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
-	 * not less than {@code getNumOfSubLoop}.
+	 * Rounds the input size up to the most least size of pow of align,  which
+	 * not less than {@code size}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -127,7 +127,7 @@ public class Util
 	public static long roundUp(long size, long align)
 	{
 		// insufficient algorithm
-		// return (getNumOfSubLoop/align + 1) * align;
+		// return (size/align + 1) * align;
 		return (size+(align-1))&~(align-1);
 	}
 
