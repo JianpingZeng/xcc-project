@@ -1015,6 +1015,11 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (!destTy.isVoidType())
             testAndClearIgnoreResultAssign();
 
+        if (expr.isNullPointerConstant(cgf.getContext()) && destTy.isPointerType())
+        {
+            // handle the common cases, convert a zero to pointer.
+            return ConstantPointerNull.get(cgf.convertType(destTy));
+        }
         if (!CodeGenFunction.hasAggregateLLVMType(expr.getType()))
         {
             Value src = visit(expr);
