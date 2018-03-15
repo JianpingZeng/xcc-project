@@ -5550,10 +5550,16 @@ public final class Sema implements DiagnosticParseTag,
     {
         // Check is the left type is pointer type and right expression is
         // a null pointer constant.
-        if (lhsType.isPointerType() && rhsExpr.get().get().isNullPointerConstant(context))
+        if (lhsType.isPointerType())
         {
-            implicitCastExprToType(rhsExpr.get().get(), lhsType, EVK_RValue, CK_NullToPointer);
-            return AssignConvertType.Compatible;
+            Expr rhsType = rhsExpr.get().get();
+            OutParamWrapper<APSInt> iceResult = new OutParamWrapper<>();
+            if (rhsType.isIntegerConstantExpr(iceResult, context))
+            {
+                CastKind ck = iceResult.get().eq(0)? CK_NullToPointer : CK_IntegralToPointer;
+                rhsExpr.set(implicitCastExprToType(rhsExpr.get().get(), lhsType, EVK_RValue, ck));
+                return AssignConvertType.Compatible;
+            }
         }
 
         // This check seems unnatural, however it is necessary to ensure the proper

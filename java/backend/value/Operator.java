@@ -78,7 +78,7 @@ public enum Operator
 	// pointer to integer.
 	PtrToInt("ptrtoint", FPExt.index + 1, 0),
 	// Integer to pointer.
-	IntToPtr("intoptr", PtrToInt.index + 1, 0),
+	IntToPtr("inttoptr", PtrToInt.index + 1, 0),
 	// type cast.
 	BitCast("bitcast", IntToPtr.index + 1, 0),
 
