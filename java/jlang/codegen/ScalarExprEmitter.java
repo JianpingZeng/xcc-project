@@ -1193,4 +1193,23 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
         return false;
     }
+
+    @Override
+    public Value visitSizeofAlignofExpr(SizeOfAlignOfExpr expr)
+    {
+        Type llvmTy;
+        QualType ty;
+        if (expr.isArgumentType())
+        {
+            ty = expr.getArgumentType();
+        }
+        else
+        {
+            assert expr.isArgumentExpr();
+            ty = expr.getArgumentExpr().getType();
+        }
+        long size = cgf.getContext().getTypeSize(ty)/8;
+        llvmTy = cgf.convertType(cgf.getContext().getSizeType());
+        return ConstantInt.get(llvmTy, size);
+    }
 }
