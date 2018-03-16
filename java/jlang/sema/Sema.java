@@ -7836,7 +7836,7 @@ public final class Sema implements DiagnosticParseTag,
         else if (!castTy.isArithmeticType())
         {
             QualType castExprType = expr.get().getType();
-            if (castExprType.isIntegerType() && castExprType.isArithmeticType())
+            if (!castExprType.isIntegerType() && castExprType.isArithmeticType())
             {
                 diag(expr.get().getLocStart(),
                         err_cast_pointer_from_non_pointer_int)
@@ -9400,7 +9400,7 @@ public final class Sema implements DiagnosticParseTag,
                 valueKind = EVK_RValue;
                 break;
             case FieldDecl:
-                assert false:"building refernce to field in C?";
+                assert false:"building reference to field in C?";
                 break;
             case VarDecl:
                 // In C, "extern void blah;" is valid and is an r-value.
@@ -9410,6 +9410,7 @@ public final class Sema implements DiagnosticParseTag,
                     break;
                 }
                 // fall through.
+            case OriginalParamVar:
             case ParamVarDecl:
                 // These always be l-value.
                 valueKind = EVK_LValue;
