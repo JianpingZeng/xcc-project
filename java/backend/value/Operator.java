@@ -23,15 +23,15 @@ public enum Operator
     FAdd("fadd", Add.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
 	// subtractive
-	Sub("isub", FAdd.index + 1, ASSOCIATIVE),
+	Sub("sub", FAdd.index + 1, ASSOCIATIVE),
 	FSub("fsub", Sub.index + 1, ASSOCIATIVE),
 
 	// multiple
-	Mul("imul", FSub.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	Mul("mul", FSub.index + 1, COMMUTATIVE | ASSOCIATIVE),
 	FMul("fmul", Mul.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
 	// division
-	UDiv("idiv", FMul.index + 1, ASSOCIATIVE),
+	UDiv("udiv", FMul.index + 1, ASSOCIATIVE),
     SDiv("sdiv", UDiv.index + 1, ASSOCIATIVE),
 	FDiv("fdiv", UDiv.index + 1, ASSOCIATIVE),
 

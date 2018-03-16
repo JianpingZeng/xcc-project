@@ -588,7 +588,7 @@ public abstract class Instruction extends User
 
         public static BinaryOps createMul(Value lhs, Value rhs, String name)
         {
-            return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
+            return create(Operator.Mul, lhs, rhs, name, (Instruction) null);
         }
 
         public static BinaryOps createFMul(Value lhs, Value rhs, String name)
