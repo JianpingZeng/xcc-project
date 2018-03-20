@@ -32,9 +32,7 @@ import jlang.sema.Decl.VarDecl;
 import jlang.type.ArrayType;
 import jlang.type.ArrayType.VariableArrayType;
 import jlang.type.*;
-import tools.APFloat;
-import tools.FltSemantics;
-import tools.Pair;
+import tools.*;
 
 import java.util.*;
 

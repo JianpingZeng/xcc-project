@@ -111,7 +111,7 @@ public enum Operator
 	public static Operator BinaryOpsBegin = Add;
 	public static Operator BinaryOpsEnd = Trunc;
 
-	static class Flags
+    static class Flags
 	{
 		public static final int COMMUTATIVE = 0x1;
 		public static final int ASSOCIATIVE = 0x2;
@@ -170,4 +170,9 @@ public enum Operator
     {
     	return this == GetElementPtr;
     }
+
+	public boolean isShift()
+	{
+		return index >= Shl.index && index <= AShr.index;
+	}
 }

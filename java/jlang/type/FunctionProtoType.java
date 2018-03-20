@@ -17,6 +17,8 @@ package jlang.type;
  */
 
 import jlang.support.PrintingPolicy;
+import tools.FoldingSetNode;
+import tools.FoldingSetNodeID;
 
 import java.util.ArrayList;
 
@@ -26,7 +28,8 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class FunctionProtoType extends FunctionType implements FoldingSetNode
+public final class FunctionProtoType extends FunctionType implements
+        FoldingSetNode
 {
     private boolean isVariadic;
     private QualType[] argInfo;

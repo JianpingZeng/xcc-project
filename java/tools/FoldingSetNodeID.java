@@ -15,7 +15,7 @@
  * permissions and limitations under the License.
  */
 
-package jlang.type;
+package tools;
 
 import gnu.trove.list.array.TIntArrayList;
 

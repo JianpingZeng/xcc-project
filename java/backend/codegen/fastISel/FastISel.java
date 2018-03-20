@@ -17,6 +17,7 @@ package backend.codegen.fastISel;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.FunctionLoweringInfo;
 import backend.support.ErrorHandling;
 import backend.target.*;
 import backend.value.*;
@@ -29,7 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.fastISel.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static tools.APFloat.RoundingMode.rmTowardZero;
 
 /**

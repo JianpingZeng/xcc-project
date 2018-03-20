@@ -3,6 +3,8 @@ package jlang.type;
 import jlang.sema.ASTContext;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
+import tools.FoldingSetNode;
+import tools.FoldingSetNodeID;
 
 import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
 

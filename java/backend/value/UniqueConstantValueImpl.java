@@ -7,7 +7,7 @@ import backend.type.StructType;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.list.array.TIntArrayList;
-import jlang.type.FoldingSetNodeID;
+import tools.FoldingSetNodeID;
 import tools.APFloat;
 import tools.APInt;
 import tools.FltSemantics;

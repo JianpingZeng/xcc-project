@@ -17,7 +17,7 @@ package backend.codegen;
  */
 
 import backend.value.Value;
-import jlang.type.FoldingSetNodeID;
+import tools.FoldingSetNodeID;
 import tools.Util;
 
 /**

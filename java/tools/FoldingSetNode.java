@@ -15,7 +15,7 @@
  * permissions and limitations under the License.
  */
 
-package jlang.type;
+package tools;
 
 /**
  * @author Xlous.zeng
