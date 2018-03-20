@@ -157,6 +157,26 @@ public class BackendCmdOptions
         return ctor.apply();
     }
 
+    public static final BooleanOpt EnableUnsafeFPMath =
+            new BooleanOpt(optionName("enable-unsafe-fp-math"),
+                    desc("Enable optimization that may decrease FP precision"),
+                    init(false));
+
+    public static final BooleanOpt EnableFiniteOnlyFPMath =
+            new BooleanOpt(optionName("enable-finite-only-fp-math"),
+                    desc("Enable optimizations that assumes non- NaNs / +-Infs"),
+                    init(false));
+
+    /**
+     * Checks if we want to increase optimization opportunity in the spense of
+     * reducing floating point precision.
+     * @return
+     */
+    public static boolean finiteOnlyFPMath()
+    {
+        return EnableUnsafeFPMath.value || EnableFiniteOnlyFPMath.value;
+    }
+
     /**
      * A method used for registering Backend command line options.
      * </br>

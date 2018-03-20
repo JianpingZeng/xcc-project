@@ -17,6 +17,8 @@ package jlang.type;
  */
 
 import jlang.support.PrintingPolicy;
+import tools.FoldingSetNode;
+import tools.FoldingSetNodeID;
 
 /**
  * Represents a K&R-style 'int foo()' function, which has
@@ -24,7 +26,8 @@ import jlang.support.PrintingPolicy;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class FunctionNoProtoType extends FunctionType implements FoldingSetNode
+public final class FunctionNoProtoType extends FunctionType implements
+        FoldingSetNode
 {
     public FunctionNoProtoType(QualType returnType, QualType canonical)
     {

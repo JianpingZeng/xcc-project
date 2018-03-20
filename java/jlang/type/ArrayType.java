@@ -5,6 +5,8 @@ import jlang.support.PrintingPolicy;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 import tools.APInt;
+import tools.FoldingSetNode;
+import tools.FoldingSetNodeID;
 
 /**
  * ConstantArrayType - C99 6.7.5.2 - Array Declarators.

@@ -94,6 +94,9 @@ public abstract class TargetLowering
     protected TargetData td;
 
     private ArrayList<Pair<EVT, TargetRegisterClass>> availableRegClasses;
+    private boolean isLittelEndian;
+    private MVT pointerTy;
+    private MVT shiftAmountTy;
 
     public TargetLowering(TargetMachine tm)
     {
@@ -501,4 +504,9 @@ public abstract class TargetLowering
      * @return
      */
     public abstract int getFunctionAlignment(Function fn);
+
+    public MVT getShiftAmountTy()
+    {
+        return shiftAmountTy;
+    }
 }

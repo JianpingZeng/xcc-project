@@ -20,7 +20,7 @@ import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.APIntKeyType;
-import jlang.type.FoldingSetNodeID;
+import tools.FoldingSetNodeID;
 import tools.APInt;
 
 /**

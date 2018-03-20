@@ -16,7 +16,7 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.type.FoldingSetNodeID;
+import tools.FoldingSetNodeID;
 
 /**
  * @author Xlous.zeng

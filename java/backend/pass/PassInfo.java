@@ -2,7 +2,7 @@ package backend.pass;
 
 import backend.support.Printable;
 import backend.value.Module;
-import jlang.type.FoldingSetNodeID;
+import tools.FoldingSetNodeID;
 
 import java.io.PrintStream;
 import java.util.Objects;

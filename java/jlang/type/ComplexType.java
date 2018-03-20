@@ -1,6 +1,8 @@
 package jlang.type;
 
 import jlang.support.PrintingPolicy;
+import tools.FoldingSetNode;
+import tools.FoldingSetNodeID;
 
 /**
  * @author Xlous.zeng
