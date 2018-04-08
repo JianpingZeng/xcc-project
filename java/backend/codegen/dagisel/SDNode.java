@@ -661,7 +661,14 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     {}
 
     public static class RegisterSDNode extends SDNode
-    {}
+    {
+        private int reg;
+
+        public int getReg()
+        {
+            return reg;
+        }
+    }
 
     public static class LabelSDNode extends SDNode
     {}

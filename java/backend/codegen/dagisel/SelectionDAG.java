@@ -879,4 +879,19 @@ public class SelectionDAG
         for (SDValue op : ops)
             id.addInteger(op.hashCode());
     }
+
+    public void clear()
+    {
+        // TODO: 18-4-8
+    }
+
+    public SDValue getRoot()
+    {
+        return root;
+    }
+
+    public void setRoot(SDValue root)
+    {
+        this.root = root;
+    }
 }
