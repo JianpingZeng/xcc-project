@@ -78,7 +78,7 @@ public class ConstantFP extends Constant
         return new ConstantFP(ty, v);
     }
 
-    public static Constant get(APFloat flt)
+    public static ConstantFP get(APFloat flt)
     {
         APFloatKeyType key = new APFloatKeyType(flt);
         return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);

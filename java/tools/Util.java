@@ -620,4 +620,25 @@ public class Util
 	{
 		return x < 10 ? (char)('0' + x) :(char)('A' + x - 10);
 	}
+
+	public static short byteSwap16(short val)
+	{
+		short high =  (short)((val >>> 8)&0xff);
+		short low =  (short)(val&0xff);
+		return (short)((low << 8) | high);
+	}
+
+	public static int byteSwap32(int val)
+	{
+		int high = (val >>> 16) & 0xffff;
+		int low = val & 0xffff;
+		return (((int)byteSwap16((short) low)) << 16) | byteSwap16((short) high);
+	}
+
+	public static long byteSwap64(long val)
+	{
+		int high = (int) ((val >>> 32));
+		int low = (int) (val);
+		return ((long)byteSwap32(low) << 32) | byteSwap32(high);
+	}
 }

@@ -21,6 +21,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static tools.Util.byteSwap16;
 import static tools.Util.countLeadingZeros32;
 
 /**
@@ -1276,7 +1277,7 @@ public class APInt implements Cloneable
      *
      * @return
      */
-    private int countPopulation()
+    public int countPopulation()
     {
         if (isSingleWord())
             return countPopulation_64(val);
@@ -3638,5 +3639,56 @@ public class APInt implements Cloneable
 
         while (i < parts)
             dst[i++] = 0;
+    }
+
+    public APInt byteSwap()
+    {
+        assert bitWidth >= 16 && bitWidth % 16 == 0;
+        if (bitWidth == 16)
+            return new APInt(bitWidth, Util.byteSwap16((short) val));
+        if (bitWidth == 32)
+            return new APInt(bitWidth, Util.byteSwap32((int) val));
+        if (bitWidth == 48)
+        {
+            short low = (short) (val & 0xffff);
+            long mid = val & 0x0000ffff0000L;
+            short high = (short) ((val >>> 32) & 0xffff);
+            return new APInt(bitWidth, (long)Util.byteSwap16(low) << 32 | Util.byteSwap64(mid) | byteSwap16(high));
+        }
+        if (bitWidth == 64)
+            return new APInt(bitWidth, Util.byteSwap64(val));
+
+        APInt res = new APInt(pVal, bitWidth);
+        long[] vals = res.pVal;
+        for (int i = 0; i< bitWidth/APINT_BITS_PER_WORD/2; i++)
+        {
+            long first = vals[i];
+            vals[i] = Util.byteSwap64(first);
+            vals[bitWidth/APINT_BITS_PER_WORD/2 - i - 1] = Util.byteSwap64(first);
+        }
+        return res;
+    }
+
+
+    public int countTrailingZeros()
+    {
+        if (isSingleWord())
+            return Util.countTrailingZeros(val);
+        else
+        {
+            int count = 0;
+            for (int i = bitWidth / APINT_BITS_PER_WORD - 1; i >= 0; --i)
+            {
+                long val = pVal[i];
+                if (val == 0)
+                    count += 64;
+                else
+                {
+                    count += Util.countLeadingOnes64(val);
+                    break;
+                }
+            }
+            return count;
+        }
     }
 }
