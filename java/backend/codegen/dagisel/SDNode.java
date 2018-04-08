@@ -275,6 +275,20 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
+    protected SDNode(int opc, SDVTList vts, SDValue[] ops)
+    {
+        this.opcode = opc;
+        sublassData = 0;
+        nodeID = -1;
+        operandList = ops.length != 0 ? new SDUse[ops.length]: null;
+        valueList = vts.vts;
+        for (int i = 0; i < ops.length; i++)
+        {
+            operandList[i].setUser(this);
+            operandList[i].setInitial(ops[i]);
+        }
+    }
+
     protected SDNode(int opc, SDVTList list)
     {
         opcode = opc;
@@ -573,7 +587,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public static class ConstantFPSDNode extends SDNode
     {
         private ConstantFP value;
-        private ConstantFPSDNode(boolean isTarget, ConstantFP val, EVT vt)
+        public ConstantFPSDNode(boolean isTarget, ConstantFP val, EVT vt)
         {
             super(isTarget?ISD.TargetConstantFP:ISD.ConstantFP, getSDVTList(vt));;
             value = val;

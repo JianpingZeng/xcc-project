@@ -77,8 +77,6 @@ public abstract class TargetLowering
         ZeroOrNegativeOneBooleanContent // All bits equal to bit 0.
     }
 
-    private MVT pointerTy;
-
     /**
      * This indicates the default register class to use for
      * each ValueType the target supports natively.
