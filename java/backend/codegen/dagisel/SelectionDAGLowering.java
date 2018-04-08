@@ -22,6 +22,7 @@ import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineInstr;
+import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.codegen.fastISel.ISD;
 import backend.ir.AllocationInst;
 import backend.ir.MallocInst;
@@ -31,6 +32,7 @@ import backend.support.CallSite;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import backend.type.SequentialType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -148,20 +150,80 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     public void clear()
-    {}
+    {
+        nodeMap.clear();
+        pendingExports.clear();
+        pendingLoads.clear();
+        dag.clear();
+        hasTailCall = false;
+    }
 
     public SDValue getRoot()
-    {}
+    {
+        if (pendingLoads.isEmpty())
+            return dag.getRoot();
+
+        if (pendingLoads.size() == 1)
+        {
+            SDValue root = pendingLoads.get(0);
+            dag.setRoot(root);
+            pendingLoads.clear();
+            return root;
+        }
+        SDValue[] vals = new SDValue[pendingLoads.size()];
+        pendingLoads.toArray(vals);
+        SDValue root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                vals);
+        pendingLoads.clear();
+        dag.setRoot(root);
+        return root;
+    }
 
     public SDValue getControlRoot()
-    {}
+    {
+        SDValue root = dag.getRoot();
+        if (pendingExports.isEmpty())
+            return root;
+
+        if (root.getOpcode() != ISD.EntryToken)
+        {
+            int i = 0, e = pendingExports.size();
+            while (i < e)
+            {
+                assert pendingExports.get(i).getNode().getNumOperands() > 1;
+                if (pendingExports.get(i).getNode().getOperand(0).equals(root))
+                    break;
+
+                i++;
+            }
+            if (i == e)
+                pendingExports.add(root);
+        }
+
+        SDValue[] vals = new SDValue[pendingExports.size()];
+        pendingExports.toArray(vals);
+        root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                vals);
+        pendingExports.clear();
+        dag.setRoot(root);
+        return root;
+    }
 
     public void copyValueToVirtualRegister(Value val, int reg)
-    {}
+    {
+        SDValue op = getValue(val);
+        assert op.getOpcode() != ISD.CopyFromReg ||
+                ((RegisterSDNode)op.getOperand(1).getNode()).getReg() != reg
+            :"Copy from a arg to the same reg";
+        assert !TargetRegisterInfo.isPhysicalRegister(reg):"Is a phyisical reg?";
+
+        // TODO: 18-4-8
+    }
 
     public SDValue getValue(Value val)
     {
-
+        // TODO: 18-4-8
+        return null;
     }
 
     public void setValue(Value val, SDValue sdVal)
@@ -492,6 +554,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             setValue(inst, dag.getNode(ISD.BIT_CONVERT, destVT, op1));
         else
             setValue(inst, op1);
+        return null;
     }
 
     @Override
