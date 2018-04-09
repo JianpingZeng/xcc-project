@@ -17,10 +17,7 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineModuleInfo;
+import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.CondCodeSDNode;
 import backend.codegen.dagisel.SDNode.ConstantFPSDNode;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
@@ -31,12 +28,10 @@ import backend.target.TargetMachine;
 import backend.value.ConstantFP;
 import backend.value.ConstantInt;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import tools.APFloat;
-import tools.APInt;
-import tools.FoldingSetNodeID;
-import tools.OutParamWrapper;
+import tools.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 import static backend.codegen.dagisel.SDNode.EVTToAPFloatSemantics;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
@@ -868,7 +863,112 @@ public class SelectionDAG
         return getConstantFP(new APFloat(val), vt, isTarget);
     }
 
-    private void addNodeToIDNode(FoldingSetNodeID id,
+    public static void addNodeToID(FoldingSetNodeID id, SDNode node)
+    {
+        addNodeToIDNode(id, node.getOpcode(), node.getValueList());
+        for (SDUse use : node.getOperandList())
+        {
+            id.addInteger(use.getNode().hashCode());
+            id.addInteger(use.getResNo());
+        }
+        addCustomToIDNode(id, node);
+    }
+
+    private static void addCustomToIDNode(FoldingSetNodeID id, SDNode node)
+    {
+        switch (node.getOpcode())
+        {
+            case ISD.TargetExternalSymbol:
+            case ISD.ExternalSymbol:
+                Util.shouldNotReachHere("Should only be used on nodes with operands!");
+                break;
+            default:break;
+            case ISD.TargetConstant:
+            case ISD.Constant:
+                id.addInteger(((ConstantSDNode)node).getConstantIntValue().hashCode());
+                break;
+            case ISD.TargetConstantFP:
+            case ISD.ConstantFP:
+                id.addInteger(((ConstantFPSDNode)node).getConstantFPValue().hashCode());
+                break;
+            case ISD.TargetGlobalAddress:
+            case ISD.GlobalAddress:
+            case ISD.TargetGlobalTLSAddress:
+            case ISD.GlobalTLSAddress:
+            {
+                SDNode.GlobalAddressSDNode addrNode = (SDNode.GlobalAddressSDNode)node;
+                id.addInteger(addrNode.getGlobalValue().hashCode());
+                id.addInteger(addrNode.getOffset());
+                id.addInteger(addrNode.getTargetFlags());
+                break;
+            }
+            case ISD.BasicBlock:
+                id.addInteger(((SDNode.BasicBlockSDNode)node).getBasicBlock().hashCode());
+                break;
+            case ISD.Register:
+                id.addInteger(((SDNode.RegisterSDNode)node).getReg());
+                break;
+            case ISD.MEMOPERAND:
+                MachineMemOperand mo = ((SDNode.MemOperandSDNode)node).getMachineMemOperand();
+                mo.profile(id);
+                break;
+            case ISD.FrameIndex:
+            case ISD.TargetFrameIndex:
+                id.addInteger(((SDNode.FrameIndexSDNode)node).getFrameIndex());
+                break;
+            case ISD.JumpTable:
+            case ISD.TargetJumpTable:
+                id.addInteger(((SDNode.JumpTableSDNode)node).getJumpTableIndex());
+                break;
+            case ISD.ConstantPool:
+            case ISD.TargetConstantPool:
+            {
+                SDNode.ConstantPoolSDNode pool = (SDNode.ConstantPoolSDNode)node;
+                id.addInteger(pool.getAlign());
+                id.addInteger(pool.getOffset());
+                if (pool.isMachineConstantPoolValue())
+                    pool.getMachineConstantPoolValue().addSelectionDAGCSEId(id);
+                else
+                    id.addInteger(pool.getConstantValue().hashCode());
+                id.addInteger(pool.getTargetFlags());
+                break;
+            }
+            case ISD.LOAD:
+            {
+                SDNode.LoadSDNode load = (SDNode.LoadSDNode)node;
+                id.addInteger(load.getMemoryVT().getRawBits().hashCode());
+                id.addInteger(load.getRawSubclassData());
+                break;
+            }
+            case ISD.STORE:
+            {
+                SDNode.StoreSDNode store = (SDNode.StoreSDNode)node;
+                id.addInteger(store.getMemoryVT().getRawBits().hashCode());
+                id.addInteger(store.getRawSubclassData());
+                break;
+            }
+            case ISD.ATOMIC_CMP_SWAP:
+            case ISD.ATOMIC_SWAP:
+            case ISD.ATOMIC_LOAD_ADD:
+            case ISD.ATOMIC_LOAD_SUB:
+            case ISD.ATOMIC_LOAD_AND:
+            case ISD.ATOMIC_LOAD_OR:
+            case ISD.ATOMIC_LOAD_XOR:
+            case ISD.ATOMIC_LOAD_NAND:
+            case ISD.ATOMIC_LOAD_MIN:
+            case ISD.ATOMIC_LOAD_MAX:
+            case ISD.ATOMIC_LOAD_UMIN:
+            case ISD.ATOMIC_LOAD_UMAX:
+            {
+                SDNode.AtomicSDNode atomNode = (SDNode.AtomicSDNode)node;
+                id.addInteger(atomNode.getMemoryVT().getRawBits().hashCode());
+                id.addInteger(atomNode.getRawSubclassData());
+                break;
+            }
+        }
+    }
+
+    private static void addNodeToIDNode(FoldingSetNodeID id,
             int opc, SDVTList vtList,
             SDValue... ops)
     {
@@ -882,7 +982,17 @@ public class SelectionDAG
 
     public void clear()
     {
-        // TODO: 18-4-8
+        allNodes.clear();
+        cseMap.clear();
+        Collections.fill(condCodeNodes, null);
+        entryNode.useList = null;
+        allNodes.add(entryNode);
+        root = getEntryNode();
+    }
+
+    public SDValue getEntryNode()
+    {
+        return new SDValue(entryNode, 0);
     }
 
     public SDValue getRoot()
@@ -892,6 +1002,7 @@ public class SelectionDAG
 
     public void setRoot(SDValue root)
     {
+        assert root.getNode() == null || root.getValueType().equals(new EVT(MVT.Other)):"Not a legal root!";
         this.root = root;
     }
 }
