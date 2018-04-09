@@ -17,14 +17,9 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.MachineMemOperand;
+import backend.codegen.*;
 import backend.codegen.fastISel.ISD;
-import backend.value.ConstantFP;
-import backend.value.ConstantInt;
-import backend.value.Value;
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import backend.value.*;
 import tools.*;
 
 import java.io.PrintStream;
@@ -101,7 +96,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     {
     }
 
-    public boolean isOpearndOf(SDNode node)
+    public boolean isOperandOf(SDNode node)
     {
     }
 
@@ -109,9 +104,55 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     {
     }
 
+    public static FltSemantics EVTToAPFloatSemantics(EVT vt)
+    {
+        switch (vt.getSimpleVT().simpleVT)
+        {
+            case MVT.f32: return APFloat.IEEEsingle;
+            case MVT.f64: return APFloat.IEEEdouble;
+            case MVT.f80: return APFloat.x87DoubleExtended;
+            case MVT.f128: return APFloat.IEEEquad;
+            default:
+                Util.shouldNotReachHere("Unknown FP format!");
+                return null;
+        }
+    }
+
+    public boolean isNormalLoad(SDNode node)
+    {
+
+    }
+
+    public boolean isNONExtLoad(SDNode node)
+    {}
+
+    public boolean isExtLoad(SDNode node)
+    {}
+
+    public boolean isSEXTLoad(SDNode node)
+    {}
+
+    public boolean isZEXTLoad(SDNode node)
+    {}
+
+    public boolean isUNINDEXEDLoad(SDNode node)
+    {}
+
+    public boolean isNormalStore(SDNode node)
+    {}
+
+    public boolean isNONTRUNCStore(SDNode node)
+    {}
+
+    public boolean isTRUNCStore(SDNode node)
+    {}
+
+    public boolean isUNINDEXEDStore(SDNode node)
+    {}
+
     public int getNumOperands()
     {
-        return numOperands;
+        return operandList.length;
     }
 
     public long getConstantOperandVal(int num)
@@ -120,7 +161,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public SDValue getOperand(int num)
     {
-        assert num <= numOperands && num >= 0;
+        assert num <= getNumOperands() && num >= 0;
         return operandList[num].val;
     }
 
@@ -154,12 +195,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public int getNumValues()
     {
-        return numValues;
+        return valueList.length;
     }
 
     public EVT getValueType(int resNo)
     {
-        assert resNo <= numValues && resNo >= 0;
+        assert resNo <= getNumValues() && resNo >= 0;
         return valueList[resNo];
     }
 
@@ -168,9 +209,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         return getValueType(resNo).getSizeInBits();
     }
 
-    public EVT[] getValueList()
+    public SDVTList getValueList()
     {
-        return valueList;
+        return new SDVTList(valueList);
     }
 
     public String getOperationName()
@@ -244,13 +285,22 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     @Override
     public void profile(FoldingSetNodeID id)
     {
-
+        SelectionDAG.addNodeToID(id, this);
     }
 
     static class SDVTList
     {
         EVT[] vts;
         int numVTs;
+
+        public SDVTList()
+        {}
+
+        public SDVTList(EVT[] vts)
+        {
+            this.vts = vts;
+            this.numVTs = vts.length;
+        }
     }
 
     protected static SDVTList getSDVTList(EVT vt)
@@ -362,6 +412,18 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
+    protected void initOperands(SDValue... vals)
+    {
+        assert vals != null && vals.length > 0:"Illegal values for initialization!";
+        operandList = new SDUse[vals.length];
+        for (int i = 0; i < operandList.length; i++)
+        {
+            operandList[i] = new SDUse();
+            operandList[i].setUser(this);
+            operandList[i].setInitial(vals[i]);
+        }
+    }
+
     protected void dropOperands()
     {
         for (SDUse anOperandList : operandList)
@@ -423,12 +485,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             return (1 << (sublassData >> 6)) >> 1;
         }
 
-        public boolean isVotatile()
+        public boolean isVolatile()
         {
             return ((sublassData >> 5) & 0x1) != 0;
         }
 
-        private int getRawSubclassData()
+        public int getRawSubclassData()
         {
             return sublassData;
         }
@@ -450,6 +512,30 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
         public MachineMemOperand getMemOperand()
         {
+            int flags = 0;
+            if (this instanceof LoadSDNode)
+                flags = MachineMemOperand.MOLoad;
+            else if (this instanceof StoreSDNode)
+                flags = MachineMemOperand.MOStore;
+            else if (this instanceof AtomicSDNode)
+                flags = MachineMemOperand.MOLoad | MachineMemOperand.MOStore;
+            else
+            {
+                assert false:"MemIntrinsic not supported!";
+            }
+            // alignment it in 1 byte.
+            int size = (getMemoryVT().getSizeInBits() + 7) >> 3;
+            if (isVolatile()) flags |= MachineMemOperand.MOVolatile;
+
+            FrameIndexSDNode fi = getBasePtr().getNode() instanceof FrameIndexSDNode? ((FrameIndexSDNode) getBasePtr().getNode()): null;
+            if (getSrcValue() == null && fi != null)
+            {
+                return new MachineMemOperand(PseudoSourceValue.getFixedStack(fi.getFrameIndex()),
+                        flags, 0, size, getAlignment());
+            }
+            else
+                return new MachineMemOperand(getSrcValue(),
+                        flags, getSrcValueOffset(), size, getAlignment());
         }
 
         public SDValue getChain()
@@ -628,41 +714,170 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
-    public static FltSemantics EVTToAPFloatSemantics(EVT vt)
+    public static class GlobalAddressSDNode extends SDNode
     {
-        switch (vt.getSimpleVT().simpleVT)
+        private GlobalValue gv;
+        private long offset;
+        private int tsFlags;
+
+        public GlobalAddressSDNode(int opc, EVT vt, GlobalValue gv, long off, int targetFlags)
         {
-            case MVT.f32: return APFloat.IEEEsingle;
-            case MVT.f64: return APFloat.IEEEdouble;
-            case MVT.f80: return APFloat.x87DoubleExtended;
-            case MVT.f128: return APFloat.IEEEquad;
-            default:
-                Util.shouldNotReachHere("Unknown FP format!");
-                return null;
+            super(opc, getSDVTList(vt));
+            this.gv = gv;
+            this.offset = off;
+            this.tsFlags = targetFlags;
+        }
+
+        public GlobalValue getGlobalValue()
+        {
+            return gv;
+        }
+
+        public long getOffset()
+        {
+            return offset;
+        }
+        public int getTargetFlags()
+        {
+            return tsFlags;
         }
     }
 
-    public static class GlobalAddressSDNode extends SDNode
-    {}
-
     public static class FrameIndexSDNode extends SDNode
-    {}
+    {
+        private int frameIndex;
+        public FrameIndexSDNode(int fi, EVT vt, boolean isTarget)
+        {
+            super(isTarget?ISD.TargetFrameIndex:ISD.FrameIndex, getSDVTList(vt));
+            this.frameIndex = fi;
+        }
+
+        public int getFrameIndex()
+        {
+            return frameIndex;
+        }
+
+        public void setFrameIndex(int frameIndex)
+        {
+            this.frameIndex = frameIndex;
+        }
+    }
 
     public static class JumpTableSDNode extends SDNode
-    {}
+    {
+        private int jumpTableIndex;
+        public JumpTableSDNode(int jit, EVT vt, boolean isTarget)
+        {
+            super(isTarget?ISD.TargetJumpTable:ISD.JumpTable, getSDVTList(vt));
+            jumpTableIndex = jit;
+        }
+
+        public int getJumpTableIndex()
+        {
+            return jumpTableIndex;
+        }
+
+        public void setJumpTableIndex(int jumpTableIndex)
+        {
+            this.jumpTableIndex = jumpTableIndex;
+        }
+    }
 
     public static class ConstantPoolSDNode extends SDNode
-    {}
+    {
+        private Object val;
+        private int offset;
+        private int align;
+        private int targetFlags;
+        public ConstantPoolSDNode(boolean isTarget, Constant cnt, EVT vt, int off, int align, int targetFlags)
+        {
+            super(isTarget?ISD.TargetConstantPool:ISD.ConstantPool, getSDVTList(vt));
+            val = cnt;
+            offset = off;
+            this.align = align;
+            this.targetFlags = targetFlags;
+        }
+
+        public ConstantPoolSDNode(boolean isTarget, MachineConstantPoolValue machPoolVal, EVT vt, int off, int align, int targetFlags)
+        {
+            super(isTarget?ISD.TargetConstantPool:ISD.ConstantPool, getSDVTList(vt));
+            val = machPoolVal;
+            offset = off;
+            this.align = align;
+            this.targetFlags = targetFlags;
+        }
+
+        public boolean isMachineConstantPoolValue()
+        {
+            return val instanceof MachineConstantPoolValue;
+        }
+
+        public Constant getConstantValue()
+        {
+            assert !isMachineConstantPoolValue();
+            return (Constant)val;
+        }
+
+        public MachineConstantPoolValue getMachineConstantPoolValue()
+        {
+            assert isMachineConstantPoolValue();
+            return (MachineConstantPoolValue)val;
+        }
+
+        public int getOffset()
+        {
+            return offset;
+        }
+
+        public int getAlign()
+        {
+            return align;
+        }
+
+        public int getTargetFlags()
+        {
+            return targetFlags;
+        }
+    }
 
     public static class BasicBlockSDNode extends SDNode
-    {}
+    {
+        private BasicBlock bb;
+        public BasicBlockSDNode(BasicBlock bb)
+        {
+            super(ISD.BasicBlock, getSDVTList(new EVT(MVT.Other)));
+            this.bb = bb;
+        }
+
+        public BasicBlock getBasicBlock()
+        {
+            return bb;
+        }
+    }
 
     public static class MemOperandSDNode extends SDNode
-    {}
+    {
+        private MachineMemOperand mmo;
+        public MemOperandSDNode(MachineMemOperand mmo)
+        {
+            super(ISD.MEMOPERAND, getSDVTList(new EVT(MVT.Other)));
+            this.mmo = mmo;
+        }
+
+        public MachineMemOperand getMachineMemOperand()
+        {
+            return mmo;
+        }
+    }
 
     public static class RegisterSDNode extends SDNode
     {
         private int reg;
+        public RegisterSDNode(EVT vt, int reg)
+        {
+            super(ISD.Register, getSDVTList(vt));
+            this.reg = reg;
+        }
 
         public int getReg()
         {
@@ -671,10 +886,42 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     }
 
     public static class LabelSDNode extends SDNode
-    {}
+    {
+        private int labelID;
+        public LabelSDNode(int nodeTy, EVT vt, SDValue ch, int labelID)
+        {
+            super(nodeTy, getSDVTList(vt));
+            initOperands(ch);
+            this.labelID = labelID;
+        }
+
+        public int getLabelID()
+        {
+            return labelID;
+        }
+    }
 
     public static class ExternalSymbolSDNode extends SDNode
-    {}
+    {
+        private String extSymol;
+        private int targetFlags;
+        public ExternalSymbolSDNode(boolean isTarget, EVT vt, String sym, int flags)
+        {
+            super(isTarget? ISD.TargetExternalSymbol:ISD.ExternalSymbol, getSDVTList(vt));
+            this.extSymol = sym;
+            this.targetFlags = flags;
+        }
+
+        public String getExtSymol()
+        {
+            return extSymol;
+        }
+
+        public int getTargetFlags()
+        {
+            return targetFlags;
+        }
+    }
 
     public static class CondCodeSDNode extends SDNode
     {
@@ -692,46 +939,118 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     }
 
     public static class VTSDNode extends SDNode
-    {}
-
-    public static class LSBaseSDNode extends MemSDNode
-    {}
-
-    public static class LoadSDNode extends SDNode
-    {}
-
-    public static class StoreSDNode extends SDNode
-    {}
-
-    public boolean isNormalLoad(SDNode node)
     {
+        private EVT vt;
+        public VTSDNode(EVT vt)
+        {
+            super(ISD.VALUETYPE, getSDVTList(new EVT(MVT.Other)));
+            this.vt = vt;
+        }
 
+        public EVT getVT()
+        {
+            return vt;
+        }
     }
 
-    public boolean isNONExtLoad(SDNode node)
-    {}
+    public static class LSBaseSDNode extends MemSDNode
+    {
+        public LSBaseSDNode(int nodeTy, SDValue[] operands, SDVTList vts,
+                            MemIndexedMode mode, EVT vt, Value srcVal,
+                            int srcOff,
+                            int alig,
+                            boolean isVolatile)
+        {
+            super(nodeTy, vts, vt, srcVal ,srcOff, alig, isVolatile);
+            assert alig != 0 :"Loads and Stores should have non-zero alignment!";
+            sublassData |= mode.ordinal() << 2;
+            assert getAddressingMode() == mode;
+            initOperands(operands);
+            assert getOffset().getOpcode() == ISD.UNDEF || isIndexed() :
+                    "Only indexed loads and stores have a non-undef offset operand!";
+        }
 
-    public boolean isExtLoad(SDNode node)
-    {}
+        public SDValue getOffset()
+        {
+            return getOperand(getOpcode() == ISD.LOAD ? 2 : 3);
+        }
 
-    public boolean isSEXTLoad(SDNode node)
-    {}
+        public MemIndexedMode getAddressingMode()
+        {
+            return MemIndexedMode.values()[(sublassData >> 2)&7];
+        }
 
-    public boolean isZEXTLoad(SDNode node)
-    {}
+        public boolean isIndexed()
+        {
+            return getAddressingMode() != MemIndexedMode.UNINDEXED;
+        }
 
-    public boolean isUNINDEXEDLoad(SDNode node)
-    {}
+        public boolean isUnindexed()
+        {
+            return !isIndexed();
+        }
+    }
 
-    public boolean isNormalStore(SDNode node)
-    {}
+    public static class LoadSDNode extends LSBaseSDNode
+    {
+        public LoadSDNode(SDValue[] chainPtrOff, SDVTList vts, MemIndexedMode mode,
+                          LoadExtType ety, EVT vt, Value sv, int offset, int align,
+                          boolean isVolatile)
+        {
+            super(ISD.LOAD, chainPtrOff, vts, mode, vt, sv, offset, align, isVolatile);
+            sublassData |= ety.ordinal();
+            assert getExtensionType() == ety :"LoadExtType encoding error!";
+        }
 
-    public boolean isNONTRUNCStore(SDNode node)
-    {}
+        public LoadExtType getExtensionType()
+        {
+            return LoadExtType.values()[sublassData & 3];
+        }
 
-    public boolean isTRUNCStore(SDNode node)
-    {}
+        @Override
+        public SDValue getBasePtr()
+        {
+            return getOperand(1);
+        }
 
-    public boolean isUNINDEXEDStore(SDNode node)
-    {}
+        @Override
+        public SDValue getOffset()
+        {
+            return getOperand(2);
+        }
+    }
+
+    public static class StoreSDNode extends LSBaseSDNode
+    {
+        public StoreSDNode(SDValue[] chainPtrOff, SDVTList vts, MemIndexedMode mode,
+                           boolean isTrunc, EVT vt, Value sv, int offset, int align,
+                           boolean isVolatile)
+        {
+            super(ISD.STORE, chainPtrOff, vts, mode, vt, sv, offset, align, isVolatile);
+            sublassData |= isTrunc?1:0;
+            assert isTruncatingStore() == isTrunc;
+        }
+
+        public boolean isTruncatingStore()
+        {
+            return (sublassData&1) != 0;
+        }
+
+        public SDValue getValue()
+        {
+            return getOperand(1);
+        }
+
+        @Override
+        public SDValue getBasePtr()
+        {
+            return getOperand(2);
+        }
+
+        @Override
+        public SDValue getOffset()
+        {
+            return getOperand(3);
+        }
+    }
 }

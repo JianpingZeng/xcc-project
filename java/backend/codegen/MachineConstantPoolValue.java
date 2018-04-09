@@ -17,6 +17,7 @@ package backend.codegen;
  */
 
 import backend.type.Type;
+import tools.FoldingSetNodeID;
 
 import java.io.PrintStream;
 
@@ -42,6 +43,8 @@ public abstract class MachineConstantPoolValue
     public abstract int getRelocationInfo();
 
     public abstract int getExistingMachineCPValue(MachineConstantPool pool, int align);
+
+    public abstract void addSelectionDAGCSEId(FoldingSetNodeID id);
 
     public abstract void print(PrintStream os);
 }
