@@ -18,25 +18,33 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
+import backend.codegen.dagisel.SDNode.LoadSDNode;
+import backend.codegen.fastISel.ISD;
 
 /**
  * Unlike LLVM values, Selection DAG nodes may return multiple
- * /// values as the result of a computation.  Many nodes return multiple values,
- * /// from loads (which define a token and a return value) to ADDC (which returns
- * /// a result and a carry value), to calls (which may return an arbitrary number
- * /// of values).
- * ///
- * /// As such, each use of a SelectionDAG computation must indicate the node that
- * /// computes it as well as which return value to use from that node.  This pair
- * /// of information is represented with the SDValue value type.
+ * values as the result of a computation.  Many nodes return multiple values,
+ * from loads (which define a token and a return value) to ADDC (which returns
+ * a result and a carry value), to calls (which may return an arbitrary number
+ * of values).
+ *
+ * As such, each use of a SelectionDAG computation must indicate the node that
+ * computes it as well as which return value to use from that node.  This pair
+ * of information is represented with the SDValue value type.
  *
  * @author Xlous.zeng
  * @version 0.1
  */
 public class SDValue implements Comparable<SDValue>
 {
-    private SDNode node;       // The node defining the value we are using.
-    private int resNo;     // Which return value of the node we are using.
+    /**
+     * The node defining the value we are using.
+     */
+    private SDNode node;
+    /**
+     * Which return value of the node we are using.
+     */
+    private int resNo;
 
     public SDValue()
     {
@@ -44,21 +52,32 @@ public class SDValue implements Comparable<SDValue>
 
     public SDValue(SDNode node, int resno)
     {
+        this.node = node;
+        resNo = resno;
     }
 
-    /// get the index which selects a specific result in the SDNode
+    /**
+     * get the index which selects a specific result in the SDNode
+     * @return
+     */
     public int getResNo()
     {
         return resNo;
     }
 
-    /// get the SDNode which holds the desired result
+    /**
+     * get the SDNode which holds the desired result
+     * @return
+     */
     public SDNode getNode()
     {
         return node;
     }
 
-    /// set the SDNode
+    /**
+     * set the SDNode
+     * @param n
+     */
     public void setNode(SDNode n)
     {
         node = n;
@@ -87,65 +106,118 @@ public class SDValue implements Comparable<SDValue>
         return new SDValue(node, r);
     }
 
-    // isOperandOf - Return true if this node is an operand of n.
+    /**
+     * Return true if this node is an operand of n.
+     * @param n
+     * @return
+     */
     public boolean isOperandOf(SDNode n)
     {
+        for (int i = n.getNumOperands() - 1; i >= 0; i--)
+        {
+            if (n.getOperand(i).equals(this))
+                return true;
+        }
+
+        return false;
     }
 
-    /// getValueType - Return the ValueType of the referenced return value.
-    ///
+    /**
+     * Return the ValueType of the referenced return value.
+     * @return
+     */
     public EVT getValueType()
     {
+        return node.getValueType(resNo);
     }
 
-    /// getValueSizeInBits - Returns the size of the value in bits.
-    ///
+    /**
+     * Returns the size of the value in bits.
+     * @return
+     */
     public int getValueSizeInBits()
     {
         return getValueType().getSizeInBits();
     }
 
-    // Forwarding methods - These forward to the corresponding methods in SDNode.
+    /**
+     * These forward to the corresponding methods in SDNode.
+     * @return
+     */
     public int getOpcode()
     {
+        return node.getOpcode();
     }
 
     public int getNumOperands()
     {
+        return node.getNumOperands();
     }
 
     public SDValue getOperand(int idx)
     {
+        assert idx >= 0 && idx < getNumOperands();
+        return node.getOperand(idx);
     }
 
     public long getConstantOperandVal(int idx)
     {
+        assert idx >= 0 && idx < getNumOperands();
+        return node.getConstantOperandVal(idx);
     }
 
     public boolean isTargetOpcode()
     {
+        return node.isTargetOpcode();
     }
 
     public boolean isMachineOpcode()
     {
+        return node.isMachineOperand();
     }
 
     public int getMachineOpcode()
     {
+        assert isMachineOpcode():"Can't calling this method on non-machine opcode!";
+        return node.getMachineOpcode();
     }
 
-    /// reachesChainWithoutSideEffects - Return true if this operand (which must
-    /// be a chain) reaches the specified operand without crossing any
-    /// side-effecting instructions.  In practice, this looks through token
-    /// factors and non-volatile loads.  In order to remain efficient, this only
-    /// looks a couple of nodes in, it does not do an exhaustive search.
+    /**
+     * Return true if this operand (which must
+     * be a chain) reaches the specified operand without crossing any
+     * side-effecting instructions.  In practice, this looks through token
+     * factors and non-volatile loads.  In order to remain efficient, this only
+     * looks a couple of nodes in, it does not do an exhaustive search.
+     * @param dest
+     * @return
+     */
     public boolean reachesChainWithoutSideEffects(SDValue dest)
     {
         return reachesChainWithoutSideEffects(dest, 2);
     }
 
-    public boolean reachesChainWithoutSideEffects(SDValue Dest, int Depth)
+    public boolean reachesChainWithoutSideEffects(SDValue dest, int depth)
     {
+        if (this == dest) return true;
+        if (depth == 0) return false;
+
+        if (getOpcode() == ISD.TokenFactor)
+        {
+            for (int i = 0, e = getNumOperands(); i < e; i++)
+            {
+                if (getOperand(i).reachesChainWithoutSideEffects(dest, depth-1))
+                    return true;
+            }
+            return false;
+        }
+
+        LoadSDNode load = node instanceof LoadSDNode ? (LoadSDNode)node: null;
+        if (load != null)
+        {
+            if (!load.isVolatile())
+                return load.getChain().reachesChainWithoutSideEffects(dest, depth-1);
+        }
+        return false;
     }
 
     /**
@@ -155,12 +227,16 @@ public class SDValue implements Comparable<SDValue>
      */
     public boolean isUseEmpty()
     {
+        return !node.hasAnyUseOfValue(resNo);
     }
 
-    /// hasOneUse - Return true if there is exactly one node using value
-    /// resNo of node.
-    ///
+    /**
+     * Return true if there is exactly one node using value
+     * resNo of node.
+     * @return
+     */
     public boolean hasOneUse()
     {
+        return node.hasNumUsesOfValue(1, resNo);
     }
 }

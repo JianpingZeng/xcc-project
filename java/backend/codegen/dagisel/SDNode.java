@@ -19,11 +19,16 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.codegen.fastISel.ISD;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetLowering;
 import backend.value.*;
 import tools.*;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.TreeSet;
 
 /**
  * @author Xlous.zeng
@@ -37,9 +42,21 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     protected SDUse[] operandList;
     protected EVT[] valueList;
     protected ArrayList<SDUse> useList;
+    private static HashMap<EVT, TreeSet<EVT>> evts = new HashMap<>();
+    private static EVT[] vts = new EVT[MVT.LAST_VALUETYPE];
 
-    private static EVT[] getValueTypeList(EVT vt)
+    private static EVT getValueTypeList(EVT vt)
     {
+        if (vt.isExtended())
+        {
+            evts.put(vt, new TreeSet<>());
+            return vt;
+        }
+        else
+        {
+            vts[vt.getSimpleVT().simpleVT] = vt;
+            return vt;
+        }
     }
 
     public int getOpcode()
@@ -86,22 +103,71 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public boolean hasNumUsesOfValue(int numOfUses, int value)
     {
+        assert value < getNumValues():"Illegal value!";
+        for (SDUse u : useList)
+        {
+            if (u.getResNo() == value)
+            {
+                if (numOfUses == 0)
+                    return false;
+                --numOfUses;
+            }
+        }
+        return numOfUses == 0;
     }
 
     public boolean hasAnyUseOfValue(int value)
     {
+        assert value < getNumValues():"Illegal value!";
+        for (SDUse u : useList)
+        {
+            if (u.getResNo() == value)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isOnlyUserOf(SDNode node)
     {
+        for (SDUse u : useList)
+        {
+            if (!u.getUser().equals(node))
+                return false;
+        }
+        return true;
     }
 
     public boolean isOperandOf(SDNode node)
     {
+        for (int i = 0, e = node.getNumOperands(); i < e; i++)
+        {
+            if (node.getOperand(i).getNode().equals(this))
+                return true;
+        }
+        return false;
     }
 
-    public boolean isPredecessor(SDNode node)
+    private static void collectsPreds(SDNode root, HashSet<SDNode> visited)
     {
+        if (root == null || !visited.add(root)) return;
+
+        for (int i = 0, e = root.getNumOperands(); i < e; i++)
+            collectsPreds(root.getOperand(i).getNode(), visited);
+    }
+
+    /**
+     * Checks if this is predecessor of the specified node. The predecessor means it either is an
+     * operand of the given node or it can be reached traversed recursively from the sub tree rooted at node.
+     * @param node
+     * @return
+     */
+    public boolean isPredecessorOf(SDNode node)
+    {
+        HashSet<SDNode> visited = new HashSet<>();
+        collectsPreds(node, visited);
+        return visited.contains(this);
     }
 
     public static FltSemantics EVTToAPFloatSemantics(EVT vt)
@@ -118,37 +184,71 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
-    public boolean isNormalLoad(SDNode node)
+    /**
+     * Return this is a normal load SDNode.
+     * @return
+     */
+    public boolean isNormalLoad()
     {
-
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return (ld != null && ld.getExtensionType() == LoadExtType.NON_EXTLOAD &&
+                ld.getAddressingMode() == MemIndexedMode.UNINDEXED);
     }
 
-    public boolean isNONExtLoad(SDNode node)
-    {}
+    public boolean isNONExtLoad()
+    {
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return ld != null && ld.getExtensionType() == LoadExtType.NON_EXTLOAD;
+    }
 
-    public boolean isExtLoad(SDNode node)
-    {}
+    public boolean isExtLoad()
+    {
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return ld != null && ld.getExtensionType() == LoadExtType.EXTLOAD;
+    }
 
-    public boolean isSEXTLoad(SDNode node)
-    {}
+    public boolean isSEXTLoad()
+    {
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return ld != null && ld.getExtensionType() == LoadExtType.SEXTLOAD;
+    }
 
-    public boolean isZEXTLoad(SDNode node)
-    {}
+    public boolean isZEXTLoad()
+    {
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return ld != null && ld.getExtensionType() == LoadExtType.ZEXTLOAD;
+    }
 
-    public boolean isUNINDEXEDLoad(SDNode node)
-    {}
+    public boolean isUNINDEXEDLoad()
+    {
+        LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
+        return ld != null && ld.getAddressingMode() == MemIndexedMode.UNINDEXED;
+    }
 
-    public boolean isNormalStore(SDNode node)
-    {}
+    public boolean isNormalStore()
+    {
+        StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
+        return st != null && st.getAddressingMode() == MemIndexedMode.UNINDEXED &&
+                !st.isTruncatingStore();
+    }
 
-    public boolean isNONTRUNCStore(SDNode node)
-    {}
+    public boolean isNONTRUNCStore()
+    {
+        StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
+        return st != null && !st.isTruncatingStore();
+    }
 
-    public boolean isTRUNCStore(SDNode node)
-    {}
+    public boolean isTRUNCStore()
+    {
+        StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
+        return st != null && st.isTruncatingStore();
+    }
 
-    public boolean isUNINDEXEDStore(SDNode node)
-    {}
+    public boolean isUNINDEXEDStore()
+    {
+        StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
+        return st != null && st.getAddressingMode() == MemIndexedMode.UNINDEXED;
+    }
 
     public int getNumOperands()
     {
@@ -157,6 +257,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public long getConstantOperandVal(int num)
     {
+        assert num >= 0 && num < getNumOperands();
+        SDValue op = getOperand(num);
+        assert op.getNode() instanceof ConstantSDNode;
+        return ((ConstantSDNode)op.getNode()).getZExtValue();
     }
 
     public SDValue getOperand(int num)
@@ -221,10 +325,281 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public String getOperationName(SelectionDAG dag)
     {
+        switch (getOpcode())
+        {
+            default:
+                if (getOpcode() < ISD.BUILTIN_OP_END)
+                    return "<<Unknown DAG Node>>";
+
+                if (isMachineOperand())
+                {
+                    if (dag != null)
+                    {
+                        TargetInstrInfo tii = dag.getTarget().getInstrInfo();
+                        if (tii != null)
+                            if (getMachineOpcode() < tii.getNumTotalOpCodes())
+                                return tii.get(getMachineOpcode()).getName();
+                    }
+                    return "<<Unknown Machine Node>>";
+                }
+                if (dag != null)
+                {
+                    TargetLowering tli = dag.getTarget().getTargetLowering();
+                    String name = tli.getTargetNodeName(getOpcode());
+                    if (name != null)  return name;
+                    return "<<Unknown Target Node>>";
+                }
+                return "<<Unknown Node>>";
+
+            case ISD.DELETED_NODE:
+                return "<<Deleted Node!>>";
+
+            case ISD.PREFETCH:      return "Prefetch";
+            case ISD.MEMBARRIER:    return "MemBarrier";
+            case ISD.ATOMIC_CMP_SWAP:    return "AtomicCmpSwap";
+            case ISD.ATOMIC_SWAP:        return "AtomicSwap";
+            case ISD.ATOMIC_LOAD_ADD:    return "AtomicLoadAdd";
+            case ISD.ATOMIC_LOAD_SUB:    return "AtomicLoadSub";
+            case ISD.ATOMIC_LOAD_AND:    return "AtomicLoadAnd";
+            case ISD.ATOMIC_LOAD_OR:     return "AtomicLoadOr";
+            case ISD.ATOMIC_LOAD_XOR:    return "AtomicLoadXor";
+            case ISD.ATOMIC_LOAD_NAND:   return "AtomicLoadNand";
+            case ISD.ATOMIC_LOAD_MIN:    return "AtomicLoadMin";
+            case ISD.ATOMIC_LOAD_MAX:    return "AtomicLoadMax";
+            case ISD.ATOMIC_LOAD_UMIN:   return "AtomicLoadUMin";
+            case ISD.ATOMIC_LOAD_UMAX:   return "AtomicLoadUMax";
+            case ISD.PCMARKER:      return "PCMarker";
+            case ISD.READCYCLECOUNTER: return "ReadCycleCounter";
+            case ISD.SRCVALUE:      return "SrcValue";
+            case ISD.MEMOPERAND:    return "MemOperand";
+            case ISD.EntryToken:    return "EntryToken";
+            case ISD.TokenFactor:   return "TokenFactor";
+            case ISD.AssertSext:    return "AssertSext";
+            case ISD.AssertZext:    return "AssertZext";
+
+            case ISD.BasicBlock:    return "BasicBlock";
+            case ISD.VALUETYPE:     return "ValueType";
+            case ISD.Register:      return "Register";
+
+            case ISD.Constant:      return "Constant";
+            case ISD.ConstantFP:    return "ConstantFP";
+            case ISD.GlobalAddress: return "GlobalAddress";
+            case ISD.GlobalTLSAddress: return "GlobalTLSAddress";
+            case ISD.FrameIndex:    return "FrameIndex";
+            case ISD.JumpTable:     return "JumpTable";
+            case ISD.GLOBAL_OFFSET_TABLE: return "GLOBAL_OFFSET_TABLE";
+            case ISD.RETURNADDR: return "RETURNADDR";
+            case ISD.FRAMEADDR: return "FRAMEADDR";
+            case ISD.FRAME_TO_ARGS_OFFSET: return "FRAME_TO_ARGS_OFFSET";
+            case ISD.EXCEPTIONADDR: return "EXCEPTIONADDR";
+            case ISD.LSDAADDR: return "LSDAADDR";
+            case ISD.EHSELECTION: return "EHSELECTION";
+            case ISD.EH_RETURN: return "EH_RETURN";
+            case ISD.ConstantPool:  return "ConstantPool";
+            case ISD.ExternalSymbol: return "ExternalSymbol";
+            case ISD.INTRINSIC_WO_CHAIN:
+            {
+                long iid = ((ConstantSDNode)getOperand(0).getNode()).getZExtValue();
+                assert false:"Intrinsic function not supported!";
+            }
+            case ISD.INTRINSIC_VOID:
+            case ISD.INTRINSIC_W_CHAIN:
+            {
+                long iid = ((ConstantSDNode)getOperand(0).getNode()).getZExtValue();
+                assert false:"Intrinsic function not supported!";
+            }
+
+            case ISD.BUILD_VECTOR:   return "BUILD_VECTOR";
+            case ISD.TargetConstant: return "TargetConstant";
+            case ISD.TargetConstantFP:return "TargetConstantFP";
+            case ISD.TargetGlobalAddress: return "TargetGlobalAddress";
+            case ISD.TargetGlobalTLSAddress: return "TargetGlobalTLSAddress";
+            case ISD.TargetFrameIndex: return "TargetFrameIndex";
+            case ISD.TargetJumpTable:  return "TargetJumpTable";
+            case ISD.TargetConstantPool:  return "TargetConstantPool";
+            case ISD.TargetExternalSymbol: return "TargetExternalSymbol";
+
+            case ISD.CopyToReg:     return "CopyToReg";
+            case ISD.CopyFromReg:   return "CopyFromReg";
+            case ISD.UNDEF:         return "undef";
+            case ISD.MERGE_VALUES:  return "merge_values";
+            case ISD.INLINEASM:     return "inlineasm";
+            case ISD.DBG_LABEL:     return "dbg_label";
+            case ISD.EH_LABEL:      return "eh_label";
+            case ISD.DECLARE:       return "declare";
+            case ISD.HANDLENODE:    return "handlenode";
+
+            // Unary operators
+            case ISD.FABS:   return "fabs";
+            case ISD.FNEG:   return "fneg";
+            case ISD.FSQRT:  return "fsqrt";
+            case ISD.FSIN:   return "fsin";
+            case ISD.FCOS:   return "fcos";
+            case ISD.FPOWI:  return "fpowi";
+            case ISD.FPOW:   return "fpow";
+            case ISD.FTRUNC: return "ftrunc";
+            case ISD.FFLOOR: return "ffloor";
+            case ISD.FCEIL:  return "fceil";
+            case ISD.FRINT:  return "frint";
+            case ISD.FNEARBYINT: return "fnearbyint";
+
+            // Binary operators
+            case ISD.ADD:    return "add";
+            case ISD.SUB:    return "sub";
+            case ISD.MUL:    return "mul";
+            case ISD.MULHU:  return "mulhu";
+            case ISD.MULHS:  return "mulhs";
+            case ISD.SDIV:   return "sdiv";
+            case ISD.UDIV:   return "udiv";
+            case ISD.SREM:   return "srem";
+            case ISD.UREM:   return "urem";
+            case ISD.SMUL_LOHI:  return "smul_lohi";
+            case ISD.UMUL_LOHI:  return "umul_lohi";
+            case ISD.SDIVREM:    return "sdivrem";
+            case ISD.UDIVREM:    return "udivrem";
+            case ISD.AND:    return "and";
+            case ISD.OR:     return "or";
+            case ISD.XOR:    return "xor";
+            case ISD.SHL:    return "shl";
+            case ISD.SRA:    return "sra";
+            case ISD.SRL:    return "srl";
+            case ISD.ROTL:   return "rotl";
+            case ISD.ROTR:   return "rotr";
+            case ISD.FADD:   return "fadd";
+            case ISD.FSUB:   return "fsub";
+            case ISD.FMUL:   return "fmul";
+            case ISD.FDIV:   return "fdiv";
+            case ISD.FREM:   return "frem";
+            case ISD.FCOPYSIGN: return "fcopysign";
+            case ISD.FGETSIGN:  return "fgetsign";
+
+            case ISD.SETCC:       return "setcc";
+            case ISD.VSETCC:      return "vsetcc";
+            case ISD.SELECT:      return "select";
+            case ISD.SELECT_CC:   return "select_cc";
+            case ISD.INSERT_VECTOR_ELT:   return "insert_vector_elt";
+            case ISD.EXTRACT_VECTOR_ELT:  return "extract_vector_elt";
+            case ISD.CONCAT_VECTORS:      return "concat_vectors";
+            case ISD.EXTRACT_SUBVECTOR:   return "extract_subvector";
+            case ISD.SCALAR_TO_VECTOR:    return "scalar_to_vector";
+            case ISD.VECTOR_SHUFFLE:      return "vector_shuffle";
+            case ISD.CARRY_FALSE:         return "carry_false";
+            case ISD.ADDC:        return "addc";
+            case ISD.ADDE:        return "adde";
+            case ISD.SADDO:       return "saddo";
+            case ISD.UADDO:       return "uaddo";
+            case ISD.SSUBO:       return "ssubo";
+            case ISD.USUBO:       return "usubo";
+            case ISD.SMULO:       return "smulo";
+            case ISD.UMULO:       return "umulo";
+            case ISD.SUBC:        return "subc";
+            case ISD.SUBE:        return "sube";
+            case ISD.SHL_PARTS:   return "shl_parts";
+            case ISD.SRA_PARTS:   return "sra_parts";
+            case ISD.SRL_PARTS:   return "srl_parts";
+
+            // Conversion operators.
+            case ISD.SIGN_EXTEND: return "sign_extend";
+            case ISD.ZERO_EXTEND: return "zero_extend";
+            case ISD.ANY_EXTEND:  return "any_extend";
+            case ISD.SIGN_EXTEND_INREG: return "sign_extend_inreg";
+            case ISD.TRUNCATE:    return "truncate";
+            case ISD.FP_ROUND:    return "fp_round";
+            case ISD.FLT_ROUNDS_: return "flt_rounds";
+            case ISD.FP_ROUND_INREG: return "fp_round_inreg";
+            case ISD.FP_EXTEND:   return "fp_extend";
+
+            case ISD.SINT_TO_FP:  return "sint_to_fp";
+            case ISD.UINT_TO_FP:  return "uint_to_fp";
+            case ISD.FP_TO_SINT:  return "fp_to_sint";
+            case ISD.FP_TO_UINT:  return "fp_to_uint";
+            case ISD.BIT_CONVERT: return "bit_convert";
+
+            case ISD.CONVERT_RNDSAT:
+            {
+                assert false:"Not supported!";
+            }
+
+            // Control flow instructions
+            case ISD.BR:      return "br";
+            case ISD.BRIND:   return "brind";
+            case ISD.BR_JT:   return "br_jt";
+            case ISD.BRCOND:  return "brcond";
+            case ISD.BR_CC:   return "br_cc";
+            case ISD.CALLSEQ_START:  return "callseq_start";
+            case ISD.CALLSEQ_END:    return "callseq_end";
+
+            // Other operators
+            case ISD.LOAD:               return "load";
+            case ISD.STORE:              return "store";
+            case ISD.VAARG:              return "vaarg";
+            case ISD.VACOPY:             return "vacopy";
+            case ISD.VAEND:              return "vaend";
+            case ISD.VASTART:            return "vastart";
+            case ISD.DYNAMIC_STACKALLOC: return "dynamic_stackalloc";
+            case ISD.EXTRACT_ELEMENT:    return "extract_element";
+            case ISD.BUILD_PAIR:         return "build_pair";
+            case ISD.STACKSAVE:          return "stacksave";
+            case ISD.STACKRESTORE:       return "stackrestore";
+            case ISD.TRAP:               return "trap";
+
+            // Bit manipulation
+            case ISD.BSWAP:   return "bswap";
+            case ISD.CTPOP:   return "ctpop";
+            case ISD.CTTZ:    return "cttz";
+            case ISD.CTLZ:    return "ctlz";
+
+            // Debug info
+            case ISD.DBG_STOPPOINT: return "dbg_stoppoint";
+            case ISD.DEBUG_LOC: return "debug_loc";
+
+            // Trampolines
+            case ISD.TRAMPOLINE: return "trampoline";
+
+            case ISD.CONDCODE:
+                switch (((CondCodeSDNode)this).getCondition())
+                {
+                    default: Util.shouldNotReachHere("Unknown setcc condition!");
+                    case SETOEQ:  return "setoeq";
+                    case SETOGT:  return "setogt";
+                    case SETOGE:  return "setoge";
+                    case SETOLT:  return "setolt";
+                    case SETOLE:  return "setole";
+                    case SETONE:  return "setone";
+
+                    case SETO:    return "seto";
+                    case SETUO:   return "setuo";
+                    case SETUEQ:  return "setue";
+                    case SETUGT:  return "setugt";
+                    case SETUGE:  return "setuge";
+                    case SETULT:  return "setult";
+                    case SETULE:  return "setule";
+                    case SETUNE:  return "setune";
+
+                    case SETEQ:   return "seteq";
+                    case SETGT:   return "setgt";
+                    case SETGE:   return "setge";
+                    case SETLT:   return "setlt";
+                    case SETLE:   return "setle";
+                    case SETNE:   return "setne";
+              }
+        }
     }
 
     public static String getIndexedModeName(MemIndexedMode am)
     {
+        switch (am)
+        {
+            default: return "";
+            case PRE_DEC:
+                return "<pre-inc>";
+            case POST_DEC:
+                return "<post-inc>";
+            case PRE_INC:
+                return "<pre-inc>";
+            case POST_INC:
+                return "<post-inc>";
+        }
     }
 
     public void printTypes(PrintStream os)
@@ -306,7 +681,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     protected static SDVTList getSDVTList(EVT vt)
     {
         SDVTList list = new SDVTList();
-        list.vts = getValueTypeList(vt);
+        list.vts = new EVT[1];
+        list.vts[0] = getValueTypeList(vt);
         list.numVTs = 1;
         return list;
     }

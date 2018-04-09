@@ -300,37 +300,37 @@ public class ISD
     // comparison is true or all cleared if the comparison is false.  The
     // operands to this are the left and right operands to compare (LHS/RHS) and
     // the condition code to compare them with (COND) as a CondCodeSDNode.
-    public static final int VSETCC = 94;
+    public static final int VSETCC = 95;
     // SHL_PARTS/SRA_PARTS/SRL_PARTS - These operators are used for expanded
     // integer shift operations, just like ADD/SUB_PARTS.  The operation
     // ordering is:
     //       [Lo,Hi] = op [LoLHS,HiLHS], Amt
-    public static final int SHL_PARTS = 95;
-    public static final int SRA_PARTS = 96;
-    public static final int SRL_PARTS = 97;
+    public static final int SHL_PARTS = 96;
+    public static final int SRA_PARTS = 97;
+    public static final int SRL_PARTS = 98;
     // SIGN_EXTEND - Used for integer types, replicating the sign bit
     // into new bits.
-    public static final int SIGN_EXTEND = 98;
+    public static final int SIGN_EXTEND = 99;
     // ZERO_EXTEND - Used for integer types, zeroing the new bits.
-    public static final int ZERO_EXTEND = 99;
+    public static final int ZERO_EXTEND = 100;
     // ANY_EXTEND - Used for integer types.  The high bits are undefined.
-    public static final int ANY_EXTEND = 100;
+    public static final int ANY_EXTEND = 101;
     // TRUNCATE - Completely drop the high bits.
-    public static final int TRUNCATE = 101;
+    public static final int TRUNCATE = 102;
     // [SU]INT_TO_FP - These operators convert integers (whose interpreted sign
     // depends on the first letter) to floating point.
-    public static final int SINT_TO_FP = 102;
-    public static final int UINT_TO_FP = 103;
+    public static final int SINT_TO_FP = 103;
+    public static final int UINT_TO_FP = 104;
     // SIGN_EXTEND_INREG - This operator atomically performs a SHL/SRA pair to
     // sign extend a small value in a large integer register (e.g. sign
     // extending the low 8 bits of a 32-bit register to fill the top 24 bits
     // with the 7th bit).  The size of the smaller type is indicated by the 1th
     // operand, a ValueType node.
-    public static final int SIGN_EXTEND_INREG = 104;
+    public static final int SIGN_EXTEND_INREG = 105;
     /// FP_TO_[US]INT - Convert a floating point value to a signed or unsigned
     /// integer.
-    public static final int FP_TO_SINT = 105;
-    public static final int FP_TO_UINT = 106;
+    public static final int FP_TO_SINT = 106;
+    public static final int FP_TO_UINT = 107;
     /// X = FP_ROUND(Y, TRUNC) - Rounding 'Y' from a larger floating point type
     /// down to the precision of the destination VT.  TRUNC is a flag, which is
     /// always an integer that is zero or one.  If TRUNC is 0, this is a
@@ -342,29 +342,29 @@ public class ISD
     /// precision of source type.  This allows certain transformations like
     /// FP_EXTEND(FP_ROUND(X,1)) -> X which are not safe for
     /// FP_EXTEND(FP_ROUND(X,0)) because the extra bits aren't removed.
-    public static final int FP_ROUND = 107;
+    public static final int FP_ROUND = 108;
     // FLT_ROUNDS_ - Returns current rounding mode:
     // -1 Undefined
     //  0 Round to 0
     //  1 Round to nearest
     //  2 Round to +inf
     //  3 Round to -inf
-    public static final int FLT_ROUNDS_ = 108;
+    public static final int FLT_ROUNDS_ = 109;
     /// X = FP_ROUND_INREG(Y, VT) - This operator takes an FP register, and
     /// rounds it to a floating point value.  It then promotes it and returns it
     /// in a register of the same size.  This operation effectively just
     /// discards excess precision.  The type to round down to is specified by
     /// the VT operand, a VTSDNode.
-    public static final int FP_ROUND_INREG = 109;
+    public static final int FP_ROUND_INREG = 110;
     /// X = FP_EXTEND(Y) - Extend a smaller FP type into a larger FP type.
-    public static final int FP_EXTEND = 110;
+    public static final int FP_EXTEND = 111;
     // BIT_CONVERT - Theis operator converts between integer and FP values, as
     // if one was stored to memory as integer and the other was loaded from the
     // same address (or equivalently for vector format conversions, etc).  The
     // source and result are required to have the same bit size (e.g.
     // f32 <-> i32).  This can also be used for int-to-int or fp-to-fp
     // conversions, but that is a noop, deleted by getNode().
-    public static final int BIT_CONVERT = 111;
+    public static final int BIT_CONVERT = 112;
     // CONVERT_RNDSAT - This operator is used to support various conversions
     // between various types (float, signed, unsigned and vectors of those
     // types) with rounding and saturation. NOTE: Avoid using this operator as
@@ -376,34 +376,34 @@ public class ISD
     //   3) rounding imm
     //   4) saturation imm
     //   5) ISD::CvtCode indicating the type of conversion to do
-    public static final int CONVERT_RNDSAT = 112;
+    public static final int CONVERT_RNDSAT = 113;
     // FNEG, FABS, FSQRT, FSIN, FCOS, FPOWI, FPOW,
     // FLOG, FLOG2, FLOG10, FEXP, FEXP2,
     // FCEIL, FTRUNC, FRINT, FNEARBYINT, FFLOOR - Perform various unary floating
     // point operations. These are inspired by libm.
-    public static final int FNEG = 113;
-    public static final int FABS = 114;
-    public static final int FSQRT = 115;
-    public static final int FSIN = 116;
-    public static final int FCOS = 117;
-    public static final int FPOWI = 118;
-    public static final int FPOW = 119;
-    public static final int FLOG = 120;
-    public static final int FLOG2 = 121;
-    public static final int FLOG10 = 122;
-    public static final int FEXP = 123;
-    public static final int FEXP2 = 124;
-    public static final int FCEIL = 125;
-    public static final int FTRUNC = 126;
-    public static final int FRINT = 127;
-    public static final int FNEARBYINT = 128;
-    public static final int FFLOOR = 129;
+    public static final int FNEG = 114;
+    public static final int FABS = 115;
+    public static final int FSQRT = 116;
+    public static final int FSIN = 117;
+    public static final int FCOS = 118;
+    public static final int FPOWI = 119;
+    public static final int FPOW = 120;
+    public static final int FLOG = 121;
+    public static final int FLOG2 = 122;
+    public static final int FLOG10 = 123;
+    public static final int FEXP = 124;
+    public static final int FEXP2 = 125;
+    public static final int FCEIL = 126;
+    public static final int FTRUNC = 127;
+    public static final int FRINT = 128;
+    public static final int FNEARBYINT = 129;
+    public static final int FFLOOR = 130;
     // LOAD and STORE have token chains as their first operand, then the same
     // operands as an LLVM load/store instruction, then an offset node that
     // is added / subtracted from the base pointer to form the address (for
     // indexed memory ops).
-    public static final int LOAD = 130;
-    public static final int STORE = 131;
+    public static final int LOAD = 131;
+    public static final int STORE = 132;
     // DYNAMIC_STACKALLOC - Allocate some number of bytes on the stack aligned
     // to a specified boundary.  This node always has two return values: a new
     // stack pointer value and a chain. The first operand is the token chain,
@@ -411,27 +411,27 @@ public class ISD
     // alignment boundary.  The size is guaranteed to be a multiple of the stack
     // alignment, and the alignment is guaranteed to be bigger than the stack
     // alignment (if required) or 0 to get standard stack alignment.
-    public static final int DYNAMIC_STACKALLOC = 132;
+    public static final int DYNAMIC_STACKALLOC = 133;
     // BR - Unconditional branch.  The first operand is the chain
     // operand, the second is the MBB to branch to.
-    public static final int BR = 133;
+    public static final int BR = 134;
     // BRIND - Indirect branch.  The first operand is the chain, the second
     // is the value to branch to, which must be of the same type as the target's
     // pointer type.
-    public static final int BRIND = 134;
+    public static final int BRIND = 135;
     // BR_JT - Jumptable branch. The first operand is the chain, the second
     // is the jumptable index, the last one is the jumptable entry index.
-    public static final int BR_JT = 135;
+    public static final int BR_JT = 136;
     // BRCOND - Conditional branch.  The first operand is the chain, the
     // second is the condition, the third is the block to branch to if the
     // condition is true.  If the type of the condition is not i1, then the
     // high bits must conform to getBooleanContents.
-    public static final int BRCOND = 136;
+    public static final int BRCOND = 137;
     // BR_CC - Conditional branch.  The behavior is like that of SELECT_CC, in
     // that the condition is represented as condition code, and two nodes to
     // compare, rather than as a combined SetCC node.  The operands in order are
     // chain, cc, lhs, rhs, block to branch to if condition is true.
-    public static final int BR_CC = 137;
+    public static final int BR_CC = 138;
     // INLINEASM - Represents an inline asm block.  This node always has two
     // return values: a chain and a flag result.  The inputs are as follows:
     //   Operand #0   : Input chain.
@@ -439,68 +439,68 @@ public class ISD
     //   Operand #2n+2: A RegisterNode.
     //   Operand #2n+3: A TargetConstant, indicating if the reg is a use/def
     //   Operand #last: Optional, an incoming flag.
-    public static final int INLINEASM = 138;
+    public static final int INLINEASM = 139;
     // DBG_LABEL, EH_LABEL - Represents a label in mid basic block used to track
     // locations needed for debug and exception handling tables.  These nodes
     // take a chain as input and return a chain.
-    public static final int DBG_LABEL = 139;
-    public static final int EH_LABEL = 140;
+    public static final int DBG_LABEL = 140;
+    public static final int EH_LABEL = 141;
     // DECLARE - Represents a llvm.dbg.declare intrinsic. It's used to track
     // local variable declarations for debugging information. First operand is
     // a chain, while the next two operands are first two arguments (address
     // and variable) of a llvm.dbg.declare instruction.
-    public static final int DECLARE = 141;
+    public static final int DECLARE = 142;
     // STACKSAVE - STACKSAVE has one operand, an input chain.  It produces a
     // value, the same type as the pointer type for the system, and an output
     // chain.
-    public static final int STACKSAVE = 142;
+    public static final int STACKSAVE = 143;
     // STACKRESTORE has two operands, an input chain and a pointer to restore to
     // it returns an output chain.
-    public static final int STACKRESTORE = 143;
+    public static final int STACKRESTORE = 144;
     // CALLSEQ_START/CALLSEQ_END - These operators mark the beginning and end of
     // a call sequence, and carry arbitrary information that target might want
     // to know.  The first operand is a chain, the rest are specified by the
     // target and not touched by the DAG optimizers.
     // CALLSEQ_START..CALLSEQ_END pairs may not be nested.
-    public static final int CALLSEQ_START = 144;  // Beginning of a call sequence
-    public static final int CALLSEQ_END = 145;    // End of a call sequence
+    public static final int CALLSEQ_START = 145;  // Beginning of a call sequence
+    public static final int CALLSEQ_END = 146;    // End of a call sequence
     // VAARG - VAARG has three operands: an input chain, a pointer, and a
     // SRCVALUE.  It returns a pair of values: the vaarg value and a new chain.
-    public static final int VAARG = 146;
+    public static final int VAARG = 147;
     // VACOPY - VACOPY has five operands: an input chain, a destination pointer,
     // a source pointer, a SRCVALUE for the destination, and a SRCVALUE for the
     // source.
-    public static final int VACOPY = 147;
+    public static final int VACOPY = 148;
     // VAEND, VASTART - VAEND and VASTART have three operands: an input chain, a
     // pointer, and a SRCVALUE.
-    public static final int VAEND = 148;
-    public static final int VASTART = 149;
+    public static final int VAEND = 149;
+    public static final int VASTART = 150;
     // SRCVALUE - This is a node type that holds a Value* that is used to
     // make reference to a value in the LLVM IR.
-    public static final int SRCVALUE = 150;
+    public static final int SRCVALUE = 151;
     // MEMOPERAND - This is a node that contains a MachineMemOperand which
     // records information about a memory reference. This is used to make
     // AliasAnalysis queries from the backend.
-    public static final int MEMOPERAND = 151;
+    public static final int MEMOPERAND = 152;
     // PCMARKER - This corresponds to the pcmarker intrinsic.
-    public static final int PCMARKER = 152;
+    public static final int PCMARKER = 153;
     // READCYCLECOUNTER - This corresponds to the readcyclecounter intrinsic.
     // The only operand is a chain and a value and a chain are produced.  The
     // value is the contents of the architecture specific cycle counter like
     // register (or other high accuracy low latency clock source)
-    public static final int READCYCLECOUNTER = 153;
+    public static final int READCYCLECOUNTER = 154;
     // HANDLENODE node - Used as a handle for various purposes.
-    public static final int HANDLENODE = 154;
+    public static final int HANDLENODE = 155;
     // DBG_STOPPOINT - This node is used to represent a source location for
     // debug info.  It takes token chain as input, and carries a line number,
     // column number, and a pointer to a CompileUnit object identifying
     // the containing compilation unit.  It produces a token chain as output.
-    public static final int DBG_STOPPOINT = 155;
+    public static final int DBG_STOPPOINT = 156;
     // DEBUG_LOC - This node is used to represent source line information
     // embedded in the code.  It takes a token chain as input, then a line
     // number, then a column then a file id (provided by MachineModuleInfo.) It
     // produces a token chain as output.
-    public static final int DEBUG_LOC = 156;
+    public static final int DEBUG_LOC = 157;
     // TRAMPOLINE - This corresponds to the init_trampoline intrinsic.
     // It takes as input a token chain, the pointer to the trampoline,
     // the pointer to the nested function, the pointer to pass for the
@@ -508,46 +508,46 @@ public class ISD
     // the nested function (allowing targets to access the original
     // Function*).  It produces the result of the intrinsic and a token
     // chain as output.
-    public static final int TRAMPOLINE = 157;
+    public static final int TRAMPOLINE = 158;
     // TRAP - Trapping instruction
-    public static final int TRAP = 158;
+    public static final int TRAP = 159;
     // PREFETCH - This corresponds to a prefetch intrinsic. It takes chains are
     // their first operand. The other operands are the address to prefetch,
     // read / write specifier = 0; and locality specifier.
-    public static final int PREFETCH = 159;
+    public static final int PREFETCH = 160;
     // OUTCHAIN = MEMBARRIER(INCHAIN, load-load, load-store, store-load,
     //                       store-store, device)
     // This corresponds to the memory.barrier intrinsic.
     // it takes an input chain, 4 operands to specify the type of barrier, an
     // operand specifying if the barrier applies to device and uncached memory
     // and produces an output chain.
-    public static final int MEMBARRIER = 160;
+    public static final int MEMBARRIER = 161;
     // Val, OUTCHAIN = ATOMIC_CMP_SWAP(INCHAIN, ptr, cmp, swap)
     // this corresponds to the atomic.lcs intrinsic.
     // cmp is compared to *ptr, and if equal, swap is stored in *ptr.
     // the return is always the original value in *ptr
-    public static final int ATOMIC_CMP_SWAP = 161;
+    public static final int ATOMIC_CMP_SWAP = 162;
     // Val, OUTCHAIN = ATOMIC_SWAP(INCHAIN, ptr, amt)
     // this corresponds to the atomic.swap intrinsic.
     // amt is stored to *ptr atomically.
     // the return is always the original value in *ptr
-    public static final int ATOMIC_SWAP = 162;
+    public static final int ATOMIC_SWAP = 163;
     // Val, OUTCHAIN = ATOMIC_LOAD_[OpName](INCHAIN, ptr, amt)
     // this corresponds to the atomic.load.[OpName] intrinsic.
     // op(*ptr, amt) is stored to *ptr atomically.
     // the return is always the original value in *ptr
-    public static final int ATOMIC_LOAD_ADD = 163;
-    public static final int ATOMIC_LOAD_SUB = 164;
-    public static final int ATOMIC_LOAD_AND = 165;
-    public static final int ATOMIC_LOAD_OR = 166;
-    public static final int ATOMIC_LOAD_XOR = 167;
-    public static final int ATOMIC_LOAD_NAND = 168;
-    public static final int ATOMIC_LOAD_MIN = 169;
-    public static final int ATOMIC_LOAD_MAX = 170;
-    public static final int ATOMIC_LOAD_UMIN = 171;
-    public static final int ATOMIC_LOAD_UMAX = 172;
+    public static final int ATOMIC_LOAD_ADD = 164;
+    public static final int ATOMIC_LOAD_SUB = 165;
+    public static final int ATOMIC_LOAD_AND = 166;
+    public static final int ATOMIC_LOAD_OR = 167;
+    public static final int ATOMIC_LOAD_XOR = 168;
+    public static final int ATOMIC_LOAD_NAND = 169;
+    public static final int ATOMIC_LOAD_MIN = 170;
+    public static final int ATOMIC_LOAD_MAX = 171;
+    public static final int ATOMIC_LOAD_UMIN = 172;
+    public static final int ATOMIC_LOAD_UMAX = 173;
     // BUILTIN_OP_END - This must be the last enum value in this list.
-    public static final int BUILTIN_OP_END = 173;
+    public static final int BUILTIN_OP_END = 174;
 
 
 }

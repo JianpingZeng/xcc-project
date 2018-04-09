@@ -507,4 +507,10 @@ public abstract class TargetLowering
     {
         return shiftAmountTy;
     }
+
+    public String getTargetNodeName(int opcode)
+    {
+        return null;
+    }
 }
+
