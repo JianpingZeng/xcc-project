@@ -28,7 +28,7 @@ import static backend.type.LLVMTypeID.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class EVT
+public class EVT implements Comparable<EVT>
 {
     private MVT v;
     private Type llvmTy;
@@ -550,5 +550,14 @@ public class EVT
     public boolean bitsLE(EVT VT)
     {
         return getSizeInBits() <= VT.getSizeInBits();
+    }
+
+    @Override
+    public int compareTo(EVT o)
+    {
+        if (v.simpleVT == o.v.simpleVT)
+            return  llvmTy.hashCode() - o.llvmTy.hashCode();
+        else
+            return v.simpleVT - o.v.simpleVT;
     }
 }
