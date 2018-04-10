@@ -42,10 +42,22 @@ public class DAGISelEmitter extends TableGenBackend
         {
             CodeGenTarget target = cgp.getTarget();
             String targetName = target.getName();
-            os.printf("package backend.target.%s%n%n", targetName.toLowerCase());
-            emitSourceFileHeaderComment("Instruction Selection based on DAG Covering", os);
+            os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
+            os.println("import backend.codegen.dagisel.SDNode;");
+            os.println("import backend.codegen.dagisel.SDNode;");
+            os.println("import backend.codegen.dagisel.SDValue;");
+            os.println("import backend.target.TargetMachine;");
 
-            os.printf("public final class %sGenDAGToDAGISel extend %sDAGToDAGISel%n{%n", targetName, targetName);
+            emitSourceFileHeaderComment("Instruction Selection based on DAG Covering.", os);
+
+            os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel%n{%n", targetName, targetName);
+
+            os.println("public X86GenDAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)\n" +
+                    "\t{\n" +
+                    "\t\tsuper(tm, optLevel);\n" +
+                    "\t}");
+
+            os.println("\tprotected SDNode selectCode(SDValue node) { return null; }");
 
             os.println("}");
         }
