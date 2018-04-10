@@ -1,4 +1,4 @@
-package backend.MC;
+package backend.mc;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Xlous Zeng.
@@ -17,8 +17,8 @@ package backend.MC;
  */
 
 import backend.codegen.AsmPrinter;
-import tools.FormattedOutputStream;
 import backend.target.TargetAsmInfo;
+import tools.FormattedOutputStream;
 
 /**
  * @author Xlous.zeng

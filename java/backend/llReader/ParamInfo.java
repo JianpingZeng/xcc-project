@@ -1,3 +1,4 @@
+package backend.llReader;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Xlous Zeng.
@@ -6,7 +7,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,11 +16,23 @@
  * permissions and limitations under the License.
  */
 
+import backend.value.Value;
+import tools.SourceMgr;
+
 /**
- * This package contains some important classes for lexing, parsing LLVM IR in
- * text style. Other class want to read LLVM IR from text should be the client
- * of those API provided by the package.
  * @author Xlous.zeng
  * @version 0.1
  */
-package backend.llReader;
+public final class ParamInfo
+{
+    SourceMgr.SMLoc loc;
+    Value val;
+    int attrs;
+
+    public ParamInfo(SourceMgr.SMLoc loc, Value v, int attrs)
+    {
+        this.loc = loc;
+        val = v;
+        this.attrs = attrs;
+    }
+}

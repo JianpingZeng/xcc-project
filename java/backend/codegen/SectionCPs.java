@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.MC.MCSection;
+import backend.mc.MCSection;
 import gnu.trove.list.array.TIntArrayList;
 
 /**

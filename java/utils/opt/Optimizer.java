@@ -137,7 +137,7 @@ public final class Optimizer
             CL.parseCommandLineOptions(args, "An optimizer on LLVM IR");
 
             OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
-            Module m = backend.LLReader.Parser
+            Module m = backend.llReader.Parser
                     .parseAssemblyFile(InputFilename.value, diag);
             if (m == null)
                 diag.get().print("optimizer", System.err);

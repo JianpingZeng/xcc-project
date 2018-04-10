@@ -1,3 +1,4 @@
+package backend.mc;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Xlous Zeng.
@@ -6,7 +7,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +17,12 @@
  */
 
 /**
- * This package contains some important classes for lexing, parsing LLVM IR in
- * text style. Other class want to read LLVM IR from text should be the client
- * of those API provided by the package.
+ * Instances of this class represent a uniqued identifier for
+ * a section in the current translation unit. The MCContext class
+ * uniques and creates these.
  * @author Xlous.zeng
  * @version 0.1
  */
-package backend.llReader;
+public class MCSection
+{
+}

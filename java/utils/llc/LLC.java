@@ -17,7 +17,10 @@
 
 package utils.llc;
 
-import backend.codegen.*;
+import backend.codegen.MachineCodeEmitter;
+import backend.codegen.RegAllocLinearScan;
+import backend.codegen.RegAllocLocal;
+import backend.codegen.RegisterRegAlloc;
 import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.pass.PassRegisterationUtility;
@@ -187,7 +190,7 @@ public class LLC
             Util.DEBUG = DebugMode.value;
 
             OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
-            theModule = backend.LLReader.Parser
+            theModule = backend.llReader.Parser
                     .parseAssemblyFile(InputFilename.value, diag);
             if (theModule == null)
                 diag.get().print("llc", System.err);
