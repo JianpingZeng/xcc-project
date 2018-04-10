@@ -111,7 +111,15 @@ public final class MachineRegisterInfo
 
     private BitMap usedPhysRegs;
 
+    /**
+     * Keeps track which physical register is live in to this function, a live-in register usually means
+     * incoming argument. the first field of pair represents the live-in physical register and second one means
+     * it's corresponding virtual register assigned by MachineRegisterInfo class.
+     */
     private ArrayList<Pair<Integer, Integer>> liveIns;
+    /**
+     * Keeps track of live-out register which usually means the return value by register.
+     */
     private TIntArrayList liveOuts;
 
     public MachineRegisterInfo(TargetRegisterInfo tri)

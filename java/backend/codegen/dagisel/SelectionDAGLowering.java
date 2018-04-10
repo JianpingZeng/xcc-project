@@ -56,6 +56,33 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     ArrayList<SDValue> pendingLoads;
     ArrayList<SDValue> pendingExports;
 
+    public boolean hasTailCall()
+    {
+        return hasTailCall;
+    }
+
+    public void copyToExpendRegsIfNeeds(Value val)
+    {
+        if (!val.isUseEmpty())
+        {
+            if (funcInfo.valueMap.containsKey(val))
+            {
+                int reg = funcInfo.valueMap.get(val);
+                copyValueToVirtualRegister(val, reg);
+            }
+        }
+    }
+
+    public void setCurrentBasicBlock(MachineBasicBlock mbb)
+    {
+        curMBB = mbb;
+    }
+
+    public MachineBasicBlock getCurrentBasicBlock()
+    {
+        return curMBB;
+    }
+
     static class Case implements Comparable<Case>
     {
         ConstantInt low;
@@ -215,7 +242,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         assert op.getOpcode() != ISD.CopyFromReg ||
                 ((RegisterSDNode)op.getOperand(1).getNode()).getReg() != reg
             :"Copy from a arg to the same reg";
-        assert !TargetRegisterInfo.isPhysicalRegister(reg):"Is a phyisical reg?";
+        assert !TargetRegisterInfo.isPhysicalRegister(reg):"Is a physical reg?";
 
         // TODO: 18-4-8
     }

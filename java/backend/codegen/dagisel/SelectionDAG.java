@@ -18,22 +18,22 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
-import backend.codegen.dagisel.SDNode.CondCodeSDNode;
-import backend.codegen.dagisel.SDNode.ConstantFPSDNode;
-import backend.codegen.dagisel.SDNode.ConstantSDNode;
-import backend.codegen.dagisel.SDNode.SDVTList;
+import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.value.ConstantFP;
 import backend.value.ConstantInt;
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.ListIterator;
 
-import static backend.codegen.dagisel.SDNode.EVTToAPFloatSemantics;
+import static backend.codegen.dagisel.SDNode.*;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 import static tools.APFloat.OpStatus.opDivByZero;
 import static tools.APFloat.OpStatus.opInvalidOp;
@@ -48,26 +48,97 @@ public class SelectionDAG
 {
     private TargetMachine target;
     private TargetLowering tli;
-    private MachineFunction mf;
     private FunctionLoweringInfo fli;
+    private MachineFunction mf;
     private MachineModuleInfo mmi;
     private SDNode entryNode;
     private SDValue root;
-    private ArrayList<SDNode> allNodes;
+    public ArrayList<SDNode> allNodes;
     private ArrayList<SDVTList> vtlist;
     private ArrayList<CondCodeSDNode> condCodeNodes;
     private TIntObjectHashMap<SDNode> cseMap;
-    public SelectionDAG()
+
+    private HashMap<Pair<String, Integer>, SDNode> targetExternalSymbols = new HashMap<>();
+    private HashMap<EVT, SDNode> extendedValueTypeNodes = new HashMap<>();
+    private ArrayList<EVT> valueTypeNodes = new ArrayList<>();
+    private HashMap<String, SDNode> externalSymbols = new HashMap<>();
+
+    public SelectionDAG(TargetLowering tl, FunctionLoweringInfo fli)
     {
+        target = tl.getTargetMachine();
+        tli = tl;
+        this.fli = fli;
+        mmi = null;
         allNodes = new ArrayList<>();
         vtlist = new ArrayList<>();
         condCodeNodes = new ArrayList<>();
         cseMap = new TIntObjectHashMap<>();
+        entryNode  = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
+        root = getRoot();
+        allNodes.add(entryNode);
+    }
+
+    public void init(MachineFunction mf, MachineModuleInfo mmi)
+    {
+        this.mmi = mmi;
+        this.mf = mf;
     }
 
     public TargetMachine getTarget()
     {
         return target;
+    }
+
+    public SDValue getNode(int opc, SDVTList vtList , SDValue... ops)
+    {
+        if (vtList.numVTs == 1)
+            return getNode(opc, vtList.vts[0], ops);
+
+        SDNode node;
+        if (vtList.vts[vtList.numVTs-1].getSimpleVT().simpleVT != MVT.Flag)
+        {
+            FoldingSetNodeID calc = new FoldingSetNodeID();
+            addNodeToIDNode(calc, opc, vtList, ops);
+            int id = calc.computeHash();
+            if (cseMap.containsKey(id))
+                return new SDValue(cseMap.get(id), 0);
+
+            switch (ops.length)
+            {
+                default:
+                    node = new SDNode(opc, vtList, ops);
+                    break;
+                case 1:
+                    node = new SDNode.UnarySDNode(opc, vtList, ops[0]);
+                    break;
+                case 2:
+                    node = new SDNode.BinarySDNode(opc, vtList, ops[0], ops[1]);
+                    break;
+                case 3:
+                    node = new SDNode.TernarySDNode(opc, vtList, ops[0], ops[1], ops[2]);
+                    break;
+            }
+            cseMap.put(id, node);
+        }
+        else
+        {
+            switch (ops.length)
+            {
+                default:
+                    node = new SDNode(opc, vtList, ops);
+                    break;
+                case 1:
+                    node = new SDNode.UnarySDNode(opc, vtList, ops[0]);
+                    break;
+                case 2:
+                    node = new SDNode.BinarySDNode(opc, vtList, ops[0], ops[1]);
+                    break;
+                case 3:
+                    node = new SDNode.TernarySDNode(opc, vtList, ops[0], ops[1], ops[2]);
+                    break;
+            }
+        }
+        return new SDValue(node, 0);
     }
 
     public SDValue getNode(int opc, EVT vt, SDValue... ops)
@@ -744,6 +815,11 @@ public class SelectionDAG
         return getConstant(ConstantInt.get(val), vt, isTarget);
     }
 
+    public SDValue getTargetConstant(long val, EVT vt)
+    {
+        return getConstant(val, vt, true);
+    }
+
     public SDVTList getVTList(EVT... vts)
     {
         assert vts != null && vts.length > 0 : "Can't have an emtpy list!";
@@ -1005,4 +1081,133 @@ public class SelectionDAG
         assert root.getNode() == null || root.getValueType().equals(new EVT(MVT.Other)):"Not a legal root!";
         this.root = root;
     }
+
+    public SDValue getMergeValues(ArrayList<SDValue> ops)
+    {
+        if(ops.size() == 1) return ops.get(0);
+
+        EVT[] vts = ops.stream().map(op->op.getValueType()).toArray(EVT[]::new);
+        SDValue[] ops_ = ops.stream().toArray(SDValue[]::new);
+        return getNode(ISD.MERGE_VALUES, getVTList(vts), ops_);
+    }
+
+    public void removeDeadNodes()
+    {
+        HandleSDNode dummy = new HandleSDNode(getRoot());
+
+        ArrayList<SDNode> deadNodes = new ArrayList<>();
+        for (SDNode node : allNodes)
+        {
+            if (node.isUseEmpty())
+                deadNodes.add(node);
+        }
+
+        removeDeadNodes(deadNodes, null);
+        setRoot(dummy.getValue());
+    }
+
+    public void removeDeadNode(SDNode node, DAGUpdateListener listener)
+    {
+        ArrayList<SDNode> nodes = new ArrayList<>();
+        nodes.add(node);
+        removeDeadNodes(nodes, listener);
+    }
+
+    public void removeDeadNodes(ArrayList<SDNode> deadNodes, DAGUpdateListener listener)
+    {
+        for (ListIterator<SDNode> itr = deadNodes.listIterator(); itr.hasNext(); )
+        {
+            SDNode node = itr.next();
+            itr.remove();
+
+            if (listener != null)
+                listener.nodeDeleted(node, null);
+
+            removeNodeFromCSEMaps(node);
+            for (SDUse use : node.operandList)
+            {
+                SDNode operand = use.getNode();
+                use.set(new SDValue());
+
+                if (operand.isUseEmpty())
+                    deadNodes.add(operand);
+            }
+        }
+    }
+
+    private boolean removeNodeFromCSEMaps(SDNode node)
+    {
+        boolean erased = false;
+        switch (node.getOpcode())
+        {
+            case ISD.EntryToken:
+                Util.shouldNotReachHere("EntryToken should not be in cseMap!");
+                return false;
+            case ISD.HANDLENODE: return false;
+            case ISD.CONDCODE:
+                assert condCodeNodes.get(((CondCodeSDNode)node).getCondition().ordinal()) != null
+                        :"Cond code doesn't exist!";
+                erased = true;
+                condCodeNodes.set(((CondCodeSDNode)node).getCondition().ordinal(), null);
+                break;
+            case ISD.TargetExternalSymbol:
+                ExternalSymbolSDNode sym = (ExternalSymbolSDNode)node;
+                erased = targetExternalSymbols.remove(Pair.get(sym.getExtSymol(),
+                        sym.getTargetFlags())) != null;
+                break;
+            case ISD.VALUETYPE:
+                EVT vt = ((VTSDNode)node).getVT();
+                if (vt.isExtended())
+                    erased = extendedValueTypeNodes.remove(vt) != null;
+                else
+                {
+                    erased = valueTypeNodes.get(vt.getSimpleVT().simpleVT) != null;
+                    valueTypeNodes.set(vt.getSimpleVT().simpleVT, null);
+                }
+                break;
+            default:
+                // remove it from cseMap.
+                for (TIntObjectIterator<SDNode> itr = cseMap.iterator(); itr.hasNext();)
+                {
+                    if (itr.value().equals(node))
+                    {
+                        itr.remove();
+                        erased = true;
+                    }
+                }
+                break;
+        }
+        return erased;
+    }
+
+    public void replaceAllUsesOfValueWith(SDNode oldNode, SDNode newNode, DAGUpdateListener listener)
+    {
+        // TODO: 2018/4/10
+    }
+
+    public SDValue getRegister(int reg, EVT ty)
+    {
+        FoldingSetNodeID calc = new FoldingSetNodeID();
+        addNodeToIDNode(calc, ISD.Register, getVTList(ty));
+        int id = calc.computeHash();
+        if (cseMap.containsKey(id))
+            return new SDValue(cseMap.get(id), 0);
+
+        SDNode node = new RegisterSDNode(ty, reg);
+        cseMap.put(id, node);
+        allNodes.add(node);
+        return new SDValue(node, 0);
+    }
+
+    public int assignTopoLogicalOrder()
+    {
+        // TODO: 2018/4/10
+        return 0;
+    }
+
+    public SDNode getTargetNode(int opc, EVT[] vts, SDValue[] ops)
+    {
+        return getNode(~opc, getVTList(vts), ops).getNode();
+    }
 }
+

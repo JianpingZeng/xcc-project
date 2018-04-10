@@ -16,19 +16,19 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.MC.MCContext;
-import backend.MC.MCStreamer;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
+import backend.mc.MCContext;
+import backend.mc.MCStreamer;
 import backend.pass.AnalysisUsage;
 import backend.support.BackendCmdOptions;
-import tools.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.support.NameMangler;
 import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
+import tools.FormattedOutputStream;
 import tools.TextUtils;
 import tools.Util;
 
@@ -36,7 +36,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Objects;
 
-import static backend.MC.MCStreamer.createAsmStreamer;
+import static backend.mc.MCStreamer.createAsmStreamer;
 import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.Static;
 import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;

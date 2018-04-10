@@ -528,7 +528,12 @@ public abstract class TargetInstrInfo
 	///
 	public abstract  int getFunctionSizeInBytes(MachineFunction mf);
 
-	/// Measure the specified inline asm to determine an approximation of its
+	public int getGlobalBaseReg(MachineFunction mf)
+	{
+		return 0;
+	}
+
+    /// Measure the specified inline asm to determine an approximation of its
 	/// length.
 	// public abstract int getInlineAsmLength(String Str, TargetAsmInfo TAI);
 }

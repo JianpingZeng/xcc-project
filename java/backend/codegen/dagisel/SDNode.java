@@ -1429,4 +1429,18 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             return getOperand(3);
         }
     }
+
+    public static class HandleSDNode extends SDNode
+    {
+        public HandleSDNode(SDValue x)
+        {
+            super(ISD.HANDLENODE, getSDVTList(new EVT(MVT.Other)));
+            initOperands(x);
+        }
+
+        public SDValue getValue()
+        {
+            return getOperand(0);
+        }
+    }
 }

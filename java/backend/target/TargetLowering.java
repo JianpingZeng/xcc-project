@@ -17,6 +17,9 @@ package backend.target;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.SDValue;
+import backend.codegen.dagisel.SelectionDAG;
+import backend.support.CallingConv;
 import backend.type.Type;
 import backend.value.Function;
 import tools.OutParamWrapper;
@@ -512,5 +515,9 @@ public abstract class TargetLowering
     {
         return null;
     }
+
+    public abstract SDValue lowerFormalArguments(SDValue root, CallingConv callingConv,
+                                                 boolean varArg, ArrayList<InputArg> ins,
+                                                 SelectionDAG dag, ArrayList<SDValue> inVals);
 }
 

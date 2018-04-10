@@ -1,4 +1,4 @@
-package backend.MC;
+package backend.mc;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Xlous Zeng.

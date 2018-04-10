@@ -140,8 +140,7 @@ public final class TableGen
                     new AsmWriterEmitter().run(outputFile);
                     break;
                 case GenDAGISel:
-                    // TODO: 17-7-14
-                    assert false:"Current DAGIsel not supported!";
+                    new DAGISelEmitter().run(outputFile);
                     break;
                 case GenFastISel:
                     new FastISelEmitter(records).run(outputFile);
