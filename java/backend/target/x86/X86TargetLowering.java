@@ -16,12 +16,18 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.InputArg;
 import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
+import backend.codegen.dagisel.SDValue;
+import backend.codegen.dagisel.SelectionDAG;
 import backend.support.Attribute;
+import backend.support.CallingConv;
 import backend.target.TargetLowering;
 import backend.target.TargetRegisterInfo;
 import backend.value.Function;
+
+import java.util.ArrayList;
 
 /**
  * @author Xlous.zeng
@@ -119,5 +125,13 @@ public class X86TargetLowering extends TargetLowering
     public int getFunctionAlignment(Function fn)
     {
         return fn.hasFnAttr(Attribute.OptimizeForSize) ? 0 : 4;
+    }
+
+    @Override
+    public SDValue lowerFormalArguments(SDValue root, CallingConv callingConv,
+                                        boolean varArg, ArrayList<InputArg> ins,
+                                        SelectionDAG dag, ArrayList<SDValue> inVals)
+    {
+        return null;
     }
 }

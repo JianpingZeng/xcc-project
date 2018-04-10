@@ -175,6 +175,7 @@ foreach (file ${SRCS_NO_TARGET})
     if ("${file}" MATCHES "(.*)${EXCLUDE_JLANG_DRIVER}(.*)")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
+
 endforeach()
 
 #message(STATUS "${SRCS_NO_TARGET}")
@@ -235,6 +236,7 @@ tablegen(X86GenFastISel.java -gen-fast-isel)
 tablegen(X86GenInstrNames.java -gen-instr-names)
 tablegen(X86GenSubtarget.java -gen-subtarget)
 tablegen(X86GenCallingConv.java -gen-callingconv)
+TableGen(X86GenDAGToDAGISel.java -gen-dag-isel)
 
 # Generates jlang options for jlang driver.
 file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})

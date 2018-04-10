@@ -15,11 +15,8 @@
  * permissions and limitations under the License.
  */
 
-/**
- * This package contains some important classes for lexing, parsing LLVM IR in
- * text style. Other class want to read LLVM IR from text should be the client
- * of those API provided by the package.
- * @author Xlous.zeng
- * @version 0.1
- */
-package backend.llReader;
+package backend.target.x86;
+
+public class X86ISelAddressMode
+{
+}

@@ -140,7 +140,7 @@ public final class TableGen
                     new AsmWriterEmitter().run(outputFile);
                     break;
                 case GenDAGISel:
-                    new DAGISelEmitter().run(outputFile);
+                    new DAGISelEmitter(records).run(outputFile);
                     break;
                 case GenFastISel:
                     new FastISelEmitter(records).run(outputFile);
