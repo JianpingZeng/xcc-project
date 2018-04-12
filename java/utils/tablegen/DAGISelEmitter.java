@@ -17,19 +17,102 @@
 
 package utils.tablegen;
 
+import tools.Pair;
+import tools.Util;
+
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DAGISelEmitter extends TableGenBackend
 {
     private RecordKeeper records;
     private CodeGenDAGPatterns cgp;
-    private String className;
 
     public DAGISelEmitter(RecordKeeper rec) throws Exception
     {
         records = rec;
         cgp = new CodeGenDAGPatterns(records);
+    }
+
+    private void emitHeader(PrintStream os, String targetName)
+    {
+        emitSourceFileHeaderComment("Instruction Selection based on DAG Covering for " + targetName+".", os);
+        String ident = Util.fixedLengthString(4, ' ');
+        os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel%n{%n", targetName, targetName);
+
+        os.printf("%spublic X86GenDAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)%n" +
+                "%s{%n%s%ssuper(tm, optLevel);%n%s", ident, ident, ident, ident, ident);
+        os.println("}");
+        //os.println("\tprotected SDNode selectCode(SDValue node) { return null; }");
+    }
+
+    private void emitNodeTransform(PrintStream os)
+    {
+        // Sort the NodeTransform by name in  alphabetic order.
+        TreeMap<String, Pair<Record, String>> nodesByName = new TreeMap<>();
+        for (Map.Entry<Record, Pair<Record, String>> itr : cgp.getSdNodeXForms().entrySet())
+        {
+            nodesByName.put(itr.getKey().getName(), itr.getValue());
+        }
+        String ident = Util.fixedLengthString(2, ' ');
+
+        os.printf("%s// Node transformation functions.%n", ident);
+        for (Map.Entry<String, Pair<Record, String>> itr : nodesByName.entrySet())
+        {
+            Record node = itr.getValue().first;
+            String code = itr.getValue().second;
+
+            String className = cgp.getSDNodeInfo(node).getSDClassName();
+            String var = className.equals("SDNode") ? "n" : "inN";
+            os.printf("private SDValue transform_%s(SDNode %s){%n", itr.getKey(), var);
+            if (!className.equals("SDNode"))
+            {
+                os.printf("%s assert %s instanceof %s;%n", ident, var, className);
+                os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
+            }
+            os.printf("%s%n}%n", code);
+        }
+    }
+
+    private void emitPredicates(PrintStream os) throws Exception
+    {
+        String ident = Util.fixedLengthString(2, ' ');
+        TreeMap<String, Pair<Record, TreePattern>> predsByName = new TreeMap<>();
+
+        for (Map.Entry<Record, TreePattern> itr : cgp.getPatternFragments().entrySet())
+        {
+            predsByName.put(itr.getKey().getName(), Pair.get(itr.getKey(), itr.getValue()));
+        }
+
+        os.printf("%s%s// Node Predicates Function.%n", ident, ident);
+        for (Map.Entry<String, Pair<Record, TreePattern>> itr : predsByName.entrySet())
+        {
+            Record patFrag = itr.getValue().first;
+            TreePattern pat = itr.getValue().second;
+
+            String code = patFrag.getValueAsCode("Predicate");
+            if (code == null || code.isEmpty()) continue;
+
+            if (pat.getOnlyTree().isLeaf())
+            {
+                os.printf("private boolean predicate_%s(SDNode n) {%n", patFrag.getName());
+            }
+            else
+            {
+                String className = cgp.getSDNodeInfo(pat.getOnlyTree().getOperator()).getSDClassName();
+                String var = className.equals("SDNode") ?"n":"inN";
+                os.printf("private boolean predicate_%s(SDNode %s) {%n", patFrag.getName(), var);
+                if (!className.equals("SDNode"))
+                {
+                    os.printf("%s assert %s instanceof %s;%n", ident, var, className);
+                    os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
+                }
+            }
+            os.printf("%s%n}%n", code);
+        }
     }
 
     @Override
@@ -44,20 +127,14 @@ public class DAGISelEmitter extends TableGenBackend
             String targetName = target.getName();
             os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
             os.println("import backend.codegen.dagisel.SDNode;");
-            os.println("import backend.codegen.dagisel.SDNode;");
+            os.println("import backend.codegen.dagisel.SDNode.*;");
             os.println("import backend.codegen.dagisel.SDValue;");
             os.println("import backend.target.TargetMachine;");
 
-            emitSourceFileHeaderComment("Instruction Selection based on DAG Covering.", os);
+            emitHeader(os, targetName);
 
-            os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel%n{%n", targetName, targetName);
-
-            os.println("public X86GenDAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)\n" +
-                    "\t{\n" +
-                    "\t\tsuper(tm, optLevel);\n" +
-                    "\t}");
-
-            os.println("\tprotected SDNode selectCode(SDValue node) { return null; }");
+            emitNodeTransform(os);
+            emitPredicates(os);
 
             os.println("}");
         }
