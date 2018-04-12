@@ -1443,4 +1443,36 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             return getOperand(0);
         }
     }
+
+    public static class CvtRndSatSDNode extends SDNode
+    {
+        private CvtCode code;
+
+        public CvtRndSatSDNode(EVT vt, CvtCode code, SDValue[] ops)
+        {
+            super(ISD.CONVERT_RNDSAT, getSDVTList(vt), ops);
+            this.code = code;
+        }
+        public CvtCode getCvtCode()
+        {
+            return code;
+        }
+    }
+
+    public static class ShuffleVectorSDNode extends SDNode
+    {
+        public ShuffleVectorSDNode(int opc, SDVTList vts, ArrayList<SDValue> ops) {
+            super(opc, vts, ops);
+        }
+
+        public boolean isSplat()
+        {
+            return false;
+        }
+
+        public int getSplatIndex()
+        {
+            return 0;
+        }
+    }
 }

@@ -62,19 +62,19 @@ def tls64addr : ComplexPattern<i64, 4, "SelectTLSADDRAddr",
 def i64immSExt8  : PatLeaf<(i64 imm), [{
   // i64immSExt8 predicate - True if the 64-bit immediate fits in a 8-bit
   // sign extended field.
-  return (int64_t)N->getZExtValue() == (int8_t)N->getZExtValue();
+  return n.getZExtValue() == (byte)n.getZExtValue();
 }]>;
 
 def i64immSExt32  : PatLeaf<(i64 imm), [{
   // i64immSExt32 predicate - True if the 64-bit immediate fits in a 32-bit
   // sign extended field.
-  return (int64_t)N->getZExtValue() == (int32_t)N->getZExtValue();
+  return n.getZExtValue() == (int)n.getZExtValue();
 }]>;
 
 def i64immZExt32  : PatLeaf<(i64 imm), [{
   // i64immZExt32 predicate - True if the 64-bit immediate fits in a 32-bit
   // unsignedsign extended field.
-  return (uint64_t)N->getZExtValue() == (uint32_t)N->getZExtValue();
+  return n.getZExtValue() == (int)n.getZExtValue();
 }]>;
 
 def sextloadi64i8  : PatFrag<(ops node:$ptr), (i64 (sextloadi8 node:$ptr))>;
@@ -368,10 +368,10 @@ def MOVZX64rm32 : I<0x8B, MRMSrcMem, (outs GR64:$dst), (ins i32mem:$src),
 // condition is false. But any other 32-bit operation will zero-extend
 // up to 64 bits.
 def def32 : PatLeaf<(i32 GR32:$src), [{
-  return N->getOpcode() != ISD::TRUNCATE &&
-         N->getOpcode() != TargetInstrInfo::EXTRACT_SUBREG &&
-         N->getOpcode() != ISD::CopyFromReg &&
-         N->getOpcode() != X86ISD::CMOV;
+  return n.getOpcode() != ISD.TRUNCATE &&
+         n.getOpcode() != TargetInstrInfo.EXTRACT_SUBREG &&
+         n.getOpcode() != ISD.CopyFromReg &&
+         n.getOpcode() != X86ISD.CMOV;
 }]>;
 
 // In the case of a 32-bit def that is known to implicitly zero-extend,

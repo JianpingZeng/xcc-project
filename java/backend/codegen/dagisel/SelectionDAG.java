@@ -1209,5 +1209,17 @@ public class SelectionDAG
     {
         return getNode(~opc, getVTList(vts), ops).getNode();
     }
+
+    public static boolean isBuildVectorAllOnes(SDNode n)
+    {
+        // TODO: 18-4-12
+        assert false;
+        return false;
+    }
+
+    public static boolean isBuildVectorAllZeros(SDNode n)
+    {
+        return false;
+    }
 }
 

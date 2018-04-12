@@ -17,6 +17,9 @@
 
 package backend.target.x86;
 
+import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SDNode.ShuffleVectorSDNode;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -38,4 +41,81 @@ public interface X86
 
     /// AddrNumOperands - Total number of operands in a memory reference.
     int AddrNumOperands = 5;
+
+    static boolean isPSHUFDMask(ShuffleVectorSDNode n)
+    {
+        return false;
+    }
+
+    static boolean isUNPCKHMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isUNPCKH_v_undef_Mask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isUNPCKLMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isUNPCKL_v_undef_Mask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVDDUPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVHLPSMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVHLPS_v_undef_Mask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVHPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVLMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVLPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVSHDUPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isMOVSLDUPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isPSHUFHWMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isPSHUFLWMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static boolean isSHUFPMask(ShuffleVectorSDNode n) {
+        return false;
+    }
+
+    static byte getShuffleSHUFImmediate(SDNode n) {
+        return 0;
+    }
+
+    static byte getShufflePSHUFHWImmediate(SDNode n) {
+        return 0;
+    }
+
+    static byte getShufflePSHUFLWImmediate(SDNode n) {
+        return 0;
+    }
 }

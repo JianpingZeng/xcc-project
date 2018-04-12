@@ -31,21 +31,21 @@ def SDTX86FpToIMem  : SDTypeProfile<0, 2, [SDTCisFP<0>, SDTCisPtrTy<1>]>;
 
 def SDTX86CwdStore  : SDTypeProfile<0, 1, [SDTCisPtrTy<0>]>;
 
-def X86fld          : SDNode<"X86ISD::FLD", SDTX86Fld,
+def X86fld          : SDNode<"X86ISD.FLD", SDTX86Fld,
                              [SDNPHasChain, SDNPMayLoad]>;
-def X86fst          : SDNode<"X86ISD::FST", SDTX86Fst,
+def X86fst          : SDNode<"X86ISD.FST", SDTX86Fst,
                              [SDNPHasChain, SDNPInFlag, SDNPMayStore]>;
-def X86fild         : SDNode<"X86ISD::FILD", SDTX86Fild,
+def X86fild         : SDNode<"X86ISD.FILD", SDTX86Fild,
                              [SDNPHasChain, SDNPMayLoad]>;
-def X86fildflag     : SDNode<"X86ISD::FILD_FLAG", SDTX86Fild,
+def X86fildflag     : SDNode<"X86ISD.FILD_FLAG", SDTX86Fild,
                              [SDNPHasChain, SDNPOutFlag, SDNPMayLoad]>;
-def X86fp_to_i16mem : SDNode<"X86ISD::FP_TO_INT16_IN_MEM", SDTX86FpToIMem,
+def X86fp_to_i16mem : SDNode<"X86ISD.FP_TO_INT16_IN_MEM", SDTX86FpToIMem,
                              [SDNPHasChain, SDNPMayStore]>;
-def X86fp_to_i32mem : SDNode<"X86ISD::FP_TO_INT32_IN_MEM", SDTX86FpToIMem,
+def X86fp_to_i32mem : SDNode<"X86ISD.FP_TO_INT32_IN_MEM", SDTX86FpToIMem,
                              [SDNPHasChain, SDNPMayStore]>;
-def X86fp_to_i64mem : SDNode<"X86ISD::FP_TO_INT64_IN_MEM", SDTX86FpToIMem,
+def X86fp_to_i64mem : SDNode<"X86ISD.FP_TO_INT64_IN_MEM", SDTX86FpToIMem,
                              [SDNPHasChain, SDNPMayStore]>;
-def X86fp_cwd_get16 : SDNode<"X86ISD::FNSTCW16m",          SDTX86CwdStore,
+def X86fp_cwd_get16 : SDNode<"X86ISD.FNSTCW16m",          SDTX86CwdStore,
                              [SDNPHasChain, SDNPMayStore, SDNPSideEffect]>;
 
 //===----------------------------------------------------------------------===//
@@ -53,19 +53,19 @@ def X86fp_cwd_get16 : SDNode<"X86ISD::FNSTCW16m",          SDTX86CwdStore,
 //===----------------------------------------------------------------------===//
 
 def fpimm0 : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(+0.0);
+  return n.isExactlyValue(+0.0);
 }]>;
 
 def fpimmneg0 : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(-0.0);
+  return n.isExactlyValue(-0.0);
 }]>;
 
 def fpimm1 : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(+1.0);
+  return n.isExactlyValue(+1.0);
 }]>;
 
 def fpimmneg1 : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(-1.0);
+  return n.isExactlyValue(-1.0);
 }]>;
 
 // Some 'special' instructions

@@ -37,6 +37,16 @@ public class DAGISelEmitter extends TableGenBackend
         cgp = new CodeGenDAGPatterns(records);
     }
 
+    private static String stripOutNewLineInEnding(String str)
+    {
+        if (str == null || str.isEmpty()) return "";
+        int i = 0, len = str.length(), j = str.length() - 1;
+        for (; i < len && str.charAt(i) == '\n'; i++);
+        for (; j >= 0 && str.charAt(j) == '\n'; j--);
+        if (i > j) return "";
+        return str.substring(i, j+1);
+    }
+
     private void emitHeader(PrintStream os, String targetName)
     {
         emitSourceFileHeaderComment("Instruction Selection based on DAG Covering for " + targetName+".", os);
@@ -73,6 +83,8 @@ public class DAGISelEmitter extends TableGenBackend
                 os.printf("%s assert %s instanceof %s;%n", ident, var, className);
                 os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
             }
+            code = stripOutNewLineInEnding(code);
+            if (code.isEmpty()) code = "  return null;";
             os.printf("%s%n}%n", code);
         }
     }
@@ -111,8 +123,18 @@ public class DAGISelEmitter extends TableGenBackend
                     os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
                 }
             }
-            os.printf("%s%n}%n", code);
+            code = stripOutNewLineInEnding(code);
+            if (code.charAt(code.length()-1)=='\n')
+                os.printf("%s}%n", code);
+            else
+                os.printf("%s%n}%n", code);
         }
+    }
+
+    private void emitSelector(PrintStream os)
+    {
+        os.println("@Override");
+        os.println("public SDNode selectCode(SDValue node) { return null; }");
     }
 
     @Override
@@ -126,16 +148,21 @@ public class DAGISelEmitter extends TableGenBackend
             CodeGenTarget target = cgp.getTarget();
             String targetName = target.getName();
             os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
-            os.println("import backend.codegen.dagisel.SDNode;");
+            os.println("import backend.codegen.MVT;");
+            os.println("import backend.codegen.dagisel.*;");
             os.println("import backend.codegen.dagisel.SDNode.*;");
-            os.println("import backend.codegen.dagisel.SDValue;");
+            os.println("import backend.codegen.fastISel.ISD;");
+            os.println("import backend.target.TargetInstrInfo;");
             os.println("import backend.target.TargetMachine;");
+            os.println("import backend.type.PointerType;");
+            os.println("import backend.value.Value;");
 
             emitHeader(os, targetName);
 
             emitNodeTransform(os);
             emitPredicates(os);
 
+            emitSelector(os);
             os.println("}");
         }
     }

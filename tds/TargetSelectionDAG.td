@@ -238,186 +238,186 @@ def parallel;
 def node;
 def srcvalue;
 
-def imm        : SDNode<"ISD::Constant"  , SDTIntLeaf , [], "ConstantSDNode">;
-def timm       : SDNode<"ISD::TargetConstant",SDTIntLeaf, [], "ConstantSDNode">;
-def fpimm      : SDNode<"ISD::ConstantFP", SDTFPLeaf  , [], "ConstantFPSDNode">;
-def vt         : SDNode<"ISD::VALUETYPE" , SDTOther   , [], "VTSDNode">;
-def bb         : SDNode<"ISD::BasicBlock", SDTOther   , [], "BasicBlockSDNode">;
-def cond       : SDNode<"ISD::CONDCODE"  , SDTOther   , [], "CondCodeSDNode">;
-def undef      : SDNode<"ISD::UNDEF"     , SDTUNDEF   , []>;
-def globaladdr : SDNode<"ISD::GlobalAddress",         SDTPtrLeaf, [],
+def imm        : SDNode<"ISD.Constant"  , SDTIntLeaf , [], "ConstantSDNode">;
+def timm       : SDNode<"ISD.TargetConstant",SDTIntLeaf, [], "ConstantSDNode">;
+def fpimm      : SDNode<"ISD.ConstantFP", SDTFPLeaf  , [], "ConstantFPSDNode">;
+def vt         : SDNode<"ISD.VALUETYPE" , SDTOther   , [], "VTSDNode">;
+def bb         : SDNode<"ISD.BasicBlock", SDTOther   , [], "BasicBlockSDNode">;
+def cond       : SDNode<"ISD.CONDCODE"  , SDTOther   , [], "CondCodeSDNode">;
+def undef      : SDNode<"ISD.UNDEF"     , SDTUNDEF   , []>;
+def globaladdr : SDNode<"ISD.GlobalAddress",         SDTPtrLeaf, [],
                         "GlobalAddressSDNode">;
-def tglobaladdr : SDNode<"ISD::TargetGlobalAddress",  SDTPtrLeaf, [],
+def tglobaladdr : SDNode<"ISD.TargetGlobalAddress",  SDTPtrLeaf, [],
                          "GlobalAddressSDNode">;
-def globaltlsaddr : SDNode<"ISD::GlobalTLSAddress",         SDTPtrLeaf, [],
+def globaltlsaddr : SDNode<"ISD.GlobalTLSAddress",         SDTPtrLeaf, [],
                           "GlobalAddressSDNode">;
-def tglobaltlsaddr : SDNode<"ISD::TargetGlobalTLSAddress",  SDTPtrLeaf, [],
+def tglobaltlsaddr : SDNode<"ISD.TargetGlobalTLSAddress",  SDTPtrLeaf, [],
                            "GlobalAddressSDNode">;
-def constpool   : SDNode<"ISD::ConstantPool",         SDTPtrLeaf, [],
+def constpool   : SDNode<"ISD.ConstantPool",         SDTPtrLeaf, [],
                          "ConstantPoolSDNode">;
-def tconstpool  : SDNode<"ISD::TargetConstantPool",   SDTPtrLeaf, [],
+def tconstpool  : SDNode<"ISD.TargetConstantPool",   SDTPtrLeaf, [],
                          "ConstantPoolSDNode">;
-def jumptable   : SDNode<"ISD::JumpTable",            SDTPtrLeaf, [],
+def jumptable   : SDNode<"ISD.JumpTable",            SDTPtrLeaf, [],
                          "JumpTableSDNode">;
-def tjumptable  : SDNode<"ISD::TargetJumpTable",      SDTPtrLeaf, [],
+def tjumptable  : SDNode<"ISD.TargetJumpTable",      SDTPtrLeaf, [],
                          "JumpTableSDNode">;
-def frameindex  : SDNode<"ISD::FrameIndex",           SDTPtrLeaf, [],
+def frameindex  : SDNode<"ISD.FrameIndex",           SDTPtrLeaf, [],
                          "FrameIndexSDNode">;
-def tframeindex : SDNode<"ISD::TargetFrameIndex",     SDTPtrLeaf, [],
+def tframeindex : SDNode<"ISD.TargetFrameIndex",     SDTPtrLeaf, [],
                          "FrameIndexSDNode">;
-def externalsym : SDNode<"ISD::ExternalSymbol",       SDTPtrLeaf, [],
+def externalsym : SDNode<"ISD.ExternalSymbol",       SDTPtrLeaf, [],
                          "ExternalSymbolSDNode">;
-def texternalsym: SDNode<"ISD::TargetExternalSymbol", SDTPtrLeaf, [],
+def texternalsym: SDNode<"ISD.TargetExternalSymbol", SDTPtrLeaf, [],
                          "ExternalSymbolSDNode">;
 
-def add        : SDNode<"ISD::ADD"       , SDTIntBinOp   ,
+def add        : SDNode<"ISD.ADD"       , SDTIntBinOp   ,
                         [SDNPCommutative, SDNPAssociative]>;
-def sub        : SDNode<"ISD::SUB"       , SDTIntBinOp>;
-def mul        : SDNode<"ISD::MUL"       , SDTIntBinOp,
+def sub        : SDNode<"ISD.SUB"       , SDTIntBinOp>;
+def mul        : SDNode<"ISD.MUL"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def mulhs      : SDNode<"ISD::MULHS"     , SDTIntBinOp, [SDNPCommutative]>;
-def mulhu      : SDNode<"ISD::MULHU"     , SDTIntBinOp, [SDNPCommutative]>;
-def sdiv       : SDNode<"ISD::SDIV"      , SDTIntBinOp>;
-def udiv       : SDNode<"ISD::UDIV"      , SDTIntBinOp>;
-def srem       : SDNode<"ISD::SREM"      , SDTIntBinOp>;
-def urem       : SDNode<"ISD::UREM"      , SDTIntBinOp>;
-def srl        : SDNode<"ISD::SRL"       , SDTIntShiftOp>;
-def sra        : SDNode<"ISD::SRA"       , SDTIntShiftOp>;
-def shl        : SDNode<"ISD::SHL"       , SDTIntShiftOp>;
-def rotl       : SDNode<"ISD::ROTL"      , SDTIntShiftOp>;
-def rotr       : SDNode<"ISD::ROTR"      , SDTIntShiftOp>;
-def and        : SDNode<"ISD::AND"       , SDTIntBinOp,
+def mulhs      : SDNode<"ISD.MULHS"     , SDTIntBinOp, [SDNPCommutative]>;
+def mulhu      : SDNode<"ISD.MULHU"     , SDTIntBinOp, [SDNPCommutative]>;
+def sdiv       : SDNode<"ISD.SDIV"      , SDTIntBinOp>;
+def udiv       : SDNode<"ISD.UDIV"      , SDTIntBinOp>;
+def srem       : SDNode<"ISD.SREM"      , SDTIntBinOp>;
+def urem       : SDNode<"ISD.UREM"      , SDTIntBinOp>;
+def srl        : SDNode<"ISD.SRL"       , SDTIntShiftOp>;
+def sra        : SDNode<"ISD.SRA"       , SDTIntShiftOp>;
+def shl        : SDNode<"ISD.SHL"       , SDTIntShiftOp>;
+def rotl       : SDNode<"ISD.ROTL"      , SDTIntShiftOp>;
+def rotr       : SDNode<"ISD.ROTR"      , SDTIntShiftOp>;
+def and        : SDNode<"ISD.AND"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def or         : SDNode<"ISD::OR"        , SDTIntBinOp,
+def or         : SDNode<"ISD.OR"        , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def xor        : SDNode<"ISD::XOR"       , SDTIntBinOp,
+def xor        : SDNode<"ISD.XOR"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def addc       : SDNode<"ISD::ADDC"      , SDTIntBinOp,
+def addc       : SDNode<"ISD.ADDC"      , SDTIntBinOp,
                         [SDNPCommutative, SDNPOutFlag]>;
-def adde       : SDNode<"ISD::ADDE"      , SDTIntBinOp,
+def adde       : SDNode<"ISD.ADDE"      , SDTIntBinOp,
                         [SDNPCommutative, SDNPOutFlag, SDNPInFlag]>;
-def subc       : SDNode<"ISD::SUBC"      , SDTIntBinOp,
+def subc       : SDNode<"ISD.SUBC"      , SDTIntBinOp,
                         [SDNPOutFlag]>;
-def sube       : SDNode<"ISD::SUBE"      , SDTIntBinOp,
+def sube       : SDNode<"ISD.SUBE"      , SDTIntBinOp,
                         [SDNPOutFlag, SDNPInFlag]>;
                         
-def sext_inreg : SDNode<"ISD::SIGN_EXTEND_INREG", SDTExtInreg>;
-def bswap      : SDNode<"ISD::BSWAP"      , SDTIntUnaryOp>;
-def ctlz       : SDNode<"ISD::CTLZ"       , SDTIntUnaryOp>;
-def cttz       : SDNode<"ISD::CTTZ"       , SDTIntUnaryOp>;
-def ctpop      : SDNode<"ISD::CTPOP"      , SDTIntUnaryOp>;
-def sext       : SDNode<"ISD::SIGN_EXTEND", SDTIntExtendOp>;
-def zext       : SDNode<"ISD::ZERO_EXTEND", SDTIntExtendOp>;
-def anyext     : SDNode<"ISD::ANY_EXTEND" , SDTIntExtendOp>;
-def trunc      : SDNode<"ISD::TRUNCATE"   , SDTIntTruncOp>;
-def bitconvert : SDNode<"ISD::BIT_CONVERT", SDTUnaryOp>;
-def extractelt : SDNode<"ISD::EXTRACT_VECTOR_ELT", SDTVecExtract>;
-def insertelt  : SDNode<"ISD::INSERT_VECTOR_ELT", SDTVecInsert>;
+def sext_inreg : SDNode<"ISD.SIGN_EXTEND_INREG", SDTExtInreg>;
+def bswap      : SDNode<"ISD.BSWAP"      , SDTIntUnaryOp>;
+def ctlz       : SDNode<"ISD.CTLZ"       , SDTIntUnaryOp>;
+def cttz       : SDNode<"ISD.CTTZ"       , SDTIntUnaryOp>;
+def ctpop      : SDNode<"ISD.CTPOP"      , SDTIntUnaryOp>;
+def sext       : SDNode<"ISD.SIGN_EXTEND", SDTIntExtendOp>;
+def zext       : SDNode<"ISD.ZERO_EXTEND", SDTIntExtendOp>;
+def anyext     : SDNode<"ISD.ANY_EXTEND" , SDTIntExtendOp>;
+def trunc      : SDNode<"ISD.TRUNCATE"   , SDTIntTruncOp>;
+def bitconvert : SDNode<"ISD.BIT_CONVERT", SDTUnaryOp>;
+def extractelt : SDNode<"ISD.EXTRACT_VECTOR_ELT", SDTVecExtract>;
+def insertelt  : SDNode<"ISD.INSERT_VECTOR_ELT", SDTVecInsert>;
 
                         
-def fadd       : SDNode<"ISD::FADD"       , SDTFPBinOp, [SDNPCommutative]>;
-def fsub       : SDNode<"ISD::FSUB"       , SDTFPBinOp>;
-def fmul       : SDNode<"ISD::FMUL"       , SDTFPBinOp, [SDNPCommutative]>;
-def fdiv       : SDNode<"ISD::FDIV"       , SDTFPBinOp>;
-def frem       : SDNode<"ISD::FREM"       , SDTFPBinOp>;
-def fabs       : SDNode<"ISD::FABS"       , SDTFPUnaryOp>;
-def fneg       : SDNode<"ISD::FNEG"       , SDTFPUnaryOp>;
-def fsqrt      : SDNode<"ISD::FSQRT"      , SDTFPUnaryOp>;
-def fsin       : SDNode<"ISD::FSIN"       , SDTFPUnaryOp>;
-def fcos       : SDNode<"ISD::FCOS"       , SDTFPUnaryOp>;
-def frint      : SDNode<"ISD::FRINT"      , SDTFPUnaryOp>;
-def ftrunc     : SDNode<"ISD::FTRUNC"     , SDTFPUnaryOp>;
-def fceil      : SDNode<"ISD::FCEIL"      , SDTFPUnaryOp>;
-def ffloor     : SDNode<"ISD::FFLOOR"     , SDTFPUnaryOp>;
-def fnearbyint : SDNode<"ISD::FNEARBYINT" , SDTFPUnaryOp>;
+def fadd       : SDNode<"ISD.FADD"       , SDTFPBinOp, [SDNPCommutative]>;
+def fsub       : SDNode<"ISD.FSUB"       , SDTFPBinOp>;
+def fmul       : SDNode<"ISD.FMUL"       , SDTFPBinOp, [SDNPCommutative]>;
+def fdiv       : SDNode<"ISD.FDIV"       , SDTFPBinOp>;
+def frem       : SDNode<"ISD.FREM"       , SDTFPBinOp>;
+def fabs       : SDNode<"ISD.FABS"       , SDTFPUnaryOp>;
+def fneg       : SDNode<"ISD.FNEG"       , SDTFPUnaryOp>;
+def fsqrt      : SDNode<"ISD.FSQRT"      , SDTFPUnaryOp>;
+def fsin       : SDNode<"ISD.FSIN"       , SDTFPUnaryOp>;
+def fcos       : SDNode<"ISD.FCOS"       , SDTFPUnaryOp>;
+def frint      : SDNode<"ISD.FRINT"      , SDTFPUnaryOp>;
+def ftrunc     : SDNode<"ISD.FTRUNC"     , SDTFPUnaryOp>;
+def fceil      : SDNode<"ISD.FCEIL"      , SDTFPUnaryOp>;
+def ffloor     : SDNode<"ISD.FFLOOR"     , SDTFPUnaryOp>;
+def fnearbyint : SDNode<"ISD.FNEARBYINT" , SDTFPUnaryOp>;
 
-def fround     : SDNode<"ISD::FP_ROUND"   , SDTFPRoundOp>;
-def fextend    : SDNode<"ISD::FP_EXTEND"  , SDTFPExtendOp>;
-def fcopysign  : SDNode<"ISD::FCOPYSIGN"  , SDTFPSignOp>;
+def fround     : SDNode<"ISD.FP_ROUND"   , SDTFPRoundOp>;
+def fextend    : SDNode<"ISD.FP_EXTEND"  , SDTFPExtendOp>;
+def fcopysign  : SDNode<"ISD.FCOPYSIGN"  , SDTFPSignOp>;
 
-def sint_to_fp : SDNode<"ISD::SINT_TO_FP" , SDTIntToFPOp>;
-def uint_to_fp : SDNode<"ISD::UINT_TO_FP" , SDTIntToFPOp>;
-def fp_to_sint : SDNode<"ISD::FP_TO_SINT" , SDTFPToIntOp>;
-def fp_to_uint : SDNode<"ISD::FP_TO_UINT" , SDTFPToIntOp>;
+def sint_to_fp : SDNode<"ISD.SINT_TO_FP" , SDTIntToFPOp>;
+def uint_to_fp : SDNode<"ISD.UINT_TO_FP" , SDTIntToFPOp>;
+def fp_to_sint : SDNode<"ISD.FP_TO_SINT" , SDTFPToIntOp>;
+def fp_to_uint : SDNode<"ISD.FP_TO_UINT" , SDTFPToIntOp>;
 
-def setcc      : SDNode<"ISD::SETCC"      , SDTSetCC>;
-def select     : SDNode<"ISD::SELECT"     , SDTSelect>;
-def selectcc   : SDNode<"ISD::SELECT_CC"  , SDTSelectCC>;
-def vsetcc     : SDNode<"ISD::VSETCC"     , SDTSetCC>;
+def setcc      : SDNode<"ISD.SETCC"      , SDTSetCC>;
+def select     : SDNode<"ISD.SELECT"     , SDTSelect>;
+def selectcc   : SDNode<"ISD.SELECT_CC"  , SDTSelectCC>;
+def vsetcc     : SDNode<"ISD.VSETCC"     , SDTSetCC>;
 
-def brcond     : SDNode<"ISD::BRCOND"     , SDTBrcond, [SDNPHasChain]>;
-def brind      : SDNode<"ISD::BRIND"      , SDTBrind,  [SDNPHasChain]>;
-def br         : SDNode<"ISD::BR"         , SDTBr,     [SDNPHasChain]>;
-def trap       : SDNode<"ISD::TRAP"       , SDTNone,
+def brcond     : SDNode<"ISD.BRCOND"     , SDTBrcond, [SDNPHasChain]>;
+def brind      : SDNode<"ISD.BRIND"      , SDTBrind,  [SDNPHasChain]>;
+def br         : SDNode<"ISD.BR"         , SDTBr,     [SDNPHasChain]>;
+def trap       : SDNode<"ISD.TRAP"       , SDTNone,
                         [SDNPHasChain, SDNPSideEffect]>;
 
-def prefetch   : SDNode<"ISD::PREFETCH"   , STDPrefetch,
+def prefetch   : SDNode<"ISD.PREFETCH"   , STDPrefetch,
                         [SDNPHasChain, SDNPMayLoad, SDNPMayStore]>;
 
-def membarrier : SDNode<"ISD::MEMBARRIER" , STDMemBarrier,
+def membarrier : SDNode<"ISD.MEMBARRIER" , STDMemBarrier,
                         [SDNPHasChain, SDNPSideEffect]>;
 
-def atomic_cmp_swap : SDNode<"ISD::ATOMIC_CMP_SWAP" , STDAtomic3,
+def atomic_cmp_swap : SDNode<"ISD.ATOMIC_CMP_SWAP" , STDAtomic3,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_add : SDNode<"ISD::ATOMIC_LOAD_ADD" , STDAtomic2,
+def atomic_load_add : SDNode<"ISD.ATOMIC_LOAD_ADD" , STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_swap     : SDNode<"ISD::ATOMIC_SWAP", STDAtomic2,
+def atomic_swap     : SDNode<"ISD.ATOMIC_SWAP", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_sub : SDNode<"ISD::ATOMIC_LOAD_SUB" , STDAtomic2,
+def atomic_load_sub : SDNode<"ISD.ATOMIC_LOAD_SUB" , STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_and : SDNode<"ISD::ATOMIC_LOAD_AND" , STDAtomic2,
+def atomic_load_and : SDNode<"ISD.ATOMIC_LOAD_AND" , STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_or  : SDNode<"ISD::ATOMIC_LOAD_OR" , STDAtomic2,
+def atomic_load_or  : SDNode<"ISD.ATOMIC_LOAD_OR" , STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_xor : SDNode<"ISD::ATOMIC_LOAD_XOR" , STDAtomic2,
+def atomic_load_xor : SDNode<"ISD.ATOMIC_LOAD_XOR" , STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_nand: SDNode<"ISD::ATOMIC_LOAD_NAND", STDAtomic2,
+def atomic_load_nand: SDNode<"ISD.ATOMIC_LOAD_NAND", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_min : SDNode<"ISD::ATOMIC_LOAD_MIN", STDAtomic2,
+def atomic_load_min : SDNode<"ISD.ATOMIC_LOAD_MIN", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_max : SDNode<"ISD::ATOMIC_LOAD_MAX", STDAtomic2,
+def atomic_load_max : SDNode<"ISD.ATOMIC_LOAD_MAX", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_umin : SDNode<"ISD::ATOMIC_LOAD_UMIN", STDAtomic2,
+def atomic_load_umin : SDNode<"ISD.ATOMIC_LOAD_UMIN", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-def atomic_load_umax : SDNode<"ISD::ATOMIC_LOAD_UMAX", STDAtomic2,
+def atomic_load_umax : SDNode<"ISD.ATOMIC_LOAD_UMAX", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
 
 // Do not use ld, st directly. Use load, extload, sextload, zextload, store,
 // and truncst (see below).
-def ld         : SDNode<"ISD::LOAD"       , SDTLoad,
+def ld         : SDNode<"ISD.LOAD"       , SDTLoad,
                         [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
-def st         : SDNode<"ISD::STORE"      , SDTStore,
+def st         : SDNode<"ISD.STORE"      , SDTStore,
                         [SDNPHasChain, SDNPMayStore, SDNPMemOperand]>;
-def ist        : SDNode<"ISD::STORE"      , SDTIStore,
+def ist        : SDNode<"ISD.STORE"      , SDTIStore,
                         [SDNPHasChain, SDNPMayStore, SDNPMemOperand]>;
 
-def vector_shuffle : SDNode<"ISD::VECTOR_SHUFFLE", SDTVecShuffle, []>;
-def build_vector : SDNode<"ISD::BUILD_VECTOR", SDTypeProfile<1, -1, []>, []>;
-def scalar_to_vector : SDNode<"ISD::SCALAR_TO_VECTOR", SDTypeProfile<1, 1, []>,
+def vector_shuffle : SDNode<"ISD.VECTOR_SHUFFLE", SDTVecShuffle, []>;
+def build_vector : SDNode<"ISD.BUILD_VECTOR", SDTypeProfile<1, -1, []>, []>;
+def scalar_to_vector : SDNode<"ISD.SCALAR_TO_VECTOR", SDTypeProfile<1, 1, []>,
                               []>;
-def vector_extract : SDNode<"ISD::EXTRACT_VECTOR_ELT",
+def vector_extract : SDNode<"ISD.EXTRACT_VECTOR_ELT",
     SDTypeProfile<1, 2, [SDTCisPtrTy<2>]>, []>;
-def vector_insert : SDNode<"ISD::INSERT_VECTOR_ELT",
+def vector_insert : SDNode<"ISD.INSERT_VECTOR_ELT",
     SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>, SDTCisPtrTy<3>]>, []>;
     
 // Nodes for intrinsics, you should use the intrinsic itself and let tblgen use
 // these internally.  Don't reference these directly.
-def intrinsic_void : SDNode<"ISD::INTRINSIC_VOID", 
+def intrinsic_void : SDNode<"ISD.INTRINSIC_VOID",
                             SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>,
                             [SDNPHasChain]>;
-def intrinsic_w_chain : SDNode<"ISD::INTRINSIC_W_CHAIN", 
+def intrinsic_w_chain : SDNode<"ISD.INTRINSIC_W_CHAIN",
                                SDTypeProfile<1, -1, [SDTCisPtrTy<1>]>,
                                [SDNPHasChain]>;
-def intrinsic_wo_chain : SDNode<"ISD::INTRINSIC_WO_CHAIN", 
+def intrinsic_wo_chain : SDNode<"ISD.INTRINSIC_WO_CHAIN",
                                 SDTypeProfile<1, -1, [SDTCisPtrTy<1>]>, []>;
 
 // Do not use cvt directly. Use cvt forms below
-def cvt : SDNode<"ISD::CONVERT_RNDSAT", SDTConvertOp>;
+def cvt : SDNode<"ISD.CONVERT_RNDSAT", SDTConvertOp>;
 
 //===----------------------------------------------------------------------===//
 // Selection DAG Condition Codes
 
-class CondCode; // ISD::CondCode enums
+class CondCode; // ISD.CondCode enums
 def SETOEQ : CondCode; def SETOGT : CondCode;
 def SETOGE : CondCode; def SETOLT : CondCode; def SETOLE : CondCode;
 def SETONE : CondCode; def SETO   : CondCode; def SETUO  : CondCode;
@@ -470,21 +470,21 @@ class PatLeaf<dag frag, code pred = [{}], SDNodeXForm xform = NOOP_SDNodeXForm>
 
 // Leaf fragments.
 
-def vtInt      : PatLeaf<(vt),  [{ return N->getVT().isInteger(); }]>;
-def vtFP       : PatLeaf<(vt),  [{ return N->getVT().isFloatingPoint(); }]>;
+def vtInt      : PatLeaf<(vt),  [{ return n.getVT().isInteger(); }]>;
+def vtFP       : PatLeaf<(vt),  [{ return n.getVT().isFloatingPoint(); }]>;
 
-def immAllOnes : PatLeaf<(imm), [{ return N->isAllOnesValue(); }]>;
+def immAllOnes : PatLeaf<(imm), [{ return n.isAllOnesValue(); }]>;
 def immAllOnesV: PatLeaf<(build_vector), [{
-  return ISD::isBuildVectorAllOnes(N);
+  return SelectionDAG.isBuildVectorAllOnes(n);
 }]>;
 def immAllOnesV_bc: PatLeaf<(bitconvert), [{
-  return ISD::isBuildVectorAllOnes(N);
+  return SelectionDAG.isBuildVectorAllOnes(n);
 }]>;
 def immAllZerosV: PatLeaf<(build_vector), [{
-  return ISD::isBuildVectorAllZeros(N);
+  return SelectionDAG.isBuildVectorAllZeros(n);
 }]>;
 def immAllZerosV_bc: PatLeaf<(bitconvert), [{
-  return ISD::isBuildVectorAllZeros(N);
+  return SelectionDAG.isBuildVectorAllZeros(n);
 }]>;
 
 
@@ -497,176 +497,176 @@ def ineg : PatFrag<(ops node:$in), (sub 0, node:$in)>;
 
 // load fragments.
 def unindexedload : PatFrag<(ops node:$ptr), (ld node:$ptr), [{
-  return cast<LoadSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
+  return ((LoadSDNode)n).getAddressingMode() == MemIndexedMode.UNINDEXED;
 }]>;
 def load : PatFrag<(ops node:$ptr), (unindexedload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getExtensionType() == ISD::NON_EXTLOAD;
+  return ((LoadSDNode)n).getExtensionType() == LoadExtType.NON_EXTLOAD;
 }]>;
 
 // extending load fragments.
 def extload   : PatFrag<(ops node:$ptr), (unindexedload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getExtensionType() == ISD::EXTLOAD;
+  return ((LoadSDNode)n).getExtensionType() == LoadExtType.EXTLOAD;
 }]>;
 def sextload  : PatFrag<(ops node:$ptr), (unindexedload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getExtensionType() == ISD::SEXTLOAD;
+  return ((LoadSDNode)n).getExtensionType() == LoadExtType.SEXTLOAD;
 }]>;
 def zextload  : PatFrag<(ops node:$ptr), (unindexedload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getExtensionType() == ISD::ZEXTLOAD;
+  return ((LoadSDNode)n).getExtensionType() == LoadExtType.ZEXTLOAD;
 }]>;
 
 def extloadi1  : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i1;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
 def extloadi8  : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def extloadi16 : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def extloadi32 : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 def extloadf32 : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::f32;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 def extloadf64 : PatFrag<(ops node:$ptr), (extload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::f64;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f64;
 }]>;
 
 def sextloadi1  : PatFrag<(ops node:$ptr), (sextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i1;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
 def sextloadi8  : PatFrag<(ops node:$ptr), (sextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def sextloadi16 : PatFrag<(ops node:$ptr), (sextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def sextloadi32 : PatFrag<(ops node:$ptr), (sextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 
 def zextloadi1  : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i1;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
 def zextloadi8  : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def zextloadi16 : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def zextloadi32 : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
-  return cast<LoadSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 
 // store fragments.
 def unindexedstore : PatFrag<(ops node:$val, node:$ptr),
                              (st node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
+  return ((StoreSDNode)n).getAddressingMode() == MemIndexedMode.UNINDEXED;
 }]>;
 def store : PatFrag<(ops node:$val, node:$ptr),
                     (unindexedstore node:$val, node:$ptr), [{
-  return !cast<StoreSDNode>(N)->isTruncatingStore();
+  return !((StoreSDNode)n).isTruncatingStore();
 }]>;
 
 // truncstore fragments.
 def truncstore : PatFrag<(ops node:$val, node:$ptr),
                          (unindexedstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->isTruncatingStore();
+  return ((StoreSDNode)n).isTruncatingStore();
 }]>;
 def truncstorei8 : PatFrag<(ops node:$val, node:$ptr),
                            (truncstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def truncstorei16 : PatFrag<(ops node:$val, node:$ptr),
                             (truncstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def truncstorei32 : PatFrag<(ops node:$val, node:$ptr),
                             (truncstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 def truncstoref32 : PatFrag<(ops node:$val, node:$ptr),
                             (truncstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::f32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 def truncstoref64 : PatFrag<(ops node:$val, node:$ptr),
                             (truncstore node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::f64;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f64;
 }]>;
 
 // indexed store fragments.
 def istore : PatFrag<(ops node:$val, node:$base, node:$offset),
                      (ist node:$val, node:$base, node:$offset), [{
-  return !cast<StoreSDNode>(N)->isTruncatingStore();
+  return !((StoreSDNode)n).isTruncatingStore();
 }]>;
 
 def pre_store : PatFrag<(ops node:$val, node:$base, node:$offset),
                         (istore node:$val, node:$base, node:$offset), [{
-  ISD::MemIndexedMode AM = cast<StoreSDNode>(N)->getAddressingMode();
-  return AM == ISD::PRE_INC || AM == ISD::PRE_DEC;
+  MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
+  return am == MemIndexedMode.PRE_INC || am == MemIndexedMode.PRE_DEC;
 }]>;
 
 def itruncstore : PatFrag<(ops node:$val, node:$base, node:$offset),
                           (ist node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->isTruncatingStore();
+  return ((StoreSDNode)n).isTruncatingStore();
 }]>;
 def pre_truncst : PatFrag<(ops node:$val, node:$base, node:$offset),
                           (itruncstore node:$val, node:$base, node:$offset), [{
-  ISD::MemIndexedMode AM = cast<StoreSDNode>(N)->getAddressingMode();
-  return AM == ISD::PRE_INC || AM == ISD::PRE_DEC;
+  MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
+  return am == MemIndexedMode.PRE_INC || am == MemIndexedMode.PRE_DEC;
 }]>;
 def pre_truncsti1 : PatFrag<(ops node:$val, node:$base, node:$offset),
                             (pre_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i1;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
 def pre_truncsti8 : PatFrag<(ops node:$val, node:$base, node:$offset),
                             (pre_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def pre_truncsti16 : PatFrag<(ops node:$val, node:$base, node:$offset),
                              (pre_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def pre_truncsti32 : PatFrag<(ops node:$val, node:$base, node:$offset),
                              (pre_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 def pre_truncstf32 : PatFrag<(ops node:$val, node:$base, node:$offset),
                              (pre_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::f32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 
 def post_store : PatFrag<(ops node:$val, node:$ptr, node:$offset),
                          (istore node:$val, node:$ptr, node:$offset), [{
-  ISD::MemIndexedMode AM = cast<StoreSDNode>(N)->getAddressingMode();
-  return AM == ISD::POST_INC || AM == ISD::POST_DEC;
+  MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
+  return am == MemIndexedMode.POST_INC || am == MemIndexedMode.POST_DEC;
 }]>;
 
 def post_truncst : PatFrag<(ops node:$val, node:$base, node:$offset),
                            (itruncstore node:$val, node:$base, node:$offset), [{
-  ISD::MemIndexedMode AM = cast<StoreSDNode>(N)->getAddressingMode();
-  return AM == ISD::POST_INC || AM == ISD::POST_DEC;
+  MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
+  return am == MemIndexedMode.POST_INC || am == MemIndexedMode.POST_DEC;
 }]>;
 def post_truncsti1 : PatFrag<(ops node:$val, node:$base, node:$offset),
                              (post_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i1;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
 def post_truncsti8 : PatFrag<(ops node:$val, node:$base, node:$offset),
                              (post_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def post_truncsti16 : PatFrag<(ops node:$val, node:$base, node:$offset),
                               (post_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def post_truncsti32 : PatFrag<(ops node:$val, node:$base, node:$offset),
                               (post_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 def post_truncstf32 : PatFrag<(ops node:$val, node:$base, node:$offset),
                               (post_truncst node:$val, node:$base, node:$offset), [{
-  return cast<StoreSDNode>(N)->getMemoryVT() == MVT::f32;
+  return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 
 // setcc convenience fragments.
@@ -714,40 +714,40 @@ def setne  : PatFrag<(ops node:$lhs, node:$rhs),
 def atomic_cmp_swap_8 :
   PatFrag<(ops node:$ptr, node:$cmp, node:$swap),
           (atomic_cmp_swap node:$ptr, node:$cmp, node:$swap), [{
-  return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i8;
+  return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
 def atomic_cmp_swap_16 :
   PatFrag<(ops node:$ptr, node:$cmp, node:$swap),
           (atomic_cmp_swap node:$ptr, node:$cmp, node:$swap), [{
-  return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i16;
+  return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
 def atomic_cmp_swap_32 :
   PatFrag<(ops node:$ptr, node:$cmp, node:$swap),
           (atomic_cmp_swap node:$ptr, node:$cmp, node:$swap), [{
-  return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i32;
+  return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
 def atomic_cmp_swap_64 :
   PatFrag<(ops node:$ptr, node:$cmp, node:$swap),
           (atomic_cmp_swap node:$ptr, node:$cmp, node:$swap), [{
-  return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i64;
+  return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i64;
 }]>;
 
 multiclass binary_atomic_op<SDNode atomic_op> {
   def _8 : PatFrag<(ops node:$ptr, node:$val),
                    (atomic_op node:$ptr, node:$val), [{
-    return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i8;
+    return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
   }]>;
   def _16 : PatFrag<(ops node:$ptr, node:$val),
                    (atomic_op node:$ptr, node:$val), [{
-    return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i16;
+    return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
   }]>;
   def _32 : PatFrag<(ops node:$ptr, node:$val),
                    (atomic_op node:$ptr, node:$val), [{
-    return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i32;
+    return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
   }]>;
   def _64 : PatFrag<(ops node:$ptr, node:$val),
                    (atomic_op node:$ptr, node:$val), [{
-    return cast<AtomicSDNode>(N)->getMemoryVT() == MVT::i64;
+    return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i64;
   }]>;
 }
 
@@ -768,47 +768,47 @@ defm atomic_load_umax : binary_atomic_op<atomic_load_umax>;
 
 def cvtff : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_FF;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FF;
     }]>;
 
 def cvtss : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_SS;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SS;
     }]>;
 
 def cvtsu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_SU;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SU;
     }]>;
 
 def cvtus : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_US;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_US;
     }]>;
 
 def cvtuu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_UU;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_UU;
     }]>;
 
 def cvtsf : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_SF;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SF;
     }]>;
 
 def cvtuf : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_UF;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_UF;
     }]>;
 
 def cvtfs : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_FS;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FS;
     }]>;
 
 def cvtfu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
     (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
-       return cast<CvtRndSatSDNode>(N)->getCvtCode() == ISD::CVT_FU;
+       return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FU;
     }]>;
 
 //===----------------------------------------------------------------------===//
@@ -864,4 +864,4 @@ class ComplexPattern<ValueType ty, int numops, string fn,
 //
 def SDT_dwarf_loc : SDTypeProfile<0, 3,
                       [SDTCisInt<0>, SDTCisInt<1>, SDTCisInt<2>]>;
-def dwarf_loc : SDNode<"ISD::DEBUG_LOC", SDT_dwarf_loc,[SDNPHasChain]>;
+def dwarf_loc : SDNode<"ISD.DEBUG_LOC", SDT_dwarf_loc,[SDNPHasChain]>;
