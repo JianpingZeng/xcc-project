@@ -74,96 +74,96 @@ def SDT_X86EHRET : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 
 def SDT_X86TCRET : SDTypeProfile<0, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i32>]>;
 
-def X86bsf     : SDNode<"X86ISD::BSF",      SDTIntUnaryOp>;
-def X86bsr     : SDNode<"X86ISD::BSR",      SDTIntUnaryOp>;
-def X86shld    : SDNode<"X86ISD::SHLD",     SDTIntShiftDOp>;
-def X86shrd    : SDNode<"X86ISD::SHRD",     SDTIntShiftDOp>;
+def X86bsf     : SDNode<"X86ISD.BSF",      SDTIntUnaryOp>;
+def X86bsr     : SDNode<"X86ISD.BSR",      SDTIntUnaryOp>;
+def X86shld    : SDNode<"X86ISD.SHLD",     SDTIntShiftDOp>;
+def X86shrd    : SDNode<"X86ISD.SHRD",     SDTIntShiftDOp>;
 
-def X86cmp     : SDNode<"X86ISD::CMP" ,     SDTX86CmpTest>;
+def X86cmp     : SDNode<"X86ISD.CMP" ,     SDTX86CmpTest>;
 
-def X86bt      : SDNode<"X86ISD::BT",       SDTX86CmpTest>;
+def X86bt      : SDNode<"X86ISD.BT",       SDTX86CmpTest>;
 
-def X86cmov    : SDNode<"X86ISD::CMOV",     SDTX86Cmov>;
-def X86brcond  : SDNode<"X86ISD::BRCOND",   SDTX86BrCond,
+def X86cmov    : SDNode<"X86ISD.CMOV",     SDTX86Cmov>;
+def X86brcond  : SDNode<"X86ISD.BRCOND",   SDTX86BrCond,
                         [SDNPHasChain]>;
-def X86setcc   : SDNode<"X86ISD::SETCC",    SDTX86SetCC>;
+def X86setcc   : SDNode<"X86ISD.SETCC",    SDTX86SetCC>;
 
-def X86cas : SDNode<"X86ISD::LCMPXCHG_DAG", SDTX86cas,
+def X86cas : SDNode<"X86ISD.LCMPXCHG_DAG", SDTX86cas,
                         [SDNPHasChain, SDNPInFlag, SDNPOutFlag, SDNPMayStore,
                          SDNPMayLoad]>;
-def X86cas8 : SDNode<"X86ISD::LCMPXCHG8_DAG", SDTX86cas8,
+def X86cas8 : SDNode<"X86ISD.LCMPXCHG8_DAG", SDTX86cas8,
                         [SDNPHasChain, SDNPInFlag, SDNPOutFlag, SDNPMayStore,
                          SDNPMayLoad]>;
-def X86AtomAdd64 : SDNode<"X86ISD::ATOMADD64_DAG", SDTX86atomicBinary,
+def X86AtomAdd64 : SDNode<"X86ISD.ATOMADD64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomSub64 : SDNode<"X86ISD::ATOMSUB64_DAG", SDTX86atomicBinary,
+def X86AtomSub64 : SDNode<"X86ISD.ATOMSUB64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomOr64 : SDNode<"X86ISD::ATOMOR64_DAG", SDTX86atomicBinary,
+def X86AtomOr64 : SDNode<"X86ISD.ATOMOR64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomXor64 : SDNode<"X86ISD::ATOMXOR64_DAG", SDTX86atomicBinary,
+def X86AtomXor64 : SDNode<"X86ISD.ATOMXOR64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomAnd64 : SDNode<"X86ISD::ATOMAND64_DAG", SDTX86atomicBinary,
+def X86AtomAnd64 : SDNode<"X86ISD.ATOMAND64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomNand64 : SDNode<"X86ISD::ATOMNAND64_DAG", SDTX86atomicBinary,
+def X86AtomNand64 : SDNode<"X86ISD.ATOMNAND64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86AtomSwap64 : SDNode<"X86ISD::ATOMSWAP64_DAG", SDTX86atomicBinary,
+def X86AtomSwap64 : SDNode<"X86ISD.ATOMSWAP64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
-def X86retflag : SDNode<"X86ISD::RET_FLAG", SDTX86Ret,
+def X86retflag : SDNode<"X86ISD.RET_FLAG", SDTX86Ret,
                         [SDNPHasChain, SDNPOptInFlag]>;
 
 def X86vastart_save_xmm_regs :
-                 SDNode<"X86ISD::VASTART_SAVE_XMM_REGS",
+                 SDNode<"X86ISD.VASTART_SAVE_XMM_REGS",
                         SDT_X86VASTART_SAVE_XMM_REGS,
                         [SDNPHasChain]>;
 
 def X86callseq_start :
-                 SDNode<"ISD::CALLSEQ_START", SDT_X86CallSeqStart,
+                 SDNode<"ISD.CALLSEQ_START", SDT_X86CallSeqStart,
                         [SDNPHasChain, SDNPOutFlag]>;
 def X86callseq_end :
-                 SDNode<"ISD::CALLSEQ_END",   SDT_X86CallSeqEnd,
+                 SDNode<"ISD.CALLSEQ_END",   SDT_X86CallSeqEnd,
                         [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;       
 
-def X86call    : SDNode<"X86ISD::CALL",     SDT_X86Call,
+def X86call    : SDNode<"X86ISD.CALL",     SDT_X86Call,
                         [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag]>;
 
-def X86rep_stos: SDNode<"X86ISD::REP_STOS", SDTX86RepStr,
+def X86rep_stos: SDNode<"X86ISD.REP_STOS", SDTX86RepStr,
                         [SDNPHasChain, SDNPInFlag, SDNPOutFlag, SDNPMayStore]>;
-def X86rep_movs: SDNode<"X86ISD::REP_MOVS", SDTX86RepStr,
+def X86rep_movs: SDNode<"X86ISD.REP_MOVS", SDTX86RepStr,
                         [SDNPHasChain, SDNPInFlag, SDNPOutFlag, SDNPMayStore,
                          SDNPMayLoad]>;
 
-def X86rdtsc   : SDNode<"X86ISD::RDTSC_DAG",SDTX86RdTsc,
+def X86rdtsc   : SDNode<"X86ISD.RDTSC_DAG",SDTX86RdTsc,
                         [SDNPHasChain, SDNPOutFlag, SDNPSideEffect]>;
 
-def X86Wrapper    : SDNode<"X86ISD::Wrapper",     SDTX86Wrapper>;
-def X86WrapperRIP : SDNode<"X86ISD::WrapperRIP",  SDTX86Wrapper>;
+def X86Wrapper    : SDNode<"X86ISD.Wrapper",     SDTX86Wrapper>;
+def X86WrapperRIP : SDNode<"X86ISD.WrapperRIP",  SDTX86Wrapper>;
 
-def X86tlsaddr : SDNode<"X86ISD::TLSADDR", SDT_X86TLSADDR,
+def X86tlsaddr : SDNode<"X86ISD.TLSADDR", SDT_X86TLSADDR,
                         [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
-def X86SegmentBaseAddress : SDNode<"X86ISD::SegmentBaseAddress",
+def X86SegmentBaseAddress : SDNode<"X86ISD.SegmentBaseAddress",
                                  SDT_X86SegmentBaseAddress, []>;
 
-def X86ehret : SDNode<"X86ISD::EH_RETURN", SDT_X86EHRET,
+def X86ehret : SDNode<"X86ISD.EH_RETURN", SDT_X86EHRET,
                         [SDNPHasChain]>;
 
-def X86tcret : SDNode<"X86ISD::TC_RETURN", SDT_X86TCRET, 
+def X86tcret : SDNode<"X86ISD.TC_RETURN", SDT_X86TCRET,
                         [SDNPHasChain,  SDNPOptInFlag]>;
 
-def X86add_flag  : SDNode<"X86ISD::ADD",  SDTBinaryArithWithFlags>;
-def X86sub_flag  : SDNode<"X86ISD::SUB",  SDTBinaryArithWithFlags>;
-def X86smul_flag : SDNode<"X86ISD::SMUL", SDTBinaryArithWithFlags>;
-def X86umul_flag : SDNode<"X86ISD::UMUL", SDTUnaryArithWithFlags>;
-def X86inc_flag  : SDNode<"X86ISD::INC",  SDTUnaryArithWithFlags>;
-def X86dec_flag  : SDNode<"X86ISD::DEC",  SDTUnaryArithWithFlags>;
+def X86add_flag  : SDNode<"X86ISD.ADD",  SDTBinaryArithWithFlags>;
+def X86sub_flag  : SDNode<"X86ISD.SUB",  SDTBinaryArithWithFlags>;
+def X86smul_flag : SDNode<"X86ISD.SMUL", SDTBinaryArithWithFlags>;
+def X86umul_flag : SDNode<"X86ISD.UMUL", SDTUnaryArithWithFlags>;
+def X86inc_flag  : SDNode<"X86ISD.INC",  SDTUnaryArithWithFlags>;
+def X86dec_flag  : SDNode<"X86ISD.DEC",  SDTUnaryArithWithFlags>;
 
-def X86mul_imm : SDNode<"X86ISD::MUL_IMM", SDTIntBinOp>;
+def X86mul_imm : SDNode<"X86ISD.MUL_IMM", SDTIntBinOp>;
 
 //===----------------------------------------------------------------------===//
 // X86 Operand Definitions.
@@ -321,122 +321,168 @@ def X86_COND_S   : PatLeaf<(i8 15)>;
 def i16immSExt8  : PatLeaf<(i16 imm), [{
   // i16immSExt8 predicate - True if the 16-bit immediate fits in a 8-bit
   // sign extended field.
-  return (int16_t)N->getZExtValue() == (int8_t)N->getZExtValue();
+  return (short)n.getZExtValue() == (byte)n.getZExtValue();
 }]>;
 
 def i32immSExt8  : PatLeaf<(i32 imm), [{
   // i32immSExt8 predicate - True if the 32-bit immediate fits in a 8-bit
   // sign extended field.
-  return (int32_t)N->getZExtValue() == (int8_t)N->getZExtValue();
+  return (int)n.getZExtValue() == (byte)n.getZExtValue();
 }]>;
 
 // Helper fragments for loads.
 // It's always safe to treat a anyext i16 load as a i32 load if the i16 is
 // known to be 32-bit aligned or better. Ditto for i8 to i16.
 def loadi16 : PatFrag<(ops node:$ptr), (i16 (unindexedload node:$ptr)), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  if (const Value *Src = LD->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  LoadSDNode ld = ((LoadSDNode)n);
+  Value src = ld.getSrcValue();
+  if (src != null)
+  {
+    if (src.getType() instanceof PointerType)
+    {
+      PointerType pt = (PointerType)src.getType();
+      if (pt.getAddressSpace() > 255)
         return false;
-  ISD::LoadExtType ExtType = LD->getExtensionType();
-  if (ExtType == ISD::NON_EXTLOAD)
+    }
+  }
+  LoadExtType extType = ld.getExtensionType();
+  if (extType == LoadExtType.NON_EXTLOAD)
     return true;
-  if (ExtType == ISD::EXTLOAD)
-    return LD->getAlignment() >= 2 && !LD->isVolatile();
+  if (extType == LoadExtType.EXTLOAD)
+    return ld.getAlignment() >= 2 && !ld.isVolatile();
   return false;
 }]>;
 
 def loadi16_anyext : PatFrag<(ops node:$ptr), (i32 (unindexedload node:$ptr)), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  if (const Value *Src = LD->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  LoadSDNode ld = ((LoadSDNode)n);
+  Value src = ld.getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
-  ISD::LoadExtType ExtType = LD->getExtensionType();
-  if (ExtType == ISD::EXTLOAD)
-    return LD->getAlignment() >= 2 && !LD->isVolatile();
+  }
+  LoadExtType extType = ld.getExtensionType();
+  if (extType == LoadExtType.EXTLOAD)
+    return ld.getAlignment() >= 2 && !ld.isVolatile();
   return false;
 }]>;
 
 def loadi32 : PatFrag<(ops node:$ptr), (i32 (unindexedload node:$ptr)), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  if (const Value *Src = LD->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  LoadSDNode ld = (LoadSDNode)n;
+  Value src = ld.getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
-  ISD::LoadExtType ExtType = LD->getExtensionType();
-  if (ExtType == ISD::NON_EXTLOAD)
+  }
+  LoadExtType extType = ld.getExtensionType();
+  if (extType == LoadExtType.NON_EXTLOAD)
     return true;
-  if (ExtType == ISD::EXTLOAD)
-    return LD->getAlignment() >= 4 && !LD->isVolatile();
+  if (extType == LoadExtType.EXTLOAD)
+    return ld.getAlignment() >= 4 && !ld.isVolatile();
   return false;
 }]>;
 
 def nvloadi32 : PatFrag<(ops node:$ptr), (i32 (unindexedload node:$ptr)), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  if (const Value *Src = LD->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  LoadSDNode ld = (LoadSDNode)n;
+  Value src = ld.getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
-  if (LD->isVolatile())
+  }
+  if (ld.isVolatile())
     return false;
-  ISD::LoadExtType ExtType = LD->getExtensionType();
-  if (ExtType == ISD::NON_EXTLOAD)
+  LoadExtType extType = ld.getExtensionType();
+  if (extType == LoadExtType.NON_EXTLOAD)
     return true;
-  if (ExtType == ISD::EXTLOAD)
-    return LD->getAlignment() >= 4;
+  if (extType == LoadExtType.EXTLOAD)
+    return ld.getAlignment() >= 4;
   return false;
 }]>;
 
 def gsload : PatFrag<(ops node:$ptr), (load node:$ptr), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      return PT->getAddressSpace() == 256;
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      return pt.getAddressSpace() == 255;
+  }
   return false;
 }]>;
 
 def fsload : PatFrag<(ops node:$ptr), (load node:$ptr), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      return PT->getAddressSpace() == 257;
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      return pt.getAddressSpace() == 257;
+  }
   return false;
 }]>;
 
 def loadi8  : PatFrag<(ops node:$ptr), (i8  (load node:$ptr)), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
+  }
   return true;
 }]>;
 def loadi64 : PatFrag<(ops node:$ptr), (i64 (load node:$ptr)), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
+  }
   return true;
 }]>;
 
 def loadf32 : PatFrag<(ops node:$ptr), (f32 (load node:$ptr)), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
+  }
   return true;
 }]>;
 def loadf64 : PatFrag<(ops node:$ptr), (f64 (load node:$ptr)), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
+  }
   return true;
 }]>;
 def loadf80 : PatFrag<(ops node:$ptr), (f80 (load node:$ptr)), [{
-  if (const Value *Src = cast<LoadSDNode>(N)->getSrcValue())
-    if (const PointerType *PT = dyn_cast<PointerType>(Src->getType()))
-      if (PT->getAddressSpace() > 255)
+  Value src = ((LoadSDNode)n).getSrcValue();
+  if (src != null)
+  {
+    PointerType pt = src.getType() instanceof PointerType?(PointerType)src.getType():null;
+    if (pt != null)
+      if (pt.getAddressSpace() > 255)
         return false;
+  }
   return true;
 }]>;
 
@@ -461,15 +507,15 @@ def extloadi32i16  : PatFrag<(ops node:$ptr), (i32 (extloadi16 node:$ptr))>;
 
 // An 'and' node with a single use.
 def and_su : PatFrag<(ops node:$lhs, node:$rhs), (and node:$lhs, node:$rhs), [{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 // An 'srl' node with a single use.
 def srl_su : PatFrag<(ops node:$lhs, node:$rhs), (srl node:$lhs, node:$rhs), [{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 // An 'trunc' node with a single use.
 def trunc_su : PatFrag<(ops node:$src), (trunc node:$src), [{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 
 // 'shld' and 'shrd' instruction patterns. Note that even though these have
@@ -479,25 +525,25 @@ def trunc_su : PatFrag<(ops node:$src), (trunc node:$src), [{
 def shrd : PatFrag<(ops node:$src1, node:$amt1, node:$src2, node:$amt2),
                    (or (srl node:$src1, node:$amt1),
                        (shl node:$src2, node:$amt2)), [{
-  assert(N->getOpcode() == ISD::OR);
-  return N->getOperand(0).getOpcode() == ISD::SRL &&
-         N->getOperand(1).getOpcode() == ISD::SHL &&
-         isa<ConstantSDNode>(N->getOperand(0).getOperand(1)) &&
-         isa<ConstantSDNode>(N->getOperand(1).getOperand(1)) &&
-         N->getOperand(0).getConstantOperandVal(1) ==
-         N->getValueSizeInBits(0) - N->getOperand(1).getConstantOperandVal(1);
+  assert(n.getOpcode() == ISD.OR);
+  return n.getOperand(0).getOpcode() == ISD.SRL &&
+         n.getOperand(1).getOpcode() == ISD.SHL &&
+         (n.getOperand(0).getOperand(1).getNode() instanceof ConstantSDNode) &&
+         (n.getOperand(1).getOperand(1).getNode() instanceof ConstantSDNode) &&
+         n.getOperand(0).getConstantOperandVal(1) ==
+         n.getValueSizeInBits(0) - n.getOperand(1).getConstantOperandVal(1);
 }]>;
 
 def shld : PatFrag<(ops node:$src1, node:$amt1, node:$src2, node:$amt2),
                    (or (shl node:$src1, node:$amt1),
                        (srl node:$src2, node:$amt2)), [{
-  assert(N->getOpcode() == ISD::OR);
-  return N->getOperand(0).getOpcode() == ISD::SHL &&
-         N->getOperand(1).getOpcode() == ISD::SRL &&
-         isa<ConstantSDNode>(N->getOperand(0).getOperand(1)) &&
-         isa<ConstantSDNode>(N->getOperand(1).getOperand(1)) &&
-         N->getOperand(0).getConstantOperandVal(1) ==
-         N->getValueSizeInBits(0) - N->getOperand(1).getConstantOperandVal(1);
+  assert(n.getOpcode() == ISD.OR);
+  return n.getOperand(0).getOpcode() == ISD.SHL &&
+         n.getOperand(1).getOpcode() == ISD.SRL &&
+         (n.getOperand(0).getOperand(1).getNode() instanceof ConstantSDNode) &&
+         (n.getOperand(1).getOperand(1).getNode() instanceof ConstantSDNode) &&
+         n.getOperand(0).getConstantOperandVal(1) ==
+         n.getValueSizeInBits(0) - n.getOperand(1).getConstantOperandVal(1);
 }]>;
 
 //===----------------------------------------------------------------------===//

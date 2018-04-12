@@ -23,55 +23,55 @@ def SDTX86FPShiftOp : SDTypeProfile<1, 2, [ SDTCisSameAs<0, 1>,
 def SDTX86VFCMP : SDTypeProfile<1, 3, [SDTCisInt<0>, SDTCisSameAs<1, 2>,
                                        SDTCisFP<1>, SDTCisVT<3, i8>]>;
 
-def X86fmin    : SDNode<"X86ISD::FMIN",      SDTFPBinOp>;
-def X86fmax    : SDNode<"X86ISD::FMAX",      SDTFPBinOp>;
-def X86fand    : SDNode<"X86ISD::FAND",      SDTFPBinOp,
+def X86fmin    : SDNode<"X86ISD.FMIN",      SDTFPBinOp>;
+def X86fmax    : SDNode<"X86ISD.FMAX",      SDTFPBinOp>;
+def X86fand    : SDNode<"X86ISD.FAND",      SDTFPBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def X86for     : SDNode<"X86ISD::FOR",       SDTFPBinOp,
+def X86for     : SDNode<"X86ISD.FOR",       SDTFPBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def X86fxor    : SDNode<"X86ISD::FXOR",      SDTFPBinOp,
+def X86fxor    : SDNode<"X86ISD.FXOR",      SDTFPBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
-def X86frsqrt  : SDNode<"X86ISD::FRSQRT",    SDTFPUnaryOp>;
-def X86frcp    : SDNode<"X86ISD::FRCP",      SDTFPUnaryOp>;
-def X86fsrl    : SDNode<"X86ISD::FSRL",      SDTX86FPShiftOp>;
-def X86comi    : SDNode<"X86ISD::COMI",      SDTX86CmpTest>;
-def X86ucomi   : SDNode<"X86ISD::UCOMI",     SDTX86CmpTest>;
-def X86pshufb  : SDNode<"X86ISD::PSHUFB",
+def X86frsqrt  : SDNode<"X86ISD.FRSQRT",    SDTFPUnaryOp>;
+def X86frcp    : SDNode<"X86ISD.FRCP",      SDTFPUnaryOp>;
+def X86fsrl    : SDNode<"X86ISD.FSRL",      SDTX86FPShiftOp>;
+def X86comi    : SDNode<"X86ISD.COMI",      SDTX86CmpTest>;
+def X86ucomi   : SDNode<"X86ISD.UCOMI",     SDTX86CmpTest>;
+def X86pshufb  : SDNode<"X86ISD.PSHUFB",
                  SDTypeProfile<1, 2, [SDTCisVT<0, v16i8>, SDTCisSameAs<0,1>,
                                       SDTCisSameAs<0,2>]>>;
-def X86pextrb  : SDNode<"X86ISD::PEXTRB",
+def X86pextrb  : SDNode<"X86ISD.PEXTRB",
                  SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisPtrTy<2>]>>;
-def X86pextrw  : SDNode<"X86ISD::PEXTRW",
+def X86pextrw  : SDNode<"X86ISD.PEXTRW",
                  SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisPtrTy<2>]>>;
-def X86pinsrb  : SDNode<"X86ISD::PINSRB",
+def X86pinsrb  : SDNode<"X86ISD.PINSRB",
                  SDTypeProfile<1, 3, [SDTCisVT<0, v16i8>, SDTCisSameAs<0,1>,
                                       SDTCisVT<2, i32>, SDTCisPtrTy<3>]>>;
-def X86pinsrw  : SDNode<"X86ISD::PINSRW",
+def X86pinsrw  : SDNode<"X86ISD.PINSRW",
                  SDTypeProfile<1, 3, [SDTCisVT<0, v8i16>, SDTCisSameAs<0,1>,
                                       SDTCisVT<2, i32>, SDTCisPtrTy<3>]>>;
-def X86insrtps : SDNode<"X86ISD::INSERTPS",
+def X86insrtps : SDNode<"X86ISD.INSERTPS",
                  SDTypeProfile<1, 3, [SDTCisVT<0, v4f32>, SDTCisSameAs<0,1>,
                                       SDTCisVT<2, v4f32>, SDTCisPtrTy<3>]>>;
-def X86vzmovl  : SDNode<"X86ISD::VZEXT_MOVL",
+def X86vzmovl  : SDNode<"X86ISD.VZEXT_MOVL",
                  SDTypeProfile<1, 1, [SDTCisSameAs<0,1>]>>;
-def X86vzload  : SDNode<"X86ISD::VZEXT_LOAD", SDTLoad,
+def X86vzload  : SDNode<"X86ISD.VZEXT_LOAD", SDTLoad,
                         [SDNPHasChain, SDNPMayLoad]>;
-def X86vshl    : SDNode<"X86ISD::VSHL",      SDTIntShiftOp>;
-def X86vshr    : SDNode<"X86ISD::VSRL",      SDTIntShiftOp>;
-def X86cmpps   : SDNode<"X86ISD::CMPPS",     SDTX86VFCMP>;
-def X86cmppd   : SDNode<"X86ISD::CMPPD",     SDTX86VFCMP>;
-def X86pcmpeqb : SDNode<"X86ISD::PCMPEQB", SDTIntBinOp, [SDNPCommutative]>;
-def X86pcmpeqw : SDNode<"X86ISD::PCMPEQW", SDTIntBinOp, [SDNPCommutative]>;
-def X86pcmpeqd : SDNode<"X86ISD::PCMPEQD", SDTIntBinOp, [SDNPCommutative]>;
-def X86pcmpeqq : SDNode<"X86ISD::PCMPEQQ", SDTIntBinOp, [SDNPCommutative]>;
-def X86pcmpgtb : SDNode<"X86ISD::PCMPGTB", SDTIntBinOp>;
-def X86pcmpgtw : SDNode<"X86ISD::PCMPGTW", SDTIntBinOp>;
-def X86pcmpgtd : SDNode<"X86ISD::PCMPGTD", SDTIntBinOp>;
-def X86pcmpgtq : SDNode<"X86ISD::PCMPGTQ", SDTIntBinOp>;
+def X86vshl    : SDNode<"X86ISD.VSHL",      SDTIntShiftOp>;
+def X86vshr    : SDNode<"X86ISD.VSRL",      SDTIntShiftOp>;
+def X86cmpps   : SDNode<"X86ISD.CMPPS",     SDTX86VFCMP>;
+def X86cmppd   : SDNode<"X86ISD.CMPPD",     SDTX86VFCMP>;
+def X86pcmpeqb : SDNode<"X86ISD.PCMPEQB", SDTIntBinOp, [SDNPCommutative]>;
+def X86pcmpeqw : SDNode<"X86ISD.PCMPEQW", SDTIntBinOp, [SDNPCommutative]>;
+def X86pcmpeqd : SDNode<"X86ISD.PCMPEQD", SDTIntBinOp, [SDNPCommutative]>;
+def X86pcmpeqq : SDNode<"X86ISD.PCMPEQQ", SDTIntBinOp, [SDNPCommutative]>;
+def X86pcmpgtb : SDNode<"X86ISD.PCMPGTB", SDTIntBinOp>;
+def X86pcmpgtw : SDNode<"X86ISD.PCMPGTW", SDTIntBinOp>;
+def X86pcmpgtd : SDNode<"X86ISD.PCMPGTD", SDTIntBinOp>;
+def X86pcmpgtq : SDNode<"X86ISD.PCMPGTQ", SDTIntBinOp>;
 
 def SDTX86CmpPTest : SDTypeProfile<0, 2, [SDTCisVT<0, v4f32>,
 					  SDTCisVT<1, v4f32>]>;
-def X86ptest   : SDNode<"X86ISD::PTEST", SDTX86CmpPTest>;
+def X86ptest   : SDNode<"X86ISD.PTEST", SDTX86CmpPTest>;
 
 //===----------------------------------------------------------------------===//
 // SSE Complex Patterns
@@ -108,12 +108,12 @@ def loadv2i64    : PatFrag<(ops node:$ptr), (v2i64 (load node:$ptr))>;
 // Like 'store', but always requires vector alignment.
 def alignedstore : PatFrag<(ops node:$val, node:$ptr),
                            (store node:$val, node:$ptr), [{
-  return cast<StoreSDNode>(N)->getAlignment() >= 16;
+  return ((StoreSDNode)n).getAlignment() >= 16;
 }]>;
 
 // Like 'load', but always requires vector alignment.
 def alignedload : PatFrag<(ops node:$ptr), (load node:$ptr), [{
-  return cast<LoadSDNode>(N)->getAlignment() >= 16;
+  return ((LoadSDNode)n).getAlignment() >= 16;
 }]>;
 
 def alignedloadfsf32 : PatFrag<(ops node:$ptr), (f32   (alignedload node:$ptr))>;
@@ -129,7 +129,7 @@ def alignedloadv2i64 : PatFrag<(ops node:$ptr), (v2i64 (alignedload node:$ptr))>
 // FIXME: Actually implement support for targets that don't require the
 //        alignment. This probably wants a subtarget predicate.
 def memop : PatFrag<(ops node:$ptr), (load node:$ptr), [{
-  return cast<LoadSDNode>(N)->getAlignment() >= 16;
+  return ((LoadSDNode)n).getAlignment() >= 16;
 }]>;
 
 def memopfsf32 : PatFrag<(ops node:$ptr), (f32   (memop node:$ptr))>;
@@ -144,7 +144,7 @@ def memopv16i8 : PatFrag<(ops node:$ptr), (v16i8 (memop node:$ptr))>;
 // 16-byte boundary.
 // FIXME: 8 byte alignment for mmx reads is not required
 def memop64 : PatFrag<(ops node:$ptr), (load node:$ptr), [{
-  return cast<LoadSDNode>(N)->getAlignment() >= 8;
+  return ((LoadSDNode)n).getAlignment() >= 8;
 }]>;
 
 def memopv8i8  : PatFrag<(ops node:$ptr), (v8i8  (memop64 node:$ptr))>;
@@ -171,116 +171,116 @@ def vzload_v2i64 : PatFrag<(ops node:$src),
 
 
 def fp32imm0 : PatLeaf<(f32 fpimm), [{
-  return N->isExactlyValue(+0.0);
+  return n.isExactlyValue(+0.0);
 }]>;
 
 def PSxLDQ_imm  : SDNodeXForm<imm, [{
   // Transformation function: imm >> 3
-  return getI32Imm(N->getZExtValue() >> 3);
+  return getI32Imm((int)(n.getZExtValue() >> 3));
 }]>;
 
 // SHUFFLE_get_shuf_imm xform function: convert vector_shuffle mask to PSHUF*,
 // SHUFP* etc. imm.
 def SHUFFLE_get_shuf_imm : SDNodeXForm<vector_shuffle, [{
-  return getI8Imm(X86::getShuffleSHUFImmediate(N));
+  return getI8Imm(X86.getShuffleSHUFImmediate(n));
 }]>;
 
 // SHUFFLE_get_pshufhw_imm xform function: convert vector_shuffle mask to
 // PSHUFHW imm.
 def SHUFFLE_get_pshufhw_imm : SDNodeXForm<vector_shuffle, [{
-  return getI8Imm(X86::getShufflePSHUFHWImmediate(N));
+  return getI8Imm(X86.getShufflePSHUFHWImmediate(n));
 }]>;
 
 // SHUFFLE_get_pshuflw_imm xform function: convert vector_shuffle mask to
 // PSHUFLW imm.
 def SHUFFLE_get_pshuflw_imm : SDNodeXForm<vector_shuffle, [{
-  return getI8Imm(X86::getShufflePSHUFLWImmediate(N));
+  return getI8Imm(X86.getShufflePSHUFLWImmediate(n));
 }]>;
 
 def splat_lo : PatFrag<(ops node:$lhs, node:$rhs),
                        (vector_shuffle node:$lhs, node:$rhs), [{
-  ShuffleVectorSDNode *SVOp = cast<ShuffleVectorSDNode>(N);
-  return SVOp->isSplat() && SVOp->getSplatIndex() == 0;
+  ShuffleVectorSDNode SVOp = ((ShuffleVectorSDNode)n);
+  return SVOp.isSplat() && SVOp.getSplatIndex() == 0;
 }]>;
 
 def movddup : PatFrag<(ops node:$lhs, node:$rhs),
                       (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVDDUPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVDDUPMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movhlps : PatFrag<(ops node:$lhs, node:$rhs),
                       (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVHLPSMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVHLPSMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movhlps_undef : PatFrag<(ops node:$lhs, node:$rhs),
                             (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVHLPS_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVHLPS_v_undef_Mask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movhp : PatFrag<(ops node:$lhs, node:$rhs),
                     (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVHPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVHPMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movlp : PatFrag<(ops node:$lhs, node:$rhs),
                     (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVLPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVLPMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movl : PatFrag<(ops node:$lhs, node:$rhs),
                    (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVLMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVLMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movshdup : PatFrag<(ops node:$lhs, node:$rhs),
                        (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVSHDUPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVSHDUPMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def movsldup : PatFrag<(ops node:$lhs, node:$rhs),
                        (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isMOVSLDUPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isMOVSLDUPMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def unpckl : PatFrag<(ops node:$lhs, node:$rhs),
                      (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKLMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKLMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def unpckh : PatFrag<(ops node:$lhs, node:$rhs),
                      (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKHMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKHMask(((ShuffleVectorSDNode)n));
 }]>;
 
 def unpckl_undef : PatFrag<(ops node:$lhs, node:$rhs),
                            (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKL_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKL_v_undef_Mask(((ShuffleVectorSDNode)n));
 }]>;
 
 def unpckh_undef : PatFrag<(ops node:$lhs, node:$rhs),
                            (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKH_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKH_v_undef_Mask(((ShuffleVectorSDNode)n));
 }]>;
 
 def pshufd : PatFrag<(ops node:$lhs, node:$rhs),
                      (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isPSHUFDMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isPSHUFDMask(((ShuffleVectorSDNode)n));
 }], SHUFFLE_get_shuf_imm>;
 
 def shufp : PatFrag<(ops node:$lhs, node:$rhs),
                     (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isSHUFPMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isSHUFPMask(((ShuffleVectorSDNode)n));
 }], SHUFFLE_get_shuf_imm>;
 
 def pshufhw : PatFrag<(ops node:$lhs, node:$rhs),
                       (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isPSHUFHWMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isPSHUFHWMask(((ShuffleVectorSDNode)n));
 }], SHUFFLE_get_pshufhw_imm>;
 
 def pshuflw : PatFrag<(ops node:$lhs, node:$rhs),
                       (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isPSHUFLWMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isPSHUFLWMask(((ShuffleVectorSDNode)n));
 }], SHUFFLE_get_pshuflw_imm>;
 
 //===----------------------------------------------------------------------===//

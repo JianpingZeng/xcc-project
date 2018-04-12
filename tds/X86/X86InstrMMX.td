@@ -31,36 +31,36 @@ def bc_v1i64 : PatFrag<(ops node:$in), (v1i64 (bitconvert node:$in))>;
 // MMX_SHUFFLE_get_shuf_imm xform function: convert vector_shuffle mask to
 // PSHUFW imm.
 def MMX_SHUFFLE_get_shuf_imm : SDNodeXForm<vector_shuffle, [{
-  return getI8Imm(X86::getShuffleSHUFImmediate(N));
+  return getI8Imm(X86.getShuffleSHUFImmediate(n));
 }]>;
 
 // Patterns for: vector_shuffle v1, v2, <2, 6, 3, 7, ...>
 def mmx_unpckh : PatFrag<(ops node:$lhs, node:$rhs),
                          (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKHMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKHMask(((ShuffleVectorSDNode)n));
 }]>;
 
 // Patterns for: vector_shuffle v1, v2, <0, 4, 2, 5, ...>
 def mmx_unpckl : PatFrag<(ops node:$lhs, node:$rhs),
                          (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKLMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKLMask(((ShuffleVectorSDNode)n));
 }]>;
 
 // Patterns for: vector_shuffle v1, <undef>, <0, 0, 1, 1, ...>
 def mmx_unpckh_undef : PatFrag<(ops node:$lhs, node:$rhs),
                                (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKH_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKH_v_undef_Mask(((ShuffleVectorSDNode)n));
 }]>;
 
 // Patterns for: vector_shuffle v1, <undef>, <2, 2, 3, 3, ...>
 def mmx_unpckl_undef : PatFrag<(ops node:$lhs, node:$rhs),
                                (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isUNPCKL_v_undef_Mask(cast<ShuffleVectorSDNode>(N));
+  return X86.isUNPCKL_v_undef_Mask(((ShuffleVectorSDNode)n));
 }]>;
 
 def mmx_pshufw : PatFrag<(ops node:$lhs, node:$rhs),
                          (vector_shuffle node:$lhs, node:$rhs), [{
-  return X86::isPSHUFDMask(cast<ShuffleVectorSDNode>(N));
+  return X86.isPSHUFDMask(((ShuffleVectorSDNode)n));
 }], MMX_SHUFFLE_get_shuf_imm>;
 
 //===----------------------------------------------------------------------===//
@@ -471,8 +471,8 @@ def MMX_CVTTPS2PIrm : MMXI<0x2C, MRMSrcMem, (outs VR64:$dst), (ins f64mem:$src),
 
 
 // Extract / Insert
-def MMX_X86pextrw : SDNode<"X86ISD::PEXTRW", SDTypeProfile<1, 2, []>, []>;
-def MMX_X86pinsrw : SDNode<"X86ISD::PINSRW", SDTypeProfile<1, 3, []>, []>;
+def MMX_X86pextrw : SDNode<"X86ISD.PEXTRW", SDTypeProfile<1, 2, []>, []>;
+def MMX_X86pinsrw : SDNode<"X86ISD.PINSRW", SDTypeProfile<1, 3, []>, []>;
 
 def MMX_PEXTRWri  : MMXIi8<0xC5, MRMSrcReg,
                            (outs GR32:$dst), (ins VR64:$src1, i16i8imm:$src2),
