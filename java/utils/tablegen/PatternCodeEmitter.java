@@ -774,4 +774,166 @@ public class PatternCodeEmitter
             return 0;
         }
     }
+
+    public ArrayList<String> emitResultCode(TreePatternNode *node, ArrayList<Record> destRegs,
+                                           boolean inFlagDecled, boolean resNodeDecled,
+                                           boolean likeLeaf, boolean isRoot)
+    {
+        ArrayList<String> nodeOps = new ArrayList<>();
+        if (node.getName() != null && !node.getName().isEmpty()
+        {
+            String varName = node.getName();
+            boolean modifiedVal = false;
+            if (!variableMap.containsKey(varName))
+            {
+                System.err.printf("Variable '%s' referenced but not defined and not caught earlier!%n", 
+                    varName);
+                System.exit(-1);
+            }
+            String val = variableMap.get(varName);
+            if (var.equals("Tmp"))
+            {
+                nodeOps.add("tmp");
+                return nodeOps;
+            }
+
+            ComplexPattern cp;
+            int resNo = tmpNo++;
+            if (!node.isLeaf() && node.getOperator().getName().equals("imm"))
+            {
+                assert node.getExtTypes().size() == 1 :"Multiple types not handled!";
+                String castType, tmpVar = "tmp" + resNo;
+                switch(node.getTypeNum(0))
+                {
+                    default:
+                      System.err.printf("Can't handle %s type as an immediate constant, Aborting!%n", 
+                          getEnumName(node.getTypeNum(0)));
+                      System.exit(-1);
+                      break;
+                    case MVT.i1:
+                      castType = "boolean"; break;
+                    case MVT.i8:
+                      castType = "byte"; break;
+                    case MVT.i16:
+                      castType ="short"; break;
+                    case MVT.i32:
+                      castType = "int"; break;
+                    case MVT.i64:
+                      castType = "long"; break;
+                }
+                String temp = castType.equals("boolean") ? "((ConstantSDNode)"+val+").getZExtValue() != 0":
+                                                           "((" + castType +")"+"((ConstantSDNode)"+val+").getZExtValue())";
+                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, %s);", temp, 
+                      getEnumName(node.getTypeNum(0))).getValue());
+                val = tmpVar;
+                modifiedVal = true;
+                nodeOps.add(val);
+            }
+            else if (!node.isLeaf() && node.getOperator().getName().equals("fpimm"))
+            {
+                assert node.getExtTypes().size() == 1:"Multiple types not be handled yet!";
+                String tmpVar = "tmp" + resNo;
+                emtiCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s).getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));", tmpVar, val, val).getValue());
+                val = tmpVar;
+                modifiedVal = true;
+                nodeOps.add(val);
+            }
+            else if (!node.isLeaf() && node.getOperator().getName().equals("texternalsym"))
+            {
+                Record op;
+                if ((op = operatorMap.get(node.getName()) != null && op.getName().equals("extenralsym"))
+                {
+                    String tmpVar = "tmp" + resNo;
+                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetExternalSymbol(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0)).getValue());
+                    val = tmpVar;
+                    modifiedVal = true;
+                }
+                nodeOps.add(val);
+            }
+            else if (!node.isLeaf() && (node.getOperator().getName().equals("tglobaladdr")|| 
+                node.getOperator().getName().equals("tglobaltlsaddr")))
+            {
+                Record op;
+                if ((op = operatorMap.get(node.getName()) != null && (op.getName().equals("globaladdr"))
+                      || op.getName().equals("globaltlsaddr"))
+                {
+                    String tmpVar = "tmp" + resNo;
+                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetGlobalAddress(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0)).getValue());
+                    val = tmpVar;
+                    modifiedVal = true;
+                }
+                nodeOps.add(val);
+            }
+            else if (!node.isLeaf() && (node.getOperator().getName().equals("texternalsym") || 
+                    || op.getName().equals("tconstpool")))
+            {
+                nodeOps.add(val);
+            }
+            else if (node.isLeaf() && (cp = nodeGetComplexPattern(node, cgp)) != null)
+            {
+                for (int i = 0, e = cp.getNumOperands(); i < e; i++)
+                {
+                    nodeOps.add("cpTmp" + val + i);
+                }
+            }
+            else
+            {
+                if (!likeLeaf)
+                {
+                      if (isRoot && node.isLeaf())
+                      {
+                          emitCode("replaceUses(node, " + val + ");");
+                          emitCode("return null;");
+                      }
+                }
+                nodeOps.add(val);
+            }
+
+            if (modifiedVal)
+              variableMap.put(varName, val);
+            return nodeOps;
+        }
+        
+        if (node.isLeaf())
+        {
+            DefInit di = node.getLeafValue() instanceof DefInit ? (DefInit)node.getLeafValue() : null;
+            if (di != null)
+            {
+                int resNo = tmpNo++;
+                if (di.getDef().isSubClassOf("Regiser"))
+                {
+                    emitCode("SDValue tmp" + resNo + " = curDAG.getRegister("+getQualifiedName(di.getDef())
+                        + ", " + getEnumName(node.getTypeNum(0)+");"));
+                    nodeOps.add("tmp" + resNo);
+                    return nodeOps;
+                }
+                else if (di.getDef().getName().equals("zero_reg"))
+                {
+                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getRegister(0, %s);", resNo, 
+                          getEnumName(node.getTypeNum(0))).getValue());
+                    nodeOps.add("tmp"+resNo);
+                    return nodeOps;
+                }
+                else if (di.getDef().isSubClassOf("RegisterClass"))
+                {
+                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%sRegisterID, MVT.i32);", resNo, getQualifiedName(di.getDef())).getValue());
+                    nodeOps.add("tmp"+resNo);
+                    return nodeOps;
+                }
+            }
+            else if (node.getLeafValue() instanceof IntInit)
+            {
+                IntInit ii = (IntInit)node.getLeafValue();
+                int resNo = tmpNo++;
+                assert node.getExtTypes().size() == 1:"Multiple types are not handled yet!";
+                emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%dL, %s);",
+                      ii.getValue(), getEnumName(node.getTypeNum(0))).getValue());
+                nodeOps.add("tmp"+resNo);
+                return nodeOps;
+            }
+
+            assert false :"Unknown leaf value!";
+            return nodeOps;
+        }
+    }
 }
