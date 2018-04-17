@@ -335,12 +335,15 @@ public class DAGISelEmitter extends TableGenBackend
 
     private static String getLegalJavaName(String opName)
     {
-        int idx = opName.indexOf(".");
-        if (idx != -1)
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0, e = opName.length(); i < e; i++)
         {
-            opName = opName.substring(0, idx) + opName.substring(idx+2, opName.length());
+            if (opName.charAt(i) == '.')
+                sb.append("_");
+            else
+                sb.append(opName.charAt(i));
         }
-        return opName;
+        return sb.toString();
     }
 
     private void emitInstructionSelector(PrintStream os) throws Exception
@@ -531,7 +534,7 @@ public class DAGISelEmitter extends TableGenBackend
                 }
                 else
                 {
-                    opVTStr = "_" + getEnumName(opVT).substring(0, 5);
+                    opVTStr = "_" + getLegalJavaName(getEnumName(opVT));
                 }
 
                 if (!opcodeVTMap.containsKey(opName))
@@ -587,6 +590,7 @@ public class DAGISelEmitter extends TableGenBackend
                     list.addAll(itr3.second);
                     temp.add(Pair.get(itr3.first,list));
                 }
+                //
                 emitPatterns(temp, 2, os);
 
                 if (mightNotMatch)
