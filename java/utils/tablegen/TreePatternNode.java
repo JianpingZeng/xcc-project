@@ -184,7 +184,8 @@ public final class TreePatternNode implements Cloneable
     public void addPredicateFn(String fn)
     {
         assert !fn.isEmpty():"Empty predicate string!";
-        predicateFns.add(fn);
+        if (!predicateFns.contains(fn))
+            predicateFns.add(fn);
     }
 
     public Record getTransformFn()
