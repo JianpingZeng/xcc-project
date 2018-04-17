@@ -128,7 +128,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     public static X86DAGToDAGISel createX86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level)
     {
-        return new X86GenDAGToDAGISel(tm, level);
+        return null;//new X86GenDAGToDAGISel(tm, level);
     }
 
     @Override

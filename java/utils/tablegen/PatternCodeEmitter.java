@@ -59,15 +59,16 @@ public class PatternCodeEmitter
      */
     private TreePatternNode instruction;
 
-    private TreeMap<String, String> variableMap;
+    private TreeMap<String, String> variableMap = new TreeMap<>();
 
-    private TreeMap<String, Record> operatorMap;
-    private Pair<String, Integer> foldedFlag;
-    private ArrayList<Pair<String, Integer>> foldedChains;
-    private ArrayList<Pair<String, String>> originChains;
-    private TreeSet<String> duplicates;
+    private TreeMap<String, Record> operatorMap = new TreeMap<>();
+    private Pair<String, Integer> foldedFlag = new Pair<>("", 0);
+    private ArrayList<Pair<String, Integer>> foldedChains = new ArrayList<>();
+    private ArrayList<Pair<String, String>> originChains = new ArrayList<>();
+    private TreeSet<String> duplicates = new TreeSet<>();
 
-    private ArrayList<String> lsi;
+    private ArrayList<String> lsi = new ArrayList<>();
+
     enum GeneratedCodeKind
     {
         Normal,
@@ -205,6 +206,7 @@ public class PatternCodeEmitter
             }
             else
             {
+                varMapEntry = variableMap.get(node.getName());
                 emitCheck(varMapEntry + " == " + rootName);
                 return false;
             }
@@ -252,7 +254,7 @@ public class PatternCodeEmitter
                     if (needCheck)
                     {
                         String parentName = rootName.substring(0, rootName.length()-1);
-                        emitCheck(StringFormatter.format("isLegalAndProfitableToFold(%.getNode(), %s.getNode(), n.getNode())",
+                        emitCheck(StringFormatter.format("isLegalAndProfitableToFold(%s.getNode(), %s.getNode(), n.getNode())",
                                 rootName, parentName).getValue());
                     }
                 }
@@ -302,8 +304,9 @@ public class PatternCodeEmitter
         // them from the mask in the dag.  For example, it might turn 'AND X, 255'
         // into 'AND X, 254' if it knows the low bit is set.  Emit code that checks
         // to handle this.
-        String opName = node.getOperator().getName();
-        if (!node.isLeaf() && (opName.equals("and") || opName.equals("or")) &&
+        String opName;
+        if (!node.isLeaf() && (opName = node.getOperator().getName()) != null &&
+                (opName.equals("and") || opName.equals("or")) &&
                 node.getChild(1).isLeaf() && node.getChild(1).getPredicateFns().isEmpty())
         {
             Init i = node.getChild(1).getLeafValue();
@@ -390,7 +393,8 @@ public class PatternCodeEmitter
             }
             if (nodeHasProperty(child, SDNPOutFlag, cgp))
             {
-                assert foldedFlag.first.equals("") && foldedFlag.second == 0;
+                assert (foldedFlag.first == null || foldedFlag.first.isEmpty())
+                        && foldedFlag.second == 0;
                 foldedFlag = Pair.get(rootName, info.getNumResults() + hasChain);
             }
         }
@@ -474,18 +478,18 @@ public class PatternCodeEmitter
                     // place holder for SRCVALEU nodes.
                     // nothing to do here.
                 }
-                else if (leafRec.getName().equals("ValueType"))
+                else if (leafRec.isSubClassOf("ValueType"))
                 {
                     emitCheck(StringFormatter.format("((VTSDNode)%s).getVT().getSimpleVT().simpleVT == ",
                             rootName, leafRec.getName()).getValue());
                 }
-                else if (leafRec.isSubClassOf("condCode"))
+                else if (leafRec.isSubClassOf("CondCode"))
                 {
                     emitCheck(StringFormatter.format("((CondCodeSDNode)%s).get() == ",
                             rootName, leafRec.getName()).getValue());
                 }
                 else
-                    assert false:"Unkown leaf value!";
+                    assert false:"Unknown leaf value!";
                 child.getPredicateFns().forEach(pred->
                 {
                     emitCheck(pred + "("+rootName+".getNode()");
@@ -580,7 +584,8 @@ public class PatternCodeEmitter
             }
         }
     }
-    private static ComplexPattern nodeGetComplexPattern(TreePatternNode node, CodeGenDAGPatterns cgp)
+    protected static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
+            CodeGenDAGPatterns cgp)
     {
         if (node.isLeaf() && (node.getLeafValue() instanceof DefInit)
                 && ((DefInit)node.getLeafValue()).getDef().isSubClassOf("ComplexPattern"))
@@ -821,7 +826,7 @@ public class PatternCodeEmitter
                 }
                 String temp = castType.equals("boolean") ? "((ConstantSDNode)"+val+").getZExtValue() != 0":
                                                            "((" + castType +")"+"((ConstantSDNode)"+val+").getZExtValue())";
-                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, %s);", temp, 
+                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, %s);", tmpVar, temp,
                       getEnumName(node.getTypeNum(0))).getValue());
                 val = tmpVar;
                 modifiedVal = true;
@@ -929,7 +934,7 @@ public class PatternCodeEmitter
                 int resNo = tmpNo++;
                 assert node.getExtTypes().size() == 1:"Multiple types are not handled yet!";
                 emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%dL, %s);",
-                      ii.getValue(), getEnumName(node.getTypeNum(0))).getValue());
+                      resNo, ii.getValue(), getEnumName(node.getTypeNum(0))).getValue());
                 nodeOps.add("tmp"+resNo);
                 return nodeOps;
             }
@@ -1004,7 +1009,7 @@ public class PatternCodeEmitter
                     emitCode(StringFormatter
                             .format("  inChains.add(%s);", chainName).getValue());
                     emitCode(StringFormatter.format("%s = curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other), "
-                            + "inChains);").getValue());
+                            + "inChains);", chainName).getValue());
                 }
             }
 
@@ -1341,6 +1346,26 @@ public class PatternCodeEmitter
 
         Util.shouldNotReachHere("Unknown node in result pattern!");
         return null;
+    }
+
+    public boolean insertOneTypeCheck(TreePatternNode pat,
+            TreePatternNode other, String prefix, boolean isRoot)
+    {
+        if (!pat.getExtTypes().equals(other.getExtTypes()))
+        {
+            pat.setTypes(other.getExtTypes());
+            if (!isRoot)
+                emitCheck(prefix+".getNode().getValueType(0) == " +
+                          getName(pat.getTypeNum(0)));
+            return true;
+        }
+        int opNo = nodeHasProperty(pat, SDNPHasChain, cgp)?1:0;
+        for (int i = 0, e = pat.getNumChildren(); i < e; i++, ++opNo)
+        {
+            if (insertOneTypesCheck(pat.getChild(i), other.getChild(i), prefix+opNo, false))
+                return true;
+        }
+        return false;
     }
 }
 
