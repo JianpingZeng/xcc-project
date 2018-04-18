@@ -837,7 +837,8 @@ public class PatternCodeEmitter
                 assert node.getExtTypes().size() == 1:"Multiple types not be handled yet!";
                 String tmpVar = "tmp" + resNo;
                 emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s)"
-                        + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));", tmpVar, val, val).getValue());
+                        + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));",
+                        tmpVar, val, val).getValue());
                 val = tmpVar;
                 modifiedVal = true;
                 nodeOps.add(val);
@@ -849,7 +850,8 @@ public class PatternCodeEmitter
                 {
                     String tmpVar = "tmp" + resNo;
                     emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetExternalSymbol"
-                            + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
+                            + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val,
+                            getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
@@ -864,7 +866,8 @@ public class PatternCodeEmitter
                 {
                     String tmpVar = "tmp" + resNo;
                     emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetGlobalAddress"
-                            + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
+                            + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val,
+                            getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
