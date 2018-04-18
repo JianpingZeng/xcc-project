@@ -641,4 +641,14 @@ public class Util
 		int low = (int) (val);
 		return ((long)byteSwap32(low) << 32) | byteSwap32(high);
 	}
+	
+	public static String longestCommonPrefix(String str1, String str2)
+	{
+		if (str1 == null || str2 == null) return null;
+		if (str1.isEmpty() || str2.isEmpty()) return "";
+		int e = Math.min(str1.length(), str2.length());
+		int i = 0;
+		for (; i < e && str1.charAt(i) == str2.charAt(i); i++){}
+		return str1.substring(0, i);
+	}
 }

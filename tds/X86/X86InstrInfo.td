@@ -252,11 +252,11 @@ def brtarget8 : Operand<OtherVT> {
 //
 
 // Define X86 specific addressing mode.
-def addr      : ComplexPattern<iPTR, 5, "SelectAddr", [], []>;
-def lea32addr : ComplexPattern<i32, 4, "SelectLEAAddr",
+def addr      : ComplexPattern<iPTR, 5, "selectAddr", [], []>;
+def lea32addr : ComplexPattern<i32, 4, "selectLEAAddr",
                                [add, sub, mul, X86mul_imm, shl, or, frameindex],
                                []>;
-def tls32addr : ComplexPattern<i32, 4, "SelectTLSADDRAddr",
+def tls32addr : ComplexPattern<i32, 4, "selectTLSADDRAddr",
                                [tglobaltlsaddr], []>;
 
 //===----------------------------------------------------------------------===//
