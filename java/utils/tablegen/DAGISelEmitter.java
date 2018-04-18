@@ -427,7 +427,7 @@ public class DAGISelEmitter extends TableGenBackend
                 int opVT = itr2.getKey();
                 ArrayList<PatternToMatch> patterns = itr2.getValue();
 
-                patterns.sort(new PatternToMatchSorter(cgp));
+                //patterns.sort(new PatternToMatchSorter(cgp));
 
                 ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> codeForPatterns = new ArrayList<>();
                 ArrayList<ArrayList<String>> patternOpcodes = new ArrayList<>();
