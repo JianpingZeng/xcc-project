@@ -224,11 +224,10 @@ public class DAGISelEmitter extends TableGenBackend
     {
         if (patterns.isEmpty()) return;
 
-        int sz = patterns.get(patterns.size() - 1).second.size();
         Pair<GeneratedCodeKind, String> firstCodeLine =
                 patterns.getLast().second.getLast();
         int lastMatch = patterns.size() - 1;
-        while (lastMatch != 0 && patterns.getLast().second.getLast().equals(firstCodeLine))
+        while (lastMatch != 0 && patterns.get(lastMatch-1).second.getLast().equals(firstCodeLine))
         {
             --lastMatch;
         }
@@ -273,7 +272,7 @@ public class DAGISelEmitter extends TableGenBackend
 
             if (other.size() == 1)
             {
-                PatternToMatch pat = other.get(shared.size()-1).first;
+                PatternToMatch pat = other.getLast().first;
                 os.printf("%n%s// Pattern: ", Util.fixedLengthString(indent, ' '));
                 pat.getSrcPattern().print(os);
 
@@ -340,6 +339,16 @@ public class DAGISelEmitter extends TableGenBackend
         {
             if (opName.charAt(i) == '.')
                 sb.append("_");
+            else if (opName.charAt(i) == ':')
+            {
+                if (i < e - 1 && opName.charAt(i+1) == ':')
+                {
+                    sb.append("_");
+                    i += 1;
+                }
+                else
+                    sb.append("_");
+            }
             else
                 sb.append(opName.charAt(i));
         }
@@ -348,8 +357,6 @@ public class DAGISelEmitter extends TableGenBackend
 
     private void emitInstructionSelector(PrintStream os) throws Exception
     {
-        CodeGenTarget target = cgp.getTarget();
-
         TreeMap<String, ArrayList<PatternToMatch>> patternsByOpcode =
                 new TreeMap<>();
         TreeMap<String, Integer> emitFunctions = new TreeMap<>();
@@ -419,6 +426,8 @@ public class DAGISelEmitter extends TableGenBackend
             {
                 int opVT = itr2.getKey();
                 ArrayList<PatternToMatch> patterns = itr2.getValue();
+
+                //patterns.sort(new PatternToMatchSorter(cgp));
 
                 ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> codeForPatterns = new ArrayList<>();
                 ArrayList<ArrayList<String>> patternOpcodes = new ArrayList<>();
@@ -525,16 +534,16 @@ public class DAGISelEmitter extends TableGenBackend
                 // print function.
                 String opVTStr = "";
                 if (opVT == MVT.iPTR)
-                    opVTStr = "_iPTR";
+                    opVTStr = "MVT.iPTR";
                 else if (opVT == MVT.iPTRAny)
-                    opVTStr = "_iPTRAny";
+                    opVTStr = "MVT.iPTRAny";
                 else if (opVT == MVT.isVoid)
                 {
                     // nothing to do.
                 }
                 else
                 {
-                    opVTStr = "_" + getLegalJavaName(getEnumName(opVT));
+                    opVTStr = getEnumName(opVT);
                 }
 
                 if (!opcodeVTMap.containsKey(opName))
@@ -562,14 +571,15 @@ public class DAGISelEmitter extends TableGenBackend
                             break;
                         }
                     }
-                }
-                if (!mightNotMatch)// && i != codeForPatterns.size() - 1)
-                {
-                    System.err.println("Pattern '");
-                    //codeForPatterns.get(i).first.getSrcPattern().print(System.err);
-                    System.err.println("' is impossible to select!");
-                    System.exit(-1);
+                    if (!mightNotMatch && i != codeForPatterns.size() - 1)
+                    {
+                        System.err.print("Pattern '");
+                        codeForPatterns.get(i).first.getSrcPattern().print(System.err);
+                        System.err.println("' is impossible to select!");
+                        System.exit(-1);
+                    }
                 }*/
+
 
                 for (int i = 0, e = codeForPatterns.size(); i < e; i++)
                 {
@@ -579,9 +589,9 @@ public class DAGISelEmitter extends TableGenBackend
 
                 Collections.reverse(codeForPatterns);
 
-                os.printf("SDNode select_%s%s(SDValue n) {%n",
+                os.printf("SDNode select_%s_%s(SDValue n) {%n",
                         getLegalJavaName(opName),
-                        opVTStr);
+                        getLegalJavaName(opVTStr));
 
                 LinkedList<Pair<PatternToMatch, LinkedList<Pair<GeneratedCodeKind, String>>>> temp = new LinkedList<>();
                 for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr3 : codeForPatterns)
@@ -724,15 +734,16 @@ public class DAGISelEmitter extends TableGenBackend
                     continue;
                 }
 
-                if (vtStr.equals("_iPTR"))
+                if (vtStr.equals("MVT.iPTR"))
                 {
                     hasPtrPattern = true;
                     continue;
                 }
-                os.println("    case MVT." + vtStr.substring(0, 1)
+                os.println("    case " + vtStr
                         + ":\n" +
                         "    return select_" + getLegalJavaName(opName)
-                        + vtStr + "(n);");
+                        + "_"
+                        + getLegalJavaName(vtStr) + "(n);");
             }
             os.println("    default:");
 
@@ -763,21 +774,20 @@ public class DAGISelEmitter extends TableGenBackend
                 + "  return null;\n"
                 + "}\n\n");
 
-        os.print("void cannotYetSelect(SDValue N) {\n"
-                + "  String msg;\n"
-                + "  raw_string_ostream Msg(msg);\n"
-                + "  Msg + \"Cannot yet select: \";\n"
-                + "  n.getNode().print(msg, curDAG);\n"
-                + "  llvm_report_error(msg.toString());\n"
-                + "}\n\n");
-
-        os.print("void cannotYetSelectIntrinsic(SDValue n) {\n"
-                + "  System.err.println(\"Cannot yet select: \");\n"
-                + "  int iid = ((ConstantSDNode)n.getOperand("
-                + "n.getOperand(0).getValueType() == MVT.Other?1:0)).getZExtValue();\n"
-                + " llvm_report_error(\"Cannot yet select: intrinsic %\" +\n"
-                + "intrinsic.getName(iid));\n"
-                + "}\n\n");
+        os.print("void cannotYetSelect(SDValue n)\n" +
+                "{\n" +
+                "  ByteArrayOutputStream baos = new ByteArrayOutputStream();\n" +
+                "  PrintStream os = new PrintStream(baos);\n" +
+                "  os.print(\"Cannot yet select: \");\n" +
+                "  n.getNode().print(os, curDAG);\n" +
+                "  os.close();\n" +
+                "  llvmReportError(baos.toString());\n" +
+                "}\n" +
+                "\n" +
+                "void cannotYetSelectIntrinsic(SDValue n) \n" +
+                "{\n" +
+                "  System.err.println(\"Cannot yet select intrinsic function.\");\n" +
+                "}");
     }
 
     @Override

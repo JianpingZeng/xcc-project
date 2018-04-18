@@ -120,7 +120,7 @@ public class PatternCodeEmitter
     public void emitOpcode(String opc)
     {
         assert opc != null && !opc.isEmpty():"Invalid opcode!";
-        targetVTs.add(opc);
+        targetOpcodes.add(opc);
         opcNo++;
     }
 
@@ -743,7 +743,7 @@ public class PatternCodeEmitter
     {
         private CodeGenDAGPatterns cgp;
 
-        public PatternSortingPredicate(CodeGenDAGPatterns cgp)
+        PatternSortingPredicate(CodeGenDAGPatterns cgp)
         {
             this.cgp = cgp;
         }
@@ -758,16 +758,16 @@ public class PatternCodeEmitter
                 int rhsSize = getPatternSize(rhs.getSrcPattern(), cgp);
                 lhsSize += lhs.getAddedComplexity();
                 rhsSize += rhs.getAddedComplexity();
-                if (lhsSize > rhsSize) return 1;
-                if (lhsSize < rhsSize) return -1;
+                if (lhsSize > rhsSize) return -1;
+                if (lhsSize < rhsSize) return 1;
 
                 int lhsCost = getResultPatternCost(lhs.getDstPattern(), cgp);
                 int rhsCost = getResultPatternCost(rhs.getDstPattern(), cgp);
-                if (lhsCost > rhsCost) return 1;
-                if (lhsCost < rhsCost) return -1;
+                if (lhsCost > rhsCost) return -1;
+                if (lhsCost < rhsCost) return 1;
 
-                return getResultPatternSize(lhs.getDstPattern(), cgp) -
-                        getResultPatternSize(rhs.getDstPattern(), cgp);
+                return getResultPatternSize(rhs.getDstPattern(), cgp) -
+                        getResultPatternSize(lhs.getDstPattern(), cgp);
             }
             catch (Exception e)
             {
@@ -837,7 +837,8 @@ public class PatternCodeEmitter
                 assert node.getExtTypes().size() == 1:"Multiple types not be handled yet!";
                 String tmpVar = "tmp" + resNo;
                 emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s)"
-                        + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));", tmpVar, val, val).getValue());
+                        + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));",
+                        tmpVar, val, val).getValue());
                 val = tmpVar;
                 modifiedVal = true;
                 nodeOps.add(val);
@@ -849,7 +850,8 @@ public class PatternCodeEmitter
                 {
                     String tmpVar = "tmp" + resNo;
                     emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetExternalSymbol"
-                            + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
+                            + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val,
+                            getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
@@ -864,7 +866,8 @@ public class PatternCodeEmitter
                 {
                     String tmpVar = "tmp" + resNo;
                     emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetGlobalAddress"
-                            + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
+                            + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val,
+                            getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
@@ -1075,7 +1078,7 @@ public class PatternCodeEmitter
             if (!isRoot)
             {
                 nodeName = "tmp" + resNo;
-                codePrefix = "SDValue" + nodeName + "(";
+                codePrefix = "SDValue " + nodeName + " = new SDValue(";
             }
             else
             {
@@ -1091,7 +1094,7 @@ public class PatternCodeEmitter
 
             StringBuilder code = new StringBuilder("opc" + opcNo);
 
-            emitCode(cgInst.theDef.getName());
+            emitOpcode(cgp.getTarget().getName()+"."+cgInst.theDef.getName());
 
             if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
             {
@@ -1110,9 +1113,9 @@ public class PatternCodeEmitter
             }
 
             if (nodeHasChain)
-                code.append(", MVT.Other");
+                code.append(", new EVT(MVT.Other), ");
             if (nodeHasOutFlag)
-                code.append(", MVT.Flag");
+                code.append(", new EVT(MVT.Flag), ");
 
             if (isVariadic)
             {
@@ -1141,8 +1144,9 @@ public class PatternCodeEmitter
                 for (String name : lsi)
                 {
                     String lsiName = "lsi" + name.toUpperCase();
-                    emitCode(StringFormatter.format("SDValue %s = curDAG." + "getMemOperand(((MemSDNode)%s).getMemOperand());",
-                            lsiName, name).getValue());
+                    emitCode(StringFormatter.format("SDValue %s = curDAG."
+                                    + "getMemOperand(((MemSDNode)%s).getMemOperand());",
+                                    lsiName, name).getValue());
 
                     if (isVariadic)
                         emitCode("ops" + opsNo + ".add(" + lsiName + ");");
@@ -1187,8 +1191,8 @@ public class PatternCodeEmitter
                             "SDValue[] ops" + opsNo + " = {");
                     for (int i = 0; i < numOps; i++)
                     {
-                        code.append(allOps.get(i));
-                        if (i != numOps - 1)
+                        opsCode.append(allOps.get(i));
+                        if (i < numOps - 1)
                             opsCode.append(", ");
                     }
                     emitCode(opsCode.toString() + "};");
