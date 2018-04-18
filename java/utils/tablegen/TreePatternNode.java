@@ -177,13 +177,21 @@ public final class TreePatternNode implements Cloneable
 
     public void setPredicateFns(ArrayList<String> p)
     {
-        assert predicateFns.isEmpty();
-        this.predicateFns = p;
+        if (p == null || p.isEmpty())
+        {
+            predicateFns = new ArrayList<>();
+            return;
+        }
+
+        if(predicateFns == null)
+            predicateFns = new ArrayList<>();
+        predicateFns.clear();
+        predicateFns.addAll(p);
     }
 
     public void addPredicateFn(String fn)
     {
-        assert !fn.isEmpty():"Empty predicate string!";
+        assert fn != null && !fn.isEmpty():"Empty predicate string!";
         if (!predicateFns.contains(fn))
             predicateFns.add(fn);
     }

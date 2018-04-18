@@ -348,8 +348,6 @@ public class DAGISelEmitter extends TableGenBackend
 
     private void emitInstructionSelector(PrintStream os) throws Exception
     {
-        CodeGenTarget target = cgp.getTarget();
-
         TreeMap<String, ArrayList<PatternToMatch>> patternsByOpcode =
                 new TreeMap<>();
         TreeMap<String, Integer> emitFunctions = new TreeMap<>();

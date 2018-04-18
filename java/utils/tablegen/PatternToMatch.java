@@ -108,7 +108,7 @@ public final class PatternToMatch
         for (int i = 0, e = predicates.getSize(); i < e; i++)
             predicates.getElement(i).dump();
 
-        System.err.println("srcPattern:");
+        System.err.println("\nsrcPattern:");
         srcPattern.dump();
         System.err.println("\ndstPattern:");
         dstPattern.dump();
