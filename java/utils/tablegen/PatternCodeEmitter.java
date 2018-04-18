@@ -25,12 +25,9 @@ import tools.Util;
 import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.IntInit;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
+import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.getName;
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
 import static utils.tablegen.EEVT.isExtFloatingPointInVTs;
@@ -62,15 +59,16 @@ public class PatternCodeEmitter
      */
     private TreePatternNode instruction;
 
-    private TreeMap<String, String> variableMap;
+    private TreeMap<String, String> variableMap = new TreeMap<>();
 
-    private TreeMap<String, Record> operatorMap;
-    private Pair<String, Integer> foldedFlag;
-    private ArrayList<Pair<String, Integer>> foldedChains;
-    private ArrayList<Pair<String, String>> originChains;
-    private TreeSet<String> duplicates;
+    private TreeMap<String, Record> operatorMap = new TreeMap<>();
+    private Pair<String, Integer> foldedFlag = new Pair<>("", 0);
+    private ArrayList<Pair<String, Integer>> foldedChains = new ArrayList<>();
+    private ArrayList<Pair<String, String>> originChains = new ArrayList<>();
+    private TreeSet<String> duplicates = new TreeSet<>();
 
-    private ArrayList<String> lsi;
+    private ArrayList<String> lsi = new ArrayList<>();
+
     enum GeneratedCodeKind
     {
         Normal,
@@ -208,6 +206,7 @@ public class PatternCodeEmitter
             }
             else
             {
+                varMapEntry = variableMap.get(node.getName());
                 emitCheck(varMapEntry + " == " + rootName);
                 return false;
             }
@@ -255,7 +254,7 @@ public class PatternCodeEmitter
                     if (needCheck)
                     {
                         String parentName = rootName.substring(0, rootName.length()-1);
-                        emitCheck(StringFormatter.format("isLegalAndProfitableToFold(%.getNode(), %s.getNode(), n.getNode())",
+                        emitCheck(StringFormatter.format("isLegalAndProfitableToFold(%s.getNode(), %s.getNode(), n.getNode())",
                                 rootName, parentName).getValue());
                     }
                 }
@@ -305,8 +304,9 @@ public class PatternCodeEmitter
         // them from the mask in the dag.  For example, it might turn 'AND X, 255'
         // into 'AND X, 254' if it knows the low bit is set.  Emit code that checks
         // to handle this.
-        String opName = node.getOperator().getName();
-        if (!node.isLeaf() && (opName.equals("and") || opName.equals("or")) &&
+        String opName;
+        if (!node.isLeaf() && (opName = node.getOperator().getName()) != null &&
+                (opName.equals("and") || opName.equals("or")) &&
                 node.getChild(1).isLeaf() && node.getChild(1).getPredicateFns().isEmpty())
         {
             Init i = node.getChild(1).getLeafValue();
@@ -393,7 +393,8 @@ public class PatternCodeEmitter
             }
             if (nodeHasProperty(child, SDNPOutFlag, cgp))
             {
-                assert foldedFlag.first.equals("") && foldedFlag.second == 0;
+                assert (foldedFlag.first == null || foldedFlag.first.isEmpty())
+                        && foldedFlag.second == 0;
                 foldedFlag = Pair.get(rootName, info.getNumResults() + hasChain);
             }
         }
@@ -477,18 +478,18 @@ public class PatternCodeEmitter
                     // place holder for SRCVALEU nodes.
                     // nothing to do here.
                 }
-                else if (leafRec.getName().equals("ValueType"))
+                else if (leafRec.isSubClassOf("ValueType"))
                 {
                     emitCheck(StringFormatter.format("((VTSDNode)%s).getVT().getSimpleVT().simpleVT == ",
                             rootName, leafRec.getName()).getValue());
                 }
-                else if (leafRec.isSubClassOf("condCode"))
+                else if (leafRec.isSubClassOf("CondCode"))
                 {
                     emitCheck(StringFormatter.format("((CondCodeSDNode)%s).get() == ",
                             rootName, leafRec.getName()).getValue());
                 }
                 else
-                    assert false:"Unkown leaf value!";
+                    assert false:"Unknown leaf value!";
                 child.getPredicateFns().forEach(pred->
                 {
                     emitCheck(pred + "("+rootName+".getNode()");
@@ -583,7 +584,8 @@ public class PatternCodeEmitter
             }
         }
     }
-    private static ComplexPattern nodeGetComplexPattern(TreePatternNode node, CodeGenDAGPatterns cgp)
+    protected static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
+            CodeGenDAGPatterns cgp)
     {
         if (node.isLeaf() && (node.getLeafValue() instanceof DefInit)
                 && ((DefInit)node.getLeafValue()).getDef().isSubClassOf("ComplexPattern"))
@@ -775,12 +777,13 @@ public class PatternCodeEmitter
         }
     }
 
-    public ArrayList<String> emitResultCode(TreePatternNode *node, ArrayList<Record> destRegs,
+    public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
                                            boolean inFlagDecled, boolean resNodeDecled,
                                            boolean likeLeaf, boolean isRoot)
+            throws Exception
     {
         ArrayList<String> nodeOps = new ArrayList<>();
-        if (node.getName() != null && !node.getName().isEmpty()
+        if (node.getName() != null && !node.getName().isEmpty())
         {
             String varName = node.getName();
             boolean modifiedVal = false;
@@ -791,7 +794,7 @@ public class PatternCodeEmitter
                 System.exit(-1);
             }
             String val = variableMap.get(varName);
-            if (var.equals("Tmp"))
+            if (val.equals("Tmp"))
             {
                 nodeOps.add("tmp");
                 return nodeOps;
@@ -802,7 +805,7 @@ public class PatternCodeEmitter
             if (!node.isLeaf() && node.getOperator().getName().equals("imm"))
             {
                 assert node.getExtTypes().size() == 1 :"Multiple types not handled!";
-                String castType, tmpVar = "tmp" + resNo;
+                String castType = null, tmpVar = "tmp" + resNo;
                 switch(node.getTypeNum(0))
                 {
                     default:
@@ -823,7 +826,7 @@ public class PatternCodeEmitter
                 }
                 String temp = castType.equals("boolean") ? "((ConstantSDNode)"+val+").getZExtValue() != 0":
                                                            "((" + castType +")"+"((ConstantSDNode)"+val+").getZExtValue())";
-                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, %s);", temp, 
+                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, %s);", tmpVar, temp,
                       getEnumName(node.getTypeNum(0))).getValue());
                 val = tmpVar;
                 modifiedVal = true;
@@ -833,7 +836,8 @@ public class PatternCodeEmitter
             {
                 assert node.getExtTypes().size() == 1:"Multiple types not be handled yet!";
                 String tmpVar = "tmp" + resNo;
-                emtiCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s).getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));", tmpVar, val, val).getValue());
+                emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s)"
+                        + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));", tmpVar, val, val).getValue());
                 val = tmpVar;
                 modifiedVal = true;
                 nodeOps.add(val);
@@ -841,10 +845,11 @@ public class PatternCodeEmitter
             else if (!node.isLeaf() && node.getOperator().getName().equals("texternalsym"))
             {
                 Record op;
-                if ((op = operatorMap.get(node.getName()) != null && op.getName().equals("extenralsym"))
+                if (((op = operatorMap.get(node.getName())) != null && op.getName().equals("externalsym")))
                 {
                     String tmpVar = "tmp" + resNo;
-                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetExternalSymbol(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0)).getValue());
+                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetExternalSymbol"
+                            + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
@@ -854,18 +859,19 @@ public class PatternCodeEmitter
                 node.getOperator().getName().equals("tglobaltlsaddr")))
             {
                 Record op;
-                if ((op = operatorMap.get(node.getName()) != null && (op.getName().equals("globaladdr"))
-                      || op.getName().equals("globaltlsaddr"))
+                if ((op = operatorMap.get(node.getName())) != null && (op.getName().equals("globaladdr")
+                      || op.getName().equals("globaltlsaddr")))
                 {
                     String tmpVar = "tmp" + resNo;
-                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetGlobalAddress(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0)).getValue());
+                    emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetGlobalAddress"
+                            + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val, getEnumName(node.getTypeNum(0))).getValue());
                     val = tmpVar;
                     modifiedVal = true;
                 }
                 nodeOps.add(val);
             }
-            else if (!node.isLeaf() && (node.getOperator().getName().equals("texternalsym") || 
-                    || op.getName().equals("tconstpool")))
+            else if (!node.isLeaf() && (node.getOperator().getName().equals("texternalsym")
+                    || node.getOperator().getName().equals("tconstpool")))
             {
                 nodeOps.add(val);
             }
@@ -902,8 +908,8 @@ public class PatternCodeEmitter
                 int resNo = tmpNo++;
                 if (di.getDef().isSubClassOf("Regiser"))
                 {
-                    emitCode("SDValue tmp" + resNo + " = curDAG.getRegister("+getQualifiedName(di.getDef())
-                        + ", " + getEnumName(node.getTypeNum(0)+");"));
+                    emitCode("SDValue tmp" + resNo + " = curDAG.getRegister("+ di.getDef().getName()
+                        + ", " + getEnumName(node.getTypeNum(0))+");");
                     nodeOps.add("tmp" + resNo);
                     return nodeOps;
                 }
@@ -916,7 +922,8 @@ public class PatternCodeEmitter
                 }
                 else if (di.getDef().isSubClassOf("RegisterClass"))
                 {
-                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%sRegisterID, MVT.i32);", resNo, getQualifiedName(di.getDef())).getValue());
+                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%sRegisterID, MVT.i32);",
+                            resNo, di.getDef().getName()).getValue());
                     nodeOps.add("tmp"+resNo);
                     return nodeOps;
                 }
@@ -927,7 +934,7 @@ public class PatternCodeEmitter
                 int resNo = tmpNo++;
                 assert node.getExtTypes().size() == 1:"Multiple types are not handled yet!";
                 emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%dL, %s);",
-                      ii.getValue(), getEnumName(node.getTypeNum(0))).getValue());
+                      resNo, ii.getValue(), getEnumName(node.getTypeNum(0))).getValue());
                 nodeOps.add("tmp"+resNo);
                 return nodeOps;
             }
@@ -935,5 +942,430 @@ public class PatternCodeEmitter
             assert false :"Unknown leaf value!";
             return nodeOps;
         }
+
+        // handle the operator.
+        Record op = node.getOperator();
+        if (op.isSubClassOf("Instruction"))
+        {
+            CodeGenTarget cgt = cgp.getTarget();
+            CodeGenInstruction cgInst = cgt.getInstruction(op.getName());
+            DAGInstruction inst = cgp.getInstruction(op);
+            TreePattern pat = inst.getPattern();
+
+            TreePatternNode patNode = isRoot ?
+                    (pat != null ? pat.getTree(0) : pattern) :
+                    (pat != null ? pat.getTree(0) : null);
+            if (patNode != null && !patNode.isLeaf() && patNode.getOperator().getName().equals("set"))
+            {
+                patNode = patNode.getChild(patNode.getNumChildren() - 1);
+            }
+
+            boolean isVariadic = isRoot && cgInst.isVariadic;
+            boolean hasImpInputs = isRoot && inst.getNumImpOperands() > 0;
+            boolean hasImpResults = isRoot && !destRegs.isEmpty();
+            boolean nodeHasOptInFlag =
+                    isRoot && patternHasProperty(pattern, SDNPOptInFlag, cgp);
+            boolean nodeHasInFlag =
+                    isRoot && patternHasProperty(pattern, SDNPInFlag, cgp);
+            boolean nodeHasOutFlag =
+                    isRoot && patternHasProperty(pattern, SDNPOutFlag, cgp);
+            boolean nodeHasChain =
+                    patNode != null && patternHasProperty(patNode, SDNPHasChain,
+                            cgp);
+            boolean inputHasChain =
+                    isRoot && patternHasProperty(pattern, SDNPHasChain, cgp);
+            int numResults = inst.getNumResults();
+            int numDestRegs = hasImpResults ? destRegs.size() : 0;
+
+            // record output varargs info.
+            outputIsVariadic = isVariadic;
+
+            if (nodeHasOptInFlag)
+            {
+                emitCode(
+                        "boolean hasInFlag = (node.getOperand(node.getNumOperands()-1)"
+                                + ".getValueType().getSimpleVT().simpleVT == MVT.Flag);");
+            }
+            if (isVariadic)
+            {
+                emitCode("ArrayList<SDValue> ops" + opcNo + " = new ArrayList<>();");
+            }
+
+            int numPatResults = 0;
+            for (int i = 0, e = pattern.getExtTypes().size(); i < e; i++)
+            {
+                int vt = pattern.getTypeNum(i);
+                if (vt != MVT.isVoid && vt != MVT.Flag)
+                    ++numPatResults;
+            }
+
+            if (!originChains.isEmpty())
+            {
+                emitCode("ArrayList<SDValue> inChains = new ArrayList<>();");
+                for (int i = 0, e = originChains.size(); i < e; i++)
+                {
+                    emitCode(StringFormatter.format("if (%s.getNode() != %s.getNode()) {    )",
+                            originChains.get(i).first, originChains.get(i).second).getValue());
+                    emitCode(StringFormatter
+                            .format("  inChains.add(%s);", chainName).getValue());
+                    emitCode(StringFormatter.format("%s = curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other), "
+                            + "inChains);", chainName).getValue());
+                }
+            }
+
+            ArrayList<String> allOps = new ArrayList<>();
+            for (int childNo = 0, instOpNo = numResults; instOpNo != cgInst.operandList.size(); ++instOpNo)
+            {
+                ArrayList<String> ops = new ArrayList<>();
+
+                Record operandNode = cgInst.operandList.get(instOpNo).rec;
+                if ((operandNode.isSubClassOf("PredicateOperand") || operandNode
+                        .isSubClassOf("OptionalDefOperand")) && !cgp.getDefaultOperand(operandNode).defaultOps.isEmpty())
+                {
+                    DAGDefaultOperand defaultOp = cgp.getDefaultOperand(cgInst.operandList.get(instOpNo).rec);
+                    for (int i = 0, e = defaultOp.defaultOps.size(); i < e; i++)
+                    {
+                        ops = emitResultCode(defaultOp.defaultOps.get(i),
+                                destRegs, inFlagDecled, resNodeDecled, false,
+                                false);
+                        allOps.addAll(ops);
+                    }
+                }
+                else
+                {
+                    ops = emitResultCode(node.getChild(childNo), destRegs,
+                            inFlagDecled, resNodeDecled, false, false);
+                    allOps.addAll(ops);
+                    ++childNo;
+                }
+            }
+            boolean chainEmitted = nodeHasChain;
+            if (nodeHasInFlag || hasImpInputs)
+            {
+                OutParamWrapper<Boolean> x = new OutParamWrapper<>(
+                        chainEmitted), y = new OutParamWrapper<>(
+                        inFlagDecled), z = new OutParamWrapper<>(resNodeDecled);
+                emitIntFlagSelectCode(pattern, "n", x, y, z, true);
+                chainEmitted = x.get();
+                inFlagDecled = y.get();
+                resNodeDecled = z.get();
+            }
+            if (nodeHasOptInFlag || nodeHasInFlag || hasImpInputs)
+            {
+                if (!inFlagDecled)
+                {
+                    emitCode("SDValue inFlag = new SDValue(null, 0);");
+                    inFlagDecled = true;
+                }
+                if (nodeHasOptInFlag)
+                {
+                    emitCode("if (hasInFlag) {");
+                    emitCode(
+                            "  inFlag = node.getOperand(node.getNumOperands()-1);");
+                    emitCode("}");
+                }
+            }
+
+            int resNo = tmpNo++;
+            int opsNo = opcNo;
+            String codePrefix = "";
+            boolean chainAssignmentNeeded = nodeHasChain && isRoot;
+            LinkedList<String> after = new LinkedList<>();
+            String nodeName;
+            if (!isRoot)
+            {
+                nodeName = "tmp" + resNo;
+                codePrefix = "SDValue" + nodeName + "(";
+            }
+            else
+            {
+                nodeName = "resNode";
+                if (!resNodeDecled)
+                {
+                    codePrefix = "SDNode " + nodeName + " = ";
+                    resNodeDecled = true;
+                }
+                else
+                    codePrefix = nodeName + " = ";
+            }
+
+            StringBuilder code = new StringBuilder("opc" + opcNo);
+
+            emitCode(cgInst.theDef.getName());
+
+            if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
+            {
+                code.append(", vt").append(vtNo);
+                emitVT(getEnumName(node.getTypeNum(0)));
+            }
+
+            for (int i = 0; i < numDestRegs; i++)
+            {
+                Record rec = destRegs.get(i);
+                if (rec.isSubClassOf("Register"))
+                {
+                    int rvt = getRegisterValueType(rec, cgt);
+                    code.append(", ").append(getEnumName(rvt));
+                }
+            }
+
+            if (nodeHasChain)
+                code.append(", MVT.Other");
+            if (nodeHasOutFlag)
+                code.append(", MVT.Flag");
+
+            if (isVariadic)
+            {
+                for (int i = 0, e = allOps.size(); i < e; i++)
+                {
+                    emitCode("ops" + opsNo + ".add(" + allOps.get(i) + ");");
+                }
+                allOps.clear();
+
+                String endAdjust = "";
+                if (nodeHasInFlag || hasImpInputs)
+                {
+                    endAdjust = "-1";
+                }
+                else if (nodeHasOptInFlag)
+                    endAdjust = "-(hasInFlags?1:0)";
+
+                emitCode("for (int i = numInputRootOps)" + (nodeHasChain ? 1 : 0)
+                        + ", e = node.getNumOperands()" + endAdjust + "; i != e; i++{");
+                emitCode("  ops" + opsNo + ".add(node.getOperand(i));");
+                emitCode("}");
+            }
+
+            if (cgInst.mayLoad || cgInst.mayStore)
+            {
+                for (String name : lsi)
+                {
+                    String lsiName = "lsi" + name.toUpperCase();
+                    emitCode(StringFormatter.format("SDValue %s = curDAG." + "getMemOperand(((MemSDNode)%s).getMemOperand());",
+                            lsiName, name).getValue());
+
+                    if (isVariadic)
+                        emitCode("ops" + opsNo + ".add(" + lsiName + ");");
+                    else
+                        allOps.add(lsiName);
+                }
+            }
+
+            if (nodeHasChain)
+            {
+                if (isVariadic)
+                    emitCode("ops" + opsNo + ".add(" + chainName + ");");
+                else
+                    allOps.add(chainName);
+            }
+
+            if (isVariadic)
+            {
+                if (nodeHasInFlag || hasImpResults)
+                    emitCode("ops" + opsNo + ".add(inFlag);");
+                else if (nodeHasOptInFlag)
+                {
+                    emitCode("if (hasInFlag)");
+                    emitCode("  ops" + opsNo + ".add(inFlag);");
+                }
+                code.append(", ops").append(opsNo);
+            }
+            else if (nodeHasInFlag || nodeHasOptInFlag || hasImpInputs)
+                allOps.add("inFlag");
+
+            int numOps = allOps.size();
+            if (numOps > 0)
+            {
+                if (!nodeHasOptInFlag && numOps < 4)
+                {
+                    for (int i = 0; i < numOps; i++)
+                        code.append(", ").append(allOps.get(i));
+                }
+                else
+                {
+                    StringBuilder opsCode = new StringBuilder(
+                            "SDValue[] ops" + opsNo + " = {");
+                    for (int i = 0; i < numOps; i++)
+                    {
+                        code.append(allOps.get(i));
+                        if (i != numOps - 1)
+                            opsCode.append(", ");
+                    }
+                    emitCode(opsCode.toString() + "};");
+                    code.append(", ops").append(opsNo).append(",");
+                    if (nodeHasOptInFlag)
+                    {
+                        code.append("hasInFlag ? ");
+                        code.append(numOps).append(":").append(numOps - 1);
+                    }
+                    else
+                        code.append(numOps);
+                }
+            }
+            if (!isRoot)
+                code.append("), 0");
+
+            ArrayList<String> replaceFroms = new ArrayList<>();
+            ArrayList<String> replaceTos = new ArrayList<>();
+            if (!isRoot)
+                nodeOps.add("tmp" + resNo);
+            else
+            {
+                if (nodeHasOutFlag)
+                {
+                    if (!inFlagDecled)
+                    {
+                        after.add("SDValue inFlag = new SDValue(resNode, " + (
+                                numResults + numDestRegs + (nodeHasChain ? 1 : 0)) + ");");
+                        inFlagDecled = true;
+                    }
+                    else
+                    {
+                        after.add("inFlag = new SDValue(resNode, " + (numResults
+                                + numDestRegs + (nodeHasChain ? 1 : 0)) + ");");
+                    }
+
+                    for (int j = 0, e = foldedChains.size(); j < e; j++)
+                    {
+                        replaceFroms.add(StringFormatter.format("new SDValue(%s.getNode(), %d)",
+                                foldedChains.get(j).first, foldedChains.get(j).second).getValue());
+                        replaceTos.add(StringFormatter
+                                .format("new SDValue(resNode, %d)", numResults + numDestRegs).get());
+                    }
+
+                    if (nodeHasOutFlag)
+                    {
+                        if (!foldedFlag.first.isEmpty())
+                        {
+                            replaceFroms.add(StringFormatter.format("new SDValue(%s.getNode(), %d)",
+                                    foldedFlag.first, foldedFlag.second).get());
+                            replaceTos.add("inFlag");
+                        }
+                        else
+                        {
+                            assert nodeHasProperty(pattern, SDNPOutFlag, cgp);
+                            replaceFroms.add(StringFormatter.format("new SDValue(node.getNode(), %d)",
+                                    numPatResults + (inputHasChain ? 1 : 0)).get());
+                            replaceTos.add("inFlag");
+                        }
+                    }
+
+                    if (!replaceFroms.isEmpty() && inputHasChain)
+                    {
+                        replaceFroms.add(StringFormatter.format("new SDValue(node.getNode(), %d)",
+                                numPatResults).get());
+                        replaceTos.add(StringFormatter.format("new SDValue(%s.getNode(), %s.getResNo())",
+                                chainName, chainName).get());
+                        chainAssignmentNeeded |= nodeHasChain;
+                    }
+
+                    if (!inputHasChain && nodeHasChain && nodeHasOutFlag)
+                    {
+                        // noting to do!
+                    }
+                    else if (inputHasChain && !nodeHasChain)
+                    {
+                        if (nodeHasOutFlag)
+                        {
+                            replaceFroms.add(StringFormatter.format("new SDValue(node.getNode(), %d)",
+                                    numPatResults + 1).get());
+                            replaceTos.add("new SDValue(resNode, node.getResNo()-1)");
+                        }
+                        replaceFroms.add(StringFormatter.format("new SDValue(node.getNode(), %d)",
+                                numPatResults).get());
+                        replaceTos.add(chainName);
+                    }
+                }
+            }
+
+            if (chainAssignmentNeeded)
+            {
+                String chainAssign;
+                if (!isRoot)
+                    chainAssign = chainName + " = new SDValue(" + nodeName
+                            + ".getNode(), " + (numResults + numDestRegs) + ");";
+                else
+                    chainAssign =
+                            chainName + " = new SDValue(" + nodeName + ", " + (
+                                    numResults + numDestRegs) + ");";
+
+                after.addFirst(chainAssign);
+            }
+
+            if (replaceFroms.size() == 1)
+            {
+                after.add(StringFormatter
+                        .format("replaceUses(%s, %s);", replaceFroms.get(0),
+                                replaceTos.get(0)).get());
+            }
+            else if (!replaceFroms.isEmpty())
+            {
+                after.add("SDValue[] froms = {");
+                for (int i = 0, e = replaceFroms.size(); i < e; i++)
+                    after.add(" " + replaceFroms.get(i) + (i + 1 < e ? "," : ""));
+                after.add("};");
+                after.add("SDValue[] tos = {");
+                for (int i = 0, e = replaceTos.size(); i < e; i++)
+                    after.add(" " + replaceTos.get(i) + (i + 1 < e ? "," : ""));
+                after.add("};");
+                after.add("replaceUses(froms, tos);");
+            }
+
+            if (!isRoot || (inputHasChain && !nodeHasChain))
+                code.insert(0, "curDAG.getTargetNode(");
+            else
+                code.insert(0, "curDAG.selectNodeTo(node.getNode(), ");
+
+            if (isRoot)
+            {
+                if (after.isEmpty())
+                    codePrefix = "return ";
+                else
+                    after.add("return resNode;");
+            }
+
+            emitCode(codePrefix + code.toString() + ");");
+            after.forEach(this::emitCode);
+            return nodeOps;
+        }
+
+        if (op.isSubClassOf("SDNodeXForm"))
+        {
+            assert node.getNumChildren() == 1:"node xform should have one child!";
+
+            ArrayList<String> ops = emitResultCode(node.getChild(0), destRegs,
+                    inFlagDecled, resNodeDecled, true, false);
+            int resNo = tmpNo++;
+            emitCode("SDValue tmp" + resNo + " = transform_" + op.getName() +
+                "(" + ops.get(ops.size()-1) + ".getNode());");
+            nodeOps.add("tmp"+resNo);
+            if (isRoot)
+                emitCode("return tmp" + resNo + ".getNode();");
+            return nodeOps;
+        }
+
+        Util.shouldNotReachHere("Unknown node in result pattern!");
+        return null;
+    }
+
+    public boolean insertOneTypeCheck(TreePatternNode pat,
+            TreePatternNode other, String prefix, boolean isRoot)
+    {
+        if (!pat.getExtTypes().equals(other.getExtTypes()))
+        {
+            pat.setTypes(other.getExtTypes());
+            if (!isRoot)
+                emitCheck(prefix+".getNode().getValueType(0) == " +
+                          getName(pat.getTypeNum(0)));
+            return true;
+        }
+        int opNo = nodeHasProperty(pat, SDNPHasChain, cgp)?1:0;
+        for (int i = 0, e = pat.getNumChildren(); i < e; i++, ++opNo)
+        {
+            if (insertOneTypesCheck(pat.getChild(i), other.getChild(i), prefix+opNo, false))
+                return true;
+        }
+        return false;
     }
 }
+
