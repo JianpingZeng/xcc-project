@@ -272,7 +272,7 @@ public class PatternCodeEmitter
                     foundChain = true;
                 }
                 chainName = "chain" + chainSuffix;
-                emitInit(StringFormatter.format("SDValue %s = %s.getOperand(0)", chainName, rootName).getValue());
+                emitInit(StringFormatter.format("SDValue %s = %s.getOperand(0);", chainName, rootName).getValue());
             }
         }
 
@@ -349,9 +349,9 @@ public class PatternCodeEmitter
             int numOps = cp.getNumOperands();
             for (int i = 0; i < numOps; i++)
             {
-                emitDecl("cpTmp" + rootName + i);
-                emitCode("SDValue cpTmp"+ rootName + i);
-            }
+            	emitDecl("cpTmp" + rootName + i);
+            }           
+            emitCode(StringFormatter.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
 
             if (cp.hasProperty(SDNPHasChain))
             {
@@ -362,8 +362,8 @@ public class PatternCodeEmitter
             }
 
             StringBuilder code = new StringBuilder(fn + "(" + rootName + ", " + rootName);
-            for(int i = 0; i < numOps; i++)
-                code.append(", cpTmp").append(rootName).append(i);
+            code.append(", cpTmp").append(rootName);
+
             if (cp.hasProperty(SDNPHasChain))
             {
                 chainName = "chain" + chainSuffix;
@@ -371,7 +371,7 @@ public class PatternCodeEmitter
             }
             emitCode(code.append(")").toString());
         }
-        return foundChain;
+;        return foundChain;
     }
 
     private boolean emitChildMatchNode(TreePatternNode child, TreePatternNode parent, String rootName,
@@ -433,13 +433,14 @@ public class PatternCodeEmitter
                 {
                     // handle complex pattern.
                     ComplexPattern cp = nodeGetComplexPattern(child, cgp);
+                    assert cp != null;
                     String fn = cp.getSelectFunc();
                     int numOps = cp.getNumOperands();
                     for (int i = 0; i < numOps; i++)
                     {
-                        emitDecl("cpTmp" + rootName+i);
-                        emitCode("SDValue cpTmp" + rootName+i + ";");
-                    }
+                    	emitDecl("cpTmp" + rootName + i);
+                    } 
+                    emitCode(StringFormatter.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
 
                     if (cp.hasProperty(SDNPHasChain))
                     {
@@ -467,8 +468,8 @@ public class PatternCodeEmitter
                         code.append(rootName.substring(0, rootName.length()-1)).append(", ");
                     }
                     code.append(rootName);
-                    for (int i = 0; i < numOps; i++)
-                        code.append(", cpTmp").append(rootName).append(i);
+                    code.append(", cpTmp").append(rootName);
+
                     if (cp.hasProperty(SDNPHasChain))
                         code.append(", cpInChain, chain").append(chainSuffix);
                     emitCheck(code.append(")").toString());
@@ -1113,9 +1114,9 @@ public class PatternCodeEmitter
             }
 
             if (nodeHasChain)
-                code.append(", new EVT(MVT.Other), ");
+                code.append(", new EVT(MVT.Other)");
             if (nodeHasOutFlag)
-                code.append(", new EVT(MVT.Flag), ");
+                code.append(", new EVT(MVT.Flag)");
 
             if (isVariadic)
             {

@@ -4,6 +4,7 @@
 .project
 [B|b]in
 xcc.imi
+*.eml
 document
 [O|o]ut
 classes

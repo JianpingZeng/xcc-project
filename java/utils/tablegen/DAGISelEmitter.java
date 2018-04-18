@@ -488,12 +488,20 @@ public class DAGISelEmitter extends TableGenBackend
                         calleeCode.append(", EVT vt").append(j);
                         callerCode.append(", ").append(targetVTs.get(j));
                     }
-
+                    
+                    String prefix = "";
                     for (String decl : decls)
                     {
                         calleeCode.append(", SDValue ").append(decl);
-                        callerCode.append(", ").append(decl);
+                        if (prefix.isEmpty())
+                        	prefix = decl;
+                        else 
+                        {
+                        	prefix = Util.longestCommonPrefix(prefix, decl);
+                        }
                     }
+            		for (int j = 0, sz = decls.size(); j < sz; j++)
+            			callerCode.append(", ").append(prefix).append("[").append(j).append("]");
 
                     if (outputIsVariadic)
                     {
@@ -639,7 +647,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "                              n.getValueType());\n"
                 + "}\n\n");
 
-        os.print("SDNode Select_DBG_LABEL(SDValue n) {\n"
+        os.print("SDNode select_DBG_LABEL(SDValue n) {\n"
                 + "  SDValue chain = n.getOperand(0);\n"
                 + "  int c = ((LabelSDNode)n).getLabelID();\n"
                 + "  SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));\n"
