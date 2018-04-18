@@ -120,7 +120,7 @@ public class PatternCodeEmitter
     public void emitOpcode(String opc)
     {
         assert opc != null && !opc.isEmpty():"Invalid opcode!";
-        targetVTs.add(opc);
+        targetOpcodes.add(opc);
         opcNo++;
     }
 
@@ -743,7 +743,7 @@ public class PatternCodeEmitter
     {
         private CodeGenDAGPatterns cgp;
 
-        public PatternSortingPredicate(CodeGenDAGPatterns cgp)
+        PatternSortingPredicate(CodeGenDAGPatterns cgp)
         {
             this.cgp = cgp;
         }
@@ -774,6 +774,42 @@ public class PatternCodeEmitter
                 e.printStackTrace();
             }
             return 0;
+        }
+    }
+
+    static class PatternToMatchSorter implements Comparator<PatternToMatch>
+    {
+        private CodeGenDAGPatterns cgp;
+        PatternToMatchSorter(CodeGenDAGPatterns cgp)
+        {
+            this.cgp = cgp;
+        }
+        @Override
+        public int compare(PatternToMatch o1, PatternToMatch o2)
+        {
+            try
+            {
+
+                int lhsSize = getPatternSize(o1.getSrcPattern(), cgp);
+                int rhsSize = getPatternSize(o2.getSrcPattern(), cgp);
+                lhsSize += o1.getAddedComplexity();
+                rhsSize += o2.getAddedComplexity();
+                if (lhsSize > rhsSize) return 1;
+                if (lhsSize < rhsSize) return -1;
+
+                int lhsCost = getResultPatternCost(o1.getDstPattern(), cgp);
+                int rhsCost = getResultPatternCost(o2.getDstPattern(), cgp);
+                if (lhsCost > rhsCost) return 1;
+                if (lhsCost < rhsCost) return -1;
+
+                return getResultPatternSize(o1.getDstPattern(), cgp) -
+                        getResultPatternSize(o2.getDstPattern(), cgp);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                return 0;
+            }
         }
     }
 
@@ -1078,7 +1114,7 @@ public class PatternCodeEmitter
             if (!isRoot)
             {
                 nodeName = "tmp" + resNo;
-                codePrefix = "SDValue" + nodeName + "(";
+                codePrefix = "SDValue " + nodeName + " = new SDValue(";
             }
             else
             {
@@ -1094,7 +1130,7 @@ public class PatternCodeEmitter
 
             StringBuilder code = new StringBuilder("opc" + opcNo);
 
-            emitCode(cgInst.theDef.getName());
+            emitOpcode(cgp.getTarget().getName()+"."+cgInst.theDef.getName());
 
             if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
             {
@@ -1113,9 +1149,9 @@ public class PatternCodeEmitter
             }
 
             if (nodeHasChain)
-                code.append(", MVT.Other");
+                code.append(", new EVT(MVT.Other), ");
             if (nodeHasOutFlag)
-                code.append(", MVT.Flag");
+                code.append(", new EVT(MVT.Flag), ");
 
             if (isVariadic)
             {
@@ -1144,8 +1180,9 @@ public class PatternCodeEmitter
                 for (String name : lsi)
                 {
                     String lsiName = "lsi" + name.toUpperCase();
-                    emitCode(StringFormatter.format("SDValue %s = curDAG." + "getMemOperand(((MemSDNode)%s).getMemOperand());",
-                            lsiName, name).getValue());
+                    emitCode(StringFormatter.format("SDValue %s = curDAG."
+                                    + "getMemOperand(((MemSDNode)%s).getMemOperand());",
+                                    lsiName, name).getValue());
 
                     if (isVariadic)
                         emitCode("ops" + opsNo + ".add(" + lsiName + ");");
@@ -1190,8 +1227,8 @@ public class PatternCodeEmitter
                             "SDValue[] ops" + opsNo + " = {");
                     for (int i = 0; i < numOps; i++)
                     {
-                        code.append(allOps.get(i));
-                        if (i != numOps - 1)
+                        opsCode.append(allOps.get(i));
+                        if (i < numOps - 1)
                             opsCode.append(", ");
                     }
                     emitCode(opsCode.toString() + "};");
