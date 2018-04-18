@@ -562,7 +562,7 @@ public final class CodeGenDAGPatterns
             DagInit tree = patterns.get(i).getValueAsDag("PatternToMatch");
             DefInit opDef = (DefInit)tree.getOperator();
             Record operator = opDef.getDef();
-            TreePattern pattern = null;
+            TreePattern pattern;
             if (!operator.getName().equals("parallel"))
                 pattern = new TreePattern(patterns.get(i), tree, true, this);
             else
@@ -1215,14 +1215,13 @@ public final class CodeGenDAGPatterns
             HashSet<String> operandsSet = new HashSet<>(args);
 
             if (operandsSet.contains(""))
-                pattern.error("Cannot have unnamed 'node' values in pattern fragment!");;
+                pattern.error("Cannot have unnamed 'node' values in pattern fragment!");
 
             DagInit opsList = fragment.getValueAsDag("Operands");
-            DefInit opsOp = opsList.getOperator() instanceof DefInit ? (DefInit)opsList.getOperator()
-                    : null;
+            DefInit opsOp = opsList.getOperator() instanceof DefInit ?
+                    (DefInit) opsList.getOperator() : null;
             if (opsOp == null || (!opsOp.getDef().getName().equals("ops")
-                    && !opsOp.getDef().getName().equals("outs") && !opsOp.getDef().getName().equals("ins")))
-            {
+                    && !opsOp.getDef().getName().equals("outs") && !opsOp.getDef().getName().equals("ins"))) {
                 pattern.error("Operands list should start with '(ops ...'!");
             }
 
@@ -1281,6 +1280,9 @@ public final class CodeGenDAGPatterns
             // If debugging, print out the pattern fragment result.
             if (TableGen.DEBUG)
                 pat.dump();
+            System.err.println(i);
+            pat.dump();
+            System.err.println();
         }
     }
 
