@@ -758,58 +758,22 @@ public class PatternCodeEmitter
                 int rhsSize = getPatternSize(rhs.getSrcPattern(), cgp);
                 lhsSize += lhs.getAddedComplexity();
                 rhsSize += rhs.getAddedComplexity();
-                if (lhsSize > rhsSize) return 1;
-                if (lhsSize < rhsSize) return -1;
+                if (lhsSize > rhsSize) return -1;
+                if (lhsSize < rhsSize) return 1;
 
                 int lhsCost = getResultPatternCost(lhs.getDstPattern(), cgp);
                 int rhsCost = getResultPatternCost(rhs.getDstPattern(), cgp);
-                if (lhsCost > rhsCost) return 1;
-                if (lhsCost < rhsCost) return -1;
+                if (lhsCost > rhsCost) return -1;
+                if (lhsCost < rhsCost) return 1;
 
-                return getResultPatternSize(lhs.getDstPattern(), cgp) -
-                        getResultPatternSize(rhs.getDstPattern(), cgp);
+                return getResultPatternSize(rhs.getDstPattern(), cgp) -
+                        getResultPatternSize(lhs.getDstPattern(), cgp);
             }
             catch (Exception e)
             {
                 e.printStackTrace();
             }
             return 0;
-        }
-    }
-
-    static class PatternToMatchSorter implements Comparator<PatternToMatch>
-    {
-        private CodeGenDAGPatterns cgp;
-        PatternToMatchSorter(CodeGenDAGPatterns cgp)
-        {
-            this.cgp = cgp;
-        }
-        @Override
-        public int compare(PatternToMatch o1, PatternToMatch o2)
-        {
-            try
-            {
-
-                int lhsSize = getPatternSize(o1.getSrcPattern(), cgp);
-                int rhsSize = getPatternSize(o2.getSrcPattern(), cgp);
-                lhsSize += o1.getAddedComplexity();
-                rhsSize += o2.getAddedComplexity();
-                if (lhsSize > rhsSize) return 1;
-                if (lhsSize < rhsSize) return -1;
-
-                int lhsCost = getResultPatternCost(o1.getDstPattern(), cgp);
-                int rhsCost = getResultPatternCost(o2.getDstPattern(), cgp);
-                if (lhsCost > rhsCost) return 1;
-                if (lhsCost < rhsCost) return -1;
-
-                return getResultPatternSize(o1.getDstPattern(), cgp) -
-                        getResultPatternSize(o2.getDstPattern(), cgp);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-                return 0;
-            }
         }
     }
 
