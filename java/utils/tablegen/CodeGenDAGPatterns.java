@@ -242,7 +242,7 @@ public final class CodeGenDAGPatterns
 
                 if (alreadyExists) continue;
 
-                patternsToMatch.add(new PatternToMatch(match.getPredicates(),
+                addPatternsToMatch(new PatternToMatch(match.getPredicates(),
                         var, match.getDstPattern(), match.getDstRegs(),
                         match.getAddedComplexity()));
             }
@@ -683,7 +683,7 @@ public final class CodeGenDAGPatterns
             if (!pattern.getTree(0).canPatternMatch(reason, this))
                 pattern.error("Pattern can never match: " + reason.toString());
 
-            patternsToMatch.add(new PatternToMatch(
+            addPatternsToMatch(new PatternToMatch(
                     patterns.get(i).getValueAsListInit("Predicates"),
                     pattern.getTree(0),
                     temp.getOnlyTree(), instImpResults,
@@ -939,7 +939,7 @@ public final class CodeGenDAGPatterns
             In V_SETALLONES: Undefined node flavour used in pattern: immAllOnesV
 
              llvm-tblgen
-             V_SETALLONES: 	(set VR128:$dst, (build_vector:v4i32)<<P:Predicate_immAllOnesV>>)
+             V_SETALLONES: 	(set VR128:$dst, (build_vector:v4i32)<<P:predicate_immAllOnesV>>)
             */
             // Infer as many types as possible.  If we cannot infer all of them, we can
             // never do anything with this instruction pattern: report it to the user.
@@ -1133,8 +1133,7 @@ public final class CodeGenDAGPatterns
 
             Record instr = pair.getKey();
             TreePatternNode dstPattern = theInst.getResultPattern();
-            patternsToMatch.
-                    add(new PatternToMatch(instr.getValueAsListInit("Predicates"),
+            addPatternsToMatch(new PatternToMatch(instr.getValueAsListInit("Predicates"),
                     srcPattern, dstPattern, theInst.getImpResults(),
                     (int)instr.getValueAsInt("AddedComplexity")));
         }
@@ -1258,7 +1257,7 @@ public final class CodeGenDAGPatterns
             String code = fragment.getValueAsCode("Predicate");
             if (!code.isEmpty())
             {
-                pattern.getOnlyTree().addPredicateFn("Predicate_" + fragment.getName());
+                pattern.getOnlyTree().addPredicateFn("predicate_" + fragment.getName());
             }
 
             Record transform = fragment.getValueAsDef("OperandTransform");
@@ -1279,10 +1278,11 @@ public final class CodeGenDAGPatterns
 
             // If debugging, print out the pattern fragment result.
             if (TableGen.DEBUG)
+            {
+                System.err.println(i);
                 pat.dump();
-            System.err.println(i);
-            pat.dump();
-            System.err.println();
+                System.err.println();
+            }
         }
     }
 
@@ -1453,6 +1453,13 @@ public final class CodeGenDAGPatterns
     public ArrayList<PatternToMatch> getPatternsToMatch()
     {
         return patternsToMatch;
+    }
+
+    private void addPatternsToMatch(PatternToMatch pat)
+    {
+        //assert (pat != null);
+        //if (!patternsToMatch.contains(pat))
+        patternsToMatch.add(pat);
     }
 
     public DAGInstruction getInstruction(Record r)

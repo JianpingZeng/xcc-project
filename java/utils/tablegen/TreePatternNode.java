@@ -26,6 +26,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 
 import static backend.codegen.MVT.*;
 import static utils.tablegen.CodeGenDAGPatterns.*;
@@ -940,7 +941,7 @@ public final class TreePatternNode implements Cloneable
         TreePatternNode fragTree = frag.getOnlyTree().clone();
         String code = op.getValueAsCode("Predicate");
         if (code != null && !code.isEmpty())
-            fragTree.addPredicateFn("Predicate_" + op.getName());
+            fragTree.addPredicateFn("predicate_" + op.getName());
 
         // Resolve formal arguments to their actual value.
         if (frag.getNumArgs() != 0)
@@ -1002,5 +1003,19 @@ public final class TreePatternNode implements Cloneable
                 getChild(i).substituteFromalArguments(argMap);
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (getClass() != obj.getClass())
+            return false;
+        TreePatternNode node = (TreePatternNode)obj;
+        return Objects.equals(types, node.types) && Objects.equals(operator, node.operator)
+                && Objects.equals(val, node.val) && Objects.equals(name, node.name) &&
+                Objects.equals(predicateFns, node.predicateFns) && Objects.equals(transformFn, node.transformFn)
+                && Objects.equals(children, node.children);
     }
 }

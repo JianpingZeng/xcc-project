@@ -38,10 +38,11 @@ public final class PatternToMatch
             ArrayList<Record> dstRegs,
             int complexity)
     {
-        predicates = preds;
-        srcPattern = src;
-        dstPattern = dst;
-        this.dstRegs = dstRegs;
+        predicates = preds.clone();
+        srcPattern = src.clone();
+        dstPattern = dst.clone();
+        this.dstRegs = new ArrayList<>();
+        this.dstRegs.addAll(dstRegs);
         addedComplexity = complexity;
     }
 
@@ -115,5 +116,18 @@ public final class PatternToMatch
         System.err.println("\ndstRegs:");
         dstRegs.forEach(System.err::println);
         System.err.println("\naddComplexity: " + addedComplexity);
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (obj.getClass() != getClass())
+            return false;
+        PatternToMatch pat = (PatternToMatch)obj;
+        return predicates.equals(pat.predicates) &&
+                srcPattern.equals(pat.srcPattern) && dstPattern.equals(pat.dstPattern)
+                && dstRegs.equals(pat.dstRegs) && addedComplexity == pat.addedComplexity;
     }
 }
