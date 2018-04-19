@@ -28,9 +28,9 @@ import java.util.ArrayList;
 
 public abstract class X86DAGToDAGISel extends SelectionDAGISel
 {
-    private X86TargetLowering x86TL;
-    private X86Subtarget subtarget;
-    private int iselPosition;
+    protected X86TargetLowering x86TL;
+    protected X86Subtarget subtarget;
+    protected int iselPosition;
 
     public X86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)
     {
@@ -91,7 +91,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
      * @param oldNode
      * @param newNode
      */
-    private void replaceUses(SDNode oldNode, SDNode newNode)
+    public void replaceUses(SDNode oldNode, SDNode newNode)
     {
         ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
         curDAG.replaceAllUsesOfValueWith(oldNode, newNode, isu);
@@ -144,7 +144,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     }
 
     @Override
-    public boolean isLegalAndProfitableToFold(SDNode node, SDUse use, SDNode root)
+    public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root)
     {
         return super.isLegalAndProfitableToFold(node, use, root);
     }
@@ -154,7 +154,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
      * @param node
      * @return
      */
-    protected abstract SDNode selectCode(SDValue node);
+    public abstract SDNode selectCode(SDValue node);
 
     protected SDNode select(SDValue val)
     {
@@ -229,7 +229,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         return false;
     }
 
-    protected boolean selectLAAddr(SDValue op, SDValue val, SDValue[] comp)
+    protected boolean selectLEAAddr(SDValue op, SDValue val, SDValue[] comp)
     {
         return false;
     }
