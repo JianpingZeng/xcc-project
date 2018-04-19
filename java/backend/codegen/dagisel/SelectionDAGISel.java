@@ -394,7 +394,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
     }
 
-    public boolean isLegalAndProfitableToFold(SDNode node, SDUse use, SDNode root)
+    public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root)
     {
         // TODO: 2018/4/10
         return false;
@@ -405,4 +405,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     {
         return "Instruction Selector based on DAG covering";
     }
+
+    public void replaceUses(SDValue f, SDValue t)
+    {}
+
+    public void replaceUses(SDNode f, SDNode t)
+    {}
+
+    public void replaceUses(SDValue[] f, SDValue[] t)
+    {}
 }

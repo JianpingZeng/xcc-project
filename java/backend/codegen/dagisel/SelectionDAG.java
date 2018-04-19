@@ -1221,5 +1221,102 @@ public class SelectionDAG
     {
         return false;
     }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue op1)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue op1, SDValue op2)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue[] ops, int numOps)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2, SDValue[] ops, int numOps)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2,
+            EVT vt3, SDValue[] ops, int numOps)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1,
+            EVT vt2, EVT vt3, EVT vt4, SDValue[] ops, int numOps)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2,
+            SDValue op1)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2,
+            SDValue op1, SDValue op2)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2,
+            SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2,
+            EVT vt3, SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, SDVTList vts,
+            SDValue[] ops, int numOps)
+    {
+        // TODO: 18-4-19
+        return null;
+    }
+
+	public SDValue getMemOperand(MachineMemOperand memOperand) 
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
 

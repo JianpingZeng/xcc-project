@@ -183,7 +183,7 @@ public class DAGISelEmitter extends TableGenBackend
         }while(emitter.insertOneTypeCheck(pat, pattern.getSrcPattern(), "n", true));
 
         emitter.emitResultCode(pattern.getDstPattern(), pattern.getDstRegs(),
-                false, false, false, false);
+                false, false, false, true);
         outputIsVariadic.set(emitter.isOutputIsVariadic());
         numInputRootOps.set(emitter.getNumInputRootOps());
     }
@@ -261,12 +261,12 @@ public class DAGISelEmitter extends TableGenBackend
             if (firstCodeLine.first != ExitPredicate)
             {
                 os.printf("%s{%n", Util.fixedLengthString(indent, ' '));
-                indent += 2;
+                indent += 4;
             }
             emitPatterns(shared, indent, os);
             if (firstCodeLine.first != ExitPredicate)
             {
-                indent -= 2;
+                indent -= 4;
                 os.printf("%s}%n", Util.fixedLengthString(indent, ' '));
             }
 
@@ -324,7 +324,7 @@ public class DAGISelEmitter extends TableGenBackend
             }
 
             os.println(") {");
-            indent += 2;
+            indent += 4;
         }
 
         emitPatterns(patterns, indent, os);
@@ -513,8 +513,8 @@ public class DAGISelEmitter extends TableGenBackend
                     callerCode.append(");");
                     calleeCode.append("{\n");
 
-                    for (String val : addedInits)
-                        calleeCode.append(" ").append(val).append("\n");
+                    for (int j = addedInits.size() - 1; j >= 0; j--)
+                        calleeCode.append(" ").append(addedInits.get(j)).append("\n");
 
                     for (int j = lastPred+1; j < cdoeSize; j++)
                         calleeCode.append(" ").append(generatedCode.get(j).second).append("\n");
@@ -609,7 +609,7 @@ public class DAGISelEmitter extends TableGenBackend
                     temp.add(Pair.get(itr3.first,list));
                 }
                 //
-                emitPatterns(temp, 2, os);
+                emitPatterns(temp, 4, os);
 
                 if (mightNotMatch)
                 {
@@ -681,7 +681,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "}\n\n");
 
         os.print("// The main instruction selector code.\n"
-                + "SDNode selectCode(SDValue n) {\n"
+                + "@Override\npublic SDNode selectCode(SDValue n) {\n"
                 + "  int nvt = n.getNode().getValueType(0).getSimpleVT().SimpleTy;\n"
                 + "  switch (n.getOpcode()) {\n"
                 + "  default:\n"
@@ -809,6 +809,7 @@ public class DAGISelEmitter extends TableGenBackend
             CodeGenTarget target = cgp.getTarget();
             String targetName = target.getName();
             os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
+            os.println("import backend.codegen.EVT;");
             os.println("import backend.codegen.MVT;");
             os.println("import backend.codegen.dagisel.*;");
             os.println("import backend.codegen.dagisel.SDNode.*;");
