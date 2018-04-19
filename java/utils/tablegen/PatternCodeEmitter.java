@@ -371,7 +371,7 @@ public class PatternCodeEmitter
             }
             emitCode(code.append(")").toString());
         }
-;        return foundChain;
+        return foundChain;
     }
 
     private boolean emitChildMatchNode(TreePatternNode child, TreePatternNode parent, String rootName,
@@ -1095,7 +1095,7 @@ public class PatternCodeEmitter
 
             StringBuilder code = new StringBuilder("opc" + opcNo);
 
-            emitOpcode(cgp.getTarget().getName()+"."+cgInst.theDef.getName());
+            emitOpcode(cgp.getTarget().getName()+"GenInstrNames."+cgInst.theDef.getName());
 
             if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
             {

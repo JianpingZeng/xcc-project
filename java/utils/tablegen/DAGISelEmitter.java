@@ -266,8 +266,8 @@ public class DAGISelEmitter extends TableGenBackend
             emitPatterns(shared, indent, os);
             if (firstCodeLine.first != ExitPredicate)
             {
-                indent += 2;
-                os.printf("%s{%n", Util.fixedLengthString(indent, ' '));
+                indent -= 2;
+                os.printf("%s}%n", Util.fixedLengthString(indent, ' '));
             }
 
             if (other.size() == 1)
