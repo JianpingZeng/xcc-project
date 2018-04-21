@@ -495,7 +495,7 @@ public class DAGISelEmitter extends TableGenBackend
                         calleeCode.append(", SDValue ").append(decl);
                         if (prefix.isEmpty())
                         	prefix = decl;
-                        else 
+                        else
                         {
                         	prefix = Util.longestCommonPrefix(prefix, decl);
                         }
@@ -565,7 +565,7 @@ public class DAGISelEmitter extends TableGenBackend
 
                 codeForPatterns.sort(new PatternSortingPredicate(cgp));
                 boolean mightNotMatch = true;
-                /*
+
                 for (int i = 0, e = codeForPatterns.size(); i < e; i++)
                 {
                     ArrayList<Pair<GeneratedCodeKind, String>> generatedCode = codeForPatterns.get(i).second;
@@ -586,8 +586,7 @@ public class DAGISelEmitter extends TableGenBackend
                         System.err.println("' is impossible to select!");
                         System.exit(-1);
                     }
-                }*/
-
+                }
 
                 for (int i = 0, e = codeForPatterns.size(); i < e; i++)
                 {
@@ -597,9 +596,12 @@ public class DAGISelEmitter extends TableGenBackend
 
                 Collections.reverse(codeForPatterns);
 
-                os.printf("SDNode select_%s_%s(SDValue n) {%n",
-                        getLegalJavaName(opName),
-                        getLegalJavaName(opVTStr));
+                os.printf("SDNode select_%s",
+                        getLegalJavaName(opName));
+                String name = getLegalJavaName(opVTStr);
+                if (!name.isEmpty())
+                    os.printf("_%s", name);
+                os.printf("(SDValue n) {%n");
 
                 LinkedList<Pair<PatternToMatch, LinkedList<Pair<GeneratedCodeKind, String>>>> temp = new LinkedList<>();
                 for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr3 : codeForPatterns)
@@ -649,7 +651,7 @@ public class DAGISelEmitter extends TableGenBackend
 
         os.print("SDNode select_DBG_LABEL(SDValue n) {\n"
                 + "  SDValue chain = n.getOperand(0);\n"
-                + "  int c = ((LabelSDNode)n).getLabelID();\n"
+                + "  int c = ((LabelSDNode)n.getNode()).getLabelID();\n"
                 + "  SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));\n"
                 + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.DBG_LABEL,\n"
                 + "                              new EVT(MVT.Other), tmp, chain);\n"
@@ -657,32 +659,34 @@ public class DAGISelEmitter extends TableGenBackend
 
         os.print("SDNode select_EH_LABEL(SDValue n) {\n"
                 + "  SDValue chain = n.getOperand(0);\n"
-                + "  int c = ((LabelSDNode)n).getLabelID();\n"
+                + "  int c = ((LabelSDNode)n.getNode()).getLabelID();\n"
                 + "  SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));\n"
                 + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.EH_LABEL,\n"
                 + "                              new EVT(MVT.Other), tmp, chain);\n"
                 + "}\n\n");
 
+        String targetName = cgp.getTarget().getName().toUpperCase();
+
         os.print("SDNode select_DECLARE(SDValue n) {\n"
                 + "  SDValue chain = n.getOperand(0);\n"
                 + "  SDValue n1 = n.getOperand(1);\n"
                 + "  SDValue n2 = n.getOperand(2);\n"
-                + "  if (!(n1 instanceof FrameIndexSDNode) || !(n2 instanceof GlobalAddressSDNode)) {\n"
+                + "  if (!(n1.getNode() instanceof FrameIndexSDNode) || !(n2.getNode() instanceof GlobalAddressSDNode)) {\n"
                 + "    cannotYetSelect(n);\n"
                 + "  }\n"
-                + "  int fi = ((FrameIndexSDNode)n1).getIndex();\n"
-                + "  GlobalValue gv = ((GlobalAddressSDNode)n2).getGlobal();\n"
+                + "  int fi = ((FrameIndexSDNode)n1.getNode()).getFrameIndex();\n"
+                + "  GlobalValue gv = ((GlobalAddressSDNode)n2.getNode()).getGlobalValue();\n"
                 + "  SDValue tmp1 = "
                 + "curDAG.getTargetFrameIndex(fi, tli.getPointerTy());\n"
                 + "  SDValue tmp2 = "
                 + "curDAG.getTargetGlobalAddress(gv, tli.getPointerTy());\n"
-                + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.DECLARE,\n"
+                + "  return curDAG.selectNodeTo(n.getNode(), \n" + targetName +"GenInstrNames.DECLARE, \n"
                 + "                              new EVT(MVT.Other), tmp1, tmp2, chain);\n"
                 + "}\n\n");
 
         os.print("// The main instruction selector code.\n"
                 + "@Override\npublic SDNode selectCode(SDValue n) {\n"
-                + "  int nvt = n.getNode().getValueType(0).getSimpleVT().SimpleTy;\n"
+                + "  int nvt = n.getNode().getValueType(0).getSimpleVT().simpleVT;\n"
                 + "  switch (n.getOpcode()) {\n"
                 + "  default:\n"
                 + "    assert !n.isMachineOpcode() : \"Node already selected!\";\n"
@@ -809,16 +813,28 @@ public class DAGISelEmitter extends TableGenBackend
             CodeGenTarget target = cgp.getTarget();
             String targetName = target.getName();
             os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
+            os.printf("import backend.target.%s.*;%n", targetName.toLowerCase());
             os.println("import backend.codegen.EVT;");
             os.println("import backend.codegen.MVT;");
             os.println("import backend.codegen.dagisel.*;");
+            os.println("import backend.codegen.dagisel.SelectionDAGISel.*;");
             os.println("import backend.codegen.dagisel.SDNode.*;");
             os.println("import backend.codegen.fastISel.ISD;");
             os.println("import backend.target.TargetInstrInfo;");
             os.println("import backend.target.TargetMachine;");
             os.println("import backend.type.PointerType;");
             os.println("import backend.value.Value;");
+            os.println("import backend.target.TargetMachine.CodeGenOpt;");
+            os.println("import backend.target.TargetMachine.RelocModel;");
+            os.println("import backend.target.TargetMachine.CodeModel;");
+            os.println("import backend.value.GlobalValue;");
+            os.println();
 
+            os.println("import java.util.ArrayList;");
+            os.println("import java.io.ByteArrayOutputStream;");
+            os.println("import java.io.PrintStream;");
+            os.println("import java.util.ArrayList;");
+            os.println("import static backend.support.ErrorHandling.llvmReportError;");
             emitHeader(os, targetName);
 
             emitNodeTransform(os);
