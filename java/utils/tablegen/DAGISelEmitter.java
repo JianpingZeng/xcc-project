@@ -729,7 +729,6 @@ public class DAGISelEmitter extends TableGenBackend
             if (opVTs.size() == 1 && opVTs.get(0).isEmpty())
             {
                 os.println("   return select_" + getLegalJavaName(opName) + "(n);");
-                os.println("    break;");
                 os.println("  }");
                 continue;
             }
