@@ -720,9 +720,9 @@ public final class TreePatternNode implements Cloneable
             HashSet<String> depVars)
     {
         if (node == this) return true;
-        if (node.isLeaf() != isLeaf() || getExtTypes() != node.getExtTypes()
-                || getPredicateFns() != node.getPredicateFns()
-                | getTransformFn() != node.getTransformFn())
+        if (node.isLeaf() != isLeaf() || !Objects.equals(getExtTypes(), node.getExtTypes())
+            || !Objects.equals(getPredicateFns(), node.getPredicateFns()) ||
+            !Objects.equals(getTransformFn(), node.getTransformFn()))
             return false;
 
         if (isLeaf())

@@ -28,22 +28,23 @@ import java.util.ArrayList;
 
 public abstract class X86DAGToDAGISel extends SelectionDAGISel
 {
-    protected X86TargetLowering x86TL;
+    protected X86TargetLowering tli;
     protected X86Subtarget subtarget;
     protected int iselPosition;
+    protected boolean optForSize;
 
     public X86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)
     {
         super(tm, optLevel);
         subtarget = tm.getSubtarget();
-        x86TL = tm.getTargetLowering();
+        tli = tm.getTargetLowering();
     }
 
     @Override
     public void instructionSelect()
     {
         Function f = mf.getFunction();
-        boolean optForSize = f.hasFnAttr(Attribute.OptimizeForSize);
+        optForSize = f.hasFnAttr(Attribute.OptimizeForSize);
         if (optLevel != TargetMachine.CodeGenOpt.None)
             preprocessForFPConvert();
 
@@ -281,7 +282,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     protected SDNode getGlobalBaseReg()
     {
         int baseReg = getTargetMachine().getInstrInfo().getGlobalBaseReg(mf);
-        return curDAG.getRegister(baseReg, new EVT(x86TL.getPointerTy())).getNode();
+        return curDAG.getRegister(baseReg, new EVT(tli.getPointerTy())).getNode();
     }
 
     public X86TargetMachine getTargetMachine()

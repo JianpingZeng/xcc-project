@@ -278,16 +278,16 @@ def In32BitMode  : Predicate<"!subtarget.is64Bit()">;
 def In64BitMode  : Predicate<"subtarget.is64Bit()">;
 def IsWin64      : Predicate<"subtarget.isTargetWin64()">;
 def NotWin64     : Predicate<"!subtarget.isTargetWin64()">;
-def SmallCode    : Predicate<"TM.getCodeModel() == CodeModel::Small">;
-def KernelCode   : Predicate<"TM.getCodeModel() == CodeModel::Kernel">;
-def FarData      : Predicate<"TM.getCodeModel() != CodeModel::Small &&"
-                             "TM.getCodeModel() != CodeModel::Kernel">;
-def NearData     : Predicate<"TM.getCodeModel() == CodeModel::Small ||"
-                             "TM.getCodeModel() == CodeModel::Kernel">;
-def IsStatic     : Predicate<"TM.getRelocationModel() == Reloc::Static">;
-def OptForSpeed  : Predicate<"!OptForSize">;
+def SmallCode    : Predicate<"tm.getCodeModel() == CodeModel.Small">;
+def KernelCode   : Predicate<"tm.getCodeModel() == CodeModel.Kernel">;
+def FarData      : Predicate<"tm.getCodeModel() != CodeModel.Small &&"
+                             "tm.getCodeModel() != CodeModel.Kernel">;
+def NearData     : Predicate<"tm.getCodeModel() == CodeModel.Small ||"
+                             "tm.getCodeModel() == CodeModel.Kernel">;
+def IsStatic     : Predicate<"tm.getRelocationModel() == RelocModel.Static">;
+def OptForSpeed  : Predicate<"!optForSize">;
 def FastBTMem    : Predicate<"!subtarget.isBTMemSlow()">;
-def CallImmAddr  : Predicate<"subtarget.IsLegalToCallImmediateAddr(TM)">;
+def CallImmAddr  : Predicate<"subtarget.isLegalToCallImmediateAddr(tm)">;
 
 //===----------------------------------------------------------------------===//
 // X86 Instruction Format Definitions.

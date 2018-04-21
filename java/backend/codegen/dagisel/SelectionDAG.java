@@ -24,6 +24,7 @@ import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.value.ConstantFP;
 import backend.value.ConstantInt;
+import backend.value.GlobalValue;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
@@ -141,6 +142,12 @@ public class SelectionDAG
         return new SDValue(node, 0);
     }
 
+    public SDValue getNode(int opc, ArrayList<EVT> vts)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
     public SDValue getNode(int opc, EVT vt, SDValue... ops)
     {
         int numOps = ops.length;
@@ -194,6 +201,13 @@ public class SelectionDAG
         }
         allNodes.add(node);
         return new SDValue(node, 0);
+    }
+
+    public SDValue getNode(int opc, EVT vt, ArrayList<SDValue> ops)
+    {
+        SDValue[] temps = new SDValue[ops.size()];
+        ops.toArray(temps);
+        return getNode(opc, vt, temps);
     }
 
     public SDValue getNode(int opc, EVT vt)
@@ -1205,11 +1219,6 @@ public class SelectionDAG
         return 0;
     }
 
-    public SDNode getTargetNode(int opc, EVT[] vts, SDValue[] ops)
-    {
-        return getNode(~opc, getVTList(vts), ops).getNode();
-    }
-
     public static boolean isBuildVectorAllOnes(SDNode n)
     {
         // TODO: 18-4-12
@@ -1246,6 +1255,18 @@ public class SelectionDAG
         return null;
     }
 
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, ArrayList<SDValue> ops)
+    {
+        SDValue[] temps = new SDValue[ops.size()];
+        ops.toArray(temps);
+        return selectNodeTo(n, targetOpc, vt, temps, temps.length);
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue[] ops)
+    {
+        return selectNodeTo(n, targetOpc, vt, ops, ops.length);
+    }
+
     public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt, SDValue[] ops, int numOps)
     {
         // TODO: 18-4-19
@@ -1256,6 +1277,18 @@ public class SelectionDAG
     {
         // TODO: 18-4-19
         return null;
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2, ArrayList<SDValue> ops)
+    {
+        SDValue[] temps = new SDValue[ops.size()];
+        ops.toArray(temps);
+        return selectNodeTo(n, targetOpc, vt1, vt2, temps, temps.length);
+    }
+
+    public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2, SDValue[] ops)
+    {
+        return selectNodeTo(n, targetOpc, vt1, vt2, ops, ops.length);
     }
 
     public SDNode selectNodeTo(SDNode n, int targetOpc, EVT vt1, EVT vt2, SDValue[] ops, int numOps)
@@ -1318,5 +1351,116 @@ public class SelectionDAG
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+    public SDNode getTargetNode(int opc, EVT vt)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt, SDValue op1)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt, SDValue op1, SDValue op2)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt, SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1, SDValue op2)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue[] ops, int len)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue op1, SDValue op2)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue op1, SDValue op2, SDValue op3)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, EVT vt4, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDNode getTargetNode(int opc, ArrayList<EVT> resultTys, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+    public SDNode getTargetNode(int opc, EVT[] resultTys, SDValue[] ops)
+    {
+        // TODO: 18-4-21
+        return null;
+    }
+
+    public SDValue getTargetFrameIndex(int fi, MVT vt)
+    {
+        return null;
+    }
+
+    public SDValue getTargetGlobalAddress(GlobalValue gv, MVT pointerTy)
+    {
+        return null;
+    }
 }
 

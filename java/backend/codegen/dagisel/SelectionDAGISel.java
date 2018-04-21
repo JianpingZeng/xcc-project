@@ -414,4 +414,26 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
     public void replaceUses(SDValue[] f, SDValue[] t)
     {}
+
+    protected boolean checkAndMask(SDValue lhs, SDNode.ConstantSDNode rhs,
+            long desiredMask)
+    {
+        return false;
+    }
+
+    protected boolean checkOrMask(SDValue lhs, SDNode.ConstantSDNode rhs,
+            long desiredMask)
+    {
+        return false;
+    }
+
+    public static boolean isChainCompatible(SDNode chain, SDNode op)
+    {
+        return false;
+    }
+
+    public void selectInlineAsmMemoryOperands(ArrayList<SDValue> ops)
+    {
+        // TODO: 18-4-21
+    }
 }

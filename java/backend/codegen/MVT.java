@@ -123,7 +123,7 @@ public final class MVT implements Comparable<MVT>
                 return "UNKNOWN";
             case iPTR:
             case iPTRAny:
-                return "TLI.getPointerTy()";
+                return "tli.getPointerTy().simpleVT";
             default:
                 return getEnumName(simpleTy);
         }

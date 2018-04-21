@@ -160,10 +160,25 @@ public class PatternCodeEmitter
         return numInputRootOps;
     }
 
-    public boolean emitMatchCode(TreePatternNode node, TreePatternNode parent,
-                              String rootName,
-                              String chainSuffix,
-                                 boolean foundChain)
+    private static boolean disableComplexPatternForNotOpt(TreePatternNode node, CodeGenDAGPatterns cgp)
+    {
+        boolean isStore = !node.isLeaf() && getOpcodeName(node.getOperator(), cgp).equals("ISD.STORE");
+        if (!isStore && nodeHasProperty(node, SDNPHasChain, cgp))
+            return false;
+
+        for (int i = 0, e = node.getNumChildren(); i < e; i++)
+        {
+            if (patternHasProperty(node.getChild(i), SDNPHasChain, cgp))
+                return true;
+        }
+        return false;
+    }
+
+    public boolean emitMatchCode(TreePatternNode node,
+            TreePatternNode parent,
+            String rootName,
+            String chainSuffix,
+            boolean foundChain)
     {
         if (!node.isLeaf() && node.getName().isEmpty())
         {
@@ -177,6 +192,9 @@ public class PatternCodeEmitter
         if (isRoot)
         {
             numInputRootOps = node.getNumChildren();
+            if (disableComplexPatternForNotOpt(node, cgp))
+                emitCheck("optLevel != CodeGenOpt.None");
+
             emitCheck(predicatCheck);
         }
 
@@ -185,7 +203,7 @@ public class PatternCodeEmitter
             IntInit ii = node.getLeafValue() instanceof IntInit ? (IntInit)node.getLeafValue() : null;
             if (ii != null)
             {
-                emitCheck(StringFormatter.format("(ConstantSDNode(%s)).getSExtValue() == %dL",
+                emitCheck(StringFormatter.format("((ConstantSDNode)%s.getNode()).getSExtValue() == %dL",
                         rootName, ii.getValue()).getValue());
                 return false;
             }
@@ -315,9 +333,9 @@ public class PatternCodeEmitter
             {
                 if (!Util.isPowerOf2(ii.getValue()))
                 {
-                    emitInit(StringFormatter.format("SDValue %s0 = %s.geOperand(0);",
+                    emitInit(StringFormatter.format("SDValue %s0 = %s.getOperand(0);",
                             rootName, rootName).getValue());
-                    emitInit(StringFormatter.format("SDValue %s1 = %s.geOperand(1);",
+                    emitInit(StringFormatter.format("SDValue %s1 = %s.getOperand(1);",
                             rootName, rootName).getValue());
 
                     int nTemp = tmpNo++;
@@ -347,29 +365,23 @@ public class PatternCodeEmitter
         {
             String fn = cp.getSelectFunc();
             int numOps = cp.getNumOperands();
-            for (int i = 0; i < numOps; i++)
-            {
-            	emitDecl("cpTmp" + rootName + i);
-            }           
-            emitCode(StringFormatter.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
 
             if (cp.hasProperty(SDNPHasChain))
             {
-                emitDecl("cpInChain");
-                emitDecl("chain" + chainSuffix);
-                emitCode("SDValue cpInChian;");
-                emitCode("SDValue chain" + chainSuffix + ";");
+                numOps += 2;
             }
+
+            for (int i = 0; i < numOps; i++)
+            {
+                emitDecl("cpTmp" + rootName + i);
+            }
+
+            emitCode(StringFormatter.format("// The last two elements for "
+                    + "cpTmp.%nSDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
 
             StringBuilder code = new StringBuilder(fn + "(" + rootName + ", " + rootName);
             code.append(", cpTmp").append(rootName);
-
-            if (cp.hasProperty(SDNPHasChain))
-            {
-                chainName = "chain" + chainSuffix;
-                code.append(", cpInChain, chain").append(chainSuffix);
-            }
-            emitCode(code.append(");").toString());
+            emitCheck(code.append(")").toString());
         }
         return foundChain;
     }
@@ -411,7 +423,7 @@ public class PatternCodeEmitter
                 else
                 {
                     varMapEntry = variableMap.get(child.getName());
-                    emitCheck(varMapEntry + ".equlas(" + rootName + ")");
+                    emitCheck(varMapEntry + ".equals(" + rootName + ")");
                     duplicates.add(rootName);
                     return foundChain;
                 }
@@ -435,23 +447,17 @@ public class PatternCodeEmitter
                     ComplexPattern cp = nodeGetComplexPattern(child, cgp);
                     assert cp != null;
                     String fn = cp.getSelectFunc();
+
                     int numOps = cp.getNumOperands();
+                    if (cp.hasProperty(SDNPHasChain))
+                        numOps += 2;
+
                     for (int i = 0; i < numOps; i++)
                     {
-                    	emitDecl("cpTmp" + rootName + i);
-                    } 
-                    emitCode(StringFormatter.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
-
-                    if (cp.hasProperty(SDNPHasChain))
-                    {
-                        SDNodeInfo info = cgp.getSDNodeInfo(parent.getOperator());
-                        foldedChains.add(Pair.get("cpInChain", info.getNumResults()));
-                        chainName = "chain" + chainSuffix;
-                        emitDecl("cpInChain");
-                        emitDecl(chainName);
-                        emitCode("SDValue cpInChain;");
-                        emitCode("SDValue " + chainName + ";");
+                        emitDecl("cpTmp" + rootName + i);
                     }
+
+                    emitCode(StringFormatter.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps).getValue());
 
                     StringBuilder code = new StringBuilder(fn);
                     code.append("(");
@@ -467,11 +473,9 @@ public class PatternCodeEmitter
                     {
                         code.append(rootName.substring(0, rootName.length()-1)).append(", ");
                     }
+
                     code.append(rootName);
                     code.append(", cpTmp").append(rootName);
-
-                    if (cp.hasProperty(SDNPHasChain))
-                        code.append(", cpInChain, chain").append(chainSuffix);
                     emitCheck(code.append(")").toString());
                 }
                 else if (leafRec.getName().equals("srcvalue"))
@@ -481,12 +485,12 @@ public class PatternCodeEmitter
                 }
                 else if (leafRec.isSubClassOf("ValueType"))
                 {
-                    emitCheck(StringFormatter.format("((VTSDNode)%s).getVT().getSimpleVT().simpleVT == %s",
+                    emitCheck(StringFormatter.format("((VTSDNode)%s.getNode()).getVT().getSimpleVT().simpleVT == MVT.%s",
                             rootName, leafRec.getName()).getValue());
                 }
                 else if (leafRec.isSubClassOf("CondCode"))
                 {
-                    emitCheck(StringFormatter.format("((CondCodeSDNode)%s).get() == ",
+                    emitCheck(StringFormatter.format("((CondCodeSDNode)%s).getCondition() == dagisel.CondCode.%s",
                             rootName, leafRec.getName()).getValue());
                 }
                 else
@@ -501,7 +505,7 @@ public class PatternCodeEmitter
                 IntInit ii = (IntInit)child.getLeafValue();
                 int nTmp = tmpNo++;
                 emitCheck(rootName + ".getNode() instanceof ConstantSDNode");
-                emitCode("ConstantSDNode tmp" + nTmp + " = (ConstantSDNode)" + rootName+";");
+                emitCode("ConstantSDNode tmp" + nTmp + " = (ConstantSDNode)" + rootName+".getNode();");
                 int cTmp = tmpNo++;
                 emitCode("long cn"+cTmp + " = tmp"+ nTmp + ".getSExtValue();");
                 emitCheck("cn"+cTmp+" == " + ii.getValue()+"L");
@@ -825,7 +829,7 @@ public class PatternCodeEmitter
                     case MVT.i64:
                       castType = "long"; break;
                 }
-                String temp = castType.equals("boolean") ? "((ConstantSDNode)"+val+").getZExtValue() != 0":
+                String temp = castType.equals("boolean") ? "((ConstantSDNode)"+val+".getNode()).getZExtValue() != 0":
                                                            "((" + castType +")"+"((ConstantSDNode)"+val+".getNode()).getZExtValue())";
                 emitCode(StringFormatter.format("SDValue %s = curDAG.getTargetConstant(%s, new EVT(%s));", tmpVar, temp,
                       getEnumName(node.getTypeNum(0))).getValue());
@@ -892,7 +896,7 @@ public class PatternCodeEmitter
                 {
                       if (isRoot && node.isLeaf())
                       {
-                          emitCode("replaceUses(node, " + val + ");");
+                          emitCode("replaceUses(n, " + val + ");");
                           emitCode("return null;");
                       }
                 }
@@ -912,8 +916,10 @@ public class PatternCodeEmitter
                 int resNo = tmpNo++;
                 if (di.getDef().isSubClassOf("Regiser"))
                 {
-                    emitCode("SDValue tmp" + resNo + " = curDAG.getRegister("+ di.getDef().getName()
-                        + ", " + getEnumName(node.getTypeNum(0))+");");
+                    String targetRegInfoClassName = cgp.getTarget().getName() + "GenRegisterNames";
+                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getRegister(%s.%s, %s);",
+                            resNo, targetRegInfoClassName, di.getDef().getName(),
+                            getEnumName(node.getTypeNum(0))).getValue());
                     nodeOps.add("tmp" + resNo);
                     return nodeOps;
                 }
@@ -926,8 +932,10 @@ public class PatternCodeEmitter
                 }
                 else if (di.getDef().isSubClassOf("RegisterClass"))
                 {
-                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%sRegisterID, new EVT(MVT.i32));",
-                            resNo, di.getDef().getName()).getValue());
+                    String targetRegInfoClassName = cgp.getTarget().getName() + "GenRegisterInfo";
+
+                    emitCode(StringFormatter.format("SDValue tmp%d = curDAG.getTargetConstant(%s.%sRegClassID, new EVT(MVT.i32));",
+                            resNo, targetRegInfoClassName, di.getDef().getName()).getValue());
                     nodeOps.add("tmp"+resNo);
                     return nodeOps;
                 }
@@ -1097,6 +1105,7 @@ public class PatternCodeEmitter
 
             StringBuilder code = new StringBuilder("opc" + opcNo);
 
+            assert !cgInst.theDef.getName().isEmpty();
             emitOpcode(cgp.getTarget().getName()+"GenInstrNames."+cgInst.theDef.getName());
 
             if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
@@ -1134,7 +1143,7 @@ public class PatternCodeEmitter
                     endAdjust = "-1";
                 }
                 else if (nodeHasOptInFlag)
-                    endAdjust = "-(hasInFlags?1:0)";
+                    endAdjust = "-(hasInFlag?1:0)";
 
                 emitCode("for (int i = numInputRootOps" + (nodeHasChain ? " + 1" : "")
                         + ", e = n.getNumOperands()" + endAdjust + "; i != e; i++) {");
