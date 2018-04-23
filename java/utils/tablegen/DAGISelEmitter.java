@@ -363,7 +363,7 @@ public class DAGISelEmitter extends TableGenBackend
      * Because generated code of ISD.STORE operation is too large to be compiled by Java Compiler, 
      * so we need to split it into multiple small methods for each pattern.
      */
-    private ArrayList<String> emitPatternsForStore(
+    private ArrayList<String> emitPatternsForLargePattern(
             ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> patterns,
             int indent,
             PrintStream os) throws Exception {
@@ -439,6 +439,64 @@ public class DAGISelEmitter extends TableGenBackend
         }
         return smallMethods;
     }
+
+    private void emitPatternsForRedundant(
+            ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> patterns,
+            int indent,
+            PrintStream os) throws Exception
+    {
+        if (patterns.isEmpty()) return;
+        TIntArrayStack indentForBraces = new TIntArrayStack();
+
+        for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr : patterns)
+        {
+            indentForBraces.clear();
+            PatternToMatch pat = itr.first;
+            os.printf("%n%s// Pattern: ", Util.fixedLengthString(indent, ' '));
+            pat.getSrcPattern().print(os);
+
+            os.printf("%n%s// Emits: ", Util.fixedLengthString(indent, ' '));
+            pat.getDstPattern().print(os);
+
+            os.println();
+
+            int addComplexity = pat.getAddedComplexity();
+            os.printf("%s// Pattern complexity = %d, cost = %d, size = %d%n",
+                    Util.fixedLengthString(indent, ' '),
+                    getPatternSize(pat.getSrcPattern(), cgp) + addComplexity,
+                    getResultPatternCost(pat.getDstPattern(), cgp),
+                    getResultPatternSize(pat.getDstPattern(), cgp));
+
+            Collections.reverse(itr.second);
+
+            for (int i = 0, e = itr.second.size(); i < e; i++)
+            {
+                Pair<GeneratedCodeKind, String> codeLine = itr.second.get(i);
+                if (codeLine.first == ExitPredicate)
+                {
+                    os.printf("%s if (%s ", Util.fixedLengthString(indent, ' '), codeLine.second);
+                    for (; i+1 < e && itr.second.get(i+1).first == ExitPredicate; i++)
+                    {
+                        os.printf(" && %n%s%s", Util.fixedLengthString(indent+4, ' '), itr.second.get(i+1).second);
+                    }
+                    os.println(") {");
+                    indentForBraces.push(indentForBraces.size() <= 0 ? indent : indentForBraces.peek()+indent);
+                }
+                else
+                {
+                    os.printf("%s %s%n", Util.fixedLengthString(indent, ' '), codeLine.second);
+                }
+            }
+            if (indentForBraces.size() > 0)
+            {
+                while (indentForBraces.size() > 0)
+                {
+                    int posOfBrace = indentForBraces.pop();
+                    os.printf("%s}%n", Util.fixedLengthString(posOfBrace, ' '));
+                }
+            }
+        }
+    }
     
     private void emitInstructionSelector(PrintStream os) throws Exception
     {
@@ -489,7 +547,6 @@ public class DAGISelEmitter extends TableGenBackend
         }
 
         TreeMap<String, ArrayList<String>> opcodeVTMap = new TreeMap<>();
-
         for (Map.Entry<String, ArrayList<PatternToMatch>> itr : patternsByOpcode.entrySet())
         {
             String opName = itr.getKey();
@@ -538,6 +595,7 @@ public class DAGISelEmitter extends TableGenBackend
                     outputIsVariadicFlags.add(outputIsVariadic.get());
                     numInputRootOpsCounts.add(numInputRootOps.get());
                 }
+
 
                 for (int i = 0, e = codeForPatterns.size(); i < e; i++)
                 {
@@ -693,7 +751,15 @@ public class DAGISelEmitter extends TableGenBackend
                 // avoiding the "code too large" error.
                 if (opName.equals("ISD.STORE"))
                 {
-                    smallMethods = emitPatternsForStore(codeForPatterns, 2, os);
+                    PatternSortingPredicate cmp = new PatternCodeEmitter.PatternSortingPredicate(cgp);
+                    codeForPatterns.sort(cmp);
+                    smallMethods = emitPatternsForLargePattern(codeForPatterns, 2, os);
+                }
+                else if (((opName.equals("ISD.FDIV") || opName.equals("ISD.FSUB")) && opVT == MVT.f32))
+                {
+                    PatternSortingPredicate cmp = new PatternCodeEmitter.PatternSortingPredicate(cgp);
+                    codeForPatterns.sort(cmp);
+                    emitPatternsForRedundant(codeForPatterns, 4, os);
                 }
                 else 
                 {
