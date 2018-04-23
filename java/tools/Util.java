@@ -1,5 +1,6 @@
 package tools;
 
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -388,14 +389,21 @@ public class Util
 
 	public static String fixedLengthString(int repeatNum, String unit)
 	{
-		return String.format("%1$" + repeatNum + "s", unit);
+		if (repeatNum <= 0 || unit == null || unit.isEmpty())
+			return "";
+		StringBuilder sb = new StringBuilder();
+		for (; repeatNum > 0; --repeatNum)
+			sb.append(unit);
+		return sb.toString();
 	}
 
 	public static String fixedLengthString(int repeatNum, char unit)
 	{
 		if (repeatNum <= 0)
 			return "";
-		return String.format("%1$" + repeatNum + "s", unit);
+		char[] temp = new char[repeatNum];
+		Arrays.fill(temp, unit);
+		return String.valueOf(temp);
 	}
 
 	/**

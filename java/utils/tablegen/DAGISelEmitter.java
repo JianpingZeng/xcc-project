@@ -18,6 +18,7 @@
 package utils.tablegen;
 
 import backend.codegen.MVT;
+import gnu.trove.stack.array.TIntArrayStack;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
@@ -371,8 +372,11 @@ public class DAGISelEmitter extends TableGenBackend
         ArrayList<String> smallMethods = new ArrayList<>();
         int suffix = 1;
         os.printf("%sSDNode res = null;%n", Util.fixedLengthString(indent, ' '));
+        TIntArrayStack indentForBraces = new TIntArrayStack();
+
         for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr : patterns)
         {
+            indentForBraces.clear();
             PatternToMatch pat = itr.first;
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PrintStream os2 = new PrintStream(baos);
@@ -394,7 +398,7 @@ public class DAGISelEmitter extends TableGenBackend
             
             boolean retStmtNeeded = false;
             Collections.reverse(itr.second);
-            int numBraces = 0;
+
             for (int i = 0, e = itr.second.size(); i < e; i++)
             {
                 Pair<GeneratedCodeKind, String> codeLine = itr.second.get(i);
@@ -406,7 +410,7 @@ public class DAGISelEmitter extends TableGenBackend
                         os2.printf(" && %n%s%s", Util.fixedLengthString(indent+4, ' '), itr.second.get(i+1).second);
                     }
                     os2.println(") {");
-                    ++numBraces;
+                    indentForBraces.push(indentForBraces.size() <= 0 ? indent : indentForBraces.peek()+indent);
                     retStmtNeeded = true;
                 }
                 else
@@ -414,9 +418,13 @@ public class DAGISelEmitter extends TableGenBackend
                     os2.printf("%s %s%n", Util.fixedLengthString(indent, ' '), codeLine.second);            
                 }
             }
-            if (numBraces > 0)
+            if (indentForBraces.size() > 0)
             {
-                os2.println(Util.fixedLengthString(numBraces, '}'));
+                while (indentForBraces.size() > 0)
+                {
+                    int posOfBrace = indentForBraces.pop();
+                    os2.printf("%s}%n", Util.fixedLengthString(posOfBrace, ' '));
+                }
             }
             if (retStmtNeeded)
                 os2.printf("%s return null;%n", Util.fixedLengthString(indent, ' '));
@@ -681,6 +689,8 @@ public class DAGISelEmitter extends TableGenBackend
                 os.printf("(SDValue n) {%n");
 
                 ArrayList<String> smallMethods = null;
+                // Split the too large method into several small methods for
+                // avoiding the "code too large" error.
                 if (opName.equals("ISD.STORE"))
                 {
                     smallMethods = emitPatternsForStore(codeForPatterns, 2, os);
@@ -719,60 +729,6 @@ public class DAGISelEmitter extends TableGenBackend
                 }
             }
         }
-        /*
-        // Emit boilerplate.
-        os.print("SDNode select_INLINEASM(SDValue n) {\n"
-                        + "  ArrayList<SDValue> ops = new ArrayList<>();"
-                        + "  for (int i = 0, e = n.getNumOperands(); i < e; i++) ops.add(n.getOperand(i));\n"
-                        + "  selectInlineAsmMemoryOperands(ops);\n\n"
-
-                        + "  ArrayList<EVT> vts = new ArrayList<>();\n"
-                        + "  vts.add(new EVT(MVT.Other));\n"
-                        + "  vts.add(new EVT(MVT.Flag));\n"
-                        + "  SDValue newNode = curDAG.getNode(ISD.INLINEASM,"
-                        + "  vts);\n"
-                        + "  return newNode.getNode();\n"
-                        + "}\n\n");
-
-        os.print("SDNode select_UNDEF(SDValue n) {\n"
-                + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.IMPLICIT_DEF,\n"
-                + "                              n.getValueType());\n"
-                + "}\n\n");
-
-        os.print("SDNode select_DBG_LABEL(SDValue n) {\n"
-                + "  SDValue chain = n.getOperand(0);\n"
-                + "  int c = ((LabelSDNode)n.getNode()).getLabelID();\n"
-                + "  SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));\n"
-                + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.DBG_LABEL,\n"
-                + "                              new EVT(MVT.Other), tmp, chain);\n"
-                + "}\n\n");
-
-        os.print("SDNode select_EH_LABEL(SDValue n) {\n"
-                + "  SDValue chain = n.getOperand(0);\n"
-                + "  int c = ((LabelSDNode)n.getNode()).getLabelID();\n"
-                + "  SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));\n"
-                + "  return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.EH_LABEL,\n"
-                + "                              new EVT(MVT.Other), tmp, chain);\n"
-                + "}\n\n");
-
-        String targetName = cgp.getTarget().getName().toUpperCase();
-
-        os.print("SDNode select_DECLARE(SDValue n) {\n"
-                + "  SDValue chain = n.getOperand(0);\n"
-                + "  SDValue n1 = n.getOperand(1);\n"
-                + "  SDValue n2 = n.getOperand(2);\n"
-                + "  if (!(n1.getNode() instanceof FrameIndexSDNode) || !(n2.getNode() instanceof GlobalAddressSDNode)) {\n"
-                + "    cannotYetSelect(n);\n"
-                + "  }\n"
-                + "  int fi = ((FrameIndexSDNode)n1.getNode()).getFrameIndex();\n"
-                + "  GlobalValue gv = ((GlobalAddressSDNode)n2.getNode()).getGlobalValue();\n"
-                + "  SDValue tmp1 = "
-                + "curDAG.getTargetFrameIndex(fi, tli.getPointerTy());\n"
-                + "  SDValue tmp2 = "
-                + "curDAG.getTargetGlobalAddress(gv, tli.getPointerTy());\n"
-                + "  return curDAG.selectNodeTo(n.getNode(), \n" + targetName +"GenInstrNames.DECLARE, \n"
-                + "                              new EVT(MVT.Other), tmp1, tmp2, chain);\n"
-                + "}\n\n"); */
 
         os.print("// The main instruction selector code.\n"
                 + "@Override\npublic SDNode selectCode(SDValue n) {\n"
@@ -874,21 +830,6 @@ public class DAGISelEmitter extends TableGenBackend
                 + "  }\n"
                 + "  return null;\n"
                 + "}\n\n");
-        /*
-        os.print("void cannotYetSelect(SDValue n)\n" +
-                "{\n" +
-                "  ByteArrayOutputStream baos = new ByteArrayOutputStream();\n" +
-                "  PrintStream os = new PrintStream(baos);\n" +
-                "  os.print(\"Cannot yet select: \");\n" +
-                "  n.getNode().print(os, curDAG);\n" +
-                "  os.close();\n" +
-                "  llvmReportError(baos.toString());\n" +
-                "}\n" +
-                "\n" +
-                "void cannotYetSelectIntrinsic(SDValue n) \n" +
-                "{\n" +
-                "  System.err.println(\"Cannot yet select intrinsic function.\");\n" +
-                "}"); */
     }
 
     @Override
