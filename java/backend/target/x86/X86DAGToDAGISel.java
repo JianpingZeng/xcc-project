@@ -98,7 +98,14 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     public void replaceUses(SDNode oldNode, SDNode newNode)
     {
         ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
-        curDAG.replaceAllUsesOfValueWith(oldNode, newNode, isu);
+        curDAG.replaceAllUsesWith(oldNode, newNode, isu);
+        iselPosition = isu.getIselPos();
+    }
+
+    public void replaceUses(SDValue oldVal, SDValue newVal)
+    {
+        ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+        curDAG.replaceAllUsesOfValueWith(oldVal, newVal, isu);
         iselPosition = isu.getIselPos();
     }
 
