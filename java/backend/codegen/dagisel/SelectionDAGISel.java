@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
+import backend.codegen.dagisel.SDNode.LabelSDNode;
 import backend.codegen.fastISel.ISD;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
@@ -33,10 +34,13 @@ import backend.value.Instruction.TerminatorInst;
 import tools.Pair;
 import tools.Util;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
+import static backend.support.ErrorHandling.llvmReportError;
 
 /**
  * This class defined here attempts to implement the conversion from LLVM IR -> DAG -> target-specific DAG
@@ -435,5 +439,58 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     public void selectInlineAsmMemoryOperands(ArrayList<SDValue> ops)
     {
         // TODO: 18-4-21
+    }
+
+    public SDNode select_INLINEASM(SDValue n)
+    {
+        ArrayList<SDValue> ops = new ArrayList<>();
+        for (int i = 0, e = n.getNumOperands(); i < e; i++)
+            ops.add(n.getOperand(i));
+        selectInlineAsmMemoryOperands(ops);
+
+        ArrayList<EVT> vts = new ArrayList<>();
+        vts.add(new EVT(MVT.Other));
+        vts.add(new EVT(MVT.Flag));
+        SDValue newNode = curDAG.getNode(ISD.INLINEASM,  vts);
+        return newNode.getNode();
+    }
+
+    public SDNode select_UNDEF(SDValue n)
+    {
+        return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.IMPLICIT_DEF,
+                n.getValueType());
+    }
+
+    public SDNode select_DBG_LABEL(SDValue n)
+    {
+        SDValue chain = n.getOperand(0);
+        int c = ((LabelSDNode)n.getNode()).getLabelID();
+        SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
+        return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.DBG_LABEL,
+                new EVT(MVT.Other), tmp, chain);
+    }
+
+    public SDNode select_EH_LABEL(SDValue n)
+    {
+        SDValue chain = n.getOperand(0);
+        int c = ((LabelSDNode)n.getNode()).getLabelID();
+        SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
+        return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.EH_LABEL,
+                new EVT(MVT.Other), tmp, chain);
+    }
+
+    public void cannotYetSelect(SDValue n)
+    {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream os = new PrintStream(baos);
+        os.print("Cannot yet select: ");
+        n.getNode().print(os, curDAG);
+        os.close();
+        llvmReportError(baos.toString());
+    }
+
+    public void cannotYetSelectIntrinsic(SDValue n)
+    {
+        System.err.println("Cannot yet select intrinsic function.");
     }
 }

@@ -24,6 +24,7 @@ import tools.Util;
 import utils.tablegen.Init.IntInit;
 import utils.tablegen.PatternCodeEmitter.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
@@ -355,6 +356,82 @@ public class DAGISelEmitter extends TableGenBackend
         return sb.toString();
     }
 
+    /**
+     * Emit patterns for STORE instruction.
+     * <br></br>
+     * Because generated code of ISD.STORE operation is too large to be compiled by Java Compiler, 
+     * so we need to split it into multiple small methods for each pattern.
+     */
+    private ArrayList<String> emitPatternsForStore(
+            ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> patterns,
+            int indent,
+            PrintStream os) throws Exception {
+        if (patterns.isEmpty()) return null;
+        
+        ArrayList<String> smallMethods = new ArrayList<>();
+        int suffix = 1;
+        os.printf("%sSDNode res = null;%n", Util.fixedLengthString(indent, ' '));
+        for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr : patterns)
+        {
+            PatternToMatch pat = itr.first;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintStream os2 = new PrintStream(baos);
+            os2.printf("SDNode select_ISD_STORE_%d(SDValue n) {", suffix);
+            os2.printf("%n%s// Pattern: ", Util.fixedLengthString(indent, ' '));
+            pat.getSrcPattern().print(os2);
+
+            os2.printf("%n%s// Emits: ", Util.fixedLengthString(indent, ' '));
+            pat.getDstPattern().print(os2);
+
+            os2.println();
+
+            int addComplexity = pat.getAddedComplexity();
+            os2.printf("%s// Pattern complexity = %d, cost = %d, size = %d%n",
+                    Util.fixedLengthString(indent, ' '),
+                    getPatternSize(pat.getSrcPattern(), cgp) + addComplexity,
+                    getResultPatternCost(pat.getDstPattern(), cgp),
+                    getResultPatternSize(pat.getDstPattern(), cgp));
+            
+            boolean retStmtNeeded = false;
+            Collections.reverse(itr.second);
+            int numBraces = 0;
+            for (int i = 0, e = itr.second.size(); i < e; i++)
+            {
+                Pair<GeneratedCodeKind, String> codeLine = itr.second.get(i);
+                if (codeLine.first == ExitPredicate)
+                {
+                    os2.printf("%s if (%s ", Util.fixedLengthString(indent, ' '), codeLine.second);            
+                    for (; i+1 < e && itr.second.get(i+1).first == ExitPredicate; i++)        
+                    {
+                        os2.printf(" && %n%s%s", Util.fixedLengthString(indent+4, ' '), itr.second.get(i+1).second);
+                    }
+                    os2.println(") {");
+                    ++numBraces;
+                    retStmtNeeded = true;
+                }
+                else
+                {
+                    os2.printf("%s %s%n", Util.fixedLengthString(indent, ' '), codeLine.second);            
+                }
+            }
+            if (numBraces > 0)
+            {
+                os2.println(Util.fixedLengthString(numBraces, '}'));
+            }
+            if (retStmtNeeded)
+                os2.printf("%s return null;%n", Util.fixedLengthString(indent, ' '));
+
+            os2.println("}");
+            os2.close();
+            smallMethods.add(baos.toString());
+                       
+            os.printf("%sres = select_ISD_STORE_%d(n);%n", Util.fixedLengthString(indent, ' '), suffix);
+            os.printf("%sif (res != null) return res;%n", Util.fixedLengthString(indent, ' '));
+            ++suffix;
+        }
+        return smallMethods;
+    }
+    
     private void emitInstructionSelector(PrintStream os) throws Exception
     {
         TreeMap<String, ArrayList<PatternToMatch>> patternsByOpcode =
@@ -603,16 +680,23 @@ public class DAGISelEmitter extends TableGenBackend
                     os.printf("_%s", name);
                 os.printf("(SDValue n) {%n");
 
-                LinkedList<Pair<PatternToMatch, LinkedList<Pair<GeneratedCodeKind, String>>>> temp = new LinkedList<>();
-                for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr3 : codeForPatterns)
+                ArrayList<String> smallMethods = null;
+                if (opName.equals("ISD.STORE"))
                 {
-                    LinkedList<Pair<GeneratedCodeKind, String>> list = new LinkedList<>();
-                    list.addAll(itr3.second);
-                    temp.add(Pair.get(itr3.first,list));
+                    smallMethods = emitPatternsForStore(codeForPatterns, 2, os);
                 }
-                //
-                emitPatterns(temp, 4, os);
-
+                else 
+                {
+                    LinkedList<Pair<PatternToMatch, LinkedList<Pair<GeneratedCodeKind, String>>>> temp = new LinkedList<>();
+                    for (Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> itr3 : codeForPatterns)
+                    {
+                        LinkedList<Pair<GeneratedCodeKind, String>> list = new LinkedList<>();
+                        list.addAll(itr3.second);
+                        temp.add(Pair.get(itr3.first,list));
+                    }
+                    //
+                    emitPatterns(temp, 4, os);
+                }
                 if (mightNotMatch)
                 {
                     os.println();
@@ -627,9 +711,15 @@ public class DAGISelEmitter extends TableGenBackend
                     os.println("  return null;");
                 }
                 os.println("}\n");
+                
+                // for splitting select_ISD_STORE method.
+                if (opName.equals("ISD.STORE") && smallMethods != null)
+                {
+                    smallMethods.forEach(method-> os.println(method));
+                }
             }
         }
-
+        /*
         // Emit boilerplate.
         os.print("SDNode select_INLINEASM(SDValue n) {\n"
                         + "  ArrayList<SDValue> ops = new ArrayList<>();"
@@ -682,7 +772,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "curDAG.getTargetGlobalAddress(gv, tli.getPointerTy());\n"
                 + "  return curDAG.selectNodeTo(n.getNode(), \n" + targetName +"GenInstrNames.DECLARE, \n"
                 + "                              new EVT(MVT.Other), tmp1, tmp2, chain);\n"
-                + "}\n\n");
+                + "}\n\n"); */
 
         os.print("// The main instruction selector code.\n"
                 + "@Override\npublic SDNode selectCode(SDValue n) {\n"
@@ -784,7 +874,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "  }\n"
                 + "  return null;\n"
                 + "}\n\n");
-
+        /*
         os.print("void cannotYetSelect(SDValue n)\n" +
                 "{\n" +
                 "  ByteArrayOutputStream baos = new ByteArrayOutputStream();\n" +
@@ -798,7 +888,7 @@ public class DAGISelEmitter extends TableGenBackend
                 "void cannotYetSelectIntrinsic(SDValue n) \n" +
                 "{\n" +
                 "  System.err.println(\"Cannot yet select intrinsic function.\");\n" +
-                "}");
+                "}"); */
     }
 
     @Override

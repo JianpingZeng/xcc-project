@@ -19,10 +19,13 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
+import backend.codegen.dagisel.SDNode.FrameIndexSDNode;
+import backend.codegen.dagisel.SDNode.GlobalAddressSDNode;
 import backend.codegen.dagisel.SDNode.HandleSDNode;
 import backend.support.Attribute;
 import backend.target.TargetMachine;
 import backend.value.Function;
+import backend.value.GlobalValue;
 
 import java.util.ArrayList;
 
@@ -288,5 +291,24 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     public X86TargetMachine getTargetMachine()
     {
         return (X86TargetMachine)super.getTargetMachine();
+    }
+
+    public SDNode select_DECLARE(SDValue n)
+    {
+        SDValue chain = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        SDValue n2 = n.getOperand(2);
+        if (!(n1.getNode() instanceof FrameIndexSDNode)
+                || !(n2.getNode() instanceof GlobalAddressSDNode))
+        {
+            cannotYetSelect(n);
+        }
+        int fi = ((FrameIndexSDNode)n1.getNode()).getFrameIndex();
+        GlobalValue gv = ((GlobalAddressSDNode)n2.getNode()).getGlobalValue();
+        SDValue tmp1 = curDAG.getTargetFrameIndex(fi, tli.getPointerTy());
+        SDValue tmp2 = curDAG.getTargetGlobalAddress(gv, tli.getPointerTy());
+        return curDAG.selectNodeTo(n.getNode(),
+                X86GenInstrNames.DECLARE,
+                new EVT(MVT.Other), tmp1, tmp2, chain);
     }
 }
