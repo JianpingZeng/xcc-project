@@ -29,10 +29,7 @@ import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.ListIterator;
+import java.util.*;
 
 import static backend.codegen.dagisel.SDNode.*;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
@@ -697,7 +694,7 @@ public class SelectionDAG
         return new SDValue(node, 0);
     }
 
-    static boolean isCommutativeBinOp(int opc)
+    private static boolean isCommutativeBinOp(int opc)
     {
         switch (opc)
         {
@@ -1194,9 +1191,200 @@ public class SelectionDAG
         return erased;
     }
 
-    public void replaceAllUsesOfValueWith(SDNode oldNode, SDNode newNode, DAGUpdateListener listener)
+    /**
+     * Replace any uses of {@code oldNode} with {@code newNode}, leaving uses
+     * of other values produced by {@code oldNode.getNode()} alone.
+     * @param oldNode
+     * @param newNode
+     * @param listener
+     */
+    public void replaceAllUsesOfValueWith(
+            SDValue oldNode,
+            SDValue newNode,
+            DAGUpdateListener listener)
     {
-        // TODO: 2018/4/10
+        if (Objects.equals(oldNode, newNode)) return;
+        if (oldNode.getNode().getNumValues() == 1)
+        {
+            // handle trivial case
+            replaceAllUsesWith(oldNode.getNode(), newNode.getNode(), listener);
+            return;
+        }
+
+        ArrayList<SDUse> useList = oldNode.getNode().useList;
+        int i = 0, e = useList.size();
+
+        while (i < e)
+        {
+            SDUse u = useList.get(i);
+            SDNode user = u.User;
+            boolean userRemovedFromCSEMaps = false;
+
+            do
+            {
+                u = useList.get(i);
+                if (u.getResNo() != oldNode.getResNo())
+                {
+                    ++i;
+                    continue;
+                }
+                if (!userRemovedFromCSEMaps)
+                {
+                    removeNodeFromCSEMaps(user);
+                    userRemovedFromCSEMaps = true;
+                }
+                ++i;
+                u.set(newNode);
+            }while (i < e && useList.get(i).User.equals(user));
+
+            if (!userRemovedFromCSEMaps)
+                continue;
+
+            addModifiedNodeToCSEMaps(user, listener);
+        }
+    }
+    private static boolean doNotCSE(SDNode node)
+    {
+        if (node.getValueType(0).getSimpleVT().simpleVT == MVT.Flag)
+            return true;
+
+        switch (node.getOpcode())
+        {
+            default: break;
+            case ISD.HANDLENODE:
+            case ISD.DBG_LABEL:
+            case ISD.DBG_STOPPOINT:
+            case ISD.EH_LABEL:
+            case ISD.DECLARE:
+                return true;
+        }
+
+        for (int i = 0,e = node.getNumValues(); i < e; i++)
+        {
+            if (node.getValueType(i).getSimpleVT().simpleVT == MVT.Flag)
+                return true;
+        }
+        return false;
+    }
+
+    private void addModifiedNodeToCSEMaps(SDNode node, DAGUpdateListener listener)
+    {
+        if (!doNotCSE(node))
+        {
+            FoldingSetNodeID compute = new FoldingSetNodeID();
+            addNodeToID(compute, node);
+            int id = compute.computeHash();
+            if (cseMap.containsKey(id))
+            {
+                SDNode existing = cseMap.get(id);
+                replaceAllUsesWith(node, existing, listener);
+
+                if (listener != null)
+                    listener.nodeDeleted(node, existing);
+                deleteNodeNotInCSEMap(node);
+            }
+        }
+        if (listener != null)
+            listener.nodeUpdated(node);
+    }
+
+    private void deleteNodeNotInCSEMap(SDNode node)
+    {
+        assert !Objects.equals(node,allNodes.get(0));
+        assert node.isUseEmpty();
+
+        node.dropOperands();
+        markNodeAsDeallocated(node);
+    }
+
+    private void markNodeAsDeallocated(SDNode node)
+    {
+        // Mark the node as Deleted for capturing bug.
+        node.nodeID = ISD.DELETED_NODE;
+    }
+
+    public void replaceAllUsesWith(
+            SDNode oldNode,
+            SDNode newNode,
+            DAGUpdateListener listener)
+    {
+        if (Objects.equals(oldNode, newNode))
+            return;
+
+        ArrayList<SDUse> useList = oldNode.useList;
+        int i = 0, e = useList.size();
+
+        while (i < e)
+        {
+            SDUse u = useList.get(i);
+            SDNode user = u.User;
+            removeNodeFromCSEMaps(user);
+
+            do
+            {
+                u = useList.get(i);
+                ++i;
+                u.setNode(newNode);
+            }while (i < e && useList.get(i).User.equals(user));
+            addModifiedNodeToCSEMaps(user, listener);
+        }
+    }
+
+    public void replaceAllUsesWith(
+            SDNode from, SDValue to,
+            DAGUpdateListener listener)
+    {
+        if (from.getNumValues() == 1)
+        {
+            replaceAllUsesWith(new SDValue(from, 0), to, listener);
+            return;
+        }
+
+        ArrayList<SDUse> useList = from.useList;
+        int i = 0, e = useList.size();
+
+        while (i < e)
+        {
+            SDUse u = useList.get(i);
+            SDNode user = u.User;
+            removeNodeFromCSEMaps(user);
+
+            do
+            {
+                u = useList.get(i);
+                ++i;
+                u.set(to);
+            }while (i < e && useList.get(i).User.equals(user));
+            addModifiedNodeToCSEMaps(user, listener);
+        }
+    }
+
+    public void replaceAllUsesWith(
+            SDValue oldNode, SDValue newNode,
+            DAGUpdateListener listener)
+    {
+        SDNode from = oldNode.getNode();
+        assert from.getNumValues() == 1 && oldNode.getResNo() == 0:
+                "Can't replace with this method!";
+        assert !Objects.equals(from, newNode.getNode()) :"Can't replace uses of with self!";
+
+        ArrayList<SDUse> useList = from.useList;
+        int i = 0, e = useList.size();
+
+        while (i < e)
+        {
+            SDUse u = useList.get(i);
+            SDNode user = u.User;
+            removeNodeFromCSEMaps(user);
+
+            do
+            {
+                u = useList.get(i);
+                ++i;
+                u.set(newNode);
+            }while (i < e && useList.get(i).User.equals(user));
+            addModifiedNodeToCSEMaps(user, listener);
+        }
     }
 
     public SDValue getRegister(int reg, EVT ty)
