@@ -101,6 +101,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         return nodeID;
     }
 
+    public void setNodeID(int id)
+    {
+        nodeID = id;
+    }
+
     public boolean hasNumUsesOfValue(int numOfUses, int value)
     {
         assert value < getNumValues():"Illegal value!";
@@ -1142,10 +1147,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public static class JumpTableSDNode extends SDNode
     {
         private int jumpTableIndex;
-        public JumpTableSDNode(int jit, EVT vt, boolean isTarget)
+        public JumpTableSDNode(int jti, EVT vt, boolean isTarget)
         {
             super(isTarget?ISD.TargetJumpTable:ISD.JumpTable, getSDVTList(vt));
-            jumpTableIndex = jit;
+            jumpTableIndex = jti;
         }
 
         public int getJumpTableIndex()
@@ -1218,14 +1223,14 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public static class BasicBlockSDNode extends SDNode
     {
-        private BasicBlock bb;
-        public BasicBlockSDNode(BasicBlock bb)
+        private MachineBasicBlock bb;
+        public BasicBlockSDNode(MachineBasicBlock bb)
         {
             super(ISD.BasicBlock, getSDVTList(new EVT(MVT.Other)));
             this.bb = bb;
         }
 
-        public BasicBlock getBasicBlock()
+        public MachineBasicBlock getBasicBlock()
         {
             return bb;
         }
@@ -1264,9 +1269,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public static class LabelSDNode extends SDNode
     {
         private int labelID;
-        public LabelSDNode(int nodeTy, EVT vt, SDValue ch, int labelID)
+        public LabelSDNode(int nodeTy, SDValue ch, int labelID)
         {
-            super(nodeTy, getSDVTList(vt));
+            super(nodeTy, getSDVTList(new EVT(MVT.Other)));
             initOperands(ch);
             this.labelID = labelID;
         }
@@ -1474,5 +1479,17 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         {
             return 0;
         }
+    }
+
+    public static class SrcValueSDNode extends SDNode
+    {
+        private Value val;
+        public SrcValueSDNode(Value val)
+        {
+            super(ISD.SRCVALUE, getSDVTList(new EVT(MVT.Other)));
+            this.val = val;
+        }
+
+        public Value getValue() { return val; }
     }
 }

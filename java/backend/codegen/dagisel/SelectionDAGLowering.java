@@ -33,17 +33,21 @@ import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
+import backend.type.ArrayType;
 import backend.type.SequentialType;
 import backend.type.StructType;
 import backend.type.Type;
 import backend.utils.InstVisitor;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 
 /**
  * @author Xlous.zeng
@@ -244,13 +248,115 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             :"Copy from a arg to the same reg";
         assert !TargetRegisterInfo.isPhysicalRegister(reg):"Is a physical reg?";
 
-        // TODO: 18-4-8
+        RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
+        SDValue chain = dag.getEntryNode();
+        OutParamWrapper<SDValue> x = new OutParamWrapper<>(chain);
+        rfv.getCopyFromRegs(op, dag, x, null);
+        chain = x.get();
+        pendingExports.add(chain);
     }
 
     public SDValue getValue(Value val)
     {
-        // TODO: 18-4-8
-        return null;
+        if (nodeMap.containsKey(val)) return nodeMap.get(val);
+
+        if (val instanceof Constant)
+        {
+            Constant cnt = (Constant)val;
+            EVT vt = tli.getValueType(cnt.getType(), true);
+            if (cnt instanceof ConstantInt)
+            {
+                SDValue n = dag.getConstant((ConstantInt)cnt, vt, false);
+                nodeMap.put(val, n);
+                return n;
+            }
+            if (cnt instanceof GlobalValue)
+            {
+                SDValue n = dag.getGlobalAddress((GlobalValue)cnt, vt, 0, false, 0);
+                nodeMap.put(val, n);
+                return n;
+            }
+            if (cnt instanceof ConstantPointerNull)
+            {
+                SDValue n = dag.getConstant(0, vt, false);
+                nodeMap.put(val, n);
+                return n;
+            }
+            if (cnt instanceof ConstantFP)
+            {
+                SDValue n = dag.getConstantFP((ConstantFP)cnt, vt, false);
+                nodeMap.put(val, n);
+                return n;
+            }
+            if (cnt instanceof Value.UndefValue)
+            {
+                SDValue n = dag.getUNDEF(vt);
+                nodeMap.put(val, n);
+                return n;
+            }
+            if (cnt instanceof ConstantExpr)
+            {
+                ConstantExpr ce = (ConstantExpr)cnt;
+                visit(ce.getOpcode(), ce);
+                SDValue n1 = nodeMap.get(val);
+                assert n1.getNode() != null;
+                return n1;
+            }
+
+            if(cnt instanceof ConstantStruct || cnt instanceof ConstantArray)
+            {
+                ArrayList<SDValue> constants = new ArrayList<>();
+                for (int i = 0, e = cnt.getNumOfOperands(); i < e; i++)
+                {
+                    SDNode elt = getValue(cnt.operand(i)).getNode();
+                    for (int j = 0, ee = elt.getNumValues(); j < ee;j++)
+                        constants.add(new SDValue(elt, j));
+                }
+                return dag.getMergeValues(constants);
+            }
+
+            if (cnt.getType() instanceof StructType || cnt.getType() instanceof ArrayType)
+            {
+                assert cnt instanceof ConstantAggregateZero ||
+                        cnt instanceof Value.UndefValue:"Unknown struct or array constant!";
+
+                ArrayList<EVT> valueVTs = new ArrayList<>();
+                computeValueVTs(tli, cnt.getType(), valueVTs);
+                int numElts = valueVTs.size();
+                if (numElts == 0)
+                    return new SDValue();
+
+                ArrayList<SDValue> constants = new ArrayList<>();
+                for (int i = 0; i < numElts; i++)
+                {
+                    EVT eltVT = valueVTs.get(i);
+                    if (cnt instanceof Value.UndefValue)
+                        constants.add(dag.getUNDEF(eltVT));
+                    else if (eltVT.isFloatingPoint())
+                        constants.add(dag.getConstantFP(0, eltVT, false));
+                    else
+                        constants.add(dag.getConstant(0, eltVT, false));
+                }
+                return dag.getMergeValues(constants);
+            }
+
+            Util.shouldNotReachHere("Vector type not supported!");
+            return null;
+        }
+        if(val instanceof Instruction.AllocaInst)
+        {
+            if (funcInfo.staticAllocaMap.containsKey(val))
+                return dag.getFrameIndex(funcInfo.staticAllocaMap.get(val),
+                        new EVT(tli.getPointerTy()), false);
+        }
+        int inReg = funcInfo.valueMap.get(val);
+        assert inReg != 0:"Value not in map!";
+        RegsForValue rfv = new RegsForValue(tli, inReg, val.getType());
+        SDValue chain = dag.getEntryNode();
+        OutParamWrapper<SDValue> x = new OutParamWrapper<>(chain);
+        SDValue res = rfv.getCopyFromRegs(dag, x, null);
+        chain  = x.get();
+        return res;
     }
 
     public void setValue(Value val, SDValue sdVal)
@@ -262,6 +368,174 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     public void lowerCallTo(CallSite cs, SDValue callee, boolean isTailCall)
     {}
 
+    public void visit(Operator opc, User u)
+    {
+        switch (opc)
+        {
+            case Ret:
+                visitRet(u);
+                break;
+            case Br:
+                visitBr(u);
+                break;
+            case Switch:
+                visitSwitch(u);
+                break;
+            case Unreachable:
+                // binary operator
+                Util.shouldNotReachHere();
+                break;
+            // add
+            case Add:
+                visitAdd(u);
+                break;
+            case FAdd:
+                visitFAdd(u);
+                break;
+            // subtractive
+            case Sub:
+                visitSub(u);
+                break;
+            case FSub:
+                visitFSub(u);
+                break;
+            // multiple
+            case Mul:
+                visitMul(u);
+                break;
+            case FMul:
+                visitFMul(u);
+                break;
+            // division
+            case UDiv:
+                visitUDiv(u);
+                break;
+            case SDiv:
+                visitSDiv(u);
+                break;
+            case FDiv:
+                visitFDiv(u);
+                break;
+            // mod operation
+            case URem:
+                visitURem(u);
+                break;
+            case SRem:
+                visitSRem(u);
+                break;
+            case FRem:
+                visitFRem(u);
+                break;
+            // bit-operation
+            case And:
+                visitAnd(u);
+                break;
+            case Or:
+                visitOr(u);
+                break;
+            case Xor:
+                visitXor(u);
+                break;
+            // comparison operation
+            case ICmp:
+                visitICmp(u);
+                break;
+            case FCmp:
+                visitFCmp(u);
+                break;
+            // shift operation
+            case Shl:
+                visitShl(u);
+                break;
+            case LShr:
+                visitLShr(u);
+                break;
+            case AShr:
+                visitAShr(u);
+                break;
+            // converts operation
+            //truncate integers.
+            case Trunc:
+                visitTrunc(u);
+                break;
+            // zero extend integers.
+            case ZExt:
+                visitZExt(u);
+                break;
+            // Sign extend integers.
+            case SExt:
+                visitSExt(u);
+                break;
+            // floatint-pint to unsigned integer.
+            case FPToUI:
+                visitFPToUI(u);
+                break;
+            // floating point to signed integer.
+            case FPToSI:
+                visitFPToSI(u);
+                break;
+            // unsigned integer to floating-point.
+            case UIToFP:
+                visitUIToFP(u);
+                break;
+            // signed integer to floating-point.
+            case SIToFP:
+                visitSIToFP(u);
+                break;
+            // floating point truncate.
+            case FPTrunc:
+                visitFPTrunc(u);
+                break;
+            // float point extend.
+            case FPExt:
+                visitFPExt(u);
+                break;
+            // pointer to integer.
+            case PtrToInt:
+                visitPtrToInt(u);
+                break;
+            // Integer to pointer.
+            case IntToPtr:
+                visitIntToPtr(u);
+                break;
+            // type cast.
+            case BitCast:
+                visitBitCast(u);
+                break;
+            // memory operation
+            case Alloca:
+                visitAlloca(u);
+                break;
+            case Free:
+                visitFree(u);
+                break;
+            case Malloc:
+                visitMalloc(u);
+                break;
+            case Store:
+                visitStore(u);
+                break;
+            case Load:
+                visitLoad(u);
+                break;
+            // other operation
+            case Phi:
+                visitPhiNode(u);
+                break;
+            case Call:
+                visitCall(u);
+                break;
+            case GetElementPtr:
+                visitGetElementPtr(u);
+                break;
+            // Select instruction acts as ?: operator in C language.
+            case Select:
+                visitSelect(u);
+                break;
+            default:
+                Util.shouldNotReachHere("Unknown operator!");
+        }
+    }
 
     @Override
     public Void visitRet(Instruction.ReturnInst inst)
@@ -718,6 +992,10 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     @Override
     public Void visitSelect(SelectInst inst)
     {
+        visitSelect((User) inst);
         return null;
     }
+
+    private void visitSelect(User u)
+    {}
 }
