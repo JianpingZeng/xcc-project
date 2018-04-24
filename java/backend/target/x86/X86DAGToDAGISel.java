@@ -87,7 +87,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     private void selectRootInit()
     {
-        dagSize = curDAG.assignTopoLogicalOrder();
+        dagSize = curDAG.assignTopologicalOrder();
     }
 
     /**
@@ -139,7 +139,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     public static X86DAGToDAGISel createX86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level)
     {
-        return null;//new X86GenDAGToDAGISel(tm, level);
+        return new X86GenDAGToDAGISel(tm, level);
     }
 
     @Override
@@ -310,10 +310,11 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         {
             cannotYetSelect(n);
         }
+        EVT pty = new EVT(tli.getPointerTy());
         int fi = ((FrameIndexSDNode)n1.getNode()).getFrameIndex();
         GlobalValue gv = ((GlobalAddressSDNode)n2.getNode()).getGlobalValue();
-        SDValue tmp1 = curDAG.getTargetFrameIndex(fi, tli.getPointerTy());
-        SDValue tmp2 = curDAG.getTargetGlobalAddress(gv, tli.getPointerTy());
+        SDValue tmp1 = curDAG.getTargetFrameIndex(fi, pty);
+        SDValue tmp2 = curDAG.getTargetGlobalAddress(gv, pty, 0, 0);
         return curDAG.selectNodeTo(n.getNode(),
                 X86GenInstrNames.DECLARE,
                 new EVT(MVT.Other), tmp1, tmp2, chain);
