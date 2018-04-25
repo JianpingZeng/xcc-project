@@ -16,14 +16,9 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.ir.MallocInst;
-import backend.ir.SelectInst;
 import backend.utils.InstVisitor;
 import backend.value.*;
-import backend.value.Instruction.BranchInst;
-import backend.value.Instruction.PhiNode;
-import backend.value.Instruction.SwitchInst;
-import backend.value.Instruction.TerminatorInst;
+import backend.value.Instruction.*;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -449,288 +444,289 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitRet(Instruction.ReturnInst inst)
+    public Void visitRet(User inst)
     {
         markOverdefined(inst);
         return null;
     }
 
     @Override
-    public Void visitBr(BranchInst inst)
+    public Void visitBr(User inst)
     {
-        visitTerminatorInst(inst);
+        visitTerminatorInst((TerminatorInst)inst);
         return null;
     }
 
     @Override
-    public Void visitSwitch(SwitchInst inst)
+    public Void visitSwitch(User inst)
     {
-        visitTerminatorInst(inst);
+        visitTerminatorInst((TerminatorInst)inst);
         return null;
     }
 
     @Override
-    public Void visitAdd(Instruction.BinaryOps inst)
-    {
-        visitBinaryOp(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitFAdd(Instruction.BinaryOps inst)
+    public Void visitAdd(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSub(Instruction.BinaryOps inst)
+    public Void visitFAdd(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFSub(Instruction.BinaryOps inst)
+    public Void visitSub(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitMul(Instruction.BinaryOps inst)
+    public Void visitFSub(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFMul(Instruction.BinaryOps inst)
+    public Void visitMul(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitUDiv(Instruction.BinaryOps inst)
+    public Void visitFMul(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSDiv(Instruction.BinaryOps inst)
+    public Void visitUDiv(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFDiv(Instruction.BinaryOps inst)
+    public Void visitSDiv(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitURem(Instruction.BinaryOps inst)
+    public Void visitFDiv(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSRem(Instruction.BinaryOps inst)
+    public Void visitURem(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFRem(Instruction.BinaryOps inst)
+    public Void visitSRem(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitAnd(Instruction.BinaryOps inst)
+    public Void visitFRem(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitOr(Instruction.BinaryOps inst)
+    public Void visitAnd(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitXor(Instruction.BinaryOps inst)
+    public Void visitOr(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitShl(Instruction.BinaryOps inst)
+    public Void visitXor(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitLShr(Instruction.BinaryOps inst)
+    public Void visitShl(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitAShr(Instruction.BinaryOps inst)
+    public Void visitLShr(User inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitICmp(Instruction.ICmpInst inst)
+    public Void visitAShr(User inst)
     {
-        visitCmpInst(inst);
+        visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFCmp(Instruction.FCmpInst inst)
+    public Void visitICmp(User inst)
     {
-        visitCmpInst(inst);
+        visitCmpInst((Instruction.CmpInst)inst);
         return null;
     }
 
     @Override
-    public Void visitTrunc(Instruction.CastInst inst)
+    public Void visitFCmp(User inst)
+    {
+        visitCmpInst((Instruction.CmpInst) inst);
+        return null;
+    }
+
+    @Override
+    public Void visitTrunc(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitZExt(Instruction.CastInst inst)
+    public Void visitZExt(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitSExt(Instruction.CastInst inst)
+    public Void visitSExt(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitFPToUI(Instruction.CastInst inst)
+    public Void visitFPToUI(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitFPToSI(Instruction.CastInst inst)
+    public Void visitFPToSI(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitUIToFP(Instruction.CastInst inst)
+    public Void visitUIToFP(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitSIToFP(Instruction.CastInst inst)
+    public Void visitSIToFP(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitFPTrunc(Instruction.CastInst inst)
+    public Void visitFPTrunc(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visistFPExt(Instruction.CastInst inst)
+    public Void visitFPExt(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitPtrToInt(Instruction.CastInst inst)
+    public Void visitPtrToInt(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitIntToPtr(Instruction.CastInst inst)
+    public Void visitIntToPtr(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitBitCast(Instruction.CastInst inst)
+    public Void visitBitCast(User inst)
     {
         visitCastInst(inst);
         return null;
     }
 
     @Override
-    public Void visitAlloca(Instruction.AllocaInst inst)
+    public Void visitAlloca(User inst)
     {
         markOverdefined(inst);
         return null;
     }
 
     @Override
-    public Void visitMalloc(MallocInst inst)
+    public Void visitMalloc(User inst)
     {
         markOverdefined(inst);
         return null;
     }
 
     @Override
-    public Void visitLoad(Instruction.LoadInst inst)
+    public Void visitLoad(User inst)
     {
         markOverdefined(inst);
         return null;
     }
 
     @Override
-    public Void visitStore(Instruction.StoreInst inst)
+    public Void visitStore(User inst)
     {
         // Empty statement, skip this StoreInst.
         return null;
     }
 
     @Override
-    public Void visitCall(Instruction.CallInst inst)
+    public Void visitCall(User inst)
     {
         markOverdefined(inst);
         return null;
     }
 
     @Override
-    public Void visitGetElementPtr(Instruction.GetElementPtrInst inst)
+    public Void visitGetElementPtr(User u)
     {
+        GetElementPtrInst inst = (GetElementPtrInst)u;
         if (getLatticeStatus(inst).isOverdefined())
             return null;
 
@@ -835,8 +831,9 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitPhiNode(PhiNode inst)
+    public Void visitPhiNode(User u)
     {
+        PhiNode inst = (PhiNode)u;
         LatticeStatus phiLS = getLatticeStatus(inst);
 
         if (phiLS.isOverdefined())
@@ -888,7 +885,7 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitSelect(SelectInst inst)
+    public Void visitSelect(User u)
     {
         assert false:"SCCP not support select instruction currently!";
         return null;

@@ -1,12 +1,9 @@
 package backend.utils;
 
-import backend.ir.AllocationInst;
-import backend.ir.MallocInst;
-import backend.ir.SelectInst;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
-import backend.value.Instruction.*;
+import backend.value.User;
 
 import java.util.List;
 
@@ -40,165 +37,194 @@ public interface InstVisitor<RetTy>
 		{
 			default:
 				assert false : "Undefined instruction type encountered!";
-				System.exit(-1);
+				return null;
+			case None:
+				break;
+			case Ret:
+				break;
+			case Br:
+				break;
+			case Switch:
+				break;
+			case Unreachable:
+				break;
+			case Alloca:
+				break;
+			case Free:
+				break;
+			case Malloc:
+				break;
+			case Store:
+				break;
+			case Load:
+				break;
+			case Phi:
+				break;
+			case Call:
+				break;
+			case GetElementPtr:
+				break;
+			case Select:
+				break;
 			case Add:
-				return visitAdd((BinaryOps) inst);
+				return visitAdd(inst);
 			case FAdd:
-				return visitFAdd((BinaryOps) inst);
+				return visitFAdd(inst);
 			case Sub:
-				return visitSub((BinaryOps) inst);
+				return visitSub(inst);
 			case FSub:
-				return visitFSub((BinaryOps) inst);
+				return visitFSub(inst);
 			case Mul:
-				return visitMul((BinaryOps) inst);
+				return visitMul(inst);
 			case FMul:
-				return visitFMul((BinaryOps) inst);
+				return visitFMul(inst);
 			case UDiv:
-				return visitUDiv((BinaryOps) inst);
+				return visitUDiv(inst);
 			case SDiv:
-				return visitSDiv((BinaryOps) inst);
+				return visitSDiv(inst);
 			case FDiv:
-				return visitFDiv((BinaryOps) inst);
+				return visitFDiv(inst);
 			case URem:
-				return visitURem((BinaryOps) inst);
+				return visitURem(inst);
 			case SRem:
-				return visitSRem((BinaryOps) inst);
+				return visitSRem(inst);
 			case FRem:
-				return visitFRem((BinaryOps) inst);
+				return visitFRem(inst);
 			case And:
-				return visitAnd((BinaryOps) inst);
+				return visitAnd(inst);
 			case Or:
-				return visitOr((BinaryOps) inst);
+				return visitOr(inst);
 			case Xor:
-				return visitXor((BinaryOps) inst);
+				return visitXor(inst);
 			case Shl:
-				return visitShl((BinaryOps) inst);
+				return visitShl(inst);
 			case AShr:
-				return visitAShr((BinaryOps) inst);
+				return visitAShr(inst);
 			case LShr:
-				return visitLShr((BinaryOps) inst);
+				return visitLShr(inst);
 			case ICmp:
-				return visitICmp((ICmpInst) inst);
+				return visitICmp(inst);
 			case FCmp:
-				return visitFCmp((FCmpInst) inst);
+				return visitFCmp(inst);
 			case Trunc:
-				return visitTrunc((CastInst) inst);
+				return visitTrunc(inst);
 			case ZExt:
-				return visitZExt((CastInst) inst);
+				return visitZExt(inst);
 			case SExt:
-				return visitSExt((CastInst) inst);
+				return visitSExt(inst);
 			case FPToUI:
-				return visitFPToUI((CastInst) inst);
+				return visitFPToUI(inst);
 			case FPToSI:
-				return visitFPToSI((CastInst) inst);
+				return visitFPToSI(inst);
 			case UIToFP:
-				return visitUIToFP((CastInst) inst);
+				return visitUIToFP(inst);
 			case SIToFP:
-				return visitSIToFP((CastInst) inst);
+				return visitSIToFP(inst);
 			case FPTrunc:
-				return visitFPTrunc((CastInst) inst);
+				return visitFPTrunc(inst);
 			case FPExt:
-				return visistFPExt((CastInst) inst);
+				return visitFPExt(inst);
 			case PtrToInt:
-				return visitPtrToInt((CastInst) inst);
+				return visitPtrToInt(inst);
 			case IntToPtr:
-				return visitIntToPtr((CastInst) inst);
+				return visitIntToPtr(inst);
 			case BitCast:
-				return visitBitCast((CastInst) inst);
+				return visitBitCast(inst);
 		}
+		return null;
 	}
 
 	//==============================================//
 	// branch instr.
 	//==============================================//
-	RetTy visitRet(ReturnInst inst);
+	RetTy visitRet(User inst);
 
-	RetTy visitBr(BranchInst inst);
+	RetTy visitBr(User inst);
 
-	RetTy visitSwitch(SwitchInst inst);
+	RetTy visitSwitch(User inst);
 
 	//===============================================//
 	// arithmetic instr.
 	//===============================================//
-	default RetTy visitAdd(BinaryOps inst)
+	default RetTy visitAdd(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitFAdd(BinaryOps inst)
+	default RetTy visitFAdd(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitSub(BinaryOps inst)
+	default RetTy visitSub(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitFSub(BinaryOps inst)
+	default RetTy visitFSub(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitMul(BinaryOps inst)
+	default RetTy visitMul(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitFMul(BinaryOps inst)
+	default RetTy visitFMul(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitUDiv(BinaryOps inst)
+	default RetTy visitUDiv(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitSDiv(BinaryOps inst)
+	default RetTy visitSDiv(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitFDiv(BinaryOps inst)
+	default RetTy visitFDiv(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitURem(BinaryOps inst)
+	default RetTy visitURem(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitSRem(BinaryOps inst)
+	default RetTy visitSRem(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitFRem(BinaryOps inst)
+	default RetTy visitFRem(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitBinaryOp(BinaryOps inst)
+	default RetTy visitBinaryOp(User inst)
 	{
-		return visitBinaryOp(inst);
+		return null;	
 	}
 
 	//===============================================//
 	// bitwise operator.
 	//===============================================//
-	default RetTy visitAnd(BinaryOps inst)
+	default RetTy visitAnd(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitOr(BinaryOps inst)
+	default RetTy visitOr(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitXor(BinaryOps inst)
+	default RetTy visitXor(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
@@ -206,17 +232,17 @@ public interface InstVisitor<RetTy>
 	//=============================================//
 	// shift operators.
 	//============================================//
-	default RetTy visitShl(BinaryOps inst)
+	default RetTy visitShl(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitLShr(BinaryOps inst)
+	default RetTy visitLShr(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
 
-	default RetTy visitAShr(BinaryOps inst)
+	default RetTy visitAShr(User inst)
 	{
 		return visitBinaryOp(inst);
 	}
@@ -224,110 +250,118 @@ public interface InstVisitor<RetTy>
 	//===============================================//
 	// comparison instr.
 	//===============================================//
-	RetTy visitICmp(ICmpInst inst);
+	RetTy visitICmp(User inst);
 
-	RetTy visitFCmp(FCmpInst inst);
+	RetTy visitFCmp(User inst);
 
 	//==============================================//
 	// cast operators.
 	//=============================================//
-	default RetTy visitTrunc(CastInst inst)
+	default RetTy visitTrunc(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitZExt(CastInst inst)
+	default RetTy visitZExt(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitSExt(CastInst inst)
+	default RetTy visitSExt(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitFPToUI(CastInst inst)
+	default RetTy visitFPToUI(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitFPToSI(CastInst inst)
+	default RetTy visitFPToSI(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitUIToFP(CastInst inst)
+	default RetTy visitUIToFP(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitSIToFP(CastInst inst)
+	default RetTy visitSIToFP(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitFPTrunc(CastInst inst)
+	default RetTy visitFPTrunc(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visistFPExt(CastInst inst)
+	default RetTy visitFPExt(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitPtrToInt(CastInst inst)
+	default RetTy visitPtrToInt(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitIntToPtr(CastInst inst)
+	default RetTy visitIntToPtr(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	default RetTy visitBitCast(CastInst inst)
+	default RetTy visitBitCast(User inst)
 	{
 		return visitCastInst(inst);
 	}
 
-	RetTy visitCastInst(CastInst inst);
+	default RetTy visitCastInst(User inst)
+    {
+        return null;
+    }
 
 	//===============================================//
 	// memory operator.
 	//===============================================//
-	default RetTy visitAlloca(AllocaInst inst)
+	default RetTy visitAlloca(User inst)
 	{
 		return visitAllocationInst(inst);
 	}
 
-	default RetTy visitMalloc(MallocInst inst)
+	default RetTy visitMalloc(User inst)
 	{
 		return visitAllocationInst(inst);
 	}
 
-	default RetTy visitAllocationInst(AllocationInst inst)
+	default RetTy visitAllocationInst(User inst)
 	{
 		return null;
 	}
 
-	RetTy visitLoad(LoadInst inst);
+	default RetTy visitFree(User inst)
+    {
+        return null;
+    }
 
-	RetTy visitStore(StoreInst inst);
+	RetTy visitLoad(User inst);
+
+	RetTy visitStore(User inst);
 
 	//==============================================//
 	// other operators.
 	//==============================================//
-	RetTy visitCall(CallInst inst);
+	RetTy visitCall(User inst);
 
-	RetTy visitGetElementPtr(GetElementPtrInst inst);
+	RetTy visitGetElementPtr(User inst);
 
-	RetTy visitPhiNode(PhiNode inst);
+	RetTy visitPhiNode(User inst);
 
 	/**
 	 * Visit Select instruciton in LLVM IR programming reference.
 	 * @param inst
 	 * @return
 	 */
-	RetTy visitSelect(SelectInst inst);
+	RetTy visitSelect(User inst);
 }
