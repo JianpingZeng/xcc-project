@@ -18,12 +18,13 @@
 package backend.analysis.aa;
 
 import backend.ir.AllocationInst;
-import backend.ir.MallocInst;
 import backend.ir.SelectInst;
 import backend.pass.ModulePass;
 import backend.support.CallSite;
 import backend.utils.InstVisitor;
 import backend.value.*;
+import backend.value.Instruction.CallInst;
+import backend.value.Instruction.PhiNode;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import java.util.ArrayList;
@@ -365,9 +366,9 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
      * @return
      */
     @Override
-    public Void visitRet(Instruction.ReturnInst inst)
+    public Void visitRet(User inst)
     {
-        Function fn = inst.getParent().getParent();
+        Function fn = ((Instruction)inst).getParent().getParent();
         assert fn != null:"Instruction isn't attacted into a Function!";
         assert returnNodes.containsKey(fn):
                 "ReturnInst must be handled in collectConstraints() method before!";
@@ -378,32 +379,33 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     @Override
-    public Void visitBr(Instruction.BranchInst inst)
+    public Void visitBr(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitSwitch(Instruction.SwitchInst inst)
+    public Void visitSwitch(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitICmp(Instruction.ICmpInst inst)
+    public Void visitICmp(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitFCmp(Instruction.FCmpInst inst)
+    public Void visitFCmp(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitCastInst(Instruction.CastInst inst)
+    public Void visitCastInst(User u)
     {
+        Instruction inst = (Instruction)u;
         // We just needs to handle such instruction of type pointer type.
         if (!inst.getType().isPointerType())
             return null;
@@ -427,7 +429,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     @Override
-    public Void visitAllocationInst(AllocationInst inst)
+    public Void visitAllocationInst(User inst)
     {
         Node srcNode = getPointerNode(inst);
         assert srcNode != null:"The operand of allocation inst isn't collected in identifyObjects method!";
@@ -443,7 +445,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
      * @return
      */
     @Override
-    public Void visitLoad(Instruction.LoadInst inst)
+    public Void visitLoad(User inst)
     {
         Node valNode = getValueNode(inst);
         Node ptrNode = getPointerNode(inst.operand(0));
@@ -460,7 +462,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
      * @return
      */
     @Override
-    public Void visitStore(Instruction.StoreInst inst)
+    public Void visitStore(User inst)
     {
         Node valNode = getValueNode(inst.operand(0));
         Node ptrNode = getPointerNode(inst.operand(1));
@@ -477,8 +479,9 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     @Override
-    public Void visitCall(Instruction.CallInst inst)
+    public Void visitCall(User u)
     {
+        CallInst inst = (CallInst) u;
         // We would take two steps to handle constraints on the Call instruction as follows.
         // Step 1: treat all passing argument as copy constraint.
         if (inst.getCalledFunction().isVarArg())
@@ -515,7 +518,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
      * @return
      */
     @Override
-    public Void visitGetElementPtr(Instruction.GetElementPtrInst inst)
+    public Void visitGetElementPtr(User inst)
     {
         Node destNode = getPointerNode(inst);
         assert destNode != null:"The GEP instruction isn't handled yet in identifyObjects() method!";
@@ -525,8 +528,9 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     @Override
-    public Void visitPhiNode(Instruction.PhiNode inst)
+    public Void visitPhiNode(User u)
     {
+        PhiNode inst = (PhiNode)u;
         // Only those phi node with type of pointer are needed to be handled.
         if (!inst.getType().isPointerType())
             return null;
@@ -548,14 +552,15 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
 
     /**
-     * This method works as same as {@linkplain #visitPhiNode(Instruction.PhiNode)}.
+     * This method works as same as {@linkplain #visitPhiNode(User)}.
      * It simplicitly merge all values into a representative one.
-     * @param inst
+     * @param u
      * @return
      */
     @Override
-    public Void visitSelect(SelectInst inst)
+    public Void visitSelect(User u)
     {
+        SelectInst inst = (SelectInst)u;
         if (!inst.getType().isPointerType())
             return null;
         Node destNode = getPointerNode(inst);

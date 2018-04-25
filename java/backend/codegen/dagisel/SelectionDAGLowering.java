@@ -24,9 +24,6 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineInstr;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.codegen.fastISel.ISD;
-import backend.ir.AllocationInst;
-import backend.ir.MallocInst;
-import backend.ir.SelectInst;
 import backend.support.BackendCmdOptions;
 import backend.support.CallSite;
 import backend.target.TargetData;
@@ -39,6 +36,8 @@ import backend.type.StructType;
 import backend.type.Type;
 import backend.utils.InstVisitor;
 import backend.value.*;
+import backend.value.Instruction.CmpInst;
+import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -538,19 +537,19 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitRet(Instruction.ReturnInst inst)
+    public Void visitRet(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitBr(Instruction.BranchInst inst)
+    public Void visitBr(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitSwitch(Instruction.SwitchInst inst)
+    public Void visitSwitch(User inst)
     {
         return null;
     }
@@ -584,13 +583,15 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitBinaryOp(Instruction.BinaryOps inst)
+    public Void visitBinaryOp(User inst)
     {
+        Operator op = inst instanceof Instruction ?
+                ((Instruction)inst).getOpcode() : ((ConstantExpr)inst).getOpcode();
         SDValue op1 = getValue(inst.operand(0));
         SDValue op2 = getValue(inst.operand(1));
-        int opc = getSDOpc(inst.getOpcode());
+        int opc = getSDOpc(op);
         assert opc >= 0;
-        if (inst.getOpcode().isShift())
+        if (op.isShift())
         {
             if (!op2.getValueType().equals(tli.getShiftAmountTy()))
             {
@@ -611,13 +612,12 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
         else
         {
-            setValue(inst, dag.getNode(getSDOpc(inst.getOpcode()),
-                    op1.getValueType(), op1, op2));
+            setValue(inst, dag.getNode(opc, op1.getValueType(), op1, op2));
         }
         return null;
     }
 
-    private CondCode getICmpCondCode(Instruction.CmpInst.Predicate pred)
+    private CondCode getICmpCondCode(Predicate pred)
     {
         switch (pred)
         {
@@ -637,7 +637,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
     }
 
-    private CondCode getFCmpCondCode(Instruction.FCmpInst.Predicate pred)
+    private CondCode getFCmpCondCode(Predicate pred)
     {
         CondCode fpc, foc;
         switch (pred)
@@ -711,9 +711,10 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitICmp(Instruction.ICmpInst inst)
+    public Void visitICmp(User inst)
     {
-        Instruction.CmpInst.Predicate pred = inst.getPredicate();
+        Predicate pred = inst instanceof CmpInst ?((CmpInst)inst).getPredicate() :
+                ((ConstantExpr)inst).getPredicate();
         SDValue op1 = getValue(inst.operand(0));
         SDValue op2 = getValue(inst.operand(1));
         CondCode opc = getICmpCondCode(pred);
@@ -723,9 +724,11 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitFCmp(Instruction.FCmpInst inst)
+    public Void visitFCmp(User inst)
     {
-        Instruction.CmpInst.Predicate pred = inst.getPredicate();
+        Predicate pred = inst instanceof CmpInst ?
+                ((CmpInst)inst).getPredicate() :
+                ((ConstantExpr)inst).getPredicate();
         SDValue op1 = getValue(inst.operand(0));
         SDValue op2 = getValue(inst.operand(1));
         CondCode opc = getFCmpCondCode(pred);
@@ -735,7 +738,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitTrunc(Instruction.CastInst inst)
+    public Void visitTrunc(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -744,7 +747,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitZExt(Instruction.CastInst inst)
+    public Void visitZExt(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -753,7 +756,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitSExt(Instruction.CastInst inst)
+    public Void visitSExt(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -762,7 +765,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitFPToUI(Instruction.CastInst inst)
+    public Void visitFPToUI(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -771,7 +774,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitFPToSI(Instruction.CastInst inst)
+    public Void visitFPToSI(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -780,7 +783,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitUIToFP(Instruction.CastInst inst)
+    public Void visitUIToFP(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -789,7 +792,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitSIToFP(Instruction.CastInst inst)
+    public Void visitSIToFP(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -798,7 +801,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitFPTrunc(Instruction.CastInst inst)
+    public Void visitFPTrunc(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -807,7 +810,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visistFPExt(Instruction.CastInst inst)
+    public Void visitFPExt(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -816,7 +819,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitPtrToInt(Instruction.CastInst inst)
+    public Void visitPtrToInt(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         EVT srcVT = tli.getValueType(inst.operand(0).getType());
@@ -831,7 +834,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitIntToPtr(Instruction.CastInst inst)
+    public Void visitIntToPtr(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         EVT srcVT = tli.getValueType(inst.operand(0).getType());
@@ -846,7 +849,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitBitCast(Instruction.CastInst inst)
+    public Void visitBitCast(User inst)
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
@@ -859,51 +862,43 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitCastInst(Instruction.CastInst inst)
-    {
-        // TODO: 18-3-20
-        assert false:"TODO";
-        return null;
-    }
-
-    @Override
-    public Void visitAlloca(Instruction.AllocaInst inst)
+    public Void visitAlloca(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitMalloc(MallocInst inst)
+    public Void visitMalloc(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitAllocationInst(AllocationInst inst)
+    public Void visitAllocationInst(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitLoad(Instruction.LoadInst inst)
+    public Void visitLoad(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitStore(Instruction.StoreInst inst)
+    public Void visitStore(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitCall(Instruction.CallInst inst)
+    public Void visitCall(User inst)
     {
         return null;
     }
 
     @Override
-    public Void visitGetElementPtr(Instruction.GetElementPtrInst inst)
+    public Void visitGetElementPtr(User inst)
     {
         SDValue node = getValue(inst.operand(0));
         Type ty = inst.operand(0).getType();
@@ -984,18 +979,19 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitPhiNode(Instruction.PhiNode inst)
+    public Void visitPhiNode(User inst)
+    {
+        return null;
+    }
+
+    public Void visitSelect(User u)
     {
         return null;
     }
 
     @Override
-    public Void visitSelect(SelectInst inst)
+    public Void visitFree(User inst)
     {
-        visitSelect((User) inst);
         return null;
     }
-
-    private void visitSelect(User u)
-    {}
 }
