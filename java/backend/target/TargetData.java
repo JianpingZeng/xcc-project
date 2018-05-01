@@ -30,8 +30,8 @@ public class TargetData implements ImmutablePass
         INTEGER_ALIGN('i'),
         VECTOR_ALIGN('v'),
         FLOAT_ALIGN('f'),
-        AGGREGATE_TYPE('a'),
-        STACK_OBJECT('s');
+        AGGREGATE_ALIGN('a'),
+        STACK_ALIGN('s');
 
         public char name;
         AlignTypeEnum(char name)
@@ -219,7 +219,7 @@ public class TargetData implements ImmutablePass
         setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 8, (byte) 64); // f64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 8, (byte) 8, (byte) 64); // v2i32, v1i64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 16, (byte) 16, (byte) 128); // v16i8, v8i16, v4i32,...
-        setAlignment(AGGREGATE_TYPE, (byte) 0, (byte) 8, (byte) 0); // struct
+        setAlignment(AGGREGATE_ALIGN, (byte) 0, (byte) 8, (byte) 0); // struct
 
         while (temp.length() != 0) {
 
@@ -247,7 +247,7 @@ public class TargetData implements ImmutablePass
                 case 'f':
                 case 's':
                 case 'a': {
-                    AlignTypeEnum alignType = AlignTypeEnum.STACK_OBJECT;
+                    AlignTypeEnum alignType = AlignTypeEnum.STACK_ALIGN;
                     switch (arg0.charAt(i)) {
                         case 'i':
                             alignType = AlignTypeEnum.INTEGER_ALIGN;
@@ -259,10 +259,10 @@ public class TargetData implements ImmutablePass
                             alignType = AlignTypeEnum.FLOAT_ALIGN;
                             break;
                         case 's':
-                            alignType = AlignTypeEnum.STACK_OBJECT;
+                            alignType = AlignTypeEnum.STACK_ALIGN;
                             break;
                         case 'a':
-                            alignType = AGGREGATE_TYPE;
+                            alignType = AGGREGATE_ALIGN;
                             break;
                     }
                     int size = Integer.parseInt(arg0.substring(1));
@@ -543,7 +543,7 @@ public class TargetData implements ImmutablePass
 					return 1;
 
 				StructLayout layout = getStructLayout(st);
-				int align = getAlignmentInfo(AGGREGATE_TYPE, 0, abiOrPref, ty);
+				int align = getAlignmentInfo(AGGREGATE_ALIGN, 0, abiOrPref, ty);
 				return Math.max(align, layout.getAlignment());
 			}
 			case IntegerTyID:
@@ -628,5 +628,15 @@ public class TargetData implements ImmutablePass
 	public long getTypePaddedSize(Type ty)
 	{
 		return roundUpAlignment(getTypeStoreSize(ty), getABITypeAlignment(ty));
+	}
+
+	public int getCallFrameTypeAlignment(Type ty)
+	{
+		for (TargetAlignElem elt : alignments)
+		{
+			if (elt.alignType == STACK_ALIGN)
+				return elt.abiAlign;
+		}
+		return getABITypeAlignment(ty);
 	}
 }

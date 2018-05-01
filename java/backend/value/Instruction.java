@@ -408,6 +408,57 @@ public abstract class Instruction extends User
         this.parent = bb;
     }
 
+    public boolean isSafeToSpecutativelyExecute()
+    {
+        for (int i = 0,e = getNumOfOperands(); i < e; i++)
+        {
+            if (operand(i) instanceof Constant)
+            {
+                Constant cn = (Constant) operand(i);
+                if (cn.canTrap()) return false;
+            }
+        }
+
+        switch (getOpcode())
+        {
+            default: return true;
+            case UDiv:
+            case URem:
+                return operand(1) instanceof ConstantInt &&
+                        !((ConstantInt)operand(1)).isNullValue();
+            case SDiv:
+            case SRem:
+                return operand(1) instanceof ConstantInt &&
+                        !((ConstantInt)operand(1)).isNullValue() &&
+                        !((ConstantInt)((ConstantInt) operand(1))).isAllOnesValue();
+            case Load:
+            {
+                if (((LoadInst)this).isVolatile())
+                    return false;
+                if (operand(0) instanceof AllocationInst)
+                    return true;
+                if (operand(0) instanceof GlobalVariable)
+                {
+                    GlobalVariable gv = (GlobalVariable)operand(0);
+                    return !gv.hasExternalLinkage();
+                }
+                return false;
+            }
+            case Call:
+                return false;
+            case Alloca:
+            case Malloc:
+            case Phi:
+            case Store:
+            case Free:
+            case Ret:
+            case Br:
+            case Switch:
+            case Unreachable:
+                return false; // Misc instructions which have effects
+        }
+    }
+
     /**
      * The abstract base class definition for unary operator.
      */
@@ -2515,6 +2566,11 @@ public abstract class Instruction extends User
                 addAttribute(n, Attribute.NoCapture);
             else
                 removeAttribute(n, Attribute.NoCapture);
+        }
+
+        public boolean isTailCall()
+        {
+            return tailCall;
         }
     }
 

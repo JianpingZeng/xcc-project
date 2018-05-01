@@ -18,26 +18,23 @@
 package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineInstr;
+import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.codegen.fastISel.ISD;
+import backend.support.Attribute;
 import backend.support.BackendCmdOptions;
 import backend.support.CallSite;
+import backend.support.CallingConv;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.type.ArrayType;
-import backend.type.SequentialType;
-import backend.type.StructType;
-import backend.type.Type;
+import backend.type.*;
 import backend.utils.InstVisitor;
 import backend.value.*;
-import backend.value.Instruction.CmpInst;
+import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -47,6 +44,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
+import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 
 /**
  * @author Xlous.zeng
@@ -91,8 +90,10 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         ConstantInt low;
         ConstantInt high;
         MachineBasicBlock mbb;
+
         Case()
-        {}
+        {
+        }
 
         Case(ConstantInt lowVal, ConstantInt highVal, MachineBasicBlock mbb)
         {
@@ -106,10 +107,9 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             return high.getSExtValue() - low.getSExtValue() + 1;
         }
 
-        @Override
-        public int compareTo(Case o)
+        @Override public int compareTo(Case o)
         {
-            return high.getValue().slt(o.low.getValue())?1:-1;
+            return high.getValue().slt(o.low.getValue()) ? 1 : -1;
         }
     }
 
@@ -118,6 +118,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         long mask;
         MachineBasicBlock mbb;
         int bits;
+
         CaseBits(long mask, MachineBasicBlock mbb, int bits)
         {
             this.mask = mask;
@@ -125,8 +126,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             this.bits = bits;
         }
 
-        @Override
-        public int compareTo(CaseBits o)
+        @Override public int compareTo(CaseBits o)
         {
             return Integer.compare(bits, o.bits);
         }
@@ -163,9 +163,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     TargetMachine.CodeGenOpt optLevel;
     boolean hasTailCall;
 
-    public SelectionDAGLowering(SelectionDAG dag,
-            TargetLowering tli, FunctionLoweringInfo funcInfo,
-            TargetMachine.CodeGenOpt level)
+    public SelectionDAGLowering(SelectionDAG dag, TargetLowering tli,
+            FunctionLoweringInfo funcInfo, TargetMachine.CodeGenOpt level)
     {
         this.dag = dag;
         this.tli = tli;
@@ -202,8 +201,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
         SDValue[] vals = new SDValue[pendingLoads.size()];
         pendingLoads.toArray(vals);
-        SDValue root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-                vals);
+        SDValue root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), vals);
         pendingLoads.clear();
         dag.setRoot(root);
         return root;
@@ -232,8 +230,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
         SDValue[] vals = new SDValue[pendingExports.size()];
         pendingExports.toArray(vals);
-        root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-                vals);
+        root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), vals);
         pendingExports.clear();
         dag.setRoot(root);
         return root;
@@ -242,10 +239,11 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     public void copyValueToVirtualRegister(Value val, int reg)
     {
         SDValue op = getValue(val);
-        assert op.getOpcode() != ISD.CopyFromReg ||
-                ((RegisterSDNode)op.getOperand(1).getNode()).getReg() != reg
-            :"Copy from a arg to the same reg";
-        assert !TargetRegisterInfo.isPhysicalRegister(reg):"Is a physical reg?";
+        assert op.getOpcode() != ISD.CopyFromReg
+                || ((RegisterSDNode) op.getOperand(1).getNode()).getReg()
+                != reg : "Copy from a arg to the same reg";
+        assert !TargetRegisterInfo
+                .isPhysicalRegister(reg) : "Is a physical reg?";
 
         RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
         SDValue chain = dag.getEntryNode();
@@ -257,21 +255,23 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
     public SDValue getValue(Value val)
     {
-        if (nodeMap.containsKey(val)) return nodeMap.get(val);
+        if (nodeMap.containsKey(val))
+            return nodeMap.get(val);
 
         if (val instanceof Constant)
         {
-            Constant cnt = (Constant)val;
+            Constant cnt = (Constant) val;
             EVT vt = tli.getValueType(cnt.getType(), true);
             if (cnt instanceof ConstantInt)
             {
-                SDValue n = dag.getConstant((ConstantInt)cnt, vt, false);
+                SDValue n = dag.getConstant((ConstantInt) cnt, vt, false);
                 nodeMap.put(val, n);
                 return n;
             }
             if (cnt instanceof GlobalValue)
             {
-                SDValue n = dag.getGlobalAddress((GlobalValue)cnt, vt, 0, false, 0);
+                SDValue n = dag
+                        .getGlobalAddress((GlobalValue) cnt, vt, 0, false, 0);
                 nodeMap.put(val, n);
                 return n;
             }
@@ -283,7 +283,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             }
             if (cnt instanceof ConstantFP)
             {
-                SDValue n = dag.getConstantFP((ConstantFP)cnt, vt, false);
+                SDValue n = dag.getConstantFP((ConstantFP) cnt, vt, false);
                 nodeMap.put(val, n);
                 return n;
             }
@@ -295,20 +295,20 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             }
             if (cnt instanceof ConstantExpr)
             {
-                ConstantExpr ce = (ConstantExpr)cnt;
+                ConstantExpr ce = (ConstantExpr) cnt;
                 visit(ce.getOpcode(), ce);
                 SDValue n1 = nodeMap.get(val);
                 assert n1.getNode() != null;
                 return n1;
             }
 
-            if(cnt instanceof ConstantStruct || cnt instanceof ConstantArray)
+            if (cnt instanceof ConstantStruct || cnt instanceof ConstantArray)
             {
                 ArrayList<SDValue> constants = new ArrayList<>();
                 for (int i = 0, e = cnt.getNumOfOperands(); i < e; i++)
                 {
                     SDNode elt = getValue(cnt.operand(i)).getNode();
-                    for (int j = 0, ee = elt.getNumValues(); j < ee;j++)
+                    for (int j = 0, ee = elt.getNumValues(); j < ee; j++)
                         constants.add(new SDValue(elt, j));
                 }
                 return dag.getMergeValues(constants);
@@ -316,8 +316,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
             if (cnt.getType() instanceof StructType || cnt.getType() instanceof ArrayType)
             {
-                assert cnt instanceof ConstantAggregateZero ||
-                        cnt instanceof Value.UndefValue:"Unknown struct or array constant!";
+                assert cnt instanceof ConstantAggregateZero
+                        || cnt instanceof Value.UndefValue : "Unknown struct or array constant!";
 
                 ArrayList<EVT> valueVTs = new ArrayList<>();
                 computeValueVTs(tli, cnt.getType(), valueVTs);
@@ -342,30 +342,149 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             Util.shouldNotReachHere("Vector type not supported!");
             return null;
         }
-        if(val instanceof Instruction.AllocaInst)
+        if (val instanceof AllocaInst)
         {
             if (funcInfo.staticAllocaMap.containsKey(val))
                 return dag.getFrameIndex(funcInfo.staticAllocaMap.get(val),
                         new EVT(tli.getPointerTy()), false);
         }
         int inReg = funcInfo.valueMap.get(val);
-        assert inReg != 0:"Value not in map!";
+        assert inReg != 0 : "Value not in map!";
         RegsForValue rfv = new RegsForValue(tli, inReg, val.getType());
         SDValue chain = dag.getEntryNode();
         OutParamWrapper<SDValue> x = new OutParamWrapper<>(chain);
         SDValue res = rfv.getCopyFromRegs(dag, x, null);
-        chain  = x.get();
+        chain = x.get();
         return res;
     }
 
     public void setValue(Value val, SDValue sdVal)
     {
-        assert !nodeMap.containsKey(val):"Already set a value for this node!";
+        assert !nodeMap.containsKey(val) : "Already set a value for this node!";
         nodeMap.put(val, sdVal);
     }
 
     public void lowerCallTo(CallSite cs, SDValue callee, boolean isTailCall)
-    {}
+    {
+        lowerCallTo(cs, callee, isTailCall, null);
+    }
+
+    public void lowerCallTo(CallSite cs, SDValue callee, boolean isTailCall, MachineBasicBlock landingPad)
+    {
+        PointerType pt = (PointerType)(cs.getCalledValue().getType());
+        FunctionType fty = (FunctionType) pt.getElementType();
+        MachineModuleInfo mmi = dag.getMachineModuleInfo();
+        int beginLabel = 0, endLabel = 0;
+
+        ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfArguments());
+        ArgListEntry entry = new ArgListEntry();
+
+        for (int i = 0, e = cs.getNumOfArguments(); i < e; i++)
+        {
+            SDValue arg = getValue(cs.getArgument(i));
+            entry.node = arg;
+            entry.ty = cs.getArgument(i).getType();
+
+            int attrInd = i + 1;
+            entry.isSExt = cs.paramHasAttr(attrInd, Attribute.SExt);
+            entry.isZExt = cs.paramHasAttr(attrInd, Attribute.ZExt);
+            entry.isInReg = cs.paramHasAttr(attrInd, Attribute.InReg);
+            entry.isSRet = cs.paramHasAttr(attrInd, Attribute.StructRet);
+            entry.isNest = cs.paramHasAttr(attrInd, Attribute.Nest);
+            entry.isByVal = cs.paramHasAttr(attrInd, Attribute.ByVal);
+            entry.alignment = cs.paramAlignment(attrInd);
+            args.add(entry);
+        }
+
+        if (landingPad != null && mmi != null)
+        {
+            beginLabel = mmi.nextLabelID();
+            getRoot();
+            dag.setRoot(dag.getLabel(ISD.EH_LABEL, getControlRoot(), beginLabel));
+        }
+
+        if (isTailCall && !isInTailCallPosition(cs.getInstruction(),
+                cs.getAttributes().getRetAttribute(), tli))
+            isTailCall = false;
+
+        Pair<SDValue, SDValue> result = tli.lowerCallTo(getRoot(),
+                cs.getType(), cs.paramHasAttr(0, Attribute.SExt),
+                cs.paramHasAttr(0, Attribute.ZExt),
+                fty.isVarArg(),
+                cs.paramHasAttr(0, Attribute.InReg),
+                fty.getNumParams(),
+                cs.getCallingConv(),
+                isTailCall,
+                !cs.getInstruction().isUseEmpty(),
+                callee, args, dag);
+        assert !isTailCall || result.second.getNode() != null;
+        assert result.second.getNode() != null || result.first.getNode() == null;
+        if (result.first.getNode() != null)
+            setValue(cs.getInstruction(), result.first);
+
+        if (result.second.getNode() != null)
+            dag.setRoot(result.second);
+        else
+            hasTailCall = true;
+
+        if (landingPad != null && mmi != null)
+        {
+            endLabel = mmi.getNextLabelID();
+            dag.setRoot(dag.getLabel(ISD.EH_LABEL, getRoot(), endLabel));
+            mmi.addInvoke(landingPad, beginLabel, endLabel);
+        }
+    }
+
+    static boolean isInTailCallPosition(Instruction inst, int retAttr,
+            TargetLowering tli)
+    {
+        BasicBlock exitBB = inst.getParent();
+        TerminatorInst ti = exitBB.getTerminator();
+        ReturnInst ret = ti instanceof ReturnInst ? (ReturnInst) ti:null;
+        Function f = exitBB.getParent();
+
+        if (ret == null && !(ti instanceof UnreachableInst)) return false;
+
+        if (inst.mayHasSideEffects() || inst.mayReadMemory() ||
+                !inst.isSafeToSpecutativelyExecute())
+        {
+            for (int i = exitBB.size()-2; ; --i)
+            {
+                if (exitBB.getInstAt(i).equals(inst))
+                    break;
+                if (exitBB.getInstAt(i).mayHasSideEffects() || exitBB.getInstAt(i).mayReadMemory()
+                        || !exitBB.getInstAt(i).isSafeToSpecutativelyExecute())
+                    return false;
+            }
+        }
+
+        if (ret == null || ret.getNumOfOperands() == 0 ) return true;
+
+        if (f.getAttributes().getRetAttribute() != retAttr)
+            return false;
+
+        Instruction u = ret.operand(0) instanceof Instruction ?
+                (Instruction)ret.operand(0):null;
+        while (true)
+        {
+            if (u == null) return false;
+
+            if (!u.hasOneUses())
+                return false;
+
+            if (u.equals(inst))
+                break;
+            if (u instanceof TruncInst && tli.isTruncateFree(u.operand(0).getType(),
+                    u.getType()))
+            {
+                u = u.operand(0) instanceof Instruction ?
+                        (Instruction)u.operand(0):null;
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
 
     public void visit(Operator opc, User u)
     {
@@ -539,18 +658,74 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     @Override
     public Void visitRet(User inst)
     {
+        SDValue chain = getControlRoot();
+        ReturnInst ret = (ReturnInst)inst;
+        ArrayList<OutputArg> outs = new ArrayList<>(8);
+        for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
+        {
+            ArrayList<EVT> valueVTs = new ArrayList<>();
+            computeValueVTs(tli, ret.operand(i).getType(), valueVTs);
+            int numValues = valueVTs.size();
+            if (numValues <= 0) continue;
+            SDValue retOp = getValue(ret.operand(i));
+            for (int j = 0; j < numValues; j++)
+            {
+                EVT vt = valueVTs.get(j);
+
+                int extendKind = ISD.ANY_EXTEND;
+                Function f = ret.getParent().getParent();
+                if (f.paramHasAttr(0, Attribute.SExt))
+                    extendKind = ISD.SIGN_EXTEND;
+                else if (f.paramHasAttr(0, Attribute.ZExt))
+                    extendKind = ISD.ZERO_EXTEND;
+
+                if (extendKind != ISD.ANY_EXTEND && vt.isInteger())
+                {
+                    EVT minVT = tli.getRegisterType(new EVT(MVT.i32));
+                    if (vt.bitsLT(minVT))
+                        vt = minVT;
+                }
+
+                int numParts = tli.getNumRegisters(vt);
+                EVT partVT = tli.getRegisterType(vt);
+                SDValue[] parts = new SDValue[numParts];
+                getCopyToParts(dag, new SDValue(retOp.getNode(), retOp.getResNo()+j),
+                        parts, partVT, extendKind);
+
+                ArgFlagsTy flags = new ArgFlagsTy();
+                if (f.paramHasAttr(0, Attribute.InReg))
+                    flags.setInReg();
+
+                if (f.paramHasAttr(0, Attribute.SExt))
+                    flags.setSExt();
+                else if (f.paramHasAttr(0, Attribute.ZExt))
+                    flags.setZExt();
+                for (int k = 0; k < numParts; k++)
+                    outs.add(new OutputArg(flags, parts[i], true));
+            }
+        }
+
+        boolean isVarArg = dag.getMachineFunction().getFunction().isVarArg();
+        CallingConv cc = dag.getMachineFunction().getFunction().getCallingConv();
+        chain = tli.lowerReturn(chain, cc, isVarArg, outs, dag);
+        assert chain.getNode() != null && chain.getValueType().getSimpleVT().simpleVT == MVT.Other;
+        dag.setRoot(chain);
         return null;
     }
 
     @Override
     public Void visitBr(User inst)
     {
+        // TODO: 18-5-1
+        Util.shouldNotReachHere("Not implemented currently!");
         return null;
     }
 
     @Override
     public Void visitSwitch(User inst)
     {
+        // TODO: 18-5-1
+        Util.shouldNotReachHere("Not implemented currently!");
         return null;
     }
 
@@ -593,7 +768,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         assert opc >= 0;
         if (op.isShift())
         {
-            if (!op2.getValueType().equals(tli.getShiftAmountTy()))
+            if (!op2.getValueType().getSimpleVT().equals(tli.getShiftAmountTy()))
             {
                 EVT pty = new EVT(tli.getPointerTy());
                 EVT sty = new EVT(tli.getShiftAmountTy());
@@ -864,36 +1039,148 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     @Override
     public Void visitAlloca(User inst)
     {
+        AllocaInst ai = (AllocaInst)inst;
+
+        if (funcInfo.staticAllocaMap.containsKey(ai))
+            return null;
+        Type ty = ai.getAllocatedType();
+        long size = tli.getTargetData().getTypeAllocSize(ty);
+        int align = Math.max(tli.getTargetData().getPrefTypeAlignment(ty), ai.getAlignment());
+        SDValue allocaSize = getValue(ai.getArraySize());
+        allocaSize = dag.getNode(ISD.MUL, allocaSize.getValueType(), allocaSize,
+                dag.getConstant(size, allocaSize.getValueType(), false));
+
+        EVT intPtr = new EVT(tli.getPointerTy());
+        if (intPtr.bitsLT(allocaSize.getValueType()))
+            allocaSize = dag.getNode(ISD.TRUNCATE, intPtr, allocaSize);
+        else if (intPtr.bitsGT(allocaSize.getValueType()))
+            allocaSize = dag.getNode(ISD.ZERO_EXTEND, intPtr, allocaSize);
+
+        int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+        if (align <= stackAlign)
+            align = 0;
+
+        allocaSize = dag.getNode(ISD.ADD, allocaSize.getValueType(), allocaSize,
+                dag.getIntPtrConstant(stackAlign-1));
+        allocaSize = dag.getNode(ISD.AND, allocaSize.getValueType(), allocaSize,
+                dag.getIntPtrConstant(~(stackAlign-1)));
+        SDValue[] ops = {getRoot(), allocaSize, dag.getIntPtrConstant(align)};
+        SDNode.SDVTList vts = dag.getVTList(allocaSize.getValueType(), new EVT(MVT.Other));
+        SDValue dsa = dag.getNode(ISD.DYNAMIC_STACKALLOC, vts, ops);
+        setValue(inst, dsa);
+        dag.setRoot(dsa.getValue(1));
+
+        // Inform the Frame Information that we have just allocated a variable-sized
+        // object.
+        funcInfo.mf.getFrameInfo().createVariableSizedObject();
         return null;
     }
 
     @Override
     public Void visitMalloc(User inst)
     {
-        return null;
-    }
-
-    @Override
-    public Void visitAllocationInst(User inst)
-    {
+        Util.shouldNotReachHere("Not implemented currently!");
         return null;
     }
 
     @Override
     public Void visitLoad(User inst)
     {
+        LoadInst li = (LoadInst)inst;
+        Value sv = li.operand(0);
+        SDValue ptr = getValue(sv);
+
+        Type ty = li.getType();
+        boolean isVolatile = li.isVolatile();
+        int alignment = li.getAlignment();
+
+        ArrayList<EVT> valueVTs = new ArrayList<>();
+        TLongArrayList offsets = new TLongArrayList();
+        computeValueVTs(tli, ty, valueVTs, offsets);
+
+        if (valueVTs.isEmpty())
+            return null;
+
+        SDValue root = new SDValue();
+        boolean constantMemory = false;
+        if (li.isVolatile())
+        {
+            root = getRoot();
+        }
+        else if (aa.pointsToConstantMemory(sv))
+        {
+            root = dag.getEntryNode();
+            constantMemory = true;
+        }
+        else
+        {
+            root = dag.getRoot();
+        }
+
+        ArrayList<SDValue> values = new ArrayList<>(valueVTs.size());
+        ArrayList<SDValue> chains = new ArrayList<>(valueVTs.size());
+        EVT ptrVT = ptr.getValueType();
+        for (int i = 0; i < valueVTs.size(); i++)
+        {
+            SDValue l = dag.getLoad(valueVTs.get(i), root,
+                    dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
+                    sv, (int) offsets.get(i), isVolatile, alignment);
+            values.set(i, l);
+            chains.set(i, l.getValue(1));
+        }
+        if (!constantMemory)
+        {
+            SDValue chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), chains);
+            if (isVolatile)
+                dag.setRoot(chain);
+            else
+                pendingLoads.add(chain);
+        }
+        setValue(li, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), values));
         return null;
     }
 
     @Override
     public Void visitStore(User inst)
     {
+        StoreInst si = (StoreInst)inst;
+        Value srcVal = si.operand(0);
+        Value ptrVal = si.operand(1);
+
+        ArrayList<EVT> valueVTs = new ArrayList<>();
+        TLongArrayList offsets = new TLongArrayList();
+        computeValueVTs(tli, srcVal.getType(), valueVTs, offsets);
+        int numValues = valueVTs.size();
+        if (numValues == 0)
+            return null;
+
+        SDValue src = getValue(srcVal);
+        SDValue ptr = getValue(ptrVal);
+
+        SDValue root = getRoot();
+        ArrayList<SDValue> chains = new ArrayList<>(numValues);
+        EVT ptrVT = ptr.getValueType();
+        boolean isVolatile = si.isVolatile();
+        int align = si.getAlignment();
+        for (int i = 0; i < numValues; i++)
+        {
+            chains.set(i, dag.getStore(root, new SDValue(src.getNode(), src.getResNo()+i),
+                    dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
+                    ptrVal, (int) offsets.get(i), isVolatile, align));
+        }
+        dag.setRoot(dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), chains));
         return null;
     }
 
     @Override
     public Void visitCall(User inst)
     {
+        String renameFn = null;
+        CallInst ci = (CallInst)inst;
+        SDValue callee = getValue(inst.operand(0));
+
+        boolean isTailCall = EnablePerformTailCallOpt.value && ci.isTailCall();
+        lowerCallTo(new CallSite(ci), callee, isTailCall);
         return null;
     }
 
@@ -981,17 +1268,37 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     @Override
     public Void visitPhiNode(User inst)
     {
+        Util.shouldNotReachHere("PHI handled specially!");
         return null;
     }
 
     public Void visitSelect(User u)
     {
+        ArrayList<EVT> valueVTs = new ArrayList<>();
+        computeValueVTs(tli, u.getType(), valueVTs);
+        if (!valueVTs.isEmpty())
+        {
+            ArrayList<SDValue> values = new ArrayList<>(valueVTs.size());
+            SDValue cond = getValue(u.operand(0));
+            SDValue trueVal = getValue(u.operand(1));
+            SDValue falseVal = getValue(u.operand(2));
+            for (int i = 0; i < valueVTs.size(); i++)
+            {
+                values.set(i, dag.getNode(ISD.SELECT,
+                        trueVal.getValueType(), cond,
+                        new SDValue(trueVal.getNode(), trueVal.getResNo()+i),
+                        new SDValue(falseVal.getNode(), falseVal.getResNo()+i)));
+            }
+            setValue(u, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs),
+                    values));
+        }
         return null;
     }
 
     @Override
     public Void visitFree(User inst)
     {
+        Util.shouldNotReachHere("Not implemented currently!");
         return null;
     }
 }

@@ -17,10 +17,12 @@ package backend.target;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.ArgListEntry;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
+import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
 import tools.APInt;
@@ -30,8 +32,12 @@ import tools.Util;
 
 import java.util.ArrayList;
 
+import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
+import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
 import static backend.target.TargetLowering.LegalizeAction.Expand;
 import static backend.target.TargetLowering.LegalizeAction.Promote;
+import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 
 /**
  * This class defines information used to lower LLVM code to
@@ -553,6 +559,186 @@ public abstract class TargetLowering
         assert opc >= ISD.BUILTIN_OP_END || opc == ISD.INTRINSIC_VOID
                 || opc == ISD.INTRINSIC_W_CHAIN || opc == ISD.INTRINSIC_WO_CHAIN;
         knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
+    }
+
+    public abstract SDValue lowerReturn(SDValue chain, CallingConv cc,
+            boolean isVarArg, ArrayList<OutputArg> outs, SelectionDAG dag);
+
+    public Pair<SDValue,SDValue> lowerCallTo(SDValue chain,
+            Type retTy,
+            boolean retSExt,
+            boolean retZExt,
+            boolean varArg,
+            boolean isInReg,
+            int numFixedArgs,
+            CallingConv cc,
+            boolean isTailCall,
+            boolean isReturnValueUsed,
+            SDValue callee,
+            ArrayList<ArgListEntry> args,
+            SelectionDAG dag)
+    {
+        assert !isTailCall || EnablePerformTailCallOpt.value;
+        ArrayList<OutputArg> outs = new ArrayList<>(32);
+        for (int i = 0, e = args.size(); i < e; i++)
+        {
+            ArrayList<EVT> valueVTs = new ArrayList<>();
+            computeValueVTs(this, args.get(i).ty, valueVTs);
+            for (int j = 0, sz = valueVTs.size(); j < sz; j++)
+            {
+                EVT vt = valueVTs.get(j);
+                Type argTy = vt.getTypeForEVT();
+                SDValue op = new SDValue(args.get(i).node.getNode(),
+                        args.get(i).node.getResNo() + j);
+
+                ArgFlagsTy flags = new ArgFlagsTy();
+                int originalAlignment = getTargetData().getABITypeAlignment(argTy);
+
+                if (args.get(i).isZExt)
+                    flags.setZExt();
+                if (args.get(i).isSRet)
+                    flags.setSExt();
+                if (args.get(i).isInReg)
+                    flags.setInReg();
+                if (args.get(i).isByVal)
+                {
+                    flags.setByVal();
+                    PointerType pty = (PointerType) args.get(i).ty;
+                    Type eltTy = pty.getElementType();
+                    int frameAlign = getByValTypeAlignment(eltTy);
+                    long frameSize = getTargetData().getTypeAllocSize(eltTy);
+
+                    if (args.get(i).alignment != 0)
+                        frameAlign = args.get(i).alignment;
+                    flags.setByValAlign(frameAlign);
+                    flags.setByValSize((int) frameSize);
+                }
+                if (args.get(i).isSRet)
+                    flags.setSRet();
+
+                flags.setOrigAlign(originalAlignment);
+
+                EVT partVT = getRegisterType(vt);
+                int numParts = getNumRegisters(vt);
+                SDValue[] parts = new SDValue[numParts];
+                int extendKind = ISD.ANY_EXTEND;
+
+                if (args.get(i).isSExt)
+                    extendKind = ISD.SIGN_EXTEND;
+                else if (args.get(i).isZExt)
+                    extendKind = ISD.ZERO_EXTEND;
+
+                getCopyToParts(dag, op, parts, partVT, extendKind);
+
+                for (int k = 0; k < numParts; k++)
+                {
+                    OutputArg outFlags = new OutputArg(flags, parts[k], i < numFixedArgs);
+                    if (numParts > 1 && k == 0)
+                        outFlags.flags.setSplit();
+                    else if (k != 0)
+                        outFlags.flags.setOrigAlign(1);
+
+                    outs.add(outFlags);
+                }
+            }
+        }
+
+        ArrayList<InputArg> ins = new ArrayList<>(32);
+        ArrayList<EVT> retTys = new ArrayList<>(4);
+
+        computeValueVTs(this,retTy, retTys);
+        for (EVT vt : retTys)
+        {
+            EVT registerVT = getRegisterType(vt);
+            int numRegs = getNumRegisters(vt);
+            for (int i = 0; i < numRegs; i++)
+            {
+                InputArg input = new InputArg();
+                input.vt = registerVT;
+                input.used = isReturnValueUsed;
+                if (retSExt)
+                    input.flags.setSExt();
+                if (retZExt)
+                    input.flags.setZExt();
+                if (isInReg)
+                    input.flags.setInReg();
+                ins.add(input);
+            }
+        }
+
+        if (isTailCall && !isEligibleTailCallOptimization(callee, cc, varArg, ins, dag))
+            isTailCall = false;
+
+        ArrayList<SDValue> inVals = new ArrayList<>();
+        chain = lowerCall(chain, callee, cc, varArg, isTailCall, outs,
+                ins, dag, inVals);
+
+        if (isTailCall)
+        {
+            dag.setRoot(chain);
+            return Pair.get(new SDValue(), new SDValue());
+        }
+
+        int assertOp = ISD.DELETED_NODE;
+        if (retSExt)
+            assertOp = ISD.AssertSext;
+        else if (retZExt)
+            assertOp = ISD.AssertZext;
+
+        ArrayList<SDValue> returnValues = new ArrayList<>();
+        int curReg = 0;
+        for (EVT vt : retTys)
+        {
+            EVT registerVT = getRegisterType(vt);
+            int numRegs = getNumRegisters(vt);
+            SDValue[] temp = new SDValue[numRegs];
+            for (int i = 0; i < numRegs; i++)
+                temp[i] = inVals.get(curReg+i);
+
+            SDValue returnValue = getCopyFromParts(dag, temp, registerVT, vt, assertOp);
+            for (int i = 0; i < numRegs; i++)
+                inVals.set(i+curReg, temp[i]);
+            returnValues.add(returnValue);
+            curReg += numRegs;
+        }
+
+        if (returnValues.isEmpty())
+            return Pair.get(new SDValue(), new SDValue());
+
+        SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(retTys),
+                returnValues);
+        return Pair.get(res, chain);
+    }
+
+    private int getByValTypeAlignment(Type ty)
+    {
+        return td.getCallFrameTypeAlignment(ty);
+    }
+
+    public boolean isEligibleTailCallOptimization(
+            SDValue calle,
+            CallingConv calleeCC,
+            boolean isVarArg,
+            ArrayList<InputArg> ins,
+            SelectionDAG dag)
+    {
+        return false;
+    }
+
+    public abstract  SDValue lowerCall(
+            SDValue chain,
+            SDValue callee,
+            CallingConv cc,
+            boolean isVarArg,
+            boolean isTailCall,
+            ArrayList<OutputArg> outs,
+            ArrayList<InputArg> ins,
+            SelectionDAG dag,
+            ArrayList<SDValue> inVals);
+
+    public boolean isTruncateFree(Type ty1, Type ty2)
+    {
+        return false;
     }
 }
 

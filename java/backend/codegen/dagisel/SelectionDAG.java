@@ -94,6 +94,11 @@ public class SelectionDAG
         return mf;
     }
 
+    public MachineModuleInfo getMachineModuleInfo()
+    {
+        return mmi;
+    }
+
     public void init(MachineFunction mf, MachineModuleInfo mmi)
     {
         this.mmi = mmi;
@@ -916,6 +921,13 @@ public class SelectionDAG
     public SDValue getTargetConstant(ConstantInt val, EVT vt)
     {
         return getConstant(val, vt, true);
+    }
+
+    public SDVTList getVTList(ArrayList<EVT> vts)
+    {
+        EVT[] temp = new EVT[vts.size()];
+        vts.toArray(temp);
+        return getVTList(temp);
     }
 
     public SDVTList getVTList(EVT... vts)

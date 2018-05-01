@@ -103,5 +103,20 @@ public class CallSite
 	{
 		return inst.getCallingConv();
 	}
+
+	public boolean paramHasAttr(int idx, int attr)
+	{
+		return inst.paramHasAttr(idx, attr);
+	}
+
+	public int paramAlignment(int idx)
+	{
+		return inst.getParamAlignment(idx);
+	}
+
+	public AttrList getAttributes()
+	{
+		return inst.getAttributes();
+	}
 }
 

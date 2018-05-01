@@ -16,6 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.dagisel.SDValue;
+
 /**
  * This struct carries flags and a value for a
  * single outgoing (actual) argument or outgoing (from the perspective
@@ -26,20 +28,21 @@ package backend.codegen;
 public class OutputArg
 {
     public ArgFlagsTy flags;
-    public EVT vt;
-    public boolean used;
+    public SDValue val;
+    public boolean isFixed;
 
     public OutputArg()
     {
-        vt = new EVT(MVT.Other);
-        used = false;
+        isFixed = false;
+        val = new SDValue();
+        flags = new ArgFlagsTy();
     }
 
-    public OutputArg(ArgFlagsTy flags, EVT vt, boolean used)
+    public OutputArg(ArgFlagsTy flags, SDValue val, boolean fixed)
     {
         this.flags = flags;
-        this.vt = vt;
-        this.used = used;
-        assert vt.isSimple() :"OutputArg value type must be simple!";
+        this.val = val;
+        isFixed = fixed;
+        assert val.getValueType().isSimple():"OutputArg value type must be simple!";
     }
 }

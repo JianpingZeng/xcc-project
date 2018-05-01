@@ -26,6 +26,7 @@ import backend.pass.ImmutablePass;
 public class MachineModuleInfo implements ImmutablePass
 {
     private AnalysisResolver resolver;
+    private int nextLabelID;
 
     @Override
     public void setAnalysisResolver(AnalysisResolver resolver)
@@ -46,6 +47,22 @@ public class MachineModuleInfo implements ImmutablePass
 
     @Override
     public void initializePass()
+    {
+
+    }
+
+    public int nextLabelID()
+    {
+        return 0;
+    }
+
+    public int getNextLabelID()
+    {
+        return nextLabelID;
+    }
+
+    public void addInvoke(MachineBasicBlock landingPad, int beginLabel,
+            int endLabel)
     {
 
     }

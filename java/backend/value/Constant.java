@@ -126,4 +126,32 @@ public abstract class Constant extends User
             result = Math.max(result, operand(i).getRelocationInfo());
         return result;
     }
+
+    public boolean canTrap()
+    {
+        assert getType().isFirstClassType();
+
+        if (!(this instanceof ConstantExpr)) return false;
+
+        ConstantExpr ce = (ConstantExpr)this;
+        for (int i = 0, e = getNumOfOperands();i < e; i++)
+        {
+            if (operand(i).canTrap())
+                return true;
+        }
+
+        switch (ce.getOpcode())
+        {
+            default: return false;
+            case UDiv:
+            case SDiv:
+            case FDiv:
+            case URem:
+            case SRem:
+            case FRem:
+                if (!(operand(1) instanceof ConstantInt) || operand(1).isNullValue())
+                    return true;
+                return false;
+        }
+    }
 }
