@@ -24,6 +24,7 @@ import backend.support.Attribute;
 import backend.support.CallingConv;
 import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
+import backend.type.Type;
 import backend.value.Function;
 import tools.APInt;
 import tools.Util;
@@ -510,5 +511,123 @@ public class X86TargetLowering extends TargetLowering
         int simpleVT = vt.getSimpleVT().simpleVT;
         return (simpleVT == MVT.f64 && x86ScalarSSEf64) ||
                 simpleVT == MVT.f32 && x86ScalarSSEf32;
+    }
+
+    public SDValue lowerReturn(SDValue chain,
+            CallingConv cc,
+            boolean isVarArg,
+            ArrayList<OutputArg> outs,
+            SelectionDAG dag)
+    {
+        ArrayList<CCValAssign> rvLocs = new ArrayList<>();
+        CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+        ccInfo.analyzeReturn(outs, RetCC_X86);
+        MachineFunction mf = dag.getMachineFunction();
+        if (mf.getMachineRegisterInfo().isLiveOutEmpty())
+        {
+            for (int i = 0; i < rvLocs.size(); i++)
+            {
+                if (rvLocs.get(i).isRegLoc())
+                    mf.getMachineRegisterInfo().addLiveOut(rvLocs.get(i).getLocReg());
+            }
+        }
+
+        SDValue flag = new SDValue();
+        ArrayList<SDValue> retOps = new ArrayList<>();
+        retOps.add(chain);
+        retOps.add(dag.getConstant(bytesToPopOnReturn, new EVT(MVT.i16), false));
+
+        for (int i = 0; i < rvLocs.size(); i++)
+        {
+            CCValAssign va = rvLocs.get(i);
+            assert va.isRegLoc();
+            SDValue valToCopy = outs.get(i).val;
+
+            if (va.getLocReg() == X86GenRegisterNames.ST0 ||
+                    va.getLocReg() == X86GenRegisterNames.ST1)
+            {
+                if (isScalarFPTypeInSSEReg(va.getValVT()))
+                    valToCopy = dag.getNode(ISD.FP_EXTEND, new EVT(MVT.f80), valToCopy);
+                retOps.add(valToCopy);
+                continue;
+            }
+
+            // 64-bit vector (MMX) values are returned in XMM0 / XMM1 except for v1i64
+            // which is returned in RAX / RDX.
+            if (subtarget.is64Bit())
+            {
+                EVT valVT = valToCopy.getValueType();
+                if (valVT.isVector() && valVT.getSizeInBits() == 64)
+                {
+                    valToCopy = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.i64), valToCopy);
+                    if (va.getLocReg() == X86GenRegisterNames.XMM0
+                            || va.getLocReg() == X86GenRegisterNames.XMM1)
+                        valToCopy = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v2i64), valToCopy);
+                }
+            }
+
+            chain = dag.getCopyToReg(chain, va.getLocReg(), valToCopy, flag);
+            flag = chain.getValue(1);
+        }
+
+        // The x86-64 ABI for returning structs by value requires that we copy
+        // the sret argument into %rax for the return. We saved the argument into
+        // a virtual register in the entry block, so now we copy the value out
+        // and into %rax.
+        if (subtarget.is64Bit() &&
+                mf.getFunction().hasStructRetAttr())
+        {
+            X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getInfo();
+            int reg = funcInfo.getSRetReturnReg();
+            if (reg == 0)
+            {
+                reg = mf.getMachineRegisterInfo().createVirtualRegister(getRegClassFor(new EVT(MVT.i64)));
+                funcInfo.setSRetReturnReg(reg);
+            }
+            SDValue val = dag.getCopyFromReg(chain, reg, new EVT(getPointerTy()));
+            chain = dag.getCopyToReg(chain, X86GenRegisterNames.RAX, val, flag);
+            flag = chain.getValue(1);
+        }
+        retOps.set(0, chain);
+        if (flag.getNode() != null)
+            retOps.add(flag);
+
+        return dag.getNode(X86ISD.RET_FLAG, new EVT(MVT.Other), retOps);
+    }
+
+    @Override
+    public boolean isTruncateFree(Type ty1, Type ty2)
+    {
+        if (!ty1.isInteger() || !ty2.isInteger())
+            return false;
+
+        int numBit1 = ty1.getPrimitiveSizeInBits();
+        int numBit2 = ty2.getPrimitiveSizeInBits();
+        if (numBit1 <= numBit2)
+            return false;
+        return subtarget.is64Bit() || numBit1 < 64;
+    }
+
+    @Override
+    public boolean isEligibleTailCallOptimization(
+            SDValue calle,
+            CallingConv calleeCC,
+            boolean isVarArg,
+            ArrayList<InputArg> ins,
+            SelectionDAG dag)
+    {
+        MachineFunction mf = dag.getMachineFunction();
+        CallingConv callerCC = mf.getFunction().getCallingConv();
+        return calleeCC == CallingConv.Fast && calleeCC == callerCC;
+    }
+
+    @Override
+    public SDValue lowerCall(SDValue chain, SDValue callee, CallingConv cc,
+            boolean isVarArg, boolean isTailCall, ArrayList<OutputArg> outs,
+            ArrayList<InputArg> ins, SelectionDAG dag,
+            ArrayList<SDValue> inVals)
+    {
+        // TODO: 18-5-1
+        return null;
     }
 }
