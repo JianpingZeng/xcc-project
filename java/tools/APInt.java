@@ -728,6 +728,11 @@ public class APInt implements Cloneable
         return result;
     }
 
+    public boolean intersects(APInt rhs)
+    {
+        return !and(rhs).eq(0);
+    }
+
     public APInt trunc(int width)
     {
         assert width < bitWidth : "Invalid APInt Truncate request";
@@ -3690,5 +3695,25 @@ public class APInt implements Cloneable
             }
             return count;
         }
+    }
+
+    public int countTrailingOnes()
+    {
+        if (isSingleWord())
+            return Util.countTrailingOnes(val);
+
+        int count = 0;
+        for (int i = bitWidth/APINT_BITS_PER_WORD - 1; i>= 0; i--)
+        {
+            long val = pVal[i];
+            if (val == -1)
+                count += 64;
+            else
+            {
+                count += Util.countTrailingOnes(val);
+                break;
+            }
+        }
+        return count;
     }
 }

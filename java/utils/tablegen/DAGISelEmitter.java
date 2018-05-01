@@ -85,7 +85,7 @@ public class DAGISelEmitter extends TableGenBackend
 
             String className = cgp.getSDNodeInfo(node).getSDClassName();
             String var = className.equals("SDNode") ? "n" : "inN";
-            os.printf("private SDValue transform_%s(SDNode %s){%n", itr.getKey(), var);
+            os.printf("public SDValue transform_%s(SDNode %s){%n", itr.getKey(), var);
             if (!className.equals("SDNode"))
             {
                 os.printf("%s assert %s instanceof %s;%n", ident, var, className);
@@ -118,13 +118,13 @@ public class DAGISelEmitter extends TableGenBackend
 
             if (pat.getOnlyTree().isLeaf())
             {
-                os.printf("private boolean predicate_%s(SDNode n) {%n", patFrag.getName());
+                os.printf("protected boolean predicate_%s(SDNode n) {%n", patFrag.getName());
             }
             else
             {
                 String className = cgp.getSDNodeInfo(pat.getOnlyTree().getOperator()).getSDClassName();
                 String var = className.equals("SDNode") ?"n":"inN";
-                os.printf("private boolean predicate_%s(SDNode %s) {%n", patFrag.getName(), var);
+                os.printf("public boolean predicate_%s(SDNode %s) {%n", patFrag.getName(), var);
                 if (!className.equals("SDNode"))
                 {
                     os.printf("%s assert %s instanceof %s;%n", ident, var, className);

@@ -17,6 +17,118 @@
 
 package backend.target.x86;
 
+import backend.codegen.dagisel.SDNode.RegisterSDNode;
+import backend.codegen.dagisel.SDValue;
+import backend.value.Constant;
+import backend.value.GlobalValue;
+
 public class X86ISelAddressMode
 {
+    enum BaseType
+    {
+        RegBase, FrameIndexBase
+    }
+
+    BaseType baseType;
+
+    static class Base
+    {
+        SDValue reg;
+        int frameIndex;
+        Base()
+        {
+            reg = new SDValue();
+            frameIndex = 0;
+        }
+    }
+
+    Base base;
+
+    int scale;
+    SDValue indexReg;
+    int disp;
+    SDValue segment;
+    GlobalValue gv;
+    Constant cp;
+    String externalSym;
+    int jti;
+    int align;
+    int symbolFlags;
+
+    public X86ISelAddressMode()
+    {
+        baseType = BaseType.RegBase;
+        scale = 1;
+        indexReg = null;
+        disp = 0;
+        segment = new SDValue();
+        gv = null;
+        cp = null;
+        externalSym = null;
+        jti = -1;
+        align = 0;
+        symbolFlags = 0;
+        base = new Base();
+    }
+
+    public boolean hasSymbolicDisplacement()
+    {
+        return gv != null || cp != null || externalSym != null || jti != -1;
+    }
+
+    public boolean hasBaseOrIndexReg()
+    {
+        return indexReg.getNode() != null || base.reg.getNode() != null;
+    }
+
+    public boolean isRIPRelative()
+    {
+        if (baseType != BaseType.RegBase) return false;
+        RegisterSDNode regNode = base.reg.getNode() instanceof RegisterSDNode ?
+                (RegisterSDNode)base.reg.getNode() : null;
+        if (regNode != null)
+            return regNode.getReg() == X86GenRegisterNames.RIP;
+        return false;
+    }
+
+    public void setBaseReg(SDValue reg)
+    {
+        baseType = BaseType.RegBase;
+        base.reg = reg;
+    }
+
+    public void dump()
+    {
+        System.err.printf("X86ISelAddressMode %d%n", hashCode());
+        System.err.print("Base.Reg ");
+        if (base.reg.getNode() != null)
+            base.reg.getNode().dump();
+        else
+            System.err.print("null");
+        System.err.printf(" Base.FrameIndex %d%n", base.frameIndex);
+        System.err.printf(" Scale %d%n", scale);
+        System.err.printf("IndexReg ");
+        if (indexReg.getNode() != null)
+            indexReg.getNode().dump();
+        else
+            System.err.printf("null");
+        System.err.printf(" Disp %d%n",disp);
+        System.err.printf("GV ");
+        if (gv != null)
+            gv.dump();
+        else
+            System.err.printf("null");
+        System.err.printf(" CP ");
+        if (cp != null)
+            cp.dump();
+        else
+            System.err.printf("null");
+        System.err.println();
+        System.err.print("ES ");
+        if (externalSym != null)
+            System.err.print(externalSym);
+        else
+            System.err.print("null");
+        System.err.printf(" JTI %d Align %d%n", jti, align);
+    }
 }

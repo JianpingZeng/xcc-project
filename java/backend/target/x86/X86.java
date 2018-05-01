@@ -18,7 +18,13 @@
 package backend.target.x86;
 
 import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SDNode.ConstantFPSDNode;
+import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.dagisel.SDNode.ShuffleVectorSDNode;
+import backend.codegen.dagisel.SDValue;
+import backend.target.TargetMachine;
+
+import static tools.Util.isInt32;
 
 /**
  * @author Xlous.zeng
@@ -117,5 +123,39 @@ public interface X86
 
     static byte getShufflePSHUFLWImmediate(SDNode n) {
         return 0;
+    }
+
+    static boolean isZeroMode(SDValue elt)
+    {
+        SDNode n = elt.getNode();
+        return (n instanceof ConstantSDNode) &&
+                ((ConstantSDNode)n).getZExtValue() == 0 ||
+                (n instanceof ConstantFPSDNode && ((ConstantFPSDNode)n).getValueAPF().isPosZero());
+    }
+
+    static boolean isOffsetSuitableForCodeModel(long offset,
+            TargetMachine.CodeModel model)
+    {
+        return isOffsetSuitableForCodeModel(offset, model, true);
+    }
+
+    static boolean isOffsetSuitableForCodeModel(long offset,
+            TargetMachine.CodeModel model, boolean hasSymbolicDisplacement)
+    {
+        if (!isInt32(offset))
+            return false;
+
+        if (!hasSymbolicDisplacement)
+            return true;
+
+        if (model != TargetMachine.CodeModel.Small && model != TargetMachine.CodeModel.Kernel)
+            return false;
+
+        if (model == TargetMachine.CodeModel.Small && offset < 16*1024*1024)
+            return true;
+        if (model == TargetMachine.CodeModel.Kernel && offset > 0)
+            return true;
+
+        return false;
     }
 }

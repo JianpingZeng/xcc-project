@@ -25,54 +25,51 @@ import backend.codegen.EVT;
 
 /**
  * Represents a use of a SDNode. This class holds an SDValue,
- * /// which records the SDNode being used and the result number, a
- * /// pointer to the SDNode using the value, and Next and Prev pointers,
- * /// which link together all the uses of an SDNode.
- * ///
+ * which records the SDNode being used and the result number, a
+ * pointer to the SDNode using the value, and Next and Prev pointers,
+ * which link together all the uses of an SDNode.
  */
 public class SDUse implements Comparable<SDUse>
 {
-    /// val - The value being used.
+    /**
+     * The value being used.
+     */
     SDValue val;
-    /// User - The user of this value.
-    SDNode User;
+    /**
+     * The user of this value.
+     */
+    SDNode user;
 
-    SDUse()
-    {
-    }
+    public SDUse() {}
 
-    /// If implicit conversion to SDValue doesn't work, the get() method returns
-    /// the SDValue.
-    SDValue get()
+    public SDValue get()
     {
         return val;
     }
 
-    /// getUser - This returns the SDNode that contains this Use.
-    SDNode getUser()
+    public SDNode getUser()
     {
-        return User;
+        return user;
     }
 
-    /// getNode - Convenience function for get().getNode().
-    SDNode getNode()
+    public SDNode getNode()
     {
         return val.getNode();
     }
 
-    /// getResNo - Convenience function for get().getResNo().
-    int getResNo()
+    public int getResNo()
     {
         return val.getResNo();
     }
 
-    /// getValueType - Convenience function for get().getValueType().
-    EVT getValueType()
+    /**
+     * Determines the returned Value Type for the {@linkplain #val}.
+     * @return
+     */
+    public EVT getValueType()
     {
         return val.getValueType();
     }
-
-    /// operator== - Convenience function for get().operator==
 
     @Override
     public boolean equals(Object obj)
@@ -93,38 +90,47 @@ public class SDUse implements Comparable<SDUse>
         return val.compareTo(o.val);
     }
 
-    void setUser(SDNode p)
+    public void setUser(SDNode p)
     {
-        User = p;
+        user = p;
     }
 
-    /// set - Remove this use from its existing use list, assign it the
-    /// given value, and add it to the new value's node's use list.
-    void set(SDValue V)
+    /**
+     * Remove this use from its existing use list, assign it the
+     * given value, and add it to the new value's node's use list.
+     * @param v
+     */
+    public void set(SDValue v)
     {
+        if (val.getNode() != null)
+            val.getNode().removeUse(this);
+        val = v;
+        if (val.getNode() != null)
+            val.getNode().addUse(this);
     }
 
-    /// setInitial - like set, but only supports initializing a newly-allocated
-    /// SDUse with a non-null value.
-    void setInitial(SDValue V)
+    /**
+     * Like set, but only supports initializing a newly-allocated
+     * SDUse with a non-null value.
+     * @param v
+     */
+    public void setInitial(SDValue v)
     {
+        val = v;
+        v.getNode().addUse(this);
     }
 
-    /// setNode - like set, but only sets the Node portion of the value,
-    /// leaving the ResNo portion unmodified.
-    void setNode(SDNode N)
+    /**
+     * Like set, but only sets the Node portion of the value,
+     * leaving the ResNo portion unmodified.
+     * @param n
+     */
+    public void setNode(SDNode n)
     {
-    }
-
-    public int getSize()
-    {
-        assert false;
-        return 0;
-    }
-
-    public SDValue getAt(int num)
-    {
-        assert false;
-        return null;
+        if (val.getNode() != null)
+            val.getNode().removeUse(this);
+        val.setNode(n);
+        if (n != null)
+            n.addUse(this);
     }
 }

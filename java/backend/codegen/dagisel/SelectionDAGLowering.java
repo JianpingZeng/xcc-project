@@ -250,7 +250,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
         SDValue chain = dag.getEntryNode();
         OutParamWrapper<SDValue> x = new OutParamWrapper<>(chain);
-        rfv.getCopyFromRegs(op, dag, x, null);
+        rfv.getCopyToRegs(op, dag, x, null);
         chain = x.get();
         pendingExports.add(chain);
     }

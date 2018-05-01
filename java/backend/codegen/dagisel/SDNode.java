@@ -59,6 +59,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
+    public ArrayList<SDUse> getUseList()
+    {
+        return useList;
+    }
+
     public int getOpcode()
     {
         assert opcode >= 0 : "Is a machine operator?";
@@ -657,6 +662,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         useList.add(use);
     }
 
+    public void removeUse(SDUse use)
+    {
+        assert use != null;
+        useList.remove(use);
+    }
+
     public int compareTo(SDNode node)
     {
         return 0;
@@ -1147,10 +1158,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public static class JumpTableSDNode extends SDNode
     {
         private int jumpTableIndex;
-        public JumpTableSDNode(int jti, EVT vt, boolean isTarget)
+        private int targetFlags;
+
+        public JumpTableSDNode(int jti, EVT vt, boolean isTarget, int tf)
         {
             super(isTarget?ISD.TargetJumpTable:ISD.JumpTable, getSDVTList(vt));
             jumpTableIndex = jti;
+            targetFlags = tf;
         }
 
         public int getJumpTableIndex()
@@ -1161,6 +1175,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         public void setJumpTableIndex(int jumpTableIndex)
         {
             this.jumpTableIndex = jumpTableIndex;
+        }
+
+        public int getTargetFlags()
+        {
+            return targetFlags;
         }
     }
 
