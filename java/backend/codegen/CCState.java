@@ -117,7 +117,7 @@ public class CCState
         for(OutputArg arg : outs)
         {
             ArgFlagsTy argFlags = arg.flags;
-            EVT argVT = arg.vt;
+            EVT argVT = arg.val.getValueType();
             if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
             {
                 Util.shouldNotReachHere();
@@ -135,7 +135,7 @@ public class CCState
         for(OutputArg arg : outs)
         {
             ArgFlagsTy argFlags = arg.flags;
-            EVT argVT = arg.vt;
+            EVT argVT = arg.val.getValueType();
             if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
             {
                 Util.shouldNotReachHere();
