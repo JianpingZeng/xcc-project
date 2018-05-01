@@ -22,10 +22,10 @@ package backend.codegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class RegisterRegAlloc extends MachinePassRegistryNode
+public class RegisterRegAlloc extends MachinePassRegistryNode<MachinePassCtor>
 {
-    public static final MachinePassRegistry registry =
-            new MachinePassRegistry();
+    public static final MachinePassRegistry<MachinePassCtor> registry =
+            new MachinePassRegistry<>();
 
     public RegisterRegAlloc(String name, String desc, MachinePassCtor ctor)
     {
@@ -62,5 +62,11 @@ public class RegisterRegAlloc extends MachinePassRegistryNode
     public static void setListener(MachinePassRegistryListener listener)
     {
         registry.setListener(listener);
+    }
+
+    @Override
+    public MachinePassCtor getCtor()
+    {
+        return super.getCtor();
     }
 }

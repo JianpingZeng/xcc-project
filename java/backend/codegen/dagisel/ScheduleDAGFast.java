@@ -61,7 +61,9 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
 	{}
 
 	private SUnit copyAndMoveSuccessors(SUnit su)
-	{}
+	{
+		return null;
+	}
 
 	private void insertCopiesAndMoveSuccs(SUnit su, 
 		int reg, 
@@ -72,7 +74,9 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
 
 	private boolean delayForLiveRegsBottemUp(SUnit su, 
 		TIntArrayList lregs)
-	{}
+	{
+		return false;
+	}
 
 	private void listScheduleBottomUp()
 	{}

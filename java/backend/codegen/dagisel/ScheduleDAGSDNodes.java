@@ -76,7 +76,9 @@ public class ScheduleDAGSDNodes extends ScheduleDAG
 	}
 
 	public SUnit clone(SUnit u)
-	{}
+	{
+		return null;
+	}
 
 	public void buildSchedGraph()
 	{}
@@ -85,20 +87,28 @@ public class ScheduleDAGSDNodes extends ScheduleDAG
 	{}	
 
 	public static int countResults(SDNode node)
-	{}
+	{
+		return 0;
+	}
 
 	public static int countOperands(SDNode node)
-	{}
+	{
+		return 0;
+	}
 
 	public static int computeMemOperandEnd(SDNode node)
-	{}
+	{
+		return 0;
+	}
 
 	public void emitNode(SDNode node, boolean isClone, boolean hasClone, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
 	{}
 
 	public MachineBasicBlock emitSchedule()
-	{}
+	{
+		return null;
+	}
 
 	@Override
 	public void schedule()
@@ -121,10 +131,14 @@ public class ScheduleDAGSDNodes extends ScheduleDAG
 	 * specified SDValue.
 	 */
 	private int getVR(SDValue op, TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+		return 0;
+	}
 
 	private int getDstOfOnlyCopyToRegUse(SDNode node, int resNo)
-	{}
+	{
+		return 0;
+	}
 
 	private void addOperand(MachineInstr mi,
 		SDValue op, 

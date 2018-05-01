@@ -145,13 +145,19 @@ public class SUnit
 	{}
 
 	public boolean isPred(SUnit u)
-	{}
+	{
+		return false;
+	}
 
 	public boolean isSucc(SUnit u)
-	{}
+	{
+		return false;
+	}
 
 	public void dump(ScheduleDAG dag)
-	{}
+	{
+
+	}
 
 	public void dumpAll(ScheduleDAG dag)
 	{}
@@ -160,9 +166,12 @@ public class SUnit
 	{}
 
 	private int computeHeight()
-	{}
+	{
+		return 0;
+	}
 
 	private int computeDepth()
-	{}
-
+	{
+		return 0;
+	}
 }

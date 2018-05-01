@@ -15,21 +15,18 @@
  * permissions and limitations under the License.
  */
 
-package backend.codegen.dagisel;
+package backend.codegen;
 
-import backend.codegen.MachineBasicBlock;
+import backend.codegen.dagisel.ScheduleDAG;
+import backend.codegen.dagisel.SelectionDAGISel;
+import backend.target.TargetMachine;
 
-public final class ListScheduler
+/**
+ * @author Xlous.zeng
+ * @version 0.1
+ * @FunctionalInterface
+ */
+public interface SchedPassCtor
 {
-    private MachineBasicBlock curMBB;
-    private SelectionDAG curDAG;
-
-    public ListScheduler(SelectionDAG dag, MachineBasicBlock mbb)
-    {
-        curMBB = mbb;
-        curDAG = dag;
-    }
-
-    public void emit()
-    {}
+    ScheduleDAG apply(SelectionDAGISel isel, TargetMachine.CodeGenOpt opt);
 }

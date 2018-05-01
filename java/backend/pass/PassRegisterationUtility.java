@@ -20,6 +20,8 @@ package backend.pass;
 import backend.analysis.*;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
+import backend.codegen.dagisel.RegisterScheduler;
+import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.support.CFGPrinter;
 import backend.support.DomTreePrinter;
 import backend.support.ErrorHandling;
@@ -98,6 +100,10 @@ public final class PassRegisterationUtility
         new RegisterRegAlloc("linearscan","Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);
         new RegisterRegAlloc("local","Local register allocator", RegAllocLocal::createLocalRegAllocator);
         new RegisterRegAlloc("pbqp", "PBQP Register Allocator", RegAllocPBQP::createPBQPRegisterAllocator);
+
+        // Register scheduler.
+        new RegisterScheduler("fast", "Fast Instruction Scheduler", ScheduleDAGFast::createFastDAGScheduler);
+
 
         new RegisterPass("register-coalescing", "Simple register coalescer", LiveIntervalCoalescing.class);
         new RegisterPass("live-stack-slot", "Live Analysis of Stack Slot", LiveStackSlot.class);
