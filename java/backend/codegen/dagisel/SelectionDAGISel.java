@@ -31,6 +31,7 @@ import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
+import tools.APInt;
 import tools.Pair;
 import tools.Util;
 
@@ -38,8 +39,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Objects;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.support.ErrorHandling.llvmReportError;
 
 /**
@@ -359,7 +362,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                     else if (fn.paramHasAttr(idx, Attribute.ZExt))
                         op = ISD.AssertZext;
 
-                    argValues.add(getCopyFromPart(dag, inVals.get(i), numParts, partVT, vt, op));
+                    SDValue[] ops = new SDValue[numParts];
+                    for (int j = i; j < i+numParts;j++)
+                        ops[j] = inVals.get(j);
+                    argValues.add(getCopyFromParts(dag, ops, partVT, vt, op));
                 }
                 i += numParts;
             }
@@ -377,30 +383,72 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         return false;
     }
 
-    private SDValue getCopyFromPart(SelectionDAG dag, SDValue sdValue, int numParts, EVT partVT, EVT vt, int op)
-    {
-        // TODO: 2018/4/10
-        return null;
-    }
-
     /**
      * For special target machine to implement special purpose.
      * @param fn
      * @param mf
      */
-    public void emitFunctionEntryCode(Function fn, MachineFunction mf)
-    {
-
-    }
+    public void emitFunctionEntryCode(Function fn, MachineFunction mf){}
 
     private void finishBasicBlock()
     {
-
+        // TODO: 18-5-1
     }
 
     public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root)
     {
-        // TODO: 2018/4/10
+        if (optLevel == CodeGenOpt.None) return false;
+
+        EVT vt = root.getValueType(root.getNumValues()-1);
+        while (vt.equals(new EVT(MVT.Flag)))
+        {
+            SDNode fu = findFlagUse(root);
+            if (fu == null)
+                break;
+            root = fu;
+            vt = root.getValueType(root.getNumValues()-1);
+        }
+        return !isNonImmUse(root, node, use);
+    }
+
+    static SDNode findFlagUse(SDNode node)
+    {
+        int flagResNo = node.getNumValues()-1;
+        for (SDUse u : node.useList)
+        {
+            if (u.getResNo() == flagResNo)
+                return u.getUser();
+        }
+        return null;
+    }
+
+    static boolean isNonImmUse(SDNode root, SDNode def, SDNode immedUse)
+    {
+        HashSet<SDNode> visited = new HashSet<>();
+        return findNonImmUse(root, def, immedUse, root, visited);
+    }
+
+    static boolean findNonImmUse(SDNode use, SDNode def, SDNode immedUse, SDNode root,
+            HashSet<SDNode> visited)
+    {
+        if (use.getNodeID() < def.getNodeID() || !visited.add(use))
+            return false;
+
+        for (int i = 0, e = use.getNumOperands(); i < e; i++)
+        {
+            SDNode n = use.getOperand(i).getNode();
+            if (n.equals(def))
+            {
+                if (use.equals(immedUse) || use.equals(root))
+                    continue;
+
+                assert !Objects.equals(n, root);
+                return true;
+            }
+
+            if (findNonImmUse(n, def, immedUse, root, visited))
+                return true;
+        }
         return false;
     }
 
@@ -410,35 +458,64 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         return "Instruction Selector based on DAG covering";
     }
 
-    public void replaceUses(SDValue f, SDValue t)
-    {}
-
-    public void replaceUses(SDNode f, SDNode t)
-    {}
-
-    public void replaceUses(SDValue[] f, SDValue[] t)
-    {}
-
     protected boolean checkAndMask(SDValue lhs, SDNode.ConstantSDNode rhs,
-            long desiredMask)
+            long desiredMaskS)
     {
+        APInt actualMask = rhs.getAPIntValue();
+        APInt desiredMask = new APInt(lhs.getValueSizeInBits(), desiredMaskS);
+        if (actualMask.eq(desiredMask))
+            return true;
+
+        if (actualMask.intersects(desiredMask.negative()))
+            return false;
+
+        APInt neededMask = desiredMask.and(actualMask.negative());
+        if (curDAG.maskedValueIsZero(lhs, neededMask, 0))
+            return true;
+
         return false;
     }
 
     protected boolean checkOrMask(SDValue lhs, SDNode.ConstantSDNode rhs,
-            long desiredMask)
+            long desiredMaskS)
     {
+        APInt actualMask = rhs.getAPIntValue();
+        APInt desiredMask = new APInt(lhs.getValueSizeInBits(), desiredMaskS);
+        if (actualMask.eq(desiredMask))
+            return true;
+
+        if (actualMask.intersects(desiredMask.negative()))
+            return false;
+
+        APInt neededMask = desiredMask.and(actualMask.negative());
+        APInt[] res = new APInt[2];
+        curDAG.computeMaskedBits(lhs, neededMask, res, 0);
+        APInt knownZero = res[0], knownOne = res[1];
+        if (neededMask.and(knownOne).eq(neededMask))
+            return true;
+
         return false;
     }
 
     public static boolean isChainCompatible(SDNode chain, SDNode op)
     {
-        return false;
+        if (chain.getOpcode() == ISD.EntryToken)
+            return true;
+        if (chain.getOpcode() == ISD.TokenFactor)
+            return false;
+        if (chain.getNumOperands() > 0)
+        {
+            SDValue c0 = chain.getOperand(0);
+            if (c0.getValueType().equals(new EVT(MVT.Other)))
+                return !c0.getNode().equals(op) && isChainCompatible(c0.getNode(), op);
+        }
+        return true;
     }
 
     public void selectInlineAsmMemoryOperands(ArrayList<SDValue> ops)
     {
         // TODO: 18-4-21
+        Util.shouldNotReachHere("Inline assembly not supported!");
     }
 
     public SDNode select_INLINEASM(SDValue n)

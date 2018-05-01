@@ -19,15 +19,24 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
-import backend.codegen.dagisel.SDNode.FrameIndexSDNode;
-import backend.codegen.dagisel.SDNode.GlobalAddressSDNode;
-import backend.codegen.dagisel.SDNode.HandleSDNode;
+import backend.codegen.dagisel.SDNode.*;
+import backend.codegen.fastISel.ISD;
 import backend.support.Attribute;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetMachine.CodeModel;
 import backend.value.Function;
 import backend.value.GlobalValue;
+import tools.OutParamWrapper;
 
 import java.util.ArrayList;
+import java.util.Objects;
+
+import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.dagisel.LoadExtType.EXTLOAD;
+import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
+import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
+import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
 
 public abstract class X86DAGToDAGISel extends SelectionDAGISel
 {
@@ -79,7 +88,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
             {
                 ISelUpdater updater = new ISelUpdater(iselPosition, curDAG.allNodes);
                 curDAG.removeDeadNode(node, updater);
-                iselPosition = updater.getIselPos();
+                iselPosition = updater.getISelPos();
             }
         }
         curDAG.setRoot(dummy.getValue());
@@ -99,42 +108,20 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     {
         ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
         curDAG.replaceAllUsesWith(oldNode, newNode, isu);
-        iselPosition = isu.getIselPos();
+        iselPosition = isu.getISelPos();
     }
 
     public void replaceUses(SDValue oldVal, SDValue newVal)
     {
         ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
         curDAG.replaceAllUsesOfValueWith(oldVal, newVal, isu);
-        iselPosition = isu.getIselPos();
+        iselPosition = isu.getISelPos();
     }
 
-    private static class ISelUpdater implements DAGUpdateListener
+    public void replaceUses(SDValue[] f, SDValue[] t)
     {
-        private int iselPos;
-        private ArrayList<SDNode> allNodes;
-        public ISelUpdater(int pos, ArrayList<SDNode> nodes)
-        {
-            iselPos = pos;
-            allNodes = nodes;
-        }
-
-        @Override
-        public void nodeDeleted(SDNode node, SDNode e)
-        {
-            if (allNodes.get(iselPos) == node)
-                ++iselPos;
-        }
-
-        @Override
-        public void nodeUpdated(SDNode node)
-        {
-        }
-
-        public int getIselPos()
-        {
-            return iselPos;
-        }
+        ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+        curDAG.replaceAllUsesOfValuesWith(f, t, isu);
     }
 
     public static X86DAGToDAGISel createX86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level)
@@ -151,12 +138,69 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     @Override
     public void emitFunctionEntryCode(Function fn, MachineFunction mf)
     {
-        // TODO: 2018/4/10
+        // If this is a main function, emit special code for it.
+        MachineBasicBlock mbb = mf.getEntryBlock();
+        if (fn.hasExternalLinkage() && fn.getName().equals("main"))
+        {
+            emitSpecialCodeForMain(mbb, mf.getFrameInfo());
+        }
     }
 
     @Override
     public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root)
     {
+        if (optLevel == TargetMachine.CodeGenOpt.None) return false;
+
+        if (Objects.equals(use, root))
+        {
+            switch (use.getOpcode())
+            {
+                default: break;
+                case ISD.ADD:
+                case ISD.ADDC:
+                case ISD.ADDE:
+                case ISD.AND:
+                case ISD.XOR:
+                case ISD.OR:
+                {
+                    SDValue op1 = use.getOperand(1);
+
+                    // If the other operand is a 8-bit immediate we should fold the immediate
+                    // instead. This reduces code size.
+                    // e.g.
+                    // movl 4(%esp), %eax
+                    // addl $4, %eax
+                    // vs.
+                    // movl $4, %eax
+                    // addl 4(%esp), %eax
+                    // The former is 2 bytes shorter. In case where the increment is 1, then
+                    // the saving can be 4 bytes (by using incl %eax).
+                    if (op1.getNode() instanceof ConstantSDNode)
+                    {
+                        ConstantSDNode imm = (ConstantSDNode)op1.getNode();
+                        if (imm.getAPIntValue().isSignedIntN(8))
+                            return false;
+                    }
+
+                    // If the other operand is a TLS address, we should fold it instead.
+                    // This produces
+                    // movl    %gs:0, %eax
+                    // leal    i@NTPOFF(%eax), %eax
+                    // instead of
+                    // movl    $i@NTPOFF, %eax
+                    // addl    %gs:0, %eax
+                    // if the block also has an access to a second TLS address this will save
+                    // a load.
+                    if (op1.getOpcode() == X86ISD.Wrapper)
+                    {
+                        SDValue val = op1.getOperand(0);
+                        if (val.getOpcode() == ISD.TargetGlobalTLSAddress)
+                            return false;
+                    }
+                }
+            }
+        }
+        // Call the super's method to cope with the generic situation.
         return super.isLegalAndProfitableToFold(node, use, root);
     }
 
@@ -195,84 +239,823 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected SDNode selectAtomicLoadAdd(SDNode node, EVT vt)
     {
-        return null;
+        if (node.hasAnyUseOfValue(0))
+            return null;
+
+        SDValue chain = node.getOperand(0);
+        SDValue ptr = node.getOperand(1);
+        SDValue val = node.getOperand(2);
+        SDValue[] temp = new SDValue[5];
+        if (!selectAddr(ptr, ptr, temp))
+            return null;
+
+        boolean isInc = false, isDec = false, isSub = false, isCN = false;
+        ConstantSDNode cn = val.getNode() instanceof ConstantSDNode ? ((ConstantSDNode)val.getNode()):null;
+        if (cn != null)
+        {
+            isCN = true;
+            long cnVal = cn.getSExtValue();
+            if (cnVal == 1)
+                isInc = true;
+            else if (cnVal == -1)
+                isDec = true;
+            else if (cnVal >= 0)
+                val = curDAG.getTargetConstant(cnVal, vt);
+            else
+            {
+                isSub = true;
+                val = curDAG.getTargetConstant(-cnVal, vt);
+            }
+        }
+        else if (val.hasOneUse() && val.getOpcode() == ISD.SUB &&
+                X86.isZeroMode(val.getOperand(0)))
+        {
+            isSub = true;
+            val = val.getOperand(1);
+        }
+
+        int opc = 0;
+        switch (vt.getSimpleVT().simpleVT)
+        {
+            default: return null;
+            case MVT.i8:
+                if (isInc)
+                    opc = X86GenInstrNames.LOCK_INC8m;
+                else if (isDec)
+                    opc = X86GenInstrNames.LOCK_DEC8m;
+                else if (isSub)
+                {
+                    if (isCN)
+                        opc = X86GenInstrNames.LOCK_SUB8mi;
+                    else
+                        opc = X86GenInstrNames.LOCK_SUB8mr;
+                }
+                else
+                {
+                    if (isCN)
+                        opc = X86GenInstrNames.LOCK_ADD8mi;
+                    else
+                        opc = X86GenInstrNames.LOCK_ADD8mr;
+                }
+                break;
+            case MVT.i16:
+                if (isInc)
+                    opc = X86GenInstrNames.LOCK_INC16m;
+                else if (isDec)
+                    opc = X86GenInstrNames.LOCK_DEC16m;
+                else if (isSub)
+                {
+                    if (isCN)
+                    {
+                        if (predicate_i16immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_SUB16mi8;
+                        else
+                            opc = X86GenInstrNames.LOCK_SUB16mi;
+                    }
+                    else
+                        opc = X86GenInstrNames.LOCK_SUB16mr;
+                }
+                else
+                {
+                    if (isCN)
+                    {
+                        if (predicate_i16immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_ADD16mi8;
+                        else
+                            opc = X86GenInstrNames.LOCK_ADD16mi;
+                    }
+                    else
+                        opc = X86GenInstrNames.LOCK_ADD16mr;
+                }
+                break;
+            case MVT.i32:
+                if (isInc)
+                    opc = X86GenInstrNames.LOCK_INC32m;
+                else if (isDec)
+                    opc = X86GenInstrNames.LOCK_DEC32m;
+                else if (isSub)
+                {
+                    if (isCN)
+                    {
+                        if (predicate_i32immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_SUB32mi8;
+                        else
+                            opc = X86GenInstrNames.LOCK_SUB32mi;
+                    }
+                    else
+                        opc = X86GenInstrNames.LOCK_SUB32mr;
+                }
+                else
+                {
+                    if (isCN)
+                    {
+                        if (predicate_i32immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_ADD32mi8;
+                        else
+                            opc = X86GenInstrNames.LOCK_ADD32mi;
+                    }
+                    else
+                        opc = X86GenInstrNames.LOCK_ADD32mr;
+                }
+                break;
+            case MVT.i64:
+                if (isInc)
+                    opc = X86GenInstrNames.LOCK_INC64m;
+                else if (isDec)
+                    opc = X86GenInstrNames.LOCK_DEC64m;
+                else if (isSub)
+                {
+                    opc = X86GenInstrNames.LOCK_SUB64mr;
+                    if (isCN)
+                    {
+                        if (predicate_i64immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_SUB64mi8;
+                        else if (predicate_i64immSExt32(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_SUB64mi32;
+                    }
+                }
+                else
+                {
+                    opc = X86GenInstrNames.LOCK_ADD64mr;
+                    if (isCN)
+                    {
+                        if (predicate_i64immSExt8(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_ADD64mi8;
+                        else if (predicate_i64immSExt32(val.getNode()))
+                            opc = X86GenInstrNames.LOCK_ADD64mi32;
+                    }
+                }
+        }
+        SDValue undef = new SDValue(curDAG.getTargetNode(TargetInstrInfo.IMPLICIT_DEF, vt), 0);
+        SDValue memOp = curDAG.getMemOperand(((MemSDNode)node).getMemOperand());
+        if (isInc || isDec)
+        {
+            SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], memOp, chain};
+            SDValue ret = new SDValue(curDAG.getTargetNode(opc, new EVT(MVT.Other), ops), 0);
+            SDValue[] retVals = {undef, ret};
+            return curDAG.getMergeValues(retVals).getNode();
+        }
+        else
+        {
+            SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], val, memOp, chain};
+            SDValue ret = new SDValue(curDAG.getTargetNode(opc, new EVT(MVT.Other), ops), 0);
+            SDValue[] retVals = {undef, ret};
+            return curDAG.getMergeValues(retVals).getNode();
+        }
     }
+
+    public abstract boolean predicate_i16immSExt8(SDNode n);
+
+    public abstract boolean predicate_i32immSExt8(SDNode n);
+
+    public abstract boolean predicate_i64immSExt8(SDNode n);
+
+    public abstract boolean predicate_i64immSExt32(SDNode n);
 
     protected boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am)
     {
-        return false;
+        assert val.getOpcode() == X86ISD.SegmentBaseAddress;
+        SDValue segment = val.getOperand(0);
+        if (am.segment.getNode() == null)
+        {
+            am.segment = segment;
+            return false;
+        }
+        return true;
     }
 
     protected boolean matchLoad(SDValue val, X86ISelAddressMode am)
     {
-        return false;
+        SDValue address = val.getOperand(1);
+        if (address.getOpcode() == X86ISD.SegmentBaseAddress &&
+                !matchSegmentBaseAddress(address, am))
+            return false;
+
+        return true;
     }
 
     protected boolean matchWrapper(SDValue val, X86ISelAddressMode am)
     {
-        return false;
+        if (am.hasSymbolicDisplacement())
+            return true;
+        SDValue n0 = val.getOperand(0);
+        CodeModel model = tm.getCodeModel();
+        if (subtarget.is64Bit() &&
+                (model == CodeModel.Small || model == CodeModel.Kernel) &&
+                !am.hasBaseOrIndexReg() && val.getOpcode() == X86ISD.WrapperRIP)
+        {
+            if (n0.getNode() instanceof GlobalAddressSDNode)
+            {
+                GlobalAddressSDNode gv = (GlobalAddressSDNode)n0.getNode();
+                long offset = am.disp + gv.getOffset();
+                if (!X86.isOffsetSuitableForCodeModel(offset, model)) return true;
+                am.gv = gv.getGlobalValue();
+                am.disp = (int) offset;
+                am.symbolFlags = gv.getTargetFlags();
+            }
+            else if (n0.getNode() instanceof ConstantPoolSDNode)
+            {
+                ConstantPoolSDNode cp = (ConstantPoolSDNode)n0.getNode();
+                long offset = am.disp + cp.getOffset();
+                if (!X86.isOffsetSuitableForCodeModel(offset, model)) return true;
+                am.cp = cp.getConstantValue();
+                am.align = cp.getAlign();
+                am.disp = (int) offset;
+                am.symbolFlags = cp.getTargetFlags();
+            }
+            else if (n0.getNode() instanceof ExternalSymbolSDNode)
+            {
+                ExternalSymbolSDNode es = (ExternalSymbolSDNode)n0.getNode();
+                am.externalSym = es.getExtSymol();
+                am.symbolFlags = es.getTargetFlags();
+            }
+            else
+            {
+                JumpTableSDNode j = (JumpTableSDNode)n0.getNode();
+                am.jti = j.getJumpTableIndex();
+                am.symbolFlags = j.getJumpTableIndex();
+            }
+
+            if (val.getOpcode() == X86ISD.WrapperRIP)
+                am.setBaseReg(curDAG.getRegister(X86GenRegisterNames.RIP, new EVT(MVT.i64)));
+            return false;
+        }
+        if (!subtarget.is64Bit() || ((model == CodeModel.Small || model == CodeModel.Kernel)
+                    && tm.getRelocationModel() == TargetMachine.RelocModel.Static))
+        {
+            if (n0.getNode() instanceof GlobalAddressSDNode)
+            {
+                GlobalAddressSDNode gv = ((GlobalAddressSDNode) n0.getNode());
+                am.gv = gv.getGlobalValue();
+                am.disp += gv.getOffset();
+                am.symbolFlags = gv.getTargetFlags();
+            }
+            else if (n0.getNode() instanceof ConstantPoolSDNode)
+            {
+                ConstantPoolSDNode cp = (ConstantPoolSDNode) n0.getNode();
+                am.cp = cp.getConstantValue();
+                am.align = cp.getAlign();
+                am.disp += cp.getOffset();
+                am.symbolFlags = cp.getTargetFlags();
+            }
+            else if (n0.getNode() instanceof ExternalSymbolSDNode)
+            {
+                ExternalSymbolSDNode es = (ExternalSymbolSDNode) n0.getNode();
+                am.externalSym = es.getExtSymol();
+                am.symbolFlags = es.getTargetFlags();
+            }
+            else
+            {
+                JumpTableSDNode j = (JumpTableSDNode)n0.getNode();
+                am.jti = j.getJumpTableIndex();
+                am.symbolFlags = j.getTargetFlags();
+            }
+            return false;
+        }
+        return true;
     }
 
     protected boolean matchAddress(SDValue val, X86ISelAddressMode am)
     {
+        if (matchAddressRecursively(val, am, 0))
+            return true;
+
+        if (am.scale == 2 && am.baseType == X86ISelAddressMode.BaseType.RegBase &&
+                am.base.reg.getNode() == null)
+        {
+            am.base.reg = am.indexReg;
+            am.scale = 1;
+        }
+
+        if (tm.getCodeModel() == CodeModel.Small &&
+                subtarget.is64Bit() &&
+                am.scale == 1 &&
+                am.baseType == X86ISelAddressMode.BaseType.RegBase &&
+                am.base.reg.getNode() == null &&
+                am.indexReg.getNode() == null &&
+                am.symbolFlags == 0 &&
+                am.hasSymbolicDisplacement())
+            am.base.reg = curDAG.getRegister(X86GenRegisterNames.RIP, new EVT(MVT.i64));
+
         return false;
     }
 
-    protected boolean matchAddressRecursively(SDValue val, X86ISelAddressMode am)
+    protected boolean matchAddressRecursively(SDValue n, X86ISelAddressMode am, int depth)
     {
+        boolean is64Bit = subtarget.is64Bit();
+        if (depth > 5)
+            return matchAddressBase(n, am);
+
+        CodeModel m = tm.getCodeModel();
+        if (am.isRIPRelative())
+        {
+            if (am.externalSym == null && am.jti != -1)
+                return true;
+
+            if (n.getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode cn = (ConstantSDNode) n.getNode();
+                long val = am.disp + cn.getSExtValue();
+                if (X86.isOffsetSuitableForCodeModel(val, m, am.hasSymbolicDisplacement()))
+                {
+                    am.disp = (int) val;
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        switch (n.getOpcode())
+        {
+            default: break;
+
+        }
         return false;
     }
 
-    protected boolean matchAddressBase(SDValue val, X86ISelAddressMode am)
+    protected boolean matchAddressBase(SDValue n, X86ISelAddressMode am)
     {
+        if (am.baseType != X86ISelAddressMode.BaseType.RegBase ||
+                am.base.reg.getNode() != null)
+        {
+            if (am.indexReg.getNode() == null)
+            {
+                am.indexReg = n;
+                am.scale = 1;
+                return false;
+            }
+
+            return true;
+        }
+
+        am.baseType = X86ISelAddressMode.BaseType.RegBase;
+        am.base.reg = n;
         return false;
     }
 
     /**
      * comp indicates the base, scale, index, disp and segment for X86 Address mode.
      * @param op
-     * @param val
+     * @param n
      * @param comp
      * @return
      */
-    protected boolean selectAddr(SDValue op, SDValue val, SDValue[] comp)
+    protected boolean selectAddr(SDValue op, SDValue n, SDValue[] comp)
     {
-        return false;
+        X86ISelAddressMode am = new X86ISelAddressMode();
+        boolean done = false;
+        if (!n.hasOneUse())
+        {
+            int opc = n.getOpcode();
+            if (opc != ISD.Constant && opc != ISD.FrameIndex &&
+                    opc != X86ISD.Wrapper && opc != X86ISD.WrapperRIP)
+            {
+                for (SDUse u : n.getNode().getUseList())
+                {
+                    if (u.getNode().getOpcode() == ISD.CopyToReg)
+                    {
+                        matchAddressBase(n, am);
+                        done = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!done && matchAddress(n, am))
+            return false;
+
+        EVT vt = n.getValueType();
+        if (am.baseType == X86ISelAddressMode.BaseType.RegBase)
+        {
+            if (am.base.reg.getNode() == null)
+                am.base.reg = curDAG.getRegister(0, vt);
+        }
+        if (am.indexReg.getNode() == null)
+            am.indexReg = curDAG.getRegister(0, vt);
+        getAddressOperands(am, comp);
+        return true;
     }
 
     protected boolean selectLEAAddr(SDValue op, SDValue val, SDValue[] comp)
     {
-        return false;
+        assert comp.length == 4;
+        X86ISelAddressMode am = new X86ISelAddressMode();
+        SDValue copy = am.segment;
+        SDValue t = curDAG.getRegister(0, new EVT(MVT.i32));
+        am.segment = t;
+        if (matchAddress(val, am))
+            return false;
+        assert t.equals(am.segment);
+        am.segment = copy;
+
+        EVT vt = val.getValueType();
+        int complexity = 0;
+        if (am.baseType == X86ISelAddressMode.BaseType.RegBase)
+        {
+            if (am.base.reg.getNode() != null)
+                complexity = 1;
+            else
+                am.base.reg = curDAG.getRegister(0, vt);
+        }
+        else if (am.baseType == FrameIndexBase)
+            complexity = 4;
+
+        if (am.indexReg.getNode() != null)
+            ++complexity;
+        else
+            am.indexReg = curDAG.getRegister(0, vt);
+
+        if (am.scale > 1)
+            ++complexity;
+        if (am.hasSymbolicDisplacement())
+        {
+            if (subtarget.is64Bit())
+                complexity = 4;
+            else
+                complexity += 2;
+        }
+
+        if (am.disp != 0 && (am.base.reg.getNode() != null || am.indexReg.getNode() != null))
+            ++complexity;
+
+        if (complexity <= 2)
+            return false;
+
+        SDValue[] temp = new SDValue[5];
+        System.arraycopy(comp, 0, temp, 0, 4);
+        temp[4] = new SDValue();    // segment.
+        getAddressOperands(am, temp);
+        return true;
     }
 
     protected boolean selectTLSADDRAddr(SDValue op, SDValue val, SDValue[] comp)
     {
-        return false;
+        assert comp.length == 4;
+        assert val.getOpcode() == ISD.TargetGlobalTLSAddress;
+        GlobalAddressSDNode ga = (GlobalAddressSDNode)val.getNode();
+        X86ISelAddressMode am = new X86ISelAddressMode();
+        am.gv = ga.getGlobalValue();
+        am.disp += ga.getOffset();
+        am.base.reg = curDAG.getRegister(0, val.getValueType());
+        am.symbolFlags = ga.getTargetFlags();
+        if (val.getValueType().getSimpleVT().simpleVT == MVT.i32)
+        {
+            am.scale = 1;
+            am.indexReg = curDAG.getRegister(X86GenRegisterNames.EBX, new EVT(MVT.i32));
+        }
+        else
+        {
+            am.indexReg = curDAG.getRegister(0, new EVT(MVT.i64));
+        }
+        SDValue[] temp = new SDValue[5];
+        System.arraycopy(comp, 0, temp, 0, 4);
+        temp[4] = new SDValue();    // segment.
+        getAddressOperands(am, temp);
+        return true;
     }
 
     protected boolean selectScalarSSELoad(SDValue op, SDValue pred, SDValue node, SDValue[] comp)
     {
+        // comp[0]  -- base
+        // comp[1]  -- scale
+        // comp[2]  -- index
+        // comp[3]  -- disp
+        // comp[4]  -- segment
+        // comp[5]  -- inChain
+        // comp[6]  -- outChain
+
+        assert comp.length == 7;
+        if (node.getOpcode() == ISD.SCALAR_TO_VECTOR)
+        {
+            comp[5] = node.getOperand(0).getValue(1);
+            if (comp[5].getNode().isNONExtLoad() &&
+                    comp[5].getValue(0).hasOneUse() &&
+                    node.hasOneUse() &&
+                    isLegalAndProfitableToFold(node.getNode(), pred.getNode(),
+                            op.getNode()))
+            {
+                LoadSDNode ld = (LoadSDNode)comp[5].getNode();
+                if (!selectAddr(op, ld.getBasePtr(), comp))
+                    return false;
+                comp[6] = ld.getChain();
+                return true;
+            }
+        }
+
+        if (node.getOpcode() == X86ISD.VZEXT_MOVL && node.getNode().hasOneUse() &&
+                node.getOperand(0).getOpcode() == ISD.SCALAR_TO_VECTOR &&
+                node.getOperand(0).getNode().hasOneUse() &&
+                node.getOperand(0).getOperand(0).getNode().isNONExtLoad() &&
+                node.getOperand(0).getOperand(0).hasOneUse())
+        {
+            LoadSDNode ld = (LoadSDNode)node.getOperand(0).getOperand(0).getNode();
+            if (!selectAddr(op, ld.getBasePtr(), comp))
+                return false;
+            comp[6] = ld.getChain();
+            comp[5] = new SDValue(ld, 1);
+            return true;
+        }
         return false;
     }
 
-    protected boolean tryFoldLoad(SDValue pred, SDNode node, SDValue[] comp)
+    protected boolean tryFoldLoad(SDValue pred, SDValue node, SDValue[] comp)
     {
+        assert comp.length == 5;
+        if (node.getNode().isNONExtLoad() &&
+                node.getNode().hasOneUse() &&
+                isLegalAndProfitableToFold(node.getNode(), pred.getNode(), pred.getNode()))
+            return selectAddr(pred, node.getOperand(1), comp);
+
         return false;
     }
 
     protected void preprocessForRMW()
     {
+        OutParamWrapper<SDValue> x = new OutParamWrapper<>();
+        for (SDNode node : curDAG.allNodes)
+        {
+            if (node.getOpcode() == X86ISD.CALL)
+            {
+                /// Also try moving call address load from outside callseq_start to just
+                /// before the call to allow it to be folded.
+                ///
+                ///     [Load chain]
+                ///         ^
+                ///         |
+                ///       [Load]
+                ///       ^    ^
+                ///       |    |
+                ///      /      \--
+                ///     /          |
+                ///[CALLSEQ_START] |
+                ///     ^          |
+                ///     |          |
+                /// [LOAD/C2Reg]   |
+                ///     |          |
+                ///      \        /
+                ///       \      /
+                ///       [CALL]
+                SDValue chain = node.getOperand(0);
+                SDValue load = node.getOperand(1);
+                x.set(chain);
+                boolean res = !isCalleeLoad(load, x);
+                chain = x.get();
+                if (res)
+                    continue;
+                moveBelowCallSeqStart(curDAG, load, new SDValue(node, 0), chain);
+                continue;
+            }
 
+            if (!node.isNONTRUNCStore())
+                continue;
+            SDValue chain = node.getOperand(0);
+
+            if (chain.getNode().getOpcode() != ISD.TokenFactor)
+                continue;
+
+            SDValue n1 = node.getOperand(1);
+            SDValue n2 = node.getOperand(2);
+            if ((n1.getValueType().isFloatingPoint() &&
+                    !n1.getValueType().isVector()) ||
+                    !n1.hasOneUse())
+                continue;
+
+            boolean rmodW = false;
+            SDValue load = new SDValue();
+            int opc = n1.getNode().getOpcode();
+            switch (opc)
+            {
+                case ISD.ADD:
+                case ISD.MUL:
+                case ISD.AND:
+                case ISD.OR:
+                case ISD.XOR:
+                case ISD.ADDC:
+                case ISD.ADDE:
+                case ISD.VECTOR_SHUFFLE:
+                {
+                    SDValue n10 = n1.getOperand(0);
+                    SDValue n11 = n1.getOperand(1);
+                    x.set(load);
+                    rmodW = isRMWLoad(n10, chain, n2, x);
+                    load = x.get();
+                    if (!rmodW)
+                    {
+                        x.set(load);
+                        rmodW = isRMWLoad(n11, chain, n2, x);
+                        load = x.get();
+                    }
+                    break;
+                }
+                case ISD.SUB:
+                case ISD.SHL:
+                case ISD.SRA:
+                case ISD.SRL:
+                case ISD.ROTL:
+                case ISD.ROTR:
+                case ISD.SUBC:
+                case ISD.SUBE:
+                case X86ISD.SHLD:
+                case X86ISD.SHRD:
+                {
+                    SDValue n10 = n1.getOperand(0);
+                    x.set(load);
+                    rmodW = isRMWLoad(n10, chain, n2, x);
+                    load = x.get();
+                    break;
+                }
+            }
+            if (rmodW)
+            {
+                moveBelowTokenFactor(curDAG, load, new SDValue(node, 0), chain);
+            }
+        }
+    }
+
+    static boolean isRMWLoad(SDValue n, SDValue chain, SDValue address,
+            OutParamWrapper<SDValue> load)
+    {
+        if (n.getOpcode() == ISD.BIT_CONVERT)
+            n = n.getOperand(0);
+
+        LoadSDNode ld = n.getNode() instanceof LoadSDNode ?(LoadSDNode)n.getNode():null;
+        if (ld == null || ld.isVolatile())
+            return false;
+        if (ld.getAddressingMode() != UNINDEXED)
+            return false;
+
+        LoadExtType extType = ld.getExtensionType();
+        if (extType != NON_EXTLOAD && extType != EXTLOAD)
+            return false;
+
+        if (n.hasOneUse() &&
+                n.getOperand(1).equals(address) &&
+                n.getNode().isOperandOf(chain.getNode()))
+        {
+            load.set(n);
+            return true;
+        }
+        return false;
+    }
+
+    static void moveBelowTokenFactor(SelectionDAG curDAG, SDValue load,
+            SDValue store, SDValue tf)
+    {
+        ArrayList<SDValue> ops = new ArrayList<>();
+        for (int i = 0, e = tf.getNode().getNumOperands(); i < e; i++)
+        {
+            if (load.getNode().equals(tf.getOperand(i).getNode()))
+                ops.add(load.getOperand(0));
+            else
+                ops.add(tf.getOperand(i));
+        }
+        SDValue newTF = curDAG.updateNodeOperands(tf, ops);
+        SDValue newLoad = curDAG.updateNodeOperands(load, newTF, load.getOperand(1),
+                load.getOperand(2));
+        curDAG.updateNodeOperands(store, newLoad.getValue(1), store.getOperand(1),
+                store.getOperand(2), store.getOperand(3));
+    }
+
+    static boolean isCalleeLoad(SDValue callee, OutParamWrapper<SDValue> chain)
+    {
+        if (callee.getNode().equals(chain.get().getNode()) || !callee.hasOneUse())
+            return false;
+        LoadSDNode ld = callee.getNode() instanceof LoadSDNode?(LoadSDNode)callee.getNode():null;
+        if (ld == null || ld.isVolatile() || ld.getAddressingMode() != UNINDEXED
+                || ld.getExtensionType() != NON_EXTLOAD)
+            return false;
+
+        while (chain.get().getOpcode() != ISD.CALLSEQ_START)
+        {
+            if (chain.get().hasOneUse())
+                return false;
+
+            chain.set(chain.get().getOperand(0));
+        }
+        if (chain.get().getOperand(0).getNode().equals(callee.getNode()))
+            return true;
+        if (chain.get().getOperand(0).getOpcode() == ISD.TokenFactor &&
+                callee.getValue(1).isOperandOf(chain.get().getOperand(0).getNode()) &&
+                callee.getValue(1).hasOneUse())
+            return true;
+
+        return false;
+    }
+
+    static void moveBelowCallSeqStart(SelectionDAG curDAG, SDValue load,
+            SDValue call, SDValue callSeqStart)
+    {
+        ArrayList<SDValue> ops = new ArrayList<>();
+        SDValue chain = callSeqStart.getOperand(0);
+        if (chain.getNode().equals(load.getNode()))
+            ops.add(load.getOperand(0));
+        else
+        {
+            assert chain.getOpcode() == ISD.TokenFactor;
+            for (int i = 0, e = chain.getNumOperands(); i < e; i++)
+            {
+                if (chain.getOperand(i).getNode().equals(load.getNode()))
+                    ops.add(load.getOperand(0));
+                else
+                    ops.add(chain.getOperand(i));
+            }
+
+            SDValue newChain = curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                    ops);
+            ops.clear();
+            ops.add(newChain);
+        }
+
+        for (int i = 1, e = callSeqStart.getNumOperands();i < e; i++)
+            ops.add(callSeqStart.getOperand(i));
+        curDAG.updateNodeOperands(callSeqStart, ops);
+        curDAG.updateNodeOperands(load, call.getOperand(0),
+                load.getOperand(1), load.getOperand(2));
+        ops.clear();
+        ops.add(new SDValue(load.getNode(), 1));
+        for (int i = 1, e = call.getNode().getNumOperands(); i < e; i++)
+            ops.add(call.getOperand(i));
+        curDAG.updateNodeOperands(call, ops);
     }
 
     protected void preprocessForFPConvert()
-    {}
+    {
+        for (SDNode node : curDAG.allNodes)
+        {
+            if (node.getOpcode() != ISD.FP_ROUND && node.getOpcode() != ISD.FP_EXTEND)
+                continue;
+
+            EVT srcVT = node.getOperand(0).getValueType();
+            EVT dstVT = node.getValueType(0);
+            boolean srcIsSSE = tli.isScalarFPTypeInSSEReg(srcVT);
+            boolean dstIsSSE = tli.isScalarFPTypeInSSEReg(dstVT);
+            if (srcIsSSE && dstIsSSE)
+                continue;
+
+            if (!srcIsSSE && !dstIsSSE)
+            {
+                if (node.getOpcode() == ISD.FP_EXTEND)
+                    continue;
+                if (node.getConstantOperandVal(1) != 0)
+                    continue;
+            }
+
+            EVT memVT;
+            if (node.getOpcode() == ISD.FP_ROUND)
+                memVT = dstVT;
+            else
+                memVT = srcIsSSE?srcVT:dstVT;
+
+            SDValue memTmp = curDAG.createStackTemporary(memVT);
+            SDValue store = curDAG.getTruncStore(curDAG.getEntryNode(), node.getOperand(0),
+                    memTmp, null, 0, memVT);
+            SDValue result = curDAG.getExtLoad(EXTLOAD, dstVT, store, memTmp,
+                    null, 0, memVT);
+        }
+    }
 
     protected void emitSpecialCodeForMain(MachineBasicBlock mbb, MachineFrameInfo mfi)
-    {}
+    {
+        TargetInstrInfo tii = tm.getInstrInfo();
+        if (subtarget.isTargetCygMing())
+        {
+            buildMI(mbb, tii.get(X86GenInstrNames.CALLpcrel32)).addExternalSymbol("__main");
+        }
+    }
 
     protected void getAddressOperands(X86ISelAddressMode am, SDValue[] comp)
-    {}
+    {
+        // comp[0] -- base
+        // comp[1] -- scale
+        // comp[2] -- index
+        // comp[3] -- disp
+        // comp[4] -- segment
+        assert comp.length == 5;
+        comp[4] = am.baseType == FrameIndexBase ?
+                curDAG.getTargetFrameIndex(am.base.frameIndex, new EVT(tli.getPointerTy())) :
+                am.base.reg;
+        comp[1] = getI8Imm(am.scale);
+        comp[2] = am.indexReg;
+
+        if (am.gv != null)
+            comp[3] = curDAG.getTargetGlobalAddress(am.gv, new EVT(MVT.i32), am.disp,
+                    am.symbolFlags);
+        else if (am.cp != null)
+            comp[3] = curDAG.getTargetConstantPool(am.cp, new EVT(MVT.i32),
+                    am.align, am.disp, am.symbolFlags);
+        else if (am.externalSym != null)
+            comp[3] = curDAG.getTargetExternalSymbol(am.externalSym, new EVT(MVT.i32), am.symbolFlags);
+        else if (am.jti != -1)
+            comp[3] = curDAG.getTargetJumpTable(am.jti, new EVT(MVT.i32), am.symbolFlags);
+        else
+            comp[3] = curDAG.getTargetConstant(am.disp, new EVT(MVT.i32));
+
+        if (am.segment.getNode() != null)
+            comp[4] = am.segment;
+        else
+            comp[4] = curDAG.getRegister(0, new EVT(MVT.i32));
+    }
 
     protected SDValue getI8Imm(int imm)
     {

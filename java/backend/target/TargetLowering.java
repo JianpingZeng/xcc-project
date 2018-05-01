@@ -19,9 +19,11 @@ package backend.target;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
+import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
 import backend.type.Type;
 import backend.value.Function;
+import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
@@ -95,9 +97,10 @@ public abstract class TargetLowering
     protected TargetData td;
 
     private ArrayList<Pair<EVT, TargetRegisterClass>> availableRegClasses;
-    private boolean isLittelEndian;
+    private boolean isLittleEndian;
     private MVT pointerTy;
     private MVT shiftAmountTy;
+    private BooleanContent booleanContents;
 
     public TargetLowering(TargetMachine tm)
     {
@@ -110,6 +113,12 @@ public abstract class TargetLowering
         transformToType = new EVT[MVT.LAST_VALUETYPE];
         numRegistersForVT = new int[MVT.LAST_VALUETYPE];
         registerTypeForVT = new EVT[MVT.LAST_VALUETYPE];
+        booleanContents = BooleanContent.UndefinedBooleanContent;
+    }
+
+    public BooleanContent getBooleanContents()
+    {
+        return booleanContents;
     }
 
     public TargetData getTargetData()
@@ -120,6 +129,16 @@ public abstract class TargetLowering
     public TargetMachine getTargetMachine()
     {
         return tm;
+    }
+
+    public boolean isBigEndian()
+    {
+        return !isLittleEndian;
+    }
+
+    public boolean isLittleEndian()
+    {
+        return isLittleEndian;
     }
 
     /**
@@ -519,5 +538,21 @@ public abstract class TargetLowering
     public abstract SDValue lowerFormalArguments(SDValue root, CallingConv callingConv,
                                                  boolean varArg, ArrayList<InputArg> ins,
                                                  SelectionDAG dag, ArrayList<SDValue> inVals);
+
+    public abstract SDValue lowerMemArgument(SDValue chain, CallingConv cc,
+            ArrayList<InputArg> argInfo, SelectionDAG dag, CCValAssign va,
+            MachineFrameInfo mfi, int i);
+
+    public void computeMaskedBitsForTargetNode(SDValue op,
+            APInt mask,
+            APInt[] knownVals,
+            SelectionDAG selectionDAG,
+            int depth)
+    {
+        int opc = op.getOpcode();
+        assert opc >= ISD.BUILTIN_OP_END || opc == ISD.INTRINSIC_VOID
+                || opc == ISD.INTRINSIC_W_CHAIN || opc == ISD.INTRINSIC_WO_CHAIN;
+        knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
+    }
 }
 

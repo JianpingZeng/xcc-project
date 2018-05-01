@@ -207,6 +207,11 @@ public final class MachineInstrBuilder
 		return this;
 	}
 
+	public MachineInstrBuilder addExternalSymbol(String symName)
+	{
+		return addExternalSymbol(symName, 0, 0);
+	}
+
 	public MachineInstrBuilder addExternalSymbol(String symName,
 			long offset,
 			int targetFlags)

@@ -548,6 +548,4 @@ public class ISD
     public static final int ATOMIC_LOAD_UMAX = 173;
     // BUILTIN_OP_END - This must be the last enum value in this list.
     public static final int BUILTIN_OP_END = 174;
-
-
 }
