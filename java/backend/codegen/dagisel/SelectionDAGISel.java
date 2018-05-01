@@ -43,6 +43,7 @@ import java.util.Objects;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
+import static backend.support.BackendCmdOptions.createScheduler;
 import static backend.support.ErrorHandling.llvmReportError;
 
 /**
@@ -192,7 +193,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             }
 
             curDAG.setRoot(sdl.getControlRoot());
-            codeGenEmit();
+            codeGenAndEmitInst();
             sdl.clear();
 
             // add operand for machine phinode
@@ -263,13 +264,22 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         sdl.constantsOut.clear();
     }
 
-    private void codeGenEmit()
+    private void codeGenAndEmitInst()
     {
         if (Util.DEBUG)
-            System.err.println("Instrtuction Selection");
+            System.err.println("Instruction Selection");
+
         instructionSelect();
 
-        new ListScheduler(curDAG, mbb).emit();
+        ScheduleDAG scheduler = createScheduler(this, optLevel);
+        scheduler.run(mbb, mbb.size());
+        mbb = scheduler.emitSchedule();
+
+        if (Util.DEBUG)
+        {
+            System.err.println("Selected machine code:");
+            mbb.dump();
+        }
     }
 
     public abstract void instructionSelect();

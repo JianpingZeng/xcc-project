@@ -17,6 +17,8 @@ package jlang.codegen;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.RegisterScheduler;
+import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.pass.*;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
@@ -343,8 +345,12 @@ public class BackendConsumer implements ASTConsumer
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
                 theTarget.setAsmVerbosityDefault(true);
-                RegisterRegAlloc.setDefault(fast ?RegAllocLocal::createLocalRegAllocator:
-                        RegAllocLinearScan::createLinearScanRegAllocator);
+
+                // Set the default Register Allocator.
+                RegisterRegAlloc.setDefault(RegAllocLinearScan::createLinearScanRegAllocator);
+
+                // Set the default instruction scheduler.
+                RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
 
                 MachineCodeEmitter mce = null;
                 CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;

@@ -17,32 +17,31 @@
 
 package backend.codegen;
 
+import backend.codegen.dagisel.RegisterScheduler;
 import tools.commandline.Option;
 import tools.commandline.Parser;
 
 /**
- * The command line option parser for registry of register allocator, like
- * RegAllocLocal, RegAllocaLinearScan etc.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class RegisterRegAllocParser extends Parser<MachinePassCtor>
-        implements MachinePassRegistryListener<MachinePassCtor>
+public class RegisterSchedulerParser extends Parser<SchedPassCtor>
+        implements MachinePassRegistryListener<SchedPassCtor>
 {
     @Override
     public <T1> void initialize(Option<T1> opt)
     {
         super.initialize(opt);
-        for (RegisterRegAlloc node = RegisterRegAlloc.getList(); node != null;
+        for (RegisterScheduler node = RegisterScheduler.getList(); node != null;
              node = node.getNext())
         {
             addLiteralOption(node.getName(), node.getCtor(), node.getDescription());
         }
-        RegisterRegAlloc.setListener(this);
+        RegisterScheduler.setListener(this);
     }
 
     @Override
-    public void notifyAdd(String name, MachinePassCtor ctor, String desc)
+    public void notifyAdd(String name, SchedPassCtor ctor, String desc)
     {
         addLiteralOption(name, ctor, desc);
     }

@@ -17,7 +17,12 @@ package backend.support;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.RegisterScheduler;
+import backend.codegen.dagisel.ScheduleDAG;
+import backend.codegen.dagisel.ScheduleDAGFast;
+import backend.codegen.dagisel.SelectionDAGISel;
 import backend.passManaging.PMDataManager;
+import backend.target.TargetMachine;
 import tools.commandline.*;
 
 import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
@@ -25,9 +30,7 @@ import static backend.codegen.AsmWriterFlavorTy.ATT;
 import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
-import static backend.support.BackendCmdOptions.AliasAnalyzerKind.BasicAA;
-import static backend.support.BackendCmdOptions.AliasAnalyzerKind.PoorMan;
-import static backend.support.BackendCmdOptions.AliasAnalyzerKind.Steensgaard;
+import static backend.support.BackendCmdOptions.AliasAnalyzerKind.*;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -166,6 +169,29 @@ public class BackendCmdOptions
             new BooleanOpt(optionName("enable-finite-only-fp-math"),
                     desc("Enable optimizations that assumes non- NaNs / +-Infs"),
                     init(false));
+
+
+    public static final Opt<SchedPassCtor> InstScheduler =
+            new Opt<>(new RegisterSchedulerParser(),
+                optionName("pre-ra-sched"), desc("Instruction scheduler to use: (default = fast)"),
+                init((SchedPassCtor) ScheduleDAGFast::createFastDAGScheduler));
+
+    /***
+     * A static method for creating a Scheduler Based on DAG.
+     * @param isel
+     * @param level
+     * @return
+     */
+    public static ScheduleDAG createScheduler(SelectionDAGISel isel, TargetMachine.CodeGenOpt level)
+    {
+        SchedPassCtor ctor = RegisterScheduler.getDefault();
+        if (ctor == null)
+        {
+            ctor = InstScheduler.value;
+            RegisterScheduler.setDefault(ctor);
+        }
+        return ctor.apply(isel, level);
+    }
 
     /**
      * Checks if we want to increase optimization opportunity in the spense of

@@ -22,7 +22,7 @@ package backend.codegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface MachinePassRegistryListener
+public interface MachinePassRegistryListener<T>
 {
     /**
      * Notify the registered listener when a new machine function pass has been
@@ -30,7 +30,7 @@ public interface MachinePassRegistryListener
      * @param name  The name of registered MachineFunction pass used to print out stdout
      * @param ctor  The constructor interface to create a machine function pass.
      */
-    void notifyAdd(String name, MachinePassCtor ctor, String description);
+    void notifyAdd(String name, T ctor, String description);
 
     /**
      * Notify registered listeners when a machine pass with specified name was removed

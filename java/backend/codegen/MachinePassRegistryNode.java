@@ -22,14 +22,14 @@ package backend.codegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MachinePassRegistryNode
+public class MachinePassRegistryNode<T>
 {
     private MachinePassRegistryNode next;
     private String name;    // the name of this pass to command line option.
     private String description;
-    private MachinePassCtor ctor;
+    private T ctor;
 
-    public MachinePassRegistryNode(String name, String desc, MachinePassCtor ctor)
+    public MachinePassRegistryNode(String name, String desc,T ctor)
     {
         this.next = null;
         this.name = name;
@@ -52,7 +52,7 @@ public class MachinePassRegistryNode
         return description;
     }
 
-    public MachinePassCtor getCtor()
+    public T getCtor()
     {
         return ctor;
     }

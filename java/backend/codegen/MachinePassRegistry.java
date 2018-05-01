@@ -22,7 +22,7 @@ package backend.codegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MachinePassRegistry
+public class MachinePassRegistry<T>
 {
     /**
      * A list of registred machiene pass nodes
@@ -31,7 +31,7 @@ public class MachinePassRegistry
     /**
      * The default constructor.
      */
-    private MachinePassCtor defaultCtor;
+    private T defaultCtor;
     /**
      * The listener for registration.
      */
@@ -42,12 +42,12 @@ public class MachinePassRegistry
         return list;
     }
 
-    public MachinePassCtor getDefault()
+    public T getDefault()
     {
         return defaultCtor;
     }
 
-    public void setDefaultCtor(MachinePassCtor defaultCtor)
+    public void setDefaultCtor(T defaultCtor)
     {
         this.defaultCtor = defaultCtor;
     }

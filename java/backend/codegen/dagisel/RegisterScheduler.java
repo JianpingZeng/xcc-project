@@ -17,26 +17,15 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.MachinePassCtor;
-import backend.codegen.MachinePassRegistry;
-import backend.codegen.MachinePassRegistryListener;
-import backend.codegen.MachinePassRegistryNode;
-import backend.target.TargetMachine;
+import backend.codegen.*;
 
-public class RegisterScheduler extends MachinePassRegistryNode
+public class RegisterScheduler extends MachinePassRegistryNode<SchedPassCtor>
 {
-	public static final MachinePassRegistry registry =
-		new MachinePassRegistry();
+	public static final MachinePassRegistry<SchedPassCtor> registry =
+		new MachinePassRegistry<>();
 
-
-	public interface FunctionPassCtor extends MachinePassCtor
-	{
-	    ScheduleDAGSDNodes apply(SelectionDAGISel isel, TargetMachine.CodeGenOpt opt);
-	}
-
-
-	public RegisterScheduler(String name, String desc, 
-		FunctionPassCtor ctor)
+    public RegisterScheduler(String name, String desc,
+		SchedPassCtor ctor)
 	{
 		super(name, desc, ctor);
 		registry.add(this);		
@@ -58,12 +47,12 @@ public class RegisterScheduler extends MachinePassRegistryNode
         return (RegisterScheduler) registry.getList();
     }
 
-    public static MachinePassCtor getDefault()
+    public static SchedPassCtor getDefault()
     {
         return registry.getDefault();
     }
 
-    public static void setDefault(FunctionPassCtor ctor)
+    public static void setDefault(SchedPassCtor ctor)
     {
         registry.setDefaultCtor(ctor);
     }
@@ -71,5 +60,11 @@ public class RegisterScheduler extends MachinePassRegistryNode
     public static void setListener(MachinePassRegistryListener listener)
     {
         registry.setListener(listener);
+    }
+
+    @Override
+    public SchedPassCtor getCtor()
+    {
+        return super.getCtor();
     }
 }
