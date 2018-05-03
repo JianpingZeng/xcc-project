@@ -17,6 +17,8 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.fastISel.ISD;
@@ -26,11 +28,16 @@ import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
 import backend.type.Type;
 import backend.value.Function;
+import backend.value.GlobalValue;
 import tools.APInt;
+import tools.OutParamWrapper;
+import tools.Pair;
 import tools.Util;
+import xcc.Arg;
 
 import java.util.ArrayList;
 
+import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86GenCallingConv.*;
 
@@ -134,7 +141,8 @@ public class X86TargetLowering extends TargetLowering
         return new X86MachineFunctionInfo(mf);
     }
 
-    @Override public int getFunctionAlignment(Function fn)
+    @Override
+    public int getFunctionAlignment(Function fn)
     {
         return fn.hasFnAttr(Attribute.OptimizeForSize) ? 0 : 4;
     }
@@ -622,12 +630,418 @@ public class X86TargetLowering extends TargetLowering
     }
 
     @Override
-    public SDValue lowerCall(SDValue chain, SDValue callee, CallingConv cc,
-            boolean isVarArg, boolean isTailCall, ArrayList<OutputArg> outs,
-            ArrayList<InputArg> ins, SelectionDAG dag,
+    public SDValue lowerCall(SDValue chain,
+            SDValue callee,
+            CallingConv cc,
+            boolean isVarArg,
+            boolean isTailCall,
+            ArrayList<OutputArg> outs,
+            ArrayList<InputArg> ins,
+            SelectionDAG dag,
             ArrayList<SDValue> inVals)
     {
         // TODO: 18-5-1
+        MachineFunction mf = dag.getMachineFunction();
+        boolean is64Bit = subtarget.is64Bit();
+        boolean isStructRet = callIsStructReturn(outs);
+        assert !isTailCall || (cc == CallingConv.Fast
+                && EnablePerformTailCallOpt.value) : "isEligibleForTailCallOptimization missed a case!";
+        assert !(isVarArg && cc
+                == CallingConv.Fast) : "Var args not supported with calling convention fastcc!";
+        ArrayList<CCValAssign> argLocs = new ArrayList<>();
+        CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), argLocs);
+        ccInfo.analyzeCallOperands(outs, ccAssignFnForNode(cc));
+
+        int numBytes = ccInfo.getNextStackOffset();
+        if (EnablePerformTailCallOpt.value && cc == CallingConv.Fast)
+            numBytes = getAlignedArgumentStackSize(numBytes, dag);
+
+        int fpDiff = 0;
+        if (isTailCall)
+        {
+            // Lower arguments at fp - stackoffset + fpdiff.
+            int numBytesCallerPushed = ((X86MachineFunctionInfo) mf.getInfo()).
+                    getBytesToPopOnReturn();
+            fpDiff = numBytesCallerPushed - numBytes;
+
+            if (fpDiff < ((X86MachineFunctionInfo) mf.getInfo()).getTCReturnAddrDelta())
+                ((X86MachineFunctionInfo) mf.getInfo()).setTCReturnAddrDelta(fpDiff);
+        }
+
+        chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(numBytes, true));
+
+        OutParamWrapper<SDValue> retAddrFrIdx = new OutParamWrapper<>();
+        chain = emitTailCallLoadRetAddr(dag, retAddrFrIdx, chain, isTailCall,
+                is64Bit, fpDiff);
+
+        ArrayList<Pair<Integer, SDValue>> regsToPass = new ArrayList<>();
+        ArrayList<SDValue> memOpChains = new ArrayList<>();
+        SDValue stackPtr = new SDValue();
+
+        for (int i = 0, e = argLocs.size(); i < e; i++)
+        {
+            CCValAssign va = argLocs.get(i);
+            EVT regVT = va.getLocVT();
+            SDValue arg = outs.get(i).val;
+            ArgFlagsTy flags = outs.get(i).flags;
+            boolean isByVal = flags.isByVal();
+
+            // Promote the value if desired.
+            switch (va.getLocInfo())
+            {
+                default:
+                    Util.shouldNotReachHere("Unknown loc info!");
+                case Full:
+                    break;
+                case SExt:
+                    arg = dag.getNode(ISD.SIGN_EXTEND, regVT, arg);
+                    break;
+                case ZExt:
+                    arg = dag.getNode(ISD.SIGN_EXTEND, regVT, arg);
+                    break;
+                case AExt:
+                    if (regVT.isVector() && regVT.getSizeInBits() == 128)
+                    {
+                        // special case: passing MMX values in XMM register.
+                        arg = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.i64), arg);
+                        arg = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v2i64), arg);
+                        arg = getMOVL(dag, new EVT(MVT.v2i64), dag.getUNDEF(new EVT(MVT.v2i64)), arg);
+                    }
+                    else
+                        arg = dag.getNode(ISD.ANY_EXTEND, regVT, arg);
+                    break;
+                case BCvt:
+                    arg = dag.getNode(ISD.BIT_CONVERT, regVT, arg);
+                    break;
+                case Indirect:
+                {
+                    SDValue spillSlot = dag.createStackTemporary(va.getValVT());
+                    int fi = ((FrameIndexSDNode) spillSlot.getNode()).getFrameIndex();
+                    chain = dag.getStore(chain, arg, spillSlot,
+                            PseudoSourceValue.getFixedStack(fi), 0, false, 0);
+                    arg = spillSlot;
+                    break;
+                }
+            }
+            if (va.isRegLoc())
+                regsToPass.add(Pair.get(va.getLocReg(), arg));
+            else
+            {
+                if (!isTailCall || (isTailCall && isByVal))
+                {
+                    assert va.isMemLoc();
+                    if (stackPtr.getNode() == null)
+                    {
+                        stackPtr = dag.getCopyFromReg(chain, x86StackPtr, new EVT(getPointerTy()));
+                    }
+                    memOpChains
+                            .add(lowerMemOpCallTo(chain, stackPtr, arg, dag, va,
+                                    flags));
+                }
+            }
+        }
+
+        if (!memOpChains.isEmpty())
+            chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), memOpChains);
+
+        SDValue inFlag = new SDValue();
+        if (isTailCall)
+        {
+            for (int i = 0, e = regsToPass.size(); i < e; i++)
+            {
+                chain = dag.getCopyToReg(chain, regsToPass.get(i).first,
+                        regsToPass.get(i).second, inFlag);
+                inFlag = chain.getValue(1);
+            }
+        }
+
+        if (subtarget.isPICStyleGOT())
+        {
+            if (!isTailCall)
+            {
+                chain = dag.getCopyToReg(chain, X86GenRegisterNames.EBX,
+                        dag.getNode(X86ISD.GlobalBaseReg,
+                                new EVT(getPointerTy())));
+                inFlag = chain.getValue(1);
+            }
+            else
+            {
+                GlobalAddressSDNode gr = callee
+                        .getNode() instanceof GlobalAddressSDNode ?
+                        (GlobalAddressSDNode) callee.getNode() :
+                        null;
+                if (gr != null && !gr.getGlobalValue().hasHiddenVisibility())
+                    callee = lowerGlobalAddress(callee, dag);
+                else if (callee.getNode() instanceof ExternalSymbolSDNode)
+                    callee = lowerExternalSymbol(callee, dag);
+            }
+        }
+
+        if (is64Bit && isVarArg)
+        {
+            int[] XMMArgRegs = { X86GenRegisterNames.XMM0, X86GenRegisterNames.XMM1,
+                    X86GenRegisterNames.XMM2, X86GenRegisterNames.XMM3,
+                    X86GenRegisterNames.XMM4, X86GenRegisterNames.XMM5,
+                    X86GenRegisterNames.XMM6, X86GenRegisterNames.XMM7, };
+            int numXMMRegs = ccInfo.getFirstUnallocated(XMMArgRegs);
+            assert subtarget.hasSSE1() || numXMMRegs == 0;
+            chain = dag.getCopyToReg(chain, X86GenRegisterNames.AL,
+                    dag.getConstant(numXMMRegs, new EVT(MVT.i8), false), inFlag);
+            inFlag = chain.getValue(1);
+        }
+
+        if (isTailCall)
+        {
+            SDValue argChain = dag.getStackArgumentTokenFactor(chain);
+            ArrayList<SDValue> memOpChains2 = new ArrayList<>();
+            SDValue fin = new SDValue();
+            int fi = 0;
+            inFlag = new SDValue();
+            for (int i = 0, e = argLocs.size(); i < e; i++)
+            {
+                CCValAssign va = argLocs.get(i);
+                if (!va.isRegLoc())
+                {
+                    assert va.isMemLoc();
+                    SDValue arg = outs.get(i).val;
+                    ArgFlagsTy flags = outs.get(i).flags;
+
+                    int offset = va.getLocMemOffset() + fpDiff;
+                    int opSize = (va.getLocVT().getSizeInBits() + 7) / 8;
+                    fi = mf.getFrameInfo().createFixedObject(opSize, offset);
+                    fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
+
+                    if (flags.isByVal())
+                    {
+                        SDValue source = dag.getIntPtrConstant(va.getLocMemOffset());
+                        if (stackPtr.getNode() == null)
+                        {
+                            stackPtr = dag.getCopyFromReg(chain, x86StackPtr,
+                                    new EVT(getPointerTy()));
+                        }
+                        source = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                                stackPtr, source);
+                        memOpChains2.add(createCopyOfByValArgument(source, fin,
+                                argChain, flags, dag));
+                    }
+                    else
+                    {
+                        memOpChains2.add(dag.getStore(argChain, arg, fin,
+                                PseudoSourceValue.getFixedStack(fi), 0, false, 0));
+                    }
+                }
+            }
+
+            if (!memOpChains2.isEmpty())
+                chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                        memOpChains2);
+
+            for (int i = 0, e = regsToPass.size(); i < e; i++)
+            {
+                chain = dag.getCopyToReg(chain, regsToPass.get(i).first,
+                        regsToPass.get(i).second, inFlag);
+                inFlag = chain.getValue(1);
+            }
+            inFlag = new SDValue();
+
+            chain = emitTailCallStoreRetAddr(dag, mf, chain, retAddrFrIdx.get(),
+                    is64Bit, fpDiff);
+        }
+
+        if (callee.getNode() instanceof GlobalAddressSDNode)
+        {
+            GlobalAddressSDNode gs = (GlobalAddressSDNode)callee.getNode();
+            GlobalValue gv = gs.getGlobalValue();
+
+            // default in non windows platform.
+            int opFlags = 0;
+            if (subtarget.isTargetELF() && getTargetMachine().getRelocationModel() == PIC_
+                    && gv.hasDefaultVisibility() && !gv.hasLocalLinkage())
+            {
+                opFlags = X86II.MO_PLT;
+            }
+            else if (subtarget.isPICStyleStubAny() &&
+                    (gv.isDeclaration() || gv.isWeakForLinker()) &&
+                    subtarget.getDarwinVers() < 9)
+            {
+                opFlags = X86II.MO_DARWIN_STUB;
+            }
+            callee = dag.getTargetGlobalAddress(gv, new EVT(getPointerTy()), gs.getOffset(), opFlags);
+        }
+        else if (callee.getNode() instanceof ExternalSymbolSDNode)
+        {
+            ExternalSymbolSDNode es = (ExternalSymbolSDNode)callee.getNode();
+            int opFlags = 0;
+            if (subtarget.isTargetELF() && getTargetMachine().getRelocationModel() == PIC_)
+            {
+                opFlags = X86II.MO_PLT;
+            }
+            else if (subtarget.isPICStyleStubAny() &&
+                    subtarget.getDarwinVers() < 9)
+            {
+                opFlags = X86II.MO_DARWIN_STUB;
+            }
+            callee = dag.getTargetExternalSymbol(es.getExtSymol(), new EVT(getPointerTy()),
+                    opFlags);
+        }
+        else if (isTailCall)
+        {
+            int calleeReg = is64Bit ? X86GenRegisterNames.R11: X86GenRegisterNames.EAX;
+            chain = dag.getCopyToReg(chain, dag.getRegister(calleeReg, new EVT(getPointerTy())),
+                    callee, inFlag);
+            callee = dag.getRegister(calleeReg, new EVT(getPointerTy()));
+            mf.getMachineRegisterInfo().addLiveOut(calleeReg);
+        }
+
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        ArrayList<SDValue> ops = new ArrayList<>();
+        if (isTailCall)
+        {
+            chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(numBytes, true),
+                    dag.getIntPtrConstant(0, true), inFlag);
+            inFlag = chain.getValue(1);
+        }
+
+        ops.add(chain);
+        ops.add(callee);
+
+        if (isTailCall)
+            ops.add(dag.getConstant(fpDiff, new EVT(MVT.i32), false));
+
+        regsToPass.forEach(pair->ops.add(dag.getRegister(pair.first, pair.second.getValueType())));
+
+        if (!isTailCall && subtarget.isPICStyleGOT())
+            ops.add(dag.getRegister(X86GenRegisterNames.EBX, new EVT(getPointerTy())));
+
+        if (is64Bit && isVarArg)
+            ops.add(dag.getRegister(X86GenRegisterNames.AL, new EVT(MVT.i8)));
+
+        if (inFlag.getNode() != null)
+            ops.add(inFlag);
+
+        if (isTailCall)
+        {
+            if (mf.getMachineRegisterInfo().isLiveOutEmpty())
+            {
+                ArrayList<CCValAssign> rvLocs = new ArrayList<>();
+                ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+                ccInfo.analyzeCallResult(ins, RetCC_X86);
+                for (CCValAssign va : rvLocs)
+                {
+                    if (va.isRegLoc())
+                        mf.getMachineRegisterInfo().addLiveOut(va.getLocReg());
+                }
+            }
+            int calleeReg;
+            assert (callee.getOpcode() == ISD.Register &&
+                    (calleeReg = ((RegisterSDNode)callee.getNode()).getReg()) != 0 &&
+                    (calleeReg == X86GenRegisterNames.EAX || calleeReg == X86GenRegisterNames.R9)) ||
+                    callee.getOpcode() == ISD.TargetExternalSymbol ||
+                    callee.getOpcode() == ISD.TargetGlobalAddress;
+
+            return dag.getNode(X86ISD.TC_RETURN, vts, ops);
+        }
+
+        chain = dag.getNode(X86ISD.CALL, vts, ops);
+        inFlag = callee.getValue(1);
+
+        int numBytesForCalleeToPush = 0;
+        if (isCalleePop(isVarArg, cc))
+            numBytesForCalleeToPush = numBytes;
+        else if (!is64Bit && cc != CallingConv.Fast && isStructRet)
+        {
+            numBytesForCalleeToPush = 4;
+        }
+        chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(numBytes, true),
+                dag.getIntPtrConstant(numBytesForCalleeToPush, true), inFlag);
+        inFlag = chain.getValue(1);
+
+        return lowerCallResult(chain, inFlag, cc, isVarArg, ins, dag, inVals);
+    }
+
+    private SDValue lowerMemOpCallTo(SDValue chain, SDValue stackPtr, SDValue arg,
+            SelectionDAG dag, CCValAssign va, ArgFlagsTy flags)
+    {
+        int firstStackArgOffset = subtarget.isTargetWin64() ? 32 : 0;
+        int locMemOffset = firstStackArgOffset + va.getLocMemOffset();
+        SDValue ptrOff = dag.getIntPtrConstant(locMemOffset);
+        ptrOff = dag.getNode(ISD.ADD, new EVT(getPointerTy()), stackPtr, ptrOff);
+        if (flags.isByVal())
+            return createCopyOfByValArgument(arg, ptrOff, chain, flags, dag);
+        return dag.getStore(chain, arg, ptrOff, PseudoSourceValue.getStack(), locMemOffset, false, 0);
+    }
+
+    private static SDValue createCopyOfByValArgument(SDValue src, SDValue dst,
+            SDValue chain, ArgFlagsTy flags, SelectionDAG dag)
+    {
+        SDValue sizeNode = dag.getConstant(flags.getByValSize(), new EVT(MVT.i32), false);
+        return dag.getMemcpy(chain, dst, src, sizeNode, flags.getByValAlign(), true, null, 0, null, 0);
+    }
+
+    private static SDValue getMOVL(SelectionDAG dag, EVT evt, SDValue v1, SDValue v2)
+    {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return null;
+    }
+
+    private SDValue emitTailCallLoadRetAddr(SelectionDAG dag,
+            OutParamWrapper<SDValue> outRetAddr, SDValue chain,
+            boolean isTailCall, boolean is64Bit, int fpDiff)
+    {
+        if (!isTailCall || fpDiff == 0) return chain;
+
+        EVT vt = new EVT(getPointerTy());
+        outRetAddr.set(getReturnAddressFrameIndex(dag));
+
+        outRetAddr.set(dag.getLoad(vt, chain, outRetAddr.get(), null, 0));
+        return new SDValue(outRetAddr.get().getNode(), 1);
+    }
+
+    private SDValue emitTailCallStoreRetAddr(SelectionDAG dag,
+            MachineFunction mf,
+            SDValue chain,
+            SDValue retAddrFrIdx,
+            boolean is64Bit,
+            int fpDiff)
+    {
+        if (fpDiff == 0) return chain;
+
+        int slotSize = is64Bit?8:4;
+        int newReturnAddrFI = mf.getFrameInfo().createFixedObject(slotSize, fpDiff-slotSize);
+        EVT vt = is64Bit?new EVT(MVT.i64):new EVT(MVT.i32);
+        SDValue newRetAddrFrIdx = dag.getFrameIndex(newReturnAddrFI, vt, false);
+        return dag.getStore(chain, retAddrFrIdx, newRetAddrFrIdx,
+                PseudoSourceValue.getFixedStack(newReturnAddrFI), 0, false, 0);
+    }
+
+    private SDValue getReturnAddressFrameIndex(SelectionDAG dag)
+    {
+        MachineFunction mf = dag.getMachineFunction();
+        X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getInfo();
+        int returnAddrIndex = funcInfo.getRAIndex();
+
+        if (returnAddrIndex == 0)
+        {
+            int slotSize = td.getPointerSize();
+            returnAddrIndex = mf.getFrameInfo().createFixedObject(slotSize, -slotSize);
+            funcInfo.setRAIndex(returnAddrIndex);
+        }
+        return dag.getFrameIndex(returnAddrIndex, new EVT(getPointerTy()), false);
+    }
+
+    static boolean callIsStructReturn(ArrayList<OutputArg> outs)
+    {
+        if (outs == null || outs.isEmpty())
+            return false;
+
+        return outs.get(0).flags.isSRet();
+    }
+
+    static boolean argIsStructReturn(ArrayList<InputArg> ins)
+    {
+        if (ins == null || ins.isEmpty())
+            return false;
+
+        return ins.get(0).flags.isSRet();
     }
 }

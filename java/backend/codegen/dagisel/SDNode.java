@@ -679,7 +679,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         SelectionDAG.addNodeToID(id, this);
     }
 
-    static class SDVTList
+    public static class SDVTList
     {
         EVT[] vts;
         int numVTs;
