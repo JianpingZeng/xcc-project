@@ -2920,5 +2920,106 @@ public class SelectionDAG
         int id = compute.computeHash();
         return cseMap.get(id);
     }
+
+    public SDValue getCALLSEQ_START(SDValue chain, SDValue op)
+    {
+        SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDValue[] ops = {chain, op};
+        return getNode(ISD.CALLSEQ_START, vts, ops);
+    }
+
+    public SDValue getCALLSEQ_END(SDValue chain, SDValue op1, SDValue op2,
+            SDValue inFlag)
+    {
+        SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        ArrayList<SDValue> ops = new ArrayList<>();
+        ops.add(chain);
+        ops.add(op1);
+        ops.add(op2);
+        if (inFlag.getNode() != null)
+            ops.add(inFlag);
+        return getNode(ISD.CALLSEQ_END, vts, ops);
+    }
+
+    public SDValue getMemcpy(SDValue chain, SDValue dst, SDValue src, SDValue size,
+            int align, boolean alwaysInline, Value dstVal, long dstOff,
+            Value srcVal, long srcOff)
+    {
+        /*
+        ConstantSDNode constantSize = size.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)size.getNode() : null;
+        if (constantSize != null)
+        {
+            if (constantSize.isNullValue())
+                return chain;
+
+            SDValue result = getMemcpyLoadsAndStores(this, chain, dst, src,
+                    constantSize.getZExtValue(), align, false, dstVal,
+                            dstOff, srcVal, srcOff);
+            if (result.getNode() != null)
+                return result;
+        }
+
+        SDValue result = tli.emitTargetCodeForMemcpy(this, chain, dst, src,
+                size, align, alwaysInline, dstVal, dstOff, srcVal, srcOff);
+        if (result.getNode() != null)
+            return result;
+
+        if (alwaysInline)
+        {
+            assert constantSize != null;
+            return getMemcpyLoadsAndStores(this, chain, dst, src,
+                    constantSize.getZExtValue(), align, true, dstVal,
+                            dstOff, srcVal, srcOff);
+        }
+        // emit call to library function.
+        ArrayList<ArgListEntry> args = new ArrayList<>();
+
+        ArgListEntry entry = new ArgListEntry();
+        entry.ty = tli.getTargetData().getIntPtrType();
+        entry.node = dst;
+        args.add(entry);
+
+        entry = new ArgListEntry();
+        entry.ty = tli.getTargetData().getIntPtrType();
+        entry.node = size;
+        args.add(entry);
+
+        entry = new ArgListEntry();
+        entry.ty = tli.getTargetData().getIntPtrType();
+        entry.node = size;
+        args.add(entry);
+
+        Pair<SDValue, SDValue> callResult = tli.lowerCallTo(chain,
+                LLVMContext.VoidTy,
+                false, false, false, false, 0,
+                tli.getLibCallCallingConv())
+        return null;
+        */
+        Util.shouldNotReachHere("Memcpy is is not supported!");
+        return null;
+    }
+
+    public SDValue getStackArgumentTokenFactor(SDValue chain)
+    {
+        ArrayList<SDValue> argChains = new ArrayList<>();
+
+        argChains.add(chain);
+        for (SDUse u : getEntryNode().getNode().operandList)
+        {
+            if (u.getUser() instanceof LoadSDNode)
+            {
+                LoadSDNode ld = (LoadSDNode) u.getUser();
+                if (ld.getBasePtr().getNode() instanceof FrameIndexSDNode)
+                {
+                    FrameIndexSDNode fi = (FrameIndexSDNode) ld.getBasePtr()
+                            .getNode();
+                    if (fi.getFrameIndex() < 0)
+                        argChains.add(new SDValue(ld, 1));
+                }
+            }
+        }
+        return getNode(ISD.TokenFactor, new EVT(MVT.Other), argChains);
+    }
 }
 
