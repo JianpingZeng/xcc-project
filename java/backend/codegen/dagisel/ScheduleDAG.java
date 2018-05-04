@@ -20,6 +20,7 @@ package backend.codegen.dagisel;
 import backend.codegen.*;
 import backend.target.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -41,15 +42,54 @@ public abstract class ScheduleDAG
 	public SUnit exitSU;
 
 	public ScheduleDAG(MachineFunction mf)
-	{}
+	{
+		tm = mf.getTarget();
+		tii = tm.getInstrInfo();
+		tri = tm.getRegisterInfo();
+		tli = tm.getTargetLowering();
+		this.mf = mf;
+		mri = mf.getMachineRegisterInfo();
+		mcpl = mf.getConstantPool();
+		sequence = new ArrayList<>();
+		sunits = new ArrayList<>();
+		entrySU = new SUnit();
+		exitSU = new SUnit();
+	}
 
 	public abstract MachineBasicBlock emitSchedule();
 
 	public void dumpSchedule()
-	{}
+	{
+		sequence.forEach(seq->
+		{
+			if (seq!= null)
+				seq.dump(this);
+			else 
+				System.err.println("**** NOOP ****");
+		});
+	}
+
+	public abstract void dumpNode(SUnit su);
+
+	public abstract String getGraphNodeLabel(SUnit su);
 
 	protected void run(MachineBasicBlock mbb, int insertPos)
-	{}
+	{
+		this.mbb = mbb;
+		this.insertPos = insertPos;
+		sunits.clear();
+		sequence.clear();
+		entrySU = new SUnit();
+		exitSU = new SUnit();
+		schedule();
+
+		if (Util.DEBUG)
+		{
+			System.err.println("*** Final Schedule ***");
+			dumpSchedule();
+			System.err.println();
+		}
+	}
 
 	protected abstract void buildSchedGraph();
 
@@ -67,13 +107,47 @@ public abstract class ScheduleDAG
 	}
 
 	protected void emitNoop()
-	{}
+	{
+		tii.insertNoop(mbb, insertPos++);
+	}
 
 	protected void addMemOperand(MachineInstr mi, MachineMemOperand mmo)
-	{}
+	{
+		mi.addMemOperand(mmo);
+	}
 
 	protected void emitPhysRegCopy(SUnit su, TObjectIntHashMap<SUnit> vrBaseMap)
-	{}
+	{
+		for (SDep d : su.preds)
+		{
+			if (d.isCtrl()) continue;
+			if (d.getSUnit().copyDstRC != null)
+			{
+				assert vrBaseMap.containsKey(d.getSUnit()):"Node emitted out of order!";
+				int reg = 0;
+				for (SDep s : su.succs)
+				{
+					if (s.getReg() != 0)
+					{
+						reg = s.getReg();
+						break;
+					}
+				}
+				tii.copyRegToReg(mbb, insertPos++, reg, vrBaseMap.get(d.getSUnit()), 
+					su.copyDstRC, su.copySrcRC);
+			}
+			else 
+			{
+				assert d.getReg() != 0:"Unknown physical register!";
+				int vrBase = mri.createVirtualRegister(su.copyDstRC);
+				assert !vrBaseMap.containsKey(su);
+				vrBaseMap.put(su, vrBase);
+				tii.copyRegToReg(mbb, insertPos++, vrBase, d.getReg(), 
+					su.copyDstRC, su.copySrcRC);
+			}
+			break;
+		}
+	}
 
 	private void emitLiveCopy(MachineBasicBlock mbb, 
 		int insertPos, 

@@ -16,7 +16,8 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-/**
+import backend.codegen.dagisel.SDep;
+import backend.codegen.dagisel.SUnit; /**
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -41,4 +42,6 @@ public abstract class TargetSubtarget
     {
         return false;
     }
+
+    public abstract void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep);
 }
