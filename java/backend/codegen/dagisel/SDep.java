@@ -19,7 +19,7 @@ package backend.codegen.dagisel;
 
 import static backend.codegen.dagisel.SDep.Kind.*;
 
-class SDep
+public class SDep implements Cloneable
 {
 	public enum Kind
 	{
@@ -48,8 +48,11 @@ class SDep
 		depKind = Data;
 	}
 
-	public SDep(SUnit u, Kind kind, int lantency,
-		int reg, boolean isNormalMemory, 
+	public SDep(SUnit u,
+		Kind kind,
+		int latency,
+		int reg,
+		boolean isNormalMemory,
 		boolean isMustAlias, 
 		boolean isArtificial)
 	{
@@ -90,7 +93,7 @@ class SDep
 		return unit;
 	}
 
-	public void setSDUnit(SUnit u)
+	public void setSUnit(SUnit u)
 	{
 		this.unit = u;
 	}
@@ -139,5 +142,12 @@ class SDep
 		assert getDepKind() != Anti || r != 0;
 		assert getDepKind() != Output || r != 0;
 		reg = r;
+	}
+
+
+	@Override
+	public SDep clone()
+	{
+		return null;
 	}
 }

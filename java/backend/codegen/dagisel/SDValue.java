@@ -173,7 +173,7 @@ public class SDValue implements Comparable<SDValue>
 
     public boolean isMachineOpcode()
     {
-        return node.isMachineOperand();
+        return node.isMachineOpecode();
     }
 
     public int getMachineOpcode()

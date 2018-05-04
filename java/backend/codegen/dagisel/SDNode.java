@@ -75,14 +75,14 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         return opcode >= NodeType.BUILTIN_OP_END.ordinal();
     }
 
-    public boolean isMachineOperand()
+    public boolean isMachineOpecode()
     {
         return opcode < 0;
     }
 
     public int getMachineOpcode()
     {
-        assert isMachineOperand();
+        assert isMachineOpecode();
         return ~opcode;
     }
 
@@ -297,7 +297,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public SDNode getFlaggedMachineNode()
     {
         SDNode res = this;
-        while (!res.isMachineOperand())
+        while (!res.isMachineOpecode())
         {
             SDNode n = res.getFlaggedNode();
             if (n == null)
@@ -341,7 +341,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
                 if (getOpcode() < ISD.BUILTIN_OP_END)
                     return "<<Unknown DAG Node>>";
 
-                if (isMachineOperand())
+                if (isMachineOpecode())
                 {
                     if (dag != null)
                     {
