@@ -1010,4 +1010,9 @@ public class MachineInstr implements Cloneable
 	{
 		return getName();
 	}
+
+	public void clearMemOperands()
+	{
+		memOperands.clear();
+	}
 }

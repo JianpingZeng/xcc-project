@@ -27,6 +27,7 @@ import backend.support.CallingConv;
 import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
 import backend.type.Type;
+import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import tools.APInt;
@@ -37,9 +38,12 @@ import xcc.Arg;
 
 import java.util.ArrayList;
 
+import static backend.codegen.MachineInstrBuilder.addFrameReference;
+import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86GenCallingConv.*;
+import static backend.target.x86.X86InstrBuilder.addFullAddress;
 
 /**
  * @author Xlous.zeng
@@ -58,6 +62,7 @@ public class X86TargetLowering extends TargetLowering
     private boolean x86ScalarSSEf32;
     private int x86StackPtr;
     private TargetRegisterInfo regInfo;
+    private final static int X86AddrNumOperands = 5;
 
     public X86TargetLowering(X86TargetMachine tm)
     {
@@ -1043,5 +1048,369 @@ public class X86TargetLowering extends TargetLowering
             return false;
 
         return ins.get(0).flags.isSRet();
+    }
+
+    @Override
+    public MachineBasicBlock emitInstrWithCustomInserter(
+            MachineInstr mi,
+            MachineBasicBlock mbb)
+    {
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+        switch (mi.getOpcode())
+        {
+            case X86GenInstrNames.CMOV_V1I64:
+            case X86GenInstrNames.CMOV_FR32:
+            case X86GenInstrNames.CMOV_FR64:
+            case X86GenInstrNames.CMOV_V4F32:
+            case X86GenInstrNames.CMOV_V2F64:
+            case X86GenInstrNames.CMOV_V2I64:
+            {
+                BasicBlock llvmBB = mbb.getBasicBlock();
+                int insertPos = 1;
+
+
+                //  thisMBB:
+                //  ...
+                //   TrueVal = ...
+                //   cmpTY ccX, r1, r2
+                //   bCC copy1MBB
+                //   fallthrough --> copy0MBB
+                MachineBasicBlock thisMBB = mbb;
+                MachineFunction mf = thisMBB.getParent();
+                MachineBasicBlock copy0MBB = mf.createMachineBasicBlock(llvmBB);
+                MachineBasicBlock sinkMBB = mf.createMachineBasicBlock(llvmBB);
+
+                int opc = X86InstrInfo.getCondBranchFromCond(mi.getOperand(3).getImm());
+                buildMI(mbb, tii.get(opc)).addMBB(sinkMBB);
+                mf.insert(insertPos, copy0MBB);
+                mf.insert(insertPos, sinkMBB);
+
+                mbb.transferSuccessor(mbb);
+                mbb.addSuccessor(sinkMBB);
+
+                mbb = copy0MBB;
+                mbb.addSuccessor(sinkMBB);
+
+                mbb = sinkMBB;
+                buildMI(mbb, tii.get(X86GenInstrNames.PHI), mi.getOperand(0).getReg())
+                        .addReg(mi.getOperand(1).getReg()).addMBB(copy0MBB)
+                        .addReg(mi.getOperand(2).getReg()).addMBB(sinkMBB);
+                mf.deleteMachineInstr(mi);
+                return mbb;
+            }
+            case X86GenInstrNames.FP32_TO_INT16_IN_MEM:
+            case X86GenInstrNames.FP32_TO_INT32_IN_MEM:
+            case X86GenInstrNames.FP32_TO_INT64_IN_MEM:
+            case X86GenInstrNames.FP64_TO_INT16_IN_MEM:
+            case X86GenInstrNames.FP64_TO_INT32_IN_MEM:
+            case X86GenInstrNames.FP64_TO_INT64_IN_MEM:
+            case X86GenInstrNames.FP80_TO_INT16_IN_MEM:
+            case X86GenInstrNames.FP80_TO_INT32_IN_MEM:
+            case X86GenInstrNames.FP80_TO_INT64_IN_MEM: 
+            {
+                MachineFunction mf = mbb.getParent();
+                int cwFrameIndex = mf.getFrameInfo().createStackObject(2, 2);
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FNSTCW16m)), cwFrameIndex);
+
+                int oldCW = mf.getMachineRegisterInfo().createVirtualRegister(X86GenRegisterInfo.GR16RegisterClass);
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16rm), oldCW), cwFrameIndex);
+
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16mi)), cwFrameIndex)
+                        .addImm(0xC7F);
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16mr)), cwFrameIndex)
+                        .addReg(oldCW);
+
+                int opc = -1;
+                switch (mi.getOpcode())
+                {
+                    default:
+                        Util.shouldNotReachHere("Illegal opcode!");
+                    case X86GenInstrNames.FP32_TO_INT16_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp16m32;
+                        break;
+                    case X86GenInstrNames.FP32_TO_INT32_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp32m32;
+                        break;
+                    case X86GenInstrNames.FP32_TO_INT64_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp64m32;
+                        break;
+                    case X86GenInstrNames.FP64_TO_INT16_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp16m64;
+                        break;
+                    case X86GenInstrNames.FP64_TO_INT32_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp32m64;
+                        break;
+                    case X86GenInstrNames.FP64_TO_INT64_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp64m64;
+                        break;
+                    case X86GenInstrNames.FP80_TO_INT16_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp16m80;
+                        break;
+                    case X86GenInstrNames.FP80_TO_INT32_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp32m80;
+                        break;
+                    case X86GenInstrNames.FP80_TO_INT64_IN_MEM:
+                        opc = X86GenInstrNames.IST_Fp64m80;
+                        break;
+                }
+
+                X86AddressMode am = new X86AddressMode();
+                MachineOperand op = mi.getOperand(0);
+                if (op.isRegister())
+                {
+                    am.baseType = X86AddressMode.BaseType.RegBase;
+                    am.base = new X86AddressMode.RegisterBase(op.getReg());
+                }
+                else
+                {
+                    am.baseType = X86AddressMode.BaseType.FrameIndexBase;
+                    am.base = new X86AddressMode.FrameIndexBase(op.getIndex());
+                }
+                op = mi.getOperand(1);
+                if (op.isImm())
+                    am.scale = (int) op.getImm();
+                op = mi.getOperand(2);
+                if (op.isImm())
+                    am.indexReg = (int) op.getImm();
+                op = mi.getOperand(3);
+                if (op.isGlobalAddress())
+                {
+                    am.gv = op.getGlobal();
+                }
+                else
+                {
+                    am.disp = (int) op.getImm();
+                }
+                addFullAddress(buildMI(mbb, tii.get(opc)), am)
+                        .addReg(mi.getOperand(X86AddrNumOperands).getReg());
+                addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
+                mf.deleteMachineInstr(mi);
+                return mbb;
+            }
+            case X86GenInstrNames.PCMPISTRM128REG:
+                return emitPCMP(mi, mbb, 3, false);
+            case X86GenInstrNames.PCMPISTRM128MEM:
+                return emitPCMP(mi, mbb, 3, true);
+            case X86GenInstrNames.PCMPESTRM128REG:
+                return emitPCMP(mi, mbb, 5, false);
+            case X86GenInstrNames.PCMPESTRM128MEM:
+                return emitPCMP(mi, mbb, 5, true);
+
+            case X86GenInstrNames.ATOMAND32:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb,
+                        X86GenInstrNames.AND32rr,
+                        X86GenInstrNames.AND32ri,
+                        X86GenInstrNames.MOV32rm,
+                        X86GenInstrNames.LCMPXCHG32,
+                        X86GenInstrNames.MOV32rr,
+                        X86GenInstrNames.NOT32r,
+                        X86GenRegisterNames.EAX,
+                        X86GenRegisterInfo.GR32RegisterClass);
+            case X86GenInstrNames.ATOMOR32:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb,
+                        X86GenInstrNames.OR32rr,
+                        X86GenInstrNames.OR32ri,
+                        X86GenInstrNames.MOV32rm,
+                        X86GenInstrNames.LCMPXCHG32,
+                        X86GenInstrNames.MOV32rr,
+                        X86GenInstrNames.NOT32r,
+                        X86GenRegisterNames.EAX,
+                        X86GenRegisterInfo.GR32RegisterClass);
+            case X86GenInstrNames.ATOMXOR32:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb,
+                        X86GenInstrNames.XOR32rr,
+                        X86GenInstrNames.XOR32ri,
+                        X86GenInstrNames.MOV32rm,
+                        X86GenInstrNames.LCMPXCHG32,
+                        X86GenInstrNames.MOV32rr,
+                        X86GenInstrNames.NOT32r,
+                        X86GenRegisterNames.EAX,
+                        X86GenRegisterInfo.GR32RegisterClass);
+            case X86GenInstrNames.ATOMNAND32:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb,
+                        X86GenInstrNames.AND32rr,
+                        X86GenInstrNames.AND32ri,
+                        X86GenInstrNames.MOV32rm,
+                        X86GenInstrNames.LCMPXCHG32,
+                        X86GenInstrNames.MOV32rr,
+                        X86GenInstrNames.NOT32r,
+                        X86GenRegisterNames.EAX,
+                        X86GenRegisterInfo.GR32RegisterClass,
+                        true);
+            case X86GenInstrNames.ATOMMIN32:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVL32rr);
+            case X86GenInstrNames.ATOMMAX32:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVG32rr);
+            case X86GenInstrNames.ATOMUMIN32:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVB32rr);
+            case X86GenInstrNames.ATOMUMAX32:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVA32rr);
+            case X86GenInstrNames.ATOMAND16:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND16rr,
+                        X86GenInstrNames.AND16ri, X86GenInstrNames.MOV16rm,
+                        X86GenInstrNames.LCMPXCHG16, X86GenInstrNames.MOV16rr,
+                        X86GenInstrNames.NOT16r, X86GenRegisterNames.AX,
+                        X86GenRegisterInfo.GR16RegisterClass);
+            case X86GenInstrNames.ATOMOR16:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.OR16rr,
+                        X86GenInstrNames.OR16ri, X86GenInstrNames.MOV16rm,
+                        X86GenInstrNames.LCMPXCHG16, X86GenInstrNames.MOV16rr,
+                        X86GenInstrNames.NOT16r, X86GenRegisterNames.AX,
+                        X86GenRegisterInfo.GR16RegisterClass);
+            case X86GenInstrNames.ATOMXOR16:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.XOR16rr,
+                        X86GenInstrNames.XOR16ri, X86GenInstrNames.MOV16rm,
+                        X86GenInstrNames.LCMPXCHG16, X86GenInstrNames.MOV16rr,
+                        X86GenInstrNames.NOT16r, X86GenRegisterNames.AX,
+                        X86GenRegisterInfo.GR16RegisterClass);
+            case X86GenInstrNames.ATOMNAND16:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND16rr,
+                        X86GenInstrNames.AND16ri, X86GenInstrNames.MOV16rm,
+                        X86GenInstrNames.LCMPXCHG16, X86GenInstrNames.MOV16rr,
+                        X86GenInstrNames.NOT16r, X86GenRegisterNames.AX,
+                        X86GenRegisterInfo.GR16RegisterClass, true);
+            case X86GenInstrNames.ATOMMIN16:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVL16rr);
+            case X86GenInstrNames.ATOMMAX16:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVG16rr);
+            case X86GenInstrNames.ATOMUMIN16:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVB16rr);
+            case X86GenInstrNames.ATOMUMAX16:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVA16rr);
+
+            case X86GenInstrNames.ATOMAND8:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND8rr,
+                        X86GenInstrNames.AND8ri, X86GenInstrNames.MOV8rm,
+                        X86GenInstrNames.LCMPXCHG8, X86GenInstrNames.MOV8rr,
+                        X86GenInstrNames.NOT8r, X86GenRegisterNames.AL,
+                        X86GenRegisterInfo.GR8RegisterClass);
+            case X86GenInstrNames.ATOMOR8:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.OR8rr,
+                        X86GenInstrNames.OR8ri, X86GenInstrNames.MOV8rm,
+                        X86GenInstrNames.LCMPXCHG8, X86GenInstrNames.MOV8rr,
+                        X86GenInstrNames.NOT8r, X86GenRegisterNames.AL,
+                        X86GenRegisterInfo.GR8RegisterClass);
+            case X86GenInstrNames.ATOMXOR8:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.XOR8rr,
+                        X86GenInstrNames.XOR8ri, X86GenInstrNames.MOV8rm,
+                        X86GenInstrNames.LCMPXCHG8, X86GenInstrNames.MOV8rr,
+                        X86GenInstrNames.NOT8r, X86GenRegisterNames.AL,
+                        X86GenRegisterInfo.GR8RegisterClass);
+            case X86GenInstrNames.ATOMNAND8:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND8rr,
+                        X86GenInstrNames.AND8ri, X86GenInstrNames.MOV8rm,
+                        X86GenInstrNames.LCMPXCHG8, X86GenInstrNames.MOV8rr,
+                        X86GenInstrNames.NOT8r, X86GenRegisterNames.AL,
+                        X86GenRegisterInfo.GR8RegisterClass, true);
+            // FIXME: There are no CMOV8 instructions; MIN/MAX need some other way.
+            // This group is for 64-bit host.
+            case X86GenInstrNames.ATOMAND64:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND64rr,
+                        X86GenInstrNames.AND64ri32, X86GenInstrNames.MOV64rm,
+                        X86GenInstrNames.LCMPXCHG64, X86GenInstrNames.MOV64rr,
+                        X86GenInstrNames.NOT64r, X86GenRegisterNames.RAX,
+                        X86GenRegisterInfo.GR64RegisterClass);
+            case X86GenInstrNames.ATOMOR64:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.OR64rr,
+                        X86GenInstrNames.OR64ri32, X86GenInstrNames.MOV64rm,
+                        X86GenInstrNames.LCMPXCHG64, X86GenInstrNames.MOV64rr,
+                        X86GenInstrNames.NOT64r, X86GenRegisterNames.RAX,
+                        X86GenRegisterInfo.GR64RegisterClass);
+            case X86GenInstrNames.ATOMXOR64:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.XOR64rr,
+                        X86GenInstrNames.XOR64ri32, X86GenInstrNames.MOV64rm,
+                        X86GenInstrNames.LCMPXCHG64, X86GenInstrNames.MOV64rr,
+                        X86GenInstrNames.NOT64r, X86GenRegisterNames.RAX,
+                        X86GenRegisterInfo.GR64RegisterClass);
+            case X86GenInstrNames.ATOMNAND64:
+                return emitAtomicBitwiseWithCustomInserter(mi, mbb, X86GenInstrNames.AND64rr,
+                        X86GenInstrNames.AND64ri32, X86GenInstrNames.MOV64rm,
+                        X86GenInstrNames.LCMPXCHG64, X86GenInstrNames.MOV64rr,
+                        X86GenInstrNames.NOT64r, X86GenRegisterNames.RAX,
+                        X86GenRegisterInfo.GR64RegisterClass, true);
+            case X86GenInstrNames.ATOMMIN64:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVL64rr);
+            case X86GenInstrNames.ATOMMAX64:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVG64rr);
+            case X86GenInstrNames.ATOMUMIN64:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVB64rr);
+            case X86GenInstrNames.ATOMUMAX64:
+                return emitAtomicMinMaxWithCustomInserter(mi, mbb, X86GenInstrNames.CMOVA64rr);
+
+            // This group does 64-bit operations on a 32-bit host.
+            case X86GenInstrNames.ATOMAND6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.AND32rr, X86GenInstrNames.AND32rr,
+                        X86GenInstrNames.AND32ri, X86GenInstrNames.AND32ri,
+                        false);
+            case X86GenInstrNames.ATOMOR6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.OR32rr, X86GenInstrNames.OR32rr,
+                        X86GenInstrNames.OR32ri, X86GenInstrNames.OR32ri,
+                        false);
+            case X86GenInstrNames.ATOMXOR6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.XOR32rr, X86GenInstrNames.XOR32rr,
+                        X86GenInstrNames.XOR32ri, X86GenInstrNames.XOR32ri,
+                        false);
+            case X86GenInstrNames.ATOMNAND6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.AND32rr, X86GenInstrNames.AND32rr,
+                        X86GenInstrNames.AND32ri, X86GenInstrNames.AND32ri,
+                        true);
+            case X86GenInstrNames.ATOMADD6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.ADD32rr, X86GenInstrNames.ADC32rr,
+                        X86GenInstrNames.ADD32ri, X86GenInstrNames.ADC32ri,
+                        false);
+            case X86GenInstrNames.ATOMSUB6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.SUB32rr, X86GenInstrNames.SBB32rr,
+                        X86GenInstrNames.SUB32ri, X86GenInstrNames.SBB32ri,
+                        false);
+            case X86GenInstrNames.ATOMSWAP6432:
+                return emitAtomicBit6432WithCustomInserter(mi, mbb,
+                        X86GenInstrNames.MOV32rr, X86GenInstrNames.MOV32rr,
+                        X86GenInstrNames.MOV32ri, X86GenInstrNames.MOV32ri,
+                        false);
+            case X86GenInstrNames.VASTART_SAVE_XMM_REGS:
+                return emitVAStartSaveXMMRegsWithCustomInserter(mi,mbb);
+            default:
+                Util.shouldNotReachHere();
+                return null;
+        }
+    }
+
+    private MachineBasicBlock emitPCMP(MachineInstr mi, MachineBasicBlock mbb,
+            int numArgs, boolean memArgs)
+    {
+        MachineFunction mf = mbb.getParent();
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+
+        int opc;
+        if (memArgs)
+        {
+            opc = numArgs == 3? X86GenInstrNames.PCMPISTRM128rm:
+                    X86GenInstrNames.PCMPESTRM128rm;
+        }
+        else
+        {
+            opc = numArgs == 3 ? X86GenInstrNames.PCMPISTRM128rr:
+                X86GenInstrNames.PCMPESTRM128rr;
+        }
+
+        MachineInstrBuilder mib = buildMI(mbb, tii.get(opc));
+        for (int i = 0; i < numArgs; i++)
+        {
+            MachineOperand mo = mi.getOperand(i);
+            if (!(mo.isRegister() && mo.isImplicit()))
+                mib.addOperand(mo);
+        }
+
+        buildMI(mbb, tii.get(X86GenInstrNames.MOVAPSrr), mi.getOperand(0).getReg())
+                .addReg(X86GenRegisterNames.XMM0);
+        mf.deleteMachineInstr(mi);
+        return mbb;
     }
 }

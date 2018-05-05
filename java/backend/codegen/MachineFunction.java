@@ -256,4 +256,15 @@ public class MachineFunction
 		getMachineRegisterInfo().addLiveIn(locReg, virReg);
 		return virReg;
 	}
+
+	public void deleteMachineInstr(MachineInstr mi)
+	{
+		mi.clearMemOperands();
+	}
+
+    public void insert(int insertPos, MachineBasicBlock mbb)
+    {
+        assert insertPos >= 0 && insertPos < mbbNumber.size();
+        mbbNumber.add(insertPos, mbb);
+    }
 }

@@ -21,6 +21,7 @@ import backend.codegen.*;
 import backend.codegen.fastISel.ISD;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
+import backend.type.Type;
 import backend.value.*;
 import tools.*;
 
@@ -1237,6 +1238,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         public int getTargetFlags()
         {
             return targetFlags;
+        }
+
+        public Type getType()
+        {
+            if (isMachineConstantPoolValue())
+                return getMachineConstantPoolValue().getType();
+            return getConstantValue().getType();
         }
     }
 

@@ -189,4 +189,30 @@ public abstract class TargetRegisterClass
     {
         return superClasses;
     }
+
+    public TargetRegisterClass getSubRegisterRegClass(long subIdx)
+    {
+        for (int i = 0; i < subIdx-1; i++)
+            if (subRegClasses[i] == null)
+                return null;
+        return subRegClasses[(int) (subIdx-1)];
+    }
+
+    public TargetRegisterClass getSuperRegisterRegClass(
+            TargetRegisterClass rc,
+            int subIdx, EVT vt)
+    {
+        for (TargetRegisterClass itr : superRegClasses)
+        {
+            if (itr.hasType(vt) && itr.getSubRegisterRegClass(subIdx).equals(rc))
+                return itr;
+        }
+        assert false:"Couldn't find the register class!";
+        return null;
+    }
+
+    public int getCopyCost()
+    {
+        return copyCost;
+    }
 }

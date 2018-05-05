@@ -18,21 +18,24 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
-import backend.codegen.dagisel.SDNode.MemOperandSDNode;
+import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
-import backend.target.TargetInstrDesc;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterInfo;
-import backend.target.TargetSubtarget;
+import backend.target.*;
+import backend.type.Type;
+import backend.value.ConstantFP;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
 import java.util.LinkedList;
 import java.util.Objects;
 
+import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SDep.Kind.Data;
 import static backend.codegen.dagisel.SDep.Kind.Order;
 import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetRegisterInfo.getCommonSubClass;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * A ScheduleDAG for scheduling SDNode-based DAGs.
@@ -66,10 +69,10 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 
 	private static boolean isPassiveNode(SDNode node)
 	{
-		if (node instanceof SDNode.ConstantSDNode) return true;
-		if (node instanceof SDNode.ConstantFPSDNode) return true;
-		if (node instanceof SDNode.RegisterSDNode) return true;
-		if (node instanceof SDNode.GlobalAddressSDNode) return true;
+		if (node instanceof ConstantSDNode) return true;
+		if (node instanceof ConstantFPSDNode) return true;
+		if (node instanceof RegisterSDNode) return true;
+		if (node instanceof GlobalAddressSDNode) return true;
 		if (node instanceof SDNode.BasicBlockSDNode) return true;
 		if (node instanceof SDNode.FrameIndexSDNode) return true;
 		if (node instanceof SDNode.ConstantPoolSDNode) return true;
@@ -139,9 +142,133 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		return n;
 	}
 
-	public void emitNode(SDNode node, boolean isClone, boolean hasClone, 
-		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	public void emitNode(SDNode node,
+			boolean isClone,
+			boolean isCloned,
+			TObjectIntHashMap<SDValue> vrBaseMap)
+	{
+		// if this is a machine instruction.
+		if (node.isMachineOpecode())
+		{
+			int opc = node.getMachineOpcode();
+			if (opc == TargetInstrInfo.EXTRACT_SUBREG ||
+					opc == TargetInstrInfo.INSERT_SUBREG ||
+					opc == TargetInstrInfo.SUBREG_TO_REG)
+			{
+				emitSubregNode(node, vrBaseMap);
+				return;
+			}
+
+			if (opc == TargetInstrInfo.COPY_TO_REGCLASS)
+			{
+				emitCopyToRegClassNode(node, vrBaseMap);
+				return;
+			}
+
+			if (opc == TargetInstrInfo.IMPLICIT_DEF)
+			{
+				// We just want a unique VR for each IMPLICIT_DEF use.
+				return;
+			}
+
+			TargetInstrDesc tid = tii.get(opc);
+			int numResults = countResults(node);
+			int nodeOperands = countOperands(node);
+			int memOperandsEnd = computeMemOperandEnd(node);
+			boolean hasPhysRegOuts = numResults > tid.getNumDefs() &&
+					tid.getImplicitDefs() != null &&
+					tid.getImplicitDefs().length > 0;
+			// Create a machine instruction.
+			MachineInstr mi = buildMI(tid).getMInstr();
+
+			if (numResults > 0)
+			{
+				createVirtualRegisters(node, mi, tid, isClone, isCloned, vrBaseMap);
+			}
+
+			boolean hasOptPRefs = tid.getNumDefs() > numResults;
+			assert !hasOptPRefs || !hasPhysRegOuts;
+			int numSkip = hasOptPRefs ? tid.getNumDefs() - numResults:0;
+			// insert new operand into this machine instruction.
+			for (int i = numSkip; i < nodeOperands; i++)
+			{
+				addOperand(mi, node.getOperand(i), i-numSkip+tid.getNumDefs(), tid,
+						vrBaseMap);
+			}
+
+			// emit all memory operand.
+			if (tid.useCustomDAGSchedInsertionHook())
+			{
+				mbb = tli.emitInstrWithCustomInserter(mi, mbb);
+				insertPos = mbb.size();
+			}
+			else
+			{
+				mbb.insert(insertPos, mi);
+			}
+
+			if (hasPhysRegOuts)
+			{
+				for (int i = tid.getNumDefs()-1; i < numResults; i++)
+				{
+					int reg = tid.getImplicitDefs()[i - tid.getNumDefs()];
+					if (node.hasAnyUseOfValue(i))
+						emitCopyFromReg(node, i, isClone, isCloned, reg, vrBaseMap);
+				}
+			}
+			return;
+		}
+
+		switch (node.getOpcode())
+		{
+			default:
+				Util.shouldNotReachHere(
+						"This is target-independent node should have been selected");
+				break;
+			case ISD.EntryToken:
+				Util.shouldNotReachHere("EntryToken should have been excluded from the schedule!");
+				break;
+			case ISD.MERGE_VALUES:
+			case ISD.TokenFactor:
+				break;
+			case ISD.CopyToReg:
+			{
+				SDValue srcVal = node.getOperand(2);
+				int srcReg = 0;
+				if (srcVal.getNode() instanceof RegisterSDNode)
+					srcReg = ((RegisterSDNode)srcVal.getNode()).getReg();
+				else
+					srcReg = getVR(srcVal, vrBaseMap);
+
+				int destReg = ((RegisterSDNode)node.getOperand(1).getNode()).getReg();
+				if (srcReg == destReg) break;
+
+				TargetRegisterClass srcRC = null, destRC = null;
+				if (isVirtualRegister(srcReg))
+					srcRC = mri.getRegClass(srcReg);
+				else
+					srcRC = tri.getPhysicalRegisterRegClass(srcReg);
+
+				if (isVirtualRegister(destReg))
+					destRC = mri.getRegClass(destReg);
+				else
+					destRC = tri.getPhysicalRegisterRegClass(destReg);
+
+				boolean emitted = tii.copyRegToReg(mbb, insertPos++, destReg, srcReg,
+						destRC, srcRC);
+
+				assert emitted:"Unable to issue a copy instruction!";
+				break;
+			}
+			case ISD.CopyFromReg:
+				int srcReg = ((RegisterSDNode)node.getOperand(1).getNode()).getReg();
+				emitCopyFromReg(node, 0, isClone, isCloned, srcReg, vrBaseMap);
+				break;
+			case ISD.INLINEASM:
+				Util.shouldNotReachHere("InlineAsm not supported currently!");
+				break;
+		}
+	}
 
 	public MachineBasicBlock emitSchedule()
 	{
@@ -179,7 +306,6 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	@Override
 	public abstract void schedule();
 
-
 	public void dumpNode(SUnit su)
 	{
 		if (su.getNode() == null)
@@ -210,13 +336,109 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		return "";
 	}
 
+	/**
+	 * Generates machine instruction for subreg SDNode.
+	 * @param node
+	 * @param vrBaseMap
+	 */
 	private void emitSubregNode(SDNode node, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+		int vrBase = 0;
+		int opc = node.getMachineOpcode();
+
+		for (SDUse u : node.getUseList())
+		{
+			SDNode user = u.getUser();
+			if (user.getOpcode() == ISD.CopyToReg &&
+					user.getOperand(2).getNode().equals(node))
+			{
+				int destReg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();
+				if (isVirtualRegister(destReg))
+				{
+					vrBase = destReg;
+					break;
+				}
+			}
+		}
+
+		if (opc == TargetInstrInfo.EXTRACT_SUBREG)
+		{
+			long subIdx = ((ConstantSDNode)node.getOperand(1).getNode()).getZExtValue();
+			MachineInstr mi = buildMI(tii.get(TargetInstrInfo.EXTRACT_SUBREG)).getMInstr();
+
+			int vreg = getVR(node.getOperand(0), vrBaseMap);
+			TargetRegisterClass destRC = mri.getRegClass(vreg);
+			TargetRegisterClass srcRC = destRC.getSubRegisterRegClass(subIdx);
+			assert srcRC != null:"Invalid subregister index in EXTRACT_SUBREG";
+
+			if (vrBase == 0 || srcRC != mri.getRegClass(vrBase))
+			{
+				vrBase = mri.createVirtualRegister(srcRC);
+			}
+
+			mi.addOperand(MachineOperand.createReg(vrBase, true, false));
+			addOperand(mi, node.getOperand(0), 0, null, vrBaseMap);
+			mi.addOperand(MachineOperand.createImm(subIdx));
+			mbb.insert(insertPos++, mi);
+		}
+        else if (opc == TargetInstrInfo.INSERT_SUBREG ||
+                opc == TargetInstrInfo.SUBREG_TO_REG)
+        {
+            SDValue n0 = node.getOperand(0);
+            SDValue n1 = node.getOperand(1);
+            SDValue n2 = node.getOperand(2);
+            int subReg = getVR(n1, vrBaseMap);
+            int subIdx = (int) ((ConstantSDNode) n2.getNode()).getZExtValue();
+            TargetRegisterClass destRC = mri.getRegClass(subReg);
+            TargetRegisterClass srcRC = destRC
+                    .getSuperRegisterRegClass(destRC, subIdx, node.getValueType(0));
+
+            if (vrBase == 0 || !srcRC.equals(mri.getRegClass(vrBase)))
+            {
+                vrBase = mri.createVirtualRegister(srcRC);
+            }
+
+            MachineInstr mi = buildMI(tii.get(opc)).getMInstr();
+            mi.addOperand(MachineOperand.createReg(vrBase, true, false));
+
+            if (opc == TargetInstrInfo.SUBREG_TO_REG)
+            {
+                ConstantSDNode sdn = (ConstantSDNode)n0.getNode();
+                mi.addOperand(MachineOperand.createImm(sdn.getZExtValue()));
+            }
+            else
+                addOperand(mi, n0, 0, null, vrBaseMap);
+
+            addOperand(mi, n1, 0, null, vrBaseMap);
+            mi.addOperand(MachineOperand.createImm(subIdx));
+            mbb.insert(insertPos++, mi);
+        }
+        else
+            Util.shouldNotReachHere("Node is not insert_subreg, extract_subreg, or subreg_to_reg");
+
+		SDValue op = new SDValue(node, 0);
+		assert !vrBaseMap.containsKey(op):"Node emitted out of order!";
+		vrBaseMap.put(op, vrBase);
+	}
 
 	private void emitCopyToRegClassNode(SDNode node, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+	    int vreg = getVR(node.getOperand(0), vrBaseMap);
+	    TargetRegisterClass srcRC = mri.getRegClass(vreg);
+
+	    int destRCIdx = (int) ((ConstantSDNode)node.getOperand(1).getNode()).getZExtValue();
+	    TargetRegisterClass destRC = tri.getRegClass(destRCIdx);
+
+	    int newVReg = mri.createVirtualRegister(destRC);
+	    boolean emitted = tii.copyRegToReg(mbb, insertPos++, newVReg, vreg,
+                destRC, srcRC);
+	    assert emitted:"Unable to issue a copy instruction!";
+	    SDValue op = new SDValue(node, 0);
+	    assert !vrBaseMap.containsKey(op);
+	    vrBaseMap.put(op, newVReg);
+    }
 
 	/**
 	 * Return the virtual register corresponding to the 
@@ -224,11 +446,36 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	 */
 	private int getVR(SDValue op, TObjectIntHashMap<SDValue> vrBaseMap)
 	{
-		return 0;
+	    if (op.isMachineOpcode() && op.getMachineOpcode() == TargetInstrInfo.IMPLICIT_DEF)
+	    {
+	        int vreg = getDstOfOnlyCopyToRegUse(op.getNode(), op.getResNo());
+	        if (vreg == 0)
+            {
+                TargetRegisterClass rc = tli.getRegClassFor(op.getValueType());
+                vreg = mri.createVirtualRegister(rc);
+            }
+            buildMI(mbb, tii.get(TargetInstrInfo.IMPLICIT_DEF), vreg);
+	        return vreg;
+        }
+
+        assert vrBaseMap.containsKey(op);
+	    return vrBaseMap.get(op);
 	}
 
 	private int getDstOfOnlyCopyToRegUse(SDNode node, int resNo)
 	{
+	    if (!node.hasOneUse())
+	        return 0;
+
+	    SDNode user = node.getUseList().get(0).getUser();
+	    if (user.getOpcode() == ISD.CopyToReg &&
+                user.getOperand(2).getNode().equals(node) &&
+                user.getOperand(2).getResNo() == resNo)
+        {
+            int reg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();
+            if (isVirtualRegister(reg))
+                return reg;
+        }
 		return 0;
 	}
 
@@ -237,14 +484,117 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		int iiOpNum, 
 		TargetInstrDesc tid,
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+	    if (op.isMachineOpcode())
+	        addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
+	    else if (op.getNode() instanceof ConstantSDNode)
+        {
+            long imm = ((ConstantSDNode)op.getNode()).getZExtValue();
+            mi.addOperand(MachineOperand.createImm(imm));
+        }
+        else if (op.getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFP imm = ((ConstantFPSDNode)op.getNode()).getConstantFPValue();
+            mi.addOperand(MachineOperand.createFPImm(imm));
+        }
+        else if (op.getNode() instanceof RegisterSDNode)
+        {
+            int reg = ((RegisterSDNode)op.getNode()).getReg();
+            mi.addOperand(MachineOperand.createReg(reg, false, false));
+        }
+        else if (op.getNode() instanceof GlobalAddressSDNode)
+        {
+            GlobalAddressSDNode gas = (GlobalAddressSDNode)op.getNode();
+            mi.addOperand(MachineOperand.createGlobalAddress(gas.getGlobalValue(),
+                    gas.getOffset(), gas.getTargetFlags()));
+        }
+        else if (op.getNode() instanceof BasicBlockSDNode)
+        {
+            BasicBlockSDNode bb = (BasicBlockSDNode)op.getNode();
+            mi.addOperand(MachineOperand.createMBB(bb.getBasicBlock(),0));
+        }
+        else if (op.getNode() instanceof FrameIndexSDNode)
+        {
+            FrameIndexSDNode fi = (FrameIndexSDNode)op.getNode();
+            mi.addOperand(MachineOperand.createFrameIndex(fi.getFrameIndex()));
+        }
+        else if (op.getNode() instanceof JumpTableSDNode)
+        {
+            JumpTableSDNode jti = (JumpTableSDNode)op.getNode();
+            mi.addOperand(MachineOperand.createJumpTableIndex(jti.getJumpTableIndex(),
+                    jti.getTargetFlags()));
+        }
+        else if (op.getNode() instanceof ConstantPoolSDNode)
+        {
+            ConstantPoolSDNode cp = (ConstantPoolSDNode)op.getNode();
+            int offset = cp.getOffset();
+            int align = cp.getAlign();
+            Type ty = cp.getType();
+            if (align == 0)
+            {
+                align = tm.getTargetData().getPrefTypeAlignment(ty);
+                if (align == 0)
+                {
+                    align = (int) tm.getTargetData().getTypeAllocSize(ty);
+                }
+            }
+            int idx;
+            if (cp.isMachineConstantPoolValue())
+                idx = mcpl.getConstantPoolIndex(cp.getMachineConstantPoolValue(), align);
+            else
+                idx = mcpl.getConstantPoolIndex(cp.getConstantValue(), align);
+            mi.addOperand(MachineOperand.createConstantPoolIndex(idx, offset,
+                    cp.getTargetFlags()));
+        }
+        else if (op.getNode() instanceof ExternalSymbolSDNode)
+        {
+            ExternalSymbolSDNode es = (ExternalSymbolSDNode)op.getNode();
+            mi.addOperand(MachineOperand.createExternalSymbol(es.getExtSymol(),
+                    0, es.getTargetFlags()));
+        }
+        else
+        {
+            assert !op.getValueType().equals(new EVT(MVT.Other)) &&
+                    !op.getValueType().equals(new EVT(MVT.Flag));
+            addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
+        }
+    }
 
 	private void addRegisterOperand(MachineInstr mi, 
 		SDValue op, 
 		int iiOpNum, 
 		TargetInstrDesc tid, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+        assert !op.getValueType().equals(new EVT(MVT.Other)) &&
+                !op.getValueType().equals(new EVT(MVT.Flag));
+
+        int vreg = getVR(op, vrBaseMap);
+        assert isVirtualRegister(vreg);
+
+        TargetInstrDesc ii = mi.getDesc();
+        boolean isOptDef = iiOpNum < ii.getNumOperands() && ii.opInfo[iiOpNum].isOptionalDef();
+
+        if (tid != null)
+        {
+            TargetRegisterClass srcRC = mri.getRegClass(vreg);
+            TargetRegisterClass destRC = null;
+            if (iiOpNum < tid.getNumOperands())
+                destRC = tid.opInfo[iiOpNum].getRegisterClass(tri);
+            assert destRC != null || (ii.isVariadic() && iiOpNum >= ii.getNumOperands())
+                    :"Don't have operand info for this instruction!";
+            if (destRC != null && !srcRC.equals(destRC) && !srcRC.hasSuperClass(destRC))
+            {
+                int newVReg = mri.createVirtualRegister(destRC);
+                boolean emitted = tii.copyRegToReg(mbb, insertPos++,
+                        newVReg, vreg, destRC, srcRC);
+                assert emitted:"Unable to issue a copy instruction!";
+                vreg = newVReg;
+            }
+        }
+
+        mi.addOperand(MachineOperand.createReg(vreg, isOptDef, false));
+    }
 
 	private void emitCopyFromReg(SDNode node, 
 		int resNo, 
@@ -252,15 +602,165 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		boolean isCloned, 
 		int srcReg, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+        int vrbase = 0;
+        if (isVirtualRegister(srcReg))
+        {
+            SDValue op = new SDValue(node, resNo);
+            if (isClone)
+                vrBaseMap.remove(op);
 
-	private void createVritualRegisters(SDNode node, 
+            assert !vrBaseMap.containsKey(op);
+            vrBaseMap.put(op, srcReg);
+            return;
+        }
+
+        boolean matchReg = true;
+        TargetRegisterClass useRC = null;
+        if (!isClone && !isCloned)
+        {
+            for (SDUse u : node.useList)
+            {
+                SDNode user = u.getUser();
+                boolean match = true;
+                if (user.getOpcode() == ISD.CopyToReg &&
+                        user.getOperand(2).getNode().equals(node) &&
+                        user.getOperand(2).getResNo() == resNo)
+                {
+                    int destReg = ((RegisterSDNode)user.getOperand(2).getNode()).getReg();
+                    if (isVirtualRegister(destReg))
+                    {
+                        vrbase = destReg;
+                        match = false;
+                    }
+                    else if (destReg != srcReg)
+                    {
+                        match = false;
+                    }
+                }
+                else
+                {
+                    for (int i = 0, e = user.getNumOperands(); i < e; i++)
+                    {
+                        SDValue op = user.getOperand(i);
+                        if (!op.getNode().equals(node) || op.getResNo() != resNo)
+                            continue;
+
+                        EVT vt = node.getValueType(op.getResNo());
+                        if (vt.getSimpleVT().simpleVT == MVT.Other ||
+                                vt.getSimpleVT().simpleVT == MVT.Flag)
+                            continue;
+
+                        match = false;
+                        if (user.isMachineOpecode())
+                        {
+                            TargetInstrDesc ii = tii.get(user.getMachineOpcode());
+                            TargetRegisterClass rc = null;
+                            if (i+ii.getNumDefs() < ii.getNumOperands())
+                                rc = ii.opInfo[i+ii.getNumDefs()].getRegisterClass(tri);
+                            if (useRC == null)
+                                useRC = rc;
+                            else if (rc != null)
+                            {
+                                TargetRegisterClass comRC = getCommonSubClass(useRC, rc);
+                                if (comRC != null)
+                                    useRC = comRC;
+                            }
+                        }
+                    }
+                }
+                matchReg &= match;
+                if (vrbase != 0)
+                    break;
+            }
+
+            EVT vt = node.getValueType(resNo);
+            TargetRegisterClass srcRC = null, destRC = null;
+            srcRC = tri.getPhysicalRegisterRegClass(srcReg, vt);
+
+            if (vrbase != 0)
+                destRC = mri.getRegClass(vrbase);
+            else if (useRC != null)
+                destRC = useRC;
+            else
+                destRC = tli.getRegClassFor(vt);
+
+            if (matchReg && srcRC.getCopyCost() < 0)
+                vrbase = srcReg;
+            else
+            {
+                vrbase = mri.createVirtualRegister(destRC);
+                boolean emitted = tii.copyRegToReg(mbb, insertPos++, vrbase, srcReg,
+                        destRC, srcRC);
+                assert emitted:"Unable to issue copy instruction!";
+            }
+
+            SDValue op = new SDValue(node, resNo);
+            if (isClone)
+                vrBaseMap.remove(op);
+            assert !vrBaseMap.containsKey(op):"Node emitted out of order!";
+            vrBaseMap.put(op, vrbase);
+        }
+    }
+
+	private void createVirtualRegisters(SDNode node,
 		MachineInstr mi, 
 		TargetInstrDesc tid, 
 		boolean isClone, 
 		boolean isCloned, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
-	{}
+	{
+	    assert node.getMachineOpcode() != TargetInstrInfo.IMPLICIT_DEF;
+	    for (int i = 0; i < tid.getNumDefs(); i++)
+        {
+            int vrbase = 0;
+            TargetRegisterClass rc = tid.opInfo[i].getRegisterClass(tri);
+            if (tid.opInfo[i].isOptionalDef())
+            {
+                int numResult = countResults(node);
+                vrbase = ((RegisterSDNode)node.getOperand(i-numResult).getNode()).getReg();
+                assert isPhysicalRegister(vrbase);
+                mi.addOperand(MachineOperand.createReg(vrbase, true, false));
+            }
+
+            if (vrbase == 0 && !isClone && !isCloned)
+            {
+                for (SDUse u : node.getUseList())
+                {
+                    SDNode user = u.getUser();
+                    if (user.getOpcode() == ISD.CopyToReg &&
+                            user.getOperand(2).getNode().equals(node) &&
+                            user.getOperand(2).getResNo() == i)
+                    {
+                        int reg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();
+                        if (isVirtualRegister(reg))
+                        {
+                            TargetRegisterClass regRC = mri.getRegClass(reg);
+                            if (regRC.equals(rc))
+                            {
+                                vrbase = reg;
+                                mi.addOperand(MachineOperand.createReg(reg, true, false));
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (vrbase == 0)
+                {
+                    assert rc != null;
+                    vrbase = mri.createVirtualRegister(rc);
+                    mi.addOperand(MachineOperand.createReg(vrbase, true, false));
+                }
+
+                SDValue op = new SDValue(node, i);
+                if (isClone)
+                    vrBaseMap.remove(op);
+                assert !vrBaseMap.containsKey(op);
+                vrBaseMap.put(op, vrbase);
+            }
+        }
+    }
 
 	private void buildSchedUnits()
 	{
@@ -393,8 +893,30 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		}
 	}
 
-	static int[] checkForPhysRegDependency(SDNode opN, SDNode n, int i, TargetRegisterInfo tri, TargetInstrInfo tii)
+	static int[] checkForPhysRegDependency(SDNode def, SDNode user,
+            int op, TargetRegisterInfo tri, TargetInstrInfo tii)
 	{
-		return new int[0];
+	    // returned array layouts as follows.
+        // 0 -- phyReg
+        // 1 -- cost.
+        int[] res = {1, 0};
+        if (op != 2 || user.getOpcode() != ISD.CopyToReg)
+            return res;
+        int reg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();
+        if (isVirtualRegister(reg))
+            return res;
+
+        int resNo = user.getOperand(2).getResNo();
+        if (def.isMachineOpecode())
+        {
+            TargetInstrDesc tid = tii.get(def.getMachineOpcode());
+            if (resNo >= tid.getNumDefs() && tid.implicitDefs[resNo-tid.getNumDefs()] == reg)
+            {
+                res[0] = reg;
+                TargetRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, def.getValueType(resNo));
+                res[1] = rc.getCopyCost();
+            }
+        }
+		return res;
 	}
 }

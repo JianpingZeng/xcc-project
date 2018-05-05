@@ -3,6 +3,9 @@ package backend.target.x86;
 import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
+import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SDValue;
+import backend.codegen.dagisel.SelectionDAG;
 import backend.target.*;
 import backend.value.GlobalVariable;
 import gnu.trove.list.array.TIntArrayList;
@@ -1334,7 +1337,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
     }
 
-    public int getCondBranchFromCond(long cc)
+    public static int getCondBranchFromCond(long cc)
     {
         switch ((int) cc)
         {
@@ -2648,6 +2651,96 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             TargetRegisterClass DstRC = TID.opInfo[0]
                     .getRegisterClass(registerInfo);
             storeRegToAddr(mf, reg, true, AddrOps, DstRC, newMIs);
+        }
+
+        return true;
+    }
+    @Override
+    public boolean unfoldMemoryOperand(
+            SelectionDAG dag, SDNode node,
+            ArrayList<SDNode> newNodes)
+    {
+        if (!node.isMachineOpecode())
+            return false;
+
+        if (!memOp2RegOpTable.containsKey(node.getMachineOpcode()))
+            return false;
+
+        Pair<Integer, Integer> pair = memOp2RegOpTable.get(node.getMachineOpcode());
+        int opc = pair.first;
+        int index = pair.second & 0xf;
+        boolean foldedLoad = (pair.second & (1 << 4)) != 0;
+        boolean foldedStore = (pair.second & (1 << 5)) != 0;
+        TargetInstrDesc tid = get(opc);
+        TargetRegisterClass rc = tid.opInfo[index].getRegisterClass(registerInfo);
+        int numDefs = tid.numDefs;
+        ArrayList<SDValue> addrOps = new ArrayList<>();
+        ArrayList<SDValue> beforeOps = new ArrayList<>();
+        ArrayList<SDValue> afterOps = new ArrayList<>();
+        int numOps = node.getNumOperands();
+        for (int i = 0; i < numOps; i++)
+        {
+            SDValue op = node.getOperand(i);
+            if (i>= index-numDefs && i < index-numDefs+x86AddrNumOperands)
+                addrOps.add(op);
+            else if (i < index-numDefs)
+                beforeOps.add(op);
+            else if (i > index-numDefs)
+                afterOps.add(op);
+        }
+
+        SDValue chain = node.getOperand(numOps-1);
+        addrOps.add(chain);
+
+        SDNode load = null;
+        MachineFunction mf = dag.getMachineFunction();
+        if (foldedLoad)
+        {
+            EVT vt = rc.getVTs()[0];
+            boolean isAligned = registerInfo.getStackAlignment() >= 16 ||
+                    registerInfo.needsStackRealignment(mf);
+            SDValue[] ops = new SDValue[addrOps.size()];
+            addrOps.toArray(ops);
+            load = dag.getTargetNode(getLoadRegOpcode(0, rc, isAligned,
+                    tm), vt, new EVT(MVT.Other), ops);
+
+            newNodes.add(load);
+        }
+
+        ArrayList<EVT> vts = new ArrayList<>();
+        TargetRegisterClass destRC = null;
+        if (tid.numDefs > 0)
+        {
+            destRC = tid.opInfo[0].getRegisterClass(registerInfo);
+            vts.add(destRC.getVTs()[0]);
+        }
+
+        for (int i = 0, e = node.getNumValues(); i < e; i++)
+        {
+            EVT vt = node.getValueType(i);
+            if (vt.getSimpleVT().simpleVT != MVT.Other &&
+                    i >= tid.getNumDefs())
+                vts.add(vt);
+        }
+
+        if (load != null)
+            beforeOps.add(new SDValue(load, 0));
+
+        beforeOps.addAll(afterOps);
+        SDNode newNode = dag.getTargetNode(opc, vts, beforeOps);
+        newNodes.add(newNode);
+
+        if (foldedStore)
+        {
+            addrOps.remove(addrOps.size()-1);
+            addrOps.add(new SDValue(newNode, 0));
+            addrOps.add(chain);
+            boolean isAligned = registerInfo.getStackAlignment()>= 16 ||
+                    registerInfo.needsStackRealignment(mf);
+            SDNode store = dag.getTargetNode(getStoreRegOpcode(0, destRC,
+                    isAligned, tm), new EVT(MVT.Other), addrOps);
+
+            newNodes.add(store);
         }
 
         return true;

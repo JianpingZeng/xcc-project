@@ -149,7 +149,7 @@ public abstract class ScheduleDAG
 		}
 	}
 
-	private void emitLiveCopy(MachineBasicBlock mbb, 
+	private void emitLiveCopy(MachineBasicBlock mbb,
 		int insertPos, 
 		int virtReg, 
 		int physReg, 
