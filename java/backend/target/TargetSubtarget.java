@@ -43,5 +43,8 @@ public abstract class TargetSubtarget
         return false;
     }
 
-    public abstract void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep);
+    public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep)
+    {
+
+    }
 }

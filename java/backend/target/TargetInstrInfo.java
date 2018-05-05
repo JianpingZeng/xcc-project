@@ -2,6 +2,8 @@ package backend.target;
 
 import backend.analysis.LiveVariables;
 import backend.codegen.*;
+import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SelectionDAG;
 import gnu.trove.list.array.TIntArrayList;
 import tools.OutParamWrapper;
 
@@ -430,6 +432,13 @@ public abstract class TargetInstrInfo
 			boolean unfoldLoad,
 			boolean unfoldStore,
 			ArrayList<MachineInstr> newMIs)
+	{
+		return false;
+	}
+
+	public boolean unfoldMemoryOperand(
+			SelectionDAG dag, SDNode node,
+			ArrayList<SDNode> newNodes)
 	{
 		return false;
 	}

@@ -2377,6 +2377,13 @@ public class SelectionDAG
         return getNode(~opc, vt, op1, op2, op3).getNode();
     }
 
+    public SDNode getTargetNode(int opc, EVT vt, ArrayList<SDValue> ops)
+    {
+        SDValue[] temp = new SDValue[ops.size()];
+        ops.toArray(temp);
+        return getTargetNode(opc, vt, temp);
+    }
+
     public SDNode getTargetNode(int opc, EVT vt, SDValue[] ops)
     {
         return getNode(~opc, vt, ops).getNode();
@@ -2441,6 +2448,15 @@ public class SelectionDAG
             SDValue[] ops)
     {
         return getNode(~opc, getVTList(vt1, vt2, vt3, vt4), ops).getNode();
+    }
+
+    public SDNode getTargetNode(int opc, ArrayList<EVT> resultTys, ArrayList<SDValue> ops)
+    {
+        EVT[] vts = new EVT[resultTys.size()];
+        resultTys.toArray(vts);
+        SDValue[] temp = new SDValue[ops.size()];
+        ops.toArray(temp);
+        return getNode(~opc, getVTList(vts), temp).getNode();
     }
 
     public SDNode getTargetNode(int opc, ArrayList<EVT> resultTys, SDValue[] ops)

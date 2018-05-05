@@ -21,32 +21,35 @@ import static backend.codegen.dagisel.SDep.Kind.*;
 
 public class SDep implements Cloneable
 {
-	public enum Kind
-	{
-		Data, 
-		Anti,
-		Output,
-		Order
-	}
+    public enum Kind
+    {
+        Data, Anti, Output, Order
+    }
 
-	private SUnit unit;
-	private Kind depKind;
-	private int reg;	// for data, anti,output dependency.
-	private static class OrderContent
-	{
-		boolean isNormalMemory;
-		boolean isMustAlias;
-		boolean isArtificial;
-	}
+    private SUnit unit;
+    private Kind depKind;
+    private int reg;    // for data, anti,output dependency.
 
-	private OrderContent order;
+    private static class OrderContent
+    {
+        boolean isNormalMemory;
+        boolean isMustAlias;
+        boolean isArtificial;
+    }
 
-	private int latency;
+    private OrderContent order;
 
-	public SDep() 
-	{
-		depKind = Data;
-	}
+    private int latency;
+
+    public SDep()
+    {
+        depKind = Data;
+    }
+
+    public SDep(SUnit u, Kind kind, int latency, int reg)
+    {
+        this(u, kind, latency, reg, false, false, false);
+    }
 
 	public SDep(SUnit u,
 		Kind kind,
@@ -71,6 +74,7 @@ public class SDep implements Cloneable
 				break;	
 			case Order:
 				assert reg == 0;
+				order = new OrderContent();
 				order.isNormalMemory = isNormalMemory;
 				order.isArtificial = isArtificial;
 				order.isMustAlias = isMustAlias;
@@ -148,6 +152,9 @@ public class SDep implements Cloneable
 	@Override
 	public SDep clone()
 	{
-		return null;
+		return new SDep(unit, depKind, reg, latency,
+				order != null && order.isNormalMemory,
+				order != null && order.isMustAlias,
+				order != null && order.isArtificial);
 	}
 }

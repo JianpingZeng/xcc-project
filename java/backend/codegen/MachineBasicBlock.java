@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Objects;
 
 /**
  * @author Xlous.zeng
@@ -445,5 +446,15 @@ public class MachineBasicBlock
 			return bb.getName();
 
 		return "(null)";
+	}
+
+	public void transferSuccessor(MachineBasicBlock fromMBB)
+	{
+		if (Objects.equals(this, fromMBB))
+			return;
+
+		fromMBB.getSuccessors().forEach(this::addSuccessor);
+		if (!fromMBB.getSuccessors().isEmpty())
+			fromMBB.getSuccessors().clear();
 	}
 }

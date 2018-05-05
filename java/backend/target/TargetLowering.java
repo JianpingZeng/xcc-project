@@ -740,5 +740,12 @@ public abstract class TargetLowering
     {
         return false;
     }
+
+    public MachineBasicBlock emitInstrWithCustomInserter(MachineInstr mi,
+            MachineBasicBlock mbb)
+    {
+        Util.shouldNotReachHere("Target must implements this method!");
+        return null;
+    }
 }
 
