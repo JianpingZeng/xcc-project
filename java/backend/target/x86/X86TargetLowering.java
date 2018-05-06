@@ -17,8 +17,8 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDNode.*;
+import backend.codegen.dagisel.SDUse;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.fastISel.ISD;
@@ -34,16 +34,20 @@ import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
-import xcc.Arg;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.target.TargetMachine.CodeModel.Kernel;
+import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86InstrBuilder.addFullAddress;
+import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
+import static backend.target.x86.X86InstrInfo.isGlobalStubReference;
 
 /**
  * @author Xlous.zeng
@@ -964,6 +968,149 @@ public class X86TargetLowering extends TargetLowering
         return lowerCallResult(chain, inFlag, cc, isVarArg, ins, dag, inVals);
     }
 
+    private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag)
+    {
+        GlobalAddressSDNode gvn = (GlobalAddressSDNode)op.getNode();
+        return lowerGlobalAddress(gvn.getGlobalValue(), gvn.getOffset(), dag);
+    }
+
+    private SDValue lowerGlobalAddress(GlobalValue gv, long offset, SelectionDAG dag)
+    {
+        int opFlags = subtarget.classifyGlobalReference(gv, getTargetMachine());
+        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
+        SDValue result;
+        if (opFlags == X86II.MO_NO_FLAG && X86
+                .isOffsetSuitableForCodeModel(offset, model))
+        {
+            result = dag
+                    .getTargetGlobalAddress(gv, new EVT(getPointerTy()), offset,
+                            0);
+            offset = 0;
+        }
+        else
+        {
+            result = dag.getTargetGlobalAddress(gv, new EVT(getPointerTy()), 0,
+                    opFlags);
+        }
+
+        int opc = (subtarget.isPICStyleRIPRel() && (model == Small || model == Kernel)) ? X86ISD.WrapperRIP : X86ISD.Wrapper;
+        result = dag.getNode(opc, new EVT(getPointerTy()), result);
+        if (isGlobalRelativeToPICBase(opFlags))
+        {
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())), result);
+        }
+
+        if (isGlobalStubReference(opFlags))
+        {
+            result = dag.getLoad(new EVT(getPointerTy()), dag.getEntryNode(), result,
+                    PseudoSourceValue.getGOT(), 0);
+        }
+
+        if (offset != 0)
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()), result,
+                    dag.getConstant(offset, new EVT(getPointerTy()), false));
+
+        return result;
+    }
+
+    private SDValue lowerExternalSymbol(SDValue op, SelectionDAG dag)
+    {
+        ExternalSymbolSDNode esn = (ExternalSymbolSDNode)op.getNode();
+        String es = esn.getExtSymol();
+        int opFlag = 0;
+        int wrapperKind = X86ISD.Wrapper;
+        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
+        if (subtarget.isPICStyleRIPRel() &&
+                (model == Small || model == Kernel))
+            wrapperKind = X86ISD.WrapperRIP;
+        else if (subtarget.isPICStyleGOT())
+            opFlag = X86II.MO_GOTOFF;
+        else if (subtarget.isPICStyleStubPIC())
+            opFlag = X86II.MO_PIC_BASE_OFFSET;
+
+        SDValue result = dag.getTargetExternalSymbol(es, new EVT(getPointerTy()), opFlag);
+        result = dag.getNode(wrapperKind, new EVT(getPointerTy()), result);
+
+        if (getTargetMachine().getRelocationModel() == PIC_ &&
+                !subtarget.is64Bit())
+        {
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())),
+                    result);
+        }
+        return result;
+    }
+
+    private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
+            CallingConv cc, boolean isVarArg,
+            ArrayList<InputArg> ins,
+            SelectionDAG dag,
+            ArrayList<SDValue> inVals)
+    {
+        ArrayList<CCValAssign> rvLocs = new ArrayList<>();
+        boolean is64Bit = subtarget.is64Bit();
+        CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+        ccInfo.analyzeCallResult(ins, RetCC_X86);
+
+        for (int i = 0, e = rvLocs.size(); i < e; i++)
+        {
+            CCValAssign va = rvLocs.get(i);
+            EVT copyVT = va.getValVT();
+
+            if ((copyVT.getSimpleVT().simpleVT == MVT.f32 ||
+                    copyVT.getSimpleVT().simpleVT == MVT.f64)
+                    && (is64Bit || ins.get(i).flags.isInReg()) &&
+                    !subtarget.hasSSE1())
+            {
+                Util.shouldNotReachHere("SSE register return with SSE disabled!");
+            }
+
+            if ((va.getLocReg() == X86GenRegisterNames.ST0 ||
+                    va.getLocReg() == X86GenRegisterNames.ST1) &&
+                    isScalarFPTypeInSSEReg(va.getValVT()))
+            {
+                copyVT = new EVT(MVT.f80);
+            }
+
+            SDValue val;
+            if (is64Bit && copyVT.isVector() && copyVT.getSizeInBits() == 64)
+            {
+                // for X86-64, MMX values are returned in XMM0/XMM1 execpt for v1i16.
+                if (va.getLocReg() == X86GenRegisterNames.XMM0 ||
+                        va.getLocReg() == X86GenRegisterNames.XMM1)
+                {
+                    chain = dag.getCopyFromReg(chain, va.getLocReg(),
+                            new EVT(MVT.v2i64), inFlag).getValue(1);
+                    val = chain.getValue(0);
+                    val = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.i64),
+                            val, dag.getConstant(0, new EVT(MVT.i64), false));
+                }
+                else
+                {
+                    chain = dag.getCopyFromReg(chain, va.getLocReg(), new EVT(MVT.i64),
+                            inFlag).getValue(1);
+                    val = chain.getValue(0);
+                }
+                val = dag.getNode(ISD.BIT_CONVERT, copyVT, val);
+            }
+            else
+            {
+                chain = dag.getCopyFromReg(chain, va.getLocReg(), copyVT, inFlag).getValue(1);
+                val = chain.getValue(0);
+            }
+            inFlag = chain.getValue(2);
+
+            if (!Objects.equals(copyVT, va.getValVT()))
+            {
+                val = dag.getNode(ISD.FP_EXTEND, va.getValVT(), val,
+                        dag.getIntPtrConstant(1));
+            }
+            inVals.add(val);
+        }
+        return chain;
+    }
+
     private SDValue lowerMemOpCallTo(SDValue chain, SDValue stackPtr, SDValue arg,
             SelectionDAG dag, CCValAssign va, ArgFlagsTy flags)
     {
@@ -1412,5 +1559,498 @@ public class X86TargetLowering extends TargetLowering
                 .addReg(X86GenRegisterNames.XMM0);
         mf.deleteMachineInstr(mi);
         return mbb;
+    }
+
+    private MachineBasicBlock emitAtomicBitwiseWithCustomInserter(
+            MachineInstr mi,
+            MachineBasicBlock mbb,
+            int regOpc,
+            int immOpc,
+            int loadOpc,
+            int cxchgOpc,
+            int copyOpc,
+            int notOpc,
+            int eaxReg,
+            TargetRegisterClass rc)
+    {
+        return emitAtomicBitwiseWithCustomInserter(mi, mbb, regOpc, immOpc,
+                loadOpc, cxchgOpc, copyOpc,notOpc,eaxReg, rc, false);
+    }
+
+    private MachineBasicBlock emitAtomicBitwiseWithCustomInserter(
+            MachineInstr mi, MachineBasicBlock mbb,
+            int regOpc,
+            int immOpc,
+            int loadOpc,
+            int cxchgOpc,
+            int copyOpc,
+            int notOpc,
+            int eaxReg,
+            TargetRegisterClass rc,
+            boolean invSrc)
+    {
+        // For the atomic bitwise operator, we generate
+        //   thisMBB:
+        //   newMBB:
+        //     ld  t1 = [bitinstr.addr]
+        //     op  t2 = t1, [bitinstr.val]
+        //     mov EAX = t1
+        //     lcs dest = [bitinstr.addr], t2  [EAX is implicit]
+        //     bz  newMBB
+        //     fallthrough -->nextMBB
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+        BasicBlock llvmBB = mbb.getBasicBlock();
+        int itr = 1;
+        // First build the CFG.
+        MachineFunction mf = mbb.getParent();
+        MachineBasicBlock thisMBB = mbb;
+        MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
+        MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(itr, newMBB);
+        mf.insert(itr, nextMBB);
+
+        nextMBB.transferSuccessor(thisMBB);
+        thisMBB.addSuccessor(newMBB);
+
+        newMBB.addSuccessor(nextMBB);
+        newMBB.addSuccessor(newMBB);
+
+        assert mi.getNumOperands() < X86AddrNumOperands + 4:
+                "unexpected number of operands";
+
+        MachineOperand destOp = mi.getOperand(0);
+        MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
+        int numArgs = mi.getNumOperands()-1;
+        for (int i = 0; i< numArgs; i++)
+            argOps[i] = mi.getOperand(i+1);
+
+        int lastAddrIndex = X86AddrNumOperands -1 ;
+        int valArgIndex = lastAddrIndex + 1;
+
+        int t1 = mf.getMachineRegisterInfo().createVirtualRegister(rc);
+        MachineInstrBuilder mib = buildMI(newMBB, tii.get(loadOpc), t1);
+        for (int i = 0; i <= lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+
+        int tt = mf.getMachineRegisterInfo().createVirtualRegister(rc);
+        if (invSrc)
+            mib = buildMI(newMBB, tii.get(notOpc), tt).addReg(t1);
+        else
+            tt = t1;
+
+        int t2 = mf.getMachineRegisterInfo().createVirtualRegister(rc);
+        assert argOps[valArgIndex].isRegister() || argOps[valArgIndex].isMBB()
+                :"invalid operand!";
+
+        if (argOps[valArgIndex].isRegister())
+            mib = buildMI(newMBB, tii.get(regOpc), t2);
+        else
+            mib = buildMI(newMBB, tii.get(immOpc), t2);
+
+        mib.addReg(tt);
+        mib.addOperand(argOps[valArgIndex]);
+
+        mib = buildMI(newMBB, tii.get(copyOpc), eaxReg).addReg(t1);
+        mib = buildMI(newMBB, tii.get(cxchgOpc));
+        for (int i = 0; i <= lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+        mib.addReg(t2);
+        assert mi.hasOneMemOperand():"Unexpected number of memoperand!";
+        mib.addMemOperand(mi.getMemOperand(0));
+
+        mib = buildMI(newMBB, tii.get(copyOpc), destOp.getReg()).addReg(eaxReg);
+        // insert branch.
+        buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+        mf.deleteMachineInstr(mi);
+        return nextMBB;
+    }
+
+    private MachineBasicBlock emitAtomicBit6432WithCustomInserter(
+            MachineInstr mi,
+            MachineBasicBlock mbb,
+            int regOpcL,
+            int regOpcH,
+            int immOpcL,
+            int immOpcH,
+            boolean invSrc)
+    {
+        // For the atomic bitwise operator, we generate
+        //   thisMBB (instructions are in pairs, except cmpxchg8b)
+        //     ld t1,t2 = [bitinstr.addr]
+        //   newMBB:
+        //     out1, out2 = phi (thisMBB, t1/t2) (newMBB, t3/t4)
+        //     op  t5, t6 <- out1, out2, [bitinstr.val]
+        //      (for SWAP, substitute:  mov t5, t6 <- [bitinstr.val])
+        //     mov ECX, EBX <- t5, t6
+        //     mov EAX, EDX <- t1, t2
+        //     cmpxchg8b [bitinstr.addr]  [EAX, EDX, EBX, ECX implicit]
+        //     mov t3, t4 <- EAX, EDX
+        //     bz  newMBB
+        //     result in out1, out2
+        //     fallthrough -->nextMBB
+        TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+        int loadOpc = X86GenInstrNames.MOV32rm;
+        int copyOpc = X86GenInstrNames.MOV32rr;
+        int notOpc = X86GenInstrNames.NOT32r;
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+        BasicBlock llvmBB = mbb.getBasicBlock();
+        int itr = 1;
+
+        MachineFunction mf = mbb.getParent();
+        MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+        MachineBasicBlock thisMBB = mbb;
+        MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
+        MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(itr, newMBB);
+        mf.insert(itr, nextMBB);
+
+        assert mi.getNumOperands() < X86AddrNumOperands + 14:
+                "unexpected number of operands!";
+        MachineOperand dest1Op = mi.getOperand(0);
+        MachineOperand dest2Op = mi.getOperand(1);
+        MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
+        for (int i = 0; i < 2+X86AddrNumOperands; i++)
+            argOps[i] = mi.getOperand(i+2);
+
+        int lastAddrIndex = X86AddrNumOperands - 1;
+        int t1 = mri.createVirtualRegister(rc);
+        MachineInstrBuilder mib = buildMI(thisMBB, tii.get(loadOpc), t1);
+        for (int i = 0; i<=lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+
+        int t2 = mri.createVirtualRegister(rc);
+        mib = buildMI(thisMBB, tii.get(loadOpc), t2);
+        for (int i = 0; i <= lastAddrIndex-2; i++)
+            mib.addOperand(argOps[i]);
+
+        MachineOperand newOp3 = argOps[3];
+        if (newOp3.isImm())
+            newOp3.setImm(newOp3.getImm()+4);
+        else
+            newOp3.setOffset(newOp3.getOffset()+4);
+        mib.addOperand(newOp3);
+        mib.addOperand(argOps[lastAddrIndex]);
+
+        int t3 = mri.createVirtualRegister(rc);
+        int t4 = mri.createVirtualRegister(rc);
+        buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest1Op.getReg())
+                .addReg(t1).addMBB(thisMBB).addReg(t3).addMBB(newMBB);
+        buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest2Op.getReg())
+                .addReg(t2).addMBB(thisMBB).addReg(t4).addMBB(newMBB);
+
+        int tt1 = mri.createVirtualRegister(rc);
+        int tt2 = mri.createVirtualRegister(rc);
+        if (invSrc)
+        {
+            buildMI(newMBB, tii.get(notOpc), tt1).addReg(t1);
+            buildMI(newMBB, tii.get(notOpc), tt2).addReg(t2);
+        }
+        else
+        {
+            tt1 = t1;
+            tt2 = t2;
+        }
+
+        int valArgIndex = lastAddrIndex + 1;
+        assert argOps[valArgIndex].isRegister() ||
+                argOps[valArgIndex].isImm():"Invalid operand!";
+        int t5 = mri.createVirtualRegister(rc);
+        int t6 = mri.createVirtualRegister(rc);
+        if (argOps[valArgIndex].isRegister())
+            mib = buildMI(newMBB, tii.get(regOpcL), t5);
+        else
+            mib = buildMI(newMBB, tii.get(immOpcL), t5);
+
+        if (regOpcL != X86GenInstrNames.MOV32rr)
+            mib.addReg(tt1);
+        mib.addOperand(argOps[valArgIndex]);
+        assert argOps[valArgIndex+1].isRegister() || argOps[valArgIndex].isRegister();
+        assert argOps[valArgIndex+1].isImm() || argOps[valArgIndex].isImm();
+
+        if (argOps[valArgIndex+1].isRegister())
+            mib = buildMI(newMBB, tii.get(regOpcH), t6);
+        else
+            mib = buildMI(newMBB, tii.get(immOpcH), t6);
+
+        if (regOpcH != X86GenInstrNames.MOV32rr)
+            mib.addReg(tt2);
+
+        mib.addOperand(argOps[valArgIndex+1]);
+        buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EAX).addReg(t1);
+        buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EDX).addReg(t2);
+        buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EBX).addReg(t5);
+        buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.ECX).addReg(t6);
+
+        mib = buildMI(newMBB, tii.get(X86GenInstrNames.LCMPXCHG8B));
+        for (int i = 0; i<= lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+
+        assert mi.hasOneMemOperand():"Unexpected number of memoperand!";
+        mib.addMemOperand(mi.getMemOperand(0));
+        buildMI(newMBB, tii.get(copyOpc), t3).addReg(X86GenRegisterNames.EAX);
+        buildMI(newMBB, tii.get(copyOpc), t4).addReg(X86GenRegisterNames.EDX);
+
+        // insert branch.
+        buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+        mf.deleteMachineInstr(mi);
+        return nextMBB;
+    }
+
+    private MachineBasicBlock emitAtomicMinMaxWithCustomInserter(
+            MachineInstr mi,
+            MachineBasicBlock mbb,
+            int cmovOpc)
+    {
+        // For the atomic min/max operator, we generate
+        //   thisMBB:
+        //   newMBB:
+        //     ld t1 = [min/max.addr]
+        //     mov t2 = [min/max.val]
+        //     cmp  t1, t2
+        //     cmov[cond] t2 = t1
+        //     mov EAX = t1
+        //     lcs dest = [bitinstr.addr], t2  [EAX is implicit]
+        //     bz   newMBB
+        //     fallthrough -->nextMBB
+        //
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+        BasicBlock llvmBB = mbb.getBasicBlock();
+        int itr = 1;
+        // First build the CFG.
+        MachineFunction mf = mbb.getParent();
+        MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+        TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+
+        MachineBasicBlock thisMBB = mbb;
+        MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
+        MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(itr, newMBB);
+        mf.insert(itr, nextMBB);
+
+        nextMBB.transferSuccessor(thisMBB);
+        thisMBB.addSuccessor(newMBB);
+
+        newMBB.addSuccessor(nextMBB);
+        newMBB.addSuccessor(newMBB);
+
+        assert mi.getNumOperands() < X86AddrNumOperands + 4:
+                "unexpected number of operands";
+
+        MachineOperand destOp = mi.getOperand(0);
+        MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
+        int numArgs = mi.getNumOperands()-1;
+        for (int i = 0; i< numArgs; i++)
+            argOps[i] = mi.getOperand(i+1);
+
+        int lastAddrIndex = X86AddrNumOperands -1 ;
+        int valArgIndex = lastAddrIndex + 1;
+
+        int t1 = mri.createVirtualRegister(rc);
+        MachineInstrBuilder mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rm), t1);
+        for (int i = 0; i <= lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+
+        assert argOps[valArgIndex].isRegister() || argOps[valArgIndex].isImm();
+
+        int t2 = mri.createVirtualRegister(rc);
+        // FIXME, redundant if condition?  2018/5/6
+        if (argOps[valArgIndex].isRegister())
+            mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), t2);
+        else
+            mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), t2);
+
+        mib.addOperand(argOps[valArgIndex]);
+
+        buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), X86GenRegisterNames.EAX).addReg(t1);
+        buildMI(newMBB, tii.get(X86GenInstrNames.CMP32rr)).addReg(t1).addReg(t2);
+
+        // generate cmov
+        int t3 = mri.createVirtualRegister(rc);
+        buildMI(newMBB, tii.get(cmovOpc), t3).addReg(t2).addReg(t1);
+
+        // cmp and exchange if none has modified the memory location.
+        mib = buildMI(newMBB, tii.get(X86GenInstrNames.LCMPXCHG32));
+        for (int i = 0; i <= lastAddrIndex; i++)
+            mib.addOperand(argOps[i]);
+
+        mib.addReg(t3);
+        assert mi.hasOneMemOperand():"Unexpected number of memoperand";
+        mib.addMemOperand(mi.getMemOperand(0));
+
+        buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), destOp.getReg())
+                .addReg(X86GenRegisterNames.EAX);
+
+        // insert branch.
+        buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+        mf.deleteMachineInstr(mi);
+        return nextMBB;
+    }
+
+    private MachineBasicBlock emitVAStartSaveXMMRegsWithCustomInserter(
+            MachineInstr mi,
+            MachineBasicBlock mbb)
+    {
+        // Emit code to save XMM registers to the stack. The ABI says that the
+        // number of registers to save is given in %al, so it's theoretically
+        // possible to do an indirect jump trick to avoid saving all of them,
+        // however this code takes a simpler approach and just executes all
+        // of the stores if %al is non-zero. It's less code, and it's probably
+        // easier on the hardware branch predictor, and stores aren't all that
+        // expensive anyway.
+
+        // Create the new basic blocks. One block contains all the XMM stores,
+        // and one block is the final destination regardless of whether any
+        // stores were performed.
+
+        BasicBlock llvmBB = mbb.getBasicBlock();
+        MachineFunction mf = mbb.getParent();
+        int itr = 1;
+        MachineBasicBlock xmmSavedMBB = mf.createMachineBasicBlock(llvmBB);
+        MachineBasicBlock endMBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(itr, xmmSavedMBB);
+        mf.insert(itr, endMBB);
+
+        endMBB.transferSuccessor(mbb);
+        mbb.addSuccessor(xmmSavedMBB);
+        xmmSavedMBB.addSuccessor(endMBB);
+
+        TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+        int countReg = mi.getOperand(0).getReg();
+        long regSaveFrrameIndex = mi.getOperand(1).getImm();
+        long varArgsOffset = mi.getOperand(2).getImm();
+
+        if (!subtarget.isTargetWin64())
+        {
+            // If %al is 0, branch around the XMM save block.
+            buildMI(mbb, tii.get(X86GenInstrNames.TEST8ri)).addReg(countReg)
+                    .addReg(countReg);
+            buildMI(mbb, tii.get(X86GenInstrNames.JE)).addMBB(endMBB);
+            mbb.addSuccessor(endMBB);
+        }
+
+        // In the XMM save block, save all the XMM argument registers.
+        for (int i = 3, e = mi.getNumOperands(); i < e; i++)
+        {
+            long offset = (i-3)*16 + varArgsFPOffset;
+            buildMI(xmmSavedMBB, tii.get(X86GenInstrNames.MOVAPSmr))
+                    .addFrameIndex(regSaveFrameIndex)
+                    .addImm(1)  // scale
+                    .addReg(0)  // indexReg
+                    .addImm(offset) // disp
+                    .addReg(0)  // segment
+                    .addReg(mi.getOperand(i).getReg())
+                    .addMemOperand(new MachineMemOperand(
+                            PseudoSourceValue.getFixedStack(regSaveFrameIndex),
+                            MachineMemOperand.MOStore,
+                            offset, 16, 16));
+        }
+        mf.deleteMachineInstr(mi);
+        return endMBB;
+    }
+
+    private SDValue emitTest(SDValue op, int x86CC, SelectionDAG dag)
+    {
+        boolean needCF = false, needOF = false;
+        switch (x86CC)
+        {
+            case CondCode.COND_A:
+            case CondCode.COND_AE:
+            case CondCode.COND_B:
+            case CondCode.COND_BE:
+                needCF = true;
+                break;
+            case CondCode.COND_G:
+            case CondCode.COND_GE:
+            case CondCode.COND_L:
+            case CondCode.COND_LE:
+            case CondCode.COND_O:
+            case CondCode.COND_NO:
+                needOF = true;
+                break;
+            default:
+                break;
+        }
+
+        if (op.getResNo() == 0 && !needCF & !needOF)
+        {
+            int opcode = 0;
+            int numOperands = 0;
+
+            FAIL:
+            switch (op.getNode().getOpcode())
+            {
+                case ISD.ADD:
+                {
+                    for (SDUse u : op.getNode().getUseList())
+                    {
+                        if (u.getUser().getOpcode() == ISD.STORE)
+                            break FAIL;
+                    }
+                    if (op.getNode().getOperand(1).getNode() instanceof ConstantSDNode)
+                    {
+                        ConstantSDNode c = (ConstantSDNode)op.getNode().getOperand(1).getNode();
+                        if (c.getAPIntValue().eq(1))
+                        {
+                            opcode = X86ISD.INC;
+                            numOperands = 1;
+                            break;
+                        }
+                        if (c.getAPIntValue().isAllOnesValue())
+                        {
+                            opcode = X86ISD.DEC;
+                            numOperands = 1;
+                            break;
+                        }
+                    }
+                    opcode = X86ISD.ADD;
+                    numOperands = 2;
+                    break;
+                }
+                case ISD.SUB:
+                {
+                    for (SDUse u : op.getNode().getUseList())
+                    {
+                        if (u.getUser().getOpcode() == ISD.STORE)
+                            break FAIL;
+                    }
+
+                    opcode = X86ISD.SUB;
+                    numOperands = 2;
+                    break;
+                }
+                case X86ISD.ADD:
+                case X86ISD.SUB:
+                case X86ISD.INC:
+                case X86ISD.DEC:
+                    return new SDValue(op.getNode(), 1);
+                default:
+                    break;
+            }
+            if (opcode != 0)
+            {
+                SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.i32));
+                ArrayList<SDValue> ops = new ArrayList<>();
+                for (int i = 0; i < numOperands; i++)
+                    ops.add(op.getOperand(i));
+
+                SDValue newVal = dag.getNode(opcode, vts, ops);
+                dag.replaceAllUsesWith(op, newVal, null);
+                return new SDValue(newVal.getNode(), 1);
+            }
+        }
+
+        return dag.getNode(X86ISD.CMP, new EVT(MVT.i32), op,
+                dag.getConstant(0, op.getValueType(), false));
+    }
+
+    private SDValue emitCmp(SDValue op0, SDValue op1, int x86CC, SelectionDAG dag)
+    {
+        if (op1.getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode cs = (ConstantSDNode)op1.getNode();
+            if (cs.getAPIntValue().eq(0))
+                return emitTest(op0, x86CC, dag);
+        }
+        return dag.getNode(X86ISD.CMP, new EVT(MVT.i32), op0, op1);
     }
 }
