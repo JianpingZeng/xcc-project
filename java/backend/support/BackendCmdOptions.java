@@ -31,6 +31,8 @@ import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
 import static backend.support.BackendCmdOptions.AliasAnalyzerKind.*;
+import static backend.support.BackendCmdOptions.InstructionSelectorKind.DAGISel;
+import static backend.support.BackendCmdOptions.InstructionSelectorKind.FastISel;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -175,6 +177,24 @@ public class BackendCmdOptions
             new Opt<>(new RegisterSchedulerParser(),
                 optionName("pre-ra-sched"), desc("Instruction scheduler to use: (default = fast)"),
                 init((SchedPassCtor) ScheduleDAGFast::createFastDAGScheduler));
+
+    /**
+     * Define an enumeration for telling user there are many selector available.
+     */
+    public enum InstructionSelectorKind
+    {
+       FastISel,
+       DAGISel
+    }
+
+    public static final Opt<InstructionSelectorKind> InstructionSelector =
+        new Opt<>(new Parser<>(),
+                optionName("isel"),
+                desc("Instruction Selector to use: (default = dagisel)"),
+                new ValueClass<>(
+                    new ValueClass.Entry<>(FastISel, "fastisel", "Macro expanding based selector(experimental)"),
+                    new ValueClass.Entry<>(DAGISel, "dagisel", "DAG covering based selector")),
+                init(DAGISel));
 
     /***
      * A static method for creating a Scheduler Based on DAG.
