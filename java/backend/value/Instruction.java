@@ -2712,11 +2712,11 @@ public abstract class Instruction extends User
             return res;
         }
 
-        public Constant getSuccessorValue(int index)
+        public ConstantInt getSuccessorValue(int index)
         {
             assert index >= 0 && index < getNumOfSuccessors()
                     : "Successor value index out of range for switch";
-            return (Constant)operand(2*index);
+            return (ConstantInt) operand(2*index);
         }
 
         public BasicBlock getSuccessor(int index)

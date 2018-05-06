@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -48,6 +49,7 @@ public class MachineFunction
 	 */
 	MachineFunctionInfo mfInfo;
 	private int alignment;
+	private MachineJumpTableInfo jumpTableInfo;
 
 	public MachineFunction(Function fn, TargetMachine tm)
 	{
@@ -59,7 +61,11 @@ public class MachineFunction
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
-		alignment = tm.getTargetLowering().getFunctionAlignment(fn);
+		boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
+		alignment = isPIC ? tm.getTargetData().getABITypeAlignment(
+                LLVMContext.Int32Ty): tm.getTargetData().getPointerABIAlign();
+		int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
+        jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
 
 		// associate this machine function with HIR function.
 		fn.setMachineFunc(this);
@@ -118,6 +124,12 @@ public class MachineFunction
     {
         assert blockNo >= 0 && blockNo < mbbNumber.size();
         return mbbNumber.remove(blockNo);
+    }
+
+    public int getIndexOfMBB(MachineBasicBlock mbb)
+    {
+    	assert mbb != null;
+    	return mbbNumber.indexOf(mbb);
     }
 
 	public boolean isEmpty() {return mbbNumber.isEmpty();}
@@ -199,6 +211,9 @@ public class MachineFunction
 		//Print frame information.
 		frameInfo.print(this, os);
 
+		// Print JumpTable information.
+		jumpTableInfo.print(os);
+
 		// Print Jump table information.
 		// Print constant pool.
 		constantPool.print(os);
@@ -267,4 +282,14 @@ public class MachineFunction
         assert insertPos >= 0 && insertPos < mbbNumber.size();
         mbbNumber.add(insertPos, mbb);
     }
+
+	public MachineJumpTableInfo getJumpTableInfo()
+	{
+		return jumpTableInfo;
+	}
+
+	public void setJumpTableInfo(MachineJumpTableInfo jti)
+	{
+		this.jumpTableInfo = jti;
+	}
 }

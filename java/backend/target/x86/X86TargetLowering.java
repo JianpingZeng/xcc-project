@@ -2053,4 +2053,10 @@ public class X86TargetLowering extends TargetLowering
         }
         return dag.getNode(X86ISD.CMP, new EVT(MVT.i32), op0, op1);
     }
+
+    @Override
+    public int getSetCCResultType(EVT vt)
+    {
+        return MVT.i8;
+    }
 }
