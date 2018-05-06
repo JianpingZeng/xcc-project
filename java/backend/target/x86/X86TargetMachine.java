@@ -6,10 +6,12 @@ import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 import backend.target.*;
 import backend.value.Module;
+import tools.Util;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
 
+import static backend.support.BackendCmdOptions.InstructionSelector;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
@@ -176,7 +178,18 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
 	{
 		//pm.add(createX86FastISel(this, level));
-		pm.add(X86DAGToDAGISel.createX86DAGToDAGISel(this, level));
+		switch (InstructionSelector.value)
+		{
+			case FastISel:
+				pm.add(X86FastISel.createX86FastISel(this, level));
+				break;
+			case DAGISel:
+				pm.add(X86DAGToDAGISel.createX86DAGToDAGISel(this, level));
+				break;
+			default:
+				Util.shouldNotReachHere("Unknown Instruction Selector");
+		}
+
 		// FIXME dead mi elim pass eliminates used instr. 2018/1/6
 		//pm.add(createDeadMachineInstructionElimPass());
 		pm.add(createX86FPRegKillPass());
