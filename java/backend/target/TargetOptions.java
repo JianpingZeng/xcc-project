@@ -111,6 +111,11 @@ public class TargetOptions
                     desc("Verify generated machine code"),
                     init(false));
 
+    public static final BooleanOpt DisableJumpTables =
+            new BooleanOpt(optionName("disable-jump-tables"),
+                    desc("Do not generate jump tables"),
+                    init(false));
+
     public static void registerTargetOptions()
     {}
 }

@@ -3016,6 +3016,11 @@ public class APInt implements Cloneable
         return roundToDouble(true);
     }
 
+    public double roundToDouble()
+    {
+        return roundToDouble(false);
+    }
+
     /// The conversion does not do a translation from integer to double, it just
     /// re-interprets the bits as a double. Note that it is valid to do this on
     /// any bit width. Exactly 64 bits will be translated.

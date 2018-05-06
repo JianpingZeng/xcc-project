@@ -36,16 +36,16 @@ import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.OutParamWrapper;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
+import static backend.target.TargetOptions.DisableJumpTables;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
+import static backend.value.Operator.And;
+import static backend.value.Operator.Or;
 
 /**
  * @author Xlous.zeng
@@ -149,6 +149,109 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         ArrayList<Case> caseRanges;
     }
 
+    static class CaseBlock
+    {
+        CondCode cc;
+        Value cmpLHS, cmpMHS, cmpRHS;
+        MachineBasicBlock trueMBB, falseMBB;
+        MachineBasicBlock thisMBB;
+
+        public CaseBlock(CondCode cc, Value lhs, Value rhs, Value middle,
+                MachineBasicBlock tbb, MachineBasicBlock fbb,
+                MachineBasicBlock curbb)
+        {
+            this.cc = cc;
+            this.cmpLHS = lhs;
+            this.cmpMHS = middle;
+            this.cmpRHS = rhs;
+            this.trueMBB = tbb;
+            this.falseMBB = fbb;
+            this.thisMBB = curbb;
+        }
+    }
+
+    static class JumpTable
+    {
+        int reg;
+        int jti;
+        MachineBasicBlock mbb;
+        MachineBasicBlock defaultMBB;
+
+        public JumpTable(int reg, int jti, MachineBasicBlock m,
+                MachineBasicBlock d)
+        {
+            this.reg = reg;
+            this.jti = jti;
+            mbb = m;
+            defaultMBB = d;
+        }
+    }
+
+    static class JumpTableHeader
+    {
+        APInt first;
+        APInt last;
+        Value val;
+        MachineBasicBlock headerBB;
+        boolean emitted;
+
+        public JumpTableHeader(APInt f, APInt l, Value v, MachineBasicBlock h,
+                boolean e)
+        {
+            first = f;
+            last = l;
+            val = v;
+            headerBB = h;
+            emitted = e;
+        }
+
+        public JumpTableHeader(APInt f, APInt l, Value v, MachineBasicBlock h)
+        {
+            this(f, l, v, h, false);
+        }
+    }
+
+    static class BitTestCase
+    {
+        long mask;
+        MachineBasicBlock thisMBB;
+        MachineBasicBlock targetMBB;
+
+        public BitTestCase(long m, MachineBasicBlock t, MachineBasicBlock tr)
+        {
+            mask = m;
+            thisMBB = t;
+            targetMBB = tr;
+        }
+    }
+
+    static class BitTestBlock
+    {
+        APInt first;
+        APInt range;
+        Value val;
+        int reg;
+        boolean emitted;
+        MachineBasicBlock parentMBB;
+        MachineBasicBlock defaultMBB;
+        ArrayList<BitTestCase> cases;
+
+        public BitTestBlock(APInt f, APInt r, Value v, int reg, boolean e,
+                MachineBasicBlock p, MachineBasicBlock d,
+                ArrayList<BitTestCase> cs)
+        {
+            first = f;
+            range = r;
+            val = v;
+            this.reg = reg;
+            emitted = e;
+            parentMBB = p;
+            defaultMBB = d;
+            cases = new ArrayList<>();
+            cases.addAll(cs);
+        }
+    }
+
     public TargetLowering tli;
     public SelectionDAG dag;
     public TargetData td;
@@ -156,12 +259,18 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
     public ArrayList<Pair<MachineInstr, Integer>> phiNodesToUpdate;
 
-    TObjectIntHashMap<Constant> constantsOut;
+    public TObjectIntHashMap<Constant> constantsOut;
 
-    FunctionLoweringInfo funcInfo;
+    public FunctionLoweringInfo funcInfo;
 
-    TargetMachine.CodeGenOpt optLevel;
+    public TargetMachine.CodeGenOpt optLevel;
     boolean hasTailCall;
+
+    public ArrayList<CaseBlock> switchCases;
+
+    public ArrayList<Pair<JumpTableHeader, JumpTable>> jtiCases;
+
+    public ArrayList<BitTestBlock> bitTestCases;
 
     public SelectionDAGLowering(SelectionDAG dag, TargetLowering tli,
             FunctionLoweringInfo funcInfo, TargetMachine.CodeGenOpt level)
@@ -170,6 +279,11 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         this.tli = tli;
         this.funcInfo = funcInfo;
         this.optLevel = level;
+        switchCases = new ArrayList<>();
+        jtiCases = new ArrayList<>();
+        bitTestCases = new ArrayList<>();
+        phiNodesToUpdate = new ArrayList<>();
+        constantsOut = new TObjectIntHashMap<>();
     }
 
     public void init(AliasAnalysis aa)
@@ -369,9 +483,10 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         lowerCallTo(cs, callee, isTailCall, null);
     }
 
-    public void lowerCallTo(CallSite cs, SDValue callee, boolean isTailCall, MachineBasicBlock landingPad)
+    public void lowerCallTo(CallSite cs, SDValue callee, boolean isTailCall,
+            MachineBasicBlock landingPad)
     {
-        PointerType pt = (PointerType)(cs.getCalledValue().getType());
+        PointerType pt = (PointerType) (cs.getCalledValue().getType());
         FunctionType fty = (FunctionType) pt.getElementType();
         MachineModuleInfo mmi = dag.getMachineModuleInfo();
         int beginLabel = 0, endLabel = 0;
@@ -407,16 +522,12 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 cs.getAttributes().getRetAttribute(), tli))
             isTailCall = false;
 
-        Pair<SDValue, SDValue> result = tli.lowerCallTo(getRoot(),
-                cs.getType(), cs.paramHasAttr(0, Attribute.SExt),
-                cs.paramHasAttr(0, Attribute.ZExt),
-                fty.isVarArg(),
-                cs.paramHasAttr(0, Attribute.InReg),
-                fty.getNumParams(),
-                cs.getCallingConv(),
-                isTailCall,
-                !cs.getInstruction().isUseEmpty(),
-                callee, args, dag);
+        Pair<SDValue, SDValue> result = tli.lowerCallTo(getRoot(), cs.getType(),
+                cs.paramHasAttr(0, Attribute.SExt),
+                cs.paramHasAttr(0, Attribute.ZExt), fty.isVarArg(),
+                cs.paramHasAttr(0, Attribute.InReg), fty.getNumParams(),
+                cs.getCallingConv(), isTailCall,
+                !cs.getInstruction().isUseEmpty(), callee, args, dag);
         assert !isTailCall || result.second.getNode() != null;
         assert result.second.getNode() != null || result.first.getNode() == null;
         if (result.first.getNode() != null)
@@ -440,15 +551,15 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     {
         BasicBlock exitBB = inst.getParent();
         TerminatorInst ti = exitBB.getTerminator();
-        ReturnInst ret = ti instanceof ReturnInst ? (ReturnInst) ti:null;
+        ReturnInst ret = ti instanceof ReturnInst ? (ReturnInst) ti : null;
         Function f = exitBB.getParent();
 
-        if (ret == null && !(ti instanceof UnreachableInst)) return false;
+        if (ret == null && !(ti instanceof UnreachableInst))
+            return false;
 
-        if (inst.mayHasSideEffects() || inst.mayReadMemory() ||
-                !inst.isSafeToSpecutativelyExecute())
+        if (inst.mayHasSideEffects() || inst.mayReadMemory() || !inst.isSafeToSpecutativelyExecute())
         {
-            for (int i = exitBB.size()-2; ; --i)
+            for (int i = exitBB.size() - 2; ; --i)
             {
                 if (exitBB.getInstAt(i).equals(inst))
                     break;
@@ -458,27 +569,29 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             }
         }
 
-        if (ret == null || ret.getNumOfOperands() == 0 ) return true;
+        if (ret == null || ret.getNumOfOperands() == 0)
+            return true;
 
         if (f.getAttributes().getRetAttribute() != retAttr)
             return false;
 
         Instruction u = ret.operand(0) instanceof Instruction ?
-                (Instruction)ret.operand(0):null;
+                (Instruction) ret.operand(0) : null;
         while (true)
         {
-            if (u == null) return false;
+            if (u == null)
+                return false;
 
             if (!u.hasOneUses())
                 return false;
 
             if (u.equals(inst))
                 break;
-            if (u instanceof TruncInst && tli.isTruncateFree(u.operand(0).getType(),
-                    u.getType()))
+            if (u instanceof TruncInst && tli
+                    .isTruncateFree(u.operand(0).getType(), u.getType()))
             {
                 u = u.operand(0) instanceof Instruction ?
-                        (Instruction)u.operand(0):null;
+                        (Instruction) u.operand(0) : null;
                 continue;
             }
             return false;
@@ -655,18 +768,18 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
     }
 
-    @Override
-    public Void visitRet(User inst)
+    @Override public Void visitRet(User inst)
     {
         SDValue chain = getControlRoot();
-        ReturnInst ret = (ReturnInst)inst;
+        ReturnInst ret = (ReturnInst) inst;
         ArrayList<OutputArg> outs = new ArrayList<>(8);
         for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
         {
             ArrayList<EVT> valueVTs = new ArrayList<>();
             computeValueVTs(tli, ret.operand(i).getType(), valueVTs);
             int numValues = valueVTs.size();
-            if (numValues <= 0) continue;
+            if (numValues <= 0)
+                continue;
             SDValue retOp = getValue(ret.operand(i));
             for (int j = 0; j < numValues; j++)
             {
@@ -689,7 +802,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 int numParts = tli.getNumRegisters(vt);
                 EVT partVT = tli.getRegisterType(vt);
                 SDValue[] parts = new SDValue[numParts];
-                getCopyToParts(dag, new SDValue(retOp.getNode(), retOp.getResNo()+j),
+                getCopyToParts(dag,
+                        new SDValue(retOp.getNode(), retOp.getResNo() + j),
                         parts, partVT, extendKind);
 
                 ArgFlagsTy flags = new ArgFlagsTy();
@@ -708,25 +822,829 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         boolean isVarArg = dag.getMachineFunction().getFunction().isVarArg();
         CallingConv cc = dag.getMachineFunction().getFunction().getCallingConv();
         chain = tli.lowerReturn(chain, cc, isVarArg, outs, dag);
-        assert chain.getNode() != null && chain.getValueType().getSimpleVT().simpleVT == MVT.Other;
+        assert chain.getNode() != null
+                && chain.getValueType().getSimpleVT().simpleVT == MVT.Other;
         dag.setRoot(chain);
         return null;
     }
 
-    @Override
-    public Void visitBr(User inst)
+    @Override public Void visitBr(User inst)
     {
-        // TODO: 18-5-1
-        Util.shouldNotReachHere("Not implemented currently!");
+        BranchInst bi = (BranchInst) inst;
+        MachineBasicBlock succ0MBB = funcInfo.mbbmap.get(bi.getSuccessor(0));
+
+        MachineBasicBlock nextMBB = null;
+        int itr = funcInfo.mf.getIndexOfMBB(curMBB);
+        if (++itr < funcInfo.mf.getNumBlockIDs())
+            nextMBB = funcInfo.mf.getMBBAt(itr);
+
+        if (bi.isUnconditional())
+        {
+            curMBB.addSuccessor(succ0MBB);
+            if (!Objects.equals(succ0MBB, nextMBB))
+            {
+                dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+                        getControlRoot(), dag.getBasicBlock(succ0MBB)));
+                return null;
+            }
+        }
+
+        Value condVal = bi.getCondition();
+        MachineBasicBlock succ1MBB = funcInfo.mbbmap.get(bi.getSuccessor(1));
+
+        if (condVal instanceof BinaryOps)
+        {
+            BinaryOps bo = (BinaryOps) condVal;
+            if (bo.hasOneUses() && (bo.getOpcode() == And || bo.getOpcode() == Or))
+            {
+                findMergedConditions(bo, succ0MBB, succ1MBB, curMBB, bo.getOpcode());
+
+                assert switchCases.get(0).thisMBB
+                        .equals(curMBB) : "Unexpected lowering!";
+
+                if (shouldEmitAsBranches(switchCases))
+                {
+                    switchCases.forEach(cb -> {
+                        exportFromCurrentBlock(cb.cmpLHS);
+                        exportFromCurrentBlock(cb.cmpRHS);
+                    });
+                    visitSwitchCase(switchCases.get(0));
+                    switchCases.remove(0);
+                    return null;
+                }
+
+                switchCases.forEach(cb -> {
+                    funcInfo.mf.erase(cb.thisMBB);
+                });
+                switchCases.clear();
+            }
+        }
+        CaseBlock cb = new CaseBlock(CondCode.SETEQ, condVal, ConstantInt.getTrue(),
+                null, succ0MBB, succ1MBB, curMBB);
+        visitSwitchCase(cb);
         return null;
     }
 
-    @Override
-    public Void visitSwitch(User inst)
+    private boolean shouldEmitAsBranches(ArrayList<CaseBlock> cases)
     {
-        // TODO: 18-5-1
-        Util.shouldNotReachHere("Not implemented currently!");
+        if (cases.size() != 2)
+            return true;
+
+        CaseBlock cb0 = cases.get(0), cb1 = cases.get(1);
+        if (cb0.cmpLHS.equals(cb1.cmpLHS) && cb0.cmpRHS.equals(cb1.cmpRHS) || (
+                cb0.cmpRHS.equals(cb1.cmpLHS) && cb0.cmpLHS.equals(cb1.cmpRHS)))
+            return false;
+
+        return true;
+    }
+
+    private void exportFromCurrentBlock(Value val)
+    {
+        if (!(val instanceof Instruction) & !(val instanceof Argument))
+            return;
+
+        if (funcInfo.isExportedInst(val))
+            return;
+
+        int reg = funcInfo.initializeRegForValue(val);
+        copyValueToVirtualRegister(val, reg);
+    }
+
+    private void findMergedConditions(Value cond, MachineBasicBlock tbb,
+            MachineBasicBlock fbb, MachineBasicBlock curBB, Operator opc)
+    {
+        if (!(cond instanceof CmpInst))
+            return;
+
+        CmpInst ci = (CmpInst) cond;
+        if (ci.getOpcode() != opc || !ci.hasOneUses() || ci.getParent() != curBB
+                .getBasicBlock() || !inBlock(ci.operand(0), curBB.getBasicBlock()) || !inBlock(ci.operand(1),
+                curBB.getBasicBlock()))
+        {
+            emitBranchForMergedCondition(cond, tbb, fbb, curBB);
+            return;
+        }
+
+        MachineFunction mf = dag.getMachineFunction();
+        int itr = mf.getIndexOfMBB(curBB);
+        MachineBasicBlock tempBB = mf.createMachineBasicBlock(curBB.getBasicBlock());
+        curBB.getParent().insert(++itr, tempBB);
+
+        if (opc == Or)
+        {
+            // Codegen X | Y as:
+            //   jmp_if_X TBB
+            //   jmp TmpBB
+            // TmpBB:
+            //   jmp_if_Y TBB
+            //   jmp FBB
+            findMergedConditions(ci.operand(0), tbb, tempBB, curBB, opc);
+            findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+        }
+        else
+        {
+            assert opc == And;
+            // Codegen X & Y as:
+            //   jmp_if_X TmpBB
+            //   jmp FBB
+            // TmpBB:
+            //   jmp_if_Y TBB
+            //   jmp FBB
+            //
+            //  This requires creation of TmpBB after CurBB.
+            findMergedConditions(ci.operand(0), tempBB, fbb, curBB, opc);
+            findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+        }
+    }
+
+    static boolean inBlock(Value val, BasicBlock bb)
+    {
+        if (val instanceof Instruction)
+        {
+            return ((Instruction) val).getParent().equals(bb);
+        }
+        return false;
+    }
+
+    private void emitBranchForMergedCondition(Value cond, MachineBasicBlock tbb,
+            MachineBasicBlock fbb, MachineBasicBlock curBB)
+    {
+        BasicBlock bb = curBB.getBasicBlock();
+
+        if (cond instanceof CmpInst)
+        {
+            CmpInst ci = (CmpInst) cond;
+            if (Objects.equals(curBB, curMBB) || (
+                    isExportableFromCurrentBlock(ci.operand(0), bb)
+                            && isExportableFromCurrentBlock(ci.operand(1), bb)))
+            {
+                CondCode c;
+                if (cond instanceof ICmpInst)
+                {
+                    c = getICmpCondCode(ci.getPredicate());
+                }
+                else if (cond instanceof FCmpInst)
+                {
+                    c = getFCmpCondCode(ci.getPredicate());
+                }
+                else
+                {
+                    c = CondCode.SETEQ;
+                    Util.shouldNotReachHere("Unknown compare instruction!");
+                }
+                CaseBlock cb = new CaseBlock(c, ci.operand(0), ci.operand(1),
+                        null, tbb, fbb, curBB);
+                switchCases.add(cb);
+            }
+        }
+
+        CaseBlock cb = new CaseBlock(CondCode.SETEQ, cond, ConstantInt.getTrue(),
+                null, tbb, fbb, curBB);
+        switchCases.add(cb);
+    }
+
+    private boolean isExportableFromCurrentBlock(Value val, BasicBlock fromBB)
+    {
+        if (val instanceof Instruction)
+        {
+            Instruction vi = (Instruction) val;
+            return vi.getParent().equals(fromBB) || funcInfo.isExportedInst(val);
+        }
+
+        if (val instanceof Argument)
+        {
+            return fromBB.equals(fromBB.getParent().getEntryBlock()) || funcInfo
+                    .isExportedInst(val);
+        }
+        return true;
+    }
+
+    private void visitSwitchCase(CaseBlock cb)
+    {
+        SDValue cond;
+        SDValue condLHS = getValue(cb.cmpLHS);
+        if (cb.cmpMHS == null)
+        {
+            if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ)
+                cond = condLHS;
+            else if (cb.cmpRHS.equals(ConstantInt.getFalse()) & cb.cc == CondCode.SETEQ)
+            {
+                SDValue t = dag.getConstant(1, condLHS.getValueType(), false);
+                cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, t);
+            }
+            else
+            {
+                cond = dag.getSetCC(new EVT(MVT.i1), condLHS, getValue(cb.cmpRHS),
+                        cb.cc);
+            }
+        }
+        else
+        {
+            assert cb.cc == CondCode.SETLE;
+            APInt low = ((ConstantInt) cb.cmpLHS).getValue();
+            APInt high = ((ConstantInt) cb.cmpRHS).getValue();
+
+            SDValue cmpOp = getValue(cb.cmpRHS);
+            EVT vt = cmpOp.getValueType();
+
+            if (((ConstantInt) cb.cmpLHS).isMinValue(true))
+            {
+                cond = dag.getSetCC(new EVT(MVT.i1), cmpOp,
+                        dag.getConstant(high, vt, false), CondCode.SETLE);
+            }
+            else
+            {
+                SDValue sub = dag.getNode(ISD.SUB, vt, cmpOp,
+                        dag.getConstant(low, vt, false));
+                cond = dag.getSetCC(new EVT(MVT.i1), sub,
+                        dag.getConstant(high.sub(low), vt, false),
+                        CondCode.SETULE);
+            }
+        }
+
+        curMBB.addSuccessor(cb.trueMBB);
+        curMBB.addSuccessor(cb.falseMBB);
+
+        MachineBasicBlock nextBlock = null;
+        int idx = curMBB.getParent().getIndexOfMBB(curMBB);
+        if (++idx < curMBB.getParent().getNumBlockIDs())
+            nextBlock = curMBB.getParent().getMBBAt(idx);
+
+        if (cb.trueMBB.equals(nextBlock))
+        {
+            MachineBasicBlock temp = cb.trueMBB;
+            cb.trueMBB = cb.falseMBB;
+            cb.falseMBB = temp;
+            SDValue t = dag.getConstant(1, cond.getValueType(), false);
+            cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, t);
+        }
+        SDValue brCond = dag
+                .getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(), cond,
+                        dag.getBasicBlock(cb.trueMBB));
+
+        if (brCond.getOpcode() == ISD.BR)
+        {
+            curMBB.removeSuccessor(cb.falseMBB);
+            dag.setRoot(brCond);
+        }
+        else
+        {
+            if (brCond.equals(getControlRoot()))
+                curMBB.removeSuccessor(cb.falseMBB);
+
+            if (cb.falseMBB.equals(nextBlock))
+                dag.setRoot(brCond);
+            else
+                dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
+                        dag.getBasicBlock(cb.falseMBB)));
+        }
+    }
+
+    @Override public Void visitSwitch(User inst)
+    {
+        SwitchInst si = (SwitchInst) inst;
+        MachineBasicBlock nextBB = null;
+        int idx = curMBB.getParent().getIndexOfMBB(curMBB);
+        if (++idx < curMBB.getParent().getNumBlockIDs())
+            nextBB = curMBB.getParent().getMBBAt(idx);
+
+        MachineBasicBlock defaultBB = funcInfo.mbbmap.get(si.getDefaultBlock());
+        if (si.getNumOfOperands() == 2)
+        {
+            // equivalent to unconditional branch.
+            curMBB.addSuccessor(defaultBB);
+            if (!defaultBB.equals(nextBB))
+            {
+                dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+                        getControlRoot(), dag.getBasicBlock(defaultBB)));
+                return null;
+            }
+        }
+
+        ArrayList<Case> cases = new ArrayList<>();
+        int numCmps = clusterify(cases, si);
+        numCmps = 0;
+
+        Value condVal = si.operand(0);
+        Stack<CaseRec> worklist = new Stack<>();
+        worklist.add(new CaseRec(curMBB, null, null, cases));
+        while (!worklist.isEmpty())
+        {
+            CaseRec cr = worklist.pop();
+
+            if (handleBitTestsSwitchCase(cr, condVal, defaultBB))
+                continue;
+
+            if (handleSmallSwitchRange(cr, condVal, defaultBB))
+                continue;
+
+            if (handleJTSwitchCase(cr, condVal, defaultBB))
+                continue;
+
+            handleBTSplitSwitchCase(cr, worklist, condVal, defaultBB);
+        }
         return null;
+    }
+
+    private int clusterify(ArrayList<Case> cases, SwitchInst si)
+    {
+        int numCmps = 0;
+
+        for (int i = 1, e = si.getNumOfSuccessors(); i < e; i++)
+        {
+            MachineBasicBlock mbb = funcInfo.mbbmap.get(si.getSuccessor(i));
+            cases.add(new Case(si.getSuccessorValue(i), si.getSuccessorValue(i),
+                    mbb));
+        }
+        // sort the case in order of low value of lhs less than high value of rhs.
+        cases.sort((c1, c2) -> {
+            long res = c1.low.getValue().sub(c2.high.getValue()).getSExtValue();
+            return res == 0 ? 0 : res < 0 ? -1 : 1;
+        });
+
+        // merge case into cluster.
+        if (cases.size() >= 2)
+        {
+            for (int i = 0, j = i + 1; j < cases.size(); )
+            {
+                APInt nextVal = cases.get(j).low.getValue();
+                APInt currentVal = cases.get(i).high.getValue();
+
+                MachineBasicBlock nextBB = cases.get(j).mbb;
+                MachineBasicBlock curBB = cases.get(i).mbb;
+
+                if (nextVal.sub(currentVal).eq(1) && curBB.equals(nextBB))
+                {
+                    cases.get(i).high = cases.get(j).high;
+                    cases.remove(j);
+                }
+                else
+                {
+                    i = j++;
+                }
+            }
+
+            for (int i = 0, e = cases.size(); i < e; i++, ++numCmps)
+            {
+                if (!cases.get(i).low.getValue().eq(cases.get(i).high.getValue()))
+                    ++numCmps;
+            }
+        }
+        return numCmps;
+    }
+
+    private boolean handleBitTestsSwitchCase(CaseRec cr, Value condVal,
+            MachineBasicBlock defaultMBB)
+    {
+        EVT pty = new EVT(tli.getPointerTy());
+        int intPtrBits = pty.getSizeInBits();
+
+        int frontCaseIdx = 0;
+        int backCaseIdx = cr.caseRanges.size();
+
+        MachineFunction mf = funcInfo.mf;
+
+        if (!tli.isOperationLegal(ISD.SHL, new EVT(tli.getPointerTy())))
+            return false;
+
+        int numCmps = 0;
+        for (int i = frontCaseIdx; i < backCaseIdx; i++)
+        {
+            Case c = cr.caseRanges.get(i);
+            numCmps += c.low.getValue().eq(c.high.getValue()) ? 1 : 2;
+        }
+
+        HashSet<MachineBasicBlock> dests = new HashSet<>();
+        for (Case c : cr.caseRanges)
+        {
+            dests.add(c.mbb);
+            if (dests.size() > 3)
+                return false;
+        }
+
+        APInt minVal = cr.caseRanges.get(frontCaseIdx).low.getValue();
+        APInt maxVal = cr.caseRanges.get(backCaseIdx).high.getValue();
+
+        APInt cmpRange = maxVal.sub(minVal);
+
+        if (cmpRange.uge(new APInt(cmpRange.getBitWidth(), intPtrBits)) || (
+                !(dests.size() == 1 && numCmps >= 3) && !(dests.size() == 2
+                        && numCmps >= 5) && !(dests.size() >= 3 && numCmps >= 6)))
+            return false;
+
+        APInt lowBound = APInt.getNullValue(cmpRange.getBitWidth());
+
+        if (minVal.isNonNegative() && maxVal
+                .slt(new APInt(maxVal.getBitWidth(), intPtrBits)))
+        {
+            cmpRange = maxVal;
+        }
+        else
+        {
+            lowBound = minVal;
+        }
+
+        ArrayList<CaseBits> caseBits = new ArrayList<>();
+        int i = 0, count = 0;
+
+        for (Case c : cr.caseRanges)
+        {
+            MachineBasicBlock dest = c.mbb;
+            for (i = 0; i < count; i++)
+                if (dest.equals(caseBits.get(i).mbb))
+                    break;
+
+            if (i == count)
+            {
+                assert count < 3;
+                caseBits.add(new CaseBits(0, dest, 0));
+                count++;
+            }
+
+            APInt lowValue = c.low.getValue();
+            APInt highValue = c.high.getValue();
+
+            long lo = lowValue.sub(lowBound).getZExtValue();
+            long hi = highValue.sub(lowBound).getZExtValue();
+
+            for (long j = lo; j <= hi; ++j)
+            {
+                caseBits.get(i).mask |= 1L << j;
+                caseBits.get(i).bits++;
+            }
+        }
+
+        caseBits.sort((c1, c2) -> {
+            return c1.bits - c2.bits;
+        });
+
+        ArrayList<BitTestCase> btc = new ArrayList<>();
+        int itr = 1;    // iterator for cr.mbb
+        BasicBlock llvmBB = cr.mbb.getBasicBlock();
+
+        for (int j = 0, e = caseBits.size(); j < e; j++)
+        {
+            MachineBasicBlock caseBB = mf.createMachineBasicBlock(llvmBB);
+            mf.insert(itr, caseBB);
+            btc.add(new BitTestCase(caseBits.get(j).mask, caseBB, caseBits.get(j).mbb));
+
+            exportFromCurrentBlock(condVal);
+        }
+
+        BitTestBlock btb = new BitTestBlock(lowBound, cmpRange, condVal, -1, cr.mbb.equals(curMBB), cr.mbb, defaultMBB,
+                btc);
+        if (cr.mbb.equals(curMBB))
+            visitBitTestHeader(btb);
+
+        bitTestCases.add(btb);
+        return true;
+    }
+
+    private boolean handleSmallSwitchRange(CaseRec cr, Value val,
+            MachineBasicBlock defaultMBB)
+    {
+        Case backCase = cr.caseRanges.get(cr.caseRanges.size()-1);
+
+        int size = cr.caseRanges.size();
+        if (size > 3)
+            return false;
+
+        MachineFunction mf = funcInfo.mf;
+        MachineBasicBlock nextBlock = null;
+        int itr = mf.getIndexOfMBB(cr.mbb);
+
+        if (++itr < mf.size())
+            nextBlock = mf.getMBBAt(itr);
+
+        if (nextBlock != null && !defaultMBB.equals(nextBlock) &&
+                !backCase.mbb.equals(nextBlock))
+        {
+            for (int i = 0, e = cr.caseRanges.size()-1; i < e; i++)
+            {
+                if (cr.caseRanges.get(i).mbb.equals(nextBlock))
+                {
+                    Case t = cr.caseRanges.get(i);
+                    cr.caseRanges.set(i, backCase);
+                    backCase = t;
+                    break;
+                }
+            }
+        }
+
+        MachineBasicBlock curBlock = cr.mbb;
+        for (int i = 0, e = cr.caseRanges.size(); i < e; i++)
+        {
+            MachineBasicBlock fallThrough = null;
+            if (!cr.caseRanges.get(i).equals(cr.caseRanges.get(e - 1)))
+            {
+                fallThrough = mf.createMachineBasicBlock(curBlock.getBasicBlock());
+                mf.insert(itr, fallThrough);
+
+                exportFromCurrentBlock(val);
+            }
+            else
+            {
+                fallThrough = defaultMBB;
+            }
+
+            Value rhs, lhs, mhs;
+            CondCode cc;
+            if (cr.caseRanges.get(i).high.equals(cr.caseRanges.get(i).low))
+            {
+                cc = CondCode.SETEQ;
+                lhs = val;
+                rhs = cr.caseRanges.get(i).high;
+                mhs = null;
+            }
+            else
+            {
+                cc = CondCode.SETLE;
+                lhs = cr.caseRanges.get(i).low;
+                mhs = val;
+                rhs = cr.caseRanges.get(i).high;
+            }
+            CaseBlock cb = new CaseBlock(cc, lhs, rhs, mhs, cr.caseRanges.get(i).mbb, fallThrough, curBlock);
+
+            if (curBlock.equals(curMBB))
+                visitSwitchCase(cb);
+            else
+                switchCases.add(cb);
+
+            curBlock = fallThrough;
+        }
+        return true;
+    }
+
+    private boolean handleJTSwitchCase(CaseRec cr, Value val,
+            MachineBasicBlock defaultMBB)
+    {
+        int frontCaseIdx = 0, backCaseIdx = cr.caseRanges.size();
+
+        APInt first = cr.caseRanges.get(0).low.getValue();
+        APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+
+        int tsize = 0;
+        for (Case c : cr.caseRanges)
+            tsize += c.size();
+
+        if (!areJTsAllowed(tli) || tsize <= 3)
+            return false;
+
+        APInt range = computeRange(first, last);
+        double density = tsize / range.roundToDouble();
+        if (density < 0.4)
+            return false;
+
+        MachineFunction mf = funcInfo.mf;
+        MachineBasicBlock nextBB = null;
+        int itr = mf.getIndexOfMBB(cr.mbb);
+
+        if (++itr < mf.size())
+            nextBB = mf.getMBBAt(itr);
+
+        BasicBlock llvmBB = cr.mbb.getBasicBlock();
+
+        MachineBasicBlock jumpTableBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(itr, jumpTableBB);
+        cr.mbb.addSuccessor(defaultMBB);
+        cr.mbb.addSuccessor(jumpTableBB);
+
+        ArrayList<MachineBasicBlock> destMBBs = new ArrayList<>();
+        APInt tei = new APInt(first);
+        for (int i = 0, e = cr.caseRanges.size(); i < e; tei.increase())
+        {
+            Case c = cr.caseRanges.get(i);
+            APInt low = c.low.getValue();
+            APInt high = c.high.getValue();
+            if (low.sle(tei) && tei.sle(high))
+            {
+                destMBBs.add(c.mbb);
+                if (tei.eq(high))
+                    i++;
+            }
+            else
+            {
+                destMBBs.add(defaultMBB);
+            }
+        }
+
+        BitMap succHandled = new BitMap(cr.mbb.getParent().getNumBlockIDs());
+        for (MachineBasicBlock mbb : destMBBs)
+        {
+            if (!succHandled.get(mbb.getNumber()))
+            {
+                succHandled.set(mbb.getNumber(), true);
+                jumpTableBB.addSuccessor(mbb);
+            }
+        }
+
+        int jti = mf.getJumpTableInfo().getJumpTableIndex(destMBBs);
+
+        JumpTable jt = new JumpTable(-1, jti, jumpTableBB, defaultMBB);
+        JumpTableHeader jht = new JumpTableHeader(first, last, val, cr.mbb,
+                cr.mbb.equals(curMBB));
+        if (cr.mbb.equals(curMBB))
+            visitJumpTableHeader(jt, jht);
+
+        jtiCases.add(Pair.get(jht, jt));
+        return true;
+    }
+
+    private void visitJumpTableHeader(JumpTable jt, JumpTableHeader jht)
+    {
+        SDValue switchOp = getValue(jht.val);
+        EVT vt = switchOp.getValueType();
+        SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(jht.first, vt, false));
+
+
+        if (vt.bitsGT(new EVT(tli.getPointerTy())))
+            switchOp = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()), sub);
+        else
+            switchOp = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()), sub);
+
+        int jumpTableReg = funcInfo.makeReg(new EVT(tli.getPointerTy()));
+        SDValue copyTo = dag.getCopyToReg(getControlRoot(), jumpTableReg, switchOp);
+
+        jt.reg = jumpTableReg;
+
+        SDValue cmp = dag.getSetCC(
+                new EVT(tli.getSetCCResultType(sub.getValueType())),
+                sub,
+                dag.getConstant(jht.last.sub(jht.first), vt, false),
+                CondCode.SETUGT);
+
+        MachineBasicBlock nextBlock = null;
+        int itr = funcInfo.mf.getIndexOfMBB(curMBB);
+        if (++itr < funcInfo.mf.size())
+            nextBlock = funcInfo.mf.getMBBAt(itr);
+
+        SDValue brCond = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+                copyTo, cmp, dag.getBasicBlock(jt.defaultMBB));
+
+        if (jt.mbb.equals(nextBlock))
+            dag.setRoot(brCond);
+        else
+            dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
+                    dag.getBasicBlock(jt.mbb)));
+    }
+
+    private boolean handleBTSplitSwitchCase(CaseRec cr, Stack<CaseRec> worklist,
+            Value val, MachineBasicBlock defaultMBB)
+    {
+        MachineFunction mf = funcInfo.mf;
+
+        MachineBasicBlock nextBB = null;
+        int itr = mf.getIndexOfMBB(cr.mbb);
+        if (++itr < mf.size())
+            nextBB = mf.getMBBAt(itr);
+
+        int frontCaseIdx = 0;
+        int backCaseIdx = cr.caseRanges.size();
+        BasicBlock llvmBB = cr.mbb.getBasicBlock();
+
+        int size = cr.caseRanges.size();
+
+        APInt first = cr.caseRanges.get(frontCaseIdx).low.getValue();
+        APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+        double fmetric = 0.0;
+        int pivot = size / 2;
+
+        int tsize = 0;
+        for (Case c : cr.caseRanges)
+            tsize += c.size();
+
+        int lsize = (int) cr.caseRanges.get(frontCaseIdx).size();
+        int rsize = tsize - lsize;
+        for (int i = 0, j = i + 1, e = cr.caseRanges.size(); j < e; ++i, j++)
+        {
+            APInt lend = cr.caseRanges.get(i).high.getValue();
+            APInt rbegin = cr.caseRanges.get(j).low.getValue();
+            APInt range = computeRange(lend, rbegin);
+            assert range.sub(2).isNonNegative();
+
+            double ldensity = lsize / (lend.sub(first).add(1)).roundToDouble();
+            double rdensity = rsize / (last.sub(rbegin).add(1)).roundToDouble();
+            double metric = range.logBase2() * (ldensity + rdensity);
+            if (fmetric < metric)
+            {
+                pivot = j;
+                fmetric = metric;
+            }
+
+            lsize += cr.caseRanges.get(j).size();
+            rsize -= cr.caseRanges.get(j).size();
+        }
+
+        if (areJTsAllowed(tli))
+        {
+            assert fmetric > 0;
+        }
+        else
+        {
+            pivot = size / 2;
+        }
+
+        ArrayList<Case> lhsr = new ArrayList<>();
+        lhsr.addAll(cr.caseRanges.subList(0, pivot));
+        ArrayList<Case> rhsr = new ArrayList<>();
+        rhsr.addAll(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
+
+        ConstantInt c = cr.caseRanges.get(pivot).low;
+        MachineBasicBlock falseBB = null, trueBB = null;
+
+        if (lhsr.size() == 1 && lhsr.get(0).high.getValue().eq(cr.high.getValue())
+                && c.getValue().eq(cr.high.getValue().add(1)))
+        {
+            trueBB = lhsr.get(0).mbb;
+        }
+        else
+        {
+            trueBB = mf.createMachineBasicBlock(llvmBB);
+            mf.insert(itr, trueBB);
+            worklist.add(new CaseRec(trueBB, c, cr.high, lhsr));
+
+            exportFromCurrentBlock(val);
+        }
+
+        if (rhsr.size() == 1 && cr.low != null && rhsr.get(0).low.getValue()
+                .eq(cr.low.getValue().sub(1)))
+        {
+            falseBB = rhsr.get(0).mbb;
+        }
+        else
+        {
+            falseBB = mf.createMachineBasicBlock(llvmBB);
+            mf.insert(itr, falseBB);
+            worklist.add(new CaseRec(falseBB, cr.low, c, rhsr));
+
+            exportFromCurrentBlock(val);
+        }
+
+        CaseBlock cb = new CaseBlock(CondCode.SETLT, val, c, null, trueBB,
+                falseBB, cr.mbb);
+        if (cr.mbb.equals(curMBB))
+            visitSwitchCase(cb);
+        else
+            switchCases.add(cb);
+
+        return true;
+    }
+
+    static boolean areJTsAllowed(TargetLowering tli)
+    {
+        return !DisableJumpTables.value && (
+                tli.isOperationLegalOrCustom(ISD.BR_JT, new EVT(MVT.Other))
+                        || tli.isOperationLegalOrCustom(ISD.BRIND, new EVT(MVT.Other)));
+    }
+
+    static APInt computeRange(APInt first, APInt last)
+    {
+        APInt lastExt = new APInt(last), firstExt = new APInt(first);
+        int bitWidth = Math.max(last.getBitWidth(), first.getBitWidth())+1;
+        lastExt.sext(bitWidth);
+        firstExt.sext(bitWidth);
+        return lastExt.sub(firstExt).add(1);
+    }
+
+    private void visitBitTestHeader(BitTestBlock btb)
+    {
+        SDValue switchOp = getValue(btb.val);
+        EVT vt = switchOp.getValueType();
+        SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(btb.first, vt, false));
+
+        SDValue rangeCmp = dag.getSetCC(
+                new EVT(tli.getSetCCResultType(sub.getValueType())),
+                sub, dag.getConstant(btb.range, vt, false),
+                CondCode.SETUGT);
+        SDValue shiftOp;
+        if (vt.bitsGT(new EVT(tli.getPointerTy())))
+            shiftOp = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()),
+                    sub);
+        else
+            shiftOp = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+                    sub);
+
+        btb.reg = funcInfo.makeReg(new EVT(tli.getPointerTy()));
+        SDValue copyTo = dag.getCopyToReg(getControlRoot(), btb.reg,
+                shiftOp);
+
+        MachineBasicBlock nextBlock = null;
+        int itr = funcInfo.mf.getIndexOfMBB(curMBB);
+        if (++itr < funcInfo.mf.size())
+            nextBlock = funcInfo.mf.getMBBAt(itr);
+
+        MachineBasicBlock mbb = btb.cases.get(0).thisMBB;
+
+        curMBB.addSuccessor(btb.defaultMBB);
+        curMBB.addSuccessor(mbb);
+
+        SDValue brRange = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+                copyTo, rangeCmp, dag.getBasicBlock(btb.defaultMBB));
+        if (mbb.equals(nextBlock))
+            dag.setRoot(brRange);
+        else
+            dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+                    copyTo, dag.getBasicBlock(mbb)));
     }
 
     private int getSDOpc(Operator opc)
