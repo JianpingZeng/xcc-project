@@ -1019,7 +1019,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         return true;
     }
 
-    private void visitSwitchCase(CaseBlock cb)
+    public void visitSwitchCase(CaseBlock cb)
     {
         SDValue cond;
         SDValue condLHS = getValue(cb.cmpLHS);
@@ -1450,7 +1450,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         return true;
     }
 
-    private void visitJumpTableHeader(JumpTable jt, JumpTableHeader jht)
+    public void visitJumpTableHeader(JumpTable jt, JumpTableHeader jht)
     {
         SDValue switchOp = getValue(jht.val);
         EVT vt = switchOp.getValueType();
@@ -1486,6 +1486,16 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         else
             dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
                     dag.getBasicBlock(jt.mbb)));
+    }
+
+    public void visitJumpTable(JumpTable jt)
+    {
+        assert jt.reg != -1:"Should lower JT header first!";
+        EVT pty = new EVT(tli.getPointerTy());
+        SDValue index = dag.getCopyFromReg(getControlRoot(), jt.reg, pty);
+        SDValue table = dag.getJumpTable(jt.jti, pty, false, 0);
+        dag.setRoot(dag.getNode(ISD.BR_JT, new EVT(MVT.Other),
+                index.getValue(1), table, index));
     }
 
     private boolean handleBTSplitSwitchCase(CaseRec cr, Stack<CaseRec> worklist,
@@ -1606,7 +1616,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         return lastExt.sub(firstExt).add(1);
     }
 
-    private void visitBitTestHeader(BitTestBlock btb)
+    public void visitBitTestHeader(BitTestBlock btb)
     {
         SDValue switchOp = getValue(btb.val);
         EVT vt = switchOp.getValueType();
@@ -1645,6 +1655,37 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         else
             dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
                     copyTo, dag.getBasicBlock(mbb)));
+    }
+
+    public void visitBitTestCase(MachineBasicBlock nextMBB, int reg, BitTestCase btc)
+    {
+        SDValue shiftOp = dag.getCopyFromReg(getControlRoot(),
+                reg, new EVT(tli.getPointerTy()));
+        SDValue switchVal = dag.getNode(ISD.SHL, new EVT(tli.getPointerTy()),
+                dag.getConstant(1, new EVT(tli.getPointerTy()), false),
+                shiftOp);
+        SDValue andOp = dag.getNode(ISD.AND, new EVT(tli.getPointerTy()),
+                switchVal, dag.getConstant(btc.mask, new EVT(tli.getPointerTy()), false));
+        SDValue andCMp = dag.getSetCC(
+                new EVT(tli.getSetCCResultType(andOp.getValueType())),
+                andOp, dag.getConstant(0, new EVT(tli.getPointerTy()), false),
+                CondCode.SETNE);
+        curMBB.addSuccessor(btc.targetMBB);
+        curMBB.addSuccessor(nextMBB);
+
+        SDValue brAnd = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+                getControlRoot(), andCMp, dag.getBasicBlock(btc.targetMBB));
+
+        MachineBasicBlock nextBlock = curMBB;
+        int itr = funcInfo.mf.getIndexOfMBB(curMBB);
+        if (++itr < funcInfo.mf.size())
+            nextBlock = funcInfo.mf.getMBBAt(itr);
+
+        if (nextBlock.equals(nextMBB))
+            dag.setRoot(brAnd);
+        else
+            dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brAnd,
+                    dag.getBasicBlock(nextMBB)));
     }
 
     private int getSDOpc(Operator opc)
