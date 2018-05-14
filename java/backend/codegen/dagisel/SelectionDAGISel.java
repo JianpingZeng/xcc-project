@@ -402,7 +402,193 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
     private void finishBasicBlock()
     {
-        // TODO: 18-5-1
+        if (Util.DEBUG)
+        {
+            System.err.println("Target-post-processed machine code:");
+            mbb.dump();
+
+            System.err.printf("Total mount of phi nodes to update: %d%n",
+                    sdl.phiNodesToUpdate.size());
+            int i = 0;
+            for (Pair<MachineInstr, Integer> itr : sdl.phiNodesToUpdate)
+            {
+                System.err.printf("Node %d : (", i++);
+                itr.first.dump();
+                System.err.printf(", %d)%n", itr.second);
+            }
+        }
+        if (sdl.switchCases.isEmpty() && sdl.jtiCases.isEmpty() &&
+                sdl.bitTestCases.isEmpty())
+        {
+            for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++)
+            {
+                MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
+                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a phi node!";
+                phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
+                        false, false));
+                phi.addOperand(MachineOperand.createMBB(mbb, 0));
+            }
+            sdl.phiNodesToUpdate.clear();
+            return;
+        }
+        for (int i = 0, e = sdl.bitTestCases.size(); i < e; i++)
+        {
+            if (!sdl.bitTestCases.get(i).emitted)
+            {
+                mbb = sdl.bitTestCases.get(i).parentMBB;
+                sdl.setCurrentBasicBlock(mbb);
+                sdl.visitBitTestHeader(sdl.bitTestCases.get(i));
+                curDAG.setRoot(sdl.getRoot());
+                codeGenAndEmitInst();
+                sdl.clear();
+            }
+
+            for (int j = 0, sz = sdl.bitTestCases.get(i).cases.size(); j < sz; j++)
+            {
+                mbb = (sdl.bitTestCases.get(i).cases.get(j)).thisMBB;
+                sdl.setCurrentBasicBlock(mbb);
+
+                if (j+1 < sz)
+                {
+                    sdl.visitBitTestCase(sdl.bitTestCases.get(i).cases.get(j+1).thisMBB,
+                            sdl.bitTestCases.get(i).reg, sdl.bitTestCases.get(i).cases.get(j));
+                }
+                else
+                {
+                    sdl.visitBitTestCase(sdl.bitTestCases.get(i).defaultMBB,
+                            sdl.bitTestCases.get(i).reg, sdl.bitTestCases.get(i).cases.get(j));
+                }
+
+                curDAG.setRoot(sdl.getRoot());
+                codeGenAndEmitInst();
+                sdl.clear();
+            }
+
+            for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++)
+            {
+                MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
+                MachineBasicBlock mbb = phi.getParent();
+                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a phi node!";
+
+                if (mbb.equals(sdl.bitTestCases.get(i).defaultMBB))
+                {
+                    phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
+                            false, false));
+                    phi.addOperand(MachineOperand.createMBB(sdl.bitTestCases.get(i).parentMBB, 0));
+                    phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
+                            false, false));
+                    int sz = sdl.bitTestCases.get(i).cases.size();
+                    phi.addOperand(MachineOperand.createMBB(sdl.bitTestCases.get(i).cases.get(sz-1).thisMBB, 0));
+                }
+
+                for (int j = 0, ej = sdl.bitTestCases.get(i).cases.size(); j < ej; j++)
+                {
+                    MachineBasicBlock bb = sdl.bitTestCases.get(i).cases.get(j).thisMBB;
+                    if (!mbb.getSuccessors().contains(mbb))
+                    {
+                        phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
+                                false, false));
+                        phi.addOperand(MachineOperand.createMBB(bb, 0));
+                    }
+                }
+            }
+        }
+        sdl.bitTestCases.clear();
+
+        for (int i = 0, e = sdl.jtiCases.size(); i < e; i++)
+        {
+            if (!sdl.jtiCases.get(i).first.emitted)
+            {
+                mbb = sdl.jtiCases.get(i).first.headerBB;
+                sdl.setCurrentBasicBlock(mbb);
+                sdl.visitJumpTableHeader(sdl.jtiCases.get(i).second,
+                        sdl.jtiCases.get(i).first);
+                curDAG.setRoot(sdl.getRoot());
+                codeGenAndEmitInst();
+                sdl.clear();
+            }
+
+            mbb = sdl.jtiCases.get(i).second.mbb;
+            sdl.setCurrentBasicBlock(mbb);
+
+            sdl.visitJumpTable(sdl.jtiCases.get(i).second);
+            curDAG.setRoot(sdl.getRoot());
+            codeGenAndEmitInst();
+            sdl.clear();
+
+            for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++)
+            {
+                MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
+                MachineBasicBlock phiMBB = phi.getParent();
+                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a PHI node!";
+                if (phiMBB.equals(sdl.jtiCases.get(i).second.defaultMBB))
+                {
+                    phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
+                            false, false));
+                    phi.addOperand(MachineOperand.createMBB(sdl.jtiCases.get(i).first.headerBB, 0));
+                }
+                if (mbb.getSuccessors().contains(phiMBB))
+                {
+                    phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
+                            false, false));
+                    phi.addOperand(MachineOperand.createMBB(mbb, 0));
+                }
+            }
+        }
+        sdl.jtiCases.clear();
+
+        for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++)
+        {
+            MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
+            assert phi.getOpcode() == TargetInstrInfo.PHI;
+            if (mbb.isSuccessor(phi.getParent()))
+            {
+                phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
+                false,false));
+                phi.addOperand(MachineOperand.createMBB(mbb, 0));
+            }
+        }
+
+        for (int i = 0, e = sdl.switchCases.size(); i < e; i++)
+        {
+            mbb = sdl.switchCases.get(i).thisMBB;
+            sdl.setCurrentBasicBlock(mbb);
+
+            sdl.visitSwitchCase(sdl.switchCases.get(i));
+            curDAG.setRoot(sdl.getRoot());
+            codeGenAndEmitInst();
+            sdl.clear();
+
+            while ((mbb = sdl.switchCases.get(i).trueMBB) != null)
+            {
+                for (int pi = 0, sz = mbb.size(); pi < sz &&
+                        mbb.getInstAt(pi).getOpcode() == TargetInstrInfo.PHI; ++pi)
+                {
+                    MachineInstr phi = mbb.getInstAt(pi);
+                    for (int pn = 0; ; ++pn)
+                    {
+                        assert pn != sdl.phiNodesToUpdate.size():"Didn't find PHI entry!";
+                        if (sdl.phiNodesToUpdate.get(pn).first.equals(phi))
+                        {
+                            phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pn).second,
+                                    false, false));
+                            phi.addOperand(MachineOperand.createMBB(sdl.switchCases.get(i).thisMBB, 0));
+                            break;
+                        }
+                    }
+                }
+
+                if (mbb.equals(sdl.switchCases.get(i).falseMBB))
+                    sdl.switchCases.get(i).falseMBB = null;
+
+                sdl.switchCases.get(i).trueMBB = sdl.switchCases.get(i).falseMBB;
+                sdl.switchCases.get(i).falseMBB = null;
+            }
+            assert sdl.switchCases.get(i).trueMBB == null && sdl.switchCases.get(i).falseMBB == null;
+        }
+
+        sdl.switchCases.clear();
+        sdl.phiNodesToUpdate.clear();
     }
 
     public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root)

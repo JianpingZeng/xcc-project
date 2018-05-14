@@ -17,14 +17,13 @@ package backend.target;
  */
 
 import backend.codegen.*;
-import backend.codegen.dagisel.ArgListEntry;
-import backend.codegen.dagisel.SDValue;
-import backend.codegen.dagisel.SelectionDAG;
+import backend.codegen.dagisel.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -33,11 +32,10 @@ import tools.Util;
 import java.util.ArrayList;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.dagisel.MemIndexedMode.LAST_INDEXED_MODE;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
-import static backend.target.TargetLowering.LegalizeAction.Expand;
-import static backend.target.TargetLowering.LegalizeAction.Legal;
-import static backend.target.TargetLowering.LegalizeAction.Promote;
+import static backend.target.TargetLowering.LegalizeAction.*;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 
 /**
@@ -108,6 +106,15 @@ public abstract class TargetLowering
     private MVT pointerTy;
     private MVT shiftAmountTy;
     private BooleanContent booleanContents;
+
+    private long[][] opActions = new long[MVT.LAST_VALUETYPE/8*4][ISD.BUILTIN_OP_END];
+    private long[] loadExtActions = new long[LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
+    private long[] truncStoreActions = new long[MVT.LAST_VALUETYPE];
+    private long[][][] indexedModeActions = new long[MVT.LAST_VALUETYPE][2][LAST_INDEXED_MODE.ordinal()];
+    private long[] convertActions = new long[MVT.LAST_VALUETYPE];
+    private long[] condCodeActions = new long[CondCode.SETCC_INVALID.ordinal()];
+    private byte[] targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
+    private TObjectIntHashMap<Pair<Integer,Integer>> promoteType = new TObjectIntHashMap<>();
 
     public TargetLowering(TargetMachine tm)
     {
@@ -754,14 +761,120 @@ public abstract class TargetLowering
 
     public LegalizeAction getOperationAction(int opc, EVT vt)
     {
-        // TODO: 18-5-6
-        return Legal;
+        if (vt.isExtended()) return Expand;
+        assert opc < opActions[0].length && vt.getSimpleVT().simpleVT <
+                opActions[0][0]*8:"Table isn't big enough!";
+        int i = vt.getSimpleVT().simpleVT;
+        int j = i & 31;
+        i = i >> 5;
+        return LegalizeAction.values()[(int) ((opActions[i][opc] >> (j*2))&3)];
     }
 
     public boolean isOperationLegalOrCustom(int opc, EVT vt)
     {
-        // TODO: 18-5-6
-        return true;
+        return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
+                && (getOperationAction(opc, vt) == Legal ||
+                getOperationAction(opc, vt) == Custom);
+    }
+
+    public LegalizeAction getLoadExtAction(int lType, EVT vt)
+    {
+        assert lType < loadExtActions.length &&
+                vt.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        return LegalizeAction.values()[(int) (loadExtActions[lType] >>
+                ((2*vt.getSimpleVT().simpleVT)&3))];
+    }
+
+    public boolean isLoadExtLegal(int lType, EVT vt)
+    {
+        return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
+            getLoadExtAction(lType, vt) == Custom);
+    }
+
+    public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT)
+    {
+        assert valVT.getSimpleVT().simpleVT < truncStoreActions.length &&
+                memVT.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        return LegalizeAction.values()[(int) (truncStoreActions[valVT.getSimpleVT().simpleVT] >>
+                        ((2*memVT.getSimpleVT().simpleVT)&3))];
+    }
+
+    public boolean isTruncStoreLegal(EVT valVT, EVT memVT)
+    {
+        return isTypeLegal(valVT) && memVT.isSimple() &&
+                (getTruncStoreAction(valVT, memVT) == Legal ||
+                getTruncStoreAction(valVT, memVT) == Custom);
+    }
+
+    public LegalizeAction getIndexedLoadAction(int idxMode, EVT vt)
+    {
+        assert idxMode < indexedModeActions[0][0].length &&
+                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE :
+                "Table isn't big enough!";
+        return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][0][idxMode]];
+    }
+
+    public boolean isIndexedLoadLegal(int idxMode, EVT vt)
+    {
+        return vt.isSimple() && (getIndexedLoadAction(idxMode, vt) == Legal ||
+                getIndexedLoadAction(idxMode, vt) == Custom);
+    }
+
+    public LegalizeAction getIndexedStoreAction(int idxMode, EVT vt)
+    {
+        assert idxMode < indexedModeActions[0][1].length &&
+                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE :
+                "Table is't big enough!";
+        return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][1][idxMode]];
+    }
+
+    public boolean isIndexedStoreLegal(int idxMode, EVT vt)
+    {
+        return vt.isSimple() && (getIndexedStoreAction(idxMode, vt) == Legal
+            || getIndexedStoreAction(idxMode, vt) == Custom);
+    }
+
+    public LegalizeAction getConvertAction(EVT fromVT, EVT toVT)
+    {
+        assert fromVT.getSimpleVT().simpleVT < condCodeActions.length &&
+                toVT.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        return LegalizeAction.values()[(int) condCodeActions[fromVT.getSimpleVT().simpleVT >>
+                (2*toVT.getSimpleVT().simpleVT) & 3]];
+    }
+
+    public LegalizeAction getCondCodeAction(CondCode cc, EVT vt)
+    {
+        assert cc.ordinal() < condCodeActions.length &&
+                vt.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
+                        (2*vt.getSimpleVT().simpleVT)&3)];
+        assert action != Promote:"Can't promote condition code!";
+        return action;
+    }
+
+    public boolean isCondCodeLegal(CondCode cc, EVT vt)
+    {
+        return getCondCodeAction(cc, vt) == Legal ||
+                getCondCodeAction(cc, vt) == Custom;
+    }
+
+    public EVT getTypeToPromoteType(int opc, EVT vt)
+    {
+        assert getOperationAction(opc, vt) == Promote:
+                "This operation isn't promoted!";
+        Pair<Integer, Integer> key = Pair.get(opc, vt.getSimpleVT().simpleVT);
+        if (promoteType.containsKey(key))
+            return new EVT(promoteType.get(key));
+
+        assert vt.isInteger() || vt.isFloatingPoint();
+        EVT nvt = vt;
+        do
+        {
+            nvt = new EVT(nvt.getSimpleVT().simpleVT+1);
+            assert nvt.isInteger() == vt.isInteger() && !nvt.equals(new EVT(MVT.isVoid))
+                    : "Didn't find type to promote to!";
+        }while (!isTypeLegal(nvt) || getOperationAction(opc, nvt) == Promote);
+        return nvt;
     }
 
     public int getSetCCResultType(EVT vt)
