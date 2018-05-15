@@ -80,6 +80,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     protected MachineFunction mf;
     protected MachineBasicBlock mbb;
     protected TargetMachine tm;
+    protected AliasAnalysis aa;
 
     public SelectionDAGISel(TargetMachine tm, CodeGenOpt optLevel)
     {
@@ -268,6 +269,24 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     {
         if (Util.DEBUG)
             System.err.println("Instruction Selection");
+
+        // combine
+        curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
+        boolean changed = curDAG.legalizeTypes();
+        if (changed)
+        {
+            curDAG.combine(CombineLevel.NoIllegalTypes, aa, optLevel);
+            curDAG.legalizeVectors();
+            if (changed)
+            {
+                changed = curDAG.legalizeTypes();
+            }
+            if (changed)
+                curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
+        }
+        curDAG.legalize(false, optLevel);
+
+        curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
 
         instructionSelect();
 

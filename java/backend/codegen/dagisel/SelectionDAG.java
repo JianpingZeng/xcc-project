@@ -17,12 +17,14 @@
 
 package backend.codegen.dagisel;
 
+import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.LLVMContext;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
+import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
@@ -3036,6 +3038,26 @@ public class SelectionDAG
             }
         }
         return getNode(ISD.TokenFactor, new EVT(MVT.Other), argChains);
+    }
+
+    public boolean legalizeTypes()
+    {
+        return new DAGTypeLegalizer(this).run();
+    }
+
+    public void combine(CombineLevel level, AliasAnalysis aa, CodeGenOpt optLevel)
+    {
+        new DAGCombiner(this, aa, optLevel).run(level);
+    }
+
+    public boolean legalizeVectors()
+    {
+        return new VectorLegalizer(this).run();
+    }
+
+    public void legalize(boolean typesNeedLegalizing, CodeGenOpt optLevel)
+    {
+        new SelectionDAGLegalizer(this, optLevel).legalizeDAG();
     }
 }
 
