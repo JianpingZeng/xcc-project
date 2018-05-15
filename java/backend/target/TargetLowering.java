@@ -130,6 +130,11 @@ public abstract class TargetLowering
         booleanContents = BooleanContent.UndefinedBooleanContent;
     }
 
+    public ValueTypeAction getValueTypeActions()
+    {
+        return valueTypeAction;
+    }
+
     public BooleanContent getBooleanContents()
     {
         return booleanContents;
@@ -207,7 +212,7 @@ public abstract class TargetLowering
         return vt.isSimple() && registerClassForVT[vt.getSimpleVT().simpleVT] != null;
     }
 
-    public EVT getTypeForTransformTo(EVT vt)
+    public EVT getTypeToTransformTo(EVT vt)
     {
         if (vt.isSimple())
         {
@@ -231,7 +236,7 @@ public abstract class TargetLowering
 
             // Promote to a power of two size, avoiding multi-step promotions.
             return getTypeAction(nvt) == Promote ?
-                    getTypeForTransformTo(nvt) :
+                    getTypeToTransformTo(nvt) :
                     nvt;
         }
         else if (vt.isInteger())
@@ -246,7 +251,7 @@ public abstract class TargetLowering
             {
                 // Promote to a power of two size, avoiding multi-step promotion.
                 return getTypeAction(nvt) == Promote ?
-                        getTypeForTransformTo(nvt) :
+                        getTypeToTransformTo(nvt) :
                         nvt;
             }
         }
@@ -355,7 +360,7 @@ public abstract class TargetLowering
         }
         if (valueVT.isInteger())
         {
-            return getRegisterType(getTypeForTransformTo(valueVT));
+            return getRegisterType(getTypeToTransformTo(valueVT));
         }
         assert false : "Unsupported extended type!";
         return new EVT(MVT.Other);

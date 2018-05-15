@@ -227,7 +227,7 @@ public abstract class FastISel extends MachineFunctionPass
         {
             // Promote i1 to a legal type, because it is common and easy.
             if (vt.simpleVT == MVT.i1)
-                vt = tli.getTypeForTransformTo(realVT).getSimpleVT();
+                vt = tli.getTypeToTransformTo(realVT).getSimpleVT();
             else
                 return 0;
         }
@@ -559,7 +559,7 @@ public abstract class FastISel extends MachineFunctionPass
                 {
                     // promote MVT.i1
                     if (vt.getSimpleVT().simpleVT == MVT.i1)
-                        vt = tli.getTypeForTransformTo(vt);
+                        vt = tli.getTypeToTransformTo(vt);
                     else
                     {
                         // erroreous type
@@ -981,7 +981,7 @@ public abstract class FastISel extends MachineFunctionPass
                     opcode == ISD.OR ||
                     opcode == ISD.XOR))
             {
-                vt = tli.getTypeForTransformTo(vt);
+                vt = tli.getTypeToTransformTo(vt);
             }
             else
                 return false;
@@ -1168,7 +1168,7 @@ public abstract class FastISel extends MachineFunctionPass
         // If the operand is i1, arrange for the high bits in the register to be zero.
         if (srcVT.equals(new EVT(new MVT(MVT.i1))))
         {
-            srcVT = tli.getTypeForTransformTo(srcVT);
+            srcVT = tli.getTypeToTransformTo(srcVT);
             inputReg = fastEmitZExtFromI1(srcVT.getSimpleVT(), inputReg);
             if (inputReg == 0)
                 return false;
@@ -1176,7 +1176,7 @@ public abstract class FastISel extends MachineFunctionPass
 
         if (dstVT.equals(new EVT(new MVT(MVT.i1))))
         {
-            dstVT = tli.getTypeForTransformTo(dstVT);
+            dstVT = tli.getTypeToTransformTo(dstVT);
         }
 
         int resultReg = fastEmit_r(srcVT.getSimpleVT(),
