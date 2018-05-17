@@ -22,6 +22,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.LLVMContext;
+import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
@@ -1698,25 +1699,27 @@ public class SelectionDAG
             }
             case ISD.AssertZext:
             {
-                EVT vt = ((VTSDNode)op.getOperand(1).getNode()).getVT();
+                EVT vt = ((VTSDNode) op.getOperand(1).getNode()).getVT();
                 APInt inMask = APInt.getLowBitsSet(bitwidth, vt.getSizeInBits());
-                computeMaskedBits(op.getOperand(0),mask.and(inMask), knownVals,depth+1);
+                computeMaskedBits(op.getOperand(0), mask.and(inMask), knownVals,
+                        depth + 1);
                 knownVals[0].orAssign(inMask.not().and(mask));
                 return;
             }
             case ISD.FGETSIGN:
-                knownVals[0] = APInt.getHighBitsSet(bitwidth, bitwidth-1);
+                knownVals[0] = APInt.getHighBitsSet(bitwidth, bitwidth - 1);
                 return;
             case ISD.SUB:
             {
                 if (op.getOperand(0).getNode() instanceof ConstantSDNode)
                 {
-                    ConstantSDNode cn = (ConstantSDNode)op.getOperand(0).getNode();
+                    ConstantSDNode cn = (ConstantSDNode) op.getOperand(0).getNode();
                     if (cn.getAPIntValue().isNonNegative())
                     {
                         int nlz = cn.getAPIntValue().add(1).countLeadingZeros();
-                        APInt maskV = APInt.getHighBitsSet(bitwidth, nlz+1);
-                        computeMaskedBits(op.getOperand(1), maskV, knownVals2, depth+1);
+                        APInt maskV = APInt.getHighBitsSet(bitwidth, nlz + 1);
+                        computeMaskedBits(op.getOperand(1), maskV, knownVals2,
+                                depth + 1);
 
                         if (knownVals2[0].and(maskV).eq(maskV))
                         {
@@ -1745,22 +1748,25 @@ public class SelectionDAG
             {
                 if (op.getOperand(1).getNode() instanceof ConstantSDNode)
                 {
-                    ConstantSDNode cn = (ConstantSDNode)op.getOperand(1).getNode();
+                    ConstantSDNode cn = (ConstantSDNode) op.getOperand(1).getNode();
                     APInt ra = cn.getAPIntValue();
                     if (ra.isPowerOf2() || ra.negative().isPowerOf2())
                     {
-                        APInt lowBits = ra.isStrictlyPositive() ? ra.decrease() : ra.not();
+                        APInt lowBits = ra.isStrictlyPositive() ?
+                                ra.decrease() :
+                                ra.not();
                         APInt mask2 = lowBits.or(APInt.getSignBit(bitwidth));
-                        computeMaskedBits(op.getOperand(0), mask2, knownVals2, depth+1);
+                        computeMaskedBits(op.getOperand(0), mask2, knownVals2,
+                                depth + 1);
 
-                        if (knownVals2[0].get(bitwidth-1) || knownVals2[0].and(lowBits).eq(lowBits))
+                        if (knownVals2[0].get(bitwidth - 1) || knownVals2[0].and(lowBits).eq(lowBits))
                             knownVals2[0].orAssign(lowBits.not());
 
                         knownVals[0].orAssign(knownVals2[0].and(mask));
                         assert knownVals[0].and(knownVals[1]).eq(0);
                     }
                 }
-                return;    
+                return;
             }
             case ISD.UREM:
             {
@@ -1773,15 +1779,18 @@ public class SelectionDAG
                         APInt lowBits = ra.decrease();
                         APInt mask2 = lowBits.and(mask);
                         knownVals[0].orAssign(lowBits.negative().and(mask));
-                        computeMaskedBits(op.getOperand(0), mask2, knownVals, depth+1);
+                        computeMaskedBits(op.getOperand(0), mask2, knownVals,
+                                depth + 1);
                         assert knownVals[0].and(knownVals[1]).eq(0);
                         break;
                     }
                 }
 
                 APInt allOnes = APInt.getAllOnesValue(bitwidth);
-                computeMaskedBits(op.getOperand(0), allOnes, knownVals, depth+1);
-                computeMaskedBits(op.getOperand(1), allOnes, knownVals2, depth+1);
+                computeMaskedBits(op.getOperand(0), allOnes, knownVals,
+                        depth + 1);
+                computeMaskedBits(op.getOperand(1), allOnes, knownVals2,
+                        depth + 1);
 
                 int leaders = Math.max(knownVals[0].countLeadingOnes(),
                         knownVals2[0].countLeadingOnes());
@@ -1802,6 +1811,15 @@ public class SelectionDAG
                     }
                 }
         }
+    }
+
+    public SDValue getZeroExtendInReg(SDValue op, EVT vt)
+    {
+        if (op.getValueType().equals(vt))
+            return op;
+        APInt imm = APInt.getLowBitsSet(op.getValueSizeInBits(), vt.getSizeInBits());
+        return getNode(ISD.AND, op.getValueType(), op,
+                getConstant(imm, op.getValueType(), false));
     }
 
     static class UseMemo
@@ -2720,8 +2738,8 @@ public class SelectionDAG
 
     public SDValue getCopyToReg(SDValue chain, int reg, SDValue node)
     {
-        return getNode(ISD.CopyToReg, new EVT(MVT.Other),
-                chain, getRegister(reg, node.getValueType()), node);
+        return getNode(ISD.CopyToReg, new EVT(MVT.Other), chain,
+                getRegister(reg, node.getValueType()), node);
     }
 
     public SDValue getCopyToReg(SDValue chain, int reg, SDValue node, SDValue flag)
@@ -2744,6 +2762,20 @@ public class SelectionDAG
                 .max(tli.getTargetData().getPrefTypeAlignment(ty), minAlign);
         int fi = mfi.createStackObject(byteSize, stackAlign);
         return getFrameIndex(fi, new EVT(tli.getPointerTy()), false);
+    }
+
+    public SDValue createStackTemporary(EVT vt1, EVT vt2)
+    {
+        int bytes = Math.max(vt1.getStoreSizeInBits(),
+                vt2.getStoreSizeInBits())/8;
+        Type t1 = vt1.getTypeForEVT();
+        Type t2 = vt2.getTypeForEVT();
+        TargetData td = getTarget().getTargetData();
+        int align = Math.max(td.getPrefTypeAlignment(t1),
+                td.getPrefTypeAlignment(t2));
+        MachineFrameInfo frameInfo = getMachineFunction().getFrameInfo();
+        int frameInde = frameInfo.createStackObject(bytes, align);
+        return getFrameIndex(frameInde, new EVT(tli.getPointerTy()), false);
     }
 
     public SDValue getTruncStore(SDValue chain, SDValue val, SDValue ptr, Value sv,

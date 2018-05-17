@@ -886,5 +886,17 @@ public abstract class TargetLowering
     {
         return pointerTy.simpleVT;
     }
+
+    public void replaceNodeResults(SDNode n, ArrayList<SDValue> results,
+            SelectionDAG dag)
+    {
+        assert false:"this method should be implemented for this target!";
+    }
+
+    public void lowerOperationWrapper(SDNode n, ArrayList<SDValue> results,
+            SelectionDAG dag)
+    {
+        assert false:"this method should be implemented for this target!";
+    }
 }
 

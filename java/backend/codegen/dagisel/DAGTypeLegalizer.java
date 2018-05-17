@@ -18,19 +18,21 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
-import backend.codegen.MVT;
 import backend.codegen.ValueTypeAction;
-import backend.codegen.dagisel.SDNode.ConstantFPSDNode;
-import backend.codegen.dagisel.SDNode.LoadSDNode;
-import backend.codegen.dagisel.SDNode.ShuffleVectorSDNode;
-import backend.codegen.dagisel.SDNode.StoreSDNode;
+import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import backend.value.Value;
 import tools.Pair;
+import tools.Util;
+import utils.tablegen.SDNP;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
+import static backend.codegen.dagisel.DAGTypeLegalizer.NodeIdFlags.*;
 
 /**
  * This takes an arbitrary SelectionDAG as input and transform on it until
@@ -83,15 +85,13 @@ public class DAGTypeLegalizer
 
     private HashMap<SDValue, SDValue> replacedValues;
 
-    private ArrayList<SDNode> worklist;
+    private LinkedList<SDNode> worklist;
 
     public DAGTypeLegalizer(SelectionDAG dag)
     {
         tli = dag.getTargetLoweringInfo();
         this.dag = dag;
         valueTypeActions = tli.getValueTypeActions();
-        assert MVT.LAST_INTEGER_VALUETYPE <= MVT.MAX_ALLOWED_VALUETYPE:
-                "Too many value types for ValueTypeActions to hold!";
         promotedIntegers = new HashMap<>();
         expandedIntegers = new HashMap<>();
         expandedFloats = new HashMap<>();
@@ -100,7 +100,7 @@ public class DAGTypeLegalizer
         splitVectors = new HashMap<>();
         widenedVectors = new HashMap<>();
         replacedValues = new HashMap<>();
-        worklist = new ArrayList<>();
+        worklist = new LinkedList<>();
     }
 
     private LegalizeAction getTypeAction(EVT vt)
@@ -153,7 +153,178 @@ public class DAGTypeLegalizer
 
     public boolean run()
     {
-        // TODO: 18-5-15
+        boolean changed = false;
+        HandleSDNode dummy = new HandleSDNode(dag.getRoot());
+        dummy.setNodeID(Unanalyzed);
+
+        dag.setRoot(new SDValue());
+
+        for (SDNode node : dag.allNodes)
+        {
+            if (node.getNumOperands() <= 0)
+            {
+                node.setNodeID(ReadyToProcess);
+                worklist.add(node);
+            }
+            else
+                node.setNodeID(Unanalyzed);
+        }
+
+        while (!worklist.isEmpty())
+        {
+            performExpensiveChecks();
+            SDNode n = worklist.pop();
+            assert n.getNodeID() == ReadyToProcess:
+                    "Node should be ready if on worklist!";
+
+            nodeDone:
+            {
+                if (!ignoreNodeResults(n))
+                {
+                    for (int i = 0, numResults = n.getNumValues(); i < numResults; i++)
+                    {
+                        EVT resultVT = n.getValueType(i);
+                        switch (getTypeAction(resultVT))
+                        {
+                            default:
+                                assert false : "Unknown action!";
+                                break;
+                            case Legal:
+                                break;
+                            case PromotedInteger:
+                                promotedIntegerResult(n, i);
+                                changed = true;
+                                break nodeDone;
+                            case ExpandInteger:
+                                expandIntegerResult(n, i);
+                                break nodeDone;
+                            case ExpandFloat:
+                                expandFloatResult(n, i);
+                                break nodeDone;
+                            case ScalarizeVector:
+                                scalarizeVectorResult(n, i);
+                                break nodeDone;
+                            case SplitVector:
+                                splitVectorResult(n, i);
+                                break nodeDone;
+                            case WidenVector:
+                                widenVectorResult(n, i);
+                                break nodeDone;
+                        }
+                    }
+                }
+
+                int numOperands = n.getNumOperands();
+                boolean needsReanalyzing = false;
+                int i = 0;
+                for (; i < numOperands; i++)
+                {
+                    if (ignoreNodeResults(n.getOperand(i).getNode()))
+                        continue;
+
+                    EVT opVT = n.getOperand(i).getValueType();
+                    switch (getTypeAction(opVT))
+                    {
+                        default:
+                            assert false:"Unknown action!";
+                        case Legal:
+                            continue;
+                        case PromotedInteger:
+                            needsReanalyzing = promoteIntegerOperand(n, i);
+                            changed = true;
+                            break;
+                        case ExpandInteger:
+                            needsReanalyzing = expandIntegerOperand(n, i);
+                            changed = true;
+                            break;
+                        case SoftenFloat:
+                            needsReanalyzing = softenFloatOperand(n, i);
+                            changed = true;
+                            break;
+                        case ExpandFloat:
+                            needsReanalyzing = expandFloatOperand(n, i);
+                            changed = true;
+                            break;
+                        case ScalarizeVector:
+                            needsReanalyzing = scalarizeVectorOperand(n, i);
+                            changed = true;
+                            break;
+                        case SplitVector:
+                            needsReanalyzing = splitVectorOperand(n, i);
+                            changed = true;
+                            break;
+                        case WidenVector:
+                            needsReanalyzing = widenVectorOperand(n, i);
+                            changed = true;
+                            break;
+                    }
+                    break;
+                }
+
+                if (needsReanalyzing)
+                {
+                    assert n.getNodeID() == ReadyToProcess:"Node ID recaculated?";
+                    n.setNodeID(NewNode);
+
+                    SDNode nn = analyzeNewNode(n);
+                    if (nn.equals(n))
+                    {
+                        continue;
+                    }
+
+                    assert n.getNumValues() == nn.getNumValues():
+                            "Node morphing changed the number of results!";
+                    for (int j = 0, e = n.getNumValues(); j < e; j++)
+                    {
+                        replaceValueWithHelper(new SDValue(n, i), new SDValue(nn, i));
+                    }
+                    assert n.getNodeID() == NewNode:"Unexpected node state!";
+                    continue;
+                }
+
+                if (i == numOperands)
+                {
+                    if (Util.DEBUG)
+                    {
+                        System.err.print("Legally typed node: ");
+                        n.dump(dag);
+                        System.err.println();
+                    }
+                }
+            }
+
+            assert n.getNodeID() == ReadyToProcess:"Node ID recaculated?";
+            n.setNodeID(Processed);
+            for (SDUse use : n.useList)
+            {
+                SDNode user = use.getUser();
+                int nodeId = user.getNodeID();
+
+                if (nodeId > 0)
+                {
+                    user.setNodeID(nodeId - 1);
+                    if (nodeId - 1 == ReadyToProcess)
+                        worklist.push(user);
+
+                    continue;
+                }
+
+                if (nodeId == NewNode)
+                    continue;
+
+                assert nodeId == Unanalyzed:"Unknown node ID!";
+                user.setNodeID(user.getNumOperands() - 1);
+
+                if (user.getNumOperands() == 1)
+                    worklist.add(user);
+            }
+        }
+
+        performExpensiveChecks();
+        dag.setRoot(dummy.getValue());
+        dag.removeDeadNodes();
+
+        return changed;
     }
 
     public void nodeDeletion(SDNode oldOne, SDNode newOne)
@@ -165,65 +336,339 @@ public class DAGTypeLegalizer
     }
 
     private SDNode analyzeNewNode(SDNode n)
-    {}
+    {
+        if (n.getNodeID() != NewNode && n.getNodeID() != Unanalyzed)
+            return n;
+
+        expungeNode(n);
+
+        ArrayList<SDValue> newOps = new ArrayList<>();
+        int numProcessed = 0;
+        for (int i = 0, e = n.getNumOperands(); i < e; i++)
+        {
+            SDValue origOp = n.getOperand(i);
+            SDValue op = origOp.clone();
+
+            analyzeNewValue(op);
+            if (op.getNode().getNodeID() == Processed)
+                ++numProcessed;
+
+            if (!newOps.isEmpty())
+                newOps.add(op);
+            else if (!op.equals(origOp))
+            {
+                for (int j = 0; j < i; j++)
+                    newOps.add(op.getOperand(j));
+                newOps.add(op);
+            }
+        }
+        if (!newOps.isEmpty())
+        {
+            SDNode nn = dag.updateNodeOperands(new SDValue(n, 0),
+                    newOps).getNode();
+            if (!nn.equals(n))
+            {
+                n.setNodeID(NewNode);
+                if (nn.getNodeID() != NewNode && nn.getNodeID() != Unanalyzed)
+                {
+                    return nn;
+                }
+
+                n = nn;
+                expungeNode(n);
+            }
+        }
+
+        n.setNodeID(n.getNumOperands() - numProcessed);
+        if (n.getNodeID() == ReadyToProcess)
+            worklist.push(n);
+
+        return n;
+    }
 
     private void expungeNode(SDNode n)
-    {}
+    {
+        if (n.getNodeID() != NewNode)
+            return;
+
+
+        int i = 0, e = n.getNumValues();
+        for (; i < e; i++)
+        {
+            if (replacedValues.containsKey(new SDValue(n,i)))
+                break;
+        }
+        if (i == e)
+            return;
+        for (Map.Entry<SDValue, SDValue> pair : promotedIntegers.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.setValue(remapValue(pair.getValue()));
+        }
+
+        for (Map.Entry<SDValue, SDValue> pair : softenedFloats.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.setValue(remapValue(pair.getValue()));
+        }
+
+        for (Map.Entry<SDValue, SDValue> pair : scalarizedVectors.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.setValue(remapValue(pair.getValue()));
+        }
+
+        for (Map.Entry<SDValue, SDValue> pair : widenedVectors.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.setValue(remapValue(pair.getValue()));
+        }
+
+        for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : expandedIntegers.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.getValue().first = remapValue(pair.getValue().first);
+            pair.getValue().second = remapValue(pair.getValue().second);
+        }
+
+        for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : expandedFloats.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.getValue().first = remapValue(pair.getValue().first);
+            pair.getValue().second = remapValue(pair.getValue().second);
+        }
+
+        for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : splitVectors.entrySet())
+        {
+            assert !pair.getKey().getNode().equals(n);
+            pair.getValue().first = remapValue(pair.getValue().first);
+            pair.getValue().second = remapValue(pair.getValue().second);
+        }
+
+        for (Map.Entry<SDValue, SDValue> pair : replacedValues.entrySet())
+        {
+            pair.setValue(remapValue(pair.getValue()));
+        }
+        for (int j = 0, sz = n.getNumValues(); j < sz; j++)
+            replacedValues.remove(new SDValue(n, j));
+    }
 
     private void analyzeNewValue(SDValue val)
-    {}
+    {
+        val.setNode(analyzeNewNode(val.getNode()));
+        if (val.getNode().getNodeID() == Processed)
+            remapValue(val);
+    }
 
     private void performExpensiveChecks()
-    {}
+    {
+        // TODO: 18-5-17
+    }
 
-    private void remapValue(SDValue val)
-    {}
-
+    private SDValue remapValue(SDValue val)
+    {
+        if (replacedValues.containsKey(val))
+        {
+            val = replacedValues.get(val);
+            val = remapValue(val);
+            assert val.getNode().getNodeID() != NewNode:"Mapped to new node!";
+        }
+        return val;
+    }
 
     private SDValue bitConvertToInteger(SDValue op)
-    {}
+    {
+        int bitWidth = op.getValueType().getSizeInBits();
+        return dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(bitWidth), op);
+    }
 
     private SDValue bitConvertVectorToIntegerVector(SDValue op)
-    {}
+    {
+        assert op.getValueType().isVector():"Only applies to vectors!";
+        int eltWidth = op.getValueType().getVectorElementType().getSizeInBits();
+        EVT eltVT = EVT.getIntegerVT(eltWidth);
+        int numElts = op.getValueType().getVectorNumElements();
+        return dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(eltVT, numElts),
+                op);
+    }
 
     private SDValue createStackStoreLoad(SDValue op, EVT destVT)
-    {}
+    {
+        SDValue stackPtr = dag.createStackTemporary(op.getValueType(), destVT);
+        SDValue store = dag.getStore(dag.getEntryNode(), op, stackPtr, null, 0, false, 0);
+        return dag.getLoad(destVT, store, stackPtr, null, 0);
+    }
 
     private boolean customLowerNode(SDNode n, EVT vt, boolean legalizeResult)
-    {}
+    {
+        if (tli.getOperationAction(n.getOpcode(), vt) != TargetLowering.LegalizeAction.Custom)
+        {
+            return false;
+        }
+
+        ArrayList<SDValue> results = new ArrayList<>();
+        if (legalizeResult)
+            tli.replaceNodeResults(n, results, dag);
+        else
+            tli.lowerOperationWrapper(n, results, dag);
+
+        if (results.isEmpty())
+            return false;
+
+        assert results.size() == n.getNumValues();
+        for (int i = 0, e = results.size(); i < e; i++)
+            replaceValueWith(new SDValue(n, i), results.get(i));
+        return true;
+    }
 
     private SDValue getVectorElementPointer(SDValue vecPtr, EVT eltVT, SDValue index)
-    {}
+    {
+        if (index.getValueType().bitsGT(new EVT(tli.getPointerTy())))
+            index = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()), index);
+        else
+            index = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()), index);
+        int eltSize = eltVT.getSizeInBits()/8;
+        index = dag.getNode(ISD.MUL, index.getValueType(), index,
+                dag.getConstant(eltSize, index.getValueType(), false));
+        return dag.getNode(ISD.ADD, index.getValueType(), index, vecPtr);
+    }
 
     private SDValue joinIntegers(SDValue lo, SDValue hi)
-    {}
+    {
+        EVT loVT = lo.getValueType(), hiVT = hi.getValueType();
+        EVT nvt = EVT.getIntegerVT(loVT.getSizeInBits() + hiVT.getSizeInBits());
+        lo = dag.getNode(ISD.ZERO_EXTEND, nvt, lo);
+        hi = dag.getNode(ISD.ANY_EXTEND, nvt, hi);
+        hi = dag.getNode(ISD.SHL, nvt, hi, dag.getConstant(loVT.getSizeInBits(),
+                new EVT(tli.getPointerTy()), false));
+        return dag.getNode(ISD.OR, nvt, lo, hi);
+    }
 
     private SDValue promoteTargetBoolean(SDValue boolVal, EVT vt)
-    {}
+    {
+        int extendCode = 0;
+        switch (tli.getBooleanContents())
+        {
+            default:
+                assert false:"Unknown booleanConstant";
+                break;
+            case UndefinedBooleanContent:
+                extendCode = ISD.ANY_EXTEND;
+                break;
+            case ZeroOrOneBooleanContent:
+                extendCode = ISD.ZERO_EXTEND;
+                break;
+            case ZeroOrNegativeOneBooleanContent:
+                extendCode = ISD.SIGN_EXTEND;
+                break;
+        }
+        return dag.getNode(extendCode, vt, boolVal);
+    }
 
     private void replaceValueWith(SDValue from, SDValue to)
-    {}
+    {
+        expungeNode(from.getNode());
+        analyzeNewValue(to);
+
+        replacedValues.put(from, to);
+        replaceValueWithHelper(from, to);
+    }
 
     private void replaceValueWithHelper(SDValue from, SDValue to)
-    {}
+    {
+        assert !from.getNode().equals(to.getNode()):"Potential legalization loop!";
 
+        analyzeNewValue(to);
+
+        LinkedList<SDNode> nodesToAnalyze = new LinkedList<>();
+        NodeUpdateListener nul = new NodeUpdateListener(this, nodesToAnalyze);
+        dag.replaceAllUsesOfValueWith(from, to, nul);
+
+        while (!nodesToAnalyze.isEmpty())
+        {
+            SDNode n = nodesToAnalyze.pop();
+            if (n.getNodeID() != NewNode)
+                continue;
+
+            SDNode nn = analyzeNewNode(n);
+            if (!nn.equals(n))
+            {
+                assert nn.getNodeID() != NewNode:"Analysis resulted in newNode!";
+                assert n.getNumValues() == nn.getNumValues():"Node morphing changed the number of results!";
+                for (int i = 0,  e = n.getNumValues(); i < e; i++)
+                {
+                    SDValue oldVal = new SDValue(n,i);
+                    SDValue newVal = new SDValue(nn, i);
+                    if (nn.getNodeID() == Processed)
+                        remapValue(newVal);
+                    dag.replaceAllUsesOfValueWith(oldVal, newVal, nul);
+                }
+            }
+        }
+    }
+
+    /**
+     * Returned array represents the low value and high value respectively.
+     * @param op
+     * @return
+     */
     private SDValue[] splitInteger(SDValue op)
-    {}
+    {
+        SDValue[] vals = new SDValue[2];
+        EVT halfVT = EVT.getIntegerVT(op.getValueType().getSizeInBits()/2);
+        return splitInteger(op, halfVT,halfVT);
+    }
 
+    /**
+     * Returned array represents the low value and high value respectively.
+     * @param op
+     * @param loVT
+     * @param hiVT
+     * @return
+     */
     private SDValue[] splitInteger(SDValue op, EVT loVT, EVT hiVT)
-    {}
+    {
+        assert loVT.getSizeInBits() + hiVT.getSizeInBits() ==
+            op.getValueType().getSizeInBits();
+        SDValue[] res = new SDValue[2];
+        res[0] = dag.getNode(ISD.TRUNCATE, loVT, op);
+        res[1] = dag.getNode(ISD.SRL, op.getValueType(), op,
+                dag.getConstant(loVT.getSizeInBits(), new EVT(tli.getPointerTy()),
+                        false));
+        res[1] = dag.getNode(ISD.TRUNCATE, hiVT, res[1]);
+        return res;
+    }
 
     private SDValue getPromotedInteger(SDValue op)
-    {}
+    {
+        SDValue promotedOp = promotedIntegers.get(op);
+        promotedOp = remapValue(promotedOp);
+        assert promotedOp != null && promotedOp.getNode() != null;
+        promotedIntegers.put(op, promotedOp);
+        return promotedOp;
+    }
 
     private void setPromotedIntegers(SDValue op, SDValue result)
-    {}
+    {
+        analyzeNewValue(result);
+        assert !promotedIntegers.containsKey(op):"Node is already promoted!";
+        promotedIntegers.put(op, result);
+    }
 
     private SDValue sextPromotedInteger(SDValue op)
-    {}
+    {
+        EVT oldVT = op.getValueType();
+        op = getPromotedInteger(op);
+        return dag.getNode(ISD.SIGN_EXTEND_INREG,
+                op.getValueType(), op, dag.getValueType(oldVT));
+    }
 
     private SDValue zextPromotedInteger(SDValue op)
-    {}
+    {
+        EVT oldVT = op.getValueType();
+        op = getPromotedInteger(op);
+        return dag.getZeroExtendInReg(op, oldVT);
+    }
 
     private void promotedIntegerResult(SDNode n, int resNo)
     {
@@ -547,7 +992,7 @@ public class DAGTypeLegalizer
     private void setSplitVector(SDValue op, SDValue lo, SDValue hi) {}
 
     // Vector Result Splitting: <128 x ty> -> 2 x <64 x ty>.
-    void SplitVectorResult(SDNode n, int opNo) {}
+    private void splitVectorResult(SDNode n, int opNo) {}
     private SDValue[] splitVecRes_BinOp(SDNode n) {}
     private SDValue[] splitVecRes_UnaryOp(SDNode n) {}
 
@@ -602,7 +1047,7 @@ public class DAGTypeLegalizer
     private SDValue widenVecRes_Unary(SDNode n) {}
 
     // Widen Vector Operand.
-    private boolean WidenVectorOperand(SDNode n, int ResNo){}
+    private boolean widenVectorOperand(SDNode n, int ResNo){}
     private SDValue widenVecOp_BIT_CONVERT(SDNode n) {}
     private SDValue widenVecOp_CONCAT_VECTORS(SDNode n) {}
     private SDValue widenVecOp_EXTRACT_VECTOR_ELT(SDNode n) {}
