@@ -172,7 +172,7 @@ public class EVT implements Comparable<EVT>
                 : isExtended256BitVector();
     }
 
-    public boolean isByteSize()
+    public boolean isByteSized()
     {
         return getSizeInBits() == 8;
     }

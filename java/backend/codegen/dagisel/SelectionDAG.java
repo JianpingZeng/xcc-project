@@ -1389,6 +1389,11 @@ public class SelectionDAG
         }
     }
 
+    public boolean maskedValueIsZero(SDValue op, APInt mask)
+    {
+        return maskedValueIsZero(op, mask, 0);
+    }
+
     public boolean maskedValueIsZero(SDValue op, APInt mask, int depth)
     {
         APInt[] res = new APInt[2];
@@ -1822,6 +1827,102 @@ public class SelectionDAG
                 getConstant(imm, op.getValueType(), false));
     }
 
+    public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
+            SDValue ptr, SDValue val, Value ptrVal, int alignment)
+    {
+        assert opcode == ISD.ATOMIC_LOAD_ADD ||
+            opcode == ISD.ATOMIC_LOAD_SUB  ||
+            opcode == ISD.ATOMIC_LOAD_AND  ||
+            opcode == ISD.ATOMIC_LOAD_OR   ||
+            opcode == ISD.ATOMIC_LOAD_XOR  ||
+            opcode == ISD.ATOMIC_LOAD_NAND ||
+            opcode == ISD.ATOMIC_LOAD_MIN  ||
+            opcode == ISD.ATOMIC_LOAD_MAX  ||
+            opcode == ISD.ATOMIC_LOAD_UMIN ||
+            opcode == ISD.ATOMIC_LOAD_UMAX ||
+            opcode == ISD.ATOMIC_SWAP;
+        EVT vt = val.getValueType();
+
+        if (alignment == 0)
+            alignment = getEVTAlignment(memoryVT);
+
+        SDVTList vts = getVTList(vt, new EVT(MVT.Other));
+        FoldingSetNodeID compute = new FoldingSetNodeID();
+        compute.addInteger(memoryVT.getRawBits().hashCode());
+        SDValue[] ops = {chain, ptr, val};
+        addNodeToIDNode(compute, opcode, vts, ops);
+        int id = compute.computeHash();
+        if (cseMap.containsKey(id))
+            return new SDValue(cseMap.get(id), 0);
+        SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val, ptrVal, alignment);
+        cseMap.put(id, n);
+        allNodes.add(n);
+        return new SDValue(n, 0);
+    }
+
+    public SDValue getAtomic(int opc, EVT memVT,
+            SDValue chain,
+            SDValue ptr,
+            SDValue cmp,
+            SDValue swap,
+            Value ptrVal,
+            int alignment)
+    {
+        assert opc == ISD.ATOMIC_CMP_SWAP:"Invalid atomic op!";
+        assert cmp.getValueType().equals(swap.getValueType()):"Invalid atomic op type!";
+
+        EVT vt = cmp.getValueType();
+        if (alignment == 0)
+        {
+            alignment = getEVTAlignment(memVT);
+        }
+
+        SDVTList vts = getVTList(vt, new EVT(MVT.Other));
+        FoldingSetNodeID compute = new FoldingSetNodeID();
+        compute.addInteger(memVT.getRawBits().hashCode());
+        SDValue[] ops = {chain, ptr, cmp, swap};
+        addNodeToIDNode(compute, opc, vts, ops);
+        int id = compute.computeHash();
+        if (cseMap.containsKey(id))
+            return new SDValue(cseMap.get(id), 0);
+        SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap, ptrVal, alignment);
+        cseMap.put(id, n);
+        allNodes.add(n);
+        return new SDValue(n, 0);
+    }
+
+    public SDValue getConvertRndSat(EVT vt, SDValue val, SDValue dty,
+            SDValue sty, SDValue rnd, SDValue sat, CvtCode cc)
+    {
+        if (dty.equals(sty) && (cc == CvtCode.CVT_UU || cc == CvtCode.CVT_SS ||
+                cc == CvtCode.CVT_FF))
+            return val;
+
+        FoldingSetNodeID compute = new FoldingSetNodeID();
+        SDVTList vts = getVTList(vt);
+        SDValue[] ops = {val, dty, sty, rnd, sat};
+        addNodeToIDNode(compute, ISD.CONVERT_RNDSAT, vts, ops);
+        int id = compute.computeHash();
+        if (cseMap.containsKey(id))
+            return new SDValue(cseMap.get(id), 0);
+        SDNode res = new CvtRndSatSDNode(vt, cc, ops);
+        cseMap.put(id, res);
+        allNodes.add(res);
+        return new SDValue(res, 0);
+    }
+
+    public SDValue getVAArg(EVT vt, SDValue chain, SDValue ptr, SDValue sv)
+    {
+        SDValue[] ops = {chain, ptr, sv};
+        return getNode(ISD.VAARG, getVTList(vt, new EVT(MVT.Other)), ops);
+    }
+
+    public void deleteNode(SDNode node)
+    {
+        removeNodeFromCSEMaps(node);
+        deleteNodeNotInCSEMap(node);
+    }
+
     static class UseMemo
     {
         SDNode user;
@@ -1838,7 +1939,8 @@ public class SelectionDAG
 
     Comparator<UseMemo> UseMemoComparator = new Comparator<UseMemo>()
     {
-        @Override public int compare(UseMemo o1, UseMemo o2)
+        @Override
+        public int compare(UseMemo o1, UseMemo o2)
         {
             return o1.user.hashCode() - o2.user.hashCode();
         }
@@ -3090,6 +3192,16 @@ public class SelectionDAG
     public void legalize(boolean typesNeedLegalizing, CodeGenOpt optLevel)
     {
         new SelectionDAGLegalizer(this, optLevel).legalizeDAG();
+    }
+    public int computeNumSignBits(SDValue op)
+    {
+        return computeNumSignBits(op, 0);
+    }
+
+    public int computeNumSignBits(SDValue op, int depth)
+    {
+        assert false:"Unimplemented currently!";
+        return 0;
     }
 }
 

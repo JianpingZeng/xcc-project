@@ -659,4 +659,33 @@ public class Util
 		for (; i < e && str1.charAt(i) == str2.charAt(i); i++){}
 		return str1.substring(0, i);
 	}
+
+	public static void reverse(Object[] arrays)
+	{
+		if (arrays == null || arrays.length <= 0)
+			return;
+
+		for (int i = 0; i < arrays.length / 2; i++)
+		{
+			Object t = arrays[i];
+			arrays[i] = arrays[arrays.length - 1 - i];
+			arrays[arrays.length - 1 - i] = t;
+		}
+	}
+
+	public static int minAlign(int a, int b)
+	{
+		return (a | b) & -(a | b);
+	}
+
+	public static long nextPowerOf2(long a)
+	{
+		a |= (a >> 1);
+		a |= (a >> 2);
+		a |= (a >> 4);
+		a |= (a >> 8);
+		a |= (a >> 16);
+		a |= (a >> 32);
+		return a + 1;
+	}
 }

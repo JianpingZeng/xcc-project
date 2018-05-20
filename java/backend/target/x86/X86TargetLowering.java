@@ -24,6 +24,7 @@ import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.fastISel.ISD;
 import backend.support.Attribute;
 import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
 import backend.type.Type;
@@ -623,6 +624,35 @@ public class X86TargetLowering extends TargetLowering
         if (numBit1 <= numBit2)
             return false;
         return subtarget.is64Bit() || numBit1 < 64;
+    }
+
+    @Override
+    public boolean isTruncateFree(EVT vt1, EVT vt2)
+    {
+        if (!vt1.isInteger() || !vt2.isInteger())
+            return false;
+
+        int numBits1 = vt1.getSizeInBits();
+        int numBits2 = vt2.getSizeInBits();
+        if (numBits1 <= numBits2)
+            return false;
+
+        return subtarget.is64Bit() || numBits1 < 64;
+    }
+
+    @Override
+    public boolean isZExtFree(Type ty1, Type ty2)
+    {
+        return ty1.equals(LLVMContext.Int32Ty) &&
+                ty2.equals(LLVMContext.Int64Ty) && subtarget.is64Bit();
+    }
+
+    @Override
+    public boolean isZExtFree(EVT vt1, EVT vt2)
+    {
+        return vt1.getSimpleVT().simpleVT == MVT.i32 &&
+                vt2.getSimpleVT().simpleVT == MVT.i64 &&
+                subtarget.is64Bit();
     }
 
     @Override

@@ -18,8 +18,10 @@ package backend.target;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
+import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
@@ -85,6 +87,85 @@ public abstract class TargetLowering
         UndefinedBooleanContent,    // Only bit 0 counts, the rest can hold garbage.
         ZeroOrOneBooleanContent,        // All bits zero except for bit 0.
         ZeroOrNegativeOneBooleanContent // All bits equal to bit 0.
+    }
+
+    public static class TargetLoweringOpt
+    {
+        public SelectionDAG dag;
+        public SDValue oldVal;
+        public SDValue newVal;
+
+        public TargetLoweringOpt(SelectionDAG inDAG)
+        {
+            dag = inDAG;
+        }
+
+        public boolean combineTo(SDValue o, SDValue n)
+        {
+            oldVal = o;
+            newVal = n;
+            return true;
+        }
+
+        public boolean shrinkDemandedConstant(SDValue op, APInt demanded)
+        {
+            switch (op.getOpcode())
+            {
+                default: break;
+                case ISD.XOR:
+                case ISD.AND:
+                case ISD.OR:
+                {
+                    ConstantSDNode c = c.getOperand(1).getNode() instanceof ConstantSDNode?
+                            (ConstantSDNode)op.getOperand(1).getNode() : null;
+                    if (c == null) return false;
+
+                    if (op.getOpcode() == ISD.XOR &&
+                            (c.getAPIntValue().or(demanded.negative())).isAllOnesValue())
+                        return false;
+
+                    if (c.getAPIntValue().intersects(demanded.negative()))
+                    {
+                        EVT vt = op.getValueType();
+                        SDValue newVal = dag.getNode(op.getOpcode(), vt, op.getOperand(0),
+                                dag.getConstant(demanded.and(c.getAPIntValue()), vt, false));
+                        return combineTo(op, newVal);
+                    }
+                    break;
+                }
+            }
+            return false;
+        }
+
+        public boolean shrinkDemandedOp(SDValue op, int bitwidth, APInt demanded)
+        {
+            assert op.getNumOperands() == 2;
+            assert op.getNode().getNumValues() == 1;
+
+            if (!op.getNode().hasOneUse())
+                return false;
+
+            TargetLowering tli = dag.getTargetLoweringInfo();
+            long smallVTBits = bitwidth - demanded.countLeadingZeros();
+            if (!Util.isPowerOf2(smallVTBits))
+                smallVTBits = Util.nextPowerOf2(smallVTBits);
+            for (; smallVTBits < bitwidth; smallVTBits = Util.nextPowerOf2(smallVTBits))
+            {
+                EVT smallVT = EVT.getIntegerVT((int) smallVTBits);
+                if (tli.isTruncateFree(op.getValueType(), smallVT) &&
+                        tli.isZExtFree(smallVT, op.getValueType()))
+                {
+                    SDValue x = dag.getNode(op.getOpcode(), smallVT,
+                            dag.getNode(ISD.TRUNCATE, smallVT,
+                                    op.getNode().getOperand(0)),
+                            dag.getNode(ISD.TRUNCATE, smallVT,
+                                    op.getNode().getOperand(1)));
+                    SDValue z = dag.getNode(ISD.ZERO_EXTEND, op.getValueType(), x);
+                    return combineTo(op, z);
+                }
+            }
+            return false;
+        }
     }
 
     /**
@@ -257,6 +338,25 @@ public abstract class TargetLowering
         }
         assert false : "Unsupported extended type!";
         return new EVT(new MVT(MVT.Other));
+    }
+
+    public EVT getTypeToExpandTo(EVT vt)
+    {
+        assert !vt.isVector();
+        while (true)
+        {
+            switch (getTypeAction(vt))
+            {
+                case Legal:
+                    return vt;
+                case Expand:
+                    vt = getTypeToTransformTo(vt);
+                    break;
+                default:
+                    assert false:"Type is illegal or to be expanded!";
+                    return vt;
+            }
+        }
     }
 
     /**
@@ -751,6 +851,21 @@ public abstract class TargetLowering
         return false;
     }
 
+    public boolean isTruncateFree(EVT vt1, EVT vt2)
+    {
+        return false;
+    }
+
+    public boolean isZExtFree(EVT vt1, EVT vt2)
+    {
+        return false;
+    }
+
+    public boolean isZExtFree(Type ty1, Type ty2)
+    {
+        return false;
+    }
+
     public MachineBasicBlock emitInstrWithCustomInserter(MachineInstr mi,
             MachineBasicBlock mbb)
     {
@@ -897,6 +1012,44 @@ public abstract class TargetLowering
             SelectionDAG dag)
     {
         assert false:"this method should be implemented for this target!";
+    }
+
+    public RTLIB getFPEXT(EVT opVT, EVT retVT)
+    {}
+
+    public RTLIB getFPROUND(EVT opVT, EVT retVT)
+    {}
+
+    public RTLIB getFPTOSINT(EVT opVT, EVT retVT)
+    {}
+
+    public RTLIB getFPTOUINT(EVT opVT, EVT retVT)
+    {}
+
+    public RTLIB getSINTTOFP(EVT opVT, EVT retVT)
+    {}
+
+    public RTLIB getUINTTOFP(EVT opVT, EVT retVT)
+    {}
+
+    public String getLibCallName(RTLIB libCall)
+    {
+        return null;
+    }
+
+    public CallingConv getLibCallCallingConv(RTLIB libCall)
+    {}
+
+    public SDValue simplifySetCC(EVT evt, SDValue lhs, SDValue rhs,
+            CondCode cc, boolean b, DAGCombinerInfo dagCBI)
+    {
+        return null;
+    }
+
+    public SDValue lowerOperation(SDValue op, SelectionDAG dag)
+    {
+        Util.shouldNotReachHere("lowerOperation not implemented for this target!");
+        return new SDValue();
     }
 }
 
