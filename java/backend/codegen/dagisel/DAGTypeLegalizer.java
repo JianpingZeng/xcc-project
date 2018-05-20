@@ -2863,47 +2863,505 @@ public class DAGTypeLegalizer
     }
 
     private SDValue getSoftenedFloat(SDValue op)
-    {}
+    {
+        if (!softenedFloats.containsKey(op))
+            softenedFloats.put(op, new SDValue());
+        SDValue softenedOp = softenedFloats.get(op);
+        softenedOp = remapValue(softenedOp);
+        softenedFloats.put(op, softenedOp);
+        assert softenedOp.getNode() != null:"Operand wasn't converted to integer?";
+        return softenedOp;
+    }
 
     private void setSoftenedFloat(SDValue op, SDValue result)
-    {}
+    {
+        assert result.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()));
+        result = analyzeNewValue(result);
 
-    private void softenFloatResult(SDNode n, int resNo) {}
-    private SDValue softenFloatRes_BIT_CONVERT(SDNode n) {}
-    private SDValue softenFloatRes_BUILD_PAIR(SDNode n) {}
-    private SDValue softenFloatRes_ConstantFP(ConstantFPSDNode n) {}
-    private SDValue softenFloatRes_EXTRACT_VECTOR_ELT(SDNode n) {}
-    private SDValue softenFloatRes_FABS(SDNode n) {}
-    private SDValue softenFloatRes_FADD(SDNode n) {}
-    private SDValue softenFloatRes_FCEIL(SDNode n) {}
-    private SDValue softenFloatRes_FCOPYSIGN(SDNode n) {}
-    private SDValue softenFloatRes_FCOS(SDNode n) {}
-    private SDValue softenFloatRes_FDIV(SDNode n) {}
-    private SDValue softenFloatRes_FEXP(SDNode n) {}
-    private SDValue softenFloatRes_FEXP2(SDNode n) {}
-    private SDValue softenFloatRes_FFLOOR(SDNode n) {}
-    private SDValue softenFloatRes_FLOG(SDNode n) {}
-    private SDValue softenFloatRes_FLOG2(SDNode n) {}
-    private SDValue softenFloatRes_FLOG10(SDNode n) {}
-    private SDValue softenFloatRes_FMUL(SDNode n) {}
-    private SDValue softenFloatRes_FNEARBYINT(SDNode n) {}
-    private SDValue softenFloatRes_FNEG(SDNode n) {}
-    private SDValue softenFloatRes_FP_EXTEND(SDNode n) {}
-    private SDValue softenFloatRes_FP_ROUND(SDNode n) {}
-    private SDValue softenFloatRes_FPOW(SDNode n) {}
-    private SDValue softenFloatRes_FPOWI(SDNode n) {}
-    private SDValue softenFloatRes_FREM(SDNode n) {}
-    private SDValue softenFloatRes_FRINT(SDNode n) {}
-    private SDValue softenFloatRes_FSIN(SDNode n) {}
-    private SDValue softenFloatRes_FSQRT(SDNode n) {}
-    private SDValue softenFloatRes_FSUB(SDNode n) {}
-    private SDValue softenFloatRes_FTRUNC(SDNode n) {}
-    private SDValue softenFloatRes_LOAD(SDNode n) {}
-    private SDValue softenFloatRes_SELECT(SDNode n) {}
-    private SDValue softenFloatRes_SELECT_CC(SDNode n) {}
-    private SDValue softenFloatRes_UNDEF(SDNode n) {}
-    private SDValue softenFloatRes_VAARG(SDNode n) {}
-    private SDValue softenFloatRes_XINT_TO_FP(SDNode n) {}
+        assert !softenedFloats.containsKey(op):"Node already converted to integer!";
+        softenedFloats.put(op, result);
+    }
+
+    private void softenFloatResult(SDNode n, int resNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Soften float result: %d: ", resNo);
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = new SDValue();
+        switch (n.getOpcode())
+        {
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("softenFloatResult #%d: ", resNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to soften the result of this oeprator!");
+                break;
+            case ISD.BIT_CONVERT:
+                res = softenFloatRes_BIT_CONVERT(n); break;
+            case ISD.BUILD_PAIR:
+                res = softenFloatRes_BUILD_PAIR(n); break;
+            case ISD.ConstantFP:
+                res = softenFloatRes_ConstantFP((ConstantFPSDNode)n); break;
+            case ISD.EXTRACT_VECTOR_ELT:
+                res = softenFloatRes_EXTRACT_VECTOR_ELT(n); break;
+            case ISD.FABS:        res = softenFloatRes_FABS(n); break;
+            case ISD.FADD:        res = softenFloatRes_FADD(n); break;
+            case ISD.FCEIL:       res = softenFloatRes_FCEIL(n); break;
+            case ISD.FCOPYSIGN:   res = softenFloatRes_FCOPYSIGN(n); break;
+            case ISD.FCOS:        res = softenFloatRes_FCOS(n); break;
+            case ISD.FDIV:        res = softenFloatRes_FDIV(n); break;
+            case ISD.FEXP:        res = softenFloatRes_FEXP(n); break;
+            case ISD.FEXP2:       res = softenFloatRes_FEXP2(n); break;
+            case ISD.FFLOOR:      res = softenFloatRes_FFLOOR(n); break;
+            case ISD.FLOG:        res = softenFloatRes_FLOG(n); break;
+            case ISD.FLOG2:       res = softenFloatRes_FLOG2(n); break;
+            case ISD.FLOG10:      res = softenFloatRes_FLOG10(n); break;
+            case ISD.FMUL:        res = softenFloatRes_FMUL(n); break;
+            case ISD.FNEARBYINT:  res = softenFloatRes_FNEARBYINT(n); break;
+            case ISD.FNEG:        res = softenFloatRes_FNEG(n); break;
+            case ISD.FP_EXTEND:   res = softenFloatRes_FP_EXTEND(n); break;
+            case ISD.FP_ROUND:    res = softenFloatRes_FP_ROUND(n); break;
+            case ISD.FPOW:        res = softenFloatRes_FPOW(n); break;
+            case ISD.FPOWI:       res = softenFloatRes_FPOWI(n); break;
+            case ISD.FREM:        res = softenFloatRes_FREM(n); break;
+            case ISD.FRINT:       res = softenFloatRes_FRINT(n); break;
+            case ISD.FSIN:        res = softenFloatRes_FSIN(n); break;
+            case ISD.FSQRT:       res = softenFloatRes_FSQRT(n); break;
+            case ISD.FSUB:        res = softenFloatRes_FSUB(n); break;
+            case ISD.FTRUNC:      res = softenFloatRes_FTRUNC(n); break;
+            case ISD.LOAD:        res = softenFloatRes_LOAD(n); break;
+            case ISD.SELECT:      res = softenFloatRes_SELECT(n); break;
+            case ISD.SELECT_CC:   res = softenFloatRes_SELECT_CC(n); break;
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:  res = softenFloatRes_XINT_TO_FP(n); break;
+            case ISD.UNDEF:       res = softenFloatRes_UNDEF(n); break;
+            case ISD.VAARG:       res = softenFloatRes_VAARG(n); break;
+        }
+        if (res.getNode() != null)
+            setSoftenedFloat(new SDValue(n, resNo), res);
+    }
+    private SDValue softenFloatRes_BIT_CONVERT(SDNode n)
+    {
+        return bitConvertToInteger(n.getOperand(0));
+    }
+    private SDValue softenFloatRes_BUILD_PAIR(SDNode n)
+    {
+        return dag.getNode(ISD.BUILD_PAIR,
+                tli.getTypeToTransformTo(n.getValueType(0)),
+                bitConvertToInteger(n.getOperand(0)),
+                bitConvertToInteger(n.getOperand(1)));
+    }
+    private SDValue softenFloatRes_ConstantFP(ConstantFPSDNode n)
+    {
+        return dag.getConstant(n.getValueAPF().bitcastToAPInt(),
+                tli.getTypeToTransformTo(n.getValueType(0)), false);
+    }
+    private SDValue softenFloatRes_EXTRACT_VECTOR_ELT(SDNode n)
+    {
+        SDValue newOP = bitConvertVectorToIntegerVector(n.getOperand(0));
+        return dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                newOP.getValueType().getVectorElementType(),
+                newOP, n.getOperand(1));
+    }
+    private SDValue softenFloatRes_FABS(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        int size = nvt.getSizeInBits();
+
+        SDValue mask = dag.getConstant(APInt.getAllOnesValue(size).clear(size-1),
+                nvt, false);
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+        return dag.getNode(ISD.AND, nvt, op, mask);
+    }
+
+    public static RTLIB getFPLibCall(EVT vt, RTLIB callF32,
+            RTLIB callF64, RTLIB callF80,
+            RTLIB callPPCF128)
+    {
+        int simpleVT = vt.getSimpleVT().simpleVT;
+        RTLIB[] libs = {callF32, callF64, callF80, callPPCF128};
+        if (simpleVT >= MVT.f32 && simpleVT <= MVT.ppcf128)
+            return libs[simpleVT- MVT.f32];
+        return RTLIB.UNKNOWN_LIBCALL;
+    }
+
+    private SDValue softenFloatRes_FADD(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
+                getSoftenedFloat(n.getOperand(1))};
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.ADD_F32,
+                RTLIB.ADD_F64,
+                RTLIB.ADD_F80,
+                RTLIB.ADD_PPCF128),
+                nvt, ops, false);
+    }
+    private SDValue softenFloatRes_FCEIL(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.CEIL_F32,
+                RTLIB.CEIL_F64,
+                RTLIB.CEIL_F80,
+                RTLIB.CEIL_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FCOPYSIGN(SDNode n)
+    {
+        SDValue lhs = getSoftenedFloat(n.getOperand(0));
+        SDValue rhs = getSoftenedFloat(n.getOperand(0));
+
+        EVT lvt = lhs.getValueType();
+        EVT rvt = rhs.getValueType();
+
+        int lsize = lvt.getSizeInBits();
+        int rsize = rvt.getSizeInBits();
+        SDValue signedBit = dag.getNode(ISD.SHL, rvt, dag.getConstant(1, rvt, false),
+                dag.getConstant(rsize-1, new EVT(tli.getShiftAmountTy()), false));
+        signedBit = dag.getNode(ISD.AND, rvt, rhs, signedBit);
+
+        int sizeDiff = rvt.getSizeInBits() - lvt.getSizeInBits();
+        if (sizeDiff > 0)
+        {
+            signedBit = dag.getNode(ISD.SRL, rvt, signedBit,
+                    dag.getConstant(sizeDiff, new EVT(tli.getShiftAmountTy()), false));
+            signedBit = dag.getNode(ISD.TRUNCATE, lvt, signedBit);
+        }
+        else if (sizeDiff < 0)
+        {
+            signedBit = dag.getNode(ISD.ANY_EXTEND, lvt, signedBit);
+            signedBit = dag.getNode(ISD.SHL, lvt, signedBit, dag.getNode(-sizeDiff,
+                    new EVT(tli.getShiftAmountTy())));
+        }
+
+        SDValue mask = dag.getNode(ISD.SHL, lvt, dag.getConstant(1, lvt, false),
+                dag.getConstant(lsize-1, new EVT(tli.getShiftAmountTy()), false));
+        mask = dag.getNode(ISD.SUB, lvt, mask, dag.getConstant(1, lvt, false));
+        lhs = dag.getNode(ISD.AND, lvt, lhs, mask);
+        return dag.getNode(ISD.OR, lvt, lhs, signedBit);
+    }
+    private SDValue softenFloatRes_FCOS(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.COS_F32,
+                RTLIB.COS_F64,
+                RTLIB.COS_F80,
+                RTLIB.COS_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FDIV(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
+                getSoftenedFloat(n.getOperand(1))};
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.DIV_F32,
+                RTLIB.DIV_F64,
+                RTLIB.DIV_F80,
+                RTLIB.DIV_PPCF128),
+                nvt, ops, false);
+    }
+    private SDValue softenFloatRes_FEXP(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.EXP_F32,
+                RTLIB.EXP_F64,
+                RTLIB.EXP_F80,
+                RTLIB.EXP_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FEXP2(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.EXP2_F32,
+                RTLIB.EXP2_F64,
+                RTLIB.EXP2_F80,
+                RTLIB.EXP2_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FFLOOR(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.FLOOR_F32,
+                RTLIB.FLOOR_F64,
+                RTLIB.FLOOR_F80,
+                RTLIB.FLOOR_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FLOG(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.LOG_F32,
+                RTLIB.LOG_F64,
+                RTLIB.LOG_F80,
+                RTLIB.LOG_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FLOG2(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.LOG2_F32,
+                RTLIB.LOG2_F64,
+                RTLIB.LOG2_F80,
+                RTLIB.LOG2_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FLOG10(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.LOG10_F32,
+                RTLIB.LOG10_F64,
+                RTLIB.LOG10_F80,
+                RTLIB.LOG10_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FMUL(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
+                getSoftenedFloat(n.getOperand(1))};
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.MUL_F32,
+                RTLIB.MUL_F64,
+                RTLIB.MUL_F80,
+                RTLIB.MUL_PPCF128),
+                nvt, ops, false);
+    }
+    private SDValue softenFloatRes_FNEARBYINT(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.NEARBYINT_F32,
+                RTLIB.NEARBYINT_F64,
+                RTLIB.NEARBYINT_F80,
+                RTLIB.NEARBYINT_PPCF128),
+                nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FNEG(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {dag.getConstantFP(-0.0, n.getValueType(0), false),
+                getSoftenedFloat(n.getOperand(0))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.SUB_F32,
+                RTLIB.SUB_F64,
+                RTLIB.SUB_F80,
+                RTLIB.SUB_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FP_EXTEND(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = n.getOperand(0);
+        RTLIB lc = tli.getFPEXT(op.getValueType(), n.getValueType(0));
+        assert lc != RTLIB.UNKNOWN_LIBCALL;
+        return makeLibCall(lc, nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FP_ROUND(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue op = n.getOperand(0);
+        RTLIB lc = tli.getFPROUND(op.getValueType(), n.getValueType(0));
+        assert lc != RTLIB.UNKNOWN_LIBCALL;
+        return makeLibCall(lc, nvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatRes_FPOW(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
+                getSoftenedFloat(n.getOperand(0))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.POW_F32,
+                RTLIB.POW_F64,
+                RTLIB.POW_F80,
+                RTLIB.POW_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FPOWI(SDNode n)
+    {
+        assert n.getOperand(1).getValueType().getSimpleVT().simpleVT == MVT.i32;
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
+                getSoftenedFloat(n.getOperand(0))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.POWI_F32,
+                RTLIB.POWI_F64,
+                RTLIB.POWI_F80,
+                RTLIB.POWI_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FREM(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
+                getSoftenedFloat(n.getOperand(0))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.REM_F32,
+                RTLIB.REM_F64,
+                RTLIB.REM_F80,
+                RTLIB.REM_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FRINT(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.RINT_F32,
+                RTLIB.RINT_F64,
+                RTLIB.RINT_F80,
+                RTLIB.RINT_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FSIN(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.SIN_F32,
+                RTLIB.SIN_F64,
+                RTLIB.SIN_F80,
+                RTLIB.SIN_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FSQRT(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.SQRT_F32,
+                RTLIB.SQRT_F64,
+                RTLIB.SQRT_F80,
+                RTLIB.SQRT_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FSUB(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
+                getSoftenedFloat(n.getOperand(0))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.SUB_F32,
+                RTLIB.SUB_F64,
+                RTLIB.SUB_F80,
+                RTLIB.SUB_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_FTRUNC(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+
+        return makeLibCall(getFPLibCall(n.getValueType(0),
+                RTLIB.TRUNC_F32,
+                RTLIB.TRUNC_F64,
+                RTLIB.TRUNC_F80,
+                RTLIB.TRUNC_PPCF128),
+                nvt,
+                ops, false);
+    }
+    private SDValue softenFloatRes_LOAD(SDNode n)
+    {
+
+    }
+    private SDValue softenFloatRes_SELECT(SDNode n)
+    {
+        SDValue lhs = getSoftenedFloat(n.getOperand(1));
+        SDValue rhs = getSoftenedFloat(n.getOperand(2));
+        return dag.getNode(ISD.SELECT, lhs.getValueType(), n.getOperand(0), lhs, rhs);
+    }
+    private SDValue softenFloatRes_SELECT_CC(SDNode n)
+    {
+        SDValue lhs = getSoftenedFloat(n.getOperand(2));
+        SDValue rhs = getSoftenedFloat(n.getOperand(3));
+        return dag.getNode(ISD.SELECT_CC, lhs.getValueType(),
+                n.getOperand(0), n.getOperand(1), lhs, rhs,
+                n.getOperand(4));
+    }
+    private SDValue softenFloatRes_UNDEF(SDNode n)
+    {
+        return dag.getUNDEF(tli.getTypeToTransformTo(n.getValueType(0)));
+    }
+    private SDValue softenFloatRes_VAARG(SDNode n)
+    {
+        SDValue chain = n.getOperand(0);
+        SDValue ptr = n.getOperand(1);
+        EVT vt = n.getValueType(0);
+        EVT nvt = tli.getTypeToTransformTo(vt);
+        SDValue newVAARG = dag.getVAArg(nvt, chain, ptr, n.getOperand(2));
+
+        replaceValueWith(new SDValue(n, 1), newVAARG.getValue(1));
+        return newVAARG;
+    }
+    private SDValue softenFloatRes_XINT_TO_FP(SDNode n)
+    {
+        boolean signed = n.getOpcode() == ISD.SINT_TO_FP;
+        EVT svt = n.getOperand(0).getValueType();
+        EVT rvt = n.getValueType(0);
+        EVT nvt = new EVT();
+
+        RTLIB lib = RTLIB.UNKNOWN_LIBCALL;
+        for (int t = MVT.FIRST_INTEGER_VALUETYPE;
+                 t <= MVT.LAST_INTEGER_VALUETYPE && lib == RTLIB.UNKNOWN_LIBCALL;
+                 ++t)
+        {
+            nvt = new EVT(t);
+            if (nvt.bitsGE(svt))
+                lib = signed ? tli.getSINTTOFP(nvt, rvt) : tli.getUINTTOFP(nvt, rvt);
+        }
+        assert lib != RTLIB.UNKNOWN_LIBCALL;
+        SDValue op = dag.getNode(signed ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND,
+                nvt, n.getOperand(0));
+        return makeLibCall(lib, tli.getTypeToTransformTo(rvt),
+                new SDValue[] { op }, false);
+    }
 
     private boolean softenFloatOperand(SDNode n, int resNo) {}
     private SDValue softenFloatOp_BIT_CONVERT(SDNode n) {}
