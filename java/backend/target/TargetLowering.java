@@ -197,6 +197,10 @@ public abstract class TargetLowering
     private byte[] targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
     private TObjectIntHashMap<Pair<Integer,Integer>> promoteType = new TObjectIntHashMap<>();
 
+    private String[] libCallRoutineNames;
+    private CondCode[] cmpLibCallCCs;
+    private CallingConv[] libCallCallingConv;
+
     public TargetLowering(TargetMachine tm)
     {
         this.tm = tm;
@@ -209,6 +213,9 @@ public abstract class TargetLowering
         numRegistersForVT = new int[MVT.LAST_VALUETYPE];
         registerTypeForVT = new EVT[MVT.LAST_VALUETYPE];
         booleanContents = BooleanContent.UndefinedBooleanContent;
+        libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
+        cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
+        libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     }
 
     public ValueTypeAction getValueTypeActions()
@@ -1032,16 +1039,28 @@ public abstract class TargetLowering
     public RTLIB getUINTTOFP(EVT opVT, EVT retVT)
     {}
 
-    public String getLibCallName(RTLIB libCall)
+
+    public CondCode getCmpLibCallCC(RTLIB lc)
     {
-        return null;
+        return cmpLibCallCCs[lc.ordinal()];
     }
 
-    public CallingConv getLibCallCallingConv(RTLIB libCall)
-    {}
+    public String getLibCallName(RTLIB lc)
+    {
+        return libCallRoutineNames[lc.ordinal()];
+    }
 
-    public SDValue simplifySetCC(EVT evt, SDValue lhs, SDValue rhs,
-            CondCode cc, boolean b, DAGCombinerInfo dagCBI)
+    public CallingConv getLibCallCallingConv(RTLIB lc)
+    {
+        return libCallCallingConv[lc.ordinal()];
+    }
+
+    public SDValue simplifySetCC(EVT evt,
+            SDValue lhs,
+            SDValue rhs,
+            CondCode cc,
+            boolean b,
+            DAGCombinerInfo dagCBI)
     {
         return null;
     }
@@ -1051,5 +1070,6 @@ public abstract class TargetLowering
         Util.shouldNotReachHere("lowerOperation not implemented for this target!");
         return new SDValue();
     }
+
 }
 
