@@ -3309,7 +3309,27 @@ public class DAGTypeLegalizer
     }
     private SDValue softenFloatRes_LOAD(SDNode n)
     {
+        LoadSDNode ld = (LoadSDNode)n;
+        EVT vt = n.getValueType(0);
+        EVT nvt = tli.getTypeToTransformTo(vt);
 
+        SDValue newL = new SDValue();
+        if (ld.getExtensionType() == LoadExtType.NON_EXTLOAD)
+        {
+            newL = dag.getLoad(ld.getAddressingMode(), ld.getExtensionType(),
+                    nvt, ld.getChain(), ld.getBasePtr(), ld.getOffset(),
+                    ld.getSrcValue(), ld.getSrcValueOffset(),
+                    nvt, ld.isVolatile(), ld.getAlignment());
+            replaceValueWith(new SDValue(n, 1), newL.getValue(1));
+            return newL;
+        }
+
+        newL = dag.getLoad(ld.getAddressingMode(), LoadExtType.NON_EXTLOAD,
+                ld.getMemoryVT(), ld.getChain(), ld.getBasePtr(),
+                ld.getOffset(), ld.getSrcValue(), ld.getSrcValueOffset(),
+                ld.getMemoryVT(), ld.isVolatile(), ld.getAlignment());
+        replaceValueWith(new SDValue(n, 1), newL.getValue(1));
+        return bitConvertToInteger(dag.getNode(ISD.FP_ROUND, vt, newL));
     }
     private SDValue softenFloatRes_SELECT(SDNode n)
     {
@@ -3363,23 +3383,276 @@ public class DAGTypeLegalizer
                 new SDValue[] { op }, false);
     }
 
-    private boolean softenFloatOperand(SDNode n, int resNo) {}
-    private SDValue softenFloatOp_BIT_CONVERT(SDNode n) {}
-    private SDValue softenFloatOp_BR_CC(SDNode n) {}
-    private SDValue softenFloatOp_FP_ROUND(SDNode n) {}
-    private SDValue softenFloatOp_FP_TO_SINT(SDNode n) {}
-    private SDValue softenFloatOp_FP_TO_UINT(SDNode n) {}
-    private SDValue softenFloatOp_SELECT_CC(SDNode n) {}
-    private SDValue softenFloatOp_SETCC(SDNode n) {}
-    private SDValue softenFloatOp_STORE(SDNode n, int opNo) {}
+    private boolean softenFloatOperand(SDNode n, int opNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Soften float opereand %d: ", opNo);
+            n.dump(dag);
+            System.err.println();
+        }
 
-    private SDValue[] softenSetCCOperands(CondCode cc)
-    {}
+        SDValue res = new SDValue();
+        switch (n.getOpcode())
+        {
+            default:
+                Util.shouldNotReachHere("Don't know how to soften this operator's operand!");
+                break;
+            case ISD.BIT_CONVERT:
+                res = softenFloatOp_BIT_CONVERT(n);
+                break;
+            case ISD.BR_CC:
+                res = softenFloatOp_BR_CC(n);
+                break;
+            case ISD.FP_ROUND:
+                res = softenFloatOp_FP_ROUND(n);
+                break;
+            case ISD.FP_TO_SINT:
+                res = softenFloatOp_FP_TO_SINT(n);
+                break;
+            case ISD.FP_TO_UINT:
+                res = softenFloatOp_FP_TO_UINT(n);
+                break;
+            case ISD.SELECT_CC:
+                res = softenFloatOp_SELECT_CC(n);
+                break;
+            case ISD.SETCC:
+                res = softenFloatOp_SETCC(n);
+                break;
+            case ISD.STORE:
+                res = softenFloatOp_STORE(n, opNo);
+                break;
+        }
+        if (res.getNode() == null)
+            return false;
+
+        if (Objects.equals(res.getNode(), n))
+            return true;
+
+        assert res.getValueType().equals(n.getValueType(0)) &&
+                n.getNumValues() == 1:"Invalid operand expansion!";
+
+        replaceValueWith(new SDValue(n, 0), res);
+        return false;
+    }
+    private SDValue softenFloatOp_BIT_CONVERT(SDNode n)
+    {
+        return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0),
+                getSoftenedFloat(n.getOperand(0)));
+    }
+
+    private SDValue softenFloatOp_BR_CC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(2), newRHS = n.getOperand(3);
+        CondCode cc = ((CondCodeSDNode)(n.getOperand(1).getNode())).getCondition();
+        SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+        newLHS = res[0];
+        newRHS = res[1];
+
+        if (newRHS.getNode() == null)
+        {
+            newRHS = dag.getConstant(0, newLHS.getValueType(), false);
+            cc = SETNE;
+        }
+        return dag.updateNodeOperands(new SDValue(n, 0), n.getOperand(0),
+                dag.getCondCode(cc), newLHS, newRHS, n.getOperand(4));
+    }
+    private SDValue softenFloatOp_FP_ROUND(SDNode n)
+    {
+        EVT svt = n.getOperand(0).getValueType();
+        EVT rvt = n.getValueType(0);
+
+        RTLIB lc = tli.getFPROUND(svt, rvt);
+        assert lc != RTLIB.UNKNOWN_LIBCALL:"unsupported FP_ROUND libcall!";
+
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+        return makeLibCall(lc, rvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatOp_FP_TO_SINT(SDNode n)
+    {
+        EVT rvt = n.getValueType(0);
+        RTLIB lc = tli.getFPTOSINT(n.getOperand(0).getValueType(), rvt);
+        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_SINT";
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+        return makeLibCall(lc, rvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatOp_FP_TO_UINT(SDNode n)
+    {
+        EVT rvt = n.getValueType(0);
+        RTLIB lc = tli.getFPTOUINT(n.getOperand(0).getValueType(), rvt);
+        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_UINT";
+        SDValue op = getSoftenedFloat(n.getOperand(0));
+        return makeLibCall(lc, rvt, new SDValue[] { op }, false);
+    }
+    private SDValue softenFloatOp_SELECT_CC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
+        CondCode cc = ((CondCodeSDNode)(n.getOperand(4).getNode())).getCondition();
+        SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+        newLHS = res[0];
+        newRHS = res[1];
+
+        if (newRHS.getNode() == null)
+        {
+            newRHS = dag.getConstant(0, newLHS.getValueType(), false);
+            cc = SETNE;
+        }
+        return dag.updateNodeOperands(new SDValue(n, 0),
+                newLHS, newRHS,
+                n.getOperand(2), n.getOperand(3),
+                dag.getCondCode(cc));
+    }
+    private SDValue softenFloatOp_SETCC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
+        CondCode cc = ((CondCodeSDNode)(n.getOperand(2).getNode())).getCondition();
+        SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+        newLHS = res[0];
+        newRHS = res[1];
+
+        if (newRHS.getNode() == null)
+        {
+            assert newLHS.getValueType().equals(n.getValueType(0)):
+                    "Unexpeted setcc expansion!";
+            return newLHS;
+        }
+
+        return dag.updateNodeOperands(new SDValue(n, 0),
+                newLHS, newRHS,
+                dag.getCondCode(cc));
+    }
+    private SDValue softenFloatOp_STORE(SDNode n, int opNo)
+    {
+        assert n.isUNINDEXEDStore():"Indexed store during type legalization!";
+        assert opNo == 1:"Can only soften the stored value!";
+        StoreSDNode st = (StoreSDNode)n;
+        SDValue val = st.getValue();
+
+        if (st.isTruncatingStore())
+            val = bitConvertToInteger(dag.getNode(ISD.FP_ROUND, st.getMemoryVT(),
+                    val, dag.getIntPtrConstant(0)));
+        else
+            val = getSoftenedFloat(val);
+
+        return dag.getStore(st.getChain(), val, st.getBasePtr(),
+                st.getSrcValue(), st.getSrcValueOffset(),
+                st.isVolatile(), st.getAlignment());
+    }
+
+    private SDValue[] softenSetCCOperands(SDValue newLHS, SDValue newRHS, CondCode cc)
+    {
+        SDValue lhsInt = getSoftenedFloat(newLHS);
+        SDValue rhsInt = getSoftenedFloat(newRHS);
+        EVT vt = newLHS.getValueType();
+
+        boolean isF32 = vt.getSimpleVT().simpleVT == MVT.f32;
+        boolean isF64 = vt.getSimpleVT().simpleVT == MVT.f64;
+        assert isF32 || isF64:"Unsupported setcc type!";
+
+        RTLIB libCall = RTLIB.UNKNOWN_LIBCALL, libCall2 = RTLIB.UNKNOWN_LIBCALL;
+        switch (cc)
+        {
+            case SETEQ:
+            case SETOEQ:
+                libCall = isF32?RTLIB.OEQ_F32:RTLIB.OEQ_F64;
+                break;
+            case SETNE:
+            case SETUNE:
+                libCall = isF32?RTLIB.UNE_F32:RTLIB.UNE_F64;
+                break;
+            case SETGE:
+            case SETOGE:
+                libCall = isF32?RTLIB.OGE_F32:RTLIB.OGE_F64;
+                break;
+            case SETLT:
+            case SETOLT:
+                libCall = isF32?RTLIB.OLT_F32:RTLIB.OLT_F64;
+                break;
+            case SETLE:
+            case SETOLE:
+                libCall = isF32?RTLIB.OLE_F32:RTLIB.OLE_F64;
+                break;
+            case SETGT:
+            case SETOGT:
+                libCall = isF32?RTLIB.OGT_F32:RTLIB.OGT_F64;
+                break;
+            case SETUO:
+                libCall = isF32?RTLIB.UO_F32:RTLIB.UO_F64;
+                break;
+            case SETO:
+                libCall = isF32?RTLIB.O_F32:RTLIB.O_F64;
+                break;
+            default:
+                libCall = isF32?RTLIB.UO_F32:RTLIB.UO_F64;
+                switch (cc)
+                {
+                    case SETONE:
+                        libCall = isF32?RTLIB.OLT_F32:RTLIB.OLT_F64;
+                    case SETUGT:
+                        libCall2 = isF32?RTLIB.OGT_F32:RTLIB.OGT_F64;
+                        break;
+                    case SETUGE:
+                        libCall2 = isF32?RTLIB.OGE_F32:RTLIB.OGE_F64;
+                        break;
+                    case SETULT:
+                        libCall2 = isF32?RTLIB.OLT_F32:RTLIB.OLT_F64;
+                        break;
+                    case SETULE:
+                        libCall2 = isF32?RTLIB.OLE_F32:RTLIB.OLE_F64;
+                        break;
+                    case SETUEQ:
+                        libCall2 = isF32?RTLIB.OEQ_F32:RTLIB.OEQ_F64;
+                        break;
+                    default:
+                        assert false:"Don't know how to soften this setcc!";
+                        break;
+                }
+                break;
+        }
+
+        EVT retVT = new EVT(MVT.i32);
+        SDValue[] ops = {lhsInt, rhsInt};
+        newLHS = makeLibCall(libCall, retVT, ops, false);
+        newRHS = dag.getConstant(0, retVT, false);
+        cc = tli.getCmpLibCallCC(libCall);
+        if (libCall2 != RTLIB.UNKNOWN_LIBCALL)
+        {
+            SDValue temp = dag.getNode(ISD.SETCC,
+                    new EVT(tli.getSetCCResultType(retVT)),
+                    newLHS, newRHS, dag.getCondCode(cc));
+            newLHS = makeLibCall(libCall2, retVT, ops, false);
+            newLHS = dag.getNode(ISD.SETCC, new EVT(tli.getSetCCResultType(retVT)),
+                    newLHS, newRHS, dag.getCondCode(tli.getCmpLibCallCC(libCall2)));
+            newLHS = dag.getNode(ISD.OR, temp.getValueType(), temp, newLHS);
+            newRHS = new SDValue();
+        }
+        return new SDValue[]{newLHS, newRHS};
+    }
 
     private SDValue[] getExpandedFloat(SDValue op)
-    {}
+    {
+        SDValue[] res = new SDValue[2];
+        assert expandedFloats.containsKey(op);
+        Pair<SDValue, SDValue> entry = expandedFloats.get(op);
+        assert entry != null;
+        entry.first = remapValue(entry.first);
+        entry.second = remapValue(entry.second);
+        assert entry.first.getNode() != null;
+        expandedFloats.put(op, entry);
+        return new SDValue[]{entry.first, entry.second};
+    }
     private void setExpandedFloat(SDValue op, SDValue lo, SDValue hi)
-    {}
+    {
+        assert lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()))
+                && hi.getValueType().equals(lo.getValueType()):
+                "Invalid type for expanded float!";
+        lo = analyzeNewValue(lo);
+        hi = analyzeNewValue(hi);
+
+        assert !expandedFloats.containsKey(op);
+        Pair<SDValue, SDValue> entry = Pair.get(lo, hi);
+        expandedFloats.put(op, entry);
+    }
 
     private void expandFloatResult(SDNode n, int resNo)
     {}
