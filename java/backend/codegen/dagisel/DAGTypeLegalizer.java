@@ -17,10 +17,7 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.RTLIB;
-import backend.codegen.ValueTypeAction;
+import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
@@ -4372,7 +4369,11 @@ public class DAGTypeLegalizer
 
     private SDValue[] getSplitOp(SDValue op) 
     {
-        
+        if (op.getValueType().isVector())
+            return getSplitVector(op);
+        else if (op.getValueType().isInteger())
+            return getExpandedInteger(op);
+        return getExpandedFloat(op);
     }
 
     /**
@@ -4382,20 +4383,83 @@ public class DAGTypeLegalizer
      * @return
      */
     private EVT[] getSplitDestVTs(EVT inVT) 
-    {}
+    {
+        EVT loVT, hiVT;
+        if (!inVT.isVector())
+        {
+            loVT = hiVT = tli.getTypeToTransformTo(inVT);
+        }
+        else
+        {
+            int numElts = inVT.getVectorNumElements();
+            assert (numElts&1) == 0:"Splitting vector, but not in half!";
+            loVT = hiVT = EVT.getVectorVT(inVT.getVectorElementType(), numElts/2);
+        }
+        return new EVT[]{loVT, hiVT};
+    }
 
     /**
      * Use {@linkplain ISD#EXTRACT_ELEMENT} nodes to extract the low and
      * high parts of the given value.
      * @param pair
      */
-    private SDValue[] getPairElements(SDValue pair) {}
+    private SDValue[] getPairElements(SDValue pair)
+    {
+        EVT nvt = tli.getTypeToTransformTo(pair.getValueType());
+        SDValue lo = dag.getNode(ISD.EXTRACT_ELEMENT, nvt, pair,
+                dag.getIntPtrConstant(0));
+        SDValue hi = dag.getNode(ISD.EXTRACT_ELEMENT, nvt, pair,
+                dag.getIntPtrConstant(1));
+        return new SDValue[]{lo, hi};
+    }
 
     // Generic Result Splitting.
-    private SDValue[] splitRes_MERGE_VALUES(SDNode n) {}
-    private SDValue[] splitRes_SELECT      (SDNode n) {}
-    private SDValue[] splitRes_SELECT_CC   (SDNode n) {}
-    private SDValue[] splitRes_UNDEF       (SDNode n) {}
+    private SDValue[] splitRes_MERGE_VALUES(SDNode n)
+    {
+        int i = 0;
+        for (; isTypeLegal(n.getValueType(i)); i++)
+            replaceValueWith(new SDValue(n, i),
+                    new SDValue(n.getOperand(i).getNode(), 0));
+
+        SDValue[] t = getSplitOp(n.getOperand(i));
+        int e = n.getNumValues();
+        for (++i; i < e; i++)
+        {
+            replaceValueWith(new SDValue(n, i),
+                    new SDValue(n.getOperand(i).getNode(), 0));
+        }
+        return t;
+    }
+    private SDValue[] splitRes_SELECT(SDNode n)
+    {
+        SDValue[] lhsT = getSplitOp(n.getOperand(1));
+        SDValue[] rhsT = getSplitOp(n.getOperand(2));
+
+        SDValue cond = n.getOperand(0);
+        SDValue lo = dag.getNode(ISD.SELECT, lhsT[0].getValueType(), cond,
+                lhsT[0], rhsT[0]);
+        SDValue hi = dag.getNode(ISD.SELECT, lhsT[1].getValueType(), cond,
+                lhsT[1], rhsT[1]);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitRes_SELECT_CC(SDNode n)
+    {
+        SDValue[] lhsT = getSplitOp(n.getOperand(2));
+        SDValue[] rhsT = getSplitOp(n.getOperand(3));
+
+        SDValue lo = dag.getNode(ISD.SELECT_CC, lhsT[0].getValueType(),
+                n.getOperand(0), n.getOperand(1),
+                lhsT[0], rhsT[0], n.getOperand(4));
+        SDValue hi = dag.getNode(ISD.SELECT_CC, lhsT[1].getValueType(),
+                n.getOperand(0), n.getOperand(1),
+                lhsT[1], rhsT[1], n.getOperand(4));
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitRes_UNDEF(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        return new SDValue[]{dag.getUNDEF(vts[0]), dag.getUNDEF(vts[1])};
+    }
 
     //===--------------------------------------------------------------------===//
     // Generic Expansion: LegalizeTypesGeneric.cpp
@@ -4411,25 +4475,336 @@ public class DAGTypeLegalizer
      */
     private SDValue[] getExpandedOp(SDValue op) 
     {
-    
+        if (op.getValueType().isInteger())
+            return getExpandedInteger(op);
+        return getExpandedFloat(op);
     }
 
     // Generic Result Expansion.
-    private SDValue[] expandRes_BIT_CONVERT       (SDNode n) {}
-    private SDValue[] expandRes_BUILD_PAIR        (SDNode n) {}
-    private SDValue[] expandRes_EXTRACT_ELEMENT   (SDNode n) {}
-    private SDValue[] expandRes_EXTRACT_VECTOR_ELT(SDNode n) {}
-    private SDValue[] expandRes_NormalLoad        (SDNode n) {}
-    private SDValue[] expandRes_VAARG             (SDNode n) {}
+    private SDValue[] expandRes_BIT_CONVERT(SDNode n)
+    {
+        EVT outVT = n.getValueType(0);
+        EVT nOutVT = tli.getTypeToTransformTo(outVT);
+        SDValue inOp = n.getOperand(0);
+        EVT inVT = inOp.getValueType();
+
+        SDValue lo, hi;
+        SDValue[] t;
+        switch (getTypeAction(inVT))
+        {
+            default:
+                assert false:"Unknown type action!";
+            case Legal:
+            case PromotedInteger:
+                break;
+            case SoftenFloat:
+                t = splitInteger(getSoftenedFloat(inOp));
+                lo = dag.getNode(ISD.BIT_CONVERT, nOutVT, t[0]);
+                hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, t[1]);
+                return new SDValue[]{lo, hi};
+            case ExpandInteger:
+            case ExpandFloat:
+                t = getExpandedOp(inOp);
+                lo = dag.getNode(ISD.BIT_CONVERT, nOutVT, t[0]);
+                hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, t[1]);
+                return new SDValue[]{lo, hi};
+            case SplitVector:
+                t = getSplitVector(inOp);
+                lo = t[0];
+                hi = t[1];
+                if (tli.isBigEndian())
+                {
+                    SDValue temp = lo;
+                    lo = hi;
+                    hi = temp;
+                }
+                lo = dag.getNode(ISD.BIT_CONVERT, nOutVT, lo);
+                hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, hi);
+                return new SDValue[]{lo, hi};
+            case ScalarizeVector:
+                t = splitInteger(bitConvertToInteger(getScalarizedVector(inOp)));
+                lo = t[0];
+                hi = t[1];
+                lo = dag.getNode(ISD.BIT_CONVERT, nOutVT, lo);
+                hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, hi);
+                return new SDValue[]{lo, hi};
+            case WidenVector:
+                assert (inVT.getVectorNumElements() & 1) == 0:"Unsupported BIT_CONVERT!";
+                inOp = getWidenedVector(inOp);
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(), inVT.getVectorNumElements()/2);
+                lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
+                        dag.getIntPtrConstant(0));
+                hi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
+                        dag.getIntPtrConstant(0));
+                if (tli.isBigEndian())
+                {
+                    SDValue temp = lo;
+                    lo = hi;
+                    hi = temp;
+                }
+                lo = dag.getNode(ISD.BIT_CONVERT, nOutVT, lo);
+                hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, hi);
+                return new SDValue[]{lo, hi};
+        }
+
+        if (inVT.isVector() && outVT.isInteger())
+        {
+            EVT nvt = EVT.getVectorVT(nOutVT, 2);
+            if (isTypeLegal(nvt))
+            {
+                SDValue castInOp = dag.getNode(ISD.BIT_CONVERT, nvt, inOp);
+                lo = dag.getNode(ISD.EXTRACT_VECTOR_ELT, nOutVT, castInOp,
+                        dag.getIntPtrConstant(0));
+                hi = dag.getNode(ISD.EXTRACT_VECTOR_ELT, nOutVT, castInOp,
+                        dag.getIntPtrConstant(1));
+                if (tli.isBigEndian())
+                {
+                    SDValue temp = lo;
+                    lo = hi;
+                    hi = temp;
+                }
+                return new SDValue[]{lo, hi};
+            }
+        }
+
+        assert nOutVT.isByteSized():"Expanded type not byte sized!";
+
+        int alignment = tli.getTargetData().getPrefTypeAlignment(nOutVT.getTypeForEVT());
+        SDValue stackPtr = dag.createStackTemporary(inVT, alignment);
+        int fi = ((FrameIndexSDNode)stackPtr.getNode()).getFrameIndex();
+        Value sv = PseudoSourceValue.getFixedStack(fi);
+
+        SDValue store = dag.getStore(dag.getEntryNode(), inOp, stackPtr, sv, 0, false, 0);
+        lo = dag.getLoad(nOutVT, store, stackPtr, sv, 0);
+        int incrementSize = nOutVT.getSizeInBits()/8;
+        stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr,
+                dag.getIntPtrConstant(incrementSize));
+        hi = dag.getLoad(nOutVT, store, stackPtr, sv, incrementSize, false,
+                Util.minAlign(alignment, incrementSize));
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandRes_BUILD_PAIR(SDNode n)
+    {
+        return new SDValue[]{n.getOperand(0), n.getOperand(1)};
+    }
+    private SDValue[] expandRes_EXTRACT_ELEMENT(SDNode n)
+    {
+        SDValue[] t = getExpandedOp(n.getOperand(0));
+        SDValue part = ((ConstantSDNode)n.getOperand(1).getNode()).getZExtValue()
+                != 0 ? t[1] : t[0];
+        assert part.getValueType().equals(n.getValueType(0));
+        return getPairElements(part);
+    }
+    private SDValue[] expandRes_EXTRACT_VECTOR_ELT(SDNode n)
+    {
+        SDValue oldVec = n.getOperand(0);
+        int oldElts = oldVec.getValueType().getVectorNumElements();
+        EVT oldVT = n.getValueType(0);
+        EVT newVT = tli.getTypeToTransformTo(oldVT);
+
+        SDValue newVec = dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(newVT, 2*oldElts),
+                oldVec);
+        SDValue idx = n.getOperand(1);
+        if (idx.getValueType().bitsLT(new EVT(tli.getPointerTy())))
+            idx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()), idx);
+
+        idx = dag.getNode(ISD.ADD, idx.getValueType(), idx, idx);
+        SDValue lo = dag.getNode(ISD.EXTRACT_VECTOR_ELT, newVT, newVec, idx);
+        idx = dag.getNode(ISD.ADD, idx.getValueType(), idx, dag.getConstant(1,
+                idx.getValueType(), false));
+        SDValue hi = dag.getNode(ISD.EXTRACT_VECTOR_ELT, newVT, newVec, idx);
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandRes_NormalLoad(SDNode n)
+    {
+        assert n.isNormalLoad():"This method only for normal load!";
+        LoadSDNode ld = (LoadSDNode)n;
+        EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
+        SDValue chain = ld.getChain();
+        SDValue ptr = ld.getBasePtr();
+        int svOffset = ld.getSrcValueOffset();
+        int alignment = ld.getAlignment();
+        boolean isVolatile = ld.isVolatile();
+
+        assert nvt.isByteSized():"Expanded type not byte sized!";
+        SDValue lo = dag.getLoad(nvt, chain, ptr, ld.getSrcValue(), svOffset,
+                isVolatile, alignment);
+        int incrementSize = nvt.getSizeInBits()/8;
+        ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                dag.getIntPtrConstant(incrementSize));
+        SDValue hi = dag.getLoad(nvt, chain, ptr, ld.getSrcValue(),
+                svOffset+incrementSize, isVolatile,
+                Util.minAlign(alignment, incrementSize));
+        chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo.getValue(1),
+                hi.getValue(1));
+
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+        replaceValueWith(new SDValue(n, 1), chain);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandRes_VAARG(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue chain = n.getOperand(0);
+        SDValue ptr = n.getOperand(1);
+        SDValue lo = dag.getVAArg(nvt, chain, ptr, n.getOperand(2));
+        SDValue hi = dag.getVAArg(nvt, lo.getValue(1), ptr, n.getOperand(2));
+
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+        replaceValueWith(new SDValue(n, 1), hi.getValue(1));
+        return new SDValue[]{lo, hi};
+    }
 
     // Generic Operand Expansion.
-    private SDValue expandOp_BIT_CONVERT      (SDNode n) {}
-    private SDValue expandOp_BUILD_VECTOR     (SDNode n) {}
-    private SDValue expandOp_EXTRACT_ELEMENT  (SDNode n) {}
-    private SDValue expandOp_INSERT_VECTOR_ELT(SDNode n) {}
-    private SDValue expandOp_SCALAR_TO_VECTOR (SDNode n) {}
-    private SDValue expandOp_NormalStore      (StoreSDNode n, int opNo)
-    {}
+    private SDValue expandOp_BIT_CONVERT(SDNode n)
+    {
+        if (n.getValueType(0).isVector())
+        {
+            EVT ovt = n.getOperand(0).getValueType();
+            EVT nvt = EVT.getVectorVT(tli.getTypeToTransformTo(ovt), 2);
+
+            if(isTypeLegal(nvt))
+            {
+                SDValue[] parts = getExpandedOp(n.getOperand(0));
+                if (tli.isBigEndian())
+                {
+                    SDValue temp = parts[0];
+                    parts[0] = parts[1];
+                    parts[1] = temp;
+                }
+                SDValue vec = dag.getNode(ISD.BUILD_VECTOR, nvt, parts);
+                return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), vec);
+            }
+        }
+
+        return createStackStoreLoad(n.getOperand(0), n.getValueType(0));
+    }
+    private SDValue expandOp_BUILD_VECTOR(SDNode n)
+    {
+        EVT vecVT = n.getValueType(0);
+        int numElts = vecVT.getVectorNumElements();
+        EVT oldVT = n.getOperand(0).getValueType();
+        EVT newVT = tli.getTypeToTransformTo(oldVT);
+
+        assert oldVT.equals(vecVT.getVectorElementType()):
+                "BUILD_VECTOR operand type doesn't match vector element tyep!";
+        SDValue[] elts = new SDValue[2*numElts];
+        for (int i = 0; i< numElts;i++)
+        {
+            SDValue[] t = getExpandedOp(n.getOperand(i));
+            if (tli.isBigEndian())
+            {
+                SDValue temp = t[0];
+                t[0] = t[1];
+                t[1] = temp;
+            }
+            System.arraycopy(t, 0, elts, 2*i, 2);
+        }
+
+        SDValue newVec = dag.getNode(ISD.BUILD_VECTOR,
+                EVT.getVectorVT(newVT, 2*numElts), elts);
+        return dag.getNode(ISD.BIT_CONVERT, vecVT, newVec);
+    }
+    private SDValue expandOp_EXTRACT_ELEMENT(SDNode n)
+    {
+        SDValue[] t = getExpandedOp(n.getOperand(0));
+        return ((ConstantSDNode)n.getOperand(1).getNode()).getZExtValue() != 0
+                ? t[1] : t[0];
+    }
+    private SDValue expandOp_INSERT_VECTOR_ELT(SDNode n)
+    {
+        EVT vecVT = n.getValueType(0);
+        int numElts = vecVT.getVectorNumElements();
+        SDValue val = n.getOperand(1);
+        EVT oldVT = val.getValueType();
+        EVT newVT = tli.getTypeToTransformTo(oldVT);
+
+        assert oldVT.equals(vecVT.getVectorElementType());
+
+        EVT newVecVT = EVT.getVectorVT(newVT, numElts*2);
+        SDValue newVec = dag.getNode(ISD.BIT_CONVERT, newVecVT, n.getOperand(0));
+
+        SDValue[] t = getExpandedOp(val);
+        if (tli.isBigEndian())
+        {
+            SDValue temp = t[0];
+            t[0] = t[1];
+            t[1] = temp;
+        }
+        SDValue idx = n.getOperand(2);
+        idx = dag.getNode(ISD.ADD, idx.getValueType(), idx, idx);
+        newVec = dag.getNode(ISD.INSERT_VECTOR_ELT, newVecVT, newVec, t[0], idx);
+        idx = dag.getNode(ISD.ADD, idx.getValueType(), idx, dag.getIntPtrConstant(1));
+        newVec = dag.getNode(ISD.INSERT_VECTOR_ELT, newVecVT, newVec, t[1], idx);
+        return dag.getNode(ISD.BIT_CONVERT, vecVT, newVec);
+    }
+    private SDValue expandOp_SCALAR_TO_VECTOR(SDNode n)
+    {
+        EVT vt = n.getValueType(0);
+        assert vt.getVectorElementType().equals(n.getOperand(0).getValueType());
+
+        int numElts = vt.getVectorNumElements();
+        SDValue[] ops = new SDValue[numElts];
+        ops[0] = n.getOperand(0);
+        SDValue undefVal = dag.getUNDEF(ops[0].getValueType());
+        for (int i = 1; i < numElts; i++)
+            ops[i] = undefVal;
+        return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+    }
+    private SDValue expandOp_NormalStore(StoreSDNode n, int opNo)
+    {
+        assert n.isNormalStore():"This method only can be for normal store!";
+        assert opNo == 1;
+        StoreSDNode st = (StoreSDNode)n;
+        EVT nvt = tli.getTypeToTransformTo(st.getValue().getValueType());
+        SDValue chain = st.getChain();
+        SDValue ptr = st.getBasePtr();
+        int svOffset = st.getSrcValueOffset();
+        int alignment = st.getAlignment();
+        boolean isVolatile = st.isVolatile();
+
+        assert nvt.isByteSized():"Expanded type not byte sized!";
+        int incrementSize = nvt.getSizeInBits()/8;
+
+        SDValue[] t = getExpandedOp(st.getValue());
+        if (tli.isBigEndian())
+        {
+            SDValue temp = t[0];
+            t[0] = t[1];
+            t[1] = temp;
+        }
+        SDValue lo = t[0], hi = t[1];
+        lo = dag.getStore(chain, lo, ptr, st.getSrcValue(), svOffset, isVolatile,
+                alignment);
+        ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                dag.getIntPtrConstant(incrementSize));
+        assert isTypeLegal(ptr.getValueType());
+        hi = dag.getStore(chain, hi, ptr, st.getSrcValue(), svOffset+incrementSize,
+                isVolatile, Util.minAlign(alignment, incrementSize));
+        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);
+    }
 
     private SDValue libCallify(RTLIB lc, SDNode n, boolean isSigned)
     {
