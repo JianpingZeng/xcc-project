@@ -3656,33 +3656,360 @@ public class DAGTypeLegalizer
     }
 
     private void expandFloatResult(SDNode n, int resNo)
-    {}
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Expand float result: %d", resNo);
+            n.dump(dag);
+            System.err.println();
+        }
 
-    private SDValue[] expandFloatRes_ConstantFP(SDNode n) {}
-    private SDValue[] expandFloatRes_FABS      (SDNode n) {}
-    private SDValue[] expandFloatRes_FADD      (SDNode n) {}
-    private SDValue[] expandFloatRes_FCEIL     (SDNode n) {}
-    private SDValue[] expandFloatRes_FCOS      (SDNode n) {}
-    private SDValue[] expandFloatRes_FDIV      (SDNode n) {}
-    private SDValue[] expandFloatRes_FEXP      (SDNode n) {}
-    private SDValue[] expandFloatRes_FEXP2     (SDNode n) {}
-    private SDValue[] expandFloatRes_FFLOOR    (SDNode n) {}
-    private SDValue[] expandFloatRes_FLOG      (SDNode n) {}
-    private SDValue[] expandFloatRes_FLOG2     (SDNode n) {}
-    private SDValue[] expandFloatRes_FLOG10    (SDNode n) {}
-    private SDValue[] expandFloatRes_FMUL      (SDNode n) {}
-    private SDValue[] expandFloatRes_FNEARBYINT(SDNode n) {}
-    private SDValue[] expandFloatRes_FNEG      (SDNode n) {}
-    private SDValue[] expandFloatRes_FP_EXTEND (SDNode n) {}
-    private SDValue[] expandFloatRes_FPOW      (SDNode n) {}
-    private SDValue[] expandFloatRes_FPOWI     (SDNode n) {}
-    private SDValue[] expandFloatRes_FRINT     (SDNode n) {}
-    private SDValue[] expandFloatRes_FSIN      (SDNode n) {}
-    private SDValue[] expandFloatRes_FSQRT     (SDNode n) {}
-    private SDValue[] expandFloatRes_FSUB      (SDNode n) {}
-    private SDValue[] expandFloatRes_FTRUNC    (SDNode n) {}
-    private SDValue[] expandFloatRes_LOAD      (SDNode n) {}
-    private SDValue[] expandFloatRes_XINT_TO_FP(SDNode n) {}
+        SDValue[] res = new SDValue[2];
+        if (customLowerNode(n, n.getValueType(resNo), true))
+            return;
+        switch (n.getOpcode())
+        {
+            case ISD.MERGE_VALUES:
+                res = splitRes_MERGE_VALUES(n); break;
+            case ISD.UNDEF:
+                res = splitRes_UNDEF(n); break;
+            case ISD.SELECT:
+                res = splitRes_SELECT(n); break;
+            case ISD.SELECT_CC:
+                res = splitRes_SELECT_CC(n); break;
+            case ISD.BIT_CONVERT:
+                res = expandRes_BIT_CONVERT(n); break;
+            case ISD.BUILD_PAIR:
+                res = expandRes_BUILD_PAIR(n); break;
+            case ISD.EXTRACT_ELEMENT:
+                res = expandRes_EXTRACT_ELEMENT(n); break;
+            case ISD.EXTRACT_VECTOR_ELT:
+                res = expandRes_EXTRACT_VECTOR_ELT(n); break;
+            case ISD.VAARG:
+                res = expandRes_VAARG(n); break;
+            case ISD.ConstantFP:
+                res = expandFloatRes_ConstantFP(n); break;
+            case ISD.FABS:
+                res = expandFloatRes_FABS(n); break;
+            case ISD.FADD:
+                res = expandFloatRes_FADD(n); break;
+            case ISD.FCEIL:
+                res = expandFloatRes_FCEIL(n); break;
+            case ISD.FCOS:
+                res = expandFloatRes_FCOS(n); break;
+            case ISD.FDIV:
+                res = expandFloatRes_FEXP(n); break;
+            case ISD.FEXP2:
+                res = expandFloatRes_FEXP2(n); break;
+            case ISD.FFLOOR:
+                res = expandFloatRes_FFLOOR(n); break;
+            case ISD.FLOG:
+                res = expandFloatRes_FLOG(n); break;
+            case ISD.FLOG2:
+                res = expandFloatRes_FLOG2(n); break;
+            case ISD.FLOG10:
+                res = expandFloatRes_FLOG10(n); break;
+            case ISD.FMUL:
+                res = expandFloatRes_FMUL(n); break;
+            case ISD.FNEARBYINT:
+                res = expandFloatRes_FNEARBYINT(n); break;
+            case ISD.FNEG:
+                res = expandFloatRes_FNEG(n); break;
+            case ISD.FP_EXTEND:
+                res = expandFloatRes_FP_EXTEND(n); break;
+            case ISD.FPOW:
+                res = expandFloatRes_FPOW(n); break;
+            case ISD.FPOWI:
+                res = expandFloatRes_FPOWI(n); break;
+            case ISD.FRINT:
+                res = expandFloatRes_FRINT(n); break;
+            case ISD.FSIN:
+                res = expandFloatRes_FSIN(n); break;
+            case ISD.FSQRT:
+                res = expandFloatRes_FSQRT(n); break;
+            case ISD.FSUB:
+                res = expandFloatRes_FSUB(n); break;
+            case ISD.FTRUNC:
+                res = expandFloatRes_FTRUNC(n); break;
+            case ISD.LOAD:
+                res = expandFloatRes_LOAD(n); break;
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:
+                res = expandFloatRes_XINT_TO_FP(n);
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("expandFloatResult #%d: ", resNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to expand the result of this operand's operator!");
+                break;
+        }
+        if (res[0].getNode() != null)
+            setExpandedFloat(new SDValue(n, resNo), res[0], res[1]);
+    }
+
+    private SDValue[] expandFloatRes_ConstantFP(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        assert nvt.getSizeInBits() == 64:"Don't know how to expand this float constant!";
+
+        APInt c = ((ConstantFPSDNode)n).getValueAPF().bitcastToAPInt();
+        long[] val = c.getRawData();
+        return new SDValue[]{dag.getConstantFP(new APFloat(new APInt(
+                64, new long[]{val[1]})), nvt, false),
+                              dag.getConstantFP(new APFloat(new APInt(
+                64, new long[] {val[0]})), nvt, false)};
+    }
+    private SDValue[] expandFloatRes_FABS(SDNode n)
+    {
+        assert n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128:
+                "Only correct for ppcf128!";
+        SDValue[] res = getExpandedFloat(n.getOperand(0));
+        SDValue hi = dag.getNode(ISD.FABS, res[1].getValueType(), res[1]);
+        SDValue lo = res[0];
+        lo = dag.getNode(ISD.SELECT_CC, lo.getValueType(), res[1], hi, lo,
+                dag.getNode(ISD.FNEG, lo.getValueType(), lo),
+                dag.getCondCode(SETEQ));
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandFloatRes_FADD(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.ADD_F32, RTLIB.ADD_F64,
+                RTLIB.ADD_F80, RTLIB.ADD_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FCEIL(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.CEIL_F32, RTLIB.CEIL_F64,
+                RTLIB.CEIL_F80, RTLIB.CEIL_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FCOS(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.COS_F32, RTLIB.COS_F64,
+                RTLIB.COS_F80, RTLIB.COS_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FDIV(SDNode n)
+    {
+        return commonExpandFloatResBinary(n, RTLIB.DIV_F32, RTLIB.CEIL_F64,
+                RTLIB.CEIL_F80, RTLIB.CEIL_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FEXP(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.EXP_F32, RTLIB.EXP_F64,
+                RTLIB.EXP_F80, RTLIB.EXP_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FEXP2(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.EXP2_F32, RTLIB.EXP2_F64,
+                RTLIB.EXP2_F80, RTLIB.EXP2_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FFLOOR(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.FLOOR_F32, RTLIB.FLOOR_F64,
+                RTLIB.FLOOR_F80, RTLIB.FLOOR_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FLOG(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.LOG_F32, RTLIB.LOG_F64,
+                RTLIB.LOG_F80, RTLIB.LOG_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FLOG2(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.LOG2_F32, RTLIB.LOG2_F64,
+                RTLIB.LOG2_F80, RTLIB.LOG2_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FLOG10(SDNode n)
+    {
+        return commonExpandFloatResUnary(n, RTLIB.LOG10_F32, RTLIB.LOG10_F64,
+                RTLIB.LOG10_F80, RTLIB.LOG10_PPCF128);
+    }
+
+    private SDValue[] commonExpandFloatResUnary(SDNode n,
+            RTLIB lcF32, RTLIB lcF64, RTLIB lcF80, RTLIB lcPPCF128)
+    {
+        SDValue call = libCallify(getFPLibCall(n.getValueType(0),
+                lcF32, lcF64, lcF80, lcPPCF128), n, false);
+        return getPairElements(call);
+    }
+
+    private SDValue[] commonExpandFloatResBinary(SDNode n,
+            RTLIB lcF32, RTLIB lcF64, RTLIB lcF80, RTLIB lcPPCF128)
+    {
+        SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
+        SDValue call = makeLibCall(getFPLibCall(n.getValueType(0),
+                lcF32, lcF64, lcF80, lcPPCF128),
+                n.getValueType(0), ops, false);
+        return getPairElements(call);
+    }
+
+    private SDValue[] expandFloatRes_FMUL(SDNode n)
+    {
+        return commonExpandFloatResBinary(n,
+                RTLIB.MUL_F32,
+                RTLIB.MUL_F64,
+                RTLIB.MUL_F80,
+                RTLIB.MUL_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FNEARBYINT(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.NEARBYINT_F32,
+                RTLIB.NEARBYINT_F64,
+                RTLIB.NEARBYINT_F80,
+                RTLIB.NEARBYINT_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FNEG(SDNode n)
+    {
+        SDValue[] t = getExpandedFloat(n.getOperand(0));
+        SDValue lo = dag.getNode(ISD.FNEG, t[0].getValueType(), t[0]);
+        SDValue hi = dag.getNode(ISD.FNEG, t[1].getValueType(), t[1]);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandFloatRes_FP_EXTEND(SDNode n)
+    {
+        EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+        SDValue hi = dag.getNode(ISD.FP_EXTEND, nvt, n.getOperand(0));
+        SDValue lo = dag.getConstantFP(new APFloat(new APInt(nvt.getSizeInBits(), 0)), nvt, false);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandFloatRes_FPOW(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.POW_F32, RTLIB.POW_F64,
+                RTLIB.POW_F80, RTLIB.POW_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FPOWI(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.POWI_F32, RTLIB.POWI_F64,
+                RTLIB.POWI_F80, RTLIB.POWI_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FRINT(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.RINT_F32, RTLIB.RINT_F64,
+                RTLIB.RINT_F80, RTLIB.RINT_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FSIN(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.SIN_F32, RTLIB.SIN_F64,
+                RTLIB.SIN_F80, RTLIB.SIN_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FSQRT(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.SQRT_F32, RTLIB.SQRT_F64,
+                RTLIB.SQRT_F80, RTLIB.SQRT_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FSUB(SDNode n)
+    {
+        return commonExpandFloatResBinary(n,
+                RTLIB.SUB_F32, RTLIB.SUB_F64,
+                RTLIB.SUB_F80, RTLIB.SUB_PPCF128);
+    }
+    private SDValue[] expandFloatRes_FTRUNC(SDNode n)
+    {
+        return commonExpandFloatResUnary(n,
+                RTLIB.TRUNC_F32, RTLIB.TRUNC_F64,
+                RTLIB.TRUNC_F80, RTLIB.TRUNC_PPCF128);
+    }
+    private SDValue[] expandFloatRes_LOAD(SDNode n)
+    {
+        if (n.isNormalLoad())
+        {
+            return expandRes_NormalLoad(n);
+        }
+
+        assert n.isUNINDEXEDLoad():"Indexed load during type legalization!";
+        LoadSDNode ld = (LoadSDNode)n;
+        SDValue chain = ld.getChain();
+        SDValue ptr = ld.getBasePtr();
+
+        EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
+        assert nvt.isByteSized():"Expanded type not byte sized!";
+        assert ld.getMemoryVT().bitsLE(nvt):"Float type not round!";
+
+        SDValue hi = dag.getExtLoad(ld.getExtensionType(), nvt, chain, ptr,
+                ld.getSrcValue(), ld.getSrcValueOffset(), ld.getMemoryVT(),
+                ld.isVolatile(), ld.getAlignment());
+        chain = hi.getValue(1);
+        SDValue lo = dag.getConstantFP(new APFloat(new APInt(nvt.getSizeInBits(), 0)), nvt, false);
+        replaceValueWith(new SDValue(ld, 1), chain);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] expandFloatRes_XINT_TO_FP(SDNode n)
+    {
+        assert n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128:
+                "Unsupported UINT_TO_FP or SINT_TO_FP?";
+        EVT vt = n.getValueType(0);
+        EVT nvt = tli.getTypeToTransformTo(vt);
+        SDValue src = n.getOperand(0);
+        EVT srcVT = src.getValueType();
+        boolean isSigned = n.getOpcode() == ISD.SINT_TO_FP;
+
+        SDValue lo, hi;
+        if (srcVT.bitsLE(new EVT(MVT.i32)))
+        {
+            src = dag.getNode(isSigned?ISD.SIGN_EXTEND:ISD.ZERO_EXTEND,
+                    new EVT(MVT.i32), src);
+            lo = dag.getConstantFP(new APFloat(new APInt(nvt.getSizeInBits(), 0)), nvt, false);
+            hi = dag.getNode(ISD.SINT_TO_FP, nvt, src);
+        }
+        else
+        {
+            RTLIB lc = RTLIB.UNKNOWN_LIBCALL;
+            if (srcVT.bitsLE(new EVT(MVT.i64)))
+            {
+                src = dag.getNode(isSigned?ISD.SIGN_EXTEND:ISD.ZERO_EXTEND,
+                        new EVT(MVT.i64), src);
+                lc = RTLIB.SINTTOFP_I64_PPCF128;
+            }
+            else if (srcVT.bitsLE(new EVT(MVT.i128)))
+            {
+                src = dag.getNode(ISD.SIGN_EXTEND, new EVT(MVT.i128), src);
+                lc = RTLIB.SINTTOFP_I128_PPCF128;
+            }
+            assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported SINT_TO_FP or UINT_TO_FP?";
+            hi = makeLibCall(lc, vt, new SDValue[] { src }, true);
+            SDValue[] t = getPairElements(hi);
+            lo = t[0];
+            hi = t[1];
+        }
+
+        if (isSigned) return new SDValue[]{lo, hi};
+
+        hi = dag.getNode(ISD.BUILD_PAIR, vt, lo, hi);
+        srcVT = src.getValueType();
+
+        // x>=0 ? (ppcf128)(iN)x : (ppcf128)(iN)x + 2^N; N=32,64,128.
+        long[] twoE32  = { 0x41f0000000000000L, 0 };
+        long[] twoE64  = { 0x43f0000000000000L, 0 };
+        long[] twoE128 = { 0x47f0000000000000L, 0 };
+
+        long[] parts = null;
+        switch (srcVT.getSimpleVT().simpleVT)
+        {
+            case MVT.i32:
+                parts = twoE32;
+                break;
+            case MVT.i64:
+                parts = twoE64;
+                break;
+            case MVT.i128:
+                parts = twoE128;
+                break;
+            default:
+                assert false:"Unsupported SINT_TO_FP or UINT_TO_FP!";
+                break;
+        }
+        lo = dag.getNode(ISD.FADD, vt, hi, dag.getConstantFP(
+                new APFloat(new APInt(128, parts)), new EVT(MVT.ppcf128), false));
+        lo = dag.getNode(ISD.SELECT_CC, vt, src, dag.getConstant(0, srcVT, false),
+                lo, hi, dag.getCondCode(SETLT));
+        return getPairElements(lo);
+    }
 
     private boolean expandFloatOperand(SDNode n, int opNo)
     {
@@ -3795,7 +4122,7 @@ public class DAGTypeLegalizer
             assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
                     "Only applied for ppcf128!";
             long[] twoE31 = {0x41e0000000000000L, 0};
-            APFloat apf = new APFloat(new APInt(128, 2, twoE31));
+            APFloat apf = new APFloat(new APInt(128, twoE31));
             SDValue temp = dag.getConstantFP(apf, new EVT(MVT.ppcf128),false);
             // X>=2^31 ? (int)(X-2^31)+0x80000000 : (int)X
             return dag.getNode(ISD.SELECT_CC, new EVT(MVT.i32),
@@ -4062,7 +4389,7 @@ public class DAGTypeLegalizer
      * high parts of the given value.
      * @param pair
      */
-    private void getPairElements(SDValue pair) {}
+    private SDValue[] getPairElements(SDValue pair) {}
 
     // Generic Result Splitting.
     private SDValue[] splitRes_MERGE_VALUES(SDNode n) {}
@@ -4103,4 +4430,25 @@ public class DAGTypeLegalizer
     private SDValue expandOp_SCALAR_TO_VECTOR (SDNode n) {}
     private SDValue expandOp_NormalStore      (StoreSDNode n, int opNo)
     {}
+
+    private SDValue libCallify(RTLIB lc, SDNode n, boolean isSigned)
+    {
+        int numOps = n.getNumOperands();
+        if (numOps == 0)
+            return makeLibCall(lc, n.getValueType(0), null, isSigned);
+        else if (numOps == 1)
+        {
+            SDValue op = n.getOperand(0);
+            return makeLibCall(lc, n.getValueType(0), new SDValue[] { op }, isSigned);
+        }
+        else if (numOps == 2)
+        {
+            SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
+            return makeLibCall(lc, n.getValueType(0), ops, isSigned);
+        }
+        SDValue[] ops = new SDValue[numOps];
+        for (int i = 0; i < numOps; i++)
+            ops[i] = n.getOperand(i);
+        return makeLibCall(lc, n.getValueType(0), ops, isSigned);
+    }
 }

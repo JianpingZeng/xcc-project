@@ -536,7 +536,7 @@ public class APInt implements Cloneable
         initFromArray(bigVal);
     }
 
-    public APInt(int numBits, int numWords, final long bigVal[])
+    public APInt(int numBits, final long bigVal[])
     {
         bitWidth = numBits;
         val = 0;
