@@ -28,6 +28,7 @@ import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.Value;
 import javafx.scene.shape.SVGPath;
+import tools.APFloat;
 import tools.APInt;
 import tools.Pair;
 import tools.Util;
@@ -3683,20 +3684,221 @@ public class DAGTypeLegalizer
     private SDValue[] expandFloatRes_LOAD      (SDNode n) {}
     private SDValue[] expandFloatRes_XINT_TO_FP(SDNode n) {}
 
-    private boolean expandFloatOperand(SDNode n, int operandNo) {}
-    private SDValue expandFloatOp_BR_CC(SDNode n) {}
-    private SDValue expandFloatOp_FP_ROUND(SDNode n) {}
-    private SDValue expandFloatOp_FP_TO_SINT(SDNode n) {}
-    private SDValue expandFloatOp_FP_TO_UINT(SDNode n) {}
-    private SDValue expandFloatOp_SELECT_CC(SDNode n) {}
-    private SDValue expandFloatOp_SETCC(SDNode n) {}
-    private SDValue expandFloatOp_STORE(SDNode n, int opNo) {}
+    private boolean expandFloatOperand(SDNode n, int opNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.print("Expand float operand: ");
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = new SDValue();
+        if (tli.getOperationAction(n.getOpcode(), n.getOperand(opNo).getValueType())
+                == Custom)
+        {
+            res = tli.lowerOperation(new SDValue(n, 0), dag);
+        }
 
-    private SDValue[] floatExpandSetCCOperands(CondCode cc) {}
+        if(res.getNode() == null)
+        {
+            switch (n.getOpcode())
+            {
+                case ISD.BIT_CONVERT:
+                    res = expandOp_BIT_CONVERT(n);
+                    break;
+                case ISD.BUILD_VECTOR:
+                    res = expandOp_BUILD_VECTOR(n);
+                    break;
+                case ISD.EXTRACT_ELEMENT:
+                    res = expandOp_EXTRACT_ELEMENT(n);
+                    break;
+                case ISD.BR_CC:
+                    res = expandFloatOp_BR_CC(n);
+                    break;
+                case ISD.FP_ROUND:
+                    res = expandFloatOp_FP_ROUND(n);
+                    break;
+                case ISD.FP_TO_SINT:
+                    res = expandFloatOp_FP_TO_SINT(n);
+                    break;
+                case ISD.FP_TO_UINT:
+                    res = expandFloatOp_FP_TO_UINT(n);
+                    break;
+                case ISD.SELECT_CC:
+                    res = expandFloatOp_SELECT_CC(n);
+                    break;
+                case ISD.SETCC:
+                    res = expandFloatOp_SETCC(n);
+                    break;
+                case ISD.STORE:
+                    res = expandFloatOp_STORE((StoreSDNode)n, opNo);
+                    break;
+            }
+        }
+        if(res.getNode() == null) return false;
+
+        if(res.getNode().equals(n))
+            return true;
+        assert res.getValueType().equals(n.getValueType(0)) &&
+                n.getNumValues() == 1:"Invalid operand expansion!";
+        replaceValueWith(new SDValue(n, 0), res);
+        return false;
+    }
+    private SDValue expandFloatOp_BR_CC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(2), newRHS = n.getOperand(3);
+        CondCode cc = ((CondCodeSDNode)n.getOperand(1).getNode()).getCondition();
+
+        SDValue[] t = floatExpandSetCCOperands(newLHS, newRHS, cc);
+        newLHS = t[0];
+        newRHS = t[1];
+
+        if (newRHS.getNode() == null)
+        {
+            newRHS = dag.getConstant(0, newRHS.getValueType(),false);
+            cc = SETNE;
+        }
+
+        return dag.updateNodeOperands(new SDValue(n, 0), n.getOperand(0),
+                dag.getCondCode(cc), newLHS, newRHS, n.getOperand(4));
+    }
+    private SDValue expandFloatOp_FP_ROUND(SDNode n)
+    {
+        assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
+                "Just applied for ppcf128!";
+        SDValue[] t = getExpandedFloat(n.getOperand(0));
+        return dag.getNode(ISD.FP_ROUND, n.getValueType(0), t[1], n.getOperand(1));
+    }
+    private SDValue expandFloatOp_FP_TO_SINT(SDNode n)
+    {
+        EVT rvt = n.getValueType(0);
+        if (rvt.getSimpleVT().simpleVT == MVT.i32)
+        {
+            assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
+                    "Only applied for ppcf128!";
+            SDValue res = dag.getNode(ISD.FP_ROUND_INREG, new EVT(MVT.ppcf128),
+                    n.getOperand(0), dag.getValueType(new EVT(MVT.f64)));
+            res = dag.getNode(ISD.FP_ROUND, new EVT(MVT.f64), res,
+                    dag.getIntPtrConstant(1));
+            return dag.getNode(ISD.FP_TO_SINT, new EVT(MVT.i32), res);
+        }
+
+        RTLIB lc = tli.getFPTOSINT(n.getOperand(0).getValueType(), rvt);
+        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_SINT!";
+        return makeLibCall(lc, rvt, new SDValue[] { n.getOperand(0) }, false);
+    }
+    private SDValue expandFloatOp_FP_TO_UINT(SDNode n)
+    {
+        EVT rvt = n.getValueType(0);
+        if (rvt.getSimpleVT().simpleVT == MVT.i32)
+        {
+            assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
+                    "Only applied for ppcf128!";
+            long[] twoE31 = {0x41e0000000000000L, 0};
+            APFloat apf = new APFloat(new APInt(128, 2, twoE31));
+            SDValue temp = dag.getConstantFP(apf, new EVT(MVT.ppcf128),false);
+            // X>=2^31 ? (int)(X-2^31)+0x80000000 : (int)X
+            return dag.getNode(ISD.SELECT_CC, new EVT(MVT.i32),
+                    n.getOperand(0), temp,
+                    dag.getNode(ISD.ADD, new EVT(MVT.i32),
+                            dag.getNode(ISD.FP_TO_SINT, new EVT(MVT.i32),
+                                    dag.getNode(ISD.FSUB, new EVT(MVT.ppcf128),
+                                            n.getOperand(0), temp))),
+                    dag.getNode(ISD.FP_TO_SINT, new EVT(MVT.i32), n.getOperand(0)),
+                    dag.getCondCode(SETGE));
+        }
+
+        RTLIB lc = tli.getFPTOUINT(n.getOperand(0).getValueType(), rvt);
+        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_UINT!";
+        return makeLibCall(lc, rvt, new SDValue[] { n.getOperand(0) }, false);
+    }
+    private SDValue expandFloatOp_SELECT_CC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
+        CondCode cc = ((CondCodeSDNode)n.getOperand(2).getNode()).getCondition();
+
+        SDValue[] t = floatExpandSetCCOperands(newLHS, newRHS, cc);
+        newLHS = t[0];
+        newRHS = t[1];
+
+        if (newRHS.getNode() == null)
+        {
+            newRHS = dag.getConstant(0, newLHS.getValueType(), false);
+            cc = SETNE;
+        }
+
+        return dag.updateNodeOperands(new SDValue(n,0), newLHS,newRHS,
+                n.getOperand(2), n.getOperand(3), dag.getCondCode(cc));
+    }
+    private SDValue expandFloatOp_SETCC(SDNode n)
+    {
+        SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
+        CondCode cc = ((CondCodeSDNode)n.getOperand(2).getNode()).getCondition();
+
+        SDValue[] t = floatExpandSetCCOperands(newLHS, newRHS, cc);
+        newLHS = t[0];
+        newRHS = t[1];
+
+        if (newRHS.getNode() == null)
+        {
+            assert newLHS.getValueType().equals(n.getValueType(0)):
+                    "Unexpected setcc expansion!";
+            return newLHS;
+        }
+
+        return dag.updateNodeOperands(new SDValue(n,0), newLHS,newRHS,
+                dag.getCondCode(cc));
+    }
+    private SDValue expandFloatOp_STORE(StoreSDNode n, int opNo)
+    {
+        if (n.isNormalStore())
+            return expandOp_NormalStore(n, opNo);
+
+        assert n.isUNINDEXEDStore():"Indexed store during type legalization!";
+        assert opNo == 1:"Can only expand the stored value so far!";
+        SDValue chain = n.getChain();
+        SDValue ptr = n.getBasePtr();
+
+        EVT nvt = tli.getTypeToTransformTo(n.getValue().getValueType());
+        assert nvt.isByteSized():"Expanded type not byte sized!";
+        assert n.getMemoryVT().bitsLE(nvt):"Float type not round!";
+
+        SDValue[] t = getExpandedOp(n.getValue());
+        return dag.getTruncStore(chain, t[1], ptr,
+                n.getSrcValue(), n.getSrcValueOffset(), n.getMemoryVT(),
+                n.isVolatile(), n.getAlignment());
+    }
+
+    private SDValue[] floatExpandSetCCOperands(
+            SDValue newLHS, SDValue newRHS,
+            CondCode cc)
+    {
+        SDValue[] t1, t2;
+        t1 = getExpandedFloat(newLHS);
+        t2 = getExpandedFloat(newRHS);
+        SDValue lhsLO = t1[0], lhsHI = t1[1], rhsLO = t2[0], rhsHI = t2[1];
+        EVT vt = newLHS.getValueType();
+        assert vt.getSimpleVT().simpleVT == MVT.ppcf128:"Unsupported setcc type!";
+
+        SDValue temp1 = dag.getSetCC(new EVT(tli.getSetCCResultType(lhsHI.getValueType())),
+                lhsHI, rhsHI, SETOEQ);
+        SDValue temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(lhsLO.getValueType())),
+                lhsLO, rhsLO, cc);
+        SDValue temp3 = dag.getNode(ISD.AND, temp1.getValueType(), temp1, temp2);
+
+        temp1 = dag.getSetCC(new EVT(tli.getSetCCResultType(lhsHI.getValueType())),
+                lhsHI, rhsHI, SETUNE);
+        temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(lhsHI.getValueType())),
+                lhsHI, rhsHI, cc);
+        temp1 = dag.getNode(ISD.AND, temp1.getValueType(), temp1, temp2);
+        newLHS = dag.getNode(ISD.OR, temp1.getValueType(), temp1, temp2);
+        newRHS = new SDValue();
+        return new SDValue[]{newLHS, newRHS};
+    }
 
     private SDValue getScalarizedVector(SDValue op)
     {
-        SDValue
+
     }
 
     private void setScalarizedVector(SDValue op, SDValue result) {}
@@ -3899,6 +4101,6 @@ public class DAGTypeLegalizer
     private SDValue expandOp_EXTRACT_ELEMENT  (SDNode n) {}
     private SDValue expandOp_INSERT_VECTOR_ELT(SDNode n) {}
     private SDValue expandOp_SCALAR_TO_VECTOR (SDNode n) {}
-    private SDValue expandOp_NormalStore      (SDNode n, int opNo)
+    private SDValue expandOp_NormalStore      (StoreSDNode n, int opNo)
     {}
 }
