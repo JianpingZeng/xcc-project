@@ -5303,8 +5303,11 @@ public class DAGTypeLegalizer
         widenedVectors.put(op, result);
     }
 
-    // Widen Vector Result Promotion.
-    private void widenVectorResult(SDNode n, int ResNo) {}
+    // widen Vector Result Promotion.
+    private void widenVectorResult(SDNode n, int ResNo)
+    {
+
+    }
     private SDValue widenVecRes_BIT_CONVERT(SDNode n) {}
     private SDValue widenVecRes_BUILD_VECTOR(SDNode n) {}
     private SDValue widenVecRes_CONCAT_VECTORS(SDNode n) {}
@@ -5324,14 +5327,180 @@ public class DAGTypeLegalizer
     private SDValue widenVecRes_Shift(SDNode n) {}
     private SDValue widenVecRes_Unary(SDNode n) {}
 
-    // Widen Vector Operand.
-    private boolean widenVectorOperand(SDNode n, int ResNo){}
-    private SDValue widenVecOp_BIT_CONVERT(SDNode n) {}
-    private SDValue widenVecOp_CONCAT_VECTORS(SDNode n) {}
-    private SDValue widenVecOp_EXTRACT_VECTOR_ELT(SDNode n) {}
-    private SDValue widenVecOp_STORE(SDNode n) {}
+    // widen Vector Operand.
+    private boolean widenVectorOperand(SDNode n, int resNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Widen node operand %d: ", resNo);
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = new SDValue();
+        switch (n.getOpcode())
+        {
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("widenVectorOperand op #%d: ", resNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to widen this operand!");
+                break;
+            case ISD.BIT_CONVERT:
+                res = widenVecOp_BIT_CONVERT(n); break;
+            case ISD.CONCAT_VECTORS:     res = widenVecOp_CONCAT_VECTORS(n); break;
+            case ISD.EXTRACT_VECTOR_ELT: res = widenVecOp_EXTRACT_VECTOR_ELT(n); break;
+            case ISD.STORE:              res = widenVecOp_STORE(n); break;
 
-    private SDValue widenVecOp_Convert(SDNode n) {}
+            case ISD.FP_ROUND:
+            case ISD.FP_TO_SINT:
+            case ISD.FP_TO_UINT:
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:
+            case ISD.TRUNCATE:
+            case ISD.SIGN_EXTEND:
+            case ISD.ZERO_EXTEND:
+            case ISD.ANY_EXTEND:
+                res = widenVecOp_Convert(n);
+                break;
+        }
+        if (res.getNode() == null)
+            return false;
+
+        if (res.getNode().equals(n))
+            return true;
+
+        assert res.getValueType().equals(n.getValueType(0)) &&
+                n.getNumValues() == 1:"Invalid operand expansion!";
+        replaceValueWith(new SDValue(n, 0), res);
+        return false;
+    }
+    private SDValue widenVecOp_BIT_CONVERT(SDNode n)
+    {
+        EVT vt = n.getValueType(0);
+        SDValue inOp = getWidenedVector(n.getOperand(0));
+        EVT inWidenVT = inOp.getValueType();
+        int inWidenSize = inWidenVT.getSizeInBits();
+        int size = vt.getSizeInBits();
+        if ((inWidenSize % size) == 0 && !vt.isVector())
+        {
+            int newNumElts = inWidenSize/size;
+            EVT newVT = EVT.getVectorVT(vt, newNumElts);
+            if (tli.isTypeLegal(newVT))
+            {
+                SDValue bitOp = dag.getNode(ISD.BIT_CONVERT, newVT, inOp);
+                return dag.getNode(ISD.EXTRACT_VECTOR_ELT, vt, bitOp,
+                        dag.getIntPtrConstant(0));
+            }
+        }
+        return createStackStoreLoad(inOp, vt);
+    }
+    private SDValue widenVecOp_CONCAT_VECTORS(SDNode n)
+    {
+        EVT vt = n.getValueType(0);
+        EVT eltVT = vt.getVectorElementType();
+        int numElts = vt.getVectorNumElements();
+        SDValue[] ops = new SDValue[numElts];
+
+        EVT inVT = n.getOperand(0).getValueType();
+        int numInElts = inVT.getVectorNumElements();
+
+        int idx = 0;
+        int numOperands = n.getNumOperands();
+        for (int i = 0; i < numOperands; i++)
+        {
+            SDValue inOp = n.getOperand(i);
+            if (getTypeAction(inOp.getValueType()) == LegalizeAction.WidenVector)
+            {
+                inOp = getWidenedVector(inOp);
+            }
+            for (int j = 0; j< numInElts; j++)
+                ops[idx++] = dag.getNode(ISD.EXTRACT_VECTOR_ELT, eltVT,
+                        inOp, dag.getIntPtrConstant(j));
+        }
+
+        return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+    }
+    private SDValue widenVecOp_EXTRACT_VECTOR_ELT(SDNode n)
+    {
+        SDValue inOp = getWidenedVector(n.getOperand(0));
+        return dag.getNode(ISD.EXTRACT_VECTOR_ELT, n.getValueType(0),
+                inOp, n.getOperand(1));
+    }
+    private SDValue widenVecOp_STORE(SDNode n)
+    {
+        StoreSDNode st = (StoreSDNode)n;
+        SDValue chain = st.getChain();
+        SDValue basePtr = st.getBasePtr();
+        Value sv = st.getSrcValue();
+        int svOffset = st.getSrcValueOffset();
+        boolean isVolatile = st.isVolatile();
+        int alignmen = st.getAlignment();
+        SDValue valOp = getWidenedVector(st.getValue());
+
+        EVT stVT = st.getMemoryVT();
+        EVT valVT = valOp.getValueType();
+
+        assert stVT.isVector() && valOp.getValueType().isVector();
+        assert stVT.bitsLT(valOp.getValueType());
+
+        ArrayList<SDValue> stChain = new ArrayList<>();
+        if (st.isTruncatingStore())
+        {
+            EVT stEltVT = stVT.getVectorElementType();
+            EVT valEltVT = valVT.getVectorElementType();
+            int increment = valEltVT.getSizeInBits()/8;
+            int numElts = stVT.getVectorNumElements();
+            SDValue eop = dag.getNode(ISD.EXTRACT_VECTOR_ELT, valEltVT, valOp,
+                    dag.getIntPtrConstant(0));
+            stChain.add(dag.getTruncStore(chain, eop, basePtr, sv, svOffset,
+                    stEltVT, isVolatile, alignmen));
+            int offset = increment;
+            for (int i = 1; i< numElts; i++, offset += increment)
+            {
+                SDValue newBasePtr = dag.getNode(ISD.ADD, basePtr.getValueType(),
+                        basePtr, dag.getIntPtrConstant(offset));
+                eop = dag.getNode(ISD.EXTRACT_VECTOR_ELT, valEltVT, valOp,
+                        dag.getIntPtrConstant(0));
+                stChain.add(dag.getTruncStore(chain, eop, newBasePtr, sv,
+                        svOffset+offset, stEltVT, isVolatile,
+                        Util.minAlign(alignmen,offset)));
+            }
+        }
+        else
+        {
+            assert stVT.getVectorElementType().equals(valVT.getVectorElementType());
+            genWidenVectorStores(stChain, chain, basePtr, sv, svOffset,
+                    alignmen, isVolatile, valOp, stVT.getSizeInBits());
+        }
+
+        if (stChain.size() == 1)
+            return stChain.get(0);
+        else
+            return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), stChain);
+    }
+    private SDValue widenVecOp_Convert(SDNode n)
+    {
+        EVT vt = n.getValueType(0);
+        EVT eltVT = vt.getVectorElementType();
+        int numElts = vt.getVectorNumElements();
+        SDValue inOp = n.getOperand(0);
+        if (getTypeAction(inOp.getValueType()) == LegalizeAction.WidenVector)
+            inOp = getWidenedVector(inOp);
+
+        EVT inVT = inOp.getValueType();
+        EVT inEltVT = inVT.getVectorElementType();
+
+        int opcode = n.getOpcode();
+        SDValue[] ops = new SDValue[numElts];
+        for (int i = 0; i < numElts; i++)
+            ops[i] = dag.getNode(opcode, eltVT, dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                    inEltVT, inOp, dag.getIntPtrConstant(i)));
+
+        return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+    }
 
     /**
      * Helper function to generate a set of loads to load a vector with a
@@ -5367,20 +5536,30 @@ public class DAGTypeLegalizer
      * @param valOp          value to store
      * @param stWidth       width of memory that we want to store.
      */
-    private void genWidenVectorStores(ArrayList<SDValue> stChain, SDValue chain,
+    private void genWidenVectorStores(ArrayList<SDValue> stChain,
+            SDValue chain,
             SDValue basePtr, Value sv,
             int svOffset, int alignment,
             boolean isVolatile, SDValue valOp,
-            int stWidth) {}
+            int stWidth)
+    {
+        EVT widenVT = valOp.getValueType();
+        EVT newEltVT, newVecVT;
+
+        findAssociateWidenVecType(dag, tli, stWidth, widenVT);
+    }
 
     /**
      * Modifies a vector input (widen or narrows) to a vector of NVT.  The
      * input vector must have the same element type as NVT.
-     * @param InOp
-     * @param WidenVT
+     * @param inOp
+     * @param widenVT
      * @return
      */
-    private SDValue ModifyToType(SDValue InOp, EVT WidenVT) {}
+    private SDValue modifyToType(SDValue inOp, EVT widenVT)
+    {
+
+    }
 
     private SDValue[] getSplitOp(SDValue op) 
     {
