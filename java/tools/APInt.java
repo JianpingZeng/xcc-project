@@ -1121,7 +1121,7 @@ public class APInt implements Cloneable
 
         if (isSingleWord())
             return isUIntN(N, val);
-        return new APInt(N, getNumWords(), pVal).zext(getBitWidth()).eq(this);
+        return new APInt(N, pVal).zext(getBitWidth()).eq(this);
     }
 
     /**

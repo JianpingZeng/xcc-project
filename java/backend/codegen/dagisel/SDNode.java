@@ -23,6 +23,7 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.type.Type;
 import backend.value.*;
+import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
 import java.io.PrintStream;
@@ -1493,18 +1494,48 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public static class ShuffleVectorSDNode extends SDNode
     {
-        public ShuffleVectorSDNode(int opc, SDVTList vts, ArrayList<SDValue> ops) {
+        private int[] mask;
+
+        public ShuffleVectorSDNode(int opc, SDVTList vts, ArrayList<SDValue> ops,
+                int[] mask)
+        {
             super(opc, vts, ops);
+            this.mask = mask;
         }
 
+        public void getMask(TIntArrayList m)
+        {
+            assert m != null;
+            EVT vt = getValueType(0);
+            m.clear();
+            for (int i = 0, e = vt.getVectorNumElements(); i < e; i++)
+                m.add(mask[i]);
+        }
+        public int getMaskElt(int idx)
+        {
+            assert idx < getValueType(0).getVectorNumElements();
+            return mask[idx];
+        }
         public boolean isSplat()
         {
-            return false;
+            return isSplatMask(mask, getValueType(0));
         }
 
+        public static boolean isSplatMask(int[] mask, EVT vt)
+        {
+            int i = 0, e = vt.getVectorNumElements();
+            for (; i < e && mask[i] < 0; i++);
+
+            assert i != e;
+            for (int idx = mask[i]; i < e; i++)
+                if (mask[i] >= 0 && mask[i] != idx)
+                    return false;
+            return true;
+        }
         public int getSplatIndex()
         {
-            return 0;
+            assert isSplat();
+            return mask[0];
         }
     }
 

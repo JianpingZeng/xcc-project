@@ -24,6 +24,7 @@ import backend.target.TargetLowering;
 import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.Value;
+import gnu.trove.list.array.TIntArrayList;
 import javafx.scene.shape.SVGPath;
 import tools.APFloat;
 import tools.APInt;
@@ -34,6 +35,7 @@ import java.util.*;
 
 import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.DAGTypeLegalizer.NodeIdFlags.*;
+import static backend.target.TargetLowering.BooleanContent.ZeroOrNegativeOneBooleanContent;
 import static backend.target.TargetLowering.LegalizeAction.Custom;
 
 /**
@@ -4222,71 +4224,1084 @@ public class DAGTypeLegalizer
 
     private SDValue getScalarizedVector(SDValue op)
     {
-
+        SDValue scalarizedOp = scalarizedVectors.get(op);
+        scalarizedOp = remapValue(scalarizedOp);
+        assert scalarizedOp.getNode() != null;
+        scalarizedVectors.put(op, scalarizedOp);
+        return scalarizedOp;
     }
 
-    private void setScalarizedVector(SDValue op, SDValue result) {}
-    private void scalarizeVectorResult(SDNode n, int opNo) {}
-    private SDValue scalarizeVecRes_BinOp(SDNode n) {}
-    private SDValue scalarizeVecRes_UnaryOp(SDNode n) {}
+    private void setScalarizedVector(SDValue op, SDValue result)
+    {
+        assert result.getValueType().equals(op.getValueType().getVectorElementType()):
+                "Invalid type for scalarized vector!";
+        result = analyzeNewValue(result);
+        assert !scalarizedVectors.containsKey(op);
+        scalarizedVectors.put(op, result);
+    }
+    private void scalarizeVectorResult(SDNode n, int resNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Scalarize node result %d: ", resNo);
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = null;
+        switch (n.getOpcode())
+        {
+            case ISD.BIT_CONVERT:
+                res = scalarizeVecRes_BIT_CONVERT(n); break;
+            case ISD.BUILD_VECTOR:
+                res = n.getOperand(0); break;
+            case ISD.CONVERT_RNDSAT:
+                res = scalarizeVecRes_CONVERT_RNDSAT(n); break;
+            case ISD.EXTRACT_SUBVECTOR:
+                res = scalarizeVecRes_EXTRACT_SUBVECTOR(n); break;
+            case ISD.FPOWI:
+                res = scalarizeVecRes_FPOWI(n); break;
+            case ISD.SCALAR_TO_VECTOR:
+                res = scalarizeVecRes_SCALAR_TO_VECTOR(n); break;
+            case ISD.INSERT_VECTOR_ELT:
+                res = scalarizeVecRes_INSERT_VECTOR_ELT(n); break;
+            case ISD.LOAD:
+                res = scalarizeVecRes_LOAD((LoadSDNode) n); break;
+            case ISD.SELECT:
+                res = scalarizeVecRes_SELECT(n); break;
+            case ISD.SELECT_CC:
+                res = scalarizeVecRes_SELECT_CC(n); break;
+            case ISD.SETCC:
+                res = scalarizeVecRes_SETCC(n); break;
+            case ISD.UNDEF:
+                res = scalarizeVecRes_UNDEF(n); break;
+            case ISD.VECTOR_SHUFFLE:
+                res = scalarizeVecRes_VECTOR_SHUFFLE(n); break;
+            case ISD.VSETCC:
+                res = scalarizeVecRes_VSETCC(n); break;
 
-    private SDValue scalarizeVecRes_BIT_CONVERT(SDNode n) {}
-    private SDValue scalarizeVecRes_CONVERT_RNDSAT(SDNode n) {}
-    private SDValue scalarizeVecRes_EXTRACT_SUBVECTOR(SDNode n) {}
-    private SDValue scalarizeVecRes_FPOWI(SDNode n) {}
-    private SDValue scalarizeVecRes_INSERT_VECTOR_ELT(SDNode n) {}
-    private SDValue scalarizeVecRes_LOAD(LoadSDNode n) {}
-    private SDValue scalarizeVecRes_SCALAR_TO_VECTOR(SDNode n) {}
-    private SDValue scalarizeVecRes_SELECT(SDNode n) {}
-    private SDValue scalarizeVecRes_SELECT_CC(SDNode n) {}
-    private SDValue scalarizeVecRes_SETCC(SDNode n) {}
-    private SDValue scalarizeVecRes_UNDEF(SDNode n) {}
-    private SDValue scalarizeVecRes_VECTOR_SHUFFLE(SDNode n) {}
-    private SDValue scalarizeVecRes_VSETCC(SDNode n) {}
+            case ISD.CTLZ:
+            case ISD.CTPOP:
+            case ISD.CTTZ:
+            case ISD.FABS:
+            case ISD.FCOS:
+            case ISD.FNEG:
+            case ISD.FP_TO_SINT:
+            case ISD.FP_TO_UINT:
+            case ISD.FSIN:
+            case ISD.FSQRT:
+            case ISD.FTRUNC:
+            case ISD.FFLOOR:
+            case ISD.FCEIL:
+            case ISD.FRINT:
+            case ISD.FNEARBYINT:
+            case ISD.UINT_TO_FP:
+            case ISD.SINT_TO_FP:
+            case ISD.TRUNCATE:
+            case ISD.SIGN_EXTEND:
+            case ISD.ZERO_EXTEND:
+            case ISD.ANY_EXTEND:
+                res = scalarizeVecRes_UnaryOp(n);
+                break;
+
+            case ISD.ADD:
+            case ISD.AND:
+            case ISD.FADD:
+            case ISD.FDIV:
+            case ISD.FMUL:
+            case ISD.FPOW:
+            case ISD.FREM:
+            case ISD.FSUB:
+            case ISD.MUL:
+            case ISD.OR:
+            case ISD.SDIV:
+            case ISD.SREM:
+            case ISD.SUB:
+            case ISD.UDIV:
+            case ISD.UREM:
+            case ISD.XOR:
+            case ISD.SHL:
+            case ISD.SRA:
+            case ISD.SRL:
+                res = scalarizeVecRes_BinOp(n);
+                break;
+
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("scalarizeVectorResult #%d", resNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to scalarize the result of this operator!");
+                break;
+        }
+        if (res.getNode() != null)
+            setScalarizedVector(new SDValue(n, resNo), res);
+    }
+    private SDValue scalarizeVecRes_BinOp(SDNode n)
+    {
+        SDValue lhs = getScalarizedVector(n.getOperand(0));
+        SDValue rhs = getScalarizedVector(n.getOperand(1));
+        return dag.getNode(n.getOpcode(), lhs.getValueType(), lhs, rhs);
+    }
+    private SDValue scalarizeVecRes_UnaryOp(SDNode n)
+    {
+        EVT destVT = n.getValueType(0).getVectorElementType();
+        SDValue op = getScalarizedVector(n.getOperand(0));
+        return dag.getNode(n.getOpcode(), destVT, op);
+    }
+    private SDValue scalarizeVecRes_BIT_CONVERT(SDNode n)
+    {
+        EVT newVT = n.getValueType(0).getVectorElementType();
+        return dag.getNode(ISD.BIT_CONVERT, newVT, n.getOperand(0));
+    }
+    private SDValue scalarizeVecRes_CONVERT_RNDSAT(SDNode n)
+    {
+        EVT newVT = n.getValueType(0).getVectorElementType();
+        SDValue op0 = getScalarizedVector(n.getOperand(0));
+        return dag.getConvertRndSat(newVT, op0, dag.getValueType(newVT),
+                dag.getValueType(op0.getValueType()),
+                n.getOperand(3),
+                n.getOperand(4),
+                ((CvtRndSatSDNode)n).getCvtCode());
+    }
+    private SDValue scalarizeVecRes_EXTRACT_SUBVECTOR(SDNode n)
+    {
+        return dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                n.getValueType(0).getVectorElementType(),
+                n.getOperand(0), n.getOperand(1));
+    }
+    private SDValue scalarizeVecRes_FPOWI(SDNode n)
+    {
+        SDValue op = getScalarizedVector(n.getOperand(0));
+        return dag.getNode(ISD.FPOWI, op.getValueType(), op, n.getOperand(1));
+    }
+    private SDValue scalarizeVecRes_INSERT_VECTOR_ELT(SDNode n)
+    {
+        SDValue op = n.getOperand(1);
+        EVT eltVT = n.getValueType(0).getVectorElementType();
+        if (!op.getValueType().equals(eltVT))
+            op = dag.getNode(ISD.TRUNCATE, eltVT, op);
+        return op;
+    }
+    private SDValue scalarizeVecRes_LOAD(LoadSDNode n)
+    {
+        assert n.isUnindexed():"Indexed vector load?";
+        SDValue result = dag.getLoad(MemIndexedMode.UNINDEXED,
+                n.getExtensionType(), n.getValueType(0).getVectorElementType(),
+                n.getChain(), n.getBasePtr(), dag.getUNDEF(n.getBasePtr().getValueType()),
+                n.getSrcValue(), n.getSrcValueOffset(), n.getMemoryVT().getVectorElementType(),
+                n.isVolatile(), n.getAlignment());
+        replaceValueWith(new SDValue(n, 1), result.getValue(1));
+        return result;
+    }
+    private SDValue scalarizeVecRes_SCALAR_TO_VECTOR(SDNode n)
+    {
+        EVT eltVT = n.getValueType(0).getVectorElementType();
+        SDValue inOp = n.getOperand(0);
+        if (!inOp.getValueType().equals(eltVT))
+            return dag.getNode(ISD.TRUNCATE, eltVT, inOp);
+        return inOp;
+    }
+    private SDValue scalarizeVecRes_SELECT(SDNode n)
+    {
+        SDValue lhs = getScalarizedVector(n.getOperand(1));
+        return dag.getNode(ISD.SELECT, lhs.getValueType(),
+                n.getOperand(0), lhs, getScalarizedVector(n.getOperand(2)));
+    }
+    private SDValue scalarizeVecRes_SELECT_CC(SDNode n)
+    {
+        SDValue lhs = getScalarizedVector(n.getOperand(2));
+        return dag.getNode(ISD.SELECT_CC, lhs.getValueType(),
+                n.getOperand(0), n.getOperand(1), lhs,
+                getScalarizedVector(n.getOperand(3)), n.getOperand(4));
+    }
+    private SDValue scalarizeVecRes_SETCC(SDNode n)
+    {
+        SDValue lhs = getScalarizedVector(n.getOperand(0));
+        SDValue rhs = getScalarizedVector(n.getOperand(1));
+        return dag.getNode(ISD.SETCC, new EVT(MVT.i1), lhs, rhs, n.getOperand(2));
+    }
+    private SDValue scalarizeVecRes_UNDEF(SDNode n)
+    {
+        return dag.getUNDEF(n.getValueType(0).getVectorElementType());
+    }
+    private SDValue scalarizeVecRes_VECTOR_SHUFFLE(SDNode n)
+    {
+        SDValue arg = n.getOperand(2).getOperand(0);
+        if (arg.getOpcode() == ISD.UNDEF)
+            return dag.getUNDEF(n.getValueType(0).getVectorElementType());
+        int op = ((ConstantSDNode)arg.getNode()).isNullValue()?1:0;
+        return getScalarizedVector(n.getOperand(op));
+    }
+    private SDValue scalarizeVecRes_VSETCC(SDNode n)
+    {
+        SDValue lhs = getScalarizedVector(n.getOperand(0));
+        SDValue rhs = getScalarizedVector(n.getOperand(1));
+        EVT nvt = n.getValueType(0).getVectorElementType();
+        EVT svt = new EVT(tli.getSetCCResultType(lhs.getValueType()));
+
+        SDValue res = dag.getNode(ISD.SETCC, svt, lhs, rhs, n.getOperand(2));
+        if (nvt.bitsLE(svt))
+        {
+            if (tli.getBooleanContents() == ZeroOrNegativeOneBooleanContent)
+                res = dag.getNode(ISD.SIGN_EXTEND_INREG, svt, res,
+                        dag.getValueType(new EVT(MVT.i1)));
+
+            return dag.getNode(ISD.TRUNCATE, nvt, res);
+        }
+
+        if (tli.getBooleanContents() == ZeroOrNegativeOneBooleanContent)
+            res = dag.getNode(ISD.TRUNCATE, new EVT(MVT.i1), res);
+        return dag.getNode(ISD.SIGN_EXTEND, nvt, res);
+    }
 
     // Vector Operand Scalarization: <1 x ty> -> ty.
-    private boolean scalarizeVectorOperand(SDNode n, int opNo) {}
-    private SDValue scalarizeVecOp_BIT_CONVERT(SDNode n) {}
-    private SDValue scalarizeVecOp_CONCAT_VECTORS(SDNode n) {}
-    private SDValue scalarizeVecOp_EXTRACT_VECTOR_ELT(SDNode n) {}
-    private SDValue scalarizeVecOp_STORE(StoreSDNode n, int opNo) {}
+    private boolean scalarizeVectorOperand(SDNode n, int opNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.printf("Scalarize node operand %d: ", opNo);
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = new SDValue();
+        switch (n.getOpcode())
+        {
+            case ISD.BIT_CONVERT:
+                res = scalarizeVecOp_BIT_CONVERT(n); break;
+            case ISD.CONCAT_VECTORS:
+                res = scalarizeVecOp_CONCAT_VECTORS(n); break;
+            case ISD.EXTRACT_VECTOR_ELT:
+                res = scalarizeVecOp_EXTRACT_VECTOR_ELT(n); break;
+            case ISD.STORE:
+                res = scalarizeVecOp_STORE((StoreSDNode) n, opNo); break;
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("scalarizeVectorOperand op #%d: ", opNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to scalarize this operator's operand");
+                break;
+        }
+        if (res.getNode() == null) return false;
 
-    private SDValue[] getSplitVector(SDValue op) {}
-    private void setSplitVector(SDValue op, SDValue lo, SDValue hi) {}
+        if (res.getNode().equals(n))
+            return true;
+
+        assert res.getValueType().equals(n.getValueType(0)) &&
+                n.getNumValues() == 1;
+        replaceValueWith(new SDValue(n, 0), res);
+        return false;
+    }
+    private SDValue scalarizeVecOp_BIT_CONVERT(SDNode n)
+    {
+        SDValue elt = getScalarizedVector(n.getOperand(0));
+        return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), elt);
+    }
+    private SDValue scalarizeVecOp_CONCAT_VECTORS(SDNode n)
+    {
+        SDValue[] ops = new SDValue[n.getNumOperands()];
+        for (int i = 0, e = ops.length; i < e; i++)
+            ops[i] = getScalarizedVector(n.getOperand(i));
+        return dag.getNode(ISD.BUILD_VECTOR, n.getValueType(0), ops);
+    }
+    private SDValue scalarizeVecOp_EXTRACT_VECTOR_ELT(SDNode n)
+    {
+        SDValue res = getScalarizedVector(n.getOperand(0));
+        if (!res.getValueType().equals(n.getValueType(0)))
+            res = dag.getNode(ISD.ANY_EXTEND, n.getValueType(0), res);
+        return res;
+    }
+    private SDValue scalarizeVecOp_STORE(StoreSDNode n, int opNo)
+    {
+        assert n.isUnindexed():"Indexed store of one element vector?";
+        assert opNo == 1;
+        if (n.isTruncatingStore())
+            return dag.getTruncStore(n.getChain(),
+                    getScalarizedVector(n.getOperand(1)),
+                    n.getBasePtr(),
+                    n.getSrcValue(), n.getSrcValueOffset(),
+                    n.getMemoryVT().getVectorElementType(),
+                    n.isVolatile(), n.getAlignment());
+        return dag.getStore(n.getChain(), getScalarizedVector(n.getOperand(1)),
+                n.getBasePtr(), n.getSrcValue(), n.getSrcValueOffset(),
+                n.isVolatile(), n.getAlignment());
+    }
+
+    private SDValue[] getSplitVector(SDValue op)
+    {
+        Pair<SDValue, SDValue> entry = splitVectors.get(op);
+        entry.first = remapValue(entry.first);
+        entry.second = remapValue(entry.second);
+        assert entry.first.getNode() != null;
+        return new SDValue[]{entry.first, entry.second};
+    }
+
+    private void setSplitVector(SDValue op, SDValue lo, SDValue hi)
+    {
+        assert lo.getValueType().getVectorElementType().
+                equals(op.getValueType().getVectorElementType()) &&
+                2*lo.getValueType().getVectorNumElements() ==
+                        op.getValueType().getVectorNumElements() &&
+                hi.getValueType().equals(lo.getValueType()):
+                "Invalid type for split vector!";
+
+        lo = analyzeNewValue(lo);
+        hi = analyzeNewValue(hi);
+
+        assert !splitVectors.containsKey(op);
+        Pair<SDValue, SDValue> entry = Pair.get(lo, hi);
+        splitVectors.put(op, entry);
+    }
 
     // Vector Result Splitting: <128 x ty> -> 2 x <64 x ty>.
-    private void splitVectorResult(SDNode n, int opNo) {}
-    private SDValue[] splitVecRes_BinOp(SDNode n) {}
-    private SDValue[] splitVecRes_UnaryOp(SDNode n) {}
+    private void splitVectorResult(SDNode n, int resNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.print("Split node result: ");
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue[] t = null;
+        switch (n.getOpcode())
+        {
+            case ISD.MERGE_VALUES:
+                t = splitRes_MERGE_VALUES(n); break;
+            case ISD.SELECT:       
+                t = splitRes_SELECT(n); break;
+            case ISD.SELECT_CC:    
+                t = splitRes_SELECT_CC(n); 
+                break;
+            case ISD.UNDEF:        
+                t = splitRes_UNDEF(n); break;
 
-    private SDValue[] splitVecRes_BIT_CONVERT(SDNode n) {}
-    private SDValue[] splitVecRes_BUILD_PAIR(SDNode n) {}
-    private SDValue[] splitVecRes_BUILD_VECTOR(SDNode n) {}
-    private SDValue[] splitVecRes_CONCAT_VECTORS(SDNode n) {}
-    private SDValue[] splitVecRes_CONVERT_RNDSAT(SDNode n) {}
-    private SDValue[] splitVecRes_EXTRACT_SUBVECTOR(SDNode n) {}
-    private SDValue[] splitVecRes_FPOWI(SDNode n) {}
-    private SDValue[] splitVecRes_INSERT_VECTOR_ELT(SDNode n) {}
-    private SDValue[] splitVecRes_LOAD(LoadSDNode n) {}
-    private SDValue[] splitVecRes_SCALAR_TO_VECTOR(SDNode n) {}
-    private SDValue[] splitVecRes_SETCC(SDNode n) {}
-    private SDValue[] splitVecRes_UNDEF(SDNode n) {}
-    private SDValue[] splitVecRes_VECTOR_SHUFFLE(ShuffleVectorSDNode n) {}
+            case ISD.BIT_CONVERT:       
+                t = splitVecRes_BIT_CONVERT(n); break;
+            case ISD.BUILD_VECTOR:      
+                t = splitVecRes_BUILD_VECTOR(n); break;
+            case ISD.CONCAT_VECTORS:    
+                t = splitVecRes_CONCAT_VECTORS(n); break;
+            case ISD.CONVERT_RNDSAT:    
+                t= splitVecRes_CONVERT_RNDSAT(n); break;
+            case ISD.EXTRACT_SUBVECTOR: 
+                t = splitVecRes_EXTRACT_SUBVECTOR(n); break;
+            case ISD.FPOWI:             
+                t = splitVecRes_FPOWI(n); break;
+            case ISD.INSERT_VECTOR_ELT: 
+                t = splitVecRes_INSERT_VECTOR_ELT(n); break;
+            case ISD.SCALAR_TO_VECTOR:  
+                t = splitVecRes_SCALAR_TO_VECTOR(n); break;
+            case ISD.LOAD:
+                t = splitVecRes_LOAD((LoadSDNode)(n));
+                break;
+            case ISD.SETCC:
+            case ISD.VSETCC:
+                t = splitVecRes_SETCC(n);
+                break;
+            case ISD.VECTOR_SHUFFLE:
+                t = splitVecRes_VECTOR_SHUFFLE((ShuffleVectorSDNode)(n));
+                break;
+
+            case ISD.CTTZ:
+            case ISD.CTLZ:
+            case ISD.CTPOP:
+            case ISD.FNEG:
+            case ISD.FABS:
+            case ISD.FSQRT:
+            case ISD.FSIN:
+            case ISD.FCOS:
+            case ISD.FTRUNC:
+            case ISD.FFLOOR:
+            case ISD.FCEIL:
+            case ISD.FRINT:
+            case ISD.FNEARBYINT:
+            case ISD.FP_TO_SINT:
+            case ISD.FP_TO_UINT:
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:
+            case ISD.TRUNCATE:
+            case ISD.SIGN_EXTEND:
+            case ISD.ZERO_EXTEND:
+            case ISD.ANY_EXTEND:
+                t = splitVecRes_UnaryOp(n);
+                break;
+
+            case ISD.ADD:
+            case ISD.SUB:
+            case ISD.MUL:
+            case ISD.FADD:
+            case ISD.FSUB:
+            case ISD.FMUL:
+            case ISD.SDIV:
+            case ISD.UDIV:
+            case ISD.FDIV:
+            case ISD.FPOW:
+            case ISD.AND:
+            case ISD.OR:
+            case ISD.XOR:
+            case ISD.SHL:
+            case ISD.SRA:
+            case ISD.SRL:
+            case ISD.UREM:
+            case ISD.SREM:
+            case ISD.FREM:
+                t = splitVecRes_BinOp(n);
+                break;
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("splitVectorResult #%d", resNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to split the result of this operator!");
+                break;
+        }
+        if (t[0].getNode() != null)
+            setSplitVector(new SDValue(n, resNo), t[0], t[1]);
+    }
+    private SDValue[] splitVecRes_BinOp(SDNode n)
+    {
+        SDValue[] lhsT = getSplitVector(n.getOperand(0));
+        SDValue[] rhsT = getSplitVector(n.getOperand(1));
+        SDValue lo = dag.getNode(n.getOpcode(), lhsT[0].getValueType(), lhsT[0], rhsT[0]);
+        SDValue hi = dag.getNode(n.getOpcode(), lhsT[1].getValueType(), lhsT[1], rhsT[1]);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_UnaryOp(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+
+        SDValue lo = null, hi = null;
+        EVT inVT = n.getOperand(0).getValueType();
+        switch (getTypeAction(inVT))
+        {
+            case Legal:
+            {
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                        loVT.getVectorNumElements());
+                lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                        dag.getIntPtrConstant(0));
+                hi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                        dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+                break;
+            }
+            case SplitVector:
+            {
+                SDValue[] t = getSplitVector(n.getOperand(0));
+                lo = t[0];
+                hi = t[1];
+                break;
+            }
+            case WidenVector:
+            {
+                SDValue inOp = getWidenedVector(n.getOperand(0));
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                        loVT.getVectorNumElements());
+                lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
+                        dag.getIntPtrConstant(0));
+                hi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inVT, inOp,
+                        dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+                break;
+            }
+            default:
+                Util.shouldNotReachHere("Unexpected type action!");
+                break;
+        }
+        lo = dag.getNode(n.getOpcode(), loVT, lo);
+        hi = dag.getNode(n.getOpcode(), hiVT, hi);
+        return new SDValue[]{lo, hi};
+    }
+
+    private SDValue[] splitVecRes_BIT_CONVERT(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+
+        SDValue inOp = n.getOperand(0);
+        EVT inVT = inOp.getValueType();
+        SDValue lo, hi;
+        switch (getTypeAction(inVT))
+        {
+            default:
+                assert false:"Unknown type action!";
+            case Legal:
+            case PromotedInteger:
+            case SoftenFloat:
+            case ScalarizeVector:
+                break;
+            case ExpandInteger:
+            case ExpandFloat:
+            {
+                if (loVT.equals(hiVT))
+                {
+                    SDValue[] t = getExpandedOp(inOp);
+                    lo = t[0];
+                    hi = t[1];
+                    if (tli.isBigEndian())
+                    {
+                        SDValue temp = lo;
+                        lo = hi;
+                        hi = temp;
+                    }
+                    lo = dag.getNode(ISD.BIT_CONVERT, loVT, lo);
+                    hi = dag.getNode(ISD.BIT_CONVERT, hiVT, hi);
+                    return new SDValue[]{lo, hi};
+                }
+                break;
+            }
+            case SplitVector:
+            {
+                SDValue[] t = getSplitVector(inOp);
+                lo = dag.getNode(ISD.BIT_CONVERT, loVT, t[0]);
+                hi = dag.getNode(ISD.BIT_CONVERT, hiVT, t[1]);
+                return new SDValue[]{lo, hi};
+            }
+        }
+        EVT loIntVT = EVT.getIntegerVT(loVT.getSizeInBits());
+        EVT hiIntVT = EVT.getIntegerVT(hiVT.getSizeInBits());
+        if (tli.isBigEndian())
+        {
+            EVT temp = loIntVT;
+            loIntVT = hiIntVT;
+            hiIntVT = temp;
+        }
+
+        SDValue[] t = splitInteger(bitConvertToInteger(inOp), loIntVT, hiIntVT);
+        lo = t[0];
+        hi = t[1];
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+        lo = dag.getNode(ISD.BIT_CONVERT, loVT, lo);
+        hi = dag.getNode(ISD.BIT_CONVERT, hiVT, hi);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_BUILD_VECTOR(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+        int loNumElts = loVT.getVectorNumElements();
+        SDValue[] loOps = new SDValue[loNumElts];
+        assert n.getNumOperands() >= loNumElts;
+        int i = 0;
+        for (; i < loNumElts; i++)
+            loOps[i] = n.getOperand(i);
+        SDValue lo = dag.getNode(ISD.BUILD_VECTOR, loVT, loOps);
+
+        SDValue[] hiOps = new SDValue[n.getNumOperands()-loNumElts];
+        int offset = i;
+        for (int e = n.getNumOperands(); i < e; i++)
+            hiOps[i-offset] = n.getOperand(i);
+        SDValue hi = dag.getNode(ISD.BUILD_VECTOR, hiVT, hiOps);
+        return new SDValue[]{lo, hi};
+
+    }
+    private SDValue[] splitVecRes_CONCAT_VECTORS(SDNode n)
+    {
+        assert (n.getNumOperands() & 1) == 0;
+        int numSubvectors = n.getNumOperands()/2;
+        SDValue lo, hi;
+        if (numSubvectors == 1)
+        {
+            lo = n.getOperand(0);
+            hi = n.getOperand(1);
+            return new SDValue[]{lo, hi};
+        }
+
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+        SDValue[] loOps = new SDValue[numSubvectors];
+        assert n.getNumOperands() >= numSubvectors;
+        int i = 0;
+        for (; i < numSubvectors; i++)
+            loOps[i] = n.getOperand(i);
+        lo = dag.getNode(ISD.CONCAT_VECTORS, loVT, loOps);
+
+        SDValue[] hiOps = new SDValue[n.getNumOperands()-numSubvectors];
+        int offset = i;
+        for (int e = n.getNumOperands(); i < e; i++)
+            hiOps[i-offset] = n.getOperand(i);
+        hi = dag.getNode(ISD.CONCAT_VECTORS, hiVT, hiOps);
+        return new SDValue[]{lo, hi};
+
+    }
+    private SDValue[] splitVecRes_CONVERT_RNDSAT(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+
+        SDValue dTyOpLo = dag.getValueType(loVT);
+        SDValue dTyOpHi = dag.getValueType(hiVT);
+
+        SDValue rndOp = n.getOperand(3);
+        SDValue satOp = n.getOperand(4);
+        CvtCode cvtCode = ((CvtRndSatSDNode)n).getCvtCode();
+
+        SDValue vLo = null, vHi = null;
+        EVT inVT = n.getOperand(0).getValueType();
+        switch (getTypeAction(inVT))
+        {
+            case Legal:
+            {
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                        loVT.getVectorNumElements());
+                vLo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                        dag.getIntPtrConstant(0));
+                vHi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                        dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+                break;
+            }
+            case SplitVector:
+            {
+                SDValue[] t = getSplitVector(n.getOperand(0));
+                vLo = t[0];
+                vHi = t[1];
+                break;
+            }
+            case WidenVector:
+            {
+                SDValue inOp = getWidenedVector(n.getOperand(0));
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                        loVT.getVectorNumElements());
+                vLo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
+                        dag.getIntPtrConstant(0));
+                vHi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
+                        dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+                break;
+            }
+            default:
+                Util.shouldNotReachHere("Unknown type action!");
+                break;
+        }
+        SDValue sTyOpLo = dag.getValueType(vLo.getValueType());
+        SDValue sTyOpHi = dag.getValueType(vHi.getValueType());
+
+        SDValue lo = dag.getConvertRndSat(loVT, vLo, dTyOpLo, sTyOpLo, rndOp,
+                satOp, cvtCode);
+        SDValue hi = dag.getConvertRndSat(hiVT, vHi, dTyOpHi, sTyOpHi, rndOp,
+                satOp, cvtCode);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_EXTRACT_SUBVECTOR(SDNode n)
+    {
+        SDValue vec = n.getOperand(0);
+        SDValue idx = n.getOperand(1);
+        EVT idxVT = idx.getValueType();
+
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+
+        SDValue lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, vts[0], vec, idx);
+        idx = dag.getNode(ISD.ADD, idxVT, idx, dag.getConstant(vts[0].getVectorNumElements(),
+                idxVT, false));
+        SDValue hi = dag.getNode(ISD.EXTRACT_SUBVECTOR, vts[1], vec, idx);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_FPOWI(SDNode n)
+    {
+        SDValue[] t = getSplitVector(n.getOperand(0));
+        SDValue lo = dag.getNode(ISD.FPOWI, t[0].getValueType(), t[0], n.getOperand(1));
+        SDValue hi = dag.getNode(ISD.FPOWI, t[1].getValueType(), t[1], n.getOperand(1));
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_INSERT_VECTOR_ELT(SDNode n)
+    {
+        SDValue vec = n.getOperand(0);
+        SDValue elt = n.getOperand(1);
+        SDValue idx = n.getOperand(2);
+        SDValue[] t = getSplitVector(vec);
+        SDValue lo = t[0], hi = t[1];
+
+        if (idx.getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode csn = (ConstantSDNode) idx.getNode();
+            long idxVal = csn.getZExtValue();
+            int loNumElts = lo.getValueType().getVectorNumElements();
+            if (idxVal < loNumElts)
+                lo = dag.getNode(ISD.INSERT_VECTOR_ELT, lo.getValueType(),
+                        lo, elt, idx);
+            else
+                hi = dag.getNode(ISD.INSERT_VECTOR_ELT, hi.getValueType(),
+                        hi, dag.getIntPtrConstant(idxVal-loNumElts));
+            return new SDValue[]{lo, hi};
+        }
+
+        EVT vecVT = vec.getValueType();
+        EVT eltVT = vecVT.getVectorElementType();
+        SDValue stackPtr = dag.createStackTemporary(vecVT);
+        SDValue store = dag.getStore(dag.getEntryNode(), vec, stackPtr, null,0,false, 0);
+
+        SDValue eltPtr = getVectorElementPointer(stackPtr, eltVT, idx);
+        int alignment = tli.getTargetData().getPrefTypeAlignment(vecVT.getTypeForEVT());
+        store = dag.getTruncStore(store, elt, eltPtr, null, 0, eltVT);
+
+        lo = dag.getLoad(lo.getValueType(), store, stackPtr, null, 0);
+        int incrementSize = lo.getValueType().getSizeInBits()/8;
+        stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr,
+                dag.getIntPtrConstant(incrementSize));
+        hi = dag.getLoad(hi.getValueType(), store, stackPtr, null,
+                0, false,
+                Util.minAlign(alignment, incrementSize));
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_LOAD(LoadSDNode n)
+    {
+        assert n.isUNINDEXEDLoad():"Indexed load during type legalization!";
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+
+        LoadExtType extType = n.getExtensionType();
+        SDValue chain = n.getChain();
+        SDValue ptr = n.getBasePtr();
+        SDValue offset = dag.getUNDEF(ptr.getValueType());
+        Value sv = n.getSrcValue();
+        int svOffset = n.getSrcValueOffset();
+        EVT memVT = n.getMemoryVT();
+        int alignment = n.getAlignment();
+        boolean isVolatile = n.isVolatile();
+
+        EVT[] memVTs = getSplitDestVTs(memVT);
+        EVT loMemVT = memVTs[0], hiMemVT = memVTs[1];
+
+        SDValue lo = dag.getLoad(MemIndexedMode.UNINDEXED, extType, vts[0],
+                chain, ptr, offset, sv, svOffset, loMemVT, isVolatile, alignment);
+        int incrementSize = loMemVT.getSizeInBits()/8;
+        ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                dag.getIntPtrConstant(incrementSize));
+        svOffset += incrementSize;
+        alignment = Util.minAlign(alignment, incrementSize);
+        SDValue hi = dag.getLoad(MemIndexedMode.UNINDEXED, extType, vts[1],
+                chain, ptr, offset, sv, svOffset, hiMemVT, isVolatile, alignment);
+
+        chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo.getValue(1),
+                hi.getValue(1));
+        replaceValueWith(new SDValue(n, 1), chain);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_SCALAR_TO_VECTOR(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        SDValue lo = dag.getNode(ISD.SCALAR_TO_VECTOR, vts[0], n.getOperand(0));
+        SDValue hi = dag.getUNDEF(vts[1]);
+        return new SDValue[]{lo, hi};
+    }
+    private SDValue[] splitVecRes_SETCC(SDNode n)
+    {
+        EVT[] vts = getSplitDestVTs(n.getValueType(0));
+        EVT loVT = vts[0], hiVT = vts[1];
+
+        EVT inVT = n.getOperand(0).getValueType();
+        SDValue ll, lh, rl, rh;
+        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                loVT.getVectorNumElements());
+        ll = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                dag.getIntPtrConstant(0));
+        lh = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
+                dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+        rl = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(1),
+                dag.getIntPtrConstant(0));
+        rh = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(1),
+                dag.getIntPtrConstant(inNVT.getVectorNumElements()));
+        SDValue lo = dag.getNode(n.getOpcode(), loVT, ll, rl, n.getOperand(2));
+        SDValue hi = dag.getNode(n.getOpcode(), hiVT, lh, rh, n.getOperand(2));
+        return new SDValue[]{lo, hi};
+
+    }
+    private SDValue[] splitVecRes_VECTOR_SHUFFLE(ShuffleVectorSDNode n)
+    {
+        SDValue[] t1 = getSplitVector(n.getOperand(0));
+        SDValue[] t2 = getSplitVector(n.getOperand(1));
+
+        SDValue[] inputs = {t1[0], t1[1], t2[0], t2[1]};
+        EVT newVT = inputs[0].getValueType();
+        int newElts = newVT.getVectorNumElements();
+
+        TIntArrayList ops = new TIntArrayList();
+        SDValue lo = new SDValue(), hi = new SDValue();
+        for (int high = 0; high < 2; high++)
+        {
+            SDValue output = high != 0 ? hi : lo;
+
+            int[] inputUsed = {-1, -1};
+            int firstMaskIdx = high * newElts;
+            boolean useBuildVector = false;
+            for (int maskOffset = 0; maskOffset < newElts; ++maskOffset)
+            {
+                int idx = n.getMaskElt(firstMaskIdx+maskOffset);
+                int input = idx/newElts;
+
+                if (input >= inputs.length)
+                {
+                    ops.add(-1);
+                    continue;
+                }
+
+                idx -= input * newElts;
+                int opNo = 0;
+                for (; opNo < inputUsed.length; ++opNo)
+                {
+                    if (inputUsed[opNo] == input)
+                    {
+                        break;
+                    }
+                    else if (inputUsed[opNo] == -1)
+                    {
+                        inputUsed[opNo] = input;
+                        break;
+                    }
+                }
+                if (opNo >= inputUsed.length)
+                {
+                    useBuildVector = true;
+                    break;
+                }
+
+                ops.add(idx+opNo*newElts);
+            }
+
+            if (useBuildVector)
+            {
+                EVT eltVT = newVT.getVectorElementType();
+                ArrayList<SDValue> svOps = new ArrayList<>();
+
+                for (int maskOffset = 0; maskOffset < newElts; maskOffset++)
+                {
+                    int idx = n.getMaskElt(firstMaskIdx+maskOffset);
+
+                    int input = idx/newElts;
+                    if (input >= inputs.length)
+                    {
+                        svOps.add(dag.getUNDEF(eltVT));
+                        continue;
+                    }
+
+                    idx -= input * newElts;
+                    svOps.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT, eltVT,
+                            inputs[input], dag.getIntPtrConstant(idx)));
+                }
+                output = dag.getNode(ISD.BUILD_VECTOR, newVT, svOps);
+            }
+            else if (inputUsed[0] == -1)
+            {
+                output = dag.getUNDEF(newVT);
+            }
+            else
+            {
+                SDValue op0 = inputs[inputUsed[0]];
+                SDValue op1 = inputUsed[1] == -1 ? dag.getUNDEF(newVT) :
+                        inputs[inputUsed[1]];
+                output = dag.getVectorShuffle(newVT, op0, op1, ops.toArray());
+            }
+            if (high != 0)
+                hi = output;
+            else
+                lo = output;
+            ops.clear();
+        }
+        return new SDValue[]{lo, hi};
+    }
 
     // Vector Operand Splitting: <128 x ty> -> 2 x <64 x ty>.
-    private boolean splitVectorOperand(SDNode n, int opNo) {}
-    private SDValue splitVecOp_UnaryOp(SDNode n) {}
+    private boolean splitVectorOperand(SDNode n, int opNo)
+    {
+        if (Util.DEBUG)
+        {
+            System.err.print("Split node operand: ");
+            n.dump(dag);
+            System.err.println();
+        }
+        SDValue res = new SDValue();
 
-    private SDValue splitVecOp_BIT_CONVERT(SDNode n) {}
-    private SDValue splitVecOp_EXTRACT_SUBVECTOR(SDNode n) {}
-    private SDValue splitVecOp_EXTRACT_VECTOR_ELT(SDNode n) {}
-    private SDValue splitVecOp_STORE(StoreSDNode n, int opNo) {}
+        switch (n.getOpcode())
+        {
+            case ISD.BIT_CONVERT:
+                res = splitVecOp_BIT_CONVERT(n); break;
+            case ISD.EXTRACT_SUBVECTOR:
+                res = splitVecOp_EXTRACT_SUBVECTOR(n); break;
+            case ISD.EXTRACT_VECTOR_ELT:
+                res = splitVecOp_EXTRACT_VECTOR_ELT(n); break;
+            case ISD.STORE:
+                res = splitVecOp_STORE((StoreSDNode) n, opNo);
+                break;
+
+            case ISD.CTTZ:
+            case ISD.CTLZ:
+            case ISD.CTPOP:
+            case ISD.FP_TO_SINT:
+            case ISD.FP_TO_UINT:
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:
+            case ISD.TRUNCATE:
+            case ISD.SIGN_EXTEND:
+            case ISD.ZERO_EXTEND:
+            case ISD.ANY_EXTEND:
+                res = splitVecOp_UnaryOp(n);
+                break;
+            default:
+                if (Util.DEBUG)
+                {
+                    System.err.printf("splitVectorOperand op #%d: ", opNo);
+                    n.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Don't know how to split this operator's operand!");
+                break;
+        }
+        
+        if (res.getNode() == null)
+            return false;
+        
+        if (res.getNode().equals(n))
+            return true;
+        
+        assert res.getValueType().equals(n.getValueType(0)) && 
+                n.getNumValues() == 1:"Invalid operand expansion!";
+        replaceValueWith(new SDValue(n, 0), res);
+        return false;
+    }
+    private SDValue splitVecOp_UnaryOp(SDNode n)
+    {
+        EVT resVT = n.getValueType(0);
+        SDValue[] t = getSplitVector(n.getOperand(0));
+        EVT inVT = t[0].getValueType();
+
+        EVT outVT = EVT.getVectorVT(resVT.getVectorElementType(),
+                inVT.getVectorNumElements());
+        SDValue lo = dag.getNode(n.getOpcode(), outVT, t[0]);
+        SDValue hi = dag.getNode(n.getOpcode(), outVT, t[1]);
+        return dag.getNode(ISD.CONCAT_VECTORS, resVT, lo, hi);
+    }
+    private SDValue splitVecOp_BIT_CONVERT(SDNode n)
+    {
+        SDValue[] t = getSplitVector(n.getOperand(0));
+        SDValue lo = t[0], hi = t[1];
+
+        if (tli.isBigEndian())
+        {
+            SDValue temp = lo;
+            lo = hi;
+            hi = temp;
+        }
+
+        return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0),
+                joinIntegers(lo, hi));
+    }
+    private SDValue splitVecOp_EXTRACT_SUBVECTOR(SDNode n)
+    {
+        EVT subVT = n.getValueType(0);
+        SDValue idx = n.getOperand(0);
+        SDValue[] t = getSplitVector(n.getOperand(0));
+        SDValue lo = t[0], hi = t[1];
+
+        long loElts = lo.getValueType().getVectorNumElements();
+        long idxVal = ((ConstantSDNode)idx.getNode()).getZExtValue();
+
+        if (idxVal < loElts)
+        {
+            assert idxVal + subVT.getVectorNumElements() <= loElts;
+            return dag.getNode(ISD.EXTRACT_SUBVECTOR, subVT, lo, idx);
+        }
+        else
+        {
+            return dag.getNode(ISD.EXTRACT_SUBVECTOR, subVT, hi,
+                    dag.getConstant(idxVal-loElts, idx.getValueType(), false));
+        }
+
+    }
+    private SDValue splitVecOp_EXTRACT_VECTOR_ELT(SDNode n)
+    {
+        SDValue vec = n.getOperand(0);
+        SDValue idx = n.getOperand(1);
+        EVT vecVT = vec.getValueType();
+
+        if (idx.getNode() instanceof ConstantSDNode)
+        {
+            long idxVal = ((ConstantSDNode)idx.getNode()).getZExtValue();
+            assert idxVal < vecVT.getVectorNumElements();
+
+            SDValue[] t = getSplitVector(vec);
+            SDValue lo = t[0], hi = t[1];
+
+            long loElts = lo.getValueType().getVectorNumElements();
+
+            if (idxVal < loElts)
+            {
+                return dag.updateNodeOperands(new SDValue(n, 0), lo, idx);
+            }
+            return dag.updateNodeOperands(new SDValue(n, 0), hi,
+                    dag.getConstant(idxVal-loElts, idx.getValueType(), false));
+        }
+
+        EVT eltVT = vecVT.getVectorElementType();
+
+        SDValue stackPtr = dag.createStackTemporary(vecVT);
+        int fi = ((FrameIndexSDNode)stackPtr.getNode()).getFrameIndex();
+        Value sv = PseudoSourceValue.getFixedStack(fi);
+        SDValue store = dag.getStore(dag.getEntryNode(), vec, stackPtr, sv, 0, false, 0);
+
+        stackPtr = getVectorElementPointer(stackPtr, eltVT, idx);
+        return dag.getExtLoad(LoadExtType.EXTLOAD, n.getValueType(0),
+                store, stackPtr, sv, 0, eltVT);
+    }
+    private SDValue splitVecOp_STORE(StoreSDNode n, int opNo)
+    {
+        assert n.isUnindexed():"Indexed store of vector?";
+        assert opNo == 1;
+        boolean isTruncating = n.isTruncatingStore();
+        SDValue chain = n.getChain();
+        SDValue ptr = n.getBasePtr();
+        int svOffset = n.getSrcValueOffset();
+        EVT memoryVT = n.getMemoryVT();
+        int alignment = n.getAlignment();
+        boolean isVolatile = n.isVolatile();
+
+        SDValue[] t = getSplitVector(n.getOperand(1));
+        SDValue lo = t[0], hi = t[1];
+        EVT[] vts = getSplitDestVTs(memoryVT);
+        EVT loMemVT = vts[0], hiMemVT = vts[1];
+
+        int incrementSize = loMemVT.getSizeInBits()/8;
+        if (isTruncating)
+            lo = dag.getTruncStore(chain, lo, ptr, n.getSrcValue(), svOffset,
+                    loMemVT, isVolatile, alignment);
+        else
+            lo = dag.getStore(chain, lo, ptr, n.getSrcValue(), svOffset,
+                    isVolatile, alignment);
+        ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                dag.getIntPtrConstant(incrementSize));
+        if (isTruncating)
+            hi = dag.getTruncStore(chain, hi, ptr, n.getSrcValue(),
+                    svOffset+incrementSize, hiMemVT, isVolatile,
+                    Util.minAlign(alignment, incrementSize));
+        else
+            hi = dag.getStore(chain, hi, ptr, n.getSrcValue(), svOffset+incrementSize,
+                    isVolatile, Util.minAlign(alignment, incrementSize));
+        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);
+    }
 
     private SDValue getWidenedVector(SDValue op) 
     {
-    
+        SDValue widenedOp = widenedVectors.get(op);
+        widenedOp = remapValue(widenedOp);
+        assert widenedOp.getNode() != null;
+        widenedVectors.put(op, widenedOp);
+        return widenedOp;
     }
-    private void setWidenedVector(SDValue op, SDValue result) {}
+    private void setWidenedVector(SDValue op, SDValue result)
+    {
+        assert result.getValueType().equals(tli.getTypeToTransformTo(
+                op.getValueType())):"Invalid type for widened vector!";
+        result = analyzeNewValue(result);
+        assert !widenedVectors.containsKey(op);
+        widenedVectors.put(op, result);
+    }
 
     // Widen Vector Result Promotion.
     private void widenVectorResult(SDNode n, int ResNo) {}
@@ -4531,7 +5546,8 @@ public class DAGTypeLegalizer
             case WidenVector:
                 assert (inVT.getVectorNumElements() & 1) == 0:"Unsupported BIT_CONVERT!";
                 inOp = getWidenedVector(inOp);
-                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(), inVT.getVectorNumElements()/2);
+                EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+                        inVT.getVectorNumElements()/2);
                 lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
                         dag.getIntPtrConstant(0));
                 hi = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,

@@ -30,6 +30,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import gnu.trove.iterator.TIntObjectIterator;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
 
@@ -283,7 +284,7 @@ public class SelectionDAG
                     long[] zeros = { 0, 0 };
                     if (vt.equals(new EVT(MVT.ppcf128)))
                         break;
-                    APFloat apf = new APFloat(new APInt(bitwidth, 2, zeros));
+                    APFloat apf = new APFloat(new APInt(bitwidth, zeros));
                     apf.convertFromAPInt(val, opc == ISD.SINT_TO_FP,
                             rmNearestTiesToEven);
                     return getConstantFP(apf, vt, false);
@@ -341,7 +342,7 @@ public class SelectionDAG
                                         rmTowardZero, ignored);
                         if (opStatus == opInvalidOp)
                             break;
-                        APInt res = new APInt(vt.getSizeInBits(), 2, x);
+                        APInt res = new APInt(vt.getSizeInBits(), x);
                         return getConstant(res, vt, false);
                     }
                     case ISD.BIT_CONVERT:
@@ -3202,6 +3203,32 @@ public class SelectionDAG
     {
         assert false:"Unimplemented currently!";
         return 0;
+    }
+
+    public SDValue getVectorShuffle(EVT vt, SDValue op0, SDValue op1, int[] mask)
+    {
+        assert op0.getValueType().equals(op1.getValueType()):"Invalid VECTOR_SHUFFLE!";
+        assert vt.isVector() && op0.getValueType().isVector();
+        assert vt.getVectorElementType().equals(op0.getValueType().getVectorElementType());
+
+        if (op0.getOpcode() == ISD.UNDEF && op1.getOpcode() == ISD.UNDEF)
+            return getUNDEF(vt);
+
+        int numElts = vt.getVectorNumElements();
+        TIntArrayList maskVec = new TIntArrayList();
+        for (int val : mask)
+            assert val < numElts * 2:"Index out of range!";
+        maskVec.addAll(mask);
+
+        if (op0.equals(op1))
+        {
+            op1 = getUNDEF(vt);
+            for (int i = 0; i < numElts; i++)
+                if (maskVec.get(i) >= numElts)
+                    maskVec.set(i, maskVec.get(i)-numElts);
+        }
+        Util.shouldNotReachHere("Not implemented!");
+        return null;
     }
 }
 
