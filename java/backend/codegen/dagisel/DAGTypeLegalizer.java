@@ -25,7 +25,6 @@ import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
-import javafx.scene.shape.SVGPath;
 import tools.APFloat;
 import tools.APInt;
 import tools.Pair;
@@ -6104,6 +6103,38 @@ public class DAGTypeLegalizer
         return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
     }
 
+    private static EVT[] findAssociateWidenVecType(SelectionDAG dag,
+            TargetLowering tli, int width, EVT vecVT,
+            EVT newEltVT, EVT newVecVT)
+    {
+        int eltWidth = width + 1;
+        if (tli.isTypeLegal(vecVT))
+        {
+            do
+            {
+                assert eltWidth > 0;
+                eltWidth = 1 << Util.log2(eltWidth-1);
+                newEltVT = EVT.getIntegerVT(eltWidth);
+                int numElts = vecVT.getSizeInBits()/eltWidth;
+                newVecVT = EVT.getVectorVT(newEltVT, numElts);
+            }while (!tli.isTypeLegal(newVecVT) || vecVT.getSizeInBits() !=
+                    newVecVT.getSizeInBits());
+        }
+        else
+        {
+            do
+            {
+                assert eltWidth > 0;
+                eltWidth = 1 << Util.log2(eltWidth-1);
+                newEltVT = EVT.getIntegerVT(eltWidth);
+                int numElts = vecVT.getSizeInBits()/eltWidth;
+                newVecVT = EVT.getVectorVT(newEltVT, numElts);
+            }while (!tli.isTypeLegal(newEltVT) || vecVT.getSizeInBits() !=
+                    newVecVT.getSizeInBits());
+        }
+        return new EVT[]{newEltVT, newVecVT};
+    }
+
     /**
      * Helper function to generate a set of loads to load a vector with a
      * resulting wider type. It takes
@@ -6123,7 +6154,55 @@ public class DAGTypeLegalizer
             int svOffset, int alignment,
             boolean isVolatile, int ldWidth,
             EVT resType)
-    {}
+    {
+        EVT[] vts = findAssociateWidenVecType(dag, tli, ldWidth, resType, new EVT(), new EVT());
+        EVT newEltVT = vts[0];
+        EVT newVecVT = vts[1];
+        int newEltVTWidth = newEltVT.getSizeInBits();
+
+        SDValue ldOp = dag
+                .getLoad(newEltVT, chain, basePtr, sv, svOffset, isVolatile,
+                        alignment);
+        SDValue vecOp = dag.getNode(ISD.SCALAR_TO_VECTOR, newVecVT, ldOp);
+        ldChain.add(ldOp.getValue(1));
+
+        if (ldWidth == newEltVTWidth)
+        {
+            return dag.getNode(ISD.BIT_CONVERT, resType, vecOp);
+        }
+
+        int idx = 1;
+        ldWidth -= newEltVTWidth;
+        int offset = 0;
+        while (ldWidth > 0)
+        {
+            int increment = newEltVTWidth / 8;
+            offset += increment;
+            basePtr = dag.getNode(ISD.ADD, basePtr.getValueType(), basePtr,
+                    dag.getIntPtrConstant(increment));
+
+            if (ldWidth < newEltVTWidth)
+            {
+                int oNewEltVTWidth = newEltVTWidth;
+                vts = findAssociateWidenVecType(dag, tli, ldWidth, resType, newEltVT,
+                        newVecVT);
+                newEltVT = vts[0];
+                newVecVT = vts[1];
+                newEltVTWidth = newEltVT.getSizeInBits();
+                idx = idx * (oNewEltVTWidth/newEltVTWidth);
+                vecOp = dag.getNode(ISD.BIT_CONVERT, newVecVT, vecOp);
+            }
+
+            ldOp = dag.getLoad(newEltVT, chain, basePtr, sv,
+                    svOffset + offset, isVolatile,
+                    Util.minAlign(alignment, offset));
+            ldChain.add(ldOp.getValue(1));
+            vecOp = dag.getNode(ISD.INSERT_VECTOR_ELT, newVecVT, vecOp,
+                    ldOp, dag.getIntPtrConstant(idx++));
+            ldWidth -= newEltVTWidth;
+        }
+        return dag.getNode(ISD.BIT_CONVERT, resType, vecOp);
+    }
 
     /**
      * Helper function to generate a set of
@@ -6146,21 +6225,96 @@ public class DAGTypeLegalizer
             int stWidth)
     {
         EVT widenVT = valOp.getValueType();
-        EVT newEltVT, newVecVT;
 
-        findAssociateWidenVecType(dag, tli, stWidth, widenVT);
+        EVT[] vts = findAssociateWidenVecType(dag, tli, stWidth, widenVT, new EVT(), new EVT());
+        EVT newEltVT = vts[0], newVecVT = vts[1];
+        int newEltVTWidth = newEltVT.getSizeInBits();
+
+        SDValue vecOp = dag.getNode(ISD.BIT_CONVERT, newVecVT, valOp);
+        SDValue eop = dag.getNode(ISD.EXTRACT_VECTOR_ELT, newEltVT, vecOp,
+                dag.getIntPtrConstant(0));
+        SDValue stop = dag.getStore(chain, eop, basePtr, sv, svOffset,
+                isVolatile, alignment);
+
+        stChain.add(stop);
+
+        if (stWidth == newEltVTWidth)
+            return;
+
+        int idx = 1;
+        stWidth -= newEltVTWidth;
+        int offset = 0;
+        while (stWidth > 0)
+        {
+            int increment = newEltVTWidth / 8;
+            offset += increment;
+            basePtr = dag.getNode(ISD.ADD, basePtr.getValueType(), basePtr,
+                    dag.getIntPtrConstant(increment));
+
+            if (stWidth < newEltVTWidth)
+            {
+                int oNewEltVTWidth = newEltVTWidth;
+                vts = findAssociateWidenVecType(dag, tli, stWidth, widenVT, newEltVT, newVecVT);
+                newEltVT = vts[0];
+                newVecVT = vts[1];
+                newEltVTWidth = newEltVT.getSizeInBits();
+                idx = idx * (oNewEltVTWidth/newEltVTWidth);
+                vecOp = dag.getNode(ISD.BIT_CONVERT, newVecVT, vecOp);
+            }
+
+            eop = dag.getNode(ISD.EXTRACT_VECTOR_ELT, newVecVT, vecOp,
+                    dag.getIntPtrConstant(idx++));
+            stChain.add(dag.getStore(chain, eop, basePtr, sv, svOffset+offset,
+                    isVolatile, Util.minAlign(alignment, offset)));
+            stWidth -= newEltVTWidth;
+        }
     }
 
     /**
      * Modifies a vector input (widen or narrows) to a vector of NVT.  The
      * input vector must have the same element type as NVT.
      * @param inOp
-     * @param widenVT
+     * @param nvt
      * @return
      */
-    private SDValue modifyToType(SDValue inOp, EVT widenVT)
+    private SDValue modifyToType(SDValue inOp, EVT nvt)
     {
+        EVT inVT = inOp.getValueType();
+        assert inVT.getVectorElementType().equals(nvt.getVectorElementType()):
+                "Input and widen element type must match!";
 
+        if (inVT.equals(nvt))
+            return inOp;
+
+        int inNumElts = inVT.getVectorNumElements();
+        int widenNumElts = nvt.getVectorNumElements();
+        if (widenNumElts > inNumElts && (widenNumElts % inNumElts) == 0)
+        {
+            int numConcat = widenNumElts/ inNumElts;
+            SDValue[] ops = new SDValue[numConcat];
+            SDValue undefVal = dag.getUNDEF(inVT);
+            ops[0] = inOp;
+            Arrays.fill(ops, 1, numConcat, undefVal);
+            return dag.getNode(ISD.CONCAT_VECTORS, nvt, ops);
+        }
+
+        if (widenNumElts < inNumElts && (inNumElts % widenNumElts) != 0)
+        {
+            return dag.getNode(ISD.EXTRACT_SUBVECTOR, nvt, inOp,
+                    dag.getIntPtrConstant(0));
+        }
+
+        SDValue[] ops = new SDValue[widenNumElts];
+        EVT eltVT = nvt.getVectorElementType();
+        int minNumElts = Math.min(widenNumElts, inNumElts);
+        int idx = 0;
+        for (; idx < minNumElts; idx++)
+            ops[idx] = dag.getNode(ISD.EXTRACT_VECTOR_ELT, eltVT, inOp,
+                    dag.getIntPtrConstant(idx));
+
+        SDValue undefVal = dag.getUNDEF(eltVT);
+        Arrays.fill(ops, idx, widenNumElts, undefVal);
+        return dag.getNode(ISD.BUILD_VECTOR, nvt, ops);
     }
 
     private SDValue[] getSplitOp(SDValue op) 

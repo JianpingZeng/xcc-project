@@ -35,7 +35,7 @@ import backend.codegen.fastISel.ISD;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class SDValue implements Comparable<SDValue>
+public class SDValue implements Comparable<SDValue>, Cloneable
 {
     /**
      * The node defining the value we are using.
@@ -238,5 +238,14 @@ public class SDValue implements Comparable<SDValue>
     public boolean hasOneUse()
     {
         return node.hasNumUsesOfValue(1, resNo);
+    }
+
+    @Override
+    public SDValue clone()
+    {
+        SDValue res = new SDValue();
+        res.node = node;
+        res.resNo = resNo;
+        return res;
     }
 }
