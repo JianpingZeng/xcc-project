@@ -3230,5 +3230,15 @@ public class SelectionDAG
         Util.shouldNotReachHere("Not implemented!");
         return null;
     }
+
+    public SDValue getShiftAmountOperand(SDValue op)
+    {
+        EVT ty = op.getValueType();
+        EVT shTy = new EVT(tli.getShiftAmountTy());
+        if (ty.equals(shTy) || ty.isVector()) return op;
+
+        int opc = ty.bitsGT(shTy) ? ISD.TRUNCATE : ISD.ZERO_EXTEND;
+        return getNode(opc, shTy, op);
+    }
 }
 
