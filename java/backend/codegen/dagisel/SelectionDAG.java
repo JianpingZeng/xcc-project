@@ -3240,5 +3240,12 @@ public class SelectionDAG
         int opc = ty.bitsGT(shTy) ? ISD.TRUNCATE : ISD.ZERO_EXTEND;
         return getNode(opc, shTy, op);
     }
+
+    public SDValue getNOT(SDValue op, EVT vt)
+    {
+        EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
+        SDValue negOne = getConstant(APInt.getAllOnesValue(eltVT.getSizeInBits()), vt, false);
+        return getNode(ISD.XOR, vt, op, negOne);
+    }
 }
 
