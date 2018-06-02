@@ -31,6 +31,7 @@ import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
+import gnu.trove.list.array.TIntArrayList;
 import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -2088,5 +2089,22 @@ public class X86TargetLowering extends TargetLowering
     public int getSetCCResultType(EVT vt)
     {
         return MVT.i8;
+    }
+
+    @Override
+    public boolean allowsUnalignedMemoryAccesses(EVT memVT)
+    {
+        return true;
+    }
+
+    @Override
+    public boolean isShuffleMaskLegal(TIntArrayList mask, EVT vt)
+    {
+        if (vt.getSizeInBits() == 64)
+            return false;
+
+        return vt.getVectorNumElements() == 2 ||
+                ShuffleVectorSDNode.isSplatMask(mask.toArray(), vt) ||
+                isMOVLMask();
     }
 }

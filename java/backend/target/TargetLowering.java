@@ -25,6 +25,7 @@ import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APInt;
 import tools.OutParamWrapper;
@@ -116,7 +117,7 @@ public abstract class TargetLowering
                 case ISD.AND:
                 case ISD.OR:
                 {
-                    ConstantSDNode c = c.getOperand(1).getNode() instanceof ConstantSDNode?
+                    ConstantSDNode c = op.getOperand(1).getNode() instanceof ConstantSDNode?
                             (ConstantSDNode)op.getOperand(1).getNode() : null;
                     if (c == null) return false;
 
@@ -201,6 +202,8 @@ public abstract class TargetLowering
     private CondCode[] cmpLibCallCCs;
     private CallingConv[] libCallCallingConv;
 
+    private int stackPointerRegisterToSaveRestore;
+
     public TargetLowering(TargetMachine tm)
     {
         this.tm = tm;
@@ -216,6 +219,7 @@ public abstract class TargetLowering
         libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
         cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
         libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
+        stackPointerRegisterToSaveRestore = 0;
     }
 
     public ValueTypeAction getValueTypeActions()
@@ -904,15 +908,15 @@ public abstract class TargetLowering
                 getOperationAction(opc, vt) == Custom);
     }
 
-    public LegalizeAction getLoadExtAction(int lType, EVT vt)
+    public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt)
     {
-        assert lType < loadExtActions.length &&
+        assert lType.ordinal() < loadExtActions.length &&
                 vt.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
-        return LegalizeAction.values()[(int) (loadExtActions[lType] >>
-                ((2*vt.getSimpleVT().simpleVT)&3))];
+        return LegalizeAction.values()[(int) (loadExtActions[lType.ordinal()]
+                >> ((2*vt.getSimpleVT().simpleVT)&3))];
     }
 
-    public boolean isLoadExtLegal(int lType, EVT vt)
+    public boolean isLoadExtLegal(LoadExtType lType, EVT vt)
     {
         return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
             getLoadExtAction(lType, vt) == Custom);
@@ -1039,7 +1043,6 @@ public abstract class TargetLowering
     public RTLIB getUINTTOFP(EVT opVT, EVT retVT)
     {}
 
-
     public CondCode getCmpLibCallCC(RTLIB lc)
     {
         return cmpLibCallCCs[lc.ordinal()];
@@ -1071,5 +1074,24 @@ public abstract class TargetLowering
         return new SDValue();
     }
 
+    public boolean allowsUnalignedMemoryAccesses(EVT memVT)
+    {
+        return false;
+    }
+
+    public boolean isShuffleMaskLegal(TIntArrayList mask, EVT vt)
+    {
+        return true;
+    }
+
+    public int getStackPointerRegisterToSaveRestore()
+    {
+        return stackPointerRegisterToSaveRestore;
+    }
+
+    public void setStackPointerRegisterToSaveRestore(int spreg)
+    {
+        stackPointerRegisterToSaveRestore = spreg;
+    }
 }
 
