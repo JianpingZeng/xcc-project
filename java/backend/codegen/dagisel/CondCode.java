@@ -16,6 +16,9 @@
  */
 
 package backend.codegen.dagisel;
+
+import com.sun.org.apache.bcel.internal.generic.RET;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -49,5 +52,27 @@ public enum CondCode
     SETNE,         //  1 X 1 1 0       True if not equal
     SETTRUE2,      //  1 X 1 1 1       Always true (always folded)
 
-    SETCC_INVALID       // Marker value.
+    SETCC_INVALID;       // Marker value.
+
+    public boolean isSignedIntSetCC()
+    {
+        return this == SETGT || this == SETGE ||
+                this == SETLT || this == SETLE;
+    }
+
+    public boolean isUnsignedIntSetCC()
+    {
+        return this == SETUGT || this == SETUGE ||
+                this == SETULT || this == SETULE;
+    }
+
+    public boolean isTrueWhenEqual()
+    {
+        return (this.ordinal() & 1) != 0;
+    }
+
+    public int getUnorderedFlavor()
+    {
+        return (ordinal() >> 3) & 3;
+    }
 }

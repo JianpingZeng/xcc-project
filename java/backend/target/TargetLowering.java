@@ -196,7 +196,7 @@ public abstract class TargetLowering
     private long[] convertActions = new long[MVT.LAST_VALUETYPE];
     private long[] condCodeActions = new long[CondCode.SETCC_INVALID.ordinal()];
     private byte[] targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
-    private TObjectIntHashMap<Pair<Integer,Integer>> promoteType = new TObjectIntHashMap<>();
+    private TObjectIntHashMap<Pair<Integer,Integer>> promoteType = new TObjectIntHashMap<Pair<Integer,Integer>>();
 
     private String[] libCallRoutineNames;
     private CondCode[] cmpLibCallCCs;
