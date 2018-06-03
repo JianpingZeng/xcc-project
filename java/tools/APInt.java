@@ -328,7 +328,7 @@ public class APInt implements Cloneable
         }
     }
 
-    private void initFromArray(long[] bigVal)
+    private void initFromArray(long[] bigVal, int len)
     {
         assert bitWidth > 0 : "bitwidth too small " + bitWidth;
         assert bigVal != null : "empty list";
@@ -337,7 +337,7 @@ public class APInt implements Cloneable
         else
         {
             pVal = new long[getNumWords()];
-            int words = Math.min(bigVal.length, getNumWords());
+            int words = Math.min(len, getNumWords());
             System.arraycopy(bigVal, 0, pVal, 0, words * APINT_WORD_SIZE);
         }
         clearUnusedBits();
@@ -536,11 +536,15 @@ public class APInt implements Cloneable
         initFromArray(bigVal);
     }
 
-    public APInt(int numBits, final long bigVal[])
+    public APInt(int numBits, int len, final long bigVal[])
     {
         bitWidth = numBits;
         val = 0;
-        initFromArray(bigVal);
+        initFromArray(bigVal, len);
+    }
+    public APInt(int numBits, final long bigVal[])
+    {
+        this(numBits, bigVal.length, bigVal);
     }
 
     public APInt(int numBits, String str, int radix)

@@ -16,12 +16,10 @@
  */
 
 package backend.codegen.dagisel;
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.PseudoSourceValue;
-import backend.codegen.ValueTypeAction;
+import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
+import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
@@ -30,13 +28,18 @@ import backend.value.Constant;
 import backend.value.ConstantInt;
 import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
+import tools.APFloat;
 import tools.APInt;
+import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import static backend.codegen.dagisel.LoadExtType.EXTLOAD;
+import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
+import static backend.codegen.dagisel.LoadExtType.ZEXTLOAD;
 import static tools.Util.bitsToDouble;
 
 /**
@@ -57,6 +60,7 @@ public class SelectionDAGLegalizer
     private SDValue lastCALLSEQ_END;
 
     private boolean isLegalizingCall;
+
     private enum LegalizeAction
     {
         Legal,
@@ -458,7 +462,7 @@ public class SelectionDAGLegalizer
                         EVT nvt = EVT.getIntegerVT(newWidth);
                         SDValue ch = new SDValue();
                         LoadExtType newExtType = extType == LoadExtType.ZEXTLOAD ?
-                                LoadExtType.ZEXTLOAD : LoadExtType.EXTLOAD;
+                                LoadExtType.ZEXTLOAD : EXTLOAD;
 
                         result = dag.getExtLoad(newExtType, node.getValueType(0),
                                 temp1, temp2, ld.getSrcValue(), svOffset,
@@ -589,8 +593,8 @@ public class SelectionDAGLegalizer
                                     temp2 = legalizeOp(load.getValue(1));
                                     break;
                                 }
-                                assert extType != LoadExtType.EXTLOAD;
-                                result = dag.getExtLoad(LoadExtType.EXTLOAD,
+                                assert extType != EXTLOAD;
+                                result = dag.getExtLoad(EXTLOAD,
                                         node.getValueType(0),
                                         temp1, temp2, ld.getSrcValue(),
                                         ld.getRawSubclassData(), srcVT,
@@ -786,29 +790,224 @@ public class SelectionDAGLegalizer
         return result;
     }
 
-    private static SDValue expandUnalignedStore(StoreSDNode node, SelectionDAG dag,
+    private static SDValue expandUnalignedStore(StoreSDNode st, SelectionDAG dag,
             TargetLowering tli)
     {
-        // TODO: 18-6-2
-        return null;
+        SDValue chain = st.getChain();
+        SDValue ptr = st.getBasePtr();
+        SDValue val = st.getValue();
+        EVT vt = val.getValueType();
+        int alignment = st.getAlignment();
+        int svOffset = st.getSrcValueOffset();
+        boolean isVolatile = st.isVolatile();
+        if (st.getMemoryVT().isFloatingPoint() ||
+                st.getMemoryVT().isVector())
+        {
+            EVT inVT = EVT.getIntegerVT(vt.getSizeInBits());
+            if (tli.isTypeLegal(inVT))
+            {
+                SDValue result = dag.getNode(ISD.BIT_CONVERT, inVT, val);
+                return dag.getStore(chain, result, ptr, st.getSrcValue(),
+                        svOffset, isVolatile, alignment);
+            }
+            else
+            {
+                EVT storedVT = st.getMemoryVT();
+                EVT regVT = tli.getRegisterType(EVT.getIntegerVT(storedVT.getSizeInBits()));
+                int storedBytes = storedVT.getSizeInBits()/8;
+                int regBytes = regVT.getSizeInBits()/8;
+                int numRegs = (storedBytes+regBytes-1)/regBytes;
+                SDValue stackPtr = dag.createStackTemporary(storedVT, regVT);
+
+                SDValue store = dag.getTruncStore(chain, val, stackPtr, null, 0, storedVT);
+                SDValue increment = dag.getConstant(regBytes, new EVT(tli.getPointerTy()), false);
+                ArrayList<SDValue> stores = new ArrayList<>();
+                int offset = 0;
+
+                for (int i = 1; i < numRegs; i++)
+                {
+                    SDValue load = dag.getLoad(regVT, store, stackPtr, null, 0);
+                    stores.add(dag.getStore(load.getValue(1), load, ptr,
+                            st.getSrcValue(), svOffset+offset, isVolatile,
+                            Util.minAlign(alignment, offset)));
+                    offset += regBytes;
+                    stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr, increment);
+                    ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
+                }
+
+                EVT memVT = EVT.getIntegerVT(8*(storedBytes-offset));
+                SDValue load = dag.getExtLoad(EXTLOAD, regVT, store, stackPtr, null, 0, memVT);
+                stores.add(dag.getTruncStore(load.getValue(1), load, ptr, st.getSrcValue(),
+                        svOffset+offset, memVT, isVolatile, Util.minAlign(alignment, offset)));
+                return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), stores);
+            }
+        }
+        EVT newStoredVT = new EVT(st.getMemoryVT().getSimpleVT().simpleVT-1);
+        int numBits = newStoredVT.getSizeInBits();
+        int incrementSize = numBits/8;
+
+        SDValue shiftAmount = dag.getConstant(numBits, new EVT(tli.getShiftAmountTy()), false);
+        SDValue lo = val;
+        SDValue hi = dag.getNode(ISD.SRL, vt, val, shiftAmount);
+        SDValue store1 = dag.getTruncStore(chain, tli.isLittleEndian()?lo:hi,
+                ptr, st.getSrcValue(), svOffset, newStoredVT, isVolatile, alignment);
+        ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
+        alignment = Util.minAlign(alignment, incrementSize);
+        SDValue store2 = dag.getTruncStore(chain, tli.isLittleEndian()?hi:lo,
+                ptr, st.getSrcValue(), svOffset+incrementSize,
+                newStoredVT, isVolatile, alignment);
+        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), store1, store2);
     }
 
-    private static SDValue expandUnalignedLoad(LoadSDNode node, SelectionDAG dag,
+    private static SDValue expandUnalignedLoad(LoadSDNode ld, SelectionDAG dag,
             TargetLowering tli)
     {
-        // TODO: 18-6-2
-        return null;
+        int svOffset = ld.getSrcValueOffset();
+        SDValue chain = ld.getChain();
+        SDValue ptr = ld.getBasePtr();
+        EVT vt = ld.getValueType(0);
+        EVT loadedVT = ld.getMemoryVT();
+        if (vt.isFloatingPoint() || vt.isVector())
+        {
+            EVT intVT = EVT.getIntegerVT(loadedVT.getSizeInBits());
+            if (tli.isTypeLegal(intVT))
+            {
+                SDValue newLoad = dag.getLoad(intVT, chain, ptr, ld.getSrcValue(),
+                        svOffset, ld.isVolatile(), ld.getAlignment());
+                SDValue result = dag.getNode(ISD.BIT_CONVERT, loadedVT, newLoad);
+                if (vt.isFloatingPoint() && !loadedVT.equals(vt))
+                    result = dag.getNode(ISD.FP_EXTEND, vt, result);
+                SDValue[] ops = {result, chain};
+                return dag.getMergeValues(ops);
+            }
+            else
+            {
+                EVT regVT = tli.getRegisterType(intVT);
+                int loadedBytes = loadedVT.getSizeInBits()/8;
+                int regBytes = regVT.getSizeInBits()/8;
+                int numRegs = (loadedBytes+regBytes-1)/regBytes;
+
+                SDValue stackBase = dag.createStackTemporary(loadedVT, regVT);
+                SDValue increment = dag.getConstant(regBytes, new EVT(tli.getPointerTy()), false);
+                ArrayList<SDValue> stores = new ArrayList<>();
+                SDValue stackPtr = stackBase;
+                int offset = 0;
+                for (int i = 1; i < numRegs; i++)
+                {
+                    SDValue load = dag.getLoad(regVT, chain, ptr, ld.getSrcValue(),
+                            svOffset+offset, ld.isVolatile(),
+                            Util.minAlign(ld.getAlignment(), offset));
+                    stores.add(dag.getStore(load.getValue(1), load, stackPtr, null, 0, false, 0));
+                    offset += regBytes;
+                    ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
+                    stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr, increment);
+                }
+                EVT memVT = EVT.getIntegerVT(8*(loadedBytes-offset));
+                SDValue load = dag.getExtLoad(EXTLOAD, regVT, chain, ptr, ld.getSrcValue(),
+                        svOffset+offset, memVT, ld.isVolatile(),
+                        Util.minAlign(ld.getAlignment(), offset));
+
+                stores.add(dag.getTruncStore(load.getValue(1), load, stackPtr, null, 0, memVT));
+                SDValue tf = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), stores);
+                load = dag.getExtLoad(ld.getExtensionType(), vt, tf, stackBase, null, 0, loadedVT);
+                SDValue[] ops = {load, tf};
+                return dag.getMergeValues(ops);
+            }
+        }
+        assert loadedVT.isInteger() && !loadedVT.isVector():
+                "Unaligned load of unsupported type!";
+        int numBits = loadedVT.getSizeInBits();
+        EVT newLoadedVT = EVT.getIntegerVT(numBits/2);
+        numBits >>= 1;
+
+        int alignment = ld.getAlignment();
+        int incrementSize = numBits/8;
+        LoadExtType extType = ld.getExtensionType();
+
+        if (extType == NON_EXTLOAD)
+            extType = ZEXTLOAD;
+
+        SDValue lo, hi;
+        if (tli.isLittleEndian())
+        {
+            lo = dag.getExtLoad(ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
+                    svOffset, newLoadedVT, ld.isVolatile(), alignment);
+            ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                    dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
+            hi = dag.getExtLoad(extType, vt, chain, ptr, ld.getSrcValue(),
+                    svOffset+incrementSize, newLoadedVT,
+                    ld.isVolatile(), Util.minAlign(alignment, incrementSize));
+        }
+        else
+        {
+            hi = dag.getExtLoad(extType, vt, chain, ptr, ld.getSrcValue(),
+                    svOffset, newLoadedVT, ld.isVolatile(), alignment);
+            ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+                    dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
+            lo = dag.getExtLoad(ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
+                    svOffset+incrementSize, newLoadedVT, ld.isVolatile(),
+                    Util.minAlign(alignment, incrementSize));
+        }
+        SDValue shiftAmount = dag.getConstant(numBits, new EVT(tli.getShiftAmountTy()), false);
+        SDValue result = dag.getNode(ISD.SHL, vt, hi, shiftAmount);
+        result = dag.getNode(ISD.OR, vt, result, lo);
+        SDValue tf = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                lo.getValue(1), hi.getValue(1));
+        SDValue[] ops = {result, tf};
+        return dag.getMergeValues(ops);
     }
 
-    private SDNode findCallStartFromCallEnd(SDNode node)
+    private static SDNode findCallStartFromCallEnd(SDNode node)
     {
-        // TODO: 18-6-2
-        return null;
+        assert node != null:"Didn't find callseq_start for a call?";
+
+        if (node.getOpcode() == ISD.CALLSEQ_START)
+            return node;
+        assert node.getOperand(0).getValueType().equals(new EVT(MVT.Other))
+                :"Node doesn't have a token chain argument!";
+        return findCallStartFromCallEnd(node.getOperand(0).getNode());
     }
 
     private SDNode findCallEndFromCallStart(SDNode node)
     {
-        // TODO: 18-6-2
+        int opc = node.getOpcode();
+        if (opc == ISD.CALLSEQ_END)
+            return node;
+        if (node.isUseEmpty())
+            return null;
+        SDValue theChain = new SDValue(node, node.getNumValues()-1);
+        if (!theChain.getValueType().equals(new EVT(MVT.Other)))
+        {
+            theChain = new SDValue(node, 0);
+            if (!theChain.getValueType().equals(new EVT(MVT.Other)))
+            {
+                for (int i = 1,e = node.getNumValues(); i < e; i++)
+                {
+                    if (node.getValueType(i).equals(new EVT(MVT.Other)))
+                    {
+                        theChain = new SDValue(node, i);
+                        break;
+                    }
+                }
+                if (!theChain.getValueType().equals(new EVT(MVT.Other)))
+                    return null;
+            }
+        }
+
+        for (SDUse u : node.getUseList())
+        {
+            SDNode user = u.getUser();
+            for (int i = 0, e = user.getNumOperands(); i < e; i++)
+            {
+                if (user.getOperand(i).equals(theChain))
+                {
+                    SDNode result = findCallEndFromCallStart(user);
+                    if (result != null)
+                        return result;
+                }
+            }
+        }
         return null;
     }
 
@@ -1092,7 +1291,7 @@ public class SelectionDAGLegalizer
             return dag.getLoad(destVT, store, ptr, sv, 0, false, destAlign);
         }
         assert slotSize < destSize:"Unknown extension!";
-        return dag.getExtLoad(LoadExtType.EXTLOAD, destVT, store, ptr, sv,
+        return dag.getExtLoad(EXTLOAD, destVT, store, ptr, sv,
                 0, slotVT, false, destAlign);
     }
 
@@ -1356,7 +1555,7 @@ public class SelectionDAGLegalizer
         }
         else
         {
-            fudgeInReg = legalizeOp(dag.getExtLoad(LoadExtType.EXTLOAD, destVT,
+            fudgeInReg = legalizeOp(dag.getExtLoad(EXTLOAD, destVT,
                     dag.getEntryNode(), cpIdx, PseudoSourceValue.getConstantPool(),
                     0, new EVT(MVT.f32), false, align));
         }
@@ -1560,7 +1759,7 @@ public class SelectionDAGLegalizer
         if (op.getValueType().isVector())
             return dag.getLoad(op.getValueType(), chain, stackPtr, null, 0);
         else
-            return dag.getExtLoad(LoadExtType.EXTLOAD, op.getValueType(),
+            return dag.getExtLoad(EXTLOAD, op.getValueType(),
                     chain, stackPtr, null, 0,
                     vec.getValueType().getVectorElementType());
     }
@@ -1599,11 +1798,534 @@ public class SelectionDAGLegalizer
 
     private void expandNode(SDNode node, ArrayList<SDValue> results)
     {
-        // TODO: 18-6-2
+        SDValue temp1, temp2, temp3, temp4;
+        switch (node.getOpcode())
+        {
+            case ISD.CTPOP:
+            case ISD.CTLZ:
+            case ISD.CTTZ:
+                temp1 = expandBitCount(node.getOpcode(), node.getOperand(0));
+                results.add(temp1);
+                break;
+            case ISD.BSWAP:
+                results.add(expandBSWAP(node.getOperand(0)));
+                break;
+            case ISD.FRAMEADDR:
+            case ISD.RETURNADDR:
+            case ISD.FRAME_TO_ARGS_OFFSET:
+                results.add(dag.getConstant(0, node.getValueType(0), false));
+                break;
+            case ISD.FLT_ROUNDS_:
+                results.add(dag.getConstant(1, node.getValueType(0), false));
+                break;
+            case ISD.EH_RETURN:
+            case ISD.DECLARE:
+            case ISD.DBG_LABEL:
+            case ISD.EH_LABEL:
+            case ISD.PREFETCH:
+            case ISD.MEMBARRIER:
+            case ISD.VAEND:
+                results.add(node.getOperand(0));
+                break;
+            case ISD.DBG_STOPPOINT:
+                results.add(expandDBGStoppoint(node));
+                break;
+            case ISD.DYNAMIC_STACKALLOC:
+                expandDynamicStackAlloc(node, results);
+                break;
+            case ISD.MERGE_VALUES:
+                for (int i = 0, e = node.getNumValues(); i < e; i++)
+                {
+                    results.add(node.getOperand(i));
+                }
+                break;
+            case  ISD.UNDEF:
+            {
+                EVT vt = node.getValueType(0);
+                if (vt.isInteger())
+                    results.add(dag.getConstant(0, vt, false));
+                else if (vt.isFloatingPoint())
+                    results.add(dag.getConstantFP(0, vt, false));
+                else
+                    Util.shouldNotReachHere("Unknown value type!");;
+                break;
+            }
+            case ISD.TRAP:
+            {
+                // if this operation is unsurpported, lower it to abort call.
+                ArrayList<ArgListEntry> args = new ArrayList<>();
+                Pair<SDValue, SDValue> callResult =
+                        tli.lowerCallTo(node.getOperand(0),
+                        LLVMContext.VoidTy,
+                        false, false, false,
+                        false, 0,
+                        CallingConv.C, false,
+                        true/*isReturnValueUsed = true*/,
+                        dag.getExternalSymbol("abort", new EVT(tli.getPointerTy())),
+                        args, dag);
+                results.add(callResult.second);
+                break;
+            }
+            case ISD.FP_ROUND:
+            case ISD.BIT_CONVERT:
+                temp1 = emitStackConvert(node.getOperand(0),
+                        node.getValueType(0),
+                        node.getValueType(0));
+                results.add(temp1);
+                break;
+            case ISD.FP_EXTEND:
+                temp1 = emitStackConvert(node.getOperand(0),
+                        node.getOperand(0).getValueType(),
+                        node.getValueType(0));
+                results.add(temp1);
+                break;
+            case ISD.SIGN_EXTEND_INREG:
+            {
+                EVT extraVT = ((VTSDNode)node.getOperand(1).getNode()).getVT();
+                int bitsDiff = node.getValueType(0).getSizeInBits() -
+                        extraVT.getSizeInBits();
+                SDValue shiftCst = dag.getConstant(bitsDiff,
+                        new EVT(tli.getShiftAmountTy()), false);
+                temp1 = dag.getNode(ISD.SHL, node.getValueType(0),
+                        node.getOperand(0), shiftCst);
+                temp1 = dag.getNode(ISD.SRA, node.getValueType(0), temp1, shiftCst);
+                results.add(temp1);
+                break;
+            }
+            case ISD.FP_ROUND_INREG:
+            {
+                EVT extraVT = ((VTSDNode)node.getOperand(1).getNode()).getVT();
+                temp1 = emitStackConvert(node.getOperand(0), extraVT,
+                        node.getValueType(0));
+                results.add(temp1);
+                break;
+            }
+            case ISD.SINT_TO_FP:
+            case ISD.UINT_TO_FP:
+            {
+                temp1 = expandLegalIntToFP(node.getOperand(0),
+                        node.getValueType(0),
+                        node.getOpcode() == ISD.SINT_TO_FP);
+                results.add(temp1);
+                break;
+            }
+            case ISD.FP_TO_SINT:
+            {
+                SDValue trueVal, falseVal;
+                EVT vt = node.getOperand(0).getValueType();
+                EVT nvt = node.getValueType(0);
+                long[] zero = {0, 0};
+                APFloat apf = new APFloat(new APInt(vt.getSizeInBits(), 2, zero));
+                APInt x = APInt.getSignBit(nvt.getSizeInBits());
+                apf.convertFromAPInt(x, false, APFloat.RoundingMode.rmNearestTiesToEven);
+                temp1 = dag.getConstantFP(apf, vt, false);
+                temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)),
+                        node.getOperand(0),
+                        temp1, CondCode.SETLT);
+                trueVal = dag.getNode(ISD.FP_TO_SINT, nvt, node.getOperand(0));
+                falseVal = dag.getNode(ISD.FP_TO_SINT, nvt,
+                        dag.getNode(ISD.FSUB, vt, node.getOperand(0), temp1));
+                falseVal = dag.getNode(ISD.XOR, nvt, falseVal,
+                        dag.getConstant(x, nvt, false));
+                temp1 = dag.getNode(ISD.SELECT, nvt, temp2, trueVal, falseVal);
+                results.add(temp1);
+                break;
+            }
+            case ISD.VAARG:
+            {
+                Value v = ((SrcValueSDNode)node.getOperand(2).getNode()).getValue();
+                EVT vt = node.getValueType(0);
+                temp1 = node.getOperand(0);
+                temp2 = node.getOperand(1);
+                SDValue valist = dag.getLoad(
+                        new EVT(tli.getPointerTy()),
+                        temp1, temp2, v, 0);
+                temp3 = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()),
+                        valist, dag.getConstant(tli.getTargetData()
+                        .getTypeAllocSize(vt.getTypeForEVT()),
+                                new EVT(tli.getPointerTy()),
+                                false));
+                temp3 = dag.getStore(valist.getValue(1), temp3, temp2, v, 0, false, 0);
+                results.add(dag.getLoad(vt, temp3, valist, null, 0));
+                results.add(results.get(0).getValue(1));;
+                break;
+            }
+            case ISD.VACOPY:
+            {
+                Value vd = ((SrcValueSDNode)node.getOperand(3).getNode()).getValue();
+                Value vs = ((SrcValueSDNode)node.getOperand(4).getNode()).getValue();
+                temp1 = dag.getLoad(
+                        new EVT(tli.getPointerTy()),
+                        node.getOperand(0),
+                        node.getOperand(2),
+                        vs, 0);
+                temp1 = dag.getStore(temp1.getValue(1), temp1, node.getOperand(1),
+                        vd, 0, false, 0);
+                results.add(temp1);
+                break;
+            }
+            case ISD.EXTRACT_VECTOR_ELT:
+            {
+                if (node.getOperand(0).getValueType().getVectorNumElements() == 1)
+                {
+                    temp1 = dag.getNode(ISD.BIT_CONVERT, node.getValueType(0),
+                            node.getOperand(0));
+                }
+                else
+                {
+                    temp1 = expandExtractFromVectorThroughStack(new SDValue(node, 0));
+                }
+                results.add(temp1);
+                break;
+            }
+            case ISD.EXTRACT_SUBVECTOR:
+            {
+                results.add(expandExtractFromVectorThroughStack(new SDValue(node, 0)));
+                break;
+            }
+            case ISD.CONCAT_VECTORS:
+            {
+                results.add(expandVectorBuildThroughStack(node));
+                break;
+            }
+            case ISD.SCALAR_TO_VECTOR:
+                results.add(expandVectorBuildThroughStack(node));
+                break;
+            case ISD.INSERT_VECTOR_ELT:
+                results.add(expandInsertVectorElt(
+                        node.getOperand(0),
+                        node.getOperand(1),
+                        node.getOperand(2)));
+                break;
+            case ISD.VECTOR_SHUFFLE:
+            {
+                TIntArrayList mask = new TIntArrayList();
+                ((ShuffleVectorSDNode)node).getMask(mask);;
+
+                EVT vt = node.getValueType(0);
+                EVT eltVT = vt.getVectorElementType();
+                int numElts = vt.getVectorNumElements();
+                ArrayList<SDValue> ops = new ArrayList<>();
+                for (int i = 0; i < numElts; i++)
+                {
+                    if (mask.get(i) == 0)
+                    {
+                        ops.add(dag.getUNDEF(eltVT));
+                        continue;
+                    }
+                    int idx = mask.get(i);
+                    if (idx < numElts)
+                    {
+                        ops.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                                eltVT,
+                                node.getOperand(0),
+                                dag.getIntPtrConstant(idx)));
+                    }
+                    else
+                    {
+                        ops.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                                eltVT,
+                                node.getOperand(1),
+                                dag.getIntPtrConstant(idx-numElts)));
+                    }
+                }
+                temp1 = dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+                results.add(temp1);
+                break;
+            }
+            case ISD.EXTRACT_ELEMENT:
+            {
+                EVT opTy = node.getOperand(0).getValueType();
+                if (((ConstantSDNode)node.getOperand(1).getNode()).getZExtValue() != 0)
+                {
+                    // 1 > Hi
+                    temp1 = dag.getNode(ISD.SRL, opTy, node.getOperand(0),
+                            dag.getConstant(opTy.getSizeInBits()/2,
+                                    new EVT(tli.getShiftAmountTy()), false));
+                    temp1 = dag.getNode(ISD.TRUNCATE, node.getValueType(0), temp1);
+                }
+                else
+                {
+                    temp1 = dag.getNode(ISD.TRUNCATE, node.getValueType(0),
+                            node.getOperand(0));
+                }
+                results.add(temp1);
+                break;
+            }
+            case ISD.STACKSAVE:
+            {
+                // Expand to CopyFromReg if the target
+                // set stackPointerRegisterToSaveRestore.
+                int sp = tli.getStackPointerRegisterToSaveRestore();
+                if (sp != 0)
+                {
+                    results.add(dag.getCopyFromReg(
+                            node.getOperand(0),
+                            sp,
+                            node.getValueType(0)));
+                    results.add(results.get(0).getValue(1));
+                }
+                else
+                {
+                    results.add(dag.getUNDEF(node.getValueType(0)));
+                    results.add(node.getOperand(0));
+                }
+                break;
+            }
+            case ISD.STACKRESTORE:
+            {
+                int sp = tli.getStackPointerRegisterToSaveRestore();
+                if (sp != 0)
+                {
+                    results.add(dag.getCopyToReg(node.getOperand(0),
+                            sp, node.getOperand(1)));
+                }
+                else
+                {
+                    results.add(node.getOperand(0));
+                }
+                break;
+            }
+            case ISD.FCOPYSIGN:
+                results.add(expandFCopySign(node));
+                break;
+            case ISD.FNEG:
+                // Expand Y = FNEG(X) -> Y = SUB -0.0, X
+                temp1 = dag.getConstantFP(-0.0, node.getValueType(0), false);
+                temp1 = dag.getNode(ISD.FSUB, node.getValueType(0),
+                        temp1, node.getOperand(0));
+                results.add(temp1);
+                break;
+            case ISD.FABS:
+            {
+                // Expand Y = FABS(X) -> Y = (X >u 0.0) ? X : fneg(X).
+                EVT vt = node.getValueType(0);
+                temp1 = node.getOperand(0);
+                temp2 = dag.getConstantFP(0.0, vt, false);
+                temp2 = dag.getSetCC(
+                        new EVT(tli.getSetCCResultType(temp1.getValueType())),
+                        temp1, temp2, CondCode.SETUGT);
+                temp3 = dag.getNode(ISD.FNEG, vt, temp1);
+                temp1 = dag.getNode(ISD.SELECT, vt, temp2, temp1, temp3);
+                results.add(temp1);
+                break;
+            }
+            case ISD.FSQRT:
+                results.add(expandFPLibCall(node, RTLIB.SQRT_F32, RTLIB.SQRT_F64,
+                        RTLIB.SQRT_F80, RTLIB.SQRT_PPCF128));
+                break;
+        }
+    }
+
+    private SDValue expandFPLibCall(SDNode node, RTLIB callF32, RTLIB callF64,
+                                    RTLIB callF80, RTLIB callPPCF128)
+    {
+        RTLIB lc = RTLIB.UNKNOWN_LIBCALL;
+        switch (node.getValueType(0).getSimpleVT().simpleVT)
+        {
+            case MVT.f32: lc = callF32; break;
+            case MVT.f64: lc = callF64; break;
+            case MVT.f80: lc = callF80; break;
+            case MVT.ppcf128: lc = callPPCF128; break;
+            default: Util.shouldNotReachHere("Unexpected request for libcall!");;
+        }
+        return expandLibCall(lc, node, false);
+    }
+
+    private SDValue expandIntLibCall(SDNode node, boolean isSigned,
+                                    RTLIB callI16, RTLIB callI32,
+                                    RTLIB callI64, RTLIB callI128)
+    {
+        RTLIB lc = RTLIB.UNKNOWN_LIBCALL;
+        switch (node.getValueType(0).getSimpleVT().simpleVT)
+        {
+            case MVT.i16: lc = callI16; break;
+            case MVT.i32: lc = callI32; break;
+            case MVT.i64: lc = callI64; break;
+            case MVT.i128: lc = callI128; break;
+            default: Util.shouldNotReachHere("Unexpected request for libcall!");;
+        }
+        return expandLibCall(lc, node, isSigned);
+    }
+
+    private SDValue expandLibCall(RTLIB lc, SDNode node,boolean isSigned)
+    {
+        assert isLegalizingCall:"Can't overlap legalization of calle!";
+        SDValue inChain = dag.getEntryNode();
+
+        ArrayList<ArgListEntry> args = new ArrayList<>();
+        for (int i = 0, e = node.getNumOperands(); i < e; i++)
+        {
+            ArgListEntry entry = new ArgListEntry();
+            EVT argVT = node.getOperand(i).getValueType();
+            Type argTy = argVT.getTypeForEVT();
+            entry.node = node.getOperand(i);
+            entry.ty = argTy;
+            entry.isSExt = isSigned;
+            entry.isZExt = !isSigned;
+            args.add(entry);
+        }
+
+        SDValue callee = dag.getExternalSymbol(tli.getLibCallName(lc),
+                new EVT(tli.getPointerTy()));
+        Type retTy = node.getValueType(0).getTypeForEVT();
+        Pair<SDValue, SDValue> callInfo = tli.lowerCallTo(inChain, retTy,
+                isSigned, !isSigned, false, false,
+                0, tli.getLibCallCallingConv(lc),
+                false, true, callee, args, dag);
+
+        // Legalize the call sequence, starting with the chain.  This will advance
+        // the LastCALLSEQ_END to the legalized version of the CALLSEQ_END node that
+        // was added by LowerCallTo (guaranteeing proper serialization of calls).
+        legalizeOp(callInfo.second);
+        return callInfo.first;
     }
 
     private void promoteNode(SDNode node, ArrayList<SDValue> results)
     {
-        // TODO: 18-6-2
+        EVT ovt = node.getValueType(0);
+        int opc = node.getOpcode();
+        if (opc == ISD.UINT_TO_FP ||
+                opc == ISD.SINT_TO_FP ||
+                opc == ISD.SETCC)
+        {
+            ovt = node.getOperand(0).getValueType();
+        }
+        EVT nvt = tli.getTypeToPromoteType(opc, ovt);
+        SDValue temp1 = new SDValue(), temp2 = new SDValue(), temp3;
+        switch (opc)
+        {
+            case ISD.CTTZ:
+            case ISD.CTLZ:
+            case ISD.CTPOP:
+            {
+                temp1 = dag.getNode(ISD.ZERO_EXTEND, nvt, node.getOperand(0));
+                temp1 = dag.getNode(opc, nvt, temp1);
+                if (opc == ISD.CTTZ)
+                {
+                    temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(nvt)),
+                            temp1, dag.getConstant(nvt.getSizeInBits(), nvt, false),
+                            CondCode.SETEQ);
+                    temp1 = dag.getNode(ISD.SELECT, nvt, temp2,
+                            dag.getConstant(ovt.getSizeInBits(), nvt, false),
+                            temp1);
+                }
+                else if (opc == ISD.CTLZ)
+                {
+                    temp1 = dag.getNode(ISD.SUB, nvt, temp1,
+                            dag.getConstant(nvt.getSizeInBits() -
+                                ovt.getSizeInBits(), nvt, false));
+                }
+                results.add(dag.getNode(ISD.TRUNCATE, ovt, temp1));
+                break;
+            }
+            case ISD.BSWAP:
+            {
+                int diffBits = nvt.getSizeInBits() - ovt.getSizeInBits();
+                temp1 = dag.getNode(ISD.ZERO_EXTEND, nvt, temp1);
+                temp1 = dag.getNode(ISD.BSWAP, nvt, temp1);
+                temp1 = dag.getNode(ISD.SRL, nvt, temp1,
+                        dag.getConstant(diffBits, new EVT(tli.getShiftAmountTy()), false));
+                results.add(temp1);
+                break;
+            }
+            case ISD.FP_TO_SINT:
+            case ISD.FP_TO_UINT:
+                temp1 = promoteLegalFPToInt(node.getOperand(0),
+                        node.getValueType(0),
+                        opc == ISD.FP_TO_SINT);
+                results.add(temp1);
+                break;
+            case ISD.UINT_TO_FP:
+            case ISD.SINT_TO_FP:
+                temp1 = promoteLegalIntToFP(node.getOperand(0),
+                        node.getValueType(0), opc == ISD.SINT_TO_FP);
+                results.add(temp1);
+                break;
+            case ISD.AND:
+            case ISD.OR:
+            case ISD.XOR:
+            {
+                int extOp = ISD.UNDEF, truncOp = ISD.UNDEF;
+                if (ovt.isVector())
+                {
+                    extOp = ISD.BIT_CONVERT;
+                    truncOp = ISD.BIT_CONVERT;
+                }
+                else if (ovt.isInteger())
+                {
+                    extOp = ISD.ANY_EXTEND;
+                    truncOp = ISD.TRUNCATE;
+                }
+                else
+                {
+                    Util.shouldNotReachHere("Unknown promote logic operation");
+                }
+                temp1 = dag.getNode(extOp, nvt, node.getOperand(0));
+                temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
+                temp1 = dag.getNode(opc, nvt, temp1, temp2);
+                results.add(dag.getNode(truncOp, ovt, temp1));
+                break;
+            }
+            case ISD.SELECT:
+            {
+                EVT resVT = node.getValueType(0);
+                int extOp = ISD.UNDEF, truncOp = ISD.UNDEF;
+                if (resVT.isVector())
+                {
+                    extOp = ISD.BIT_CONVERT;
+                    truncOp = ISD.BIT_CONVERT;
+                }
+                else if (resVT.isInteger())
+                {
+                    extOp = ISD.ANY_EXTEND;
+                    truncOp = ISD.TRUNCATE;
+                }
+                else
+                {
+                    extOp = ISD.FP_EXTEND;
+                    truncOp = ISD.FP_ROUND;
+                }
+                temp1 = node.getOperand(0);
+                temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
+                temp3 = dag.getNode(extOp, nvt, node.getOperand(2));
+                temp1 = dag.getNode(ISD.SELECT, nvt,temp1, temp2, temp3);
+                if (truncOp != ISD.FP_ROUND)
+                    temp1 = dag.getNode(truncOp, node.getValueType(0), temp1);
+                else
+                    temp1 = dag.getNode(truncOp, node.getValueType(0), temp1,
+                            dag.getIntPtrConstant(0));
+
+                results.add(temp1);
+                break;
+            }
+            case ISD.VECTOR_SHUFFLE:
+            {
+                TIntArrayList mask = new TIntArrayList();
+                ((ShuffleVectorSDNode)node).getMask(mask);
+
+                temp1 = dag.getNode(ISD.BIT_CONVERT, nvt, node.getOperand(0));
+                temp2 = dag.getNode(ISD.BIT_CONVERT, nvt, node.getOperand(1));
+
+                temp1 = shuffleWithNarrowerEltType(nvt, ovt, temp1, temp2, mask.toArray());
+                temp1 = dag.getNode(ISD.BIT_CONVERT, ovt, temp1);
+                results.add(temp1);
+                break;
+            }
+            case ISD.SETCC:
+            {
+                int extOp = ISD.FP_EXTEND;
+                if (nvt.isInteger())
+                {
+                    CondCode cc = ((CondCodeSDNode)node.getOperand(2).getNode()).getCondition();
+                    extOp = cc.isSignedIntSetCC() ? ISD.SIGN_EXTEND: ISD.ZERO_EXTEND;;
+                }
+                temp1 = dag.getNode(extOp, nvt, node.getOperand(0));
+                temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
+                results.add(dag.getNode(ISD.SETCC, node.getValueType(0),
+                        temp1,  temp2, node.getOperand(2)));
+                break;
+            }
+        }
     }
 }
