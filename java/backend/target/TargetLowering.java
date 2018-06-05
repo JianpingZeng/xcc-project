@@ -21,7 +21,6 @@ import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
-import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
@@ -33,9 +32,11 @@ import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import static backend.codegen.RTLIB.*;
+import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
-import static backend.codegen.dagisel.MemIndexedMode.LAST_INDEXED_MODE;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
 import static backend.target.TargetLowering.LegalizeAction.*;
@@ -186,17 +187,53 @@ public abstract class TargetLowering
     private ArrayList<Pair<EVT, TargetRegisterClass>> availableRegClasses;
     private boolean isLittleEndian;
     private MVT pointerTy;
+    /**
+     * True if this target uses GOT for PIC code.
+     */
+    private boolean usesGlobalOffsetTable;
+    /**
+     * Tells the code generator not to expand operations into sequences
+     * that use the selection operation is possible.
+     */
+    private boolean selectIsExpensive;
+    /**
+     * Tells the target not to expand integer divide by constants into a
+     * sequence of muls, adds, and shifts. This is a hack until a real
+     * cost mode is in place. If we ever optimize for size, this will be
+     * set to true unconditionally.
+     */
+    private boolean intDivIsCheap;
+    /**
+     * Tells the target whether it shouldn't generate srl/add/sra for a signed
+     * divide by power of two, and let the target handle it.
+     */
+    private boolean pow2DivIsCheap;
+    /**
+     * This target to use _setjmp to implement llvm.setjmp. Default to false.
+     */
+    private boolean useUnderscoreSetJmp;
+    /**
+     * This target to use _longjmp to implement llvm.longjmp. Default to false.
+     */
+    private boolean useUnderscoreLongJmp;
+    /**
+     * This type used for shift amounts. Usually i8 or whatever pointer is.
+     */
     private MVT shiftAmountTy;
+    /**
+     * The information about the contents of the high-bits in boolean values
+     * held in a type wider than i1. See {@linkplain #getBooleanContents()}.
+     */
     private BooleanContent booleanContents;
 
-    private long[][] opActions = new long[MVT.LAST_VALUETYPE/8*4][ISD.BUILTIN_OP_END];
-    private long[] loadExtActions = new long[LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
-    private long[] truncStoreActions = new long[MVT.LAST_VALUETYPE];
-    private long[][][] indexedModeActions = new long[MVT.LAST_VALUETYPE][2][LAST_INDEXED_MODE.ordinal()];
-    private long[] convertActions = new long[MVT.LAST_VALUETYPE];
-    private long[] condCodeActions = new long[CondCode.SETCC_INVALID.ordinal()];
-    private byte[] targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
-    private TObjectIntHashMap<Pair<Integer,Integer>> promoteType = new TObjectIntHashMap<Pair<Integer,Integer>>();
+    private long[][] opActions;
+    private long[] loadExtActions;
+    private long[] truncStoreActions;
+    private long[][][] indexedModeActions;
+    private long[] convertActions;
+    private long[] condCodeActions;
+    private byte[] targetDAGCombineArray;
+    private TObjectIntHashMap<Pair<Integer,Integer>> promoteType;
 
     private String[] libCallRoutineNames;
     private CondCode[] cmpLibCallCCs;
@@ -204,22 +241,342 @@ public abstract class TargetLowering
 
     private int stackPointerRegisterToSaveRestore;
 
+    protected int maxStoresPerMemSet;
+    protected int maxStoresPerMemcpy;
+    protected int maxStoresPerMemmove;
+    protected boolean benefitFromCodePlacementOpt;
+
     public TargetLowering(TargetMachine tm)
     {
         this.tm = tm;
         td = tm.getTargetData();
         valueTypeAction = new ValueTypeAction();
-        pointerTy = getValueType(td.getIntPtrType()).getSimpleVT();
         availableRegClasses = new ArrayList<>();
         registerClassForVT = new TargetRegisterClass[MVT.LAST_VALUETYPE];
         transformToType = new EVT[MVT.LAST_VALUETYPE];
         numRegistersForVT = new int[MVT.LAST_VALUETYPE];
         registerTypeForVT = new EVT[MVT.LAST_VALUETYPE];
-        booleanContents = BooleanContent.UndefinedBooleanContent;
         libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
         cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
         libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
+        opActions = new long[MVT.LAST_VALUETYPE/8*4][ISD.BUILTIN_OP_END];
+        loadExtActions = new long[LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
+        truncStoreActions = new long[MVT.LAST_VALUETYPE];
+        indexedModeActions = new long[MVT.LAST_VALUETYPE][2][MemIndexedMode.values().length];
+        convertActions = new long[MVT.LAST_VALUETYPE];
+        condCodeActions = new long[SETCC_INVALID.ordinal()];
+        targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
+        promoteType = new TObjectIntHashMap<Pair<Integer,Integer>>();
+
         stackPointerRegisterToSaveRestore = 0;
+
+        for (int vt = 0; vt < MVT.LAST_VALUETYPE; vt++)
+        {
+            for ( MemIndexedMode im : MemIndexedMode.values())
+            {
+                if (im != MemIndexedMode.UNINDEXED)
+                {
+                    setIndexedLoadAction(im, vt, Expand);
+                    setIndexedStoreAction(im, vt, Expand);
+                }
+            }
+            setOperationAction(ISD.FGETSIGN, vt, Expand);
+        }
+        setOperationAction(ISD.PREFETCH, MVT.Other, Expand);
+        setOperationAction(ISD.ConstantFP, MVT.f32, Expand);
+        setOperationAction(ISD.ConstantFP, MVT.f64, Expand);
+        setOperationAction(ISD.ConstantFP, MVT.f80, Expand);
+
+        // These library functions default to expand.
+        setOperationAction(ISD.FLOG , MVT.f64, Expand);
+        setOperationAction(ISD.FLOG2, MVT.f64, Expand);
+        setOperationAction(ISD.FLOG10,MVT.f64, Expand);
+        setOperationAction(ISD.FEXP , MVT.f64, Expand);
+        setOperationAction(ISD.FEXP2, MVT.f64, Expand);
+        setOperationAction(ISD.FLOG , MVT.f32, Expand);
+        setOperationAction(ISD.FLOG2, MVT.f32, Expand);
+        setOperationAction(ISD.FLOG10,MVT.f32, Expand);
+        setOperationAction(ISD.FEXP , MVT.f32, Expand);
+        setOperationAction(ISD.FEXP2, MVT.f32, Expand);
+
+        // Default ISD.TRAP to expand (which turns it into abort).
+        setOperationAction(ISD.TRAP, MVT.Other, Expand);
+
+        isLittleEndian = td.isLittleEndian();
+        usesGlobalOffsetTable = false;
+        shiftAmountTy = pointerTy = MVT.getIntegerVT(8*td.getPointerSize());
+        maxStoresPerMemSet = maxStoresPerMemcpy=maxStoresPerMemmove = 8;
+        benefitFromCodePlacementOpt = false;
+        useUnderscoreLongJmp = false;
+        useUnderscoreSetJmp = false;
+        selectIsExpensive = false;
+        intDivIsCheap = false;
+        pow2DivIsCheap = false;
+        stackPointerRegisterToSaveRestore = 0;
+        booleanContents = BooleanContent.UndefinedBooleanContent;
+
+        initLibcallNames();
+        initCmpLibcallCCs();
+        initLibcallCallingConvs();
+
+        TargetAsmInfo asmInfo = tm.getTargetAsmInfo();
+        if (asmInfo == null || !asmInfo.hasDotLocAndDotFile())
+            setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
+    }
+
+    private void initLibcallNames()
+    {
+        libCallRoutineNames[RTLIB.SHL_I16.ordinal()] = "__ashlhi3";
+        libCallRoutineNames[RTLIB.SHL_I32.ordinal()] = "__ashlsi3";
+        libCallRoutineNames[RTLIB.SHL_I64.ordinal()] = "__ashldi3";
+        libCallRoutineNames[RTLIB.SHL_I128.ordinal()] = "__ashlti3";
+        libCallRoutineNames[RTLIB.SRL_I16.ordinal()] = "__lshrhi3";
+        libCallRoutineNames[RTLIB.SRL_I32.ordinal()] = "__lshrsi3";
+        libCallRoutineNames[RTLIB.SRL_I64.ordinal()] = "__lshrdi3";
+        libCallRoutineNames[RTLIB.SRL_I128.ordinal()] = "__lshrti3";
+        libCallRoutineNames[RTLIB.SRA_I16.ordinal()] = "__ashrhi3";
+        libCallRoutineNames[RTLIB.SRA_I32.ordinal()] = "__ashrsi3";
+        libCallRoutineNames[RTLIB.SRA_I64.ordinal()] = "__ashrdi3";
+        libCallRoutineNames[RTLIB.SRA_I128.ordinal()] = "__ashrti3";
+        libCallRoutineNames[RTLIB.MUL_I16.ordinal()] = "__mulhi3";
+        libCallRoutineNames[RTLIB.MUL_I32.ordinal()] = "__mulsi3";
+        libCallRoutineNames[RTLIB.MUL_I64.ordinal()] = "__muldi3";
+        libCallRoutineNames[RTLIB.MUL_I128.ordinal()] = "__multi3";
+        libCallRoutineNames[RTLIB.SDIV_I16.ordinal()] = "__divhi3";
+        libCallRoutineNames[RTLIB.SDIV_I32.ordinal()] = "__divsi3";
+        libCallRoutineNames[RTLIB.SDIV_I64.ordinal()] = "__divdi3";
+        libCallRoutineNames[RTLIB.SDIV_I128.ordinal()] = "__divti3";
+        libCallRoutineNames[RTLIB.UDIV_I16.ordinal()] = "__udivhi3";
+        libCallRoutineNames[RTLIB.UDIV_I32.ordinal()] = "__udivsi3";
+        libCallRoutineNames[RTLIB.UDIV_I64.ordinal()] = "__udivdi3";
+        libCallRoutineNames[RTLIB.UDIV_I128.ordinal()] = "__udivti3";
+        libCallRoutineNames[RTLIB.SREM_I16.ordinal()] = "__modhi3";
+        libCallRoutineNames[RTLIB.SREM_I32.ordinal()] = "__modsi3";
+        libCallRoutineNames[RTLIB.SREM_I64.ordinal()] = "__moddi3";
+        libCallRoutineNames[RTLIB.SREM_I128.ordinal()] = "__modti3";
+        libCallRoutineNames[RTLIB.UREM_I16.ordinal()] = "__umodhi3";
+        libCallRoutineNames[RTLIB.UREM_I32.ordinal()] = "__umodsi3";
+        libCallRoutineNames[RTLIB.UREM_I64.ordinal()] = "__umoddi3";
+        libCallRoutineNames[RTLIB.UREM_I128.ordinal()] = "__umodti3";
+        libCallRoutineNames[RTLIB.NEG_I32.ordinal()] = "__negsi2";
+        libCallRoutineNames[RTLIB.NEG_I64.ordinal()] = "__negdi2";
+        libCallRoutineNames[RTLIB.ADD_F32.ordinal()] = "__addsf3";
+        libCallRoutineNames[RTLIB.ADD_F64.ordinal()] = "__adddf3";
+        libCallRoutineNames[RTLIB.ADD_F80.ordinal()] = "__addxf3";
+        libCallRoutineNames[RTLIB.ADD_PPCF128.ordinal()] = "__gcc_qadd";
+        libCallRoutineNames[RTLIB.SUB_F32.ordinal()] = "__subsf3";
+        libCallRoutineNames[RTLIB.SUB_F64.ordinal()] = "__subdf3";
+        libCallRoutineNames[RTLIB.SUB_F80.ordinal()] = "__subxf3";
+        libCallRoutineNames[RTLIB.SUB_PPCF128.ordinal()] = "__gcc_qsub";
+        libCallRoutineNames[RTLIB.MUL_F32.ordinal()] = "__mulsf3";
+        libCallRoutineNames[RTLIB.MUL_F64.ordinal()] = "__muldf3";
+        libCallRoutineNames[RTLIB.MUL_F80.ordinal()] = "__mulxf3";
+        libCallRoutineNames[RTLIB.MUL_PPCF128.ordinal()] = "__gcc_qmul";
+        libCallRoutineNames[RTLIB.DIV_F32.ordinal()] = "__divsf3";
+        libCallRoutineNames[RTLIB.DIV_F64.ordinal()] = "__divdf3";
+        libCallRoutineNames[RTLIB.DIV_F80.ordinal()] = "__divxf3";
+        libCallRoutineNames[RTLIB.DIV_PPCF128.ordinal()] = "__gcc_qdiv";
+        libCallRoutineNames[RTLIB.REM_F32.ordinal()] = "fmodf";
+        libCallRoutineNames[RTLIB.REM_F64.ordinal()] = "fmod";
+        libCallRoutineNames[RTLIB.REM_F80.ordinal()] = "fmodl";
+        libCallRoutineNames[RTLIB.REM_PPCF128.ordinal()] = "fmodl";
+        libCallRoutineNames[RTLIB.POWI_F32.ordinal()] = "__powisf2";
+        libCallRoutineNames[RTLIB.POWI_F64.ordinal()] = "__powidf2";
+        libCallRoutineNames[RTLIB.POWI_F80.ordinal()] = "__powixf2";
+        libCallRoutineNames[RTLIB.POWI_PPCF128.ordinal()] = "__powitf2";
+        libCallRoutineNames[RTLIB.SQRT_F32.ordinal()] = "sqrtf";
+        libCallRoutineNames[RTLIB.SQRT_F64.ordinal()] = "sqrt";
+        libCallRoutineNames[RTLIB.SQRT_F80.ordinal()] = "sqrtl";
+        libCallRoutineNames[RTLIB.SQRT_PPCF128.ordinal()] = "sqrtl";
+        libCallRoutineNames[RTLIB.LOG_F32.ordinal()] = "logf";
+        libCallRoutineNames[RTLIB.LOG_F64.ordinal()] = "log";
+        libCallRoutineNames[RTLIB.LOG_F80.ordinal()] = "logl";
+        libCallRoutineNames[RTLIB.LOG_PPCF128.ordinal()] = "logl";
+        libCallRoutineNames[RTLIB.LOG2_F32.ordinal()] = "log2f";
+        libCallRoutineNames[RTLIB.LOG2_F64.ordinal()] = "log2";
+        libCallRoutineNames[RTLIB.LOG2_F80.ordinal()] = "log2l";
+        libCallRoutineNames[RTLIB.LOG2_PPCF128.ordinal()] = "log2l";
+        libCallRoutineNames[RTLIB.LOG10_F32.ordinal()] = "log10f";
+        libCallRoutineNames[RTLIB.LOG10_F64.ordinal()] = "log10";
+        libCallRoutineNames[RTLIB.LOG10_F80.ordinal()] = "log10l";
+        libCallRoutineNames[RTLIB.LOG10_PPCF128.ordinal()] = "log10l";
+        libCallRoutineNames[RTLIB.EXP_F32.ordinal()] = "expf";
+        libCallRoutineNames[RTLIB.EXP_F64.ordinal()] = "exp";
+        libCallRoutineNames[RTLIB.EXP_F80.ordinal()] = "expl";
+        libCallRoutineNames[RTLIB.EXP_PPCF128.ordinal()] = "expl";
+        libCallRoutineNames[RTLIB.EXP2_F32.ordinal()] = "exp2f";
+        libCallRoutineNames[RTLIB.EXP2_F64.ordinal()] = "exp2";
+        libCallRoutineNames[RTLIB.EXP2_F80.ordinal()] = "exp2l";
+        libCallRoutineNames[RTLIB.EXP2_PPCF128.ordinal()] = "exp2l";
+        libCallRoutineNames[RTLIB.SIN_F32.ordinal()] = "sinf";
+        libCallRoutineNames[RTLIB.SIN_F64.ordinal()] = "sin";
+        libCallRoutineNames[RTLIB.SIN_F80.ordinal()] = "sinl";
+        libCallRoutineNames[RTLIB.SIN_PPCF128.ordinal()] = "sinl";
+        libCallRoutineNames[RTLIB.COS_F32.ordinal()] = "cosf";
+        libCallRoutineNames[RTLIB.COS_F64.ordinal()] = "cos";
+        libCallRoutineNames[RTLIB.COS_F80.ordinal()] = "cosl";
+        libCallRoutineNames[RTLIB.COS_PPCF128.ordinal()] = "cosl";
+        libCallRoutineNames[RTLIB.POW_F32.ordinal()] = "powf";
+        libCallRoutineNames[RTLIB.POW_F64.ordinal()] = "pow";
+        libCallRoutineNames[RTLIB.POW_F80.ordinal()] = "powl";
+        libCallRoutineNames[RTLIB.POW_PPCF128.ordinal()] = "powl";
+        libCallRoutineNames[RTLIB.CEIL_F32.ordinal()] = "ceilf";
+        libCallRoutineNames[RTLIB.CEIL_F64.ordinal()] = "ceil";
+        libCallRoutineNames[RTLIB.CEIL_F80.ordinal()] = "ceill";
+        libCallRoutineNames[RTLIB.CEIL_PPCF128.ordinal()] = "ceill";
+        libCallRoutineNames[RTLIB.TRUNC_F32.ordinal()] = "truncf";
+        libCallRoutineNames[RTLIB.TRUNC_F64.ordinal()] = "trunc";
+        libCallRoutineNames[RTLIB.TRUNC_F80.ordinal()] = "truncl";
+        libCallRoutineNames[RTLIB.TRUNC_PPCF128.ordinal()] = "truncl";
+        libCallRoutineNames[RTLIB.RINT_F32.ordinal()] = "rintf";
+        libCallRoutineNames[RTLIB.RINT_F64.ordinal()] = "rint";
+        libCallRoutineNames[RTLIB.RINT_F80.ordinal()] = "rintl";
+        libCallRoutineNames[RTLIB.RINT_PPCF128.ordinal()] = "rintl";
+        libCallRoutineNames[RTLIB.NEARBYINT_F32.ordinal()] = "nearbyintf";
+        libCallRoutineNames[RTLIB.NEARBYINT_F64.ordinal()] = "nearbyint";
+        libCallRoutineNames[RTLIB.NEARBYINT_F80.ordinal()] = "nearbyintl";
+        libCallRoutineNames[RTLIB.NEARBYINT_PPCF128.ordinal()] = "nearbyintl";
+        libCallRoutineNames[RTLIB.FLOOR_F32.ordinal()] = "floorf";
+        libCallRoutineNames[RTLIB.FLOOR_F64.ordinal()] = "floor";
+        libCallRoutineNames[RTLIB.FLOOR_F80.ordinal()] = "floorl";
+        libCallRoutineNames[RTLIB.FLOOR_PPCF128.ordinal()] = "floorl";
+        libCallRoutineNames[RTLIB.FPEXT_F32_F64.ordinal()] = "__extendsfdf2";
+        libCallRoutineNames[RTLIB.FPROUND_F64_F32.ordinal()] = "__truncdfsf2";
+        libCallRoutineNames[RTLIB.FPROUND_F80_F32.ordinal()] = "__truncxfsf2";
+        libCallRoutineNames[RTLIB.FPROUND_PPCF128_F32.ordinal()] = "__trunctfsf2";
+        libCallRoutineNames[RTLIB.FPROUND_F80_F64.ordinal()] = "__truncxfdf2";
+        libCallRoutineNames[RTLIB.FPROUND_PPCF128_F64.ordinal()] = "__trunctfdf2";
+        libCallRoutineNames[RTLIB.FPTOSINT_F32_I8.ordinal()] = "__fixsfi8";
+        libCallRoutineNames[RTLIB.FPTOSINT_F32_I16.ordinal()] = "__fixsfi16";
+        libCallRoutineNames[RTLIB.FPTOSINT_F32_I32.ordinal()] = "__fixsfsi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F32_I64.ordinal()] = "__fixsfdi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F32_I128.ordinal()] = "__fixsfti";
+        libCallRoutineNames[RTLIB.FPTOSINT_F64_I32.ordinal()] = "__fixdfsi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F64_I64.ordinal()] = "__fixdfdi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F64_I128.ordinal()] = "__fixdfti";
+        libCallRoutineNames[RTLIB.FPTOSINT_F80_I32.ordinal()] = "__fixxfsi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F80_I64.ordinal()] = "__fixxfdi";
+        libCallRoutineNames[RTLIB.FPTOSINT_F80_I128.ordinal()] = "__fixxfti";
+        libCallRoutineNames[RTLIB.FPTOSINT_PPCF128_I32.ordinal()] = "__fixtfsi";
+        libCallRoutineNames[RTLIB.FPTOSINT_PPCF128_I64.ordinal()] = "__fixtfdi";
+        libCallRoutineNames[RTLIB.FPTOSINT_PPCF128_I128.ordinal()] = "__fixtfti";
+        libCallRoutineNames[RTLIB.FPTOUINT_F32_I8.ordinal()] = "__fixunssfi8";
+        libCallRoutineNames[RTLIB.FPTOUINT_F32_I16.ordinal()] = "__fixunssfi16";
+        libCallRoutineNames[RTLIB.FPTOUINT_F32_I32.ordinal()] = "__fixunssfsi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F32_I64.ordinal()] = "__fixunssfdi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F32_I128.ordinal()] = "__fixunssfti";
+        libCallRoutineNames[RTLIB.FPTOUINT_F64_I32.ordinal()] = "__fixunsdfsi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F64_I64.ordinal()] = "__fixunsdfdi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F64_I128.ordinal()] = "__fixunsdfti";
+        libCallRoutineNames[RTLIB.FPTOUINT_F80_I32.ordinal()] = "__fixunsxfsi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F80_I64.ordinal()] = "__fixunsxfdi";
+        libCallRoutineNames[RTLIB.FPTOUINT_F80_I128.ordinal()] = "__fixunsxfti";
+        libCallRoutineNames[RTLIB.FPTOUINT_PPCF128_I32.ordinal()] = "__fixunstfsi";
+        libCallRoutineNames[RTLIB.FPTOUINT_PPCF128_I64.ordinal()] = "__fixunstfdi";
+        libCallRoutineNames[RTLIB.FPTOUINT_PPCF128_I128.ordinal()] = "__fixunstfti";
+        libCallRoutineNames[RTLIB.SINTTOFP_I32_F32.ordinal()] = "__floatsisf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I32_F64.ordinal()] = "__floatsidf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I32_F80.ordinal()] = "__floatsixf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I32_PPCF128.ordinal()] = "__floatsitf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I64_F32.ordinal()] = "__floatdisf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I64_F64.ordinal()] = "__floatdidf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I64_F80.ordinal()] = "__floatdixf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I64_PPCF128.ordinal()] = "__floatditf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I128_F32.ordinal()] = "__floattisf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I128_F64.ordinal()] = "__floattidf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I128_F80.ordinal()] = "__floattixf";
+        libCallRoutineNames[RTLIB.SINTTOFP_I128_PPCF128.ordinal()] = "__floattitf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I32_F32.ordinal()] = "__floatunsisf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I32_F64.ordinal()] = "__floatunsidf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I32_F80.ordinal()] = "__floatunsixf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I32_PPCF128.ordinal()] = "__floatunsitf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I64_F32.ordinal()] = "__floatundisf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I64_F64.ordinal()] = "__floatundidf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I64_F80.ordinal()] = "__floatundixf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I64_PPCF128.ordinal()] = "__floatunditf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I128_F32.ordinal()] = "__floatuntisf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I128_F64.ordinal()] = "__floatuntidf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I128_F80.ordinal()] = "__floatuntixf";
+        libCallRoutineNames[RTLIB.UINTTOFP_I128_PPCF128.ordinal()] = "__floatuntitf";
+        libCallRoutineNames[RTLIB.OEQ_F32.ordinal()] = "__eqsf2";
+        libCallRoutineNames[RTLIB.OEQ_F64.ordinal()] = "__eqdf2";
+        libCallRoutineNames[RTLIB.UNE_F32.ordinal()] = "__nesf2";
+        libCallRoutineNames[RTLIB.UNE_F64.ordinal()] = "__nedf2";
+        libCallRoutineNames[RTLIB.OGE_F32.ordinal()] = "__gesf2";
+        libCallRoutineNames[RTLIB.OGE_F64.ordinal()] = "__gedf2";
+        libCallRoutineNames[RTLIB.OLT_F32.ordinal()] = "__ltsf2";
+        libCallRoutineNames[RTLIB.OLT_F64.ordinal()] = "__ltdf2";
+        libCallRoutineNames[RTLIB.OLE_F32.ordinal()] = "__lesf2";
+        libCallRoutineNames[RTLIB.OLE_F64.ordinal()] = "__ledf2";
+        libCallRoutineNames[RTLIB.OGT_F32.ordinal()] = "__gtsf2";
+        libCallRoutineNames[RTLIB.OGT_F64.ordinal()] = "__gtdf2";
+        libCallRoutineNames[RTLIB.UO_F32.ordinal()] = "__unordsf2";
+        libCallRoutineNames[RTLIB.UO_F64.ordinal()] = "__unorddf2";
+        libCallRoutineNames[RTLIB.O_F32.ordinal()] = "__unordsf2";
+        libCallRoutineNames[RTLIB.O_F64.ordinal()] = "__unorddf2";
+        libCallRoutineNames[RTLIB.MEMCPY.ordinal()] = "memcpy";
+        libCallRoutineNames[RTLIB.MEMMOVE.ordinal()] = "memmove";
+        libCallRoutineNames[RTLIB.MEMSET.ordinal()] = "memset";
+        libCallRoutineNames[RTLIB.UNWIND_RESUME.ordinal()] = "_Unwind_Resume";
+    }
+
+    private void initCmpLibcallCCs()
+    {
+        Arrays.fill(cmpLibCallCCs, SETCC_INVALID);
+        cmpLibCallCCs[OEQ_F32.ordinal()] = SETEQ;
+        cmpLibCallCCs[OEQ_F32.ordinal()] = SETEQ;
+        cmpLibCallCCs[OEQ_F64.ordinal()] = SETEQ;
+        cmpLibCallCCs[UNE_F32.ordinal()] = SETNE;
+        cmpLibCallCCs[UNE_F64.ordinal()] = SETNE;
+        cmpLibCallCCs[OGE_F32.ordinal()] = SETGE;
+        cmpLibCallCCs[OGE_F64.ordinal()] = SETGE;
+        cmpLibCallCCs[OLT_F32.ordinal()] = SETLT;
+        cmpLibCallCCs[OLT_F64.ordinal()] = SETLT;
+        cmpLibCallCCs[OLE_F32.ordinal()] = SETLE;
+        cmpLibCallCCs[OLE_F64.ordinal()] = SETLE;
+        cmpLibCallCCs[OGT_F32.ordinal()] = SETGT;
+        cmpLibCallCCs[OGT_F64.ordinal()] = SETGT;
+        cmpLibCallCCs[UO_F32.ordinal()] = SETNE;
+        cmpLibCallCCs[UO_F64.ordinal()] = SETNE;
+        cmpLibCallCCs[O_F32.ordinal()] = SETEQ;
+        cmpLibCallCCs[O_F64.ordinal()] = SETEQ;
+
+    }
+
+    private void initLibcallCallingConvs()
+    {
+        for (int i = 0; i < RTLIB.UNKNOWN_LIBCALL.ordinal(); i++)
+            libCallCallingConv[i] = CallingConv.C;
+    }
+
+    private void setOperationAction(int opc, int vt, LegalizeAction action)
+    {
+        int i = vt;
+        int j = i & 31;
+        i = i >> 5;
+        opActions[i][opc] &= ~(3L << (j*2));
+        opActions[i][opc] |= (long)action.ordinal() << (j*2);
+    }
+
+    private void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action)
+    {
+        assert vt < 64*4 && im.ordinal() < loadExtActions.length:"Table isn't big enough!";
+        loadExtActions[im.ordinal()] &= ~(3L << (vt*2));
+        loadExtActions[im.ordinal()] |= action.ordinal() << (vt*2);
+    }
+
+    private void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action)
+    {
+        assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length
+                :"Table isn't big enough!";
+        indexedModeActions[vt][0][im.ordinal()] = action.ordinal();
+    }
+
+    private void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action)
+    {
+        assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length
+                :"Table isn't big enough!";
+        indexedModeActions[vt][1][im.ordinal()] = action.ordinal();
     }
 
     public ValueTypeAction getValueTypeActions()
@@ -252,6 +609,16 @@ public abstract class TargetLowering
         return isLittleEndian;
     }
 
+    public int getStackPointerRegisterToSaveRestore()
+    {
+        return stackPointerRegisterToSaveRestore;
+    }
+
+    public void setStackPointerRegisterToSaveRestore(int spreg)
+    {
+        stackPointerRegisterToSaveRestore = spreg;
+    }
+
     /**
      * Create a detail info about machine function.
      *
@@ -269,7 +636,7 @@ public abstract class TargetLowering
     /**
      * eturn the EVT corresponding to this LLVM type.
      * This is fixed by the LLVM operations except for the pointer size.  If
-     * AllowUnknown is true, this will return MVT::Other for types with no EVT
+     * AllowUnknown is true, this will return MVT.Other for types with no EVT
      * counterpart (e.g. structs), otherwise it will assert.
      *
      * @param type
@@ -1019,29 +1386,223 @@ public abstract class TargetLowering
         assert false:"this method should be implemented for this target!";
     }
 
-    public void lowerOperationWrapper(SDNode n, ArrayList<SDValue> results,
+    public void lowerOperationWrapper(
+            SDNode n,
+            ArrayList<SDValue> results,
             SelectionDAG dag)
     {
-        assert false:"this method should be implemented for this target!";
+        SDValue res = lowerOperation(new SDValue(n, 0), dag);
+        if (res.getNode() != null)
+            results.add(res);
     }
 
     public RTLIB getFPEXT(EVT opVT, EVT retVT)
-    {}
+    {
+        if (opVT.getSimpleVT().simpleVT == MVT.f32)
+            if (retVT.getSimpleVT().simpleVT == MVT.f64)
+                return FPEXT_F32_F64;
+        return UNKNOWN_LIBCALL;
+    }
 
     public RTLIB getFPROUND(EVT opVT, EVT retVT)
-    {}
+    {
+        int opSimpleVT = opVT.getSimpleVT().simpleVT;
+        int retSimpleVT = retVT.getSimpleVT().simpleVT;
+        if (retSimpleVT == MVT.f32)
+        {
+            if (opSimpleVT == MVT.f64)
+                return FPROUND_F64_F32;
+            if (opSimpleVT == MVT.f80)
+                return FPROUND_F80_F32;
+            if (opSimpleVT == MVT.ppcf128)
+                return FPROUND_PPCF128_F32;
+        }
+        else if (retSimpleVT == MVT.f64)
+        {
+            if (opSimpleVT == MVT.f80)
+                return FPROUND_F80_F64;
+            if (opSimpleVT == MVT.ppcf128)
+                return FPROUND_PPCF128_F64;
+        }
+        return UNKNOWN_LIBCALL;
+    }
 
     public RTLIB getFPTOSINT(EVT opVT, EVT retVT)
-    {}
+    {
+        int opSimpleVT = opVT.getSimpleVT().simpleVT;
+        int retSimpleVT = retVT.getSimpleVT().simpleVT;
+        if (opSimpleVT == MVT.f32)
+        {
+            if (retSimpleVT == MVT.i8)
+                return FPTOSINT_F32_I8;
+            if (retSimpleVT == MVT.i16)
+                return FPTOSINT_F32_I16;
+            if (retSimpleVT == MVT.i32)
+                return FPTOSINT_F32_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOSINT_F32_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOSINT_F32_I128;
+        }
+        else if (opSimpleVT == MVT.f64)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOSINT_F64_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOSINT_F64_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOSINT_F64_I128;
+        }
+        else if (opSimpleVT == MVT.f80)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOSINT_F80_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOSINT_F80_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOSINT_F80_I128;
+        }
+        else if (opSimpleVT == MVT.ppcf128)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOSINT_PPCF128_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOSINT_PPCF128_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOSINT_PPCF128_I128;
+        }
+        return UNKNOWN_LIBCALL;
+    }
 
     public RTLIB getFPTOUINT(EVT opVT, EVT retVT)
-    {}
+    {
+        int opSimpleVT = opVT.getSimpleVT().simpleVT;
+        int retSimpleVT = retVT.getSimpleVT().simpleVT;
+
+        if (opSimpleVT == MVT.f32)
+        {
+            if (retSimpleVT == MVT.i8)
+                return FPTOUINT_F32_I8;
+            if (retSimpleVT == MVT.i16)
+                return FPTOUINT_F32_I16;
+            if (retSimpleVT == MVT.i32)
+                return FPTOUINT_F32_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOUINT_F32_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOUINT_F32_I128;
+        }
+        else if (opSimpleVT == MVT.f64)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOUINT_F64_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOUINT_F64_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOUINT_F64_I128;
+        }
+        else if (opSimpleVT == MVT.f80)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOUINT_F80_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOUINT_F80_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOUINT_F80_I128;
+        }
+        else if (opSimpleVT == MVT.ppcf128)
+        {
+            if (retSimpleVT == MVT.i32)
+                return FPTOUINT_PPCF128_I32;
+            if (retSimpleVT == MVT.i64)
+                return FPTOUINT_PPCF128_I64;
+            if (retSimpleVT == MVT.i128)
+                return FPTOUINT_PPCF128_I128;
+        }
+        return UNKNOWN_LIBCALL;
+    }
 
     public RTLIB getSINTTOFP(EVT opVT, EVT retVT)
-    {}
+    {
+        int opSimpleVT = opVT.getSimpleVT().simpleVT;
+        int retSimpleVT = retVT.getSimpleVT().simpleVT;
+
+        if (opSimpleVT == MVT.i32)
+        {
+            if (retSimpleVT == MVT.f32)
+                return SINTTOFP_I32_F32;
+            else if (retSimpleVT == MVT.f64)
+                return SINTTOFP_I32_F64;
+            else if (retSimpleVT == MVT.f80)
+                return SINTTOFP_I32_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return SINTTOFP_I32_PPCF128;
+        }
+        else if (opSimpleVT == MVT.i64)
+        {
+            if (retSimpleVT == MVT.f32)
+                return SINTTOFP_I64_F32;
+            else if (retSimpleVT == MVT.f64)
+                return SINTTOFP_I64_F64;
+            else if (retSimpleVT == MVT.f80)
+                return SINTTOFP_I64_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return SINTTOFP_I64_PPCF128;
+        }
+        else if (opSimpleVT == MVT.i128)
+        {
+            if (retSimpleVT == MVT.f32)
+                return SINTTOFP_I128_F32;
+            else if (retSimpleVT == MVT.f64)
+                return SINTTOFP_I128_F64;
+            else if (retSimpleVT == MVT.f80)
+                return SINTTOFP_I128_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return SINTTOFP_I128_PPCF128;
+        }
+        return UNKNOWN_LIBCALL;
+    }
 
     public RTLIB getUINTTOFP(EVT opVT, EVT retVT)
-    {}
+    {
+        int opSimpleVT = opVT.getSimpleVT().simpleVT;
+        int retSimpleVT = retVT.getSimpleVT().simpleVT;
+
+        if (opSimpleVT == MVT.i32)
+        {
+            if (retSimpleVT == MVT.f32)
+                return UINTTOFP_I32_F32;
+            else if (retSimpleVT == MVT.f64)
+                return UINTTOFP_I32_F64;
+            else if (retSimpleVT == MVT.f80)
+                return UINTTOFP_I32_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return UINTTOFP_I32_PPCF128;
+        }
+        else if (opSimpleVT == MVT.i64)
+        {
+            if (retSimpleVT == MVT.f32)
+                return UINTTOFP_I64_F32;
+            else if (retSimpleVT == MVT.f64)
+                return UINTTOFP_I64_F64;
+            else if (retSimpleVT == MVT.f80)
+                return UINTTOFP_I64_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return UINTTOFP_I64_PPCF128;
+        }
+        else if (opSimpleVT == MVT.i128)
+        {
+            if (retSimpleVT == MVT.f32)
+                return UINTTOFP_I128_F32;
+            else if (retSimpleVT == MVT.f64)
+                return UINTTOFP_I128_F64;
+            else if (retSimpleVT == MVT.f80)
+                return UINTTOFP_I128_F80;
+            else if (retSimpleVT == MVT.ppcf128)
+                return UINTTOFP_I128_PPCF128;
+        }
+        return UNKNOWN_LIBCALL;
+    }
 
     public CondCode getCmpLibCallCC(RTLIB lc)
     {
@@ -1065,7 +1626,7 @@ public abstract class TargetLowering
             boolean b,
             DAGCombinerInfo dagCBI)
     {
-        return null;
+        // TODO: 18-6-5
     }
 
     public SDValue lowerOperation(SDValue op, SelectionDAG dag)
@@ -1083,15 +1644,4 @@ public abstract class TargetLowering
     {
         return true;
     }
-
-    public int getStackPointerRegisterToSaveRestore()
-    {
-        return stackPointerRegisterToSaveRestore;
-    }
-
-    public void setStackPointerRegisterToSaveRestore(int spreg)
-    {
-        stackPointerRegisterToSaveRestore = spreg;
-    }
 }
-
