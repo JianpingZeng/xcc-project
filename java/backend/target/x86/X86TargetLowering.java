@@ -17,6 +17,7 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.dagisel.SDUse;
 import backend.codegen.dagisel.SDValue;
@@ -2106,5 +2107,126 @@ public class X86TargetLowering extends TargetLowering
         return vt.getVectorNumElements() == 2 ||
                 ShuffleVectorSDNode.isSplatMask(mask.toArray(), vt) ||
                 isMOVLMask();
+    }
+
+    private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerEXTRACT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerINSERT_VECTOR_ELT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerINSERT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerSCALAR_TO_VECTOR(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerConstantPool(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerShift(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue buildFILD(SDValue op, EVT srcVT, SDValue chain, SDValue stackSlot,
+            SelectionDAG dag) { return null; }
+    private SDValue lowerSINT_TO_FP(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerUINT_TO_FP(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerUINT_TO_FP_i64(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFP_TO_SINT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFABS(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFNEG(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerSETCC(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVSETCC(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerSELECT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerBRCOND(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerMEMSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerJumpTable(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVASTART(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVAARG(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVACOPY(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerINTRINSIC_WO_CHAIN(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFRAME_TO_ARGS_OFFSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerEH_RETURN(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerTRAMPOLINE(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerFLT_ROUNDS_(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerCTLZ(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerCTTZ(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerMUL_V2I64(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerXALUO(SDValue op, SelectionDAG dag) {return new SDValue(); }
+
+    private SDValue lowerCMP_SWAP(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerLOAD_SUB(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    
+    /**
+     * Provide a customized hook for the X86 architecture with specified operation.
+     * @param op
+     * @param dag
+     * @return
+     */
+    @Override
+    public SDValue lowerOperation(SDValue op, SelectionDAG dag)
+    {
+        switch (op.getOpcode())
+        {
+            case ISD.ATOMIC_CMP_SWAP:    return lowerCMP_SWAP(op, dag);
+            case ISD.ATOMIC_LOAD_SUB:    return lowerLOAD_SUB(op, dag);
+            case ISD.BUILD_VECTOR:       return lowerBUILD_VECTOR(op, dag);
+            case ISD.VECTOR_SHUFFLE:     return lowerVECTOR_SHUFFLE(op, dag);
+            case ISD.EXTRACT_VECTOR_ELT: return lowerEXTRACT_VECTOR_ELT(op, dag);
+            case ISD.INSERT_VECTOR_ELT:  return lowerINSERT_VECTOR_ELT(op, dag);
+            case ISD.SCALAR_TO_VECTOR:   return lowerSCALAR_TO_VECTOR(op, dag);
+            case ISD.ConstantPool:       return lowerConstantPool(op, dag);
+            case ISD.GlobalAddress:      return lowerGlobalAddress(op, dag);
+            case ISD.GlobalTLSAddress:   return lowerGlobalTLSAddress(op, dag);
+            case ISD.ExternalSymbol:     return lowerExternalSymbol(op, dag);
+            case ISD.SHL_PARTS:
+            case ISD.SRA_PARTS:
+            case ISD.SRL_PARTS:          return lowerShift(op, dag);
+            case ISD.SINT_TO_FP:         return lowerSINT_TO_FP(op, dag);
+            case ISD.UINT_TO_FP:         return lowerUINT_TO_FP(op, dag);
+            case ISD.FP_TO_SINT:         return lowerFP_TO_SINT(op, dag);
+            case ISD.FP_TO_UINT:         return lowerFP_TO_UINT(op, dag);
+            case ISD.FABS:               return lowerFABS(op, dag);
+            case ISD.FNEG:               return lowerFNEG(op, dag);
+            case ISD.FCOPYSIGN:          return lowerFCOPYSIGN(op, dag);
+            case ISD.SETCC:              return lowerSETCC(op, dag);
+            case ISD.VSETCC:             return lowerVSETCC(op, dag);
+            case ISD.SELECT:             return lowerSELECT(op, dag);
+            case ISD.BRCOND:             return lowerBRCOND(op, dag);
+            case ISD.JumpTable:          return lowerJumpTable(op, dag);
+            case ISD.VASTART:            return lowerVASTART(op, dag);
+            case ISD.VAARG:              return lowerVAARG(op, dag);
+            case ISD.VACOPY:             return lowerVACOPY(op, dag);
+            case ISD.INTRINSIC_WO_CHAIN: return lowerINTRINSIC_WO_CHAIN(op, dag);
+            case ISD.RETURNADDR:         return lowerRETURNADDR(op, dag);
+            case ISD.FRAMEADDR:          return lowerFRAMEADDR(op, dag);
+            case ISD.FRAME_TO_ARGS_OFFSET:
+                return lowerFRAME_TO_ARGS_OFFSET(op, dag);
+            case ISD.DYNAMIC_STACKALLOC: return lowerDYNAMIC_STACKALLOC(op, dag);
+            case ISD.EH_RETURN:          return lowerEH_RETURN(op, dag);
+            case ISD.TRAMPOLINE:         return lowerTRAMPOLINE(op, dag);
+            case ISD.FLT_ROUNDS_:        return lowerFLT_ROUNDS_(op, dag);
+            case ISD.CTLZ:               return lowerCTLZ(op, dag);
+            case ISD.CTTZ:               return lowerCTTZ(op, dag);
+            case ISD.MUL:                return lowerMUL_V2I64(op, dag);
+            case ISD.SADDO:
+            case ISD.UADDO:
+            case ISD.SSUBO:
+            case ISD.USUBO:
+            case ISD.SMULO:
+            case ISD.UMULO:              return lowerXALUO(op, dag);
+            case ISD.READCYCLECOUNTER:   return lowerREADCYCLECOUNTER(op, dag);
+            default:
+                Util.shouldNotReachHere("Should not custom lower this!");
+                return new SDValue();
+        }
+    }
+
+    @Override
+    public void replaceNodeResults(
+            SDNode n,
+            ArrayList<SDValue> results,
+            SelectionDAG dag)
+    {
+        super.replaceNodeResults(n, results, dag);
     }
 }
