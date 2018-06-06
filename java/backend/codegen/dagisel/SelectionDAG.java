@@ -771,7 +771,7 @@ public class SelectionDAG
         return new SDValue(node, 0);
     }
 
-    private static boolean isCommutativeBinOp(int opc)
+    public static boolean isCommutativeBinOp(int opc)
     {
         switch (opc)
         {
@@ -3246,6 +3246,19 @@ public class SelectionDAG
         EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
         SDValue negOne = getConstant(APInt.getAllOnesValue(eltVT.getSizeInBits()), vt, false);
         return getNode(ISD.XOR, vt, op, negOne);
+    }
+
+    public CondCode getSetCCSwappedOperands(CondCode cc)
+    {
+        int oldL = (cc.ordinal() >> 2) & 1;
+        int oldG = (cc.ordinal() >> 1) & 1;
+        return CondCode.values()[(cc.ordinal()&~6)|(oldL<<1)|(oldG<<2)];
+    }
+
+    public SDValue foldSetCC(EVT vt, SDValue lhs, SDValue rhs, CondCode cc)
+    {
+        // TODO: 18-6-6
+        return null;
     }
 }
 
