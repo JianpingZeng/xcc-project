@@ -18,7 +18,7 @@ package backend.target;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
-import backend.codegen.dagisel.SDNode.ConstantSDNode;
+import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
 import backend.type.PointerType;
@@ -1619,14 +1619,595 @@ public abstract class TargetLowering
         return libCallCallingConv[lc.ordinal()];
     }
 
-    public SDValue simplifySetCC(EVT evt,
+    /**
+     * Try to simplify a setcc built with the specified operands and cc.
+     * If it is unable to simplify it, return a null value.
+     * @param vt
+     * @param lhs
+     * @param rhs
+     * @param cc
+     * @param foldBooleans
+     * @param dagCBI
+     * @return
+     */
+    public SDValue simplifySetCC(EVT vt,
             SDValue lhs,
             SDValue rhs,
             CondCode cc,
-            boolean b,
+            boolean foldBooleans,
             DAGCombinerInfo dagCBI)
     {
-        // TODO: 18-6-5
+        SelectionDAG dag = dagCBI.dag;
+        switch (cc)
+        {
+            case SETFALSE:
+            case SETFALSE2:
+                return dag.getConstant(0, vt, false);
+            case SETTRUE:
+            case SETTRUE2:
+                return dag.getConstant(0, vt, false);
+            default:
+                break;
+        }
+
+        if (lhs.getNode() instanceof ConstantSDNode)
+        {
+            return dag.getSetCC(vt, rhs, lhs, dag.getSetCCSwappedOperands(cc));
+        }
+
+        if (rhs.getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode rhsCNT = (ConstantSDNode)rhs.getNode();
+            APInt c = rhsCNT.getAPIntValue();
+            if (lhs.getOpcode() == ISD.SRL && (c.eq(0) || c.eq(1)) &&
+                    lhs.getOperand(0).getOpcode() == ISD.CTLZ &&
+                    lhs.getOperand(1).getOpcode() == ISD.Constant)
+            {
+                // If the LHS is '(srl (ctlz x), 5)', the RHS is 0/1, and this is an
+                // equality comparison, then we're just comparing whether X itself is
+                // zero.
+                long shAmt = ((ConstantSDNode)lhs.getOperand(1).getNode()).getZExtValue();
+                if ((cc == SETEQ || cc == SETNE) && shAmt == Util.log2(lhs.getValueType().getSizeInBits()))
+                {
+                    if (c.eq(0) && cc == SETEQ)
+                    {
+                        cc = SETNE;
+                    }
+                    else
+                    {
+                        cc = SETEQ;
+                    }
+                    SDValue zero = dag.getConstant(0, lhs.getValueType(), false);
+                    return dag.getSetCC(vt, lhs.getOperand(0).getOperand(0), zero, cc);
+                }
+            }
+
+            // If the LHS is '(and load, const)', the RHS is 0,
+            // the test is for equality or unsigned, and all 1 bits of the const are
+            // in the same partial word, see if we can shorten the load.
+            if (dagCBI.isBeforeLegalize() && lhs.getOpcode() == ISD.AND &&
+                    c.eq(0) && lhs.getNode().hasOneUse() &&
+                    lhs.getOperand(0).getNode() instanceof LoadSDNode &&
+                    lhs.getOperand(0).getNode().hasOneUse() &&
+                    lhs.getOperand(1).getNode() instanceof ConstantSDNode)
+            {
+                LoadSDNode ld = (LoadSDNode)lhs.getOperand(0).getNode();
+                long bestMark = 0;
+                int bestWidth = 0, bestOffset = 0;
+                if (!ld.isVolatile() && ld.isUnindexed() &&
+                        lhs.getValueType().getSizeInBits() <= 64)
+                {
+                    int origWidth = lhs.getValueType().getSizeInBits();
+                    if (ld.getExtensionType() == LoadExtType.NON_EXTLOAD)
+                    {
+                        origWidth = ld.getMemoryVT().getSizeInBits();
+                    }
+
+                    long mask = ((ConstantSDNode)lhs.getOperand(1).getNode()).getZExtValue();
+                    for (int width = origWidth/2; width>=8; width/=2)
+                    {
+                        long newMask = (1L << width)-1;
+                        for (int offset = 0; offset<origWidth/width; offset++)
+                        {
+                            if ((newMask&mask) == mask)
+                            {
+                                if (!td.isLittleEndian())
+                                    bestOffset = (origWidth/width - offset - 1) * (width/8);
+                                else
+                                    bestOffset = offset*width/8;
+                                bestMark = mask >> (offset* (width/8)*8);
+                                bestWidth = width;
+                                break;
+                            }
+                            newMask = newMask << width;
+                        }
+                    }
+                }
+                if (bestWidth != 0)
+                {
+                    EVT newVT = EVT.getIntegerVT(bestWidth);
+                    if (newVT.isRound())
+                    {
+                        EVT ptrType = ld.getOperand(1).getValueType();
+                        SDValue ptr = ld.getBasePtr();
+                        if (bestOffset == 0)
+                            ptr = dag.getNode(ISD.ADD, ptrType, ptr,
+                                    dag.getConstant(bestOffset, ptrType, false));
+                        int newAlign = Util.minAlign(ld.getAlignment(), bestOffset);
+                        SDValue newLoad = dag.getLoad(newVT, ld.getChain(), ptr,
+                                ld.getSrcValue(), ld.getSrcValueOffset()+bestOffset,
+                                false, newAlign);
+                        return dag.getSetCC(vt, dag.getNode(ISD.AND, newVT, newLoad,
+                                dag.getConstant(bestMark, newVT, false)),
+                                dag.getConstant(0, newVT, false),
+                                cc);
+                    }
+                }
+            }
+
+            if (lhs.getOpcode() == ISD.ZERO_EXTEND)
+            {
+                int inSize = lhs.getOperand(0).getValueType().getSizeInBits();
+                if (c.intersects(APInt.getHighBitsSet(c.getBitWidth(),
+                        c.getBitWidth()-inSize)))
+                {
+                    switch (cc)
+                    {
+                        case SETUGT:
+                        case SETUGE:
+                        case SETEQ:
+                            return dag.getConstant(0, vt, false);
+                        case SETULT:
+                        case SETULE:
+                        case SETNE:
+                            return dag.getConstant(1, vt, false);
+                        case SETGT:
+                        case SETGE:
+                            return dag.getConstant(c.isNegative()?1:0, vt, false);
+                        case SETLT:
+                        case SETLE:
+                            return dag.getConstant(c.isNonNegative()?1:0, vt, false);
+                        default:
+                            break;
+                    }
+                }
+
+                switch (cc)
+                {
+                    case SETEQ:
+                    case SETNE:
+                    case SETUGT:
+                    case SETUGE:
+                    case SETULT:
+                    case SETULE:
+                    {
+                        EVT newVT = lhs.getOperand(0).getValueType();
+                        if (dagCBI.isBeforeLegalizeOps() ||
+                                (isOperationLegal(ISD.SETCC, newVT)) &&
+                                getCondCodeAction(cc, newVT) == Legal)
+                        {
+                            return dag.getSetCC(vt, lhs.getOperand(0),
+                                    dag.getConstant(new APInt(c).trunc(inSize),
+                                            newVT, false), cc);
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+            else if (lhs.getOpcode() == ISD.SIGN_EXTEND_INREG &&
+                    (cc == SETEQ || cc == SETNE))
+            {
+                EVT extSrcTy = ((VTSDNode)lhs.getOperand(1).getNode()).getVT();
+                int extSrcTyBits = extSrcTy.getSizeInBits();
+                EVT extDstTy = lhs.getValueType();
+                int extDstTyBits = extDstTy.getSizeInBits();
+
+                APInt extBits = APInt.getHighBitsSet(extDstTyBits, extDstTyBits-extSrcTyBits);
+                if (c.and(extBits).ne(0) && c.and(extBits).ne(extBits))
+                {
+                    return dag.getConstant(cc == SETNE?1:0, vt, false);
+                }
+
+                SDValue zextOp = new SDValue();
+                EVT op0Ty = lhs.getOperand(0).getValueType();
+                if (op0Ty.equals(extSrcTy))
+                {
+                    zextOp = lhs.getOperand(0);
+                }
+                else
+                {
+                    APInt imm = APInt.getLowBitsSet(extDstTyBits, extSrcTyBits);
+                    zextOp = dag.getNode(ISD.AND, op0Ty, lhs.getOperand(0),
+                            dag.getConstant(imm, op0Ty, false));
+                }
+                if (!dagCBI.isCalledByLegalizer())
+                    dagCBI.addToWorkList(zextOp.getNode());
+                return dag.getSetCC(vt, zextOp, dag.getConstant(
+                        c.and(APInt.getLowBitsSet(extDstTyBits, extSrcTyBits)),
+                        extDstTy, false), cc);
+            }
+            else if ((rhsCNT.isNullValue() || rhsCNT.getAPIntValue().eq(1)) &&
+                    (cc == SETEQ || cc == SETNE))
+            {
+                if (lhs.getOpcode() == ISD.SETCC)
+                {
+                    boolean trueWhenTrue = cc == SETEQ ^ (rhsCNT.getZExtValue() != 1);
+                    if (trueWhenTrue)
+                        return lhs;
+
+                    CondCode ccT = ((CondCodeSDNode)lhs.getOperand(2).getNode()).getCondition();
+                    ccT = ISD.getSetCCInverse(ccT, lhs.getOperand(0).getValueType().isInteger());
+                    return dag.getSetCC(vt, lhs.getOperand(0), lhs.getOperand(1), ccT);
+                }
+                if ((lhs.getOpcode() == ISD.XOR || lhs.getOpcode() == ISD.AND) &&
+                        lhs.getOperand(0).getOpcode() == ISD.XOR &
+                        lhs.getOperand(1).equals(lhs.getOperand(0).getOperand(1)) &&
+                        lhs.getOperand(1).getNode() instanceof ConstantSDNode &&
+                        ((ConstantSDNode)lhs.getOperand(1).getNode()).getAPIntValue().eq(1))
+                {
+                    int bitwidth = lhs.getValueSizeInBits();
+                    if (dag.maskedValueIsZero(lhs, APInt.getHighBitsSet(bitwidth, bitwidth-1)))
+                    {
+                        SDValue val;
+                        if (lhs.getOpcode() == ISD.XOR)
+                            val = lhs.getOperand(0);
+                        else
+                        {
+                            assert lhs.getOpcode() == ISD.AND &&
+                                    lhs.getOperand(0).getOpcode() == ISD.XOR;
+                            val = dag.getNode(ISD.AND, lhs.getValueType(),
+                                    lhs.getOperand(0).getOperand(0),
+                                    lhs.getOperand(1));
+                        }
+                        return dag.getSetCC(vt, val, rhs, cc==SETEQ?SETNE:SETEQ);
+                    }
+                }
+            }
+
+            APInt minVal, maxVal;
+            int operandBitSize = rhsCNT.getValueType(0).getSizeInBits();
+            if (cc.isSignedIntSetCC())
+            {
+                minVal = APInt.getSignedMinValue(operandBitSize);
+                maxVal = APInt.getSignedMaxValue(operandBitSize);
+            }
+            else
+            {
+                minVal = APInt.getMinValue(operandBitSize);
+                maxVal = APInt.getMaxValue(operandBitSize);
+            }
+
+            if (cc == SETGE || cc == SETUGE)
+            {
+                if (c.eq(minVal)) return dag.getConstant(1,vt,false);
+                return dag.getSetCC(vt, lhs, dag.getConstant(c.decrease(),
+                        rhs.getValueType(), false),cc == SETGE?SETGT:SETUGT);
+            }
+
+            if (cc == SETLE || cc == SETULE)
+            {
+                if (c.eq(maxVal))return dag.getConstant(1, vt,false);
+                return dag.getSetCC(vt, lhs, dag.getConstant(c.increase(),
+                        rhs.getValueType(), false),cc==SETLE?SETLT:SETULT);
+            }
+
+            if ((cc == SETLT || cc == SETULT) && c.eq(minVal))
+                return dag.getConstant(0, vt, false);
+            if ((cc == SETGE || cc == SETUGE) && c.eq(minVal))
+                return dag.getConstant(1, vt, false);
+            if ((cc == SETGT || cc == SETUGT) && c.eq(maxVal))
+                return dag.getConstant(0, vt, false);
+            if ((cc == SETLE || cc == SETULE) && c.eq(maxVal))
+                return dag.getConstant(1, vt, false);
+
+            if ((cc == SETGT || cc == SETUGT) && c.eq(minVal))
+                return dag.getSetCC(vt, lhs, rhs, SETNE);
+            if ((cc == SETLT || cc == SETULT) && c.eq(maxVal))
+                return dag.getSetCC(vt, lhs, rhs, SETNE);
+
+            if ((cc == SETLT || cc == SETULT) && c.eq(minVal.add(1)))
+                return dag.getSetCC(vt, lhs, dag.getConstant(minVal, lhs.getValueType(), false),
+                        SETEQ);
+            else if ((cc == SETGT || cc == SETUGT) && c.eq(maxVal.sub(1)))
+                return dag.getSetCC(vt, lhs, dag.getConstant(maxVal, lhs.getValueType(),false),
+                        SETEQ);
+
+            if (cc == SETUGT && c.eq(APInt.getSignedMaxValue(operandBitSize)))
+            {
+                return dag.getSetCC(vt, lhs, dag.getConstant(0, rhs.getValueType(), false),
+                        SETLT);
+            }
+
+            if (cc == SETULT && c.eq(APInt.getSignedMinValue(operandBitSize)))
+            {
+                SDValue constMinusOne = dag.getConstant(APInt.getAllOnesValue(operandBitSize),
+                        rhs.getValueType(), false);
+                return dag.getSetCC(vt, lhs, constMinusOne, SETGT);
+            }
+
+            if ((cc == SETEQ || cc == SETNE) && vt.equals(lhs.getValueType()) &&
+                    lhs.getOpcode() == ISD.AND)
+            {
+                if (lhs.getOperand(1).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode csn = (ConstantSDNode)lhs.getOperand(1).getNode();
+                    EVT shiftTy = dagCBI.isBeforeLegalize() ?
+                            new EVT(getPointerTy()) : new EVT(getShiftAmountTy());
+                    if (cc == SETNE && c.eq(0))
+                    {
+                        if (Util.isPowerOf2(csn.getZExtValue()))
+                        {
+                            return dag.getNode(ISD.SRL, vt, lhs,
+                                    dag.getConstant(Util.log2(csn.getZExtValue()), shiftTy,false));
+                        }
+                    }
+                    else if (cc == SETEQ && c.eq(csn.getZExtValue()))
+                    {
+                        if (c.isPowerOf2())
+                            return dag.getNode(ISD.SRL, vt, lhs,
+                                    dag.getConstant(c.logBase2(), shiftTy, false));
+                    }
+                }
+            }
+        }
+
+        if (lhs.getNode() instanceof ConstantFPSDNode)
+        {
+            SDValue o = dag.foldSetCC(vt, lhs, rhs, cc);
+            if (o.getNode() != null)
+                return o;
+        }
+        else if (rhs.getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode cfp = (ConstantFPSDNode)rhs.getNode();
+            if (cfp.getValueAPF().isNaN())
+            {
+                switch (cc.getUnorderedFlavor())
+                {
+                    default:
+                        Util.shouldNotReachHere("Unknown flavor!");
+                        break;
+                    case 0:
+                        return dag.getConstant(0, vt, false);
+                    case 1:
+                        return dag.getConstant(1, vt, false);
+                    case 2:
+                        return dag.getUNDEF(vt);
+                }
+            }
+
+            if (cc == SETO || cc == SETUO)
+                return dag.getSetCC(vt, lhs, lhs, cc);
+        }
+
+        if (lhs.equals(rhs))
+        {
+            if (lhs.getValueType().isInteger())
+            {
+                return dag.getConstant(cc.isTrueWhenEqual()?1:0, vt, false);
+            }
+            int uof = cc.getUnorderedFlavor();
+            if (uof == 2)
+                return dag.getConstant(cc.isTrueWhenEqual()?1:0, vt, false);
+            if (uof == (cc.isTrueWhenEqual()?1:0))
+                return dag.getConstant(uof, vt, false);
+
+            CondCode newCC = uof == 0 ? SETO : SETUO;
+            if (newCC != cc)
+                return dag.getSetCC(vt ,lhs, rhs, newCC);
+        }
+
+        if ((cc == SETEQ || cc == SETNE) && lhs.getValueType().isInteger())
+        {
+            int lhsOpc = lhs.getOpcode();
+            if (lhsOpc == ISD.ADD || lhsOpc == ISD.SUB || lhsOpc == ISD.XOR)
+            {
+                if (lhsOpc == rhs.getOpcode())
+                {
+                    if (lhs.getOperand(0).equals(rhs.getOperand(0)))
+                        return dag.getSetCC(vt, lhs.getOperand(1),
+                                rhs.getOperand(1), cc);
+                    if (lhs.getOperand(1).equals(rhs.getOperand(1)))
+                        return dag.getSetCC(vt, lhs.getOperand(0),
+                                rhs.getOperand(0), cc);
+                    if (SelectionDAG.isCommutativeBinOp(lhsOpc))
+                    {
+                        if (lhs.getOperand(0).equals(rhs.getOperand(1)))
+                            return dag.getSetCC(vt, lhs.getOperand(1),
+                                    rhs.getOperand(0), cc);
+                        if (lhs.getOperand(1).equals(rhs.getOperand(0)))
+                            return dag.getSetCC(vt, lhs.getOperand(0),
+                                    rhs.getOperand(0), cc);
+                    }
+                }
+
+                if (rhs.getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode rhsC = (ConstantSDNode)rhs.getNode();
+                    if (lhs.getOperand(1).getNode() instanceof ConstantSDNode)
+                    {
+                        ConstantSDNode lhsOp1C = (ConstantSDNode)lhs.getOperand(1).getNode();
+
+                        if (lhs.getOpcode() == ISD.ADD && lhs.getNode().hasOneUse())
+                        {
+                            return dag.getSetCC(vt, lhs.getOperand(0),
+                                    dag.getConstant(rhsC.getAPIntValue().
+                                            sub(lhsOp1C.getAPIntValue()),
+                                            lhs.getValueType(), false),
+                                    cc);
+                        }
+
+                        if (lhs.getOpcode() == ISD.XOR)
+                        {
+                            if (dag.maskedValueIsZero(lhs.getOperand(0), lhsOp1C.getAPIntValue().not()))
+                                return dag.getSetCC(vt, lhs.getOperand(0),
+                                        dag.getConstant(lhsOp1C.getAPIntValue().
+                                                xor(rhsC.getAPIntValue()),
+                                                lhs.getValueType(), false),
+                                        cc);
+                        }
+
+                        if (lhs.getOperand(0).getNode() instanceof ConstantSDNode)
+                        {
+                            ConstantSDNode lhsOp0C = (ConstantSDNode)lhs.getOperand(0).getNode();
+                            if (lhsOpc == ISD.SUB && lhs.getNode().hasOneUse())
+                            {
+                                return dag.getSetCC(vt, lhs.getOperand(1),
+                                        dag.getConstant(lhsOp0C.getAPIntValue().
+                                                sub(rhsC.getAPIntValue()),
+                                                lhs.getValueType(), false),
+                                        cc);
+                            }
+                        }
+                    }
+                }
+
+                if (lhs.getOperand(0).equals(rhs))
+                    return dag.getSetCC(vt, lhs.getOperand(1),
+                            dag.getConstant(0, lhs.getValueType(), false), cc);
+                if (lhs.getOperand(1).equals(rhs))
+                {
+                    if (SelectionDAG.isCommutativeBinOp(lhsOpc))
+                    {
+                        return dag.getSetCC(vt, lhs.getOperand(0),
+                                dag.getConstant(0, lhs.getValueType(), false), cc);
+                    }
+                    else if (lhs.getNode().hasOneUse())
+                    {
+                        SDValue sh = dag.getNode(ISD.SHL, rhs.getValueType(),
+                                rhs, dag.getConstant(1, new EVT(getShiftAmountTy()), false));
+                        if (!dagCBI.isCalledByLegalizer())
+                            dagCBI.addToWorkList(sh.getNode());
+                        return dag.getSetCC(vt, lhs.getOperand(0), sh, cc);
+                    }
+                }
+            }
+
+            int rhsOpc = rhs.getOpcode();
+            if (rhsOpc == ISD.ADD || rhsOpc == ISD.SUB || rhsOpc == ISD.XOR)
+            {
+                if (rhs.getOperand(0).equals(lhs))
+                    return dag.getSetCC(vt, rhs.getOperand(1),
+                            dag.getConstant(0, rhs.getValueType(), false),cc);
+                else if (rhs.getOperand(1).equals(rhs))
+                {
+                    if (SelectionDAG.isCommutativeBinOp(rhsOpc))
+                    {
+                        return dag.getSetCC(vt,rhs.getOperand(0),
+                                dag.getConstant(0, rhs.getValueType(), false),cc);
+                    }
+                    else if (rhs.getNode().hasOneUse())
+                    {
+                        assert rhsOpc == ISD.SUB:"Unexpected operation!";
+                        SDValue sh = dag.getNode(ISD.SHL, rhs.getValueType(),
+                                lhs, dag.getConstant(1, new EVT(getShiftAmountTy()), false));
+                        if (!dagCBI.isCalledByLegalizer())
+                            dagCBI.addToWorkList(sh.getNode());
+                        return dag.getSetCC(vt, sh, rhs.getOperand(0), cc);
+                    }
+                }
+            }
+
+            if (lhsOpc == ISD.AND)
+            {
+                if (lhs.getOperand(0).equals(rhs) || lhs.getOperand(1).equals(rhs))
+                {
+                    if (valueHasExactlyOneBitSet(rhs, dag))
+                    {
+                        cc = ISD.getSetCCInverse(cc, true);
+                        SDValue zero = dag.getConstant(0, rhs.getValueType(), false);
+                        return dag.getSetCC(vt, lhs, zero, cc);
+                    }
+                }
+            }
+            if (rhsOpc == ISD.AND)
+            {
+                if (rhs.getOperand(0).equals(lhs) || rhs.getOperand(1).equals(lhs))
+                {
+                    if (valueHasExactlyOneBitSet(lhs, dag))
+                    {
+                        cc = ISD.getSetCCInverse(cc, true);
+                        SDValue zero = dag.getConstant(0, lhs.getValueType(), false);
+                        return dag.getSetCC(vt, rhs, zero, cc);
+                    }
+                }
+            }
+        }
+
+        SDValue temp;
+        if (lhs.getValueType().getSimpleVT().simpleVT == MVT.i1 && foldBooleans)
+        {
+            switch (cc)
+            {
+                default:
+                    Util.shouldNotReachHere("Unknown integer setcc!");
+                    break;
+                case SETEQ:
+                    temp = dag.getNode(ISD.XOR, new EVT(MVT.i1), lhs, rhs);
+                    lhs = dag.getNOT(temp, new EVT(MVT.i1));
+                    if (!dagCBI.isCalledByLegalizer())
+                        dagCBI.addToWorkList(temp.getNode());
+                    break;
+                case SETNE:
+                    lhs = dag.getNode(ISD.XOR, new EVT(MVT.i1), lhs, rhs);
+                    break;
+                case SETGT:
+                case SETULT:
+                    temp = dag.getNOT(lhs, new EVT(MVT.i1));
+                    lhs = dag.getNode(ISD.ADD, new EVT(MVT.i1), rhs, temp);
+                    if (!dagCBI.isCalledByLegalizer())
+                        dagCBI.addToWorkList(temp.getNode());
+                    break;
+                case SETLT:
+                case SETUGT:
+                    temp = dag.getNOT(rhs, new EVT(MVT.i1));
+                    lhs = dag.getNode(ISD.AND, new EVT(MVT.i1), lhs, temp);
+                    if (!dagCBI.isCalledByLegalizer())
+                        dagCBI.addToWorkList(temp.getNode());
+                    break;
+                case SETULE:
+                case SETGE:
+                    temp = dag.getNOT(lhs, new EVT(MVT.i1));
+                    lhs = dag.getNode(ISD.OR, new EVT(MVT.i1), rhs, temp);
+                    if (!dagCBI.isCalledByLegalizer())
+                        dagCBI.addToWorkList(temp.getNode());
+                    break;
+                case SETUGE:
+                case SETLE:
+                    temp = dag.getNOT(rhs, new EVT(MVT.i1));
+                    lhs = dag.getNode(ISD.OR, new EVT(MVT.i1), lhs, temp);
+                    break;
+            }
+            if (vt.getSimpleVT().simpleVT != MVT.i1)
+            {
+                if (!dagCBI.isCalledByLegalizer())
+                    dagCBI.addToWorkList(lhs.getNode());
+                lhs = dag.getNode(ISD.ZERO_EXTEND, vt, lhs);
+            }
+            return lhs;
+        }
+        return new SDValue();
+    }
+
+    private static boolean valueHasExactlyOneBitSet(SDValue val, SelectionDAG dag)
+    {
+        if (val.getNode().getOperand(0).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode c = (ConstantSDNode)val.getNode().getOperand(0).getNode();
+            if (c.getAPIntValue().eq(1) && val.getOpcode() == ISD.SHL)
+                return true;
+            if (c.getAPIntValue().isSignBit() && val.getOpcode() == ISD.SRL)
+                return true;
+        }
+        EVT opVT = val.getValueType();
+        int bitWidth = opVT.getStoreSizeInBits();
+        APInt mask = APInt.getAllOnesValue(bitWidth);
+        APInt[] res = new APInt[2];
+        dag.computeMaskedBits(val, mask, res, 0);
+        return res[0].countPopulation() == bitWidth -1 &&
+                res[1].countPopulation() == 1;
     }
 
     public SDValue lowerOperation(SDValue op, SelectionDAG dag)

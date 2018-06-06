@@ -16,7 +16,7 @@ package backend.codegen.fastISel;
  * permissions and limitations under the License.
  */
 
-/**
+import backend.codegen.dagisel.CondCode; /**
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -548,4 +548,16 @@ public class ISD
     public static final int ATOMIC_LOAD_UMAX = 173;
     // BUILTIN_OP_END - This must be the last enum value in this list.
     public static final int BUILTIN_OP_END = 174;
+
+    public static CondCode getSetCCInverse(CondCode cc, boolean isInteger)
+    {
+        int operator = cc.ordinal();
+        if (isInteger)
+            operator ^= 7;
+        else
+            operator ^= 15;
+        if (operator > CondCode.SETTRUE2.ordinal())
+            operator &= ~8;
+        return CondCode.values()[operator];
+    }
 }

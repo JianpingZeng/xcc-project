@@ -3725,4 +3725,9 @@ public class APInt implements Cloneable
         }
         return count;
     }
+
+    public boolean isSignBit()
+    {
+        return isMinSignedValue();
+    }
 }
