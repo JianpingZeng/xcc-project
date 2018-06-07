@@ -2473,12 +2473,198 @@ public class X86TargetLowering extends TargetLowering
         }
     }
 
+    private Pair<SDValue,SDValue> FPToIntHelper(SDValue op,
+            SelectionDAG dag, boolean isSigned)
+    {
+        EVT destTy = op.getValueType();
+        if (!isSigned)
+        {
+            assert destTy.getSimpleVT().simpleVT == MVT.i32
+                    :"Unexpected FP_TO_UINT";
+            destTy = new EVT(MVT.i64);
+        }
+
+        assert destTy.getSimpleVT().simpleVT <= MVT.i64 &&
+                destTy.getSimpleVT().simpleVT >= MVT.i16:
+                "Unknown FP_TO_SINT to lower!";
+
+        if (destTy.getSimpleVT().simpleVT == MVT.i32 &&
+                isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+            return Pair.get(new SDValue(),  new SDValue());
+
+        if (subtarget.is64Bit() && destTy.getSimpleVT().simpleVT == MVT.i64 &&
+                isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+            return Pair.get(new SDValue(),  new SDValue());
+
+        MachineFunction mf = dag.getMachineFunction();
+        int memSize = destTy.getSizeInBits()/8;
+        int ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
+        SDValue stackSlot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+
+        int opc = 0;
+        switch (destTy.getSimpleVT().simpleVT)
+        {
+            default:
+                Util.shouldNotReachHere("Invalid FP_TO_SINT to lower!");
+                break;
+            case MVT.i16:
+                opc = X86ISD.FP_TO_INT16_IN_MEM; break;
+            case MVT.i32:
+                opc = X86ISD.FP_TO_INT32_IN_MEM;
+                break;
+            case MVT.i64:
+                opc = X86ISD.FP_TO_INT64_IN_MEM;
+                break;
+        }
+        SDValue chain = dag.getEntryNode();
+        SDValue value = op.getOperand(0);
+        if (isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+        {
+            assert destTy.getSimpleVT().simpleVT == MVT.i64:
+                    "Invalid FP_TO_SINT to lower!";
+            chain = dag.getStore(chain, value, stackSlot,
+                    PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
+            SDVTList vts = dag.getVTList(op.getOperand(0).getValueType(),
+                    new EVT(MVT.Other));
+            SDValue[] ops = {chain, stackSlot,
+                    dag.getValueType(op.getOperand(0).getValueType())};
+            value = dag.getNode(X86ISD.FLD, vts, ops);
+            chain = value.getValue(1);
+            ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
+            stackSlot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+        }
+
+        SDValue[] ops = {chain, value, stackSlot};
+        SDValue fist = dag.getNode(opc, new EVT(MVT.Other), ops);
+        return Pair.get(fist, stackSlot);
+    }
+    /**
+     * Replace a node with an illegal result type with a new node built
+     * out of custom code.
+     * @param n
+     * @param results
+     * @param dag
+     */
     @Override
     public void replaceNodeResults(
             SDNode n,
             ArrayList<SDValue> results,
             SelectionDAG dag)
     {
-        super.replaceNodeResults(n, results, dag);
+        switch (n.getOpcode())
+        {
+            default:
+                Util.shouldNotReachHere("Don't know how to custom type legalize this operation!");
+                return;
+            case ISD.FP_TO_SINT:
+            {
+                Pair<SDValue, SDValue> vals = FPToIntHelper(new SDValue(n, 0), dag, true);
+                SDValue fist = vals.first, stackSlot = vals.second;
+                if (fist.getNode() != null)
+                {
+                    EVT vt = n.getValueType(0);
+                    results.add(dag.getLoad(vt, fist, stackSlot, null, 0));
+                }
+                return;
+            }
+            case ISD.READCYCLECOUNTER:
+            {
+                SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+                SDValue chain = n.getOperand(0);
+                SDValue rd = dag.getNode(X86ISD.RDTSC_DAG, vts, chain);
+                SDValue eax = dag.getCopyFromReg(rd, X86GenRegisterNames.EAX,
+                        new EVT(MVT.i32), rd.getValue(1));
+                SDValue edx = dag.getCopyFromReg(eax.getValue(1),
+                        X86GenRegisterNames.EDX,
+                        new EVT(MVT.i32), eax.getValue(2));
+                SDValue[] ops = {eax, edx};
+                results.add(dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), ops));
+                results.add(edx.getValue(1));
+                return;
+            }
+            case ISD.ATOMIC_CMP_SWAP:
+            {
+                EVT vt = n.getValueType(0);
+                assert vt.getSimpleVT().simpleVT == MVT.i64:
+                        "Only know how to expand i64 cmp and swap!";
+                SDValue cpInL, cpInH;
+                EVT i32 = new EVT(MVT.i32);
+                cpInL = dag.getNode(ISD.EXTRACT_ELEMENT, i32, n.getOperand(2),
+                        dag.getConstant(0, i32, false));
+                cpInH = dag.getNode(ISD.EXTRACT_ELEMENT, i32, n.getOperand(2),
+                        dag.getConstant(1, i32, false));
+                cpInL = dag.getCopyToReg(n.getOperand(0),
+                        X86GenRegisterNames.EAX, cpInL, new SDValue());
+                cpInH = dag.getCopyToReg(cpInL.getValue(0), X86GenRegisterNames.EDX,
+                        cpInH, cpInL.getValue(1));
+
+                SDValue swapInL, swapInH;
+                swapInL = dag.getNode(ISD.EXTRACT_ELEMENT, i32, n.getOperand(3),
+                        dag.getConstant(0, i32, false));
+                swapInH = dag.getNode(ISD.EXTRACT_ELEMENT, i32, n.getOperand(3),
+                        dag.getConstant(1, i32, false));
+                swapInL = dag.getCopyToReg(cpInH.getValue(0), X86GenRegisterNames.EBX,
+                        swapInL, cpInH.getValue(1));
+                swapInH = dag.getCopyToReg(swapInL.getValue(0), X86GenRegisterNames.ECX,
+                        swapInH, swapInL.getValue(1));
+                SDValue[] ops = {swapInH.getValue(0), n.getOperand(1), swapInH.getValue(1)};
+                SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+                SDValue result = dag.getNode(X86ISD.LCMPXCHG8_DAG, vts, ops);
+                SDValue cpOutL = dag.getCopyFromReg(result.getValue(0),
+                        X86GenRegisterNames.EAX, i32, result.getValue(1));
+
+                SDValue cpOutH = dag.getCopyFromReg(cpOutL.getValue(1),
+                        X86GenRegisterNames.EDX, i32, cpOutL.getValue(2));
+                SDValue[] ops2 = {cpOutL.getValue(0), cpOutH.getValue(0)};
+                results.add(dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), ops2));
+                results.add(cpOutH.getValue(1));
+                return;
+            }
+            case ISD.ATOMIC_LOAD_ADD:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMADD64_DAG);
+                return;
+            case ISD.ATOMIC_LOAD_AND:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMAND64_DAG);
+                return;
+            case ISD.ATOMIC_LOAD_NAND:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMNAND64_DAG);
+                return;
+            case ISD.ATOMIC_LOAD_OR:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMOR64_DAG);
+                return;
+            case ISD.ATOMIC_LOAD_SUB:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMSUB64_DAG);
+                return;
+            case ISD.ATOMIC_LOAD_XOR:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMXOR64_DAG);
+                return;
+            case ISD.ATOMIC_SWAP:
+                replaceAtomicBinary64(n, results, dag, X86ISD.ATOMSWAP64_DAG);
+                return;
+        }
+    }
+
+    private void replaceAtomicBinary64(SDNode n,
+            ArrayList<SDValue> results,
+            SelectionDAG dag, int newOpc)
+    {
+        EVT vt = n.getValueType(0);
+        assert vt.getSimpleVT().simpleVT == MVT.i64:
+                "Only know how to expand i64 atomics!";
+
+        SDValue chain = n.getOperand(0);
+        SDValue in1 = n.getOperand(1);
+        EVT i32 = new EVT(MVT.i32);
+        SDValue in2L = dag.getNode(ISD.EXTRACT_ELEMENT, i32,
+                n.getOperand(2), dag.getIntPtrConstant(0));
+        SDValue in2H = dag.getNode(ISD.EXTRACT_ELEMENT, i32,
+                n.getOperand(2), dag.getIntPtrConstant(1));
+        SDValue lsi = dag.getMemOperand(((MemSDNode)n).getMemOperand());
+        SDValue[] ops = {chain, in1, in2L, in2H, lsi};
+        SDVTList vts = dag.getVTList(i32, i32, new EVT(MVT.Other));
+        SDValue result = dag.getNode(newOpc, vts, ops);
+        SDValue[] ops2 = {result.getValue(0), result.getValue(1)};
+        results.add(dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), ops2));
+        results.add(result.getValue(2));
     }
 }
