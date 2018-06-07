@@ -227,7 +227,7 @@ public class X86TargetLowering extends TargetLowering
 
                 if (va.isExtInLoc())
                 {
-                    // Handle MMX valeus passed in XMM regs.
+                    // Handle MMX values passed in XMM regs.
                     if (regVT.isVector())
                     {
                         argValue = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.i64),
@@ -237,8 +237,7 @@ public class X86TargetLowering extends TargetLowering
                                 argValue);
                     }
                     else
-                        argValue = dag
-                                .getNode(ISD.TRUNCATE, va.getValVT(), argValue);
+                        argValue = dag.getNode(ISD.TRUNCATE, va.getValVT(), argValue);
                 }
             }
             else
@@ -260,7 +259,8 @@ public class X86TargetLowering extends TargetLowering
             int reg = funcInfo.getSRetReturnReg();
             if (reg == 0)
             {
-                reg = mf.getMachineRegisterInfo().createVirtualRegister(getRegClassFor(new EVT(MVT.i64)));
+                reg = mf.getMachineRegisterInfo().
+                        createVirtualRegister(getRegClassFor(new EVT(MVT.i64)));
                 funcInfo.setSRetReturnReg(reg);
             }
 
@@ -460,9 +460,7 @@ public class X86TargetLowering extends TargetLowering
         if (flags.isByVal())
             return fin;
         return dag.getLoad(valVT, chain, fin, PseudoSourceValue.getFixedStack(fi), 0);
-
     }
-
 
     private CCAssignFn ccAssignFnForNode(CallingConv cc)
     {
@@ -681,7 +679,6 @@ public class X86TargetLowering extends TargetLowering
             SelectionDAG dag,
             ArrayList<SDValue> inVals)
     {
-        // TODO: 18-5-1
         MachineFunction mf = dag.getMachineFunction();
         boolean is64Bit = subtarget.is64Bit();
         boolean isStructRet = callIsStructReturn(outs);
@@ -775,8 +772,7 @@ public class X86TargetLowering extends TargetLowering
                     {
                         stackPtr = dag.getCopyFromReg(chain, x86StackPtr, new EVT(getPointerTy()));
                     }
-                    memOpChains
-                            .add(lowerMemOpCallTo(chain, stackPtr, arg, dag, va,
+                    memOpChains.add(lowerMemOpCallTo(chain, stackPtr, arg, dag, va,
                                     flags));
                 }
             }
@@ -1159,7 +1155,8 @@ public class X86TargetLowering extends TargetLowering
             SDValue chain, ArgFlagsTy flags, SelectionDAG dag)
     {
         SDValue sizeNode = dag.getConstant(flags.getByValSize(), new EVT(MVT.i32), false);
-        return dag.getMemcpy(chain, dst, src, sizeNode, flags.getByValAlign(), true, null, 0, null, 0);
+        return dag.getMemcpy(chain, dst, src, sizeNode, flags.getByValAlign(),
+                true, null, 0, null, 0);
     }
 
     private static SDValue getMOVL(SelectionDAG dag, EVT evt, SDValue v1, SDValue v2)
@@ -1853,14 +1850,13 @@ public class X86TargetLowering extends TargetLowering
         MachineRegisterInfo mri = mf.getMachineRegisterInfo();
         TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
 
-        MachineBasicBlock thisMBB = mbb;
         MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
         MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
         mf.insert(itr, newMBB);
         mf.insert(itr, nextMBB);
 
-        nextMBB.transferSuccessor(thisMBB);
-        thisMBB.addSuccessor(newMBB);
+        nextMBB.transferSuccessor(mbb);
+        mbb.addSuccessor(newMBB);
 
         newMBB.addSuccessor(nextMBB);
         newMBB.addSuccessor(newMBB);
@@ -1948,7 +1944,7 @@ public class X86TargetLowering extends TargetLowering
 
         TargetInstrInfo tii = getTargetMachine().getInstrInfo();
         int countReg = mi.getOperand(0).getReg();
-        long regSaveFrrameIndex = mi.getOperand(1).getImm();
+        long regSaveFrameIndex = mi.getOperand(1).getImm();
         long varArgsOffset = mi.getOperand(2).getImm();
 
         if (!subtarget.isTargetWin64())
@@ -1965,14 +1961,15 @@ public class X86TargetLowering extends TargetLowering
         {
             long offset = (i-3)*16 + varArgsFPOffset;
             buildMI(xmmSavedMBB, tii.get(X86GenInstrNames.MOVAPSmr))
-                    .addFrameIndex(regSaveFrameIndex)
+                    .addFrameIndex(this.regSaveFrameIndex)
                     .addImm(1)  // scale
                     .addReg(0)  // indexReg
                     .addImm(offset) // disp
                     .addReg(0)  // segment
                     .addReg(mi.getOperand(i).getReg())
                     .addMemOperand(new MachineMemOperand(
-                            PseudoSourceValue.getFixedStack(regSaveFrameIndex),
+                            PseudoSourceValue.getFixedStack(
+                                    this.regSaveFrameIndex),
                             MachineMemOperand.MOStore,
                             offset, 16, 16));
         }
@@ -2098,6 +2095,253 @@ public class X86TargetLowering extends TargetLowering
         return true;
     }
 
+    static boolean isUnderOrEqual(int val, int cmpVal)
+    {
+        return (val < 0 || val == cmpVal);
+    }
+
+    static boolean isUnderOrInRange(int val, int low, int high)
+    {
+        return val < 0 || (val >= low && val < high);
+    }
+
+    static boolean isPSHUFDMask(TIntArrayList mask, EVT vt)
+    {
+        if (vt.equals(new EVT(MVT.v4f32)) || vt.equals(new EVT(MVT.v4i32)) ||
+                vt.equals(new EVT(MVT.v4i16)))
+            return mask.get(0) < 4 && mask.get(1) < 4 &&
+                    mask.get(2) < 4 && mask.get(3) < 4;
+        if (vt.equals(new EVT(MVT.v2f64)) || vt.equals(new EVT(MVT.v2i64)))
+            return mask.get(0) < 2 && mask.get(1) < 2;
+        return false;
+    }
+
+    static boolean isPSHUFHWMask(TIntArrayList mask, EVT vt)
+    {
+        if (!vt.equals(new EVT(MVT.v8i16)))
+            return false;
+
+        for (int i = 0; i < 4; i++)
+            if (mask.get(i) >= 0 && mask.get(i) != i)
+                return false;
+
+        for (int i = 4; i < 8; i++)
+            if (mask.get(i) >= 0 && (mask.get(i) < 4 || mask.get(i) > 7))
+                return false;
+        return true;
+    }
+
+    static boolean isPSHUFLWMask(TIntArrayList mask, EVT vt)
+    {
+        if (vt.equals(new EVT(MVT.v8i16)))
+            return false;
+
+        for (int i = 4; i < 8; i++)
+            if (mask.get(i) >= 0 && mask.get(i) != i)
+                return false;
+
+        for (int i = 0; i < 4; i++)
+            if (mask.get(i) >= 4)
+                return false;
+        return true;
+    }
+
+    static boolean isSHUFPMask(TIntArrayList mask, EVT vt)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts !=2 && numElts != 4)
+            return false;
+
+        int half = numElts / 2;
+        for (int i = 0; i < half; i++)
+            if (!isUnderOrInRange(mask.get(i), 0, numElts))
+                return false;
+        for (int i = half; i < numElts; i++)
+            if (!isUnderOrInRange(mask.get(i), numElts, numElts*2))
+                return false;
+        return true;
+    }
+
+    static boolean isMOVLMask(TIntArrayList mask, EVT vt)
+    {
+        if (vt.getVectorElementType().getSizeInBits() < 32)
+            return false;
+
+        int numElts = vt.getVectorNumElements();
+        if (!isUnderOrEqual(mask.get(0), numElts))
+            return false;
+        for (int i = 1; i < numElts; i++)
+            if (!isUnderOrEqual(mask.get(i), i))
+                return false;
+        return true;
+    }
+
+    static boolean isCommutedMOVLMask(TIntArrayList mask, EVT vt)
+    {
+        return isCommutedMOVLMask(mask, vt, false, false);
+    }
+
+    static boolean isCommutedMOVLMask(TIntArrayList mask, EVT vt,
+            boolean v2IsPlat)
+    {
+        return isCommutedMOVLMask(mask, vt, v2IsPlat, false);
+    }
+
+    static boolean isCommutedMOVLMask(TIntArrayList mask, EVT vt,
+            boolean v2IsPlat, boolean v2IsUndef)
+    {
+        int numOps = vt.getVectorNumElements();
+        if (numOps != 2 && numOps != 4 & numOps != 8 && numOps != 16)
+            return false;
+        if (!isUnderOrEqual(mask.get(0), 0))
+            return false;
+
+        for (int i = 1; i < numOps; i++)
+        {
+            if (!(isUnderOrEqual(mask.get(i), i+numOps) ||
+                    (v2IsUndef && isUnderOrInRange(mask.get(i), numOps, numOps*2))||
+                    (v2IsPlat && isUnderOrEqual(mask.get(i), numOps))))
+                return false;
+        }
+        return true;
+    }
+    static boolean isCommutedMOVL(ShuffleVectorSDNode n)
+    {
+        return isCommutedMOVL(n, false);
+    }
+    static boolean isCommutedMOVL(ShuffleVectorSDNode n, boolean v2IsPlat)
+    {
+        return isCommutedMOVL(n, v2IsPlat, false);
+    }
+    static boolean isCommutedMOVL(ShuffleVectorSDNode n, boolean v2IsPlat, boolean v2IsUndef)
+    {
+        TIntArrayList mask = new TIntArrayList();
+        n.getMask(mask);
+        return isCommutedMOVLMask(mask, n.getValueType(0), v2IsPlat, v2IsUndef);
+    }
+
+    static boolean isCommutedSHUFPMask(TIntArrayList mask, EVT vt)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts !=2 && numElts != 4)
+            return false;
+
+        int half = numElts / 2;
+        for (int i = 0; i < half; i++)
+            if (!isUnderOrInRange(mask.get(i), numElts, numElts*2))
+                return false;
+        for (int i = half; i < numElts; i++)
+            if (!isUnderOrInRange(mask.get(i), 0, numElts))
+                return false;
+        return true;
+    }
+
+    static boolean isCommutedSHUFP(ShuffleVectorSDNode n)
+    {
+        TIntArrayList mask = new TIntArrayList();
+        n.getMask(mask);
+        return isCommutedSHUFPMask(mask, n.getValueType(0));
+    }
+    static boolean isUNPCKLMask(TIntArrayList mask, EVT vt)
+    {
+        return isUNPCKLMask(mask, vt, false);
+    }
+    static boolean isUNPCKLMask(TIntArrayList mask, EVT vt,
+            boolean v2IsSplat)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts !=2 && numElts != 4 && numElts != 8 && numElts != 16)
+            return false;
+
+        for (int i = 0, j = 0; i < numElts; i += 2, j++)
+        {
+            int bit1 = mask.get(i);
+            int bit2 = mask.get(i+1);
+            if (!isUnderOrEqual(bit1, j))
+                return false;
+
+            if (v2IsSplat)
+            {
+                if (!isUnderOrEqual(bit2, numElts))
+                    return false;
+            }
+            else
+            {
+                if (!isUnderOrEqual(bit2, j+numElts))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    static boolean isUNPCKHMask(TIntArrayList mask, EVT vt)
+    {
+        return isUNPCKHMask(mask, vt, false);
+    }
+
+    static boolean isUNPCKHMask(TIntArrayList mask, EVT vt, boolean v2IsSplat)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts !=2 && numElts != 4 && numElts != 8 && numElts != 16)
+            return false;
+
+        for (int i = 0, j = 0; i < numElts; i += 2, j++)
+        {
+            int bit1 = mask.get(i);
+            int bit2 = mask.get(i+1);
+            if (!isUnderOrEqual(bit1, j + numElts/2))
+                return false;
+
+            if (v2IsSplat)
+            {
+                if (!isUnderOrEqual(bit2, numElts))
+                    return false;
+            }
+            else
+            {
+                if (!isUnderOrEqual(bit2, j+numElts/2+numElts))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    static boolean isUNPCKL_v_under_mask(TIntArrayList mask, EVT vt)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts != 2 && numElts != 4 && numElts != 8 && numElts != 16)
+            return false;
+
+        for (int i = 0, j = 0; i < numElts; i += 2, j++)
+        {
+            int bit1 = mask.get(i);
+            int bit2 = mask.get(i+1);
+            if (!isUnderOrEqual(bit1, j))
+                return false;
+            if (!isUnderOrEqual(bit2, j))
+                return false;
+        }
+        return true;
+    }
+
+    static boolean isUNPCKH_v_under_mask(TIntArrayList mask, EVT vt)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts != 2 && numElts != 4 && numElts != 8 && numElts != 16)
+            return false;
+
+        for (int i = 0, j = numElts/2; i < numElts; i += 2, j++)
+        {
+            int bit1 = mask.get(i);
+            int bit2 = mask.get(i+1);
+            if (!isUnderOrEqual(bit1, j))
+                return false;
+            if (!isUnderOrEqual(bit2, j))
+                return false;
+        }
+        return true;
+    }
+
     @Override
     public boolean isShuffleMaskLegal(TIntArrayList mask, EVT vt)
     {
@@ -2106,7 +2350,15 @@ public class X86TargetLowering extends TargetLowering
 
         return vt.getVectorNumElements() == 2 ||
                 ShuffleVectorSDNode.isSplatMask(mask.toArray(), vt) ||
-                isMOVLMask();
+                isMOVLMask(mask, vt) ||
+                isSHUFPMask(mask, vt) ||
+                isPSHUFDMask(mask, vt) ||
+                isPSHUFHWMask(mask, vt) ||
+                isPSHUFLWMask(mask, vt) ||
+                isUNPCKLMask(mask, vt) ||
+                isUNPCKHMask(mask, vt) ||
+                isUNPCKL_v_under_mask(mask, vt) ||
+                isUNPCKH_v_under_mask(mask, vt);
     }
 
     private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag) {return new SDValue(); }
