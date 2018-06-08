@@ -17,11 +17,8 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.dagisel.SDUse;
-import backend.codegen.dagisel.SDValue;
-import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.fastISel.ISD;
 import backend.support.Attribute;
 import backend.support.CallingConv;
@@ -33,6 +30,7 @@ import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import gnu.trove.list.array.TIntArrayList;
+import sun.reflect.ConstantPool;
 import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -45,6 +43,7 @@ import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
+import static backend.codegen.dagisel.TLSModel.getTLSModel;
 import static backend.target.TargetMachine.CodeModel.Kernel;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
@@ -996,80 +995,6 @@ public class X86TargetLowering extends TargetLowering
         inFlag = chain.getValue(1);
 
         return lowerCallResult(chain, inFlag, cc, isVarArg, ins, dag, inVals);
-    }
-
-    private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag)
-    {
-        GlobalAddressSDNode gvn = (GlobalAddressSDNode)op.getNode();
-        return lowerGlobalAddress(gvn.getGlobalValue(), gvn.getOffset(), dag);
-    }
-
-    private SDValue lowerGlobalAddress(GlobalValue gv, long offset, SelectionDAG dag)
-    {
-        int opFlags = subtarget.classifyGlobalReference(gv, getTargetMachine());
-        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
-        SDValue result;
-        if (opFlags == X86II.MO_NO_FLAG && X86
-                .isOffsetSuitableForCodeModel(offset, model))
-        {
-            result = dag
-                    .getTargetGlobalAddress(gv, new EVT(getPointerTy()), offset,
-                            0);
-            offset = 0;
-        }
-        else
-        {
-            result = dag.getTargetGlobalAddress(gv, new EVT(getPointerTy()), 0,
-                    opFlags);
-        }
-
-        int opc = (subtarget.isPICStyleRIPRel() && (model == Small || model == Kernel)) ? X86ISD.WrapperRIP : X86ISD.Wrapper;
-        result = dag.getNode(opc, new EVT(getPointerTy()), result);
-        if (isGlobalRelativeToPICBase(opFlags))
-        {
-            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
-                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())), result);
-        }
-
-        if (isGlobalStubReference(opFlags))
-        {
-            result = dag.getLoad(new EVT(getPointerTy()), dag.getEntryNode(), result,
-                    PseudoSourceValue.getGOT(), 0);
-        }
-
-        if (offset != 0)
-            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()), result,
-                    dag.getConstant(offset, new EVT(getPointerTy()), false));
-
-        return result;
-    }
-
-    private SDValue lowerExternalSymbol(SDValue op, SelectionDAG dag)
-    {
-        ExternalSymbolSDNode esn = (ExternalSymbolSDNode)op.getNode();
-        String es = esn.getExtSymol();
-        int opFlag = 0;
-        int wrapperKind = X86ISD.Wrapper;
-        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
-        if (subtarget.isPICStyleRIPRel() &&
-                (model == Small || model == Kernel))
-            wrapperKind = X86ISD.WrapperRIP;
-        else if (subtarget.isPICStyleGOT())
-            opFlag = X86II.MO_GOTOFF;
-        else if (subtarget.isPICStyleStubPIC())
-            opFlag = X86II.MO_PIC_BASE_OFFSET;
-
-        SDValue result = dag.getTargetExternalSymbol(es, new EVT(getPointerTy()), opFlag);
-        result = dag.getNode(wrapperKind, new EVT(getPointerTy()), result);
-
-        if (getTargetMachine().getRelocationModel() == PIC_ &&
-                !subtarget.is64Bit())
-        {
-            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
-                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())),
-                    result);
-        }
-        return result;
     }
 
     private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
@@ -2774,18 +2699,193 @@ public class X86TargetLowering extends TargetLowering
     }
     private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag)
     {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
         return new SDValue();
     }
     private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag)
     {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
         return new SDValue();
     }
-    private SDValue lowerEXTRACT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerINSERT_VECTOR_ELT(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerINSERT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerSCALAR_TO_VECTOR(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerConstantPool(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerEXTRACT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag)
+    {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
+        return new SDValue();
+    }
+    private SDValue lowerINSERT_VECTOR_ELT(SDValue op, SelectionDAG dag)
+    {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
+        return new SDValue();
+    }
+    private SDValue lowerINSERT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag)
+    {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
+        return new SDValue();
+    }
+    private SDValue lowerSCALAR_TO_VECTOR(SDValue op, SelectionDAG dag)
+    {
+        Util.shouldNotReachHere("Vector shuffle not supported!");
+        return new SDValue();
+    }
+    private SDValue lowerConstantPool(SDValue op, SelectionDAG dag)
+    {
+        ConstantPoolSDNode cpn = (ConstantPoolSDNode)op.getNode();
+        int opFlag = 0;
+        int wrapperKind = X86ISD.Wrapper;
+        TargetMachine.CodeModel m = tm.getCodeModel();
+        if (subtarget.isPICStyleRIPRel() && (m == Small || m == Kernel))
+            wrapperKind = X86ISD.WrapperRIP;
+        else if (subtarget.isPICStyleGOT())
+            opFlag = X86II.MO_GOTOFF;
+        else if (subtarget.isPICStyleStubPIC())
+            opFlag = X86II.MO_PIC_BASE_OFFSET;
+        SDValue result = dag.getTargetConstantPool(cpn.getConstantValue(),
+                new EVT(getPointerTy()), cpn.getAlign(), cpn.getOffset(), opFlag);
+        result = dag.getNode(wrapperKind, new EVT(getPointerTy()), result);
+        if (opFlag != 0)
+        {
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())),
+                    result);
+        }
+        return result;
+    }
+
+    private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag)
+    {
+        GlobalAddressSDNode gvn = (GlobalAddressSDNode)op.getNode();
+        return lowerGlobalAddress(gvn.getGlobalValue(), gvn.getOffset(), dag);
+    }
+
+    private SDValue lowerGlobalAddress(GlobalValue gv, long offset, SelectionDAG dag)
+    {
+        int opFlags = subtarget.classifyGlobalReference(gv, getTargetMachine());
+        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
+        SDValue result;
+        if (opFlags == X86II.MO_NO_FLAG && X86
+                .isOffsetSuitableForCodeModel(offset, model))
+        {
+            result = dag
+                    .getTargetGlobalAddress(gv, new EVT(getPointerTy()), offset,
+                            0);
+            offset = 0;
+        }
+        else
+        {
+            result = dag.getTargetGlobalAddress(gv, new EVT(getPointerTy()), 0,
+                    opFlags);
+        }
+
+        int opc = (subtarget.isPICStyleRIPRel() && (model == Small || model == Kernel)) ? X86ISD.WrapperRIP : X86ISD.Wrapper;
+        result = dag.getNode(opc, new EVT(getPointerTy()), result);
+        if (isGlobalRelativeToPICBase(opFlags))
+        {
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())), result);
+        }
+
+        if (isGlobalStubReference(opFlags))
+        {
+            result = dag.getLoad(new EVT(getPointerTy()), dag.getEntryNode(), result,
+                    PseudoSourceValue.getGOT(), 0);
+        }
+
+        if (offset != 0)
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()), result,
+                    dag.getConstant(offset, new EVT(getPointerTy()), false));
+
+        return result;
+    }
+
+    private static SDValue getTLSADDR(SelectionDAG dag, SDValue chain, GlobalAddressSDNode ga,
+                                      SDValue inFlag, EVT ptrVT, int returnReg,
+                                      int operandFlag)
+    {
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDValue tga = dag.getTargetGlobalAddress(ga.getGlobalValue(), ga.getValueType(0),
+                ga.getOffset(), operandFlag);
+        if (inFlag != null)
+        {
+            SDValue[] ops = {chain, tga, inFlag};
+            chain = dag.getNode(X86ISD.TLSADDR, vts, ops);
+        }
+        SDValue flag = chain.getValue(1);
+        return dag.getCopyFromReg(chain, returnReg, ptrVT, flag);
+    }
+
+    private static SDValue lowerToTLSGeneralDynamicModel32(GlobalAddressSDNode ga,
+                                                           SelectionDAG dag, EVT ptrVT)
+    {
+        SDValue inFlag = new SDValue();
+        SDValue chain = dag.getCopyToReg(dag.getEntryNode(), X86GenRegisterNames.EBX,
+                dag.getNode(X86ISD.GlobalBaseReg, ptrVT), inFlag);
+        inFlag = chain.getValue(1);
+        return getTLSADDR(dag, chain, ga, inFlag, ptrVT, X86GenRegisterNames.EAX, X86II.MO_TLSGD);
+    }
+
+    private static SDValue lowerToTLSGeneralDynamicModel64(GlobalAddressSDNode ga, SelectionDAG dag, EVT ptrVT)
+    {
+        return getTLSADDR(dag, dag.getEntryNode(), ga, null, ptrVT, X86GenRegisterNames.RAX,
+                X86II.MO_TLSGD);
+    }
+
+    private static SDValue lowerTLSExecModel(GlobalAddressSDNode ga, SelectionDAG dag,
+                                             EVT ptrVT, TLSModel model, boolean is64)
+    {
+
+    }
+
+    private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag)
+    {
+        assert subtarget.isTargetELF() :"TLS not implemented in other platform except for ELF!";
+        GlobalAddressSDNode ga = (GlobalAddressSDNode)op.getNode();
+        GlobalValue gv = ga.getGlobalValue();
+        TLSModel model = getTLSModel(gv, tm.getRelocationModel());
+        EVT ptr = new EVT(getPointerTy());
+        switch (model)
+        {
+            case GeneralDynamic:
+            case LocalDynamic:
+                if (subtarget.is64Bit())
+                    return lowerToTLSGeneralDynamicModel64(ga, dag, ptr);
+                return lowerToTLSGeneralDynamicModel32(ga, dag, ptr);
+            case InitialExec:
+            case LocalExec:
+                return lowerTLSExecModel(ga, dag, ptr, model, subtarget.is64Bit());
+            default:
+                Util.shouldNotReachHere();
+                return new SDValue();
+        }
+    }
+
+    private SDValue lowerExternalSymbol(SDValue op, SelectionDAG dag)
+    {
+        ExternalSymbolSDNode esn = (ExternalSymbolSDNode)op.getNode();
+        String es = esn.getExtSymol();
+        int opFlag = 0;
+        int wrapperKind = X86ISD.Wrapper;
+        TargetMachine.CodeModel model = getTargetMachine().getCodeModel();
+        if (subtarget.isPICStyleRIPRel() &&
+                (model == Small || model == Kernel))
+            wrapperKind = X86ISD.WrapperRIP;
+        else if (subtarget.isPICStyleGOT())
+            opFlag = X86II.MO_GOTOFF;
+        else if (subtarget.isPICStyleStubPIC())
+            opFlag = X86II.MO_PIC_BASE_OFFSET;
+
+        SDValue result = dag.getTargetExternalSymbol(es, new EVT(getPointerTy()), opFlag);
+        result = dag.getNode(wrapperKind, new EVT(getPointerTy()), result);
+
+        if (getTargetMachine().getRelocationModel() == PIC_ &&
+                !subtarget.is64Bit())
+        {
+            result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                    dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())),
+                    result);
+        }
+        return result;
+    }
+
     private SDValue lowerShift(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue buildFILD(SDValue op, EVT srcVT, SDValue chain, SDValue stackSlot,
             SelectionDAG dag) { return null; }
@@ -2803,7 +2903,31 @@ public class X86TargetLowering extends TargetLowering
     private SDValue lowerSELECT(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerBRCOND(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerMEMSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerJumpTable(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerJumpTable(SDValue op, SelectionDAG dag)
+    {
+        JumpTableSDNode jtn = (JumpTableSDNode)op.getNode();
+
+        int opFlag = 0;
+        int wrapperKind = X86ISD.Wrapper;
+        TargetMachine.CodeModel m = tm.getCodeModel();
+
+        if (subtarget.isPICStyleRIPRel() && (m == Small || m == Kernel))
+            wrapperKind = X86ISD.WrapperRIP;
+        else if (subtarget.isPICStyleGOT())
+            opFlag = X86II.MO_GOTOFF;
+        else if (subtarget.isPICStyleStubPIC())
+            opFlag = X86II.MO_PIC_BASE_OFFSET;
+
+        EVT pty = new EVT(getPointerTy());
+        SDValue result = dag.getTargetJumpTable(jtn.getJumpTableIndex(), pty, opFlag);
+        result = dag.getNode(wrapperKind, pty, result);
+        // With PIC, the address is actually $g + Offset.
+        if (opFlag != 0)
+        {
+            result = dag.getNode(ISD.ADD, pty, dag.getNode(X86ISD.GlobalBaseReg, pty), result);
+        }
+        return result;
+    }
     private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerVASTART(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerVAARG(SDValue op, SelectionDAG dag) {return new SDValue(); }
