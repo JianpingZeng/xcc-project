@@ -2765,6 +2765,15 @@ public class APInt implements Cloneable
         return new APInt(numBits, 0).lshr(numBits - loBitsSet);
     }
 
+    public static APInt getBitsSet(int numBits, int loBit, int hiBit)
+    {
+        assert hiBit <= numBits;
+        assert loBit < numBits;
+        if (hiBit < loBit)
+            return getLowBitsSet(numBits, hiBit).or(getHighBitsSet(numBits, numBits-loBit));
+        return getLowBitsSet(numBits, hiBit-loBit).shl(loBit);
+    }
+
     /**
      * Constructs and returns a new APInt that has the top {@code hiBitsSet}
      * bits set.
