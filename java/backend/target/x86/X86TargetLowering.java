@@ -43,6 +43,8 @@ import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
+import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
 import static backend.target.TargetMachine.CodeModel.Kernel;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
@@ -1159,10 +1161,39 @@ public class X86TargetLowering extends TargetLowering
                 true, null, 0, null, 0);
     }
 
-    private static SDValue getMOVL(SelectionDAG dag, EVT evt, SDValue v1, SDValue v2)
+    private static SDValue getMOVL(SelectionDAG dag, EVT vt, SDValue v1, SDValue v2)
     {
-        Util.shouldNotReachHere("Vector operation is not supported!");
-        return null;
+        int numElts = vt.getVectorNumElements();
+        TIntArrayList mask = new TIntArrayList();
+        mask.add(numElts);
+        for (int i = 1; i < numElts; i++)
+            mask.add(i);
+        return dag.getVectorShuffle(vt, v1, v2, mask.toArray());
+    }
+
+    private static SDValue getUnpackl(SelectionDAG dag, EVT vt, SDValue v1, SDValue v2)
+    {
+        int numElts = vt.getVectorNumElements();
+        TIntArrayList mask = new TIntArrayList();
+        for (int i = 0; i < numElts/2; i++)
+        {
+            mask.add(i);
+            mask.add(i+numElts);
+        }
+        return dag.getVectorShuffle(vt, v1, v2, mask.toArray());
+    }
+
+    private static SDValue getUnpackh(SelectionDAG dag, EVT vt, SDValue v1, SDValue v2)
+    {
+        int numElts = vt.getVectorNumElements();
+        int half = numElts/2;
+        TIntArrayList mask = new TIntArrayList();
+        for (int i = 0; i < half; i++)
+        {
+            mask.add(i + half);
+            mask.add(i + numElts + half);
+        }
+        return dag.getVectorShuffle(vt, v1, v2, mask.toArray());
     }
 
     private SDValue emitTailCallLoadRetAddr(SelectionDAG dag,
@@ -2361,9 +2392,394 @@ public class X86TargetLowering extends TargetLowering
                 isUNPCKH_v_under_mask(mask, vt);
     }
 
-    private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue getOnesVector(EVT vt, SelectionDAG dag)
+    {
+        assert vt.isVector();
+
+        SDValue cst = dag.getTargetConstant(~0, new EVT(MVT.i32));
+        SDValue vec;
+        if (vt.getSizeInBits() == 64)   // MMX
+            vec = dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.v2i32), cst, cst);
+        else
+            vec = dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.v4i32), cst,cst,cst,cst);
+        return dag.getNode(ISD.BIT_CONVERT, vt, vec);
+    }
+
+    private static SDValue getZeroVector(EVT vt, boolean hasSSE2, SelectionDAG dag)
+    {
+        assert vt.isVector();
+        SDValue vec;
+        if (vt.getSizeInBits() == 64)
+        {
+            SDValue cst = dag.getTargetConstant(0, new EVT(MVT.i32));
+            vec = dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.v2i32), cst, cst);
+        }
+        else if (hasSSE2)
+        {
+            SDValue cst = dag.getTargetConstant(0, new EVT(MVT.i32));
+            vec = dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.v4i32), cst,cst,cst,cst);
+        }
+        else
+        {
+            // SSE1
+            SDValue cst = dag.getTargetConstantFP(+0.0, new EVT(MVT.f32));
+            vec = dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.v4f32), cst,cst,cst,cst);
+        }
+        return dag.getNode(ISD.BIT_CONVERT, vt,vec);
+    }
+
+    private static SDValue getShuffleVectorZeroOrUndef(SDValue v1, int idx, boolean isZero,
+                                                       boolean hasSSE2, SelectionDAG dag)
+    {
+        EVT vt = v1.getValueType();
+        SDValue temp = isZero ? getZeroVector(vt, hasSSE2, dag) : dag.getUNDEF(vt);
+        int numElts = vt.getVectorNumElements();
+        TIntArrayList mask = new TIntArrayList();
+        for (int i = 0; i < numElts; i++)
+            mask.add(i == idx? numElts : i);
+        return dag.getVectorShuffle(vt, temp, v1, mask.toArray());
+    }
+
+    private static SDValue getVShift(boolean isLeft, EVT vt, SDValue srcOp,
+                                     int numBits, SelectionDAG dag,
+                                     TargetLowering tli)
+    {
+        boolean isMMX = vt.getSizeInBits() == 64;
+        EVT shVT = isMMX ? new EVT(MVT.v1i64) : new EVT(MVT.v2i64);
+        int opc = isLeft ? X86ISD.VSHL : X86ISD.VSRL;
+        srcOp = dag.getNode(ISD.BIT_CONVERT, shVT, srcOp);
+        return dag.getNode(ISD.BIT_CONVERT, vt, dag.getNode(opc, shVT, srcOp,
+                dag.getConstant(numBits, new EVT(tli.getShiftAmountTy()), false)));
+    }
+
+    /**
+     * Custom lower build_vector of v16i8.
+     * @param op
+     * @param nonZeros
+     * @param numNonZero
+     * @param numZero
+     * @param dag
+     * @return
+     */
+    private static SDValue lowerBuildVectorv16i8(SDValue op, int nonZeros,
+                                                 int numNonZero,
+                                                 int numZero,
+                                                 SelectionDAG dag)
+    {
+        if (numNonZero > 8)
+            return new SDValue();
+
+        SDValue v = new SDValue();
+        boolean first = true;
+        for (int i = 0; i < 16; i++)
+        {
+            boolean thisIsNonZero = (nonZeros & (1 << i)) != 0;
+            if (thisIsNonZero && first)
+            {
+                if (numZero != 0)
+                    v = getZeroVector(new EVT(MVT.v8i16), true, dag);
+                else
+                    v = dag.getUNDEF(new EVT(MVT.v8i16));
+                first = false;
+            }
+
+            if ((i&1) != 0)
+            {
+                SDValue thisElt = new SDValue(), lastElt = new SDValue();
+                boolean lastIsNonZero = (nonZeros & (1<< (i-1))) != 0;
+                if (lastIsNonZero)
+                    lastElt = dag.getNode(ISD.ZERO_EXTEND, new EVT(MVT.i16), op.getOperand(i-1));
+                if (thisIsNonZero)
+
+                {
+                    thisElt = dag.getNode(ISD.ZERO_EXTEND, new EVT(MVT.i16), op.getOperand(i));
+                    thisElt = dag.getNode(ISD.SHL, new EVT(MVT.i16), thisElt,
+                            dag.getConstant(8, new EVT(MVT.i8), false));
+                    if (lastIsNonZero)
+                        thisElt = dag.getNode(ISD.OR, new EVT(MVT.i16), thisElt, lastElt);
+                }
+                else
+                    thisElt = lastElt;
+
+                if (thisElt.getNode() != null)
+                    v = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v8i16), v, thisElt,
+                            dag.getIntPtrConstant(i/2));
+            }
+        }
+        return dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v16i8), v);
+    }
+
+    /**
+     * Custom lower build_vector of v8i16.
+     * @param op
+     * @param nonZeros
+     * @param numNonZero
+     * @param numZero
+     * @param dag
+     * @return
+     */
+    private static SDValue lowerBuildVectorv8i16(SDValue op, int nonZeros,
+                                                 int numNonZero,
+                                                 int numZero,
+                                                 SelectionDAG dag)
+    {
+        if (numNonZero > 4)
+            return new SDValue();
+
+        SDValue v = new SDValue();
+        boolean isFirst = true;
+        for (int i = 0; i< 8; i++)
+        {
+            boolean isNonZero = (nonZeros & (1<<i)) != 0;
+            if (isNonZero)
+            {
+                if (isFirst)
+                {
+                    if (numZero != 0)
+                        v = getZeroVector(new EVT(MVT.v8i16), true, dag);
+                    else
+                        v = dag.getUNDEF(new EVT(MVT.v8i16));
+                    isFirst = false;
+                }
+                v = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v8i16), v,
+                        op.getOperand(i), dag.getIntPtrConstant(i));
+            }
+        }
+        return v;
+    }
+
+    private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag)
+    {
+        if (isBuildVectorAllZeros(op.getNode()) ||
+                isBuildVectorAllOnes(op.getNode()))
+        {
+            if (op.getValueType().getSimpleVT().simpleVT == MVT.v4i32 ||
+                    op.getValueType().getSimpleVT().simpleVT == MVT.v2i32)
+                return op;
+
+            if (isBuildVectorAllOnes(op.getNode()))
+                return getOnesVector(op.getValueType(), dag);
+            return getZeroVector(op.getValueType(), subtarget.hasSSE2(), dag);
+        }
+
+        EVT vt = op.getValueType();
+        EVT extVT = vt.getVectorElementType();
+        int evtBits = extVT.getSizeInBits();
+        int numElts = op.getNumOperands();
+        int numZeros = 0;
+        int numNonZeros = 0;
+        int nonZeros = 0;
+        boolean isAllConstants = true;
+        ArrayList<SDValue> values = new ArrayList<>();
+        for (int i = 0; i < numElts; i++)
+        {
+            SDValue elt = op.getOperand(i);
+            if (elt.getOpcode() == ISD.UNDEF)
+                continue;
+            values.add(elt);
+            if (elt.getOpcode() != ISD.Constant && elt.getOpcode() != ISD.ConstantFP)
+                isAllConstants = false;
+            if (X86.isZeroMode(elt))
+                ++numZeros;
+            else
+            {
+                nonZeros |= 1<<i;
+                ++numNonZeros;
+            }
+        }
+
+        if (numNonZeros == 0)
+            return dag.getUNDEF(vt);
+
+        if (numNonZeros == 1)
+        {
+            int idx = Util.countTrailingZeros(nonZeros);
+            SDValue item = op.getOperand(idx);
+
+            if (extVT.getSimpleVT().simpleVT == MVT.i64 && !subtarget.is64Bit() &&
+                    (!isAllConstants || idx == 0))
+            {
+                if (dag.maskedValueIsZero(item, APInt.getBitsSet(64, 32, 64)))
+                {
+                    EVT vecVT = vt.equals(new EVT(MVT.v2i64)) ? new EVT(MVT.v4i32):new EVT(MVT.v2i32);
+                    int vecElts = vt.equals(new EVT(MVT.v2i64)) ? 4: 2;
+                    item = dag.getNode(ISD.TRUNCATE, new EVT(MVT.i32), item);
+                    item = dag.getNode(ISD.SCALAR_TO_VECTOR, vecVT, item);
+                    item = getShuffleVectorZeroOrUndef(item, 0, true, subtarget.hasSSE2(), dag);
+
+                    if (idx != 0)
+                    {
+                        TIntArrayList mask = new TIntArrayList();
+                        mask.fill(0, vecElts, idx);
+                        item = dag.getVectorShuffle(vecVT, item, dag.getUNDEF(item.getValueType()),
+                                mask.toArray());
+                    }
+                    return dag.getNode(ISD.BIT_CONVERT, op.getValueType(), item);
+                }
+            }
+
+            if (idx == 0)
+            {
+                if (numZeros == 0)
+                {
+                    return dag.getNode(ISD.SCALAR_TO_VECTOR, vt, item);
+                }
+                else if (extVT.equals(new EVT(MVT.i32)) || extVT.equals(new EVT(MVT.f32)) ||
+                        extVT.equals(new EVT(MVT.f64)) || (extVT.equals(new EVT(MVT.i64)) &&
+                            subtarget.is64Bit()))
+                {
+                    item = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, item);
+                    return getShuffleVectorZeroOrUndef(item, 0, true, subtarget.hasSSE2(), dag);
+                }
+                else if (extVT.getSimpleVT().simpleVT == MVT.i16 || extVT.getSimpleVT().simpleVT == MVT.i8)
+                {
+                    item = dag.getNode(ISD.ZERO_EXTEND, new EVT(MVT.i32), item);
+                    EVT middleVT = vt.getSizeInBits() == 64 ? new EVT(MVT.v2i32) : new EVT(MVT.v4i32);
+                    item = getShuffleVectorZeroOrUndef(item, 0, true, subtarget.hasSSE2(), dag);
+                    return dag.getNode(ISD.BIT_CONVERT, vt, item);
+                }
+            }
+
+            if (numElts == 2 && idx == 1 && X86.isZeroMode(op.getOperand(0)) &&
+                    !X86.isZeroMode(op.getOperand(1)))
+            {
+                int numBits = vt.getSizeInBits();
+                return getVShift(true, vt, dag.getNode(ISD.SCALAR_TO_VECTOR, vt, op.getOperand(1)),
+                        numBits/2, dag, this);
+            }
+            if (isAllConstants)
+                return new SDValue();
+
+            if (evtBits == 32)
+            {
+                item = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, item);
+
+                item = getShuffleVectorZeroOrUndef(item, 0, numZeros>0, subtarget.hasSSE2(), dag);
+                TIntArrayList mask = new TIntArrayList();
+                mask.fill(0, numElts, 1);
+                if (idx >= 0 && idx < numElts)
+                    mask.set(idx, 0);
+                return dag.getVectorShuffle(vt, item, dag.getUNDEF(vt), mask.toArray());
+            }
+        }
+
+        if (values.size() == 1 || isAllConstants)
+            return new SDValue();
+
+        if (evtBits == 64)
+        {
+            if (numNonZeros == 1)
+            {
+                int idx = Util.countTrailingZeros(nonZeros);
+                SDValue v2 = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, op.getOperand(idx));
+                return getShuffleVectorZeroOrUndef(v2, idx, true, subtarget.hasSSE2(), dag);
+            }
+            return new SDValue();
+        }
+        // If element VT is < 32 bits, convert it to inserts into a zero vector.
+        if (evtBits == 8 && numElts == 16)
+        {
+            SDValue v = lowerBuildVectorv16i8(op, nonZeros, numNonZeros, numZeros, dag);
+            if (v.getNode() != null)
+                return v;
+        }
+
+        if (evtBits == 16 && numElts == 8)
+        {
+            SDValue v = lowerBuildVectorv8i16(op, nonZeros, numNonZeros, numZeros, dag);
+            if (v.getNode() != null)
+                return v;
+        }
+
+        // If element VT is == 32 bits, turn it into a number of shuffles.
+        SDValue[] vals = new SDValue[numElts];
+        if (numElts == 4 && numZeros > 0)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                boolean isZero = (nonZeros & (1<<i)) == 0;
+                if (isZero)
+                    vals[i] = getZeroVector(vt, subtarget.hasSSE2(), dag);
+                else
+                    vals[i] = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, op.getOperand(i));
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                switch ((nonZeros & (0x3 << i*2)) >> (i*2))
+                {
+                    default:
+                        break;
+                    case 0:
+                        vals[i] = vals[i*2];
+                        break;
+                    case 1:
+                        vals[i] = getMOVL(dag, vt, vals[i*2+1], vals[i*2]);
+                        break;
+                    case 2:
+                        vals[i] = getMOVL(dag, vt, vals[i*2], vals[i*2+1]);
+                        break;
+                    case 3:
+                        vals[i] = getUnpackl(dag, vt, vals[i*2], vals[i*2+1]);
+                        break;
+                }
+            }
+
+            TIntArrayList maskVec = new TIntArrayList();
+            boolean reverse = (nonZeros & 0x3) == 2;
+            for (int i = 0; i < 2; i++)
+                maskVec.add(reverse?1-i : i);
+
+            reverse = ((nonZeros & (0x3<<2)) >> 2) == 2;
+            for (int i = 0; i < 2; i++)
+                maskVec.add(reverse? 1-i+numElts : i+numElts);
+            return dag.getVectorShuffle(vt, vals[0], vals[1], maskVec.toArray());
+        }
+
+        if (values.size() > 2)
+        {
+            // If we have SSE 4.1, Expand into a number of inserts unless the number of
+            // values to be inserted is equal to the number of elements, in which case
+            // use the unpack code below in the hopes of matching the consecutive elts
+            // load merge pattern for shuffles.
+            if (values.size() < numElts && vt.getSizeInBits() == 128 &&
+                    subtarget.hasSSE41())
+            {
+                vals[0] = dag.getUNDEF(vt);
+                for (int i = 0; i < numElts; i++)
+                    if (op.getOperand(i).getOpcode() != ISD.UNDEF)
+                        vals[0] = dag.getNode(ISD.INSERT_VECTOR_ELT, vt, vals[0],
+                                op.getOperand(i), dag.getIntPtrConstant(i));
+                return vals[0];
+            }
+
+            // Expand into a number of unpckl*.
+            // e.g. for v4f32
+            //   Step 1: unpcklps 0, 2 ==> X: <?, ?, 2, 0>
+            //         : unpcklps 1, 3 ==> Y: <?, ?, 3, 1>
+            //   Step 2: unpcklps X, Y ==>    <3, 2, 1, 0>
+            for (int i = 0; i < numElts; i++)
+                vals[i] = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, op.getOperand(i));
+
+            numElts >>= 1;
+            while (numElts != 0)
+            {
+                for (int i = 0; i < numElts; i++)
+                    vals[i] = getUnpackl(dag, vt, vals[i], vals[i+numElts]);
+                numElts >>= 1;
+            }
+            return vals[0];
+        }
+        return new SDValue();
+    }
+    private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag)
+    {
+        return new SDValue();
+    }
+    private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag)
+    {
+        return new SDValue();
+    }
     private SDValue lowerEXTRACT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerINSERT_VECTOR_ELT(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerINSERT_VECTOR_ELT_SSE4(SDValue op, SelectionDAG dag) {return new SDValue(); }
