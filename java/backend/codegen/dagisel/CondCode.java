@@ -17,8 +17,6 @@
 
 package backend.codegen.dagisel;
 
-import com.sun.org.apache.bcel.internal.generic.RET;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
