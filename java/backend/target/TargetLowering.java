@@ -1652,7 +1652,7 @@ public abstract class TargetLowering
 
         if (lhs.getNode() instanceof ConstantSDNode)
         {
-            return dag.getSetCC(vt, rhs, lhs, dag.getSetCCSwappedOperands(cc));
+            return dag.getSetCC(vt, rhs, lhs, ISD.getSetCCSwappedOperands(cc));
         }
 
         if (rhs.getNode() instanceof ConstantSDNode)

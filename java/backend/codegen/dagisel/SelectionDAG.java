@@ -38,8 +38,10 @@ import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
+import static backend.codegen.fastISel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;
+import static tools.APFloat.CmpResult.*;
 import static tools.APFloat.OpStatus.opDivByZero;
 import static tools.APFloat.OpStatus.opInvalidOp;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -897,6 +899,11 @@ public class SelectionDAG
     public SDValue getIntPtrConstant(long amt, boolean isTarget)
     {
         return getConstant(amt, new EVT(tli.getPointerTy()), isTarget);
+    }
+
+    public SDValue getConstant(boolean val, EVT vt, boolean isTarget)
+    {
+        return getConstant(val ? 1 : 0, vt, isTarget);
     }
 
     public SDValue getConstant(long val, EVT vt, boolean isTarget)
@@ -1831,17 +1838,12 @@ public class SelectionDAG
     public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
             SDValue ptr, SDValue val, Value ptrVal, int alignment)
     {
-        assert opcode == ISD.ATOMIC_LOAD_ADD ||
-            opcode == ISD.ATOMIC_LOAD_SUB  ||
-            opcode == ISD.ATOMIC_LOAD_AND  ||
-            opcode == ISD.ATOMIC_LOAD_OR   ||
-            opcode == ISD.ATOMIC_LOAD_XOR  ||
-            opcode == ISD.ATOMIC_LOAD_NAND ||
-            opcode == ISD.ATOMIC_LOAD_MIN  ||
-            opcode == ISD.ATOMIC_LOAD_MAX  ||
-            opcode == ISD.ATOMIC_LOAD_UMIN ||
-            opcode == ISD.ATOMIC_LOAD_UMAX ||
-            opcode == ISD.ATOMIC_SWAP;
+        assert opcode == ISD.ATOMIC_LOAD_ADD || opcode == ISD.ATOMIC_LOAD_SUB
+                || opcode == ISD.ATOMIC_LOAD_AND || opcode == ISD.ATOMIC_LOAD_OR
+                || opcode == ISD.ATOMIC_LOAD_XOR || opcode == ISD.ATOMIC_LOAD_NAND
+                || opcode == ISD.ATOMIC_LOAD_MIN || opcode == ISD.ATOMIC_LOAD_MAX
+                || opcode == ISD.ATOMIC_LOAD_UMIN || opcode == ISD.ATOMIC_LOAD_UMAX ||
+                opcode == ISD.ATOMIC_SWAP;
         EVT vt = val.getValueType();
 
         if (alignment == 0)
@@ -1850,27 +1852,24 @@ public class SelectionDAG
         SDVTList vts = getVTList(vt, new EVT(MVT.Other));
         FoldingSetNodeID compute = new FoldingSetNodeID();
         compute.addInteger(memoryVT.getRawBits().hashCode());
-        SDValue[] ops = {chain, ptr, val};
+        SDValue[] ops = { chain, ptr, val };
         addNodeToIDNode(compute, opcode, vts, ops);
         int id = compute.computeHash();
         if (cseMap.containsKey(id))
             return new SDValue(cseMap.get(id), 0);
-        SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val, ptrVal, alignment);
+        SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val,
+                ptrVal, alignment);
         cseMap.put(id, n);
         allNodes.add(n);
         return new SDValue(n, 0);
     }
 
-    public SDValue getAtomic(int opc, EVT memVT,
-            SDValue chain,
-            SDValue ptr,
-            SDValue cmp,
-            SDValue swap,
-            Value ptrVal,
-            int alignment)
+    public SDValue getAtomic(int opc, EVT memVT, SDValue chain, SDValue ptr,
+            SDValue cmp, SDValue swap, Value ptrVal, int alignment)
     {
-        assert opc == ISD.ATOMIC_CMP_SWAP:"Invalid atomic op!";
-        assert cmp.getValueType().equals(swap.getValueType()):"Invalid atomic op type!";
+        assert opc == ISD.ATOMIC_CMP_SWAP : "Invalid atomic op!";
+        assert cmp.getValueType()
+                .equals(swap.getValueType()) : "Invalid atomic op type!";
 
         EVT vt = cmp.getValueType();
         if (alignment == 0)
@@ -1881,12 +1880,13 @@ public class SelectionDAG
         SDVTList vts = getVTList(vt, new EVT(MVT.Other));
         FoldingSetNodeID compute = new FoldingSetNodeID();
         compute.addInteger(memVT.getRawBits().hashCode());
-        SDValue[] ops = {chain, ptr, cmp, swap};
+        SDValue[] ops = { chain, ptr, cmp, swap };
         addNodeToIDNode(compute, opc, vts, ops);
         int id = compute.computeHash();
         if (cseMap.containsKey(id))
             return new SDValue(cseMap.get(id), 0);
-        SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap, ptrVal, alignment);
+        SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap,
+                ptrVal, alignment);
         cseMap.put(id, n);
         allNodes.add(n);
         return new SDValue(n, 0);
@@ -1895,13 +1895,13 @@ public class SelectionDAG
     public SDValue getConvertRndSat(EVT vt, SDValue val, SDValue dty,
             SDValue sty, SDValue rnd, SDValue sat, CvtCode cc)
     {
-        if (dty.equals(sty) && (cc == CvtCode.CVT_UU || cc == CvtCode.CVT_SS ||
-                cc == CvtCode.CVT_FF))
+        if (dty.equals(sty) && (cc == CvtCode.CVT_UU || cc == CvtCode.CVT_SS
+                || cc == CvtCode.CVT_FF))
             return val;
 
         FoldingSetNodeID compute = new FoldingSetNodeID();
         SDVTList vts = getVTList(vt);
-        SDValue[] ops = {val, dty, sty, rnd, sat};
+        SDValue[] ops = { val, dty, sty, rnd, sat };
         addNodeToIDNode(compute, ISD.CONVERT_RNDSAT, vts, ops);
         int id = compute.computeHash();
         if (cseMap.containsKey(id))
@@ -1914,7 +1914,7 @@ public class SelectionDAG
 
     public SDValue getVAArg(EVT vt, SDValue chain, SDValue ptr, SDValue sv)
     {
-        SDValue[] ops = {chain, ptr, sv};
+        SDValue[] ops = { chain, ptr, sv };
         return getNode(ISD.VAARG, getVTList(vt, new EVT(MVT.Other)), ops);
     }
 
@@ -1940,8 +1940,7 @@ public class SelectionDAG
 
     Comparator<UseMemo> UseMemoComparator = new Comparator<UseMemo>()
     {
-        @Override
-        public int compare(UseMemo o1, UseMemo o2)
+        @Override public int compare(UseMemo o1, UseMemo o2)
         {
             return o1.user.hashCode() - o2.user.hashCode();
         }
@@ -2869,13 +2868,12 @@ public class SelectionDAG
 
     public SDValue createStackTemporary(EVT vt1, EVT vt2)
     {
-        int bytes = Math.max(vt1.getStoreSizeInBits(),
-                vt2.getStoreSizeInBits())/8;
+        int bytes = Math.max(vt1.getStoreSizeInBits(), vt2.getStoreSizeInBits())
+                / 8;
         Type t1 = vt1.getTypeForEVT();
         Type t2 = vt2.getTypeForEVT();
         TargetData td = getTarget().getTargetData();
-        int align = Math.max(td.getPrefTypeAlignment(t1),
-                td.getPrefTypeAlignment(t2));
+        int align = Math.max(td.getPrefTypeAlignment(t1), td.getPrefTypeAlignment(t2));
         MachineFrameInfo frameInfo = getMachineFunction().getFrameInfo();
         int frameInde = frameInfo.createStackObject(bytes, align);
         return getFrameIndex(frameInde, new EVT(tli.getPointerTy()), false);
@@ -2996,19 +2994,23 @@ public class SelectionDAG
         }
 
         boolean indexed = am != UNINDEXED;
-        assert indexed || offset.getOpcode()== ISD.UNDEF;
+        assert indexed || offset.getOpcode() == ISD.UNDEF;
 
-        SDVTList vts = indexed ? getVTList(vt, ptr.getValueType(), new EVT(MVT.Other))
-                : getVTList(vt, new EVT(MVT.Other));
-        SDValue[] ops = {chain, ptr, offset};
+        SDVTList vts = indexed ?
+                getVTList(vt, ptr.getValueType(), new EVT(MVT.Other)) :
+                getVTList(vt, new EVT(MVT.Other));
+        SDValue[] ops = { chain, ptr, offset };
         FoldingSetNodeID compute = new FoldingSetNodeID();
         addNodeToIDNode(compute, ISD.LOAD, vts, ops);
         compute.addInteger(evt.getRawBits().hashCode());
-        compute.addInteger(encodeMemSDNodeFlags(extType.ordinal(), am, isVolatile, alignment));
+        compute.addInteger(
+                encodeMemSDNodeFlags(extType.ordinal(), am, isVolatile,
+                        alignment));
         int id = compute.computeHash();
         if (cseMap.containsKey(id))
             return new SDValue(cseMap.get(id), 0);
-        SDNode n = new LoadSDNode(ops, vts, am, extType, evt, sv, svOffset, alignment, isVolatile);
+        SDNode n = new LoadSDNode(ops, vts, am, extType, evt, sv, svOffset,
+                alignment, isVolatile);
         cseMap.put(id, n);
         allNodes.add(n);
         return new SDValue(n, 0);
@@ -3024,7 +3026,7 @@ public class SelectionDAG
     {
         SDValue undef = getUNDEF(ptr.getValueType());
         return getLoad(UNINDEXED, LoadExtType.NON_EXTLOAD, vt, chain, ptr, undef,
-                sv, svOffset,vt, isVolatile, alignment);
+                sv, svOffset, vt, isVolatile, alignment);
     }
 
     public SDValue updateNodeOperands(SDValue node, ArrayList<SDValue> ops)
@@ -3048,7 +3050,8 @@ public class SelectionDAG
             }
         }
 
-        if (!anyChange) return node;
+        if (!anyChange)
+            return node;
         FoldingSetNodeID compute = new FoldingSetNodeID();
         SDNode existing = findModifiedNodeSlot(compute, n, ops);
         if (existing != null)
@@ -3063,7 +3066,8 @@ public class SelectionDAG
         return node;
     }
 
-    private SDNode findModifiedNodeSlot(FoldingSetNodeID compute, SDNode n, SDValue[] ops)
+    private SDNode findModifiedNodeSlot(FoldingSetNodeID compute, SDNode n,
+            SDValue[] ops)
     {
         if (doNotCSE(n))
             return null;
@@ -3077,7 +3081,7 @@ public class SelectionDAG
     public SDValue getCALLSEQ_START(SDValue chain, SDValue op)
     {
         SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
-        SDValue[] ops = {chain, op};
+        SDValue[] ops = { chain, op };
         return getNode(ISD.CALLSEQ_START, vts, ops);
     }
 
@@ -3095,8 +3099,7 @@ public class SelectionDAG
     }
 
     public SDValue getMemcpy(SDValue chain, SDValue dst, SDValue src, SDValue size,
-            int align, boolean alwaysInline, Value dstVal, long dstOff,
-            Value srcVal, long srcOff)
+            int align, boolean alwaysInline, Value dstVal, long dstOff, Value srcVal, long srcOff)
     {
         /*
         ConstantSDNode constantSize = size.getNode() instanceof ConstantSDNode ?
@@ -3194,6 +3197,7 @@ public class SelectionDAG
     {
         new SelectionDAGLegalizer(this, optLevel).legalizeDAG();
     }
+
     public int computeNumSignBits(SDValue op)
     {
         return computeNumSignBits(op, 0);
@@ -3201,13 +3205,14 @@ public class SelectionDAG
 
     public int computeNumSignBits(SDValue op, int depth)
     {
-        assert false:"Unimplemented currently!";
+        assert false : "Unimplemented currently!";
         return 0;
     }
 
     public SDValue getVectorShuffle(EVT vt, SDValue op0, SDValue op1, int[] mask)
     {
-        assert op0.getValueType().equals(op1.getValueType()):"Invalid VECTOR_SHUFFLE!";
+        assert op0.getValueType()
+                .equals(op1.getValueType()) : "Invalid VECTOR_SHUFFLE!";
         assert vt.isVector() && op0.getValueType().isVector();
         assert vt.getVectorElementType().equals(op0.getValueType().getVectorElementType());
 
@@ -3217,7 +3222,7 @@ public class SelectionDAG
         int numElts = vt.getVectorNumElements();
         TIntArrayList maskVec = new TIntArrayList();
         for (int val : mask)
-            assert val < numElts * 2:"Index out of range!";
+            assert val < numElts * 2 : "Index out of range!";
         maskVec.addAll(mask);
 
         if (op0.equals(op1))
@@ -3225,7 +3230,7 @@ public class SelectionDAG
             op1 = getUNDEF(vt);
             for (int i = 0; i < numElts; i++)
                 if (maskVec.get(i) >= numElts)
-                    maskVec.set(i, maskVec.get(i)-numElts);
+                    maskVec.set(i, maskVec.get(i) - numElts);
         }
         Util.shouldNotReachHere("Not implemented!");
         return null;
@@ -3235,7 +3240,8 @@ public class SelectionDAG
     {
         EVT ty = op.getValueType();
         EVT shTy = new EVT(tli.getShiftAmountTy());
-        if (ty.equals(shTy) || ty.isVector()) return op;
+        if (ty.equals(shTy) || ty.isVector())
+            return op;
 
         int opc = ty.bitsGT(shTy) ? ISD.TRUNCATE : ISD.ZERO_EXTEND;
         return getNode(opc, shTy, op);
@@ -3248,17 +3254,153 @@ public class SelectionDAG
         return getNode(ISD.XOR, vt, op, negOne);
     }
 
-    public CondCode getSetCCSwappedOperands(CondCode cc)
-    {
-        int oldL = (cc.ordinal() >> 2) & 1;
-        int oldG = (cc.ordinal() >> 1) & 1;
-        return CondCode.values()[(cc.ordinal()&~6)|(oldL<<1)|(oldG<<2)];
-    }
-
     public SDValue foldSetCC(EVT vt, SDValue lhs, SDValue rhs, CondCode cc)
     {
-        // TODO: 18-6-6
-        return null;
+        switch (cc)
+        {
+            default:
+                break;
+            case SETFALSE:
+            case SETFALSE2:
+                return getConstant(0, vt, false);
+            case SETTRUE:
+            case SETTRUE2:
+                return getConstant(1, vt, false);
+
+            case SETOEQ:
+            case SETOGT:
+            case SETOGE:
+            case SETOLT:
+            case SETOLE:
+            case SETONE:
+            case SETO:
+            case SETUO:
+            case SETUEQ:
+            case SETUNE:
+                assert !lhs.getValueType().isInteger() : "Illegal setcc for integer!";
+                break;
+        }
+        ConstantSDNode rhsC = rhs.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode) (rhs.getNode()) :
+                null;
+        if (rhsC != null)
+        {
+            APInt c2 = rhsC.getAPIntValue();
+            ConstantSDNode lhsC = lhs.getNode() instanceof ConstantSDNode ?
+                    (ConstantSDNode) lhs.getNode() : null;
+            if (lhsC != null)
+            {
+                APInt c1 = lhsC.getAPIntValue();
+                switch (cc)
+                {
+                    default:
+                        Util.shouldNotReachHere("Unknown integer setcc!");
+                    case SETEQ:
+                        return getConstant(c1.eq(c2) ? 1 : 0, vt, false);
+                    case SETNE:
+                        return getConstant(c1.ne(c2) ? 1 : 0, vt, false);
+                    case SETULT:
+                        return getConstant(c1.ult(c2) ? 1 : 0, vt, false);
+                    case SETUGT:
+                        return getConstant(c1.ugt(c2) ? 1 : 0, vt, false);
+                    case SETULE:
+                        return getConstant(c1.ule(c2) ? 1 : 0, vt, false);
+                    case SETUGE:
+                        return getConstant(c1.uge(c2) ? 1 : 0, vt, false);
+                    case SETLT:
+                        return getConstant(c1.slt(c2) ? 1 : 0, vt, false);
+                    case SETGT:
+                        return getConstant(c1.sgt(c2) ? 1 : 0, vt, false);
+                    case SETLE:
+                        return getConstant(c1.sle(c2) ? 1 : 0, vt, false);
+                    case SETGE:
+                        return getConstant(c1.sge(c2) ? 1 : 0, vt, false);
+                }
+            }
+        }
+        ConstantFPSDNode lhsFP = lhs.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode) lhs.getNode() : null;
+        ConstantFPSDNode rhsFP = rhs.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode) rhs.getNode() : null;
+        if (lhsFP != null)
+        {
+            if (rhsFP != null)
+            {
+                // No compile time operations on this type yet.
+                if (lhsFP.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128)
+                    return new SDValue();
+
+                APFloat.CmpResult r = lhsFP.getValueAPF().compare(rhsFP.getValueAPF());
+                switch (cc)
+                {
+                    default:
+                        break;
+                    case SETEQ:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETOEQ:
+                        return getConstant(r == cmpEqual, vt, false);
+                    case SETNE:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETONE:
+                        return getConstant(
+                                r == cmpGreaterThan || r == cmpLessThan, vt,
+                                false);
+                    case SETLT:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETOLT:
+                        return getConstant(r == cmpLessThan, vt, false);
+                    case SETGT:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETOGT:
+                        return getConstant(r == cmpGreaterThan, vt, false);
+                    case SETLE:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETOLE:
+                        return getConstant(r == cmpLessThan || r == cmpEqual, vt, false);
+                    case SETGE:
+                        if (r == cmpUnordered)
+                            return getUNDEF(vt);
+                        // fall through
+                    case SETOGE:
+                        return getConstant(r == cmpGreaterThan || r == cmpEqual,
+                                vt, false);
+                    case SETO:
+                        return getConstant(r != cmpUnordered, vt, false);
+                    case SETUO:
+                        return getConstant(r == cmpUnordered, vt, false);
+                    case SETUEQ:
+                        return getConstant(r == cmpUnordered || r == cmpEqual,
+                                vt, false);
+                    case SETUNE:
+                        return getConstant(r != cmpEqual, vt, false);
+                    case SETULT:
+                        return getConstant(r == cmpUnordered || r == cmpLessThan, vt,
+                                false);
+                    case SETUGT:
+                        return getConstant(r == cmpGreaterThan || r == cmpUnordered, vt,
+                                false);
+                    case SETULE:
+                        return getConstant(r != cmpGreaterThan, vt, false);
+                    case SETUGE:
+                        return getConstant(r != cmpLessThan, vt, false);
+                }
+            }
+            else
+            {
+                return getSetCC(vt, rhs, lhs, getSetCCSwappedOperands(cc));
+            }
+        }
+        return new SDValue();
     }
 }
 

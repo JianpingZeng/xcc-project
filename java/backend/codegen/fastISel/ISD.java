@@ -560,4 +560,11 @@ public class ISD
             operator &= ~8;
         return CondCode.values()[operator];
     }
+
+    public static CondCode getSetCCSwappedOperands(CondCode cc)
+    {
+        int oldL = (cc.ordinal() >> 2) & 1;
+        int oldG = (cc.ordinal() >> 1) & 1;
+        return CondCode.values()[(cc.ordinal() & ~6) | (oldL << 1) | (oldG << 2)];
+    }
 }
