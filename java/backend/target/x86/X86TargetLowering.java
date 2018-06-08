@@ -30,7 +30,6 @@ import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import gnu.trove.list.array.TIntArrayList;
-import sun.reflect.ConstantPool;
 import tools.APInt;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -43,7 +42,7 @@ import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
-import static backend.codegen.dagisel.TLSModel.getTLSModel;
+import static backend.codegen.dagisel.TLSModel.*;
 import static backend.target.TargetMachine.CodeModel.Kernel;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
@@ -2823,16 +2822,51 @@ public class X86TargetLowering extends TargetLowering
         return getTLSADDR(dag, chain, ga, inFlag, ptrVT, X86GenRegisterNames.EAX, X86II.MO_TLSGD);
     }
 
-    private static SDValue lowerToTLSGeneralDynamicModel64(GlobalAddressSDNode ga, SelectionDAG dag, EVT ptrVT)
+    private static SDValue lowerToTLSGeneralDynamicModel64(
+            GlobalAddressSDNode ga,
+            SelectionDAG dag,
+            EVT ptrVT)
     {
-        return getTLSADDR(dag, dag.getEntryNode(), ga, null, ptrVT, X86GenRegisterNames.RAX,
-                X86II.MO_TLSGD);
+        return getTLSADDR(dag, dag.getEntryNode(), ga, null,
+                ptrVT, X86GenRegisterNames.RAX, X86II.MO_TLSGD);
     }
 
-    private static SDValue lowerTLSExecModel(GlobalAddressSDNode ga, SelectionDAG dag,
-                                             EVT ptrVT, TLSModel model, boolean is64)
+    private static SDValue lowerTLSExecModel(
+            GlobalAddressSDNode ga, SelectionDAG dag,
+            EVT ptrVT, TLSModel model, boolean is64)
     {
+        SDValue base = dag.getNode(X86ISD.SegmentBaseAddress, ptrVT,
+                dag.getRegister(is64?X86GenRegisterNames.FS: X86GenRegisterNames.GS,
+                        new EVT(MVT.i32)));
+        SDValue threadPointer = dag.getLoad(ptrVT, dag.getEntryNode(), base, null, 0);
 
+        int operandFlag = 0;
+        int wrapperKind = X86ISD.Wrapper;
+        if (model == LocalExec)
+            operandFlag = is64? X86II.MO_TPOFF : X86II.MO_NTPOFF;
+        else if (is64)
+        {
+            assert model == InitialExec;
+            operandFlag = X86II.MO_GOTTPOFF;
+            wrapperKind = X86ISD.WrapperRIP;
+        }
+        else
+        {
+            assert model == InitialExec;
+            operandFlag = X86II.MO_INDNTPOFF;
+        }
+
+        // emit "addl x@ntpoff,%eax" (local exec) or "addl x@indntpoff,%eax" (initial
+        // exec)
+        SDValue tga = dag.getTargetGlobalAddress(ga.getGlobalValue(), ga.getValueType(0),
+                ga.getOffset(), operandFlag);
+        SDValue offset = dag.getNode(wrapperKind, ptrVT, tga);
+        if (model == InitialExec)
+        {
+            offset = dag.getLoad(ptrVT, dag.getEntryNode(), offset,
+                    PseudoSourceValue.getGOT(), 0);
+        }
+        return dag.getNode(ISD.ADD, ptrVT, threadPointer, offset);
     }
 
     private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag)
