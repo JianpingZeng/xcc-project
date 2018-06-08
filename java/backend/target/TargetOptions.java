@@ -76,7 +76,7 @@ public class TargetOptions
                     desc("Override default stack alignment"),
                     init(0));
 
-    public static final BooleanOpt DisableSwitchTables =
+    public static final BooleanOpt DisableJumpTables =
             new BooleanOpt(new OptionHiddenApplicator(Hidden),
                     optionName("disable-jump-tables"),
                     desc("Do not generate jump tables."),
@@ -109,11 +109,6 @@ public class TargetOptions
             new BooleanOpt(optionName("verify-machineinstrs"),
                     new OptionHiddenApplicator(Hidden),
                     desc("Verify generated machine code"),
-                    init(false));
-
-    public static final BooleanOpt DisableJumpTables =
-            new BooleanOpt(optionName("disable-jump-tables"),
-                    desc("Do not generate jump tables"),
                     init(false));
 
     public static void registerTargetOptions()
