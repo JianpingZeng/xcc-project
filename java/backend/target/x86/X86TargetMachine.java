@@ -50,7 +50,7 @@ public class X86TargetMachine extends LLVMTargetMachine
         dataLayout = new TargetData(subtarget.getDataLayout());
 		frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
 				(subtarget.isTargetWin64() ? -40 :
-				(subtarget.is64Bit ? -8 : -4)));
+				(subtarget.is64Bit() ? -8 : -4)));
 		instrInfo = new X86InstrInfo(this);
 		tli = new X86TargetLowering(this);
 		x86CallLowering = new X86CallLowering(getTargetLowering());

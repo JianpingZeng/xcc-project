@@ -47,6 +47,7 @@ import static backend.target.TargetMachine.CodeModel.Kernel;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
+import static backend.target.x86.CondCode.COND_NE;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86InstrBuilder.addFullAddress;
 import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
@@ -87,7 +88,7 @@ public class X86TargetLowering extends TargetLowering
         addRegisterClass(new MVT(MVT.i8), X86GenRegisterInfo.GR8RegisterClass);
         addRegisterClass(new MVT(MVT.i16), X86GenRegisterInfo.GR16RegisterClass);
         addRegisterClass(new MVT(MVT.i32), X86GenRegisterInfo.GR32RegisterClass);
-        if (subtarget.is64Bit)
+        if (subtarget.is64Bit())
             addRegisterClass(new MVT(MVT.i64), X86GenRegisterInfo.GR64RegisterClass);
 
         if (x86ScalarSSEf64)
@@ -2920,10 +2921,121 @@ public class X86TargetLowering extends TargetLowering
         return result;
     }
 
-    private SDValue lowerShift(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue buildFILD(SDValue op, EVT srcVT, SDValue chain, SDValue stackSlot,
-            SelectionDAG dag) { return null; }
-    private SDValue lowerSINT_TO_FP(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerShift(SDValue op, SelectionDAG dag)
+    {
+        assert op.getNumOperands() == 3:"Not a double-shift!";
+        EVT vt = op.getValueType();
+        int vtBits = vt.getSizeInBits();
+        EVT i8VT = new EVT(MVT.i8);
+
+        boolean isSRA = op.getOpcode() == ISD.SRA_PARTS;
+        SDValue shOpLo = op.getOperand(0);
+        SDValue shOpHi = op.getOperand(1);
+        SDValue shAmt = op.getOperand(2);
+        SDValue temp1 = isSRA ? dag.getNode(ISD.SRA, vt, shOpHi,
+                dag.getConstant(vtBits-1, i8VT, false)):
+                dag.getConstant(0, vt, false);
+        SDValue temp2, temp3;
+        if (op.getOpcode() == ISD.SHL_PARTS)
+        {
+            temp2 = dag.getNode(X86ISD.SHLD, vt, shOpHi, shOpLo, shAmt);
+            temp3 = dag.getNode(ISD.SHL, vt, shOpLo, shAmt);
+        }
+        else
+        {
+            temp2 = dag.getNode(X86ISD.SHRD, vt, shOpLo, shOpHi, shAmt);
+            temp3 = dag.getNode(isSRA?ISD.SRA:ISD.SRL, vt, shOpHi, shAmt);
+        }
+
+        SDValue andNode = dag.getNode(ISD.AND, i8VT, shAmt, dag.getConstant(vtBits, i8VT, false));
+        SDValue cond = dag.getNode(X86ISD.CMP, vt, andNode, dag.getConstant(0, i8VT, false));
+        SDValue hi, lo;
+        SDValue cc = dag.getConstant(COND_NE, i8VT, false);
+        SDValue[] ops0 = {temp2, temp3, cc, cond};
+        SDValue[] ops1 = {temp3, temp1, cc, cond};
+        if (op.getOpcode() == ISD.SHL_PARTS)
+        {
+            hi = dag.getNode(X86ISD.CMOV, vt, ops0);
+            lo = dag.getNode(X86ISD.CMOV, vt, ops1);
+        }
+        else
+        {
+            lo = dag.getNode(X86ISD.CMOV, vt, ops0);
+            hi = dag.getNode(X86ISD.CMOV, vt, ops1);
+        }
+        SDValue[] ops = {lo, hi};
+        return dag.getMergeValues(ops);
+    }
+
+    private SDValue buildFILD(SDValue op,
+            EVT srcVT,
+            SDValue chain,
+            SDValue stackSlot,
+            SelectionDAG dag)
+    {
+        SDVTList vts;
+        boolean useSSE = isScalarFPTypeInSSEReg(op.getValueType());
+        if (useSSE)
+            vts = dag.getVTList(new EVT(MVT.f64), new EVT(MVT.Other), new EVT(MVT.Flag));
+        else
+            vts = dag.getVTList(op.getValueType(), new EVT(MVT.Other));
+
+        ArrayList<SDValue> ops = new ArrayList<>();
+        ops.add(chain);
+        ops.add(stackSlot);
+        ops.add(dag.getValueType(srcVT));
+        SDValue result = dag.getNode(useSSE ? X86ISD.FILD_FLAG : X86ISD.FILD,
+                vts, ops);
+        if (useSSE)
+        {
+            chain = result.getValue(1);
+            SDValue inFlag = result.getValue(2);
+
+            MachineFunction mf = dag.getMachineFunction();
+            int ssfi = mf.getFrameInfo().createStackObject(8, 8);
+            SDValue slot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+            vts = dag.getVTList(new EVT(MVT.Other));
+            ArrayList<SDValue> operands = new ArrayList<>();
+            operands.add(chain);
+            operands.add(result);
+            operands.add(slot);
+            operands.add(dag.getValueType(op.getValueType()));
+            operands.add(inFlag);
+            chain = dag.getNode(X86ISD.FST, vts, operands);
+            result = dag.getLoad(op.getValueType(), chain, slot,
+                    PseudoSourceValue.getFixedStack(ssfi), 0);
+        }
+        return result;
+    }
+
+    private SDValue lowerSINT_TO_FP(SDValue op, SelectionDAG dag)
+    {
+        EVT srcVT = op.getOperand(0).getValueType();
+        if (srcVT.isVector())
+        {
+            if (srcVT.equals(new EVT(MVT.v2i32)) && op.getValueType().equals(new EVT(MVT.v2f64)))
+                return op;
+            return new SDValue();
+        }
+
+        assert srcVT.getSimpleVT().simpleVT <= MVT.i64 &&
+                srcVT.getSimpleVT().simpleVT >= MVT.i16:"Unknown SINT_TO_FP to lower!";
+
+        if (srcVT.equals(new EVT(MVT.i32)) && isScalarFPTypeInSSEReg(op.getValueType()))
+            return op;
+
+        if (srcVT.equals(new EVT(MVT.i64)) && isScalarFPTypeInSSEReg(op.getValueType()) &&
+                subtarget.is64Bit())
+            return op;
+
+        int size = srcVT.getSizeInBits()/8;
+        MachineFunction mf = dag.getMachineFunction();
+        int ssfi = mf.getFrameInfo().createStackObject(size, size);
+        SDValue stackSlot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+        SDValue chain = dag.getStore(dag.getEntryNode(), op.getOperand(0),
+                stackSlot, PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
+        return buildFILD(op, srcVT, chain, stackSlot, dag);
+    }
     private SDValue lowerUINT_TO_FP(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerUINT_TO_FP_i64(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag) {return new SDValue(); }
