@@ -27,10 +27,7 @@ import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * @author Xlous.zeng
@@ -100,7 +97,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public int getUseSize()
     {
-        return useList.size();
+        return useList == null ? 0 : useList.size();
     }
 
     public int getNodeID()
@@ -264,7 +261,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public int getNumOperands()
     {
-        return operandList.length;
+        return operandList == null ? 0 : operandList.length;
     }
 
     public long getConstantOperandVal(int num)
@@ -710,27 +707,32 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         this.opcode = opc;
         sublassData = 0;
         nodeID = -1;
-        operandList = ops.size() != 0 ? new SDUse[ops.size()]: null;
+        operandList = new SDUse[ops.size()];
         valueList = vts.vts;
         for (int i = 0; i < ops.size(); i++)
         {
+            operandList[i] = new SDUse();
             operandList[i].setUser(this);
             operandList[i].setInitial(ops.get(i));
         }
+        useList = new ArrayList<>();
     }
 
     protected SDNode(int opc, SDVTList vts, SDValue[] ops)
     {
+        assert ops != null;
         this.opcode = opc;
         sublassData = 0;
         nodeID = -1;
-        operandList = ops.length != 0 ? new SDUse[ops.length]: null;
+        operandList = new SDUse[ops.length];
         valueList = vts.vts;
         for (int i = 0; i < ops.length; i++)
         {
+            operandList[i] = new SDUse();
             operandList[i].setUser(this);
             operandList[i].setInitial(ops[i]);
         }
+        useList = new ArrayList<>();
     }
 
     protected SDNode(int opc, SDVTList list)
@@ -740,6 +742,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         nodeID = -1;
         operandList = null;
         valueList = list.vts;
+        useList = new ArrayList<>();
     }
 
     protected void initOperands(SDValue op0)

@@ -279,11 +279,15 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         this.tli = tli;
         this.funcInfo = funcInfo;
         this.optLevel = level;
+
+        nodeMap = new HashMap<>();
+        pendingLoads = new ArrayList<>();
+        pendingExports = new ArrayList<>();
+        phiNodesToUpdate = new ArrayList<>();
+        constantsOut = new TObjectIntHashMap<>();
         switchCases = new ArrayList<>();
         jtiCases = new ArrayList<>();
         bitTestCases = new ArrayList<>();
-        phiNodesToUpdate = new ArrayList<>();
-        constantsOut = new TObjectIntHashMap<>();
     }
 
     public void init(AliasAnalysis aa)

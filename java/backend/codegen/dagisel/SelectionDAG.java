@@ -81,7 +81,7 @@ public class SelectionDAG
         condCodeNodes = new ArrayList<>();
         cseMap = new TIntObjectHashMap<>();
         entryNode = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
-        root = getRoot();
+        root = getEntryNode();
         allNodes.add(entryNode);
     }
 
@@ -878,7 +878,7 @@ public class SelectionDAG
         {
             return new SDValue(condCodeNodes.get(idx), 0);
         }
-        for (int i = condCodeNodes.size(); i < idx; i++)
+        for (int i = condCodeNodes.size(); i <= idx; i++)
             condCodeNodes.add(null);
         CondCodeSDNode node = new CondCodeSDNode(cond);
         condCodeNodes.set(idx, node);
@@ -2153,56 +2153,44 @@ public class SelectionDAG
     public int assignTopologicalOrder()
     {
         int dagSize = 0;
-        int insertPos = 0;
-        for (int i = 0, e = allNodes.size(); i < e; i++)
+        int origSize = allNodes.size();
+        Stack<SDNode> worklist = new Stack<>();
+        for (SDNode node : allNodes)
         {
-            SDNode node = allNodes.get(i);
-            int degree = node.getNumOperands();
-            if (degree == 0)
-            {
-                allNodes.add(insertPos++, node);
-                allNodes.remove(i);
-                node.setNodeID(dagSize++);
-            }
-            else
-            {
-                // set the temporary Node ID as the in degree.
-                allNodes.get(i).setNodeID(degree);
-            }
+            node.setNodeID(node.getNumOperands());
         }
-
-        for (int i = 0, e = allNodes.size(); i < e; i++)
+        worklist.addAll(allNodes);
+        allNodes.clear();
+        worklist.sort(Comparator.comparingInt(SDNode::getNodeID));
+        while (!worklist.isEmpty())
         {
-            SDNode node = allNodes.get(i);
-            for (SDUse use : node.useList)
+            SDNode top = worklist.peek();
+            if (top.getNodeID() == 0)
             {
-                SDNode user = use.getUser();
-                int degree = user.getNodeID();
-                --degree;
-                if (degree == 0)
+                worklist.pop();
+                top.setNodeID(dagSize++);
+                allNodes.add(top);
+                if (top.getUseSize() > 0)
                 {
-                    allNodes.add(insertPos++, node);
-                    allNodes.remove(i);
-                    node.setNodeID(dagSize++);
-                }
-                else
-                {
-                    user.setNodeID(degree);
+                    for (SDUse u : top.getUseList())
+                    {
+                        SDNode user = u.getUser();
+                        user.setNodeID(user.getNodeID()-1);
+                    }
                 }
             }
         }
+        assert allNodes.size() == origSize:"Illegal status!";
         SDNode firstNode = allNodes.get(0);
         SDNode lastNode = allNodes.get(allNodes.size() - 1);
-        assert insertPos == allNodes.size() : "Topological incomplete!";
         assert firstNode.getOpcode()
                 == ISD.EntryToken : "First node in allNode is not a entry token!";
-        assert firstNode.getNodeID()
-                == 0 : "First node in allNode does't have zero id!";
+        assert firstNode.getNodeID() == 0 :
+                "First node in allNode does't have zero id!";
         assert lastNode.getNodeID() == allNodes.size() - 1 :
-                "Last node in topological doesn't have " + (allNodes.size() - 1)
-                        + " id!";
-        assert lastNode
-                .isUseEmpty() : "Last node in topological shouldn't have use";
+                String.format("Last node in topological doesn't have %d id!",
+                        allNodes.size() - 1);
+        assert lastNode.isUseEmpty() : "Last node in topological shouldn't have use";
         assert dagSize == allNodes.size() : "Node count mismatch!";
         return dagSize;
     }
