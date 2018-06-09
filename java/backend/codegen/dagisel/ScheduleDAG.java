@@ -73,7 +73,7 @@ public abstract class ScheduleDAG
 
 	public abstract String getGraphNodeLabel(SUnit su);
 
-	protected void run(MachineBasicBlock mbb, int insertPos)
+	protected void run(SelectionDAG dag, MachineBasicBlock mbb, int insertPos)
 	{
 		this.mbb = mbb;
 		this.insertPos = insertPos;

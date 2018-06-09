@@ -30,7 +30,6 @@ import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
-import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
@@ -1293,13 +1292,16 @@ public class SelectionDAG
                 listener.nodeDeleted(node, null);
 
             removeNodeFromCSEMaps(node);
-            for (SDUse use : node.operandList)
+            if (node.operandList != null && node.operandList.length > 0)
             {
-                SDNode operand = use.getNode();
-                use.set(new SDValue());
+                for (SDUse use : node.operandList)
+                {
+                    SDNode operand = use.getNode();
+                    use.set(new SDValue());
 
-                if (operand.isUseEmpty())
-                    deadNodes.add(operand);
+                    if (operand.isUseEmpty())
+                        deadNodes.add(operand);
+                }
             }
         }
     }
@@ -1338,12 +1340,12 @@ public class SelectionDAG
                 break;
             default:
                 // remove it from cseMap.
-                for (TIntObjectIterator<SDNode> itr = cseMap.iterator(); itr
-                        .hasNext(); )
+                int[] keys = cseMap.keys();
+                for (int key : keys)
                 {
-                    if (itr.value().equals(node))
+                    if (cseMap.get(key).equals(node))
                     {
-                        itr.remove();
+                        cseMap.remove(key);
                         erased = true;
                     }
                 }

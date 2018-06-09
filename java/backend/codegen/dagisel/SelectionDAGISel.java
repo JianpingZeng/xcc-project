@@ -292,14 +292,21 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             if (changed)
                 curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         }
-        curDAG.legalize(false, optLevel);
+        //curDAG.legalize(false, optLevel);
 
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
 
         instructionSelect();
 
+        //if (Util.DEBUG)
+        {
+            String blockName = mf.getFunction().getName() + ":" +
+                    mbb.getBasicBlock().getName();
+            curDAG.viewGraph("dag-before-sched for " + blockName);
+        }
+
         ScheduleDAG scheduler = createScheduler(this, optLevel);
-        scheduler.run(mbb, mbb.size());
+        scheduler.run(curDAG, mbb, mbb.size());
         mbb = scheduler.emitSchedule();
 
         if (Util.DEBUG)

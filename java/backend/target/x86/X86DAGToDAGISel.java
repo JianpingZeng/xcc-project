@@ -79,7 +79,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 continue;
 
             SDNode resNode = select(new SDValue(node, 0));
-            if (resNode.equals(node))
+            if (Objects.equals(resNode, node))
                 continue;
             if (resNode != null)
                 replaceUses(node, resNode);
@@ -91,6 +91,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 iselPosition = updater.getISelPos();
             }
         }
+        dummy.getValue().getNode().getUseList().clear();
         curDAG.setRoot(dummy.getValue());
     }
 
