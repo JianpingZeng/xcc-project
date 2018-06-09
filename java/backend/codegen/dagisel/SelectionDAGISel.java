@@ -272,10 +272,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             System.err.println("Instruction Selection");
 
         // combine
-        String blockName = mf.getFunction().getName() + ":" +
-                mbb.getBasicBlock().getName();
         curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
-        curDAG.viewGraph("dag-before-legalize for " + blockName);
+        if (Util.DEBUG)
+        {
+            String blockName = mf.getFunction().getName() + ":" +
+                    mbb.getBasicBlock().getName();
+            curDAG.viewGraph("dag-before-legalize for " + blockName);
+        }
 
         boolean changed = curDAG.legalizeTypes();
         if (changed)

@@ -78,6 +78,7 @@ public class SelectionDAGLegalizer
         this.tli = dag.getTargetLoweringInfo();
         this.optLevel = optLevel;
         valueTypeAction = tli.getValueTypeActions();
+        legalizeNodes = new HashMap<>();
     }
 
     private void addLegalizedOperand(SDValue from, SDValue to)

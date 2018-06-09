@@ -91,7 +91,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public boolean isUseEmpty()
     {
-        return useList == null;
+        return useList == null || useList.isEmpty();
     }
 
     public boolean hasOneUse()
