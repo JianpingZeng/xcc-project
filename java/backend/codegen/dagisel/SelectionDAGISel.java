@@ -272,12 +272,16 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             System.err.println("Instruction Selection");
 
         // combine
+        String blockName = mf.getFunction().getName() + ":" +
+                mbb.getBasicBlock().getName();
         curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
+        curDAG.viewGraph("dag-before-legalize for " + blockName);
+
         boolean changed = curDAG.legalizeTypes();
         if (changed)
         {
             curDAG.combine(CombineLevel.NoIllegalTypes, aa, optLevel);
-            curDAG.legalizeVectors();
+            changed = curDAG.legalizeVectors();
             if (changed)
             {
                 changed = curDAG.legalizeTypes();
@@ -398,7 +402,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
                     SDValue[] ops = new SDValue[numParts];
                     for (int j = 0; j < numParts;j++)
-                        ops[j] = inVals.get(j+numParts);
+                        ops[j] = inVals.get(j+i);
                     argValues.add(getCopyFromParts(dag, ops, partVT, vt, op));
                 }
                 i += numParts;

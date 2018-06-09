@@ -21,6 +21,7 @@ import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
+import backend.target.x86.X86ISD;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
@@ -1045,7 +1046,85 @@ public abstract class TargetLowering
 
     public String getTargetNodeName(int opcode)
     {
-        return null;
+     switch (opcode)
+     {  default: return null;
+         case X86ISD.BSF:                return "X86ISD.BSF";
+         case X86ISD.BSR:                return "X86ISD.BSR";
+         case X86ISD.SHLD:               return "X86ISD.SHLD";
+         case X86ISD.SHRD:               return "X86ISD.SHRD";
+         case X86ISD.FAND:               return "X86ISD.FAND";
+         case X86ISD.FOR:                return "X86ISD.FOR";
+         case X86ISD.FXOR:               return "X86ISD.FXOR";
+         case X86ISD.FSRL:               return "X86ISD.FSRL";
+         case X86ISD.FILD:               return "X86ISD.FILD";
+         case X86ISD.FILD_FLAG:          return "X86ISD.FILD_FLAG";
+         case X86ISD.FP_TO_INT16_IN_MEM: return "X86ISD.FP_TO_INT16_IN_MEM";
+         case X86ISD.FP_TO_INT32_IN_MEM: return "X86ISD.FP_TO_INT32_IN_MEM";
+         case X86ISD.FP_TO_INT64_IN_MEM: return "X86ISD.FP_TO_INT64_IN_MEM";
+         case X86ISD.FLD:                return "X86ISD.FLD";
+         case X86ISD.FST:                return "X86ISD.FST";
+         case X86ISD.CALL:               return "X86ISD.CALL";
+         case X86ISD.RDTSC_DAG:          return "X86ISD.RDTSC_DAG";
+         case X86ISD.BT:                 return "X86ISD.BT";
+         case X86ISD.CMP:                return "X86ISD.CMP";
+         case X86ISD.COMI:               return "X86ISD.COMI";
+         case X86ISD.UCOMI:              return "X86ISD.UCOMI";
+         case X86ISD.SETCC:              return "X86ISD.SETCC";
+         case X86ISD.CMOV:               return "X86ISD.CMOV";
+         case X86ISD.BRCOND:             return "X86ISD.BRCOND";
+         case X86ISD.RET_FLAG:           return "X86ISD.RET_FLAG";
+         case X86ISD.REP_STOS:           return "X86ISD.REP_STOS";
+         case X86ISD.REP_MOVS:           return "X86ISD.REP_MOVS";
+         case X86ISD.GlobalBaseReg:      return "X86ISD.GlobalBaseReg";
+         case X86ISD.Wrapper:            return "X86ISD.Wrapper";
+         case X86ISD.WrapperRIP:         return "X86ISD.WrapperRIP";
+         case X86ISD.PEXTRB:             return "X86ISD.PEXTRB";
+         case X86ISD.PEXTRW:             return "X86ISD.PEXTRW";
+         case X86ISD.INSERTPS:           return "X86ISD.INSERTPS";
+         case X86ISD.PINSRB:             return "X86ISD.PINSRB";
+         case X86ISD.PINSRW:             return "X86ISD.PINSRW";
+         case X86ISD.PSHUFB:             return "X86ISD.PSHUFB";
+         case X86ISD.FMAX:               return "X86ISD.FMAX";
+         case X86ISD.FMIN:               return "X86ISD.FMIN";
+         case X86ISD.FRSQRT:             return "X86ISD.FRSQRT";
+         case X86ISD.FRCP:               return "X86ISD.FRCP";
+         case X86ISD.TLSADDR:            return "X86ISD.TLSADDR";
+         case X86ISD.SegmentBaseAddress: return "X86ISD.SegmentBaseAddress";
+         case X86ISD.EH_RETURN:          return "X86ISD.EH_RETURN";
+         case X86ISD.TC_RETURN:          return "X86ISD.TC_RETURN";
+         case X86ISD.FNSTCW16m:          return "X86ISD.FNSTCW16m";
+         case X86ISD.LCMPXCHG_DAG:       return "X86ISD.LCMPXCHG_DAG";
+         case X86ISD.LCMPXCHG8_DAG:      return "X86ISD.LCMPXCHG8_DAG";
+         case X86ISD.ATOMADD64_DAG:      return "X86ISD.ATOMADD64_DAG";
+         case X86ISD.ATOMSUB64_DAG:      return "X86ISD.ATOMSUB64_DAG";
+         case X86ISD.ATOMOR64_DAG:       return "X86ISD.ATOMOR64_DAG";
+         case X86ISD.ATOMXOR64_DAG:      return "X86ISD.ATOMXOR64_DAG";
+         case X86ISD.ATOMAND64_DAG:      return "X86ISD.ATOMAND64_DAG";
+         case X86ISD.ATOMNAND64_DAG:     return "X86ISD.ATOMNAND64_DAG";
+         case X86ISD.VZEXT_MOVL:         return "X86ISD.VZEXT_MOVL";
+         case X86ISD.VZEXT_LOAD:         return "X86ISD.VZEXT_LOAD";
+         case X86ISD.VSHL:               return "X86ISD.VSHL";
+         case X86ISD.VSRL:               return "X86ISD.VSRL";
+         case X86ISD.CMPPD:              return "X86ISD.CMPPD";
+         case X86ISD.CMPPS:              return "X86ISD.CMPPS";
+         case X86ISD.PCMPEQB:            return "X86ISD.PCMPEQB";
+         case X86ISD.PCMPEQW:            return "X86ISD.PCMPEQW";
+         case X86ISD.PCMPEQD:            return "X86ISD.PCMPEQD";
+         case X86ISD.PCMPEQQ:            return "X86ISD.PCMPEQQ";
+         case X86ISD.PCMPGTB:            return "X86ISD.PCMPGTB";
+         case X86ISD.PCMPGTW:            return "X86ISD.PCMPGTW";
+         case X86ISD.PCMPGTD:            return "X86ISD.PCMPGTD";
+         case X86ISD.PCMPGTQ:            return "X86ISD.PCMPGTQ";
+         case X86ISD.ADD:                return "X86ISD.ADD";
+         case X86ISD.SUB:                return "X86ISD.SUB";
+         case X86ISD.SMUL:               return "X86ISD.SMUL";
+         case X86ISD.UMUL:               return "X86ISD.UMUL";
+         case X86ISD.INC:                return "X86ISD.INC";
+         case X86ISD.DEC:                return "X86ISD.DEC";
+         case X86ISD.MUL_IMM:            return "X86ISD.MUL_IMM";
+         case X86ISD.PTEST:              return "X86ISD.PTEST";
+         case X86ISD.VASTART_SAVE_XMM_REGS: return "X86ISD.VASTART_SAVE_XMM_REGS";
+     }
     }
 
     public abstract SDValue lowerFormalArguments(SDValue root, CallingConv callingConv,

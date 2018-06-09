@@ -21,18 +21,14 @@ import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.BitMap;
-import tools.BitSet2D;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashSet;
 import java.util.LinkedList;
 
 import static backend.support.AssemblyWriter.writeAsOperand;
-import static backend.support.GraphWriter.escapeString;
+import static tools.Util.escapeString;
 
 
 public class CFGDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
@@ -204,14 +200,15 @@ public class CFGDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     }
 
     @Override
-    public String getEdgeSourceLabel(BasicBlock from, BasicBlock to)
+    public String getEdgeSourceLabel(BasicBlock from, Object to)
     {
+        BasicBlock toBB = (BasicBlock)to;
         Instruction.TerminatorInst ti = from.getTerminator();
         if (ti != null && ti instanceof Instruction.BranchInst)
         {
             Instruction.BranchInst br = (Instruction.BranchInst)ti;
             if (br.isConditional())
-                return to == from.suxAt(0) ?"T":"F";
+                return toBB.equals(from.suxAt(0)) ?"T":"F";
         }
         return "";
     }

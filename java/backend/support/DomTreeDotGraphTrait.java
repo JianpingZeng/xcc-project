@@ -21,16 +21,14 @@ import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.IDomTreeInfo;
 import backend.value.BasicBlock;
-import tools.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import static backend.support.AssemblyWriter.createSlotTracker;
 import static backend.support.AssemblyWriter.writeAsOperand;
-import static backend.support.GraphWriter.escapeString;
+import static tools.Util.escapeString;
 
 /**
  * A specialized graph trait provider for DomTree.

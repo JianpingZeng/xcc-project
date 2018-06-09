@@ -21,6 +21,7 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
+import backend.support.DefaultDotGraphTrait;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
@@ -34,12 +35,18 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
 import static backend.codegen.fastISel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
+import static backend.support.GraphWriter.writeGraph;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;
 import static tools.APFloat.CmpResult.*;
 import static tools.APFloat.OpStatus.opDivByZero;
@@ -174,6 +181,7 @@ public class SelectionDAG
                     break;
             }
         }
+        allNodes.add(node);
         return new SDValue(node, 0);
     }
 
@@ -2153,44 +2161,66 @@ public class SelectionDAG
     public int assignTopologicalOrder()
     {
         int dagSize = 0;
-        int origSize = allNodes.size();
-        Stack<SDNode> worklist = new Stack<>();
-        for (SDNode node : allNodes)
+        int insertPos = 0;
+        for (int i = 0, e = allNodes.size(); i < e; i++)
         {
-            node.setNodeID(node.getNumOperands());
-        }
-        worklist.addAll(allNodes);
-        allNodes.clear();
-        worklist.sort(Comparator.comparingInt(SDNode::getNodeID));
-        while (!worklist.isEmpty())
-        {
-            SDNode top = worklist.peek();
-            if (top.getNodeID() == 0)
+            SDNode node = allNodes.get(i);
+            int degree = node.getNumOperands();
+            if (degree == 0)
             {
-                worklist.pop();
-                top.setNodeID(dagSize++);
-                allNodes.add(top);
-                if (top.getUseSize() > 0)
+                if (i != insertPos)
                 {
-                    for (SDUse u : top.getUseList())
+                    allNodes.remove(i);
+                    allNodes.add(insertPos, node);
+                }
+                ++insertPos;
+                node.setNodeID(dagSize++);
+            }
+            else
+            {
+                // set the temporary Node ID as the in degree.
+                node.setNodeID(degree);
+            }
+        }
+
+        for (int i = 0, e = allNodes.size(); i < e; i++)
+        {
+            SDNode node = allNodes.get(i);
+            for (SDUse use : node.useList)
+            {
+                SDNode user = use.getUser();
+                int degree = user.getNodeID();
+                --degree;
+                if (degree == 0)
+                {
+                    int userIdx = allNodes.indexOf(user);
+                    assert userIdx != -1 :"Illegal status!";
+                    if (userIdx != insertPos)
                     {
-                        SDNode user = u.getUser();
-                        user.setNodeID(user.getNodeID()-1);
+                        allNodes.add(insertPos, user);
+                        allNodes.remove(userIdx);
                     }
+                    ++insertPos;
+                    node.setNodeID(dagSize++);
+                }
+                else
+                {
+                    user.setNodeID(degree);
                 }
             }
         }
-        assert allNodes.size() == origSize:"Illegal status!";
         SDNode firstNode = allNodes.get(0);
         SDNode lastNode = allNodes.get(allNodes.size() - 1);
+        assert insertPos == allNodes.size() : "Topological incomplete!";
         assert firstNode.getOpcode()
                 == ISD.EntryToken : "First node in allNode is not a entry token!";
-        assert firstNode.getNodeID() == 0 :
-                "First node in allNode does't have zero id!";
+        assert firstNode.getNodeID()
+                == 0 : "First node in allNode does't have zero id!";
         assert lastNode.getNodeID() == allNodes.size() - 1 :
-                String.format("Last node in topological doesn't have %d id!",
-                        allNodes.size() - 1);
-        assert lastNode.isUseEmpty() : "Last node in topological shouldn't have use";
+                "Last node in topological doesn't have " + (allNodes.size() - 1)
+                        + " id!";
+        assert lastNode
+                .isUseEmpty() : "Last node in topological shouldn't have use";
         assert dagSize == allNodes.size() : "Node count mismatch!";
         return dagSize;
     }
@@ -3389,6 +3419,75 @@ public class SelectionDAG
             }
         }
         return new SDValue();
+    }
+
+    private HashMap<SDNode, String> nodeGraphAttrs = new HashMap<>();
+
+    public void clearGraphAttrs()
+    {
+        nodeGraphAttrs.clear();
+    }
+
+    public void setGraphAttrs(SDNode node, String attrs)
+    {
+        nodeGraphAttrs.put(node, attrs);
+    }
+
+    public String getGraphAttrs(SDNode node)
+    {
+        return nodeGraphAttrs.getOrDefault(node, "");
+    }
+
+    public void setGraphColor(SDNode node, String color)
+    {
+        nodeGraphAttrs.put(node, "color="+color);
+    }
+
+    public void viewGraph()
+    {
+        viewGraph("");
+    }
+
+    public void viewGraph(String title)
+    {
+        String funcName = getMachineFunction().getFunction().getName();
+        PrintStream out = null;
+        File temp = null;
+        try
+        {
+            String filename = "dag." + funcName + ".dot";
+            Path path = Files.createTempFile(null, filename);
+            temp = path.toFile();
+            out = new PrintStream(temp);
+            System.err.printf("Writing '%s'...%n", temp.toString());
+            writeGraph(out, DefaultDotGraphTrait.createSelectionDAGTrait(this, false), false, title);
+            displayGraph(temp);
+        }
+        catch (Exception e)
+        {
+            System.err.println("error opening file for writing!");
+        }
+        finally
+        {
+            if (out != null) out.close();
+            if (temp != null) temp.delete();
+        }
+    }
+
+    private void displayGraph(File filename)
+            throws IOException, InterruptedException
+    {
+        System.err.println("Running 'xdot' program... ");
+        Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
+        int res = p.waitFor();
+        if (res != 0)
+        {
+            System.err.printf("Error viewing graph %s.\n", filename.getName());
+        }
+        else
+        {
+            filename.delete();
+        }
     }
 }
 

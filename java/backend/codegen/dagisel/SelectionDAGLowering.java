@@ -466,8 +466,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 return dag.getFrameIndex(funcInfo.staticAllocaMap.get(val),
                         new EVT(tli.getPointerTy()), false);
         }
+        assert funcInfo.valueMap.containsKey(val):"Value not in map!";
         int inReg = funcInfo.valueMap.get(val);
-        assert inReg != 0 : "Value not in map!";
         RegsForValue rfv = new RegsForValue(tli, inReg, val.getType());
         SDValue chain = dag.getEntryNode();
         OutParamWrapper<SDValue> x = new OutParamWrapper<>(chain);
@@ -601,6 +601,13 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             return false;
         }
         return true;
+    }
+
+    @Override
+    public Void visit(Instruction inst)
+    {
+        visit(inst.getOpcode(), inst);
+        return null;
     }
 
     public void visit(Operator opc, User u)
@@ -772,7 +779,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
     }
 
-    @Override public Void visitRet(User inst)
+    @Override
+    public Void visitRet(User inst)
     {
         SDValue chain = getControlRoot();
         ReturnInst ret = (ReturnInst) inst;
@@ -2070,7 +2078,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         {
             root = getRoot();
         }
-        else if (aa.pointsToConstantMemory(sv))
+        else if (aa != null && aa.pointsToConstantMemory(sv))
         {
             root = dag.getEntryNode();
             constantMemory = true;
@@ -2088,8 +2096,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             SDValue l = dag.getLoad(valueVTs.get(i), root,
                     dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
                     sv, (int) offsets.get(i), isVolatile, alignment);
-            values.set(i, l);
-            chains.set(i, l.getValue(1));
+            values.add(l);
+            chains.add(l.getValue(1));
         }
         if (!constantMemory)
         {
@@ -2127,7 +2135,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         int align = si.getAlignment();
         for (int i = 0; i < numValues; i++)
         {
-            chains.set(i, dag.getStore(root, new SDValue(src.getNode(), src.getResNo()+i),
+            chains.add(dag.getStore(root, new SDValue(src.getNode(), src.getResNo()+i),
                     dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
                     ptrVal, (int) offsets.get(i), isVolatile, align));
         }
