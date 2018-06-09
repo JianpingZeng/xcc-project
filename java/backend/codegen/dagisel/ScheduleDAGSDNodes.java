@@ -64,7 +64,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	public void run(SelectionDAG dag, MachineBasicBlock mbb, int insertPos)
 	{
 		this.dag = dag;
-		super.run(mbb, insertPos);
+		super.run(dag, mbb, insertPos);
 	}
 
 	private static boolean isPassiveNode(SDNode node)

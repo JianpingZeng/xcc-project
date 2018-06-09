@@ -59,12 +59,12 @@ public class X86ISelAddressMode
     {
         baseType = BaseType.RegBase;
         scale = 1;
-        indexReg = null;
+        indexReg = new SDValue();
         disp = 0;
         segment = new SDValue();
         gv = null;
         cp = null;
-        externalSym = null;
+        externalSym = "";
         jti = -1;
         align = 0;
         symbolFlags = 0;
