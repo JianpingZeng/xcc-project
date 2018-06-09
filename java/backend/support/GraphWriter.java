@@ -17,6 +17,8 @@
 
 package backend.support;
 
+import tools.Util;
+
 import java.io.PrintStream;
 
 /**
@@ -43,15 +45,6 @@ public final class GraphWriter
     public static PrintStream writeGraph(PrintStream out,
             DefaultDotGraphTrait dotTrait,
             boolean shortName,
-            String name)
-    {
-        return writeGraph(out, dotTrait, shortName, name, "");
-    }
-
-    public static PrintStream writeGraph(PrintStream out,
-            DefaultDotGraphTrait dotTrait,
-            boolean shortName,
-            String name,
             String title)
     {
         GraphWriter writer = new GraphWriter(out, dotTrait, shortName);
@@ -79,64 +72,16 @@ public final class GraphWriter
         return out;
     }
 
-    static String escapeString(String str)
-    {
-        StringBuilder buf = new StringBuilder();
-        buf.append(str);
-        for (int i = 0; i < buf.length(); i++)
-        {
-            switch (buf.charAt(i))
-            {
-                case '\n':
-                    buf.insert(i, '\\');
-                    ++i;
-                    buf.setCharAt(i, 'n');
-                    break;
-                case '\t':
-                    buf.insert(i, ' '); // convert to two spaces.
-                    ++i;
-                    buf.setCharAt(i, ' ');
-                    break;
-                case '\\':
-                    if (i+1 != buf.length())
-                    {
-                        switch (buf.charAt(i+1))
-                        {
-                            case '1': continue;
-                            case '|':
-                            case '{':
-                            case '}':
-                                buf.deleteCharAt(i);
-                                continue;
-                            default:
-                                break;
-                        }
-                    }
-                    break;
-                case '{':
-                case '}':
-                case '<':
-                case '>':
-                case '|':
-                case '"':
-                    buf.insert(i, '\\');
-                    ++i;
-                    break;
-            }
-        }
-        return buf.toString();
-    }
-
     public void writeHeader(String name)
     {
         String graphName = dotTrait.getGraphName();
         if (graphName != null && !graphName.isEmpty())
         {
-            out.printf("digraph \"%s\" { %n", escapeString(graphName));
+            out.printf("digraph \"%s\" { %n", Util.escapeString(graphName));
         }
         else if (!graphName.isEmpty())
         {
-            out.printf("digraph \"%s\" {%n", escapeString(graphName));
+            out.printf("digraph \"%s\" {%n", Util.escapeString(graphName));
         }
         else
         {
@@ -144,17 +89,17 @@ public final class GraphWriter
         }
 
         if (dotTrait.renderGraphFromBottomUp())
-            out.println("\trankdir=\"BIT\";");
+            out.println("\trankdir=\"BT\";");
 
         if (!name.isEmpty())
         {
-            out.printf("\tlabel=\"%s\";%n", escapeString(name));
+            out.printf("\tlabel=\"%s\";%n", Util.escapeString(name));
         }
         else if (!graphName.isEmpty())
         {
-            out.printf("\tlabel=\"%s\";%n", escapeString(graphName));
+            out.printf("\tlabel=\"%s\";%n", Util.escapeString(graphName));
         }
-        out.printf(dotTrait.getGraphProperties());
+        out.printf(dotTrait.getGraphProperties(dotTrait.getGraphType()));
         out.println();
     }
 

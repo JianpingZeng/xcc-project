@@ -29,6 +29,10 @@ import tools.*;
 import java.io.PrintStream;
 import java.util.*;
 
+import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
+import static backend.support.AssemblyWriter.writeAsOperand;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -98,6 +102,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public int getUseSize()
     {
         return useList == null ? 0 : useList.size();
+    }
+
+    public SDUse getUse(int idx)
+    {
+        assert !isUseEmpty() && idx >= 0 && idx < getUseSize();
+        return useList.get(idx);
     }
 
     public int getNodeID()
@@ -201,7 +211,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     {
         LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
         return (ld != null && ld.getExtensionType() == LoadExtType.NON_EXTLOAD &&
-                ld.getAddressingMode() == MemIndexedMode.UNINDEXED);
+                ld.getAddressingMode() == UNINDEXED);
     }
 
     public boolean isNONExtLoad()
@@ -231,13 +241,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public boolean isUNINDEXEDLoad()
     {
         LoadSDNode ld = this instanceof LoadSDNode ?(LoadSDNode)this: null;
-        return ld != null && ld.getAddressingMode() == MemIndexedMode.UNINDEXED;
+        return ld != null && ld.getAddressingMode() == UNINDEXED;
     }
 
     public boolean isNormalStore()
     {
         StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
-        return st != null && st.getAddressingMode() == MemIndexedMode.UNINDEXED &&
+        return st != null && st.getAddressingMode() == UNINDEXED &&
                 !st.isTruncatingStore();
     }
 
@@ -256,7 +266,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public boolean isUNINDEXEDStore()
     {
         StoreSDNode st = this instanceof StoreSDNode ?(StoreSDNode)this : null;
-        return st != null && st.getAddressingMode() == MemIndexedMode.UNINDEXED;
+        return st != null && st.getAddressingMode() == UNINDEXED;
     }
 
     public int getNumOperands()
@@ -618,10 +628,197 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void printTypes(PrintStream os, SelectionDAG dag)
     {
+        os.printf("0x%x: ", this.hashCode());
+        for (int i = 0, e = getNumValues(); i < e; i++)
+        {
+            if (i != 0) os.printf(",");
+            if (getValueType(i).equals(new EVT(MVT.Other)))
+                os.print("ch");
+            else
+                os.print(getValueType(i).getEVTString());
+        }
+        os.printf(" = %s", getOperationName(dag));
     }
 
     public void printDetails(PrintStream os, SelectionDAG dag)
     {
+        if (!isTargetOpcode() && getOpcode() == ISD.VECTOR_SHUFFLE)
+        {
+            ShuffleVectorSDNode svn = (ShuffleVectorSDNode)this;
+            os.print("<");
+            for (int i = 0, e = valueList[0].getVectorNumElements(); i < e; i++)
+            {
+                int idx = svn.getMaskElt(i);
+                if (i != 0) os.print(",");
+                if (idx < 0)
+                    os.print("u");
+                else
+                    os.print(idx);
+            }
+            os.print(">");
+        }
+
+        if (this instanceof ConstantSDNode)
+        {
+            os.print("<");
+            ((ConstantSDNode)this).getAPIntValue().print(os);
+            os.print(">");
+        }
+        else if (this instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode fpn = (ConstantFPSDNode)this;
+            if (fpn.getValueAPF().getSemantics() == APFloat.IEEEsingle)
+                os.printf("<%f>", fpn.getValueAPF().convertToFloat());
+            else if (fpn.getValueAPF().getSemantics() == APFloat.IEEEdouble)
+                os.printf("<%f>", fpn.getValueAPF().convertToDouble());
+            else
+            {
+                os.print("<APFloat(");
+                fpn.getValueAPF().bitcastToAPInt().print(os);
+                os.print(")>");
+            }
+        }
+        else if (this instanceof GlobalAddressSDNode)
+        {
+            GlobalAddressSDNode gan = (GlobalAddressSDNode)this;
+            long offset = gan.getOffset();
+            os.print("<");
+            writeAsOperand(os, gan.getGlobalValue(), true, null);
+            os.print(">");
+            String prefix = offset > 0 ? " + " : " ";
+            os.printf("%s%d", prefix, offset);
+            int tf = gan.getTargetFlags();
+            if (tf != 0)
+                os.printf("[TF=%d]",tf);
+        }
+        else if (this instanceof BasicBlockSDNode)
+        {
+            BasicBlockSDNode bbn = (BasicBlockSDNode)this;
+            os.print("<");
+            Value lbb = bbn.getBasicBlock().getBasicBlock();
+            if (lbb != null)
+                os.printf("%s ", lbb.getName());
+            os.printf("%x>", bbn.getBasicBlock().hashCode());
+        }
+        else if (this instanceof RegisterSDNode)
+        {
+            RegisterSDNode rsn = (RegisterSDNode)this;
+            if (dag != null && rsn.getReg() != 0 &&
+                    isPhysicalRegister(rsn.getReg()))
+            {
+                os.printf(" %s", dag.getTarget().getRegisterInfo().getName(rsn.getReg()));
+            }
+            else
+            {
+                os.printf(" #%d", rsn.getReg());
+            }
+        }
+        else if (this instanceof ExternalSymbolSDNode)
+        {
+            ExternalSymbolSDNode esn = (ExternalSymbolSDNode)this;
+            os.printf("'%s'", esn.getExtSymol());
+            int tf = esn.getTargetFlags();
+            if (tf != 0)
+                os.printf("[TF=%d]", tf);
+        }
+        else if (this instanceof SrcValueSDNode)
+        {
+            SrcValueSDNode ssn = (SrcValueSDNode)this;
+            if (ssn.getValue() != null)
+                os.printf("<0x%x>", ssn.getValue().hashCode());
+            else
+                os.print("<null>");
+        }
+        else if (this instanceof MemOperandSDNode)
+        {
+            MemOperandSDNode mon = (MemOperandSDNode)this;
+            if (mon.getMachineMemOperand().getValue() != null)
+            {
+                os.printf("<0x%x:%d>", mon.getMachineMemOperand().getValue().hashCode(),
+                        mon.getMachineMemOperand().getOffset());
+            }
+            else
+            {
+                os.printf("<null:%d>", mon.getMachineMemOperand().getOffset());
+            }
+        }
+        else if (this instanceof VTSDNode)
+        {
+            os.printf(":%s", ((VTSDNode)this).getVT().getEVTString());
+        }
+        else if (this instanceof LoadSDNode)
+        {
+            LoadSDNode ld = (LoadSDNode)this;
+            Value srcValue = ld.getSrcValue();
+            int srcOffset = ld.getSrcValueOffset();
+            os.print(" <");
+            if (srcValue != null)
+                os.printf("0x%x", srcValue.hashCode());
+            else
+                os.printf("null");
+            os.printf(":%d>", srcOffset);
+
+            boolean doExt = true;
+            switch (ld.getExtensionType())
+            {
+                default:
+                    doExt = false; break;
+                case EXTLOAD:
+                    os.printf(" <anyext ");
+                    break;
+                case SEXTLOAD:
+                    os.printf(" <sext ");
+                    break;
+                case ZEXTLOAD:
+                    os.printf(" <zext ");
+                    break;
+            }
+            if (doExt)
+                os.printf("%s>", ld.getMemoryVT().getEVTString());
+
+            String am = getIndexedModeName(ld.getAddressingMode());
+            os.printf(" %s", am);
+            if (ld.isVolatile())
+                os.printf(" <volatile>");
+            os.printf(" alignment=%d", ld.getAlignment());
+        }
+        else if (this instanceof StoreSDNode)
+        {
+            StoreSDNode st = (StoreSDNode)this;
+            Value srcValue = st.getSrcValue();
+            int srcOffset = st.getSrcValueOffset();
+            os.print(" <");
+            if (srcValue != null)
+                os.printf("0x%x", srcValue.hashCode());
+            else
+                os.printf("null");
+            os.printf(":%d>", srcOffset);
+
+            if (st.isTruncatingStore())
+                os.printf(" <trunc %s>", st.getMemoryVT().getEVTString());
+
+            String am = getIndexedModeName(st.getAddressingMode());
+            os.printf(" %s", am);
+            if (st.isVolatile())
+                os.printf(" <volatile>");
+            os.printf(" alignment=%d", st.getAlignment());
+        }
+        else if (this instanceof AtomicSDNode)
+        {
+            AtomicSDNode at = (AtomicSDNode)this;
+            Value srcValue = at.getSrcValue();
+            int srcOffset = at.getSrcValueOffset();
+            os.print(" <");
+            if (srcValue != null)
+                os.printf("0x%x", srcValue.hashCode());
+            else
+                os.printf("null");
+            os.printf(":%d>", srcOffset);
+
+            if (at.isVolatile())
+                os.printf(" <volatile>");
+            os.printf(" alignment=%d", at.getAlignment());
+        }
     }
 
     public void print(PrintStream os)
@@ -631,6 +828,17 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void print(PrintStream os, SelectionDAG dag)
     {
+        printTypes(os, dag);
+        os.print(" ");
+        for (int i = 0, e = getNumOperands(); i < e; i++)
+        {
+            if (i != 0) os.print(", ");
+            os.printf("0x%x", getOperand(i).getNode().hashCode());
+            int resNo = getOperand(i).getResNo();
+            if (resNo != 0)
+                os.printf(":%d", resNo);
+        }
+        printDetails(os, dag);
     }
 
     public void printr(PrintStream os, SelectionDAG dag)
@@ -644,6 +852,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void dump()
     {
+        dump(null);
     }
 
     public void dumpr()
@@ -652,7 +861,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void dump(SelectionDAG dag)
     {
-
+        print(System.err, dag);
     }
 
     public void addUse(SDUse use)
@@ -761,7 +970,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         operandList[0].setUser(this);
         operandList[0].setInitial(op0);
         operandList[1].setUser(this);
-        operandList[2].setInitial(op1);
+        operandList[1].setInitial(op1);
     }
 
     protected void initOperands(SDValue op0, SDValue op1, SDValue op2)
@@ -856,6 +1065,16 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
+    private static int encodeMemSDNodeFlags(int convType, MemIndexedMode mode,
+            boolean isVolatile, int alignment)
+    {
+        assert (convType & 3) == convType:"convType may not require more than 2 bits!";
+        assert (mode.ordinal()&7) == mode.ordinal():"mode may not require more than 3 bits!";
+        return convType | (mode.ordinal() << 2) |
+                ((isVolatile?1:0)<<5) |
+                ((Util.log2(alignment)+1) << 6);
+    }
+
     /**
      * SDNode for memory operation.
      */
@@ -869,12 +1088,26 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
                 int alignment, boolean isVolatile)
         {
             super(opc, vts);
+            this.memoryVT = memVT;
+            this.srcValue = srcVal;
+            this.svOffset = svOff;
+            sublassData = encodeMemSDNodeFlags(0, UNINDEXED, isVolatile, alignment);
+            assert Util.isPowerOf2(alignment);
+            assert getAlignment() == alignment;
+            assert isVolatile() == isVolatile;
         }
 
         public MemSDNode(int opc, SDVTList vts, SDValue[] ops, EVT memVT,
-                Value srcVal, int svOff, int alignment, boolean isVotatile)
+                Value srcVal, int svOff, int alignment, boolean isVolatile)
         {
-            super(opc, vts);
+            super(opc, vts, ops);
+            this.memoryVT = memVT;
+            this.srcValue = srcVal;
+            this.svOffset = svOff;
+            sublassData = encodeMemSDNodeFlags(0, UNINDEXED, isVolatile, alignment);
+            assert Util.isPowerOf2(alignment);
+            assert getAlignment() == alignment;
+            assert isVolatile() == isVolatile;
         }
 
         public int getAlignment()
@@ -1394,7 +1627,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
         public boolean isIndexed()
         {
-            return getAddressingMode() != MemIndexedMode.UNINDEXED;
+            return getAddressingMode() != UNINDEXED;
         }
 
         public boolean isUnindexed()

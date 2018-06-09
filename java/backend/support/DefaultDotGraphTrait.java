@@ -18,7 +18,11 @@
 package backend.support;
 
 import backend.analysis.DomTree;
+import backend.codegen.dagisel.SelectionDAG;
+import backend.codegen.dagisel.SelectionDAGDotGraphTraits;
 import backend.value.Function;
+
+import java.util.ArrayList;
 
 /**
  * @author Xlous.zeng
@@ -26,7 +30,7 @@ import backend.value.Function;
  */
 public class DefaultDotGraphTrait<T>
 {
-    public static DefaultDotGraphTrait createDotTrait(DomTree dt, String funcName)
+    public static DefaultDotGraphTrait createDomTreeTrait(DomTree dt, String funcName)
     {
         return new DomTreeDotGraphTrait(dt, funcName);
     }
@@ -34,6 +38,12 @@ public class DefaultDotGraphTrait<T>
     public static DefaultDotGraphTrait createCFGTrait(Function fn)
     {
         return new CFGDotGraphTrait(fn);
+    }
+
+    public static DefaultDotGraphTrait createSelectionDAGTrait(
+            SelectionDAG dag, boolean shortName)
+    {
+        return new SelectionDAGDotGraphTraits(dag, shortName);
     }
 
     public String getGraphName()
@@ -46,7 +56,7 @@ public class DefaultDotGraphTrait<T>
         return false;
     }
 
-    public String getGraphProperties()
+    public String getGraphProperties(Object node)
     {
         return "";
     }
@@ -66,24 +76,24 @@ public class DefaultDotGraphTrait<T>
         return "";
     }
 
-    public String getEdgeAttributes(T from, T to)
+    public String getEdgeAttributes(T from, Object to)
     {
         return "";
     }
 
-    public String getEdgeSourceLabel(T from, T to)
+    public String getEdgeSourceLabel(T to, Object from)
     {
         return "";
     }
 
-    public boolean edgeTargetEdgeSource(T from, T to)
+    public boolean edgeTargetEdgeSource(T from, Object to)
     {
         return false;
     }
 
-    public void getEdgeTarget(T node)
+    public int getEdgeTarget(T node, Object to)
     {
-        // TODO: 17-12-4
+        return 0;
     }
 
     public boolean hasEdgeDestLabels()
@@ -111,6 +121,28 @@ public class DefaultDotGraphTrait<T>
     }
 
     public void writeNodes(GraphWriter writer)
+    {
+
+    }
+
+    public Object getGraphType()
+    {
+        return null;
+    }
+
+    public void emitSimpleNode(Object id, String attr, String label)
+    {
+        emitSimpleNode(id, attr, label, 0);
+    }
+
+    public void emitSimpleNode(Object id, String attr, String label,
+            int numEdgeSources)
+    {
+        emitSimpleNode(id, attr, label, numEdgeSources, null);
+    }
+
+    public void emitSimpleNode(Object id, String attr, String label,
+            int numEdgeSources, ArrayList<String> edgeSourceLabels)
     {
 
     }

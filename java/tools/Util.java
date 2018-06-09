@@ -688,4 +688,52 @@ public class Util
 		a |= (a >> 32);
 		return a + 1;
 	}
+
+    public static String escapeString(String str)
+    {
+        StringBuilder buf = new StringBuilder();
+        buf.append(str);
+        for (int i = 0; i < buf.length(); i++)
+        {
+            switch (buf.charAt(i))
+            {
+                case '\n':
+                    buf.insert(i, '\\');
+                    ++i;
+                    buf.setCharAt(i, 'n');
+                    break;
+                case '\t':
+                    buf.insert(i, ' '); // convert to two spaces.
+                    ++i;
+                    buf.setCharAt(i, ' ');
+                    break;
+                case '\\':
+                    if (i+1 != buf.length())
+                    {
+                        switch (buf.charAt(i+1))
+                        {
+                            case '1': continue;
+                            case '|':
+                            case '{':
+                            case '}':
+                                buf.deleteCharAt(i);
+                                continue;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case '{':
+                case '}':
+                case '<':
+                case '>':
+                case '|':
+                case '"':
+                    buf.insert(i, '\\');
+                    ++i;
+                    break;
+            }
+        }
+        return buf.toString();
+    }
 }
