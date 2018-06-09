@@ -327,7 +327,7 @@ public class DAGTypeLegalizer
         performExpensiveChecks();
         dag.setRoot(dummy.getValue());
         dag.removeDeadNodes();
-
+        dummy.getValue().getNode().useList.clear();
         return changed;
     }
 

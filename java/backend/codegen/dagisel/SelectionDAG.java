@@ -2201,7 +2201,7 @@ public class SelectionDAG
                         allNodes.remove(userIdx);
                     }
                     ++insertPos;
-                    node.setNodeID(dagSize++);
+                    user.setNodeID(dagSize++);
                 }
                 else
                 {
@@ -2219,8 +2219,7 @@ public class SelectionDAG
         assert lastNode.getNodeID() == allNodes.size() - 1 :
                 "Last node in topological doesn't have " + (allNodes.size() - 1)
                         + " id!";
-        assert lastNode
-                .isUseEmpty() : "Last node in topological shouldn't have use";
+        assert lastNode.isUseEmpty() : "Last node in topological shouldn't have use";
         assert dagSize == allNodes.size() : "Node count mismatch!";
         return dagSize;
     }
