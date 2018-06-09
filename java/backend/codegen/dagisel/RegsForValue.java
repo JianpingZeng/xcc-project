@@ -63,6 +63,7 @@ public class RegsForValue
     public RegsForValue(TargetLowering tli,
             int reg, Type ty)
     {
+        this();
         this.tli = tli;
         computeValueVTs(tli, ty, valueVTs);
         for (int i = 0, e = valueVTs.size(); i < e; i++)
@@ -191,6 +192,8 @@ public class RegsForValue
     {
         int numRegs = regs.size();
         ArrayList<SDValue> parts = new ArrayList<>(numRegs);
+        for (int i = 0; i < numRegs; i++) parts.add(new SDValue());
+
         for (int value = 0, part = 0, e = valueVTs.size(); value < e; value++)
         {
             EVT valueVT = valueVTs.get(value);
@@ -210,11 +213,12 @@ public class RegsForValue
         }
 
         ArrayList<SDValue> chains = new ArrayList<>();
+        for (int i = 0; i < numRegs; i++) chains.add(new SDValue());
         for (int i = 0; i < numRegs; i++)
         {
             SDValue part;
             if (flag == null)
-                part = dag.getCopyToReg(chain.get(), regs.get(i), parts.get(i), null);
+                part = dag.getCopyToReg(chain.get(), regs.get(i), parts.get(i));
             else
             {
                 part = dag.getCopyToReg(chain.get(), regs.get(i), parts.get(i), flag.get());
@@ -426,7 +430,7 @@ public class RegsForValue
         EVT valueVT = val.getValueType();
         int partBits = partVT.getSizeInBits();
         int originNumParts = numParts;
-        assert !tli.isTypeLegal(partVT);
+        assert tli.isTypeLegal(partVT):"Copying to an illegal type!";
 
         if (numParts <= 0) return;
 
@@ -434,7 +438,7 @@ public class RegsForValue
         {
             if (partVT.equals(valueVT))
             {
-                assert numParts == 1;
+                assert numParts == 1:"No-op copy with multiple parts!";
                 parts[0] = val;
                 return;
             }

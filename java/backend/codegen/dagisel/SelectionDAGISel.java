@@ -100,8 +100,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(AliasAnalysis.class);
-        au.addPreserved(AliasAnalysis.class);
+        //au.addRequired(AliasAnalysis.class);
+        //au.addPreserved(AliasAnalysis.class);
         au.addRequired(MachineModuleInfo.class);
         au.addPreserved(MachineModuleInfo.class);
         super.getAnalysisUsage(au);
@@ -112,7 +112,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
     {
         this.mf = mf;
         Function f = mf.getFunction();
-        AliasAnalysis aa = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
+        //AliasAnalysis aa = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
         MachineModuleInfo mmi = (MachineModuleInfo) getAnalysisToUpDate(MachineModuleInfo.class);
 
         curDAG.init(mf, mmi);
@@ -160,7 +160,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             // Lower any arguments needed in this block if this is entry block.
             if (llvmBB.equals(fn.getEntryBlock()))
             {
-                assert lowerArguments(llvmBB) :"Fail to lower argument!";
+                boolean fail = lowerArguments(llvmBB);
+                if (fail) Util.shouldNotReachHere("Fail to lower argument!");
             }
 
             // Do FastISel on as many instructions as possible.
@@ -369,6 +370,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         SDValue newRoot = targetLowering.lowerFormalArguments(dag.getRoot(),
                 fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals);
 
+        assert newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other))
+                :"lowerFormalArguments din't return a valid chain!";
+        assert inVals.size() == ins.size():"lowerFormalArguments didn't emit the correct number of values";
+
         dag.setRoot(newRoot);
 
         // set up the incoming arguments.
@@ -392,8 +397,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                         op = ISD.AssertZext;
 
                     SDValue[] ops = new SDValue[numParts];
-                    for (int j = i; j < i+numParts;j++)
-                        ops[j] = inVals.get(j);
+                    for (int j = 0; j < numParts;j++)
+                        ops[j] = inVals.get(j+numParts);
                     argValues.add(getCopyFromParts(dag, ops, partVT, vt, op));
                 }
                 i += numParts;

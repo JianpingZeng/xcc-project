@@ -19,18 +19,16 @@ package backend.analysis.aa;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
-import backend.pass.Pass;
+import backend.pass.ModulePass;
 import backend.support.BackendCmdOptions;
 import backend.support.CallSite;
 import backend.target.TargetData;
 import backend.type.Type;
-import backend.value.BasicBlock;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.LoadInst;
 import backend.value.Instruction.StoreInst;
-import backend.value.Value;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -66,7 +64,7 @@ import static backend.analysis.aa.ModRefResult.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class AliasAnalysis implements Pass
+public class AliasAnalysis implements ModulePass
 {
     private AliasAnalysis aa;
     private TargetData td;
@@ -82,13 +80,14 @@ public class AliasAnalysis implements Pass
     @Override
     public AnalysisResolver getAnalysisResolver()
     {
-        assert resolver != null:"Must calling this function after setter!";
+        assert resolver != null:"Must calling this function after setAnalysisResolver!";
         return resolver;
     }
 
     @Override
     public void setAnalysisResolver(AnalysisResolver resolver)
     {
+        assert this.resolver == null:"Already set analysis resolver!";
         this.resolver = resolver;
     }
 
@@ -103,27 +102,7 @@ public class AliasAnalysis implements Pass
      * The constructor that construct an instance of alias analysis according to
      * the value specified by command line option.
      */
-    public AliasAnalysis()
-    {
-        td = (TargetData) getAnalysisToUpDate(TargetData.class);
-        assert td != null:"TargetData not available!";
-        switch (BackendCmdOptions.AliasAnalyzer.value)
-        {
-            case BasicAA:
-                aa = new BasicAliasAnalysis();
-                break;
-            case PoorMan:
-                aa = new PoorManAliasAnalysis();
-                break;
-            case Steensgaard:
-                aa = new SteensgaardAliasAnalysis();
-                break;
-            default:
-                 aa = null;
-                 assert false:"Unknown alias analysis pass";
-                 break;
-        }
-    }
+    public AliasAnalysis() {}
 
     /**
      * Return the TargetData store size for the given type,
@@ -437,5 +416,29 @@ public class AliasAnalysis implements Pass
     {
         copyValue(oldOne, newOne);
         deleteValue(oldOne);
+    }
+
+    @Override
+    public boolean runOnModule(Module m)
+    {
+        td = (TargetData) getAnalysisToUpDate(TargetData.class);
+        assert td != null:"TargetData not available!";
+        switch (BackendCmdOptions.AliasAnalyzer.value)
+        {
+            case BasicAA:
+                aa = new BasicAliasAnalysis();
+                break;
+            case PoorMan:
+                aa = new PoorManAliasAnalysis();
+                break;
+            case Steensgaard:
+                aa = new SteensgaardAliasAnalysis();
+                break;
+            default:
+                aa = null;
+                Util.shouldNotReachHere("Unknown alias analysis pass");
+                break;
+        }
+        return false;
     }
 }
