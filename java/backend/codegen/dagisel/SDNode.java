@@ -69,8 +69,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public int getOpcode()
     {
-        assert opcode >= 0 : "Is a machine operator?";
         return opcode;
+    }
+
+    public void setOpcode(int newOpc)
+    {
+        opcode = newOpc;
     }
 
     public boolean isTargetOpcode()
@@ -347,9 +351,6 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         switch (getOpcode())
         {
             default:
-                if (getOpcode() < ISD.BUILTIN_OP_END)
-                    return "<<Unknown DAG Node>>";
-
                 if (isMachineOpecode())
                 {
                     if (dag != null)

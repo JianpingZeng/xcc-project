@@ -22,7 +22,7 @@ import backend.codegen.dagisel.SDValue;
 import backend.value.Constant;
 import backend.value.GlobalValue;
 
-public class X86ISelAddressMode
+public class X86ISelAddressMode implements Cloneable
 {
     enum BaseType
     {
@@ -64,7 +64,7 @@ public class X86ISelAddressMode
         segment = new SDValue();
         gv = null;
         cp = null;
-        externalSym = "";
+        externalSym = null;
         jti = -1;
         align = 0;
         symbolFlags = 0;
@@ -130,5 +130,26 @@ public class X86ISelAddressMode
         else
             System.err.print("null");
         System.err.printf(" JTI %d Align %d%n", jti, align);
+    }
+
+    @Override
+    public X86ISelAddressMode clone()
+    {
+        X86ISelAddressMode res = new X86ISelAddressMode();
+        res.baseType = this.baseType;
+        res.base = new Base();
+        res.base.frameIndex = this.base.frameIndex;
+        res.base.reg = this.base.reg.clone();
+        res.scale = this.scale;
+        res.indexReg = this.indexReg.clone();
+        res.disp = this.disp;
+        res.segment = this.segment.clone();
+        res.gv = this.gv;
+        res.cp = this.cp;
+        res.externalSym = this.externalSym;
+        res.jti = this.jti;
+        res.align = this.align;
+        res.symbolFlags = this.symbolFlags;
+        return res;
     }
 }
