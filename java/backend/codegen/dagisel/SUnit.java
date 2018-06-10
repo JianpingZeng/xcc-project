@@ -93,7 +93,10 @@ public class SUnit
 	 * Constructor for placeholder SUnit.
 	 */
 	public SUnit()
-	{}
+	{
+		preds = new ArrayList<>();
+		succs = new ArrayList<>();
+	}
 
 	public void setNode(SDNode n)
 	{
@@ -372,7 +375,7 @@ public class SUnit
 				if (succSU.isHeightCurrent)
 				{
 					maxSuccHeight = Math.max(maxSuccHeight, 
-						succSU.getHeight() + d.getLatency());
+						succSU.height + d.getLatency());
 				}
 				else 
 				{
@@ -383,7 +386,7 @@ public class SUnit
 			if (done)
 			{
 				worklist.pop();
-				if (maxSuccHeight != su.getHeight())
+				if (maxSuccHeight != su.height)
 				{
 					su.setHeightDirty();
 					su.height = maxSuccHeight;		

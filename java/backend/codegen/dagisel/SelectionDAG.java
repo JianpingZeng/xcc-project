@@ -2149,6 +2149,7 @@ public class SelectionDAG
     {
         FoldingSetNodeID calc = new FoldingSetNodeID();
         addNodeToIDNode(calc, ISD.Register, getVTList(ty), null, 0);
+        calc.addInteger(reg);
         int id = calc.computeHash();
         if (cseMap.containsKey(id))
             return new SDValue(cseMap.get(id), 0);
@@ -3478,7 +3479,7 @@ public class SelectionDAG
         }
     }
 
-    private void displayGraph(File filename)
+    public static void displayGraph(File filename)
             throws IOException, InterruptedException
     {
         System.err.println("Running 'xdot' program... ");

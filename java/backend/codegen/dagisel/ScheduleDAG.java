@@ -18,11 +18,19 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
+import backend.support.DefaultDotGraphTrait;
 import backend.target.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
+import java.io.File;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+
+import static backend.codegen.dagisel.SelectionDAG.displayGraph;
+import static backend.support.GraphWriter.writeGraph;
 
 public abstract class ScheduleDAG
 {
@@ -54,6 +62,11 @@ public abstract class ScheduleDAG
 		sunits = new ArrayList<>();
 		entrySU = new SUnit();
 		exitSU = new SUnit();
+	}
+
+	public MachineFunction getMachineFunction()
+	{
+		return mf;
 	}
 
 	public abstract MachineBasicBlock emitSchedule();
@@ -149,14 +162,37 @@ public abstract class ScheduleDAG
 		}
 	}
 
-	private void emitLiveCopy(MachineBasicBlock mbb,
-		int insertPos, 
-		int virtReg, 
-		int physReg, 
-		TargetRegisterClass rc,
-		TObjectIntHashMap<MachineInstr> copyRegMap)
-	{}
+	public void viewGraph()
+	{
+		viewGraph("");
+	}
 
-	private void emitLiveInCopies(MachineBasicBlock mbb)
-	{}
+	public void viewGraph(String title)
+	{
+		String funcName = getMachineFunction().getFunction().getName();
+		PrintStream out = null;
+		File temp = null;
+		try
+		{
+			String filename = "dag." + funcName + ".dot";
+			Path path = Files.createTempFile(null, filename);
+			temp = path.toFile();
+			out = new PrintStream(temp);
+			System.err.printf("Writing '%s'...%n", temp.toString());
+			writeGraph(out, DefaultDotGraphTrait.createScheduleDAGTrait(this, false),
+					false, title);
+			displayGraph(temp);
+		}
+		catch (Exception e)
+		{
+			System.err.println("error opening file for writing!");
+		}
+		finally
+		{
+			if (out != null) out.close();
+			if (temp != null) temp.delete();
+		}
+	}
+
+	public void addCustomGraphFeatures(ScheduleDAGDotTraits graphWriter) {}
 }

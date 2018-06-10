@@ -44,12 +44,14 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
     public ScheduleDAGFast(MachineFunction mf)
     {
         super(mf);
+        availableQueue = new LinkedList<>();
     }
 
     public void schedule()
     {
         if (Util.DEBUG)
             System.err.println("********** List Scheduling ************");
+        availableQueue.clear();
         numLiveRegs = 0;
         liveRegDefs = new SUnit[tri.getNumRegs()];
         liveRegCycles = new int[tri.getNumRegs()];
