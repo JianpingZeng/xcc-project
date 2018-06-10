@@ -692,6 +692,38 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             if (tf != 0)
                 os.printf("[TF=%d]",tf);
         }
+        else if (this instanceof FrameIndexSDNode)
+        {
+            FrameIndexSDNode fi = (FrameIndexSDNode)this;
+            os.printf("<%d>", fi.getFrameIndex());
+        }
+        else if (this instanceof JumpTableSDNode)
+        {
+            JumpTableSDNode jt = (JumpTableSDNode)this;
+            os.printf("<%d>", jt.getJumpTableIndex());
+        }
+        else if (this instanceof ConstantPoolSDNode)
+        {
+            ConstantPoolSDNode cp = (ConstantPoolSDNode)this;
+            int offset = cp.getOffset();
+            if (cp.isMachineConstantPoolValue())
+            {
+                os.print("<");
+                cp.getMachineConstantPoolValue().print(os);
+                os.print(">");
+            }
+            else
+            {
+                os.print("<");
+                cp.getConstantValue().print(os);
+                os.print(">");
+            }
+            String prefix = offset > 0?"+":" ";
+            os.printf("%s%s", prefix, offset);
+            int tf = cp.getTargetFlags();
+            if (tf != 0)
+                os.printf(" [TF=%d]", tf);
+        }
         else if (this instanceof BasicBlockSDNode)
         {
             BasicBlockSDNode bbn = (BasicBlockSDNode)this;

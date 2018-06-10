@@ -94,7 +94,8 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         }
         for (int i = 0, e = curDAG.allNodes.size(); i < e; i++)
         {
-            if (curDAG.allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
+            if (curDAG.allNodes.get(i).getNodeID() == ISD.DELETED_NODE &&
+                    curDAG.allNodes.get(i).isUseEmpty())
             {
                 curDAG.allNodes.remove(i);
                 --i;

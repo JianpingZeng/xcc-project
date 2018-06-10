@@ -33,9 +33,7 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SDep.Kind.Data;
 import static backend.codegen.dagisel.SDep.Kind.Order;
 import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
-import static backend.target.TargetRegisterInfo.getCommonSubClass;
-import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static backend.target.TargetRegisterInfo.isVirtualRegister;
+import static backend.target.TargetRegisterInfo.*;
 
 /**
  * A ScheduleDAG for scheduling SDNode-based DAGs.
@@ -135,9 +133,9 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	public static int computeMemOperandEnd(SDNode node)
 	{
 		int n = node.getNumOperands();
-		while (n != 0 && node.getValueType(n-1).getSimpleVT().simpleVT == MVT.Flag)
+		while (n != 0 && node.getOperand(n-1).getValueType().getSimpleVT().simpleVT == MVT.Flag)
 			--n;
-		if (n > 0 && node.getValueType(n-1).getSimpleVT().simpleVT == MVT.Other)
+		if (n > 0 && node.getOperand(n-1).getValueType().getSimpleVT().simpleVT == MVT.Other)
 			--n;
 		return n;
 	}
@@ -332,8 +330,27 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 
 	public String getGraphNodeLabel(SUnit su)
 	{
-		// TODO
-		return "";
+		StringBuilder sb = new StringBuilder();
+		sb.append("SU(").append(su.nodeNum).append("): ");
+		if (su.getNode() != null)
+		{
+			LinkedList<SDNode> flaggedNodes = new LinkedList<>();
+			for (SDNode n = su.getNode(); n != null; n = n.getFlaggedNode())
+				flaggedNodes.add(n);
+
+			while (!flaggedNodes.isEmpty())
+			{
+				sb.append(SelectionDAGDotGraphTraits.getNodeLabel(flaggedNodes.getLast(), dag, false));
+				flaggedNodes.removeLast();
+				if (!flaggedNodes.isEmpty())
+					sb.append("\n    ");
+			}
+		}
+		else
+		{
+			sb.append("CROSS RC COPY");
+		}
+		return sb.toString();
 	}
 
 	/**
@@ -918,5 +935,20 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             }
         }
 		return res;
+	}
+
+	@Override
+	public void addCustomGraphFeatures(ScheduleDAGDotTraits graphWriter)
+	{
+		if (dag != null)
+		{
+			graphWriter.emitSimpleNode(null, "plaintext=circle", "GraphRoot");
+			SDNode n = dag.getRoot().getNode();
+			if (n != null && n.getNodeID() != -1)
+			{
+				graphWriter.emitEdge(null, -1, sunits.get(n.getNodeID()), -1,
+						"color=blue,style=dashed");
+			}
+		}
 	}
 }

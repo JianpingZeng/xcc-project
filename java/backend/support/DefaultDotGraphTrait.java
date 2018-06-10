@@ -18,6 +18,8 @@
 package backend.support;
 
 import backend.analysis.DomTree;
+import backend.codegen.dagisel.ScheduleDAG;
+import backend.codegen.dagisel.ScheduleDAGDotTraits;
 import backend.codegen.dagisel.SelectionDAG;
 import backend.codegen.dagisel.SelectionDAGDotGraphTraits;
 import backend.value.Function;
@@ -44,6 +46,12 @@ public class DefaultDotGraphTrait<T>
             SelectionDAG dag, boolean shortName)
     {
         return new SelectionDAGDotGraphTraits(dag, shortName);
+    }
+
+    public static DefaultDotGraphTrait createScheduleDAGTrait(
+            ScheduleDAG dag, boolean shortName)
+    {
+        return new ScheduleDAGDotTraits(dag, shortName);
     }
 
     public String getGraphName()

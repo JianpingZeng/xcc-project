@@ -271,12 +271,12 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         if (Util.DEBUG)
             System.err.println("Instruction Selection");
 
+        String blockName = mf.getFunction().getName() + ":" +
+                mbb.getBasicBlock().getName();
         // combine
         curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
         if (Util.DEBUG)
         {
-            String blockName = mf.getFunction().getName() + ":" +
-                    mbb.getBasicBlock().getName();
             curDAG.viewGraph("dag-before-legalize for " + blockName);
         }
 
@@ -297,16 +297,17 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
 
         instructionSelect();
-
-        //if (Util.DEBUG)
+        if (Util.DEBUG)
         {
-            String blockName = mf.getFunction().getName() + ":" +
-                    mbb.getBasicBlock().getName();
             curDAG.viewGraph("dag-before-sched for " + blockName);
         }
 
         ScheduleDAG scheduler = createScheduler(this, optLevel);
         scheduler.run(curDAG, mbb, mbb.size());
+        //if (Util.DEBUG)
+        {
+            scheduler.viewGraph("dag-after-sched for " + blockName);
+        }
         mbb = scheduler.emitSchedule();
 
         if (Util.DEBUG)

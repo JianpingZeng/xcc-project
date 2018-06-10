@@ -38,6 +38,8 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode>
 {
     private final SelectionDAG dag;
     private boolean shortName;
+    private PrintStream os;
+
     public SelectionDAGDotGraphTraits(SelectionDAG dag, boolean shortName)
     {
         this.dag = dag;
@@ -53,9 +55,14 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode>
     @Override
     public String getNodeLabel(SDNode node, boolean shortName)
     {
+        return getNodeLabel(node, dag, shortName);
+    }
+
+    public static String getNodeLabel(SDNode node, SelectionDAG dag, boolean shortName)
+    {
         String result = node.getOperationName(dag);
         try(ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream os = new PrintStream(baos))
+                PrintStream os = new PrintStream(baos))
         {
             node.printDetails(os, dag);
             result += baos.toString();
@@ -139,8 +146,6 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode>
     {
         return node.getValueType(i).getEVTString();
     }
-
-    private PrintStream os;
 
     @Override
     public void writeNodes(GraphWriter writer)
