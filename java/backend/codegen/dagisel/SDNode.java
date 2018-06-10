@@ -299,8 +299,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public SDNode getFlaggedNode()
     {
-        if (getNumOperands() != 0 && getOperand(getNumOperands() - 1).getValueType().getSimpleVT().
-                equals(new EVT(MVT.Flag)))
+        if (getNumOperands() != 0 && getOperand(getNumOperands() - 1).
+                getValueType().getSimpleVT().simpleVT == MVT.Flag)
         {
             return getOperand(getNumOperands() - 1).getNode();
         }

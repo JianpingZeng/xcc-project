@@ -304,7 +304,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
         ScheduleDAG scheduler = createScheduler(this, optLevel);
         scheduler.run(curDAG, mbb, mbb.size());
-        //if (Util.DEBUG)
+        if (Util.DEBUG)
         {
             scheduler.viewGraph("dag-after-sched for " + blockName);
         }

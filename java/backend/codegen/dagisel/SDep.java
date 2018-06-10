@@ -152,7 +152,7 @@ public class SDep implements Cloneable
 	@Override
 	public SDep clone()
 	{
-		return new SDep(unit, depKind, reg, latency,
+		return new SDep(unit, depKind,latency, reg,
 				order != null && order.isNormalMemory,
 				order != null && order.isMustAlias,
 				order != null && order.isArtificial);
