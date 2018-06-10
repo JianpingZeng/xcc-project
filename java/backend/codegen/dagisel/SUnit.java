@@ -143,7 +143,7 @@ public class SUnit
 		}
 		if (!n.isScheduled)
 			++numPredsLeft;
-		if (isScheduled)
+		if (!isScheduled)
 			++n.numSuccsLeft;
 		preds.add(d);
 		n.succs.add(p);
@@ -269,7 +269,7 @@ public class SUnit
 					worklist.push(predSU);
 			});
 		}
-		while(worklist.isEmpty());
+		while(!worklist.isEmpty());
 	}
 
 	public boolean isPred(SUnit u)

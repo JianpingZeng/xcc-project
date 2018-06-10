@@ -202,12 +202,12 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 			}
 			else
 			{
-				mbb.insert(insertPos, mi);
+				mbb.insert(insertPos++, mi);
 			}
 
 			if (hasPhysRegOuts)
 			{
-				for (int i = tid.getNumDefs()-1; i < numResults; i++)
+				for (int i = tid.getNumDefs(); i < numResults; i++)
 				{
 					int reg = tid.getImplicitDefs()[i - tid.getNumDefs()];
 					if (node.hasAnyUseOfValue(i))
@@ -916,7 +916,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	    // returned array layouts as follows.
         // 0 -- phyReg
         // 1 -- cost.
-        int[] res = {1, 0};
+        int[] res = {0, 1};
         if (op != 2 || user.getOpcode() != ISD.CopyToReg)
             return res;
         int reg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();

@@ -384,8 +384,8 @@ public abstract class TargetRegisterInfo
 	 */
 	public TargetRegisterClass getRegClass(int i)
 	{
-		assert i >= 0 && i < regClasses.length;
-		return regClasses[i];
+		assert i >= 1 && i <= regClasses.length;
+		return regClasses[i-1];
 	}
 
 	/**

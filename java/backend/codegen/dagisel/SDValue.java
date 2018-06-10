@@ -95,6 +95,12 @@ public class SDValue implements Comparable<SDValue>, Cloneable
     }
 
     @Override
+    public int hashCode()
+    {
+        return node.hashCode() << 7 + resNo;
+    }
+
+    @Override
     public int compareTo(SDValue o)
     {
         int res = node.compareTo(o.node);
