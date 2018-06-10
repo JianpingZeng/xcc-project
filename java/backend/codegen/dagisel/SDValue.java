@@ -21,6 +21,8 @@ import backend.codegen.EVT;
 import backend.codegen.dagisel.SDNode.LoadSDNode;
 import backend.codegen.fastISel.ISD;
 
+import java.util.Objects;
+
 /**
  * Unlike LLVM values, Selection DAG nodes may return multiple
  * values as the result of a computation.  Many nodes return multiple values,
@@ -91,7 +93,7 @@ public class SDValue implements Comparable<SDValue>, Cloneable
         if (getClass() != obj.getClass())
             return false;
         SDValue other = (SDValue)obj;
-        return node.equals(other.node) && resNo == other.resNo;
+        return Objects.equals(node, other.node) && resNo == other.resNo;
     }
 
     @Override

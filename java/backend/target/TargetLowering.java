@@ -27,10 +27,7 @@ import backend.type.Type;
 import backend.value.Function;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.APInt;
-import tools.OutParamWrapper;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -227,6 +224,10 @@ public abstract class TargetLowering
      */
     private BooleanContent booleanContents;
 
+    private int exceptionPointerRegister;
+
+    private int exceptionSelectorRegister;
+
     private long[][] opActions;
     private long[] loadExtActions;
     private long[] truncStoreActions;
@@ -242,10 +243,13 @@ public abstract class TargetLowering
 
     private int stackPointerRegisterToSaveRestore;
 
-    protected int maxStoresPerMemSet;
+    protected int maxStoresPerMemset;
     protected int maxStoresPerMemcpy;
     protected int maxStoresPerMemmove;
+    protected int setPrefLoopAlignment;
     protected boolean benefitFromCodePlacementOpt;
+
+    protected ArrayList<APFloat> legalFPImmediates;
 
     public TargetLowering(TargetMachine tm)
     {
@@ -268,6 +272,7 @@ public abstract class TargetLowering
         condCodeActions = new long[SETCC_INVALID.ordinal()];
         targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END+7)/8];
         promoteType = new TObjectIntHashMap<Pair<Integer,Integer>>();
+        legalFPImmediates = new ArrayList<>();
 
         stackPointerRegisterToSaveRestore = 0;
 
@@ -306,7 +311,7 @@ public abstract class TargetLowering
         isLittleEndian = td.isLittleEndian();
         usesGlobalOffsetTable = false;
         shiftAmountTy = pointerTy = MVT.getIntegerVT(8*td.getPointerSize());
-        maxStoresPerMemSet = maxStoresPerMemcpy=maxStoresPerMemmove = 8;
+        maxStoresPerMemset = maxStoresPerMemcpy=maxStoresPerMemmove = 8;
         benefitFromCodePlacementOpt = false;
         useUnderscoreLongJmp = false;
         useUnderscoreSetJmp = false;
@@ -550,7 +555,7 @@ public abstract class TargetLowering
             libCallCallingConv[i] = CallingConv.C;
     }
 
-    private void setOperationAction(int opc, int vt, LegalizeAction action)
+    public void setOperationAction(int opc, int vt, LegalizeAction action)
     {
         int i = vt;
         int j = i & 31;
@@ -559,21 +564,21 @@ public abstract class TargetLowering
         opActions[i][opc] |= (long)action.ordinal() << (j*2);
     }
 
-    private void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action)
+    public void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action)
     {
         assert vt < 64*4 && im.ordinal() < loadExtActions.length:"Table isn't big enough!";
         loadExtActions[im.ordinal()] &= ~(3L << (vt*2));
         loadExtActions[im.ordinal()] |= action.ordinal() << (vt*2);
     }
 
-    private void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action)
+    public void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action)
     {
         assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length
                 :"Table isn't big enough!";
         indexedModeActions[vt][0][im.ordinal()] = action.ordinal();
     }
 
-    private void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action)
+    public void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action)
     {
         assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length
                 :"Table isn't big enough!";
@@ -588,6 +593,11 @@ public abstract class TargetLowering
     public BooleanContent getBooleanContents()
     {
         return booleanContents;
+    }
+
+    public void setBooleanContents(BooleanContent cnt)
+    {
+        this.booleanContents = cnt;
     }
 
     public TargetData getTargetData()
@@ -618,6 +628,44 @@ public abstract class TargetLowering
     public void setStackPointerRegisterToSaveRestore(int spreg)
     {
         stackPointerRegisterToSaveRestore = spreg;
+    }
+
+    public void setExceptionPointerRegister(int reg)
+    {
+        this.exceptionPointerRegister = reg;
+    }
+
+    public int getExceptionPointerRegister()
+    {
+        return exceptionPointerRegister;
+    }
+
+    public void setExceptionSelectorRegister(int reg)
+    {
+        this.exceptionSelectorRegister = reg;
+    }
+
+    public int getExceptionSelectorRegister()
+    {
+        return exceptionSelectorRegister;
+    }
+
+    public void setUseUnderscoreSetJmp(boolean val)
+    {
+        this.useUnderscoreSetJmp = val;
+    }
+
+    public void setUseUnderscoreLongJmp(boolean val)
+    {
+        this.useUnderscoreLongJmp = val;
+    }
+
+    public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action)
+    {
+        assert vt.simpleVT < 64*4 && extType.ordinal() < loadExtActions.length:
+                "Table isn't big enough!";
+        loadExtActions[extType.ordinal()] &= ~(3L << vt.simpleVT*2);
+        loadExtActions[extType.ordinal()] |= ((long)action.ordinal() << vt.simpleVT*2);
     }
 
     /**
@@ -772,11 +820,11 @@ public abstract class TargetLowering
      *
      * @param vt
      */
-    public void addRegisterClass(MVT vt, TargetRegisterClass regClass)
+    public void addRegisterClass(int vt, TargetRegisterClass regClass)
     {
-        assert vt.simpleVT < registerClassForVT.length;
+        assert vt < registerClassForVT.length;
         availableRegClasses.add(Pair.get(new EVT(vt), regClass));
-        registerClassForVT[vt.simpleVT] = regClass;
+        registerClassForVT[vt] = regClass;
     }
 
     public int getVectorTypeBreakdown(EVT vt,
@@ -1042,6 +1090,11 @@ public abstract class TargetLowering
     public MVT getShiftAmountTy()
     {
         return shiftAmountTy;
+    }
+
+    public void setShiftAmountTy(MVT vt)
+    {
+        shiftAmountTy = vt;
     }
 
     public String getTargetNodeName(int opcode)
@@ -1376,6 +1429,14 @@ public abstract class TargetLowering
                         ((2*memVT.getSimpleVT().simpleVT)&3))];
     }
 
+    public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action)
+    {
+        assert valVT < truncStoreActions.length &&
+                memVT < 64*4:"Table isn't big enough!";
+        truncStoreActions[valVT] &= ~(3L << memVT*2);
+        truncStoreActions[valVT] |= (long)action.ordinal() << memVT*2;
+    }
+
     public boolean isTruncStoreLegal(EVT valVT, EVT memVT)
     {
         return isTypeLegal(valVT) && memVT.isSimple() &&
@@ -1391,6 +1452,14 @@ public abstract class TargetLowering
         return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][0][idxMode]];
     }
 
+    public void setIndexedModeAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action)
+    {
+        assert vt.simpleVT < MVT.LAST_VALUETYPE &&
+                idxMode.ordinal() < indexedModeActions[0][0].length:
+                "Table isn't big enough!";
+        indexedModeActions[vt.simpleVT][0][idxMode.ordinal()] = action.ordinal();
+    }
+
     public boolean isIndexedLoadLegal(int idxMode, EVT vt)
     {
         return vt.isSimple() && (getIndexedLoadAction(idxMode, vt) == Legal ||
@@ -1403,6 +1472,14 @@ public abstract class TargetLowering
                 vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE :
                 "Table is't big enough!";
         return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][1][idxMode]];
+    }
+
+    public void setIndexedStoreAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action)
+    {
+        assert vt.simpleVT < MVT.LAST_VALUETYPE &&
+                idxMode.ordinal() < indexedModeActions[0][1].length:
+                "Table isn't big enough!";
+        indexedModeActions[vt.simpleVT][1][idxMode.ordinal()] = action.ordinal();
     }
 
     public boolean isIndexedStoreLegal(int idxMode, EVT vt)
@@ -1429,10 +1506,33 @@ public abstract class TargetLowering
         return action;
     }
 
+    public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action)
+    {
+        assert vt < 64*4 && cc.ordinal() < condCodeActions.length:"Table isn't big enough!";
+        condCodeActions[cc.ordinal()] &= ~(3L << vt*2);
+        condCodeActions[cc.ordinal()] |= ((long)action.ordinal() << vt*2);
+    }
+
     public boolean isCondCodeLegal(CondCode cc, EVT vt)
     {
         return getCondCodeAction(cc, vt) == Legal ||
                 getCondCodeAction(cc, vt) == Custom;
+    }
+
+    public void addLegalFPImmediate(APFloat imm)
+    {
+        legalFPImmediates.add(imm);
+    }
+
+    public void setTargetDAGCombine(int opc)
+    {
+        assert (opc>>3) < targetDAGCombineArray.length;
+        targetDAGCombineArray[opc>>3] |= 1 << (opc&3);
+    }
+
+    public void addPromotedToType(int opc, int origVT, int destVT)
+    {
+        promoteType.put(Pair.get(opc, origVT), destVT);
     }
 
     public EVT getTypeToPromoteType(int opc, EVT vt)
@@ -1691,6 +1791,11 @@ public abstract class TargetLowering
     public String getLibCallName(RTLIB lc)
     {
         return libCallRoutineNames[lc.ordinal()];
+    }
+
+    public void setLibCallName(RTLIB lc, String name)
+    {
+        libCallRoutineNames[lc.ordinal()] = name;
     }
 
     public CallingConv getLibCallCallingConv(RTLIB lc)

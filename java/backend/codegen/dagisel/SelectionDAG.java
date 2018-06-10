@@ -2456,12 +2456,15 @@ public class SelectionDAG
         n.valueList = vts.vts;
 
         HashSet<SDNode> deadNodeSet = new HashSet<>();
-        for (SDUse use : n.operandList)
+        if (n.operandList != null && n.operandList.length > 0)
         {
-            SDNode used = use.getNode();
-            use.set(new SDValue());
-            if (used.isUseEmpty())
-                deadNodeSet.add(used);
+            for (SDUse use : n.operandList)
+            {
+                SDNode used = use.getNode();
+                use.set(new SDValue());
+                if (used.isUseEmpty())
+                    deadNodeSet.add(used);
+            }
         }
         n.operandList = new SDUse[numOps];
         for (int i = 0; i < numOps; i++)
