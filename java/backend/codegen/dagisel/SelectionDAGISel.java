@@ -45,6 +45,9 @@ import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.support.BackendCmdOptions.createScheduler;
 import static backend.support.ErrorHandling.llvmReportError;
+import static backend.target.TargetOptions.ViewDAGAfterSched;
+import static backend.target.TargetOptions.ViewDAGBeforeISel;
+import static backend.target.TargetOptions.ViewDAGBeforeSched;
 
 /**
  * This class defined here attempts to implement the conversion from LLVM IR -> DAG -> target-specific DAG
@@ -292,29 +295,27 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             if (changed)
                 curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         }
-        //curDAG.legalize(false, optLevel);
+        curDAG.legalize(false, optLevel);
 
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
-
+        if (ViewDAGBeforeISel.value)
+        {
+            curDAG.viewGraph("dag-before-isel for " + blockName);
+        }
         instructionSelect();
-        if (Util.DEBUG)
+
+        if (ViewDAGBeforeSched.value)
         {
             curDAG.viewGraph("dag-before-sched for " + blockName);
         }
 
         ScheduleDAG scheduler = createScheduler(this, optLevel);
         scheduler.run(curDAG, mbb, mbb.size());
-        if (Util.DEBUG)
+        if (ViewDAGAfterSched.value)
         {
             scheduler.viewGraph("dag-after-sched for " + blockName);
         }
         mbb = scheduler.emitSchedule();
-
-        if (Util.DEBUG)
-        {
-            System.err.println("Selected machine code:");
-            mbb.dump();
-        }
     }
 
     public abstract void instructionSelect();

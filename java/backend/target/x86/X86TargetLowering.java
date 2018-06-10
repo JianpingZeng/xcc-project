@@ -30,28 +30,33 @@ import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import gnu.trove.list.array.TIntArrayList;
-import tools.APInt;
-import tools.OutParamWrapper;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.dagisel.CondCode.SETOEQ;
+import static backend.codegen.dagisel.CondCode.SETUNE;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
 import static backend.codegen.dagisel.TLSModel.*;
+import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
+import static backend.target.TargetLowering.LegalizeAction.*;
 import static backend.target.TargetMachine.CodeModel.Kernel;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
+import static backend.target.TargetOptions.DisableMMX;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
+import static backend.target.TargetOptions.GenerateSoftFloatCalls;
 import static backend.target.x86.CondCode.COND_NE;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86InstrBuilder.addFullAddress;
 import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
 import static backend.target.x86.X86InstrInfo.isGlobalStubReference;
+import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
+import static tools.APFloat.x87DoubleExtended;
 
 /**
  * @author Xlous.zeng
@@ -85,67 +90,893 @@ public class X86TargetLowering extends TargetLowering
         regInfo = tm.getRegisterInfo();
 
         // Set up the register classes.
-        addRegisterClass(new MVT(MVT.i8), X86GenRegisterInfo.GR8RegisterClass);
-        addRegisterClass(new MVT(MVT.i16), X86GenRegisterInfo.GR16RegisterClass);
-        addRegisterClass(new MVT(MVT.i32), X86GenRegisterInfo.GR32RegisterClass);
-        if (subtarget.is64Bit())
-            addRegisterClass(new MVT(MVT.i64), X86GenRegisterInfo.GR64RegisterClass);
-
-        if (x86ScalarSSEf64)
+        setShiftAmountTy(new MVT(MVT.i8));
+        setBooleanContents(BooleanContent.ZeroOrOneBooleanContent);
+        setStackPointerRegisterToSaveRestore(x86StackPtr);
+        if (subtarget.isTargetDarwin())
         {
-            // f32 and f64 use SSE.
-            // Set up the FP register class.
-            addRegisterClass(new MVT(MVT.f32), X86GenRegisterInfo.FR32RegisterClass);
-            addRegisterClass(new MVT(MVT.f64), X86GenRegisterInfo.FR64RegisterClass);
+            // Darwin should use _setjmp/_longjmp instead of setjmp/longjmp.
+            setUseUnderscoreSetJmp(false);
+            setUseUnderscoreLongJmp(false);
         }
-        else if (x86ScalarSSEf32)
+        else if (subtarget.isTargetMingw())
         {
-            // f32 use SSE, but f64 use x87.
-            // Set up the FP register class.
-            addRegisterClass(new MVT(MVT.f32), X86GenRegisterInfo.FR32RegisterClass);
-            addRegisterClass(new MVT(MVT.f64), X86GenRegisterInfo.RFP64RegisterClass);
+            setUseUnderscoreSetJmp(true);
+            setUseUnderscoreLongJmp(false);
         }
         else
         {
+            setUseUnderscoreSetJmp(true);
+            setUseUnderscoreLongJmp(true);
+        }
+        // set up the register class.
+        addRegisterClass(MVT.i8, X86GenRegisterInfo.GR8RegisterClass);
+        addRegisterClass(MVT.i16, X86GenRegisterInfo.GR16RegisterClass);
+        addRegisterClass(MVT.i32, X86GenRegisterInfo.GR32RegisterClass);
+        if (subtarget.is64Bit())
+            addRegisterClass(MVT.i64, X86GenRegisterInfo.GR64RegisterClass);
+
+        setLoadExtAction(LoadExtType.SEXTLOAD, new MVT(MVT.i1), Promote);
+
+        // We don't accept any truncstore of integer registers.
+        setTruncStoreAction(MVT.i64, MVT.i32, Expand);
+        setTruncStoreAction(MVT.i64, MVT.i16, Expand);
+        setTruncStoreAction(MVT.i64, MVT.i8 , Expand);
+        setTruncStoreAction(MVT.i32, MVT.i16, Expand);
+        setTruncStoreAction(MVT.i32, MVT.i8 , Expand);
+        setTruncStoreAction(MVT.i16, MVT.i8,  Expand);
+
+        // SETOEQ and SETUNE require checking two conditions.
+        setCondCodeAction(SETOEQ, MVT.f32, Expand);
+        setCondCodeAction(SETOEQ, MVT.f64, Expand);
+        setCondCodeAction(SETOEQ, MVT.f80, Expand);
+        setCondCodeAction(SETUNE, MVT.f32, Expand);
+        setCondCodeAction(SETUNE, MVT.f64, Expand);
+        setCondCodeAction(SETUNE, MVT.f80, Expand);
+
+        // Promote all UINT_TO_FP to larger SINT_TO_FP's, as X86 doesn't have this
+        // operation.
+        setOperationAction(ISD.UINT_TO_FP       ,MVT.i1, Promote);
+        setOperationAction(ISD.UINT_TO_FP       ,MVT.i8, Promote);
+        setOperationAction(ISD.UINT_TO_FP       ,MVT.i16, Promote);
+
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.UINT_TO_FP     , MVT.i32  , Promote);
+            setOperationAction(ISD.UINT_TO_FP     , MVT.i64  , Expand);
+        } 
+        else if (!GenerateSoftFloatCalls.value)
+        {
+            if (x86ScalarSSEf64) 
+            {
+                // We have an impenetrably clever algorithm for ui64->double only.
+                setOperationAction(ISD.UINT_TO_FP   , MVT.i64  , Custom);
+            }
+            // We have an algorithm for SSE2, and we turn this into a 64-bit
+            // FILD for other targets.
+            setOperationAction(ISD.UINT_TO_FP   , MVT.i32  , Custom);
+        }
+
+        // Promote i1/i8 SINT_TO_FP to larger SINT_TO_FP's, as X86 doesn't have
+        // this operation.
+        setOperationAction(ISD.SINT_TO_FP       , MVT.i1   , Promote);
+        setOperationAction(ISD.SINT_TO_FP       , MVT.i8   , Promote);
+
+        if (!GenerateSoftFloatCalls.value) {
+            // SSE has no i16 to fp conversion, only i32
+            if (x86ScalarSSEf32) {
+                setOperationAction(ISD.SINT_TO_FP     , MVT.i16  , Promote);
+                // f32 and f64 cases are Legal, f80 case is not
+                setOperationAction(ISD.SINT_TO_FP     , MVT.i32  , Custom);
+            } else {
+                setOperationAction(ISD.SINT_TO_FP     , MVT.i16  , Custom);
+                setOperationAction(ISD.SINT_TO_FP     , MVT.i32  , Custom);
+            }
+        } else {
+            setOperationAction(ISD.SINT_TO_FP     , MVT.i16  , Promote);
+            setOperationAction(ISD.SINT_TO_FP     , MVT.i32  , Promote);
+        }
+
+        // In 32-bit mode these are custom lowered.  In 64-bit mode F32 and F64
+        // are Legal, f80 is custom lowered.
+        setOperationAction(ISD.FP_TO_SINT     , MVT.i64  , Custom);
+        setOperationAction(ISD.SINT_TO_FP     , MVT.i64  , Custom);
+
+        // Promote i1/i8 FP_TO_SINT to larger FP_TO_SINTS's, as X86 doesn't have
+        // this operation.
+        setOperationAction(ISD.FP_TO_SINT       , MVT.i1   , Promote);
+        setOperationAction(ISD.FP_TO_SINT       , MVT.i8   , Promote);
+
+        if (x86ScalarSSEf32) {
+            setOperationAction(ISD.FP_TO_SINT     , MVT.i16  , Promote);
+            // f32 and f64 cases are Legal, f80 case is not
+            setOperationAction(ISD.FP_TO_SINT     , MVT.i32  , Custom);
+        } else {
+            setOperationAction(ISD.FP_TO_SINT     , MVT.i16  , Custom);
+            setOperationAction(ISD.FP_TO_SINT     , MVT.i32  , Custom);
+        }
+
+        // Handle FP_TO_UINT by promoting the destination to a larger signed
+        // conversion.
+        setOperationAction(ISD.FP_TO_UINT       , MVT.i1   , Promote);
+        setOperationAction(ISD.FP_TO_UINT       , MVT.i8   , Promote);
+        setOperationAction(ISD.FP_TO_UINT       , MVT.i16  , Promote);
+
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.FP_TO_UINT     , MVT.i64  , Expand);
+            setOperationAction(ISD.FP_TO_UINT     , MVT.i32  , Promote);
+        }
+        else if (!GenerateSoftFloatCalls.value)
+        {
+            if (x86ScalarSSEf32 && !subtarget.hasSSE3())
+                // Expand FP_TO_UINT into a select.
+                // FIXME: We would like to use a Custom expander here eventually to do
+                // the optimal thing for SSE vs. the default expansion in the legalizer.
+                setOperationAction(ISD.FP_TO_UINT   , MVT.i32  , Expand);
+            else
+                // With SSE3 we can use fisttpll to convert to a signed i64; without
+                // SSE, we're stuck with a fistpll.
+                setOperationAction(ISD.FP_TO_UINT   , MVT.i32  , Custom);
+        }
+
+        // TODO: when we have SSE, these could be more efficient, by using movd/movq.
+        if (!x86ScalarSSEf64) {
+            setOperationAction(ISD.BIT_CONVERT      , MVT.f32  , Expand);
+            setOperationAction(ISD.BIT_CONVERT      , MVT.i32  , Expand);
+        }
+
+        // Scalar integer divide and remainder are lowered to use operations that
+        // produce two results, to match the available instructions. This exposes
+        // the two-result form to trivial CSE, which is able to combine x/y and x%y
+        // into a single instruction.
+        //
+        // Scalar integer multiply-high is also lowered to use two-result
+        // operations, to match the available instructions. However, plain multiply
+        // (low) operations are left as Legal, as there are single-result
+        // instructions for this in x86. Using the two-result multiply instructions
+        // when both high and low results are needed must be arranged by dagcombine.
+        setOperationAction(ISD.MULHS           , MVT.i8    , Expand);
+        setOperationAction(ISD.MULHU           , MVT.i8    , Expand);
+        setOperationAction(ISD.SDIV            , MVT.i8    , Expand);
+        setOperationAction(ISD.UDIV            , MVT.i8    , Expand);
+        setOperationAction(ISD.SREM            , MVT.i8    , Expand);
+        setOperationAction(ISD.UREM            , MVT.i8    , Expand);
+        setOperationAction(ISD.MULHS           , MVT.i16   , Expand);
+        setOperationAction(ISD.MULHU           , MVT.i16   , Expand);
+        setOperationAction(ISD.SDIV            , MVT.i16   , Expand);
+        setOperationAction(ISD.UDIV            , MVT.i16   , Expand);
+        setOperationAction(ISD.SREM            , MVT.i16   , Expand);
+        setOperationAction(ISD.UREM            , MVT.i16   , Expand);
+        setOperationAction(ISD.MULHS           , MVT.i32   , Expand);
+        setOperationAction(ISD.MULHU           , MVT.i32   , Expand);
+        setOperationAction(ISD.SDIV            , MVT.i32   , Expand);
+        setOperationAction(ISD.UDIV            , MVT.i32   , Expand);
+        setOperationAction(ISD.SREM            , MVT.i32   , Expand);
+        setOperationAction(ISD.UREM            , MVT.i32   , Expand);
+        setOperationAction(ISD.MULHS           , MVT.i64   , Expand);
+        setOperationAction(ISD.MULHU           , MVT.i64   , Expand);
+        setOperationAction(ISD.SDIV            , MVT.i64   , Expand);
+        setOperationAction(ISD.UDIV            , MVT.i64   , Expand);
+        setOperationAction(ISD.SREM            , MVT.i64   , Expand);
+        setOperationAction(ISD.UREM            , MVT.i64   , Expand);
+
+        setOperationAction(ISD.BR_JT            , MVT.Other, Expand);
+        setOperationAction(ISD.BRCOND           , MVT.Other, Custom);
+        setOperationAction(ISD.BR_CC            , MVT.Other, Expand);
+        setOperationAction(ISD.SELECT_CC        , MVT.Other, Expand);
+        if (subtarget.is64Bit())
+            setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i32, Legal);
+        setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i16  , Legal);
+        setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i8   , Legal);
+        setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i1   , Expand);
+        setOperationAction(ISD.FP_ROUND_INREG   , MVT.f32  , Expand);
+        setOperationAction(ISD.FREM             , MVT.f32  , Expand);
+        setOperationAction(ISD.FREM             , MVT.f64  , Expand);
+        setOperationAction(ISD.FREM             , MVT.f80  , Expand);
+        setOperationAction(ISD.FLT_ROUNDS_      , MVT.i32  , Custom);
+
+        setOperationAction(ISD.CTPOP            , MVT.i8   , Expand);
+        setOperationAction(ISD.CTTZ             , MVT.i8   , Custom);
+        setOperationAction(ISD.CTLZ             , MVT.i8   , Custom);
+        setOperationAction(ISD.CTPOP            , MVT.i16  , Expand);
+        setOperationAction(ISD.CTTZ             , MVT.i16  , Custom);
+        setOperationAction(ISD.CTLZ             , MVT.i16  , Custom);
+        setOperationAction(ISD.CTPOP            , MVT.i32  , Expand);
+        setOperationAction(ISD.CTTZ             , MVT.i32  , Custom);
+        setOperationAction(ISD.CTLZ             , MVT.i32  , Custom);
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.CTPOP          , MVT.i64  , Expand);
+            setOperationAction(ISD.CTTZ           , MVT.i64  , Custom);
+            setOperationAction(ISD.CTLZ           , MVT.i64  , Custom);
+        }
+
+        setOperationAction(ISD.READCYCLECOUNTER , MVT.i64  , Custom);
+        setOperationAction(ISD.BSWAP            , MVT.i16  , Expand);
+
+        // These should be promoted to a larger select which is supported.
+        setOperationAction(ISD.SELECT           , MVT.i1   , Promote);
+        setOperationAction(ISD.SELECT           , MVT.i8   , Promote);
+        // X86 wants to expand cmov itself.
+        setOperationAction(ISD.SELECT          , MVT.i16  , Custom);
+        setOperationAction(ISD.SELECT          , MVT.i32  , Custom);
+        setOperationAction(ISD.SELECT          , MVT.f32  , Custom);
+        setOperationAction(ISD.SELECT          , MVT.f64  , Custom);
+        setOperationAction(ISD.SELECT          , MVT.f80  , Custom);
+        setOperationAction(ISD.SETCC           , MVT.i8   , Custom);
+        setOperationAction(ISD.SETCC           , MVT.i16  , Custom);
+        setOperationAction(ISD.SETCC           , MVT.i32  , Custom);
+        setOperationAction(ISD.SETCC           , MVT.f32  , Custom);
+        setOperationAction(ISD.SETCC           , MVT.f64  , Custom);
+        setOperationAction(ISD.SETCC           , MVT.f80  , Custom);
+        if (subtarget.is64Bit())
+        {
+            setOperationAction(ISD.SELECT        , MVT.i64  , Custom);
+            setOperationAction(ISD.SETCC         , MVT.i64  , Custom);
+        }
+        setOperationAction(ISD.EH_RETURN       , MVT.Other, Custom);
+
+        // Darwin ABI issue.
+        setOperationAction(ISD.ConstantPool    , MVT.i32  , Custom);
+        setOperationAction(ISD.JumpTable       , MVT.i32  , Custom);
+        setOperationAction(ISD.GlobalAddress   , MVT.i32  , Custom);
+        setOperationAction(ISD.GlobalTLSAddress, MVT.i32  , Custom);
+        if (subtarget.is64Bit())
+            setOperationAction(ISD.GlobalTLSAddress, MVT.i64, Custom);
+        setOperationAction(ISD.ExternalSymbol  , MVT.i32  , Custom);
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.ConstantPool  , MVT.i64  , Custom);
+            setOperationAction(ISD.JumpTable     , MVT.i64  , Custom);
+            setOperationAction(ISD.GlobalAddress , MVT.i64  , Custom);
+            setOperationAction(ISD.ExternalSymbol, MVT.i64  , Custom);
+        }
+        // 64-bit addm sub, shl, sra, srl (iff 32-bit x86)
+        setOperationAction(ISD.SHL_PARTS       , MVT.i32  , Custom);
+        setOperationAction(ISD.SRA_PARTS       , MVT.i32  , Custom);
+        setOperationAction(ISD.SRL_PARTS       , MVT.i32  , Custom);
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.SHL_PARTS     , MVT.i64  , Custom);
+            setOperationAction(ISD.SRA_PARTS     , MVT.i64  , Custom);
+            setOperationAction(ISD.SRL_PARTS     , MVT.i64  , Custom);
+        }
+
+        if (subtarget.hasSSE1())
+            setOperationAction(ISD.PREFETCH      , MVT.Other, Legal);
+
+        if (!subtarget.hasSSE2())
+            setOperationAction(ISD.MEMBARRIER    , MVT.Other, Expand);
+
+        // Expand certain atomics
+        setOperationAction(ISD.ATOMIC_CMP_SWAP, MVT.i8, Custom);
+        setOperationAction(ISD.ATOMIC_CMP_SWAP, MVT.i16, Custom);
+        setOperationAction(ISD.ATOMIC_CMP_SWAP, MVT.i32, Custom);
+        setOperationAction(ISD.ATOMIC_CMP_SWAP, MVT.i64, Custom);
+
+        setOperationAction(ISD.ATOMIC_LOAD_SUB, MVT.i8, Custom);
+        setOperationAction(ISD.ATOMIC_LOAD_SUB, MVT.i16, Custom);
+        setOperationAction(ISD.ATOMIC_LOAD_SUB, MVT.i32, Custom);
+        setOperationAction(ISD.ATOMIC_LOAD_SUB, MVT.i64, Custom);
+
+        if (!subtarget.is64Bit()) {
+            setOperationAction(ISD.ATOMIC_LOAD_ADD, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_LOAD_SUB, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_LOAD_AND, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_LOAD_OR, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_LOAD_XOR, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_LOAD_NAND, MVT.i64, Custom);
+            setOperationAction(ISD.ATOMIC_SWAP, MVT.i64, Custom);
+        }
+
+        // Use the default ISD.DBG_STOPPOINT, ISD.DECLARE expansion.
+        setOperationAction(ISD.DBG_STOPPOINT, MVT.Other, Expand);
+        // FIXME - use subtarget debug flags
+        if (!subtarget.isTargetDarwin() &&
+                !subtarget.isTargetELF() &&
+                        !subtarget.isTargetCygMing()) {
+            setOperationAction(ISD.DBG_LABEL, MVT.Other, Expand);
+            setOperationAction(ISD.EH_LABEL, MVT.Other, Expand);
+        }
+
+        setOperationAction(ISD.EXCEPTIONADDR, MVT.i64, Expand);
+        setOperationAction(ISD.EHSELECTION,   MVT.i64, Expand);
+        setOperationAction(ISD.EXCEPTIONADDR, MVT.i32, Expand);
+        setOperationAction(ISD.EHSELECTION,   MVT.i32, Expand);
+        if (subtarget.is64Bit())
+        {
+            setExceptionPointerRegister(X86GenRegisterNames.RAX);
+            setExceptionSelectorRegister(X86GenRegisterNames.RDX);
+        } else {
+            setExceptionPointerRegister(X86GenRegisterNames.EAX);
+            setExceptionSelectorRegister(X86GenRegisterNames.EDX);
+        }
+        setOperationAction(ISD.FRAME_TO_ARGS_OFFSET, MVT.i32, Custom);
+        setOperationAction(ISD.FRAME_TO_ARGS_OFFSET, MVT.i64, Custom);
+
+        setOperationAction(ISD.TRAMPOLINE, MVT.Other, Custom);
+
+        setOperationAction(ISD.TRAP, MVT.Other, Legal);
+
+        // VASTART needs to be custom lowered to use the VarArgsFrameIndex
+        setOperationAction(ISD.VASTART           , MVT.Other, Custom);
+        setOperationAction(ISD.VAEND             , MVT.Other, Expand);
+        if (subtarget.is64Bit()) {
+            setOperationAction(ISD.VAARG           , MVT.Other, Custom);
+            setOperationAction(ISD.VACOPY          , MVT.Other, Custom);
+        } else {
+            setOperationAction(ISD.VAARG           , MVT.Other, Expand);
+            setOperationAction(ISD.VACOPY          , MVT.Other, Expand);
+        }
+
+        setOperationAction(ISD.STACKSAVE,          MVT.Other, Expand);
+        setOperationAction(ISD.STACKRESTORE,       MVT.Other, Expand);
+        if (subtarget.is64Bit())
+            setOperationAction(ISD.DYNAMIC_STACKALLOC, MVT.i64, Expand);
+        if (subtarget.isTargetCygMing())
+            setOperationAction(ISD.DYNAMIC_STACKALLOC, MVT.i32, Custom);
+        else
+            setOperationAction(ISD.DYNAMIC_STACKALLOC, MVT.i32, Expand);
+
+        if (!GenerateSoftFloatCalls.value && x86ScalarSSEf64) {
+            // f32 and f64 use SSE.
+            // Set up the FP register classes.
+            addRegisterClass(MVT.f32, X86GenRegisterInfo.FR32RegisterClass);
+            addRegisterClass(MVT.f64, X86GenRegisterInfo.FR64RegisterClass);
+
+            // Use ANDPD to simulate FABS.
+            setOperationAction(ISD.FABS , MVT.f64, Custom);
+            setOperationAction(ISD.FABS , MVT.f32, Custom);
+
+            // Use XORP to simulate FNEG.
+            setOperationAction(ISD.FNEG , MVT.f64, Custom);
+            setOperationAction(ISD.FNEG , MVT.f32, Custom);
+
+            // Use ANDPD and ORPD to simulate FCOPYSIGN.
+            setOperationAction(ISD.FCOPYSIGN, MVT.f64, Custom);
+            setOperationAction(ISD.FCOPYSIGN, MVT.f32, Custom);
+
+            // We don't support sin/cos/fmod
+            setOperationAction(ISD.FSIN , MVT.f64, Expand);
+            setOperationAction(ISD.FCOS , MVT.f64, Expand);
+            setOperationAction(ISD.FSIN , MVT.f32, Expand);
+            setOperationAction(ISD.FCOS , MVT.f32, Expand);
+
+            // Expand FP immediates into loads from the stack, except for the special
+            // cases we handle.
+            addLegalFPImmediate(new APFloat(+0.0)); // xorpd
+            addLegalFPImmediate(new APFloat(+0.0f)); // xorps
+        } else if (!GenerateSoftFloatCalls.value && x86ScalarSSEf32) {
+            // Use SSE for f32, x87 for f64.
+            // Set up the FP register classes.
+            addRegisterClass(MVT.f32, X86GenRegisterInfo.FR32RegisterClass);
+            addRegisterClass(MVT.f64, X86GenRegisterInfo.RFP64RegisterClass);
+
+            // Use ANDPS to simulate FABS.
+            setOperationAction(ISD.FABS , MVT.f32, Custom);
+
+            // Use XORP to simulate FNEG.
+            setOperationAction(ISD.FNEG , MVT.f32, Custom);
+
+            setOperationAction(ISD.UNDEF,     MVT.f64, Expand);
+
+            // Use ANDPS and ORPS to simulate FCOPYSIGN.
+            setOperationAction(ISD.FCOPYSIGN, MVT.f64, Expand);
+            setOperationAction(ISD.FCOPYSIGN, MVT.f32, Custom);
+
+            // We don't support sin/cos/fmod
+            setOperationAction(ISD.FSIN , MVT.f32, Expand);
+            setOperationAction(ISD.FCOS , MVT.f32, Expand);
+
+            // Special cases we handle for FP constants.
+            addLegalFPImmediate(new APFloat(+0.0f)); // xorps
+            addLegalFPImmediate(new APFloat(+0.0)); // FLD0
+            addLegalFPImmediate(new APFloat(+1.0)); // FLD1
+            addLegalFPImmediate(new APFloat(-0.0)); // FLD0/FCHS
+            addLegalFPImmediate(new APFloat(-1.0)); // FLD1/FCHS
+
+            if (!EnableUnsafeFPMath.value) {
+                setOperationAction(ISD.FSIN           , MVT.f64  , Expand);
+                setOperationAction(ISD.FCOS           , MVT.f64  , Expand);
+            }
+        } else if (!GenerateSoftFloatCalls.value) {
             // f32 and f64 in x87.
             // Set up the FP register classes.
-            addRegisterClass(new MVT(MVT.f32), X86GenRegisterInfo.RFP32RegisterClass);
-            addRegisterClass(new MVT(MVT.f64), X86GenRegisterInfo.RFP64RegisterClass);
+            addRegisterClass(MVT.f64, X86GenRegisterInfo.RFP64RegisterClass);
+            addRegisterClass(MVT.f32, X86GenRegisterInfo.RFP32RegisterClass);
+
+            setOperationAction(ISD.UNDEF,     MVT.f64, Expand);
+            setOperationAction(ISD.UNDEF,     MVT.f32, Expand);
+            setOperationAction(ISD.FCOPYSIGN, MVT.f64, Expand);
+            setOperationAction(ISD.FCOPYSIGN, MVT.f32, Expand);
+
+            if (!EnableUnsafeFPMath.value) {
+                setOperationAction(ISD.FSIN           , MVT.f64  , Expand);
+                setOperationAction(ISD.FCOS           , MVT.f64  , Expand);
+            }
+            addLegalFPImmediate(new APFloat(+0.0)); // FLD0
+            addLegalFPImmediate(new APFloat(+1.0)); // FLD1
+            addLegalFPImmediate(new APFloat(-0.0)); // FLD0/FCHS
+            addLegalFPImmediate(new APFloat(-1.0)); // FLD1/FCHS
+            addLegalFPImmediate(new APFloat(+0.0f)); // FLD0
+            addLegalFPImmediate(new APFloat(+1.0f)); // FLD1
+            addLegalFPImmediate(new APFloat(-0.0f)); // FLD0/FCHS
+            addLegalFPImmediate(new APFloat(-1.0f)); // FLD1/FCHS
         }
 
         // Long double always uses X87.
-        addRegisterClass(new MVT(MVT.f80), X86GenRegisterInfo.RFP80RegisterClass);
+        if (!GenerateSoftFloatCalls.value) {
+            addRegisterClass(MVT.f80, X86GenRegisterInfo.RFP80RegisterClass);
+            setOperationAction(ISD.UNDEF,     MVT.f80, Expand);
+            setOperationAction(ISD.FCOPYSIGN, MVT.f80, Expand);
+            {
+                OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
 
-        if (subtarget.hasMMX())
-        {
-            addRegisterClass(new MVT(MVT.v8i8), X86GenRegisterInfo.VR64RegisterClass);
-            addRegisterClass(new MVT(MVT.v4i16), X86GenRegisterInfo.VR64RegisterClass);
-            addRegisterClass(new MVT(MVT.v2i32), X86GenRegisterInfo.VR64RegisterClass);
-            addRegisterClass(new MVT(MVT.v2f32), X86GenRegisterInfo.VR64RegisterClass);
-            addRegisterClass(new MVT(MVT.v1i64), X86GenRegisterInfo.VR64RegisterClass);
-        }
-        if (subtarget.hasSSE1())
-        {
-            addRegisterClass(new MVT(MVT.v4f32), X86GenRegisterInfo.VR128RegisterClass);
-        }
-        if (subtarget.hasSSE2())
-        {
-            addRegisterClass(new MVT(MVT.v2f64), X86GenRegisterInfo.VR128RegisterClass);
+                APFloat TmpFlt = new APFloat(+0.0);
+                TmpFlt.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
+                addLegalFPImmediate(TmpFlt);  // FLD0
+                TmpFlt.changeSign();
+                addLegalFPImmediate(TmpFlt);  // FLD0/FCHS
+                APFloat TmpFlt2 = new APFloat(+1.0);
+                TmpFlt2.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
+                addLegalFPImmediate(TmpFlt2);  // FLD1
+                TmpFlt2.changeSign();
+                addLegalFPImmediate(TmpFlt2);  // FLD1/FCHS
+            }
 
-            addRegisterClass(new MVT(MVT.v16i8), X86GenRegisterInfo.VR128RegisterClass);
-            addRegisterClass(new MVT(MVT.v8i16), X86GenRegisterInfo.VR128RegisterClass);
-            addRegisterClass(new MVT(MVT.v4i32), X86GenRegisterInfo.VR128RegisterClass);
-            addRegisterClass(new MVT(MVT.v2i64), X86GenRegisterInfo.VR128RegisterClass);
+            if (!EnableUnsafeFPMath.value) {
+                setOperationAction(ISD.FSIN           , MVT.f80  , Expand);
+                setOperationAction(ISD.FCOS           , MVT.f80  , Expand);
+            }
         }
-        if (subtarget.hasAVX())
+
+        // Always use a library call for pow.
+        setOperationAction(ISD.FPOW             , MVT.f32  , Expand);
+        setOperationAction(ISD.FPOW             , MVT.f64  , Expand);
+        setOperationAction(ISD.FPOW             , MVT.f80  , Expand);
+
+        setOperationAction(ISD.FLOG, MVT.f80, Expand);
+        setOperationAction(ISD.FLOG2, MVT.f80, Expand);
+        setOperationAction(ISD.FLOG10, MVT.f80, Expand);
+        setOperationAction(ISD.FEXP, MVT.f80, Expand);
+        setOperationAction(ISD.FEXP2, MVT.f80, Expand);
+
+        // First set operation action for all vector types to either promote
+        // (for widening) or expand (for scalarization). Then we will selectively
+        // turn on ones that can be effectively codegen'd.
+        for (int VT = MVT.FIRST_VECTOR_VALUETYPE;
+             VT <= MVT.LAST_VECTOR_VALUETYPE; ++VT) 
         {
-            addRegisterClass(new MVT(MVT.v8f32), X86GenRegisterInfo.VR256RegisterClass);
-            addRegisterClass(new MVT(MVT.v4f64), X86GenRegisterInfo.VR256RegisterClass);
-            addRegisterClass(new MVT(MVT.v8i32), X86GenRegisterInfo.VR256RegisterClass);
-            addRegisterClass(new MVT(MVT.v4i64), X86GenRegisterInfo.VR256RegisterClass);
+            setOperationAction(ISD.ADD , VT, Expand);
+            setOperationAction(ISD.SUB , VT, Expand);
+            setOperationAction(ISD.FADD, VT, Expand);
+            setOperationAction(ISD.FNEG, VT, Expand);
+            setOperationAction(ISD.FSUB, VT, Expand);
+            setOperationAction(ISD.MUL , VT, Expand);
+            setOperationAction(ISD.FMUL, VT, Expand);
+            setOperationAction(ISD.SDIV, VT, Expand);
+            setOperationAction(ISD.UDIV, VT, Expand);
+            setOperationAction(ISD.FDIV, VT, Expand);
+            setOperationAction(ISD.SREM, VT, Expand);
+            setOperationAction(ISD.UREM, VT, Expand);
+            setOperationAction(ISD.LOAD, VT, Expand);
+            setOperationAction(ISD.VECTOR_SHUFFLE, VT, Expand);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT,VT,Expand);
+            setOperationAction(ISD.EXTRACT_SUBVECTOR,VT,Expand);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,VT, Expand);
+            setOperationAction(ISD.FABS, VT, Expand);
+            setOperationAction(ISD.FSIN, VT, Expand);
+            setOperationAction(ISD.FCOS, VT, Expand);
+            setOperationAction(ISD.FREM, VT, Expand);
+            setOperationAction(ISD.FPOWI, VT, Expand);
+            setOperationAction(ISD.FSQRT, VT, Expand);
+            setOperationAction(ISD.FCOPYSIGN, VT, Expand);
+            setOperationAction(ISD.SMUL_LOHI, VT, Expand);
+            setOperationAction(ISD.UMUL_LOHI, VT, Expand);
+            setOperationAction(ISD.SDIVREM, VT, Expand);
+            setOperationAction(ISD.UDIVREM, VT, Expand);
+            setOperationAction(ISD.FPOW, VT, Expand);
+            setOperationAction(ISD.CTPOP, VT, Expand);
+            setOperationAction(ISD.CTTZ, VT, Expand);
+            setOperationAction(ISD.CTLZ, VT, Expand);
+            setOperationAction(ISD.SHL, VT, Expand);
+            setOperationAction(ISD.SRA, VT, Expand);
+            setOperationAction(ISD.SRL, VT, Expand);
+            setOperationAction(ISD.ROTL, VT, Expand);
+            setOperationAction(ISD.ROTR, VT, Expand);
+            setOperationAction(ISD.BSWAP, VT, Expand);
+            setOperationAction(ISD.VSETCC, VT, Expand);
+            setOperationAction(ISD.FLOG, VT, Expand);
+            setOperationAction(ISD.FLOG2, VT, Expand);
+            setOperationAction(ISD.FLOG10, VT, Expand);
+            setOperationAction(ISD.FEXP, VT, Expand);
+            setOperationAction(ISD.FEXP2, VT, Expand);
+            setOperationAction(ISD.FP_TO_UINT, VT, Expand);
+            setOperationAction(ISD.FP_TO_SINT, VT, Expand);
+            setOperationAction(ISD.UINT_TO_FP, VT, Expand);
+            setOperationAction(ISD.SINT_TO_FP, VT, Expand);
         }
+
+        // FIXME: In order to prevent SSE instructions being expanded to MMX ones
+        // with -msoft-float, disable use of MMX as well.
+        if (!GenerateSoftFloatCalls.value && !DisableMMX.value && subtarget.hasMMX()) {
+            addRegisterClass(MVT.v8i8,  X86GenRegisterInfo.VR64RegisterClass);
+            addRegisterClass(MVT.v4i16, X86GenRegisterInfo.VR64RegisterClass);
+            addRegisterClass(MVT.v2i32, X86GenRegisterInfo.VR64RegisterClass);
+            addRegisterClass(MVT.v2f32, X86GenRegisterInfo.VR64RegisterClass);
+            addRegisterClass(MVT.v1i64, X86GenRegisterInfo.VR64RegisterClass);
+
+            setOperationAction(ISD.ADD,                MVT.v8i8,  Legal);
+            setOperationAction(ISD.ADD,                MVT.v4i16, Legal);
+            setOperationAction(ISD.ADD,                MVT.v2i32, Legal);
+            setOperationAction(ISD.ADD,                MVT.v1i64, Legal);
+
+            setOperationAction(ISD.SUB,                MVT.v8i8,  Legal);
+            setOperationAction(ISD.SUB,                MVT.v4i16, Legal);
+            setOperationAction(ISD.SUB,                MVT.v2i32, Legal);
+            setOperationAction(ISD.SUB,                MVT.v1i64, Legal);
+
+            setOperationAction(ISD.MULHS,              MVT.v4i16, Legal);
+            setOperationAction(ISD.MUL,                MVT.v4i16, Legal);
+
+            setOperationAction(ISD.AND,                MVT.v8i8,  Promote);
+            addPromotedToType (ISD.AND,                MVT.v8i8,  MVT.v1i64);
+            setOperationAction(ISD.AND,                MVT.v4i16, Promote);
+            addPromotedToType (ISD.AND,                MVT.v4i16, MVT.v1i64);
+            setOperationAction(ISD.AND,                MVT.v2i32, Promote);
+            addPromotedToType (ISD.AND,                MVT.v2i32, MVT.v1i64);
+            setOperationAction(ISD.AND,                MVT.v1i64, Legal);
+
+            setOperationAction(ISD.OR,                 MVT.v8i8,  Promote);
+            addPromotedToType (ISD.OR,                 MVT.v8i8,  MVT.v1i64);
+            setOperationAction(ISD.OR,                 MVT.v4i16, Promote);
+            addPromotedToType (ISD.OR,                 MVT.v4i16, MVT.v1i64);
+            setOperationAction(ISD.OR,                 MVT.v2i32, Promote);
+            addPromotedToType (ISD.OR,                 MVT.v2i32, MVT.v1i64);
+            setOperationAction(ISD.OR,                 MVT.v1i64, Legal);
+
+            setOperationAction(ISD.XOR,                MVT.v8i8,  Promote);
+            addPromotedToType (ISD.XOR,                MVT.v8i8,  MVT.v1i64);
+            setOperationAction(ISD.XOR,                MVT.v4i16, Promote);
+            addPromotedToType (ISD.XOR,                MVT.v4i16, MVT.v1i64);
+            setOperationAction(ISD.XOR,                MVT.v2i32, Promote);
+            addPromotedToType (ISD.XOR,                MVT.v2i32, MVT.v1i64);
+            setOperationAction(ISD.XOR,                MVT.v1i64, Legal);
+
+            setOperationAction(ISD.LOAD,               MVT.v8i8,  Promote);
+            addPromotedToType (ISD.LOAD,               MVT.v8i8,  MVT.v1i64);
+            setOperationAction(ISD.LOAD,               MVT.v4i16, Promote);
+            addPromotedToType (ISD.LOAD,               MVT.v4i16, MVT.v1i64);
+            setOperationAction(ISD.LOAD,               MVT.v2i32, Promote);
+            addPromotedToType (ISD.LOAD,               MVT.v2i32, MVT.v1i64);
+            setOperationAction(ISD.LOAD,               MVT.v2f32, Promote);
+            addPromotedToType (ISD.LOAD,               MVT.v2f32, MVT.v1i64);
+            setOperationAction(ISD.LOAD,               MVT.v1i64, Legal);
+
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v8i8,  Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v4i16, Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v2i32, Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v2f32, Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v1i64, Custom);
+
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v8i8,  Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v4i16, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v2i32, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v1i64, Custom);
+
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v2f32, Custom);
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v8i8,  Custom);
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v4i16, Custom);
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v1i64, Custom);
+
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4i16, Custom);
+
+            setTruncStoreAction(MVT.v8i16,             MVT.v8i8, Expand);
+            setOperationAction(ISD.TRUNCATE,           MVT.v8i8, Expand);
+            setOperationAction(ISD.SELECT,             MVT.v8i8, Promote);
+            setOperationAction(ISD.SELECT,             MVT.v4i16, Promote);
+            setOperationAction(ISD.SELECT,             MVT.v2i32, Promote);
+            setOperationAction(ISD.SELECT,             MVT.v1i64, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v8i8, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v4i16, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v2i32, Custom);
+        }
+
+        if (!GenerateSoftFloatCalls.value && subtarget.hasSSE1()) 
+        {
+            addRegisterClass(MVT.v4f32, X86GenRegisterInfo.VR128RegisterClass);
+
+            setOperationAction(ISD.FADD,               MVT.v4f32, Legal);
+            setOperationAction(ISD.FSUB,               MVT.v4f32, Legal);
+            setOperationAction(ISD.FMUL,               MVT.v4f32, Legal);
+            setOperationAction(ISD.FDIV,               MVT.v4f32, Legal);
+            setOperationAction(ISD.FSQRT,              MVT.v4f32, Legal);
+            setOperationAction(ISD.FNEG,               MVT.v4f32, Custom);
+            setOperationAction(ISD.LOAD,               MVT.v4f32, Legal);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v4f32, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v4f32, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v4f32, Custom);
+            setOperationAction(ISD.SELECT,             MVT.v4f32, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v4f32, Custom);
+        }
+
+        if (!GenerateSoftFloatCalls.value && subtarget.hasSSE2()) {
+            addRegisterClass(MVT.v2f64, X86GenRegisterInfo.VR128RegisterClass);
+
+            // FIXME: Unfortunately -soft-float and -no-implicit-float means XMM
+            // registers cannot be used even for integer operations.
+            addRegisterClass(MVT.v16i8, X86GenRegisterInfo.VR128RegisterClass);
+            addRegisterClass(MVT.v8i16, X86GenRegisterInfo.VR128RegisterClass);
+            addRegisterClass(MVT.v4i32, X86GenRegisterInfo.VR128RegisterClass);
+            addRegisterClass(MVT.v2i64, X86GenRegisterInfo.VR128RegisterClass);
+
+            setOperationAction(ISD.ADD,                MVT.v16i8, Legal);
+            setOperationAction(ISD.ADD,                MVT.v8i16, Legal);
+            setOperationAction(ISD.ADD,                MVT.v4i32, Legal);
+            setOperationAction(ISD.ADD,                MVT.v2i64, Legal);
+            setOperationAction(ISD.MUL,                MVT.v2i64, Custom);
+            setOperationAction(ISD.SUB,                MVT.v16i8, Legal);
+            setOperationAction(ISD.SUB,                MVT.v8i16, Legal);
+            setOperationAction(ISD.SUB,                MVT.v4i32, Legal);
+            setOperationAction(ISD.SUB,                MVT.v2i64, Legal);
+            setOperationAction(ISD.MUL,                MVT.v8i16, Legal);
+            setOperationAction(ISD.FADD,               MVT.v2f64, Legal);
+            setOperationAction(ISD.FSUB,               MVT.v2f64, Legal);
+            setOperationAction(ISD.FMUL,               MVT.v2f64, Legal);
+            setOperationAction(ISD.FDIV,               MVT.v2f64, Legal);
+            setOperationAction(ISD.FSQRT,              MVT.v2f64, Legal);
+            setOperationAction(ISD.FNEG,               MVT.v2f64, Custom);
+
+            setOperationAction(ISD.VSETCC,             MVT.v2f64, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v16i8, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v8i16, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v4i32, Custom);
+
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v16i8, Custom);
+            setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v8i16, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v8i16, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4i32, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4f32, Custom);
+
+            // Custom lower build_vector, vector_shuffle, and extract_vector_elt.
+            for (int i = MVT.v16i8; i != MVT.v2i64; ++i) {
+                EVT VT = new EVT(i);
+                // Do not attempt to custom lower non-power-of-2 vectors
+                if (!Util.isPowerOf2(VT.getVectorNumElements()))
+                    continue;
+                // Do not attempt to custom lower non-128-bit vectors
+                if (!VT.is128BitVector())
+                    continue;
+                setOperationAction(ISD.BUILD_VECTOR,
+                        VT.getSimpleVT().simpleVT, Custom);
+                setOperationAction(ISD.VECTOR_SHUFFLE,
+                        VT.getSimpleVT().simpleVT, Custom);
+                setOperationAction(ISD.EXTRACT_VECTOR_ELT,
+                        VT.getSimpleVT().simpleVT, Custom);
+            }
+
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v2f64, Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v2i64, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v2f64, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v2i64, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v2f64, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v2f64, Custom);
+
+            if (subtarget.is64Bit()) {
+                setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v2i64, Custom);
+                setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v2i64, Custom);
+            }
+
+            // Promote v16i8, v8i16, v4i32 load, select, and, or, xor to v2i64.
+            for (int i = (int)MVT.v16i8; i != (int)MVT.v2i64; i++) {
+                MVT SVT = new MVT(i);
+                EVT VT = new EVT(SVT);
+
+                // Do not attempt to promote non-128-bit vectors
+                if (!VT.is128BitVector()) {
+                    continue;
+                }
+                setOperationAction(ISD.AND,    SVT.simpleVT, Promote);
+                addPromotedToType (ISD.AND,    SVT.simpleVT, MVT.v2i64);
+                setOperationAction(ISD.OR,     SVT.simpleVT, Promote);
+                addPromotedToType (ISD.OR,     SVT.simpleVT, MVT.v2i64);
+                setOperationAction(ISD.XOR,    SVT.simpleVT, Promote);
+                addPromotedToType (ISD.XOR,    SVT.simpleVT, MVT.v2i64);
+                setOperationAction(ISD.LOAD,   SVT.simpleVT, Promote);
+                addPromotedToType (ISD.LOAD,   SVT.simpleVT, MVT.v2i64);
+                setOperationAction(ISD.SELECT, SVT.simpleVT, Promote);
+                addPromotedToType (ISD.SELECT, SVT.simpleVT, MVT.v2i64);
+            }
+
+            setTruncStoreAction(MVT.f64, MVT.f32, Expand);
+
+            // Custom lower v2i64 and v2f64 selects.
+            setOperationAction(ISD.LOAD,               MVT.v2f64, Legal);
+            setOperationAction(ISD.LOAD,               MVT.v2i64, Legal);
+            setOperationAction(ISD.SELECT,             MVT.v2f64, Custom);
+            setOperationAction(ISD.SELECT,             MVT.v2i64, Custom);
+
+            setOperationAction(ISD.FP_TO_SINT,         MVT.v4i32, Legal);
+            setOperationAction(ISD.SINT_TO_FP,         MVT.v4i32, Legal);
+            if (!DisableMMX.value && subtarget.hasMMX()) {
+                setOperationAction(ISD.FP_TO_SINT,         MVT.v2i32, Custom);
+                setOperationAction(ISD.SINT_TO_FP,         MVT.v2i32, Custom);
+            }
+        }
+
+        if (subtarget.hasSSE41()) {
+            // FIXME: Do we need to handle scalar-to-vector here?
+            setOperationAction(ISD.MUL,                MVT.v4i32, Legal);
+
+            // i8 and i16 vectors are custom , because the source register and source
+            // source memory operand types are not the same width.  f32 vectors are
+            // custom since the immediate controlling the insert encodes additional
+            // information.
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v16i8, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v8i16, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4i32, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4f32, Custom);
+
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v16i8, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v8i16, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v4i32, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v4f32, Custom);
+
+            if (subtarget.is64Bit()) {
+                setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v2i64, Legal);
+                setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v2i64, Legal);
+            }
+        }
+
+        if (subtarget.hasSSE42()) {
+            setOperationAction(ISD.VSETCC,             MVT.v2i64, Custom);
+        }
+
+        if (!GenerateSoftFloatCalls.value && subtarget.hasAVX()) {
+            addRegisterClass(MVT.v8f32, X86GenRegisterInfo.VR256RegisterClass);
+            addRegisterClass(MVT.v4f64, X86GenRegisterInfo.VR256RegisterClass);
+            addRegisterClass(MVT.v8i32, X86GenRegisterInfo.VR256RegisterClass);
+            addRegisterClass(MVT.v4i64, X86GenRegisterInfo.VR256RegisterClass);
+
+            setOperationAction(ISD.LOAD,               MVT.v8f32, Legal);
+            setOperationAction(ISD.LOAD,               MVT.v8i32, Legal);
+            setOperationAction(ISD.LOAD,               MVT.v4f64, Legal);
+            setOperationAction(ISD.LOAD,               MVT.v4i64, Legal);
+            setOperationAction(ISD.FADD,               MVT.v8f32, Legal);
+            setOperationAction(ISD.FSUB,               MVT.v8f32, Legal);
+            setOperationAction(ISD.FMUL,               MVT.v8f32, Legal);
+            setOperationAction(ISD.FDIV,               MVT.v8f32, Legal);
+            setOperationAction(ISD.FSQRT,              MVT.v8f32, Legal);
+            setOperationAction(ISD.FNEG,               MVT.v8f32, Custom);
+            //setOperationAction(ISD.BUILD_VECTOR,       MVT.v8f32, Custom);
+            //setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v8f32, Custom);
+            //setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v8f32, Custom);
+            //setOperationAction(ISD.SELECT,             MVT.v8f32, Custom);
+            //setOperationAction(ISD.VSETCC,             MVT.v8f32, Custom);
+
+            // Operations to consider commented out -v16i16 v32i8
+            //setOperationAction(ISD.ADD,                MVT.v16i16, Legal);
+            setOperationAction(ISD.ADD,                MVT.v8i32, Custom);
+            setOperationAction(ISD.ADD,                MVT.v4i64, Custom);
+            //setOperationAction(ISD.SUB,                MVT.v32i8, Legal);
+            //setOperationAction(ISD.SUB,                MVT.v16i16, Legal);
+            setOperationAction(ISD.SUB,                MVT.v8i32, Custom);
+            setOperationAction(ISD.SUB,                MVT.v4i64, Custom);
+            //setOperationAction(ISD.MUL,                MVT.v16i16, Legal);
+            setOperationAction(ISD.FADD,               MVT.v4f64, Legal);
+            setOperationAction(ISD.FSUB,               MVT.v4f64, Legal);
+            setOperationAction(ISD.FMUL,               MVT.v4f64, Legal);
+            setOperationAction(ISD.FDIV,               MVT.v4f64, Legal);
+            setOperationAction(ISD.FSQRT,              MVT.v4f64, Legal);
+            setOperationAction(ISD.FNEG,               MVT.v4f64, Custom);
+
+            setOperationAction(ISD.VSETCC,             MVT.v4f64, Custom);
+            // setOperationAction(ISD.VSETCC,             MVT.v32i8, Custom);
+            // setOperationAction(ISD.VSETCC,             MVT.v16i16, Custom);
+            setOperationAction(ISD.VSETCC,             MVT.v8i32, Custom);
+
+            // setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v32i8, Custom);
+            // setOperationAction(ISD.SCALAR_TO_VECTOR,   MVT.v16i16, Custom);
+            // setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v16i16, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v8i32, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v8f32, Custom);
+
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v4f64, Custom);
+            setOperationAction(ISD.BUILD_VECTOR,       MVT.v4i64, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v4f64, Custom);
+            setOperationAction(ISD.VECTOR_SHUFFLE,     MVT.v4i64, Custom);
+            setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4f64, Custom);
+            setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v4f64, Custom);
+
+            // Not sure we want to do this since there are no 256-bit integer
+            // operations in AVX
+
+            // Custom lower build_vector, vector_shuffle, and extract_vector_elt.
+            // This includes 256-bit vectors
+            for (int i = (int)MVT.v16i8; i != (int)MVT.v4i64; ++i) {
+                EVT VT = new EVT(i);
+
+                // Do not attempt to custom lower non-power-of-2 vectors
+                if (!Util.isPowerOf2(VT.getVectorNumElements()))
+                    continue;
+
+                setOperationAction(ISD.BUILD_VECTOR,       VT.getSimpleVT().simpleVT, Custom);
+                setOperationAction(ISD.VECTOR_SHUFFLE,     VT.getSimpleVT().simpleVT, Custom);
+                setOperationAction(ISD.EXTRACT_VECTOR_ELT, VT.getSimpleVT().simpleVT, Custom);
+            }
+
+            if (subtarget.is64Bit()) {
+                setOperationAction(ISD.INSERT_VECTOR_ELT,  MVT.v4i64, Custom);
+                setOperationAction(ISD.EXTRACT_VECTOR_ELT, MVT.v4i64, Custom);
+            }
+
+            // Not sure we want to do this since there are no 256-bit integer
+            // operations in AVX
+
+            // Promote v32i8, v16i16, v8i32 load, select, and, or, xor to v4i64.
+            // Including 256-bit vectors
+            for (int i = (int)MVT.v16i8; i != (int)MVT.v4i64; i++) {
+                EVT VT = new EVT(i);
+
+                if (!VT.is256BitVector()) {
+                    continue;
+                }
+                setOperationAction(ISD.AND,    i, Promote);
+                addPromotedToType (ISD.AND,    i, MVT.v4i64);
+                setOperationAction(ISD.OR,     i, Promote);
+                addPromotedToType (ISD.OR,     i, MVT.v4i64);
+                setOperationAction(ISD.XOR,    i, Promote);
+                addPromotedToType (ISD.XOR,    i, MVT.v4i64);
+                setOperationAction(ISD.LOAD,   i, Promote);
+                addPromotedToType (ISD.LOAD,   i, MVT.v4i64);
+                setOperationAction(ISD.SELECT, i, Promote);
+                addPromotedToType (ISD.SELECT, i, MVT.v4i64);
+            }
+
+            setTruncStoreAction(MVT.f64, MVT.f32, Expand);
+
+        }
+
+        // We want to custom lower some of our intrinsics.
+        setOperationAction(ISD.INTRINSIC_WO_CHAIN, MVT.Other, Custom);
+
+        // Add/Sub/Mul with overflow operations are custom lowered.
+        setOperationAction(ISD.SADDO, MVT.i32, Custom);
+        setOperationAction(ISD.SADDO, MVT.i64, Custom);
+        setOperationAction(ISD.UADDO, MVT.i32, Custom);
+        setOperationAction(ISD.UADDO, MVT.i64, Custom);
+        setOperationAction(ISD.SSUBO, MVT.i32, Custom);
+        setOperationAction(ISD.SSUBO, MVT.i64, Custom);
+        setOperationAction(ISD.USUBO, MVT.i32, Custom);
+        setOperationAction(ISD.USUBO, MVT.i64, Custom);
+        setOperationAction(ISD.SMULO, MVT.i32, Custom);
+        setOperationAction(ISD.SMULO, MVT.i64, Custom);
+
+        if (!subtarget.is64Bit())
+        {
+            // These libcalls are not available in 32-bit.
+            setLibCallName(RTLIB.SHL_I128, null);
+            setLibCallName(RTLIB.SRL_I128, null);
+            setLibCallName(RTLIB.SRA_I128, null);
+        }
+
+        // We have target-specific dag combine patterns for the following nodes:
+        setTargetDAGCombine(ISD.VECTOR_SHUFFLE);
+        setTargetDAGCombine(ISD.BUILD_VECTOR);
+        setTargetDAGCombine(ISD.SELECT);
+        setTargetDAGCombine(ISD.SHL);
+        setTargetDAGCombine(ISD.SRA);
+        setTargetDAGCombine(ISD.SRL);
+        setTargetDAGCombine(ISD.STORE);
+        setTargetDAGCombine(ISD.MEMBARRIER);
+        if (subtarget.is64Bit())
+            setTargetDAGCombine(ISD.MUL);
 
         computeRegisterProperties();
+
+        // FIXME: These should be based on subtarget info. Plus, the values should
+        // be smaller when we are in optimizing for size mode.
+        maxStoresPerMemset = 16; // For @llvm.memset -> sequence of stores
+        maxStoresPerMemcpy = 16; // For @llvm.memcpy -> sequence of stores
+        maxStoresPerMemmove = 3; // For @llvm.memmove -> sequence of stores
+        setPrefLoopAlignment = 16;
+        benefitFromCodePlacementOpt = true;
     }
 
     @Override

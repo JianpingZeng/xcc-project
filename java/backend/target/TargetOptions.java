@@ -111,6 +111,42 @@ public class TargetOptions
                     desc("Verify generated machine code"),
                     init(false));
 
+    public static final BooleanOpt ViewDAGBeforeISel =
+            new BooleanOpt(optionName("view-dags-before-isel"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Pop up a window to show dags before isel"),
+                    init(false));
+    public static final BooleanOpt ViewDAGBeforeSched =
+            new BooleanOpt(optionName("view-dags-before-sched"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Pop up a window to show dags before sched"),
+                    init(false));
+    public static final BooleanOpt ViewDAGAfterSched =
+            new BooleanOpt(optionName("view-dags-after-sched"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Pop up a window to show dags after sched"),
+                    init(false));
+
+    public static final BooleanOpt GenerateSoftFloatCalls =
+            new BooleanOpt(optionName("soft-float"),
+                    desc("Generate software floating point library calls"),
+                    init(false));
+    public static final Opt<FloatABI> FloatABIForCalls =
+            new Opt<FloatABI>(new Parser<>(),
+                    optionName("float-abi"),
+                    desc("Choose float ABI type"),
+                    init(FloatABI.Default),
+                    new ValueClass<>(
+                            new ValueClass.Entry<>(FloatABI.Default, "default", "Target default float ABI type"),
+                            new ValueClass.Entry<>(FloatABI.Soft, "soft", "Soft float ABI (implied by -soft-float)"),
+                            new ValueClass.Entry<>(FloatABI.Hard, "hard", "Hard float ABI (uses FP registers)")));
+
+    public static final BooleanOpt DisableMMX =
+            new BooleanOpt(optionName("disable-mmx"),
+                    desc("Disable use of MMX"),
+                    new OptionHiddenApplicator(Hidden),
+                    init(false));
+
     public static void registerTargetOptions()
     {}
 }
