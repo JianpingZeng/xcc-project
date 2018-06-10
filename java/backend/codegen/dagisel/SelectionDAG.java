@@ -1283,11 +1283,12 @@ public class SelectionDAG
 
     public void removeDeadNodes(ArrayList<SDNode> deadNodes, DAGUpdateListener listener)
     {
-        for (ListIterator<SDNode> itr = deadNodes.listIterator(); itr.hasNext(); )
+        for (int i = 0, e = deadNodes.size(); i < e;i++)
         {
-            SDNode node = itr.next();
-            itr.remove();
-
+            SDNode node = deadNodes.get(0);
+            deadNodes.remove(i);
+            --e;
+            --i;
             if (listener != null)
                 listener.nodeDeleted(node, null);
 
@@ -1300,9 +1301,13 @@ public class SelectionDAG
                     use.set(new SDValue());
 
                     if (operand.isUseEmpty())
+                    {
                         deadNodes.add(operand);
+                        ++e;
+                    }
                 }
             }
+            node.setNodeID(ISD.DELETED_NODE);
         }
     }
 
@@ -2446,7 +2451,7 @@ public class SelectionDAG
             id = 0;
         }
 
-        n.setNodeID(opc);
+        n.setOpcode(opc);
         n.valueList = vts.vts;
 
         HashSet<SDNode> deadNodeSet = new HashSet<>();
@@ -2457,12 +2462,10 @@ public class SelectionDAG
             if (used.isUseEmpty())
                 deadNodeSet.add(used);
         }
+        n.operandList = new SDUse[numOps];
+        for (int i = 0; i < numOps; i++)
+            n.operandList[i] = new SDUse();
 
-        if (numOps > n.getNumOperands())
-        {
-            n.operandList = new SDUse[numOps];
-            Arrays.fill(n.operandList, new SDUse());
-        }
         for (int i = 0; i < numOps; i++)
         {
             n.operandList[i].setUser(n);
@@ -3489,6 +3492,21 @@ public class SelectionDAG
         {
             filename.delete();
         }
+    }
+
+    public void repositionNode(SDNode position, SDNode n)
+    {
+        assert position != null;
+        if (position.equals(n))
+            return;
+        int index = allNodes.indexOf(position);
+        assert index != -1;
+        int nIdx = allNodes.indexOf(n);
+        assert nIdx != -1;
+        allNodes.add(index, n);
+        if (index < nIdx)
+            ++nIdx;
+        allNodes.remove(nIdx);
     }
 }
 

@@ -37,6 +37,7 @@ import static backend.codegen.dagisel.LoadExtType.EXTLOAD;
 import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
+import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
 
 public abstract class X86DAGToDAGISel extends SelectionDAGISel
 {
@@ -75,7 +76,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         while (iselPosition != 0)
         {
             SDNode node = curDAG.allNodes.get(--iselPosition);
-            if (node.isUseEmpty())
+            if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE)
                 continue;
 
             SDNode resNode = select(new SDValue(node, 0));
@@ -89,6 +90,15 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 ISelUpdater updater = new ISelUpdater(iselPosition, curDAG.allNodes);
                 curDAG.removeDeadNode(node, updater);
                 iselPosition = updater.getISelPos();
+            }
+        }
+        for (int i = 0, e = curDAG.allNodes.size(); i < e; i++)
+        {
+            if (curDAG.allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
+            {
+                curDAG.allNodes.remove(i);
+                --i;
+                --e;
             }
         }
         dummy.getValue().getNode().getUseList().clear();
@@ -569,9 +579,348 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         switch (n.getOpcode())
         {
             default: break;
+            case ISD.Constant:
+            {
+                long val = ((ConstantSDNode)n.getNode()).getSExtValue();
+                if (!is64Bit || X86.isOffsetSuitableForCodeModel(am.disp+val,
+                        m, am.hasSymbolicDisplacement()))
+                {
+                    am.disp += val;
+                    return false;
+                }
+                break;
+            }
+            case X86ISD.SegmentBaseAddress:
+            {
+                if (!matchSegmentBaseAddress(n, am))
+                    return false;
+                break;
+            }
+            case X86ISD.Wrapper:
+            case X86ISD.WrapperRIP:
+            {
+                if (!matchWrapper(n, am))
+                    return false;
+                break;
+            }
+            case ISD.LOAD:
+                if (!matchLoad(n, am))
+                    return false;
+                break;
+            case ISD.FrameIndex:
+                if (am.baseType == RegBase && am.base.reg.getNode() == null)
+                {
+                    am.baseType = FrameIndexBase;
+                    am.base.frameIndex = ((FrameIndexSDNode)n.getNode()).getFrameIndex();
+                    return false;
+                }
+                break;
+            case ISD.SHL:
+                if (am.indexReg.getNode() != null || am.scale == 1)
+                    break;
+                if (n.getOperand(1).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode csd = (ConstantSDNode)n.getOperand(1).getNode();
+                    long val = csd.getZExtValue();
+                    if (val == 1 || val == 2 || val == 3)
+                    {
+                        am.scale = 1 << val;
+                        SDValue shVal = n.getOperand(0);
+                        if (shVal.getOpcode() == ISD.ADD && shVal.hasOneUse() &&
+                                shVal.getOperand(1).getNode() instanceof ConstantSDNode)
+                        {
+                            am.indexReg = shVal.getOperand(0);
+                            ConstantSDNode addVal = (ConstantSDNode)shVal.getOperand(1).getNode();
+                            long disp = am.disp +(addVal.getSExtValue() << val);
+                            if (!is64Bit || X86.isOffsetSuitableForCodeModel(disp,
+                                    m, am.hasSymbolicDisplacement()))
+                                am.disp = Math.toIntExact(disp);
+                            else
+                            {
+                                am.indexReg = shVal;
+                            }
+                        }
+                        else
+                        {
+                            am.indexReg = shVal;
+                        }
+                        return false;
+                    }
+                    break;
+                }
+                // Fall through
+            case ISD.SMUL_LOHI:
+            case ISD.UMUL_LOHI:
+                if (n.getResNo() != 0) break;
+                // Fall through
+            case ISD.MUL:
+            case X86ISD.MUL_IMM:
+                // X*[3,5,9] --> X+X*[2,4,8]
+                if (am.baseType == RegBase &&
+                        am.base.reg.getNode() == null &&
+                        am.indexReg.getNode() == null)
+                {
+                    if (n.getOperand(1).getNode() instanceof ConstantSDNode)
+                    {
+                        ConstantSDNode csd = (ConstantSDNode)n.getOperand(1).getNode();
+                        long val = csd.getZExtValue();
+                        if (val == 3 || val == 5 || val == 9)
+                        {
+                            am.scale = (int) (val - 1);
+                            SDValue mulVal = n.getOperand(0);
+                            SDValue reg;
+                            if (mulVal.getOpcode() == ISD.ADD && mulVal.hasOneUse() &&
+                                    mulVal.getOperand(1).getNode() instanceof ConstantSDNode)
+                            {
+                                reg = mulVal.getOperand(0);
+                                ConstantSDNode addVal = (ConstantSDNode)mulVal.getOperand(1).getNode();
+                                long disp = am.disp + addVal.getSExtValue() * val;
 
+                                if (!is64Bit || X86.isOffsetSuitableForCodeModel(disp,
+                                        m, am.hasSymbolicDisplacement()))
+                                    am.disp = Math.toIntExact(disp);
+                                else
+                                    reg = n.getOperand(0);
+                            }
+                            else
+                            {
+                                reg = n.getOperand(0);
+                            }
+
+                            am.indexReg = am.base.reg = reg;
+                            return false;
+                        }
+                    }
+                }
+                break;
+            case ISD.SUB:
+            {
+                X86ISelAddressMode backup = am.clone();
+                if (matchAddressRecursively(n.getOperand(0), am, depth+1))
+                {
+                    am = backup;
+                    break;
+                }
+                if (am.indexReg.getNode() != null || am.isRIPRelative())
+                {
+                    am = backup;
+                    break;
+                }
+                int cost = 0;
+                SDValue rhs = n.getOperand(1);
+                int rhsOpc = rhs.getOpcode();
+                if (!rhs.hasOneUse() ||
+                        rhsOpc == ISD.CopyFromReg ||
+                        rhsOpc == ISD.TRUNCATE ||
+                        rhsOpc == ISD.ANY_EXTEND ||
+                        (rhsOpc == ISD.ZERO_EXTEND &&
+                        rhs.getOperand(0).getValueType().equals(new EVT(MVT.i32))))
+                    ++cost;
+
+                if ((am.baseType == RegBase && am.base.reg.getNode() != null &&
+                    !am.base.reg.getNode().hasOneUse()) ||
+                        am.baseType == FrameIndexBase)
+                {
+                    --cost;
+                }
+                boolean b1 = (am.hasSymbolicDisplacement() && !backup.hasSymbolicDisplacement());
+                boolean b2 = am.disp != 0 && backup.disp == 0;
+                boolean b3 = am.segment.getNode() != null && backup.segment.getNode() == null;
+                if ((b1?1:0) + (b2?1:0) + (b3?1:0) >= 2)
+                {
+                    --cost;
+                }
+
+                if (cost >= 0)
+                {
+                    am = backup;
+                    break;
+                }
+
+                SDValue zero = curDAG.getConstant(0, n.getValueType(), false);
+                SDValue neg = curDAG.getNode(ISD.SUB, n.getValueType(), zero, rhs);
+                am.indexReg = neg;
+                am.scale = 1;
+
+                if (zero.getNode().getNodeID() == -1 ||
+                        zero.getNode().getNodeID() > n.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(n.getNode(), zero.getNode());
+                    zero.getNode().setNodeID(n.getNode().getNodeID());
+                }
+                if (neg.getNode().getNodeID() == -1 ||
+                        neg.getNode().getNodeID() > n.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(n.getNode(), neg.getNode());
+                    neg.getNode().setNodeID(n.getNode().getNodeID());
+                }
+                return false;
+            }
+            case ISD.ADD:
+            {
+                X86ISelAddressMode backup = am.clone();
+                if (!matchAddressRecursively(n.getOperand(0), am, depth+1) &&
+                    !matchAddressRecursively(n.getOperand(1), am, depth+1))
+                {
+                    return false;
+                }
+
+                am = backup;
+
+                if (!matchAddressRecursively(n.getOperand(1), am, depth+1) &&
+                    !matchAddressRecursively(n.getOperand(0), am,depth+1))
+                    return false;
+
+                am = backup;
+
+                if (am.baseType == RegBase &&
+                        am.base.reg.getNode() == null &&
+                        am.indexReg.getNode() == null)
+                {
+                    am.base.reg = n.getOperand(0);
+                    am.indexReg = n.getOperand(1);
+                    am.scale = 1;
+                    return false;
+                }
+                break;
+            }
+            case ISD.OR:
+            {
+                if (n.getOperand(1).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode csd = (ConstantSDNode)n.getOperand(1).getNode();
+                    X86ISelAddressMode backup = am.clone();
+                    long offset = csd.getSExtValue();
+                    if(!matchAddressRecursively(n.getOperand(0), am, depth+1) &&
+                            am.gv == null &&
+                            (!is64Bit || X86.isOffsetSuitableForCodeModel(
+                                    am.disp +offset, m, am.hasSymbolicDisplacement())) &&
+                            curDAG.maskedValueIsZero(n.getOperand(0), csd.getAPIntValue()))
+                    {
+                        am.disp += offset;
+                        return false;
+                    }
+                    am = backup;
+                }
+                break;
+            }
+            case ISD.AND:
+            {
+                SDValue shift = n.getOperand(0);
+                if(shift.getNumOperands() != 2) break;
+
+                if (am.indexReg.getNode() != null || am.scale != 1) break;
+                SDValue x = shift.getOperand(0);
+                if(!(n.getOperand(1).getNode() instanceof ConstantSDNode) ||
+                   !(shift.getOperand(1).getNode() instanceof ConstantSDNode))
+                    break;
+
+                ConstantSDNode c2 = (ConstantSDNode)n.getOperand(1).getNode();
+                ConstantSDNode c1 = (ConstantSDNode)shift.getOperand(1).getNode();
+                // Handle "(X >> (8-C1)) & C2" as "(X >> 8) & 0xff)" if safe. This
+                // allows us to convert the shift and and into an h-register extract and
+                // a scaled index.
+                if (shift.getOpcode() == ISD.SRL && shift.hasOneUse())
+                {
+                    long scaleLog = 8 - c1.getZExtValue();
+                    if(scaleLog > 0 && scaleLog < 4 && c2.getZExtValue() ==
+                            (0xffL << scaleLog))
+                    {
+                        SDValue eight = curDAG.getConstant(8, new EVT(MVT.i8), false);
+                        SDValue mask = curDAG.getConstant(0xff, n.getValueType(), false);
+                        SDValue srl = curDAG.getNode(ISD.SRL, n.getValueType(), x, eight);
+                        SDValue and = curDAG.getNode(ISD.AND , n.getValueType(), srl, mask);
+                        SDValue shlCount = curDAG.getConstant(scaleLog, new EVT(MVT.i8), false);
+                        SDValue shl = curDAG.getNode(ISD.SHL, n.getValueType(), and, shlCount);
+
+                        if (eight.getNode().getNodeID() == -1 ||
+                                eight.getNode().getNodeID() > x.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(x.getNode(), eight.getNode());
+                            eight.getNode().setNodeID(x.getNode().getNodeID());
+                        }
+                        if (mask.getNode().getNodeID() == -1 ||
+                                mask.getNode().getNodeID() > x.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(x.getNode(), mask.getNode());
+                            mask.getNode().setNodeID(x.getNode().getNodeID());
+                        }
+                        if (srl.getNode().getNodeID() == -1 ||
+                                srl.getNode().getNodeID() > shift.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(shift.getNode(), srl.getNode());
+                            srl.getNode().setNodeID(shift.getNode().getNodeID());
+                        }
+                        if (and.getNode().getNodeID() == -1 ||
+                                and.getNode().getNodeID() > n.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(n.getNode(), and.getNode());
+                            and.getNode().setNodeID(n.getNode().getNodeID());
+                        }
+                        if (shlCount.getNode().getNodeID() == -1 ||
+                                shlCount.getNode().getNodeID() > x.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(x.getNode(), shlCount.getNode());
+                            shlCount.getNode().setNodeID(x.getNode().getNodeID());
+                        }
+                        if (shl.getNode().getNodeID() == -1 ||
+                                shl.getNode().getNodeID() > n.getNode().getNodeID())
+                        {
+                            curDAG.repositionNode(n.getNode(), shl.getNode());
+                            shl.getNode().setNodeID(n.getNode().getNodeID());
+                        }
+                        curDAG.replaceAllUsesWith(n, shl, null);
+                        am.indexReg = and;
+                        am.scale = 1 << scaleLog;
+                        return false;
+                    }
+                }
+
+                if(shift.getOpcode() != ISD.SHL)
+                    break;
+                if (!n.hasOneUse() || !shift.hasOneUse())
+                    break;
+                long shiftCst = c1.getZExtValue();
+                if(shiftCst != 1 && shiftCst != 2 && shiftCst != 3)
+                    break;
+
+                SDValue newAndMask = curDAG.getNode(ISD.SRL, n.getValueType(),
+                        new SDValue(c2, 0), new SDValue(c1, 0));
+                SDValue newAnd = curDAG.getNode(ISD.AND, n.getValueType(), x,
+                        newAndMask);
+                SDValue newShift = curDAG.getNode(ISD.SHL, n.getValueType(),
+                        newAnd, new SDValue(c1, 0));
+
+                if (c1.getNodeID() > x.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(x.getNode(), c1);
+                    c1.setNodeID(x.getNode().getNodeID());
+                }
+                if (newAndMask.getNode().getNodeID() == -1 ||
+                        newAndMask.getNode().getNodeID() > x.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(x.getNode(), newAndMask.getNode());
+                    newAndMask.getNode().setNodeID(x.getNode().getNodeID());
+                }
+                if (newAnd.getNode().getNodeID() == -1 ||
+                        newAnd.getNode().getNodeID() > shift.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(shift.getNode(), newAnd.getNode());
+                    newAnd.getNode().setNodeID(shift.getNode().getNodeID());
+                }
+                if (newShift.getNode().getNodeID() == -1 ||
+                        newShift.getNode().getNodeID() > n.getNode().getNodeID())
+                {
+                    curDAG.repositionNode(n.getNode(), newShift.getNode());
+                    newShift.getNode().setNodeID(n.getNode().getNodeID());
+                }
+                curDAG.replaceAllUsesWith(n, newShift, null);
+                am.scale = 1 << shiftCst;
+                am.indexReg = newAnd;
+                return false;
+            }
         }
-        return false;
+        return matchAddressBase(n, am);
     }
 
     protected boolean matchAddressBase(SDValue n, X86ISelAddressMode am)
@@ -684,9 +1033,9 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
             return false;
 
         SDValue[] temp = new SDValue[5];
-        System.arraycopy(comp, 0, temp, 0, 4);
         temp[4] = new SDValue();    // segment.
         getAddressOperands(am, temp);
+        System.arraycopy(comp, 0, temp, 0, 4);
         return true;
     }
 
@@ -1033,7 +1382,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         // comp[3] -- disp
         // comp[4] -- segment
         assert comp.length == 5;
-        comp[4] = am.baseType == FrameIndexBase ?
+        comp[0] = am.baseType == FrameIndexBase ?
                 curDAG.getTargetFrameIndex(am.base.frameIndex, new EVT(tli.getPointerTy())) :
                 am.base.reg;
         comp[1] = getI8Imm(am.scale);
