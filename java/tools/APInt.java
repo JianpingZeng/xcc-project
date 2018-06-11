@@ -3739,4 +3739,38 @@ public class APInt implements Cloneable
     {
         return isMinSignedValue();
     }
+
+    public APInt rotl(APInt rhs)
+    {
+        return rotl((int)rhs.getLimitedValue(bitWidth));
+    }
+
+    public APInt rotl(int shtAmt)
+    {
+        if (shtAmt == 0)
+            return this;
+
+        APInt hi = new APInt(this);
+        APInt lo = new APInt(this);
+        hi.shl(shtAmt);
+        lo.lshr(bitWidth - shtAmt);
+        return hi.or(lo);
+    }
+
+    public APInt rotr(APInt rhs)
+    {
+        return rotr((int) rhs.getLimitedValue(bitWidth));
+    }
+
+    public APInt rotr(int shtAmt)
+    {
+        if (shtAmt == 0)
+            return this;
+
+        APInt hi = new APInt(this);
+        APInt lo = new APInt(this);
+        lo.lshr(shtAmt);
+        hi.shl(bitWidth - shtAmt);
+        return hi.or(lo);
+    }
 }

@@ -111,6 +111,12 @@ public class TargetOptions
                     desc("Verify generated machine code"),
                     init(false));
 
+    public static final BooleanOpt ViewDAGAfterFirstLegalizeTypes =
+            new BooleanOpt(optionName("view-dags-first-legalize-types"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Pop up a window to show dags after first legalize types"),
+                    init(false));
+
     public static final BooleanOpt ViewDAGBeforeISel =
             new BooleanOpt(optionName("view-dags-before-isel"),
                     new OptionHiddenApplicator(Hidden),
