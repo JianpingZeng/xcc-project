@@ -1063,7 +1063,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
     }
 
-    protected void dropOperands()
+    public void dropOperands()
     {
         for (SDUse anOperandList : operandList)
         {
