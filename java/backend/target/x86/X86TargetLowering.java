@@ -4184,4 +4184,85 @@ public class X86TargetLowering extends TargetLowering
         results.add(dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), ops2));
         results.add(result.getValue(2));
     }
+
+    @Override
+    public SDValue performDAGCombine(SDNode n, DAGCombinerInfo combineInfo)
+    {
+        SelectionDAG dag = combineInfo.dag;
+        switch (n.getOpcode())
+        {
+            default: return new SDValue();
+            case ISD.VECTOR_SHUFFLE: return performShuffleCombine(n, dag);
+            case ISD.SELECT: return performSELECTCombine(n, dag);
+            case X86ISD.CMOV: return performCMOVCombine(n, dag);
+            case ISD.MUL:            return performMulCombine(n, dag, combineInfo);
+            case ISD.SHL:
+            case ISD.SRA:
+            case ISD.SRL:            return performShiftCombine(n, dag);
+            case ISD.STORE:          return performSTORECombine(n, dag);
+            case X86ISD.FXOR:
+            case X86ISD.FOR:         return performFORCombine(n, dag);
+            case X86ISD.FAND:        return performFANDCombine(n, dag);
+            case X86ISD.BT:          return performBTCombine(n, dag, combineInfo);
+            case X86ISD.VZEXT_MOVL:  return performVZEXT_MOVLCombine(n, dag);
+            case ISD.MEMBARRIER:     return performMEMBARRIERCombine(n, dag);
+        }
+    }
+
+    private SDValue performMEMBARRIERCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performVZEXT_MOVLCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performBTCombine(SDNode n, SelectionDAG dag,
+            DAGCombinerInfo combineInfo)
+    {
+        return null;
+    }
+
+    private SDValue performFANDCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performFORCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performSTORECombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performShiftCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performMulCombine(SDNode n, SelectionDAG dag,
+            DAGCombinerInfo combineInfo)
+    {
+        return null;
+    }
+
+    private SDValue performCMOVCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performSELECTCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
+
+    private SDValue performShuffleCombine(SDNode n, SelectionDAG dag)
+    {
+        return null;
+    }
 }

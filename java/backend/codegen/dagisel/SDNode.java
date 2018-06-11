@@ -1065,9 +1065,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void dropOperands()
     {
-        for (SDUse anOperandList : operandList)
+        if (operandList != null && operandList.length > 0)
         {
-            anOperandList.set(new SDValue());
+            for (SDUse anOperandList : operandList)
+            {
+                anOperandList.set(new SDValue());
+            }
         }
     }
 

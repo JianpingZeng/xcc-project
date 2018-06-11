@@ -1398,8 +1398,8 @@ public abstract class TargetLowering
     public LegalizeAction getOperationAction(int opc, EVT vt)
     {
         if (vt.isExtended()) return Expand;
-        assert opc < opActions[0].length && vt.getSimpleVT().simpleVT <
-                opActions[0][0]*8:"Table isn't big enough!";
+        assert opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64*8:
+                "Table isn't big enough!";
         int i = vt.getSimpleVT().simpleVT;
         int j = i & 31;
         i = i >> 5;
@@ -2414,5 +2414,42 @@ public abstract class TargetLowering
     public boolean isShuffleMaskLegal(TIntArrayList mask, EVT vt)
     {
         return true;
+    }
+
+    public boolean hasTargetDAGCombine(int opc)
+    {
+        assert (opc >> 3) < targetDAGCombineArray.length;
+        return (targetDAGCombineArray[opc>>3] & (1 << (opc&7))) != 0;
+    }
+
+    public int getMaxStoresPerMemset()
+    {
+        return maxStoresPerMemset;
+    }
+
+    public int getMaxStoresPerMemcpy()
+    {
+        return maxStoresPerMemcpy;
+    }
+
+    public int getMaxStoresPerMemmove()
+    {
+        return maxStoresPerMemmove;
+    }
+
+    public SDValue performDAGCombine(SDNode n, DAGCombinerInfo combineInfo)
+    {
+        return new SDValue();
+    }
+
+    public boolean simplifyDemandedBit(SDValue op,
+            APInt demanded,
+            TargetLoweringOpt tlo,
+            APInt[] res, int depth)
+    {
+        // res[0] -- knownZero
+        // res[1] -- knownOne
+        // TODO: 18-6-11
+        return false;
     }
 }

@@ -898,6 +898,19 @@ public class SelectionDAG
         return getNode(ISD.SETCC, vt, op1, op2, getCondCode(cond));
     }
 
+    public SDValue getSelectCC(SDValue lhs, SDValue rhs,
+            SDValue trueVal, SDValue falseVal,
+            CondCode cc)
+    {
+        return getNode(ISD.SELECT_CC, trueVal.getValueType(), lhs, rhs,
+                trueVal, falseVal, getCondCode(cc));
+    }
+
+    public SDValue getVSetCC(EVT vt, SDValue lhs, SDValue rhs, CondCode cc)
+    {
+        return getNode(ISD.VSETCC, vt, lhs, rhs, getCondCode(cc));
+    }
+
     public SDValue getIntPtrConstant(long amt)
     {
         return getIntPtrConstant(amt, false);
@@ -3512,6 +3525,58 @@ public class SelectionDAG
         if (index < nIdx)
             ++nIdx;
         allNodes.remove(nIdx);
+    }
+
+    public SDNode getNodeIfExists(int opc, SDVTList vts, SDValue[] ops)
+    {
+        if (!vts.vts[vts.vts.length-1].equals(new EVT(MVT.Flag)))
+        {
+            FoldingSetNodeID calc = new FoldingSetNodeID();
+            addNodeToIDNode(calc, opc, vts, ops);
+            int id = calc.computeHash();
+            if (cseMap.containsValue(id))
+                return cseMap.get(id);
+        }
+        return null;
+    }
+
+    public SDValue foldConstantArithmetic(
+            int opc, EVT vt,
+            ConstantSDNode cst1,
+            ConstantSDNode cst2)
+    {
+        APInt c1 = cst1.getAPIntValue(), c2 = cst2.getAPIntValue();
+        switch (opc)
+        {
+            case ISD.ADD: return getConstant(c1.add(c2),vt,false);
+            case ISD.SUB: return getConstant(c1.sub(c2),vt,false);
+            case ISD.MUL: return getConstant(c1.mul(c2),vt,false);
+            case ISD.UDIV:
+                if (c2.getBoolValue())
+                    return getConstant(c1.udiv(c2),vt,false);
+                break;
+            case ISD.SDIV:
+                if (c2.getBoolValue())
+                    return getConstant(c1.sdiv(c2),vt,false);
+                break;
+            case ISD.UREM:
+                if (c2.getBoolValue())
+                    return getConstant(c1.urem(c2),vt,false);
+                break;
+            case ISD.SREM:
+                if (c2.getBoolValue())
+                    return getConstant(c1.srem(c2),vt,false);
+                break;
+            case ISD.AND: return getConstant(c1.and(c2), vt,false);
+            case ISD.OR: return getConstant(c1.or(c2), vt,false);
+            case ISD.XOR: return getConstant(c1.xor(c2), vt,false);
+            case ISD.SHL: return getConstant(c1.shl(c2), vt,false);
+            case ISD.SRL: return getConstant(c1.lshr(c2),vt,false);
+            case ISD.SRA: return getConstant(c1.ashr(c2),vt,false);
+            case ISD.ROTL:return getConstant(c1.rotl(c2), vt,false);
+            case ISD.ROTR:return getConstant(c1.rotr(c2), vt,false);
+        }
+        return new SDValue();
     }
 }
 
