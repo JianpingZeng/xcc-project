@@ -54,7 +54,7 @@ public class DAGTypeLegalizer
     public interface NodeIdFlags
     {
         int ReadyToProcess = 0;
-        int NewNode = -11;
+        int NewNode = -1;
         int Unanalyzed = -2;
         int Processed = -3;
     }
@@ -165,7 +165,7 @@ public class DAGTypeLegalizer
 
         for (SDNode node : dag.allNodes)
         {
-            if (node.getNumOperands() <= 0)
+            if (node.getNumOperands() == 0)
             {
                 node.setNodeID(ReadyToProcess);
                 worklist.add(node);
@@ -174,6 +174,11 @@ public class DAGTypeLegalizer
                 node.setNodeID(Unanalyzed);
         }
 
+        for (SDNode n : dag.allNodes)
+        {
+            n.dump();
+            System.err.printf(" %d%n", n.getNodeID());
+        }
         while (!worklist.isEmpty())
         {
             performExpensiveChecks();
@@ -328,6 +333,16 @@ public class DAGTypeLegalizer
         dag.setRoot(dummy.getValue());
         dag.removeDeadNodes();
         dummy.dropOperands();
+        for (int i = 0, e = dag.allNodes.size(); i < e; i++)
+        {
+            if (dag.allNodes.get(i).isUseEmpty() &&
+                    dag.allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
+            {
+                dag.allNodes.remove(i);
+                --i;
+                --e;
+            }
+        }
         return changed;
     }
 
