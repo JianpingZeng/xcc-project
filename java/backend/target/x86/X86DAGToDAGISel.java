@@ -102,8 +102,8 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 --e;
             }
         }
-        dummy.getValue().getNode().getUseList().clear();
         curDAG.setRoot(dummy.getValue());
+        dummy.dropOperands();
     }
 
     private void selectRootInit()

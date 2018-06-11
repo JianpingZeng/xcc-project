@@ -1272,6 +1272,7 @@ public class SelectionDAG
 
         removeDeadNodes(deadNodes, null);
         setRoot(dummy.getValue());
+        dummy.dropOperands();
     }
 
     public void removeDeadNode(SDNode node, DAGUpdateListener listener)

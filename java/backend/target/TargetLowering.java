@@ -976,6 +976,7 @@ public abstract class TargetLowering
                     2 * numRegistersForVT[expandedReg - 1];
             registerTypeForVT[expandedReg] = new EVT(new MVT(largetestIntReg));
             transformToType[expandedReg] = new EVT(new MVT(expandedReg - 1));
+            valueTypeAction.setTypeAction(vt, Expand);
         }
 
         // Inspect all of the ValueType's smaller than the largest integer
@@ -992,6 +993,7 @@ public abstract class TargetLowering
             {
                 registerTypeForVT[intReg] = transformToType[intReg] = new EVT(
                         new MVT(legalIntReg));
+                valueTypeAction.setTypeAction(ivt, Promote);
             }
         }
 
@@ -1001,6 +1003,7 @@ public abstract class TargetLowering
             numRegistersForVT[MVT.ppcf128] = 2 * numRegistersForVT[MVT.f64];
             registerTypeForVT[MVT.ppcf128] = transformToType[MVT.ppcf128] = new EVT(
                     new MVT(MVT.f64));
+            valueTypeAction.setTypeAction(new EVT(MVT.ppcf128), Expand);
         }
 
         // Decide how to handle f64. If the target does not have native f64 support,
@@ -1009,6 +1012,7 @@ public abstract class TargetLowering
         {
             numRegistersForVT[MVT.i64] = numRegistersForVT[MVT.i64];
             registerTypeForVT[MVT.i64] = transformToType[MVT.i64] = new EVT(new MVT(MVT.i64));
+            valueTypeAction.setTypeAction(new EVT(MVT.f64), Expand);
         }
 
         // Decide how to handle f32. If the target does not have native support for
@@ -1020,12 +1024,14 @@ public abstract class TargetLowering
                 numRegistersForVT[MVT.f32] = numRegistersForVT[MVT.f64];
                 registerTypeForVT[MVT.f32] = registerTypeForVT[MVT.f64];
                 transformToType[MVT.f32] = new EVT(new MVT(MVT.f64));
+                valueTypeAction.setTypeAction(new EVT(MVT.f32), Promote);
             }
             else
             {
                 numRegistersForVT[MVT.f32] = numRegistersForVT[MVT.i32];
                 registerTypeForVT[MVT.f32] = registerTypeForVT[MVT.i32];
                 transformToType[MVT.f32] = new EVT(new MVT(MVT.i32));
+                valueTypeAction.setTypeAction(new EVT(MVT.f32), Expand);
             }
         }
 
