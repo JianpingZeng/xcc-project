@@ -331,8 +331,8 @@ public class DAGTypeLegalizer
 
         performExpensiveChecks();
         dag.setRoot(dummy.getValue());
-        dag.removeDeadNodes();
         dummy.dropOperands();
+        dag.removeDeadNodes();
         for (int i = 0, e = dag.allNodes.size(); i < e; i++)
         {
             if (dag.allNodes.get(i).isUseEmpty() &&
