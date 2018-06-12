@@ -22,6 +22,7 @@ import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.dagisel.SDNode.CondCodeSDNode;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
+import backend.codegen.dagisel.SDNode.LoadSDNode;
 import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
@@ -590,7 +591,7 @@ public class DAGCombiner
     {
         TargetLoweringOpt tlo = new TargetLoweringOpt(dag);
         APInt[] res = new APInt[2];
-        if (!tli.simplifyDemandedBit(op, demanded, tlo, res, 0))
+        if (!tli.simplifyDemandedBits(op, demanded, tlo, res, 0))
             return false;
 
         addToWorkList(op.getNode());
@@ -717,6 +718,194 @@ public class DAGCombiner
 
     private SDValue visitAND(SDNode n)
     {
+        SDValue op0 = n.getOperand(0);
+        SDValue op1 = n.getOperand(1);
+        ConstantSDNode c0 = op0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)op0.getNode():null;
+        ConstantSDNode c1 = op1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)op1.getNode():null;
+        EVT vt = op1.getValueType();
+        int bitwidth = vt.getSizeInBits();
+
+        if (vt.isVector())
+        {
+            SDValue foldedVOp = simplifyVBinOp(n);
+            if (foldedVOp.getNode() != null) return foldedVOp;
+        }
+
+        if (op0.getOpcode() == ISD.UNDEF || op1.getOpcode() == ISD.UNDEF)
+        {
+            return dag.getConstant(0, vt, false);
+        }
+        if (c0 != null && c1 != null)
+            return dag.foldConstantArithmetic(ISD.AND, vt, c0, c1);
+        if (c0 != null && c1 == null)
+            return dag.getNode(ISD.AND, vt, op1, op0);
+        if (c1 != null && c1.isAllOnesValue())
+            return op0;
+        if (c1 != null && dag.maskedValueIsZero(new SDValue(n, 0),
+                APInt.getAllOnesValue(bitwidth)))
+            return dag.getConstant(0, vt, false);
+        SDValue rand = reassociateOps(ISD.AND, op0, op1);
+        if (rand.getNode() != null)
+            return rand;
+        // fold (and (or x, 0xFFFF), 0xFF) -> 0xFF
+        if (c1 != null && op0.getOpcode() == ISD.OR)
+        {
+            if (op0.getOperand(1).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode op01C = (ConstantSDNode)op0.getOperand(1).getNode();
+                if (op01C.getAPIntValue().and(c1.getAPIntValue()).eq(c1.getAPIntValue()))
+                    return op1;
+            }
+        }
+
+        // fold (and (any_ext V), c) -> (zero_ext V) if 'and' only clears top bits.
+        if (c1 != null && op0.getOpcode() == ISD.ANY_EXTEND)
+        {
+            SDValue op00 = op0.getOperand(0);
+            APInt mask = c1.getAPIntValue().not();
+            mask.trunc(op00.getValueSizeInBits());
+            if (dag.maskedValueIsZero(op00, mask))
+            {
+                SDValue zext = dag.getNode(ISD.ZERO_EXTEND, op0.getValueType(),
+                        op00);
+                combineTo(n, zext, true);
+                combineTo(op0.getNode(), zext, true);
+                return new SDValue(n, 0);
+            }
+        }
+        // fold (and (setcc x), (setcc y)) -> (setcc (and x, y))
+        SDValue[] setccRes = new SDValue[3], setccRes2 = new SDValue[3];
+        if (isSetCCEquivalent(op0, setccRes) && isSetCCEquivalent(op1, setccRes2))
+        {
+            CondCode cc1 = ((CondCodeSDNode)setccRes[2].getNode()).getCondition();
+            CondCode cc2 = ((CondCodeSDNode)setccRes2[2].getNode()).getCondition();
+            if (setccRes[1].equals(setccRes2[1]) &&
+                    setccRes[1].getNode() instanceof ConstantSDNode &&
+                    setccRes[0].getValueType().isInteger())
+            {
+                // fold (and (seteq X, 0), (seteq Y, 0)) -> (seteq (or X, Y), 0)
+                if (((ConstantSDNode)setccRes[1].getNode()).isNullValue() &&
+                        cc2 == CondCode.SETEQ)
+                {
+                    SDValue orNode = dag.getNode(ISD.OR, setccRes[1].getValueType(),
+                            setccRes[0], setccRes2[0]);
+                    addToWorkList(orNode.getNode());
+                    return dag.getSetCC(vt, orNode, setccRes[1], cc2);
+                }
+                // fold (and (seteq X, -1), (seteq Y, -1)) -> (seteq (and X, Y), -1)
+                if (((ConstantSDNode)setccRes[1].getNode()).isAllOnesValue() &&
+                        cc2 == CondCode.SETEQ)
+                {
+                    SDValue andNode = dag.getNode(ISD.AND, setccRes[1].getValueType(),
+                            setccRes[0], setccRes2[0]);
+                    addToWorkList(andNode.getNode());
+                    return dag.getSetCC(vt, andNode, setccRes[1], cc2);
+                }
+                // fold (and (setgt X,  -1), (setgt Y,  -1)) -> (setgt (or X, Y), -1)
+                if (((ConstantSDNode)setccRes[1].getNode()).isAllOnesValue() &&
+                        cc2 == CondCode.SETGT)
+                {
+                    SDValue orNode = dag.getNode(ISD.OR, setccRes[1].getValueType(),
+                            setccRes[0], setccRes2[0]);
+                    addToWorkList(orNode.getNode());
+                    return dag.getSetCC(vt, orNode, setccRes[1], cc2);
+                }
+            }
+
+            // canonicalize equivalent to ll == rl
+            if (setccRes[0].equals(setccRes2[1]) && setccRes[1].equals(setccRes2[0]))
+            {
+                cc2 = ISD.getSetCCSwappedOperands(cc2);
+                SDValue t = setccRes2[0];
+                setccRes2[0] = setccRes2[1];
+                setccRes2[1] = t;
+            }
+            if (setccRes[0].equals(setccRes2[0]) && setccRes[1].equals(setccRes2[1]))
+            {
+                boolean isInteger = setccRes[0].getValueType().isInteger();
+                CondCode result = ISD.getSetCCAndOperation(cc1,cc2, isInteger);
+                if (result != CondCode.SETCC_INVALID &&
+                        (!legalOprations || tli.isCondCodeLegal(result, setccRes[0].getValueType())))
+                    return dag.getSetCC(op0.getValueType(), setccRes[0], setccRes[1], result);
+            }
+        }
+
+        // Simplify: (and (op x...), (op y...))  -> (op (and x, y))
+        if (op0.getOpcode() == op1.getOpcode())
+        {
+            SDValue tmp = simplifyBinOpWithSamOpcodeHands(n);
+            if (tmp.getNode() != null) return tmp;
+        }
+
+        if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
+            return new SDValue(n, 0);
+
+        // fold (zext_inreg (extload x)) -> (zextload x)
+        if (op0.getNode().isExtLoad() && op0.getNode().isUNINDEXEDLoad())
+        {
+            LoadSDNode ld = (LoadSDNode)op0.getNode();
+            EVT evt = ld.getMemoryVT();
+            bitwidth = op1.getValueSizeInBits();
+            if (dag.maskedValueIsZero(op1, APInt.getHighBitsSet(bitwidth,
+                    bitwidth - evt.getSizeInBits())) &&
+                    ((!legalOprations && !ld.isVolatile()) ||
+                    tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, evt)))
+            {
+                SDValue extLd = dag.getExtLoad(LoadExtType.ZEXTLOAD,
+                        vt, ld.getChain(), ld.getBasePtr(),
+                        ld.getSrcValue(), ld.getSrcValueOffset(),
+                        evt, ld.isVolatile(), ld.getAlignment());
+                addToWorkList(n);
+                combineTo(op0.getNode(), extLd, extLd.getValue(1), true);
+                return new SDValue(n, 0);
+            }
+        }
+
+        // fold (and (load x), 255) -> (zextload x, i8)
+        // fold (and (extload x, i16), 255) -> (zextload x, i8)
+        if (c1 != null && op0.getOpcode() == ISD.LOAD)
+        {
+            LoadSDNode ld = (LoadSDNode)op0.getNode();
+            if (ld.getExtensionType() == LoadExtType.SEXTLOAD &&
+                    ld.isUnindexed() && op0.hasOneUse() &&
+                    !ld.isVolatile())
+            {
+                EVT extVT = new EVT(MVT.Other);
+                int activeBits = c1.getAPIntValue().getActiveBits();
+                if (activeBits > 0 && APInt.isMask(activeBits, c1.getAPIntValue()))
+                {
+                    extVT = EVT.getIntegerVT(activeBits);
+                }
+                EVT loadedVT = ld.getMemoryVT();
+                if (!extVT.equals(new EVT(MVT.Other)) && loadedVT.bitsGT(extVT) &&
+                        extVT.isRound() && (!legalOprations ||
+                        tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, extVT)))
+                {
+                    EVT ptrTy = op0.getOperand(1).getValueType();
+                    int lvtStoreBytes = loadedVT.getStoreSizeInBits()/8;
+                    int evtStoreBytes = extVT.getStoreSizeInBits()/8;
+                    int ptrOff = lvtStoreBytes - evtStoreBytes;
+                    int alignment = ld.getAlignment();
+                    SDValue newPtr = ld.getBasePtr();
+                    if (tli.isBigEndian())
+                    {
+                        newPtr = dag.getNode(ISD.ADD, ptrTy, newPtr,
+                                dag.getConstant(ptrOff, ptrTy, false));
+                        alignment = Util.minAlign(alignment, ptrOff);
+                    }
+                    addToWorkList(newPtr.getNode());
+                    SDValue load = dag.getExtLoad(LoadExtType.ZEXTLOAD,
+                            vt, ld.getChain(), newPtr, ld.getSrcValue(),
+                            ld.getSrcValueOffset(), extVT, ld.isVolatile(),
+                            alignment);
+                    addToWorkList(n);
+                    combineTo(op0.getNode(), load, load.getValue(1),true);
+                    return new SDValue(n, 0);
+                }
+            }
+        }
         return new SDValue();
     }
 
