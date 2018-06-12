@@ -1425,7 +1425,7 @@ public class DAGTypeLegalizer
     private SDValue promoteOpZeroExtend(SDNode node)
     {
         SDValue op = getPromotedInteger(node.getOperand(0));
-        op = dag.getNode(ISD.ZERO_EXTEND, node.getValueType(0), op);
+        op = dag.getNode(ISD.ANY_EXTEND, node.getValueType(0), op);
         return dag.getZeroExtendInReg(op, node.getOperand(0).getValueType());
     }
 
