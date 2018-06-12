@@ -3773,4 +3773,10 @@ public class APInt implements Cloneable
         hi.shl(bitWidth - shtAmt);
         return hi.or(lo);
     }
+
+    public static boolean isMask(int numBits, APInt val)
+    {
+        return numBits < val.getBitWidth() &&
+                val.eq(APInt.getLowBitsSet(val.getBitWidth(), numBits));
+    }
 }

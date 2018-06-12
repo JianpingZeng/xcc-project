@@ -16,7 +16,10 @@ package backend.codegen.fastISel;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.dagisel.CondCode; /**
+import backend.codegen.dagisel.CondCode;
+import tools.Util;
+
+/**
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -566,5 +569,56 @@ public class ISD
         int oldL = (cc.ordinal() >> 2) & 1;
         int oldG = (cc.ordinal() >> 1) & 1;
         return CondCode.values()[(cc.ordinal() & ~6) | (oldL << 1) | (oldG << 2)];
+    }
+
+    public static CondCode getSetCCAndOperation(CondCode cc1, CondCode cc2,
+            boolean isInteger)
+    {
+        if (isInteger & (isSignedOp(cc1) | isSignedOp(cc2)) == 3)
+            return CondCode.SETCC_INVALID;
+
+        CondCode result = CondCode.values()[cc1.ordinal() & cc2.ordinal()];
+        if (isInteger)
+        {
+            switch (result)
+            {
+                default: break;
+                case SETUO: result = CondCode.SETFALSE; break;
+                case SETOEQ:
+                case SETUEQ:
+                    result = CondCode.SETEQ;
+                    break;
+                case SETOLT:
+                    result = CondCode.SETULT;
+                    break;
+                case SETOGT:
+                    result = CondCode.SETUGT;
+                    break;
+            }
+        }
+        return result;
+    }
+
+    private static int isSignedOp(CondCode opc)
+    {
+        switch (opc)
+        {
+            default:
+                Util.shouldNotReachHere("Illegal integer setcc operation!");
+                return 0;
+            case SETEQ:
+            case SETNE:
+                return 0;
+            case SETLT:
+            case SETLE:
+            case SETGT:
+            case SETGE:
+                return 1;
+            case SETULT:
+            case SETULE:
+            case SETUGT:
+            case SETUGE:
+                return 2;
+        }
     }
 }

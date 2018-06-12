@@ -2442,14 +2442,289 @@ public abstract class TargetLowering
         return new SDValue();
     }
 
-    public boolean simplifyDemandedBit(SDValue op,
-            APInt demanded,
+    /**
+     * At this point, we know that only the
+     * DemandedMask bits of the result of Op are ever used downstream.  If we can
+     * use this information to simplify Op, create a new simplified DAG node and
+     * return true, returning the original and new nodes in Old and New. Otherwise,
+     * analyze the expression and return a mask of KnownOne and KnownZero bits for
+     * the expression (used to simplify the caller).  The KnownZero/One bits may
+     * only be accurate for those bits in the DemandedMask.
+     * @param op
+     * @param demandedMask
+     * @param tlo
+     * @param res
+     * @param depth
+     * @return
+     */
+    public boolean simplifyDemandedBits(SDValue op,
+            APInt demandedMask,
             TargetLoweringOpt tlo,
-            APInt[] res, int depth)
+            APInt[] res,
+            int depth)
     {
         // res[0] -- knownZero
         // res[1] -- knownOne
+        assert depth >= 0;
+        int bitwidth = demandedMask.getBitWidth();
+        assert op.getValueSizeInBits() == bitwidth:"Mask size mismatches value type size!";
+        APInt newMask = demandedMask;
+        res[0] = new APInt(bitwidth, 0);
+        res[1] = new APInt(bitwidth,0);
+        if (!op.getNode().hasOneUse())
+        {
+            if (depth != 0)
+            {
+                tlo.dag.computeMaskedBits(op, demandedMask, res, depth);
+                return false;
+            }
+
+            newMask = APInt.getAllOnesValue(bitwidth);
+        }
+        else if (demandedMask.eq(0))
+        {
+            if (op.getOpcode() != ISD.UNDEF)
+                return tlo.combineTo(op, tlo.dag.getUNDEF(op.getValueType()));
+            return false;
+        }
+        else if (depth == 6)
+            return false;
+
+        switch (op.getOpcode())
+        {
+            case ISD.Constant:
+                res[1] = ((ConstantSDNode)op.getNode()).getAPIntValue().and(newMask);
+                res[0] = res[1].not().and(newMask);
+                return false;
+            case ISD.AND:
+            {
+                // If the RHS is a constant, check to see if the LHS would be zero without
+                // using the bits from the RHS.  Below, we use knowledge about the RHS to
+                // simplify the LHS, here we're using information from the LHS to simplify
+                // the RHS.
+                if (op.getOperand(1).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode rhsC = (ConstantSDNode) op.getOperand(1).getNode();
+                    APInt[] lhsRes = new APInt[2];
+                    tlo.dag.computeMaskedBits(op.getOperand(0), newMask, lhsRes,
+                            depth + 1);
+                    if (lhsRes[0].and(newMask).eq(rhsC.getAPIntValue().not().and(newMask)))
+                    {
+                        return tlo.combineTo(op, op.getOperand(0));
+                    }
+                    if (tlo.shrinkDemandedConstant(op, lhsRes[0].not().and(newMask)))
+                        return true;
+                }
+
+                if (simplifyDemandedBits(op.getOperand(1), newMask, tlo, res,
+                        depth + 1))
+                    return true;
+                assert res[0].and(res[1]).eq(0);
+                APInt[] lhsRes = new APInt[2];
+                if (simplifyDemandedBits(op.getOperand(0), res[0].not().and(newMask),
+                        tlo, lhsRes, depth + 1))
+                    return true;
+                assert lhsRes[0].and(lhsRes[1]).eq(0);
+                if (newMask.and(lhsRes[0].not()).and(res[1]).eq(lhsRes[0].not().and(newMask)))
+                {
+                    return tlo.combineTo(op, op.getOperand(0));
+                }
+                if (newMask.and(res[0].not()).and(lhsRes[1]).eq(res[0].not().and(newMask)))
+                    return tlo.combineTo(op, op.getOperand(1));
+                if (newMask.and(res[0].or(lhsRes[0])).eq(newMask))
+                    return tlo.combineTo(op,
+                            tlo.dag.getConstant(0, op.getValueType(), false));
+                if (tlo.shrinkDemandedConstant(op, lhsRes[0].not().and(newMask)))
+                    return true;
+                if (tlo.shrinkDemandedOp(op, bitwidth, newMask))
+                    return true;
+
+                res[1].andAssign(lhsRes[1]);
+                res[1].orAssign(lhsRes[0]);
+                break;
+            }
+            case ISD.SIGN_EXTEND_INREG:
+            {
+                EVT vt = ((VTSDNode)op.getOperand(1).getNode()).getVT();
+                APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth -
+                        vt.getSizeInBits()).and(newMask);
+                if (newBits.eq(0))
+                    return tlo.combineTo(op, op.getOperand(0));
+
+                APInt inSignBit = APInt.getSignBit(vt.getSizeInBits());
+                inSignBit.zext(bitwidth);
+                APInt inputDemandedBits = APInt.getLowBitsSet(bitwidth,
+                        vt.getSizeInBits()).and(newMask);
+                inputDemandedBits.orAssign(inSignBit);
+                if (simplifyDemandedBits(op.getOperand(0), inputDemandedBits,
+                        tlo, res, depth+1))
+                    return true;
+
+                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                if (res[0].intersects(inSignBit))
+                {
+                    return tlo.combineTo(op, tlo.dag.getZeroExtendInReg(
+                            op.getOperand(0), vt));
+                }
+                if (res[1].intersects(inSignBit))
+                {
+                    res[1].orAssign(newBits);
+                    res[0].andAssign(newBits.not());
+                }
+                else
+                {
+                    res[0].and(newBits.not());
+                    res[1].and(newBits.not());
+                }
+                break;
+            }
+            case ISD.ZERO_EXTEND:
+            {
+                int operandBitWidth = op.getOperand(0).getValueSizeInBits();
+                APInt inMask = newMask;
+                inMask.trunc(operandBitWidth);
+
+                APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - operandBitWidth).
+                        and(newMask);
+                if (!newBits.intersects(newMask))
+                {
+                    return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND,
+                            op.getValueType(), op.getOperand(0)));
+                }
+                if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth+1))
+                {
+                    return true;
+                }
+                assert res[0].add(res[1]).eq(0):"Bits known to be one AND zero?";
+                res[0].zext(bitwidth);
+                res[1].zext(bitwidth);
+                res[0].orAssign(newBits);
+                break;
+            }
+            case ISD.SIGN_EXTEND:
+            {
+                EVT inVT = op.getOperand(0).getValueType();
+                int inBits = inVT.getSizeInBits();
+                APInt inMask = APInt.getLowBitsSet(bitwidth, inBits);
+                APInt inSignBit = APInt.getBitsSet(bitwidth, inBits-1, inBits);
+                APInt newBits = inMask.not().and(newMask);
+
+                if (newBits.eq(0))
+                    return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND,
+                            op.getValueType(), op.getOperand(0)));
+
+                APInt inDemandedBits = inMask.and(newMask);
+                inDemandedBits.orAssign(inSignBit);
+                inDemandedBits.trunc(inBits);
+                if (simplifyDemandedBits(op.getOperand(0), inDemandedBits,
+                        tlo, res, depth+1))
+                    return true;
+                res[0].zext(bitwidth);
+                res[1].zext(bitwidth);
+
+                if (res[0].intersects(inSignBit))
+                {
+                    return tlo.combineTo(op, tlo.dag.getNode(ISD.ZERO_EXTEND,
+                            op.getValueType(), op.getOperand(0)));
+                }
+                if (res[1].intersects(inSignBit))
+                {
+                    res[1].orAssign(newBits);
+                    res[0].andAssign(newBits.not());
+                }
+                else
+                {
+                    res[1].andAssign(newBits.not());
+                    res[0].andAssign(newBits.not());
+                }
+                break;
+            }
+            case ISD.ANY_EXTEND:
+            {
+                int operandBitWidth = op.getOperand(0).getValueSizeInBits();
+                APInt inMask = newMask;
+                inMask.trunc(operandBitWidth);
+                if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth+1))
+                    return true;
+                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                res[0].zext(bitwidth);
+                res[1].zext(bitwidth);
+                break;
+            }
+            case ISD.TRUNCATE:
+            {
+                APInt truncMask = newMask;
+                truncMask.zext(op.getOperand(0).getValueSizeInBits());
+                if (simplifyDemandedBits(op.getOperand(0), truncMask, tlo, res,depth+1))
+                    return true;
+                res[0].trunc(bitwidth);
+                res[1].trunc(bitwidth);
+
+                if (op.getOperand(0).getNode().hasOneUse())
+                {
+                    SDValue in = op.getOperand(0);
+                    int inBitwidth = in.getValueSizeInBits();
+                    switch (in.getOpcode())
+                    {
+                        default: break;
+                        case ISD.SRL:
+                            ConstantSDNode shAmt = in.getOperand(1).getNode() instanceof
+                                    ConstantSDNode ? (ConstantSDNode)in.getOperand(1).getNode() : null;
+                            if (shAmt != null)
+                            {
+                                APInt highBits = APInt.getHighBitsSet(inBitwidth,
+                                        inBitwidth-bitwidth);
+                                highBits = highBits.lshr(shAmt.getZExtValue());
+                                highBits.trunc(bitwidth);
+
+                                if (shAmt.getZExtValue() < bitwidth &&
+                                        highBits.and(newMask).eq(0))
+                                {
+                                    SDValue newTrunc = tlo.dag.getNode(ISD.TRUNCATE,
+                                            op.getValueType(), in.getOperand(0));
+                                    return tlo.combineTo(op, tlo.dag.getNode(ISD.SRL,
+                                            op.getValueType(), newTrunc,
+                                            in.getOperand(1)));
+                                }
+                            }
+                            break;
+                    }
+                }
+                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                break;
+            }
+            case ISD.AssertSext:
+            {
+                EVT vt = ((VTSDNode)op.getOperand(1).getNode()).getVT();
+                APInt inMask = APInt.getLowBitsSet(bitwidth, vt.getSizeInBits());
+                if (simplifyDemandedBits(op.getOperand(0), inMask.and(newMask),
+                        tlo, res, depth+1))
+                    return true;
+                assert res[0].andAssign(res[1]).eq(0):"Bits known to be one AND zero?";
+                res[0].orAssign(inMask.not().and(newMask));
+                break;
+            }
+            case ISD.ADD:
+            case ISD.MUL:
+            case ISD.SUB:
+            {
+                APInt loMask = APInt.getLowBitsSet(bitwidth,
+                        bitwidth - newMask.countLeadingZeros());
+                APInt[] lhsRes = new APInt[2];
+                if (simplifyDemandedBits(op.getOperand(0), loMask, tlo, lhsRes,depth+1))
+                    return true;
+                if (simplifyDemandedBits(op.getOperand(1), loMask, tlo, lhsRes, depth+1))
+                    return true;
+                if (tlo.shrinkDemandedOp(op, bitwidth, newMask))
+                    return true;
+            }
+            default:
+                tlo.dag.computeMaskedBits(op, newMask, res, depth);
+                break;
+        }
         // TODO: 18-6-11
+        if (newMask.and(res[0].or(res[1])).eq(newMask))
+            return tlo.combineTo(op, tlo.dag.getConstant(res[1], op.getValueType(),false));
         return false;
     }
 }

@@ -1443,8 +1443,8 @@ public class SelectionDAG
     {
         int bitwidth = mask.getBitWidth();
         assert bitwidth == op.getValueType().getSizeInBits();
-        APInt[] res = new APInt[2];
-        res[0] = res[1] = new APInt(bitwidth, 0);
+        knownVals[0] = new APInt(bitwidth, 0);
+        knownVals[1] = new APInt(bitwidth, 0);
         if (depth == 6 || mask.eq(0))
             return;
 
@@ -1456,7 +1456,7 @@ public class SelectionDAG
             case ISD.Constant:
                 knownVals[1] = ((ConstantSDNode) op.getNode()).getAPIntValue().and(mask);
                 knownVals[0] = knownVals[1].not().and(mask);
-                return;
+                break;
             case ISD.AND:
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask.and(knownVals[0].not()),
@@ -1466,7 +1466,7 @@ public class SelectionDAG
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].or(knownVals2[0]);
-                return;
+                break;
             case ISD.OR:
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask.and(knownVals[1].not()),
@@ -1476,7 +1476,7 @@ public class SelectionDAG
 
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
                 knownVals[1] = knownVals[1].or(knownVals2[1]);
-                return;
+                break;
             case ISD.XOR:
             {
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
@@ -1487,7 +1487,7 @@ public class SelectionDAG
                 APInt knownZeroOut = knownVals[0].and(knownVals2[0]).or(knownVals[1].and(knownVals2[1]));
                 knownVals[1] = knownVals[0].and(knownVals2[1]).or(knownVals[1].and(knownVals2[0]));
                 knownVals[0] = knownZeroOut;
-                return;
+                break;
             }
             case ISD.MUL:
             {
@@ -1507,7 +1507,7 @@ public class SelectionDAG
                 knownVals[0] = APInt.getLowBitsSet(bitwidth, trailOne)
                         .or(APInt.getHighBitsSet(bitwidth, leadOne));
                 knownVals[0] = knownVals[0].and(mask);
-                return;
+                break;
             }
             case ISD.UDIV:
             {
@@ -1525,7 +1525,7 @@ public class SelectionDAG
                     leadOne = Math.min(bitwidth,
                             leadOne + bitwidth - rhsUnknownLeadingOnes - 1);
                 knownVals[0] = APInt.getHighBitsSet(bitwidth, leadOne).and(mask);
-                return;
+                break;
             }
             case ISD.SELECT:
             {
@@ -1536,7 +1536,7 @@ public class SelectionDAG
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
-                return;
+                break;
             }
             case ISD.SELECT_CC:
             {
@@ -1547,7 +1547,7 @@ public class SelectionDAG
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
-                return;
+                break;
             }
             case ISD.SADDO:
             case ISD.UADDO:
@@ -1557,15 +1557,15 @@ public class SelectionDAG
             case ISD.UMULO:
             {
                 if (op.getResNo() != 1)
-                    return;
+                    break;
             }
             case ISD.SETCC:
             {
                 if (tli.getBooleanContents() == ZeroOrOneBooleanContent
-                        && depth > 1)
-                    knownVals[0] = knownVals[0]
-                            .or(APInt.getHighBitsSet(bitwidth, bitwidth - 1));
-                return;
+                        && bitwidth > 1)
+                    knownVals[0] =
+                            knownVals[0].or(APInt.getHighBitsSet(bitwidth, bitwidth - 1));
+                break;
             }
             case ISD.SHL:
                 // (shl X, C1) & C2 == 0   iff   (X & C2 >>u C1) == 0
@@ -1574,7 +1574,7 @@ public class SelectionDAG
                     ConstantSDNode sd = (ConstantSDNode) op.getOperand(1).getNode();
                     long shAmt = sd.getZExtValue();
                     if (shAmt >= bitwidth)
-                        return;
+                        break;
 
                     computeMaskedBits(op.getOperand(0), mask.lshr(shAmt),
                             knownVals, depth + 1);
@@ -1584,7 +1584,7 @@ public class SelectionDAG
                     knownVals[0] = knownVals[0]
                             .or(APInt.getLowBitsSet(bitwidth, (int) shAmt));
                 }
-                return;
+                break;
             case ISD.SRL:
             {
                 // (ushr X, C1) & C2 == 0   iff  (-1 >> C1) & C2 == 0
@@ -1593,7 +1593,7 @@ public class SelectionDAG
                     ConstantSDNode sd = (ConstantSDNode) op.getOperand(1).getNode();
                     long shAmt = sd.getZExtValue();
                     if (shAmt >= bitwidth)
-                        return;
+                        break;
 
                     computeMaskedBits(op.getOperand(0), mask.shl((int) shAmt),
                             knownVals, depth + 1);
@@ -1603,7 +1603,7 @@ public class SelectionDAG
                     knownVals[0] = knownVals[0]
                             .or(APInt.getHighBitsSet(bitwidth, (int) shAmt)).and(mask);
                 }
-                return;
+                break;
             }
             case ISD.SRA:
                 // (ushr X, C1) & C2 == 0   iff  (-1 >> C1) & C2 == 0
@@ -1612,7 +1612,7 @@ public class SelectionDAG
                     ConstantSDNode sd = (ConstantSDNode) op.getOperand(1).getNode();
                     long shAmt = sd.getZExtValue();
                     if (shAmt >= bitwidth)
-                        return;
+                        break;
 
                     APInt inDemandedMask = mask.shl((int) shAmt);
                     APInt highBits = APInt.getHighBitsSet(bitwidth, (int) shAmt)
@@ -1638,11 +1638,36 @@ public class SelectionDAG
                         knownVals[1].orAssign(highBits);
                     }
                 }
-                return;
+                break;
             case ISD.SIGN_EXTEND_INREG:
             {
+                EVT vt = ((VTSDNode)op.getOperand(1).getNode()).getVT();
+                int bits = vt.getSizeInBits();
+                APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth-bits).and(mask);
+                APInt inSignBit = APInt.getSignBit(bits);
+                APInt inputDemandedBits = mask.and(APInt.getLowBitsSet(bitwidth, bits));
+                inSignBit.zext(bitwidth);
+                if (newBits.getBoolValue())
+                    inputDemandedBits.orAssign(inSignBit);
 
-                return;
+                computeMaskedBits(op.getOperand(0), inputDemandedBits, knownVals, depth+1);
+                assert knownVals[0].add(knownVals[1]).eq(0):"Bits known to be one AND zero?";
+                if (knownVals[0].intersects(inSignBit))
+                {
+                    knownVals[0].orAssign(newBits);
+                    knownVals[1].andAssign(newBits.not());
+                }
+                else if(knownVals[1].intersects(inSignBit))
+                {
+                    knownVals[1].orAssign(newBits);
+                    knownVals[0].andAssign(newBits.not());
+                }
+                else
+                {
+                    knownVals[0].andAssign(newBits.not());
+                    knownVals[1].andAssign(newBits.not());
+                }
+                break;
             }
             case ISD.CTTZ:
             case ISD.CTLZ:
@@ -1651,7 +1676,7 @@ public class SelectionDAG
                 int lowBits = Util.log2(bitwidth) + 1;
                 knownVals[0] = APInt.getHighBitsSet(bitwidth, bitwidth - lowBits);
                 knownVals[1].clear();
-                return;
+                break;
             }
             case ISD.LOAD:
             {
@@ -1663,7 +1688,7 @@ public class SelectionDAG
                     knownVals[0].orAssign(
                             APInt.getHighBitsSet(bitwidth, bitwidth - memBits)).and(mask);
                 }
-                return;
+                break;
             }
             case ISD.ZERO_EXTEND:
             {
@@ -1678,7 +1703,7 @@ public class SelectionDAG
                 knownVals[0].zext(bitwidth);
                 knownVals[1].zext(bitwidth);
                 knownVals[0].orAssign(newBits);
-                return;
+                break;
             }
             case ISD.SIGN_EXTEND:
             {
@@ -1711,7 +1736,7 @@ public class SelectionDAG
                 else if (signBitKnownOne)
                     knownVals[1].orAssign(newBits);
 
-                return;
+                break;
             }
             case ISD.ANY_EXTEND:
             {
@@ -1724,7 +1749,7 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
                 knownVals[0].zext(bitwidth);
                 knownVals[1].zext(bitwidth);
-                return;
+                break;
             }
             case ISD.TRUNCATE:
             {
@@ -1737,7 +1762,7 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
                 knownVals[0].trunc(bitwidth);
                 knownVals[1].trunc(bitwidth);
-                return;
+                break;
             }
             case ISD.AssertZext:
             {
@@ -1746,11 +1771,11 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(0), mask.and(inMask), knownVals,
                         depth + 1);
                 knownVals[0].orAssign(inMask.not().and(mask));
-                return;
+                break;
             }
             case ISD.FGETSIGN:
                 knownVals[0] = APInt.getHighBitsSet(bitwidth, bitwidth - 1);
-                return;
+                break;
             case ISD.SUB:
             {
                 if (op.getOperand(0).getNode() instanceof ConstantSDNode)
@@ -1784,7 +1809,7 @@ public class SelectionDAG
                 knownZeroOut = Math.min(knownZeroOut, knownVals2[0].countTrailingOnes());
 
                 knownVals[0].orAssign(APInt.getLowBitsSet(bitwidth, knownZeroOut));
-                return;
+                break;
             }
             case ISD.SREM:
             {
@@ -1808,7 +1833,7 @@ public class SelectionDAG
                         assert knownVals[0].and(knownVals[1]).eq(0);
                     }
                 }
-                return;
+                break;
             }
             case ISD.UREM:
             {
@@ -1838,7 +1863,7 @@ public class SelectionDAG
                         knownVals2[0].countLeadingOnes());
                 knownVals[1].clear();
                 knownVals[0] = APInt.getHighBitsSet(bitwidth, leaders).and(mask);
-                return;
+                break;
             }
             default:
                 if (op.getOpcode() >= ISD.BUILTIN_OP_END)
