@@ -305,8 +305,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             if (changed)
                 curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         }
-        curDAG.legalize(false, optLevel);
+        {
+            curDAG.viewGraph("dag-after-combine2 for " + blockName);
+        }
 
+        curDAG.legalize(false, optLevel);
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         if (ViewDAGBeforeISel.value)
         {

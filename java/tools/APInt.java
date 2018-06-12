@@ -2761,7 +2761,7 @@ public class APInt implements Cloneable
             return new APInt(numBits, -1L);
 
         if (numBits < APINT_BITS_PER_WORD)
-            return new APInt(numBits, 1L << loBitsSet);
+            return new APInt(numBits, (1L << loBitsSet) - 1);
         return new APInt(numBits, 0).lshr(numBits - loBitsSet);
     }
 
