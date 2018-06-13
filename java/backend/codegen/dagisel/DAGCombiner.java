@@ -1010,6 +1010,7 @@ public class DAGCombiner
     }
     public void addToWorkList(SDNode n)
     {
+        if (n == null) return;
         removeFromWorkList(n);
         workList.add(n);
     }

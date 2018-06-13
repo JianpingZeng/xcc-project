@@ -67,6 +67,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         return useList;
     }
 
+    public void clearUseList()
+    {
+        useList = null;
+    }
+
     public int getOpcode()
     {
         return opcode;
@@ -866,7 +871,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         for (int i = 0, e = getNumOperands(); i < e; i++)
         {
             if (i != 0) os.print(", ");
-            os.printf("0x%x", getOperand(i).getNode().hashCode());
+            if (getOperand(i).getNode() == null)
+                os.printf("0x0");
+            else
+                os.printf("0x%x", getOperand(i).getNode().hashCode());
             int resNo = getOperand(i).getResNo();
             if (resNo != 0)
                 os.printf(":%d", resNo);

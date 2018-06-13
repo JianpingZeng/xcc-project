@@ -81,7 +81,7 @@ public class SDUse implements Comparable<SDUse>
         if (getClass() != obj.getClass())
             return false;
         SDUse use = (SDUse) obj;
-        return use.val.equals(val);
+        return use.val.equals(val) && use.user.equals(user);
     }
 
     @Override
