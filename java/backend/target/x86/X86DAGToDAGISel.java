@@ -76,7 +76,8 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         while (iselPosition != 0)
         {
             SDNode node = curDAG.allNodes.get(--iselPosition);
-            if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE)
+            if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE ||
+                    node.isMachineOpecode())
                 continue;
 
             SDNode resNode = select(new SDValue(node, 0));
@@ -92,18 +93,9 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 iselPosition = updater.getISelPos();
             }
         }
-        for (int i = 0, e = curDAG.allNodes.size(); i < e; i++)
-        {
-            if (curDAG.allNodes.get(i).getNodeID() == ISD.DELETED_NODE &&
-                    curDAG.allNodes.get(i).isUseEmpty())
-            {
-                curDAG.allNodes.remove(i);
-                --i;
-                --e;
-            }
-        }
         curDAG.setRoot(dummy.getValue());
         dummy.dropOperands();
+        curDAG.removeDeadNodes();
     }
 
     private void selectRootInit()

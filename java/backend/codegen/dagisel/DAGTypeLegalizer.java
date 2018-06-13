@@ -173,15 +173,19 @@ public class DAGTypeLegalizer
             else
                 node.setNodeID(Unanalyzed);
         }
-
-        for (SDNode n : dag.allNodes)
+        if (Util.DEBUG)
         {
-            n.dump();
-            System.err.printf(" %d%n", n.getNodeID());
+            for (SDNode n : dag.allNodes)
+            {
+                n.dump();
+                System.err.printf(" %d%n", n.getNodeID());
+            }
         }
         while (!worklist.isEmpty())
         {
-            performExpensiveChecks();
+            if (Util.DEBUG)
+                performExpensiveChecks();
+
             SDNode n = worklist.pop();
             assert n.getNodeID() == ReadyToProcess:
                     "Node should be ready if on worklist!";
@@ -328,8 +332,8 @@ public class DAGTypeLegalizer
                     worklist.add(user);
             }
         }
-
-        performExpensiveChecks();
+        if (Util.DEBUG)
+            performExpensiveChecks();
         dag.setRoot(dummy.getValue());
         dummy.dropOperands();
         dag.removeDeadNodes();

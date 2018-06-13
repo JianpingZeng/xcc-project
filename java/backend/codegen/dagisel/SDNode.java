@@ -69,7 +69,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void clearUseList()
     {
-        useList = null;
+        useList.clear();
     }
 
     public int getOpcode()
@@ -908,6 +908,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     public void addUse(SDUse use)
     {
         assert use != null;
+        if (useList == null)
+            useList = new ArrayList<>();
         useList.add(use);
     }
 
