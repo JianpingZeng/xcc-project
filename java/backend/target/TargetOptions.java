@@ -110,6 +110,11 @@ public class TargetOptions
                     new OptionHiddenApplicator(Hidden),
                     desc("Verify generated machine code"),
                     init(false));
+    public static final BooleanOpt ViewDAGBeforeCodeGen =
+            new BooleanOpt(optionName("view-dags-before-code-gen"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Pop up a window to show dags before codegen"),
+                    init(false));
 
     public static final BooleanOpt ViewDAGAfterFirstLegalizeTypes =
             new BooleanOpt(optionName("view-dags-first-legalize-types"),

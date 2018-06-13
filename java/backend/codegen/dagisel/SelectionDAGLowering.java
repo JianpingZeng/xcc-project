@@ -840,7 +840,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         return null;
     }
 
-    @Override public Void visitBr(User inst)
+    @Override
+    public Void visitBr(User inst)
     {
         BranchInst bi = (BranchInst) inst;
         MachineBasicBlock succ0MBB = funcInfo.mbbmap.get(bi.getSuccessor(0));
@@ -857,8 +858,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             {
                 dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
                         getControlRoot(), dag.getBasicBlock(succ0MBB)));
-                return null;
             }
+            return null;
         }
 
         Value condVal = bi.getCondition();

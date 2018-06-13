@@ -644,7 +644,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
                         user.getOperand(2).getNode().equals(node) &&
                         user.getOperand(2).getResNo() == resNo)
                 {
-                    int destReg = ((RegisterSDNode)user.getOperand(2).getNode()).getReg();
+                    int destReg = ((RegisterSDNode)user.getOperand(1).getNode()).getReg();
                     if (isVirtualRegister(destReg))
                     {
                         vrbase = destReg;
