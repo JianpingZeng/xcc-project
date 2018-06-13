@@ -88,7 +88,19 @@ public class SelectionDAG
         cseMap = new TIntObjectHashMap<>();
         entryNode = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
         root = getEntryNode();
-        allNodes.add(entryNode);
+        add(entryNode);
+    }
+
+    private void add(SDNode n)
+    {
+        if (allNodes.contains(n)) return;
+        allNodes.add(n);
+    }
+    private void add(int pos, SDNode n)
+    {
+        assert pos >= 0 && pos < allNodes.size():"Postion to be inserted out of range!";
+        if (allNodes.contains(n)) return;
+        allNodes.add(pos, n);
     }
 
     public FunctionLoweringInfo getFunctionLoweringInfo()
@@ -180,7 +192,7 @@ public class SelectionDAG
                     break;
             }
         }
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -244,7 +256,7 @@ public class SelectionDAG
         {
             node = new SDNode(opc, vts, ops);
         }
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -264,7 +276,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode node = new SDNode(opc, getVTList(vt));
         cseMap.put(id, node);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -482,7 +494,7 @@ public class SelectionDAG
         }
         else
             node = new SDNode.UnarySDNode(opc, vts, op0);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -776,7 +788,7 @@ public class SelectionDAG
         }
         else
             node = new SDNode.BinarySDNode(opc, vts, op0, op1);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -874,7 +886,7 @@ public class SelectionDAG
         }
         else
             node = new SDNode.TernarySDNode(opc, vts, op0, op1, op2);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -889,7 +901,7 @@ public class SelectionDAG
             condCodeNodes.add(null);
         CondCodeSDNode node = new CondCodeSDNode(cond);
         condCodeNodes.set(idx, node);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -1015,7 +1027,7 @@ public class SelectionDAG
         {
             n = new ConstantSDNode(isTarget, ci, eltVT);
             cseMap.put(hash, n);
-            allNodes.add(n);
+            add(n);
         }
 
         SDValue res = new SDValue(n, 0);
@@ -1057,7 +1069,7 @@ public class SelectionDAG
         {
             n = new ConstantFPSDNode(isTarget, val, eltVT);
             cseMap.put(hash, n);
-            allNodes.add(n);
+            add(n);
         }
 
         SDValue res = new SDValue(n, 0);
@@ -1232,7 +1244,7 @@ public class SelectionDAG
         cseMap.clear();
         Collections.fill(condCodeNodes, null);
         entryNode.useList = null;
-        allNodes.add(entryNode);
+        add(entryNode);
         root = getEntryNode();
     }
 
@@ -1286,6 +1298,16 @@ public class SelectionDAG
         removeDeadNodes(deadNodes, null);
         setRoot(dummy.getValue());
         dummy.dropOperands();
+        for (int i = 0, e = allNodes.size(); i < e; i++)
+        {
+            if (allNodes.get(i).isUseEmpty() &&
+                    allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
+            {
+                allNodes.remove(i);
+                --i;
+                --e;
+            }
+        }
     }
 
     public void removeDeadNode(SDNode node, DAGUpdateListener listener)
@@ -1914,7 +1936,7 @@ public class SelectionDAG
         SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val,
                 ptrVal, alignment);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -1942,7 +1964,7 @@ public class SelectionDAG
         SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap,
                 ptrVal, alignment);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -1962,7 +1984,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode res = new CvtRndSatSDNode(vt, cc, ops);
         cseMap.put(id, res);
-        allNodes.add(res);
+        add(res);
         return new SDValue(res, 0);
     }
 
@@ -2195,7 +2217,7 @@ public class SelectionDAG
 
         SDNode node = new RegisterSDNode(ty, reg);
         cseMap.put(id, node);
-        allNodes.add(node);
+        add(node);
         return new SDValue(node, 0);
     }
 
@@ -2218,7 +2240,7 @@ public class SelectionDAG
                 if (i != insertPos)
                 {
                     allNodes.remove(i);
-                    allNodes.add(insertPos, node);
+                    add(insertPos, node);
                 }
                 ++insertPos;
                 node.setNodeID(dagSize++);
@@ -2242,10 +2264,11 @@ public class SelectionDAG
                 {
                     int userIdx = allNodes.indexOf(user);
                     assert userIdx != -1 :"Illegal status!";
+                    assert insertPos <= userIdx:"Unordered list!";
                     if (userIdx != insertPos)
                     {
-                        allNodes.add(insertPos, user);
                         allNodes.remove(userIdx);
+                        add(insertPos, user);
                     }
                     ++insertPos;
                     user.setNodeID(dagSize++);
@@ -2539,7 +2562,7 @@ public class SelectionDAG
 
         SDNode n = new MemOperandSDNode(memOperand);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2692,7 +2715,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new GlobalAddressSDNode(opc, vt, gv, offset, targetFlags);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2714,7 +2737,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new FrameIndexSDNode(fi, vt, isTarget);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2733,7 +2756,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new JumpTableSDNode(jti, vt, isTarget, 0);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2761,7 +2784,7 @@ public class SelectionDAG
         SDNode n = new ConstantPoolSDNode(isTarget, c, vt, offset, align,
                 targetFlags);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2783,7 +2806,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new BasicBlockSDNode(mbb);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2804,7 +2827,7 @@ public class SelectionDAG
             extendedValueTypeNodes.put(vt, n);
         else
             valueTypeNodes.add(vt.getSimpleVT().simpleVT, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2814,7 +2837,7 @@ public class SelectionDAG
             return new SDValue(externalSymbols.get(sym), 0);
         SDNode n = new ExternalSymbolSDNode(false, vt, sym, 0);
         externalSymbols.put(sym, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2825,7 +2848,7 @@ public class SelectionDAG
             return new SDValue(targetExternalSymbols.get(key), 0);
         SDNode n = new ExternalSymbolSDNode(true, vt, sym, targetFlags);
         targetExternalSymbols.put(key, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2842,7 +2865,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new LabelSDNode(opc, root, labelID);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2860,7 +2883,7 @@ public class SelectionDAG
             return new SDValue(cseMap.get(id), 0);
         SDNode n = new SrcValueSDNode(val);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -2977,7 +3000,7 @@ public class SelectionDAG
         SDNode n = new StoreSDNode(ops, vts, UNINDEXED, true, svt, sv, svOffset,
                 alignment, isVolatile);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -3003,7 +3026,7 @@ public class SelectionDAG
         SDNode n = new StoreSDNode(ops, vts, UNINDEXED, false, vt, sv, svOffset,
                 alignment, isVolatile);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -3077,7 +3100,7 @@ public class SelectionDAG
         SDNode n = new LoadSDNode(ops, vts, am, extType, evt, sv, svOffset,
                 alignment, isVolatile);
         cseMap.put(id, n);
-        allNodes.add(n);
+        add(n);
         return new SDValue(n, 0);
     }
 
@@ -3546,7 +3569,7 @@ public class SelectionDAG
         assert index != -1;
         int nIdx = allNodes.indexOf(n);
         assert nIdx != -1;
-        allNodes.add(index, n);
+        add(index, n);
         if (index < nIdx)
             ++nIdx;
         allNodes.remove(nIdx);

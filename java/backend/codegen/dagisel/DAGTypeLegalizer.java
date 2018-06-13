@@ -333,16 +333,6 @@ public class DAGTypeLegalizer
         dag.setRoot(dummy.getValue());
         dummy.dropOperands();
         dag.removeDeadNodes();
-        for (int i = 0, e = dag.allNodes.size(); i < e; i++)
-        {
-            if (dag.allNodes.get(i).isUseEmpty() &&
-                    dag.allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
-            {
-                dag.allNodes.remove(i);
-                --i;
-                --e;
-            }
-        }
         return changed;
     }
 

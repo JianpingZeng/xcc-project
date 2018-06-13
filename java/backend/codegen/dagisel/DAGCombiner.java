@@ -119,16 +119,7 @@ public class DAGCombiner
         }
         dag.setRoot(dummy.getValue());
         dummy.dropOperands();
-        for (int i = 0, e = dag.allNodes.size(); i < e; i++)
-        {
-            if (dag.allNodes.get(i).isUseEmpty() &&
-                    dag.allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
-            {
-                dag.allNodes.remove(i);
-                --i;
-                --e;
-            }
-        }
+        dag.removeDeadNodes();
     }
 
     private SDValue combine(SDNode n)
@@ -389,9 +380,27 @@ public class DAGCombiner
         return new SDValue();
     }
 
+    private SDValue simplifySetCC(EVT vt, SDValue op0,
+                                  SDValue op1, CondCode cond)
+    {
+        return simplifySetCC(vt, op0, op1, cond, true);
+    }
+
+    private SDValue simplifySetCC(EVT vt,
+                                  SDValue op0,
+                                  SDValue op1,
+                                  CondCode cond,
+                                  boolean foldBooleans)
+    {
+        DAGCombinerInfo dci = new DAGCombinerInfo(dag, !legalTypes,
+                !legalOprations, false, this);
+        return tli.simplifySetCC(vt, op0, op1, cond, foldBooleans, dci);
+    }
+
     private SDValue visitSETCC(SDNode n)
     {
-        return new SDValue();
+        return simplifySetCC(n.getValueType(0), n.getOperand(0), n.getOperand(1),
+                ((CondCodeSDNode)n.getOperand(2).getNode()).getCondition());
     }
 
     private SDValue visitSELECT_CC(SDNode n)

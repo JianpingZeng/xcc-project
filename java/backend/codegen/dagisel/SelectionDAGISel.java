@@ -302,7 +302,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                 curDAG.viewGraph("dag-after-second-combines for " + blockName);
             }
 
-            //changed = curDAG.legalizeVectors();
+            changed = curDAG.legalizeVectors();
             if (changed)
             {
                 changed = curDAG.legalizeTypes();
@@ -316,6 +316,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         }
 
         curDAG.legalize(false, optLevel);
+        //if (ViewDAGBeforeISel.value)
+        {
+            curDAG.viewGraph("dag-after-legalizations for " + blockName);
+        }
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         if (ViewDAGBeforeISel.value)
         {

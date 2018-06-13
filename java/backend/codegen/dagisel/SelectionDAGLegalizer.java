@@ -94,8 +94,11 @@ public class SelectionDAGLegalizer
         isLegalizingCall = false;
 
         dag.assignTopologicalOrder();
-        for (SDNode node : dag.allNodes)
+        for (int i = 0, e = dag.allNodes.size(); i < e;i++)
+        {
+            SDNode node = dag.allNodes.get(i);
             legalizeOp(new SDValue(node, 0));
+        }
 
         SDValue oldRoot = dag.getRoot();
         assert legalizeNodes.containsKey(oldRoot):"Root didn't get legalized!";

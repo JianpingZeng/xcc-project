@@ -23,7 +23,9 @@ import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.dagisel.SDNode.ShuffleVectorSDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.target.TargetMachine;
+import tools.Util;
 
+import static backend.target.x86.CondCode.*;
 import static tools.Util.isInt32;
 
 /**
@@ -332,5 +334,36 @@ public interface X86
             return true;
 
         return false;
+    }
+
+    /**
+     * Turns the specified condition code into reverse part, e.g. COND_NE -> COND_E.
+     * @param cc
+     * @return
+     */
+    public static long getOppositeBranchCondition(long cc)
+    {
+        switch ((int) cc)
+        {
+            default:
+                Util.shouldNotReachHere("Illegal condition code!");
+                return COND_INVALID;
+            case COND_E:  return COND_NE;
+            case COND_NE: return COND_E;
+            case COND_L:  return COND_GE;
+            case COND_LE: return COND_G;
+            case COND_G:  return COND_LE;
+            case COND_GE: return COND_L;
+            case COND_B:  return COND_AE;
+            case COND_BE: return COND_A;
+            case COND_A:  return COND_BE;
+            case COND_AE: return COND_B;
+            case COND_S:  return COND_NS;
+            case COND_NS: return COND_S;
+            case COND_P:  return COND_NP;
+            case COND_NP: return COND_P;
+            case COND_O:  return COND_NO;
+            case COND_NO: return COND_O;
+        }
     }
 }
