@@ -37,11 +37,11 @@ import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.dagisel.CondCode.SETOEQ;
-import static backend.codegen.dagisel.CondCode.SETUNE;
+import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
 import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
 import static backend.codegen.dagisel.TLSModel.*;
+import static backend.codegen.fastISel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 import static backend.target.TargetLowering.LegalizeAction.*;
 import static backend.target.TargetMachine.CodeModel.Kernel;
@@ -50,7 +50,7 @@ import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.DisableMMX;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.TargetOptions.GenerateSoftFloatCalls;
-import static backend.target.x86.CondCode.COND_NE;
+import static backend.target.x86.CondCode.*;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86InstrBuilder.addFullAddress;
 import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
@@ -3875,10 +3875,335 @@ public class X86TargetLowering extends TargetLowering
     private SDValue lowerFABS(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerFNEG(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerSETCC(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerSETCC(SDValue op, SelectionDAG dag)
+    {
+        assert op.getValueType().getSimpleVT().simpleVT ==MVT.i8:
+                "SetCC type must be 8-bits integer!";
+        SDValue op0 = op.getOperand(0);
+        SDValue op1 = op.getOperand(1);
+        backend.codegen.dagisel.CondCode cc = ((CondCodeSDNode)op.getOperand(2).getNode()).getCondition();
+        // lower (X & (1<<N)) == 0 --> BT(X, N)
+        // lower ((X >>u N) & 1) != 0 --> BT(X, N)
+        // lower ((X >>s N) & 1) != 0 --> BT(X, N)
+        if (op0.getOpcode() == ISD.AND &&
+                op0.hasOneUse() &&
+                op1.getOpcode() == ISD.Constant &&
+                ((ConstantSDNode)op1.getNode()).getZExtValue() == 0 &&
+                (cc == SETEQ || cc == SETNE))
+        {
+            SDValue lhs = new SDValue(), rhs = new SDValue();
+            if (op0.getOperand(1).getOpcode() == ISD.SHL)
+            {
+                if (op0.getOperand(1).getOperand(1).getNode() instanceof
+                        ConstantSDNode)
+                {
+                    ConstantSDNode csd = (ConstantSDNode)op0.getOperand(1).getOperand(1).getNode();
+                    if (csd.getZExtValue() == 1)
+                    {
+                        lhs = op0.getOperand(0);
+                        rhs = op0.getOperand(1).getOperand(1);
+                    }
+                }
+            }
+            else if (op0.getOperand(0).getOpcode() == ISD.SHL)
+            {
+                if (op0.getOperand(1).getOperand(0).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode csd = (ConstantSDNode)op0.getOperand(1).getOperand(0).getNode();
+                    if (csd.getZExtValue() == 1)
+                    {
+                        lhs = op0.getOperand(0);
+                        rhs = op0.getOperand(1).getOperand(1);
+                    }
+                }
+            }
+            else if (op0.getOperand(1).getOpcode() == ISD.Constant)
+            {
+                ConstantSDNode andRhs = (ConstantSDNode)op0.getOperand(1).getNode();
+                SDValue andLhs = op0.getOperand(0);
+                if (andRhs.getZExtValue() == 1 && andLhs.getOpcode() == ISD.SRL)
+                {
+                    lhs = andLhs.getOperand(0);
+                    rhs = andLhs.getOperand(1);
+                }
+            }
+
+            if (lhs.getNode() != null)
+            {
+                if (lhs.getValueType().getSimpleVT().simpleVT == MVT.i8)
+                    lhs = dag.getNode(ISD.ANY_EXTEND, new EVT(MVT.i32), lhs);
+                if (!lhs.getValueType().equals(rhs.getValueType()))
+                    rhs = dag.getNode(ISD.ANY_EXTEND, lhs.getValueType(), rhs);
+
+                SDValue bt = dag.getNode(X86ISD.BT, new EVT(MVT.i32), lhs, rhs);
+                int cond = cc == SETEQ ? COND_AE : COND_B;
+                return dag.getNode(X86ISD.SETCC, new EVT(MVT.i8),
+                        dag.getConstant(cond, new EVT(MVT.i8), false), bt);
+            }
+        }
+        boolean isFP = op.getOperand(1).getValueType().isFloatingPoint();
+        int x86cc = translateX86CC(cc, isFP, op0, op1, dag);
+        SDValue cond = emitCmp(op0, op1, x86cc, dag);
+        return dag.getNode(X86ISD.SETCC, new EVT(MVT.i8),
+                dag.getConstant(x86cc, new EVT(MVT.i8), false), cond);
+    }
+
+    /**
+     * Translate the CondCode into X86 specific condition code.
+     * @param cc
+     * @param isFP
+     * @param lhs
+     * @param rhs
+     * @return
+     */
+    private int translateX86CC(backend.codegen.dagisel.CondCode cc,
+                               boolean isFP,
+                               SDValue lhs,
+                               SDValue rhs,
+                               SelectionDAG dag)
+    {
+        if (!isFP)
+        {
+            if (rhs.getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode rhsC = (ConstantSDNode)rhs.getNode();
+                if (cc == SETGT && rhsC.isAllOnesValue())
+                {
+                    rhs =dag.getConstant(0, rhs.getValueType(), false);
+                    return COND_NS;
+                }
+                else if (cc == SETLT && rhsC.isNullValue())
+                {
+                    return COND_S;
+                }
+                else if (cc == SETLT && rhsC.getZExtValue() ==1)
+                {
+                    rhs = dag.getConstant(0, rhs.getValueType(), false);
+                    return COND_LE;
+                }
+            }
+            switch(cc)
+            {
+                default:
+                    Util.shouldNotReachHere("Invalid integer condition!");
+                    break;
+                case SETEQ: return COND_E;
+                case SETGT:  return COND_G;
+                case SETGE:  return COND_GE;
+                case SETLT:  return COND_L;
+                case SETLE:  return COND_LE;
+                case SETNE:  return COND_NE;
+                case SETULT: return COND_B;
+                case SETUGT: return COND_A;
+                case SETULE: return COND_BE;
+                case SETUGE: return COND_AE;
+            }
+        }
+        if (lhs.getNode().isNONExtLoad() && lhs.hasOneUse() &&
+                !(rhs.getNode().isNONExtLoad() && rhs.hasOneUse()))
+        {
+            cc = getSetCCSwappedOperands(cc);
+            SDValue t = lhs;
+            lhs = rhs;
+            rhs = t;
+        }
+        switch (cc)
+        {
+            default: break;
+            case SETOLT:
+            case SETOLE:
+            case SETUGT:
+            case SETUGE:
+            {
+                SDValue t = lhs;
+                lhs = rhs;
+                rhs = t;
+                break;
+            }
+        }
+
+        // On a floating point condition, the flags are set as follows:
+        // ZF  PF  CF   op
+        //  0 | 0 | 0 | X > Y
+        //  0 | 0 | 1 | X < Y
+        //  1 | 0 | 0 | X == Y
+        //  1 | 1 | 1 | unordered
+        switch (cc)
+        {
+            default:
+                Util.shouldNotReachHere("CondCode shoult be pre-legalized!");
+                break;
+            case SETUEQ:
+            case SETEQ:   return COND_E;
+            case SETOLT:              // flipped
+            case SETOGT:
+            case SETGT:   return COND_A;
+            case SETOLE:              // flipped
+            case SETOGE:
+            case SETGE:   return COND_AE;
+            case SETUGT:              // flipped
+            case SETULT:
+            case SETLT:   return COND_B;
+            case SETUGE:              // flipped
+            case SETULE:
+            case SETLE:   return COND_BE;
+            case SETONE:
+            case SETNE:   return COND_NE;
+            case SETUO:   return COND_P;
+            case SETO:    return COND_NP;
+        }
+        return COND_INVALID;
+    }
+
     private SDValue lowerVSETCC(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerSELECT(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerBRCOND(SDValue op, SelectionDAG dag) {return new SDValue(); }
+
+    /**
+     * Return true if the specified op is a X86 logical comparison.
+     */
+    private static boolean isX86LogicalCmp(SDValue op)
+    {
+        int opc = op.getOpcode();
+        if (opc == X86ISD.CMP || opc == X86ISD.COMI || opc == X86ISD.UCOMI)
+        {
+            return true;
+        }
+        return (op.getResNo() == 1 &&
+            (opc == X86ISD.ADD ||
+             opc == X86ISD.SUB ||
+             opc == X86ISD.SMUL ||
+             opc == X86ISD.UMUL ||
+             opc == X86ISD.INC ||
+             opc == X86ISD.DEC));
+    }
+
+    private static int isAndOrOfSetCCs(SDValue op)
+    {
+      int opc = op.getOpcode();
+      if (opc != ISD.OR && opc != ISD.AND)
+        return -1;
+      return (op.getOperand(0).getOpcode() == X86ISD.SETCC &&
+          op.getOperand(0).hasOneUse() &&
+          op.getOperand(1).getOpcode() == X86ISD.SETCC &&
+          op.getOperand(1).hasOneUse()) ? opc : -1;
+    }
+
+    /**
+     * Return true if the specified SDValue is an ISD.XOR of a
+     * X86ISD.SETCC and 1 that this SetCC node has a single use.
+     */
+    private static boolean isXor10OfSetCC(SDValue op)
+    {
+        if (op.getOpcode() != ISD.XOR)
+          return false;
+        ConstantSDNode rhsC = op.getOperand(1).getNode() instanceof ConstantSDNode ?
+          (ConstantSDNode)op.getOperand(1).getNode() : null;
+        if (rhsC != null && rhsC.getAPIntValue().eq(1))
+        {
+            return op.getOperand(0).getOpcode() == X86ISD.SETCC &&
+              op.getOperand(0).hasOneUse();
+        }
+        return false;
+    }
+
+    private SDValue lowerBRCOND(SDValue op, SelectionDAG dag)
+    {
+        boolean addTest = true;
+        SDValue chain = op.getOperand(0);
+        SDValue cond = op.getOperand(1);
+        SDValue dest = op.getOperand(2);
+        SDValue cc = new SDValue();
+        if (cond.getOpcode() == ISD.SETCC)
+          cond = lowerSETCC(cond, dag);
+        if (cond.getOpcode() == X86ISD.SETCC)
+        {
+            // If condition flag is set by a X86ISD.CMP, then use it as the
+            // condition directly instead of using X86ISD.SETCC.
+            cc = cond.getOperand(0);
+            SDValue cmp = cond.getOperand(1);
+            int opc = cmp.getOpcode();
+            if (isX86LogicalCmp(cmp) || opc == X86ISD.BT)
+            {
+                cond = cmp;
+                addTest = false;
+            }
+            else
+            {
+                switch ((int) ((ConstantSDNode)cc.getNode()).getZExtValue())
+                {
+                    default: break;
+                    case COND_O:
+                    case COND_B:
+                        cond = cond.getNode().getOperand(1);
+                        addTest = false;
+                        break;
+                }
+            }
+        }
+        else
+        {
+            int condOpc;
+            if (cond.hasOneUse() && (condOpc = isAndOrOfSetCCs(cond)) != -1)
+            {
+                SDValue cmp = cond.getOperand(0).getOperand(1);
+                if (condOpc == ISD.OR)
+                {
+                    if (cmp.equals(cond.getOperand(1).getOperand(1)) &&
+                        isX86LogicalCmp(cmp))
+                    {
+                        cc = cond.getOperand(0).getOperand(0);
+                        chain = dag.getNode(X86ISD.BRCOND, op.getValueType(),
+                            chain, dest, cc, cmp);
+                        cc = cond.getOperand(1).getOperand(0);
+                        cond = cmp;
+                        addTest = false;
+                    }
+                }
+                else
+                {
+                    // ISD.AND
+                    if (cmp.equals(cond.getOperand(1).getOperand(1)) &&
+                        isX86LogicalCmp(cmp) &&
+                        op.getNode().hasOneUse())
+                    {
+                        long cccode = cond.getOperand(0).getConstantOperandVal(0);
+                        cccode = X86.getOppositeBranchCondition(cccode);
+                        cc = dag.getConstant(cccode, new EVT(MVT.i8), false);
+                        SDValue user = new SDValue(op.getNode().getUse(0).getNode(), 0);
+                        if (user.getOpcode() == ISD.BR)
+                        {
+                            SDValue falseBB = user.getOperand(1);
+                            SDValue newBR = dag.updateNodeOperands(user,
+                                user.getOperand(0), dest);
+                            assert newBR.equals(user);
+                            dest = falseBB;
+                            chain = dag.getNode(X86ISD.BRCOND, op.getValueType(),
+                                chain, dest, cc, cmp);
+                            long cccode2 = cond.getOperand(1).getConstantOperandVal(0);
+                            cccode2 = X86.getOppositeBranchCondition(cccode2);
+                            cc = dag.getConstant(cccode2, new EVT(MVT.i8), false);
+                            cond = cmp;
+                            addTest = false;
+                        }
+                    }
+                }
+            }
+            else if (cond.hasOneUse() && isXor10OfSetCC(cond))
+            {
+                long cccode = cond.getOperand(0).getConstantOperandVal(0);
+                cccode = X86.getOppositeBranchCondition(cccode);
+                cc = dag.getConstant(cccode, new EVT(MVT.i8), false);
+                cond = cond.getOperand(0).getOperand(1);
+                addTest = false;
+            }
+        }
+        if (addTest)
+        {
+            cc = dag.getConstant(COND_NE, new EVT(MVT.i8), false);
+            cond = emitTest(cond, COND_NE, dag);
+        }
+        return dag.getNode(X86ISD.BRCOND, op.getValueType(), chain, dest, cc, cond);
+    }
     private SDValue lowerMEMSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
     private SDValue lowerJumpTable(SDValue op, SelectionDAG dag)
     {
