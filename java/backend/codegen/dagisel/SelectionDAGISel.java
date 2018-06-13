@@ -46,7 +46,6 @@ import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.support.BackendCmdOptions.createScheduler;
 import static backend.support.ErrorHandling.llvmReportError;
 import static backend.target.TargetOptions.ViewDAGAfterSched;
-import static backend.target.TargetOptions.ViewDAGBeforeISel;
 import static backend.target.TargetOptions.ViewDAGBeforeSched;
 
 /**
@@ -276,6 +275,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
 
         String blockName = mf.getFunction().getName() + ":" +
                 mbb.getBasicBlock().getName();
+        if (Util.DEBUG)
         {
             curDAG.viewGraph("dag-input-combine-first for " + blockName);
         }
@@ -283,13 +283,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         // combine
         curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
 
-        //if (Util.DEBUG)
+        if (Util.DEBUG)
         {
             curDAG.viewGraph("dag-before-legalize for " + blockName);
         }
 
         boolean changed = curDAG.legalizeTypes();
-
+        if (Util.DEBUG)
         {
             curDAG.viewGraph("dag-after-first-legalize-types for " + blockName);
         }
@@ -302,7 +302,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                 curDAG.viewGraph("dag-after-second-combines for " + blockName);
             }
 
-            changed = curDAG.legalizeVectors();
+            //changed = curDAG.legalizeVectors();
             if (changed)
             {
                 changed = curDAG.legalizeTypes();
@@ -310,18 +310,18 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             if (changed)
                 curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         }
-        //if (Util.DEBUG)
+        if (Util.DEBUG)
         {
             curDAG.viewGraph("dag-after-combine2 for " + blockName);
         }
 
         curDAG.legalize(false, optLevel);
-        //if (ViewDAGBeforeISel.value)
+        if (Util.DEBUG)
         {
             curDAG.viewGraph("dag-after-legalizations for " + blockName);
         }
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
-        if (ViewDAGBeforeISel.value)
+        //if (ViewDAGBeforeISel.value)
         {
             curDAG.viewGraph("dag-before-isel for " + blockName);
         }

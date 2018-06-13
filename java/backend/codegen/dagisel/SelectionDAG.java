@@ -1294,20 +1294,9 @@ public class SelectionDAG
             if (node.isUseEmpty())
                 deadNodes.add(node);
         }
-
         removeDeadNodes(deadNodes, null);
         setRoot(dummy.getValue());
         dummy.dropOperands();
-        for (int i = 0, e = allNodes.size(); i < e; i++)
-        {
-            if (allNodes.get(i).isUseEmpty() &&
-                    allNodes.get(i).getNodeID() == ISD.DELETED_NODE)
-            {
-                allNodes.remove(i);
-                --i;
-                --e;
-            }
-        }
     }
 
     public void removeDeadNode(SDNode node, DAGUpdateListener listener)
@@ -1325,9 +1314,12 @@ public class SelectionDAG
             deadNodes.remove(i);
             --e;
             --i;
+            if (node == null) continue;
+
             if (listener != null)
                 listener.nodeDeleted(node, null);
-
+            // Erase the specified SDNode and replace all uses of it with null.
+            allNodes.remove(node);
             removeNodeFromCSEMaps(node);
             if (node.operandList != null && node.operandList.length > 0)
             {
@@ -1336,7 +1328,7 @@ public class SelectionDAG
                     SDNode operand = use.getNode();
                     use.set(new SDValue());
 
-                    if (operand.isUseEmpty())
+                    if (operand != null && operand.isUseEmpty())
                     {
                         deadNodes.add(operand);
                         ++e;
@@ -1350,6 +1342,7 @@ public class SelectionDAG
     private boolean removeNodeFromCSEMaps(SDNode node)
     {
         boolean erased = false;
+        if (node == null) return erased;
         switch (node.getOpcode())
         {
             case ISD.EntryToken:
@@ -1358,11 +1351,12 @@ public class SelectionDAG
             case ISD.HANDLENODE:
                 return false;
             case ISD.CONDCODE:
-                assert condCodeNodes.get(((CondCodeSDNode) node).getCondition().ordinal())
-                        != null : "Cond code doesn't exist!";
-                erased = true;
-                condCodeNodes.set(((CondCodeSDNode) node).getCondition().ordinal(),
-                        null);
+                if (condCodeNodes.get(((CondCodeSDNode) node).getCondition().ordinal()) != null)
+                {
+                    erased = true;
+                    condCodeNodes.set(((CondCodeSDNode) node).getCondition().ordinal(),
+                            null);
+                }
                 break;
             case ISD.TargetExternalSymbol:
                 ExternalSymbolSDNode sym = (ExternalSymbolSDNode) node;
