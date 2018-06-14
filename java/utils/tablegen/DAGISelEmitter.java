@@ -930,6 +930,7 @@ public class DAGISelEmitter extends TableGenBackend
             os.println("import java.io.ByteArrayOutputStream;");
             os.println("import java.io.PrintStream;");
             os.println("import java.util.ArrayList;");
+            os.println("import backend.target.x86.X86GenRegisterNames;");
             os.println("import static backend.support.ErrorHandling.llvmReportError;");
             emitHeader(os, targetName);
 
