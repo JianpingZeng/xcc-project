@@ -570,6 +570,38 @@ public class PatternCodeEmitter
                     if (rec.isSubClassOf("Register"))
                     {
                         int vt = getRegisterValueType(rec, target);
+                        int rvt = getRegisterValueType(rec, target);
+                        if (rvt == MVT.Flag)
+                        {
+                            if (!inFlagDecled.get())
+                            {
+                                emitCode("SDValue inFlag = " + rootName + opNo + ";");
+                                inFlagDecled.set(true);
+                            }
+                            else
+                                emitCode("inFlag = " + rootName + opNo + ";");
+                        }
+                        else
+                        {
+                            if (!chainEmitted.get())
+                            {
+                                emitCode("SDValue chain = curDAG.getEntryNode();");
+                                chainName = "chain";
+                                chainEmitted.set(true);
+                            }
+                            if (!inFlagDecled.get())
+                            {
+                                emitCode("SDValue inFlag = new SDValue();");
+                                inFlagDecled.set(true);
+                            }
+                            String decl = !resNodeDecled.get() ? "SDNode " : "";
+                            emitCode(String.format("%sresNode = curDAG.getCopyToReg(%s, X86GenRegisterNames.%s, %s%d, inFlag).getNode();",
+                                            decl, chainName, rec.getName(), rootName,
+                                            opNo));
+                            resNodeDecled.set(true);
+                            emitCode(chainName + " = new SDValue(resNode, 0);");
+                            emitCode("inFlag = new SDValue(resNode, 1);");
+                        }
                     }
                 }
             }
@@ -588,6 +620,7 @@ public class PatternCodeEmitter
             }
         }
     }
+
     protected static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
             CodeGenDAGPatterns cgp)
     {
@@ -913,7 +946,7 @@ public class PatternCodeEmitter
             if (di != null)
             {
                 int resNo = tmpNo++;
-                if (di.getDef().isSubClassOf("Regiser"))
+                if (di.getDef().isSubClassOf("Register"))
                 {
                     String targetRegInfoClassName = cgp.getTarget().getName() + "GenRegisterNames";
                     emitCode(String.format("SDValue tmp%d = curDAG.getRegister(%s.%s, %s);",
@@ -1055,9 +1088,9 @@ public class PatternCodeEmitter
             boolean chainEmitted = nodeHasChain;
             if (nodeHasInFlag || hasImpInputs)
             {
-                OutParamWrapper<Boolean> x = new OutParamWrapper<>(
-                        chainEmitted), y = new OutParamWrapper<>(
-                        inFlagDecled), z = new OutParamWrapper<>(resNodeDecled);
+                OutParamWrapper<Boolean> x = new OutParamWrapper<>(chainEmitted);
+                OutParamWrapper<Boolean> y = new OutParamWrapper<>(inFlagDecled);
+                OutParamWrapper<Boolean> z = new OutParamWrapper<>(resNodeDecled);
                 emitIntFlagSelectCode(pattern, "n", x, y, z, true);
                 chainEmitted = x.get();
                 inFlagDecled = y.get();
@@ -1073,8 +1106,7 @@ public class PatternCodeEmitter
                 if (nodeHasOptInFlag)
                 {
                     emitCode("if (hasInFlag) {");
-                    emitCode(
-                            "  inFlag = n.getOperand(n.getNumOperands()-1);");
+                    emitCode("  inFlag = n.getOperand(n.getNumOperands()-1);");
                     emitCode("}");
                 }
             }
