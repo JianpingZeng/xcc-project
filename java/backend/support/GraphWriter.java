@@ -145,7 +145,7 @@ public final class GraphWriter
     public static void displayGraph(File filename)
             throws IOException, InterruptedException
     {
-        if (Files.exists(Paths.get("xdot"))) {
+        //if (Files.exists(Paths.get("xdot"))) {
             System.err.println("Running 'xdot' program... ");
             Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
             int res = p.waitFor();
@@ -154,7 +154,7 @@ public final class GraphWriter
             } else {
                 filename.delete();
             }
-        }
+        /*}
         else if (Files.exists(Paths.get("dot")))
         {
             StringBuilder cmd = new StringBuilder();
@@ -167,6 +167,6 @@ public final class GraphWriter
             cmd.append(" ").append(filename).append(".ps");
             // TODO
             Util.shouldNotReachHere();
-        }
+        }*/
     }
 }
