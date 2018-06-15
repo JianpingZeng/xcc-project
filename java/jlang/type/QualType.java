@@ -605,6 +605,11 @@ public final class QualType implements Cloneable, FoldingSetNode
         return type.isSignedIntegerType();
     }
 
+    public boolean isUnsignedIntegerType()
+    {
+        return type.isUnsignedIntegerType();
+    }
+
     public boolean isConstantSizeType()
     {
         return type.isConstantSizeType();

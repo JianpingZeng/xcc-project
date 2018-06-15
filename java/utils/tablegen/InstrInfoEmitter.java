@@ -385,11 +385,12 @@ public final class InstrInfoEmitter extends TableGenBackend
             }
             else
             {
+                CodeGenInstruction.OperandInfo info = instr.operandList.get(i);
                 for (int j = 0, ee = (int)instr.operandList.get(i).miNumOperands; j != ee; ++j)
                 {
-                    CodeGenInstruction.OperandInfo info = instr.operandList.get(i);
-                    info.rec = ((Init.DefInit)dag.getArg(j)).getDef();
-                    operandList.add(info);
+                    CodeGenInstruction.OperandInfo oi = info.clone();
+                    oi.rec = ((Init.DefInit)dag.getArg(j)).getDef();
+                    operandList.add(oi);
                 }
             }
 
@@ -401,7 +402,7 @@ public final class InstrInfoEmitter extends TableGenBackend
                 if (opr.isSubClassOf("RegisterClass"))
                     res.append(opr.getName()).append("RegClassID, ");
                 else if (opr.isSubClassOf("PointerLikeRegClass"))
-                    res.append(opr.getValueAsInt("RegClassKind"));
+                    res.append(opr.getValueAsInt("RegClassKind") + ", ");
                 else
                     res.append("0, ");
 

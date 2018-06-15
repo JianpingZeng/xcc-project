@@ -174,7 +174,7 @@ public class AliasAnalysis implements ModulePass
         if (cs.doesNotAccessMemory())
             return DoesNotAccessMemory;
         ModRefBehavior mrb = getModRefBehavior(cs.getCalledFunction(), info);
-        if (mrb != DoesNotAccessMemory && cs.onlyReadMemory())
+        if (mrb != DoesNotAccessMemory && cs.onlyReadsMemory())
             return OnlyReadsMemory;
         return mrb;
     }

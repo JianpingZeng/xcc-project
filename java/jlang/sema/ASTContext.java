@@ -203,6 +203,11 @@ public final class ASTContext
 		declAttrs = new HashMap<>();
 	}
 
+	public TargetInfo getTargetInfo()
+	{
+		return target;
+	}
+
     public SourceManager getSourceManager()
     {
         return sourceMgr;
@@ -1627,7 +1632,7 @@ public final class ASTContext
 		this.sigjmp_buf_Decl = decl;
 	}
 
-    enum FloatingRank
+	enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}

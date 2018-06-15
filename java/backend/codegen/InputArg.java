@@ -31,6 +31,7 @@ public class InputArg
 
     public InputArg()
     {
+        flags = new ArgFlagsTy();
         vt = new EVT(MVT.Other);
         used = false;
     }

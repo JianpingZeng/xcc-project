@@ -332,7 +332,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public EVT getValueType(int resNo)
     {
-        assert resNo <= getNumValues() && resNo >= 0;
+        assert resNo < getNumValues() && resNo >= 0;
         return valueList[resNo];
     }
 

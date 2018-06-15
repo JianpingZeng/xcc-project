@@ -98,6 +98,25 @@ public final class LangOptions
      */
     private String mainFileName;
 
+    public enum StackProtectMode
+    {
+        SSPOff,
+        SSPOn,
+        SSPReg
+    }
+
+    private StackProtectMode stackProtectMode;
+
+    public StackProtectMode getStackProtectMode()
+    {
+        return stackProtectMode;
+    }
+
+    public void setStackProtectMode(StackProtectMode mode)
+    {
+        this.stackProtectMode = mode;
+    }
+
     public String getMainFileName()
     {
         return mainFileName;

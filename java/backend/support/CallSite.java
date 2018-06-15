@@ -89,14 +89,42 @@ public class CallSite
 
 	public boolean doesNotAccessMemory()
 	{
-		// TODO
-		return false;
+		return getInstruction().doesNotAccessMemory();
 	}
 
-	public boolean onlyReadMemory()
+	public void setDoesNotAccessMemory(boolean val)
 	{
-		// TODO
-		return false;
+		getInstruction().setDoesNotAccessMemory(val);
+	}
+
+	public boolean onlyReadsMemory()
+	{
+		return getInstruction().onlyReadsMemory();
+	}
+
+	public void setOnlyReadsMemory(boolean val)
+	{
+		getInstruction().setOnlyReadsMemory(val);
+	}
+
+	public boolean doesNotReturn()
+	{
+		return getInstruction().doesNotReturn();
+	}
+
+	public void setDoesNotReturn(boolean val)
+	{
+		getInstruction().setDoesNotReturn(val);
+	}
+
+	public boolean doesNotThrow()
+	{
+		return getInstruction().doesNotThrow();
+	}
+
+	public void setDoesNotThrow(boolean val)
+	{
+		getInstruction().setDoesNotThrow(val);
 	}
 
 	public CallingConv getCallingConv()
@@ -117,6 +145,11 @@ public class CallSite
 	public AttrList getAttributes()
 	{
 		return inst.getAttributes();
+	}
+
+	public void setAttributes(AttrList attrs)
+	{
+		getInstruction().setAttributes(attrs);
 	}
 }
 

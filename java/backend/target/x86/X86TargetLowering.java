@@ -1896,7 +1896,7 @@ public class X86TargetLowering extends TargetLowering
         }
 
         chain = dag.getNode(X86ISD.CALL, vts, ops);
-        inFlag = callee.getValue(1);
+        inFlag = chain.getValue(1);
 
         int numBytesForCalleeToPush = 0;
         if (isCalleePop(isVarArg, cc))

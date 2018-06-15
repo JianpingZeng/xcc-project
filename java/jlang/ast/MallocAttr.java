@@ -14,37 +14,12 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-
 package jlang.ast;
 
-import tools.Util;
-
-/**
- * @author Xlous.zeng
- * @version 0.1
- */
-public class Attr implements Cloneable
+public class MallocAttr extends Attr
 {
-    protected AttrKind kind;
-
-    public Attr(AttrKind kind)
+    public MallocAttr(AttrKind kind)
     {
-        this.kind = kind;
-    }
-
-    public AttrKind getKind()
-    {
-        return kind;
-    }
-
-    public void setKind(AttrKind kind)
-    {
-        this.kind = kind;
-    }
-
-    public Attr clone()
-    {
-        Util.shouldNotReachHere("Must be implemented by subclass!");
-        return null;
+        super(kind);
     }
 }
