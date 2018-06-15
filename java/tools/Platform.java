@@ -21,7 +21,8 @@ package tools;
  * @author Xlous.zeng
  * @version 0.1
  */
-public enum Platform {
+public enum Platform
+{
     Any("any"),
     Linux("Linux"),
     Mac_OS("Mac OS"),

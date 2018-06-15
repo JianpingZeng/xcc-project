@@ -50,6 +50,12 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(EXCLUDE_TARGET "${SRC_DIR}/backend/target/x86")
 set(EXCLUDE_JLANG_DRIVER "${SRC_DIR}/xcc")
 
+# Find the executable for displaying dot file.
+set(XDOT "xdot")
+set(DOT  "dot")
+find_program(XDOT_PATH "${XDOT}")
+find_program(DOT_PATH "${DOT}")
+
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "DEBUG")
 endif()

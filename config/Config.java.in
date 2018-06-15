@@ -35,4 +35,13 @@ public class Config
     public static final String BinaryPath = "@OUT_BIN_DIR@";
 
     public static final String HostTriple = "@TARGET_TRIPLE@";
+
+    /**
+     * The path to xdot executable.
+     */
+    public static final String XDOT_PATH = "@XDOT_PATH@";
+    /**
+     * The path to dot executable.
+     */
+    public static final String DOT_PATH = "@DOT_PATH@";
 }
