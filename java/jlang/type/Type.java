@@ -643,6 +643,12 @@ public abstract class Type implements TypeClass
         return false;
     }
 
+    public boolean isUnsignedIntegerType()
+    {
+        return (isBuiltinType() && tc >= TypeClass.Bool &&
+                tc <= TypeClass.ULongLong);
+    }
+
     public boolean isConstantSizeType()
     {
         assert !isIncompleteType():"This is not make sense for incomplete type";

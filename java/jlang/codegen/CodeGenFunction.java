@@ -17,8 +17,7 @@ package jlang.codegen;
  */
 
 import backend.ir.HIRBuilder;
-import backend.support.CallSite;
-import backend.support.LLVMContext;
+import backend.support.*;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -2162,11 +2161,26 @@ public final class CodeGenFunction
 			}
 		}
 
+		ArrayList<AttributeWithIndex> attrList = new ArrayList<>();
+		generator.constructAttributeList(callInfo, targetDecl, attrList);
+		AttrList attrs = new AttrList(attrList);
+
 		CallSite cs = new CallSite(builder.createCall(callee, args));
+		cs.setAttributes(attrs);
 
 		Instruction.CallInst ci = cs.getInstruction();
 		ci.setCallingConv(curFn.getCallingConv());
 
+		// If the call doesn't return, finish the basic block and clear the
+		// insertion point; this allows the rest of IRgen to discard
+		// unreachable code.
+		if (cs.doesNotReturn())
+		{
+			builder.createUnreachable();
+			builder.clearInsertPoint();
+			ensureInsertPoint();
+			return getUndefRValue(retType);
+		}
 		if (ci.getType() != LLVMContext.VoidTy)
 			ci.setName("call");
 

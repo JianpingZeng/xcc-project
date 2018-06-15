@@ -277,7 +277,7 @@ public abstract class Decl
 
     public ArrayList<Attr> getAttrs()
     {
-        assert hasAttrs:"hasAttrs was wrong?";
+        if (!hasAttrs) return null;
         return getASTContext().getDeclAttrs(this);
     }
 
@@ -346,6 +346,9 @@ public abstract class Decl
 
     public boolean hasAttr(AttrKind kind)
     {
+        if (getAttrs() == null || getAttrs().isEmpty())
+            return false;
+
         for (Attr a : getAttrs())
         {
             if (a.getKind() == kind)
@@ -356,6 +359,9 @@ public abstract class Decl
 
     public Attr getAttr(AttrKind kind)
     {
+        if (getAttrs() == null || getAttrs().isEmpty())
+            return null;
+
         for (Attr a : getAttrs())
         {
             if (a.getKind() == kind)
@@ -414,7 +420,6 @@ public abstract class Decl
     {
         print(os, policy, 0);
     }
-
 
     public static void printGroup(ArrayList<Decl> decls,
             PrintStream os,

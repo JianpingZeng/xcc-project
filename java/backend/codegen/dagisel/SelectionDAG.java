@@ -22,6 +22,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
 import backend.support.DefaultDotGraphTrait;
+import backend.support.GraphWriter;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
@@ -3515,43 +3516,9 @@ public class SelectionDAG
     public void viewGraph(String title)
     {
         String funcName = getMachineFunction().getFunction().getName();
-        PrintStream out = null;
-        File temp = null;
-        try
-        {
-            String filename = "dag." + funcName + ".dot";
-            Path path = Files.createTempFile(null, filename);
-            temp = path.toFile();
-            out = new PrintStream(temp);
-            System.err.printf("Writing '%s'...%n", temp.toString());
-            writeGraph(out, DefaultDotGraphTrait.createSelectionDAGTrait(this, false), false, title);
-            displayGraph(temp);
-        }
-        catch (Exception e)
-        {
-            System.err.println("error opening file for writing!");
-        }
-        finally
-        {
-            if (out != null) out.close();
-            if (temp != null) temp.delete();
-        }
-    }
-
-    public static void displayGraph(File filename)
-            throws IOException, InterruptedException
-    {
-        System.err.println("Running 'xdot' program... ");
-        Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
-        int res = p.waitFor();
-        if (res != 0)
-        {
-            System.err.printf("Error viewing graph %s.\n", filename.getName());
-        }
-        else
-        {
-            filename.delete();
-        }
+        String filename = "dag." + funcName + ".dot";
+        DefaultDotGraphTrait trait = DefaultDotGraphTrait.createSelectionDAGTrait(this, false);
+        GraphWriter.viewGraph(title, filename, trait);
     }
 
     public void repositionNode(SDNode position, SDNode n)

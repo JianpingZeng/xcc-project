@@ -379,7 +379,7 @@ public final class Record implements Cloneable
     {
         RecordVal rv = getValue(fieldName);
         if (rv == null || rv.getValue() == null)
-            throw new Exception("Reord '" + getName() + "' does not have a field"
+            throw new Exception("Record '" + getName() + "' does not have a field"
                     + " named '" + fieldName + "'!\n");
         if (rv.getValue() instanceof IntInit)
             return ((IntInit)rv.getValue()).getValue();

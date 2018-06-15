@@ -862,4 +862,9 @@ public class HIRBuilder
 	{
 		return insert(new SelectInst(cond, lhs, rhs, name), name);
 	}
+
+	public UnreachableInst createUnreachable()
+	{
+		return insert(new UnreachableInst());
+	}
 }

@@ -41,7 +41,7 @@ public class ABIArgInfo
 
 	private Kind kind;
 	private Type typeData;
-	private int alignment;
+	private int intData;
 
 	public ABIArgInfo()
 	{
@@ -49,11 +49,11 @@ public class ABIArgInfo
 		typeData = null;
 	}
 
-	private ABIArgInfo(Kind kind, Type ty, int align)
+	private ABIArgInfo(Kind kind, Type ty, int id)
 	{
 		this.kind = kind;
 		typeData = ty;
-		alignment = align;
+		intData = id;
 	}
 	public static ABIArgInfo getDirect()
 	{
@@ -115,6 +115,9 @@ public class ABIArgInfo
         assert kind == Coerce :"Invalid kind!";
         return typeData;
     }
-
-
+	public int getIndirectAlign()
+	{
+		assert kind == Indirect:"Invalid accessor!";
+		return intData;
+	}
 }

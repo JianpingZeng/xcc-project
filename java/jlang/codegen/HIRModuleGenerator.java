@@ -1,18 +1,20 @@
 package jlang.codegen;
 
 import backend.intrinsic.Intrinsic;
-import backend.support.AttrList;
-import backend.support.CallingConv;
-import backend.support.LLVMContext;
+import backend.support.*;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
+import jlang.ast.Attr;
+import jlang.ast.AttrKind;
+import jlang.ast.RegparmAttr;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
 import jlang.ast.Tree.StringLiteral;
+import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -22,6 +24,7 @@ import jlang.support.CompileOptions;
 import jlang.support.LangOptions;
 import jlang.support.SourceLocation;
 import jlang.type.QualType;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -479,7 +482,7 @@ public class HIRModuleGenerator
 
     private void setLLVMFunctionAttributes(
             FunctionDecl fd,
-            CodeGenTypes.CGFunctionInfo fi,
+            CGFunctionInfo fi,
             Function f)
     {
         // TODO Currently, don't attach any attributes to each LLVM function. 2018/1/20
@@ -862,7 +865,7 @@ public class HIRModuleGenerator
 
     }
 
-	public boolean returnTypeUseSret(CodeGenTypes.CGFunctionInfo callInfo)
+	public boolean returnTypeUseSret(CGFunctionInfo callInfo)
 	{
 		return false;
 	}
@@ -995,4 +998,115 @@ public class HIRModuleGenerator
 	}
 
 	public void release() {}
+
+    public void constructAttributeList(CGFunctionInfo callInfo,
+                                       Decl targetDecl,
+                                       ArrayList<AttributeWithIndex> attrList)
+    {
+        int funcAttrs = 0;
+        int retAttrs = 0;
+        if (targetDecl != null)
+        {
+            if (targetDecl.hasAttr(AttrKind.NoThrow))
+                funcAttrs |= Attribute.NoUnwind;
+            if (targetDecl.hasAttr(AttrKind.NoReturn))
+                funcAttrs |= Attribute.NoReturn;
+            if (targetDecl.hasAttr(AttrKind.Const))
+                funcAttrs |= Attribute.ReadNone;
+            else if (targetDecl.hasAttr(AttrKind.Pure))
+                funcAttrs |= Attribute.NoAlias;
+        }
+        // compileOpts.DisableRedZone
+        // compileOpts.NoImplicitFloat
+        if (langOptions.getStackProtectMode() == LangOptions.StackProtectMode.SSPOn)
+            funcAttrs |= Attribute.StackProtect;
+        else if (langOptions.getStackProtectMode() == LangOptions.StackProtectMode.SSPReg)
+            funcAttrs |= Attribute.StackProtectReq;
+
+        QualType retTy = callInfo.getReturnType();
+        int index = 1;
+        ABIArgInfo retAI = callInfo.getReturnInfo();
+        switch (retAI.getKind())
+        {
+            case Extend:
+                if (retTy.isSignedIntegerType())
+                    retAttrs |= Attribute.SExt;
+                else if (retTy.isUnsignedIntegerType())
+                    retAttrs |= Attribute.ZExt;
+                // Fall through.
+            case Direct:
+                break;
+            case Indirect:
+                attrList.add(AttributeWithIndex.get(index,
+                        Attribute.StructRet |
+                        Attribute.NoAlias));
+                ++index;
+                funcAttrs &= ~(Attribute.ReadOnly |
+                                Attribute.ReadNone);
+                break;
+            case Ignore:
+            case Coerce:
+                break;
+            case Expand:
+                Util.shouldNotReachHere("Invalid ABI kind for return argument");
+                break;
+        }
+        if (retAttrs != 0)
+            attrList.add(AttributeWithIndex.get(0, retAttrs));
+        int regParm = 0;
+        if (targetDecl != null)
+        {
+            Attr regParamAttr = targetDecl.getAttr(AttrKind.Regparm);
+            if (regParamAttr != null)
+                regParm = ((RegparmAttr)regParamAttr).getNumParams();
+        }
+        int pointerWidth = getASTContext().getTargetInfo().getPointerWidth(0);
+        for (int i = 0, e = callInfo.getNumOfArgs(); i < e; i++)
+        {
+            CGFunctionInfo.ArgInfo ai = callInfo.getArgInfoAt(i);
+            QualType paramType = ai.type;
+            ABIArgInfo abi = ai.info;
+            int attributes = 0;
+            switch (abi.getKind())
+            {
+                case Coerce: break;
+                case Indirect:
+                    attributes |= Attribute.ByVal;
+                    attributes |= Attribute.constructAlignmentFromInt(
+                            abi.getIndirectAlign());
+                    funcAttrs &= ~(Attribute.ReadOnly |
+                                    Attribute.ReadNone);
+                    break;
+                case Extend:
+                    if (paramType.isSignedIntegerType())
+                        attributes |= Attribute.SExt;
+                    else if (paramType.isUnsignedIntegerType())
+                        attributes |= Attribute.ZExt;
+                    // fall through
+                case Direct:
+                    if (regParm > 0 && (paramType.isIntegerType() ||
+                            paramType.isPointerType()))
+                    {
+                        regParm -= getASTContext().getTypeSize(paramType) +
+                                pointerWidth;
+                        if (regParm >= 0)
+                            attributes |= Attribute.InReg;
+                    }
+                    break;
+                case Ignore:
+                    // Skip the increment.
+                    continue;
+                case Expand:
+                    ArrayList<Type> tys = new ArrayList<>();
+                    getCodeGenTypes().getExpandedType(paramType, tys);
+                    index += tys.size();
+                    continue;
+            }
+            if (attributes != 0)
+                attrList.add(AttributeWithIndex.get(index, attributes));
+            ++index;
+        }
+        if (funcAttrs != 0)
+            attrList.add(AttributeWithIndex.get(~0, funcAttrs));
+    }
 }

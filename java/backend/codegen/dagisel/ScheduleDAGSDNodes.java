@@ -692,7 +692,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             }
 
             EVT vt = node.getValueType(resNo);
-            TargetRegisterClass srcRC = null, destRC = null;
+            TargetRegisterClass srcRC, destRC;
             srcRC = tri.getPhysicalRegisterRegClass(srcReg, vt);
 
             if (vrbase != 0)

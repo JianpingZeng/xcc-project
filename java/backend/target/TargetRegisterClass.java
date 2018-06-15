@@ -174,6 +174,8 @@ public abstract class TargetRegisterClass
 
     public boolean hasSubClass(TargetRegisterClass subRC)
     {
+        if (subClasses == null || subClasses.length <= 0)
+            return false;
         for (TargetRegisterClass rc : subClasses)
             if (rc.equals(subRC))
                 return true;

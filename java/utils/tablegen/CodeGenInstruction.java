@@ -47,7 +47,7 @@ public final class CodeGenInstruction
      */
     String asmString;
 
-    static class OperandInfo
+    static class OperandInfo implements Cloneable
     {
         Record rec;
 
@@ -77,6 +77,16 @@ public final class CodeGenInstruction
             this.miOperandInfo = operandInfo;
             constraints = new ArrayList<>();
             doNotEncode = new ArrayList<>();
+        }
+
+        @Override
+        public OperandInfo clone()
+        {
+            OperandInfo res = new OperandInfo(rec, name, printerMethodName,
+                    miOperandNo, miNumOperands, miOperandInfo);
+            res.constraints.addAll(constraints);
+            res.doNotEncode.addAll(doNotEncode);
+            return res;
         }
     }
 

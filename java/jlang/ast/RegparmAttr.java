@@ -17,34 +17,24 @@
 
 package jlang.ast;
 
-import tools.Util;
-
-/**
- * @author Xlous.zeng
- * @version 0.1
- */
-public class Attr implements Cloneable
+public class RegparmAttr extends Attr
 {
-    protected AttrKind kind;
+    private int numParams;
 
-    public Attr(AttrKind kind)
+    public RegparmAttr(int num)
     {
-        this.kind = kind;
+        super(AttrKind.Regparm);
+        numParams = num;
     }
 
-    public AttrKind getKind()
+    public int getNumParams()
     {
-        return kind;
+        return numParams;
     }
 
-    public void setKind(AttrKind kind)
-    {
-        this.kind = kind;
-    }
-
+    @Override
     public Attr clone()
     {
-        Util.shouldNotReachHere("Must be implemented by subclass!");
-        return null;
+        return new RegparmAttr(numParams);
     }
 }

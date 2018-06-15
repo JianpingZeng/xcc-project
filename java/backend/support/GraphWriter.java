@@ -19,7 +19,12 @@ package backend.support;
 
 import tools.Util;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * This file defines a class used for writing a specific kind graph
@@ -111,5 +116,57 @@ public final class GraphWriter
     public void writeFooter()
     {
         dotTrait.writeFooter(this);
+    }
+
+    public static void viewGraph(String title, String filename, DefaultDotGraphTrait dotTrait)
+    {
+        PrintStream out = null;
+        File temp = null;
+        try
+        {
+            Path path = Files.createTempFile(null, filename);
+            temp = path.toFile();
+            out = new PrintStream(temp);
+            System.err.printf("Writing '%s'...%n", temp.toString());
+            writeGraph(out, dotTrait, false, title);
+            displayGraph(temp);
+        }
+        catch (Exception e)
+        {
+            System.err.println(e.getMessage());
+        }
+        finally
+        {
+            if (out != null) out.close();
+            if (temp != null) temp.delete();
+        }
+    }
+
+    public static void displayGraph(File filename)
+            throws IOException, InterruptedException
+    {
+        if (Files.exists(Paths.get("xdot"))) {
+            System.err.println("Running 'xdot' program... ");
+            Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
+            int res = p.waitFor();
+            if (res != 0) {
+                System.err.printf("Error viewing graph %s.\n", filename.getName());
+            } else {
+                filename.delete();
+            }
+        }
+        else if (Files.exists(Paths.get("dot")))
+        {
+            StringBuilder cmd = new StringBuilder();
+            cmd.append("dot");
+            cmd.append(" -Tps");
+            cmd.append(" -Nfontname=Courier");
+            cmd.append(" -Gsize=7.5,10");
+            cmd.append(" ").append(filename);
+            cmd.append(" -o");
+            cmd.append(" ").append(filename).append(".ps");
+            // TODO
+            Util.shouldNotReachHere();
+        }
     }
 }

@@ -36,6 +36,7 @@ import tools.*;
 
 import java.util.*;
 
+import static jlang.codegen.CodeGenFunction.hasAggregateLLVMType;
 import static jlang.type.TypeClass.*;
 import static jlang.type.TypeClass.Double;
 import static jlang.type.TypeClass.Enum;
@@ -54,8 +55,8 @@ public class CodeGenTypes
     {
         public static class ArgInfo
         {
-            QualType type;
-            ABIArgInfo info;
+            public QualType type;
+            public ABIArgInfo info;
         }
 
         private ArgInfo[] args;
@@ -339,7 +340,7 @@ public class CodeGenTypes
             assert !fd.isBitField():"Canot expand structure with bit field members";
 
             QualType fdTy = fd.getType();
-            if (CodeGenFunction.hasAggregateLLVMType(fdTy))
+            if (hasAggregateLLVMType(fdTy))
             {
                 getExpandedTypes(fdTy, argTys);
             }
@@ -924,5 +925,28 @@ public class CodeGenTypes
     public TargetData getTargetData()
     {
         return targetData;
+    }
+
+    public void getExpandedType(QualType type, ArrayList<Type> argTys)
+    {
+        RecordType rt = type.getAsStructureType();
+        assert rt != null:"Can only expand structure types!";
+        Decl.RecordDecl rd = rt.getDecl();
+        assert !rd.hasFlexibleArrayNumber():
+                "Can not expand structure with flexible member!";
+        for (int i = 0, e = rd.getNumFields(); i < e; i++)
+        {
+            FieldDecl fd = rd.getDeclAt(i);
+            assert !fd.isBitField():"Can't expand structure with bit field!";
+            QualType qt = fd.getType();
+            if (hasAggregateLLVMType(qt))
+            {
+                getExpandedTypes(qt, argTys);
+            }
+            else
+            {
+                argTys.add(convertType(qt));
+            }
+        }
     }
 }
