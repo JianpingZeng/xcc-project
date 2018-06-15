@@ -496,10 +496,10 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         int beginLabel = 0, endLabel = 0;
 
         ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfArguments());
-        ArgListEntry entry = new ArgListEntry();
 
         for (int i = 0, e = cs.getNumOfArguments(); i < e; i++)
         {
+            ArgListEntry entry = new ArgListEntry();
             SDValue arg = getValue(cs.getArgument(i));
             entry.node = arg;
             entry.ty = cs.getArgument(i).getType();

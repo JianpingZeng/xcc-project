@@ -275,7 +275,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         String blockName = mf.getFunction().getName() + ":" +
                 mbb.getBasicBlock().getName();
 
-        if (ViewDAGBeforeCodeGen.value)
+        //if (ViewDAGBeforeCodeGen.value)
         {
             curDAG.viewGraph("dag-input-combine-first for " + blockName);
         }

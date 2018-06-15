@@ -1015,7 +1015,7 @@ public class SelectionDAG
         int opc = isTarget ? ISD.TargetConstant : ISD.Constant;
         FoldingSetNodeID id = new FoldingSetNodeID();
         addNodeToIDNode(id, opc, getVTList(eltVT), null, 0);
-        id.addInteger(ci.hashCode());
+        id.addInteger(ci.getZExtValue());
         int hash = id.computeHash();
         SDNode n = null;
         if (cseMap.containsKey(hash))
