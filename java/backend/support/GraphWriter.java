@@ -17,6 +17,8 @@
 
 package backend.support;
 
+import config.Config;
+import tools.OSInfo;
 import tools.Util;
 
 import java.io.File;
@@ -145,7 +147,9 @@ public final class GraphWriter
     public static void displayGraph(File filename)
             throws IOException, InterruptedException
     {
-        //if (Files.exists(Paths.get("xdot"))) {
+        if (Config.XDOT_PATH != null && !Config.XDOT_PATH.isEmpty() &&
+                OSInfo.isLinux())
+        {
             System.err.println("Running 'xdot' program... ");
             Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
             int res = p.waitFor();
@@ -154,19 +158,37 @@ public final class GraphWriter
             } else {
                 filename.delete();
             }
-        /*}
-        else if (Files.exists(Paths.get("dot")))
+        }
+        else if (Config.DOT_PATH != null && !Config.DOT_PATH.isEmpty() &&
+                (OSInfo.isMacOS() || OSInfo.isMacOSX()))
         {
             StringBuilder cmd = new StringBuilder();
+            String pdfFilename = filename + ".pdf";
             cmd.append("dot");
-            cmd.append(" -Tps");
+            cmd.append(" -Tpdf");
             cmd.append(" -Nfontname=Courier");
             cmd.append(" -Gsize=7.5,10");
             cmd.append(" ").append(filename);
             cmd.append(" -o");
-            cmd.append(" ").append(filename).append(".ps");
-            // TODO
-            Util.shouldNotReachHere();
-        }*/
+            cmd.append(" ").append(pdfFilename);
+            System.err.println("Running 'dot' program... ");
+            Process p = Runtime.getRuntime().exec(cmd.toString());
+            int res = p.waitFor();
+            if (res != 0)
+                System.err.printf("Error viewing graph %s.\n", filename.getName());
+            else
+            {
+                System.err.println("Running 'open' program... ");
+                p = Runtime.getRuntime().exec("open " + pdfFilename);
+                res = p.waitFor();
+                if (res != 0)
+                    System.err.printf("Error viewing graph %s.\n", pdfFilename);
+                else
+                {
+                    filename.delete();
+                    Files.delete(Paths.get(pdfFilename));
+                }
+            }
+        }
     }
 }
