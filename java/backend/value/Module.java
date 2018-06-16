@@ -126,8 +126,6 @@ public final class Module implements Iterable<Function>
 		{
 			// not found ,add it into valSymTable.
 			Function newFunc = new Function(type, ExternalLinkage, name, this);
-			// add it into functions list.
-			functionList.add(newFunc);
 			return newFunc;
 		}
 

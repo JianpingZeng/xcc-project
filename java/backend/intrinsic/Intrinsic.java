@@ -1,5 +1,8 @@
 package backend.intrinsic;
 
+import backend.support.LLVMContext;
+import backend.type.FunctionType;
+import backend.type.IntegerType;
 import backend.value.Module;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -36,23 +39,49 @@ public class Intrinsic
 		if (types.isEmpty())
 			return id.name;
 
-		String result = id.name;
+		StringBuilder result = new StringBuilder(id.name);
 		for (Type ty : types)
 		{
 			if (ty instanceof PointerType)
 			{
-				result += ".p" + (((PointerType)ty).getElementType()).getDescription();
+				result.append(".p").append((((PointerType) ty).getElementType()).getDescription());
 			}
 			else
-				result += "." + ty.getDescription();
+				result.append(".").append(ty.getDescription());
 		}
-		return result;
+		return result.toString();
 	}
 
 	public static backend.type.FunctionType getType(ID id, ArrayList<Type> types)
 	{
-		Util.shouldNotReachHere("getType() in Intrinsic isn't implemented!");
-		return null;//TODO
+		backend.type.Type resultTy = null;
+		ArrayList<Type> argTys = new ArrayList<>();
+		boolean isVararg = false;
+		switch (id)
+		{
+			case memcpy:
+			case memmove:
+				// llvm.memcpy
+				// llvm.memmove
+				resultTy = LLVMContext.VoidTy;
+				argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+				argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+				argTys.add(types.get(0));
+				argTys.add(LLVMContext.Int32Ty);
+				break;
+			case memset:
+				// llvm.memset
+				resultTy = LLVMContext.VoidTy;
+				argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+				argTys.add(LLVMContext.Int8Ty);
+				argTys.add(types.get(0));
+				argTys.add(LLVMContext.Int32Ty);
+				break;
+			default:
+				Util.shouldNotReachHere("Unknown intrinsic function!");
+				break;
+		}
+		return FunctionType.get(resultTy, argTys, isVararg);
 	}
 
 	public static Function getDeclaration(Module m, ID id, ArrayList<Type> types)

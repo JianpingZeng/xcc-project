@@ -767,7 +767,8 @@ public class HIRBuilder
             Value arg3,
             Value arg4)
     {
-        return createCall4(callee, arg1, arg2, arg3, arg4);
+        Value[] args = {arg1, arg2, arg3, arg4};
+        return insert(new CallInst(args, callee));
     }
 
     /**

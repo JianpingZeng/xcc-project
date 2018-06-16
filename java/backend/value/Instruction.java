@@ -2341,12 +2341,14 @@ public abstract class Instruction extends User
             reserve(ArgumentOffset + args.length);
             assert (getNumOfOperands() == ArgumentOffset + args.length)
                     : "NumOperands not set up?";
+            assert function instanceof Function:"Callee is not Function?";
             setOperand(0, function, this);
             int idx = ArgumentOffset;
             for (Value arg : args)
             {
                 setOperand(idx++, arg, this);
             }
+            callingConv = ((Function)function).getCallingConv();
         }
 
         public int getNumsOfArgs()
