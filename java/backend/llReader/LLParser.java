@@ -731,7 +731,7 @@ public final class LLParser
         {
             case ExternalLinkage:
                 break;
-            case InteralLinkage:
+            case InternalLinkage:
             case PrivateLinkage:
             case LinkerPrivateLinkage:
                 if (!isDefine)
@@ -961,7 +961,7 @@ public final class LLParser
                 linkage.set(LinkageType.LinkerPrivateLinkage);
                 break;
             case kw_internal:
-                linkage.set(LinkageType.InteralLinkage);
+                linkage.set(LinkageType.InternalLinkage);
                 break;
             case kw_weak:
             case kw_weak_odr:

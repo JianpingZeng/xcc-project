@@ -60,6 +60,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
             arg.setParent(this);
         }
         basicBlockList = new LinkedList<>();
+        setCallingConv(CallingConv.C);
+        setVisibility(VisibilityTypes.DefaultVisibility);
     }
 
     public Type getReturnType()

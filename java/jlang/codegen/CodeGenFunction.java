@@ -261,17 +261,22 @@ public final class CodeGenFunction
 			Constant zero = Constant.getNullValue(backendTy);
 			builder.createStore(zero, returnValue);
 		}
-		// Comment this because there is argument expansion of aggregate type.
-		//assert fn.getNumOfArgs() == args.size()
-        //        : "Mismatch between function signature and argumens";
 
         // emit alloca inst for param decls.  Give the HIR argument nodes names.
 		int ai = 0, aiEnd = fn.getNumOfArgs();
 
+		if (generator.returnTypeUseSret(fi))
+		{
+			fn.argAt(ai).setName("agg.result");
+			++ai;
+		}
+		// Comment this because there is argument expansion of aggregate type.
+		assert fi.getNumOfArgs() == args.size()
+		        : "Mismatch between function signature and argumens";
+
 		// obtains the ABIArgInfo list (contains the type and arg AI) of formal
 		// type enclosing in FunctionType.
 		int infoItr = 0;
-		fi.getNumOfArgs();
 
 		for (Pair<VarDecl, QualType> pair : args)
 		{
@@ -280,7 +285,6 @@ public final class CodeGenFunction
 			ABIArgInfo argAI = fi.getArgInfoAt(infoItr).info;
             ++infoItr;
 
-			boolean isPromoted = arg instanceof ParamVarDecl;
 			assert ai != aiEnd: "Argument mismatch!";
 
 			switch (argAI.getKind())
@@ -1571,7 +1575,7 @@ public final class CodeGenFunction
 
 					gv = new GlobalVariable(generator.getModule(),
 							init.getType(), oldGV.isConstant(),
-							LinkageType.InteralLinkage,
+							LinkageType.InternalLinkage,
 							init, "", null,vd.getType().getAddressSpace());
 
 					gv.setName(oldGV.getName());
@@ -1609,7 +1613,7 @@ public final class CodeGenFunction
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
 		return new GlobalVariable(generator.getModule(),
 				lty, ty.isConstant(getContext()),
-				LinkageType.InteralLinkage,
+				LinkageType.InternalLinkage,
 				generator.emitNullConstant(vd.getType()), name, null, 0);
 	}
 

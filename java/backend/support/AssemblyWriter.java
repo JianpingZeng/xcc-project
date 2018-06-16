@@ -1045,7 +1045,7 @@ public class AssemblyWriter
         {
             case ExternalLinkage:
                 break;
-            case InteralLinkage:
+            case InternalLinkage:
                 out.printf("internal ");
                 break;
             case PrivateLinkage:

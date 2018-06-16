@@ -39,7 +39,7 @@ public abstract class GlobalValue extends Constant
 	    /**
 	     * Rename collisions when linking (static functions).
          */
-        InteralLinkage,
+        InternalLinkage,
 	    /**
          * Like Internal, but omit from symbol table.
          */
@@ -96,7 +96,7 @@ public abstract class GlobalValue extends Constant
 
     public boolean hasExternalLinkage() {return linkageType == LinkageType.ExternalLinkage;}
 
-    public boolean hasInternalLinkage() {return linkageType == LinkageType.InteralLinkage;}
+    public boolean hasInternalLinkage() {return linkageType == LinkageType.InternalLinkage;}
 
     public boolean hasPrivateLinkage() {return linkageType == LinkageType.PrivateLinkage;}
     public boolean hasLinkerPrivateLinkage() {return linkageType == LinkerPrivateLinkage;}

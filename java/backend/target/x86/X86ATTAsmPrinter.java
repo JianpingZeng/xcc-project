@@ -321,7 +321,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         // todo if (subtarget.isTargetCygMing())
         switch (f.getLinkage())
         {
-            case InteralLinkage:
+            case InternalLinkage:
                 switchSection(".text", f);
                 emitAlignment(fnAlign, f);
                 break;

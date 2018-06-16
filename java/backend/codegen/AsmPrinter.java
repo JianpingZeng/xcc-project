@@ -272,7 +272,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             case ExternalLinkage:
                 os.printf("\t.globl %s\n", name);
             case PrivateLinkage:
-            case InteralLinkage:
+            case InternalLinkage:
                 break;
             default:
                 assert false : "Unknown linkage type!";

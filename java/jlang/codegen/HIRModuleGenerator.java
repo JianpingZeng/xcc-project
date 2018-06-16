@@ -310,7 +310,7 @@ public class HIRModuleGenerator
 
 	    // set the appropriate linkage type.
 	    if (vd.getStorageClass() == Decl.StorageClass.SC_static)
-		    gv.setLinkage(InteralLinkage);
+		    gv.setLinkage(InternalLinkage);
 	    else if (!vd.hasExternalStorage() && !vd.hasInit())
 	    {
 		    gv.setLinkage(CommonLinkage);
@@ -734,7 +734,7 @@ public class HIRModuleGenerator
         GVALinkage linkage = getLinkageForFunction(ctx, fd, langOptions);
         if (linkage == GVALinkage.GVA_Internal)
         {
-            gv.setLinkage(InteralLinkage);
+            gv.setLinkage(InternalLinkage);
         }
         else if (linkage == GVALinkage.GVA_C99Inline)
         {
@@ -865,9 +865,9 @@ public class HIRModuleGenerator
 
     }
 
-	public boolean returnTypeUseSret(CGFunctionInfo callInfo)
+	public boolean returnTypeUseSret(CGFunctionInfo fi)
 	{
-		return false;
+		return fi.getReturnInfo().isIndirect();
 	}
 
     public Function getIntrinsic(Intrinsic.ID id, ArrayList<backend.type.Type> types)
