@@ -20,10 +20,13 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.codegen.fastISel.ISD;
+import backend.intrinsic.Intrinsic;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
+import backend.value.Instruction;
+import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.*;
@@ -2648,5 +2651,33 @@ public abstract class TargetLowering
         if (newMask.and(res[0].or(res[1])).eq(newMask))
             return tlo.combineTo(op, tlo.dag.getConstant(res[1], op.getValueType(),false));
         return false;
+    }
+
+    public boolean getTargetMemIntrinsic(IntrinsicInfo info, Instruction.CallInst ci, Intrinsic.ID iid)
+    {
+        return false;
+    }
+
+    public EVT getOptimalMemOpType(long size, int align,
+                                   boolean isSrcConst,
+                                   boolean isSrcStr,
+                                   SelectionDAG dag)
+    {
+        return new EVT(MVT.iAny);
+    }
+
+    public SDValue emitTargetCodeForMemcpy(SelectionDAG dag,
+                                           SDValue chain,
+                                           SDValue dst,
+                                           SDValue src,
+                                           SDValue size,
+                                           int align,
+                                           boolean alwaysInline,
+                                           Value dstVal,
+                                           long dstOff,
+                                           Value srcVal,
+                                           long srcOff)
+    {
+        return new SDValue();
     }
 }

@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import backend.intrinsic.Intrinsic;
 import backend.value.Module;
 import backend.type.Type;
 import backend.value.Function;
@@ -160,7 +161,7 @@ public class NameMangler
         if (name != null)
             return name;
 
-        if (gv instanceof Function && ((Function)gv).getIntrinsicID() != 0)
+        if (gv instanceof Function && ((Function)gv).getIntrinsicID() != Intrinsic.ID.not_intrinsic)
         {
             name = gv.getName();
         }

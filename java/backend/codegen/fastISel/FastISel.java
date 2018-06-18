@@ -18,6 +18,7 @@ package backend.codegen.fastISel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.FunctionLoweringInfo;
+import backend.intrinsic.Intrinsic;
 import backend.support.ErrorHandling;
 import backend.target.*;
 import backend.value.*;
@@ -1066,8 +1067,8 @@ public abstract class FastISel extends MachineFunctionPass
         Function f = ci.getCalledFunction();
         assert f!= null:"The function to be called must be not null!";
 
-        int iid = f.getIntrinsicID();
-        if (iid != 0)
+        Intrinsic.ID iid = f.getIntrinsicID();
+        if (iid != Intrinsic.ID.not_intrinsic)
         {
             ErrorHandling.llvmReportError("Calling to intrinsic is not supported!");
             return false;
