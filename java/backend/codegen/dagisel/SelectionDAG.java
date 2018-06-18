@@ -3396,7 +3396,84 @@ public class SelectionDAG
         isSrcStr.set(isMemSrcFromString(src, str));
         boolean isSrcConst = src.getNode() instanceof ConstantSDNode;
         EVT vt = tli.getOptimalMemOpType(size, destAlign, isSrcConst, isSrcStr.get(), this);
-        return false;
+        boolean allowUnalign = tli.allowsUnalignedMemoryAccesses(vt);
+        if (!vt.equals(new EVT(MVT.iAny)))
+        {
+            Type ty = vt.getTypeForEVT();
+            int newAlign = tli.getTargetData().getABITypeAlignment(ty);
+            if (newAlign > destAlign && (isSrcConst || allowUnalign))
+            {
+                if (dst.getOpcode() != ISD.FrameIndex)
+                {
+                    if (allowUnalign)
+                        vt = new EVT(MVT.iAny);
+                }
+                else
+                {
+                    int fi = ((FrameIndexSDNode)dst.getNode()).getFrameIndex();
+                    MachineFrameInfo mfi = getMachineFunction().getFrameInfo();
+                    if (mfi.isFixedObjectIndex(fi))
+                    {
+                        if (allowUnalign)
+                            vt = new EVT(MVT.iAny);
+                    }
+                    else
+                    {
+                        if (mfi.getObjectAlignment(fi) < newAlign)
+                            mfi.setObjectOffset(fi, newAlign);
+                        destAlign = newAlign;
+                    }
+                }
+            }
+        }
+        if (vt.equals(new EVT(MVT.iAny)))
+        {
+            if (tli.allowsUnalignedMemoryAccesses(new EVT(MVT.i64)))
+                vt = new EVT(MVT.i64);
+            else
+            {
+                switch (destAlign & 7)
+                {
+                    case 0: vt = new EVT(MVT.i16); break;
+                    case 2: vt = new EVT(MVT.i32); break;
+                    case 4: vt = new EVT(MVT.i64); break;
+                    default: vt = new EVT(MVT.i8); break;
+                }
+            }
+            EVT lvt = new EVT(MVT.i64);
+            while (!tli.isTypeLegal(lvt))
+                lvt = new EVT(lvt.getSimpleVT().simpleVT+1);
+            assert lvt.isInteger();
+            if (vt.bitsGT(lvt))
+                vt = lvt;
+        }
+
+        int numMemOps = 0;
+        while (size != 0)
+        {
+            int vtSize = vt.getSizeInBits()/8;
+            while (vtSize > size)
+            {
+                if (vt.isVector())
+                {
+                    vt = new EVT(MVT.i64);
+                    while (!tli.isTypeLegal(vt))
+                        vt = new EVT(vt.getSimpleVT().simpleVT-1);
+                    vtSize = vt.getSizeInBits()/8;
+                }
+                else
+                {
+                    vt = new EVT(vt.getSimpleVT().simpleVT - 1);
+                    vtSize >>= 1;
+                }
+            }
+
+            if (++numMemOps > limit)
+                return false;
+            memOps.add(vt);
+            size -= vtSize;
+        }
+        return true;
     }
 
     private boolean isMemSrcFromString(SDValue src, OutParamWrapper<String> str)

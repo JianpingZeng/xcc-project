@@ -207,8 +207,22 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public Intrinsic.ID getIntrinsicID()
     {
-        // TODO
+        String name = getName();
+        if (name == null) return Intrinsic.ID.not_intrinsic;
+        int len = name.length();
+        if (len < 5 || name.charAt(4) != '.' ||
+                !name.startsWith("llvm"))
+            return Intrinsic.ID.not_intrinsic;
+
+        for (Intrinsic.ID id : Intrinsic.ID.values())
+            if (name.startsWith(id.name))
+                return id;
         return Intrinsic.ID.not_intrinsic;
+    }
+
+    public boolean isIntrinsicID()
+    {
+        return getIntrinsicID() != Intrinsic.ID.not_intrinsic;
     }
 
     public Argument argAt(int index)
