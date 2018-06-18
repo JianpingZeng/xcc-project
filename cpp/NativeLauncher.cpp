@@ -38,23 +38,21 @@ using namespace std;
  */
 JNIEnv* createVM(char* cmdPath)
 {
-    #ifdef PATH_MAX
+#ifdef PATH_MAX
         char absolute[PATH_MAX] = {0};
-    #else
+#else
         char absolute[4086] = {0};
-    #endif
+#endif
     realpath(cmdPath, absolute);
-    #ifdef NDEBUG
-    cout<<absolute<<endl;
-    #endif
+#ifdef DEBUG
+    fprintf(stderr, "%s\n", absolute);
+#endif
 
     char* dir = dirname(absolute);
-    string path(dir);
-    path += "/lib/";
-    string cp = path + XCC_PACKAGE_NAME;
-    cp = "-Djava.class.path=" + cp;
-#ifdef NDEBUG
-    cout<<"classpath: "<<cp<<endl;
+    char path[1024] = {0};
+    sprintf(path, "-Djava.class.path=.:%s/lib/%s", dir, XCC_PACKAGE_NAME);
+#ifdef DEBUG
+    fprintf(stderr, "classpath: %s\n", path);
 #endif
 
     JavaVM *jvm;                      // Pointer to the JVM (Java Virtual Machine)
@@ -62,8 +60,8 @@ JNIEnv* createVM(char* cmdPath)
     //================== prepare loading of Java VM ============================
     JavaVMInitArgs vm_args;                        // Initialization arguments
     JavaVMOption* options = new JavaVMOption[1];   // JVM invocation options
-    options[0].optionString = (char*)cp.c_str();   // where to find java .class
-    vm_args.version = JNI_VERSION_1_2;             // minimum Java version
+    options[0].optionString = path;   // where to find java .class
+    vm_args.version = JNI_VERSION_1_8;             // minimum Java version
     vm_args.nOptions = 1;                          // number of options
     vm_args.options = options;
     vm_args.ignoreUnrecognized = false;     // invalid options make the JVM init fail
@@ -76,11 +74,10 @@ JNIEnv* createVM(char* cmdPath)
          exit(EXIT_FAILURE);
     }
     //=============== Display JVM version =======================================
-    #ifdef NDEBUG
-    cout << "JVM load succeeded: Version ";
+#ifdef DEBUG
     jint ver = env->GetVersion();
-    cout << ((ver>>16)&0x0f) << "."<<(ver&0x0f) << endl;
-    #endif
+    fprintf("JVM load succeeded: Version %d.%d\n", ver>>16)&0x0f, ver&0x0f);
+#endif
     return env;
 }
 
