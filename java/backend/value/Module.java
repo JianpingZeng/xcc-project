@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.support.AssemblyWriter;
+import backend.support.AttrList;
 import tools.FormattedOutputStream;
 import backend.support.SlotTracker;
 import backend.support.ValueSymbolTable;
@@ -111,6 +112,12 @@ public final class Module implements Iterable<Function>
 			return (GlobalValue)val;
 		return null;
 	}
+	public Constant getOrInsertFunction(String name,
+										FunctionType type)
+	{
+		AttrList attrs = new AttrList(new ArrayList<>());
+		return getOrInsertFunction(name, type, attrs);
+	}
 
 	/**
 	 * Look up the specified function in the module symbol table.
@@ -119,13 +126,17 @@ public final class Module implements Iterable<Function>
 	 * @param type
 	 * @return
 	 */
-	public Constant getOrInsertFunction(String name, FunctionType type)
+	public Constant getOrInsertFunction(String name,
+										FunctionType type,
+										AttrList attrs)
 	{
 		GlobalValue f = getValueByName(name);
 		if (f == null)
 		{
 			// not found ,add it into valSymTable.
 			Function newFunc = new Function(type, ExternalLinkage, name, this);
+			if (!newFunc.isIntrinsicID())
+				newFunc.setAttributes(attrs);
 			return newFunc;
 		}
 
