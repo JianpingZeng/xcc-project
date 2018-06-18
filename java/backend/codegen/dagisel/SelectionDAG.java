@@ -894,7 +894,17 @@ public class SelectionDAG
         int idx = cond.ordinal();
         if (idx < condCodeNodes.size())
         {
-            return new SDValue(condCodeNodes.get(idx), 0);
+            CondCodeSDNode csd;
+            if (condCodeNodes.get(idx) == null)
+            {
+                csd = new CondCodeSDNode(cond);
+                condCodeNodes.set(idx, csd);
+                add(csd);
+            }
+            else
+                csd = condCodeNodes.get(idx);
+
+            return new SDValue(csd, 0);
         }
         for (int i = condCodeNodes.size(); i <= idx; i++)
             condCodeNodes.add(null);
@@ -2031,7 +2041,8 @@ public class SelectionDAG
         return new SDValue(n, 0);
     }
 
-    public SDValue getMemset(SDValue root, SDValue op1, SDValue op2, SDValue op3, int align, Value operand, int i) {
+    public SDValue getMemset(SDValue root, SDValue op1, SDValue op2, SDValue op3, int align, Value operand, int i)
+    {
         return null;
     }
 
@@ -3263,7 +3274,7 @@ public class SelectionDAG
 
         entry = new ArgListEntry();
         entry.ty = tli.getTargetData().getIntPtrType();
-        entry.node = size;
+        entry.node = src;
         args.add(entry);
 
         entry = new ArgListEntry();

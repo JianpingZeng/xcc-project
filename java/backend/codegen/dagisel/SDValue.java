@@ -99,7 +99,7 @@ public class SDValue implements Comparable<SDValue>, Cloneable
     @Override
     public int hashCode()
     {
-        return node.hashCode() << 7 + resNo;
+        return (node != null ? (node.hashCode() << 7):0) + resNo;
     }
 
     @Override
