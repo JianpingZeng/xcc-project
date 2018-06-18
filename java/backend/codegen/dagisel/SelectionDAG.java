@@ -28,18 +28,16 @@ import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
+import backend.type.ArrayType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Instruction.BitCastInst;
+import backend.value.Instruction.GetElementPtrInst;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
@@ -1221,7 +1219,14 @@ public class SelectionDAG
             }
         }
     }
-
+    private static void addNodeToIDNode(FoldingSetNodeID id, int opc,
+                                        SDVTList vtList,
+                                        ArrayList<SDValue> ops)
+    {
+        SDValue[] temp = new SDValue[ops.size()];
+        ops.toArray(temp);
+        addNodeToIDNode(id, opc, vtList, temp, temp.length);
+    }
     private static void addNodeToIDNode(FoldingSetNodeID id, int opc,
             SDVTList vtList, SDValue... ops)
     {
@@ -1993,6 +1998,41 @@ public class SelectionDAG
     {
         removeNodeFromCSEMaps(node);
         deleteNodeNotInCSEMap(node);
+    }
+
+    public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+                                       ArrayList<SDValue> ops,
+                                       EVT memVT, Value srcVal,
+                                       int offset, int align,
+                                       boolean vol, boolean readMem,
+                                       boolean writeMem)
+    {
+        MemIntrinsicSDNode n = null;
+        SDValue[] temp = new SDValue[ops.size()];
+        ops.toArray(temp);
+        if (vts.vts[vts.numVTs-1].getSimpleVT().simpleVT != MVT.Flag)
+        {
+            FoldingSetNodeID compute = new FoldingSetNodeID();
+            addNodeToIDNode(compute, opc, vts, temp);
+            int id = compute.computeHash();
+            if (cseMap.containsKey(id))
+                return new SDValue(cseMap.get(id), 0);
+
+            n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
+                    srcVal, offset, align, vol, readMem, writeMem);;;
+            cseMap.put(id, n);
+        }
+        else
+        {
+            n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
+                    srcVal, offset, align, vol, readMem, writeMem);;
+        }
+        allNodes.add(n);
+        return new SDValue(n, 0);
+    }
+
+    public SDValue getMemset(SDValue root, SDValue op1, SDValue op2, SDValue op3, int align, Value operand, int i) {
+        return null;
     }
 
     static class UseMemo
@@ -3181,10 +3221,12 @@ public class SelectionDAG
         return getNode(ISD.CALLSEQ_END, vts, ops);
     }
 
-    public SDValue getMemcpy(SDValue chain, SDValue dst, SDValue src, SDValue size,
-            int align, boolean alwaysInline, Value dstVal, long dstOff, Value srcVal, long srcOff)
+    public SDValue getMemcpy(SDValue chain, SDValue dst,
+                             SDValue src, SDValue size,
+                             int align, boolean alwaysInline,
+                             Value dstVal, long dstOff,
+                             Value srcVal, long srcOff)
     {
-        /*
         ConstantSDNode constantSize = size.getNode() instanceof ConstantSDNode ?
                 (ConstantSDNode)size.getNode() : null;
         if (constantSize != null)
@@ -3192,7 +3234,7 @@ public class SelectionDAG
             if (constantSize.isNullValue())
                 return chain;
 
-            SDValue result = getMemcpyLoadsAndStores(this, chain, dst, src,
+            SDValue result = getMemcpyLoadsAndStores(chain, dst, src,
                     constantSize.getZExtValue(), align, false, dstVal,
                             dstOff, srcVal, srcOff);
             if (result.getNode() != null)
@@ -3207,7 +3249,7 @@ public class SelectionDAG
         if (alwaysInline)
         {
             assert constantSize != null;
-            return getMemcpyLoadsAndStores(this, chain, dst, src,
+            return getMemcpyLoadsAndStores(chain, dst, src,
                     constantSize.getZExtValue(), align, true, dstVal,
                             dstOff, srcVal, srcOff);
         }
@@ -3232,11 +3274,241 @@ public class SelectionDAG
         Pair<SDValue, SDValue> callResult = tli.lowerCallTo(chain,
                 LLVMContext.VoidTy,
                 false, false, false, false, 0,
-                tli.getLibCallCallingConv())
-        return null;
-        */
-        Util.shouldNotReachHere("Memcpy is is not supported!");
-        return null;
+                tli.getLibCallCallingConv(RTLIB.MEMCPY), false,
+                false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMCPY),
+                        new EVT(tli.getPointerTy())), args, this);
+        return callResult.second;
+    }
+
+    private SDValue getMemcpyLoadsAndStores(SDValue chain, SDValue dst,
+                                            SDValue src, long size,
+                                            int align, boolean alwaysInline,
+                                            Value dstVal, long dstValOff,
+                                            Value srcVal, long srcValOff)
+    {
+        ArrayList<EVT> memOps = new ArrayList<>();
+        int limit = -1;
+        if (!alwaysInline)
+            limit = tli.getMaxStoresPerMemcpy();
+        int destAlign = align;
+        OutParamWrapper<String> str = new OutParamWrapper<>("");
+        OutParamWrapper<Boolean> copyFromStr = new OutParamWrapper<>(false);
+        if (!meetsMaxMemopRequirement(memOps, dst, src, limit, size,destAlign,
+                str, copyFromStr))
+        {
+            return new SDValue();
+        }
+        boolean isZeroStr = copyFromStr.get() && str.get().isEmpty();
+        ArrayList<SDValue> outChains = new ArrayList<>();
+        int numMemOps = memOps.size();
+        int srcOffset = 0, destOffset = 0;
+        for (int i = 0; i < numMemOps; i++)
+        {
+            EVT vt = memOps.get(i);
+            int vtSize = vt.getSizeInBits();
+            SDValue value, store;
+            if (copyFromStr.get() && (isZeroStr || !vt.isVector()))
+            {
+                value = getMemsetStringVal(vt, str.get(), srcOffset);
+                store = getStore(chain, value,
+                        getMemBasePlusOffset(dst, destOffset),
+                        dstVal, (int) (dstValOff+dstValOff),
+                        false, destAlign);
+            }
+            else
+            {
+                EVT nvt = tli.getTypeToTransformTo(vt);
+                assert nvt.bitsGE(vt);
+                value = getExtLoad(LoadExtType.EXTLOAD, nvt, chain,
+                        getMemBasePlusOffset(src, srcOffset),
+                        srcVal, (int) (srcValOff + srcOffset), vt, false,
+                        align);
+                store = getTruncStore(chain, value,
+                        getMemBasePlusOffset(dst, (int) dstValOff),
+                        dstVal, (int) (dstValOff + destOffset), vt, false, destAlign);
+            }
+            outChains.add(store);
+            srcOffset += vtSize;
+            destOffset += vtSize;
+        }
+        return getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                outChains);
+    }
+
+    private SDValue getMemsetStringVal(EVT vt,
+                                       String str,
+                                       int offset)
+    {
+        // Handle vector with all elements zero.
+        if (str.isEmpty())
+        {
+            if (vt.isInteger())
+                return getConstant(0, vt, false);
+            int numElts = vt.getVectorNumElements();
+            EVT eltVT = vt.getVectorElementType().equals(new EVT(MVT.f32))
+                    ? new EVT(MVT.i32) : new EVT(MVT.i64);
+            return getNode(ISD.BIT_CONVERT, vt,
+                    getConstant(0, EVT.getVectorVT(eltVT, numElts), false));
+        }
+        assert !vt.isVector():"Can't handle vector type here!";
+        int numBits = vt.getSizeInBits();
+        int msb = numBits/8;
+        long val = 0;
+        if (tli.isLittleEndian())
+            offset += msb - 1;
+        for (int i = 0; i < msb; i++)
+        {
+            val = (val << 8) | (str.charAt(offset));
+            offset += tli.isLittleEndian() ? -1 : 1;
+        }
+        return getConstant(val, vt, false);
+    }
+
+    private SDValue getMemBasePlusOffset(SDValue base, int offset)
+    {
+        EVT vt = base.getValueType();
+        return getNode(ISD.ADD, vt, base, getConstant(offset, vt, false));
+    }
+
+    /**
+     * Determines if the number of memory ops required to replace the memset/memcpy
+     * is below the threshold. If also returns the types of the sequence of memory
+     * ops to perform memset/memcpy.
+     * @param memOps
+     * @param dst
+     * @param src
+     * @param limit
+     * @param size
+     * @param destAlign
+     * @param str
+     * @param isSrcStr
+     * @return
+     */
+    private boolean meetsMaxMemopRequirement(ArrayList<EVT> memOps,
+                                             SDValue dst,
+                                             SDValue src,
+                                             int limit,
+                                             long size,
+                                             int destAlign,
+                                             OutParamWrapper<String> str,
+                                             OutParamWrapper<Boolean> isSrcStr)
+    {
+        isSrcStr.set(isMemSrcFromString(src, str));
+        boolean isSrcConst = src.getNode() instanceof ConstantSDNode;
+        EVT vt = tli.getOptimalMemOpType(size, destAlign, isSrcConst, isSrcStr.get(), this);
+        return false;
+    }
+
+    private boolean isMemSrcFromString(SDValue src, OutParamWrapper<String> str)
+    {
+        int srcDelta = 0;
+        GlobalAddressSDNode gad = null;
+        if (src.getOpcode() == ISD.GlobalAddress)
+            gad = (GlobalAddressSDNode)src.getNode();
+        else if (src.getOpcode() == ISD.ADD &&
+                src.getOperand(0).getOpcode() == ISD.GlobalAddress &&
+                src.getOperand(1).getOpcode() == ISD.Constant)
+        {
+            gad = (GlobalAddressSDNode)src.getOperand(0).getNode();
+            srcDelta = (int) ((ConstantSDNode)src.getOperand(1).getNode()).getZExtValue();
+        }
+        if (gad == null)
+            return false;
+        GlobalVariable gv = gad.getGlobalValue() instanceof GlobalVariable?
+                (GlobalVariable)gad.getGlobalValue() : null;
+
+         return gv != null && getConstantStringInfo(gv, str, srcDelta, false);
+    }
+
+    private boolean getConstantStringInfo(Value val,
+                                          OutParamWrapper<String> str,
+                                          long offset,
+                                          boolean stopAtNul)
+    {
+        if (val == null) return false;
+
+        if (val instanceof BitCastInst)
+            return getConstantStringInfo(((BitCastInst)val).operand(0),
+                    str, offset, stopAtNul);
+        User gep = null;
+        if (val instanceof GetElementPtrInst)
+            gep = (GetElementPtrInst)val;
+        else if (val instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr)val;
+            if (ce.getOpcode() == Operator.BitCast)
+                return getConstantStringInfo(ce.operand(0), str, offset, stopAtNul);
+            if (ce.getOpcode() != Operator.GetElementPtr)
+                return false;
+            gep = ce;
+        }
+        if (gep != null)
+        {
+            if (gep.getNumOfOperands() != 3)
+                return false;
+
+            // Make sure the index-ee is a pointer to array of i8.
+            if (!(gep.operand(0).getType() instanceof PointerType))
+                return false;
+            PointerType pty = (PointerType)gep.operand(0).getType();
+            if (!(pty.getElementType() instanceof ArrayType))
+                return false;
+
+            ArrayType at = (ArrayType)pty.getElementType();
+            if (!at.getElementType().equals(LLVMContext.Int8Ty))
+                return false;
+
+            if (!(gep.operand(1) instanceof ConstantInt))
+                return false;
+            ConstantInt firstIdx = (ConstantInt)gep.operand(1);
+            if (!firstIdx.isZero())
+                return false;
+
+            long startIdx = 0;
+            if (gep.operand(2) instanceof ConstantInt)
+                startIdx = ((ConstantInt)gep.operand(2)).getZExtValue();
+            else
+                return false;
+            return getConstantStringInfo(gep.operand(0), str,
+                    startIdx+offset, stopAtNul);
+        }
+
+        if (!(val instanceof GlobalVariable))
+            return false;
+        GlobalVariable gv = (GlobalVariable)val;
+        if (!gv.isConstant() || !gv.hasDefinitiveInitializer())
+            return false;
+
+        Constant init = gv.getInitializer();
+        if (init instanceof ConstantAggregateZero)
+        {
+            str.set("");
+            return true;
+        }
+
+        if (!(init instanceof ConstantArray))
+            return false;
+        ConstantArray ca = (ConstantArray)init;
+        if (!ca.getType().getElementType().equals(LLVMContext.Int8Ty))
+            return false;
+
+        long numElts = ca.getType().getNumElements();
+        if (offset > numElts)
+            return false;
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = (int) offset; i < numElts; i++)
+        {
+            Constant c = ca.operand(i);
+            if (!(c instanceof ConstantInt))
+                return false;
+            ConstantInt ci = (ConstantInt)c;
+            if (stopAtNul && ci.isZero())
+                return true;
+            sb.append((char)ci.getZExtValue());
+        }
+        str.set(sb.toString());
+        return true;
     }
 
     public SDValue getStackArgumentTokenFactor(SDValue chain)

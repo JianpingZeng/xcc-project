@@ -2336,19 +2336,21 @@ public abstract class Instruction extends User
         }
 
 
-        private void init(Value function, Value[] args)
+        private void init(Value target, Value[] args)
         {
             reserve(ArgumentOffset + args.length);
             assert (getNumOfOperands() == ArgumentOffset + args.length)
                     : "NumOperands not set up?";
-            assert function instanceof Function:"Callee is not Function?";
-            setOperand(0, function, this);
+            assert target instanceof Function:"Callee is not Function?";
+            Function fn = (Function)target;
+            setOperand(0, target, this);
             int idx = ArgumentOffset;
             for (Value arg : args)
             {
                 setOperand(idx++, arg, this);
             }
-            callingConv = ((Function)function).getCallingConv();
+            callingConv = fn.getCallingConv();
+            attributes = fn.getAttributes();
         }
 
         public int getNumsOfArgs()

@@ -21,14 +21,9 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.codegen.fastISel.ISD;
-import backend.support.Attribute;
-import backend.support.BackendCmdOptions;
-import backend.support.CallSite;
-import backend.support.CallingConv;
-import backend.target.TargetData;
-import backend.target.TargetLowering;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
+import backend.intrinsic.Intrinsic;
+import backend.support.*;
+import backend.target.*;
 import backend.type.*;
 import backend.utils.InstVisitor;
 import backend.value.*;
@@ -42,6 +37,8 @@ import java.util.*;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
+import static backend.intrinsic.Intrinsic.ID.not_intrinsic;
+import static backend.intrinsic.Intrinsic.ID.vastart;
 import static backend.target.TargetOptions.DisableJumpTables;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.value.Operator.And;
@@ -2149,11 +2146,224 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     {
         String renameFn = null;
         CallInst ci = (CallInst)inst;
-        SDValue callee = getValue(inst.operand(0));
+        Function f = ci.getCalledFunction();
+        if (f != null)
+        {
+            if (f.isDeclaration())
+            {
+                TargetIntrinsicInfo ii = tli.getTargetMachine().getIntrinsinsicInfo();
+                if (ii != null)
+                {
+                    Intrinsic.ID iid = ii.getIntrinsicID(f);
+                    if (iid != not_intrinsic)
+                    {
+                        renameFn = visitIntrinsicCall(ci, iid);
+                        if (renameFn == null)
+                            return null;
+                    }
+                }
+                Intrinsic.ID iid = f.getIntrinsicID();
+                if (iid != not_intrinsic)
+                {
+                    renameFn = visitIntrinsicCall(ci, iid);
+                    if (renameFn == null)
+                        return null;
+                }
+            }
+            if (!f.hasLocalLinkage() && f.hasName())
+            {
+                String name = f.getName();
+                switch (name)
+                {
+                    case "copysign":
+                    case "copysignf":
+                    {
+                        if (ci.getNumOfOperands() == 3 &&
+                                ci.operand(1).getType().isFloatingPoint() &&
+                                ci.getType().equals(ci.operand(1).getType()) &&
+                                ci.getType().equals(ci.operand(2).getType()))
+                        {
+                            SDValue lhs = getValue(ci.operand(1));
+                            SDValue rhs = getValue(ci.operand(2));
+                            setValue(ci, dag.getNode(ISD.FCOPYSIGN, lhs.getValueType(),
+                                    lhs, rhs));
+                            return null;
+                        }
+                        break;
+                    }
+                    case "fabs":
+                    case "fabsf":
+                    {
+                        if (ci.getNumOfOperands() == 2 &&
+                                ci.operand(1).getType().isFloatingPoint() &&
+                                ci.getType().equals(ci.operand(1).getType()))
+                        {
+                            SDValue lhs = getValue(ci.operand(1));
+                            setValue(ci, dag.getNode(ISD.FABS, lhs.getValueType(), lhs));
+                            return null;
+                        }
+                        break;
+                    }
+                    case "sin":
+                    case "sinf":
+                    {
+                        if (ci.getNumOfOperands() == 2 &&
+                                ci.operand(1).getType().isFloatingPoint() &&
+                                ci.getType().equals(ci.operand(1).getType()))
+                        {
+                            SDValue lhs = getValue(ci.operand(1));
+                            setValue(ci, dag.getNode(ISD.FSIN, lhs.getValueType(), lhs));
+                            return null;
+                        }
+                        break;
+                    }
+                    case "cos":
+                    case "cosf":
+                    case "cosl":
+                    {
+                        if (ci.getNumOfOperands() == 2 &&
+                                ci.operand(1).getType().isFloatingPoint() &&
+                                ci.getType().equals(ci.operand(1).getType()))
+                        {
+                            SDValue lhs = getValue(ci.operand(1));
+                            setValue(ci, dag.getNode(ISD.FCOS, lhs.getValueType(), lhs));
+                            return null;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        SDValue callee;
+        if (renameFn == null)
+            callee = getValue(inst.operand(0));
+        else
+            callee = dag.getExternalSymbol(renameFn, new EVT(tli.getPointerTy()));
 
         boolean isTailCall = EnablePerformTailCallOpt.value && ci.isTailCall();
         lowerCallTo(new CallSite(ci), callee, isTailCall);
         return null;
+    }
+
+    /**
+     * Lower the call to the specified intrinsic function. If we want to emit
+     * this as a call to a named external function, return the name. Otherwise
+     * it and return null.
+     * @param ci
+     * @param iid
+     * @return
+     */
+    private String visitIntrinsicCall(CallInst ci, Intrinsic.ID iid)
+    {
+        // TODO: 2018/6/18
+        switch (iid)
+        {
+            default:
+                // turns on call to intrinsic to target specified handler.
+                visitTargetIntrinsic(ci, iid);
+                return null;
+            case vastart:
+                visitVAStart(ci);
+                return null;
+            case vaend:
+                visitVAEnd(ci);
+                return null;
+            case vacopy:
+                visitVACopy(ci);
+                return null;
+            case memset:
+            {
+                SDValue op1 = getValue(ci.operand(1));
+                SDValue op2 = getValue(ci.operand(2));
+                SDValue op3 = getValue(ci.operand(3));
+                int align = (int) ((ConstantInt)ci.operand(4)).getZExtValue();
+                dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
+                        align, ci.operand(1), 0));
+                return null;
+            }
+            case memcpy:
+            {
+                SDValue op1 = getValue(ci.operand(1));
+                SDValue op2 = getValue(ci.operand(2));
+                SDValue op3 = getValue(ci.operand(3));
+                int align = (int) ((ConstantInt)ci.operand(4)).getZExtValue();
+                dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
+                        align, false, ci.operand(1),
+                        0, ci.operand(2), 0));
+                return null;
+            }
+        }
+    }
+
+    private void visitVACopy(CallInst ci) {
+
+    }
+
+    private void visitVAEnd(CallInst ci) {
+
+    }
+
+    private void visitVAStart(CallInst ci) {
+
+    }
+
+    public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid)
+    {
+        boolean hasChain = !ci.doesNotAccessMemory();
+        boolean onlyLoad = hasChain && ci.onlyReadsMemory();
+
+        ArrayList<SDValue> ops = new ArrayList<>();
+        if (hasChain)
+        {
+            if (onlyLoad)
+                ops.add(dag.getRoot());
+            else
+                ops.add(getRoot());
+        }
+
+        IntrinsicInfo info = new IntrinsicInfo();
+        boolean isTargetIntrinsic = tli.getTargetMemIntrinsic(info, ci, iid);;
+        if (!isTargetIntrinsic)
+            ops.add(dag.getConstant(iid.ordinal(), new EVT(tli.getPointerTy()), false));
+
+        for (int i = 1, e = ci.getNumOfOperands(); i < e; i++)
+        {
+                SDValue op = getValue(ci.operand(i));
+                assert tli.isTypeLegal(op.getValueType()):
+                        "Intrinsic uses a non-legal type?";
+                ops.add(op);
+        }
+        ArrayList<EVT> valueVTs = new ArrayList<>();
+        computeValueVTs(tli, ci.getType(), valueVTs);
+        if (hasChain)
+            valueVTs.add(new EVT(MVT.Other));
+
+        SDNode.SDVTList vts = dag.getVTList(valueVTs);
+        SDValue result;
+        if (isTargetIntrinsic)
+        {
+            result = dag.getMemIntrinsicNode(info.opc, vts, ops, info.memVT, info.ptrVal,
+                    info.offset, info.align, info.vol, info.readMem, info.writeMem);
+        }
+        else if (!hasChain)
+            result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, vts, ops);
+        else if (!ci.getType().equals(LLVMContext.VoidTy))
+            result = dag.getNode(ISD.INTRINSIC_W_CHAIN, vts, ops);
+        else
+            result = dag.getNode(ISD.INTRINSIC_VOID, vts, ops);
+
+        if (hasChain)
+        {
+            SDValue chain = result.getValue(result.getNode().getNumValues()-1);
+            if (onlyLoad)
+                pendingLoads.add(chain);
+            else
+                dag.setRoot(chain);
+        }
+        if (!ci.getType().equals(LLVMContext.VoidTy))
+        {
+            setValue(ci, result);
+        }
     }
 
     @Override

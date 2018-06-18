@@ -18,13 +18,44 @@ import java.util.ArrayList;
  */
 public class Intrinsic
 {
-	public enum ID
+    public enum ID
 	{
 		not_intrinsic("non_intrinsic"),
 		memcpy("memcpy"),
 		memmove("memmove"),
 		memset("memset"),
-
+		vastart("vastart"),
+		vaend("vaend"),
+		vacopy("vacopy"),
+		returnaddress("returnaddress"),
+		frameaddress("frameaddress"),
+		setjmp("setjmp"),
+		longjmp("longjmp"),
+		sqrt("sqrt"),
+		powi("powi"),
+		sin("sin"),
+		cos("cos"),
+		log("log"),
+		log2("log2"),
+		log10("log10"),
+		exp("exp"),
+		exp2("exp2"),
+		pow("pow"),
+		pcmarker("pcmarker"),
+		bswap("bswap"),
+		cttz("cttz"),
+		ctlz("ctlz"),
+		ctpop("ctpop"),
+		stacksave("stacksave"),
+		stackstore("stackstore"),
+		stackprotector("stackprotector"),
+		trap("trap"),
+		uadd_with_overflow("uadd_with_overflow"),
+		sadd_with_overflow("sadd_with_overflow"),
+		usub_with_overflow("usub_with_overflow"),
+		ssub_with_overflow("ssub_with_overflow"),
+		umul_with_overflow("umul_with_overflow"),
+		smul_with_overflow("smul_with_overflow"),
 		num_intrinsics("num_intrinsics");
 
 		String name;

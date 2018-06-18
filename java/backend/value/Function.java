@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.codegen.MachineFunction;
+import backend.intrinsic.Intrinsic;
 import backend.support.AttrList;
 import backend.support.Attribute;
 import backend.support.CallingConv;
@@ -62,6 +63,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         basicBlockList = new LinkedList<>();
         setCallingConv(CallingConv.C);
         setVisibility(VisibilityTypes.DefaultVisibility);
+        attributeList = new AttrList(new ArrayList<>());
     }
 
     public Type getReturnType()
@@ -203,10 +205,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         mf = newFunc;
     }
 
-    public int getIntrinsicID()
+    public Intrinsic.ID getIntrinsicID()
     {
         // TODO
-        return 0;
+        return Intrinsic.ID.not_intrinsic;
     }
 
     public Argument argAt(int index)

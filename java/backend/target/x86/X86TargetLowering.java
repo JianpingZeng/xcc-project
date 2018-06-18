@@ -25,10 +25,12 @@ import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
+import backend.type.ArrayType;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.GlobalValue;
+import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
@@ -4673,5 +4675,95 @@ public class X86TargetLowering extends TargetLowering
     private SDValue performShuffleCombine(SDNode n, SelectionDAG dag)
     {
         return null;
+    }
+
+    @Override
+    public EVT getOptimalMemOpType(long size, int align,
+                                   boolean isSrcConst,
+                                   boolean isSrcStr,
+                                   SelectionDAG dag)
+    {
+        Function f = dag.getMachineFunction().getFunction();
+        boolean noImplicitFloatOps = f.hasFnAttr(Attribute.NoImplicitFloat);
+        if (!noImplicitFloatOps && subtarget.getStackAlignemnt() >= 16)
+        {
+            if ((isSrcConst || isSrcStr) && subtarget.hasSSE2() && size>=16)
+                return new EVT(MVT.v4i32);
+            if ((isSrcConst || isSrcStr) && subtarget.hasSSE1() && size>=16)
+                return new EVT(MVT.v4f32);
+        }
+        if (subtarget.is64Bit() && size >= 8)
+            return new EVT(MVT.i64);
+        return new EVT(MVT.i32);
+    }
+
+    @Override
+    public SDValue emitTargetCodeForMemcpy(SelectionDAG dag,
+                                           SDValue chain,
+                                           SDValue dst,
+                                           SDValue src,
+                                           SDValue size,
+                                           int align,
+                                           boolean alwaysInline,
+                                           Value dstVal,
+                                           long dstOff,
+                                           Value srcVal,
+                                           long srcOff)
+    {
+        if (!(size.getNode() instanceof ConstantSDNode))
+            return new SDValue();
+        ConstantSDNode sdn = (ConstantSDNode)size.getNode();
+        long sizeVal = sdn.getZExtValue();
+        if (!alwaysInline && sizeVal > subtarget.getMaxInlineSizeThreshold())
+            return new SDValue();
+
+        if ((align & 3) != 0)
+            return new SDValue();
+        EVT vt = new EVT(MVT.i32);
+        if (subtarget.is64Bit() && (align & 0x7) == 0)
+            vt = new EVT(MVT.i64);
+        int ubytes = vt.getSizeInBits()/8;
+        int countVal = (int) (sizeVal / ubytes);
+        SDValue count = dag.getIntPtrConstant(countVal);
+        int byteLeft = (int) (sizeVal%ubytes);
+        SDValue inFlag = new SDValue();
+        chain = dag.getCopyToReg(chain, subtarget.is64Bit()?
+        X86GenRegisterNames.RCX : X86GenRegisterNames.ECX,
+                count, inFlag);
+        inFlag = chain.getValue(1);
+
+        chain = dag.getCopyToReg(chain, subtarget.is64Bit()?
+                        X86GenRegisterNames.RDI : X86GenRegisterNames.EDI,
+                dst, inFlag);
+        inFlag = chain.getValue(1);
+
+        chain = dag.getCopyToReg(chain, subtarget.is64Bit()?
+                        X86GenRegisterNames.RSI : X86GenRegisterNames.ESI,
+                src, inFlag);
+        inFlag = chain.getValue(1);
+
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        ArrayList<SDValue> ops = new ArrayList<>();
+        ops.add(chain);
+        ops.add(dag.getValueType(vt));
+        ops.add(inFlag);
+        SDValue repMovs = dag.getNode(X86ISD.REP_MOVS, vts, ops);
+
+        ArrayList<SDValue> results = new ArrayList<>();
+        results.add(repMovs);
+        if (byteLeft != 0)
+        {
+            int offset = (int) (sizeVal - byteLeft);
+            EVT dstVT = dst.getValueType();
+            EVT srcVT = src.getValueType();
+            EVT sizeVT = size.getValueType();
+            results.add(dag.getMemcpy(chain, dag.getNode(ISD.ADD, dstVT, dst,
+                    dag.getConstant(offset, dstVT, false)),
+                    dag.getNode(ISD.ADD, srcVT, src, dag.getConstant(offset, srcVT, false)),
+                    dag.getConstant(byteLeft, sizeVT, false), align,
+                    alwaysInline, dstVal, dstOff + offset,
+                    srcVal, srcOff + offset));
+        }
+        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), results);
     }
 }

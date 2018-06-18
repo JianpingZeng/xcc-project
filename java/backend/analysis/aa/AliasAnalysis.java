@@ -17,6 +17,7 @@
 
 package backend.analysis.aa;
 
+import backend.intrinsic.Intrinsic;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
@@ -201,8 +202,8 @@ public class AliasAnalysis implements ModulePass
                 return DoesNotAccessMemory;
             if (f.onlyReadsMemory())
                 return OnlyReadsMemory;
-            int id;
-            if ((id = f.getIntrinsicID()) != 0)
+            Intrinsic.ID id;
+            if ((id = f.getIntrinsicID()) != Intrinsic.ID.not_intrinsic)
             {
 
             }

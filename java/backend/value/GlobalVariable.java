@@ -2,6 +2,7 @@ package backend.value;
 
 import backend.type.PointerType;
 import backend.type.Type;
+import jlang.support.Linkage;
 
 /**
  * @author Xlous.zeng  
@@ -118,5 +119,17 @@ public class GlobalVariable extends GlobalValue
     public void setThreadLocal(boolean threadLocal)
     {
         this.isThreadLocal = threadLocal;
+    }
+
+    public boolean hasDefinitiveInitializer()
+    {
+        return hasInitializer() &&
+                !mayBeOverridden();
+    }
+
+    public boolean mayBeOverridden()
+    {
+        LinkageType link = getLinkage();
+        return link == LinkageType.CommonLinkage;
     }
 }
