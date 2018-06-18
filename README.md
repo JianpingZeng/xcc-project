@@ -65,6 +65,12 @@ Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
 3. Install any version of GCC supports c++ 11 features or latest version of [Clang](https://apt.llvm.org/).
 
+### Prerequisites
+If you run the native executable instead of jar package on Modern MacOSX (>= 10.8) and newer
+JDK(>= 1.7), the legacy JDK support must be installed before running native launcher.
+
+Supporting can be retrieved from ![Java 6 on newer MacOSX](https://support.apple.com/kb/DL1572?locale=en_US&viewlocale=en_US). 
+
 ### Build
 1. Clone this repository into your local directory.
 2. Build this project with following command.
