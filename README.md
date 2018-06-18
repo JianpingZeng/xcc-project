@@ -59,17 +59,16 @@ Supports generation of conversion instruction between fp and integer for FastISe
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 64 bit OS with OracleJDK/OpenJDK 1.8, GCC 5.4/6.3 or Clang 3.9/4.0 successfully.
+
 ### Prerequisites
 1. 64 bit Ubuntu 14.04 or 16.04 OS.
 2. Install [OracleJDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
 3. Install any version of GCC supports c++ 11 features or latest version of [Clang](https://apt.llvm.org/).
-
-### Prerequisites
-If you run the native executable instead of jar package on Modern MacOSX (>= 10.8) and newer
-JDK(>= 1.7), the legacy JDK support must be installed before running native launcher.
-
-Supporting can be retrieved from ![Java 6 on newer MacOSX](https://support.apple.com/kb/DL1572?locale=en_US&viewlocale=en_US). 
+4. If you run the native executable instead of jar package on Modern MacOSX (>= 10.8) and newer
+   JDK(>= 1.7), the legacy JDK support must be installed before running native launcher.
+   
+   Supporting can be retrieved from [Java 6 on newer MacOSX](https://support.apple.com/kb/DL1572?locale=en_US&viewlocale=en_US). 
 
 ### Build
 1. Clone this repository into your local directory.
