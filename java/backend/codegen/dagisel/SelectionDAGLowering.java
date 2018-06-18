@@ -2295,16 +2295,19 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
     }
 
-    private void visitVACopy(CallInst ci) {
-
+    private void visitVACopy(CallInst ci)
+    {
+        // TODO: 2018/6/18
     }
 
-    private void visitVAEnd(CallInst ci) {
-
+    private void visitVAEnd(CallInst ci)
+    {
+        // TODO: 2018/6/18
     }
 
-    private void visitVAStart(CallInst ci) {
-
+    private void visitVAStart(CallInst ci)
+    {
+        // TODO: 2018/6/18
     }
 
     public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid)
