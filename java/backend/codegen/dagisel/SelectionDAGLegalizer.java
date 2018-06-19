@@ -18,7 +18,6 @@
 package backend.codegen.dagisel;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.fastISel.ISD;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.TargetLowering;

@@ -19,7 +19,6 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import backend.type.Type;
 import backend.value.ConstantInt;

@@ -20,7 +20,6 @@ package backend.codegen.dagisel;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
-import backend.codegen.fastISel.ISD;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
 import backend.target.*;

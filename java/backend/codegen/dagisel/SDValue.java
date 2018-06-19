@@ -19,7 +19,6 @@ package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
 import backend.codegen.dagisel.SDNode.LoadSDNode;
-import backend.codegen.fastISel.ISD;
 
 import java.util.Objects;
 
