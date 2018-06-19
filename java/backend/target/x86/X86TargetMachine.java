@@ -40,7 +40,6 @@ public class X86TargetMachine extends LLVMTargetMachine
 	private TargetData dataLayout;
 	private X86TargetLowering tli;
 	private RelocModel defRelocModel;
-	private X86CallLowering x86CallLowering;
 
 	public X86TargetMachine(Target t, String triple,
 			String fs, boolean is64Bit)
@@ -53,7 +52,6 @@ public class X86TargetMachine extends LLVMTargetMachine
 				(subtarget.is64Bit() ? -8 : -4)));
 		instrInfo = new X86InstrInfo(this);
 		tli = new X86TargetLowering(this);
-		x86CallLowering = new X86CallLowering(getTargetLowering());
 
 		defRelocModel = getRelocationModel();
 
@@ -180,8 +178,8 @@ public class X86TargetMachine extends LLVMTargetMachine
 		//pm.add(createX86FastISel(this, level));
 		switch (InstructionSelector.value)
 		{
-			case FastISel:
-				pm.add(X86FastISel.createX86FastISel(this, level));
+			case MacroExpandISel:
+				Util.shouldNotReachHere("MacroExpandISel is experimental, should not be used!");
 				break;
 			case DAGISel:
 				pm.add(X86DAGToDAGISel.createX86DAGToDAGISel(this, level));
@@ -236,18 +234,4 @@ public class X86TargetMachine extends LLVMTargetMachine
         pm.add(writer);
         return writer.getMachineCodeEmitter();
     }
-
-	/**
-	 * Obtains a target-specific calling lower that take responsibility for
-	 * lowering formal arguments, return instr and call instruction in LLVM IR
-	 * into target-specific machine instructions.
-	 * <p>
-	 *  This method return {@code null} if subclass don't overrides it.
-	 * </p>
-	 * @return
-	 */
-	public X86CallLowering getCallLowering()
-	{
-		return x86CallLowering;
-	}
 }

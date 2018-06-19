@@ -1,7 +1,6 @@
 package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
-import backend.codegen.fastISel.CallLowering;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 
@@ -180,20 +179,6 @@ public abstract class TargetMachine
      * @return
      */
 	public MachineCodeEmitter addELFWriter(FunctionPassManager pm, PrintStream os)
-	{
-		return null;
-	}
-
-	/**
-	 * Obtains a target-specific calling lower that take responsibility for
-	 * lowering formal arguments, return instr and call instruction in LLVM IR
-	 * into target-specific machine instructions.
-	 * <p>
-	 *  This method return {@code null} if subclass don't overrides it.
-	 * </p>
-	 * @return
-	 */
-	public CallLowering getCallLowering()
 	{
 		return null;
 	}
