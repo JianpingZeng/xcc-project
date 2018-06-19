@@ -120,6 +120,7 @@ class PreprocessorFactory
     {
         defineBuiltinMacro(buf, "__xcc__=1"); // XCC version.
         defineBuiltinMacro(buf, "__llvm__=1"); // LLVM backend.
+        defineBuiltinMacro(buf, "NULL=(void*)0");
 
         // Currently isClaim to compatible with GCC 4.2.1-5621
         defineBuiltinMacro(buf, "__GNUC_MINOR__=2");

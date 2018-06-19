@@ -987,6 +987,85 @@ public class DAGCombiner
 
     private SDValue visitSUB(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (vt.isVector())
+        {
+            SDValue foldedOp = simplifyVBinOp(n);
+            if (foldedOp.getNode() != null)
+                return foldedOp;
+        }
+
+        // fold (sub x, x) --> 0
+        if (n0.equals(n1))
+            return dag.getConstant(0, n.getValueType(0), false);
+        if (c1 != null && c2 != null)
+            return dag.foldConstantArithmetic(ISD.SUB, vt, c1, c2);
+        if (c2 != null)
+            return dag.getNode(ISD.ADD, vt, n0,
+                    dag.getConstant(c2.getAPIntValue().negative(), vt, false));
+        // fold (A+B)-A -> B
+        if (n0.getOpcode() == ISD.ADD && n0.getOperand(0).equals(n1))
+            return n0.getOperand(1);
+
+        // fold (A+B)-B -> A
+        if (n0.getOpcode() == ISD.ADD && n0.getOperand(1).equals(n1))
+            return n0.getOperand(0);
+        // fold ((A+(B+or-C))-B) -> A+or-C
+        if (n0.getOpcode() == ISD.ADD)
+        {
+            int opc = n0.getOperand(1).getOpcode();
+            if ((opc == ISD.ADD || opc == ISD.SUB) &&
+                    n1.equals(n0.getOperand(1).getOperand(0)))
+                return dag.getNode(opc, vt, n0.getOperand(0),
+                        n0.getOperand(1).getOperand(1));
+        }
+        // fold ((A+(C+B))-B) -> A+C
+        if (n0.getOpcode() == ISD.ADD &&
+                n0.getOperand(1).getOpcode() == ISD.ADD &&
+                n1.equals(n0.getOperand(1).getOperand(1)))
+        {
+            return dag.getNode(ISD.ADD, vt, n0.getOperand(0),
+                    n0.getOperand(1).getOperand(0));
+        }
+        // fold ((A-(B-C))-C) -> A-B
+        if (n0.getOpcode() == ISD.SUB &&
+                n0.getOperand(1).getOpcode() == ISD.SUB &&
+                n0.getOperand(1).getOperand(1).equals(n1))
+        {
+            return dag.getNode(ISD.SUB, vt, n0.getOperand(0),
+                    n0.getOperand(1).getOperand(0));
+        }
+        // If either operand of a sub is undef, the result is undef
+        if (n0.getOpcode() == ISD.UNDEF)
+            return n0;
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
+        // If the relocation model supports it, consider symbol offsets.
+        if (n0.getNode() instanceof GlobalAddressSDNode)
+        {
+            GlobalAddressSDNode ga = (GlobalAddressSDNode)n0.getNode();
+            if (!legalOprations && tli.isOffsetFoldingLegal(ga))
+            {
+                if (c2 != null && ga.getOpcode() == ISD.GlobalAddress)
+                    return dag.getGlobalAddress(ga.getGlobalValue(),
+                            vt, ga.getOffset() - c2.getSExtValue(), false, 0);
+
+                if (n1.getNode() instanceof GlobalAddressSDNode)
+                {
+                    GlobalAddressSDNode gad = (GlobalAddressSDNode)n1.getNode();
+                    if (ga.getGlobalValue().equals(gad.getGlobalValue()))
+                        return dag.getConstant(ga.getOffset() -
+                         - gad.getOffset(), vt, false);
+                }
+            }
+        }
         return new SDValue();
     }
 
