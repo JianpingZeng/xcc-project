@@ -19,7 +19,6 @@ package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
 import backend.codegen.MVT;
-import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import tools.APInt;
 

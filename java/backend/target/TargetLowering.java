@@ -19,7 +19,7 @@ package backend.target;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.fastISel.ISD;
+import backend.codegen.dagisel.ISD;
 import backend.intrinsic.Intrinsic;
 import backend.support.CallingConv;
 import backend.type.PointerType;
@@ -2679,5 +2679,19 @@ public abstract class TargetLowering
                                            long srcOff)
     {
         return new SDValue();
+    }
+
+    public boolean isOffsetFoldingLegal(GlobalAddressSDNode ga)
+    {
+        // assume that everything is safe in static mode.
+        if (tm.getRelocationModel() == TargetMachine.RelocModel.Static)
+            return true;
+        // in dynamic-no-pic mode, assume that known defined values are safe.
+        if (tm.getRelocationModel() == TargetMachine.RelocModel.DynamicNoPIC &&
+                ga != null && !ga.getGlobalValue().isDeclaration() &&
+                !ga.getGlobalValue().isWeakForLinker())
+            return true;
+        // Otherwise assume nothing is safe.
+        return false;
     }
 }

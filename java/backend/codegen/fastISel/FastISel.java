@@ -18,6 +18,7 @@ package backend.codegen.fastISel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.FunctionLoweringInfo;
+import backend.codegen.dagisel.ISD;
 import backend.intrinsic.Intrinsic;
 import backend.support.ErrorHandling;
 import backend.target.*;

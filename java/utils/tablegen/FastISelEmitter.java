@@ -65,7 +65,7 @@ public final class FastISelEmitter extends TableGenBackend
             className = target.getName() + "GenFastISel";
 
             os.println("import backend.codegen.MVT;\n"
-                    + "import backend.codegen.fastISel.ISD;\n"
+                    + "import backend.codegen.dagisel.ISD;\n"
                     + "import backend.target.TargetMachine;\n" + "\n"
                     + "import static backend.target.x86.X86GenInstrNames.*;\n"
                     + "import static backend.target.x86.X86GenRegisterInfo.*;\n"

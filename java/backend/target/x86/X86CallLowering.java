@@ -20,7 +20,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.fastISel.CallLowering;
 import backend.codegen.fastISel.FastISel;
-import backend.codegen.fastISel.ISD;
+import backend.codegen.dagisel.ISD;
 import backend.support.CallingConv;
 import backend.support.ErrorHandling;
 import backend.target.*;

@@ -20,7 +20,6 @@ package backend.codegen.dagisel;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.fastISel.ISD;
 import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
 import backend.support.LLVMContext;
@@ -42,7 +41,7 @@ import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
-import static backend.codegen.fastISel.ISD.getSetCCSwappedOperands;
+import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 import static backend.support.GraphWriter.writeGraph;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;

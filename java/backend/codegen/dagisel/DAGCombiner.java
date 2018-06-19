@@ -22,16 +22,18 @@ import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.dagisel.SDNode.CondCodeSDNode;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
+import backend.codegen.dagisel.SDNode.GlobalAddressSDNode;
 import backend.codegen.dagisel.SDNode.LoadSDNode;
-import backend.codegen.fastISel.ISD;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
 import backend.target.TargetMachine;
+import jdk.nashorn.internal.objects.Global;
 import tools.APInt;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import static backend.codegen.dagisel.SelectionDAG.isCommutativeBinOp;
@@ -990,17 +992,262 @@ public class DAGCombiner
 
     private SDValue visitADD(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        // fold vector ops.
+        if (vt.isVector())
+        {
+            SDValue foldedOp = simplifyVBinOp(n);
+            if (foldedOp.getNode() != null)
+                return foldedOp;
+        }
+
+        // (add x, undef) --> undef
+        if (n0.getOpcode() == ISD.UNDEF)
+            return n0;
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
+        if (c1 != null && c2 != null)
+        {
+            return dag.foldConstantArithmetic(ISD.ADD, vt, c1, c2);
+        }
+        if (c1 != null && c2 == null)
+        {
+            return dag.getNode(ISD.ADD, vt, n1, n0);
+        }
+        if (c2 != null && c2.isNullValue())
+            return n0;
+        if (n0.getNode() instanceof GlobalAddressSDNode)
+        {
+            // (add sym, c) --> sym + c
+            GlobalAddressSDNode ga = (GlobalAddressSDNode)n0.getNode();
+            if (!legalOprations && tli.isOffsetFoldingLegal(ga) &&
+                    c2 != null && ga.getOpcode() == ISD.GlobalAddress)
+            {
+                return dag.getGlobalAddress(ga.getGlobalValue(),
+                        vt, ga.getOffset() + c2.getSExtValue(),false, 0);
+            }
+        }
+        // fold ((c1-A)+c2) -> (c1+c2)-A
+        if (c2 != null && n0.getOpcode() == ISD.SUB)
+        {
+            if (n0.getOperand(0).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode lhsOp0C = (ConstantSDNode)n0.getOperand(0).getNode();
+                return dag.getNode(ISD.SUB, vt, dag.getConstant(c2.getAPIntValue().
+                        add(lhsOp0C.getAPIntValue()), vt, false), n0.getOperand(1));
+            }
+        }
+        // reassociate add
+        SDValue radd = reassociateOps(ISD.ADD, n0, n1);
+        if (radd.getNode() != null)
+            return radd;
+        // fold ((0-A) + B) -> B-A
+        if (n0.getOpcode() == ISD.SUB &&
+                n0.getOperand(0).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode csd = (ConstantSDNode)n0.getOperand(0).getNode();
+            if (csd.isNullValue())
+                return dag.getNode(ISD.SUB, vt, n1, n0.getOperand(1));
+        }
+        // fold (A + (0-B)) -> A-B
+        if (n1.getOpcode() == ISD.SUB &&
+                n1.getOperand(0).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode csd = (ConstantSDNode)n1.getOperand(0).getNode();
+            if (csd.isNullValue())
+                return dag.getNode(ISD.SUB, vt, n0, n1.getOperand(1));
+        }
+        // fold (A+(B-A)) -> B
+        if (n1.getOpcode() == ISD.SUB &&
+                n1.getOperand(1).equals(n0))
+            return n1.getOperand(1);
+        // fold ((B-A)+A) -> B
+        if (n0.getOpcode() == ISD.SUB &&
+                n0.getOperand(1).equals(n1))
+            return n0.getOperand(0);
+        // fold (A+(B-(A+C))) to (B-C)
+        if (n1.getOpcode() == ISD.SUB &&
+                n1.getOperand(1).getOpcode() == ISD.ADD &&
+                n1.getOperand(1).getOperand(0).equals(n0))
+        {
+            return dag.getNode(ISD.SUB, vt, n1.getOperand(0),
+                    n1.getOperand(1).getOperand(1));
+        }
+        // fold (A+(B-(C+A))) to (B-C)
+        if (n1.getOpcode() == ISD.SUB &&
+                n1.getOperand(1).getOpcode() == ISD.ADD &&
+                n1.getOperand(1).getOperand(1).equals(n0))
+        {
+            return dag.getNode(ISD.SUB, vt, n1.getOperand(0),
+                    n1.getOperand(1).getOperand(0));
+        }
+        // fold (A+((B-A)+or-C)) to (B+or-C)
+        int opc = n1.getOpcode();
+        if ((opc == ISD.ADD || opc == ISD.SUB) &&
+                n1.getOperand(0).getOpcode() == ISD.SUB)
+        {
+            if (n1.getOperand(0).getOperand(1).equals(n0))
+                return dag.getNode(opc, vt, n1.getOperand(0).getOperand(0),
+                        n1.getOperand(1));
+        }
+        // fold (A-B)+(C-D) to (A+C)-(B+D) when A or C is constant
+        if (n0.getOpcode() == ISD.SUB && n1.getOpcode() == ISD.SUB)
+        {
+            if (n0.getOperand(0).getNode() instanceof ConstantSDNode ||
+                    n1.getOperand(0).getNode() instanceof ConstantSDNode)
+            {
+                SDValue t0 = n0.getOperand(0);
+                SDValue t1 = n0.getOperand(1);
+                SDValue t2 = n1.getOperand(0);
+                SDValue t3 = n1.getOperand(1);
+                return dag.getNode(ISD.SUB, vt,
+                        dag.getNode(ISD.ADD, vt, t0, t2),
+                        dag.getNode(ISD.ADD, vt, t1, t3));
+            }
+        }
+        if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
+            return new SDValue(n, 0);
+
+        // fold (a+b) -> (a|b) iff a and b share no bits.
+        if (vt.isInteger() && !vt.isVector())
+        {
+            APInt mask = APInt.getAllOnesValue(vt.getSizeInBits());
+            APInt[] lhs = new APInt[2];
+            APInt[] rhs = new APInt[2];
+            dag.computeMaskedBits(n0, mask, lhs, 0);
+            if (lhs[0].getBoolValue())
+            {
+                dag.computeMaskedBits(n1, mask, rhs, 0);
+                if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
+                        lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask)))
+                {
+                    return dag.getNode(ISD.OR, vt, n0, n1);
+                }
+            }
+        }
+
+        // fold (add (shl (add x, c1), c2), ) -> (add (add (shl x, c2), c1<<c2), )
+        if (n0.getOpcode() == ISD.SHL && n0.getNode().hasOneUse())
+        {
+            SDValue result = combineShlAndConstant(n0, n1);
+            if (result.getNode() != null) return result;
+        }
+        if (n1.getOpcode() == ISD.SHL && n1.getNode().hasOneUse())
+        {
+            SDValue result = combineShlAndConstant(n1, n0);
+            if (result.getNode() != null) return result;
+        }
+        return new SDValue();
+    }
+
+    private SDValue combineShlAndConstant(SDValue n0, SDValue n1)
+    {
+        EVT vt = n0.getValueType();
+        SDValue n00 = n0.getOperand(0);
+        SDValue n01 = n0.getOperand(1);
+        ConstantSDNode n01C = n01.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n01.getNode() : null;
+        if (n01C != null && n00.getOpcode() == ISD.ADD &&
+                n00.getNode().hasOneUse() &&
+                n00.getOperand(1).getNode() instanceof ConstantSDNode)
+        {
+            n0 = dag.getNode(ISD.ADD, vt,
+                    dag.getNode(ISD.SHL, vt, n00.getOperand(0), n01),
+                    dag.getNode(ISD.SHL, vt, n00.getOperand(1), n01));
+            return dag.getNode(ISD.ADD, vt, n0, n1);
+        }
         return new SDValue();
     }
 
     private SDValue visitMERGE_VALUES(SDNode n)
     {
+        WorklistRemover remover = new WorklistRemover(this);
+        do
+        {
+            for (int i = 0, e = n.getNumOperands(); i < e; i++)
+                dag.replaceAllUsesOfValueWith(new SDValue(n, i),
+                        n.getOperand(i), remover);
+        }while (!n.isUseEmpty());
+        removeFromWorkList(n);
+        dag.deleteNode(n);
+        return new SDValue(n, 0);
+    }
+
+    private static SDValue getInputChainForNode(SDNode n)
+    {
+        int numOps = n.getNumOperands();
+        if (numOps > 0)
+        {
+            if (n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.Other)
+                return n.getOperand(0);
+            else if (n.getOperand(numOps-1).getValueType().getSimpleVT().simpleVT == MVT.Other)
+                return n.getOperand(numOps-1);
+            for (int i = 1; i < numOps-1; i++)
+                if (n.getOperand(i).getValueType().getSimpleVT().simpleVT == MVT.Other)
+                    return n.getOperand(i);
+        }
         return new SDValue();
     }
 
     private SDValue visitTokenFactor(SDNode n)
     {
-        return new SDValue();
+        // If n has two operands, where one has on input
+        // chain equal to the other, so 'other' is redundant.
+        if (n.getNumOperands() == 2)
+        {
+            if (getInputChainForNode(n.getOperand(0).getNode()).equals(n.getOperand(1)))
+                return n.getOperand(0);
+            if (getInputChainForNode(n.getOperand(1).getNode()).equals(n.getOperand(1)))
+                return n.getOperand(1);
+        }
+
+        ArrayList<SDNode> tfs = new ArrayList<>();
+        ArrayList<SDValue> ops = new ArrayList<>();
+        HashSet<SDNode> seenOps = new HashSet<>();
+        boolean changed = false;
+
+        tfs.add(n);
+        // Iterate through token factors.  The TFs grows when new token factors are
+        // encountered.
+        for (int i = 0, e = tfs.size(); i < e; i++)
+        {
+            SDNode tf = tfs.get(i);
+            for (int j = 0, sz = tf.getNumOperands(); j < sz; j++)
+            {
+                SDValue op = tf.getOperand(j);
+                switch (op.getOpcode())
+                {
+                    case ISD.EntryToken:
+                        changed = true;
+                        break;
+                    case ISD.TokenFactor:
+                    default:
+                        if (seenOps.add(op.getNode()))
+                            ops.add(op);
+                        else
+                            changed = true;
+                        break;
+                }
+            }
+        }
+        SDValue result = new SDValue();
+        if (changed)
+        {
+            if (ops.isEmpty())
+                result = dag.getEntryNode();
+            else
+                result = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+                        ops);
+            return combineTo(n, result, false);
+        }
+        return result;
     }
 
     private SDValue simplifyVBinOp(SDNode n)

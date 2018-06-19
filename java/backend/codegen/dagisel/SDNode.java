@@ -18,7 +18,6 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
-import backend.codegen.fastISel.ISD;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.type.Type;

@@ -20,7 +20,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.codegen.fastISel.ISD;
+import backend.codegen.dagisel.ISD;
 import backend.support.Attribute;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
