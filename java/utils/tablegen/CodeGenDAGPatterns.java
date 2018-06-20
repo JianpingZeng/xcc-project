@@ -914,7 +914,7 @@ public final class CodeGenDAGPatterns
             }
 
             // Parse the instruction.
-            // FIXME 2017.7.11 (Done!!!!) 该构造函数导致i的TreePatternNode子节点没有正确的初始化
+            // FIXME 2017.7.11 (Done!!!!) This constructor causes the child node of 'i' is not be initialized properly.
             TreePattern i = new TreePattern(instr, li, true, this);
 
             // Inline pattern fragments into it.

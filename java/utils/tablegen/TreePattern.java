@@ -302,9 +302,8 @@ public final class TreePattern
                     if (r.getName().equals("node"))
                     {
                         if (dag.getArgName(i).isEmpty())
-                            error("'node' argument requires a name to match with operand list");;
-
-                            args.add(dag.getArgName(i));
+                            error("'node' argument requires a name to match with operand list");
+                        args.add(dag.getArgName(i));
                     }
                 }
             }
