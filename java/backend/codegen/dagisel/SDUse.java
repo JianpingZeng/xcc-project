@@ -117,7 +117,7 @@ public class SDUse implements Comparable<SDUse>
     public void setInitial(SDValue v)
     {
         val = v;
-        if (v != null)
+        if (v != null && v.getNode() != null)
             v.getNode().addUse(this);
     }
 
