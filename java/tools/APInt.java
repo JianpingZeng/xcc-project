@@ -178,7 +178,7 @@ public class APInt implements Cloneable
             return this;
         }
 
-        long mask = ~0L;
+        long mask = (~0L) >>> (APINT_BITS_PER_WORD - wordBits);
         if (isSingleWord())
             val &= mask;
         else
