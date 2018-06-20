@@ -56,6 +56,14 @@ set(DOT  "dot")
 find_program(XDOT_PATH "${XDOT}")
 find_program(DOT_PATH "${DOT}")
 
+if ("${XDOT_PATH}" STREQUAL "XDOT_PATH-NOTFOUND")
+    set(XDOT_PATH "")
+endif()
+
+if ("${DOT_PATH}" STREQUAL "DOT_PATH-NOTFOUND")
+    set(DOT_PATH "")
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "DEBUG")
 endif()

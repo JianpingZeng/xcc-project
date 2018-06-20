@@ -141,7 +141,7 @@ public class DAGISelEmitter extends TableGenBackend
     /**
      * Considering the specified pattern to match, emit code to
      * the specified stream to match the pattern, and generate the
-     * code for the match if it succedds. Returns true if the pattern is
+     * code for the match if it succeeds. Returns true if the pattern is
      * not guaranted to match.
      */
     private void generateCodeForPattern(PatternToMatch pattern,
