@@ -386,7 +386,8 @@ public class HIRBuilder
 
 	public Value createICmp(Predicate pred, Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+        /*
+        if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -394,13 +395,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createICmp(P, LC, RC);
 			}
-		}
+		}*/
 		return insert(new Instruction.ICmpInst(pred, lhs, rhs, ""), name);
 	}
 
 	public Value createFCmp(Predicate P, Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -408,7 +409,7 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFCmp(P, LC, RC);
 			}
-		}
+		}*/
 		return insert(new Instruction.FCmpInst(P, lhs, rhs,""), name);
 	}
 
@@ -418,7 +419,7 @@ public class HIRBuilder
 
 	public Value createAdd(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -426,13 +427,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createAdd(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createAdd(lhs, rhs,""),name);
 	}
 
 	public Value createFAdd(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -440,14 +441,14 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFAdd(LC, RC);
 			}
-		}
+		}*/
 
 		return insert(BinaryOps.createFAdd(lhs, rhs, ""),name);
 	}
 
 	public Value createSub(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -455,14 +456,14 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createSub(LC, RC);
 			}
-		}
+		}*/
 
 		return insert(BinaryOps.createSub(lhs, rhs, ""),name);
 	}
 
 	public Value createFSub(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -470,14 +471,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFSub(LC, RC);
 			}
-		}
-
+		}*/
 		return insert(BinaryOps.createFSub(lhs, rhs, ""),name);
 	}
 
 	public Value createMul(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -485,13 +485,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createMul(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createMul(lhs, rhs, ""),name);
 	}
 
 	public Value createFMul(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -499,14 +499,14 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFMul(LC, RC);
 			}
-		}
+		}*/
 
 		return insert(BinaryOps.createFMul(lhs, rhs, ""),name);
 	}
 
 	public Value createUDiv(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -514,13 +514,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createUDiv(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createUDiv(lhs, rhs, ""),name);
 	}
 
 	public Value createSDiv(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -528,13 +528,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createSDiv(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createSDiv(lhs, rhs, ""),name);
 	}
 
 	public Value createFDiv(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -542,13 +542,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFDiv(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createFDiv(lhs, rhs, ""),name);
 	}
 
 	public Value createURem(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -556,13 +556,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createURem(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createURem(lhs, rhs, ""),name);
 	}
 
 	public Value createSRem(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -570,13 +570,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createSRem(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createSRem(lhs, rhs, ""),name);
 	}
 
 	public Value createFRem(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -584,13 +584,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createFRem(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createFRem(lhs, rhs, ""),name);
 	}
 
 	public Value createShl(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -598,13 +598,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createShl(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createShl(lhs, rhs, ""),name);
 	}
 
 	public Value createLShr(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -612,13 +612,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createLShr(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createLShr(lhs, rhs, ""),name);
 	}
 
 	public Value createAShr(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -626,13 +626,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createAShr(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createAShr(lhs, rhs, ""),name);
 	}
 
 	public Value createAnd(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -640,13 +640,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createAnd(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createAnd(lhs, rhs, ""),name);
 	}
 
 	public Value createOr(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -654,13 +654,13 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createOr(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createOr(lhs, rhs, ""),name);
 	}
 
 	public Value createXor(Value lhs, Value rhs, final String name)
 	{
-		if (lhs instanceof Constant)
+/*		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
 			if (rhs instanceof Constant)
@@ -668,13 +668,15 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createXor(LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.createXor(lhs, rhs, ""),name);
 	}
 
 	public Value createBinOp(Operator opc, Value lhs,
 			Value rhs, final String name)
 	{
+	    /*
+	    TODO
 		if (lhs instanceof Constant)
 		{
 			Constant LC = (Constant) lhs;
@@ -683,37 +685,45 @@ public class HIRBuilder
 				Constant RC = (Constant) rhs;
 				return null; // TODO folder.createBinOp(opc, LC, RC);
 			}
-		}
+		}*/
 		return insert(BinaryOps.create(opc, lhs, rhs, ""),name);
 	}
 
 	public Value createNeg(Value v, final String name)
 	{
+	    /*
+	    TODO
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createNeg(vc);
 		}
+		*/
 		return insert(BinaryOps.createNeg(v), name);
 	}
 
 	public Value createFNeg(Value v, final String name)
 	{
+	    /*
+	    TODO
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createFNeg(vc);
 		}
+		*/
 		return insert(BinaryOps.createFNeg(v), name);
 	}
 
 	public Value createNot(Value v, final String name)
 	{
+	    /*
+	    TODO
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createNot(vc);
-		}
+		}*/
 		return insert(BinaryOps.createNot(v), name);
 	}
 

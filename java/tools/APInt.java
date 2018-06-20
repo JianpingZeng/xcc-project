@@ -70,6 +70,25 @@ import static tools.Util.countLeadingZeros32;
 public class APInt implements Cloneable
 {
     /**
+     * Magic data for optimising unsigned division by a constant.
+     */
+    public static class MU
+    {
+        /**
+         * magic number.
+         */
+        public APInt m;
+        /**
+         * add indicator.
+         */
+        public boolean a;
+        /**
+         * shift amount.
+         */
+        public int s;
+    }
+
+    /**
      * THe number of bits in this {@linkplain APInt}.
      */
     private int bitWidth;
@@ -3778,5 +3797,111 @@ public class APInt implements Cloneable
     {
         return numBits < val.getBitWidth() &&
                 val.eq(APInt.getLowBitsSet(val.getBitWidth(), numBits));
+    }
+
+    public MU magicu()
+    {
+        APInt d = this;
+        int p;
+        MU magu = new MU();
+        magu.a = false;
+        APInt allOnes = APInt.getAllOnesValue(d.getBitWidth());
+        APInt signedMin = APInt.getSignedMinValue(d.getBitWidth());
+        APInt signedMax = APInt.getSignedMaxValue(d.getBitWidth());
+
+        APInt nc = allOnes.sub(d.negative().urem(d));
+        p = d.getBitWidth() - 1;
+        APInt q1 = signedMin.udiv(nc);
+        APInt r1 = signedMin.sub(q1.mul(nc));
+        APInt q2 = signedMax.udiv(d);
+        APInt r2 = signedMax.sub(q2.mul(d));
+        APInt delta = new APInt();
+        do
+        {
+            ++p;
+            if (r1.uge(nc.sub(r1)))
+            {
+                q1 = q1.add(q1).add(1);
+                r1 = r1.add(r1).sub(nc);
+            }
+            else
+            {
+                q1 = q1.add(q1);
+                r1 = r1.add(r1);
+            }
+            if (r2.add(1).uge(d.sub(r2)))
+            {
+                if (q2.uge(signedMax)) magu.a = true;
+                q2 = q2.add(q2).add(1);
+                r2 = r2.add(r2).add(1).sub(d);
+            }
+            else
+            {
+                if (q2.uge(signedMin)) magu.a = true;
+                q2 = q2.add(q2);
+                r2 = r2.add(r2).add(1);
+            }
+            delta = d.sub(1).sub(r2);
+        }
+        while(p < d.getBitWidth()*2 &&
+                (q1.ult(delta) || (q1.eq(delta) && r1.eq(0))));
+        magu.m = q2.add(1);
+        magu.s = p - d.getBitWidth();
+        return magu;
+    }
+
+    public APInt abs()
+    {
+        if (isNegative())
+            return negative();
+        return this;
+    }
+
+    public APInt.MU magic()
+    {
+        APInt d = this;
+        int p;
+        MU magu = new MU();
+        magu.a = false;
+        APInt allOnes = APInt.getAllOnesValue(d.getBitWidth());
+        APInt signedMin = APInt.getSignedMinValue(d.getBitWidth());
+        APInt signedMax = APInt.getSignedMaxValue(d.getBitWidth());
+
+        APInt ad = d.abs();
+        APInt t = signedMin.add(d.lshr(d.getBitWidth()-1));
+        APInt anc = t.sub(1).sub(t.urem(ad));
+        p = d.getBitWidth() - 1;
+        APInt q1 = signedMin.udiv(anc);
+        APInt r1 = signedMin.sub(q1.mul(anc));
+        APInt q2 = signedMin.udiv(ad);
+        APInt r2 = signedMin.sub(q2.mul(ad));
+
+        APInt delta = new APInt();
+        do
+        {
+            ++p;
+            q1 = q1.shl(1);
+            r1 = r1.shl(1);
+            if (r1.uge(anc))
+            {
+                q1 = q1.add(1);
+                r1 = r1.sub(anc);
+            }
+            q2 = q2.shl(1);
+            r2 = r2.shl(1);
+            if (r2.uge(ad))
+            {
+                q2 = q2.add(1);
+                r2 = r2.sub(ad);
+            }
+            delta = ad.sub(r2);
+        }
+        while (q1.ule(delta) || (q1.eq(delta) && r1.eq(0)));
+        magu.m = q2.add(1);
+        if (d.isNegative())
+            magu.m = magu.m.negative();
+
+        magu.s = p - d.getBitWidth();
+        return magu;
     }
 }
