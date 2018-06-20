@@ -332,6 +332,11 @@ public abstract class TargetLowering
             setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
     }
 
+    public boolean isIntDivCheap()
+    {
+        return intDivIsCheap;
+    }
+
     private void initLibcallNames()
     {
         libCallRoutineNames[RTLIB.SHL_I16.ordinal()] = "__ashlhi3";
@@ -2693,5 +2698,100 @@ public abstract class TargetLowering
             return true;
         // Otherwise assume nothing is safe.
         return false;
+    }
+
+    public SDValue buildSDIV(SDNode n, SelectionDAG dag, ArrayList<SDNode> created)
+    {
+        EVT vt = n.getValueType(0);
+        if (!isTypeLegal(vt))
+            return new SDValue();
+
+        APInt d = ((ConstantSDNode)n.getOperand(1).getNode()).getAPIntValue();
+        APInt.MU magics = d.magic();
+
+        SDValue q;
+        if (isOperationLegalOrCustom(ISD.MULHS, vt))
+            q = dag.getNode(ISD.MULHS, vt, n.getOperand(0),
+                    dag.getConstant(magics.m, vt, false));
+        else if (isOperationLegalOrCustom(ISD.SMUL_LOHI, vt))
+            q = new SDValue(dag.getNode(ISD.SMUL_LOHI,
+                    dag.getVTList(vt, vt),
+                    n.getOperand(0),
+                    dag.getConstant(magics.m, vt, false)).getNode(), 1);
+        else
+            q = new SDValue();
+        if (d.isStrictlyPositive() && magics.m.isNegative())
+        {
+            q = dag.getNode(ISD.ADD, vt, q, n.getOperand(0));
+            if (created != null)
+                created.add(q.getNode());
+        }
+        if (d.isNegative() && magics.m.isStrictlyPositive())
+        {
+            q = dag.getNode(ISD.SUB, vt, q, n.getOperand(0));
+            if (created != null)
+                created.add(q.getNode());
+        }
+        if (magics.s > 0)
+        {
+            q = dag.getNode(ISD.SRA, vt, q, dag.getConstant(magics.s,
+                    new EVT(getShiftAmountTy()), false));
+            if (created != null)
+                created.add(q.getNode());
+        }
+        SDValue t = dag.getNode(ISD.SRL, vt, q,
+                dag.getConstant(vt.getSizeInBits()-1, new EVT(getShiftAmountTy()), false));
+        if (created != null)
+            created.add(t.getNode());
+
+        return dag.getNode(ISD.ADD, vt, q, t);
+    }
+
+    public SDValue buildUDIV(SDNode n, SelectionDAG dag, ArrayList<SDNode> created)
+    {
+        EVT vt = n.getValueType(0);
+        if (!isTypeLegal(vt))
+            return new SDValue();
+
+        ConstantSDNode n1C = n.getOperand(1).getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n.getOperand(1).getNode() : null;
+        assert n1C != null;
+
+        APInt.MU magics = n1C.getAPIntValue().magicu();
+        SDValue q;
+        if (isOperationLegalOrCustom(ISD.MULHU, vt))
+            q = dag.getNode(ISD.MULHU, vt, n.getOperand(0),
+                    dag.getConstant(magics.m, vt, false));
+        else if (isOperationLegalOrCustom(ISD.UMUL_LOHI, vt))
+            q = new SDValue(dag.getNode(ISD.UMUL_LOHI,
+                    dag.getVTList(vt, vt),
+                    n.getOperand(0),
+                    dag.getConstant(magics.m, vt, false)).getNode(), 1);
+        else
+            q = new SDValue();
+        if (created != null)
+            created.add(q.getNode());
+
+        if (magics.a)
+        {
+            assert magics.s < n1C.getAPIntValue().getBitWidth();
+            return dag.getNode(ISD.SRL, vt, q,
+                    dag.getConstant(magics.s, new EVT(getShiftAmountTy()), false));
+        }
+        else
+        {
+            SDValue npq = dag.getNode(ISD.SUB, vt, n.getOperand(0), q);
+            if (created != null)
+                created.add(npq.getNode());
+            npq = dag.getNode(ISD.SRL, vt, npq,
+                    dag.getConstant(1, new EVT(getShiftAmountTy()), false));
+            if (created != null)
+                created.add(npq.getNode());
+            npq = dag.getNode(ISD.ADD, vt, npq, q);
+            if (created != null)
+                created.add(npq.getNode());
+            return dag.getNode(ISD.SRL, vt, npq,
+                    dag.getConstant(magics.s-1, new EVT(getShiftAmountTy()), false));
+        }
     }
 }

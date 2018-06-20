@@ -1472,6 +1472,8 @@ public class SelectionDAG
 
     public void computeMaskedBits(SDValue op, APInt mask, APInt[] knownVals, int depth)
     {
+        assert knownVals!= null && knownVals.length == 2:"Illegal knownVals";
+
         int bitwidth = mask.getBitWidth();
         assert bitwidth == op.getValueType().getSizeInBits();
         knownVals[0] = new APInt(bitwidth, 0);
@@ -2043,6 +2045,14 @@ public class SelectionDAG
     public SDValue getMemset(SDValue root, SDValue op1, SDValue op2, SDValue op3, int align, Value operand, int i)
     {
         return null;
+    }
+
+    public boolean signBitIsZero(SDValue n, int depth)
+    {
+        if (n.getValueType().isVector())
+            return false;
+        int bitwidth = n.getValueSizeInBits();
+        return maskedValueIsZero(n, APInt.getSignBit(bitwidth), depth);
     }
 
     static class UseMemo

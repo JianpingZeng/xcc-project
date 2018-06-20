@@ -27,7 +27,6 @@ import backend.codegen.dagisel.SDNode.LoadSDNode;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
 import backend.target.TargetMachine;
-import jdk.nashorn.internal.objects.Global;
 import tools.APInt;
 import tools.Util;
 
@@ -962,26 +961,297 @@ public class DAGCombiner
 
     private SDValue visitUDIV(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (vt.isVector())
+        {
+            SDValue foldedOp = simplifyVBinOp(n);
+            if (foldedOp.getNode() != null) return foldedOp;
+            return new SDValue();
+        }
+        // fold (udiv c1, c2) -> c1/c2
+        if (c1 != null && c2 != null && !c2.isNullValue())
+        {
+            return dag.foldConstantArithmetic(ISD.UDIV, vt, c1, c2);
+        }
+        // fold (udiv x, (1 << c)) -> x >>u c
+        if (c2 != null && c2.getAPIntValue().isPowerOf2())
+        {
+            return dag.getNode(ISD.SRL, vt, n0,
+                    dag.getConstant(c2.getAPIntValue().logBase2(),
+                            new EVT(tli.getShiftAmountTy()), false));
+        }
+        // fold (udiv x, (shl c, y)) -> x >>u (log2(c)+y) iff c is power of 2
+        if (n1.getOpcode() == ISD.SHL &&
+                n1.getOperand(0).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode c = (ConstantSDNode)n1.getOperand(0).getNode();
+            if (c.getAPIntValue().isPowerOf2())
+            {
+                EVT addVT = n1.getOperand(1).getValueType();
+                SDValue add = dag.getNode(ISD.ADD, addVT, n1.getOperand(1),
+                        dag.getConstant(c.getAPIntValue().logBase2(),
+                                addVT, false));
+                return dag.getNode(ISD.SRL, vt, n0, add);
+            }
+        }
+
+        // fold (udiv x, c) -> alternate
+        if (c2 != null && !c2.isNullValue() && !tli.isIntDivCheap())
+        {
+            SDValue op = buildUDIV(n);
+            if (op.getNode() != null) return op;
+        }
+
+        if (n0.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
+
         return new SDValue();
+    }
+
+    private SDValue buildUDIV(SDNode n)
+    {
+        ArrayList<SDNode> built = new ArrayList<>();
+        SDValue s = tli.buildUDIV(n, dag, built);
+        built.forEach(this::addToWorkList);
+        return s;
     }
 
     private SDValue visitSDIV(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (vt.isVector())
+        {
+            SDValue foldedOp = simplifyVBinOp(n);
+            if (foldedOp.getNode() != null) return foldedOp;
+            return new SDValue();
+        }
+        // fold (sdiv c1, c2) -> c1/c2
+        if (c1 != null && !c2.isNullValue())
+        {
+            return dag.foldConstantArithmetic(ISD.SDIV, vt, c1, c2);
+        }
+        // fold (sdiv c1, 1) --> c1
+        if (c2 != null && c2.getSExtValue() == 1)
+            return n0;
+        // fold (sdiv X, -1) -> 0-X
+        if (c2 != null && c2.isAllOnesValue())
+            return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false),
+                    n0);
+        // If we know the sign bits of both operands are zero, strength reduce to a
+        // udiv instead.  Handles (X&15) /s 4 -> X&15 >> 2
+        if (!vt.isVector())
+        {
+            if (dag.signBitIsZero(n1, 0) && dag.signBitIsZero(n0, 0))
+                return dag.getNode(ISD.UDIV, n1.getValueType(), n0, n1);
+        }
+        // fold (sdiv X, pow2) -> simple ops after legalize
+        if (c2 != null && !c2.isNullValue() && !tli.isIntDivCheap() &&
+                (Util.isPowerOf2(c2.getSExtValue()) || Util.isPowerOf2(-c2.getSExtValue())))
+        {
+            if (tli.isIntDivCheap())
+                 return new SDValue();
+
+            long pow2 = c2.getSExtValue();
+            long abs2 = pow2 > 0 ? pow2 : -pow2;
+            int lg2 = Util.log2(abs2);
+            SDValue sgn = dag.getNode(ISD.SRA, vt, n0, dag.getConstant(vt.getSizeInBits()-1,
+                    new EVT(tli.getShiftAmountTy()), false));
+            addToWorkList(sgn.getNode());
+
+            // add (n0 < 0) ? abs2 - 1 : 0
+            SDValue srl = dag.getNode(ISD.SRL, vt, sgn,
+                    dag.getConstant(vt.getSizeInBits() - lg2,
+                            new EVT(tli.getShiftAmountTy()), false));
+            SDValue add = dag.getNode(ISD.ADD, vt, n0, srl);
+            addToWorkList(srl.getNode());
+            addToWorkList(add.getNode());
+            SDValue sra = dag.getNode(ISD.SRA, vt, add,
+                    dag.getConstant(lg2, new EVT(tli.getShiftAmountTy()), false));
+            if (pow2 > 0)
+                return sra;
+            addToWorkList(sra.getNode());
+            return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false), sra);
+        }
+
+        if (c2 != null && (c2.getSExtValue() < -1 || c2.getSExtValue() > 1) &&
+                !tli.isIntDivCheap())
+        {
+            SDValue op = buildSDIV(n);
+            if (op.getNode() != null) return op;
+        }
+        if (n0.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
+
         return new SDValue();
+    }
+
+    private SDValue buildSDIV(SDNode n)
+    {
+        ArrayList<SDNode> nodes = new ArrayList<>();
+        SDValue s = tli.buildSDIV(n, dag, nodes);
+
+        nodes.stream().forEach(op -> addToWorkList(op));
+        return s;
     }
 
     private SDValue visitMUL(SDNode n)
     {
-        return new SDValue();
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (vt.isVector())
+        {
+            SDValue foldedOp = simplifyVBinOp(n);
+            if (foldedOp.getNode() != null) return foldedOp;
+            return new SDValue();
+        }
+
+        // (mul x, undef) or (mul undef, x) --> 0
+        if (n0.getOpcode() == ISD.UNDEF || n1.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+        // fold (mul c1, c2) --> c1*c2
+        if (c1 != null && c2 != null)
+            return dag.foldConstantArithmetic(ISD.MUL, vt, c1, c2);
+        // reassociate the two operand and move the constant to the right.
+        if (c1 != null && c2 == null)
+            return dag.getNode(ISD.MUL, vt, n1, n0);
+        // fold (mul x, 0) --> 0
+        if (c2 != null && c2.isNullValue())
+            return n1;
+        // fold (mul x, -1) -> 0-x
+        if (c2 != null && c2.isAllOnesValue())
+            return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false), n0);
+        if (c2 != null && c2.getAPIntValue().isPowerOf2())
+        {
+            // fold (mul x, (1 << c)) -> x << c
+            return dag.getNode(ISD.MUL, vt, n0, dag.getConstant(c2.getAPIntValue().logBase2(),
+                    new EVT(tli.getShiftAmountTy()), false));
+        }
+        if (c2 != null && c2.getAPIntValue().negative().isPowerOf2())
+        {
+            // fold (mul x, -(1 << c)) -> -(x << c) or (-x) << c
+            long log2Val = c2.getAPIntValue().negative().logBase2();
+            return dag.getNode(ISD.SUB, vt,
+                    dag.getNode(ISD.SHL, vt, n0,
+                            dag.getConstant(log2Val, vt, false)));
+        }
+        // (mul (shl X, c1), c2) -> (mul X, c2 << c1)
+        if (c2 != null && n0.getOpcode() == ISD.SHL &&
+                n0.getOperand(1).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode n01C = (ConstantSDNode)n0.getOperand(1).getNode();
+            return dag.getNode(ISD.MUL, vt, n0.getOperand(0),
+                    dag.getConstant(c2.getAPIntValue().shl(n01C.getAPIntValue()), vt, false));
+        }
+        // Change (mul (shl X, C), Y) -> (shl (mul X, Y), C) when the shift has one
+        // use.
+        SDValue x = new SDValue(), y = new SDValue();
+        if (n0.getOpcode() == ISD.SHL && n0.getOperand(1).getNode() instanceof ConstantSDNode &&
+                n0.hasOneUse())
+        {
+            x = n0;
+            y = n1;
+        }
+        else if (n1.getOpcode() == ISD.SHL && n1.getOperand(1).getNode() instanceof ConstantSDNode &&
+                n1.hasOneUse())
+        {
+            x = n1;
+            y = n0;
+        }
+        if (x.getNode() != null)
+        {
+            return dag.getNode(ISD.SHL, vt, dag.getNode(ISD.MUL, vt, x.getOperand(0), y),
+                    x.getOperand(1));
+        }
+        // fold (mul (add x, c1), c2) -> (add (mul x, c2), c1*c2)
+        if (c2 != null && n0.getOpcode() == ISD.ADD && n0.hasOneUse() &&
+                n0.getOperand(1).getNode() instanceof ConstantSDNode)
+        {
+            return dag.getNode(ISD.ADD, vt,
+                    dag.getNode(ISD.MUL, vt, n0.getOperand(0), n1),
+                    dag.getNode(ISD.MUL, vt, n0.getOperand(1), n1));
+        }
+        SDValue rmul = reassociateOps(ISD.MUL, n0, n1);
+        return rmul.getNode() != null ? rmul : new SDValue();
     }
 
     private SDValue visitADDE(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+        SDValue carryIn = n.getOperand(2);
+
+        if (c1 != null && c2 == null)
+        {
+            return dag.getNode(ISD.ADDE, n.getValueList(), n1, n0, carryIn);
+        }
+        // fold (adde X, Y, false) --> (addc  X, Y).
+        if (carryIn.getOpcode() == ISD.CARRY_FALSE)
+            return dag.getNode(ISD.ADDC, n.getValueList(), n0, n1);
         return new SDValue();
     }
 
     private SDValue visitADDC(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+        if (n.hasNumUsesOfValue(0, 1))
+        {
+            return combineTo(n, dag.getNode(ISD.ADD, vt, n1, n0),
+                    dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+        }
+        if (c1 != null && c2 == null)
+        {
+            return dag.getNode(ISD.ADDC, n.getValueList(), n1, n0);
+        }
+        APInt[] lhs = new APInt[2];
+        APInt[] rhs = new APInt[2];
+        APInt mask = APInt.getAllOnesValue(vt.getSizeInBits());
+        dag.computeMaskedBits(n0, mask, lhs, 0);
+        if (lhs[0].getBoolValue())
+        {
+            dag.computeMaskedBits(n1, mask, rhs, 0);
+            if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
+                    lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask)))
+            {
+                return combineTo(n, dag.getNode(ISD.OR, vt, n0, n1),
+                        dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+            }
+        }
+
         return new SDValue();
     }
 
