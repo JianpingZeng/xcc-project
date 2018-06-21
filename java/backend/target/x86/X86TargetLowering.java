@@ -4650,9 +4650,74 @@ public class X86TargetLowering extends TargetLowering
         return null;
     }
 
+    /**
+     * Transform vector shift nodes to use vector shifts when it possible.
+     * @param n
+     * @param dag
+     * @return
+     */
     private SDValue performShiftCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        if (!subtarget.hasSSE2())
+            return new SDValue();
+
+        EVT vt = n.getValueType(0);
+        if (vt.getSimpleVT().simpleVT != MVT.v2i64 &&
+                vt.getSimpleVT().simpleVT != MVT.v4i32 &&
+                vt.getSimpleVT().simpleVT != MVT.v8i16)
+            return new SDValue();
+
+        SDValue shAmtOP = n.getOperand(0);
+        EVT eltVT = vt.getVectorElementType();
+        SDValue baseShAmt = new SDValue();
+        if (shAmtOP.getOpcode() == ISD.BUILD_VECTOR)
+        {
+            int numElts = vt.getVectorNumElements();
+            int i = 0;
+            for (; i < numElts; i++)
+            {
+                SDValue arg = shAmtOP.getOperand(i);
+                if (arg.getOpcode() == ISD.UNDEF) continue;
+                baseShAmt = arg;
+                break;
+            }
+
+            for (; i < numElts; i++)
+            {
+                SDValue arg = shAmtOP.getOperand(i);
+                if (arg.getOpcode() == ISD.UNDEF) continue;
+                if (!arg.equals(baseShAmt))
+                    return new SDValue();
+            }
+        }
+        else if (shAmtOP.getOpcode() == ISD.VECTOR_SHUFFLE &&
+                ((ShuffleVectorSDNode)shAmtOP.getNode()).isSplat())
+        {
+            baseShAmt = dag.getNode(ISD.EXTRACT_VECTOR_ELT, eltVT, shAmtOP,
+                    dag.getIntPtrConstant(0));
+        }
+        else
+            return new SDValue();
+
+        if (eltVT.bitsGT(new EVT(MVT.i32)))
+            baseShAmt = dag.getNode(ISD.TRUNCATE, new EVT(MVT.i32), baseShAmt);
+        else if (eltVT.bitsLT(new EVT(MVT.i32)))
+            baseShAmt = dag.getNode(ISD.ANY_EXTEND, new EVT(MVT.i32), baseShAmt);
+
+        SDValue valOp = n.getOperand(0);
+        int intVT = vt.getSimpleVT().simpleVT;
+        switch (n.getOpcode())
+        {
+            default:
+                Util.shouldNotReachHere("Unknown shift opcode!");
+                break;
+            case ISD.SHL:
+            case ISD.SRA:
+            case ISD.SRL:
+                Util.shouldNotReachHere("Not implemented!");
+                break;
+        }
+        return new SDValue();
     }
 
     private SDValue performMulCombine(SDNode n, SelectionDAG dag,
