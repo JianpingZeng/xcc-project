@@ -621,4 +621,29 @@ public class ISD
                 return 2;
         }
     }
+
+    /**
+     * Return the result of a logical OR between different
+     * comparisons of identical values: ((X op1 Y) | (X op2 Y)).  This function
+     * returns SETCC_INVALID if it is not possible to represent the resultant
+     * comparison.
+     * @param cc1
+     * @param cc2
+     * @param isInteger
+     * @return
+     */
+    public static CondCode getSetCCOrOperation(CondCode cc1, CondCode cc2, boolean isInteger)
+    {
+        if (isInteger && (isSignedOp(cc1) | isSignedOp(cc2)) == 3)
+            return CondCode.SETCC_INVALID;
+
+        int op = cc1.ordinal() | cc2.ordinal();
+        if (op > CondCode.SETTRUE2.ordinal())
+            op &= ~16;
+
+        if (isInteger && op == CondCode.SETUNE.ordinal())
+            op = CondCode.SETNE.ordinal();
+
+        return CondCode.values()[op];
+    }
 }

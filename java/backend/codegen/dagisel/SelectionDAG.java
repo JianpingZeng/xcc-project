@@ -265,6 +265,22 @@ public class SelectionDAG
         return getNode(opc, vt, temps);
     }
 
+    public SDValue getNode(int opc, EVT vt, SDUse[] ops)
+    {
+        switch (ops.length)
+        {
+            case 0: return getNode(opc, vt);
+            case 1: return getNode(opc, vt, ops[0].get());
+            case 2: return getNode(opc, vt, ops[0].get(), ops[1].get());
+            case 3: return getNode(opc, vt, ops[0].get(), ops[1].get(), ops[2].get());
+            default: break;
+        }
+        SDValue[] temp = new SDValue[ops.length];
+        Object[] src = Arrays.stream(ops).map(SDUse::get).toArray();
+        System.arraycopy(src, 0, temp, 0, ops.length);
+        return getNode(opc, vt, temp);
+    }
+
     public SDValue getNode(int opc, EVT vt)
     {
         FoldingSetNodeID calc = new FoldingSetNodeID();
