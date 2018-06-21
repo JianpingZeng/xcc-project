@@ -291,8 +291,8 @@ public final class LiveVariables extends MachineFunctionPass
 
             // Finally, if the last instruction in the block is a return,
             // make sure it as using all of the live out values in the fucntion.
-            TargetInstrDesc tid = mbb.getLastInst().getDesc();
-            if (!mbb.isEmpty() && tid.isReturn())
+            TargetInstrDesc tid;
+            if (!mbb.isEmpty() && (tid = mbb.getLastInst().getDesc()) != null && tid.isReturn())
             {
                 MachineInstr ret = mbb.getInsts().getLast();
                 TIntArrayList liveouts = mf.getMachineRegisterInfo().getLiveOuts();

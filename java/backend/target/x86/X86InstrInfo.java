@@ -1633,8 +1633,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         // Determine if DstRC and srcRC have a common superclass in common.
         TargetRegisterClass commonRC = destRC;
         if (destRC.equals(srcRC))
-    /* Source and destination have the same register class. */
-            ;
+        {
+            /* Source and destination have the same register class. */
+        }
         else if (commonRC.hasSuperClass(srcRC))
             commonRC = srcRC;
         else if (!destRC.hasSubClass(srcRC))

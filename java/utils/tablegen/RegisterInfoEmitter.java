@@ -220,7 +220,20 @@ public final class RegisterInfoEmitter extends TableGenBackend
                     + "%sRegisterClass = %sClass.getInstance();\n", name, name, name);
         }
 
-        os.println("\n");
+        os.println();
+        // print a static code block to initialize register class instance.
+        os.printf("\t{\n");
+        for (CodeGenRegisterClass rc : regClasses)
+        {
+            String name = rc.getName();
+            os.printf("\t\t// Register class initialization for %sRegisterClass.%n", name);
+            os.printf("\t\t%sRegisterClass.setSubClasses(%sSubclasses);%n", name, name);
+            os.printf("\t\t%sRegisterClass.setSuperClasses(%sSuperclasses);%n", name, name);
+            os.printf("\t\t%sRegisterClass.setSubRegClasses(%sSubRegClasses);%n", name, name);
+            os.printf("\t\t%sRegisterClass.setSuperRegClasses(%sSuperRegClasses);%n", name, name);
+            os.println();
+        }
+        os.printf("\t}\n");
 
         // Output register class define.
         for (CodeGenRegisterClass rc : regClasses)
@@ -355,7 +368,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 //
                 // Sub-classes are used to determine if a virtual register can be used
                 // as an instruction operand, or if it must be copied first.
-                if (i == j || rc2.elts.size() > rc.elts.size()
+                if (rc.equals(rc2) || rc2.elts.size() > rc.elts.size()
                         || (rc.spillAlignment!= 0 && rc2.spillAlignment % rc.spillAlignment != 0)
                         || rc.spillSize > rc2.spillSize || !isSubRegisterClass(rc2, regSets))
                     continue;
@@ -390,7 +403,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 {
                     CodeGenRegisterClass rc2 = regClasses.get(val);
                     if (!empty) os.printf(", ");
-                    os.printf("%sRegisterClass", name);
+                    os.printf("%sRegisterClass", rc2.getName());
                     empty = false;
                 }
             }

@@ -69,6 +69,26 @@ public abstract class TargetRegisterClass
         regSet.addAll(regs);
     }
 
+    public void setSubClasses(TargetRegisterClass[] subClasses)
+    {
+        this.subClasses = subClasses;
+    }
+
+    public void setSubRegClasses(TargetRegisterClass[] subRegClasses)
+    {
+        this.subRegClasses = subRegClasses;
+    }
+
+    public void setSuperClasses(TargetRegisterClass[] superClasses)
+    {
+        this.superClasses = superClasses;
+    }
+
+    public void setSuperRegClasses(TargetRegisterClass[] superRegClasses)
+    {
+        this.superRegClasses = superRegClasses;
+    }
+
     public int getID()
     {
         return id;
@@ -165,7 +185,7 @@ public abstract class TargetRegisterClass
     {
         if (superClasses == null) return false;
 
-        for (TargetRegisterClass superRC : superRegClasses)
+        for (TargetRegisterClass superRC : superClasses)
             if (superRC.equals(rc))
                 return true;
 
