@@ -416,32 +416,268 @@ public class DAGCombiner
 
     private SDValue visitCTPOP(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.CTPOP, vt, n0);
+
         return new SDValue();
     }
 
     private SDValue visitCTTZ(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.CTTZ, vt, n0);
+
         return new SDValue();
     }
 
     private SDValue visitCTLZ(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.CTLZ, vt, n0);
+
         return new SDValue();
     }
 
     private SDValue visitSRL(SDNode n)
     {
-        return new SDValue();
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+        int opSizeInBits = vt.getSizeInBits();
+
+        if (c0 != null && c1 != null)
+        {
+            return dag.foldConstantArithmetic(ISD.SRL, vt, c0, c1);
+        }
+        if (c0 != null && c0.isNullValue())
+            return n0;
+        if (c1 != null && c1.getZExtValue() >= opSizeInBits)
+            return dag.getUNDEF(vt);
+        if (c1 != null && c1.isNullValue())
+            return n0;
+        if (c1 != null && dag.maskedValueIsZero(new SDValue(n, 0),
+                APInt.getAllOnesValue(opSizeInBits)))
+            return dag.getConstant(0, vt, false);
+
+        if (c1 != null && n0.getOpcode() == ISD.SRL &&
+                n0.getOperand(1).getOpcode() == ISD.Constant)
+        {
+            long t1 = ((ConstantSDNode)n0.getOperand(1).getNode()).getZExtValue();
+            long t2 = c1.getZExtValue();
+            if ((t1 + t2) > opSizeInBits)
+                return dag.getConstant(0, vt, false);
+            return dag.getNode(ISD.SRL, vt, n0.getOperand(0),
+                    dag.getConstant(t1+t2, n1.getValueType(), false));
+        }
+
+        if (c1 != null && n0.getOpcode() == ISD.ANY_EXTEND)
+        {
+            EVT smallVT = n0.getOperand(0).getValueType();
+            if (c1.getZExtValue() >= smallVT.getSizeInBits())
+                return dag.getUNDEF(vt);
+
+            SDValue smallShift = dag.getNode(ISD.SRL, smallVT, n0.getOperand(0), n1);
+            addToWorkList(smallShift.getNode());
+            return dag.getNode(ISD.ANY_EXTEND, vt, smallShift);
+        }
+
+        if (c1 != null && c1.getZExtValue() + 1 == vt.getSizeInBits() &&
+                n0.getOpcode() == ISD.SRA)
+        {
+            return dag.getNode(ISD.SRL, vt, n0.getOperand(0), n1);
+        }
+
+        if (c1 != null && n0.getOpcode() == ISD.CTLZ &&
+                c1.getAPIntValue().eq(Util.log2(vt.getSizeInBits())))
+        {
+            APInt[] knownVals = new APInt[2];
+            APInt mask = APInt.getAllOnesValue(vt.getSizeInBits());
+            dag.computeMaskedBits(n0.getOperand(0), mask, knownVals, 0);
+            APInt knownZero = knownVals[0];
+            APInt knownOne = knownVals[1];
+            if (knownOne.getBoolValue()) return dag.getConstant(0, vt, false);
+
+            APInt unknownBits = knownZero.not().and(mask);
+            if (unknownBits.eq(0)) return dag.getConstant(1, vt, false);
+
+            if (unknownBits.and(unknownBits.sub(1)).eq(0))
+            {
+                int shAmt = unknownBits.countTrailingZeros();
+                SDValue op = n0.getOperand(0);
+                if (shAmt != 0)
+                {
+                    op = dag.getNode(ISD.SRL, vt, op,
+                            dag.getConstant(shAmt, new EVT(tli.getShiftAmountTy()), false));
+                    addToWorkList(op.getNode());
+                }
+                return dag.getNode(ISD.XOR, vt, op, dag.getConstant(1, vt, false));
+            }
+        }
+
+        if (n1.getOpcode() == ISD.TRUNCATE &&
+                n1.getOperand(0).getOpcode() == ISD.AND &&
+                n1.hasOneUse() && n1.getOperand(0).hasOneUse())
+        {
+            SDValue n101 = n1.getOperand(0).getOperand(1);
+            if (n101.getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode cst = (ConstantSDNode)n101.getNode();
+                EVT truncVT = n1.getValueType();
+                SDValue n100 = n1.getOperand(0).getOperand(0);
+                APInt trunc = cst.getAPIntValue();
+                trunc.trunc(truncVT.getSizeInBits());
+                return dag.getNode(ISD.SRL, vt, n0, dag.getNode(ISD.AND, truncVT,
+                        dag.getNode(ISD.TRUNCATE, truncVT, n100),
+                        dag.getConstant(trunc, truncVT, false)));
+            }
+        }
+
+        if (c1 != null && simplifyDemandedBits(new SDValue(n, 0)))
+            return new SDValue(n, 0);
+        return c1 != null ? visitShiftByConstant(n, c1.getZExtValue()) : new SDValue();
     }
 
     private SDValue visitSRA(SDNode n)
     {
+
         return new SDValue();
     }
 
     private SDValue visitSHL(SDNode n)
     {
-        return new SDValue();
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+        int opSizeInBits = vt.getSizeInBits();
+
+        if (c0 != null && c1 != null)
+        {
+            return dag.foldConstantArithmetic(ISD.SHL, vt, c0, c1);
+        }
+        if (c0 != null && c0.isNullValue())
+            return n0;
+        if (c1 != null && c1.getZExtValue() >= opSizeInBits)
+            return dag.getUNDEF(vt);
+        if (c1 != null && c1.isNullValue())
+            return n0;
+        if (dag.maskedValueIsZero(new SDValue(n, 0), APInt.getAllOnesValue(vt.getSizeInBits())))
+        {
+            return dag.getConstant(0, vt, false);
+        }
+        if (n1.getOpcode() == ISD.TRUNCATE &&
+                n1.getOperand(0).getOpcode() == ISD.AND &&
+                n1.hasOneUse() && n1.getOperand(0).hasOneUse())
+        {
+            SDValue n101 = n1.getOperand(0).getOperand(1);
+            if (n101.getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode n101C = (ConstantSDNode)n101.getNode();
+                EVT truncVT = n1.getValueType();
+                SDValue n100 = n1.getOperand(0).getOperand(0);
+                APInt trunc = n101C.getAPIntValue();
+                trunc.trunc(truncVT.getSizeInBits());
+                return dag.getNode(ISD.SHL, vt, n0,
+                        dag.getNode(ISD.AND, truncVT, dag.getNode(ISD.TRUNCATE, truncVT, n100),
+                                dag.getConstant(trunc, truncVT, false)));
+            }
+        }
+
+        if (c1 != null && n0.getOpcode() == ISD.SHL &&
+                n0.getOperand(1).getOpcode() == ISD.Constant)
+        {
+            long t1 = ((ConstantSDNode)n0.getOperand(1).getNode()).getZExtValue();
+            long t2 = c1.getZExtValue();
+            if ((t1 + t2) > opSizeInBits)
+                return dag.getConstant(0, vt, false);
+            return dag.getNode(ISD.SHL, vt, n0.getOperand(0),
+                    dag.getConstant(t1+t2, n1.getValueType(), false));
+        }
+
+        if (c1 != null && n0.getOpcode() == ISD.SRL &&
+                n0.getOperand(1).getOpcode() == ISD.Constant)
+        {
+            long t1 = ((ConstantSDNode)n0.getOperand(1).getNode()).getZExtValue();
+            if (t1 < vt.getSizeInBits())
+            {
+                long t2 = c1.getZExtValue();
+                SDValue hiBitsMask = dag.getConstant(APInt.getHighBitsSet(vt.getSizeInBits(),
+                        (int) (vt.getSizeInBits() - t1)), vt, false);
+                SDValue mask = dag.getNode(ISD.AND, vt, n0.getOperand(0), hiBitsMask);
+                if (t2 > t1)
+                    return dag.getNode(ISD.SHL, vt, mask, dag.getConstant(t2-t1, n1.getValueType(), false));
+                else
+                    return dag.getNode(ISD.SRL, vt, mask, dag.getConstant(t1-t2, n1.getValueType(), false));
+            }
+        }
+
+        if (c1 != null && n0.getOpcode() == ISD.SRA && n1.equals(n0.getOperand(1)))
+        {
+            SDValue hiBitsMask = dag.getConstant(APInt.getHighBitsSet(vt.getSizeInBits(),
+                    (int) (vt.getSizeInBits() - c1.getZExtValue())), vt, false);
+            return dag.getNode(ISD.AND, vt, n0.getOperand(0), hiBitsMask);
+        }
+
+        return c1 != null ? visitShiftByConstant(n, c1.getZExtValue()) : new SDValue();
+    }
+
+    private SDValue visitShiftByConstant(SDNode n, long amt)
+    {
+        SDNode lhs = n.getOperand(0).getNode();
+        if (!lhs.hasOneUse()) return new SDValue();
+
+        boolean highBits = false;
+        switch (lhs.getOpcode())
+        {
+            default: return new SDValue();
+            case ISD.OR:
+            case ISD.XOR:
+                highBits = false;
+                break;
+            case ISD.AND:
+                highBits = true;
+                break;
+            case ISD.ADD:
+                if (n.getOpcode() != ISD.SHL)
+                    return new SDValue();
+                highBits = false;
+                break;
+        }
+
+        if (!(lhs.getOperand(1).getNode() instanceof ConstantSDNode))
+            return new SDValue();
+
+        ConstantSDNode binOpCst = (ConstantSDNode)lhs.getOperand(1).getNode();
+        SDNode binOpLhsVal = lhs.getOperand(0).getNode();
+        int binOpc = binOpLhsVal.getOpcode();
+        if ((binOpc != ISD.SHL && binOpc != ISD.SRA && binOpc != ISD.SRL) ||
+                !(binOpLhsVal.getOperand(1).getNode() instanceof ConstantSDNode))
+            return new SDValue();
+
+        EVT vt = n.getValueType(0);
+        if (n.getOpcode() == ISD.SRA)
+        {
+            boolean binOpRhsSignSet = binOpCst.getAPIntValue().isNegative();
+            if (binOpRhsSignSet != highBits)
+                return new SDValue();
+        }
+
+        SDValue newRhs = dag.getNode(n.getOpcode(), n.getValueType(0), lhs.getOperand(1), n.getOperand(1));
+        SDValue newShift = dag.getNode(n.getOpcode(), vt, lhs.getOperand(0), n.getOperand(1));
+        return dag.getNode(lhs.getOpcode(), vt, newShift, newRhs);
     }
 
     private SDValue visitXOR(SDNode n)
