@@ -721,9 +721,328 @@ public class DAGCombiner
         }
         return false;
     }
+
     private SDValue visitOR(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode():null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode():null;
+        EVT vt = n1.getValueType();
+        int bitwidth = vt.getSizeInBits();
+
+        if (vt.isVector())
+        {
+            SDValue foldedVOp = simplifyVBinOp(n);
+            if (foldedVOp.getNode() != null) return foldedVOp;
+        }
+        // fold (or x, undef) -> -1
+        if (n0.getOpcode() == ISD.UNDEF || n1.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(APInt.getAllOnesValue(bitwidth), vt, false);
+        // fold (or c0, c1) -> c0|c1
+        if (c1 != null && c2 != null)
+            return dag.foldConstantArithmetic(ISD.OR, vt, c1, c2);
+        // fold (or x, 0) -> x
+        if (c2 != null && c2.isNullValue())
+            return n0;
+
+        // fold (or x, -1) -> -1
+        if (c2 != null && c2.isAllOnesValue())
+            return n1;
+
+        // fold (or x, c) -> c iff (x & ~c) == 0
+        if (c2 != null && dag.maskedValueIsZero(n0, c2.getAPIntValue().not()))
+            return n1;
+        // reassociate or
+        SDValue res = reassociateOps(ISD.OR, n0, n1);
+        if (res.getNode() != null)
+            return res;
+
+        // Canonicalize (or (and X, c1), c2) -> (and (or X, c2), c1|c2)
+        if (c2 != null && n0.getOpcode() == ISD.AND &&
+                n0.getOperand(1).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode c = (ConstantSDNode)n0.getOperand(1).getNode();
+            SDValue or = dag.getNode(ISD.OR, vt, n0.getOperand(0), n1);
+            return dag.getNode(ISD.AND, vt, or,
+                    dag.foldConstantArithmetic(ISD.OR, vt, c, c2));
+        }
+
+        // fold (or (setcc x), (setcc y)) -> (setcc (or x, y))
+        SDValue[] setcc1 = new SDValue[3];
+        SDValue[] setcc2 = new SDValue[3];
+        if (isSetCCEquivalent(n0, setcc1) && isSetCCEquivalent(n1, setcc2))
+        {
+            CondCode cc1 = ((CondCodeSDNode)setcc1[2].getNode()).getCondition();
+            CondCode cc2 = ((CondCodeSDNode)setcc2[2].getNode()).getCondition();
+            SDValue ll = setcc1[0];
+            SDValue lr = setcc1[1];
+            SDValue rl = setcc2[0];
+            SDValue rr = setcc2[1];
+            if (lr.equals(rr) && lr.getNode() instanceof ConstantSDNode &&
+                    cc1.equals(cc2) &&
+                    ll.getValueType().isInteger())
+            {
+                // fold (or (setne X, 0), (setne Y, 0)) -> (setne (or X, Y), 0)
+                // fold (or (setlt X, 0), (setlt Y, 0)) -> (setne (or X, Y), 0)
+                if (((ConstantSDNode)lr.getNode()).isNullValue() &&
+                        (cc2 == CondCode.SETNE || cc2 == CondCode.SETLT))
+                {
+                    SDValue or = dag.getNode(ISD.OR, lr.getValueType(), ll, rl);
+                    addToWorkList(or.getNode());
+                    return dag.foldSetCC(vt, or, lr, cc2);
+                }
+                // fold (or (setne X, -1), (setne Y, -1)) -> (setne (and X, Y), -1)
+                // fold (or (setgt X, -1), (setgt Y  -1)) -> (setgt (and X, Y), -1)
+                if (((ConstantSDNode)lr.getNode()).isAllOnesValue() &&
+                        (cc2 == CondCode.SETNE || cc2 == CondCode.SETGT))
+                {
+                    SDValue and = dag.getNode(ISD.AND, lr.getValueType(), ll, rl);
+                    addToWorkList(and.getNode());
+                    return dag.getSetCC(vt, and, lr, cc2);
+                }
+            }
+            if (ll.equals(rr) && lr.equals(rl))
+            {
+                cc2 = ISD.getSetCCSwappedOperands(cc2);
+                SDValue t = rl;
+                rl = rr;
+                rr = t;
+            }
+            if (ll.equals(rl) && lr.equals(rr))
+            {
+                boolean isInteger = ll.getValueType().isInteger();
+                CondCode result = ISD.getSetCCOrOperation(cc1, cc2, isInteger);
+                if (result != CondCode.SETCC_INVALID &&
+                        (!legalOprations || tli.isCondCodeLegal(result, ll.getValueType())))
+                {
+                    return dag.getSetCC(n0.getValueType(), ll, lr, result);
+                }
+            }
+        }
+        // Simplify: (or (op x...), (op y...))  -> (op (or x, y))
+        if (n0.getOpcode() == n1.getOpcode())
+        {
+            SDValue tmp = simplifyBinOpWithSamOpcodeHands(n);
+            if (tmp.getNode() != null) return tmp;
+        }
+        // (or (and X, C1), (and Y, C2))  -> (and (or X, Y), C3) if possible.
+        if (n0.getOpcode() == n1.getOpcode() && n0.getOpcode() == ISD.AND &&
+                n0.getOperand(1).getNode() instanceof ConstantSDNode &&
+                n1.getOperand(1).getNode() instanceof ConstantSDNode &&
+                (n0.hasOneUse() || n1.hasOneUse()))
+        {
+            APInt lhsMask = ((ConstantSDNode) n0.getOperand(1).getNode()).getAPIntValue();
+            APInt rhsMask = ((ConstantSDNode) n1.getOperand(1).getNode()).getAPIntValue();
+            if (dag.maskedValueIsZero(n0.getOperand(0), rhsMask.and(lhsMask.not())) &&
+                    dag.maskedValueIsZero(n1.getOperand(0), lhsMask.and(rhsMask.not())))
+            {
+                SDValue x = dag.getNode(ISD.OR, vt, n0.getOperand(0), n1.getOperand(0));
+                return dag.getNode(ISD.AND, vt, x, dag.getConstant(lhsMask.or(rhsMask), vt, false));
+            }
+        }
+        // See if this is some rotate idiom.
+        SDNode t = matchRotate(n0, n1);
+        if (t != null)
+            return new SDValue(t, 0);
         return new SDValue();
+    }
+
+    private SDNode matchRotate(SDValue lhs, SDValue rhs)
+    {
+        EVT vt = lhs.getValueType();
+        if (!tli.isTypeLegal(vt)) return null;
+
+        boolean hasROTL = tli.isOperationLegalOrCustom(ISD.ROTL, vt);
+        boolean hasROTR = tli.isOperationLegalOrCustom(ISD.ROTR, vt);
+        if (!hasROTL && !hasROTR) return null;
+
+        SDValue[] lhsRes = new SDValue[2];
+        if (!matchRotateHalf(lhs, lhsRes))
+            return null;
+
+        SDValue[] rhsRes = new SDValue[2];
+        if (matchRotateHalf(rhs, rhsRes))
+            return null;
+
+        if (!lhsRes[0].getOperand(0).equals(rhsRes[0].getOperand(0)))
+            return null;
+
+        if (lhsRes[0].getOpcode() == rhsRes[0].getOpcode())
+            return null;
+
+        if (rhsRes[0].getOpcode() == ISD.SHL)
+        {
+            SDValue t = lhs;
+            lhs = rhs;
+            rhs = t;
+            t = lhsRes[0];
+            lhsRes[0] = rhsRes[0];
+            lhsRes[0] = t;
+
+            t = lhsRes[1];
+            lhsRes[1] = rhsRes[1];
+            rhsRes[1] = t;
+        }
+
+        int opSizeInBits = vt.getSizeInBits();
+        SDValue lhsShiftArg = lhsRes[0].getOperand(0);
+        SDValue lhsShiftAmt = lhsRes[0].getOperand(1);
+        SDValue rhsShiftAmt = rhsRes[0].getOperand(1);
+
+        // fold (or (shl x, C1), (srl x, C2)) -> (rotl x, C1)
+        // fold (or (shl x, C1), (srl x, C2)) -> (rotr x, C2)
+        if (lhsShiftAmt.getOpcode() == ISD.Constant &&
+                rhsShiftAmt.getOpcode() == ISD.Constant)
+        {
+            long lshVal = ((ConstantSDNode)lhsShiftAmt.getNode()).getZExtValue();
+            long rshVal = ((ConstantSDNode)rhsShiftAmt.getNode()).getZExtValue();
+            if ((lshVal + rshVal) != opSizeInBits)
+                return null;
+
+            SDValue rot;
+            if (hasROTL)
+                rot = dag.getNode(ISD.ROTL, vt, lhsShiftArg, lhsShiftAmt);
+            else
+                rot = dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt);
+
+            if (lhsRes[1].getNode() != null || rhsRes[1].getNode() != null)
+            {
+                APInt mask = APInt.getAllOnesValue(opSizeInBits);
+                if (lhsRes[1].getNode() != null)
+                {
+                    APInt rhsBits = APInt.getLowBitsSet(opSizeInBits, (int) lshVal);
+                    mask.andAssign(((ConstantSDNode)lhsRes[1].getNode()).getAPIntValue().or(rhsBits));
+                }
+                if (rhsRes[1].getNode() != null)
+                {
+                    APInt lhsBits = APInt.getHighBitsSet(opSizeInBits, (int) rshVal);
+                    mask.andAssign(((ConstantSDNode)rhsRes[1].getNode()).getAPIntValue().or(lhsBits));
+                }
+                rot = dag.getNode(ISD.AND, vt, rot, dag.getConstant(mask, vt, false));
+            }
+            return rot.getNode();
+        }
+
+        // If there is a mask here, and we have a variable shift, we can't be sure
+        // that we're masking out the right stuff.
+        if (lhsRes[1].getNode() != null || rhsRes[1].getNode() != null)
+            return null;
+
+        // fold (or (shl x, y), (srl x, (sub 32, y))) -> (rotl x, y)
+        // fold (or (shl x, y), (srl x, (sub 32, y))) -> (rotr x, (sub 32, y))
+        if (rhsShiftAmt.getOpcode() == ISD.SUB &&
+                lhsShiftAmt.equals(rhsShiftAmt.getOperand(1)))
+        {
+            if (rhsShiftAmt.getOperand(0).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode c = (ConstantSDNode)rhsShiftAmt.getOperand(0).getNode();
+                if (c.getAPIntValue().eq(opSizeInBits))
+                {
+                    if (hasROTL)
+                        return dag.getNode(ISD.ROTL, vt, lhsShiftArg, lhsShiftAmt).getNode();
+                    else
+                        return dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt).getNode();
+                }
+            }
+        }
+
+        // fold (or (shl x, (sub 32, y)), (srl x, r)) -> (rotr x, y)
+        // fold (or (shl x, (sub 32, y)), (srl x, r)) -> (rotl x, (sub 32, y))
+        if (lhsShiftAmt.getOpcode() == ISD.SUB &&
+                rhsShiftAmt.equals(lhsShiftAmt.getOperand(1)))
+        {
+            if (lhsShiftAmt.getOperand(0).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode c = (ConstantSDNode)lhsShiftAmt.getOperand(0).getNode();
+                if (c.getAPIntValue().eq(opSizeInBits))
+                {
+                    if (hasROTR)
+                        return dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt).getNode();
+                    else
+                        return dag.getNode(ISD.ROTR, vt, lhsShiftArg, lhsShiftAmt).getNode();
+                }
+            }
+        }
+
+        // Look for sign/zext/any-extended or truncate cases:
+        if ((lhsShiftAmt.getOpcode() == ISD.SIGN_EXTEND ||
+                lhsShiftAmt.getOpcode() == ISD.ZERO_EXTEND ||
+                lhsShiftAmt.getOpcode() == ISD.ANY_EXTEND ||
+                lhsShiftAmt.getOpcode() == ISD.TRUNCATE) &&
+                (rhsShiftAmt.getOpcode() == ISD.SIGN_EXTEND ||
+                rhsShiftAmt.getOpcode() == ISD.ZERO_EXTEND ||
+                rhsShiftAmt.getOpcode() == ISD.ANY_EXTEND ||
+                rhsShiftAmt.getOpcode() == ISD.TRUNCATE))
+        {
+            SDValue lextOp0 = lhsShiftAmt.getOperand(0);
+            SDValue rextOp0 = rhsShiftAmt.getOperand(0);
+            if (rextOp0.getOpcode() == ISD.SUB &&
+                    rextOp0.getOperand(1).equals(lextOp0))
+            {
+                // fold (or (shl x, (*ext y)), (srl x, (*ext (sub 32, y)))) ->
+                //   (rotl x, y)
+                // fold (or (shl x, (*ext y)), (srl x, (*ext (sub 32, y)))) ->
+                //   (rotr x, (sub 32, y))
+                if (rextOp0.getOperand(0).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode c = (ConstantSDNode)rextOp0.getOperand(0).getNode();
+                    if (c.getAPIntValue().eq(opSizeInBits))
+                    {
+                        return dag.getNode(hasROTL ? ISD.ROTL : ISD.ROTR, vt, lhsShiftArg,
+                                hasROTL ? lhsShiftAmt:rhsShiftAmt).getNode();
+                    }
+                }
+            }
+            else if (lextOp0.getOpcode() == ISD.SUB &&
+                    rextOp0.equals(lextOp0.getOperand(1)))
+            {
+                // fold (or (shl x, (*ext (sub 32, y))), (srl x, (*ext y))) ->
+                //   (rotr x, y)
+                // fold (or (shl x, (*ext (sub 32, y))), (srl x, (*ext y))) ->
+                //   (rotl x, (sub 32, y))
+                if (lextOp0.getOperand(0).getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode c = (ConstantSDNode)lextOp0.getOperand(0).getNode();
+                    if (c.getAPIntValue().eq(opSizeInBits))
+                    {
+                        return dag.getNode(hasROTR ? ISD.ROTR : ISD.ROTL, vt, lhsShiftArg,
+                                hasROTR ? rhsShiftAmt:lhsShiftAmt).getNode();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Match "(X shl/srl V1) & V2" where V2 may not be present.
+     * @param op
+     * @param res   res[0] represents shift and res[1] represents mask.
+     * @return
+     */
+    private static boolean matchRotateHalf(SDValue op, SDValue[] res)
+    {
+        assert res != null && res.length == 2;
+        if (op.getOpcode() == ISD.AND)
+        {
+            SDValue rhs = op.getOperand(1);
+            if (rhs.getNode() instanceof ConstantSDNode)
+            {
+                res[1] = rhs;
+                op = op.getOperand(0);
+            }
+            else
+                return false;
+        }
+        if (op.getOpcode() == ISD.SHL || op.getOpcode() == ISD.SRL)
+        {
+            res[0] = op;
+            return true;
+        }
+        return false;
     }
 
     private SDValue visitAND(SDNode n)
@@ -921,41 +1240,205 @@ public class DAGCombiner
 
     private SDValue visitUDIVREM(SDNode n)
     {
+        SDValue res = simplifyNodeWithTwoResults(n, ISD.UDIV, ISD.UREM);
+        if (res.getNode() != null) return res;
         return new SDValue();
     }
 
     private SDValue visitSDIVREM(SDNode n)
     {
+        SDValue res = simplifyNodeWithTwoResults(n, ISD.SDIV, ISD.SREM);
+        if (res.getNode() != null) return res;
         return new SDValue();
     }
 
     private SDValue visitUMUL_LOHI(SDNode n)
     {
+        SDValue res = simplifyNodeWithTwoResults(n, ISD.MUL, ISD.MULHU);
+        if (res.getNode() != null) return res;
+        return new SDValue();
+    }
+
+    private SDValue simplifyNodeWithTwoResults(SDNode n, int loOp, int hiOp)
+    {
+        boolean hiExists = n.hasAnyUseOfValue(1);
+        if (!hiExists && (!legalOprations || tli.isOperationLegal(loOp, n.getValueType(0))))
+        {
+            SDValue res = dag.getNode(loOp, n.getValueType(0), n.getOperandList());
+            return combineTo(n ,res, res, true);
+        }
+
+        boolean loExists = n.hasAnyUseOfValue(0);
+        if (!loExists && (!legalOprations || tli.isOperationLegal(hiOp, n.getValueType(1))))
+        {
+            SDValue res = dag.getNode(hiOp, n.getValueType(1), n.getOperandList());
+            return combineTo(n, res, res, true);
+        }
+
+        if (loExists && hiExists)
+            return new SDValue();
+
+        if (loExists)
+        {
+            SDValue lo = dag.getNode(loOp, n.getValueType(0), n.getOperandList());
+            addToWorkList(lo.getNode());
+            SDValue loOpt = combine(lo.getNode());
+            if (loOpt.getNode() != null && !loOpt.getNode().equals(lo.getNode()) &&
+                    (!legalOprations || tli.isOperationLegal(loOpt.getOpcode(), loOpt.getValueType())))
+                return combineTo(n, loOpt, loOpt, true);
+        }
+
+        if (hiExists)
+        {
+            SDValue hi = dag.getNode(hiOp, n.getValueType(1), n.getOperandList());
+            addToWorkList(hi.getNode());
+            SDValue hiOpt = combine(hi.getNode());
+            if (hiOpt.getNode() != null && !hiOpt.equals(hi) &&
+                    (!legalOprations || tli.isOperationLegal(hiOpt.getOpcode(), hiOpt.getValueType())))
+                return combineTo(n, hiOpt, hiOpt, true);
+        }
         return new SDValue();
     }
 
     private SDValue visitSMUL_LOHI(SDNode n)
     {
+        SDValue res = simplifyNodeWithTwoResults(n, ISD.MUL, ISD.MULHS);
+        if (res.getNode() != null) return res;
         return new SDValue();
     }
 
     private SDValue visitMULHS(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (c2 != null && c2.isNullValue())
+            return n1;
+        if (c2 != null && c2.getAPIntValue().eq(1))
+            return dag.getNode(ISD.SRA, n0.getValueType(), n0,
+                    dag.getConstant(n0.getValueType().getSizeInBits()-1,
+                            new EVT(tli.getShiftAmountTy()), false));
+
+        if (n0.getOpcode() == ISD.UNDEF || n1.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+
         return new SDValue();
     }
 
     private SDValue visitMULHU(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (c2 != null && c2.isNullValue())
+            return n1;
+        if (c2 != null && c2.getAPIntValue().eq(1))
+            return dag.getConstant(0, n0.getValueType(), false);
+
+        if (n0.getOpcode() == ISD.UNDEF || n1.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+
         return new SDValue();
     }
 
     private SDValue visitUREM(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+
+        if (c1 != null && c2 != null && !c2.isNullValue())
+        {
+            return dag.foldConstantArithmetic(ISD.UREM, vt, c1, c2);
+        }
+        if (c2 != null && !c2.isNullValue() && !c2.getAPIntValue().isPowerOf2())
+            return dag.getNode(ISD.AND, vt, n0, dag.getConstant(c2.getAPIntValue().sub(1), vt, false));
+
+        if (n1.getOpcode() == ISD.SHL && n1.getOperand(0).getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode shc = (ConstantSDNode)n1.getOperand(0).getNode();
+            if (shc.getAPIntValue().isPowerOf2())
+            {
+                SDValue add = dag.getNode(ISD.ADD, vt, n1,
+                        dag.getConstant(APInt.getAllOnesValue(vt.getSizeInBits()), vt, false));
+                addToWorkList(add.getNode());
+                return dag.getNode(ISD.AND, vt, n0, add);
+            }
+        }
+
+        if (c2 != null && !c2.isNullValue())
+        {
+            SDValue div = dag.getNode(ISD.UDIV, vt, n0, n1);
+            addToWorkList(div.getNode());
+            SDValue optimizedDiv = combine(div.getNode());
+            if (optimizedDiv.getNode() != null &&
+                    !optimizedDiv.getNode().equals(div.getNode()))
+            {
+                SDValue mul = dag.getNode(ISD.MUL, vt, optimizedDiv, n1);
+                SDValue sub = dag.getNode(ISD.SUB, vt, n0, mul);
+                addToWorkList(mul.getNode());
+                return sub;
+            }
+        }
+
+        if (n0.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
         return new SDValue();
     }
 
     private SDValue visitSREM(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        EVT vt = n0.getValueType();
+        if (c1 != null && c2 != null && !c2.isNullValue())
+        {
+            return dag.foldConstantArithmetic(ISD.SREM, vt, c1, c2);
+        }
+        if (!vt.isVector() && dag.signBitIsZero(n1, 0) && dag.signBitIsZero(n0, 0))
+        {
+            return dag.getNode(ISD.UREM, vt, n0, n1);
+        }
+
+        if (c2 != null && !c2.isNullValue())
+        {
+            SDValue div = dag.getNode(ISD.SDIV, vt, n0, n1);
+            addToWorkList(div.getNode());
+            SDValue optimizedDiv = combine(div.getNode());
+            if (optimizedDiv.getNode() != null &&
+                    !optimizedDiv.getNode().equals(div.getNode()))
+            {
+                SDValue mul = dag.getNode(ISD.MUL, vt, optimizedDiv, n1);
+                SDValue sub = dag.getNode(ISD.SUB, vt, n0, mul);
+                addToWorkList(mul.getNode());
+                return sub;
+            }
+        }
+
+        if (n0.getOpcode() == ISD.UNDEF)
+            return dag.getConstant(0, vt, false);
+        if (n1.getOpcode() == ISD.UNDEF)
+            return n1;
         return new SDValue();
     }
 
