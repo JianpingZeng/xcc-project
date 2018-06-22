@@ -32,6 +32,8 @@ import backend.type.Type;
 import backend.value.Constant;
 import backend.value.ConstantArray;
 import backend.value.ConstantFP;
+import com.sun.xml.internal.bind.v2.TODO;
+import tools.APFloat;
 import tools.APInt;
 import tools.Util;
 
@@ -233,26 +235,31 @@ public class DAGCombiner
 
     private SDValue visitVECTOR_SHUFFLE(SDNode n)
     {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return new SDValue();
     }
 
     private SDValue visitCONCAT_VECTORS(SDNode n)
     {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return new SDValue();
     }
 
     private SDValue visitBUILD_VECTOR(SDNode n)
     {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return new SDValue();
     }
 
     private SDValue visitEXTRACT_VECTOR_ELT(SDNode n)
     {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return new SDValue();
     }
 
     private SDValue visitINSERT_VECTOR_ELT(SDNode n)
     {
+        Util.shouldNotReachHere("Vector operation is not supported!");
         return new SDValue();
     }
 
@@ -283,6 +290,8 @@ public class DAGCombiner
 
     private SDValue visitFNEG(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        // TODO
         return new SDValue();
     }
 
@@ -293,6 +302,17 @@ public class DAGCombiner
 
     private SDValue visitFP_ROUND_INREG(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        EVT evt = ((VTSDNode)n.getOperand(1).getNode()).getVT();
+
+        if (fp != null && (tli.isTypeLegal(evt) || !legalTypes))
+        {
+            SDValue round = dag.getConstantFP(fp.getValueAPF(), evt, false);
+            return dag.getNode(ISD.FP_EXTEND, vt, round);
+        }
         return new SDValue();
     }
 
@@ -303,26 +323,121 @@ public class DAGCombiner
 
     private SDValue visitFP_TO_UINT(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FP_TO_UINT, vt, n0);
+
         return new SDValue();
     }
 
     private SDValue visitFP_TO_SINT(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (fp != null)
+            return dag.getNode(ISD.FP_TO_SINT, vt, n0);
+
         return new SDValue();
     }
 
     private SDValue visitUINT_TO_FP(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        EVT opVT = n0.getValueType();
+
+        if (c0!=null && !opVT.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.UINT_TO_FP, vt, n0);
+
+        if (!tli.isOperationLegalOrCustom(ISD.UINT_TO_FP, opVT) &&
+                tli.isOperationLegalOrCustom(ISD.SINT_TO_FP, opVT))
+        {
+            if (dag.signBitIsZero(n0, 0))
+                return dag.getNode(ISD.SINT_TO_FP, vt, n0);
+        }
+
         return new SDValue();
     }
 
     private SDValue visitSINT_TO_FP(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        EVT opVT = n0.getValueType();
+
+        if (c0!=null && !opVT.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.SINT_TO_FP, vt, n0);
+
+        if (!tli.isOperationLegalOrCustom(ISD.SINT_TO_FP, opVT) &&
+                tli.isOperationLegalOrCustom(ISD.UINT_TO_FP, opVT))
+        {
+            if (dag.signBitIsZero(n0, 0))
+                return dag.getNode(ISD.UINT_TO_FP, vt, n0);
+        }
         return new SDValue();
     }
 
     private SDValue visitFCOPYSIGN(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
+        {
+            return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1);
+        }
+
+        if (fp1 != null)
+        {
+            APFloat v = fp1.getValueAPF();
+            if (!v.isNegative())
+            {
+                if (!legalOprations || tli.isOperationLegal(ISD.FABS, vt))
+                    return dag.getNode(ISD.FABS, vt, n0);
+            }
+            else
+            {
+                if (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt))
+                    return dag.getNode(ISD.FNEG, vt,
+                            dag.getNode(ISD.FABS, vt, n0));
+            }
+        }
+
+        // copysign(fabs(x), y) -> copysign(x, y)
+        // copysign(fneg(x), y) -> copysign(x, y)
+        // copysign(copysign(x,z), y) -> copysign(x, y)
+        if (n0.getOpcode() == ISD.FABS || n0.getOpcode() == ISD.FNEG ||
+                n0.getOpcode() == ISD.FCOPYSIGN)
+        {
+            return dag.getNode(ISD.FCOPYSIGN, vt, n0.getOperand(0), n1);
+        }
+
+        if (n1.getOpcode() == ISD.FABS)
+            return dag.getNode(ISD.FABS, vt, n0);
+        if (n1.getOpcode() == ISD.FCOPYSIGN)
+            return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1.getOperand(1));
+
+        if (n1.getOpcode() == ISD.FP_EXTEND)
+        {
+            return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1.getOperand(0));
+        }
+
         return new SDValue();
     }
 
