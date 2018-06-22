@@ -24,9 +24,7 @@ import backend.intrinsic.Intrinsic;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
-import backend.value.Function;
-import backend.value.Instruction;
-import backend.value.Value;
+import backend.value.*;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.*;
@@ -2793,5 +2791,84 @@ public abstract class TargetLowering
             return dag.getNode(ISD.SRL, vt, npq,
                     dag.getConstant(magics.s-1, new EVT(getShiftAmountTy()), false));
         }
+    }
+    public boolean isConsecutiveLoad(LoadSDNode ld, LoadSDNode base, int bytes, int dist, MachineFrameInfo mfi)
+    {
+        if (!ld.getChain().equals(base.getChain()))
+            return false;
+        EVT vt = ld.getValueType(0);
+        if (vt.getSizeInBits()/8 != bytes)
+            return false;
+        SDValue loc = ld.getOperand(1);
+        SDValue baseLoc = base.getOperand(1);
+        if (loc.getOpcode() == ISD.FrameIndex)
+        {
+            if (baseLoc.getOpcode() != ISD.FrameIndex)
+                return false;
+            int fi = ((FrameIndexSDNode)loc.getNode()).getFrameIndex();
+            int bfi = ((FrameIndexSDNode)baseLoc.getNode()).getFrameIndex();
+            int fs = (int) mfi.getObjectSize(fi);
+            int bfs = (int) mfi.getObjectSize(bfi);
+            if (fs != bfs || fs != bytes)
+                return false;
+            return mfi.getObjectOffset(fi) == mfi.getObjectOffset(bfi) + dist*bytes;
+        }
+        if (loc.getOpcode() == ISD.ADD &&
+                loc.getOperand(0).equals(baseLoc))
+        {
+            if (loc.getOperand(1).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode csd = (ConstantSDNode) loc.getOperand(1).getNode();
+                if (csd.getSExtValue() == dist*bytes)
+                    return true;
+            }
+        }
+        OutParamWrapper<GlobalValue> gv1 = new OutParamWrapper<>();
+        OutParamWrapper<GlobalValue> gv2 = new OutParamWrapper<>();
+        OutParamWrapper<Long> offset1 = new OutParamWrapper<Long>(0L);
+        OutParamWrapper<Long> offset2 = new OutParamWrapper<Long>(0L);
+
+        boolean isGA1 = isGAPlusOffset(loc.getNode(), gv1, offset1);
+        boolean isGA2 = isGAPlusOffset(baseLoc.getNode(), gv2, offset2);;
+        if (isGA1 && isGA2 && gv1.get().equals(gv2.get()))
+            return offset1.get() == offset2.get() + dist*bytes;
+        return false;
+    }
+
+    public boolean isGAPlusOffset(SDNode n,
+                                   OutParamWrapper<GlobalValue> gv,
+                                   OutParamWrapper<Long> offset)
+    {
+        if (n instanceof GlobalAddressSDNode)
+        {
+            GlobalAddressSDNode ga = (GlobalAddressSDNode)n;
+            gv.set(ga.getGlobalValue());
+            offset.set(offset.get() + ga.getOffset());
+            return true;
+        }
+        if (n.getOpcode() == ISD.ADD)
+        {
+            SDValue n1 = n.getOperand(0);
+            SDValue n2 = n.getOperand(1);
+            if (isGAPlusOffset(n1.getNode(), gv, offset))
+            {
+                if (n2.getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode v = (ConstantSDNode)n2.getNode();
+                    offset.set(offset.get() + v.getSExtValue());
+                    return true;
+                }
+            }
+            else if (isGAPlusOffset(n2.getNode(), gv, offset))
+            {
+                if (n1.getNode() instanceof ConstantSDNode)
+                {
+                    ConstantSDNode v = (ConstantSDNode)n1.getNode();
+                    offset.set(offset.get() + v.getSExtValue());
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

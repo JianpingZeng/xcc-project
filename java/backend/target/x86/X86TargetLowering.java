@@ -4830,4 +4830,22 @@ public class X86TargetLowering extends TargetLowering
         }
         return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), results);
     }
+
+    @Override
+    public boolean isGAPlusOffset(SDNode n,
+                                  OutParamWrapper<GlobalValue> gv,
+                                  OutParamWrapper<Long> offset)
+    {
+        if (n.getOpcode() == X86ISD.Wrapper)
+        {
+            if (n.getOperand(0).getNode() instanceof GlobalAddressSDNode)
+            {
+                GlobalAddressSDNode gad = (GlobalAddressSDNode)n.getOperand(0).getNode();
+                gv.set(gad.getGlobalValue());
+                offset.set(gad.getOffset());
+                return true;
+            }
+        }
+        return super.isGAPlusOffset(n, gv, offset);
+    }
 }

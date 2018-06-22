@@ -20,6 +20,7 @@ package backend.codegen.dagisel;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
+import backend.codegen.MachineFrameInfo;
 import backend.codegen.PseudoSourceValue;
 import backend.codegen.dagisel.SDNode.*;
 import backend.target.TargetData;
@@ -352,6 +353,51 @@ public class DAGCombiner
 
     private SDValue visitBUILD_PAIR(SDNode n)
     {
+        EVT vt = n.getValueType(0);
+        return combineConsecutiveLoads(n, vt);
+    }
+    private SDNode getBuildPairElt(SDNode n, int i)
+    {
+        SDValue elt = n.getOperand(i);
+        if (elt.getOpcode() != ISD.MERGE_VALUES)
+            return elt.getNode();
+        return elt.getOperand(elt.getResNo()).getNode();
+    }
+
+    private SDValue combineConsecutiveLoads(SDNode n, EVT vt)
+    {
+        assert n.getOpcode() == ISD.BUILD_PAIR;
+        SDNode t = getBuildPairElt(n, 0);
+        LoadSDNode ld1 = t instanceof LoadSDNode ?
+                (LoadSDNode)t : null;
+        t = getBuildPairElt(n, 1);
+        LoadSDNode ld2 = t instanceof LoadSDNode ?
+                (LoadSDNode)t : null;
+        if (ld1 == null || ld2 == null || !ld1.isNONExtLoad() ||
+                !ld1.hasOneUse())
+            return new SDValue();
+
+        EVT ld1VT = ld1.getValueType(0);
+        MachineFrameInfo mfi = dag.getMachineFunction().getFrameInfo();
+        if (ld2.isNONExtLoad() && ld2.hasOneUse() &&
+                !ld1.isVolatile() &&
+                !ld2.isVolatile() &&
+                tli.isConsecutiveLoad(ld2, ld1, ld1VT.getSizeInBits()/8, 1, mfi))
+        {
+            int align = ld1.getAlignment();
+            int newAlign = tli.getTargetData().getABITypeAlignment(
+                    vt.getTypeForEVT());
+            if (newAlign <= align &&
+                    (!legalOprations ||
+                    tli.isOperationLegal(ISD.LOAD, vt)))
+            {
+                return dag.getLoad(vt, ld1.getChain(),
+                        ld1.getBasePtr(),
+                        ld1.getSrcValue(),
+                        ld1.getSrcValueOffset(),
+                        false, align);
+            }
+        }
         return new SDValue();
     }
 
@@ -410,7 +456,37 @@ public class DAGCombiner
 
     private SDValue visitSELECT_CC(SDNode n)
     {
-        return new SDValue();
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        SDValue n2 = n.getOperand(2);
+        SDValue n3 = n.getOperand(3);
+        SDValue n4 = n.getOperand(4);
+        CondCode cc = ((CondCodeSDNode)n4.getNode()).getCondition();
+
+        if (n2.equals(n3)) return n2;
+        SDValue scc = simplifySetCC(
+                new EVT(tli.getSetCCResultType(n0.getValueType())),
+                n0, n1, cc, false);
+        if (scc.getNode() != null)
+            addToWorkList(scc.getNode());
+
+        if (scc.getNode() instanceof ConstantSDNode)
+        {
+            ConstantSDNode ssd = (ConstantSDNode)scc.getNode();
+            if (!ssd.isNullValue())
+                return n2;
+            return n3;
+        }
+
+        if (scc.getNode() != null && scc.getOpcode() == ISD.SETCC)
+        {
+            return dag.getNode(ISD.SELECT_CC, n2.getValueType(),
+                    scc.getOperand(0), scc.getOperand(1), n2, n3,
+                    scc.getOperand(2));
+        }
+        if (simplifySelectOps(n, n2, n3))
+            return new SDValue(n, 0);
+        return simplifySelectCC(n0, n1, n2, n3, cc);
     }
 
     private SDValue visitSELECT(SDNode n)
