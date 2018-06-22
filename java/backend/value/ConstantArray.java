@@ -60,7 +60,13 @@ public class ConstantArray extends Constant
 		ArrayType aty = ArrayType.get(LLVMContext.Int8Ty, eltVals.size());
 		return get(aty, eltVals);
 	}
-
+	public static Constant get(ArrayType ty, Constant[] elementVals)
+	{
+		ArrayList<Constant> elts = new ArrayList<>();
+		for (Constant c : elementVals)
+			elts.add(c);
+		return get(ty, elts);
+	}
 	public static Constant get(ArrayType ty, ArrayList<Constant> elementVals)
 	{
 		// If this is an all-zero array, return a ConstantAggregateZero object

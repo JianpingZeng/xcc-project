@@ -20,13 +20,17 @@ package backend.codegen.dagisel;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
-import backend.codegen.dagisel.SDNode.CondCodeSDNode;
-import backend.codegen.dagisel.SDNode.ConstantSDNode;
-import backend.codegen.dagisel.SDNode.GlobalAddressSDNode;
-import backend.codegen.dagisel.SDNode.LoadSDNode;
+import backend.codegen.PseudoSourceValue;
+import backend.codegen.dagisel.SDNode.*;
+import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
 import backend.target.TargetMachine;
+import backend.type.ArrayType;
+import backend.type.Type;
+import backend.value.Constant;
+import backend.value.ConstantArray;
+import backend.value.ConstantFP;
 import tools.APInt;
 import tools.Util;
 
@@ -411,6 +415,415 @@ public class DAGCombiner
 
     private SDValue visitSELECT(SDNode n)
     {
+        SDValue n0 = n.getOperand(0); // condition
+        SDValue n1 = n.getOperand(1); // lhs
+        SDValue n2 = n.getOperand(2); // rhs
+        ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n0.getNode() : null;
+        ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        ConstantSDNode c2 = n2.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n2.getNode() : null;
+        EVT vt = n.getValueType(0);
+        EVT vt0 = n0.getValueType();
+
+        // fold (select C, X, X) -> X
+        if (n1.equals(n2)) return n1;
+
+        // fold (select true, X, Y) -> X
+        if (n0.getNode() instanceof ConstantSDNode &&
+                !((ConstantSDNode)n0.getNode()).isNullValue())
+        {
+            return n1;
+        }
+
+        // fold (select false, X, Y) -> Y
+        if (n0.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n0.getNode()).isNullValue())
+        {
+            return n2;
+        }
+        // fold (select C, 1, X) -> (or C, X)
+        if (n0.getNode() instanceof ConstantSDNode &&
+                n1.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n1.getNode()).getAPIntValue().eq(1))
+        {
+            return dag.getNode(ISD.OR, vt, n0, n2);
+        }
+        // fold (select C, 0, 1) -> (xor C, 1)
+        if (n0.getNode() instanceof ConstantSDNode &&
+                n1.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n1.getNode()).getAPIntValue().eq(0) &&
+                n2.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n2.getNode()).getAPIntValue().eq(1))
+        {
+            return dag.getNode(ISD.XOR, vt, n0, n2);
+        }
+        // fold (select C, 0, X) -> (and (not C), X)
+        if (n0.getNode() instanceof ConstantSDNode &&
+                n1.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n1.getNode()).getAPIntValue().eq(0))
+        {
+            APInt cc = ((ConstantSDNode)n0.getNode()).getAPIntValue();
+            return dag.getNode(ISD.AND, vt, dag.getConstant(cc.not(), vt0, false), n2);
+        }
+        // fold (select C, X, 1) -> (or (not C), X)
+        if (n0.getNode() instanceof ConstantSDNode &&
+                n2.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n2.getNode()).getAPIntValue().eq(1))
+        {
+            APInt cc = ((ConstantSDNode)n0.getNode()).getAPIntValue();
+            return dag.getNode(ISD.OR, vt, dag.getConstant(cc.not(), vt0, false), n1);
+        }
+        // fold (select C, X, 0) -> (and C, X)
+        if (n0.getNode() instanceof ConstantSDNode &&
+                n2.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n2.getNode()).getAPIntValue().eq(0))
+        {
+            return dag.getNode(ISD.AND, vt, n0, n1);
+        }
+
+        // fold (select X, X, Y) -> (or X, Y)
+        if (n0.equals(n1))
+        {
+            return dag.getNode(ISD.OR, vt, n0, n2);
+        }
+        // fold (select X, 1, Y) -> (or X, Y)
+        if (n1.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n1.getNode()).getAPIntValue().eq(1))
+        {
+            return dag.getNode(ISD.OR, vt, n0, n2);
+        }
+
+        // fold (select X, Y, X) -> (and X, Y)
+        if (n0.equals(n2))
+        {
+            return dag.getNode(ISD.AND, vt, n0, n1);
+        }
+        // fold (select X, Y, 0) -> (and X, Y)
+        if (n2.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)n2.getNode()).isNullValue())
+        {
+            return dag.getNode(ISD.AND, vt, n0, n1);
+        }
+
+        // If we can fold this based on the true/false value, do so.
+        if (simplifySelectOps(n, n1, n2))
+            return new SDValue(n, 0);
+
+        // fold selects based on a setcc into other things, such as min/max/abs
+        if (n0.getOpcode() == ISD.SETCC)
+        {
+            if (tli.isOperationLegalOrCustom(ISD.SELECT_CC, new EVT(MVT.Other)) &&
+                    tli.isOperationLegalOrCustom(ISD.SELECT, vt))
+            {
+                return dag.getNode(ISD.SELECT_CC, vt,
+                        n0.getOperand(0),
+                        n0.getOperand(1),
+                        n1, n2, n0.getOperand(2));
+            }
+            return simplifySelect(n0, n1, n2);
+        }
+        return new SDValue();
+    }
+
+    private boolean simplifySelectOps(SDNode sel, SDValue lhs, SDValue rhs)
+    {
+        if(lhs.getOpcode() == rhs.getOpcode() &&
+                lhs.hasOneUse() && rhs.hasOneUse())
+        {
+            if (lhs.getOpcode() == ISD.LOAD &&
+                    !((LoadSDNode)lhs.getNode()).isVolatile() &&
+                    !((LoadSDNode)rhs.getNode()).isVolatile() &&
+                    lhs.getOperand(0).equals(rhs.getOperand(0)))
+            {
+                LoadSDNode ld1 = (LoadSDNode)lhs.getNode();
+                LoadSDNode ld2 = (LoadSDNode)rhs.getNode();
+                if (ld1.getMemoryVT().equals(ld2.getMemoryVT()))
+                {
+                    SDValue addr = new SDValue();
+                    if (sel.getOpcode() == ISD.SELECT)
+                    {
+                        if (!ld1.isPredecessorOf(sel.getOperand(0).getNode()) &&
+                                !ld2.isPredecessorOf(sel.getOperand(0).getNode()))
+                        {
+                            addr = dag.getNode(ISD.SELECT,
+                                    ld1.getBasePtr().getValueType(),
+                                    sel.getOperand(0),
+                                    ld1.getBasePtr(),
+                                    ld2.getBasePtr());
+                        }
+                    }
+                    else
+                    {
+                        if (!ld1.isPredecessorOf(sel.getOperand(0).getNode()) &&
+                                !ld2.isPredecessorOf(sel.getOperand(0).getNode()) &&
+                                !ld1.isPredecessorOf(sel.getOperand(1).getNode()) &&
+                                !ld2.isPredecessorOf(sel.getOperand(1).getNode()))
+                        {
+                            addr = dag.getNode(ISD.SELECT_CC,
+                                    ld1.getBasePtr().getValueType(),
+                                    sel.getOperand(0), sel.getOperand(1),
+                                    ld1.getBasePtr(), ld2.getBasePtr(),
+                                    sel.getOperand(4));
+                        }
+                    }
+
+                    if (addr.getNode() != null)
+                    {
+                        SDValue load = new SDValue();
+                        if (ld1.getExtensionType() == LoadExtType.NON_EXTLOAD)
+                        {
+                            load = dag.getLoad(sel.getValueType(0),
+                                    ld1.getChain(), addr, ld1.getSrcValue(),
+                                    ld1.getSrcValueOffset(), ld1.isVolatile(),
+                                    ld1.getAlignment());
+                        }
+                        else
+                        {
+                            load = dag.getExtLoad(ld1.getExtensionType(),
+                                    sel.getValueType(0),
+                                    ld1.getChain(),
+                                    addr,
+                                    ld1.getSrcValue(),
+                                    ld1.getSrcValueOffset(),
+                                    ld1.getMemoryVT(),
+                                    ld1.isVolatile(),
+                                    ld1.getAlignment());
+                        }
+                        combineTo(sel, load, true);
+                        combineTo(lhs.getNode(), load.getValue(0), load.getValue(1), true);
+                        combineTo(rhs.getNode(), load.getValue(0), load.getValue(1), true);
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2)
+    {
+        assert n0.getOpcode() == ISD.SETCC:
+                "First argument must be a SetCC node!";;
+        SDValue scc = simplifySelectCC(n0.getOperand(0),
+                n0.getOperand(1), n1, n2,
+                ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition());
+        if (scc.getNode() != null)
+        {
+            if (scc.getOpcode() == ISD.SELECT_CC)
+            {
+                SDValue setcc = dag.getNode(ISD.SETCC, n0.getValueType(),
+                        scc.getOperand(0), scc.getOperand(1),
+                        scc.getOperand(4));
+                addToWorkList(setcc.getNode());
+                return dag.getNode(ISD.SELECT, scc.getValueType(),
+                        scc.getOperand(2), scc.getOperand(3), setcc);
+            }
+            return new SDValue();
+        }
+        return new SDValue();
+    }
+    private SDValue simplifySelectCC(SDValue n0, SDValue n1, SDValue n2, SDValue n3,
+                                     CondCode cc)
+    {
+        return simplifySelectCC(n0, n1, n2, n3, cc, false);
+    }
+
+    private SDValue simplifySelectCC(SDValue n0, SDValue n1, SDValue n2, SDValue n3,
+                                     CondCode cc, boolean notExtCompare)
+    {
+        if (n2.equals(n3)) return n2;
+        EVT vt = n2.getValueType();
+        ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        ConstantSDNode c2 = n2.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n2.getNode() : null;
+        ConstantSDNode c3 = n3.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n3.getNode() : null;
+        SDValue scc = simplifySetCC(
+                new EVT(tli.getSetCCResultType(n0.getValueType())),
+                n0, n1, cc, false);
+        if (scc.getNode() != null)
+            addToWorkList(scc.getNode());
+        ConstantSDNode sccc = scc.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)scc.getNode() : null;
+
+        if (sccc != null && !sccc.isNullValue())
+            return n2;
+        if (sccc != null && sccc.isNullValue())
+            return n3;
+
+        if (n1.getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode fps = (ConstantFPSDNode)n1.getNode();
+            // Allow either -0.0 or 0.0
+            if (fps.getValueAPF().isZero())
+            {
+                if ((cc == CondCode.SETGE || cc == CondCode.SETGT) &&
+                        n0.equals(n2) && n3.getOpcode() == ISD.FNEG &&
+                        n2.equals(n3.getOperand(0)))
+                {
+                    return dag.getNode(ISD.FABS, vt, n0);
+                }
+
+                if ((cc == CondCode.SETLT || cc == CondCode.SETLE) &&
+                        n0.equals(n3) && n2.getOpcode() == ISD.FNEG &&
+                        n2.getOperand(0).equals(n3))
+                {
+                    return dag.getNode(ISD.FABS, vt, n3);
+                }
+            }
+        }
+
+        if (n2.getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode tv = (ConstantFPSDNode)n2.getNode();
+            if (n3.getNode() instanceof ConstantFPSDNode)
+            {
+                ConstantFPSDNode fv = (ConstantFPSDNode)n3.getNode();
+                if (tli.isTypeLegal(n2.getValueType()) &&
+                        (tli.getOperationAction(ISD.ConstantFP, n2.getValueType()) !=
+                        TargetLowering.LegalizeAction.Legal) &&
+                        (tv.hasOneUse() || fv.hasOneUse()))
+                {
+                    Constant[] elts = {
+                            fv.getConstantFPValue(),
+                            tv.getConstantFPValue()
+                    };
+                    Type fpTy = elts[0].getType();
+                    TargetData td = tli.getTargetData();
+
+                    Constant ca = ConstantArray.get(ArrayType.get(fpTy, 2), elts);
+                    SDValue cpIdx = dag.getConstantPool(ca, new EVT(tli.getPointerTy()),
+                            td.getPrefTypeAlignment(fpTy), 0, false, 0);
+                    int alignment = ((ConstantPoolSDNode)cpIdx.getNode()).getAlign();
+
+                    SDValue zero = dag.getIntPtrConstant(0);
+                    long eltSize = td.getTypeAllocSize(elts[0].getType());
+                    SDValue one = dag.getIntPtrConstant(1);
+                    SDValue cond = dag.getSetCC(new EVT(tli.getSetCCResultType(n0.getValueType())),
+                            n0, n1, cc);
+
+                    SDValue cstOffset = dag.getNode(ISD.SELECT, zero.getValueType(),
+                            cond, one, zero);
+                    cpIdx = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
+                    return dag.getLoad(tv.getValueType(0),
+                            dag.getEntryNode(), cpIdx,
+                            PseudoSourceValue.getConstantPool(), 0,
+                            false, alignment);
+                }
+            }
+        }
+
+        if (c1 != null && c3 != null && c3.isNullValue() &
+                cc == CondCode.SETLT &&
+                n0.getValueType().isInteger() &&
+                n2.getValueType().isInteger() &&
+                (c1.isNullValue() || (c1.getAPIntValue().eq(1) &&
+                n0.equals(n2))))
+        {
+            EVT xTy = n0.getValueType();
+            EVT aTy = n2.getValueType();
+            if (xTy.bitsGT(aTy))
+            {
+                if (c2 != null && c2.getAPIntValue().and(c2.getAPIntValue().sub(1)).eq(0))
+                {
+                    long shCtv = c2.getAPIntValue().logBase2();
+                    SDValue shCt = dag.getConstant(shCtv, new EVT(tli.getShiftAmountTy()), false);
+                    SDValue shift = dag.getNode(ISD.SRL,
+                            xTy, n0, shCt);
+                    addToWorkList(shift.getNode());
+
+                    if (xTy.bitsGT(aTy))
+                    {
+                        shift = dag.getNode(ISD.TRUNCATE, aTy, shift);
+                        addToWorkList(shift.getNode());
+                    }
+                    return dag.getNode(ISD.AND, aTy, shift, n2);
+                }
+
+                SDValue shift = dag.getNode(ISD.SRA, xTy, n0,
+                        dag.getConstant(xTy.getSizeInBits() -1,
+                                new EVT(tli.getShiftAmountTy()), false));
+                addToWorkList(shift.getNode());
+                if (xTy.bitsGT(aTy))
+                {
+                    shift = dag.getNode(ISD.TRUNCATE, aTy, shift);
+                    addToWorkList(shift.getNode());
+                }
+                return dag.getNode(ISD.AND, aTy, shift, n2);
+            }
+        }
+
+        if (c2 != null && c3 != null && c3.isNullValue() &&
+                c2.getAPIntValue().isPowerOf2() &&
+                tli.getBooleanContents() == TargetLowering.BooleanContent.ZeroOrOneBooleanContent)
+        {
+            if (notExtCompare && c2.getAPIntValue().eq(1))
+                return new SDValue();
+
+            SDValue temp, sc;
+            if (legalTypes)
+            {
+                sc = dag.getSetCC(new EVT(tli.getSetCCResultType(
+                        n0.getValueType())), n0, n1, cc);
+                if (n2.getValueType().bitsGT(sc.getValueType()))
+                    temp = dag.getZeroExtendInReg(sc, n2.getValueType());
+                else
+                    temp = dag.getNode(ISD.ZERO_EXTEND, n2.getValueType(), sc);
+            }
+            else
+            {
+                sc = dag.getSetCC(new EVT(MVT.i1), n0, n1, cc);
+                temp = dag.getNode(ISD.ZERO_EXTEND, n2.getValueType(), sc);
+            }
+
+            addToWorkList(sc.getNode());
+            addToWorkList(temp.getNode());
+
+            if (c2.getAPIntValue().eq(1))
+                return temp;
+
+            return dag.getNode(ISD.SHL, n2.getValueType(), temp,
+                    dag.getConstant(c2.getAPIntValue().logBase2(),
+                            new EVT(tli.getShiftAmountTy()), false));
+        }
+
+        if (c1 != null && c1.isNullValue() && (cc == CondCode.SETLT ||
+            cc == CondCode.SETLE) && n0.equals(n3) &&
+                n2.getOpcode() == ISD.SUB && n0.equals(n2.getOperand(1)) &&
+                n2.getOperand(0).equals(n1) && n0.getValueType().isInteger())
+        {
+            EVT xType = n0.getValueType();
+            SDValue shift = dag.getNode(ISD.SRA, xType, n0,
+                    dag.getConstant(xType.getSizeInBits()-1,
+                            new EVT(tli.getShiftAmountTy()), false));
+            SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
+            addToWorkList(shift.getNode());;
+            addToWorkList(add.getNode());
+            return dag.getNode(ISD.XOR, xType, add, shift);
+        }
+
+        if (c1 != null && c1.isAllOnesValue() && cc == CondCode.SETGT &&
+                n0.equals(n2) && n3.getOpcode() == ISD.SUB &&
+                n0.equals(n3.getOperand(1)))
+        {
+            if (n3.getOperand(0).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode csd = (ConstantSDNode)n3.getOperand(0).getNode();
+                EVT xType = n0.getValueType();
+                if (csd.isNullValue() && xType.isInteger())
+                {
+                    SDValue shift = dag.getNode(ISD.SRA, xType, n0,
+                            dag.getConstant(xType.getSizeInBits()-1,
+                                    new EVT(tli.getShiftAmountTy()), false));
+                    SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
+                    addToWorkList(shift.getNode());
+                    addToWorkList(add.getNode());
+                    return dag.getNode(ISD.XOR, xType, add, shift);
+                }
+            }
+        }
         return new SDValue();
     }
 

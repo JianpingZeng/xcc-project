@@ -98,7 +98,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     {
         if (subtarget.isTargetDarwin() || subtarget.isTargetCygMing())
         {
-            assert false:"Currently, Darwin, Cygin, MinGW not supported";
+            assert false:"Currently, Darwin, Cygwin, MinGW not supported";
         }
         super.doFinalization(m);
         return false;
