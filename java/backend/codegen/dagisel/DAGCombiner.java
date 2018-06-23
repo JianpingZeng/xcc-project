@@ -31,8 +31,7 @@ import backend.type.ArrayType;
 import backend.type.Type;
 import backend.value.Constant;
 import backend.value.ConstantArray;
-import backend.value.ConstantFP;
-import com.sun.xml.internal.bind.v2.TODO;
+import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
 import tools.Util;
@@ -43,6 +42,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import static backend.codegen.dagisel.SelectionDAG.isCommutativeBinOp;
+import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 
 /**
  * @author Xlous.zeng
@@ -268,35 +268,425 @@ public class DAGCombiner
         return new SDValue();
     }
 
+    private int inferAlignment(SDValue ptr)
+    {
+        int frameIndex = 1 << 31;
+        long frameOffset = 0;
+        if (ptr.getNode() instanceof FrameIndexSDNode)
+        {
+            frameIndex = ((FrameIndexSDNode)ptr.getNode()).getFrameIndex();
+        }
+        else if (ptr.getOpcode() == ISD.ADD &&
+                ptr.getOperand(1).getNode() instanceof ConstantSDNode &&
+                ptr.getOperand(0).getNode() instanceof FrameIndexSDNode)
+        {
+            frameIndex = ((FrameIndexSDNode)ptr.getOperand(0).getNode()).getFrameIndex();
+            frameOffset = ptr.getConstantOperandVal(1);
+        }
+
+        if (frameIndex != (1<<31))
+        {
+            MachineFrameInfo mfi = dag.getMachineFunction().getFrameInfo();
+            if (mfi.isFixedObjectIndex(frameIndex))
+            {
+                long objectOffset = mfi.getObjectOffset(frameIndex) + frameOffset;
+                int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+                int align = Util.minAlign(stackAlign, (int) objectOffset);
+                int fiInfoAlign = Util.minAlign(mfi.getObjectAlignment(frameIndex), (int) frameOffset);
+                return Math.max(align, fiInfoAlign);
+            }
+        }
+        return 0;
+    }
+
     private SDValue visitLOAD(SDNode n)
     {
+        LoadSDNode ld = (LoadSDNode)n;
+        SDValue chain = ld.getChain();
+        SDValue ptr = ld.getBasePtr();
+
+        // Try to infer better alignment information than the load already has.
+        if (optLevel != TargetMachine.CodeGenOpt.None && ld.isUnindexed())
+        {
+            int align =inferAlignment(ptr);
+            if (align != 0 && align > ld.getAlignment())
+            {
+                return dag.getExtLoad(ld.getExtensionType(), ld.getValueType(0),
+                        chain, ptr, ld.getSrcValue(), ld.getSrcValueOffset(), ld.getMemoryVT(),
+                        ld.isVolatile(), align);
+            }
+        }
+
+        // If load is not volatile and there are no uses of the loaded value (and
+        // the updated indexed value in case of indexed loads), change uses of the
+        // chain value into uses of the chain input (i.e. delete the dead load).
+        if (!ld.isVolatile())
+        {
+            if (n.getValueType(1).equals(new EVT(MVT.Other)))
+            {
+                // unindexed load
+                if (n.hasNumUsesOfValue(0, 0))
+                {
+                    // It's not safe to use the two value CombineTo variant here. e.g.
+                    // v1, chain2 = load chain1, loc
+                    // v2, chain3 = load chain2, loc
+                    // v3         = add v2, c
+                    // Now we replace use of chain2 with chain1.  This makes the second load
+                    // isomorphic to the one we are deleting, and thus makes this load live.
+                    WorklistRemover remover = new WorklistRemover(this);
+                    dag.replaceAllUsesOfValueWith(new SDValue(n, 1), chain, remover);
+                    if (n.isUseEmpty())
+                    {
+                        removeFromWorkList(n);
+                        dag.deleteNode(n);
+                    }
+                    return new SDValue(n, 0);
+                }
+            }
+            else
+            {
+                // indexed loads.
+                assert n.getValueType(2).equals(new EVT(MVT.Other)):"Malformed indexed load?";
+                if (n.hasNumUsesOfValue(0, 0) && n.hasNumUsesOfValue(0, 1))
+                {
+                    SDValue undef = dag.getUNDEF(n.getValueType(0));
+                    WorklistRemover remover = new WorklistRemover(this);
+                    dag.replaceAllUsesOfValueWith(new SDValue(n, 0), undef, remover);
+                    dag.replaceAllUsesOfValueWith(new SDValue(n, 1),
+                            dag.getUNDEF(n.getValueType(1)), remover);
+                    dag.replaceAllUsesOfValueWith(new SDValue(n, 2), chain, remover);
+                    removeFromWorkList(n);
+                    dag.deleteNode(n);
+                    return new SDValue(n, 0);
+                }
+            }
+        }
+
+        // If this load is directly stored, replace the load value with the stored
+        if (ld.getExtensionType() == LoadExtType.NON_EXTLOAD &&
+                !ld.isVolatile())
+        {
+            if (chain.getNode().isNONTRUNCStore())
+            {
+                StoreSDNode st = (StoreSDNode)chain.getNode();
+                if (st.getBasePtr().equals(ptr) &&
+                        st.getValue().getValueType().equals(n.getValueType(0)))
+                {
+                    return combineTo(n, chain.getOperand(1), chain);
+                }
+            }
+        }
+
+        if (combineToPreIndexedLoadStore(n) || combineToPostIndexedLoadStore(n))
+            return new SDValue(n, 0);
+
         return new SDValue();
     }
 
     private SDValue visitBR_CC(SDNode n)
     {
+        CondCodeSDNode ccn = (CondCodeSDNode)n.getOperand(1).getNode();
+        SDValue lhs = n.getOperand(2), rhs = n.getOperand(3);
+        SDValue simplify = simplifySetCC(new EVT(tli.getSetCCResultType(lhs.getValueType())),
+                lhs, rhs, ccn.getCondition(), false);
+        if (simplify.getNode() != null)
+            addToWorkList(simplify.getNode());
+
+        if (simplify.getNode() instanceof ConstantSDNode &&
+                !((ConstantSDNode)simplify.getNode()).isNullValue())
+        {
+            if (!((ConstantSDNode)simplify.getNode()).isNullValue())
+                return dag.getNode(ISD.BR, new EVT(MVT.Other), n.getOperand(0), n.getOperand(4));
+            else
+                return dag.getNode(ISD.BR, new EVT(MVT.Other), n.getOperand(0));
+        }
+        if (simplify.getNode() != null && simplify.getOpcode() == ISD.SETCC)
+        {
+            // to setcc
+            return dag.getNode(ISD.BR_CC, new EVT(MVT.Other), n.getOperand(0),
+                    simplify.getOperand(2), simplify.getOperand(0), simplify.getOperand(1),
+                    n.getOperand(4));
+        }
         return new SDValue();
     }
 
     private SDValue visitBRCOND(SDNode n)
     {
+        SDValue chain = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        SDValue n2 = n.getOperand(2);
+        ConstantSDNode n1C = n1.getNode() instanceof ConstantSDNode ?
+                (ConstantSDNode)n1.getNode() : null;
+        if (n1C != null && n1C.isNullValue())
+            return chain;
+
+        if (n1C != null && n1C.getAPIntValue().eq(1))
+            return dag.getNode(ISD.BR, new EVT(MVT.Other), chain, n2);
+        if (n1.getOpcode() == ISD.SETCC &&
+                tli.isOperationLegalOrCustom(ISD.BR_CC, new EVT(MVT.Other)))
+        {
+            return dag.getNode(ISD.BR_CC, new EVT(MVT.Other), chain, n1.getOperand(2),
+                    n1.getOperand(0), n1.getOperand(1), n2);
+        }
+        if (n1.hasOneUse() && n1.getOpcode() == ISD.SRL)
+        {
+            // Match this pattern so that we can generate simpler code:
+            //
+            //   %a = ...
+            //   %b = and i32 %a, 2
+            //   %c = srl i32 %b, 1
+            //   brcond i32 %c ...
+            //
+            // into
+            //
+            //   %a = ...
+            //   %b = and %a, 2
+            //   %c = setcc eq %b, 0
+            //   brcond %c ...
+            //
+            // This applies only when the AND constant value has one bit set and the
+            // SRL constant is equal to the log2 of the AND constant. The back-end is
+            // smart enough to convert the result into a TEST/JMP sequence.
+            SDValue op0 = n1.getOperand(0);
+            SDValue op1 = n1.getOperand(1);
+
+            if (op0.getOpcode() == ISD.AND &&
+                    op0.hasOneUse() &&
+                    op1.getOpcode() == ISD.Constant)
+            {
+                SDValue andOp0 = op0.getOperand(0);
+                SDValue andOp1 = op0.getOperand(1);
+                if (andOp1.getOpcode() == ISD.Constant)
+                {
+                    APInt andCst = ((ConstantSDNode)andOp1.getNode()).getAPIntValue();
+                    if (andCst.isPowerOf2() &&
+                            ((ConstantSDNode)op1.getNode()).getAPIntValue().eq(andCst.logBase2()))
+                    {
+                        SDValue setcc = dag.getSetCC(new EVT(tli.getSetCCResultType(op0.getValueType())),
+                                op0, dag.getConstant(0, op0.getValueType(), false), CondCode.SETNE);
+
+                        dag.replaceAllUsesOfValueWith(n1, setcc, null);
+                        removeFromWorkList(n1.getNode());
+                        dag.deleteNode(n1.getNode());
+                        return dag.getNode(ISD.BRCOND, new EVT(MVT.Other), chain, setcc, n2);
+                    }
+                }
+            }
+        }
+
         return new SDValue();
     }
 
     private SDValue visitFABS(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FABS, vt, n0);
+
+        if (n0.getOpcode() == ISD.FABS)
+            return n0.getOperand(0);
+        if (n0.getOpcode() == ISD.FNEG || n0.getOpcode() == ISD.FCOPYSIGN)
+            return dag.getNode(ISD.FABS, n0.getOperand(0).getValueType(), n0.getOperand(0));
+        if (n0.getOpcode() == ISD.BIT_CONVERT && n0.hasOneUse() &&
+                n0.getOperand(0).getValueType().isInteger() &&
+                !n0.getOperand(0).getValueType().isVector())
+        {
+            SDValue integer = n0.getOperand(0);
+            EVT intVT = integer.getValueType();
+            if (intVT.isInteger() && !intVT.isVector())
+            {
+                integer = dag.getNode(ISD.AND, intVT, integer,
+                        dag.getConstant(APInt.getSignBit(intVT.getSizeInBits()).not(), intVT, false));
+                addToWorkList(integer.getNode());
+                return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), integer);
+            }
+        }
         return new SDValue();
+    }
+
+    /**
+     * Return 1 if we can compute the negated form of the
+     * specified expression for the same cost as the expression itself, or 2 if we
+     * can compute the negated form more cheaply than the expression itself.
+     * @param op
+     * @param legalOpration
+     * @return
+     */
+    private int isNegatibleForFree(SDValue op, boolean legalOpration)
+    {
+        return isNegatibleForFree(op, legalOpration, 0);
+    }
+
+    private int isNegatibleForFree(SDValue op, boolean legalOpration, int depth)
+    {
+        if (op.getValueType().equals(new EVT(MVT.ppcf128)))
+            return 0;
+
+        if (op.getOpcode() == ISD.FNEG) return 2;
+        if (!op.hasOneUse()) return 0;
+
+        if (depth > 6) return 0;
+        switch (op.getOpcode())
+        {
+            default: return 0;
+            case ISD.ConstantFP:
+                return legalOpration ? 0: 1;
+            case ISD.FADD:
+                // We can't turn -(A-B) into B-A when we honor signed zeros.
+                return EnableUnsafeFPMath.value ? 1 : 0;
+            case ISD.FMUL:
+            case ISD.FDIV:
+                if (!EnableUnsafeFPMath.value) return 0;
+                int v = isNegatibleForFree(op.getOperand(0), legalOpration, depth+1);
+                if (v != 0) return v;
+                return isNegatibleForFree(op.getOperand(1), legalOpration, depth+1);
+            case ISD.FP_EXTEND:
+            case ISD.FP_ROUND:
+            case ISD.FSIN:
+                return isNegatibleForFree(op.getOperand(0), legalOpration, depth+1);
+        }
+    }
+
+    private SDValue getNegatedExpression(SDValue op, boolean legalOpration)
+    {
+        return getNegatedExpression(op, legalOpration, 0);
+    }
+
+    /**
+     * If isNegatibleForFree returns true, this function returns the newly negated expression.
+     * @param op
+     * @param legalOpration
+     * @param depth
+     * @return
+     */
+    private SDValue getNegatedExpression(SDValue op, boolean legalOpration, int depth)
+    {
+        if (op.getOpcode() == ISD.FNEG) return op.getOperand(0);
+
+        assert op.hasOneUse():"Unknown reuse!";
+        assert depth <= 6:"getNegatedExpression doesn't match isNegatibleForFree";
+        switch (op.getOpcode())
+        {
+            default:
+                Util.shouldNotReachHere("Unknown code!");
+                return new SDValue();
+            case ISD.ConstantFP:
+            {
+                APFloat f = ((ConstantFPSDNode)op.getNode()).getValueAPF();
+                f.changeSign();
+                return dag.getConstantFP(f, op.getValueType(), false);
+            }
+            case ISD.FADD:
+            {
+                assert EnableUnsafeFPMath.value;
+                if (isNegatibleForFree(op.getOperand(0), legalOpration, depth+1) != 0)
+                    return dag.getNode(ISD.FSUB, op.getValueType(),
+                            getNegatedExpression(op.getOperand(0), legalOpration, depth+1),
+                            op.getOperand(1));
+
+                return dag.getNode(ISD.FSUB, op.getValueType(),
+                        getNegatedExpression(op.getOperand(1), legalOpration, depth+1),
+                        op.getOperand(0));
+            }
+            case ISD.FSUB:
+            {
+                assert EnableUnsafeFPMath.value;
+                ConstantFPSDNode fp = op.getOperand(0).getNode() instanceof ConstantFPSDNode ?
+                        (ConstantFPSDNode)op.getOperand(0).getNode() : null;
+
+                if (fp != null && fp.getValueAPF().isZero())
+                    return op.getOperand(1);
+
+                return dag.getNode(ISD.FSUB, op.getValueType(), op.getOperand(1), op.getOperand(0));
+            }
+            case ISD.FMUL:
+            case ISD.FDIV:
+            {
+                if (isNegatibleForFree(op.getOperand(0), legalOpration, depth+1) != 0)
+                {
+                    return dag.getNode(op.getOpcode(), op.getValueType(),
+                            getNegatedExpression(op.getOperand(0), legalOpration, depth+1),
+                            op.getOperand(1));
+                }
+                return dag.getNode(op.getOpcode(), op.getValueType(), op.getOperand(0),
+                        getNegatedExpression(op.getOperand(1), legalOpration, depth+1));
+            }
+            case ISD.FP_EXTEND:
+            case ISD.FSIN:
+                return dag.getNode(op.getOpcode(), op.getValueType(),
+                        getNegatedExpression(op.getOperand(0), legalOpration, depth+1));
+            case ISD.FP_ROUND:
+                return dag.getNode(ISD.FP_ROUND, op.getValueType(),
+                        getNegatedExpression(op.getOperand(0), legalOpration, depth+1),
+                        op.getOperand(1));
+        }
     }
 
     private SDValue visitFNEG(SDNode n)
     {
         SDValue n0 = n.getOperand(0);
-        // TODO
+        if (isNegatibleForFree(n0, legalOprations) != 0)
+            return getNegatedExpression(n0, legalOprations);
+
+        if (n0.getOpcode() == ISD.BIT_CONVERT && n0.hasOneUse() &&
+                n0.getOperand(0).getValueType().isInteger() &&
+                !n0.getOperand(0).getValueType().isVector())
+        {
+            SDValue integer = n0.getOperand(0);
+            EVT intVT = integer.getValueType();
+            if (intVT.isInteger() && !intVT.isVector())
+            {
+                integer = dag.getNode(ISD.XOR, intVT, integer,
+                        dag.getConstant(APInt.getSignBit(intVT.getSizeInBits()), intVT, false));
+                addToWorkList(integer.getNode());
+                return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), integer);
+            }
+        }
+
         return new SDValue();
     }
 
     private SDValue visitFP_EXTEND(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        if (n.hasOneUse() && n.getUse(0).getUser().getOpcode() == ISD.FP_ROUND)
+            return new SDValue();
+
+        if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FP_EXTEND, vt, n0);
+
+        if (n0.getOpcode() == ISD.FP_ROUND &&
+                n0.getNode().getConstantOperandVal(1) == 1)
+        {
+            SDValue in = n0.getOperand(0);
+            if (in.getValueType().equals(vt)) return in;
+
+            if (vt.bitsLT(in.getValueType()))
+                return dag.getNode(ISD.FP_ROUND, vt, in, n0.getOperand(1));
+            return dag.getNode(ISD.FP_EXTEND, vt, in);
+        }
+
+        if (n0.getNode().isNONExtLoad() && n0.hasOneUse() &&
+                (!legalOprations && !((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.EXTLOAD, n0.getValueType()))
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt, ld.getChain(),
+                    ld.getBasePtr(), ld.getSrcValue(), ld.getSrcValueOffset(),
+                    n0.getValueType(), ld.isVolatile(), ld.getAlignment());
+
+            combineTo(n, extLoad, true);
+            combineTo(n0.getNode(), dag.getNode(ISD.FP_ROUND, n0.getValueType(),
+                    extLoad, dag.getIntPtrConstant(1)), true);
+            return new SDValue(n, 0);
+        }
+
         return new SDValue();
     }
 
@@ -318,6 +708,31 @@ public class DAGCombiner
 
     private SDValue visitFP_ROUND(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        EVT vt = n.getValueType(0);
+        if (fp != null && !n0.getValueType().equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FP_ROUND, vt, n0, n1);
+
+        if (n0.getOpcode() == ISD.FP_EXTEND && vt.equals(n0.getOperand(0).getValueType()))
+            return n0.getOperand(0);
+
+        if (n0.getOpcode() == ISD.FP_ROUND)
+        {
+            boolean isTrunc = n.getConstantOperandVal(1) == 1 &&
+                    n0.getNode().getConstantOperandVal(1) == 1;
+            return dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0),
+                    dag.getIntPtrConstant(isTrunc?1:0));
+        }
+
+        if (n0.getOpcode() ==  ISD.FCOPYSIGN && n0.hasOneUse())
+        {
+            SDValue temp = dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0), n1);
+            addToWorkList(temp.getNode());
+            return dag.getNode(ISD.FCOPYSIGN, vt, temp, n0.getOperand(1));
+        }
         return new SDValue();
     }
 
@@ -443,26 +858,194 @@ public class DAGCombiner
 
     private SDValue visitFREM(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (fp0 != null && fp1 != null & !vt.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FREM, vt, n0, n1);
+
         return new SDValue();
     }
 
     private SDValue visitFDIV(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (vt.isVector())
+        {
+            SDValue res = simplifyVBinOp(n);
+            if (res.getNode() != null) return res;
+        }
+
+        // fold (fdiv c1, c2) -> c1/c2
+        if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
+        {
+            return dag.getNode(ISD.FDIV, vt, n0, n1);
+        }
+        // (fdiv (fneg X), (fneg Y)) -> (fdiv X, Y)
+        int lhsNeg = isNegatibleForFree(n0, legalOprations);
+        int rhsNeg = isNegatibleForFree(n1, legalOprations);
+        if (lhsNeg == 2 && rhsNeg == 2)
+        {
+            return dag.getNode(ISD.FDIV, vt, getNegatedExpression(n0, legalOprations),
+                    getNegatedExpression(n1, legalOprations));
+        }
+
         return new SDValue();
     }
 
     private SDValue visitFMUL(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (vt.isVector())
+        {
+            SDValue res = simplifyVBinOp(n);
+            if (res.getNode() != null) return res;
+        }
+
+        // fold (fmul c1, c2) -> c1*c2
+        if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
+            return dag.getNode(ISD.FMUL, vt, n0, n1);
+
+        // canonicalize constant to RHS
+        if (fp0 != null && fp1 == null)
+            return dag.getNode(ISD.FMUL, vt, n1, n0);
+
+        // fold (fmul A, 0) -> 0
+        if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
+            return n1;
+
+        // fold (fmul A, 0) -> 0, vector edition.
+        if (EnableUnsafeFPMath.value && fp1 != null && ISD.isBuildVectorAllZeros(n1))
+            return n1;
+
+        // fold (fmul X, 2.0) -> (fadd X, X)
+        if (fp1 != null && fp1.isExactlyValue(+2.0))
+            return dag.getNode(ISD.FADD, vt, n0, n0);
+
+        // fold (fmul X, -1.0) -> (fneg X)
+        if (fp1 != null && fp1.isExactlyValue(-1.0) &&
+                (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt)))
+            return dag.getNode(ISD.FNEG, vt, n0);
+
+        // fold (fmul (fneg X), (fneg Y)) -> (fmul X, Y)
+        int lhsNeg = isNegatibleForFree(n0, legalOprations);
+        int rhsNeg = isNegatibleForFree(n1, legalOprations);
+        if (lhsNeg == 2 && rhsNeg == 2)
+        {
+            return dag.getNode(ISD.MUL, vt,
+                    getNegatedExpression(n0, legalOprations),
+                    getNegatedExpression(n1, legalOprations));
+        }
+        // If allowed, fold (fmul (fmul x, c1), c2) -> (fmul x, (fmul c1, c2))
+        if (EnableUnsafeFPMath.value && fp1 != null &&
+                n0.getOpcode() == ISD.FMUL &&
+                n0.getOperand(1).getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode n01FP = (ConstantFPSDNode)n0.getOperand(1).getNode();
+            return dag.getNode(ISD.FMUL, vt, n0.getOperand(0),
+                    dag.getNode(ISD.FMUL, vt, n0.getOperand(1), n1));
+        }
         return new SDValue();
     }
 
     private SDValue visitFSUB(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (vt.isVector())
+        {
+            SDValue res = simplifyVBinOp(n);
+            if (res.getNode() != null) return res;
+        }
+
+        // fold (fsub c1, c2) -> c1-c2
+        if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
+        {
+            return dag.getNode(ISD.FSUB, vt, n0, n1);
+        }
+        // fold (fsub A, 0) -> A
+        if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
+            return n0;
+
+        // fold (fsub 0, B) -> -B
+        if (EnableUnsafeFPMath.value && fp0 != null && fp0.getValueAPF().isZero())
+        {
+            if (isNegatibleForFree(n1, legalOprations) != 0)
+                return getNegatedExpression(n1, legalOprations);
+            if (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt))
+                return dag.getNode(ISD.FNEG, vt, n1);
+        }
+
+        // fold (fsub A, (fneg B)) -> (fadd A, B)
+        if (isNegatibleForFree(n1, legalOprations) != 0)
+        {
+            return dag.getNode(ISD.FADD, vt, n0, getNegatedExpression(n1, legalOprations));
+        }
         return new SDValue();
     }
 
     private SDValue visitFADD(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n0.getNode() : null;
+        ConstantFPSDNode fp1 = n1.getNode() instanceof ConstantFPSDNode ?
+                (ConstantFPSDNode)n1.getNode() : null;
+        EVT vt = n.getValueType(0);
+
+        if (vt.isVector())
+        {
+            SDValue res = simplifyVBinOp(n);
+            if (res.getNode() != null) return res;
+        }
+
+        if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
+        {
+            return dag.getNode(ISD.FADD, vt, n0, n1);
+        }
+        if (fp0 != null && fp1 == null)
+            return dag.getNode(ISD.FADD, vt, n1, n0);
+        if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
+            return n0;
+        if (isNegatibleForFree(n1, legalOprations) == 2)
+            return dag.getNode(ISD.FSUB, vt, n0, getNegatedExpression(n1, legalOprations));
+        if (isNegatibleForFree(n0, legalOprations) == 2)
+            return dag.getNode(ISD.FSUB, vt, n1, getNegatedExpression(n0, legalOprations));
+
+        if (EnableUnsafeFPMath.value && fp1 != null &&
+                n0.getOpcode() == ISD.FADD &&
+                n0.hasOneUse() && n0.getOperand(1).getNode() instanceof ConstantFPSDNode)
+        {
+            return dag.getNode(ISD.FADD, vt, n0.getOperand(0),
+                    dag.getNode(ISD.FADD, vt, n0.getOperand(1), n1));
+        }
+
         return new SDValue();
     }
 
@@ -521,9 +1104,67 @@ public class DAGCombiner
         return new SDValue();
     }
 
+    private SDValue getDemandedBits(SDValue v, APInt mask)
+    {
+        switch (v.getOpcode())
+        {
+            default: break;
+            case ISD.OR:
+            case ISD.XOR:
+                if (dag.maskedValueIsZero(v.getOperand(0), mask))
+                    return v.getOperand(1);
+                if (dag.maskedValueIsZero(v.getOperand(1), mask))
+                    return v.getOperand(0);
+                break;
+            case ISD.SRL:
+                if (!v.hasOneUse())
+                    break;
+                if (v.getOperand(1).getNode() instanceof ConstantSDNode)
+                {
+                    long amt = ((ConstantSDNode)v.getOperand(1).getNode()).getZExtValue();
+                    if (amt >= mask.getBitWidth()) break;
+                    APInt newMask = mask.shl((int) amt);
+                    SDValue simplifyLHS = getDemandedBits(v.getOperand(0), newMask);
+                    if (simplifyLHS.getNode() != null)
+                        return dag.getNode(ISD.SRL, v.getValueType(), simplifyLHS,
+                                v.getOperand(1));
+                }
+        }
+        return new SDValue();
+    }
+
     private SDValue visitTRUNCATE(SDNode n)
     {
-        return new SDValue();
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+
+        if (n0.getValueType().equals(n.getValueType(0)))
+            return n0;
+
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.TRUNCATE, vt, n0);
+
+        if (n0.getOpcode() == ISD.TRUNCATE)
+            return dag.getNode(ISD.TRUNCATE, vt, n0.getOperand(0));
+
+        int n0Opc = n0.getOpcode();
+        if (n0Opc == ISD.ZERO_EXTEND || n0Opc == ISD.SIGN_EXTEND ||
+                n0Opc == ISD.ANY_EXTEND)
+        {
+            if (n0.getOperand(0).getValueType().bitsGT(vt))
+                return dag.getNode(n0.getOpcode(), vt, n0.getOperand(0));
+            else if (n0.getOperand(0).getValueType().bitsGE(vt))
+                return dag.getNode(ISD.TRUNCATE, vt, n0.getOperand(0));
+            else
+                return n0.getOperand(0);
+        }
+
+        SDValue shorter = getDemandedBits(n0, APInt.getLowBitsSet(n0.getValueSizeInBits(),
+                vt.getSizeInBits()));
+        if (shorter.getNode() != null)
+            return dag.getNode(ISD.TRUNCATE, vt, shorter);
+
+        return reduceLoadWidth(n);
     }
 
     private SDValue visitSIGN_EXTEND_INREG(SDNode n)
@@ -2922,9 +3563,114 @@ public class DAGCombiner
         return result;
     }
 
+    /**
+     * Returns a vector_shuffle if it able to transform
+     * an AND to a vector_shuffle with the destination vector and a zero vector.
+     * <pre>
+     * e.g. AND V, <0xffffffff, 0, 0xffffffff, 0>. ==> vector_shuffle V, Zero, <0, 4, 2, 4>.
+     * </pre>
+     * @param n
+     * @return
+     */
+    private SDValue xformToShuffleWithZero(SDNode n)
+    {
+        EVT vt = n.getValueType(0);
+        SDValue lhs = n.getOperand(0);
+        SDValue rhs = n.getOperand(1);
+        if (n.getOpcode() == ISD.AND)
+        {
+            if (rhs.getOpcode() == ISD.BIT_CONVERT)
+                rhs = rhs.getOperand(0);
+            if (rhs.getOpcode() == ISD.BUILD_VECTOR)
+            {
+                TIntArrayList indices = new TIntArrayList();
+                int numElts = rhs.getNumOperands();
+                for (int i = 0; i < numElts; i++)
+                {
+                    SDValue elt = rhs.getOperand(i);
+                    if (!(elt.getNode() instanceof ConstantSDNode))
+                        return new SDValue();
+                    ConstantSDNode csd = (ConstantSDNode)elt.getNode();
+                    if (csd.isAllOnesValue())
+                        indices.add(i);
+                    else if (csd.isNullValue())
+                        indices.add(numElts);
+                    else
+                        return new SDValue();
+                }
+
+                EVT rvt = rhs.getValueType();
+                if (!tli.isVectorClearMaskLegal(indices, rvt))
+                    return new SDValue();
+
+                EVT evt = rvt.getVectorElementType();
+                SDValue[] zeroOps = new SDValue[rvt.getVectorNumElements()];
+                for (int i = 0; i < zeroOps.length; i++)
+                    zeroOps[i] = dag.getConstant(0, evt, false);
+                SDValue zero = dag.getNode(ISD.BUILD_VECTOR, rvt, zeroOps);
+                lhs = dag.getNode(ISD.BIT_CONVERT, rvt, lhs);
+                SDValue shuf = dag.getVectorShuffle(rvt, lhs, zero, indices.toArray());
+                return dag.getNode(ISD.BIT_CONVERT, vt, shuf);
+            }
+        }
+        return new SDValue();
+    }
+
     private SDValue simplifyVBinOp(SDNode n)
     {
-        // TODO: 18-6-11
+        if (legalOprations) return new SDValue();
+
+        EVT vt = n.getValueType(0);
+        assert vt.isVector():"simplifyVBinOp only works for vector type!";
+
+        EVT eltVT = vt.getVectorElementType();
+        SDValue lhs = n.getOperand(0);
+        SDValue rhs = n.getOperand(1);
+        SDValue shuffle = xformToShuffleWithZero(n);
+        if (shuffle.getNode() != null)
+            return shuffle;
+
+        if (lhs.getOpcode() == ISD.BUILD_VECTOR && rhs.getOpcode() == ISD.BUILD_VECTOR)
+        {
+            ArrayList<SDValue> ops = new ArrayList<>();
+            for (int i = 0,e = lhs.getNumOperands(); i < e; i++)
+            {
+                SDValue lhsOp = lhs.getOperand(i);
+                SDValue rhsOp = rhs.getOperand(i);
+                int lhsOpc = lhsOp.getOpcode(), rhsOpc = rhsOp.getOpcode();
+                if ((lhsOpc != ISD.UNDEF &&
+                        lhsOpc != ISD.Constant &&
+                        lhsOpc != ISD.ConstantFP) ||
+                        (rhsOpc != ISD.UNDEF &&
+                        rhsOpc != ISD.Constant &&
+                        rhsOpc != ISD.ConstantFP))
+                {
+                    break;
+                }
+
+                if (n.getOpcode() == ISD.SDIV || n.getOpcode() == ISD.UDIV ||
+                        n.getOpcode() == ISD.FDIV)
+                {
+                    if ((rhsOpc == ISD.Constant && ((ConstantSDNode)rhsOp.getNode()).isNullValue())||
+                            (rhsOpc == ISD.ConstantFP && ((ConstantFPSDNode)rhsOp.getNode()).getValueAPF().isZero()))
+                    {
+                        break;
+                    }
+                }
+                SDValue res = dag.getNode(n.getOpcode(), eltVT, lhsOp, rhsOp);
+                assert res.getOpcode() == ISD.UNDEF||
+                        res.getOpcode() == ISD.Constant ||
+                        res.getOpcode() == ISD.ConstantFP:"Scalar binop didn't be folded!";
+                ops.add(res);
+                addToWorkList(res.getNode());
+            }
+            if (ops.size() == lhs.getNumOperands())
+            {
+                EVT evt = lhs.getValueType();
+                return dag.getNode(ISD.BUILD_VECTOR, evt, ops);
+            }
+        }
+
         return new SDValue();
     }
     public void addToWorkList(SDNode n)
@@ -2975,6 +3721,11 @@ public class DAGCombiner
         ArrayList<SDValue> vals = new ArrayList<>();
         vals.add(res);
         return combineTo(n, vals, addTo);
+    }
+
+    public SDValue combineTo(SDNode n, SDValue res0, SDValue res1)
+    {
+        return combineTo(n, res0, res1, true);
     }
 
     public SDValue combineTo(SDNode n, SDValue res0, SDValue res1, boolean addTo)

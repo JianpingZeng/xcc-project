@@ -646,4 +646,80 @@ public class ISD
 
         return CondCode.values()[op];
     }
+
+    public static boolean isBuildVectorAllOnes(SDNode n)
+    {
+        if (n.getOpcode() == BIT_CONVERT)
+            n = n.getOperand(0).getNode();
+
+        if (n.getOpcode() != BUILD_VECTOR)
+            return false;
+
+        int i = 0, e = n.getNumOperands();
+        while (i < e && n.getOperand(i).getOpcode() == UNDEF)
+            ++i;
+
+        if (i == e)
+            return false;
+
+        SDValue notZero = n.getOperand(i);
+        if (notZero.getNode() instanceof SDNode.ConstantSDNode)
+        {
+            if (!((SDNode.ConstantSDNode) notZero.getNode()).isAllOnesValue())
+                return false;
+        }
+        else if (notZero.getNode() instanceof SDNode.ConstantFPSDNode)
+        {
+            if (((SDNode.ConstantFPSDNode) notZero.getNode()).getValueAPF().bitcastToAPInt().isAllOnesValue())
+                return false;
+        }
+        else
+            return false;
+
+        for (++i; i < e; i++)
+        {
+            if (!n.getOperand(i).equals(notZero)
+                    && n.getOperand(i).getOpcode() != UNDEF)
+                return false;
+        }
+        return true;
+    }
+
+    public static boolean isBuildVectorAllZeros(SDNode n)
+    {
+        if (n.getOpcode() == BIT_CONVERT)
+            n = n.getOperand(0).getNode();
+
+        if (n.getOpcode() != BUILD_VECTOR)
+            return false;
+
+        int i = 0, e = n.getNumOperands();
+        while (i < e && n.getOperand(i).getOpcode() == UNDEF)
+            ++i;
+
+        if (i == e)
+            return false;
+
+        SDValue notZero = n.getOperand(i);
+        if (notZero.getNode() instanceof SDNode.ConstantSDNode)
+        {
+            if (!((SDNode.ConstantSDNode) notZero.getNode()).isNullValue())
+                return false;
+        }
+        else if (notZero.getNode() instanceof SDNode.ConstantFPSDNode)
+        {
+            if (((SDNode.ConstantFPSDNode) notZero.getNode()).getValueAPF().isPosZero())
+                return false;
+        }
+        else
+            return false;
+
+        for (++i; i < e; i++)
+        {
+            if (!n.getOperand(i).equals(notZero)
+                    && n.getOperand(i).getOpcode() != UNDEF)
+                return false;
+        }
+        return true;
+    }
 }

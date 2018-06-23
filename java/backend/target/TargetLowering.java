@@ -1323,6 +1323,18 @@ public abstract class TargetLowering
                 && getOperationAction(opc, vt) == Legal;
     }
 
+    /**
+     * It is similar to {@linkplain #isShuffleMaskLegal(TIntArrayList, EVT)}.
+     * This is used by Targets to indicate if there is a suitbable
+     * VECTOR_SHUFLE that can be used to replace a VAND with a constant
+     * pool entry.
+     * @return
+     */
+    public boolean isVectorClearMaskLegal(TIntArrayList indices, EVT vt)
+    {
+        return false;
+    }
+
     public LegalizeAction getOperationAction(int opc, EVT vt)
     {
         if (vt.isExtended()) return Expand;
