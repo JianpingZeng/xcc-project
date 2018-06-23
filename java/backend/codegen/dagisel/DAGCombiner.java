@@ -1523,7 +1523,204 @@ public class DAGCombiner
 
     private SDValue visitSIGN_EXTEND(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.SIGN_EXTEND, vt, n0);
+
+        if (n0.getOpcode() == ISD.SIGN_EXTEND ||
+                n0.getOpcode() == ISD.ANY_EXTEND)
+            return dag.getNode(ISD.SIGN_EXTEND, vt, n0.getOperand(0));
+
+        if (n0.getOpcode() == ISD.TRUNCATE)
+        {
+            // fold (sext (truncate (load x))) -> (sext (smaller load x))
+            // fold (sext (truncate (srl (load x), c))) -> (sext (smaller load (x+c/n)))
+            SDValue narrowLoad = reduceLoadWidth(n0.getNode());
+            if (narrowLoad.getNode() != null)
+            {
+                if (!narrowLoad.getNode().equals(n0.getNode()))
+                    combineTo(n0.getNode(),narrowLoad, true);
+                return new SDValue(n, 0);
+            }
+
+            // See if the value being truncated is already sign extended.  If so, just
+            // eliminate the trunc/sext pair.
+            SDValue op = n0.getOperand(0);
+            int opBits = op.getValueSizeInBits();
+            int midBits = n0.getValueSizeInBits();
+            int destBits = vt.getSizeInBits();
+            int numSignBits = dag.computeNumSignBits(op);
+            if (opBits == destBits)
+            {
+                // Op is i32, Mid is i8, and Dest is i32.  If Op has more than 24 sign
+                // bits, it is already ready.
+                if (numSignBits > destBits-midBits)
+                    return op;
+            }
+            else if (opBits < destBits)
+            {
+                // Op is i32, Mid is i8, and Dest is i64.  If Op has more than 24 sign
+                // bits, just sext from i32.
+                if (numSignBits > opBits-midBits)
+                    return dag.getNode(ISD.SIGN_EXTEND, vt, op);
+            }
+            else
+            {
+                if (numSignBits > opBits-midBits)
+                    return dag.getNode(ISD.TRUNCATE, vt, op);
+            }
+
+            // fold (sext (truncate x)) -> (sextinreg x).
+            if (!legalOprations || tli.isOperationLegal(ISD.SIGN_EXTEND_INREG,
+                    n0.getValueType()))
+            {
+                if (op.getValueType().bitsLT(vt))
+                    op = dag.getNode(ISD.ANY_EXTEND, vt, op);
+                else if (op.getValueType().bitsGT(vt))
+                    op = dag.getNode(ISD.TRUNCATE, vt, op);
+                return dag.getNode(ISD.SIGN_EXTEND_INREG, vt, op,
+                        dag.getValueType(n0.getValueType()));
+            }
+        }
+
+        // fold (sext (load x)) -> (sext (truncate (sextload x)))
+        if (n0.getNode().isNONExtLoad() && ((!legalOprations &&
+                ((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.SEXTLOAD, n0.getValueType())))
+        {
+            boolean doXform = true;
+            ArrayList<SDNode> setccs = new ArrayList<>();
+            if (!n0.hasOneUse())
+                doXform = extendUsesToFormExtLoad(n, n0, ISD.SIGN_EXTEND, setccs);
+            if (doXform)
+            {
+                LoadSDNode ld = (LoadSDNode)n0.getNode();
+                SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, vt,
+                        ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                        ld.getSrcValueOffset(), n0.getValueType(),
+                        ld.isVolatile(),ld.getAlignment());
+                combineTo(n, extLoad, null);
+                SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+                combineTo(n0.getNode(), trunc, extLoad.getValue(1));
+                for (SDNode cc : setccs)
+                {
+                    ArrayList<SDValue> ops = new ArrayList<>();
+                    for (int j = 0; j < 2; j++)
+                    {
+                        SDValue sop = cc.getOperand(j);
+                        if (sop.equals(trunc))
+                            ops.add(extLoad);
+                        else
+                            ops.add(dag.getNode(ISD.SIGN_EXTEND, vt, sop));
+                    }
+                    ops.add(cc.getOperand(2));
+                    combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+                            ops), true);
+                }
+                return new SDValue(n, 0);
+            }
+        }
+
+        if ((n0.getNode().isSEXTLoad() || n0.getNode().isExtLoad()) &&
+                n0.getNode().isUNINDEXEDLoad() && n0.hasOneUse())
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            EVT evt = ld.getMemoryVT();
+            if ((!legalOprations && !ld.isVolatile()) ||
+                    tli.isLoadExtLegal(LoadExtType.SEXTLOAD, evt))
+            {
+                SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, vt,
+                        ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                        ld.getSrcValueOffset(), evt, ld.isVolatile(),
+                        ld.getAlignment());
+                combineTo(n, extLoad, true);
+                combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE,
+                        n0.getValueType(), extLoad), extLoad.getValue(1));
+                return new SDValue(n, 0);
+            }
+        }
+
+        if (n0.getOpcode() == ISD.SETCC)
+        {
+            // sext(setcc) -> sext_in_reg(vsetcc) for vectors.
+            if (vt.isVector() && vt.getSizeInBits() == n0.getOperand(0).getValueSizeInBits() &&
+                    !legalOprations)
+            {
+                return dag.getVSetCC(vt, n0.getOperand(0), n0.getOperand(1),
+                        ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition());
+            }
+
+            SDValue negOne = dag.getConstant(APInt.getAllOnesValue(vt.getSizeInBits()), vt, false);
+            SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+                    negOne, dag.getConstant(0, vt, false),
+                    ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition(), true);
+            if (scc.getNode() != null)
+                return scc;
+        }
+
+        if ((!legalOprations || tli.isOperationLegal(ISD.ZERO_EXTEND, vt)) &&
+                dag.signBitIsZero(n0, 0))
+            return dag.getNode(ISD.ZERO_EXTEND, vt, n0);
+
         return new SDValue();
+    }
+
+    private boolean extendUsesToFormExtLoad(SDNode n,
+            SDValue n0,
+            int extOpc,
+            ArrayList<SDNode> extendNodes)
+    {
+        boolean hasCopyToRegUses = false;
+        boolean isTruncFree = tli.isTruncateFree(n.getValueType(0), n0.getValueType());
+        for (SDUse u : n0.getNode().getUseList())
+        {
+            SDNode user = u.getUser();
+            if (user.equals(n)) continue;
+            if (u.getResNo() != n0.getResNo()) continue;
+            if (extOpc != ISD.ANY_EXTEND && user.getOpcode() == ISD.SETCC)
+            {
+                CondCode cc = ((CondCodeSDNode)user.getOperand(2).getNode()).getCondition();
+                if (extOpc == ISD.ZERO_EXTEND && cc.isSignedIntSetCC())
+                    return false;
+
+                boolean add = false;
+                for (int i = 0; i < 2; i++)
+                {
+                    SDValue useOp = user.getOperand(i);
+                    if (useOp.equals(n0))
+                        continue;
+                    if ((useOp.getNode() instanceof ConstantSDNode))
+                        return false;
+                    add = true;
+                }
+                if (add)
+                    extendNodes.add(user);
+                continue;
+            }
+
+            if (!isTruncFree)
+                return false;
+            if (user.getOpcode() == ISD.CopyToReg)
+                hasCopyToRegUses = true;
+        }
+
+        if (hasCopyToRegUses)
+        {
+            boolean bothLiveOut = false;
+            for (SDUse u : n.getUseList())
+            {
+                if (u.getResNo() == 0 && u.getUser().getOpcode() == ISD.CopyToReg)
+                {
+                    bothLiveOut = true;
+                    break;
+                }
+            }
+            if (bothLiveOut)
+                return extendNodes.size() != 0;
+        }
+        return true;
     }
 
     private SDValue simplifySetCC(EVT vt, SDValue op0,
