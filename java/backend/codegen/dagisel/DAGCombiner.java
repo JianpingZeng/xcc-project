@@ -1508,16 +1508,144 @@ public class DAGCombiner
 
     private SDValue visitSIGN_EXTEND_INREG(SDNode n)
     {
+        // TODO: 18-6-23
         return new SDValue();
     }
 
     private SDValue visitANY_EXTEND(SDNode n)
     {
+        // TODO: 18-6-23
         return new SDValue();
     }
 
     private SDValue visitZERO_EXTEND(SDNode n)
     {
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+
+        // fold (zext c1) -> c1
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.ZERO_EXTEND, vt, n0);
+
+        // fold (zext (zext x)) -> (zext x)
+        // fold (zext (aext x)) -> (zext x)
+        if (n0.getOpcode() == ISD.ZERO_EXTEND ||
+                n0.getOpcode() == ISD.ANY_EXTEND)
+            return dag.getNode(ISD.ZERO_EXTEND, vt, n0.getOperand(0));
+
+        // fold (zext (truncate (load x))) -> (zext (smaller load x))
+        // fold (zext (truncate (srl (load x), c))) -> (zext (small load (x+c/n)))
+        if (n0.getOpcode() == ISD.TRUNCATE)
+        {
+            SDValue narrowLoad = reduceLoadWidth(n0.getNode());
+            if (narrowLoad.getNode() != null)
+            {
+                if (!narrowLoad.getNode().equals(n0.getNode()))
+                    combineTo(n0.getNode(), narrowLoad, true);
+                return dag.getNode(ISD.ZERO_EXTEND, vt, narrowLoad);
+            }
+        }
+        // fold (zext (truncate x)) -> (and x, mask)
+        if (n0.getOpcode() == ISD.TRUNCATE &
+                (!legalOprations || tli.isOperationLegal(ISD.AND, vt)))
+        {
+            SDValue op = n0.getOperand(0);
+            if (op.getValueType().bitsGT(vt))
+                op = dag.getNode(ISD.ANY_EXTEND, vt, op);
+            else if (op.getValueType().bitsGT(vt))
+                op = dag.getNode(ISD.TRUNCATE, vt, op);
+            return dag.getZeroExtendInReg(op, n0.getValueType());
+        }
+
+        // Fold (zext (and (trunc x), cst)) -> (and x, cst),
+        // if either of the casts is not free.
+        if (n0.getOpcode() == ISD.AND &&
+                n0.getOperand(0).getOpcode() == ISD.TRUNCATE &&
+                n0.getOperand(1).getOpcode() == ISD.Constant &&
+                (!tli.isTruncateFree(n0.getOperand(0).getOperand(0).getValueType(),
+                        n0.getValueType()) ||
+                !tli.isZExtFree(n0.getValueType(), vt)))
+        {
+            SDValue x = n0.getOperand(0).getOperand(0);
+            if (x.getValueType().bitsLT(vt))
+                x = dag.getNode(ISD.ANY_EXTEND, vt, x);
+            else if (x.getValueType().bitsGT(vt))
+                x = dag.getNode(ISD.TRUNCATE, vt, x);
+            APInt mask = ((ConstantSDNode)n0.getOperand(1).getNode()).getAPIntValue();
+            mask.zext(vt.getSizeInBits());
+            return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
+        }
+
+        // fold (zext (load x)) -> (zext (truncate (zextload x)))
+        if (n0.getNode().isNONExtLoad() && ((!legalOprations &&
+                ((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, n0.getValueType())))
+        {
+            boolean doXform = true;
+            ArrayList<SDNode> setccs = new ArrayList<>();
+            if (!n0.hasOneUse())
+                doXform = extendUsesToFormExtLoad(n, n0, ISD.ZERO_EXTEND, setccs);
+            if (doXform)
+            {
+                LoadSDNode ld = (LoadSDNode)n0.getNode();
+                SDValue extLoad = dag.getExtLoad(LoadExtType.ZEXTLOAD, vt,
+                        ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                        ld.getSrcValueOffset(), n0.getValueType(),
+                        ld.isVolatile(),ld.getAlignment());
+                combineTo(n, extLoad, true);
+                SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+                combineTo(n0.getNode(), trunc, extLoad.getValue(1));
+                for (SDNode cc : setccs)
+                {
+                    ArrayList<SDValue> ops = new ArrayList<>();
+                    for (int j = 0; j < 2; j++)
+                    {
+                        SDValue sop = cc.getOperand(j);
+                        if (sop.equals(trunc))
+                            ops.add(extLoad);
+                        else
+                            ops.add(dag.getNode(ISD.ZERO_EXTEND, vt, sop));
+                    }
+                    ops.add(cc.getOperand(2));
+                    combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+                            ops), true);
+                }
+                return new SDValue(n, 0);
+            }
+        }
+
+        // fold (zext (zextload x)) -> (zext (truncate (zextload x)))
+        // fold (zext ( extload x)) -> (zext (truncate (zextload x)))
+        if ((n0.getNode().isZEXTLoad() || n0.getNode().isExtLoad()) &&
+                n0.getNode().isUNINDEXEDLoad() && n0.hasOneUse())
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            EVT evt = ld.getMemoryVT();
+            if ((!legalOprations && !ld.isVolatile()) ||
+                    tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, evt))
+            {
+                SDValue extLoad = dag.getExtLoad(LoadExtType.ZEXTLOAD, vt,
+                        ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                        ld.getSrcValueOffset(), evt, ld.isVolatile(),
+                        ld.getAlignment());
+                combineTo(n, extLoad, true);
+                combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE,
+                        n0.getValueType(), extLoad), extLoad.getValue(1));
+                return new SDValue(n, 0);
+            }
+        }
+
+        // zext(setcc x,y,cc) -> select_cc x, y, 1, 0, cc
+        if (n0.getOpcode() == ISD.SETCC)
+        {
+            SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+                    dag.getConstant(1, vt, false),
+                    dag.getConstant(0, vt, false),
+                    ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition(), true);
+            if (scc.getNode() != null)
+                return scc;
+        }
+
         return new SDValue();
     }
 
@@ -1601,7 +1729,7 @@ public class DAGCombiner
                         ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
                         ld.getSrcValueOffset(), n0.getValueType(),
                         ld.isVolatile(),ld.getAlignment());
-                combineTo(n, extLoad, null);
+                combineTo(n, extLoad,true);
                 SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
                 combineTo(n0.getNode(), trunc, extLoad.getValue(1));
                 for (SDNode cc : setccs)
