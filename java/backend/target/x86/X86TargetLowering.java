@@ -39,8 +39,8 @@ import java.util.Objects;
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.CondCode.*;
-import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllOnes;
-import static backend.codegen.dagisel.SelectionDAG.isBuildVectorAllZeros;
+import static backend.codegen.dagisel.ISD.isBuildVectorAllOnes;
+import static backend.codegen.dagisel.ISD.isBuildVectorAllZeros;
 import static backend.codegen.dagisel.TLSModel.*;
 import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
@@ -4847,5 +4847,20 @@ public class X86TargetLowering extends TargetLowering
             }
         }
         return super.isGAPlusOffset(n, gv, offset);
+    }
+
+    @Override
+    public boolean isVectorClearMaskLegal(TIntArrayList indices, EVT vt)
+    {
+        int numElts = vt.getVectorNumElements();
+        if (numElts == 2) return true;
+        if (numElts == 4 && vt.getSizeInBits() == 128)
+        {
+            return isMOVLMask(indices, vt) ||
+                    isCommutedMOVLMask(indices, vt, true) ||
+                    isSHUFPMask(indices,vt) ||
+                    isCommutedSHUFPMask(indices, vt);
+        }
+        return false;
     }
 }
