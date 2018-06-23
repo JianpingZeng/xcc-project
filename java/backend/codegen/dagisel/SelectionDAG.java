@@ -39,11 +39,10 @@ import tools.*;
 
 import java.util.*;
 
+import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
-import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
-import static backend.support.GraphWriter.writeGraph;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;
 import static tools.APFloat.CmpResult.*;
 import static tools.APFloat.OpStatus.opDivByZero;
@@ -3110,6 +3109,37 @@ public class SelectionDAG
         SDValue undef = getUNDEF(ptr.getValueType());
         return getLoad(UNINDEXED, LoadExtType.NON_EXTLOAD, vt, chain, ptr, undef,
                 sv, svOffset, vt, isVolatile, alignment);
+    }
+
+    public SDValue getIndexedLoad(SDValue origLoad, SDValue base, SDValue offset,
+            MemIndexedMode am)
+    {
+        LoadSDNode ld = (LoadSDNode)origLoad.getNode();
+        assert ld.getOffset().getOpcode() == ISD.UNDEF;
+        return getLoad(am, ld.getExtensionType(), origLoad.getValueType(),
+                ld.getChain(), base, offset, ld.getSrcValue(),
+                ld.getRawSubclassData(), ld.getMemoryVT(),
+                ld.isVolatile(),ld.getAlignment());
+    }
+
+    public SDValue getIndexedStore(SDValue origStore, SDValue base,
+            SDValue offset, MemIndexedMode am)
+    {
+        StoreSDNode st = (StoreSDNode)origStore.getNode();
+        assert st.getOffset().getOpcode() == ISD.UNDEF;
+        SDVTList vts = getVTList(base.getValueType(), new EVT(MVT.Other));
+        SDValue[] ops = {st.getChain(), st.getValue(), base, offset};
+        FoldingSetNodeID calc = new FoldingSetNodeID();
+        addNodeToIDNode(calc, ISD.STORE, vts, ops);
+        int id = calc.computeHash();
+        if (cseMap.containsValue(id))
+            return new SDValue(cseMap.get(id), 0);
+        SDNode n = new StoreSDNode(ops, vts, am, st.isTruncatingStore(),
+                st.getMemoryVT(), st.getSrcValue(), st.getSrcValueOffset(),
+                st.getAlignment(), st.isVolatile());
+        cseMap.put(id, n);
+        add(n);
+        return new SDValue(n, 0);
     }
 
     public SDValue updateNodeOperands(SDValue node, ArrayList<SDValue> ops)
