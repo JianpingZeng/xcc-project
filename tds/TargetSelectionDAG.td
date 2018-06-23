@@ -475,16 +475,16 @@ def vtFP       : PatLeaf<(vt),  [{ return n.getVT().isFloatingPoint(); }]>;
 
 def immAllOnes : PatLeaf<(imm), [{ return n.isAllOnesValue(); }]>;
 def immAllOnesV: PatLeaf<(build_vector), [{
-  return SelectionDAG.isBuildVectorAllOnes(n);
+  return ISD.isBuildVectorAllOnes(n);
 }]>;
 def immAllOnesV_bc: PatLeaf<(bitconvert), [{
-  return SelectionDAG.isBuildVectorAllOnes(n);
+  return ISD.isBuildVectorAllOnes(n);
 }]>;
 def immAllZerosV: PatLeaf<(build_vector), [{
-  return SelectionDAG.isBuildVectorAllZeros(n);
+  return ISD.isBuildVectorAllZeros(n);
 }]>;
 def immAllZerosV_bc: PatLeaf<(bitconvert), [{
-  return SelectionDAG.isBuildVectorAllZeros(n);
+  return ISD.isBuildVectorAllZeros(n);
 }]>;
 
 

@@ -1406,10 +1406,10 @@ public abstract class TargetLowering
         indexedModeActions[vt.simpleVT][0][idxMode.ordinal()] = action.ordinal();
     }
 
-    public boolean isIndexedLoadLegal(int idxMode, EVT vt)
+    public boolean isIndexedLoadLegal(MemIndexedMode idxMode, EVT vt)
     {
-        return vt.isSimple() && (getIndexedLoadAction(idxMode, vt) == Legal ||
-                getIndexedLoadAction(idxMode, vt) == Custom);
+        return vt.isSimple() && (getIndexedLoadAction(idxMode.ordinal(), vt) == Legal ||
+                getIndexedLoadAction(idxMode.ordinal(), vt) == Custom);
     }
 
     public LegalizeAction getIndexedStoreAction(int idxMode, EVT vt)
@@ -1428,10 +1428,10 @@ public abstract class TargetLowering
         indexedModeActions[vt.simpleVT][1][idxMode.ordinal()] = action.ordinal();
     }
 
-    public boolean isIndexedStoreLegal(int idxMode, EVT vt)
+    public boolean isIndexedStoreLegal(MemIndexedMode idxMode, EVT vt)
     {
-        return vt.isSimple() && (getIndexedStoreAction(idxMode, vt) == Legal
-            || getIndexedStoreAction(idxMode, vt) == Custom);
+        return vt.isSimple() && (getIndexedStoreAction(idxMode.ordinal(), vt) == Legal
+            || getIndexedStoreAction(idxMode.ordinal(), vt) == Custom);
     }
 
     public LegalizeAction getConvertAction(EVT fromVT, EVT toVT)
@@ -2881,6 +2881,15 @@ public abstract class TargetLowering
                 }
             }
         }
+        return false;
+    }
+
+    public boolean isPreIndexedAddressPart(SDNode n,
+            OutParamWrapper<SDValue> basePtr,
+            OutParamWrapper<SDValue> offset,
+            OutParamWrapper<MemIndexedMode> am,
+            SelectionDAG dag)
+    {
         return false;
     }
 }

@@ -34,6 +34,7 @@ import backend.value.ConstantArray;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
+import tools.OutParamWrapper;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 
+import static backend.codegen.dagisel.MemIndexedMode.*;
 import static backend.codegen.dagisel.SelectionDAG.isCommutativeBinOp;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 
@@ -381,6 +383,260 @@ public class DAGCombiner
             return new SDValue(n, 0);
 
         return new SDValue();
+    }
+
+    /**
+     * Try turning a load / store into a
+     * pre-indexed load / store when the base pointer is an add or subtract
+     * and it has other uses besides the load / store. After the
+     * transformation, the new indexed load / store has effectively folded
+     * the add / subtract in and all of its other uses are redirected to the
+     * new load / store.
+     * @param n
+     * @return
+     */
+    private boolean combineToPreIndexedLoadStore(SDNode n)
+    {
+        if (!legalOprations) return false;
+
+        boolean isLoad = true;
+        SDValue ptr;
+        EVT vt;
+        if (n instanceof LoadSDNode)
+        {
+            LoadSDNode ld = (LoadSDNode)n;
+            if (ld.isIndexed()) return false;
+            vt = ld.getMemoryVT();
+            if (!tli.isIndexedLoadLegal(PRE_INC, vt) &&
+                    !tli.isIndexedLoadLegal(PRE_DEC, vt))
+                return false;
+            ptr = ld.getBasePtr();
+        }
+        else if (n instanceof StoreSDNode)
+        {
+            StoreSDNode st = (StoreSDNode)n;
+            if (st.isIndexed()) return false;
+            vt = st.getMemoryVT();
+            if (!tli.isIndexedStoreLegal(PRE_INC, vt) &&
+                    !tli.isIndexedStoreLegal(PRE_DEC, vt))
+                return false;
+            ptr = st.getBasePtr();
+            isLoad = false;
+        }
+        else
+        {
+            return false;
+        }
+
+        if ((ptr.getOpcode() != ISD.ADD && ptr.getOpcode() != ISD.SUB) ||
+                ptr.hasOneUse())
+            return false;
+        OutParamWrapper<SDValue> x = new OutParamWrapper<>(new SDValue());
+        OutParamWrapper<SDValue> x2 = new OutParamWrapper<>(new SDValue());
+        OutParamWrapper<MemIndexedMode> x3 = new OutParamWrapper<>(UNINDEXED);
+        if (!tli.isPreIndexedAddressPart(n, x, x2, x3, dag))
+            return false;
+
+        SDValue basePtr = x.get(), offset = x2.get();
+        MemIndexedMode am = x3.get();
+        if (offset.getNode() instanceof ConstantSDNode &&
+                ((ConstantSDNode)offset.getNode()).isNullValue())
+            return false;
+
+        if (basePtr.getNode() instanceof FrameIndexSDNode ||
+                basePtr.getNode() instanceof RegisterSDNode)
+        {
+            return false;
+        }
+
+        if (!isLoad)
+        {
+            SDValue val = ((StoreSDNode)n).getValue();
+            if (val.equals(basePtr) || basePtr.getNode().isPredecessorOf(val.getNode()))
+                return false;
+        }
+
+        boolean realUse = false;
+        for (SDUse u : ptr.getNode().getUseList())
+        {
+            SDNode user = u.getUser();
+            if (user.equals(n))
+                continue;
+            if (user.isPredecessorOf(n))
+                return false;
+
+            if (!((user.getOpcode() == ISD.LOAD &&
+                    ((LoadSDNode)user).getBasePtr().equals(ptr))) ||
+                    (user.getOpcode() == ISD.STORE &&
+                            ((StoreSDNode)user).getBasePtr().equals(ptr)))
+                realUse = true;
+        }
+
+        if (!realUse) return false;
+
+        SDValue result;
+        if (isLoad)
+            result = dag.getIndexedLoad(new SDValue(n, 0), basePtr, offset, am);
+        else
+            result = dag.getIndexedStore(new SDValue(n, 0), basePtr, offset, am);
+
+        WorklistRemover remover = new WorklistRemover(this);
+        if (isLoad)
+        {
+            dag.replaceAllUsesOfValueWith(new SDValue(n, 0), result.getValue(0),
+                    remover);
+            dag.replaceAllUsesOfValueWith(new SDValue(n, 1), result.getValue(2),
+                    remover);
+        }
+        else
+        {
+            dag.replaceAllUsesOfValueWith(new SDValue(n, 0), result.getValue(1),
+                    remover);
+        }
+        dag.deleteNode(n);
+        dag.replaceAllUsesOfValueWith(ptr, result.getValue(isLoad ?1:0),
+                remover);
+        removeFromWorkList(ptr.getNode());
+        dag.deleteNode(ptr.getNode());
+        return true;
+    }
+
+    /**
+     * Try to combine a load / store with a
+     * add / sub of the base pointer node into a post-indexed load / store.
+     * The transformation folded the add / subtract into the new indexed
+     * load / store effectively and all of its uses are redirected to the
+     * new load / store.
+     * @param n
+     * @return
+     */
+    private boolean combineToPostIndexedLoadStore(SDNode n)
+    {
+        if (!legalOprations) return false;
+
+        boolean isLoad = true;
+        SDValue ptr;
+        EVT vt;
+        if (n instanceof LoadSDNode)
+        {
+            LoadSDNode ld = (LoadSDNode)n;
+            if (ld.isIndexed()) return false;
+            vt = ld.getMemoryVT();
+            if (!tli.isIndexedLoadLegal(POST_INC, vt) &&
+                    !tli.isIndexedLoadLegal(POST_DEC, vt))
+                return false;
+            ptr = ld.getBasePtr();
+        }
+        else if (n instanceof StoreSDNode)
+        {
+            StoreSDNode st = (StoreSDNode)n;
+            if (st.isIndexed()) return false;
+            vt = st.getMemoryVT();
+            if (!tli.isIndexedStoreLegal(POST_INC, vt) &&
+                    !tli.isIndexedStoreLegal(POST_DEC, vt))
+                return false;
+            ptr = st.getBasePtr();
+            isLoad = false;
+        }
+        else
+        {
+            return false;
+        }
+
+        if (ptr.hasOneUse())
+            return false;
+
+        for (SDUse u : ptr.getNode().getUseList())
+        {
+            SDNode user = u.getUser();
+            if (user.equals(n) || (user.getOpcode() != ISD.ADD &&
+                user.getOpcode() != ISD.SUB))
+                continue;
+
+            OutParamWrapper<SDValue> x = new OutParamWrapper<>(new SDValue());
+            OutParamWrapper<SDValue> x2 = new OutParamWrapper<>(new SDValue());
+            OutParamWrapper<MemIndexedMode> x3 = new OutParamWrapper<>(UNINDEXED);
+            boolean res = !tli.isPreIndexedAddressPart(n, x, x2, x3, dag);
+            SDValue basePtr = x.get(), offset = x2.get();
+            MemIndexedMode am = x3.get();
+            if (res)
+            {
+                if (ptr.equals(offset))
+                {
+                    SDValue t = offset;
+                    offset = ptr;
+                    ptr = t;
+                }
+                if (!ptr.equals(basePtr))
+                    continue;
+                if (offset.getNode() instanceof ConstantSDNode &&
+                        ((ConstantSDNode)offset.getNode()).isNullValue())
+                    continue;
+
+                if (basePtr.getNode() instanceof FrameIndexSDNode ||
+                        basePtr.getNode() instanceof RegisterSDNode)
+                    continue;
+
+                boolean tryNext = false;
+                for (SDUse u2 : basePtr.getNode().getUseList())
+                {
+                    SDNode user2 = u2.getUser();
+                    if (user2.equals(ptr.getNode()))
+                        continue;
+
+                    if (user2.getOpcode() == ISD.ADD || user2.getOpcode() == ISD.SUB)
+                    {
+                        boolean realUse = false;
+                        for (SDUse use : user2.getUseList())
+                        {
+                            SDNode useUse = use.getUser();
+                            if (!((useUse.getOpcode() == ISD.LOAD &&
+                                    ((LoadSDNode)useUse).getBasePtr().getNode().equals(user2)) ||
+                                    (useUse.getOpcode() == ISD.STORE &&
+                                            ((StoreSDNode)useUse).getBasePtr().getNode().equals(user2))))
+                            {
+                                realUse = true;
+                            }
+                        }
+                        if (!realUse)
+                        {
+                            tryNext = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (tryNext) continue;
+
+                if (!user.isPredecessorOf(n) && !n.isPredecessorOf(user))
+                {
+                    SDValue result = isLoad ?
+                            dag.getIndexedLoad(new SDValue(n, 0), basePtr, offset, am) :
+                            dag.getIndexedStore(new SDValue(n, 0), basePtr, offset, am);
+
+                    WorklistRemover remover = new WorklistRemover(this);
+                    if (isLoad)
+                    {
+                        dag.replaceAllUsesOfValueWith(new SDValue(n, 0), result.getValue(0),
+                                remover);
+                        dag.replaceAllUsesOfValueWith(new SDValue(n, 1), result.getValue(2),
+                                remover);
+                    }
+                    else
+                    {
+                        dag.replaceAllUsesOfValueWith(new SDValue(n, 0), result.getValue(1),
+                                remover);
+                    }
+                    dag.deleteNode(n);
+                    dag.replaceAllUsesOfValueWith(new SDValue(user, 0),
+                            result.getValue(isLoad?1:0),
+                            remover);
+                    removeFromWorkList(user);
+                    dag.deleteNode(user);
+                }
+            }
+        }
+        return true;
     }
 
     private SDValue visitBR_CC(SDNode n)
@@ -934,7 +1190,7 @@ public class DAGCombiner
             return n1;
 
         // fold (fmul A, 0) -> 0, vector edition.
-        if (EnableUnsafeFPMath.value && fp1 != null && ISD.isBuildVectorAllZeros(n1))
+        if (EnableUnsafeFPMath.value && fp1 != null && ISD.isBuildVectorAllZeros(n1.getNode()))
             return n1;
 
         // fold (fmul X, 2.0) -> (fadd X, X)
@@ -1165,6 +1421,89 @@ public class DAGCombiner
             return dag.getNode(ISD.TRUNCATE, vt, shorter);
 
         return reduceLoadWidth(n);
+    }
+
+    /**
+     * If the result of a wider load is shifted to right of N
+     * bits and then truncated to a narrower type and where N is a multiple
+     * of number of bits of the narrower type, transform it to a narrower load
+     * from address + N / num of bits of new type. If the result is to be
+     * extended, also fold the extension to form a extending load.
+     * @param n
+     * @return
+     */
+    private SDValue reduceLoadWidth(SDNode n)
+    {
+        int opc = n.getOpcode();
+        LoadExtType extType = LoadExtType.NON_EXTLOAD;
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+        EVT evt = new EVT(vt.getSimpleVT().simpleVT);
+
+        if (vt.isVector())
+            return new SDValue();
+
+        if (opc == ISD.SIGN_EXTEND_INREG)
+        {
+            extType = LoadExtType.SEXTLOAD;
+            evt = ((VTSDNode)n.getOperand(1).getNode()).getVT();
+            if (legalOprations && !tli.isLoadExtLegal(LoadExtType.SEXTLOAD, evt))
+                return new SDValue();
+        }
+
+        int evtBits = evt.getSizeInBits();
+        int shAmt = 0;
+        if (n0.getOpcode() == ISD.SRL && n0.hasOneUse())
+        {
+            if (n0.getOperand(1).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode c = (ConstantSDNode)n0.getOperand(1).getNode();
+                shAmt = (int) c.getZExtValue();
+                if ((shAmt & (evtBits-1)) == 0)
+                {
+                    n0 = n.getOperand(0);
+                    if ((n0.getValueType().getSizeInBits()&(evtBits-1)) != 0)
+                        return new SDValue();
+                }
+            }
+        }
+
+        if (n0.getNode() instanceof LoadSDNode &&
+                n0.hasOneUse() &&
+                evt.isRound() &&
+                ((LoadSDNode)n0.getNode()).getMemoryVT().getSizeInBits() > evtBits &&
+                !((LoadSDNode)n0.getNode()).isVolatile())
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            EVT ptrType = n0.getOperand(1).getValueType();
+
+            if (tli.isBigEndian())
+            {
+                int lvtStoreBits = ld.getMemoryVT().getStoreSizeInBits();
+                int evtStoreBits = evt.getStoreSizeInBits();
+                shAmt = lvtStoreBits - evtStoreBits - shAmt;
+            }
+
+            int ptrOff = shAmt/8;
+            int newAlign = Util.minAlign(ld.getAlignment(), ptrOff);
+            SDValue newPtr = dag.getNode(ISD.ADD, ptrType, ld.getBasePtr(),
+                    dag.getConstant(ptrOff, ptrType, false));
+
+            addToWorkList(newPtr.getNode());
+            SDValue load = extType == LoadExtType.NON_EXTLOAD ?
+                    dag.getLoad(vt, ld.getChain(), newPtr,
+                            ld.getSrcValue(), ld.getSrcValueOffset()+ptrOff,
+                            ld.isVolatile(), ld.getAlignment())
+                    : dag.getExtLoad(extType, vt, ld.getChain(),
+                    newPtr, ld.getSrcValue(), ld.getSrcValueOffset() + ptrOff,
+                    evt, ld.isVolatile(), ld.getAlignment());
+
+            WorklistRemover remover = new WorklistRemover(this);
+            dag.replaceAllUsesOfValueWith(n0.getValue(1), load.getValue(1),
+                    remover);
+            return load;
+        }
+        return new SDValue();
     }
 
     private SDValue visitSIGN_EXTEND_INREG(SDNode n)
