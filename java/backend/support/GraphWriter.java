@@ -18,7 +18,6 @@
 package backend.support;
 
 import config.Config;
-import tools.OSInfo;
 import tools.Util;
 
 import java.io.File;
@@ -147,20 +146,21 @@ public final class GraphWriter
     public static void displayGraph(File filename)
             throws IOException, InterruptedException
     {
-        if (Config.XDOT_PATH != null && !Config.XDOT_PATH.isEmpty() &&
-                OSInfo.isLinux())
+        if (!Config.XDOT_PATH.isEmpty())
         {
             System.err.println("Running 'xdot' program... ");
             Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
             int res = p.waitFor();
-            if (res != 0) {
+            if (res != 0)
+            {
                 System.err.printf("Error viewing graph %s.\n", filename.getName());
-            } else {
+            }
+            else
+            {
                 filename.delete();
             }
         }
-        else if (Config.DOT_PATH != null && !Config.DOT_PATH.isEmpty() &&
-                (OSInfo.isMacOS() || OSInfo.isMacOSX()))
+        else if (!Config.DOT_PATH.isEmpty())
         {
             StringBuilder cmd = new StringBuilder();
             String pdfFilename = filename + ".pdf";
