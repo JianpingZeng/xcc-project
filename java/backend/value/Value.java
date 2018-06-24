@@ -470,4 +470,22 @@ public class Value implements Cloneable
 	}
 
 	public int valueNumber() {return 0;}
+
+	public void uncheckedReplaceAllUsesWith(Value newVal)
+	{
+		if (!isUseEmpty())
+		{
+			for (Use u : getUseList())
+			{
+				if (u.getUser() instanceof Constant &&
+						!(u.getUser() instanceof GlobalValue))
+				{
+					Constant c = (Constant) u.getUser();
+					c.replaceUsesOfWithOnConstant(this, newVal, u);
+					continue;
+				}
+				u.setValue(newVal);
+			}
+		}
+	}
 }

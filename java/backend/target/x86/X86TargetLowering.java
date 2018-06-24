@@ -26,10 +26,7 @@ import backend.support.LLVMContext;
 import backend.target.*;
 import backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle;
 import backend.type.Type;
-import backend.value.BasicBlock;
-import backend.value.Function;
-import backend.value.GlobalValue;
-import backend.value.Value;
+import backend.value.*;
 import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
@@ -2599,7 +2596,6 @@ public class X86TargetLowering extends TargetLowering
 
         MachineFunction mf = mbb.getParent();
         MachineRegisterInfo mri = mf.getMachineRegisterInfo();
-        MachineBasicBlock thisMBB = mbb;
         MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
         MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
         mf.insert(itr, newMBB);
@@ -2615,12 +2611,12 @@ public class X86TargetLowering extends TargetLowering
 
         int lastAddrIndex = X86AddrNumOperands - 1;
         int t1 = mri.createVirtualRegister(rc);
-        MachineInstrBuilder mib = buildMI(thisMBB, tii.get(loadOpc), t1);
+        MachineInstrBuilder mib = buildMI(mbb, tii.get(loadOpc), t1);
         for (int i = 0; i<=lastAddrIndex; i++)
             mib.addOperand(argOps[i]);
 
         int t2 = mri.createVirtualRegister(rc);
-        mib = buildMI(thisMBB, tii.get(loadOpc), t2);
+        mib = buildMI(mbb, tii.get(loadOpc), t2);
         for (int i = 0; i <= lastAddrIndex-2; i++)
             mib.addOperand(argOps[i]);
 
@@ -2635,9 +2631,9 @@ public class X86TargetLowering extends TargetLowering
         int t3 = mri.createVirtualRegister(rc);
         int t4 = mri.createVirtualRegister(rc);
         buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest1Op.getReg())
-                .addReg(t1).addMBB(thisMBB).addReg(t3).addMBB(newMBB);
+                .addReg(t1).addMBB(mbb).addReg(t3).addMBB(newMBB);
         buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest2Op.getReg())
-                .addReg(t2).addMBB(thisMBB).addReg(t4).addMBB(newMBB);
+                .addReg(t2).addMBB(mbb).addReg(t4).addMBB(newMBB);
 
         int tt1 = mri.createVirtualRegister(rc);
         int tt2 = mri.createVirtualRegister(rc);
@@ -3952,14 +3948,140 @@ public class X86TargetLowering extends TargetLowering
                 stackSlot, PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
         return buildFILD(op, srcVT, chain, stackSlot, dag);
     }
-    private SDValue lowerUINT_TO_FP(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerUINT_TO_FP_i64(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFP_TO_SINT(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFABS(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFNEG(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag) {return new SDValue(); }
+
+    private SDValue lowerUINT_TO_FP(SDValue op, SelectionDAG dag)
+    {
+        SDValue n0 = op.getOperand(0);
+        if (dag.signBitIsZero(n0, 0))
+            return dag.getNode(ISD.SINT_TO_FP, op.getValueType(), n0);
+
+        EVT srcVT = n0.getValueType();
+        if (srcVT.getSimpleVT().simpleVT == MVT.i64)
+        {
+            // We only handle SSE2 f64 target here; caller can expand the rest.
+            if (op.getValueType().getSimpleVT().simpleVT != MVT.f64 ||
+                    !x86ScalarSSEf64)
+                return new SDValue();
+            return lowerUINT_TO_FP_i64(op, dag);
+        }
+        else if (srcVT.getSimpleVT().simpleVT == MVT.i32 && x86ScalarSSEf64)
+            return lowerUINT_TO_FP_i32(op, dag);
+
+        assert srcVT.getSimpleVT().simpleVT == MVT.i32:"Unknown UINT_TO_FP to lower!";
+
+        SDValue stackSlot = dag.createStackTemporary(new EVT(MVT.i64));
+        SDValue wordOff = dag.getConstant(4, new EVT(getPointerTy()), false);
+        SDValue offsetSlot = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+                stackSlot, wordOff);
+        SDValue st1 = dag.getStore(dag.getEntryNode(), op.getOperand(0),
+                stackSlot, null, 0, false, 0);
+        SDValue st2 = dag.getStore(st1, dag.getConstant(0, new EVT(MVT.i32), false),
+                offsetSlot, null, 0, false, 0);
+        return buildFILD(op, new EVT(MVT.i64), st2, stackSlot, dag);
+    }
+
+    /**
+     * Converts unsigned i64 to float point type.
+     * @param op
+     * @param dag
+     * @return
+     */
+    private SDValue lowerUINT_TO_FP_i64(SDValue op, SelectionDAG dag)
+    {
+        ArrayList<Constant> cs = new ArrayList<>();
+        cs.add(ConstantInt.get(new APInt(32, 0x45300000)));
+        cs.add(ConstantInt.get(new APInt(32, 0x43300000)));
+        cs.add(ConstantInt.get(new APInt(32,0)));
+        cs.add(ConstantInt.get(new APInt(32,0)));
+        Constant cv = ConstantVector.get(cs);
+        SDValue cpIdx0 = dag.getConstantPool(cv, new EVT(getPointerTy()), 16,
+                0, false, 0);
+        ArrayList<Constant> cv1 = new ArrayList<>();
+        cv1.add(ConstantFP.get(new APFloat(new APInt(64, 0x4530000000000000L))));
+        cv1.add(ConstantFP.get(new APFloat(new APInt(64, 0x4330000000000000L))));
+        Constant c1 = ConstantVector.get(cv1);
+        SDValue cpIdx1 = dag.getConstantPool(c1, new EVT(getPointerTy()), 16,
+                0, false, 0);
+
+        SDValue xr1 = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v4i32),
+                dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+                        op.getOperand(0), dag.getIntPtrConstant(1)));
+        SDValue xr2 = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v4i32),
+                dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+                        op.getOperand(0), dag.getIntPtrConstant(0)));
+        SDValue unpack1 = getUnpackl(dag, new EVT(MVT.v4i32), xr1, xr2);
+        SDValue ld0 = dag.getLoad(new EVT(MVT.v4i32), dag.getEntryNode(),
+                cpIdx0, PseudoSourceValue.getConstantPool(), 0,
+                false, 16);
+        SDValue unpack2 = getUnpackl(dag, new EVT(MVT.v4i32), unpack1, ld0);
+        SDValue xr2f = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v4i32), unpack2);
+        SDValue ld1 = dag.getLoad(new EVT(MVT.v2f64), ld0.getValue(1),
+                cpIdx1, PseudoSourceValue.getConstantPool(), 0, false, 16);
+        SDValue sub = dag.getNode(ISD.FSUB, new EVT(MVT.v2f64), xr2f, ld1);
+
+        int[] shufMask = {1, -1};
+        SDValue shuf = dag.getVectorShuffle(new EVT(MVT.v2f64), sub,
+                dag.getUNDEF(new EVT(MVT.v2f64)), shufMask);
+        SDValue add = dag.getNode(ISD.FADD, new EVT(MVT.v2f64), shuf, sub);
+        return dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64), add,
+                dag.getIntPtrConstant(0));
+    }
+
+    private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag)
+    {
+        SDValue bias = dag.getConstantFP(Util.bitsToDouble(0x4330000000000000L),
+                new EVT(MVT.f64), false);
+        SDValue load = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v4i32),
+                dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+                        op.getOperand(0), dag.getIntPtrConstant(0)));
+
+        load = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64),
+                dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v2f64), load),
+                dag.getIntPtrConstant(0));
+        SDValue or = dag.getNode(ISD.OR, new EVT(MVT.v2i64),
+                dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v2i64),
+                        dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v2f64), load)),
+                dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v2i64),
+                        dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v2f64), bias)));
+        or = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64),
+                dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v2f64), or),
+                dag.getIntPtrConstant(0));
+
+        SDValue sub = dag.getNode(ISD.FSUB, new EVT(MVT.f64), or, bias);
+        EVT destVT = op.getValueType();
+        if (destVT.bitsLT(new EVT(MVT.f64)))
+            return dag.getNode(ISD.FP_ROUND, destVT, sub, dag.getIntPtrConstant(0));
+        else if (destVT.bitsGT(new EVT(MVT.f64)))
+            return dag.getNode(ISD.FP_EXTEND, destVT, sub);
+
+        return sub;
+    }
+
+    private SDValue lowerFP_TO_SINT(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFABS(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFNEG(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
     private SDValue lowerSETCC(SDValue op, SelectionDAG dag)
     {
         assert op.getValueType().getSimpleVT().simpleVT ==MVT.i8:
@@ -4140,8 +4262,16 @@ public class X86TargetLowering extends TargetLowering
         return COND_INVALID;
     }
 
-    private SDValue lowerVSETCC(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerSELECT(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerVSETCC(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerSELECT(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
 
     /**
      * Return true if the specified op is a X86 logical comparison.
@@ -4289,7 +4419,11 @@ public class X86TargetLowering extends TargetLowering
         }
         return dag.getNode(X86ISD.BRCOND, op.getValueType(), chain, dest, cc, cond);
     }
-    private SDValue lowerMEMSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerMEMSET(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
     private SDValue lowerJumpTable(SDValue op, SelectionDAG dag)
     {
         JumpTableSDNode jtn = (JumpTableSDNode)op.getNode();
@@ -4315,25 +4449,97 @@ public class X86TargetLowering extends TargetLowering
         }
         return result;
     }
-    private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerVASTART(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerVAARG(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerVACOPY(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerINTRINSIC_WO_CHAIN(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFRAME_TO_ARGS_OFFSET(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerEH_RETURN(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerTRAMPOLINE(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerFLT_ROUNDS_(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerCTLZ(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerCTTZ(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerMUL_V2I64(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerXALUO(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerVASTART(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerVAARG(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerVACOPY(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerINTRINSIC_WO_CHAIN(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFRAME_TO_ARGS_OFFSET(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerEH_RETURN(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerTRAMPOLINE(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerFLT_ROUNDS_(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerCTLZ(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerCTTZ(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerMUL_V2I64(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerXALUO(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
 
-    private SDValue lowerCMP_SWAP(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerLOAD_SUB(SDValue op, SelectionDAG dag) {return new SDValue(); }
-    private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag) {return new SDValue(); }
+    private SDValue lowerCMP_SWAP(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerLOAD_SUB(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
+    private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag)
+    {
+        // TODO
+        return new SDValue();
+    }
     
     /**
      * Provide a customized hook for the X86 architecture with specified operation.
@@ -4621,33 +4827,39 @@ public class X86TargetLowering extends TargetLowering
 
     private SDValue performMEMBARRIERCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performVZEXT_MOVLCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performBTCombine(SDNode n, SelectionDAG dag,
             DAGCombinerInfo combineInfo)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performFANDCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performFORCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performSTORECombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     /**
@@ -4723,22 +4935,26 @@ public class X86TargetLowering extends TargetLowering
     private SDValue performMulCombine(SDNode n, SelectionDAG dag,
             DAGCombinerInfo combineInfo)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performCMOVCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performSELECTCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     private SDValue performShuffleCombine(SDNode n, SelectionDAG dag)
     {
-        return null;
+        // TODO
+        return new SDValue();
     }
 
     @Override
