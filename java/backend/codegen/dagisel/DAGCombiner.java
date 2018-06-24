@@ -1508,13 +1508,226 @@ public class DAGCombiner
 
     private SDValue visitSIGN_EXTEND_INREG(SDNode n)
     {
-        // TODO: 18-6-23
+        SDValue n0 = n.getOperand(0);
+        SDValue n1 = n.getOperand(1);
+        EVT destVT = n.getValueType(0);
+        EVT srcVT = ((VTSDNode)n1.getNode()).getVT();
+        int destVTBits = destVT.getSizeInBits();
+        int srcVTBits = srcVT.getSizeInBits();
+
+        if (n0.getNode() instanceof ConstantSDNode || n0.getOpcode() == ISD.UNDEF)
+            return dag.getNode(ISD.SIGN_EXTEND_INREG, destVT, n0, n1);
+
+        if (dag.computeNumSignBits(n0) >= destVTBits-srcVTBits+1)
+            return n0;
+
+        // fold (sext_in_reg (sext x)) -> (sext x)
+        // fold (sext_in_reg (aext x)) -> (sext x)
+        // if x is small enough.
+        if (n0.getOpcode() == ISD.SIGN_EXTEND || n0.getOpcode() == ISD.ANY_EXTEND)
+        {
+            SDValue n00 = n0.getOperand(0);
+            if (n00.getValueType().getSizeInBits() < destVTBits)
+                return dag.getNode(ISD.SIGN_EXTEND, destVT, n00, n1);
+        }
+
+        // fold (sext_in_reg x) -> (zext_in_reg x) if the sign bit is known zero.
+        if (dag.maskedValueIsZero(n0, APInt.getBitsSet(destVTBits, srcVTBits-1, srcVTBits)))
+            return dag.getZeroExtendInReg(n0, srcVT);
+
+        // fold operands of sext_in_reg based on knowledge that the top bits are not
+        // demanded.
+        if (simplifyDemandedBits(new SDValue(n, 0)))
+            return new SDValue(n, 0);
+
+        // fold (sext_in_reg (load x)) -> (smaller sextload x)
+        // fold (sext_in_reg (srl (load x), c)) -> (smaller sextload (x+c/evtbits))
+        SDValue narrowLoad = reduceLoadWidth(n);
+        if (narrowLoad.getNode() != null)
+            return narrowLoad;
+
+        // fold (sext_in_reg (srl X, 24), i8) -> (sra X, 24)
+        // fold (sext_in_reg (srl X, 23), i8) -> (sra X, 23) iff possible.
+        // We already fold "(sext_in_reg (srl X, 25), i8) -> srl X, 25" above.
+        if (n0.getOpcode() == ISD.SRL)
+        {
+            if (n0.getOperand(1).getNode() instanceof ConstantSDNode)
+            {
+                ConstantSDNode shAmt = (ConstantSDNode)n0.getOperand(1).getNode();
+                if (shAmt.getZExtValue()+srcVTBits <= destVTBits)
+                {
+                    int inSignBits = dag.computeNumSignBits(n0.getOperand(0));
+                    if (destVTBits - shAmt.getZExtValue()-srcVTBits < inSignBits)
+                        return dag.getNode(ISD.SRA, destVT, n0.getOperand(0),
+                                n0.getOperand(1));
+                }
+            }
+        }
+
+        // fold (sext_inreg (extload x)) -> (sextload x)
+        if (n0.getNode().isExtLoad() && n0.getNode().isUNINDEXEDLoad() &&
+                srcVT.equals(((LoadSDNode)n0.getNode()).getMemoryVT()) &&
+                ((!legalOprations && !((LoadSDNode)n0.getNode()).isVolatile())) ||
+                tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT))
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, destVT,
+                    ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                    ld.getSrcValueOffset(), srcVT, ld.isVolatile(),
+                    ld.getAlignment());
+            combineTo(n, extLoad, true);
+            combineTo(n0.getNode(), extLoad, extLoad.getValue(1));
+            return new SDValue(n, 0);
+        }
+
+        // fold (sext_inreg (zextload x)) -> (sextload x) iff load has one use
+        if (n0.getNode().isZEXTLoad() && n0.getNode().isUNINDEXEDLoad() &&
+                n0.hasOneUse() && srcVT.equals(((LoadSDNode)n0.getNode()).getMemoryVT()) &&
+                ((!legalOprations && !((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT)))
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, destVT,
+                    ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                    ld.getSrcValueOffset(), srcVT, ld.isVolatile(),
+                    ld.getAlignment());
+            combineTo(n, extLoad, true);
+            combineTo(n0.getNode(), extLoad, extLoad.getValue(1));
+            return new SDValue(n, 0);
+        }
         return new SDValue();
     }
 
     private SDValue visitANY_EXTEND(SDNode n)
     {
-        // TODO: 18-6-23
+        SDValue n0 = n.getOperand(0);
+        EVT vt = n.getValueType(0);
+
+        // fold (aext c1) -> c1
+        if (n0.getNode() instanceof ConstantSDNode)
+            return dag.getNode(ISD.ANY_EXTEND, vt, n0);
+
+        // fold (aext (aext x)) -> (aext x)
+        // fold (aext (zext x)) -> (zext x)
+        // fold (aext (sext x)) -> (sext x)
+        if (n0.getOpcode() == ISD.ZERO_EXTEND ||
+                n0.getOpcode() == ISD.ANY_EXTEND ||
+                n0.getOpcode() == ISD.SIGN_EXTEND)
+            return dag.getNode(n0.getOpcode(), vt, n0.getOperand(0));
+
+        // fold (aext (truncate (load x))) -> (aext (smaller load x))
+        // fold (aext (truncate (srl (load x), c))) -> (aext (small load (x+c/n)))
+        if (n0.getOpcode() == ISD.TRUNCATE)
+        {
+            SDValue narrowLoad = reduceLoadWidth(n0.getNode());
+            if (narrowLoad.getNode() != null)
+            {
+                if (!narrowLoad.getNode().equals(n0.getNode()))
+                    combineTo(n0.getNode(), narrowLoad, true);
+                return dag.getNode(ISD.ANY_EXTEND, vt, narrowLoad);
+            }
+        }
+
+        // fold (aext (truncate x))
+        if (n0.getOpcode() == ISD.TRUNCATE)
+        {
+            SDValue op = n0.getOperand(0);
+            if (op.getValueType().equals(vt))
+                return op;
+            if (op.getValueType().bitsGT(vt))
+                return dag.getNode(ISD.TRUNCATE, vt,op);
+            return dag.getNode(ISD.ANY_EXTEND, vt, op);
+        }
+
+        // Fold (aext (and (trunc x), cst)) -> (and x, cst)
+        // if the trunc is not free.
+        if (n0.getOpcode() == ISD.AND &&
+                n0.getOperand(0).getOpcode() == ISD.TRUNCATE &&
+                n0.getOperand(1).getOpcode() == ISD.Constant &&
+                !tli.isTruncateFree(n0.getOperand(0).getOperand(0).getValueType(),
+                        n0.getValueType()))
+        {
+            SDValue x = n0.getOperand(0).getOperand(0);
+            if (x.getValueType().bitsLT(vt))
+                x = dag.getNode(ISD.ANY_EXTEND, vt, x);
+            else if (x.getValueType().bitsGT(vt))
+                x = dag.getNode(ISD.TRUNCATE, vt, x);
+
+            APInt mask = ((ConstantSDNode)n0.getOperand(1).getNode()).getAPIntValue();
+            mask.zext(vt.getSizeInBits());
+            return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
+        }
+
+        // fold (aext (load x)) -> (aext (truncate (extload x)))
+        if (n0.getNode().isNONExtLoad() && ((!legalOprations &&
+                ((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.EXTLOAD, n0.getValueType())))
+        {
+            boolean doXform = true;
+            ArrayList<SDNode> setccs = new ArrayList<>();
+            if (!n0.hasOneUse())
+                doXform = extendUsesToFormExtLoad(n, n0, ISD.ANY_EXTEND, setccs);
+            if (doXform)
+            {
+                LoadSDNode ld = (LoadSDNode)n0.getNode();
+                SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt,
+                        ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                        ld.getSrcValueOffset(), n0.getValueType(),
+                        ld.isVolatile(),ld.getAlignment());
+
+                combineTo(n, extLoad, true);
+                SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+                combineTo(n0.getNode(), trunc, extLoad.getValue(1));
+                for (SDNode cc : setccs)
+                {
+                    ArrayList<SDValue> ops = new ArrayList<>();
+                    for (int j = 0; j < 2; j++)
+                    {
+                        SDValue sop = cc.getOperand(j);
+                        if (sop.equals(trunc))
+                            ops.add(extLoad);
+                        else
+                            ops.add(dag.getNode(ISD.ANY_EXTEND, vt, sop));
+                    }
+                    ops.add(cc.getOperand(2));
+                    combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+                            ops), true);
+                }
+                return new SDValue(n, 0);
+            }
+        }
+
+        // fold (aext (zextload x)) -> (aext (truncate (zextload x)))
+        // fold (aext (sextload x)) -> (aext (truncate (sextload x)))
+        // fold (aext ( extload x)) -> (aext (truncate (extload  x)))
+        if (n0.getOpcode() == ISD.LOAD & !n0.getNode().isNONExtLoad() &&
+                n0.getNode().isUNINDEXEDLoad() && n0.hasOneUse())
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            EVT evt = ld.getMemoryVT();
+
+            SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt,
+                    ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
+                    ld.getSrcValueOffset(), evt,
+                    ld.isVolatile(),ld.getAlignment());
+
+            combineTo(n, extLoad, true);
+            SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+            combineTo(n0.getNode(), trunc, extLoad.getValue(1));
+            return new SDValue(n, 0);
+        }
+
+        // aext(setcc x,y,cc) -> select_cc x, y, 1, 0, cc
+        if (n0.getOpcode() == ISD.SETCC)
+        {
+            SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+                    dag.getConstant(1, vt, false),
+                    dag.getConstant(0, vt, false),
+                    ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition(), true);
+            if (scc.getNode() != null)
+                return scc;
+        }
+
         return new SDValue();
     }
 

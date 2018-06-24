@@ -57,11 +57,19 @@ find_program(XDOT_PATH "${XDOT}")
 find_program(DOT_PATH "${DOT}")
 
 if ("${XDOT_PATH}" STREQUAL "XDOT_PATH-NOTFOUND")
-    set(XDOT_PATH "")
+  set(XDOT_PATH "")
 endif()
 
 if ("${DOT_PATH}" STREQUAL "DOT_PATH-NOTFOUND")
-    set(DOT_PATH "")
+  set(DOT_PATH "")
+endif()
+
+# We should use dot+open program on MacOSX instead of xdot,
+# since xdot does't display dot graph perfectly.
+if (APPLE)
+  set(XDOT_PATH "")
+elseif(UNIX)
+  set(DOT_PATH "")
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
