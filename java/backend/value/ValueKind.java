@@ -35,7 +35,8 @@ public class ValueKind
     public static int ConstantFPVal = ConstantIntVal + 1;            // This is an instance of ConstantFP
     public static int ConstantArrayVal = ConstantFPVal + 1;         // This is an instance of ConstantArray
     public static int ConstantStructVal = ConstantArrayVal + 1;        // This is an instance of ConstantStruct
-    public static int ConstantPointerNullVal = ConstantStructVal + 1;   // This is an instance of ConstantPointerNull
+    public static int ConstantVectorVal = ConstantStructVal + 1;
+    public static int ConstantPointerNullVal = ConstantVectorVal + 1;   // This is an instance of ConstantPointerNull
     public static int MDNodeVal = ConstantPointerNullVal + 1;           // This is an instance of MDNode
     public static int MDStringVal = MDNodeVal + 1;                      // This is an instance of MDString
     public static int NamedMDNodeVal = MDStringVal + 1;                 // This is an instance of NamedMDNode

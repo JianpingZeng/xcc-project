@@ -46,6 +46,7 @@ public interface LLVMTypeID
     int ArrayTyID = StructTyID + 1;          // Array... pointer...
     int PointerTyID = ArrayTyID + 1;
     int OpaqueTyID = PointerTyID + 1;
+    int VectorTyID = OpaqueTyID + 1;
     //...
 
     int NumPrimitiveIDs = OpaqueTyID + 1;   // Must remain as last defined ID

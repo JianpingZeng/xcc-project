@@ -2405,6 +2405,7 @@ public abstract class TargetLowering
     {
         // res[0] -- knownZero
         // res[1] -- knownOne
+        assert res != null && res.length == 2:"Invalid res passed through!";
         assert depth >= 0;
         int bitwidth = demandedMask.getBitWidth();
         assert op.getValueSizeInBits() == bitwidth:"Mask size mismatches value type size!";
@@ -2662,7 +2663,7 @@ public abstract class TargetLowering
                 tlo.dag.computeMaskedBits(op, newMask, res, depth);
                 break;
         }
-        // TODO: 18-6-11
+
         if (newMask.and(res[0].or(res[1])).eq(newMask))
             return tlo.combineTo(op, tlo.dag.getConstant(res[1], op.getValueType(),false));
         return false;
