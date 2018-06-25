@@ -31,6 +31,7 @@ import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
@@ -4057,30 +4058,214 @@ public class X86TargetLowering extends TargetLowering
         return sub;
     }
 
+    private Pair<SDValue, SDValue> fpToIntHelper(SDValue op, SelectionDAG dag, boolean isSigned)
+    {
+        EVT destVT = op.getValueType();
+        if (!isSigned)
+        {
+            assert destVT.getSimpleVT().simpleVT == MVT.i32:"Unexpected FP_TO_XINT";
+            destVT = new EVT(MVT.i64);
+        }
+
+        assert destVT.getSimpleVT().simpleVT <= MVT.i64 &&
+                destVT.getSimpleVT().simpleVT >= MVT.i16:"Unknown FP_TO_XINT to lower!";
+
+        if (destVT.getSimpleVT().simpleVT == MVT.i32 &&
+                isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+        {
+            if (subtarget.is64Bit() && destVT.getSimpleVT().simpleVT == MVT.i64 &&
+                    isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+                return Pair.get(new SDValue(), new SDValue());
+        }
+        MachineFunction mf = dag.getMachineFunction();
+        int memSize = destVT.getSizeInBits()/8;
+        int ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
+        SDValue slot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+        int opc = 0;
+        switch (destVT.getSimpleVT().simpleVT)
+        {
+            default: Util.shouldNotReachHere("Invalid FP_TO_XINT to lower!");
+            case MVT.i16: opc = X86ISD.FP_TO_INT16_IN_MEM; break;
+            case MVT.i32: opc = X86ISD.FP_TO_INT32_IN_MEM; break;
+            case MVT.i64: opc = X86ISD.FP_TO_INT64_IN_MEM; break;
+        }
+
+        SDValue chain = dag.getEntryNode();
+        SDValue value = op.getOperand(0);
+        if (isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+        {
+            assert destVT.getSimpleVT().simpleVT == MVT.i64;
+            chain = dag.getStore(chain, value, slot,
+                    PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
+            SDVTList vts = dag.getVTList(op.getOperand(0).getValueType(), new EVT(MVT.Other));
+            SDValue[] ops = {chain, slot, dag.getValueType(op.getOperand(0).getValueType())};
+            value = dag.getNode(X86ISD.FLD, vts, ops);
+            chain = value.getOperand(1);
+            ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
+            slot = dag.getFrameIndex(ssfi, new EVT(getPointerTy()), false);
+        }
+        SDValue[] ops = {chain, value, slot};
+        SDValue fist = dag.getNode(opc, new EVT(MVT.Other), ops);
+        return Pair.get(fist, slot);
+    }
+
     private SDValue lowerFP_TO_SINT(SDValue op, SelectionDAG dag)
     {
-        // TODO
+        if (op.getValueType().isVector())
+        {
+            if (op.getValueType().getSimpleVT().simpleVT == MVT.v2i32 &&
+                    op.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.v2f64)
+                return op;
+            return new SDValue();
+        }
+        Pair<SDValue, SDValue> vals = fpToIntHelper(op, dag, true);
         return new SDValue();
     }
     private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        Pair<SDValue, SDValue> res = fpToIntHelper(op, dag, false);
+        SDValue fist = res.first;
+        SDValue slot = res.second;
+        assert fist.getNode() != null;
+        return dag.getLoad(op.getValueType(), fist, slot, null, 0);
     }
     private SDValue lowerFABS(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        EVT vt = op.getValueType();
+        EVT eltVT = vt;
+        if (vt.isVector())
+            eltVT = vt.getVectorElementType();
+
+        ArrayList<Constant> cs = new ArrayList<>();
+        if (eltVT.equals(new EVT(MVT.f64)))
+        {
+            ConstantFP fp = ConstantFP.get(new APFloat(new APInt(64, ~(1L<<63))));
+            cs.add(fp);
+            cs.add(fp);
+        }
+        else
+        {
+            ConstantFP fp = ConstantFP.get(new APFloat(new APInt(32, ~(1<<31))));
+            cs.add(fp);
+            cs.add(fp);
+            cs.add(fp);
+            cs.add(fp);
+        }
+        Constant c = ConstantVector.get(cs);
+        SDValue cpIndex = dag.getConstantPool(c, new EVT(getPointerTy()), 16, 0, false, 0);
+        SDValue mask = dag.getLoad(vt, dag.getEntryNode(), cpIndex,
+                PseudoSourceValue.getConstantPool(), 0, false, 16);
+        return dag.getNode(X86ISD.FAND, vt, op.getOperand(0), mask);
     }
     private SDValue lowerFNEG(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        EVT vt = op.getValueType();
+        EVT eltVT = vt;
+        int numElts = 1;
+
+        if (vt.isVector())
+        {
+            eltVT = vt.getVectorElementType();
+            numElts = vt.getVectorNumElements();
+        }
+
+        ArrayList<Constant> cs = new ArrayList<>();
+        if (eltVT.equals(new EVT(MVT.f64)))
+        {
+            ConstantFP fp = ConstantFP.get(new APFloat(new APInt(64, 1L<<63)));
+            cs.add(fp);
+            cs.add(fp);
+        }
+        else
+        {
+            ConstantFP fp = ConstantFP.get(new APFloat(new APInt(32, 1<<31)));
+            cs.add(fp);
+            cs.add(fp);
+            cs.add(fp);
+            cs.add(fp);
+        }
+        Constant c = ConstantVector.get(cs);
+        SDValue cpIndex = dag.getConstantPool(c, new EVT(getPointerTy()), 16, 0, false, 0);
+        SDValue mask = dag.getLoad(vt, dag.getEntryNode(), cpIndex,
+                PseudoSourceValue.getConstantPool(), 0, false, 16);
+
+        EVT v2i64 = new EVT(MVT.v2i64);
+        if (vt.isVector())
+        {
+            return dag.getNode(ISD.BIT_CONVERT, vt, dag.getNode(ISD.XOR, v2i64,
+                    dag.getNode(ISD.BIT_CONVERT, v2i64, op.getOperand(0)),
+                    dag.getNode(ISD.BIT_CONVERT, v2i64, mask)));
+        }
+        else
+        {
+            return dag.getNode(X86ISD.FXOR, vt, op.getOperand(0), mask);
+        }
     }
     private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        SDValue op0 = op.getOperand(0);
+        SDValue op1 = op.getOperand(1);
+        EVT vt = op.getValueType();
+        EVT srcVT = op1.getValueType();
+
+        if (srcVT.bitsLT(vt))
+        {
+            op1 = dag.getNode(ISD.FP_EXTEND, vt, op1);
+            srcVT = vt;
+        }
+        if (srcVT.bitsGT(vt))
+        {
+            op1 = dag.getNode(ISD.FP_ROUND, vt, op1, dag.getIntPtrConstant(1));
+            srcVT = vt;
+        }
+        ArrayList<Constant> cs = new ArrayList<>();
+        if (srcVT.equals(new EVT(MVT.f64)))
+        {
+            cs.add(ConstantFP.get(new APFloat(new APInt(64, 1L<<63))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(64, 0))));
+        }
+        else
+        {
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 1<<31))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+        }
+
+        Constant c = ConstantVector.get(cs);
+        SDValue cpIndex = dag.getConstantPool(c, new EVT(getPointerTy()), 16, 0, false, 0);
+        SDValue mask = dag.getLoad(srcVT, dag.getEntryNode(), cpIndex,
+                PseudoSourceValue.getConstantPool(), 0, false, 16);
+        SDValue signBit = dag.getNode(X86ISD.FAND, srcVT, op1, mask);
+
+        EVT v2i64 = new EVT(MVT.v2i64);
+        if (srcVT.bitsGT(vt))
+        {
+            signBit = dag.getNode(ISD.SCALAR_TO_VECTOR, v2i64, signBit);
+            signBit = dag.getNode(X86ISD.FSRL, v2i64, signBit,
+                    dag.getConstant(32,new EVT(MVT.i32),false));
+            signBit = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.v4f32), signBit);
+            signBit = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f32), signBit, dag.getIntPtrConstant(0));
+        }
+        cs.clear();
+        if (vt.getSimpleVT().simpleVT == MVT.f64)
+        {
+            cs.add(ConstantFP.get(new APFloat(new APInt(64, ~(1L<<63)))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(64, 0))));
+        }
+        else
+        {
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, ~(1<<31)))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+            cs.add(ConstantFP.get(new APFloat(new APInt(32, 0))));
+        }
+        c = ConstantVector.get(cs);
+        cpIndex = dag.getConstantPool(c, new EVT(getPointerTy()), 16, 0, false, 0);
+        SDValue mask2 = dag.getLoad(vt, dag.getEntryNode(), cpIndex,
+                PseudoSourceValue.getConstantPool(), 0, false, 16);
+        SDValue val = dag.getNode(X86ISD.FAND, vt, op0, mask2);
+        return dag.getNode(X86ISD.FOR, vt, val, signBit);
     }
     private SDValue lowerSETCC(SDValue op, SelectionDAG dag)
     {
@@ -4264,13 +4449,208 @@ public class X86TargetLowering extends TargetLowering
 
     private SDValue lowerVSETCC(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        SDValue cond = new SDValue();
+        SDValue op0 = op.getOperand(0);
+        SDValue op1 = op.getOperand(1);
+        SDValue cc = op.getOperand(2);
+        EVT vt = op.getValueType();
+        backend.codegen.dagisel.CondCode ccOpc = ((CondCodeSDNode)cc.getNode()).getCondition();
+        boolean isFP = op1.getValueType().isFloatingPoint();
+        if (isFP)
+        {
+            int ssecc = 8;
+            EVT vt0 = op0.getValueType();
+            boolean isV4F32 = vt0.equals(new EVT(MVT.v4f32));
+            boolean isV2F64 = vt0.equals(new EVT(MVT.v2f64));
+            assert isV2F64 || isV4F32;
+            int opc = isV4F32 ? X86ISD.CMPPS : X86ISD.CMPPD;
+            boolean swap = false;
+
+            switch (ccOpc)
+            {
+                default: break;
+                case SETOEQ:
+                case SETEQ:
+                    ssecc = 0; break;
+                case SETOGT:
+                case SETGT:
+                    swap = true;
+                    // fall through
+                case SETOLT:
+                case SETLT:
+                    ssecc = 1; break;
+                case SETGE:
+                case SETOGE:
+                    swap = true;
+                    // fall through
+                case SETLE:
+                case SETOLE:
+                    ssecc = 2; break;
+                case SETUO:
+                    ssecc = 3; break;
+                case SETUNE:
+                case SETNE:
+                    ssecc = 4; break;
+                case SETULE:
+                    swap = true;
+                    // fall through
+                case SETUGE:
+                    ssecc = 5; break;
+                case SETULT:
+                    swap = true;
+                    // fall through
+                case SETUGT:
+                    ssecc = 6; break;
+                case SETO:
+                    ssecc = 7; break;
+            }
+            if (swap)
+            {
+                SDValue t = op0;
+                op1 = op0;
+                op1 = t;
+            }
+            // In the two special cases we can't handle, emit two comparisons.
+            if (ssecc == 8)
+            {
+                if (ccOpc == SETUEQ)
+                {
+                    SDValue unord, eq;
+                    unord = dag.getNode(opc, vt, op0, op1, dag.getConstant(3,new EVT(MVT.i8), false));
+                    eq = dag.getNode(opc, vt, op0, op1, dag.getConstant(0, new EVT(MVT.i8), false));
+                    return dag.getNode(ISD.OR, vt, unord, eq);
+                }
+                else if (ccOpc == SETONE)
+                {
+                    SDValue ord, neq;
+                    ord = dag.getNode(opc, vt, op0, op1, dag.getConstant(7,new EVT(MVT.i8), false));
+                    neq = dag.getNode(opc, vt, op0, op1, dag.getConstant(4, new EVT(MVT.i8), false));
+                    return dag.getNode(ISD.AND, vt, ord, neq);
+                }
+                Util.shouldNotReachHere("Ilegal FP comparison!");
+            }
+            return dag.getNode(opc, vt, op0, op1, dag.getConstant(ssecc, new EVT(MVT.i8), false));
+        }
+
+        // We are handling one of the integer comparisons here.  Since SSE only has
+        // GT and EQ comparisons for integer, swapping operands and multiple
+        // operations may be required for some comparisons.
+        int opc = 0, eqOpc = 0, gtOpc = 0;
+        boolean swap = false, invert = false, flipSigns = false;
+        switch (vt.getSimpleVT().simpleVT)
+        {
+            default: break;
+            case MVT.v8i8:
+            case MVT.v16i8:
+                eqOpc = X86ISD.PCMPEQB; gtOpc = X86ISD.PCMPGTB; break;
+            case MVT.v4i16:
+            case MVT.v8i16:
+                eqOpc = X86ISD.PCMPEQW; gtOpc = X86ISD.PCMPGTW; break;
+            case MVT.v2i32:
+            case MVT.v4i32:
+                eqOpc = X86ISD.PCMPEQD; gtOpc = X86ISD.PCMPGTD; break;
+            case MVT.v2i64:
+                eqOpc = X86ISD.PCMPEQQ; gtOpc = X86ISD.PCMPGTQ; break;
+        }
+
+        switch (ccOpc)
+        {
+            default: break;
+            case SETNE: invert = true;
+            case SETEQ: opc = eqOpc; break;
+            case SETLT: swap = true;    // fall through
+            case SETGT: opc = gtOpc; break;
+            case SETGE: swap = true;    // fall through
+            case SETLE: opc = gtOpc; invert = true; break;
+            case SETULT: swap = true;   // fall through
+            case SETUGT: opc = gtOpc; flipSigns = true; break;
+            case SETUGE: swap = true;   // fall through
+            case SETULE: opc = gtOpc; flipSigns = true; invert = true; break;
+        }
+
+        if (swap)
+        {
+            SDValue t = op0;
+            op0 = op1;
+            op1 = t;
+        }
+
+        if (flipSigns)
+        {
+            EVT eltVT = vt.getVectorElementType();
+            SDValue signBit = dag.getConstant(APInt.getSignBit(eltVT.getSizeInBits()), eltVT, false);
+            SDValue[] ops = new SDValue[vt.getVectorNumElements()];
+            Arrays.fill(ops, signBit);
+            SDValue signVec = dag.getNode(ISD.BUILD_VECTOR, vt, signBit);
+            op0 = dag.getNode(ISD.XOR, vt, op0, signVec);
+            op1 = dag.getNode(ISD.XOR, vt, op1, signVec);
+        }
+
+        SDValue result = dag.getNode(opc, vt, op0, op1);
+        if (invert)
+        {
+            result = dag.getNOT(result, vt);
+        }
+
+        return result;
     }
     private SDValue lowerSELECT(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        boolean addTest = true;
+        SDValue cond = op.getOperand(0);
+        SDValue cc = new SDValue();
+
+        if (cond.getOpcode() == ISD.SETCC)
+            cond = lowerSETCC(cond, dag);
+
+        if (cond.getOpcode() == X86ISD.SETCC)
+        {
+            cc = cond.getOperand(0);
+            SDValue cmp = cond.getOperand(1);
+            int opc = cmp.getOpcode();
+            EVT vt = op.getValueType();
+
+            boolean illegalFPCmov = false;
+            if (vt.isFloatingPoint() && !vt.isVector() &&
+                    !isScalarFPTypeInSSEReg(vt))
+                illegalFPCmov = !hasFPCMov(((ConstantSDNode)cc.getNode()).getSExtValue());
+
+            if ((isX86LogicalCmp(cmp) && !illegalFPCmov) || opc == X86ISD.BT)
+            {
+                cond = cmp;
+                addTest = false;
+            }
+        }
+
+        if (addTest)
+        {
+            cc = dag.getConstant(COND_NE, new EVT(MVT.i8), false);
+            cond = emitTest(cond, COND_NE, dag);
+        }
+        SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.Flag));
+        ArrayList<SDValue> ops = new ArrayList<>();
+        ops.add(op.getOperand(2));
+        ops.add(op.getOperand(1));
+        ops.add(cc);
+        ops.add(cond);
+        return dag.getNode(X86ISD.CMOV, vts, ops);
+    }
+
+    private static boolean hasFPCMov(long x86CC)
+    {
+        switch ((int) x86CC)
+        {
+            default: return false;
+            case COND_B:
+            case COND_BE:
+            case COND_E:
+            case COND_P:
+            case COND_A:
+            case COND_AE:
+            case COND_NE:
+            case COND_NP:
+                return true;
+        }
     }
 
     /**
@@ -4449,26 +4829,147 @@ public class X86TargetLowering extends TargetLowering
         }
         return result;
     }
+
+    /**
+     * Lower dynamic stack allocation to _alloca call for Cygwin/Mingw targets.
+     * Calls to _alloca is needed to probe the stack when allocating more than 4k
+     * bytes in one go. Touching the stack at 4K increments is necessary to ensure
+     * that the guard pages used by the OS virtual memory manager are allocated in
+     * correct sequence.
+     * @param op
+     * @param dag
+     * @return
+     */
     private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        assert subtarget.isTargetCygMing():
+                "This method should only be called on Cygwin or MinGW platform!";
+        SDValue chain = op.getOperand(0);
+        SDValue size = op.getOperand(1);
+        SDValue flag = new SDValue();
+
+        EVT intPtr = new EVT(getPointerTy());
+        EVT spty = subtarget.is64Bit() ? new EVT(MVT.i64) : new EVT(MVT.i32);
+        chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(0, true));
+        chain = dag.getCopyToReg(chain, X86GenRegisterNames.EAX, size, flag);
+        flag = chain.getValue(1);
+
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDValue[] ops = {chain,
+                dag.getTargetExternalSymbol("_alloca", intPtr,0),
+                dag.getRegister(X86GenRegisterNames.EAX, intPtr),
+                dag.getRegister(x86StackPtr, spty),
+                flag};
+        chain = dag.getNode(X86ISD.CALL, vts, ops);
+        flag = chain.getValue(1);
+
+        chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(0,true),
+                dag.getIntPtrConstant(0,true),
+                flag);
+        chain = dag.getCopyFromReg(chain, x86StackPtr, spty).getValue(1);
+        SDValue[] ops1 = {chain.getValue(1), chain};
+
+        return dag.getMergeValues(ops1);
     }
     private SDValue lowerVASTART(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        Value sv = ((SrcValueSDNode)op.getOperand(2).getNode()).getValue();
+        EVT pty = new EVT(getPointerTy());
+
+        if (!subtarget.is64Bit())
+        {
+            SDValue fi = dag.getFrameIndex(varArgsFrameIndex, pty, false);
+            return dag.getStore(op.getOperand(0), fi, op.getOperand(1), sv, 0, false, 0);
+        }
+
+        // __va_list_tag:
+        //   gp_offset         (0 - 6 * 8)
+        //   fp_offset         (48 - 48 + 8 * 16)
+        //   overflow_arg_area (point to parameters coming in memory).
+        //   reg_save_area
+        ArrayList<SDValue> ops = new ArrayList<>();
+        SDValue fin = op.getOperand(1);
+
+        // Store gp_offset
+        SDValue store = dag.getStore(op.getOperand(0),
+                dag.getConstant(varArgsFPOffset, new EVT(MVT.i32), false), fin, sv, 0, false, 0);
+        ops.add(store);
+
+        // Store fp_offset
+        fin = dag.getNode(ISD.ADD, pty, fin, dag.getIntPtrConstant(4));
+        store = dag.getStore(op.getOperand(0), dag.getConstant(varArgsFPOffset, new EVT(MVT.i32), false),
+                fin, sv, 0, false, 0);
+        ops.add(store);
+
+        // Store ptr to overflow_arg_area
+        fin = dag.getNode(ISD.ADD, pty, fin, dag.getIntPtrConstant(4));
+        SDValue fi = dag.getFrameIndex(regSaveFrameIndex, pty, false);
+        store = dag.getStore(op.getOperand(0), fi, fin, sv, 0, false, 0);
+        ops.add(store);
+        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), ops);
     }
     private SDValue lowerVAARG(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        // X86-64 va_list is a struct { i32, i32, i8*, i8* }.
+        assert subtarget.is64Bit():"This is code should only be used on 64-bit target!";
+        assert subtarget.isTargetELF() || subtarget.isTargetDarwin():
+                "VAARG only handlded in ELF/Darwin";
+        assert op.getNode().getNumOperands() == 4;
+
+        SDValue chain = op.getOperand(0);
+        SDValue srcPtr = op.getOperand(1);
+        Value sv = ((SrcValueSDNode)op.getOperand(2).getNode()).getValue();
+        int align = (int) op.getConstantOperandVal(3);
+        EVT argVT = op.getNode().getValueType(0);
+        Type argTy = argVT.getTypeForEVT();
+        int argSize = (int) getTargetData().getTypeAllocSize(argTy);
+        int argNode = 0;
+        if (argVT.equals(new EVT(MVT.f80)))
+        {
+            Util.shouldNotReachHere("va_arg for f80 not yet implemented!");
+        }
+        else if (argVT.isFloatingPoint() & argSize  <= 16)
+        {
+            argNode = 2;
+        }
+        else
+        {
+            Util.shouldNotReachHere("Unhandled argument type in lowerVAARG()");
+        }
+
+        if (argNode == 2)
+        {
+            assert !GenerateSoftFloatCalls.value && !(dag.getMachineFunction().
+                    getFunction().hasFnAttr(Attribute.NoImplicitFloat));
+        }
+
+        ArrayList<SDValue> instOps = new ArrayList<>();
+        instOps.add(chain);
+        instOps.add(srcPtr);
+        instOps.add(dag.getConstant(argSize, new EVT(MVT.i32), false));
+        instOps.add(dag.getConstant(argNode, new EVT(MVT.i8), false));
+        instOps.add(dag.getConstant(align, new EVT(MVT.i32), false));
+        SDVTList vts = dag.getVTList(new EVT(getPointerTy()), new EVT(MVT.Other));
+        SDValue vaarg = dag.getMemIntrinsicNode(X86ISD.VAARG_64, vts, instOps,
+                new EVT(MVT.i64), PseudoSourceValue, 0, false, true, true);
+
+        chain = vaarg.getValue(1);
+        return dag.getLoad(argVT, chain, vaarg, new MachinePointerInfo(), false, false, 0);
     }
+
     private SDValue lowerVACOPY(SDValue op, SelectionDAG dag)
     {
-        // TODO
-        return new SDValue();
+        // X86-64 va_list is a struct { i32, i32, i8*, i8* }.
+        assert subtarget.is64Bit():"lowerVACOPY should be handled in X86-bit";
+        SDValue chain = op.getOperand(0);
+        SDValue destPtr = op.getOperand(1);
+        SDValue srcPtr = op.getOperand(2);
+        Value destSV = ((SrcValueSDNode)op.getOperand(3).getNode()).getValue();
+        Value srcSV = ((SrcValueSDNode)op.getOperand(4).getNode()).getValue();
+        return dag.getMemcpy(chain, destPtr, srcPtr, dag.getIntPtrConstant(24),
+                8, false, destSV, 0, srcSV, 0);
     }
+
     private SDValue lowerINTRINSIC_WO_CHAIN(SDValue op, SelectionDAG dag)
     {
         // TODO
