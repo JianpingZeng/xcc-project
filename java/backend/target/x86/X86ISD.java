@@ -74,6 +74,9 @@ public class X86ISD
     /// chain operand, value to store, address, and a ValueType to store it
     /// as.
     public static final int FST = FLD + 1;
+
+    public static final int VAARG_64 = FST + 1;
+
     /// CALL - These operations represent an abstract X86 call
     /// instruction, which includes a bunch of information.  In particular the
     /// operands of these node are:
@@ -91,7 +94,7 @@ public class X86ISD
     ///     #1 - The first register result value (optional)
     ///     #2 - The second register result value (optional)
     ///
-    public static final int CALL = FST + 1;
+    public static final int CALL = VAARG_64 + 1;
     /// RDTSC_DAG - This operation implements the lowering for
     /// readcyclecounter
     public static final int RDTSC_DAG = CALL + 1;
