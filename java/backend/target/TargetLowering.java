@@ -1470,6 +1470,17 @@ public abstract class TargetLowering
         legalFPImmediates.add(imm);
     }
 
+    public int getNumLegalFPImmediate()
+    {
+        return legalFPImmediates.size();
+    }
+
+    public APFloat getLegalImmediate(int idx)
+    {
+        assert idx >= 0 && idx < getNumLegalFPImmediate();
+        return legalFPImmediates.get(idx);
+    }
+
     public void setTargetDAGCombine(int opc)
     {
         assert (opc>>3) < targetDAGCombineArray.length;
@@ -2892,5 +2903,10 @@ public abstract class TargetLowering
             SelectionDAG dag)
     {
         return false;
+    }
+
+    public boolean shouldShrinkFPConstant(EVT vt)
+    {
+        return true;
     }
 }
