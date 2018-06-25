@@ -127,6 +127,11 @@ public class MachineFrameInfo
         return frameAddressTaken;
     }
 
+    public void setFrameAddressIsTaken(boolean val)
+    {
+        frameAddressTaken = val;
+    }
+
     public int getMaxAlignment()
     {
         return maxAlignment;
