@@ -5940,4 +5940,10 @@ public class X86TargetLowering extends TargetLowering
         }
         return false;
     }
+
+    @Override
+    public boolean shouldShrinkFPConstant(EVT vt)
+    {
+        return !x86ScalarSSEf64 || vt.getSimpleVT().simpleVT == MVT.f80;
+    }
 }

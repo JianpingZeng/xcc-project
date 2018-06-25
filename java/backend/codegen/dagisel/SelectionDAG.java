@@ -2243,6 +2243,7 @@ public class SelectionDAG
                 u = useList.get(i);
                 ++i;
                 u.set(to);
+                e = useList.size();
             } while (i < e && useList.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);
         }

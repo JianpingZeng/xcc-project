@@ -23,9 +23,7 @@ import backend.support.LLVMContext;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.ConstantInt;
-import backend.value.Value;
+import backend.value.*;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
@@ -36,9 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import static backend.codegen.dagisel.LoadExtType.EXTLOAD;
-import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
-import static backend.codegen.dagisel.LoadExtType.ZEXTLOAD;
+import static backend.codegen.dagisel.LoadExtType.*;
 import static tools.Util.bitsToDouble;
 
 /**
@@ -2117,7 +2113,85 @@ public class SelectionDAGLegalizer
                 results.add(expandFPLibCall(node, RTLIB.SQRT_F32, RTLIB.SQRT_F64,
                         RTLIB.SQRT_F80, RTLIB.SQRT_PPCF128));
                 break;
+            case ISD.ConstantFP:
+            {
+                ConstantFPSDNode fp = (ConstantFPSDNode)node;
+                boolean isLegal = false;
+                for (int i = 0, e = tli.getNumLegalFPImmediate(); i < e; i++)
+                {
+                    if (fp.isExactlyValue(tli.getLegalImmediate(i)))
+                    {
+                        isLegal = true;
+                        break;
+                    }
+                }
+                if (isLegal)
+                    results.add(new SDValue(node, 0));
+                else
+                    results.add(expandConstantFP(fp, true, dag, tli));
+                break;
+            }
+            default:
+                if (Util.DEBUG)
+                {
+                    node.dump(dag);
+                    System.err.println();
+                }
+                Util.shouldNotReachHere("Unknown opcode!");
+                break;
         }
+    }
+
+    /**
+     * Expand the constantFP into an integer constant or a load from the
+     * constant pool.
+     * @param fp
+     * @param useCP
+     * @param dag
+     * @param tli
+     * @return
+     */
+    private static SDValue expandConstantFP(ConstantFPSDNode fp,
+            boolean useCP, SelectionDAG dag, TargetLowering tli)
+    {
+        boolean extend = false;
+        EVT vt = fp.getValueType(0);
+        ConstantFP c = fp.getConstantFPValue();
+        if (!useCP)
+        {
+            assert vt.equals(new EVT(MVT.f64)) ||
+                    vt.equals(new EVT(MVT.f32)) :"Invalid type expansion!";
+            return dag.getConstant(c.getValueAPF().bitcastToAPInt(),
+                    vt.equals(new EVT(MVT.f64)) ? new EVT(MVT.i64) :
+                            new EVT(MVT.i32), false);
+        }
+        EVT origVT = vt;
+        EVT svt = vt;
+        while (svt.getSimpleVT().simpleVT != MVT.f32)
+        {
+            svt = new EVT(svt.getSimpleVT().simpleVT-1);
+            if (fp.isValueValidForType(svt, fp.getValueAPF()) &&
+                    tli.isLoadExtLegal(EXTLOAD, svt) &&
+                    tli.shouldShrinkFPConstant(origVT))
+            {
+                Type sty = svt.getTypeForEVT();
+                c = (ConstantFP) ConstantExpr.getTrunc(c, sty);
+                vt = svt;
+                extend = true;
+            }
+        }
+
+        SDValue cpIdx = dag.getConstantPool(c, new EVT(tli.getPointerTy()), 0, 0,
+                false, 0);
+        int alignment = ((ConstantPoolSDNode)cpIdx.getNode()).getAlign();
+        if (extend)
+        {
+            return dag.getExtLoad(EXTLOAD, origVT, dag.getEntryNode(),
+                    cpIdx, PseudoSourceValue.getConstantPool(),
+                    0, vt, false, alignment);
+        }
+        return dag.getLoad(origVT, dag.getEntryNode(), cpIdx,
+                PseudoSourceValue.getConstantPool(), 0, false, alignment);
     }
 
     private SDValue expandFPLibCall(SDNode node, RTLIB callF32, RTLIB callF64,
