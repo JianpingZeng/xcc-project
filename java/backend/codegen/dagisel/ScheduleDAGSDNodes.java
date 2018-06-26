@@ -147,7 +147,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	public static int computeMemOperandEnd(SDNode node)
 	{
 		int n = node.getNumOperands();
-		while (n != 0 && node.getOperand(n-1).getValueType().getSimpleVT().simpleVT == MVT.Flag)
+		while (n > 0 && node.getOperand(n-1).getValueType().getSimpleVT().simpleVT == MVT.Flag)
 			--n;
 		if (n > 0 && node.getOperand(n-1).getValueType().getSimpleVT().simpleVT == MVT.Other)
 			--n;

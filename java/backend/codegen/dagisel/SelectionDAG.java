@@ -2809,7 +2809,7 @@ public class SelectionDAG
     {
         if (vt.isSimple() && vt.getSimpleVT().simpleVT >= valueTypeNodes.size())
         {
-            for (int i = valueTypeNodes.size(); i < vt.getSimpleVT().simpleVT; i++)
+            for (int i = valueTypeNodes.size(); i < vt.getSimpleVT().simpleVT+1; i++)
                 valueTypeNodes.add(null);
         }
 
@@ -2821,7 +2821,7 @@ public class SelectionDAG
         if (vt.isExtended())
             extendedValueTypeNodes.put(vt, n);
         else
-            valueTypeNodes.add(vt.getSimpleVT().simpleVT, n);
+            valueTypeNodes.set(vt.getSimpleVT().simpleVT, n);
         add(n);
         return new SDValue(n, 0);
     }

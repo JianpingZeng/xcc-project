@@ -123,10 +123,7 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode>
     public int getEdgeTarget(SDNode node, Object to)
     {
         SDValue dest = (SDValue)to;
-        for (int i = 0; i < node.getNumOperands(); i++)
-            if (node.getOperand(i).equals(dest))
-                return i;
-        return -1;
+        return dest.getResNo();
     }
 
     @Override

@@ -70,6 +70,13 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
     }
 
+    private void addPendingLoad(SDValue ld)
+    {
+        if (ld == null || pendingLoads.contains(ld))
+            return;
+        pendingLoads.add(ld);
+    }
+
     public void setCurrentBasicBlock(MachineBasicBlock mbb)
     {
         curMBB = mbb;
@@ -2101,7 +2108,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             if (isVolatile)
                 dag.setRoot(chain);
             else
-                pendingLoads.add(chain);
+                addPendingLoad(chain);
         }
         setValue(li, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), values));
         return null;
@@ -2357,7 +2364,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         {
             SDValue chain = result.getValue(result.getNode().getNumValues()-1);
             if (onlyLoad)
-                pendingLoads.add(chain);
+                addPendingLoad(chain);
             else
                 dag.setRoot(chain);
         }
