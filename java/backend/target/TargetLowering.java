@@ -2533,7 +2533,7 @@ public abstract class TargetLowering
             case ISD.ZERO_EXTEND:
             {
                 int operandBitWidth = op.getOperand(0).getValueSizeInBits();
-                APInt inMask = newMask;
+                APInt inMask = new APInt(newMask);
                 inMask.trunc(operandBitWidth);
 
                 APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - operandBitWidth).

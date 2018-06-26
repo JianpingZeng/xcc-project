@@ -761,18 +761,25 @@ public class APInt implements Cloneable
         assert width < bitWidth : "Invalid APInt Truncate request";
         assert width > 0 : " Can't truncate to 0 bits";
 
-        if (width <= APINT_BITS_PER_WORD)
-            return new APInt(width, getRawData()[0]);
-
-        APInt result = new APInt(new long[getNumWords(width)], width);
-        int i;
-        for (i = 0; i != width / APINT_BITS_PER_WORD; i++)
-            result.pVal[i] = pVal[i];
-
-        int bits = (0 - width) % APINT_BITS_PER_WORD;
-        if (bits != 0)
-            result.pVal[i] = pVal[i];
-        return result.clearUnusedBits();
+        int wordsBefore = getNumWords();
+        bitWidth = width;
+        int wordsAfter = getNumWords();
+        if (wordsBefore != wordsAfter)
+        {
+            if (wordsAfter == 1)
+            {
+                val = pVal[0];
+                pVal = null;
+            }
+            else
+            {
+                long[] newVal = new long[wordsAfter];
+                for (int i = 0; i < wordsAfter; i++)
+                    newVal[i] = pVal[i];
+                pVal = newVal;
+            }
+        }
+        return clearUnusedBits();
     }
 
     public APInt zextOrTrunc(int width)

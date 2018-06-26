@@ -1482,7 +1482,7 @@ public class SelectionDAG
         APInt[] res = new APInt[2];
         computeMaskedBits(op, mask, res, depth);
         assert res[0].and(res[1]).eq(0);
-        return res[0].and(res[1]).eq(mask);
+        return res[0].and(mask).eq(mask);
     }
 
     public void computeMaskedBits(SDValue op, APInt mask, APInt[] knownVals, int depth)
