@@ -587,7 +587,7 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            assert lhs.getType() == rhs.getType()
+            assert lhs.getType().equals(rhs.getType())
                     : "Cannot create binary operator with two operands of differing type!";
             return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertBefore);
         }
@@ -916,19 +916,19 @@ public abstract class Instruction extends User
         public static BinaryOps createFNeg(Value op, String name, Instruction insertBefore)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new BinaryOps(op.getType(), Sub, zero, op, name, insertBefore);
+            return new BinaryOps(op.getType(), FSub, zero, op, name, insertBefore);
         }
 
         public static BinaryOps createFNeg(Value op)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new BinaryOps(op.getType(), Sub, zero, op, "");
+            return new BinaryOps(op.getType(), FSub, zero, op, "");
         }
 
         public static BinaryOps createFNeg(Value op, String name, BasicBlock insertAtEnd)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new BinaryOps(op.getType(), Sub, zero, op, name, insertAtEnd);
+            return new BinaryOps(op.getType(), FSub, zero, op, name, insertAtEnd);
         }
 
         public static BinaryOps createNot(Value op, String name, Instruction insertBefore)

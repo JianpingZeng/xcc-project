@@ -118,7 +118,8 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
         return false;
     }
 
-    protected Boolean visitCastExpr(Tree.CastExpr expr)
+    @Override
+    public Boolean visitCastExpr(Tree.CastExpr expr)
     {
         final Expr subExp = expr.getSubExpr();
         switch (expr.getCastKind())

@@ -89,14 +89,15 @@ public class RegsForValue
             OutParamWrapper<SDValue> chain,
             OutParamWrapper<SDValue> flag)
     {
-        ArrayList<SDValue> values = new ArrayList<>();
-        ArrayList<SDValue> parts = new ArrayList<>();
+        SDValue[] values = new SDValue[valueVTs.size()];
+
         for (int i = 0, part = 0, e = valueVTs.size(); i < e; i++)
         {
             EVT valueVT = valueVTs.get(i);
             int numRegs = tli.getNumRegisters(valueVT);
             EVT registerVT = regVTs.get(i);
 
+            SDValue[] parts = new SDValue[numRegs];
             for (int j = 0; j < numRegs; j++)
             {
                 SDValue p;
@@ -163,21 +164,18 @@ public class RegsForValue
                             isSExt = false;
                             fromVT = new EVT(MVT.i32);
                         }
-                        if (!fromVT.equals(MVT.Other))
+                        if (!fromVT.equals(new EVT(MVT.Other)))
                         {
                             p = dag.getNode(isSExt? ISD.AssertSext: ISD.AssertZext,
                                     registerVT, p, dag.getValueType(fromVT));
                         }
                     }
                 }
-                parts.set(i, p);
+                parts[j] = p;
             }
 
-            SDValue[] ops = new SDValue[parts.size()];
-            parts.toArray(ops);
-            values.set(i, getCopyFromParts(dag, ops, registerVT, valueVT));
+            values[i] = getCopyFromParts(dag, parts, registerVT, valueVT);
             part += numRegs;
-            parts.clear();
         }
         EVT[] vts = new EVT[valueVTs.size()];
         valueVTs.toArray(vts);

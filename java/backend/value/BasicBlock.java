@@ -347,14 +347,14 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void appendInst(Instruction inst)
 	{
-		assert (inst != null) : "Can'ot add null instructions to block";
+		assert (inst != null) : "Can't add null instructions to block";
 		if (instructions.isEmpty() || !(instructions.getLast() instanceof BranchInst))
 		{
 			instructions.add(inst);
 		}
 		else 
 		{
-			assert !(getLastInst() instanceof BranchInst) :
+			assert (getLastInst() instanceof BranchInst) :
 				"Can not insert more than one branch in basic block";
 			instructions.add(inst);
 		}

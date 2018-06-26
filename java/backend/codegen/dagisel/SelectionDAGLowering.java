@@ -2451,7 +2451,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     @Override
     public Void visitPhiNode(User inst)
     {
-        Util.shouldNotReachHere("PHI handled specially!");
+        //PHI handled specially!;
         return null;
     }
 

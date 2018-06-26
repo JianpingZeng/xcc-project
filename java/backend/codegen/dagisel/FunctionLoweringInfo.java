@@ -23,6 +23,7 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.type.ArrayType;
 import backend.type.StructType;
@@ -36,6 +37,8 @@ import tools.APInt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static backend.codegen.MachineInstrBuilder.buildMI;
 
 /**
  * This contains information that is global to a function that is used when
@@ -103,6 +106,8 @@ public class FunctionLoweringInfo
      */
     private static boolean isUsedOutsideOfDefiningBlock(Instruction inst)
     {
+        if (inst instanceof PhiNode) return true;
+
         if (inst.isUseEmpty())
             return false;
 
@@ -200,11 +205,31 @@ public class FunctionLoweringInfo
         // Create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
         // also creates the initial PHI MachineInstrs, though none of the input
         // operands are populated.
+        TargetInstrInfo tii = tli.getTargetMachine().getInstrInfo();
         for (BasicBlock bb : fn.getBasicBlockList())
         {
             MachineBasicBlock mbb = mf.createMachineBasicBlock(bb);
             mbbmap.put(bb, mbb);
             mf.addMBBNumbering(mbb);
+
+            PhiNode pn = null;
+            for (Instruction inst : bb)
+            {
+                if (!(inst instanceof PhiNode) || inst.isUseEmpty())
+                    continue;
+                pn = (PhiNode)inst;
+                assert valueMap.containsKey(pn):"PhiNode must be assigned with a virtual register!";
+                int vreg = valueMap.get(pn);
+                ArrayList<EVT> vts = new ArrayList<>();
+                computeValueVTs(tli, pn.getType(), vts);
+                for (EVT vt : vts)
+                {
+                    int num = tli.getNumRegisters(vt);
+                    for (int i = 0; i < num; i++)
+                        buildMI(mbb, tii.get(TargetInstrInfo.PHI), vreg+i);
+                    vreg += num;
+                }
+            }
         }
     }
 

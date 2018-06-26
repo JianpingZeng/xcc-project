@@ -45,8 +45,6 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         return null;
     }
 
-    protected abstract RetTy visitCastExpr(CastExpr expr);
-
     public RetTy visitTree(Tree stmt)
     {
         Util.shouldNotReachHere("Expression evaluator shouldn't called on Stmt!");
