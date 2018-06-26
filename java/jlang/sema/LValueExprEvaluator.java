@@ -59,7 +59,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
     }
 
     @Override
-    protected Boolean visitCastExpr(Tree.CastExpr expr)
+    public Boolean visitCastExpr(Tree.CastExpr expr)
     {
         switch (expr.getCastKind())
         {

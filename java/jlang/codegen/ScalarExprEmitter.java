@@ -1134,25 +1134,53 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         BasicBlock rhsBlock = cgf.createBasicBlock("cond.false");
         BasicBlock endBlock = cgf.createBasicBlock("cond.end");
 
-        Value cond = cgf.evaluateExprAsBool(expr.getCond());
-        builder.createCondBr(cond, lhsBlock, rhsBlock);
+        Value condVal = null;
+        // If this is not a GNU extension.
+        if (expr.getTrueExpr() != null)
+        {
+            cgf.emitBranchOnBoolExpr(expr.getCond(), lhsBlock, rhsBlock);
+        }
+        else
+        {
+            condVal = cgf.emitScalarExpr(expr.getCond());
+            new Instruction.BitCastInst(condVal, condVal.getType(), "dummy?:holder",
+                    builder.getInsertBlock());
+            Value val = emitScalarConversion(condVal, expr.getCond().getType(),
+                    cgf.getContext().BoolTy);
+            builder.createCondBr(val, lhsBlock, rhsBlock);
+        }
+
+        Value lhs, rhs;
 
         // emit the block that it will branch to, when condition is evaluated
         // as true.
         cgf.emitBlock(lhsBlock);
-        visit(expr.getTrueExpr());
-        cgf.emitBranch(endBlock);
 
+        if (expr.getTrueExpr() != null)
+            lhs = visit(expr.getTrueExpr());
+        else
+            lhs = emitScalarConversion(condVal, expr.getCond().getType(),
+                    cgf.getContext().BoolTy);
+        cgf.emitBranch(endBlock);
 
         // emit the block that it will branch to, when condition is evaluated
         // as false.
         cgf.emitBlock(rhsBlock);
-        visit(expr.getFalseExpr());
+        rhs = visit(expr.getFalseExpr());
         cgf.emitBranch(endBlock);
 
         // enter the exit block.
         cgf.emitBlock(endBlock);
-        return null;
+
+        if (lhs == null || rhs == null)
+        {
+            assert expr.getType().isVoidType():"Can not generate value for non-void type";
+            return null;
+        }
+        PhiNode pn = builder.createPhiNode(lhs.getType(), 2, "cond");
+        pn.addIncoming(lhs, lhsBlock);
+        pn.addIncoming(rhs, rhsBlock);
+        return pn;
     }
 
     /**

@@ -184,7 +184,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             }
             if (!sdl.hasTailCall())
             {
-                for (; bi != end; ++bi)
+                for (bi = 0; bi != end; ++bi)
                 {
                     Instruction inst = llvmBB.getInstAt(bi);
                     if (!(inst instanceof PhiNode))

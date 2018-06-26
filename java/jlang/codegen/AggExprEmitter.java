@@ -181,7 +181,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         return visitCastExpr(expr);
     }
 
-    private Void visitCastExpr(Tree.CastExpr expr)
+    public Void visitCastExpr(Tree.CastExpr expr)
     {
         if (expr.getCastKind() == CastKind.CK_ToUnion)
         {

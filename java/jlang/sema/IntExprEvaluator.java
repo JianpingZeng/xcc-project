@@ -573,7 +573,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
      * @return
      */
     @Override
-    protected Boolean visitCastExpr(CastExpr expr)
+    public Boolean visitCastExpr(CastExpr expr)
     {
         Expr subExpr = expr.getSubExpr();
         QualType destType = expr.getType();

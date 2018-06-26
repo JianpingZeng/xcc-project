@@ -303,10 +303,15 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 
     public T visitSizeofAlignofExpr(SizeOfAlignOfExpr expr) {return visitStmt(expr);}
 
-    // postfix operator
-    public T visitImplicitCastExpr(ImplicitCastExpr expr) {return visitStmt(expr);}
+    public T visitCastExpr(CastExpr ce)
+	{
+		return visitStmt(ce);
+	}
 
-    public T visitExplicitCastExpr(ExplicitCastExpr expr) {return visitStmt(expr);}
+    // postfix operator
+    public T visitImplicitCastExpr(ImplicitCastExpr expr) {return visitCastExpr(expr); }
+
+    public T visitExplicitCastExpr(ExplicitCastExpr expr) {return visitCastExpr(expr); }
 
     public T visitParenListExpr(ParenListExpr expr) {return visitStmt(expr);}
 

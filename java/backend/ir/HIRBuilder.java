@@ -878,4 +878,9 @@ public class HIRBuilder
 	{
 		return insert(new UnreachableInst());
 	}
+
+	public PhiNode createPhiNode(Type type, int numVals, String name)
+	{
+		return insert(new PhiNode(type, numVals, name));
+	}
 }
