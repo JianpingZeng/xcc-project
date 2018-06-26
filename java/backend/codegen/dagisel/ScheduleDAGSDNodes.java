@@ -66,18 +66,33 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 
 	private static boolean isPassiveNode(SDNode node)
 	{
-		if (node instanceof ConstantSDNode) return true;
-		if (node instanceof ConstantFPSDNode) return true;
-		if (node instanceof RegisterSDNode) return true;
-		if (node instanceof GlobalAddressSDNode) return true;
-		if (node instanceof SDNode.BasicBlockSDNode) return true;
-		if (node instanceof SDNode.FrameIndexSDNode) return true;
-		if (node instanceof SDNode.ConstantPoolSDNode) return true;
-		if (node instanceof SDNode.JumpTableSDNode) return true;
-		if (node instanceof SDNode.ExternalSymbolSDNode) return true;
-		if (node instanceof MemOperandSDNode) return true;
-		if (node.getOpcode() == ISD.EntryToken) return true;
-		return false;
+	    if (node == null) return false;
+		switch (node.getOpcode())
+		{
+			case ISD.Constant:
+			case ISD.TargetConstant:
+			case ISD.ConstantFP:
+			case ISD.TargetConstantFP:
+			case ISD.GlobalAddress:
+			case ISD.TargetGlobalAddress:
+			case ISD.TargetGlobalTLSAddress:
+			case ISD.GlobalTLSAddress:
+			case ISD.Register:
+			case ISD.BasicBlock:
+			case ISD.FrameIndex:
+			case ISD.TargetFrameIndex:
+			case ISD.ConstantPool:
+			case ISD.TargetConstantPool:
+			case ISD.JumpTable:
+			case ISD.TargetJumpTable:
+			case ISD.ExternalSymbol:
+			case ISD.TargetExternalSymbol:
+			case ISD.MEMOPERAND:
+            case ISD.EntryToken:
+				return true;
+			default:
+				return false;
+		}
 	}
 
 	public SUnit newSUnit(SDNode n)
