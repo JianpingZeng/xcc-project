@@ -2438,7 +2438,7 @@ public class DAGCombiner
                 if (c2 != null && c2.getAPIntValue().and(c2.getAPIntValue().sub(1)).eq(0))
                 {
                     long shCtv = c2.getAPIntValue().logBase2();
-                    SDValue shCt = dag.getConstant(shCtv, new EVT(tli.getShiftAmountTy()), false);
+                    SDValue shCt = dag.getConstant(shCtv, getShiftAmountTy(), false);
                     SDValue shift = dag.getNode(ISD.SRL,
                             xTy, n0, shCt);
                     addToWorkList(shift.getNode());
@@ -2453,7 +2453,7 @@ public class DAGCombiner
 
                 SDValue shift = dag.getNode(ISD.SRA, xTy, n0,
                         dag.getConstant(xTy.getSizeInBits() -1,
-                                new EVT(tli.getShiftAmountTy()), false));
+                                getShiftAmountTy(), false));
                 addToWorkList(shift.getNode());
                 if (xTy.bitsGT(aTy))
                 {
@@ -2495,7 +2495,7 @@ public class DAGCombiner
 
             return dag.getNode(ISD.SHL, n2.getValueType(), temp,
                     dag.getConstant(c2.getAPIntValue().logBase2(),
-                            new EVT(tli.getShiftAmountTy()), false));
+                            getShiftAmountTy(), false));
         }
 
         if (c1 != null && c1.isNullValue() && (cc == CondCode.SETLT ||
@@ -2506,7 +2506,7 @@ public class DAGCombiner
             EVT xType = n0.getValueType();
             SDValue shift = dag.getNode(ISD.SRA, xType, n0,
                     dag.getConstant(xType.getSizeInBits()-1,
-                            new EVT(tli.getShiftAmountTy()), false));
+                            getShiftAmountTy(), false));
             SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
             addToWorkList(shift.getNode());;
             addToWorkList(add.getNode());
@@ -2525,7 +2525,7 @@ public class DAGCombiner
                 {
                     SDValue shift = dag.getNode(ISD.SRA, xType, n0,
                             dag.getConstant(xType.getSizeInBits()-1,
-                                    new EVT(tli.getShiftAmountTy()), false));
+                                    getShiftAmountTy(), false));
                     SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
                     addToWorkList(shift.getNode());
                     addToWorkList(add.getNode());
@@ -2639,7 +2639,7 @@ public class DAGCombiner
                 if (shAmt != 0)
                 {
                     op = dag.getNode(ISD.SRL, vt, op,
-                            dag.getConstant(shAmt, new EVT(tli.getShiftAmountTy()), false));
+                            dag.getConstant(shAmt, getShiftAmountTy(), false));
                     addToWorkList(op.getNode());
                 }
                 return dag.getNode(ISD.XOR, vt, op, dag.getConstant(1, vt, false));
@@ -3680,7 +3680,7 @@ public class DAGCombiner
         if (c2 != null && c2.getAPIntValue().eq(1))
             return dag.getNode(ISD.SRA, n0.getValueType(), n0,
                     dag.getConstant(n0.getValueType().getSizeInBits()-1,
-                            new EVT(tli.getShiftAmountTy()), false));
+                            getShiftAmountTy(), false));
 
         if (n0.getOpcode() == ISD.UNDEF || n1.getOpcode() == ISD.UNDEF)
             return dag.getConstant(0, vt, false);
@@ -3826,7 +3826,7 @@ public class DAGCombiner
         {
             return dag.getNode(ISD.SRL, vt, n0,
                     dag.getConstant(c2.getAPIntValue().logBase2(),
-                            new EVT(tli.getShiftAmountTy()), false));
+                            getShiftAmountTy(), false));
         }
         // fold (udiv x, (shl c, y)) -> x >>u (log2(c)+y) iff c is power of 2
         if (n1.getOpcode() == ISD.SHL &&
@@ -3912,18 +3912,18 @@ public class DAGCombiner
             long abs2 = pow2 > 0 ? pow2 : -pow2;
             int lg2 = Util.log2(abs2);
             SDValue sgn = dag.getNode(ISD.SRA, vt, n0, dag.getConstant(vt.getSizeInBits()-1,
-                    new EVT(tli.getShiftAmountTy()), false));
+                    getShiftAmountTy(), false));
             addToWorkList(sgn.getNode());
 
             // add (n0 < 0) ? abs2 - 1 : 0
             SDValue srl = dag.getNode(ISD.SRL, vt, sgn,
                     dag.getConstant(vt.getSizeInBits() - lg2,
-                            new EVT(tli.getShiftAmountTy()), false));
+                            getShiftAmountTy(), false));
             SDValue add = dag.getNode(ISD.ADD, vt, n0, srl);
             addToWorkList(srl.getNode());
             addToWorkList(add.getNode());
             SDValue sra = dag.getNode(ISD.SRA, vt, add,
-                    dag.getConstant(lg2, new EVT(tli.getShiftAmountTy()), false));
+                    dag.getConstant(lg2, getShiftAmountTy(), false));
             if (pow2 > 0)
                 return sra;
             addToWorkList(sra.getNode());
@@ -3988,8 +3988,8 @@ public class DAGCombiner
         if (c2 != null && c2.getAPIntValue().isPowerOf2())
         {
             // fold (mul x, (1 << c)) -> x << c
-            return dag.getNode(ISD.MUL, vt, n0, dag.getConstant(c2.getAPIntValue().logBase2(),
-                    new EVT(tli.getShiftAmountTy()), false));
+            return dag.getNode(ISD.SHL, vt, n0, dag.getConstant(c2.getAPIntValue().logBase2(),
+                    getShiftAmountTy(), false));
         }
         if (c2 != null && c2.getAPIntValue().negative().isPowerOf2())
         {
@@ -4037,6 +4037,11 @@ public class DAGCombiner
         }
         SDValue rmul = reassociateOps(ISD.MUL, n0, n1);
         return rmul.getNode() != null ? rmul : new SDValue();
+    }
+
+    private EVT getShiftAmountTy()
+    {
+        return legalTypes ? getShiftAmountTy() : new EVT(tli.getPointerTy());
     }
 
     private SDValue visitADDE(SDNode n)
