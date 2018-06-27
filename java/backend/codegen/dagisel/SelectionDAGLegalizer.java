@@ -2175,7 +2175,9 @@ public class SelectionDAGLegalizer
                     tli.shouldShrinkFPConstant(origVT))
             {
                 Type sty = svt.getTypeForEVT();
-                c = (ConstantFP) ConstantExpr.getTrunc(c, sty);
+                Constant cst = ConstantExpr.getFPTrunc(c, sty);
+                c = cst instanceof ConstantFP ? (ConstantFP)cst : null;
+
                 vt = svt;
                 extend = true;
             }

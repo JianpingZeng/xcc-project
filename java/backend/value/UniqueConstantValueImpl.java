@@ -7,10 +7,7 @@ import backend.type.StructType;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.list.array.TIntArrayList;
-import tools.FoldingSetNodeID;
-import tools.APFloat;
-import tools.APInt;
-import tools.FltSemantics;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,7 +94,7 @@ public final class UniqueConstantValueImpl
             ExprConstantMaps.put(key, ce);
             return ce;
         }
-        else if (opc.isUnaryOps())
+        else if (opc.isCastOps())
         {
             assert key.operands.size() == 1;
             Constant op = key.operands.get(0);
@@ -105,13 +102,17 @@ public final class UniqueConstantValueImpl
             ExprConstantMaps.put(key, ce);
             return ce;
         }
+        else if (opc == Operator.Select)
+        {
+            Util.shouldNotReachHere("SelectConstantExpr not implemented currently!");
+            return null;
+        }
         else
         {
-            assert opc.isGEP():"Unknown ExprMapKeyType";
+            assert opc.isGEP():"Unknown Operator: " + opc.opName;
             assert key.operands.size() > 1;
             Constant base = key.operands.get(0);
-            ArrayList<Constant> idx = new ArrayList<>();
-            idx.addAll(key.operands.subList(1, key.operands.size()));
+            ArrayList<Constant> idx = new ArrayList<>(key.operands.subList(1, key.operands.size()));
             ce = new GetElementPtrConstantExpr(base, idx, key.ty);
             ExprConstantMaps.put(key, ce);
             return ce;

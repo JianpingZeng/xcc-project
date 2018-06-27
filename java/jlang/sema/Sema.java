@@ -6315,14 +6315,14 @@ public final class Sema implements DiagnosticParseTag,
         {
             if (convertInt)
                 // Convert intExpr to the lhs floating point type.
-                intExpr.set(implicitCastExprToType(intExpr.get().get(), context.FloatTy,
+                intExpr.set(implicitCastExprToType(intExpr.get().get(), floatTy,
                         EVK_RValue, CK_IntegralToFloating));
-            return context.FloatTy;
+            return floatTy;
         }
 
         // Convert both sides to the appropriate complex float.
         //assert(intTy.isComplexType()isComplexIntegerType());
-        QualType result = context.getComplexType(context.FloatTy);
+        QualType result = context.getComplexType(floatTy);
 
         // _Complex int -> _Complex float
         if (convertInt)

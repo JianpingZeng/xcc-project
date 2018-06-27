@@ -16,6 +16,7 @@ package backend.transform.utils;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.ICmpInst;
@@ -27,6 +28,9 @@ import backend.value.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
+import tools.APFloat;
+import tools.APInt;
+import tools.OutParamWrapper;
 
 import java.util.ArrayList;
 
@@ -162,11 +166,50 @@ public final class ConstantFolder
         return false;
     }
 
+    /**
+     * Constant folding to avoid duplicate computation.
+     * @param opc
+     * @param val
+     * @param destTy
+     * @return
+     */
     public static Constant constantFoldCastInstruction(
-            Operator opocde,
+            Operator opc,
             Constant val,
             Type destTy)
     {
+        if (val instanceof UndefValue)
+        {
+            // zext(undef) ==> 0
+            if (opc == Operator.ZExt || opc == Operator.SExt ||
+                    opc == Operator.UIToFP || opc == Operator.SIToFP)
+                return Constant.getNullValue(destTy);
+            return UndefValue.get(destTy);
+        }
+
+        if (val.getType().equals(LLVMContext.FP128Ty) ||
+                destTy.equals(LLVMContext.FP128Ty))
+            return null;
+
+        switch (opc)
+        {
+            case FPTrunc:
+            case FPExt:
+                if (val instanceof ConstantFP)
+                {
+                    ConstantFP fp = (ConstantFP)val;
+                    OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+                    APFloat v = fp.getValueAPF();
+                    v.convert(destTy.equals(LLVMContext.FloatTy) ? APFloat.IEEEsingle :
+                                destTy.equals(LLVMContext.DoubleTy) ? APFloat.IEEEdouble:
+                                destTy.equals(LLVMContext.X86_FP80Ty) ? APFloat.x87DoubleExtended:
+                                destTy.equals(LLVMContext.FP128Ty) ? APFloat.IEEEquad :
+                                APFloat.Bogus, APFloat.RoundingMode.rmNearestTiesToEven,
+                                ignored);
+                    return ConstantFP.get(v);
+                }
+                return null;    // can't fold.
+        }
         return null;
     }
 
@@ -183,6 +226,34 @@ public final class ConstantFolder
             Constant c1,
             Constant c2)
     {
+        if (c1 instanceof ConstantInt && c2 instanceof ConstantInt)
+        {
+            APInt v1 = ((ConstantInt)c1).getValue();
+            APInt v2 = ((ConstantInt)c2).getValue();
+            switch (predicate)
+            {
+                case ICMP_EQ:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.eq(v2)?1:0);
+                case ICMP_NE:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.ne(v2)?1:0);
+                case ICMP_SLT:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.slt(v2)?1:0);
+                case ICMP_SGT:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.sgt(v2)?1:0);
+                case ICMP_SLE:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.sle(v2)?1:0);
+                case ICMP_SGE:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.sge(v2)?1:0);
+                case ICMP_ULT:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.ult(v2)?1:0);
+                case ICMP_UGT:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.ugt(v2)?1:0);
+                case ICMP_ULE:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.ule(v2)?1:0);
+                case ICMP_UGE:
+                    return ConstantInt.get(LLVMContext.Int1Ty, v1.uge(v2)?1:0);
+            }
+        }
         return null;
     }
 
@@ -355,5 +426,10 @@ public final class ConstantFolder
             default:
                 return false;
         }
+    }
+
+    public static Constant createICmp(Predicate pred, Constant lhs, Constant rhs)
+    {
+        return ConstantExpr.getCompare(pred, lhs, rhs);
     }
 }

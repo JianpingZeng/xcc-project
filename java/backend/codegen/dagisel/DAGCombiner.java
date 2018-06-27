@@ -1189,8 +1189,8 @@ public class DAGCombiner
         }
 
         if (n0.getNode().isNONExtLoad() && n0.hasOneUse() &&
-                (!legalOprations && !((LoadSDNode)n0.getNode()).isVolatile()) ||
-                tli.isLoadExtLegal(LoadExtType.EXTLOAD, n0.getValueType()))
+                ((!legalOprations && !((LoadSDNode)n0.getNode()).isVolatile()) ||
+                tli.isLoadExtLegal(LoadExtType.EXTLOAD, n0.getValueType())))
         {
             LoadSDNode ld = (LoadSDNode)n0.getNode();
             SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt, ld.getChain(),
@@ -1199,7 +1199,8 @@ public class DAGCombiner
 
             combineTo(n, extLoad, true);
             combineTo(n0.getNode(), dag.getNode(ISD.FP_ROUND, n0.getValueType(),
-                    extLoad, dag.getIntPtrConstant(1)), true);
+                    extLoad, dag.getIntPtrConstant(1)),
+                    extLoad.getValue(1), true);
             return new SDValue(n, 0);
         }
 
