@@ -2219,13 +2219,19 @@ public class SelectionDAG
             addModifiedNodeToCSEMaps(user, listener);
         }
     }
-
     public void replaceAllUsesWith(SDNode from, SDValue to,
+                                   DAGUpdateListener listener)
+    {
+        SDValue[] ops = {to};
+        replaceAllUsesWith(from, ops, listener);
+    }
+
+    public void replaceAllUsesWith(SDNode from, SDValue to[],
             DAGUpdateListener listener)
     {
         if (from.getNumValues() == 1)
         {
-            replaceAllUsesWith(new SDValue(from, 0), to, listener);
+            replaceAllUsesWith(new SDValue(from, 0), to[0], listener);
             return;
         }
 
@@ -2242,7 +2248,7 @@ public class SelectionDAG
             {
                 u = useList.get(i);
                 ++i;
-                u.set(to);
+                u.set(to[u.getResNo()]);
                 e = useList.size();
             } while (i < e && useList.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);

@@ -27,6 +27,7 @@ import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
 import backend.target.TargetMachine;
+import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.ArrayType;
 import backend.type.Type;
 import backend.value.Constant;
@@ -54,7 +55,7 @@ public class DAGCombiner
 {
     private SelectionDAG dag;
     private CombineLevel level;
-    private TargetMachine.CodeGenOpt optLevel;
+    private CodeGenOpt optLevel;
     private boolean legalOprations;
     private boolean legalTypes;
     private LinkedList<SDNode> workList;
@@ -62,7 +63,7 @@ public class DAGCombiner
     private TargetLowering tli;
 
     public DAGCombiner(SelectionDAG dag, AliasAnalysis aa,
-            TargetMachine.CodeGenOpt optLevel)
+            CodeGenOpt optLevel)
     {
         this.dag = dag;
         this.aa = aa;
@@ -84,10 +85,10 @@ public class DAGCombiner
         SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(dag.getRoot());
 
         dag.setRoot(new SDValue());
-
         while (!workList.isEmpty())
         {
             SDNode n = workList.pop();
+
             if (n.isUseEmpty() && !n.equals(dummy))
             {
                 // if this node has no uses, so it is dead.
@@ -265,9 +266,268 @@ public class DAGCombiner
         return new SDValue();
     }
 
+    /**
+     * Look for sequence of load/op/store where op is
+     * one of 'or', 'or', and 'and' of immediates. If
+     * 'op' is only touching some of the loaded bits,
+     * try narrowing the load and store if it would
+     * end up being a win for performance or code size.
+     * @param n
+     * @return
+     */
+    private SDValue reduceLoadOpStoreWidth(SDNode n)
+    {
+        StoreSDNode st = (StoreSDNode)n;
+        if (st.isVolatile())
+            return new SDValue();
+
+        SDValue chain = st.getValue();
+        SDValue val = st.getValue();
+        SDValue ptr = st.getBasePtr();
+        EVT vt = val.getValueType();
+
+        if (st.isTruncatingStore() || vt.isVector() ||
+                !val.hasOneUse())
+            return new SDValue();
+
+        int opc = val.getOpcode();
+        if ((opc != ISD.OR && opc != ISD.XOR && opc != ISD.AND) ||
+                val.getOperand(1).getOpcode() != ISD.Constant)
+            return new SDValue();
+
+        SDValue n0 = val.getOperand(0);
+        if (n0.getNode().isNormalLoad() && n0.hasOneUse())
+        {
+            LoadSDNode ld = (LoadSDNode)n0.getNode();
+            if (!ld.getBasePtr().equals(ptr))
+                return new SDValue();
+
+            SDValue n1 = val.getOperand(1);
+            int bitwidth = n1.getValueSizeInBits();
+            APInt imm = ((ConstantSDNode)n1.getNode()).getAPIntValue();
+            if (opc == ISD.AND)
+                imm = imm.xor(APInt.getAllOnesValue(bitwidth));
+            if (imm.eq(0) || imm.isAllOnesValue())
+                return new SDValue();
+            int shAmt = imm.countTrailingZeros();
+            int msb = bitwidth - imm.countLeadingZeros() - 1;
+            int newBW = (int) Util.nextPowerOf2(msb - shAmt);
+            EVT newVT = EVT.getIntegerVT(newBW);
+            while (newBW < bitwidth && !(tli.isOperationLegalOrCustom(opc, newVT) &&
+                                        tli.isNarrowingProfitable(vt, newVT)))
+            {
+                newBW = (int) Util.nextPowerOf2(newBW);
+                newVT = EVT.getIntegerVT(newBW);
+            }
+            if (newBW >= bitwidth)
+                return new SDValue();
+
+            // If the lab changed doesn't start at the type bitwidth
+            // boundary, start at the previous one.
+            if ((shAmt % newBW) != 0)
+            {
+                shAmt = ((shAmt + newBW - 1)/newBW) * newBW - newBW;
+            }
+            APInt mask = APInt.getBitsSet(bitwidth, shAmt, shAmt+newBW);
+            if (imm.and(mask).eq(imm))
+            {
+                APInt newImm = imm.and(mask).lshr(shAmt).trunc(newBW);
+                if (opc == ISD.AND)
+                  newImm = newImm.xor(APInt.getAllOnesValue(newBW));
+                long ptrOff = shAmt / 8;
+                if (tli.isBigEndian())
+                {
+                    ptrOff = (bitwidth + 7 - newBW)/8 - ptrOff;
+                }
+                int newAlign = Util.minAlign(ld.getAlignment(), (int) ptrOff);
+                if (newAlign < tli.getTargetData().getABITypeAlignment(
+                    newVT.getTypeForEVT()))
+                    return new SDValue();
+
+                SDValue newPtr = dag.getNode(ISD.ADD, ptr.getValueType(),
+                  ptr, dag.getConstant(ptrOff, ptr.getValueType(), false));
+                SDValue newLD = dag.getLoad(newVT, ld.getChain(),
+                  newPtr, ld.getSrcValue(), ld.getSrcValueOffset(),
+                  ld.isVolatile(), newAlign);
+                SDValue newVal = dag.getNode(opc, newVT, newLD,
+                  dag.getConstant(newImm, newVT, false));
+                SDValue newST = dag.getStore(chain, newVal, newPtr,
+                  st.getSrcValue(), st.getSrcValueOffset(),
+                  false, newAlign);
+
+                addToWorkList(newPtr.getNode());
+                addToWorkList(newLD.getNode());
+                addToWorkList(newVal.getNode());
+                WorklistRemover remover = new WorklistRemover(this);
+                dag.replaceAllUsesOfValueWith(n0.getValue(1),
+                        newLD.getValue(1), remover);
+                return newST;
+
+            }
+        }
+        return new SDValue();
+    }
+
     private SDValue visitSTORE(SDNode n)
     {
-        return new SDValue();
+        StoreSDNode st = (StoreSDNode)n;
+        SDValue chain = st.getChain();
+        SDValue value = st.getValue();
+        SDValue ptr = st.getBasePtr();
+
+        if (optLevel != CodeGenOpt.None && st.isUnindexed())
+        {
+            int align = inferAlignment(ptr);
+            if (align != 0)
+            {
+                return dag.getTruncStore(chain, value, ptr,
+                    st.getSrcValue(), st.getSrcValueOffset(),
+                        st.getMemoryVT(), st.isVolatile(), align);
+            }
+        }
+
+        // If this is a store of a bit convert, store the input value
+        // if the resultant store doesn't need a higher alignment than
+        // origin.
+        if (value.getOpcode() == ISD.BIT_CONVERT && !st.isTruncatingStore() &&
+            st.isUnindexed())
+        {
+            int originAlign = st.getAlignment();
+            EVT vt = value.getOperand(0).getValueType();
+            int align = tli.getTargetData().getABITypeAlignment(vt.getTypeForEVT());
+            if (align == originAlign && ((!legalOprations && !st.isVolatile()) ||
+                  tli.isOperationLegalOrCustom(ISD.STORE, vt)))
+            {
+                return dag.getStore(chain, value.getOperand(0),
+                    ptr, st.getSrcValue(), st.getSrcValueOffset(),
+                    st.isVolatile(), originAlign);
+            }
+        }
+
+        // turn 'store float 1.0, ptr' -> 'store int 0x12345678, ptr'
+        if (value.getNode() instanceof ConstantFPSDNode)
+        {
+            ConstantFPSDNode fp = (ConstantFPSDNode)value.getNode();
+            if (value.getOpcode() != ISD.TargetConstantFP)
+            {
+                SDValue temp = new SDValue();
+                switch(fp.getValueType(0).getSimpleVT().simpleVT)
+                {
+                    default:
+                      Util.shouldNotReachHere("Unknown FP type!");
+                      break;
+                    case MVT.f80:
+                    case MVT.f128:
+                    case MVT.ppcf128:
+                      break;
+                    case MVT.f32:
+                      if (((tli.isTypeLegal(new EVT(MVT.i32)) || !legalTypes) &&
+                          !st.isVolatile()) || tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i32)))
+                      {
+                          temp = dag.getConstant(fp.getValueAPF().bitcastToAPInt().getZExtValue(), new EVT(MVT.i32), false);
+                          return dag.getStore(chain, temp, ptr, st.getSrcValue(),
+                              st.getSrcValueOffset(), st.isVolatile(),
+                              st.getAlignment());
+                      }
+                      break;
+                    case MVT.f64:
+                      if (((tli.isTypeLegal(new EVT(MVT.i64)) || !legalTypes) &&
+                          !st.isVolatile()) || tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i64)))
+                      {
+                          temp = dag.getConstant(fp.getValueAPF().bitcastToAPInt().getZExtValue(), new EVT(MVT.i64), false);
+                          return dag.getStore(chain, temp, ptr, st.getSrcValue(),
+                              st.getSrcValueOffset(), st.isVolatile(),
+                              st.getAlignment());
+                      }
+                      else if (!st.isVolatile() && tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i32)))
+                      {
+                          // Many FP stores are not made apprent util after
+                          // legalization, e.g. for 64-bit integer store into
+                          // two 32-bits stores.
+                          long val = fp.getValueAPF().bitcastToAPInt().getZExtValue();
+                          SDValue lo = dag.getConstant(val&0xFFFFFFFF, new EVT(MVT.i32), false);
+                          SDValue hi = dag.getConstant(val >> 32, new EVT(MVT.i32), false);
+                          if (tli.isBigEndian())
+                          {
+                              SDValue t = lo;
+                              lo = hi;
+                              hi = t;
+                          }
+                          int svoffset = st.getSrcValueOffset();
+                          int alignment = st.getAlignment();
+                          boolean isVolatile = st.isVolatile();
+
+                          SDValue st0 = dag.getStore(chain, lo, ptr,
+                              st.getSrcValue(), svoffset, isVolatile, alignment);
+                          ptr = dag.getNode(ISD.ADD, ptr.getValueType(),
+                              ptr, dag.getConstant(4, ptr.getValueType(), false));
+                          svoffset = 4;
+                          alignment = Util.minAlign(alignment, 4);
+                          SDValue st1 = dag.getStore(chain, hi, ptr,
+                              st.getSrcValue(), svoffset, isVolatile, alignment);
+                          return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), st0, st1);
+                      }
+                      break;
+                }
+            }
+        }
+
+        // Attempts to transform n to an indexed store node.
+        if (combineToPreIndexedLoadStore(n) || combineToPostIndexedLoadStore(n))
+          return new SDValue(n, 0);
+
+        if (st.isTruncatingStore() && st.isUnindexed() &&
+            value.getValueType().isInteger())
+        {
+            SDValue shorter = getDemandedBits(value, 
+                APInt.getLowBitsSet(value.getValueSizeInBits(),
+                  st.getMemoryVT().getSizeInBits()));
+            addToWorkList(shorter.getNode());
+            if (shorter.getNode() != null)
+            {
+                return dag.getTruncStore(chain, shorter, ptr,
+                    st.getSrcValue(), st.getSrcValueOffset(),
+                    st.getMemoryVT(), st.isVolatile(),
+                    st.getAlignment());
+            }
+
+            // Otherwise, check to see if we can simplify this operation
+            // with simplifyDemandedBits function, which only works if the
+            // value has a single use.
+            if (simplifyDemandedBits(value, APInt.getLowBitsSet(
+                    value.getValueSizeInBits(), st.getMemoryVT().getSizeInBits())))
+            {
+                return new SDValue(n, 0);
+            }
+        }
+
+        // if this is a load followed by a store to the same location,
+        // the store is dead.
+        if (value.getNode() instanceof LoadSDNode)
+        {
+            LoadSDNode ld = (LoadSDNode)value.getNode();
+            if (ld.getBasePtr().equals(ptr) && 
+                st.getMemoryVT().equals(ld.getMemoryVT()) &&
+                st.isUnindexed() && !st.isVolatile() &&
+                chain.reachesChainWithoutSideEffects(new SDValue(ld, 1)))
+              return chain;
+        }
+
+        // If this is a FP_ROUND or TRUNC followed by a store, fold this
+        // into a truncating store. We can do this even if this is already
+        // a truncstore.
+        int valOpc = value.getOpcode();
+        if ((valOpc == ISD.FP_ROUND || valOpc == ISD.TRUNCATE) && 
+            value.hasOneUse() && st.isUnindexed() &&
+            tli.isTruncStoreLegal(value.getOperand(0).getValueType(),
+              st.getMemoryVT()))
+        {
+            return dag.getTruncStore(chain, value.getOperand(0),
+                ptr, st.getSrcValue(), st.getSrcValueOffset(),
+                st.getMemoryVT(), st.isVolatile(), st.getAlignment());
+        }
+
+        return reduceLoadOpStoreWidth(n);
     }
 
     private int inferAlignment(SDValue ptr)
@@ -308,7 +568,7 @@ public class DAGCombiner
         SDValue ptr = ld.getBasePtr();
 
         // Try to infer better alignment information than the load already has.
-        if (optLevel != TargetMachine.CodeGenOpt.None && ld.isUnindexed())
+        if (optLevel != CodeGenOpt.None && ld.isUnindexed())
         {
             int align =inferAlignment(ptr);
             if (align != 0 && align > ld.getAlignment())
@@ -4570,7 +4830,7 @@ public class DAGCombiner
     {
         assert n.getNumValues() == to.length;
         WorklistRemover remover = new WorklistRemover(this);
-        dag.replaceAllUsesWith(n, to[0], remover);
+        dag.replaceAllUsesWith(n, to, remover);
         if (addTo)
         {
             for (SDValue v : to)
