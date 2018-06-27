@@ -5946,4 +5946,16 @@ public class X86TargetLowering extends TargetLowering
     {
         return !x86ScalarSSEf64 || vt.getSimpleVT().simpleVT == MVT.f80;
     }
+
+    /**
+     * 16 bit instruction potentially be longer(wiht prefix) and slower.
+     * @param vt1
+     * @param vt2
+     * @return
+     */
+    @Override
+    public boolean isNarrowingProfitable(EVT vt1, EVT vt2)
+    {
+        return !(vt1.equals(new EVT(MVT.i32)) && vt2.equals(new EVT(MVT.i16)));
+    }
 }

@@ -2909,4 +2909,16 @@ public abstract class TargetLowering
     {
         return true;
     }
+
+    /**
+     * Checks if it is profitable to narrow the Value from vt1 to vt2.
+     * e.g. it is useful to narrow from i32 to i8 in X86 target.
+     * @param vt1
+     * @param vt2
+     * @return
+     */
+    public boolean isNarrowingProfitable(EVT vt1, EVT vt2)
+    {
+        return false;
+    }
 }
