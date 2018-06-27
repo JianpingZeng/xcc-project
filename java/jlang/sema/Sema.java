@@ -6784,7 +6784,7 @@ public final class Sema implements DiagnosticParseTag,
             OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation opLoc)
     {
-        return checkSubtractionOperands(lhs, rhs, opLoc, new OutParamWrapper<>());
+        return checkSubtractionOperands(lhs, rhs, opLoc, null);
     }
 
 	/**
