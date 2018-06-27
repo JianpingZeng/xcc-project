@@ -28,6 +28,7 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.List;
 
+import static backend.transform.utils.ConstantFolder.constantFoldCastInstruction;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
@@ -221,7 +222,8 @@ public abstract class ConstantExpr extends Constant
     private static Constant getFoldedCast(Operator op, Constant c, Type ty)
     {
         assert ty.isFirstClassType():"Cannot cast to an aggregate type!";
-        // TODO fold a few common cases.
+        Constant res = constantFoldCastInstruction(op, c, ty);
+        if (res != null) return res;
 
         ExprMapKeyType key = new ExprMapKeyType(op, c, ty);
         return getUniqueImpl().getOrCreate(key);

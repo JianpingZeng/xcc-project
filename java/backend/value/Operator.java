@@ -111,6 +111,9 @@ public enum Operator
 	public static Operator BinaryOpsBegin = Add;
 	public static Operator BinaryOpsEnd = Trunc;
 
+	public static Operator CastOpsBegin = Trunc;
+	public static Operator CastOpsEnd = BitCast;
+
     static class Flags
 	{
 		public static final int COMMUTATIVE = 0x1;
@@ -153,7 +156,7 @@ public enum Operator
 
 	public boolean isComparison()
     {
-        return index>=Trunc.index && index<=BitCast.index;
+        return index>=ICmp.index && index<=FCmp.index;
     }
 
     public boolean isBinaryOps()
@@ -161,9 +164,9 @@ public enum Operator
     	return index>= BinaryOpsBegin.index && index < BinaryOpsEnd.index;
     }
 
-    public boolean isUnaryOps()
+    public boolean isCastOps()
     {
-        return index >= BinaryOpsEnd.index && index <= Load.index && this != Store;
+        return index >= CastOpsBegin.index && index <= CastOpsEnd.index;
     }
 
     public boolean isGEP()

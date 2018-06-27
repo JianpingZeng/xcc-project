@@ -868,7 +868,7 @@ public final class CodeGenFunction
 			return;
 		BranchInst inst = (BranchInst)ti;
 		// Can only simplify direct branch.
-		if (inst == null || !inst.isUnconditional())
+		if (!inst.isUnconditional())
 			return;
 
 		bb.replaceAllUsesWith(inst.getSuccessor(0));
@@ -905,15 +905,19 @@ public final class CodeGenFunction
 		// "do {...}while(0)" is common case in macros, avoid extra blocks.
 		if (boolCondVal instanceof ConstantInt)
 		{
+			shouldEmitBranch = false;
 			ConstantInt c = (ConstantInt) boolCondVal;
 			if (c.isZero())
-				shouldEmitBranch = false;
+				emitBranch(loopEnd);
+			else
+				emitBranch(loopBody);
 		}
-
-		// As long as the condition is true, iterate the loop.
-		if (shouldEmitBranch)
+		else
+		{
+			// emit a branch instr when we can not determine the condition
+			// value in compile-time.
 			builder.createCondBr(boolCondVal, loopBody, loopEnd);
-
+		}
 		// emit the loop exit block.
 		emitBlock(loopEnd);
 

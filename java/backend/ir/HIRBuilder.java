@@ -17,6 +17,7 @@ package backend.ir;
  */
 
 import backend.support.LLVMContext;
+import backend.transform.utils.ConstantFolder;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -386,16 +387,15 @@ public class HIRBuilder
 
 	public Value createICmp(Predicate pred, Value lhs, Value rhs, final String name)
 	{
-        /*
         if (lhs instanceof Constant)
 		{
-			Constant LC = (Constant) lhs;
+			Constant lc = (Constant) lhs;
 			if (rhs instanceof Constant)
 			{
-				Constant RC = (Constant) rhs;
-				return null; // TODO folder.createICmp(P, LC, RC);
+				Constant rc = (Constant) rhs;
+				return ConstantFolder.createICmp(pred, lc, rc);
 			}
-		}*/
+		}
 		return insert(new Instruction.ICmpInst(pred, lhs, rhs, ""), name);
 	}
 
