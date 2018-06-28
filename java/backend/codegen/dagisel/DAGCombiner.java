@@ -78,17 +78,17 @@ public class DAGCombiner
         legalOprations = level.compareTo(CombineLevel.NoIllegalOperations) >= 0;
         legalTypes = level.compareTo(CombineLevel.NoIllegalTypes) >= 0;
 
-        workList.addAll(dag.allNodes);
+        for (SDNode n : dag.allNodes)
+            workList.push(n);
 
         // create a dummy node that adds a reference to the root node, preventing
-        // it from beging deleted, and tracking any change of root.
+        // it from begin deleted, and tracking any change of root.
         SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(dag.getRoot());
 
         dag.setRoot(new SDValue());
         while (!workList.isEmpty())
         {
             SDNode n = workList.pop();
-
             if (n.isUseEmpty() && !n.equals(dummy))
             {
                 // if this node has no uses, so it is dead.
@@ -1226,12 +1226,11 @@ public class DAGCombiner
     private SDValue visitFP_ROUND(SDNode n)
     {
         SDValue n0 = n.getOperand(0);
-        SDValue n1 = n.getOperand(1);
         ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
                 (ConstantFPSDNode)n0.getNode() : null;
         EVT vt = n.getValueType(0);
         if (fp != null && !n0.getValueType().equals(new EVT(MVT.ppcf128)))
-            return dag.getNode(ISD.FP_ROUND, vt, n0, n1);
+            return dag.getNode(ISD.FP_ROUND, vt, n0);
 
         if (n0.getOpcode() == ISD.FP_EXTEND && vt.equals(n0.getOperand(0).getValueType()))
             return n0.getOperand(0);
@@ -1246,7 +1245,7 @@ public class DAGCombiner
 
         if (n0.getOpcode() ==  ISD.FCOPYSIGN && n0.hasOneUse())
         {
-            SDValue temp = dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0), n1);
+            SDValue temp = dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0));
             addToWorkList(temp.getNode());
             return dag.getNode(ISD.FCOPYSIGN, vt, temp, n0.getOperand(1));
         }

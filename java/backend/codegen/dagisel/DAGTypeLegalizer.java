@@ -167,7 +167,7 @@ public class DAGTypeLegalizer
             if (node.getNumOperands() == 0)
             {
                 node.setNodeID(ReadyToProcess);
-                worklist.add(node);
+                worklist.push(node);
             }
             else
                 node.setNodeID(Unanalyzed);
@@ -328,7 +328,7 @@ public class DAGTypeLegalizer
                 user.setNodeID(user.getNumOperands() - 1);
 
                 if (user.getNumOperands() == 1)
-                    worklist.add(user);
+                    worklist.push(user);
             }
         }
         if (Util.DEBUG)

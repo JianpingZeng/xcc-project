@@ -1463,6 +1463,7 @@ public class SelectionDAG
                 }
                 ++i;
                 u.set(newNode);
+                e = useList.size();
             } while (i < e && useList.get(i).user.equals(user));
 
             if (!userRemovedFromCSEMaps)
@@ -2215,6 +2216,7 @@ public class SelectionDAG
                 u = useList.get(i);
                 ++i;
                 u.setNode(newNode);
+                e = useList.size();
             } while (i < e && useList.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);
         }
