@@ -72,7 +72,7 @@ public enum Operator
 	// signed integer to floating-point.
 	SIToFP("sitofp", UIToFP.index + 1, 0),
 	// floating point truncate.
-	FPTrunc("f2l", SIToFP.index + 1, 0),
+	FPTrunc("fptrunc", SIToFP.index + 1, 0),
 	// float point extend.
 	FPExt("fpext", FPTrunc.index + 1, 0),
 	// pointer to integer.

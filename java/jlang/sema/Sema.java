@@ -5575,7 +5575,7 @@ public final class Sema implements DiagnosticParseTag,
         AssignConvertType result = checkAssignmentConstraints(lhsType, rhsExpr, x);
         CastKind ck = x.get();
 
-        if (result == AssignConvertType.Incompatible && !lhsType.equals(rhsType))
+        if (result != AssignConvertType.Incompatible && !lhsType.equals(rhsType))
             rhsExpr.set(implicitCastExprToType(rhsExpr.get().get(), lhsType, EVK_RValue,ck));
 
         return result;

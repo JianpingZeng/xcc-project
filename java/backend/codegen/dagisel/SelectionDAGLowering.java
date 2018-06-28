@@ -1954,7 +1954,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     {
         EVT destVT = tli.getValueType(inst.getType());
         SDValue op1 = getValue(inst.operand(0));
-        setValue(inst, dag.getNode(ISD.FTRUNC, destVT, op1));
+        setValue(inst, dag.getNode(ISD.FP_ROUND, destVT, op1));
         return null;
     }
 
