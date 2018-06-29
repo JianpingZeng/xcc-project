@@ -941,7 +941,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
         if (def.isMachineOpecode())
         {
             TargetInstrDesc tid = tii.get(def.getMachineOpcode());
-            if (resNo >= tid.getNumDefs() && tid.implicitDefs[resNo-tid.getNumDefs()] == reg)
+            if (resNo >= tid.getNumDefs() && tid.implicitDefs != null &&
+		            tid.implicitDefs[resNo-tid.getNumDefs()] == reg)
             {
                 res[0] = reg;
                 TargetRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, def.getValueType(resNo));
