@@ -122,7 +122,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         TargetInstrInfo tii = mf.getTarget().getInstrInfo();
         MachineRegisterInfo regInfo = mf.getMachineRegisterInfo();
 
-        selectionAllBasicBlocks(f, mf, tii);
+        selectionAllBasicBlocks(f);
         emitLiveInCopies(mf, tii, regInfo);
 
         for (Pair<Integer, Integer> reg : regInfo.getLiveIns())
@@ -130,6 +130,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             mf.getEntryBlock().addLiveIn(reg.first);
         }
         funcInfo.clear();
+        sdl.clear();
+        curDAG.clear();
+        dagSize = 0;
         return true;
     }
 
@@ -147,7 +150,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         }
     }
 
-    private void selectionAllBasicBlocks(Function fn, MachineFunction mf, TargetInstrInfo tii)
+    private void selectionAllBasicBlocks(Function fn)
     {
         // Iterate over all basic blocks in the function.
         for (BasicBlock llvmBB : fn.getBasicBlockList())

@@ -45,7 +45,7 @@ public class ConstantFP extends Constant
     {
         super(ty, ValueKind.ConstantFPVal);
         assert v.getSemantics() == typeToFloatSemantics(ty):"FP type mismatch!";
-        val = v;
+        val = v.clone();
     }
 
     private static FltSemantics typeToFloatSemantics(Type ty)

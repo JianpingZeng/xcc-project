@@ -1640,7 +1640,7 @@ public final class CodeGenFunction
 		assert !breakContinueStack.isEmpty()
                 : "break stmt not in a loop or switch!";
 		BasicBlock breakBB = breakContinueStack.peek().breakBlock;
-		emitBlock(breakBB);
+		emitBranch(breakBB);
 	}
 
 	/**
@@ -1802,7 +1802,7 @@ public final class CodeGenFunction
 				.isEmpty() : "break stmt not in a loop or switch!";
 
 		BasicBlock continueBB = breakContinueStack.peek().continueBlock;
-		emitBlock(continueBB);
+		emitBranch(continueBB);
 	}
 
 	private void emitDefaultStmt(Tree.DefaultStmt s)
