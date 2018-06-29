@@ -26,7 +26,6 @@ import backend.codegen.dagisel.SDNode.*;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
-import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.ArrayType;
 import backend.type.Type;
@@ -1091,7 +1090,7 @@ public class DAGCombiner
                 return new SDValue();
             case ISD.ConstantFP:
             {
-                APFloat f = ((ConstantFPSDNode)op.getNode()).getValueAPF();
+                APFloat f = ((ConstantFPSDNode)op.getNode()).getValueAPF().clone();
                 f.changeSign();
                 return dag.getConstantFP(f, op.getValueType(), false);
             }

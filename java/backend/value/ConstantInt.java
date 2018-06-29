@@ -43,7 +43,7 @@ public class ConstantInt extends Constant
     ConstantInt(IntegerType ty, APInt v)
     {
         super(ty, ValueKind.ConstantIntVal);
-        val = v;
+        val = v.clone();
         assert v.getBitWidth() == ty.getBitWidth():"Invalid constants for type";
     }
 
