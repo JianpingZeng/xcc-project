@@ -1065,9 +1065,9 @@ public class APInt implements Cloneable
                 buffer.append(prefix.charAt(idx));
                 idx++;
             }
-            while (n != 0)
+            while (n > 0)
             {
-                buf[--bufLen] = digits.charAt((int) n % radix);
+                buf[--bufLen] = digits.charAt((int)(n % radix));
                 n /= radix;
             }
             buffer.append(buf, bufLen, 65 - bufLen);

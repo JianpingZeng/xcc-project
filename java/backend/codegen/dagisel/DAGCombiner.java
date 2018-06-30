@@ -77,6 +77,8 @@ public class DAGCombiner
         legalOprations = level.compareTo(CombineLevel.NoIllegalOperations) >= 0;
         legalTypes = level.compareTo(CombineLevel.NoIllegalTypes) >= 0;
 
+        // assigns a topological order on DAG.
+        dag.assignTopologicalOrder();
         for (SDNode n : dag.allNodes)
             workList.push(n);
 
@@ -409,7 +411,7 @@ public class DAGCombiner
             ConstantFPSDNode fp = (ConstantFPSDNode)value.getNode();
             if (value.getOpcode() != ISD.TargetConstantFP)
             {
-                SDValue temp = new SDValue();
+                SDValue temp;
                 switch(fp.getValueType(0).getSimpleVT().simpleVT)
                 {
                     default:
@@ -4818,7 +4820,7 @@ public class DAGCombiner
     {
         if (n == null) return;
         removeFromWorkList(n);
-        workList.add(n);
+        workList.push(n);
     }
 
     public void removeFromWorkList(SDNode n)
