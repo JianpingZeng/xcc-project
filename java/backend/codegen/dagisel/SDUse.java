@@ -104,7 +104,7 @@ public class SDUse implements Comparable<SDUse>
     {
         if (val != null && val.getNode() != null)
             val.getNode().removeUse(this);
-        val = v;
+        val = v.clone();
         if (val != null && val.getNode() != null)
             val.getNode().addUse(this);
     }
@@ -116,8 +116,8 @@ public class SDUse implements Comparable<SDUse>
      */
     public void setInitial(SDValue v)
     {
-        val = v;
-        if (v != null && v.getNode() != null)
+        val = v.clone();
+        if (v.getNode() != null)
             v.getNode().addUse(this);
     }
 
