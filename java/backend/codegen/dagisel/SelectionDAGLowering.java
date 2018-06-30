@@ -1736,33 +1736,29 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     {
         Operator op = inst instanceof Instruction ?
                 ((Instruction)inst).getOpcode() : ((ConstantExpr)inst).getOpcode();
-        SDValue op1 = getValue(inst.operand(0));
-        SDValue op2 = getValue(inst.operand(1));
+        SDValue op0 = getValue(inst.operand(0));
+        SDValue op1 = getValue(inst.operand(1));
         int opc = getSDOpc(op);
         assert opc >= 0;
         if (op.isShift())
         {
-            if (!op2.getValueType().getSimpleVT().equals(tli.getShiftAmountTy()))
+            if (!op1.getValueType().getSimpleVT().equals(tli.getShiftAmountTy()))
             {
                 EVT pty = new EVT(tli.getPointerTy());
                 EVT sty = new EVT(tli.getShiftAmountTy());
-                if (sty.bitsGT(op2.getValueType()))
-                    op2 = dag.getNode(ISD.ANY_EXTEND, sty, op2);
-                else if (sty.getSizeInBits() >= Util.log2Ceil(op2.getValueType().getSizeInBits()))
+                if (sty.bitsGT(op1.getValueType()))
+                    op1 = dag.getNode(ISD.ANY_EXTEND, sty, op1);
+                else if (sty.getSizeInBits() >= Util.log2Ceil(op1.getValueType().getSizeInBits()))
                 {
-                    op2 = dag.getNode(ISD.TRUNCATE, sty, op2);
+                    op1 = dag.getNode(ISD.TRUNCATE, sty, op1);
                 }
-                else if (pty.bitsLT(op2.getValueType()))
-                    op2 = dag.getNode(ISD.TRUNCATE, pty, op2);
-                else if (pty.bitsGT(op2.getValueType()))
-                    op2 = dag.getNode(ISD.ANY_EXTEND, pty, op2);
+                else if (pty.bitsLT(op1.getValueType()))
+                    op1 = dag.getNode(ISD.TRUNCATE, pty, op1);
+                else if (pty.bitsGT(op1.getValueType()))
+                    op1 = dag.getNode(ISD.ANY_EXTEND, pty, op1);
             }
-            setValue(inst, dag.getNode(opc, op1.getValueType(), op1, op2));
         }
-        else
-        {
-            setValue(inst, dag.getNode(opc, op1.getValueType(), op1, op2));
-        }
+        setValue(inst, dag.getNode(opc, op0.getValueType(), op0, op1));
         return null;
     }
 

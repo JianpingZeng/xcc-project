@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.LowerSubregInstructionPass;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.codegen.RearrangementMBB;
@@ -124,10 +125,11 @@ public abstract class LLVMTargetMachine extends TargetMachine
                 "# *** IR dump after Register Allocator ***:\n");
 
         if (addPostRegAlloc(pm, level))
-            return true;
+            printAndVerify(pm, false, "# *** IR dump after Post-Register allocation ***:\n");
 
-        printAndVerify(pm, true,
-                "# *** IR dump after Post-Register allocation ***:\n");
+        pm.add(LowerSubregInstructionPass.createLowerSubregPass());
+        printAndVerify(pm, false,
+                "# *** IR dump after Subregister lowering ***:\n");
 
         pm.add(createPrologEpilogEmitter());
         printAndVerify(pm, false,

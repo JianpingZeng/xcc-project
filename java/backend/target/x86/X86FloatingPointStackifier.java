@@ -979,6 +979,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 }
                 break;
             }
+            /*
             case TargetInstrInfo.COPY:
             {
                 MachineOperand mo1 = mi.getOperand(1);
@@ -1049,7 +1050,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                     duplicateToTop(srcFP, destFP, itr);
                 }
                 break;
-            }
+            }*/
             case TargetInstrInfo.IMPLICIT_DEF:
             {
                 int reg = mi.getOperand(0).getReg() - X86GenRegisterNames.FP0;
@@ -1130,14 +1131,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
         // remove the pseudo instruction.
         mbb.remove(itr);
-
-        if (itr == 0)
-        {
-            if (Util.DEBUG) System.err.println("Inserting dummy KILL");
-            buildMI(mbb, itr, tii.get(TargetInstrInfo.KILL));
-        }
-        else
-            --itr;
+        --itr;
         return itr;
     }
 
@@ -1178,9 +1172,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             int flags = mi.getDesc().tSFlags;
 
             int fpInstClass = flags & X86II.FPTypeMask;
-            if (mi.isCopy() && isFPCopy(mi))
-                fpInstClass = X86II.SpecialFP;
-            if (mi.isImplicitDef() && RFP80RegisterClass.contains(mi.getOperand(0).getReg()))
+            if (mi.getOpcode() == TargetInstrInfo.INLINEASM)
                 fpInstClass = X86II.SpecialFP;
 
             if (fpInstClass == X86II.NotFP)

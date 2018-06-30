@@ -110,7 +110,7 @@ public final class CodeGenDAGPatterns
 
     private void inferInstructionFlags() throws Exception
     {
-        HashMap<String, CodeGenInstruction> instrDesc = target.getInstructions();
+        TreeMap<String, CodeGenInstruction> instrDesc = target.getInstructions();
         for (Map.Entry<String, CodeGenInstruction> pair : instrDesc.entrySet())
         {
             CodeGenInstruction instInfo = pair.getValue();

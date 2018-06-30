@@ -27,7 +27,7 @@ public abstract class TargetInstrInfo
     public static final int DBG_LABEL = 2;
     public static final int EH_LABEL = 3;
     public static final int GC_LABEL = 4;
-    public static final int KILL = 5;
+    public static final int DECLARE = 5;
 
     /// EXTRACT_SUBREG - This instruction takes two operands: a register
     /// that has subregisters, and a subregister index. It returns the
@@ -61,12 +61,6 @@ public abstract class TargetInstrInfo
     /// instructions are insufficient. The actual MachineInstrs to perform
     /// the copy are emitted with the TargetInstrInfo::copyRegToReg hook.
     public static final int COPY_TO_REGCLASS = 10;
-
-    public static final int DBG_VALUE = 11;
-
-    public static final int REG_SEQUENCE = 12;
-
-    public static final int COPY = 13;
 
 	/**
 	 * Describing the machine instructions initialized only when the
@@ -300,7 +294,7 @@ public abstract class TargetInstrInfo
 	/// storeRegToStackSlot - Store the specified register of the given register
 	/// class to the specified stack frame index. The store instruction is to be
 	/// added to the given machine basic block before the specified machine
-	/// instruction. If isKill is true, the register operand is the last use and
+	/// instruction. If isDeclare is true, the register operand is the last use and
 	/// must be marked kill.
 	public  void storeRegToStackSlot(MachineBasicBlock mbb,
 			int pos,

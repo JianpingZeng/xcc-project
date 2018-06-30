@@ -751,16 +751,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
         Util.shouldNotReachHere("Target can not support");
     }
 
-    /**
-     * This method formats and prints the specified machine
-     * instruction that is an inline asm.
-     * @param mi
-     */
-    protected void printInlineAsm(MachineInstr mi)
-    {
-        Util.shouldNotReachHere("Target can not support inline asm");
-    }
-
     private boolean shouldOmitSectionDirective(String name, TargetAsmInfo tai)
     {
         switch (name)
@@ -1062,5 +1052,59 @@ public abstract class AsmPrinter extends MachineFunctionPass
     private void emitLLVMUsedList(Constant list)
     {
         assert false:"Should not reaching here!"; // TODO: 17-8-2
+    }
+
+    /**
+     * This method prints a local label used for debugging and exception handling
+     * tables.
+     * @param id
+     */
+    public void printLabel(long id)
+    {
+        os.printf("%slabel%d:%n", tai.getPrivateGlobalPrefix(), id);
+    }
+
+    /**
+     * This method prints a local label used for debugging and exception handling
+     * tables.
+     * @param mi
+     */
+    public void printLabel(MachineInstr mi)
+    {
+        printLabel(mi.getOperand(0).getImm());
+    }
+
+    /**
+     * This method formats and prints the specified machine
+     * instruction that is an inline asm.
+     * @param mi
+     */
+    public void printInlineAsm(MachineInstr mi)
+    {
+        Util.shouldNotReachHere("Target can not support inline asm");
+    }
+
+    /**
+     * This methods prints a local variable declaration used by debug table.
+     * @param mi
+     */
+    public void printDeclare(MachineInstr mi)
+    {
+        Util.shouldNotReachHere("Exception handling not supported!");
+    }
+
+    /**
+     * This method prints the specified machine instruction that is an implicit
+     * def.
+     * @param mi
+     */
+    public void printImplicitDef(MachineInstr mi)
+    {
+        if (verboseAsm)
+        {
+            os.padToColumn(tai.getCommentColumn());
+            os.printf("%s implicit-def: %s%n", tai.getCommentString(),
+                    tri.getAsmName(mi.getOperand(0).getReg()));
+        }
     }
 }

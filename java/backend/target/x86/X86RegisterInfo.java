@@ -1004,12 +1004,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		return reserved;
 	}
 
-	@Override
-	public int getSubReg(int regNo, int index)
-	{
-		return 0;
-	}
-
 	/**
 	 * Return true if the specified function should have a dedicated stack pointer
 	 * register. This is true if function has variable sized objects or if frame

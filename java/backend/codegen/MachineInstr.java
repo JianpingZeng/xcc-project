@@ -307,9 +307,9 @@ public class MachineInstr implements Cloneable
 		return getDesc().isReturn();
 	}
 
-	public boolean isKill()
+	public boolean isDeclare()
 	{
-		return getOpcode() == TargetInstrInfo.KILL;
+		return getOpcode() == TargetInstrInfo.DECLARE;
 	}
 
 	public boolean isImplicitDef()
@@ -332,32 +332,6 @@ public class MachineInstr implements Cloneable
 		return getOpcode() == TargetInstrInfo.SUBREG_TO_REG;
 	}
 
-	public boolean isRegSequence()
-	{
-		return getOpcode() == TargetInstrInfo.REG_SEQUENCE;
-	}
-
-	public boolean isCopy()
-	{
-		return getOpcode() == TargetInstrInfo.COPY;
-	}
-
-	public boolean isFullCopy()
-	{
-		return isCopy() && getOperand(0).getSubReg() == 0 &&
-				getOperand(1).getSubReg() == 0;
-	}
-
-	public boolean isCopyLike()
-	{
-		return isCopy() || isSubregToReg();
-	}
-
-	public boolean isIdentityCopy()
-	{
-		return isCopy() && getOperand(0).getReg() == getOperand(1).getReg()
-				&& getOperand(0).getSubReg() == getOperand(1).getSubReg();
-	}
 	public boolean readsRegister(int reg, TargetRegisterInfo tri)
 	{
 		return findRegisterUseOperandIdx(reg, false, tri) != -1;
@@ -396,7 +370,7 @@ public class MachineInstr implements Cloneable
 	/**
 	 * Returns the MachineOperand that is a use of
 	 * the specific register or -1 if it is not found. It further tightening
-	 * the search criteria to a use that kills the register if isKill is true.
+	 * the search criteria to a use that kills the register if isDeclare is true.
 	 * @param reg
 	 * @param isKill
 	 * @param tri
@@ -672,7 +646,7 @@ public class MachineInstr implements Cloneable
         {
             addOperand(MachineOperand
                     .createReg(incomingReg, false /*isDef*/, true  /*isImp*/,
-                            true/*isKill*/, false, false, false, 0));
+                            true/*isDeclare*/, false, false, false, 0));
             return true;
         }
         return found;

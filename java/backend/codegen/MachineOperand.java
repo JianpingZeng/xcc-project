@@ -622,7 +622,7 @@ public class MachineOperand
 
 	/**
 	 * Return true if this operand is identical to the specified
-	 * operand. Note: This method ignores isKill and isDead properties.
+	 * operand. Note: This method ignores isDeclare and isDead properties.
 	 * @param other
 	 * @return
 	 */
