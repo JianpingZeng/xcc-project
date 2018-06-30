@@ -54,7 +54,7 @@ public class SDUse implements Comparable<SDUse>
 
     public SDNode getNode()
     {
-        return val.getNode();
+        return val != null?val.getNode():null;
     }
 
     public int getResNo()
@@ -102,10 +102,10 @@ public class SDUse implements Comparable<SDUse>
      */
     public void set(SDValue v)
     {
-        if (val.getNode() != null)
+        if (val != null && val.getNode() != null)
             val.getNode().removeUse(this);
         val = v;
-        if (val.getNode() != null)
+        if (val != null && val.getNode() != null)
             val.getNode().addUse(this);
     }
 

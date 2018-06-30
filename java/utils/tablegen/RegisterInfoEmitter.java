@@ -912,7 +912,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
 
         // Emit the subregister + index mapping function based on the information
         // calculated above.
-        os.printf("\tpublic int getSubRegs(int regNo, int index)\n\t{\n\t");
+        os.printf("\tpublic int getSubReg(int regNo, int index)\n\t{\n\t");
         os.printf("switch(regNo)\n\t\t{\n\t\t\t");
         os.printf("default: return 0;\n");
 

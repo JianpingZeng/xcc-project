@@ -18,9 +18,7 @@ package utils.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 import static backend.codegen.MVT.Other;
 
@@ -36,7 +34,7 @@ public final class CodeGenTarget
     private int pointerType;
 
 
-    private HashMap<String, CodeGenInstruction> insts;
+    private TreeMap<String, CodeGenInstruction> insts;
     private ArrayList<CodeGenRegister> registers;
     private ArrayList<CodeGenRegisterClass> registerClasses;
     private TIntArrayList legalValueTypes;
@@ -112,7 +110,7 @@ public final class CodeGenTarget
             throw new Exception("No 'Instruction' subclasses defined!");
 
         String instFormatName = getAsmWriter().getValueAsString("InstFormatName");
-        insts = new HashMap<>();
+        insts = new TreeMap<>();
         for (Record inst : instrs)
         {
             String asmStr = inst.getValueAsString(instFormatName);
@@ -165,7 +163,7 @@ public final class CodeGenTarget
         return registers;
     }
 
-    public HashMap<String, CodeGenInstruction> getInstructions()
+    public TreeMap<String, CodeGenInstruction> getInstructions()
             throws Exception
     {
         if (insts == null || insts.isEmpty())
@@ -182,22 +180,33 @@ public final class CodeGenTarget
             ArrayList<CodeGenInstruction> numberedInstructions)
             throws Exception
     {
-        if (!insts.containsKey("PHI"))
-            throw new Exception("Could not find 'PHI' instruction");
-        CodeGenInstruction phi = insts.get("PHI");
-
-        if (!insts.containsKey("INLINEASM"))
-            throw new Exception("Could not find 'INLINEASM instruction'");
-
-        CodeGenInstruction inlineAsm = insts.get("INLINEASM");
+        String[] firstPriority = {
+                "PHI",
+                "INLINEASM",
+                "DBG_LABEL",
+                "EH_LABEL",
+                "GC_LABEL",
+                "DECLARE",
+                "EXTRACT_SUBREG",
+                "INSERT_SUBREG",
+                "IMPLICIT_DEF",
+                "SUBREG_TO_REG",
+                "COPY_TO_REGCLASS"
+        };
+        TreeSet<String> names = new TreeSet<>();
+        for (String instr : firstPriority)
+        {
+            if (!insts.containsKey(instr))
+                throw new Exception(String.format("Could not find '%s' instruction", instr));
+            numberedInstructions.add(insts.get(instr));
+            names.add(instr);
+        }
 
         // Print out the rest of the insts set.
-        numberedInstructions.add(phi);
-        numberedInstructions.add(inlineAsm);
         insts.entrySet().forEach(entry->
         {
             CodeGenInstruction inst =  entry.getValue();
-            if (inst != phi && inst != inlineAsm)
+            if (!names.contains(entry.getKey()))
                 numberedInstructions.add(inst);
         });
     }

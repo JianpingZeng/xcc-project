@@ -2577,7 +2577,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             loadRegFromAddr(mf, reg, AddrOps, rc, newMIs);
             if (unfoldStore)
             {
-                // Address operands cannot be marked isKill.
+                // Address operands cannot be marked isDeclare.
                 for (int i = 1; i != 1 + x86AddrNumOperands; ++i)
                 {
                     MachineOperand MO = newMIs.get(0).getOperand(i);
@@ -3320,7 +3320,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case EH_LABEL:
                         break;
                     case IMPLICIT_DEF:
-                    case KILL:
+                    case DECLARE:
                     case DWARF_LOC:
                     case FP_REG_KILL:
                         break;

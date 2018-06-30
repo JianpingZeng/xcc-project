@@ -620,10 +620,10 @@ public class SelectionDAG
             case ISD.SRL:
             case ISD.ROTL:
             case ISD.ROTR:
-                assert vt.equals(op0
-                        .getValueType()) : "Shift operators return tyep must be the same as their arg";
-                assert vt.isInteger() && op0.getValueType().equals(op1
-                        .getValueType()) : "Shift operator only works on integer type!";
+                assert vt.equals(op0.getValueType()) :
+                        "Shift operators return tyep must be the same as their arg";
+                assert vt.isInteger() && op1.getValueType().isInteger() :
+                        "Shift operator only works on integer type!";
 
                 if (vt.equals(new EVT(MVT.i1)))
                     return op0;
