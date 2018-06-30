@@ -345,7 +345,7 @@ public class SelectionDAG
         if (op0.getNode() instanceof ConstantFPSDNode)
         {
             ConstantFPSDNode fp1 = (ConstantFPSDNode) op0.getNode();
-            APFloat val = fp1.getValueAPF();
+            APFloat val = fp1.getValueAPF().clone();    // make copy
             if (!vt.equals(new EVT(MVT.ppcf128)) && !op0.getValueType().equals(new EVT(MVT.ppcf128)))
             {
                 switch (opc)
@@ -2087,7 +2087,8 @@ public class SelectionDAG
 
     Comparator<UseMemo> UseMemoComparator = new Comparator<UseMemo>()
     {
-        @Override public int compare(UseMemo o1, UseMemo o2)
+        @Override
+        public int compare(UseMemo o1, UseMemo o2)
         {
             return o1.user.hashCode() - o2.user.hashCode();
         }
@@ -2202,25 +2203,28 @@ public class SelectionDAG
         if (Objects.equals(oldNode, newNode))
             return;
 
-        ArrayList<SDUse> useList = oldNode.useList;
-        int i = 0, e = useList.size();
+        ArrayList<SDUse> temps = new ArrayList<>();
+        temps.addAll(oldNode.getUseList());
+        int i = 0, e = temps.size();
 
         while (i < e)
         {
-            SDUse u = useList.get(i);
+            SDUse u = temps.get(i);
             SDNode user = u.user;
             removeNodeFromCSEMaps(user);
 
+            // FIXME, fix this bug that adjust the list when iterating on it.
+            // FIXME 6/30/2018
             do
             {
-                u = useList.get(i);
+                u = temps.get(i);
                 ++i;
                 u.setNode(newNode);
-                e = useList.size();
-            } while (i < e && useList.get(i).user.equals(user));
+            } while (i < e && temps.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);
         }
     }
+
     public void replaceAllUsesWith(SDNode from, SDValue to,
                                    DAGUpdateListener listener)
     {
@@ -2237,22 +2241,25 @@ public class SelectionDAG
             return;
         }
 
-        ArrayList<SDUse> useList = from.useList;
-        int i = 0, e = useList.size();
+        ArrayList<SDUse> temps = new ArrayList<>();
+        temps.addAll(from.useList);
+
+        int i = 0, e = temps.size();
 
         while (i < e)
         {
-            SDUse u = useList.get(i);
+            SDUse u = temps.get(i);
             SDNode user = u.user;
             removeNodeFromCSEMaps(user);
 
+            // FIXME, fix this bug that adjust the list when iterating on it.
+            // FIXME 6/30/2018
             do
             {
-                u = useList.get(i);
+                u = temps.get(i);
                 ++i;
                 u.set(to[u.getResNo()]);
-                e = useList.size();
-            } while (i < e && useList.get(i).user.equals(user));
+            } while (i < e && temps.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);
         }
     }
@@ -2266,22 +2273,25 @@ public class SelectionDAG
         assert !Objects.equals(from,
                 newNode.getNode()) : "Can't replace uses of with self!";
 
-        ArrayList<SDUse> useList = from.useList;
-        int i = 0, e = useList.size();
+        ArrayList<SDUse> temps = new ArrayList<>();
+        temps.addAll(from.useList);
+
+        int i = 0, e = temps.size();
 
         while (i < e)
         {
-            SDUse u = useList.get(i);
+            SDUse u = temps.get(i);
             SDNode user = u.user;
             removeNodeFromCSEMaps(user);
 
+            // FIXME, fix this bug that adjust the list when iterating on it.
+            // FIXME 6/30/2018
             do
             {
-                u = useList.get(i);
+                u = temps.get(i);
                 ++i;
                 u.set(newNode);
-                e = useList.size();
-            } while (i < e && useList.get(i).user.equals(user));
+            } while (i < e && temps.get(i).user.equals(user));
             addModifiedNodeToCSEMaps(user, listener);
         }
     }

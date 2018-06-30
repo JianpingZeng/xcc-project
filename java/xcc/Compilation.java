@@ -93,9 +93,11 @@ public class Compilation
             int res = 0;
             for (Job job : jlist.getJobs())
             {
-                res |= executeSingleJob(job);
+                res = executeSingleJob(job);
+                if (res != 0)
+                    return res;
             }
-            return res;
+            return 0;
         }
         else
         {
