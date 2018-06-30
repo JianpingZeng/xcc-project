@@ -81,7 +81,12 @@ public class Compilation
     private int executeSingleJob(Job j)
     {
         if (j instanceof Command)
-              return executeCommand((Command)j);
+        {
+            int t = executeCommand((Command) j);
+            if (t != 0)
+                failureCmd = (Command) j;
+            return t;
+        }
         else if (j instanceof Job.JobList)
         {
             Job.JobList jlist = (Job.JobList)j;
@@ -102,12 +107,13 @@ public class Compilation
 
     public int executeJob()
     {
-        int res = 0;
         for (Job j : jobs.getJobs())
         {
-            res |= executeSingleJob(j);
+            int t = executeSingleJob(j);
+            if (t != 0)
+                return t;
         }
-        return res;
+        return 0;
     }
 
     public String addTempFile(String file)

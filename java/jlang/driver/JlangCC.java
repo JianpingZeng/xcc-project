@@ -122,7 +122,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             init(false));
 
     public static BooleanOpt NoShowLocation =
-            new BooleanOpt(new OptionNameApplicator("f-no-show-source-location"),
+            new BooleanOpt(new OptionNameApplicator("fno-show-source-location"),
             desc("Do not include source location information with diagnostics"),
             init(false));;
 
