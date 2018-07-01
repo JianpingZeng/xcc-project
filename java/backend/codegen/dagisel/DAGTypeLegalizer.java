@@ -17,7 +17,6 @@
 
 package backend.codegen.dagisel;
 
-import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.target.TargetLowering;
@@ -130,7 +129,7 @@ public class DAGTypeLegalizer
                 // 4. split a vector in two elements.
                 if (!vt.isVector())
                 {
-                    if (!vt.isInteger())
+                    if (vt.isInteger())
                         return LegalizeAction.ExpandInteger;
                     else if (vt.getSizeInBits() ==
                             tli.getTypeToTransformTo(vt).getSizeInBits())
@@ -147,7 +146,8 @@ public class DAGTypeLegalizer
 
     private boolean isTypeLegal(EVT vt)
     {
-        return valueTypeActions.getTypeAction(vt) == TargetLowering.LegalizeAction.Legal;
+        return valueTypeActions.getTypeAction(vt) ==
+                TargetLowering.LegalizeAction.Legal;
     }
 
     private boolean ignoreNodeResults(SDNode n)
@@ -187,9 +187,8 @@ public class DAGTypeLegalizer
                 performExpensiveChecks();
 
             SDNode n = worklist.pop();
-            Util.assertion(n.getNodeID() == ReadyToProcess,                     "Node should be ready if on worklist!");
-
-
+            Util.assertion(n.getNodeID() == ReadyToProcess,
+                    "Node should be ready if on worklist!");
             nodeDone:
             {
                 if (!ignoreNodeResults(n))

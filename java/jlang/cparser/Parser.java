@@ -2009,9 +2009,9 @@ public class Parser implements Tag,
 
         return  action.actOnForStmt(forLoc,
                 tracker.getOpenLocation(),
-                firstPart.get(),
+                firstPart != null?firstPart.get():null,
                 secondPart.get(),
-                thirdPart.get(),
+                thirdPart != null?thirdPart.get():null,
                 tracker.getCloseLocation(),
                 body.get());
     }
