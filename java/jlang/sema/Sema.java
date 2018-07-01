@@ -4795,15 +4795,18 @@ public final class Sema implements DiagnosticParseTag,
             // declare identifiers for objects having storage class 'auto' or
             // 'register'.
             DeclStmt ds = (DeclStmt) firstPart;
-            for (Decl d : ds)
+            if (ds != null)
             {
-                if (d instanceof VarDecl)
+                for (Decl d : ds)
                 {
-                    VarDecl vd = (VarDecl) d;
-                    if (vd != null && vd.isLocalVarDecl() && !vd
-                            .hasLocalStorage())
+                    if (d instanceof VarDecl)
                     {
-                        diag(d.getLocation(), err_non_variable_decl_in_for).emit();
+                        VarDecl vd = (VarDecl) d;
+                        if (vd != null && vd.isLocalVarDecl() && !vd
+                                .hasLocalStorage())
+                        {
+                            diag(d.getLocation(), err_non_variable_decl_in_for).emit();
+                        }
                     }
                 }
             }

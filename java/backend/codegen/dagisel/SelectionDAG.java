@@ -2346,27 +2346,30 @@ public class SelectionDAG
         for (int i = 0, e = allNodes.size(); i < e; i++)
         {
             SDNode node = allNodes.get(i);
-            for (SDUse use : node.useList)
+            if (node != null && node.getUseSize() > 0)
             {
-                SDNode user = use.getUser();
-                int degree = user.getNodeID();
-                --degree;
-                if (degree == 0)
+                for (SDUse use : node.useList)
                 {
-                    int userIdx = allNodes.indexOf(user);
-                    Util.assertion(userIdx != -1, "Illegal status!");
-                    Util.assertion(insertPos <= userIdx, "Unordered list!");
-                    if (userIdx != insertPos)
+                    SDNode user = use.getUser();
+                    int degree = user.getNodeID();
+                    --degree;
+                    if (degree == 0)
                     {
-                        allNodes.remove(userIdx);
-                        add(insertPos, user);
+                        int userIdx = allNodes.indexOf(user);
+                        Util.assertion(userIdx != -1, "Illegal status!");
+                        Util.assertion(insertPos <= userIdx, "Unordered list!");
+                        if (userIdx != insertPos)
+                        {
+                            allNodes.remove(userIdx);
+                            add(insertPos, user);
+                        }
+                        ++insertPos;
+                        user.setNodeID(dagSize++);
                     }
-                    ++insertPos;
-                    user.setNodeID(dagSize++);
-                }
-                else
-                {
-                    user.setNodeID(degree);
+                    else
+                    {
+                        user.setNodeID(degree);
+                    }
                 }
             }
         }

@@ -790,7 +790,16 @@ public final class CodeGenFunction
 
 		// emit code for the general cases.
 		Value condVal = evaluateExprAsBool(cond);
-		builder.createCondBr(condVal, trueBB, falseBB);
+		if (condVal instanceof ConstantInt)
+        {
+            ConstantInt ci = (ConstantInt)condVal;
+            if (ci.isNullValue())
+                builder.createBr(falseBB);
+            else
+                builder.createBr(trueBB);
+        }
+        else
+		    builder.createCondBr(condVal, trueBB, falseBB);
 	}
 
 	/**

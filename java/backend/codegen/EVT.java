@@ -16,7 +16,6 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
@@ -175,7 +174,7 @@ public class EVT implements Comparable<EVT>
 
     public boolean isByteSized()
     {
-        return getSizeInBits() == 8;
+        return (getSizeInBits() & 0x7) == 0;
     }
 
     public int getSizeInBits()
