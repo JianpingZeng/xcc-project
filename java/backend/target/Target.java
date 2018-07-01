@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.AsmPrinter;
 import backend.support.Triple;
 import backend.support.Triple.ArchType;
@@ -204,8 +205,8 @@ public class Target
                 TripleMatcher matcher,
                 boolean hasJIT)
         {
-            assert name != null && !name.isEmpty() && matcher != null:
-                    "Missing required target information!";
+            Util.assertion(name != null && !name.isEmpty() && matcher != null,                     "Missing required target information!");
+
 
             // Check if this target has already been initialized, we allow this as a
             // convenience to some clients.
@@ -283,7 +284,7 @@ public class Target
             public TargetIterator(Target t)
             {
                 cur = t;
-                assert cur != null;
+                Util.assertion( cur != null);
             }
 
             @Override
@@ -295,7 +296,7 @@ public class Target
             @Override
             public Target next()
             {
-                assert hasNext();
+                Util.assertion( hasNext());
                 Target temp = cur;
                 cur = cur.next;
                 return temp;

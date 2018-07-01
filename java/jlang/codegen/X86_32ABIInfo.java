@@ -17,6 +17,7 @@
 
 package jlang.codegen;
 
+import tools.Util;
 import backend.ir.HIRBuilder;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
@@ -228,14 +229,14 @@ public class X86_32ABIInfo implements ABIInfo
                     }
                     else if (bt.getTypeClass() == TypeClass.Float)
                     {
-                        assert context.getTypeSize(seltTy) == context.getTypeSize(
-                                retType) : "Unexpect single element structure size!";
+                        Util.assertion(context.getTypeSize(seltTy) == context.getTypeSize(                                retType),  "Unexpect single element structure size!");
+
                         return ABIArgInfo.getCoerce(LLVMContext.FloatTy);
                     }
                     else if (bt.getTypeClass() == TypeClass.Double)
                     {
-                        assert context.getTypeSize(seltTy) == context.getTypeSize(
-                                retType) : "Unexpect single element structure size!";
+                        Util.assertion(context.getTypeSize(seltTy) == context.getTypeSize(                                retType),  "Unexpect single element structure size!");
+
                         return ABIArgInfo.getCoerce(LLVMContext.DoubleTy);
                     }
                 }

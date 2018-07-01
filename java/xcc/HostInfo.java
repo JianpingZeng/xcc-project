@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import backend.support.Triple;
 
 import java.util.TreeMap;
@@ -79,7 +80,7 @@ public abstract class HostInfo
         @Override
         public ToolChain getToolChain(ArgList argList, String archName)
         {
-            assert archName != null;
+            Util.assertion( archName != null);
             archName = getArchName();
             // Automatically handle some instances of -m32/-m64 we know about.
             Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);
@@ -113,7 +114,7 @@ public abstract class HostInfo
         @Override
         public ToolChain getToolChain(ArgList argList, String archName)
         {
-            assert archName != null;
+            Util.assertion( archName != null);
             archName = getArchName();
             // Automatically handle some instances of -m32/-m64 we know about.
             Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);

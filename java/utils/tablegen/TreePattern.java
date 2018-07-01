@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import utils.tablegen.CodeGenIntrinsic.ModRefType;
 import utils.tablegen.Init.BitsInit;
 import utils.tablegen.Init.DagInit;
@@ -91,7 +92,7 @@ public final class TreePattern
 
     public TreePatternNode getOnlyTree()
     {
-        assert trees.size() == 1 :"Doesn't have exactly one pattern!";
+        Util.assertion(trees.size() == 1, "Doesn't have exactly one pattern!");
         return trees.get(0);
     }
 
@@ -107,7 +108,7 @@ public final class TreePattern
 
     public String getArgName(int idx)
     {
-        assert idx >= 0 && idx < args.size();
+        Util.assertion( idx >= 0 && idx < args.size());
         return args.get(idx);
     }
 

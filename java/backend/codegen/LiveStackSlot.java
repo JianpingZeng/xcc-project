@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -58,7 +59,7 @@ public final class LiveStackSlot extends MachineFunctionPass
 
     public LiveInterval getOrCreateInterval(int slot, TargetRegisterClass rc)
     {
-        assert slot >= 0 :"Spill slot indice must be >= 0";
+        Util.assertion(slot >= 0, "Spill slot indice must be >= 0");
         if (!slot2LI.containsKey(slot))
         {
             LiveInterval li = new LiveInterval(slot, 0.0f, true);
@@ -68,9 +69,9 @@ public final class LiveStackSlot extends MachineFunctionPass
         else
         {
             // Use the largest common subclass register class
-            assert slot2RC.containsKey(slot);
+            Util.assertion( slot2RC.containsKey(slot));
             TargetRegisterClass oldRC = slot2RC.get(slot);
-            assert oldRC != null;
+            Util.assertion( oldRC != null);
             slot2RC.put(slot, TargetRegisterInfo.getCommonSubClass(oldRC,rc));
             return slot2LI.get(slot);
         }
@@ -78,8 +79,8 @@ public final class LiveStackSlot extends MachineFunctionPass
 
     public LiveInterval getInterval(int slot)
     {
-        assert slot >= 0:"Spill stack slot must be >= 0";
-        assert slot2LI.containsKey(slot):"Interval doesn't exist for stack slot #" + slot;
+        Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
+        Util.assertion(slot2LI.containsKey(slot), "Interval doesn't exist for stack slot #" + slot);
         return slot2LI.get(slot);
     }
 
@@ -90,8 +91,8 @@ public final class LiveStackSlot extends MachineFunctionPass
 
     public TargetRegisterClass getIntervalRegClass(int slot)
     {
-        assert slot >= 0:"Spill stack slot must be >= 0";
-        assert slot2RC.containsKey(slot):"RegClass doesn't exist for stack slot #" + slot;
+        Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
+        Util.assertion(slot2RC.containsKey(slot), "RegClass doesn't exist for stack slot #" + slot);
         return slot2RC.get(slot);
     }
 

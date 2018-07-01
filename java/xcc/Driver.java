@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import backend.support.Triple;
 import config.Config;
 import jlang.diag.CompilationPhase;
@@ -134,7 +135,7 @@ public class Driver
             int prev = argList.getIndex();
             Arg arg = getOptTable().parseOneArg(argList);
             int after = argList.getIndex();
-            assert after >= prev;
+            Util.assertion( after >= prev);
             if (arg == null)
             {
                 diag(err_drv_missing_argument)
@@ -168,7 +169,7 @@ public class Driver
                 defaultTriple.setArchName("x86_64");
                 break;
             default:
-                assert false : "Unknown architecture name!";
+                Util.assertion(false,  "Unknown architecture name!");
         }
         switch (defaultTriple.getOS())
         {
@@ -206,8 +207,8 @@ public class Driver
                 {
                     outputTy = InputType
                             .getPreprocessedType(input.getOutputType());
-                    assert outputTy
-                            != TY_INVALID : "can't preprocess this input type!";
+                    Util.assertion(outputTy                            != TY_INVALID,  "can't preprocess this input type!");
+
                 }
                 return new PreprocessJobAction(input, outputTy);
             }
@@ -234,8 +235,8 @@ public class Driver
             }
             default:
             {
-                assert phase == Link;
-                assert false : "Link should be handled in method buildActions!";
+                Util.assertion( phase == Link);
+                Util.assertion(false,  "Link should be handled in method buildActions!");
                 return null;
             }
         }
@@ -348,7 +349,7 @@ public class Driver
             Arg inputArg = entity.first;
 
             int numSteps = getNumCompilationPhases(filetype);
-            assert numSteps > 0 : "Invalid number of steps!";
+            Util.assertion(numSteps > 0,  "Invalid number of steps!");
 
             int initialPhase = InputType.getCompilationPhase(filetype, 0);
 
@@ -370,8 +371,8 @@ public class Driver
 
                 if (phase == Link)
                 {
-                    assert i + 1
-                            == numSteps : "Linker must be final compilation step!";
+                    Util.assertion(i + 1                            == numSteps,  "Linker must be final compilation step!");
+
                     linkerInputs.add(current);
                     current = null;
                     break;
@@ -381,7 +382,7 @@ public class Driver
                     continue;
 
                 current = constructAction(args, phase, current);
-                assert current != null;
+                Util.assertion( current != null);
                 if (current.getOutputType() == TY_Nothing)
                     break;
 
@@ -408,7 +409,7 @@ public class Driver
             case Link:
                 return "link";
             default:
-                assert false : "Invalid phase";
+                Util.assertion(false,  "Invalid phase");
                 return "";
         }
     }
@@ -522,7 +523,7 @@ public class Driver
             result = new InputInfo(act.getOutputType(), baseInput);
         else
         {
-            assert !inputInfos.get(0).isPipe():"PipedJob not supported!";
+            Util.assertion(!inputInfos.get(0).isPipe(), "PipedJob not supported!");
             result = new InputInfo(
                     getNamedOutputPath(c, ja, baseInput, atTopLevel),
                     act.getOutputType(), baseInput);
@@ -556,7 +557,7 @@ public class Driver
         else
         {
             String suffix = InputType.getTypeTempSuffix(ja.getOutputType());
-            assert suffix != null;
+            Util.assertion( suffix != null);
             int end = baseName.lastIndexOf('.');
             if (end < 0)
                 end = baseName.length();
@@ -588,10 +589,10 @@ public class Driver
         {
             case KIND_Input:
             case KIND_Unknown:
-                assert false:"Invalid option with help text";
+                Util.assertion(false, "Invalid option with help text");
             case KIND_MultiArg:
             case KIND_JoinedAndSeparate:
-                assert false:"Can't print metavar for this kind of option";
+                Util.assertion(false, "Can't print metavar for this kind of option");
             case KIND_Flag:
                 break;
             case KIND_Separate:

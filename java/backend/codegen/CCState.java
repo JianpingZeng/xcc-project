@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.CCValAssign.LocInfo;
 import backend.support.CallingConv;
 import backend.target.TargetMachine;
@@ -251,8 +252,8 @@ public class CCState
     /// and alignment.
     public int allocateStack(int size, int align)
     {
-        assert (align != 0 && ((align - 1) & align) == 0); // align is power of 2.
-        stackOffset = ((stackOffset + align - 1) & ~(align - 1));
+        Util.assertion( (align != 0 && ((align - 1) & align) == 0)); // align is power of 2.        stackOffset = ((stackOffset + align - 1) & ~(align - 1));
+
         int Result = stackOffset;
         stackOffset += size;
         return Result;

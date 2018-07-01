@@ -17,6 +17,7 @@
 
 package jlang.cparser;
 
+import tools.Util;
 import jlang.ast.Tree;
 import jlang.clex.IdentifierInfo;
 import jlang.support.SourceLocation;
@@ -131,19 +132,19 @@ public class Designator
 
     public FieldDesignatorInfo getFieldInfo()
     {
-        assert isFieldDesignator();
+        Util.assertion( isFieldDesignator());
         return (FieldDesignatorInfo)info;
     }
 
     public ArrayDesignatorInfo getArrayInfo()
     {
-        assert isArrayDesignator();
+        Util.assertion( isArrayDesignator());
         return (ArrayDesignatorInfo)info;
     }
 
     public ArrayRangeDesignatorInfo getArrayRangeInfo()
     {
-        assert isArrayRangeDesignator();
+        Util.assertion( isArrayRangeDesignator());
         return (ArrayRangeDesignatorInfo)info;
     }
 
@@ -200,43 +201,43 @@ public class Designator
 
     public IdentifierInfo getField()
     {
-        assert isFieldDesignator():"Invalid accessor";
+        Util.assertion(isFieldDesignator(), "Invalid accessor");
         return getFieldInfo().ii;
     }
 
     public SourceLocation getDotLoc()
     {
-        assert isFieldDesignator();
+        Util.assertion( isFieldDesignator());
         return getFieldInfo().dotLoc;
     }
 
     public SourceLocation getFieldLoc()
     {
-        assert isFieldDesignator();
+        Util.assertion( isFieldDesignator());
         return getFieldInfo().nameLoc;
     }
 
     public ActionResult<Tree.Expr> getArrayIndex()
     {
-        assert isArrayDesignator();
+        Util.assertion( isArrayDesignator());
         return getArrayInfo().index;
     }
 
     public ActionResult<Tree.Expr> getArrayRangeStart()
     {
-        assert isArrayRangeDesignator();
+        Util.assertion( isArrayRangeDesignator());
         return getArrayRangeInfo().startIdx;
     }
 
     public ActionResult<Tree.Expr> getArrayRangeEnd()
     {
-        assert isArrayRangeDesignator();
+        Util.assertion( isArrayRangeDesignator());
         return getArrayRangeInfo().endIdx;
     }
 
     public SourceLocation getLBracketLoc()
     {
-        assert isArrayDesignator() || isArrayRangeDesignator();
+        Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
         if (isArrayDesignator())
             return getArrayInfo().lBracketLoc;
         else
@@ -245,7 +246,7 @@ public class Designator
 
     public SourceLocation getRBracketLoc()
     {
-        assert isArrayDesignator() || isArrayRangeDesignator();
+        Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
         if (isArrayDesignator())
             return getArrayInfo().rBracketLoc;
         else
@@ -254,7 +255,7 @@ public class Designator
 
     public SourceLocation getEllipsisLoc()
     {
-        assert isArrayRangeDesignator();
+        Util.assertion( isArrayRangeDesignator());
         return getArrayRangeInfo().ellipsisLoc;
     }
 }

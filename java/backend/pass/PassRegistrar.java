@@ -16,6 +16,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.passManaging.PassRegistrationListener;
 import tools.Util;
 
@@ -53,13 +54,13 @@ public final class PassRegistrar
                     .containsKey(pass))
             {
                 pi.dump();
-                assert false:"Pass already registered!";
+                Util.assertion(false, "Pass already registered!");
             }
         }
         else
         {
-            assert !registeredPasses.containsKey(pi) &&
-		            !passInfoMap.containsKey(pass) : "Pass already registered!";
+            Util.assertion(!registeredPasses.containsKey(pi) &&		            !passInfoMap.containsKey(pass),  "Pass already registered!");
+
         }
 		registeredPasses.put(pi, pass);
 		passInfoMap.put(pass, pi);
@@ -95,10 +96,10 @@ public final class PassRegistrar
 
     public void unregisterPass(PassInfo pi)
 	{
-		assert pi != null && registeredPasses != null :
-				"Pass register factory is uninstantiated as yet!";
-		assert registeredPasses.containsKey(pi) :
-				"Pass registered but not in register factory!";
+		Util.assertion(pi != null && registeredPasses != null, 				"Pass register factory is uninstantiated as yet!");
+
+		Util.assertion(registeredPasses.containsKey(pi), 				"Pass registered but not in register factory!");
+
 		passInfoMap.remove(registeredPasses.remove(pi));
 	}
 
@@ -117,7 +118,7 @@ public final class PassRegistrar
 	public static Pass getAnalysis(PassInfo pi)
 	{
 		Pass res = getAnalysisOrNull(pi);
-		assert res != null:"Pass has an incorrect pass used yet!";
+		Util.assertion(res != null, "Pass has an incorrect pass used yet!");
 		return res;
 	}
 

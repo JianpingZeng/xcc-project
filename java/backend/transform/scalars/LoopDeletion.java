@@ -1,5 +1,6 @@
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.analysis.*;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -136,7 +137,7 @@ public final class LoopDeletion implements LoopPass
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		BasicBlock preheader = loop.getLoopPreheader();
-		assert preheader != null :"The loop is not canonicalized yet?";
+		Util.assertion(preheader != null, "The loop is not canonicalized yet?");
 
 		ArrayList<BasicBlock> exitingBlocks = loop.getExitingBlocks();
 		ArrayList<BasicBlock> exitBlocks = loop.getUniqueExitBlocks();

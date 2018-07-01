@@ -1,5 +1,6 @@
 package jlang.sema;
 
+import tools.Util;
 import jlang.ast.ASTConsumer;
 import jlang.ast.AsmLabelAttr;
 import jlang.ast.CastKind;
@@ -376,8 +377,8 @@ public final class Sema implements DiagnosticParseTag,
             AttributeList attr)
     {
         // if this is not a definition, it must have a getIdentifier
-        assert (name != null || tuk == TagUseKind.TUK_definition)
-                : "Nameless record must be a definition";
+        Util.assertion((name != null || tuk == TagUseKind.TUK_definition),  "Nameless record must be a definition");
+
 
         TagKind kind = TagKind.getTagTypeKindForTypeSpec(tagType);
 
@@ -875,7 +876,7 @@ public final class Sema implements DiagnosticParseTag,
         LookupResult result = lookupParsedName(translateUnitScope, vaIdent,
                 LookupOrdinaryName, new SourceLocation());
         NamedDecl varDecl = result.getFoundDecl();
-        assert varDecl != null:"Must predefining __builtin_va_list";
+        Util.assertion(varDecl != null, "Must predefining __builtin_va_list");
         TypeDefDecl varTypedef = (TypeDefDecl)varDecl;
         context.setBuiltinVaListType(context.getTypeDefType(varTypedef));
     }
@@ -1117,7 +1118,7 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation endLoc,
             AttributeList attr)
     {
-        assert enclosingDecl != null:"missing record decl";
+        Util.assertion(enclosingDecl != null, "missing record decl");
 
         if (enclosingDecl.isInvalidDecl())
         {
@@ -1243,7 +1244,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public ActionResult<Expr> actOnNumericConstant(Token token)
     {
-        assert token != null && token.is(numeric_constant);
+        Util.assertion( token != null && token.is(numeric_constant));
         // FIXME: parse the int/long/float/double number with numericParser. 2017.4.8
         // A fast path for handling a single digit which is quite common case.
         // Avoiding do something difficulty.
@@ -1306,8 +1307,8 @@ public final class Sema implements DiagnosticParseTag,
                 // if the value didn't fit into the uintmat_t, warn and force filt.
                 diag(token.getLocation(), warn_integer_too_large).emit();
                 ty = context.UnsignedLongLongTy;
-                assert (context.getTypeSize(ty) == resultVal.getBitWidth())
-                        :"long long is not intmax_t?";
+                Util.assertion((context.getTypeSize(ty) == resultVal.getBitWidth()), "long long is not intmax_t?");
+
             }
             else
             {
@@ -1391,14 +1392,14 @@ public final class Sema implements DiagnosticParseTag,
     {
         if (curScope.declEmpty())
             return;
-        assert (curScope.getFlags() & DeclScope.value)
-                != 0 : "Scope shouldn't isDeclScope decls.";
+        Util.assertion((curScope.getFlags() & DeclScope.value)                != 0,  "Scope shouldn't isDeclScope decls.");
+
         Iterator<Decl> itr = curScope.getDeclInScope().iterator();
         while (itr.hasNext())
         {
             Decl decl = itr.next();
-            assert decl != null : "This decl didn't get pushed??";
-            assert decl instanceof NamedDecl : "Decl isn't NamedDecl?";
+            Util.assertion(decl != null,  "This decl didn't get pushed??");
+            Util.assertion(decl instanceof NamedDecl,  "Decl isn't NamedDecl?");
 
             NamedDecl nd = (NamedDecl) decl;
             if (nd.name == null)
@@ -1479,8 +1480,8 @@ public final class Sema implements DiagnosticParseTag,
         if (paramDecls.isInvalidType())
             newVar.setInvalidDecl(true);
 
-        assert (scope.isFunctionProtoTypeScope());
-        //assert (scope.getFunctionProtoTypeDepth() >= 1);
+        Util.assertion( (scope.isFunctionProtoTypeScope()));
+        //Util.assertion( (scope.getFunctionProtoTypeDepth() >= 1));
 
         /*
         newVar.setScopeInfo(scope.getFunctionProtoTypeDepth() - 1,
@@ -1667,7 +1668,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             // When in C++, we may get a TagDecl with the same ident; in this case the
             // enum constant will 'hide' the tag.
-            assert !(prevDecl instanceof TagDecl):"Can not received TagDecl when in C!";
+            Util.assertion(!(prevDecl instanceof TagDecl), "Can not received TagDecl when in C!");
 
             if (isDeclInScope(prevDecl, curContext, nonTransparentScope))
             {
@@ -1725,8 +1726,8 @@ public final class Sema implements DiagnosticParseTag,
 
                 // If the enum value doesn't fit in an int, emit an extension warning.
                 APSInt initVal = ecd.getInitValue();
-                assert initVal.getBitWidth() >= intWidth :
-                        "Shoult have promoted value to int";
+                Util.assertion(initVal.getBitWidth() >= intWidth,                         "Shoult have promoted value to int");
+
                 if (initVal.getBitWidth() > intWidth)
                 {
                     APSInt v = new APSInt(initVal);
@@ -1784,8 +1785,8 @@ public final class Sema implements DiagnosticParseTag,
             else
             {
                 bestWidth = context.target.getLongLongWidth();
-                assert numPositiveBits <= bestWidth
-                        :"How could an initialization get larger than ULL?";
+                Util.assertion(numPositiveBits <= bestWidth, "How could an initialization get larger than ULL?");
+
                 bestType = context.UnsignedLongLongTy;
             }
         }
@@ -1884,8 +1885,8 @@ public final class Sema implements DiagnosticParseTag,
 
     public Decl actOnStartOfFunctionDef(Scope fnBodyScope, Declarator declarator)
     {
-        assert getCurFunctionDecl() == null : "FunctionProto parsing confused";
-        assert declarator.isFunctionDeclarator() : "Not a function declarator";
+        Util.assertion(getCurFunctionDecl() == null,  "FunctionProto parsing confused");
+        Util.assertion(declarator.isFunctionDeclarator(),  "Not a function declarator");
 
         Scope parentScope = fnBodyScope.getParent();
         declarator.setFunctionDefinition(true);
@@ -1906,9 +1907,9 @@ public final class Sema implements DiagnosticParseTag,
 
     private TypeDefDecl parseTypedefDecl(Scope s, Declarator d, QualType ty)
     {
-        assert d.getIdentifier() != null
-                :"Wrong callback for declspec without declarator";
-        assert !ty.isNull() :"GetTypeForDeclarator() returned null type";
+        Util.assertion(d.getIdentifier() != null, "Wrong callback for declspec without declarator");
+
+        Util.assertion(!ty.isNull(), "GetTypeForDeclarator() returned null type");
 
         TypeDefDecl newTD = new TypeDefDecl(curContext,
                 d.getIdentifier(), d.getIdentifierLoc(), ty);
@@ -2108,7 +2109,7 @@ public final class Sema implements DiagnosticParseTag,
             NamedDecl prevDecl,
             OutParamWrapper<Boolean> redeclaration)
     {
-        assert ty.isFunctionType();
+        Util.assertion( ty.isFunctionType());
 
         IdentifierInfo name = d.getIdentifier();
         SourceLocation nameLoc = d.getIdentifierLoc();
@@ -2162,8 +2163,8 @@ public final class Sema implements DiagnosticParseTag,
                     for (int i = 0; i < fti.numArgs; i++)
                     {
                         ParamVarDecl param = (ParamVarDecl) fti.argInfo.get(i).param;
-                        assert param.getDeclContext()
-                                != newFD : "Was set before!";
+                        Util.assertion(param.getDeclContext()                                != newFD,  "Was set before!");
+
                         param.setDeclContext(newFD);
                         params.add(param);
 
@@ -2196,8 +2197,8 @@ public final class Sema implements DiagnosticParseTag,
         }
         else
         {
-            assert ty.isFunctionNoProtoType() && newFD.getNumParams() == 0
-                    :"Should not need args for typedef of non-prototype fn";
+            Util.assertion(ty.isFunctionNoProtoType() && newFD.getNumParams() == 0, "Should not need args for typedef of non-prototype fn");
+
         }
 
         // Finally, we know we have the right number of parameters, install them.
@@ -2538,7 +2539,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         QualType t = newFD.getType();
-        assert t.isFunctionType() : "Function decl is not of function type?";
+        Util.assertion(t.isFunctionType(),  "Function decl is not of function type?");
         FunctionType ft = t.getAsFunctionType();
 
         if (!context.hasSameUnqualifiedType(ft.getResultType(), context.IntTy))
@@ -2553,7 +2554,7 @@ public final class Sema implements DiagnosticParseTag,
 
         FunctionProtoType ftp = (FunctionProtoType) ft;
         int nparams = ftp.getNumArgs();
-        assert newFD.getNumParams() == nparams;
+        Util.assertion( newFD.getNumParams() == nparams);
 
         if (nparams > 3)
         {
@@ -2951,7 +2952,7 @@ public final class Sema implements DiagnosticParseTag,
         StorageClass sc;
         switch (d.getDeclSpec().getStorageClassSpec())
         {
-            default: assert false :"Undefined storage class!";
+            default: Util.assertion(false, "Undefined storage class!");
             case SCS_auto:
             case SCS_register:
                 diag(d.getDeclSpec().getStorageClassSpecLoc(), err_typecheck_sclass_func)
@@ -3009,8 +3010,8 @@ public final class Sema implements DiagnosticParseTag,
                     result = context.SignedCharTy;
                 else
                 {
-                    assert ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unsigned
-                            :"Undefined TSS value";
+                    Util.assertion(ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unsigned, "Undefined TSS value");
+
                     result = context.UnsignedCharTy;
                 }
                 break;
@@ -3109,10 +3110,9 @@ public final class Sema implements DiagnosticParseTag,
                 }
                 TypeDecl typeDecl = (TypeDecl)decl;
 
-                assert ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified
-                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
-                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified
-                        : "No qualifiers on tc names!";
+                Util.assertion(ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
+                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified,  "No qualifiers on tc names!");
+
 
                 // TypeQuals handled by caller.
                 result = context.getTypeDeclType(typeDecl);
@@ -3123,10 +3123,9 @@ public final class Sema implements DiagnosticParseTag,
             }
             case TST_typename:
             {
-                assert ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified
-                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
-                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified
-                        :"Can't handle qualifiers on typedef names yet";
+                Util.assertion(ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
+                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified, "Can't handle qualifiers on typedef names yet");
+
 
                 result = ds.getRepAsType();
                 if (result.isNull())
@@ -3189,7 +3188,7 @@ public final class Sema implements DiagnosticParseTag,
             switch (declType.getKind())
             {
                 default:
-                    assert false:"Undefined decltype!";
+                    Util.assertion(false, "Undefined decltype!");
                     break;
                 case Pointer:
                 {
@@ -3294,10 +3293,10 @@ public final class Sema implements DiagnosticParseTag,
                         {
                             ParamVarDecl param = (ParamVarDecl)paramInfo.param;
                             QualType argTy = param.getType();
-                            assert !argTy.isNull() :"Couldn't parse type?";
+                            Util.assertion(!argTy.isNull(), "Couldn't parse type?");
 
-                            assert argTy.equals(adjustParameterType(argTy))
-                                    :"Unadjusted type?";
+                            Util.assertion(argTy.equals(adjustParameterType(argTy)), "Unadjusted type?");
+
 
                             if (argTy.isVoidType())
                             {
@@ -3758,7 +3757,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             res = new LabelDecl(name, curContext, null, loc);
             Scope s = curScope.getFuncParent();
-            assert s != null : "Not in a function?";
+            Util.assertion(s != null,  "Not in a function?");
             pushOnScopeChains(res, s, true);
         }
 
@@ -3798,7 +3797,7 @@ public final class Sema implements DiagnosticParseTag,
             Expr expr,
             SourceLocation colonLoc)
     {
-        assert expr != null : "missing expression within case statement";
+        Util.assertion(expr != null,  "missing expression within case statement");
 
         if (verifyIntegerConstantExpression(expr))
             return stmtError();
@@ -3858,7 +3857,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public void actOnCaseStmtBody(Stmt caseStmt, Stmt subStmt)
     {
-        assert caseStmt != null && caseStmt instanceof CaseStmt;
+        Util.assertion( caseStmt != null && caseStmt instanceof CaseStmt);
         CaseStmt cs = (CaseStmt) caseStmt;
         cs.setSubStmt(subStmt);
     }
@@ -3993,7 +3992,7 @@ public final class Sema implements DiagnosticParseTag,
     private ActionResult<Expr> defaultFunctionArrayConversion(Expr expr)
     {
         QualType ty = expr.getType();
-        assert !ty.isNull() : "DefaultFunctionArrayConversion - missing type.";
+        Util.assertion(!ty.isNull(),  "DefaultFunctionArrayConversion - missing type.");
         if (ty.getType().isFunctionType())
             expr = implicitCastExprToType(expr, context.getPointerType(ty),
                     EVK_RValue,
@@ -4036,7 +4035,7 @@ public final class Sema implements DiagnosticParseTag,
         expr = res.get();
 
         QualType t = expr.getType();
-        assert !t.isNull() : "UsualUnaryConversion - missing type";
+        Util.assertion(!t.isNull(),  "UsualUnaryConversion - missing type");
 
         // try to perform integral promotions if the object has a promotable type.
         if (t.getType().isIntegralOrEnumerationType())
@@ -4126,8 +4125,8 @@ public final class Sema implements DiagnosticParseTag,
 
     public FunctionScopeInfo getCurFunction()
     {
-        assert !functionScopes.isEmpty() :
-                "Should not call this method when not in function scope";
+        Util.assertion(!functionScopes.isEmpty(),                 "Should not call this method when not in function scope");
+
         return functionScopes.peek();
     }
 
@@ -4136,10 +4135,10 @@ public final class Sema implements DiagnosticParseTag,
             Stmt switchStmt,
             Stmt body)
     {
-        assert (switchStmt instanceof SwitchStmt) : "stmt must be switch stmt.";
+        Util.assertion((switchStmt instanceof SwitchStmt),  "stmt must be switch stmt.");
         SwitchStmt ss = (SwitchStmt) switchStmt;
-        assert ss == getCurFunction().switchStack.peek()
-                : "switch stack missing push/pop";
+        Util.assertion(ss == getCurFunction().switchStack.peek(),  "switch stack missing push/pop");
+
         ss.setBody(body);
         getCurFunction().switchStack.pop();
 
@@ -4214,13 +4213,13 @@ public final class Sema implements DiagnosticParseTag,
                 hasConstantCond = condExpr.evaluate(result, context);
                 if (hasConstantCond)
                 {
-                    assert result.getValue().isInt()
-                            : "switch condition evaluated to non-int";
+                    Util.assertion(result.getValue().isInt(),  "switch condition evaluated to non-int");
+
                     constantCondValue = result.getValue().getInt();
                     shouldCheckConstantCond = true;
 
                     int len = constantCondValue.getBitWidth();
-                    assert (len == condWidth && constantCondValue.isSigned() == condIsSigned);
+                    Util.assertion( (len == condWidth && constantCondValue.isSigned() == condIsSigned));
                 }
             }
 
@@ -4543,7 +4542,7 @@ public final class Sema implements DiagnosticParseTag,
             Expr cond,
             SourceLocation rParenLoc)
     {
-        assert cond != null : "ActOnDoStmt(): missing expression";
+        Util.assertion(cond != null,  "ActOnDoStmt(): missing expression");
 
         ActionResult<Expr> condResult = checkBooleanCondition(cond, doLoc);
         if (condResult.isInvalid())
@@ -5053,8 +5052,8 @@ public final class Sema implements DiagnosticParseTag,
             Expr rhs)
     {
         BinaryOperatorKind operatorKind = convertTokenKindToBinaryOpcode(tokenKind);
-        assert lhs!= null:"actOnBinOp(): missing lhs!";
-        assert rhs!=null:"actOnBinOp(): missing rhs!";
+        Util.assertion(lhs!= null, "actOnBinOp(): missing lhs!");
+        Util.assertion(rhs!=null, "actOnBinOp(): missing rhs!");
 
         // TODO emit warnings for tricky precedence issues, e.g. "bitfield & 0x4 == 0"
         return buildBinOp(tokLoc, operatorKind, lhs, rhs);
@@ -5958,7 +5957,7 @@ public final class Sema implements DiagnosticParseTag,
             QualType lhsType,
             QualType rhsType)
     {
-        assert lhsType.isPointerType() && rhsType.isPointerType();
+        Util.assertion( lhsType.isPointerType() && rhsType.isPointerType());
 
         QualType lhsPointeeType = lhsType.getAsPointerType().getPointeeType();
         QualType rhsPointeeType = rhsType.getAsPointerType().getPointeeType();
@@ -5983,7 +5982,7 @@ public final class Sema implements DiagnosticParseTag,
             if (rhsPointeeType.isIncompleteOrObjectType())
                 return res;
 
-            assert rhsPointeeType.isFunctionType();
+            Util.assertion( rhsPointeeType.isFunctionType());
             return AssignConvertType.FunctionVoidPointer;
         }
 
@@ -5992,7 +5991,7 @@ public final class Sema implements DiagnosticParseTag,
             if (lhsPointeeType.isIncompleteOrObjectType())
                 return res;
 
-            assert lhsPointeeType.isFunctionType();
+            Util.assertion( lhsPointeeType.isFunctionType());
             return AssignConvertType.FunctionVoidPointer;
         }
 
@@ -6113,7 +6112,7 @@ public final class Sema implements DiagnosticParseTag,
         }
         else
         {
-            assert intType.isComplexType();
+            Util.assertion( intType.isComplexType());
             intExpr.set(implicitCastExprToType(intExpr.get().get(), complexType,
                     EVK_RValue, CK_IntegralComplexToFloatingComplex));
         }
@@ -6237,7 +6236,7 @@ public final class Sema implements DiagnosticParseTag,
             return res;
         }
 
-        assert rhsComplexFloat;
+        Util.assertion( rhsComplexFloat);
 
         QualType res = handleOtherComplexFloatConversion(rhs, lhs, rhsType, lhsType,
                 /*convertComplexExpr*/true,
@@ -6275,7 +6274,7 @@ public final class Sema implements DiagnosticParseTag,
                 return LHSType;
             }
 
-            assert order < 0 : "illegal float comparison";
+            Util.assertion(order < 0,  "illegal float comparison");
             if (!IsCompAssign)
                 lhs.set(implicitCastExprToType(lhs.get().get(), RHSType,
                         EVK_RValue, CK_FloatingCast));
@@ -6286,7 +6285,7 @@ public final class Sema implements DiagnosticParseTag,
             return handleIntToFloatConversion(lhs, rhs, LHSType, RHSType,
                                       /*convertFloat=*/!IsCompAssign,
                                       /*convertInt=*/ true);
-        assert(RHSFloat);
+        Util.assertion((RHSFloat));
         return handleIntToFloatConversion(rhs, lhs, RHSType, LHSType,
                                     /*convertInt=*/ true,
                                     /*convertFloat=*/!IsCompAssign);
@@ -6321,7 +6320,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // Convert both sides to the appropriate complex float.
-        //assert(intTy.isComplexType()isComplexIntegerType());
+        //Util.assertion((intTy.isComplexType()isComplexIntegerType()));
         QualType result = context.getComplexType(floatTy);
 
         // _Complex int -> _Complex float
@@ -6818,8 +6817,8 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation loc,
             Expr lhs, Expr rhs)
     {
-        assert(lhs.getType().isPointerType());
-        assert(rhs.getType().isPointerType());
+        Util.assertion((lhs.getType().isPointerType()));
+        Util.assertion((rhs.getType().isPointerType()));
         sema.diag(loc, err_typecheck_sub_ptr_compatible)
                 .addTaggedVal(lhs.getType())
                 .addTaggedVal(rhs.getType())
@@ -7433,7 +7432,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public ActionResult<Expr> actOnCharacterConstant(Token tok)
     {
-        assert tok.is(char_constant) : "Invalid character literal!";
+        Util.assertion(tok.is(char_constant),  "Invalid character literal!");
 
         String charBuffer = pp.getSpelling(tok);
         CharLiteralParser literal = new CharLiteralParser(charBuffer,
@@ -7456,7 +7455,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     public ActionResult<Expr> actOnStringLiteral(ArrayList<Token> stringToks)
     {
-        assert !stringToks.isEmpty():"string literal must have at least one char";
+        Util.assertion(!stringToks.isEmpty(), "string literal must have at least one char");
 
         Token[] arr = new Token[stringToks.size()];
         stringToks.toArray(arr);
@@ -7582,7 +7581,7 @@ public final class Sema implements DiagnosticParseTag,
             boolean isPrefix)
     {
         QualType resType = op.getType();
-        assert !resType.isNull():"no type for increment/decrement!";
+        Util.assertion(!resType.isNull(), "no type for increment/decrement!");
 
         if (resType.isRealType())
         {
@@ -7728,7 +7727,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         // C99 6.7.6: Type names have no identifier.  This is already validated by
         // the jlang.parser.
-        assert d.getIdentifier() == null:"Type must have no identifier!";
+        Util.assertion(d.getIdentifier() == null, "Type must have no identifier!");
 
         OutParamWrapper<DeclaratorInfo> x = new OutParamWrapper<>(null);
         QualType t = getTypeForDeclarator(d, x);
@@ -7875,8 +7874,8 @@ public final class Sema implements DiagnosticParseTag,
     {
         CastKind kind = CastKind.CK_Invalid;
 
-        assert castTy != null && castExpr != null :
-                "actOnCastExpr(): missing type or castExpr";
+        Util.assertion(castTy != null && castExpr != null,                 "actOnCastExpr(): missing type or castExpr");
+
         if (castExpr instanceof ParenListExpr)
             return actOnCastOfParenListExpr(s, lParenLoc, rParenLoc, castExpr, castTy);
         OutParamWrapper<CastKind> x = new OutParamWrapper<>(kind);
@@ -7896,8 +7895,8 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation rParenLoc,
             ArrayList<Expr> exprs)
     {
-        assert exprs!=null&& !exprs.isEmpty()
-                : "actOnParenOrParenList missing expression list!";
+        Util.assertion(exprs!=null&& !exprs.isEmpty(),  "actOnParenOrParenList missing expression list!");
+
 
         Expr res = null;
         int size = exprs.size();
@@ -7915,7 +7914,7 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation rParenLoc,
             Expr expr)
     {
-        assert expr != null:"actOnParenExpr() missing expression.";
+        Util.assertion(expr != null, "actOnParenExpr() missing expression.");
 
         return new ActionResult<>(new ParenExpr(expr, lParenLoc,rParenLoc));
     }
@@ -8258,7 +8257,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         QualType ty = e.getType();
 
-        assert !ty.isNull() :"defaultArgumentPromotion - missing type";
+        Util.assertion(!ty.isNull(), "defaultArgumentPromotion - missing type");
 
         ActionResult<Expr> res = usualUnaryConversions(e);
         if (res.isInvalid())
@@ -8592,7 +8591,7 @@ public final class Sema implements DiagnosticParseTag,
         QualType baseType = baseExprType;
         if (isArrow)
         {
-            assert baseType.isPointerType();
+            Util.assertion( baseType.isPointerType());
             baseType = context.getAs(baseType, PointerType.class).getPointeeType();
         }
         if (lookupResult.isAmbiguous())
@@ -8612,7 +8611,7 @@ public final class Sema implements DiagnosticParseTag,
             return exprError();
         }
 
-        assert lookupResult.isSingleResult();
+        Util.assertion( lookupResult.isSingleResult());
         NamedDecl memberDecl = lookupResult.getFoundDecl();
 
         if (memberDecl.isInvalidDecl())
@@ -8632,7 +8631,7 @@ public final class Sema implements DiagnosticParseTag,
                     var, var.getType(), EVK_LValue, memberLoc, OK_Ordinary));
         }
 
-        assert !(memberDecl instanceof FunctionDecl);
+        Util.assertion( !(memberDecl instanceof FunctionDecl));
 
         if (memberDecl instanceof EnumConstantDecl)
         {
@@ -8670,7 +8669,7 @@ public final class Sema implements DiagnosticParseTag,
             boolean isArrow,
             SourceLocation opLoc)
     {
-        assert baseExpr.get().get() != null:"no base expressin!";
+        Util.assertion(baseExpr.get().get() != null, "no base expressin!");
 
         // Perform default conversions.
         Expr e = baseExpr.get().get();
@@ -8775,7 +8774,7 @@ public final class Sema implements DiagnosticParseTag,
             return new ActionResult<>(e);
 
         QualType t = e.getType();
-        assert !t.isNull():"r-value conversion on typeless expression!";
+        Util.assertion(!t.isNull(), "r-value conversion on typeless expression!");
 
         // The C standard is actually really unclear on this point, and
         // DR106 tells us what the result should be but not why.  It's
@@ -8822,16 +8821,15 @@ public final class Sema implements DiagnosticParseTag,
             LookupResult res,
             IDeclContext lookupCtx)
     {
-        assert lookupCtx != null;
+        Util.assertion( lookupCtx != null);
 
         if (res.getLookupName() == null)
             return false;
 
         // Make sure that the declaration context is complete.
-        assert !(lookupCtx instanceof TagDecl) ||
-                ((TagDecl)lookupCtx).isCompleteDefinition()
-                || context.getTypeDeclType(((TagDecl)lookupCtx)).getAsTagType().isBeingDefined()
-                : "Declaration context must already be complete!";
+        Util.assertion(!(lookupCtx instanceof TagDecl) ||                ((TagDecl)lookupCtx).isCompleteDefinition()
+                || context.getTypeDeclType(((TagDecl)lookupCtx)).getAsTagType().isBeingDefined(),  "Declaration context must already be complete!");
+
 
         if (lookupDirect(this, res, lookupCtx))
         {
@@ -9189,7 +9187,7 @@ public final class Sema implements DiagnosticParseTag,
         boolean error = ds.setTypeSpecType(TST.TST_int, nameLoc, x, y);
         String dummy = x.get();
         int diagID = y.get();
-        assert !error :"Error setting up implicit decl!";
+        Util.assertion(!error, "Error setting up implicit decl!");
         Declarator d = new Declarator(ds, Declarator.TheContext.BlockContext);
         d.addTypeInfo(DeclaratorChunk.getFunction(false, false,
                 SourceLocation.NOPOS, null, 0, nameLoc, nameLoc),
@@ -9214,8 +9212,8 @@ public final class Sema implements DiagnosticParseTag,
             boolean hasTrailingLParen,
             boolean isAddressOfOperand)
     {
-        assert !(isAddressOfOperand && hasTrailingLParen):
-                "cannot be direct & operand and have a trailing lparen";
+        Util.assertion(!(isAddressOfOperand && hasTrailingLParen),                 "cannot be direct & operand and have a trailing lparen");
+
 
         String name = id.getName();
         SourceLocation nameLoc = loc;
@@ -9249,12 +9247,12 @@ public final class Sema implements DiagnosticParseTag,
                 if (diagnoseEmptyLookup(s, res))
                     return exprError();
 
-                assert !res.isEmpty() :"diagnoseEmptyLookup returned false!";
+                Util.assertion(!res.isEmpty(), "diagnoseEmptyLookup returned false!");
             }
         }
 
         // Make sure we find a declaration with specified getIdentifier.
-        assert !res.isEmpty() && res.isSingleResult();
+        Util.assertion( !res.isEmpty() && res.isSingleResult());
 
         return buildDeclarationNameExpr(res);
     }
@@ -9294,7 +9292,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public Decl actOnFinishFunctionBody(Decl funcDecl, Stmt fnBody)
     {
-        assert funcDecl instanceof FunctionDecl;
+        Util.assertion( funcDecl instanceof FunctionDecl);
         {
             FunctionDecl fd = (FunctionDecl)funcDecl;
             fd.setBody(fnBody);
@@ -9311,7 +9309,7 @@ public final class Sema implements DiagnosticParseTag,
             if (!fd.isInvalidDecl())
                 diagnoseUnusedParameters(fd.getParamInfo());
 
-            assert funcDecl.equals(getCurFunctionDecl()):"Function parsing confused";
+            Util.assertion(funcDecl.equals(getCurFunctionDecl()), "Function parsing confused");
         }
 
         popDeclContext();
@@ -9369,7 +9367,7 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation nameLoc,
             NamedDecl nd)
     {
-        assert nd != null:"Cannot refer to a NULL declaration";
+        Util.assertion(nd != null, "Cannot refer to a NULL declaration");
 
         if (checkDeclInExpr(this, nameLoc, nd))
             return exprError();
@@ -9400,7 +9398,7 @@ public final class Sema implements DiagnosticParseTag,
                 valueKind = EVK_RValue;
                 break;
             case FieldDecl:
-                assert false:"building reference to field in C?";
+                Util.assertion(false, "building reference to field in C?");
                 break;
             case VarDecl:
                 // In C, "extern void blah;" is valid and is an r-value.
@@ -9465,7 +9463,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     private void markDeclarationReferenced(SourceLocation loc, Decl decl)
     {
-        assert decl != null :"No declaration?";
+        Util.assertion(decl != null, "No declaration?");
         decl.setReferenced(true);
 
         if (decl.isUsed())
@@ -9501,8 +9499,8 @@ public final class Sema implements DiagnosticParseTag,
         }
         else
         {
-            // assert decl instanceof VarDecl.
             VarDecl vd = (VarDecl)decl;
+
             // Keep track of used but undefined variables.  We make a hole in
             // the warning for static const data members with in-line
             // initializers.
@@ -9604,7 +9602,7 @@ public final class Sema implements DiagnosticParseTag,
 
         if (!(decl instanceof VarDecl))
         {
-            assert !(decl instanceof FieldDecl) : "field init shoudln't gt here!";
+            Util.assertion(!(decl instanceof FieldDecl),  "field init shoudln't gt here!");
             diag(decl.getLocation(), err_illegal_initializer).emit();
             decl.setInvalidDecl(true);
             return;
@@ -9954,8 +9952,8 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation rParenLoc)
     {
         Stmt subStmt = stmt.get();
-        assert subStmt != null
-                && subStmt instanceof CompoundStmt : "Invalid action invocation!";
+        Util.assertion(subStmt != null                && subStmt instanceof CompoundStmt,  "Invalid action invocation!");
+
 
         CompoundStmt compound = (CompoundStmt) subStmt;
         boolean isFileScope = getCurFunctionDecl() == null;
@@ -9972,7 +9970,7 @@ public final class Sema implements DiagnosticParseTag,
         if (!compound.bodyEmpty())
         {
             Stmt[] bodys = compound.getBody();
-            assert bodys != null && bodys.length > 0;
+            Util.assertion( bodys != null && bodys.length > 0);
             Stmt lastStmt = bodys[bodys.length-1];
             while (lastStmt instanceof LabelStmt)
             {
@@ -10311,8 +10309,8 @@ public final class Sema implements DiagnosticParseTag,
     public static Decl getObjectForAnonymousRecordDecl(ASTContext context,
             RecordDecl record)
     {
-        assert record.isAnonymousStructOrUnion()
-                : "Record must be an anonymous struct or union!";
+        Util.assertion(record.isAnonymousStructOrUnion(),  "Record must be an anonymous struct or union!");
+
 
         IDeclContext ctx = record.getDeclContext();
         for (int i = 0,e = ctx.getDeclCounts(); i != e; )
@@ -10321,23 +10319,22 @@ public final class Sema implements DiagnosticParseTag,
             if (d.equals(record))
             {
                 ++i;
-                assert i != e :"Missing object for anonymous record";
-                assert ((NamedDecl)d).getIdentifier() == null
-                        : "Decl should be unamed!";
+                Util.assertion(i != e, "Missing object for anonymous record");
+                Util.assertion(((NamedDecl)d).getIdentifier() == null,  "Decl should be unamed!");
+
                 return d;
             }
         }
 
-        assert false:"Missing object for anonymous record";
+        Util.assertion(false, "Missing object for anonymous record");
         return null;
     }
 
     public VarDecl buildAnonymousStructUnionMemberPath(FieldDecl field,
             ArrayList<FieldDecl> path)
     {
-        assert field.getDeclContext().isRecord() &&
-                ((RecordDecl)(field.getDeclContext())).isAnonymousStructOrUnion()
-                :"Field must be stored inside an anonymous struct or union";
+        Util.assertion(field.getDeclContext().isRecord() &&                ((RecordDecl)(field.getDeclContext())).isAnonymousStructOrUnion(), "Field must be stored inside an anonymous struct or union");
+
 
         path.add(field);
 

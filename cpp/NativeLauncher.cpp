@@ -43,7 +43,7 @@ JNIEnv* createVM(char* cmdPath)
 #else
         char absolute[4086] = {0};
 #endif
-    realpath(cmdPath, absolute);
+    (void)realpath(cmdPath, absolute);
 #ifdef DEBUG
     fprintf(stderr, "%s\n", absolute);
 #endif
@@ -61,7 +61,6 @@ JNIEnv* createVM(char* cmdPath)
     JavaVMInitArgs vm_args;                        // Initialization arguments
     JavaVMOption* options = new JavaVMOption[2];   // JVM invocation options
     options[0].optionString = path;   // where to find java .class
-    options[1].optionString = "-ea";
     vm_args.version = JNI_VERSION_1_8;             // minimum Java version
     vm_args.nOptions = 1;                          // number of options
     vm_args.options = options;

@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
@@ -113,7 +114,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
             su.dump(this);
         }
 
-        assert cycle >= su.getHeight();
+        Util.assertion( cycle >= su.getHeight());
         su.setHeightToAtLeast(cycle);
         sequence.add(su);
 
@@ -126,8 +127,8 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
                 int reg = dep.getReg();
                 if (liveRegCycles[reg] == dep.getSUnit().getHeight())
                 {
-                    assert numLiveRegs > 0;
-                    assert Objects.equals(liveRegDefs[reg], su);
+                    Util.assertion( numLiveRegs > 0);
+                    Util.assertion( Objects.equals(liveRegDefs[reg], su));
                     --numLiveRegs;
                     liveRegDefs[reg] = null;
                     liveRegCycles[reg] = 0;
@@ -171,7 +172,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
             if (!tii.unfoldMemoryOperand(dag, n, newNodes))
                 return null;
 
-            assert newNodes.size() == 2:"Expected a load folding node!";
+            Util.assertion(newNodes.size() == 2, "Expected a load folding node!");
 
             n = newNodes.get(1);
             SDNode loadNode = newNodes.get(0);
@@ -184,7 +185,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
                     new SDValue(loadNode, 1), null);
 
             SUnit su2 = newSUnit(n);
-            assert n.getNodeID() == -1;
+            Util.assertion( n.getNodeID() == -1);
             n.setNodeID(su2.nodeNum);
 
             TargetInstrDesc tid = tii.get(n.getMachineOpcode());
@@ -352,7 +353,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
     static EVT getPhysicalRegisterVT(SDNode n, int reg, TargetInstrInfo tii)
     {
         TargetInstrDesc tid = tii.get(n.getMachineOpcode());
-        assert tid.implicitDefs != null && tid.implicitDefs.length > 0;
+        Util.assertion( tid.implicitDefs != null && tid.implicitDefs.length > 0);
         int numRes = tid.getNumDefs();
         for (int def : tid.implicitDefs)
         {
@@ -436,7 +437,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
 	    if (!sunits.isEmpty())
         {
             SUnit rootSU = sunits.get(dag.getRoot().getNode().getNodeID());
-            assert rootSU.succs.isEmpty();
+            Util.assertion( rootSU.succs.isEmpty());
             rootSU.isAvailable = true;
             availableQueue.push(rootSU);
         }
@@ -465,7 +466,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes
             {
                 SUnit trySU = notReady.get(0);
                 TIntArrayList lregs = lregsMap.get(trySU);
-                assert lregs.size() == 1:"Can't cope with this situation!";
+                Util.assertion(lregs.size() == 1, "Can't cope with this situation!");
                 int reg = lregs.get(0);
                 SUnit lrDef = liveRegDefs[reg];
                 EVT vt = getPhysicalRegisterVT(lrDef.getNode(), reg, tii);

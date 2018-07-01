@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.analysis.*;
 import backend.analysis.LoopInfo;
 import backend.value.*;
@@ -207,7 +208,7 @@ public final class IndVarSimplify implements LoopPass
         if (!(iterationCount instanceof SCEVCouldNotCompute)
                 && exitingBlock != null)
         {
-            assert needCannIV :"LinearFunctionTestReplace requires a canonical induction variable";
+            Util.assertion(needCannIV, "LinearFunctionTestReplace requires a canonical induction variable");
             Instruction lastInst = exitingBlock.getLastInst();
             if (lastInst instanceof BranchInst)
             {
@@ -229,7 +230,7 @@ public final class IndVarSimplify implements LoopPass
         // Clean up dead instructions.
         deleteDeadPhis(loop.getHeaderBlock());
 
-        assert loop.isLCSSAForm() :"Indvars did not leave the loop in LCSSA form!";
+        Util.assertion(loop.isLCSSAForm(), "Indvars did not leave the loop in LCSSA form!");
         return changed;
     }
 
@@ -288,8 +289,8 @@ public final class IndVarSimplify implements LoopPass
             cmpIndVar = indVal;
         }
 
-        assert rhs.isLoopInvariant(loop) :
-                "Computed iteration count is not loop invariant!";
+        Util.assertion(rhs.isLoopInvariant(loop),                 "Computed iteration count is not loop invariant!");
+
         Value exitCount = rewriter.expandCodeFor(rhs, indVal.getType(), bi);
 
         Predicate opcode;
@@ -487,7 +488,7 @@ public final class IndVarSimplify implements LoopPass
     private void rewriteLoopExitValues(Loop loop,
             SCEVExpander rewriter)
     {
-        assert loop.isLCSSAForm();
+        Util.assertion( loop.isLCSSAForm());
 
         ArrayList<BasicBlock> exitBlocks = loop.getUniqueExitBlocks();
 

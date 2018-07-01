@@ -1,5 +1,6 @@
 package backend.transform.utils;
 
+import tools.Util;
 import backend.transform.scalars.GVNPRE;
 import backend.value.Instruction;
 import backend.value.Value;
@@ -126,8 +127,8 @@ public class ValueMap
 	 */
 	public void killAll()
 	{
-		assert parent == null :
-				"should only used for local number value.";
+		Util.assertion(parent == null, 				"should only used for local number value.");
+
 
 		for (int i = 0; i < table.length; i++)
 		{

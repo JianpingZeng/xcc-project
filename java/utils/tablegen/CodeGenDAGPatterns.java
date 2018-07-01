@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.EVT;
 import gnu.trove.iterator.TObjectIntIterator;
 import gnu.trove.list.array.TIntArrayList;
@@ -116,7 +117,7 @@ public final class CodeGenDAGPatterns
             CodeGenInstruction instInfo = pair.getValue();
 
             boolean[] res = inferFromPattern(instInfo, this);
-            assert res.length == 3;
+            Util.assertion( res.length == 3);
             instInfo.mayStore = res[0];
             instInfo.mayLoad = res[1];
             instInfo.hasSideEffects = res[2];
@@ -199,7 +200,7 @@ public final class CodeGenDAGPatterns
             }
             generateVariantsOf(match.getSrcPattern(), variants, this, depVars);
 
-            assert !variants.isEmpty():"Must create at least orignal variant!";
+            Util.assertion(!variants.isEmpty(), "Must create at least orignal variant!");
             variants.remove(0);
 
             if (variants.isEmpty())
@@ -345,8 +346,8 @@ public final class CodeGenDAGPatterns
         boolean isCommutativeIntrinsic = node.isCommutativeIntrinsic(cdp);
         if (nodeInfo.hasProperty(SDNPCommutative) || isCommutativeIntrinsic)
         {
-            assert (node.getNumChildren() == 2 || isCommutativeIntrinsic)
-                    :"Commutative but does't not have 2 chidren!";
+            Util.assertion((node.getNumChildren() == 2 || isCommutativeIntrinsic), "Commutative but does't not have 2 chidren!");
+
 
             int nc = 0;
             for (int i = 0, e = node.getNumChildren(); i != e; i++)
@@ -367,7 +368,7 @@ public final class CodeGenDAGPatterns
 
             if (isCommutativeIntrinsic)
             {
-                assert nc >= 3:"Commutative intrinsic should have at least 3 children!";
+                Util.assertion(nc >= 3, "Commutative intrinsic should have at least 3 children!");
                 ArrayList<ArrayList<TreePatternNode>> variants = new ArrayList<>();
                 variants.add(childVariants.get(0));
                 variants.add(childVariants.get(2));
@@ -482,7 +483,7 @@ public final class CodeGenDAGPatterns
             TreePatternNode node,
             ArrayList<TreePatternNode> children)
     {
-        assert node.getNumChildren() == 2:"Assocative but doesn't have 2 children";
+        Util.assertion(node.getNumChildren() == 2, "Assocative but doesn't have 2 children");
         Record operator = node.getOperator();
 
         if (!node.getName().isEmpty() || !node.getPredicateFns().isEmpty()
@@ -577,7 +578,7 @@ public final class CodeGenDAGPatterns
                     {
                         System.err.printf("In dag: %s", tree.toString());
                         System.err.printf(" -- Untyped argument in pattern\n");
-                        assert false:"Untyped argument in pattern";
+                        Util.assertion(false, "Untyped argument in pattern");
                     }
                     if (listTy != null)
                     {
@@ -586,7 +587,7 @@ public final class CodeGenDAGPatterns
                         {
                             System.err.printf("In dag: %s", tree.toString());
                             System.err.printf(" -- Incompatible types in pattern argument\n");
-                            assert false:"Incompatible types in pattern arguments";
+                            Util.assertion(false, "Incompatible types in pattern arguments");
                         }
                     }
                     else
@@ -844,7 +845,7 @@ public final class CodeGenDAGPatterns
                 slotRec = (slot.getLeafValue() instanceof DefInit)? ((DefInit)slot.getLeafValue()).getDef() :null;
             else
             {
-                assert slot.getNumChildren() == 0 :"cann't be a use with children!";
+                Util.assertion(slot.getNumChildren() == 0, "cann't be a use with children!");
                 slotRec = slot.getOperator();
             }
 
@@ -978,7 +979,7 @@ public final class CodeGenDAGPatterns
             int numResults = instResults.size();
 
             // Parse the operands list from the (ops) list, validating it.
-            assert i.getArgList().isEmpty():"Args list should still be empty here!";
+            Util.assertion(i.getArgList().isEmpty(), "Args list should still be empty here!");
             CodeGenInstruction cgi = target.getInstruction(instr.getName());
 
             // Check that all of the results occur first in the list.
@@ -1149,7 +1150,7 @@ public final class CodeGenDAGPatterns
         defaultOps[1] = records.getAllDerivedDefinition("OptionalDefOperand");
 
         // Find some SDNode.
-        assert !sdnodes.isEmpty():"No SDNodes parsed?";
+        Util.assertion(!sdnodes.isEmpty(), "No SDNodes parsed?");
         Init someSDNode = new DefInit(sdnodes.entrySet().iterator().next().getKey());
 
         for (int itr = 0; itr != 2; itr++)
@@ -1167,7 +1168,7 @@ public final class CodeGenDAGPatterns
                 DagInit di = new DagInit(someSDNode, "", ops);
 
                 TreePattern pattern = new TreePattern(defaultOps[itr].get(i), di, false, this);
-                assert pattern.getNumTrees() == 1:"This ctor can only produce one tree!";
+                Util.assertion(pattern.getNumTrees() == 1, "This ctor can only produce one tree!");
 
                 DAGDefaultOperand defaultOpInfo = new DAGDefaultOperand();
 
@@ -1369,13 +1370,13 @@ public final class CodeGenDAGPatterns
 
     public SDNodeInfo getSDNodeInfo(Record r)
     {
-        assert sdnodes.containsKey(r) :"Undefined node!";
+        Util.assertion(sdnodes.containsKey(r), "Undefined node!");
         return sdnodes.get(r);
     }
 
     public Pair<Record, String> getSDNodeTransform(Record r)
     {
-        assert sdNodeXForms.containsKey(r) :"Invalid transform";
+        Util.assertion(sdNodeXForms.containsKey(r), "Invalid transform");
         return sdNodeXForms.get(r);
     }
 
@@ -1386,7 +1387,7 @@ public final class CodeGenDAGPatterns
 
     public ComplexPattern getComplexPattern(Record r)
     {
-        assert complexPatterns.containsKey(r) :"Unknown address mode!";
+        Util.assertion(complexPatterns.containsKey(r), "Unknown address mode!");
         return complexPatterns.get(r);
     }
 
@@ -1397,7 +1398,7 @@ public final class CodeGenDAGPatterns
         for (CodeGenIntrinsic cgi : tgtIntrinsics)
             if (cgi.theDef.equals(r)) return cgi;
 
-        assert false:"Undefined intrinsic!";
+        Util.assertion(false, "Undefined intrinsic!");
         return null;
     }
 
@@ -1407,7 +1408,7 @@ public final class CodeGenDAGPatterns
             return intrinsics.get(iid - 1);
         if (iid - intrinsics.size() -1 < tgtIntrinsics.size())
             return tgtIntrinsics.get(iid - intrinsics.size() - 1);
-        assert false:"Bad intrinsic ID!";
+        Util.assertion(false, "Bad intrinsic ID!");
         System.exit(1);
         return null;
     }
@@ -1428,20 +1429,20 @@ public final class CodeGenDAGPatterns
                 return idx;
             ++idx;
         }
-        assert false:"Undefined intrinsic!";
+        Util.assertion(false, "Undefined intrinsic!");
         System.exit(1);
         return -1;
     }
 
     public DAGDefaultOperand getDefaultOperand(Record r)
     {
-        assert defaultOperands.containsKey(r):"Isn't an analyzed default operand?";
+        Util.assertion(defaultOperands.containsKey(r), "Isn't an analyzed default operand?");
         return defaultOperands.get(r);
     }
 
     public TreePattern getPatternFragment(Record r)
     {
-        assert patternFragments.containsKey(r):"Invalid pattern fragment request!";
+        Util.assertion(patternFragments.containsKey(r), "Invalid pattern fragment request!");
         return patternFragments.get(r);
     }
 
@@ -1457,14 +1458,14 @@ public final class CodeGenDAGPatterns
 
     private void addPatternsToMatch(PatternToMatch pat)
     {
-        //assert (pat != null);
+        //Util.assertion( (pat != null));
         //if (!patternsToMatch.contains(pat))
         patternsToMatch.add(pat);
     }
 
     public DAGInstruction getInstruction(Record r)
     {
-        assert instructions.containsKey(r):"Undefined instruction!";
+        Util.assertion(instructions.containsKey(r), "Undefined instruction!");
         return instructions.get(r);
     }
 

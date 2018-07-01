@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
@@ -100,8 +101,8 @@ public final class SlotTracker
 
     public int getLocalSlot(Value v)
     {
-        assert !(v instanceof Constant):
-                "Can't get a constant or global slot with this!";
+        Util.assertion(!(v instanceof Constant),                 "Can't get a constant or global slot with this!");
+
 
         initialize();
         return fMap.containsKey(v) ? fMap.get(v) : -1;
@@ -133,7 +134,7 @@ public final class SlotTracker
 
     private void createMetadataSlot(MDNode node)
     {
-        assert node != null:"Can't insert a null value into slotTracker!";
+        Util.assertion(node != null, "Can't insert a null value into slotTracker!");
         if (mdnMap.containsKey(node))
             return;
 
@@ -189,9 +190,9 @@ public final class SlotTracker
 
     private void createModuleSlot(GlobalValue gv)
     {
-        assert gv != null;
-        assert !gv.getType().equals(LLVMContext.VoidTy);
-        assert !gv.hasName();
+        Util.assertion( gv != null);
+        Util.assertion( !gv.getType().equals(LLVMContext.VoidTy));
+        Util.assertion( !gv.hasName());
 
         int destSlot = mNext++;
         mMap.put(gv, destSlot);
@@ -199,9 +200,9 @@ public final class SlotTracker
 
     private void createFunctionSlot(Value v)
     {
-        assert v != null;
-        assert !v.getType().equals(LLVMContext.VoidTy);
-        assert !v.hasName();
+        Util.assertion( v != null);
+        Util.assertion( !v.getType().equals(LLVMContext.VoidTy));
+        Util.assertion( !v.hasName());
 
         int destSlot = fNext++;
         fMap.put(v, destSlot);

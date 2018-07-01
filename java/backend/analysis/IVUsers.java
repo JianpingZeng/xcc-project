@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
@@ -74,7 +75,7 @@ public final class IVUsers implements LoopPass
 		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 		se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
 		BasicBlock header = loop.getHeaderBlock();
-		assert header != null;
+		Util.assertion( header != null);
 
 		// Find all of uses of induction variables in this loop, and
 		// categorize them by stride. Start by finding all Phi nodes
@@ -415,7 +416,7 @@ public final class IVUsers implements LoopPass
 
 		ivUsesByStride.keySet().forEach(stride->
 		{
-			assert ivUsesByStride.containsKey(stride):"Stride doesn't exits!";
+			Util.assertion(ivUsesByStride.containsKey(stride), "Stride doesn't exits!");
 			os.print("  Stride: " + stride.getType().toString()+ "  "+
 					stride.toString() +"\n");
 

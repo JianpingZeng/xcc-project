@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import tools.FormattedOutputStream;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
@@ -63,7 +64,7 @@ public class MachineBasicBlock
 
 	private void addNodeToList(MachineInstr instr)
 	{
-		assert instr.getParent() == null:"machine instruction already have parent!";
+		Util.assertion(instr.getParent() == null, "machine instruction already have parent!");
 		instr.setParent(this);
 
 		// Add the instruction's register operands to their corresponding
@@ -73,7 +74,7 @@ public class MachineBasicBlock
 
 	public void insert(int itr, MachineInstr instr)
 	{
-	    assert itr >= 0 && itr <= size();
+	    Util.assertion( itr >= 0 && itr <= size());
 	    if (itr == size())
 	        insts.add(instr);
 	    else
@@ -84,7 +85,7 @@ public class MachineBasicBlock
 	public void insert(MachineInstr itr, MachineInstr instr)
     {
         int idx = insts.indexOf(itr);
-        assert idx >= 0 && idx < size();
+        Util.assertion( idx >= 0 && idx < size());
         insert(idx, instr);
     }
 
@@ -102,7 +103,7 @@ public class MachineBasicBlock
 
 	public void replace(int idx, MachineInstr newInstr)
 	{
-		assert  idx>= 0 && idx < size():"idx out of range!";
+		Util.assertion(idx>= 0 && idx < size(), "idx out of range!");
 		insts.remove(idx);
 		insts.add(idx, newInstr);
 	}
@@ -123,42 +124,42 @@ public class MachineBasicBlock
 
 	public void addSuccessor(MachineBasicBlock succ)
 	{
-		assert succ != null :"Can not add a null succ into succ list";
+		Util.assertion(succ != null, "Can not add a null succ into succ list");
 		successors.add(succ);
 		succ.addPredecessor(this);
 	}
 
 	public void removeSuccessor(MachineBasicBlock succ)
 	{
-		assert successors.contains(succ)
-				: "The succ to be removed not contained in succ list";
+		Util.assertion(successors.contains(succ),  "The succ to be removed not contained in succ list");
+
 		successors.remove(succ);
 		succ.removePredecessor(this);
 	}
 
 	public void removeSuccessor(int idx)
 	{
-		assert idx>= 0 && idx < getNumSuccessors();
+		Util.assertion( idx>= 0 && idx < getNumSuccessors());
 		suxAt(idx).removePredecessor(this);
 		successors.remove(idx);
 	}
 
 	public void addPredecessor(MachineBasicBlock pred)
 	{
-		assert pred!= null :"Can not add a null pred";
+		Util.assertion(pred!= null, "Can not add a null pred");
 		predecessors.add(pred);
 	}
 
 	public void removePredecessor(MachineBasicBlock pred)
 	{
-		assert predecessors.contains(pred)
-				: "The pred to be removed not contained in pred list";
+		Util.assertion(predecessors.contains(pred),  "The pred to be removed not contained in pred list");
+
 		predecessors.remove(pred);
 	}
 
 	public void removePredecessor(int idx)
 	{
-		assert idx>= 0 && idx < getNumPredecessors();
+		Util.assertion( idx>= 0 && idx < getNumPredecessors());
 		predecessors.remove(idx);
 	}
 
@@ -185,13 +186,13 @@ public class MachineBasicBlock
 
 	public MachineBasicBlock predAt(int idx)
 	{
-		assert idx >= 0 && idx < getNumPredecessors();
+		Util.assertion( idx >= 0 && idx < getNumPredecessors());
 		return predecessors.get(idx);
 	}
 
 	public MachineBasicBlock suxAt(int idx)
 	{
-		assert idx>= 0 && idx < getNumSuccessors();
+		Util.assertion( idx>= 0 && idx < getNumSuccessors());
 		return successors.get(idx);
 	}
 
@@ -211,7 +212,7 @@ public class MachineBasicBlock
 
 	public void eraseFromParent()
 	{
-		assert getParent() != null;
+		Util.assertion( getParent() != null);
 		getParent().erase(this);
 	}
 
@@ -259,7 +260,7 @@ public class MachineBasicBlock
 
 	public void remove(int indexToDel)
 	{
-		assert indexToDel>=0&& indexToDel < size();
+		Util.assertion( indexToDel>=0&& indexToDel < size());
 		insts.remove(indexToDel);
 	}
 
@@ -282,7 +283,7 @@ public class MachineBasicBlock
 
 	public void removeInstrAt(int indexToDel)
 	{
-		assert indexToDel >= 0 && indexToDel < size();
+		Util.assertion( indexToDel >= 0 && indexToDel < size());
 		insts.remove(indexToDel);
 	}
 
@@ -298,7 +299,7 @@ public class MachineBasicBlock
 
 	public MachineInstr getLastInst()
     {
-    	assert !insts.isEmpty();
+    	Util.assertion( !insts.isEmpty());
         return insts.getLast();
     }
 

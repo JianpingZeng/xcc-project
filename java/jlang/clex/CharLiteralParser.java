@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.SourceLocation;
 import tools.APInt;
 import tools.OutParamWrapper;
@@ -39,13 +40,13 @@ public class CharLiteralParser
     {
         hadError = false;
         int pos = 0;
-        assert tokStr[pos] == '\'':"Invalid token lexed";
+        Util.assertion(tokStr[pos] == '\'', "Invalid token lexed");
         ++pos;
 
-        assert pp.getTargetInfo().getCharWidth() == 8:"Asssumes char is 8bit";
-        assert pp.getTargetInfo().getIntWidth() <= 64
-                && (pp.getTargetInfo().getIntWidth() & 7) == 0:
-                "Assumes sizeof(int) on target is <= 64 and a multiple of char";
+        Util.assertion(pp.getTargetInfo().getCharWidth() == 8, "Asssumes char is 8bit");
+        Util.assertion(pp.getTargetInfo().getIntWidth() <= 64                && (pp.getTargetInfo().getIntWidth() & 7) == 0, 
+                "Assumes sizeof(int) on target is <= 64 and a multiple of char");
+
 
         APInt litVal = new APInt(pp.getTargetInfo().getIntWidth(), 0);
         int numCharsSoFar = 0;

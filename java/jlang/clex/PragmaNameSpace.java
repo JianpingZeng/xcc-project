@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 
 import static jlang.diag.DiagnosticLexKindsTag.warn_pragma_ignored;
@@ -105,7 +106,7 @@ public class PragmaNameSpace extends PragmaHandler
                 return;
             }
         }
-        assert false:"Handler not registered in this namespace";
+        Util.assertion(false, "Handler not registered in this namespace");
     }
 
     @Override

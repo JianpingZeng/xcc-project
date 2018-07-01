@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.Module;
 import backend.support.TypePrinting;
@@ -309,8 +310,8 @@ public class Type implements LLVMTypeID, AbstractTypeUser
 
     public Type getContainedType(int idx)
     {
-        assert containedTys != null && idx >= 0 &&
-                idx < containedTys.length;
+        Util.assertion( containedTys != null && idx >= 0 &&                idx < containedTys.length);
+
         return containedTys[idx].getType();
     }
 }

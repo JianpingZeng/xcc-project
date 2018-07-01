@@ -1,5 +1,6 @@
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.LoopInfo;
 import backend.pass.AnalysisResolver;
@@ -318,7 +319,7 @@ public final class InductionVarSimplify implements LoopPass
 
 				opcode = op1.getType().isFloatingPointType() ? Operator.FMul : Operator.Mul;
 				Constant diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), iv.diff);
-				assert factor != null && diff != null;
+				Util.assertion( factor != null && diff != null);
 
 				inductionVars.add(new IVRecord(inst, op2, factor, diff));
 			}			
@@ -342,7 +343,7 @@ public final class InductionVarSimplify implements LoopPass
 	 */
 	private boolean isAddIV(Instruction.BinaryOps inst, Value op1, Value op2, Loop loop)
 	{
-		assert inst.getOpcode().isAdd() || inst.getOpcode().isSub();
+		Util.assertion( inst.getOpcode().isAdd() || inst.getOpcode().isSub());
 		
 		/* 
 		 * Only when inst is a add operation and whose first operand
@@ -365,7 +366,7 @@ public final class InductionVarSimplify implements LoopPass
 				}
 				else 
 				{
-					assert inst.getOpcode().isSub();
+					Util.assertion( inst.getOpcode().isSub());
 					inductionVars.add(new IVRecord(inst, iv.biv, 
 							Constant.getAllOnesValue(iv.factor.getType()),
 							op1.asConstant()));
@@ -381,23 +382,23 @@ public final class InductionVarSimplify implements LoopPass
 			{
 				Operator opcode = op1.getType().isFloatingPointType() ? Operator.FAdd : Operator.Add;
 				Constant diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), iv.diff);
-				assert diff != null;
+				Util.assertion( diff != null);
 				if (inst.getOpcode().isAdd())
 				{
 					inductionVars.add(new IVRecord(inst, op2, iv.factor, diff));
 				}
 				else 
 				{
-					assert inst.getOpcode().isSub();
+					Util.assertion( inst.getOpcode().isSub());
 					opcode = iv.factor.getType().isFloatingPointType() ?
 							Operator.FSub: Operator.Sub;
 					Constant factor = constantFoldBinaryInstruction(opcode,
 							ConstantInt.getFalse(), iv.factor);
-					assert factor != null;
+					Util.assertion( factor != null);
 
 					opcode = diff.getType().isFloatingPointType() ? Operator.FSub : Operator.Sub;
 					diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), diff);
-					assert diff != null;
+					Util.assertion( diff != null);
 					
 					inductionVars.add(new IVRecord(inst, op2, factor, diff));
 				}		
@@ -510,7 +511,7 @@ public final class InductionVarSimplify implements LoopPass
 	@SuppressWarnings("unused")
     private void appendPreheader(Instruction inst, BasicBlock preheader)
 	{
-		assert inst != null && preheader != null;
+		Util.assertion( inst != null && preheader != null);
 		preheader.appendInst(inst);
 	}	
 	
@@ -522,7 +523,7 @@ public final class InductionVarSimplify implements LoopPass
 	 */
 	private void appendPreheader(Instruction[] insts, BasicBlock preheader)
 	{
-		assert insts != null && preheader != null;
+		Util.assertion( insts != null && preheader != null);
 		for (Instruction inst : insts)
 			preheader.appendInst(inst);
 	}
@@ -533,7 +534,7 @@ public final class InductionVarSimplify implements LoopPass
 	 */
 	private void insertAfter(Instruction target, Instruction[] after)
 	{
-		assert target != null && after!=null;	
+		Util.assertion( target != null && after!=null);
 		// if the getArraySize of after is not greater zero, just immediately return.
 		if (after.length <= 0) return;
 		

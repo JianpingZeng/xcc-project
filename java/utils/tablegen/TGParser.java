@@ -15,6 +15,7 @@
  */
 package utils.tablegen;
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import jlang.support.MemoryBuffer;
 import tools.Pair;
@@ -209,7 +210,7 @@ public final class TGParser
             }
 
             // We should have a BitsInit type now...
-            assert bi instanceof BitsInit;
+            Util.assertion( bi instanceof BitsInit);
             BitsInit binit = (BitsInit) bi;
 
             BitsInit newVal = new BitsInit(curVal.getNumBits());
@@ -375,7 +376,7 @@ public final class TGParser
         switch (lexer.getCode())
         {
             default:
-                assert false :"This is not an object";
+                Util.assertion(false, "This is not an object");
                 return false;
             case Let: return parseTopLevelLet();
             case Def: return parseDef(null) == null;
@@ -396,7 +397,7 @@ public final class TGParser
      */
     private boolean parseTopLevelLet()
     {
-        assert lexer.getCode() == TGLexer.TokKind.Let:"Unexpected token";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Let, "Unexpected token");
         lexer.lex();
 
         ArrayList<LetRecord> letInfo = parseLetList();
@@ -1110,7 +1111,7 @@ public final class TGParser
                 switch (lexer.getCode())
                 {
                     default:
-                        assert false : "Unhandled code!";
+                        Util.assertion(false,  "Unhandled code!");
                     case XCast:
                         lexer.lex();
                         opc = UnaryOp.CAST;
@@ -1247,7 +1248,7 @@ public final class TGParser
 
                 switch (lexer.getCode())
                 {
-                    default: assert false:"Unhandled code!";
+                    default: Util.assertion(false, "Unhandled code!");
                     case XConcat:
                         lexer.lex();
                         opc = BinaryOp.STRCONCAT;
@@ -1334,7 +1335,7 @@ public final class TGParser
 
                 switch (lexcode)
                 {
-                    default:assert false:"Unhandled code!";
+                    default:Util.assertion(false, "Unhandled code!");
                     case XIf:
                         opc = TernOpInit.TernaryOp.IF;
                         break;
@@ -1393,7 +1394,7 @@ public final class TGParser
 
                 switch (lexcode)
                 {
-                    default:assert false:"Unhandle code";
+                    default:Util.assertion(false, "Unhandle code");
                     case XIf:
                     {
                         if (!(mhs instanceof Init.TypedInit) || !(rhs instanceof Init.TypedInit))
@@ -1667,7 +1668,7 @@ public final class TGParser
         {
             ArrayList<String> targs = argsRec.getTemplateArgs();
             RecordVal rv = argsRec.getValue(targs.get(argN));
-            assert rv != null :"Template argument record not found?";
+            Util.assertion(rv != null, "Template argument record not found?");
             itemType = rv.getType();
             ++argN;
         }
@@ -1695,7 +1696,7 @@ public final class TGParser
                 }
 
                 RecordVal rv = argsRec.getValue(targs.get(argN));
-                assert rv != null : "Template argument record not found!";
+                Util.assertion(rv != null,  "Template argument record not found!");
                 itemType = rv.getType();
                 ++argN;
             }
@@ -1714,7 +1715,7 @@ public final class TGParser
 
     private Init parseIDValue(Record curRec)
     {
-        assert lexer.getCode() == TGLexer.TokKind.Id:"Expected ID in parseIDValue";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Id, "Expected ID in parseIDValue");
         String name = lexer.getCurStrVal();
         SourceMgr.SMLoc loc = lexer.getLoc();
         lexer.lex();
@@ -1735,7 +1736,7 @@ public final class TGParser
             if (curRec.isTemplateArg(templateName))
             {
                 rv = curRec.getValue(templateName);
-                assert rv != null:"Template arg does not exist?";
+                Util.assertion(rv != null, "Template arg does not exist?");
                 return new VarInit(templateName, rv.getType());
             }
         }
@@ -1746,7 +1747,7 @@ public final class TGParser
             if (curMultiClass.rec.isTemplateArg(mcName))
             {
                 RecordVal rv = curMultiClass.rec.getValue(mcName);
-                assert rv != null :"Template arg does not exist?";
+                Util.assertion(rv != null, "Template arg does not exist?");
                 return new VarInit(mcName, rv.getType());
             }
         }
@@ -1771,7 +1772,7 @@ public final class TGParser
     private Record parseDef(MultiClass klass)
     {
         SourceMgr.SMLoc loc = lexer.getLoc();
-        assert lexer.getCode() == TGLexer.TokKind.Def : "Unknown tok";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Def,  "Unknown tok");
 
         lexer.lex();
 
@@ -1805,7 +1806,7 @@ public final class TGParser
         if (curMultiClass == null)
             curRec.resolveReferences();
 
-        assert curRec.getTemplateArgs().isEmpty():"How does this get template args?";
+        Util.assertion(curRec.getTemplateArgs().isEmpty(), "How does this get template args?");
         //if (TableGen.DEBUG)
         //    curRec.dump();
         return curRec;
@@ -1839,8 +1840,8 @@ public final class TGParser
      */
     private boolean parseDefm()
     {
-        assert lexer.getCode() == TGLexer.TokKind.Defm:
-                "Unexpected token!";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Defm,                 "Unexpected token!");
+
 
         if (lexer.lex() != TGLexer.TokKind.Id)
             return tokError("expected identifier after defm");
@@ -1861,8 +1862,8 @@ public final class TGParser
             if (ref.rec == null)
                 return true;
 
-            assert multiClasses.containsKey(ref.rec.getName())
-                    :"Didn't lookup multiclass correctly?";
+            Util.assertion(multiClasses.containsKey(ref.rec.getName()), "Didn't lookup multiclass correctly?");
+
             MultiClass mc = multiClasses.get(ref.rec.getName());
 
             ArrayList<Init> templateVals = ref.templateArgs;
@@ -1960,7 +1961,7 @@ public final class TGParser
      */
     private boolean parseClass()
     {
-        assert lexer.getCode() == TGLexer.TokKind.Class;
+        Util.assertion( lexer.getCode() == TGLexer.TokKind.Class);
 
         lexer.lex();
 
@@ -2286,7 +2287,7 @@ public final class TGParser
             if (curRec != null)
                 declName = curRec.getName() + ":" + declName;
             else
-                assert curMultiClass!= null;
+                Util.assertion( curMultiClass!= null);
 
             if (curMultiClass != null)
                 declName = curMultiClass.rec.getName() + "::" + declName;
@@ -2320,7 +2321,7 @@ public final class TGParser
      */
     private boolean parseTemplateArgList(Record curRec)
     {
-        assert lexer.getCode() == TGLexer.TokKind.less :"Not a template arg list!";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.less, "Not a template arg list!");
         lexer.lex();
 
         Record theRecToAddTo = curRec != null ? curRec : curMultiClass.rec;
@@ -2359,8 +2360,8 @@ public final class TGParser
      */
     private boolean parseMultiClass()
     {
-        assert lexer.getCode() == TGLexer.TokKind.Multiclass:
-                "Unexpected token";
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Multiclass,                 "Unexpected token");
+
         lexer.lex();
 
         if (lexer.getCode() != TGLexer.TokKind.Id)
@@ -2460,7 +2461,7 @@ public final class TGParser
         targs.forEach(arg->
         {
             RecordVal rv = curMC.rec.getValue(arg);
-            assert rv != null :"Template arg doesn't exist?";
+            Util.assertion(rv != null, "Template arg doesn't exist?");
             d.addValue(rv);
         });
 

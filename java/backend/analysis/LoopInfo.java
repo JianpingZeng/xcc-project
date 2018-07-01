@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -42,7 +43,7 @@ public final class LoopInfo
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		assert au != null;
+		Util.assertion( au != null);
 		au.addRequired(DomTree.class);
 	}
 
@@ -104,9 +105,9 @@ public final class LoopInfo
 				{
 					if (subLoop.getHeaderBlock() == cur && isNotAlreadyContainedIn(subLoop, l))
 					{
-						assert subLoop.getParentLoop() != null && subLoop.getParentLoop() != l;
+						Util.assertion( subLoop.getParentLoop() != null && subLoop.getParentLoop() != l);
 						Loop subParentLoop = subLoop.getParentLoop();
-						assert subParentLoop.getSubLoops().contains(subLoop);
+						Util.assertion( subParentLoop.getSubLoops().contains(subLoop));
 						subParentLoop.subLoops.remove(subLoop);
 
 						subLoop.setParentLoop(l);
@@ -144,7 +145,7 @@ public final class LoopInfo
 		for (int i = 0; i < l.subLoops.size(); i++)
 		{
 			Loop childLoop = l.subLoops.get(i);
-			assert childLoop.getParentLoop() == l;
+			Util.assertion( childLoop.getParentLoop() == l);
 
 			Loop containedLoop;
 			if ((containedLoop = containingLoops.get(childLoop.getHeaderBlock())) != null)
@@ -186,9 +187,9 @@ public final class LoopInfo
 	private void moveSiblingLoopInto(Loop newChild, Loop newParent)
 	{
 		Loop oldParent = newChild.getParentLoop();
-		assert oldParent != null && oldParent == newParent.getParentLoop();
+		Util.assertion( oldParent != null && oldParent == newParent.getParentLoop());
 
-		assert oldParent.subLoops.contains(newChild) :"Parent field incorrent!";
+		Util.assertion(oldParent.subLoops.contains(newChild), "Parent field incorrent!");
 		oldParent.subLoops.remove(newChild);
 		newParent.subLoops.add(newChild);
 		newChild.setParentLoop(null);
@@ -199,7 +200,7 @@ public final class LoopInfo
 	private void insertLoopInto(Loop child, Loop parent)
 	{
 		BasicBlock header = child.getHeaderBlock();
-		assert parent.contains(header) : "This loop should not be inserted here";
+		Util.assertion(parent.contains(header),  "This loop should not be inserted here");
 
 		// Check to see if it belongs in a child loop...
 		for (int i = 0, e = parent.subLoops.size(); i < e; i++)
@@ -257,7 +258,7 @@ public final class LoopInfo
 	@Override
 	public void ensureIsTopLevel(Loop loop, String msg)
 	{
-		assert loop.getParentLoop() == null:msg;
+		Util.assertion(loop.getParentLoop() == null, msg);
 	}
 
 	@Override

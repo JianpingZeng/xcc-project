@@ -17,6 +17,7 @@
 
 package backend.analysis.aa;
 
+import tools.Util;
 import backend.ir.AllocationInst;
 import backend.ir.SelectInst;
 import backend.pass.ModulePass;
@@ -166,7 +167,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
             // of program.
             for (BasicBlock bb : fn)
             {
-                assert !bb.isEmpty():"Reaching here, there should not have any empty block!";
+                Util.assertion(!bb.isEmpty(), "Reaching here, there should not have any empty block!");
                 for (Instruction inst : bb)
                 {
                     if (!inst.getType().isPointerType()) continue;
@@ -182,7 +183,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
 
     private Node getValueNode(Value val)
     {
-        assert val != null && valueNodes.containsKey(val);
+        Util.assertion( val != null && valueNodes.containsKey(val));
         int id = valueNodes.get(val);
         if (nodes[id] != null) return nodes[id];
         return nodes[id] = new Node(id, val);
@@ -209,7 +210,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     }
     private Node getPointerNode(Value val)
     {
-        assert val != null && pointerNodes.containsKey(val);
+        Util.assertion( val != null && pointerNodes.containsKey(val));
         int id = pointerNodes.get(val);
         if (nodes[id] != null) return nodes[id];
         return nodes[id] = new Node(id, val);
@@ -243,7 +244,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
                     return getUniversalValueNode();
             }
         }
-        assert false:"Unknown constant node!";
+        Util.assertion(false, "Unknown constant node!");
         return null;
     }
 
@@ -255,7 +256,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
             dest.setRepresentative(getNullObjecteNode());
         else if (!(c instanceof Value.UndefValue))
         {
-            assert c instanceof ConstantArray || c instanceof ConstantStruct;
+            Util.assertion( c instanceof ConstantArray || c instanceof ConstantStruct);
             for (int i = 0, e = c.getNumOfOperands(); i < e; i++)
                 addConstraintsOnGlobalVariable(dest, c.operand(i));
         }
@@ -369,9 +370,9 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     public Void visitRet(User inst)
     {
         Function fn = ((Instruction)inst).getParent().getParent();
-        assert fn != null:"Instruction isn't attacted into a Function!";
-        assert returnNodes.containsKey(fn):
-                "ReturnInst must be handled in collectConstraints() method before!";
+        Util.assertion(fn != null, "Instruction isn't attacted into a Function!");
+        Util.assertion(returnNodes.containsKey(fn),                 "ReturnInst must be handled in collectConstraints() method before!");
+
         Node valueNode = getValueNode(inst);
         Node returnNode = getReturnNode(returnNodes.get(fn));
         returnNode.setRepresentative(valueNode);
@@ -432,7 +433,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     public Void visitAllocationInst(User inst)
     {
         Node srcNode = getPointerNode(inst);
-        assert srcNode != null:"The operand of allocation inst isn't collected in identifyObjects method!";
+        Util.assertion(srcNode != null, "The operand of allocation inst isn't collected in identifyObjects method!");
         Node destNode = getValueNode(inst);
         destNode.setRepresentative(srcNode);
         return null;
@@ -450,7 +451,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         Node valNode = getValueNode(inst);
         Node ptrNode = getPointerNode(inst.operand(0));
         Node derefNode = ptrNode.getRepresentativeNode();
-        assert derefNode != null:"Deref Node shouldn't be null!";
+        Util.assertion(derefNode != null, "Deref Node shouldn't be null!");
         valNode.setRepresentative(derefNode);
         return null;
     }
@@ -466,7 +467,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     {
         Node valNode = getValueNode(inst.operand(0));
         Node ptrNode = getPointerNode(inst.operand(1));
-        assert valNode != null && ptrNode != null;
+        Util.assertion( valNode != null && ptrNode != null);
 
         Node derefNode = ptrNode.getRepresentativeNode();
         if (derefNode == null)
@@ -486,7 +487,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         // Step 1: treat all passing argument as copy constraint.
         if (inst.getCalledFunction().isVarArg())
         {
-            assert false:"We currently don't handle vararg function call!";
+            Util.assertion(false, "We currently don't handle vararg function call!");
             return null;
         }
         Function calledFn = inst.getCalledFunction();
@@ -502,10 +503,10 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         if (!inst.getType().isPointerType())
             return null;
         Node destNode = getPointerNode(inst);
-        assert returnNodes.containsKey(calledFn):"Called Function has been identified yet?";
+        Util.assertion(returnNodes.containsKey(calledFn), "Called Function has been identified yet?");
         int retId = returnNodes.get(calledFn);
         Node returnNode = getReturnNode(retId);
-        assert destNode != null && returnNode != null;
+        Util.assertion( destNode != null && returnNode != null);
         destNode.setRepresentative(returnNode);
         return null;
     }
@@ -521,7 +522,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     public Void visitGetElementPtr(User inst)
     {
         Node destNode = getPointerNode(inst);
-        assert destNode != null:"The GEP instruction isn't handled yet in identifyObjects() method!";
+        Util.assertion(destNode != null, "The GEP instruction isn't handled yet in identifyObjects() method!");
         Node srcNode = getPointerNode(inst.operand(0));
         destNode.setRepresentative(srcNode);
         return null;
@@ -546,7 +547,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
             }
         }
         Node destNode = getPointerNode(inst);
-        assert srcNode != null:"A null phi?";
+        Util.assertion(srcNode != null, "A null phi?");
         destNode.setRepresentative(srcNode);
         return null;
     }
@@ -566,7 +567,7 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
         Node destNode = getPointerNode(inst);
         Node src1Node = getValueNode(inst.getTrueValue());
         Node src2Node = getValueNode(inst.getFalseValue());
-        assert destNode != null && src1Node != null && src2Node != null;
+        Util.assertion( destNode != null && src1Node != null && src2Node != null);
         src2Node.setRepresentative(src1Node);
         destNode.setRepresentative(src1Node);
         return null;

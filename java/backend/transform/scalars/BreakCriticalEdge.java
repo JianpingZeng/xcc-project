@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
@@ -101,7 +102,7 @@ public final class BreakCriticalEdge implements FunctionPass
         {
             BasicBlock bb = blocks.get(i);
             TerminatorInst ti = bb.getTerminator();
-            assert ti != null;
+            Util.assertion( ti != null);
             if (ti.getNumOfSuccessors() > 1)
             {
                 for (int j = 0, e = ti.getNumOfSuccessors(); j < e; j++)
@@ -121,14 +122,14 @@ public final class BreakCriticalEdge implements FunctionPass
             int succNum,
             boolean allowIdenticalEdges)
     {
-        assert succNum < ti.getNumOfSuccessors() : "Illegal edge specified!";
+        Util.assertion(succNum < ti.getNumOfSuccessors(),  "Illegal edge specified!");
         if (ti.getNumOfSuccessors() == 1)
             return false;
 
         BasicBlock dest = ti.getSuccessor(succNum);
         PredIterator<BasicBlock> predItr = dest.predIterator();
 
-        assert predItr.hasNext() : "No preds";
+        Util.assertion(predItr.hasNext(),  "No preds");
         BasicBlock firstPred = predItr.next();
         if (!allowIdenticalEdges)
             return predItr.hasNext();
@@ -326,8 +327,8 @@ public final class BreakCriticalEdge implements FunctionPass
                         // are natural loops, we know that the destination block must be the
                         // header of its loop (adding a branch into a loop elsewhere would
                         // create an irreducible loop).
-                        assert destLoop.getHeaderBlock() == destBB :
-                                "Should not create irreducible loops!";
+                        Util.assertion(destLoop.getHeaderBlock() == destBB,                                 "Should not create irreducible loops!");
+
                         Loop parentLoop = destLoop.getParentLoop();
                         if (parentLoop != null)
                         {

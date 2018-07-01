@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
@@ -207,7 +208,7 @@ public final class MacroInfo
 
     public void setArgumentList(IdentifierInfo[] argumentList)
     {
-        assert argumentList != null && this.argumentList == null;
+        Util.assertion( argumentList != null && this.argumentList == null);
         if (argumentList.length == 0) return;
 
         this.argumentList = new IdentifierInfo[argumentList.length];
@@ -296,7 +297,7 @@ public final class MacroInfo
 
     public Token getReplacementToken(int idx)
     {
-        assert idx >= 0 && idx < replacementTokens.size() :"index out of range!";
+        Util.assertion(idx >= 0 && idx < replacementTokens.size(), "index out of range!");
         return replacementTokens.get(idx);
     }
 
@@ -317,13 +318,13 @@ public final class MacroInfo
 
     public void enableMacro()
     {
-        assert isDisabled: "Cannot enable an already-enabled macro!";
+        Util.assertion(isDisabled,  "Cannot enable an already-enabled macro!");
         isDisabled = false;
     }
 
     public void disableMacro()
     {
-        assert !isDisabled: "Cannot disable an already-disabled macro!";
+        Util.assertion(!isDisabled,  "Cannot disable an already-disabled macro!");
         isDisabled = true;
     }
 
@@ -334,7 +335,7 @@ public final class MacroInfo
 
     public IdentifierInfo getArgAt(int idx)
     {
-        assert idx >= 0 && idx < argumentList.length;
+        Util.assertion( idx >= 0 && idx < argumentList.length);
         return argumentList[idx];
     }
 

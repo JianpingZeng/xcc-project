@@ -17,6 +17,8 @@
 
 package xcc;
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -102,19 +104,19 @@ public class InputInfo
 
     public String getFilename()
     {
-        assert isFilename();
+        Util.assertion( isFilename());
         return (String)data;
     }
 
     public Arg getInputArg()
     {
-        assert isInputArg();
+        Util.assertion( isInputArg());
         return (Arg)data;
     }
 
     public Job.PipedJob getPipe()
     {
-        assert isPipe();
+        Util.assertion( isPipe());
         return (Job.PipedJob)data;
     }
 

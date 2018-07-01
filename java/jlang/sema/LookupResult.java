@@ -22,6 +22,7 @@ package jlang.sema;
  * @version 0.1
  */
 
+import tools.Util;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.Sema.LookupNameKind;
 import jlang.support.SourceLocation;
@@ -102,7 +103,7 @@ public class LookupResult
             case Found:
                 return decls.get(0);
             case Ambiguous:
-                assert false:"Name lookup returned an ambiguity that could not be handled";
+                Util.assertion(false, "Name lookup returned an ambiguity that could not be handled");
                 break;
         }
         return null;
@@ -195,14 +196,14 @@ public class LookupResult
         int n = decls.size();
         if (n == 0)
         {
-            assert resultKind == NotFound;
+            Util.assertion( resultKind == NotFound);
             return;
         }
 
         // Only a single one found.
         if (n == 1)
         {
-            assert resultKind == Found;
+            Util.assertion( resultKind == Found);
         }
         else
         {

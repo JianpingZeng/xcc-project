@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.support.DepthFirstOrder;
 
@@ -94,7 +95,7 @@ public class RearrangementMBB extends MachineFunctionPass
                 if (mi.getDesc().isUnconditionalBranch())
                 {
                     MachineBasicBlock target = mi.getOperand(0).getMBB();
-                    assert target != null:"Target mbb shouldn't be null!";
+                    Util.assertion(target != null, "Target mbb shouldn't be null!");
                     // if the specified target is a lyaout successor of mbb,
                     // just remove it
                     if (mbb.isLayoutSuccessor(target))

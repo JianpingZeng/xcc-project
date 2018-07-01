@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.TargetLowering.LegalizeAction;
 
 import static backend.target.TargetLowering.LegalizeAction.*;
@@ -52,18 +53,18 @@ public class ValueTypeAction
                 // First promote to a power-of-two size, then expand if necessary.
                 return vt.equals(vt.getRoundIntegerType()) ? Expand : Promote;
             }
-            assert false:"Unsupported extended type!";
+            Util.assertion(false, "Unsupported extended type!");
             return Legal;
         }
         int i = vt.getSimpleVT().simpleVT;
-        assert i < 4 * valueTypeAction.length * 32;
+        Util.assertion( i < 4 * valueTypeAction.length * 32);
         return LegalizeAction.values()[(valueTypeAction[i >> 4] >> ((2 * i) & 31) & 3)];
     }
 
     public void setTypeAction(EVT vt, LegalizeAction action)
     {
         int i = vt.getSimpleVT().simpleVT;
-        assert i < 4 * valueTypeAction.length * 32;
+        Util.assertion( i < 4 * valueTypeAction.length * 32);
         valueTypeAction[i >> 4] |= action.ordinal() << ((i * 2) & 31);
     }
 

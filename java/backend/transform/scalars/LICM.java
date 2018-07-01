@@ -1,5 +1,6 @@
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
@@ -159,7 +160,7 @@ public final class LICM implements LoopPass
         // Collects alias information from sub loops.
         for (Loop subLoop: loop.getSubLoops())
         {
-            assert loopToAliasMap.containsKey(subLoop);
+            Util.assertion( loopToAliasMap.containsKey(subLoop));
             AliasSetTracker innerAST = loopToAliasMap.get(subLoop);
 
             // what if innerLoop was modified by other passes?
@@ -194,7 +195,7 @@ public final class LICM implements LoopPass
 
     private void sinkRegion(DomTreeNodeBase<BasicBlock> entryNode)
     {
-        assert entryNode != null:"Null dominator tree node!";
+        Util.assertion(entryNode != null, "Null dominator tree node!");
         BasicBlock bb = entryNode.getBlock();
 
         // Terminates early, if this block is not contained in current loop.
@@ -483,7 +484,7 @@ public final class LICM implements LoopPass
      */
     private boolean inSubLoop(BasicBlock bb)
     {
-        assert curLoop.contains(bb);
+        Util.assertion( curLoop.contains(bb));
         for (Loop innerLoop : curLoop.getSubLoops())
             if (innerLoop.contains(bb))
                 return true;
@@ -497,7 +498,7 @@ public final class LICM implements LoopPass
 
     private void hoistRegion(DomTreeNodeBase<BasicBlock> entryNode)
     {
-        assert entryNode != null;
+        Util.assertion( entryNode != null);
         BasicBlock bb = entryNode.getBlock();
 
         if (!curLoop.contains(bb)) return;

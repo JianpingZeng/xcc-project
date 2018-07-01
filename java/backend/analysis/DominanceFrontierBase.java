@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.pass.FunctionPass;
 
@@ -62,7 +63,7 @@ public abstract class DominanceFrontierBase implements FunctionPass
 
     public void addBasicBlock(BasicBlock bb, HashSet<BasicBlock> frontiers)
     {
-        assert find(bb) != null :"Block already in Dominator frontiers";
+        Util.assertion(find(bb) != null, "Block already in Dominator frontiers");
         this.frontiers.put(bb, frontiers);
     }
 
@@ -72,19 +73,19 @@ public abstract class DominanceFrontierBase implements FunctionPass
      */
     public void removeBlock(BasicBlock bb)
     {
-        assert find(bb) != null :"Block is not in Dominator frontiers";
+        Util.assertion(find(bb) != null, "Block is not in Dominator frontiers");
         frontiers.remove(bb);
     }
 
     public void addToFrontier(BasicBlock bb, BasicBlock frontierNode)
     {
-        assert find(bb) != null :"parent is not in frontier set";
+        Util.assertion(find(bb) != null, "parent is not in frontier set");
         frontiers.get(bb).add(frontierNode);
     }
 
     public void removeFromFrontier(BasicBlock bb, BasicBlock frontierNode)
     {
-        assert find(bb) != null :"parent is not in frontier set";
+        Util.assertion(find(bb) != null, "parent is not in frontier set");
         frontiers.get(bb).remove(frontierNode);
     }
 

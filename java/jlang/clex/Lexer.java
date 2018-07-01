@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.basic.*;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
@@ -70,9 +71,9 @@ public class Lexer extends PreprocessorLexer
         this.buffer = buffer;
         this.bufferPtr = curPos;
         bufferEnd = endPos;
-        assert buffer[bufferEnd-1] == '\0':
-                "We assume that the input buffer has a null character at the end" +
-                " to simplify lexing!";
+        Util.assertion(buffer[bufferEnd-1] == '\0',                 "We assume that the input buffer has a null character at the end" +
+                " to simplify lexing!");
+
         isPragmaLexer = false;
 
         // Star of the file is a start of line.
@@ -174,7 +175,7 @@ public class Lexer extends PreprocessorLexer
 
         l.bufferPtr = strData;
         l.bufferEnd = strData + tokenLen;
-        assert l.buffer[l.bufferEnd] == '\0': "Buffer is not null terminated!";
+        Util.assertion(l.buffer[l.bufferEnd] == '\0',  "Buffer is not null terminated!");
 
         // Set the SourceLocation with the remapping information.  This ensures that
         // GetMappedTokenLoc will remap the tokens as they are lexed.
@@ -251,8 +252,8 @@ public class Lexer extends PreprocessorLexer
 
     public void setKeepWhitespaceMode(boolean val)
     {
-        assert (!val
-                || lexingRawMode) : "Can only enable whitespace retentation in raw mode";
+        Util.assertion((!val                || lexingRawMode),  "Can only enable whitespace retentation in raw mode");
+
         extendedTokenMode = val ? 2 : 0;
     }
 
@@ -263,7 +264,7 @@ public class Lexer extends PreprocessorLexer
 
     public void setCommentRetentionState(boolean mode)
     {
-        assert !isKeepWhiteSpaceMode() : "Can't play with comment retention state when retaining whitespace";
+        Util.assertion(!isKeepWhiteSpaceMode(),  "Can't play with comment retention state when retaining whitespace");
         extendedTokenMode = mode ? 1 : 0;
     }
 
@@ -398,7 +399,7 @@ public class Lexer extends PreprocessorLexer
 
     public boolean lexFromRawLexer(Token result)
     {
-        assert lexingRawMode:"Not already in raw mode!";
+        Util.assertion(lexingRawMode, "Not already in raw mode!");
         lex(result);
 
         return bufferPtr == bufferEnd;
@@ -536,21 +537,21 @@ public class Lexer extends PreprocessorLexer
         if (isInited)
             return;
         // check the statically-initialized CharInfo table
-        assert (CHAR_HORZ_WS == CharInfo[(int) ' ']);
-        assert (CHAR_HORZ_WS == CharInfo[(int) '\t']);
-        assert (CHAR_HORZ_WS == CharInfo[(int) '\f']);
-        assert (CHAR_HORZ_WS == CharInfo[11]);   // for '\v' which is not supported in Java.
-        assert (CHAR_VERT_WS == CharInfo[(int) '\n']);
-        assert (CHAR_VERT_WS == CharInfo[(int) '\r']);
-        assert (CHAR_UNDER == CharInfo[(int) '_']);
-        assert (CHAR_PERIOD == CharInfo[(int) '.']);
+        Util.assertion( (CHAR_HORZ_WS == CharInfo[(int) ' ']));
+        Util.assertion( (CHAR_HORZ_WS == CharInfo[(int) '\t']));
+        Util.assertion( (CHAR_HORZ_WS == CharInfo[(int) '\f']));
+        Util.assertion( (CHAR_HORZ_WS == CharInfo[11]));   // for '\v' which is not supported in Java.        assert (CHAR_VERT_WS == CharInfo[(int) '\n']);
+
+        Util.assertion( (CHAR_VERT_WS == CharInfo[(int) '\r']));
+        Util.assertion( (CHAR_UNDER == CharInfo[(int) '_']));
+        Util.assertion( (CHAR_PERIOD == CharInfo[(int) '.']));
         for (int i = 'a'; i <= 'z'; ++i)
         {
-            assert (CHAR_LETTER == CharInfo[i]);
-            assert (CHAR_LETTER == CharInfo[i + 'A' - 'a']);
+            Util.assertion( (CHAR_LETTER == CharInfo[i]));
+            Util.assertion( (CHAR_LETTER == CharInfo[i + 'A' - 'a']));
         }
         for (int i = '0'; i <= '9'; ++i)
-            assert (CHAR_NUMBER == CharInfo[i]);
+            Util.assertion( (CHAR_NUMBER == CharInfo[i]));
         isInited = true;
     }
 
@@ -642,7 +643,7 @@ public class Lexer extends PreprocessorLexer
     private static SourceLocation getMappedTokenLoc(Preprocessor pp,
             SourceLocation fileLoc, int charNo, int tokLen)
     {
-        assert fileLoc.isMacroID() : "Must be an instantiation";
+        Util.assertion(fileLoc.isMacroID(),  "Must be an instantiation");
 
         SourceManager srg = pp.getSourceManager();
 
@@ -656,15 +657,15 @@ public class Lexer extends PreprocessorLexer
 
     private SourceLocation getSourceLocation(int curPos, int toklen)
     {
-        assert curPos >= 0 && curPos <= bufferEnd
-                : "Location out of range for this buffer!";
+        Util.assertion(curPos >= 0 && curPos <= bufferEnd,  "Location out of range for this buffer!");
+
 
         if (fileLoc.isFileID())
             return fileLoc.getFileLocWithOffset(curPos);
 
         // Otherwise, this is the _Pragma lexer case, which pretends that all of the
         // tokens are lexed from where the _Pragma was defined.
-        assert pp != null : "This doesn't work on raw lexers";
+        Util.assertion(pp != null,  "This doesn't work on raw lexers");
         return getMappedTokenLoc(pp, fileLoc, curPos, toklen);
     }
 
@@ -797,8 +798,8 @@ public class Lexer extends PreprocessorLexer
      */
     public String readToEndOfLine()
     {
-        assert parsingPreprocessorDirective && !parsingFilename
-                : "Must be in a preprocessing directive!";
+        Util.assertion(parsingPreprocessorDirective && !parsingFilename,  "Must be in a preprocessing directive!");
+
         String result = "";
         Token tmp = new Token();
         int curPos = this.bufferPtr;
@@ -822,12 +823,12 @@ public class Lexer extends PreprocessorLexer
                     // fall through
                 case '\r':
                 case '\n':
-                    assert buffer[curPos - 1] == ch : "Trigraphs for newline?";
+                    Util.assertion(buffer[curPos - 1] == ch,  "Trigraphs for newline?");
                     this.bufferPtr = curPos - 1;
                     lex(tmp);
 
                     // Next, lex the character, which should handle the EOM transition.
-                    assert tmp.is(TokenKind.eom) : "Unexpected token!";
+                    Util.assertion(tmp.is(TokenKind.eom),  "Unexpected token!");
 
                     // Finally, we're done, return the string we found.
                     return result;
@@ -893,7 +894,7 @@ public class Lexer extends PreprocessorLexer
 
     public int isNextPPTokenLParen()
     {
-        assert !lexingRawMode : "How can we expand a macro from a skipping buffer?";
+        Util.assertion(!lexingRawMode,  "How can we expand a macro from a skipping buffer?");
 
         lexingRawMode = true;
         int tempPos = bufferPtr;
@@ -969,8 +970,8 @@ public class Lexer extends PreprocessorLexer
         // If this BCPL-style comment is in a macro definition, transmogrify it into
         // a C-style block comment.
         String spelling = pp.getSpelling(result);
-        assert spelling.charAt(0) == '/'
-                && spelling.charAt(1) == '/' : "Not bcpl comment?";
+        Util.assertion(spelling.charAt(0) == '/'                && spelling.charAt(1) == '/',  "Not bcpl comment?");
+
         StringBuilder sb = new StringBuilder(spelling);
         sb.setCharAt(1, '*');
         sb.append("*/");
@@ -1124,7 +1125,7 @@ public class Lexer extends PreprocessorLexer
     private static boolean isEndOfBlockCommentWithEscapedNewLine(int curPos,
             Lexer l)
     {
-        assert l.buffer[curPos] == '\n' || l.buffer[curPos] == '\r';
+        Util.assertion( l.buffer[curPos] == '\n' || l.buffer[curPos] == '\r');
         --curPos;
 
         if (l.buffer[curPos] == '\n' || l.buffer[curPos] == 'r')
@@ -1630,7 +1631,7 @@ public class Lexer extends PreprocessorLexer
                     // Retreat back into the file.
                     if (lexEndOfFile(result, curPos - 1))
                         return;   // Got a token to return.
-                    assert ppcache!= null:"Raw buffer::LexEndOfFile should return a token";
+                    Util.assertion(ppcache!= null, "Raw buffer::LexEndOfFile should return a token");
                     ppcache.lex(result);
                     return;
                 }
@@ -1721,7 +1722,7 @@ public class Lexer extends PreprocessorLexer
                 if (ch == '"')
                 {
                     // TODO identify wide character or string.
-                    assert false:"Currently wide string is not supported!";
+                    Util.assertion(false, "Currently wide string is not supported!");
                     break;
                 }
             }

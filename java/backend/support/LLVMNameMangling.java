@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import tools.Util;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 /**
@@ -29,7 +30,7 @@ public class LLVMNameMangling
             = new TObjectIntHashMap<>();
     public static String computeUniqueName(String name)
     {
-        assert name != null;
+        Util.assertion( name != null);
         if (UniqueNames.containsKey(name))
         {
             int nextSuffix = UniqueNames.get(name) + 1;

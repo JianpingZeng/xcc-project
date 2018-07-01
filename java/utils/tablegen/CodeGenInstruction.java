@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.Pair;
 import utils.tablegen.Init.DagInit;
 import utils.tablegen.Init.DefInit;
@@ -379,7 +380,7 @@ public final class CodeGenInstruction
      */
     int getOperandNamed(String name) throws Exception
     {
-        assert !name.isEmpty() : "Cannot search for operand with no name!";
+        Util.assertion(!name.isEmpty(),  "Cannot search for operand with no name!");
         for (int i = 0, e = operandList.size(); i != e; ++i)
             if (operandList.get(i).name.equals(name))
                 return i;

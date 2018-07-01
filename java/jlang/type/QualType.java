@@ -1,5 +1,6 @@
 package jlang.type;
 
+import tools.Util;
 import jlang.sema.ASTContext;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
@@ -30,8 +31,8 @@ public final class QualType implements Cloneable, FoldingSetNode
 
         public void addCVQualifier(int flags)
         {
-            assert (flags & ~MASK)
-                    == 0 : "bitmask contains non-Type-Qualifiers";
+            Util.assertion((flags & ~MASK)                    == 0,  "bitmask contains non-Type-Qualifiers");
+
             mask |= flags;
         }
 

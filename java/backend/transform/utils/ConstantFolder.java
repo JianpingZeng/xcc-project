@@ -16,6 +16,7 @@ package backend.transform.utils;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Instruction.BranchInst;
@@ -70,8 +71,8 @@ public final class ConstantFolder
                 BasicBlock destination = ci.getZExtValue() != 0 ? dest1 : dest2;
                 BasicBlock oldDest = ci.getZExtValue() != 0 ? dest2 : dest1;
 
-                assert bi.getParent() != null :
-                        "Terminator not inserted into basic block";
+                Util.assertion(bi.getParent() != null,                         "Terminator not inserted into basic block");
+
                 oldDest.removePredecessor(bi.getParent());
 
                 // Set the unconditional destination, and change the inst to be
@@ -84,7 +85,7 @@ public final class ConstantFolder
                 // This branch matches something like this:
                 //     br bool %cond, label %dest1, label %dest1
                 // and changes it into:  br label %dest1
-                assert bi.getParent() != null;
+                Util.assertion( bi.getParent() != null);
                 dest1.removePredecessor(bi.getParent());
                 bi.setUnconditionalDest(dest1);
             }
@@ -97,8 +98,8 @@ public final class ConstantFolder
                 ConstantInt ci = (ConstantInt)si.getCondition();
                 BasicBlock theOnlyDest = si.getSuccessor(0);    // The default dest.
                 BasicBlock defaultDest = theOnlyDest;
-                assert theOnlyDest.equals(si.getDefaultBlock())
-                        : "Default destination is not successor #0?";
+                Util.assertion(theOnlyDest.equals(si.getDefaultBlock()),  "Default destination is not successor #0?");
+
 
                 for (int i = 1, e = si.getNumOfSuccessors(); i != e; i++)
                 {

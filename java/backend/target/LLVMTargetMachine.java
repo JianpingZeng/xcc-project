@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.LowerSubregInstructionPass;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
@@ -51,7 +52,7 @@ public abstract class LLVMTargetMachine extends TargetMachine
     private void initAsmInfo(Target target, String triple)
     {
         asmInfo = target.createAsmInfo(triple);
-        assert asmInfo != null:"Must initialize the TargetAsmInfo for AsmPrinter!";
+        Util.assertion(asmInfo != null, "Must initialize the TargetAsmInfo for AsmPrinter!");
     }
 
     private static void printAndVerify(PassManagerBase pm,

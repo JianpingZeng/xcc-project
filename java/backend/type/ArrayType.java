@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import tools.TypeMap;
 
@@ -69,7 +70,7 @@ public final class ArrayType extends SequentialType
 
     public static ArrayType get(Type elemType, long numElements)
     {
-        assert elemType != null:"Can't get array of null types!";
+        Util.assertion(elemType != null, "Can't get array of null types!");
         ArrayValType avt = new ArrayValType(elemType, (int)numElements);
         ArrayType at = arrayTypes.get(avt);
         if (at != null)

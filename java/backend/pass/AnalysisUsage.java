@@ -16,6 +16,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 
@@ -38,7 +39,7 @@ public final class AnalysisUsage
     public AnalysisUsage addRequired(Class<? extends Pass> reqPass)
     {
         PassInfo info = getPassInfo(reqPass);
-        assert info != null:"Pass is not registered!";
+        Util.assertion(info != null, "Pass is not registered!");
         return addRequiredPassInfo(info);
     }
 
@@ -52,7 +53,7 @@ public final class AnalysisUsage
     public AnalysisUsage addPreserved(Class<? extends Pass> prePass)
     {
         PassInfo info = getPassInfo(prePass);
-        assert info != null :"Pass is not registered";
+        Util.assertion(info != null, "Pass is not registered");
         return addPreservedPassInfo(info);
     }
 

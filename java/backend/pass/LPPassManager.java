@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.analysis.LoopInfo;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PassManagerType;
@@ -134,7 +135,7 @@ public class LPPassManager extends PMDataManager implements FunctionPass
 
 	public LPPassManager getContainedPass(int idx)
 	{
-		assert idx >= 0 && idx < getNumContainedPasses();
+		Util.assertion( idx >= 0 && idx < getNumContainedPasses());
 		return (LPPassManager) loopPasses.get(idx);
 	}
 

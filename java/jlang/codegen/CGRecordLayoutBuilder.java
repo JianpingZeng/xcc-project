@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
 import jlang.sema.ASTRecordLayout;
@@ -110,7 +111,7 @@ public class CGRecordLayoutBuilder
      */
     private void layoutUnion(Decl.RecordDecl d)
     {
-        assert d.isUnion() :"Cannot call layoutUnion on a non-uion decl";
+        Util.assertion(d.isUnion(), "Cannot call layoutUnion on a non-uion decl");
 
         ASTRecordLayout layout = types.getContext().getASTRecordLayout(d);
 
@@ -122,8 +123,8 @@ public class CGRecordLayoutBuilder
         for (int i = 0, e = d.getNumFields(); i < e; i++, fieldNo++)
         {
             Decl.FieldDecl fd = d.getDeclAt(i);
-            assert layout.getFieldOffsetAt(fieldNo) == 0
-                    : "Union field offset did not start at the beginning of record!";
+            Util.assertion(layout.getFieldOffsetAt(fieldNo) == 0,  "Union field offset did not start at the beginning of record!");
+
 
             if (fd.isBitField())
             {
@@ -178,8 +179,8 @@ public class CGRecordLayoutBuilder
      */
     private boolean layoutFields(Decl.RecordDecl d)
     {
-        assert !d.isUnion():"Can't call layoutFields on a union!";
-        assert alignment != 0:"Did not set alignment";
+        Util.assertion(!d.isUnion(), "Can't call layoutFields on a union!");
+        Util.assertion(alignment != 0, "Did not set alignment");
 
         ASTRecordLayout layout = types.getContext().getASTRecordLayout(d);
 
@@ -188,7 +189,7 @@ public class CGRecordLayoutBuilder
             Decl.FieldDecl field = d.getDeclAt(i);
             if (!layoutField(field, layout.getFieldOffsetAt(i)))
             {
-                assert !packed : "Could not layout fields even with a packed LLVM struct!";
+                Util.assertion(!packed,  "Could not layout fields even with a packed LLVM struct!");
                 return false;
             }
         }
@@ -213,7 +214,7 @@ public class CGRecordLayoutBuilder
             return true;
         }
 
-        assert fieldOffset % 8 == 0 :"FieldOffset is not on a byte boundary!";
+        Util.assertion(fieldOffset % 8 == 0, "FieldOffset is not on a byte boundary!");
         long fieldOffsetInBytes = fieldOffset / 8;
 
         backend.type.Type ty = types.convertTypeForMemRecursive(d.getType());
@@ -259,19 +260,19 @@ public class CGRecordLayoutBuilder
 
         if (fieldOffset < nextFieldOffset)
         {
-            assert bitsAvailableInLastField != 0 :"Bitfield size mismatch";
-            assert nextFieldOffsetInBytes != 0 :"Must have laid out at least one bytes!";
+            Util.assertion(bitsAvailableInLastField != 0, "Bitfield size mismatch");
+            Util.assertion(nextFieldOffsetInBytes != 0, "Must have laid out at least one bytes!");
 
             numBytesToAppend = (int)roundUpAlignment(fieldSize - bitsAvailableInLastField, 8)/ 8;
         }
         else
         {
-            assert fieldOffset % 8 == 0:"Field offset not aligned correctly";
+            Util.assertion(fieldOffset % 8 == 0, "Field offset not aligned correctly");
 
             appendBytes((fieldOffset - nextFieldOffset) / 8);
             numBytesToAppend = (int)roundUpAlignment(fieldSize, 8)/ 8;
 
-            assert numBytesToAppend != 0:"No bytes to append!";
+            Util.assertion(numBytesToAppend != 0, "No bytes to append!");
         }
 
         backend.type.Type ty = types.convertTypeForMemRecursive(d.getType());
@@ -316,7 +317,7 @@ public class CGRecordLayoutBuilder
      */
     private void appendPadding(long fieldOffsetInBytes, int fieldAlignment)
     {
-        assert nextFieldOffsetInBytes <= fieldOffsetInBytes;
+        Util.assertion( nextFieldOffsetInBytes <= fieldOffsetInBytes);
 
         long alignedNextFieldOffsetInBytes = roundUpAlignment(nextFieldOffsetInBytes, fieldAlignment);
         if (alignedNextFieldOffsetInBytes < fieldOffsetInBytes)
@@ -348,10 +349,10 @@ public class CGRecordLayoutBuilder
      */
     private void appendTailPadding(long recordSize)
     {
-        assert recordSize % 8 == 0:"Invalid record size";
+        Util.assertion(recordSize % 8 == 0, "Invalid record size");
 
         long recordSizeInBytes = recordSize / 8;
-        assert nextFieldOffsetInBytes <= recordSizeInBytes :"Size mismatch!";
+        Util.assertion(nextFieldOffsetInBytes <= recordSizeInBytes, "Size mismatch!");
 
         int numPadBytes = (int)(recordSizeInBytes - nextFieldOffsetInBytes);
         appendBytes(numPadBytes);
@@ -381,8 +382,8 @@ public class CGRecordLayoutBuilder
         builder.layout(d);
 
         backend.type.Type ty = backend.type.StructType.get(builder.fieldTypes, builder.packed);
-        assert types.getContext().getASTRecordLayout(d).getSize() / 8
-                == types.getTargetData().getTypeAllocSize(ty) :"Type size mismatch";
+        Util.assertion(types.getContext().getASTRecordLayout(d).getSize() / 8                == types.getTargetData().getTypeAllocSize(ty), "Type size mismatch");
+
 
         // Add all field numbers.
         for (int i = 0, e = builder.llvmFields.size(); i < e; i++)

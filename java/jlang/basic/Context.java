@@ -195,10 +195,11 @@ public final class Context
         res.second = attr.charAt(idx) == 'P';
 
         ++idx;
-        assert attr.charAt(idx) == ':' :
-                "p or P specifier must have be followed by ':'";
+        Util.assertion(attr.charAt(idx) == ':',
+                "p or P specifier must have be followed by ':'");
         ++idx;
-        assert attr.indexOf(':', idx) != -1 :"printf specifier must end with ':'";
+        Util.assertion(attr.indexOf(':', idx) != -1,
+                "printf specifier must end with ':'");
         res.first = Integer.parseInt(attr.substring(idx), 10);
         return true;
     }
@@ -220,12 +221,12 @@ public final class Context
 
     private Info getRecord(int id)
     {
-        assert id >= 0;
+        Util.assertion( id >= 0);
         if (id < BuiltID.FirstTSBuiltin)
             return BuiltinInfo[id];
 
-        assert id - BuiltID.FirstTSBuiltin < tsRecords.length
-                :"Invalid Builtin ID!";
+        Util.assertion(id - BuiltID.FirstTSBuiltin < tsRecords.length,
+                "Invalid Builtin ID!");
         return tsRecords[id - BuiltID.FirstTSBuiltin];
     }
 }

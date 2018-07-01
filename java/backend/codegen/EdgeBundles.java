@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.pass.AnalysisUsage;
 import backend.support.IntEqClasses;
 import gnu.trove.list.array.TIntArrayList;
@@ -102,7 +103,7 @@ public class EdgeBundles extends MachineFunctionPass
     public int getBundles(int n, boolean out)
     {
         int leading = ec.findLeader(n*2 + (out?1:0));
-        assert groupID.containsKey(leading);
+        Util.assertion( groupID.containsKey(leading));
         return groupID.get(leading);
     }
 
@@ -113,8 +114,8 @@ public class EdgeBundles extends MachineFunctionPass
 
     public TIntArrayList getBlocks(int bundle)
     {
-        assert bundle >= 0 && bundle < blocks.length
-                :"Illegal bundle or not initialize blocks yet?";
+        Util.assertion(bundle >= 0 && bundle < blocks.length, "Illegal bundle or not initialize blocks yet?");
+
         return blocks[bundle];
     }
 

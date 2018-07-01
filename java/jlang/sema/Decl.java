@@ -22,6 +22,7 @@ package jlang.sema;
  * @version 0.1
  */
 
+import tools.Util;
 import jlang.ast.Attr;
 import jlang.ast.AttrKind;
 import jlang.ast.DeclPrinter;
@@ -283,9 +284,9 @@ public abstract class Decl
 
     public void setAttrs(ArrayList<Attr> alist)
     {
-        assert !hasAttrs:"hasAttrs has been set!";
+        Util.assertion(!hasAttrs, "hasAttrs has been set!");
         ArrayList<Attr> attrBank = getASTContext().getDeclAttrs(this);
-        assert attrBank.isEmpty():"hasAttrs was wrong?";
+        Util.assertion(attrBank.isEmpty(), "hasAttrs was wrong?");
 
         attrBank.addAll(alist);
         hasAttrs = true;
@@ -381,12 +382,12 @@ public abstract class Decl
             return (Decl.TranslationUnitDecl)this;
 
         IDeclContext dc = getDeclContext();
-        assert dc != null :"This decl is not contained in a translation unit";
+        Util.assertion(dc != null, "This decl is not contained in a translation unit");
 
         while (!dc.isTranslationUnit())
         {
             dc = dc.getParent();
-            assert dc != null :"This decl is not contained in a translation unit";
+            Util.assertion(dc != null, "This decl is not contained in a translation unit");
         }
         return (Decl.TranslationUnitDecl)dc;
     }
@@ -648,7 +649,7 @@ public abstract class Decl
 
         public String getNameAsString()
         {
-            assert name != null;
+            Util.assertion( name != null);
             return getIdentifier().getName();
         }
 
@@ -738,8 +739,8 @@ public abstract class Decl
 
         public boolean declarationReplaces(NamedDecl oldDecl)
         {
-            assert getIdentifier().equals(oldDecl.getIdentifier()) :
-                    "Declaration asmName mismatch!";
+            Util.assertion(getIdentifier().equals(oldDecl.getIdentifier()),                     "Declaration asmName mismatch!");
+
             if (this instanceof FunctionDecl)
             {
                 return ((Decl.FunctionDecl)this).getPreviousDeclaration().equals(oldDecl);
@@ -884,7 +885,7 @@ public abstract class Decl
             super(FieldDecl, context, name, location, type);
             this.init = init;
             this.hasInit = hasInit;
-            assert !(init != null && hasInit):"got initializer for bitfield";
+            Util.assertion(!(init != null && hasInit), "got initializer for bitfield");
         }
 
         /**
@@ -897,7 +898,7 @@ public abstract class Decl
 
         public long getBitWidthValue()
         {
-            assert isBitField() :"not a bitfield";
+            Util.assertion(isBitField(), "not a bitfield");
             Tree.Expr bitWidth = getBitWidth();
             return bitWidth.evaluateKnownConstInt().getZExtValue();
         }
@@ -916,7 +917,7 @@ public abstract class Decl
             int i = 0, e = rd.getDeclCounts();
             while (true)
             {
-                assert i!=e:"failed to find field in parent!";
+                Util.assertion(i!=e, "failed to find field in parent!");
                 if (rd.getDeclAt(i).equals(this))
                     break;
 
@@ -1240,7 +1241,7 @@ public abstract class Decl
             {
                 redeclLink = new DeclLink.PreviousDeclLink<VarDecl>(prevDecl);
                 first = prevDecl.getFirstDeclaration();
-                assert first.redeclLink.nextIsLatest():"Expected first!";
+                Util.assertion(first.redeclLink.nextIsLatest(), "Expected first!");
             }
             else
             {
@@ -1492,7 +1493,7 @@ public abstract class Decl
 
         public ParamVarDecl getParamDecl(int idx)
         {
-            assert idx>=0 && idx< getNumParams();
+            Util.assertion( idx>=0 && idx< getNumParams());
             return paramInfo[idx];
         }
 
@@ -1654,7 +1655,7 @@ public abstract class Decl
             {
                 redeclLink = new DeclLink.PreviousDeclLink<FunctionDecl>(prevDecl);
                 first = prevDecl.getFirstDeclaration();
-                assert first.redeclLink.nextIsLatest():"Expected first!";
+                Util.assertion(first.redeclLink.nextIsLatest(), "Expected first!");
             }
             else
             {
@@ -1994,8 +1995,8 @@ public abstract class Decl
             tagKkeywordLoc = tkl;
             dc = new DeclContext(kind, this);
             redeclLink = new DeclLink.LatestDeclLink<TagDecl>(this);
-            assert kind != DeclKind.EnumDecl || tagKind == TTK_enum :
-                    "EnumDecl not matched with TTK_enum";
+            Util.assertion(kind != DeclKind.EnumDecl || tagKind == TTK_enum,                     "EnumDecl not matched with TTK_enum");
+
             setPreviousDeclaration(prevDecl);
         }
 
@@ -2061,7 +2062,7 @@ public abstract class Decl
 
             if (tt != null)
             {
-                assert tt.getDecl() == this :"Attempt to redefine a stmtClass definition?";
+                Util.assertion(tt.getDecl() == this, "Attempt to redefine a stmtClass definition?");
             }
         }
 
@@ -2172,7 +2173,7 @@ public abstract class Decl
             {
                 redeclLink = new DeclLink.PreviousDeclLink<TagDecl>(prevDecl);
                 first = prevDecl.getFirstDeclaration();
-                assert first.redeclLink.nextIsLatest():"Expected first!";
+                Util.assertion(first.redeclLink.nextIsLatest(), "Expected first!");
             }
             else
             {
@@ -2362,7 +2363,7 @@ public abstract class Decl
         public FieldDecl getDeclAt(int index)
         {
             List<Decl> list = getDeclsInContext();
-            assert index>= 0&&index<list.size();
+            Util.assertion( index>= 0&&index<list.size());
             return (FieldDecl) list.get(index);
         }
 
@@ -2421,7 +2422,7 @@ public abstract class Decl
         @Override
         public void completeDefinition()
         {
-            assert !isCompleteDefinition():"Cannot redefine a record!";
+            Util.assertion(!isCompleteDefinition(), "Cannot redefine a record!");
             super.completeDefinition();
         }
 
@@ -2472,7 +2473,7 @@ public abstract class Decl
          */
         public void completeDefinition(QualType newType)
         {
-            assert !isCompleteDefinition():"Cannot redefine enums!";
+            Util.assertion(!isCompleteDefinition(), "Cannot redefine enums!");
             promotionType = newType;
             super.completeDefinition();
         }

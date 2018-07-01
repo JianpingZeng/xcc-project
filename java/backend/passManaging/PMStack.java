@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.Pass;
 
 import java.util.Iterator;
@@ -58,7 +59,7 @@ public final class PMStack implements Iterable<PMDataManager>
         if (!pms.isEmpty())
         {
             PMTopLevelManager tpm = pms.peek().getTopLevelManager();
-            assert tpm != null:"unable to find top level manager";
+            Util.assertion(tpm != null, "unable to find top level manager");
             pm.setTopLevelManager(tpm);
         }
 

@@ -16,6 +16,8 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -37,7 +39,7 @@ public final class RedeclIterator<T extends Redeclarable<T>>
      */
     public T getNext()
     {
-        assert hasNext() :"Must be calling hasNext() to ensure next is not null";
+        Util.assertion(hasNext(), "Must be calling hasNext() to ensure next is not null");
         T next = current.getRedeclLink().getNext();
         current = next == starter ? null : next;
         return next;

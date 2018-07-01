@@ -1,5 +1,6 @@
 package jlang.codegen;
 
+import tools.Util;
 import backend.type.Type;
 
 import static jlang.codegen.ABIArgInfo.Kind.*;
@@ -112,12 +113,12 @@ public class ABIArgInfo
 
     public Type getCoerceType()
     {
-        assert kind == Coerce :"Invalid kind!";
+        Util.assertion(kind == Coerce, "Invalid kind!");
         return typeData;
     }
 	public int getIndirectAlign()
 	{
-		assert kind == Indirect:"Invalid accessor!";
+		Util.assertion(kind == Indirect, "Invalid accessor!");
 		return intData;
 	}
 }

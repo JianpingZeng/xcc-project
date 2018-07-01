@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.codegen.MachineOperand.RegState;
 import backend.target.TargetInstrDesc;
 import backend.value.ConstantFP;
@@ -141,8 +142,8 @@ public final class MachineInstrBuilder
 
 	public MachineInstrBuilder addReg(int regNo, int flags, int subReg)
 	{
-		assert (flags & 0x1) == 0:
-				"Passing in 'true' to addReg is forbidden! Use enums instead.";
+		Util.assertion((flags & 0x1) == 0, 				"Passing in 'true' to addReg is forbidden! Use enums instead.");
+
 		mi.addOperand(MachineOperand.createReg(regNo,
 				(flags & RegState.Define) != 0,
 				(flags & RegState.Implicit) != 0,

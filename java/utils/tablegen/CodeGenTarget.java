@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 
 import java.util.*;
@@ -214,7 +215,7 @@ public final class CodeGenTarget
     public CodeGenInstruction getInstruction(String name) throws Exception
     {
         insts = getInstructions();
-        assert insts.containsKey(name):"Not an instruction!";
+        Util.assertion(insts.containsKey(name), "Not an instruction!");
         return insts.get(name);
     }
 
@@ -261,7 +262,7 @@ public final class CodeGenTarget
             if (rc.theDef.equals(r))
                 return rc;
 
-        assert false:"Didn't find the register class!";
+        Util.assertion(false, "Didn't find the register class!");
         return null;
     }
 

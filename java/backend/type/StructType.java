@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.Constant;
 import backend.value.ConstantInt;
@@ -89,8 +90,8 @@ public class StructType extends CompositeType
         isAbstract = false;
         for(int i = 0, e = memberTypes.size(); i < e; i++)
         {
-            assert memberTypes.get(i) != null :"<null> type for structure type!";
-            assert isValidElementType(memberTypes.get(i)) :"Invalid type for structure element!";
+            Util.assertion(memberTypes.get(i) != null, "<null> type for structure type!");
+            Util.assertion(isValidElementType(memberTypes.get(i)), "Invalid type for structure element!");
             isAbstract |= memberTypes.get(i).isAbstract();
             containedTys[i] = new PATypeHandle(memberTypes.get(i), this);
         }
@@ -125,11 +126,11 @@ public class StructType extends CompositeType
     @Override
     public Type getTypeAtIndex(Value v)
     {
-        assert v instanceof Constant;
-        assert v.getType() == LLVMContext.Int32Ty;
+        Util.assertion( v instanceof Constant);
+        Util.assertion( v.getType() == LLVMContext.Int32Ty);
         int idx = (int)((ConstantInt)v).getZExtValue();
-        assert idx < containedTys.length;
-        assert indexValid(v);
+        Util.assertion( idx < containedTys.length);
+        Util.assertion( indexValid(v));
         return containedTys[idx].getType();
     }
 
@@ -161,7 +162,7 @@ public class StructType extends CompositeType
 
     public Type getTypeAtIndex(int index)
     {
-        assert index >= 0 && index < getNumOfElements() :"Invalid structure index!";
+        Util.assertion(index >= 0 && index < getNumOfElements(), "Invalid structure index!");
         return containedTys[index].getType();
     }
 

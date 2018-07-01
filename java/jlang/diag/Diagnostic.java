@@ -16,6 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.Decl;
@@ -117,7 +118,7 @@ public final class Diagnostic
         {
             int i = 0;
             for (; i < staticDiagInfos.length && staticDiagInfos[i].diagID <= firstID; i++);
-            assert i < staticDiagInfos.length;
+            Util.assertion( i < staticDiagInfos.length);
             System.arraycopy(staticDiagInfos, 0, temp, 0, i);
             System.arraycopy(recs, 0, staticDiagInfos, i, recs.length);
             System.arraycopy(staticDiagInfos, i, temp, i + recs.length, staticDiagInfos.length - i);
@@ -277,9 +278,9 @@ public final class Diagnostic
             String str = "";
             if (kind == ak_qualtype)
             {
-                assert modifier.isEmpty() && argument.isEmpty() :
-                        "Invalid modifier for QualType argument";
-                assert val instanceof QualType;
+                Util.assertion(modifier.isEmpty() && argument.isEmpty(),                         "Invalid modifier for QualType argument");
+
+                Util.assertion( val instanceof QualType);
                 QualType ty = (QualType)val;
 
                 str = ty.getAsString();
@@ -306,20 +307,20 @@ public final class Diagnostic
                 IdentifierInfo ii = (IdentifierInfo)val;
                 str = ii.getName();
 
-                assert modifier.isEmpty() && argument.isEmpty():
-                        "Invalid modifier for IdentifierInfo argument";
+                Util.assertion(modifier.isEmpty() && argument.isEmpty(),                         "Invalid modifier for IdentifierInfo argument");
+
             }
             else
             {
-                assert kind == ak_nameddecl;
+                Util.assertion( kind == ak_nameddecl);
                 if (modifier.equals("q") && argument.isEmpty())
                 {
                     str = ((Decl.NamedDecl)val).getNameAsString();
                 }
                 else
                 {
-                    assert argument.isEmpty() && modifier.isEmpty() :
-                            "Invalid modifier for NamedDecl argument";
+                    Util.assertion(argument.isEmpty() && modifier.isEmpty(),                             "Invalid modifier for NamedDecl argument");
+
                     str = ((Decl.NamedDecl)val).getNameAsString();
                 }
             }
@@ -516,9 +517,9 @@ public final class Diagnostic
      */
     public void setDiagnosticMapping(int diag, Mapping Map)
     {
-        assert diag < DIAG_UPPER_LIMIT : "Can only map builtin diagnostics";
-        assert (isBuiltinWarningOrExtension(diag) || Map == Mapping.MAP_FATAL) :
-                "Cannot map errors!";
+        Util.assertion(diag < DIAG_UPPER_LIMIT,  "Can only map builtin diagnostics");
+        Util.assertion((isBuiltinWarningOrExtension(diag) || Map == Mapping.MAP_FATAL),                 "Cannot map errors!");
+
         setDiagnosticMappingInternal(diag, Map, true);
     }
 
@@ -533,7 +534,7 @@ public final class Diagnostic
     public boolean setDiagnosticGroupMapping(String group, Mapping map)
     {
         // FIXME Currently, should not reaching here
-        assert false:"Currently, should not reaching here";
+        Util.assertion(false, "Currently, should not reaching here");
         return true;
     }
 
@@ -590,43 +591,43 @@ public final class Diagnostic
 
 	public ArgumentKind getDiagArgKind(int index)
 	{
-		assert index >= 0 && index < diagArgumentsKind.length;
+		Util.assertion( index >= 0 && index < diagArgumentsKind.length);
 		return diagArgumentsKind[index];
 	}
 
 	public String getArgStdStr(int index)
 	{
         ArgumentKind ak = getDiagArgKind(index);
-	    assert ak == ak_std_string || ak == ak_c_string
-                : "Invalid argument accessor!";
+	    Util.assertion(ak == ak_std_string || ak == ak_c_string,  "Invalid argument accessor!");
+
 		return (String) diagArgumentsVal[index];
 	}
 
 	public int getArgSInt(int index)
     {
-        assert getDiagArgKind(index) == ArgumentKind.ak_sint
-                : "Invalid argument accessor!";
+        Util.assertion(getDiagArgKind(index) == ArgumentKind.ak_sint,  "Invalid argument accessor!");
+
         return (Integer)diagArgumentsVal[index];
     }
 
     public int getArgUInt(int index)
     {
-        assert getDiagArgKind(index) == ArgumentKind.ak_uint
-                : "Invalid argument accessor!";
+        Util.assertion(getDiagArgKind(index) == ArgumentKind.ak_uint,  "Invalid argument accessor!");
+
         return (Integer)diagArgumentsVal[index];
     }
 
     public String getArgIndentifier(int index)
     {
-        assert getDiagArgKind(index) == ArgumentKind.ak_identifier
-                :"invalid argument accessor!";
+        Util.assertion(getDiagArgKind(index) == ArgumentKind.ak_identifier, "invalid argument accessor!");
+
         return (String)diagArgumentsVal[index];
     }
 
     public Object getRawArg(int index)
     {
-        assert getDiagArgKind(index) != ak_std_string
-                :"invalid argument accessor!";
+        Util.assertion(getDiagArgKind(index) != ak_std_string, "invalid argument accessor!");
+
         return diagArgumentsVal[index];
     }
 
@@ -705,7 +706,7 @@ public final class Diagnostic
         else
         {
             int idx = Arrays.binarySearch(staticDiagInfos, new StaticDiagInfoRec(diagID, null, null, false, "", ""));
-            assert idx != -1:"Unknown diagnostic id!";
+            Util.assertion(idx != -1, "Unknown diagnostic id!");
             return staticDiagInfos[idx].description;
         }
     }
@@ -795,7 +796,7 @@ public final class Diagnostic
             return null; // customDiagInfo.getLevel(diagID);
 
         DiagnosticClass diagClass = getBuiltinDiagClass(diagID);
-        assert diagClass != DiagnosticClass.CLASS_NOTE : "Cannot get diagnostic level of a note!";
+        Util.assertion(diagClass != DiagnosticClass.CLASS_NOTE,  "Cannot get diagnostic level of a note!");
         return getDiagnosticLevel(diagID, diagClass);
     }
 
@@ -831,7 +832,7 @@ public final class Diagnostic
 
         switch (Mapping.values()[mappingInfo.ordinal() & 7]) 
         {
-            default: assert false : "Undefined diagMapping!";
+            default: Util.assertion(false, "Undefined diagMapping!");
             case MAP_IGNORE:
                 // Ignore this, unless this is an extension diagnostic and we're diagMapping
                 // them onto warnings or errors.
@@ -1004,7 +1005,7 @@ public final class Diagnostic
     {
         if (curDiagID != ~0)
             System.err.println(getDescription(curDiagID));
-        assert curDiagID == ~0 : "Multiple diagnostics in flight at once!";
+        Util.assertion(curDiagID == ~0,  "Multiple diagnostics in flight at once!");
         curDiagLoc = loc;
         curDiagID = diagID;
         return new DiagnosticBuilder(this);
@@ -1114,7 +1115,7 @@ public final class Diagnostic
 
 		public DiagnosticBuilder addString(String str)
 		{
-			assert numArgs < maxArguments :"Too many arguments to diagnostics";
+			Util.assertion(numArgs < maxArguments, "Too many arguments to diagnostics");
 			if (diagObj != null)
 			{
 				diagObj.diagArgumentsKind[numArgs] = ak_c_string;
@@ -1125,7 +1126,7 @@ public final class Diagnostic
 
 		public DiagnosticBuilder addTaggedVal(Object val, ArgumentKind kind)
 		{
-			assert numArgs < maxArguments :"Too many arguments to diagnostics";
+			Util.assertion(numArgs < maxArguments, "Too many arguments to diagnostics");
 			if (diagObj != null)
 			{
 				diagObj.diagArgumentsKind[numArgs] = kind;
@@ -1166,16 +1167,16 @@ public final class Diagnostic
 
 		public DiagnosticBuilder addSourceRange(SourceRange range)
 		{
-			assert numRanges < diagObj.diagRanges.length
-					:"Too many arguments to diagnostics";
+			Util.assertion(numRanges < diagObj.diagRanges.length, "Too many arguments to diagnostics");
+
             diagObj.diagRanges[numRanges++] = range;
             return this;
 		}
 
 		public DiagnosticBuilder addFixItHint(FixItHint hint)
 		{
-			assert numFixItHints < maxFixItHints
-					: "Too many arguments to diagnostics";
+			Util.assertion(numFixItHints < maxFixItHints,  "Too many arguments to diagnostics");
+
 			if (diagObj != null)
 			{
 				diagObj.fixItHints[numFixItHints++] = hint;

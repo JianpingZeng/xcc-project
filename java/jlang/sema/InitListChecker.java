@@ -17,6 +17,7 @@
 
 package jlang.sema;
 
+import tools.Util;
 import jlang.ast.Tree.*;
 import jlang.ast.Tree.DesignatedInitExpr.Designator;
 import jlang.clex.IdentifierInfo;
@@ -76,8 +77,8 @@ public class InitListChecker
      */
     private void fillValueInInitializations(InitListExpr list)
     {
-        assert list.getType() != sema.context.VoidTy :
-                "Should not have void type";
+        Util.assertion(list.getType() != sema.context.VoidTy,                 "Should not have void type");
+
 
         SourceLocation loc = list.getSourceRange().getBegin();
         if (list.getSyntacticForm() != null)
@@ -630,8 +631,8 @@ public class InitListChecker
         }
 
         boolean isFirstDesignator = desigIdx == 0;
-        assert isFirstDesignator || structuredList != null :
-                "Need a non-designated initializer list to start from";
+        Util.assertion(isFirstDesignator || structuredList != null,                 "Need a non-designated initializer list to start from");
+
 
         Designator d = die.getDesignator(desigIdx);
 
@@ -640,7 +641,7 @@ public class InitListChecker
                 structuredList, structuredIndex.get(), new SourceRange(d.getStartLocation(),
                         die.getSourceRange().getEnd()));
 
-        assert structuredList != null :"Expected a structured initializer list";
+        Util.assertion(structuredList != null, "Expected a structured initializer list");
 
         if (d.isFieldDesignator())
         {
@@ -887,7 +888,7 @@ public class InitListChecker
         }
         else
         {
-            assert d.isArrayRangeDesignator() :"Need array or array-range designator";
+            Util.assertion(d.isArrayRangeDesignator(), "Need array or array-range designator");
 
             designatedStartIndex = die.getArrayRangeStart(d).evaluateAsInt(sema.context);
             designatedEndIndex = die.getArrayRangeEnd(d).evaluateAsInt(sema.context);
@@ -1139,7 +1140,7 @@ public class InitListChecker
         {
             // In C, all types are either scalars or aggregates, but
             // additional handling is needed here for C++ (and possibly others?).
-            assert false:"Unsupported initializer type!";
+            Util.assertion(false, "Unsupported initializer type!");
         }
     }
 
@@ -1189,7 +1190,7 @@ public class InitListChecker
             maxElements = numStructUnionElements(type);
         }
         else
-            assert false:"checkImplicitInitList(): illegal type";
+            Util.assertion(false, "checkImplicitInitList(): illegal type");
 
         if (maxElements == 0)
         {
@@ -1230,7 +1231,7 @@ public class InitListChecker
             OutParamWrapper<Integer> structuedIndex,
             boolean topLevelObject)
     {
-        assert initList.isExplicit():"Illegal implicit InitListExpr!";
+        Util.assertion(initList.isExplicit(), "Illegal implicit InitListExpr!");
         syntacticToSemantic.put(initList, structuredList);
         structuredList.setSyntacticForm(initList);
 

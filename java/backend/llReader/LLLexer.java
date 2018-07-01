@@ -17,6 +17,7 @@
 
 package backend.llReader;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.value.Operator;
@@ -925,7 +926,7 @@ public final class LLLexer
                floatVal = new APFloat(new APInt(pair, 128));
                break;
             default:
-                assert false:"Illegal character after '0x'";
+                Util.assertion(false, "Illegal character after '0x'");
                 break;
         }
         return APFloat;
@@ -944,7 +945,7 @@ public final class LLLexer
         int index = 0, len = str.length();
         for (int i = 0; i < 4 && index < len; i++, index++)
         {
-            assert index < len;
+            Util.assertion( index < len);
             char ch = str.charAt(index);
             pair[1] *= 16;  // shift-add to accumulate the hex floating point number.
             if (ch >= '0' && ch <= '9')
@@ -983,7 +984,7 @@ public final class LLLexer
         int index = 0, len = str.length();
         for (int i = 0; i < 16 && index < len; i++, index++)
         {
-            assert index < len;
+            Util.assertion( index < len);
             char ch = str.charAt(index);
             pair[1] *= 16;  // shift-add to accumulate the hex floating point number.
             if (ch >= '0' && ch <= '9')

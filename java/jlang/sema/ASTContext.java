@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.ast.Attr;
 import jlang.ast.Tree.Expr;
 import jlang.basic.Context;
@@ -281,8 +282,8 @@ public final class ASTContext
             ArraySizeModifier asm,
             int eltTypeQuals)
     {
-        assert eltTy.isConstantSizeType() && !eltTy.isIncompleteType():
-                "Constant array of VLAs is illegal";
+        Util.assertion(eltTy.isConstantSizeType() && !eltTy.isIncompleteType(),                 "Constant array of VLAs is illegal");
+
 
         // Convert the array size into a canonical width matching the pointer size for
         // the target.
@@ -524,7 +525,7 @@ public final class ASTContext
         // of type qualifiers from the array type into the element type if present
         // (C99 6.7.3p8).
 		ArrayType arrayType = getAsArrayType(ty);
-		assert arrayType != null : "Not an array jlang.type!";
+		Util.assertion(arrayType != null,  "Not an array jlang.type!");
 
 		QualType ptrTy = getPointerType(arrayType.getElementType());
 
@@ -540,7 +541,7 @@ public final class ASTContext
 	 */
 	public QualType getTagDeclType(TagDecl decl)
 	{
-		assert decl != null;
+		Util.assertion( decl != null);
 		return getTypeDeclType(decl, null);
 	}
 
@@ -570,7 +571,7 @@ public final class ASTContext
 	 */
 	public QualType getTypeDeclType(TypeDecl decl, TypeDecl prevDecl)
 	{
-		assert decl != null:"Passed null for decl param";
+		Util.assertion(decl != null, "Passed null for decl param");
 		if (decl.getTypeForDecl() != null)
 			return new QualType(decl.getTypeForDecl());
 
@@ -597,7 +598,7 @@ public final class ASTContext
 		}
 		else
 		{
-			assert false:"TypeDecl without a type?";
+			Util.assertion(false, "TypeDecl without a type?");
 		}
 		if (prevDecl == null)
 			types.add(decl.getTypeForDecl());
@@ -897,7 +898,7 @@ public final class ASTContext
 			case UnsignedLongLong: return UnsignedLongLongTy;
 		}
 
-		assert false : "Unhandled IntType value";
+		Util.assertion(false,  "Unhandled IntType value");
 		return new QualType();
 	}
 
@@ -945,8 +946,8 @@ public final class ASTContext
 	 */
 	public QualType getPromotedIntegerType(QualType type)
 	{
-		assert !type.isNull() : "promotable can not be null!";
-		assert isPromotableIntegerType(type);
+		Util.assertion(!type.isNull(),  "promotable can not be null!");
+		Util.assertion( isPromotableIntegerType(type));
 
 		if (type.getType() instanceof EnumType)
 			return ((EnumType) type.getType()).getDecl().getPromotionType();
@@ -954,7 +955,7 @@ public final class ASTContext
 			return IntTy;
 		long promotableSize = getTypeSize(type);
 		long intSize = getTypeSize(IntTy);
-		assert !type.isSignedIntegerType() && promotableSize <= intSize;
+		Util.assertion( !type.isSignedIntegerType() && promotableSize <= intSize);
 
 		return promotableSize != intSize ? IntTy : UnsignedIntTy;
 	}
@@ -966,7 +967,7 @@ public final class ASTContext
 	 */
 	public QualType getTypeDeclType(Decl.TypeDecl decl)
 	{
-		assert decl != null:"Passed null for decl param";
+		Util.assertion(decl != null, "Passed null for decl param");
 		if (decl.getTypeForDecl() != null)
 			return new QualType(decl.getTypeForDecl());
 
@@ -975,8 +976,8 @@ public final class ASTContext
 
 	public QualType getTypeDeclTypeSlow(Decl.TypeDecl decl)
 	{
-		assert decl!= null:"Passed null for decl param";
-		assert decl.getTypeForDecl() ==null:"TypeForDecl present in slow case";
+		Util.assertion(decl!= null, "Passed null for decl param");
+		Util.assertion(decl.getTypeForDecl() ==null, "TypeForDecl present in slow case");
 
 		if (decl instanceof TypeDefDecl)
 		{
@@ -1246,7 +1247,7 @@ public final class ASTContext
 				break;
 		}
 
-		assert Util.isPowerOf2(align):"Alignment must be power of 2!";
+		Util.assertion(Util.isPowerOf2(align), "Alignment must be power of 2!");
 		return new Pair<>(width, align);
 	}
 
@@ -1313,7 +1314,7 @@ public final class ASTContext
                     iat.getSizeModifier(), iat.getIndexTypeQuals());
 		}
 
-		assert at instanceof VariableArrayType;
+		Util.assertion( at instanceof VariableArrayType);
 
 		VariableArrayType vat = (VariableArrayType)at;
 		return getVariableArrayType(newEltTy, vat.getSizeExpr(),
@@ -1398,17 +1399,17 @@ public final class ASTContext
 					idx.set(idx.get() - 1);
 					break;
 				case 'S':
-					assert !unsigned : "Can not use both 'S' and 'U' modifiers";
-					assert !signed : "Can not use 'S' modifiers multiple times";
+					Util.assertion(!unsigned,  "Can not use both 'S' and 'U' modifiers");
+					Util.assertion(!signed,  "Can not use 'S' modifiers multiple times");
 					signed = true;
 					break;
 				case 'U':
-					assert !unsigned : "Can not use 'U' modifiers multiple times";
-					assert !signed : "Can not use both 'S' and 'U' modifiers";
+					Util.assertion(!unsigned,  "Can not use 'U' modifiers multiple times");
+					Util.assertion(!signed,  "Can not use both 'S' and 'U' modifiers");
 					unsigned = true;
 					break;
 				case 'L':
-					assert howLong <= 2 : "Can not have LLLL modifier";
+					Util.assertion(howLong <= 2,  "Can not have LLLL modifier");
 					++howLong;
 					break;
 			}
@@ -1420,27 +1421,27 @@ public final class ASTContext
 		switch (str.charAt(idx.get()))
 		{
 			default:
-				assert false : "Unknown builtin type letter!";
+				Util.assertion(false,  "Unknown builtin type letter!");
 			case 'v':
-				assert howLong == 0 && !signed
-						&& !unsigned : "Bad modifiers used with 'v'";
+				Util.assertion(howLong == 0 && !signed						&& !unsigned,  "Bad modifiers used with 'v'");
+
 				type = context.VoidTy;
 				break;
 			case 'f':
-				assert howLong == 0 && !signed
-						&& !unsigned : "Bad modifiers used with 'f'";
+				Util.assertion(howLong == 0 && !signed						&& !unsigned,  "Bad modifiers used with 'f'");
+
 				type = context.FloatTy;
 				break;
 			case 'd':
-				assert howLong < 2 && !unsigned
-						&& !signed : "Bad modifiers used with 'd;";
+				Util.assertion(howLong < 2 && !unsigned						&& !signed,  "Bad modifiers used with 'd);");
+
 				if (howLong != 0)
 					type = context.LongDoubleTy;
 				else
 					type = context.DoubleTy;
 				break;
 			case 's':
-				assert howLong == 0 : "Bad modifiers with 's'";
+				Util.assertion(howLong == 0,  "Bad modifiers with 's'");
 				if (unsigned)
 					type = context.UnsignedShortTy;
 				else
@@ -1470,7 +1471,7 @@ public final class ASTContext
 			}
 			case 'c':
 			{
-				assert howLong == 0 : "Bad modifiers with 'c'";
+				Util.assertion(howLong == 0,  "Bad modifiers with 'c'");
 				if (signed)
 					type = context.SignedCharTy;
 				else if (unsigned)
@@ -1480,17 +1481,17 @@ public final class ASTContext
 				break;
 			}
 			case 'b':   // boolean
-				assert howLong == 0 : "Bad modifiers with 'b'";
+				Util.assertion(howLong == 0,  "Bad modifiers with 'b'");
 				type = context.BoolTy;
 				break;
 			case 'z':
 				// size_t
-				assert howLong == 0 : "Bad modifiers with 'z'";
+				Util.assertion(howLong == 0,  "Bad modifiers with 'z'");
 				type = context.getSizeType();
 				break;
 			case 'a':
 				type = context.getBuiltinVaListType();
-				assert !type.isNull() : "builtin va list type not initialized";
+				Util.assertion(!type.isNull(),  "builtin va list type not initialized");
 				break;
 			case 'P':
 				type = context.getFILEType();
@@ -1574,8 +1575,8 @@ public final class ASTContext
 			argTypes.add(ty);
 		}
 
-		assert idx.get() + 1 == typeStr.length() || typeStr.charAt(idx.get()) != '.'
-				:"'.' should only occur at end of builtin type list";
+		Util.assertion(idx.get() + 1 == typeStr.length() || typeStr.charAt(idx.get()) != '.', "'.' should only occur at end of builtin type list");
+
 
 		if (argTypes.isEmpty() && typeStr.charAt(idx.get()) == '.')
 		{
@@ -1648,7 +1649,7 @@ public final class ASTContext
 		if (ct != null)
 			return getFloatingRank(ct.getElementType(), ctx);
 
-		assert ty.isBuiltinType(): "getFloatingRank(): not a floating type";
+		Util.assertion(ty.isBuiltinType(),  "getFloatingRank(): not a floating type");
 		switch (ty.getTypeClass())
 		{
 			default: Util.shouldNotReachHere("getFloatingRank(): not a floating type");
@@ -1668,12 +1669,12 @@ public final class ASTContext
 
 	/**
 	 * Return an integer conversion rank (C99 6.3.1.1p1). This
-	 /// routine will assert if passed a built-in type that isn't an integer or enum,
-	 /// or if it is not canonicalized.
+	 /// routine will Util.assertion( if passed a built-in type that isn't an integer or enum,	 /// or if it is not canonicalized.
 	 */
 	public int getIntegerRank(Type T) 
 	{
-		//assert(T.isCanonicalUnqualified() && "T should be canonicalized");
+		//assert(T.isCanonicalUnqualified() && "T should be canonicalized"));
+
 		if (T instanceof EnumType)
 		{
 			EnumType et = (EnumType)T;
@@ -1749,7 +1750,7 @@ public final class ASTContext
 
 	public QualType getCorrespondingUnsignedType(QualType type)
 	{
-		assert type.isSignedIntegerType() && type.isIntegerType() : "Unexpected type";
+		Util.assertion(type.isSignedIntegerType() && type.isIntegerType(),  "Unexpected type");
 
 		// For enums, we return the unsigned version of the base type.
 		if (type.isEnumeralType())
@@ -1757,7 +1758,7 @@ public final class ASTContext
 			type = (getAs(type, EnumType.class)).getDecl().getPromotionType();
 		}
 		
-		assert type.isBuiltinType() : "Unexpected signed integer type";
+		Util.assertion(type.isBuiltinType(),  "Unexpected signed integer type");
 		switch (type.getTypeClass()) 
 		{
 			case TypeClass.SChar:
@@ -1792,11 +1793,11 @@ public final class ASTContext
      */
 	public FltSemantics getFloatTypeSemantics(QualType ty)
 	{
-	    assert ty.isBuiltinType():"Not a floating point type!";
+	    Util.assertion(ty.isBuiltinType(), "Not a floating point type!");
         BuiltinType pty = ty.getAsBuiltinType();
 	    switch (pty.getTypeClass())
         {
-            default: assert false :"Not a floating point type!";
+            default: Util.assertion(false, "Not a floating point type!");
             case Float: return target.getFloatFormat();
             case Double:    return target.getDoubleFormat();
             case LongDouble:    return target.getLongDoubleFormat();
@@ -1909,7 +1910,7 @@ public final class ASTContext
 
 	public void putDeclAttrs(Decl d, ArrayList<Attr> alist)
 	{
-		assert !declAttrs.containsKey(d);
+		Util.assertion( !declAttrs.containsKey(d));
 		declAttrs.put(d, alist);
 	}
 }

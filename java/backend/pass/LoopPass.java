@@ -16,6 +16,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.analysis.LoopInfo;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
@@ -63,7 +64,7 @@ public interface LoopPass extends Pass
             else
                 break;
         }
-        assert !pms.isEmpty():"Errorous status";
+        Util.assertion(!pms.isEmpty(), "Errorous status");
         LPPassManager lpm;
         if (!(pms.peek() instanceof FPPassManager))
         {

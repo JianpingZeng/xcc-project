@@ -17,6 +17,7 @@
 
 package backend.analysis;
 
+import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -103,7 +104,7 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
                 }
                 --idx;
             }
-            assert idx == -1:"Remained unhandled MachineBasicBlock";
+            Util.assertion(idx == -1, "Remained unhandled MachineBasicBlock");
         }
 
         // Step#3: create a dom tree
@@ -170,8 +171,8 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     public boolean dominates(DomTreeNodeBase<MachineBasicBlock> A,
             DomTreeNodeBase<MachineBasicBlock> B)
     {
-        assert A.getBlock().getParent() == fn
-                && B.getBlock().getParent() == A.getBlock().getParent();
+        Util.assertion( A.getBlock().getParent() == fn                && B.getBlock().getParent() == A.getBlock().getParent());
+
 
         if (A == B)
             return true;
@@ -186,7 +187,7 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     @Override
     public boolean dominates(MachineBasicBlock A, MachineBasicBlock B)
     {
-        assert A.getParent() == fn && B.getParent() == A.getParent();
+        Util.assertion( A.getParent() == fn && B.getParent() == A.getParent());
 
         if (A == B)
             return true;
@@ -257,7 +258,7 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     @Override
     public void eraseNode(MachineBasicBlock bb)
     {
-        assert bb != null;
+        Util.assertion( bb != null);
 
         int index = bb2Number.get(bb);
         boolean exist = false;
@@ -269,7 +270,7 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
                 break;
             }
         }
-        assert !exist:"Can not remove non-leaf node";
+        Util.assertion(!exist, "Can not remove non-leaf node");
         doms[index] = UNDEF;
         bb2Number.remove(bb);
         bb2DomTreeNode.remove(bb);
@@ -282,11 +283,11 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     {
         int e = newBB.getNumSuccessors();
         MachineBasicBlock succ = newBB.suxAt(0);
-        assert e == 1 && succ != null : "newBB must have a single successor";
+        Util.assertion(e == 1 && succ != null,  "newBB must have a single successor");
 
         ArrayList<MachineBasicBlock> preds = newBB.getPredecessors();
 
-        assert !preds.isEmpty() :"No predecessors block!";
+        Util.assertion(!preds.isEmpty(), "No predecessors block!");
 
         boolean newBBDominatesSucc = true;
         for (MachineBasicBlock p : succ.getPredecessors())
@@ -340,7 +341,7 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     public DomTreeNodeBase<MachineBasicBlock> addNewBlock(MachineBasicBlock bb,
             MachineBasicBlock idom)
     {
-        assert bb != null && idom != null && bb2Number.containsKey(idom);
+        Util.assertion( bb != null && idom != null && bb2Number.containsKey(idom));
         int bbIndex = reversePostOrder.size() - reversePostOrder.indexOf(bb) - 1;
         int idomIndex = bb2Number.get(idom);
         doms[bbIndex] = idomIndex;
@@ -355,8 +356,8 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     public void changeIDom(DomTreeNodeBase<MachineBasicBlock> oldIDom,
             DomTreeNodeBase<MachineBasicBlock> newIDom)
     {
-        assert bb2Number.containsKey(oldIDom.getBlock()) &&
-                bb2Number.containsKey(newIDom.getBlock());
+        Util.assertion( bb2Number.containsKey(oldIDom.getBlock()) &&                bb2Number.containsKey(newIDom.getBlock()));
+
         int oldIdomIndex = bb2Number.get(oldIDom.getBlock());
         int newIdomIndex = bb2Number.get(newIDom.getBlock());
         for (int idx = 0; idx < doms.length; idx++)
@@ -375,8 +376,8 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     @Override
     public void changeIDom(MachineBasicBlock oldIDomBB, MachineBasicBlock newIDomBB)
     {
-        assert bb2Number.containsKey(oldIDomBB) &&
-                bb2Number.containsKey(newIDomBB);
+        Util.assertion( bb2Number.containsKey(oldIDomBB) &&                bb2Number.containsKey(newIDomBB));
+
         int oldIdomIndex = bb2Number.get(oldIDomBB);
         int newIdomIndex = bb2Number.get(newIDomBB);
         for (int idx = 0; idx < doms.length; idx++)

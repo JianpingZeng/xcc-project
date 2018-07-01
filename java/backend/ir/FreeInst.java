@@ -17,6 +17,7 @@
 
 package backend.ir;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
@@ -49,7 +50,6 @@ public class FreeInst extends Instruction.UnaryOps
 
     private void assertOK()
     {
-        assert operand(0).getType().isPointerType()
-                : "Ptr must have pointer type";
+        Util.assertion(operand(0).getType().isPointerType(),  "Ptr must have pointer type");
     }
 }

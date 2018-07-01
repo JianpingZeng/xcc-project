@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
@@ -39,7 +40,7 @@ public class MachineLoop extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        assert au != null;
+        Util.assertion( au != null);
         au.setPreservedAll();
         au.addRequired(MachineDomTree.class);
         super.getAnalysisUsage(au);
@@ -116,9 +117,9 @@ public class MachineLoop extends MachineFunctionPass
                 {
                     if (subLoop.getHeaderBlock() == cur && isNotAlreadyContainedIn(subLoop, l))
                     {
-                        assert subLoop.getParentLoop() != null && subLoop.getParentLoop() != l;
+                        Util.assertion( subLoop.getParentLoop() != null && subLoop.getParentLoop() != l);
                         MachineLoopInfo subParentLoop = subLoop.outerLoop;
-                        assert subParentLoop.getSubLoops().contains(subLoop);
+                        Util.assertion( subParentLoop.getSubLoops().contains(subLoop));
                         subParentLoop.subLoops.remove(subLoop);
 
                         subLoop.setParentLoop(l);
@@ -160,7 +161,7 @@ public class MachineLoop extends MachineFunctionPass
         for (int i = 0; i < l.subLoops.size(); i++)
         {
             MachineLoopInfo childLoop = l.subLoops.get(i);
-            assert childLoop.getParentLoop() == l;
+            Util.assertion( childLoop.getParentLoop() == l);
 
             MachineLoopInfo containedLoop;
             if ((containedLoop = containingLoops.get(childLoop.getHeaderBlock())) != null)
@@ -201,9 +202,9 @@ public class MachineLoop extends MachineFunctionPass
     private void moveSiblingLoopInto(MachineLoopInfo newChild, MachineLoopInfo newParent)
     {
         MachineLoopInfo oldParent = newChild.getParentLoop();
-        assert oldParent != null && oldParent == newParent.getParentLoop();
+        Util.assertion( oldParent != null && oldParent == newParent.getParentLoop());
 
-        assert oldParent.subLoops.contains(newChild) :"Parent field incorrent!";
+        Util.assertion(oldParent.subLoops.contains(newChild), "Parent field incorrent!");
         oldParent.subLoops.remove(newChild);
         newParent.subLoops.add(newChild);
         newChild.setParentLoop(null);
@@ -214,7 +215,7 @@ public class MachineLoop extends MachineFunctionPass
     private void insertLoopInto(MachineLoopInfo child, MachineLoopInfo parent)
     {
         MachineBasicBlock header = child.getHeaderBlock();
-        assert parent.contains(header) : "This loop should not be inserted here";
+        Util.assertion(parent.contains(header),  "This loop should not be inserted here");
 
         // Check to see if it belongs in a child loop...
         for (int i = 0, e = parent.subLoops.size(); i < e; i++)
@@ -266,7 +267,7 @@ public class MachineLoop extends MachineFunctionPass
     @Override
     public void ensureIsTopLevel(MachineLoopInfo loop, String msg)
     {
-        assert loop.getParentLoop() == null : msg;
+        Util.assertion(loop.getParentLoop() == null,  msg);
     }
 
     @Override

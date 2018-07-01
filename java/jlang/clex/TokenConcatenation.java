@@ -17,6 +17,7 @@
 
 package jlang.clex;
 
+import tools.Util;
 import jlang.basic.SourceManager;
 
 /**
@@ -162,7 +163,7 @@ public class TokenConcatenation
         switch (prevKind)
         {
             default:
-                assert false:"InitAvoidConcatTokenInfo built wrong";
+                Util.assertion(false, "InitAvoidConcatTokenInfo built wrong");
             case identifier:
                 // id+id or id+number or id+L"foo".
                 if (tok.is(TokenKind.numeric_constant))

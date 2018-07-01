@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.utils.PredIterator;
@@ -69,7 +70,7 @@ public final class CFGSimplifyPass implements FunctionPass
         // If there are unreachable blocks in current cfg.
         if (reachables.size() != f.getBasicBlockList().size())
         {
-            assert reachables.size() < f.getBasicBlockList().size();
+            Util.assertion( reachables.size() < f.getBasicBlockList().size());
 
             // Loop over all unreachable blocks, and drop off all internal reference.
             for (int i = 0; i < f.getBasicBlockList().size(); i++)
@@ -157,9 +158,9 @@ public final class CFGSimplifyPass implements FunctionPass
         boolean changed = false;
         Function f = bb.getParent();
 
-        assert bb != null && f != null:"Basic block not embedded in function";
-        assert bb.getTerminator() != null:"degnerate basic block is bing simplified";
-        assert bb != f.getBasicBlockList().getFirst():"Can not simplify entry block";
+        Util.assertion(bb != null && f != null, "Basic block not embedded in function");
+        Util.assertion(bb.getTerminator() != null, "degnerate basic block is bing simplified");
+        Util.assertion(bb != f.getBasicBlockList().getFirst(), "Can not simplify entry block");
 
         // Removes the basic block which has no predecessors.
         PredIterator<BasicBlock> predItr = bb.predIterator();
@@ -343,7 +344,7 @@ public final class CFGSimplifyPass implements FunctionPass
      */
     private boolean propagatePredecessorForPHIs(BasicBlock bb, BasicBlock succ)
     {
-        assert  (bb.succIterator().next() == succ):"Succ is not successor of parent!";
+        Util.assertion((bb.succIterator().next() == succ), "Succ is not successor of parent!");
 
         // There is no phi node in parent.
         if (!(succ.getInstAt(0) instanceof PhiNode))
@@ -375,8 +376,8 @@ public final class CFGSimplifyPass implements FunctionPass
                     PhiNode pn = (PhiNode)succ.getInstAt(i);;
                     int idx1 = pn.getBasicBlockIndex(bb);
                     int idx2 = pn.getBasicBlockIndex(pred);
-                    assert idx1 != -1 && idx2 != -1
-                            :"Didn't have entries for predecesssor!";
+                    Util.assertion(idx1 != -1 && idx2 != -1, "Didn't have entries for predecesssor!");
+
 
                     if (pn.getIncomingValue(idx1) != pn.getIncomingValue(idx2))
                         return true;
@@ -392,7 +393,7 @@ public final class CFGSimplifyPass implements FunctionPass
 
             PhiNode pn = (PhiNode)succ.getInstAt(i);
             Value oldVal = pn.removeIncomingValue(bb, false);
-            assert oldVal != null:"No enry in PHI for Pred parent!";
+            Util.assertion(oldVal != null, "No enry in PHI for Pred parent!");
 
             // If this incoming value is one of the PHI nodes in BB...
             if (oldVal instanceof PhiNode && ((PhiNode)oldVal).getParent() == bb)

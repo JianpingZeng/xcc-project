@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.support.LoopBase;
 import backend.support.LoopInfoBase;
@@ -148,11 +149,11 @@ public final class MachineLoopInfo
     @Override
     public void replaceChildLoopWith(MachineLoopInfo newOne, MachineLoopInfo oldOne)
     {
-        assert newOne != null && oldOne != null;
-        assert oldOne.outerLoop == this;
-        assert newOne.outerLoop == null;
+        Util.assertion( newOne != null && oldOne != null);
+        Util.assertion( oldOne.outerLoop == this);
+        Util.assertion( newOne.outerLoop == null);
 
-        assert subLoops.contains(oldOne) :"oldOne loop not contained in current";
+        Util.assertion(subLoops.contains(oldOne), "oldOne loop not contained in current");
         int idx = subLoops.indexOf(oldOne);
         newOne.outerLoop = this;
         subLoops.set(idx, newOne);
@@ -161,7 +162,7 @@ public final class MachineLoopInfo
     @Override
     public void addChildLoop(MachineLoopInfo loop)
     {
-        assert loop != null && loop.outerLoop == null;
+        Util.assertion( loop != null && loop.outerLoop == null);
         loop.outerLoop = this;
         subLoops.add(loop);
     }
@@ -170,10 +171,10 @@ public final class MachineLoopInfo
     public void addBasicBlockIntoLoop(MachineBasicBlock bb,
             LoopInfoBase<MachineBasicBlock, MachineLoopInfo> li)
     {
-        assert blocks.isEmpty() || li.getLoopFor(getHeaderBlock()) != null
-                :"Incorrect LI specifed for this loop";
-        assert bb != null;
-        assert li.getLoopFor(bb) == null;
+        Util.assertion(blocks.isEmpty() || li.getLoopFor(getHeaderBlock()) != null, "Incorrect LI specifed for this loop");
+
+        Util.assertion( bb != null);
+        Util.assertion( li.getLoopFor(bb) == null);
 
         li.getBBMap().put(bb, this);
         MachineLoopInfo l = this;

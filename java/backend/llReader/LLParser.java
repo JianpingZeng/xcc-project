@@ -17,6 +17,7 @@
 
 package backend.llReader;
 
+import tools.Util;
 import backend.ir.FreeInst;
 import backend.ir.MallocInst;
 import backend.ir.SelectInst;
@@ -242,7 +243,7 @@ public final class LLParser
      */
     private boolean parseNamedMetadata()
     {
-        assert lexer.getTokKind() == NamedMD;
+        Util.assertion( lexer.getTokKind() == NamedMD);
         lexer.lex();
 
         String name = lexer.getStrVal();
@@ -286,7 +287,7 @@ public final class LLParser
      */
     private boolean parseStandaloneMetadata()
     {
-        assert lexer.getTokKind() == Metadata;
+        Util.assertion( lexer.getTokKind() == Metadata);
         lexer.lex();
 
         OutParamWrapper<Integer> val = new OutParamWrapper<>();
@@ -332,7 +333,7 @@ public final class LLParser
 
     private boolean parseNamedGlobal()
     {
-        assert lexer.getTokKind() == GlobalVar;
+        Util.assertion( lexer.getTokKind() == GlobalVar);
         SMLoc nameLoc = lexer.getLoc();
         String name = lexer.getStrVal();
         lexer.lex();
@@ -419,7 +420,7 @@ public final class LLParser
 
         // Inserting a name that is already defined, get the existing name.
         Type existing = m.getTypeByName(name);
-        assert existing != null : "conflict but no matching name";
+        Util.assertion(existing != null,  "conflict but no matching name");
 
         // Otherwise, this is an attempt to redefine a type. That's okay if
         // the redefinition is identical to the original.
@@ -452,7 +453,7 @@ public final class LLParser
             if (parseToken(equal, "expected '=' after name"))
                 return true;
         }
-        assert lexer.getTokKind() == kw_type;
+        Util.assertion( lexer.getTokKind() == kw_type);
 
         SMLoc typeLoc = lexer.getLoc();
         lexer.lex();
@@ -518,7 +519,7 @@ public final class LLParser
      */
     private boolean parseTargetDefinition()
     {
-        assert lexer.getTokKind() == kw_target;
+        Util.assertion( lexer.getTokKind() == kw_target);
 
         OutParamWrapper<String> str = new OutParamWrapper<>();
         boolean tripleOrDataLayout = true;
@@ -694,7 +695,7 @@ public final class LLParser
      */
     private boolean parseDeclare()
     {
-        assert lexer.getTokKind() == LLTokenKind.kw_declare;
+        Util.assertion( lexer.getTokKind() == LLTokenKind.kw_declare);
         lexer.lex();
 
         OutParamWrapper<Function> f = new OutParamWrapper<>();
@@ -972,7 +973,7 @@ public final class LLParser
             case kw_dllexport:
             case kw_dllimport:
             case kw_extern_weak:
-                assert false : "Unsupported linkage type 'weak'";
+                Util.assertion(false,  "Unsupported linkage type 'weak'");
                 break;
             case kw_external:
                 linkage.set(LinkageType.ExternalLinkage);
@@ -1426,7 +1427,7 @@ public final class LLParser
 
     private boolean parseFunctionType(OutParamWrapper<Type> result)
     {
-        assert lexer.getTokKind() == lparen;
+        Util.assertion( lexer.getTokKind() == lparen);
 
         if (!FunctionType.isValidArgumentType(result.get()))
             return tokError("invalid function return type");
@@ -1483,7 +1484,7 @@ public final class LLParser
             OutParamWrapper<Boolean> isVarArg, boolean inType)
     {
         isVarArg.set(false);
-        assert lexer.getTokKind() == lparen;
+        Util.assertion( lexer.getTokKind() == lparen);
         lexer.lex();    // eat the '('
         if (lexer.getTokKind() == rparen)
         {
@@ -1557,7 +1558,7 @@ public final class LLParser
 
     private boolean parseStructType(OutParamWrapper<Type> result, boolean packed)
     {
-        assert lexer.getTokKind() == lbrace;
+        Util.assertion( lexer.getTokKind() == lbrace);
         lexer.lex();    // eat the '{'
         if (expectToken(rbrace))
         {
@@ -1692,7 +1693,7 @@ public final class LLParser
      */
     private boolean parseDefine()
     {
-        assert lexer.getTokKind() == kw_define;
+        Util.assertion( lexer.getTokKind() == kw_define);
         lexer.lex();    // eat the 'define'
         OutParamWrapper<Function> f = new OutParamWrapper<>();
         return parseFunctionHeader(f, true) || parseFunctionBody(f);
@@ -2479,7 +2480,7 @@ public final class LLParser
         }
         else
         {
-            assert opc == Operator.ICmp;
+            Util.assertion( opc == Operator.ICmp);
             if (!lhs.getType().isInteger() && !(lhs.getType() instanceof PointerType))
                 return error(lhsLoc, "icmp op requires integral operand");
         }
@@ -2833,7 +2834,7 @@ public final class LLParser
                 }
                 else
                 {
-                    assert opc == Operator.ICmp:"Unexpected opcode for compare";
+                    Util.assertion(opc == Operator.ICmp, "Unexpected opcode for compare");
                     if (!val0.get().getType().isInteger())
                     {
                         return error(id.loc, "icmp requires integral operand");
@@ -3054,7 +3055,7 @@ public final class LLParser
      */
     private boolean parseMDNodeVector(ArrayList<Value> elts)
     {
-        assert lexer.getTokKind() == lbrace;
+        Util.assertion( lexer.getTokKind() == lbrace);
         lexer.lex();
 
         do

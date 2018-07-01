@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.pass.AnalysisUsage;
 import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -80,7 +81,7 @@ public final class RegAllocSimple extends MachineFunctionPass
             {
                 int regIdx = regClassIdx.get(rc);
                 regClassIdx.put(rc, regIdx + 1);
-                assert regIdx < allocatableRegs.length : "Not enough register for allocation.";
+                Util.assertion(regIdx < allocatableRegs.length,  "Not enough register for allocation.");
                 int phyReg = rc.getRegister(regIdx);
 
                 if (!regUsed.get(phyReg))
@@ -159,10 +160,9 @@ public final class RegAllocSimple extends MachineFunctionPass
 							if (instrInfo.get(opcode).isConvertibleTo3Addr() && j == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
-								assert mi.getOperand(1).isRegister()
-										&& mi.getOperand(1).getReg()!=0
-										&& mi.getOperand(1).isUse()
-										:"Two address instruction invalid!";
+								Util.assertion(mi.getOperand(1).isRegister()										&& mi.getOperand(1).getReg()!=0
+										&& mi.getOperand(1).isUse(), "Two address instruction invalid!");
+
 
 								phyReg = mi.getOperand(1).getReg();
 							}

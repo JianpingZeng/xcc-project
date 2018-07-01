@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import tools.Util;
 import backend.type.FunctionType;
 import backend.type.OpaqueType;
 import backend.type.PointerType;
@@ -130,11 +131,11 @@ public class AssemblyWriter
     private static void printLLVMName(PrintStream os, String name,
             PrefixType pt)
     {
-        assert name != null && !name.isEmpty() : "Cannot get empty name!";
+        Util.assertion(name != null && !name.isEmpty(),  "Cannot get empty name!");
         switch (pt)
         {
             default:
-                assert false : "Unknown PrefixType";
+                Util.assertion(false,  "Unknown PrefixType");
                 break;
             case NoPrefix:
                 break;
@@ -180,11 +181,11 @@ public class AssemblyWriter
     private static void printLLVMName(FormattedOutputStream os, String name,
             PrefixType pt)
     {
-        assert name != null && !name.isEmpty() : "Cannot get empty name!";
+        Util.assertion(name != null && !name.isEmpty(),  "Cannot get empty name!");
         switch (pt)
         {
             default:
-                assert false : "Unknown PrefixType";
+                Util.assertion(false,  "Unknown PrefixType");
                 break;
             case NoPrefix:
             case LabelPrefix:
@@ -232,7 +233,7 @@ public class AssemblyWriter
         }
         else
         {
-            assert gv instanceof Function : "Unknown global value kind";
+            Util.assertion(gv instanceof Function,  "Unknown global value kind");
             printFunction((Function) gv);
         }
     }
@@ -335,7 +336,7 @@ public class AssemblyWriter
         Constant cv = val instanceof Constant ? (Constant) val : null;
         if (cv != null && !(cv instanceof GlobalValue))
         {
-            assert printer != null : "Constants require TypePrintering";
+            Util.assertion(printer != null,  "Constants require TypePrintering");
             writeConstantInt(out, cv, printer, tracker);
             return;
         }
@@ -378,7 +379,7 @@ public class AssemblyWriter
         Constant cv = val instanceof Constant ? (Constant) val : null;
         if (cv != null && !(cv instanceof GlobalValue))
         {
-            assert printer != null : "Constants require TypePrintering";
+            Util.assertion(printer != null,  "Constants require TypePrintering");
             writeConstantInt(out, cv, printer, tracker);
             return;
         }
@@ -1066,7 +1067,7 @@ public class AssemblyWriter
         switch (vt)
         {
             default:
-                assert false : "Invalid visibility style";
+                Util.assertion(false,  "Invalid visibility style");
             case DefaultVisibility:
                 break;
             case HiddenVisibility:
@@ -1352,7 +1353,7 @@ public class AssemblyWriter
         }
         else if (inst instanceof CallInst)
         {
-            assert operand != null : "No called function for CallInst";
+            Util.assertion(operand != null,  "No called function for CallInst");
 
             CallInst ci = (CallInst) inst;
             CallingConv cc = ci.getCallingConv();

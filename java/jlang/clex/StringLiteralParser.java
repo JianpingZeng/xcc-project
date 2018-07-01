@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.OutParamWrapper;
 
 /**
@@ -67,7 +68,7 @@ public class StringLiteralParser
             Token tok = stringToks[i];
             String buf = pp.getSpelling(tok);
 
-            assert buf.charAt(0) == '"':"Expected quote, lexer broken?";
+            Util.assertion(buf.charAt(0) == '"', "Expected quote, lexer broken?");
 
             int j = 1;
             while (j < buf.length() -1 /*skip the end quote*/)
@@ -91,7 +92,7 @@ public class StringLiteralParser
                 // Is this a Universal Character Name escape?
                 if (buf.charAt(j+1) == 'u' || buf.charAt(j+1) == 'U')
                 {
-                    assert false:"Currently, can not handle unicode character!";
+                    Util.assertion(false, "Currently, can not handle unicode character!");
                 }
 
                 // Otherwise, this is a non-UCN escape character.  Process it.
@@ -119,17 +120,17 @@ public class StringLiteralParser
 
     public static int getOffsetOfStringByte(Token tok, int byteNo, Preprocessor pp)
     {
-        assert byteNo >= 0;
+        Util.assertion( byteNo >= 0);
 
         String spelling = pp.getSpelling(tok);
 
-        assert spelling.charAt(0) != 'L': "Doesn't handle wide strings yet";
+        Util.assertion(spelling.charAt(0) != 'L',  "Doesn't handle wide strings yet");
 
-        assert spelling.charAt(0) == '"':"Should be a string literal";
+        Util.assertion(spelling.charAt(0) == '"', "Should be a string literal");
         int i = 1;
         while (byteNo != 0)
         {
-            assert byteNo < spelling.length();
+            Util.assertion( byteNo < spelling.length());
 
             if (spelling.charAt(i) != '\\')
             {
@@ -142,7 +143,7 @@ public class StringLiteralParser
             OutParamWrapper<Integer> y = new OutParamWrapper<>(i);
             LiteralSupport.processCharEscape(spelling, y, hasError, tok.getLocation(), pp);
             i = y.get();
-            assert !hasError.get() : "This method isn't valid on erronuous strings";
+            Util.assertion(!hasError.get(),  "This method isn't valid on erronuous strings");
             --byteNo;
         }
 

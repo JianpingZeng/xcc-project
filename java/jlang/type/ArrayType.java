@@ -1,5 +1,6 @@
 package jlang.type;
 
+import tools.Util;
 import jlang.ast.Tree.Expr;
 import jlang.support.PrintingPolicy;
 import jlang.support.SourceLocation;
@@ -97,7 +98,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
                 int tq)
         {
             super(ConstantArray, elemTy, can, asm, tq);
-            //assert getSize.ult(0) : "The getSize for array must greater than zero!";
+            //Util.assertion(getSize.ult(0),  "The getSize for array must greater than zero!");
             size = length;
         }
 
@@ -218,7 +219,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
             id.addInteger(sizeExpr.hashCode());
             id.addInteger(getSizeModifier().hashCode());
             id.addInteger(getIndexTypeQuals());
-            //assert false:"Cannot unique ConstantArrayWithExprTypes";
+            //Util.assertion(false, "Cannot unique ConstantArrayWithExprTypes");
         }
     }
 
@@ -260,7 +261,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
             id.addInteger(getSize().getZExtValue());
             id.addInteger(getSizeModifier().hashCode());
             id.addInteger(getIndexTypeQuals());
-            //assert false:"Cannot unique ConstantArrayWithoutExprTypes";
+            //Util.assertion(false, "Cannot unique ConstantArrayWithoutExprTypes");
         }
     }
 
@@ -377,7 +378,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
             id.addInteger(sizeExpr.hashCode());
             id.addInteger(getSizeModifier().hashCode());
             id.addInteger(getIndexTypeQuals());
-            //assert false:"Cannot unique VaraibleArrayTypes.";
+            //Util.assertion(false, "Cannot unique VaraibleArrayTypes.");
         }
     }
 

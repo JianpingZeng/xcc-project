@@ -16,6 +16,7 @@
  */
 
 package backend.codegen;
+import tools.Util;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
@@ -38,7 +39,7 @@ public class MachineJumpTableInfo
 
     public int getJumpTableIndex(ArrayList<MachineBasicBlock> destMBBs)
     {
-        assert !destMBBs.isEmpty();
+        Util.assertion( !destMBBs.isEmpty());
         for (int i = 0, e = jumpTables.size(); i < e; i++)
             if (jumpTables.get(i).mbbs.equals(destMBBs))
                 return i;
@@ -59,7 +60,7 @@ public class MachineJumpTableInfo
 
     public void removeJumpTable(int idx)
     {
-        assert idx >= 0 && idx < jumpTables.size();
+        Util.assertion( idx >= 0 && idx < jumpTables.size());
         jumpTables.get(idx).mbbs.clear();
     }
 

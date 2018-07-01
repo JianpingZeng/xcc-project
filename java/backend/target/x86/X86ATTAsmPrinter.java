@@ -16,6 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
@@ -95,7 +96,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     {
         if (subtarget.isTargetDarwin() || subtarget.isTargetCygMing())
         {
-            assert false:"Currently, Darwin, Cygwin, MinGW not supported";
+            Util.assertion(false, "Currently, Darwin, Cygwin, MinGW not supported");
         }
         super.doFinalization(m);
         return false;
@@ -280,7 +281,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
             os.printf("\"L%d$pb\"", getFunctionNumber());
         else
         {
-            assert subtarget.isTargetELF():"Don't know how to print PIC label!";
+            Util.assertion(subtarget.isTargetELF(), "Don't know how to print PIC label!");
             os.printf(".LXCC$%d.$piclabel", getFunctionNumber());
         }
     }
@@ -328,7 +329,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                 os.println("\t.globl\t" + curFnName);
                 break;
             default:
-                assert false : "Undefined linkage type!";
+                Util.assertion(false,  "Undefined linkage type!");
                 break;
         }
 
@@ -450,8 +451,8 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         {
             case MO_Register:
             {
-                assert TargetRegisterInfo.isPhysicalRegister(
-                        mo.getReg()) : "Virtual register should not make it this far!";
+                Util.assertion(TargetRegisterInfo.isPhysicalRegister(                        mo.getReg()),  "Virtual register should not make it this far!");
+
                 os.print("%");
                 int reg = mo.getReg();
                 if (modifier != null && modifier.substring(0, 6).equals("subreg"))
@@ -724,7 +725,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                     name = '@' + name;
                 break;
             default:
-                assert false:"Unsupported DecorationStyle";
+                Util.assertion(false, "Unsupported DecorationStyle");
         }
         return name;
     }
@@ -744,7 +745,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         else if (subtarget.isTargetELF())
             label.append(".Lllvm$").append(fnNumber).append(".$piclabel");
         else
-            assert false:"Don't known how to print PIC label!\n";
+            Util.assertion(false, "Don't known how to print PIC label!\n");
         return label.toString();
     }
 
@@ -1184,7 +1185,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
 
     private void printMemReference(MachineInstr mi, int opNo, String modifier)
     {
-        assert isMem(mi, opNo) : "Invalid memory reference!";
+        Util.assertion(isMem(mi, opNo),  "Invalid memory reference!");
 
         MachineOperand baseReg = mi.getOperand(opNo);
         int scaleVal = (int) mi.getOperand(opNo + 1).getImm();
@@ -1210,7 +1211,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
             int baseRegOperand = 0, indexRegOperand = 2;
             if (indexReg.getReg() == ESP || indexReg.getReg() == RSP)
             {
-                assert scaleVal == 1 :"Scale not supported for stack pointer!";
+                Util.assertion(scaleVal == 1, "Scale not supported for stack pointer!");
                 MachineOperand o = baseReg;
                 baseReg = indexReg;
                 indexReg = o;
@@ -1239,7 +1240,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     public void printSSECC(MachineInstr mi, int op)
     {
         int value = (int)mi.getOperand(op).getImm();
-        assert value <= 7:"Invalid ssecc argument!";
+        Util.assertion(value <= 7, "Invalid ssecc argument!");
         switch (value)
         {
             case 0: os.print("eq"); break;

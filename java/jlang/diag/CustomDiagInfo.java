@@ -16,6 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 
@@ -45,15 +46,15 @@ public class CustomDiagInfo
      */
     public String getDescription(int diagID)
     {
-        assert diagID - DIAG_UPPER_LIMIT < diagInfo.size()
-                :"invalid diagnostic ID";
+        Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
+
         return diagInfo.get(diagID - DIAG_UPPER_LIMIT).second;
     }
 
     public Diagnostic.Level getLevel(int diagID)
     {
-        assert diagID - DIAG_UPPER_LIMIT < diagInfo.size()
-                :"invalid diagnostic ID";
+        Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
+
         return diagInfo.get(diagID - DIAG_UPPER_LIMIT).first;
     }
 

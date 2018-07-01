@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
@@ -338,7 +339,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             int i = 0, e = pendingExports.size();
             while (i < e)
             {
-                assert pendingExports.get(i).getNode().getNumOperands() > 1;
+                Util.assertion( pendingExports.get(i).getNode().getNumOperands() > 1);
                 if (pendingExports.get(i).getNode().getOperand(0).equals(root))
                     break;
 
@@ -359,11 +360,11 @@ public class SelectionDAGLowering implements InstVisitor<Void>
     public void copyValueToVirtualRegister(Value val, int reg)
     {
         SDValue op = getValue(val);
-        assert op.getOpcode() != ISD.CopyFromReg
-                || ((RegisterSDNode) op.getOperand(1).getNode()).getReg()
-                != reg : "Copy from a arg to the same reg";
-        assert !TargetRegisterInfo
-                .isPhysicalRegister(reg) : "Is a physical reg?";
+        Util.assertion(op.getOpcode() != ISD.CopyFromReg                || ((RegisterSDNode) op.getOperand(1).getNode()).getReg()
+                != reg,  "Copy from a arg to the same reg");
+
+        Util.assertion(!TargetRegisterInfo                .isPhysicalRegister(reg),  "Is a physical reg?");
+
 
         RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
         SDValue chain = dag.getEntryNode();
@@ -418,7 +419,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 ConstantExpr ce = (ConstantExpr) cnt;
                 visit(ce.getOpcode(), ce);
                 SDValue n1 = nodeMap.get(val);
-                assert n1.getNode() != null;
+                Util.assertion( n1.getNode() != null);
                 return n1;
             }
 
@@ -436,8 +437,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
             if (cnt.getType() instanceof StructType || cnt.getType() instanceof ArrayType)
             {
-                assert cnt instanceof ConstantAggregateZero
-                        || cnt instanceof Value.UndefValue : "Unknown struct or array constant!";
+                Util.assertion(cnt instanceof ConstantAggregateZero                        || cnt instanceof Value.UndefValue,  "Unknown struct or array constant!");
+
 
                 ArrayList<EVT> valueVTs = new ArrayList<>();
                 computeValueVTs(tli, cnt.getType(), valueVTs);
@@ -468,7 +469,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 return dag.getFrameIndex(funcInfo.staticAllocaMap.get(val),
                         new EVT(tli.getPointerTy()), false);
         }
-        assert funcInfo.valueMap.containsKey(val):"Value not in map!";
+        Util.assertion(funcInfo.valueMap.containsKey(val), "Value not in map!");
         int inReg = funcInfo.valueMap.get(val);
         RegsForValue rfv = new RegsForValue(tli, inReg, val.getType());
         SDValue chain = dag.getEntryNode();
@@ -480,7 +481,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
     public void setValue(Value val, SDValue sdVal)
     {
-        assert !nodeMap.containsKey(val) : "Already set a value for this node!";
+        Util.assertion(!nodeMap.containsKey(val),  "Already set a value for this node!");
         nodeMap.put(val, sdVal);
     }
 
@@ -534,8 +535,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
                 cs.paramHasAttr(0, Attribute.InReg), fty.getNumParams(),
                 cs.getCallingConv(), isTailCall,
                 !cs.getInstruction().isUseEmpty(), callee, args, dag);
-        assert !isTailCall || result.second.getNode() != null;
-        assert result.second.getNode() != null || result.first.getNode() == null;
+        Util.assertion( !isTailCall || result.second.getNode() != null);
+        Util.assertion( result.second.getNode() != null || result.first.getNode() == null);
         if (result.first.getNode() != null)
             setValue(cs.getInstruction(), result.first);
 
@@ -836,8 +837,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         boolean isVarArg = dag.getMachineFunction().getFunction().isVarArg();
         CallingConv cc = dag.getMachineFunction().getFunction().getCallingConv();
         chain = tli.lowerReturn(chain, cc, isVarArg, outs, dag);
-        assert chain.getNode() != null
-                && chain.getValueType().getSimpleVT().simpleVT == MVT.Other;
+        Util.assertion( chain.getNode() != null                && chain.getValueType().getSimpleVT().simpleVT == MVT.Other);
+
         dag.setRoot(chain);
         return null;
     }
@@ -874,8 +875,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             {
                 findMergedConditions(bo, succ0MBB, succ1MBB, curMBB, bo.getOpcode());
 
-                assert switchCases.get(0).thisMBB
-                        .equals(curMBB) : "Unexpected lowering!";
+                Util.assertion(switchCases.get(0).thisMBB                        .equals(curMBB),  "Unexpected lowering!");
+
 
                 if (shouldEmitAsBranches(switchCases))
                 {
@@ -958,7 +959,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
         else
         {
-            assert opc == And;
+            Util.assertion( opc == And);
             // Codegen X & Y as:
             //   jmp_if_X TmpBB
             //   jmp FBB
@@ -1055,7 +1056,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         }
         else
         {
-            assert cb.cc == CondCode.SETLE;
+            Util.assertion( cb.cc == CondCode.SETLE);
             APInt low = ((ConstantInt) cb.cmpLHS).getValue();
             APInt high = ((ConstantInt) cb.cmpRHS).getValue();
 
@@ -1271,7 +1272,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
             if (i == count)
             {
-                assert count < 3;
+                Util.assertion( count < 3);
                 caseBits.add(new CaseBits(0, dest, 0));
                 count++;
             }
@@ -1505,7 +1506,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
     public void visitJumpTable(JumpTable jt)
     {
-        assert jt.reg != -1:"Should lower JT header first!";
+        Util.assertion(jt.reg != -1, "Should lower JT header first!");
         EVT pty = new EVT(tli.getPointerTy());
         SDValue index = dag.getCopyFromReg(getControlRoot(), jt.reg, pty);
         SDValue table = dag.getJumpTable(jt.jti, pty, false, 0);
@@ -1545,7 +1546,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             APInt lend = cr.caseRanges.get(i).high.getValue();
             APInt rbegin = cr.caseRanges.get(j).low.getValue();
             APInt range = computeRange(lend, rbegin);
-            assert range.sub(2).isNonNegative();
+            Util.assertion( range.sub(2).isNonNegative());
 
             double ldensity = lsize / (lend.sub(first).add(1)).roundToDouble();
             double rdensity = rsize / (last.sub(rbegin).add(1)).roundToDouble();
@@ -1562,7 +1563,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
         if (areJTsAllowed(tli))
         {
-            assert fmetric > 0;
+            Util.assertion( fmetric > 0);
         }
         else
         {
@@ -1726,7 +1727,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             case AShr: return ISD.SRL;
             case LShr: return ISD.SRA;
             default:
-                assert false:"Unknown binary operator!";
+                Util.assertion(false, "Unknown binary operator!");
                 return -1;
         }
     }
@@ -1739,7 +1740,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         SDValue op0 = getValue(inst.operand(0));
         SDValue op1 = getValue(inst.operand(1));
         int opc = getSDOpc(op);
-        assert opc >= 0;
+        Util.assertion( opc >= 0);
         if (op.isShift())
         {
             if (!op1.getValueType().getSimpleVT().equals(tli.getShiftAmountTy()))
@@ -2333,8 +2334,8 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         for (int i = 1, e = ci.getNumOfOperands(); i < e; i++)
         {
                 SDValue op = getValue(ci.operand(i));
-                assert tli.isTypeLegal(op.getValueType()):
-                        "Intrinsic uses a non-legal type?";
+                Util.assertion(tli.isTypeLegal(op.getValueType()),                         "Intrinsic uses a non-legal type?");
+
                 ops.add(op);
         }
         ArrayList<EVT> valueVTs = new ArrayList<>();

@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.target.TargetLowering;
@@ -111,7 +112,7 @@ public class DAGTypeLegalizer
         switch (valueTypeActions.getTypeAction(vt))
         {
             default:
-                assert false:"Unknown legalize action!";
+                Util.assertion(false, "Unknown legalize action!");
                 return null;
             case Legal:
                 return LegalizeAction.Legal;
@@ -186,8 +187,8 @@ public class DAGTypeLegalizer
                 performExpensiveChecks();
 
             SDNode n = worklist.pop();
-            assert n.getNodeID() == ReadyToProcess:
-                    "Node should be ready if on worklist!";
+            Util.assertion(n.getNodeID() == ReadyToProcess,                     "Node should be ready if on worklist!");
+
 
             nodeDone:
             {
@@ -199,7 +200,7 @@ public class DAGTypeLegalizer
                         switch (getTypeAction(resultVT))
                         {
                             default:
-                                assert false : "Unknown action!";
+                                Util.assertion(false,  "Unknown action!");
                                 break;
                             case Legal:
                                 break;
@@ -238,7 +239,7 @@ public class DAGTypeLegalizer
                     switch (getTypeAction(opVT))
                     {
                         default:
-                            assert false:"Unknown action!";
+                            Util.assertion(false, "Unknown action!");
                         case Legal:
                             continue;
                         case PromotedInteger:
@@ -275,7 +276,7 @@ public class DAGTypeLegalizer
 
                 if (needsReanalyzing)
                 {
-                    assert n.getNodeID() == ReadyToProcess:"Node ID recaculated?";
+                    Util.assertion(n.getNodeID() == ReadyToProcess, "Node ID recaculated?");
                     n.setNodeID(NewNode);
 
                     SDNode nn = analyzeNewNode(n);
@@ -284,13 +285,13 @@ public class DAGTypeLegalizer
                         continue;
                     }
 
-                    assert n.getNumValues() == nn.getNumValues():
-                            "Node morphing changed the number of results!";
+                    Util.assertion(n.getNumValues() == nn.getNumValues(),                             "Node morphing changed the number of results!");
+
                     for (int j = 0, e = n.getNumValues(); j < e; j++)
                     {
                         replaceValueWithHelper(new SDValue(n, i), new SDValue(nn, i));
                     }
-                    assert n.getNodeID() == NewNode:"Unexpected node state!";
+                    Util.assertion(n.getNodeID() == NewNode, "Unexpected node state!");
                     continue;
                 }
 
@@ -305,7 +306,7 @@ public class DAGTypeLegalizer
                 }
             }
 
-            assert n.getNodeID() == ReadyToProcess:"Node ID recaculated?";
+            Util.assertion(n.getNodeID() == ReadyToProcess, "Node ID recaculated?");
             n.setNodeID(Processed);
             for (SDUse use : n.useList)
             {
@@ -324,7 +325,7 @@ public class DAGTypeLegalizer
                 if (nodeId == NewNode)
                     continue;
 
-                assert nodeId == Unanalyzed:"Unknown node ID!";
+                Util.assertion(nodeId == Unanalyzed, "Unknown node ID!");
                 user.setNodeID(user.getNumOperands() - 1);
 
                 if (user.getNumOperands() == 1)
@@ -414,45 +415,45 @@ public class DAGTypeLegalizer
             return;
         for (Map.Entry<SDValue, SDValue> pair : promotedIntegers.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.setValue(remapValue(pair.getValue()));
         }
 
         for (Map.Entry<SDValue, SDValue> pair : softenedFloats.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.setValue(remapValue(pair.getValue()));
         }
 
         for (Map.Entry<SDValue, SDValue> pair : scalarizedVectors.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.setValue(remapValue(pair.getValue()));
         }
 
         for (Map.Entry<SDValue, SDValue> pair : widenedVectors.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.setValue(remapValue(pair.getValue()));
         }
 
         for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : expandedIntegers.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.getValue().first = remapValue(pair.getValue().first);
             pair.getValue().second = remapValue(pair.getValue().second);
         }
 
         for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : expandedFloats.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.getValue().first = remapValue(pair.getValue().first);
             pair.getValue().second = remapValue(pair.getValue().second);
         }
 
         for (Map.Entry<SDValue, Pair<SDValue, SDValue>> pair : splitVectors.entrySet())
         {
-            assert !pair.getKey().getNode().equals(n);
+            Util.assertion( !pair.getKey().getNode().equals(n));
             pair.getValue().first = remapValue(pair.getValue().first);
             pair.getValue().second = remapValue(pair.getValue().second);
         }
@@ -484,7 +485,7 @@ public class DAGTypeLegalizer
         {
             val = replacedValues.get(val);
             val = remapValue(val);
-            assert val.getNode().getNodeID() != NewNode:"Mapped to new node!";
+            Util.assertion(val.getNode().getNodeID() != NewNode, "Mapped to new node!");
         }
         return val;
     }
@@ -497,7 +498,7 @@ public class DAGTypeLegalizer
 
     private SDValue bitConvertVectorToIntegerVector(SDValue op)
     {
-        assert op.getValueType().isVector():"Only applies to vectors!";
+        Util.assertion(op.getValueType().isVector(), "Only applies to vectors!");
         int eltWidth = op.getValueType().getVectorElementType().getSizeInBits();
         EVT eltVT = EVT.getIntegerVT(eltWidth);
         int numElts = op.getValueType().getVectorNumElements();
@@ -528,7 +529,7 @@ public class DAGTypeLegalizer
         if (results.isEmpty())
             return false;
 
-        assert results.size() == n.getNumValues();
+        Util.assertion( results.size() == n.getNumValues());
         for (int i = 0, e = results.size(); i < e; i++)
             replaceValueWith(new SDValue(n, i), results.get(i));
         return true;
@@ -563,7 +564,7 @@ public class DAGTypeLegalizer
         switch (tli.getBooleanContents())
         {
             default:
-                assert false:"Unknown booleanConstant";
+                Util.assertion(false, "Unknown booleanConstant");
                 break;
             case UndefinedBooleanContent:
                 extendCode = ISD.ANY_EXTEND;
@@ -589,7 +590,7 @@ public class DAGTypeLegalizer
 
     private void replaceValueWithHelper(SDValue from, SDValue to)
     {
-        assert !from.getNode().equals(to.getNode()):"Potential legalization loop!";
+        Util.assertion(!from.getNode().equals(to.getNode()), "Potential legalization loop!");
 
         to = analyzeNewValue(to);
 
@@ -606,8 +607,8 @@ public class DAGTypeLegalizer
             SDNode nn = analyzeNewNode(n);
             if (!nn.equals(n))
             {
-                assert nn.getNodeID() != NewNode:"Analysis resulted in newNode!";
-                assert n.getNumValues() == nn.getNumValues():"Node morphing changed the number of results!";
+                Util.assertion(nn.getNodeID() != NewNode, "Analysis resulted in newNode!");
+                Util.assertion(n.getNumValues() == nn.getNumValues(), "Node morphing changed the number of results!");
                 for (int i = 0,  e = n.getNumValues(); i < e; i++)
                 {
                     SDValue oldVal = new SDValue(n,i);
@@ -640,8 +641,8 @@ public class DAGTypeLegalizer
      */
     private SDValue[] splitInteger(SDValue op, EVT loVT, EVT hiVT)
     {
-        assert loVT.getSizeInBits() + hiVT.getSizeInBits() ==
-            op.getValueType().getSizeInBits();
+        Util.assertion( loVT.getSizeInBits() + hiVT.getSizeInBits() ==            op.getValueType().getSizeInBits());
+
         SDValue[] res = new SDValue[2];
         res[0] = dag.getNode(ISD.TRUNCATE, loVT, op);
         res[1] = dag.getNode(ISD.SRL, op.getValueType(), op,
@@ -655,7 +656,7 @@ public class DAGTypeLegalizer
     {
         SDValue promotedOp = promotedIntegers.get(op);
         promotedOp = remapValue(promotedOp);
-        assert promotedOp != null && promotedOp.getNode() != null;
+        Util.assertion( promotedOp != null && promotedOp.getNode() != null);
         promotedIntegers.put(op, promotedOp);
         return promotedOp;
     }
@@ -663,7 +664,7 @@ public class DAGTypeLegalizer
     private void setPromotedIntegers(SDValue op, SDValue result)
     {
         result = analyzeNewValue(result);
-        assert !promotedIntegers.containsKey(op):"Node is already promoted!";
+        Util.assertion(!promotedIntegers.containsKey(op), "Node is already promoted!");
         promotedIntegers.put(op, result);
     }
 
@@ -842,7 +843,7 @@ public class DAGTypeLegalizer
         switch (getTypeAction(inVT))
         {
             default:
-                assert false:"Unknown type action!";
+                Util.assertion(false, "Unknown type action!");
                 break;
             case Legal:
             case ExpandInteger:
@@ -908,9 +909,9 @@ public class DAGTypeLegalizer
     private SDValue promoteIntResConvertRndsat(SDNode n)
     {
         CvtCode cc = ((CvtRndSatSDNode)n).getCvtCode();
-        assert cc == CvtCode.CVT_SS || cc == CvtCode.CVT_SU ||
-                cc == CvtCode.CVT_US || cc == CvtCode.CVT_UU ||
-                cc == CvtCode.CVT_SF || cc == CvtCode.CVT_UF;
+        Util.assertion( cc == CvtCode.CVT_SS || cc == CvtCode.CVT_SU ||                cc == CvtCode.CVT_US || cc == CvtCode.CVT_UU ||
+                cc == CvtCode.CVT_SF || cc == CvtCode.CVT_UF);
+
         EVT outVT = tli.getTypeToTransformTo(n.getValueType(0));
         return dag.getConvertRndSat(outVT,
                 n.getOperand(0), n.getOperand(1),
@@ -971,7 +972,7 @@ public class DAGTypeLegalizer
         if (getTypeAction(n.getOperand(0).getValueType()) == LegalizeAction.PromotedInteger)
         {
             SDValue res = getPromotedInteger(n.getOperand(0));
-            assert res.getValueType().bitsLE(nvt):"Extension doesn't make sense!";
+            Util.assertion(res.getValueType().bitsLE(nvt), "Extension doesn't make sense!");
 
             if (nvt.equals(res.getValueType()))
             {
@@ -980,7 +981,7 @@ public class DAGTypeLegalizer
                             dag.getValueType(n.getOperand(0).getValueType()));
                 if (n.getOpcode() == ISD.ZERO_EXTEND)
                     return dag.getZeroExtendInReg(res, n.getOperand(0).getValueType());
-                assert n.getOpcode() == ISD.ANY_EXTEND:"Unknown integer extension!";
+                Util.assertion(n.getOpcode() == ISD.ANY_EXTEND, "Unknown integer extension!");
                 return res;
             }
         }
@@ -988,7 +989,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteIntResLoad(LoadSDNode n)
     {
-        assert  n.isUNINDEXEDLoad():"Indexed load during type legalization!";
+        Util.assertion(n.isUNINDEXEDLoad(), "Indexed load during type legalization!");
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
         LoadExtType ext = n.isNONExtLoad() ? LoadExtType.EXTLOAD : n.getExtensionType();
         SDValue res = dag.getExtLoad(ext,
@@ -1052,11 +1053,11 @@ public class DAGTypeLegalizer
     private SDValue promoteIntResSETCC(SDNode n)
     {
         EVT svt = new EVT(tli.getSetCCResultType(n.getOperand(0).getValueType()));
-        assert isTypeLegal(svt):"Illegal SetCC type!";
+        Util.assertion(isTypeLegal(svt), "Illegal SetCC type!");
         SDValue setcc = dag.getNode(ISD.SETCC, svt, n.getOperand(0),
                 n.getOperand(1), n.getOperand(2));
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
-        assert nvt.bitsLE(svt):"Integer type overpromoted!";
+        Util.assertion(nvt.bitsLE(svt), "Integer type overpromoted!");
         return dag.getNode(ISD.TRUNCATE, nvt, setcc);
     }
     private SDValue promoteIntResSHL(SDNode n)
@@ -1169,7 +1170,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteIntResXMULO(SDNode n, int resNo)
     {
-        assert resNo == 1;
+        Util.assertion( resNo == 1);
         return promoteIntResOverflow(n);
     }
 
@@ -1242,8 +1243,8 @@ public class DAGTypeLegalizer
         if (res.getNode().equals(node))
             return true;
 
-        assert res.getValueType().equals(node.getValueType(0)) && node
-                .getNumValues() == 1;
+        Util.assertion( res.getValueType().equals(node.getValueType(0)) && node                .getNumValues() == 1);
+
         replaceValueWith(new SDValue(node, 0), res);
         return false;
     }
@@ -1262,7 +1263,7 @@ public class DAGTypeLegalizer
         EVT ovt = node.getOperand(0).getValueType();
         SDValue lo = zextPromotedInteger(node.getOperand(0));
         SDValue hi = getPromotedInteger(node.getOperand(1));
-        assert lo.getValueType().equals(node.getValueType(0));
+        Util.assertion( lo.getValueType().equals(node.getValueType(0)));
         hi = dag.getNode(ISD.SHL, node.getValueType(0), hi,
                 dag.getConstant(ovt.getSizeInBits(), new EVT(tli.getPointerTy()),
                         false));
@@ -1270,7 +1271,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpBRCC(SDNode node, int opNo)
     {
-        assert opNo == 2;
+        Util.assertion( opNo == 2);
         SDValue lhs = node.getOperand(2);
         SDValue rhs = node.getOperand(3);
         SDValue[] res = promoteSetCCOperands(lhs, rhs,
@@ -1284,7 +1285,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpBRCond(SDNode node, int opNo)
     {
-        assert opNo == 1;
+        Util.assertion( opNo == 1);
         EVT svt = new EVT(tli.getSetCCResultType(new EVT(MVT.Other)));
         SDValue cond = promoteTargetBoolean(node.getOperand(1), svt);
         return dag.updateNodeOperands(new SDValue(node, 0),
@@ -1294,9 +1295,9 @@ public class DAGTypeLegalizer
     {
         EVT vecVT = node.getValueType(0);
         int numElts = vecVT.getVectorNumElements();
-        assert (numElts & 1) == 0;
-        assert node.getOperand(0).getValueType().getSizeInBits() >=
-                node.getValueType(0).getVectorElementType().getSizeInBits();
+        Util.assertion( (numElts & 1) == 0);
+        Util.assertion( node.getOperand(0).getValueType().getSizeInBits() >=                node.getValueType(0).getVectorElementType().getSizeInBits());
+
 
         SDValue[] ops = new SDValue[numElts];
         for (int i = 0; i < numElts; i++)
@@ -1307,9 +1308,9 @@ public class DAGTypeLegalizer
     private SDValue promoteOpConvertRndsat(SDNode node)
     {
         CvtCode cc = ((CvtRndSatSDNode)node).getCvtCode();
-        assert cc == CvtCode.CVT_SS || cc == CvtCode.CVT_SU ||
-                cc == CvtCode.CVT_US || cc == CvtCode.CVT_UU ||
-                cc == CvtCode.CVT_FS || cc == CvtCode.CVT_FU;
+        Util.assertion( cc == CvtCode.CVT_SS || cc == CvtCode.CVT_SU ||                cc == CvtCode.CVT_US || cc == CvtCode.CVT_UU ||
+                cc == CvtCode.CVT_FS || cc == CvtCode.CVT_FU);
+
         SDValue inOp = getPromotedInteger(node.getOperand(0));
         return dag.getConvertRndSat(node.getValueType(0),
                 inOp, node.getOperand(1),
@@ -1323,13 +1324,13 @@ public class DAGTypeLegalizer
     {
         if (opNo == 1)
         {
-            assert node.getOperand(1).getValueType().getSizeInBits() >= node
-                    .getValueType(0).getVectorElementType().getSizeInBits();
+            Util.assertion( node.getOperand(1).getValueType().getSizeInBits() >= node                    .getValueType(0).getVectorElementType().getSizeInBits());
+
             return dag.updateNodeOperands(new SDValue(node, 0),
                     node.getOperand(0), getPromotedInteger(node.getOperand(1)),
                     node.getOperand(2));
         }
-        assert opNo == 2;
+        Util.assertion( opNo == 2);
         SDValue idx = zextPromotedInteger(node.getOperand(2));
         return dag.updateNodeOperands(new SDValue(node, 0),
                 node.getOperand(0),
@@ -1353,7 +1354,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpSelect(SDNode node, int opNo)
     {
-        assert opNo == 0;
+        Util.assertion( opNo == 0);
         EVT svt = new EVT(tli.getSetCCResultType(node.getOperand(1).getValueType()));
         SDValue cond = promoteTargetBoolean(node.getOperand(0), svt);
         return dag.updateNodeOperands(new SDValue(node, 0), cond,
@@ -1361,7 +1362,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpSelectCC(SDNode node, int opNo)
     {
-        assert opNo == 0;
+        Util.assertion( opNo == 0);
         SDValue lhs = node.getOperand(0);
         SDValue rhs = node.getOperand(1);
         promoteSetCCOperands(lhs, rhs, ((CondCodeSDNode)node.getOperand(4).getNode()).getCondition());
@@ -1370,7 +1371,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpSetCC(SDNode node, int opNo)
     {
-        assert opNo == 0;
+        Util.assertion( opNo == 0);
         SDValue lhs = node.getOperand(0);
         SDValue rhs = node.getOperand(1);
         promoteSetCCOperands(lhs, rhs, ((CondCodeSDNode)node.getOperand(2).getNode()).getCondition());
@@ -1396,7 +1397,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpStore(StoreSDNode node, int opNo)
     {
-        assert node.isUNINDEXEDLoad();
+        Util.assertion( node.isUNINDEXEDLoad());
         SDValue ch = node.getChain(), ptr = node.getBasePtr();
         int svOffset = node.getSrcValueOffset();
         int alignment = node.getAlignment();
@@ -1458,18 +1459,18 @@ public class DAGTypeLegalizer
         Pair<SDValue, SDValue> entry = expandedIntegers.get(op);
         entry.first = remapValue(entry.first);
         entry.second = remapValue(entry.second);
-        assert entry.first.getNode() != null:"Operand isn't expanded";
+        Util.assertion(entry.first.getNode() != null, "Operand isn't expanded");
         return new SDValue[]{entry.first, entry.second};
 
     }
 
     private void setExpandedIntegers(SDValue op, SDValue lo, SDValue hi)
     {
-        assert lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()))
-                && hi.getValueType().equals(lo.getValueType()):"Invalid type for expanded integer";
+        Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()))                && hi.getValueType().equals(lo.getValueType()), "Invalid type for expanded integer");
+
         lo = analyzeNewValue(lo);
         hi = analyzeNewValue(hi);
-        assert !expandedIntegers.containsKey(op):"Node already expanded!";
+        Util.assertion(!expandedIntegers.containsKey(op), "Node already expanded!");
         expandedIntegers.put(op, Pair.get(lo, hi));
     }
 
@@ -1573,7 +1574,7 @@ public class DAGTypeLegalizer
             case ISD.SRL:
                 res = expandIntResShift(n); break;
         }
-        assert res != null && res.length == 2:"Illegal status!";
+        Util.assertion(res != null && res.length == 2, "Illegal status!");
         SDValue lo = res[0];
         SDValue hi = res[1];
         if (lo.getNode() != null)
@@ -1591,10 +1592,10 @@ public class DAGTypeLegalizer
         }
         else
         {
-            assert getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger:
-                    "Only know how to promote this result!";
+            Util.assertion(getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger,                     "Only know how to promote this result!");
+
             SDValue t = getPromotedInteger(op);
-            assert t.getValueType().equals(n.getValueType(0)):"Operand over promoted!";
+            Util.assertion(t.getValueType().equals(n.getValueType(0)), "Operand over promoted!");
             res = splitInteger(t);
         }
         return res;
@@ -1603,7 +1604,7 @@ public class DAGTypeLegalizer
     {
         SDValue[] res;
         res = getExpandedInteger(n.getOperand(0));
-        assert res.length == 2 :"Illegal status!";
+        Util.assertion(res.length == 2, "Illegal status!");
         EVT nvt = res[0].getValueType();
         EVT evt = ((VTSDNode)n.getOperand(1).getNode()).getVT();
         int nvtBits = nvt.getSizeInBits();
@@ -1625,7 +1626,7 @@ public class DAGTypeLegalizer
     {
         SDValue[] res;
         res = getExpandedInteger(n.getOperand(0));
-        assert res.length == 2 :"Illegal status!";
+        Util.assertion(res.length == 2, "Illegal status!");
         EVT nvt = res[0].getValueType();
         EVT evt = ((VTSDNode)n.getOperand(1).getNode()).getVT();
         int nvtBits = nvt.getSizeInBits();
@@ -1698,7 +1699,7 @@ public class DAGTypeLegalizer
             return expandRes_NormalLoad(n);
         }
 
-        assert n.isUNINDEXEDLoad():"indexed load during type legalization!";
+        Util.assertion(n.isUNINDEXEDLoad(), "indexed load during type legalization!");
 
         EVT vt = n.getValueType(0);
         EVT nvt = tli.getTypeToTransformTo(vt);
@@ -1709,7 +1710,7 @@ public class DAGTypeLegalizer
         int alignment = n.getAlignment();
         boolean isVolatile = n.isVolatile();
 
-        assert nvt.isByteSized():"expanded type not byte sized";
+        Util.assertion(nvt.isByteSized(), "expanded type not byte sized");
         SDValue lo, hi;
         if (n.getMemoryVT().bitsLE(nvt))
         {
@@ -1729,7 +1730,7 @@ public class DAGTypeLegalizer
             }
             else
             {
-                assert ext == LoadExtType.EXTLOAD:"Unknown extload!";
+                Util.assertion(ext == LoadExtType.EXTLOAD, "Unknown extload!");
                 hi = dag.getUNDEF(nvt);
             }
         }
@@ -1818,9 +1819,9 @@ public class DAGTypeLegalizer
         }
         else
         {
-            assert getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger;
+            Util.assertion( getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger);
             SDValue res = getPromotedInteger(op);
-            assert res.getValueType().equals(n.getValueType(0)):"Operand over promoted!";
+            Util.assertion(res.getValueType().equals(n.getValueType(0)), "Operand over promoted!");
             SDValue[] t = splitInteger(res);
             lo = t[0];
             hi = t[1];
@@ -1873,10 +1874,10 @@ public class DAGTypeLegalizer
         }
         else
         {
-            assert getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger:
-                    "Don't know how to handle this result!";
+            Util.assertion(getTypeAction(op.getValueType()) == LegalizeAction.PromotedInteger,                     "Don't know how to handle this result!");
+
             SDValue res = getPromotedInteger(op);
-            assert res.getValueType().equals(n.getValueType(0)):"Operand over promoted!";
+            Util.assertion(res.getValueType().equals(n.getValueType(0)), "Operand over promoted!");
             SDValue[] t = splitInteger(res);
             lo = t[0];
             hi = t[1];
@@ -1890,7 +1891,7 @@ public class DAGTypeLegalizer
         EVT vt = n.getValueType(0);
         SDValue op = n.getOperand(0);
         RTLIB libCall = tli.getFPTOSINT(op.getValueType(), vt);
-        assert libCall != RTLIB.UNKNOWN_LIBCALL:"Unexpected fp-to-sint conversion!";
+        Util.assertion(libCall != RTLIB.UNKNOWN_LIBCALL, "Unexpected fp-to-sint conversion!");
         return splitInteger(makeLibCall(libCall, vt, new SDValue[] { op }, true));
     }
     private SDValue[] expandIntResFPToUINT(SDNode n)
@@ -1898,7 +1899,7 @@ public class DAGTypeLegalizer
         EVT vt = n.getValueType(0);
         SDValue op = n.getOperand(0);
         RTLIB libCall = tli.getFPTOUINT(op.getValueType(), vt);
-        assert libCall != RTLIB.UNKNOWN_LIBCALL:"Unexpected fp-to-uint conversion!";
+        Util.assertion(libCall != RTLIB.UNKNOWN_LIBCALL, "Unexpected fp-to-uint conversion!");
         return splitInteger(makeLibCall(libCall, vt, new SDValue[] { op }, true));
     }
     private SDValue[] expandIntResLogical(SDNode n)
@@ -2108,7 +2109,7 @@ public class DAGTypeLegalizer
                 lc = RTLIB.MUL_I128;
                 break;
         }
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported mul!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported mul!");
         SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
         return splitInteger(makeLibCall(lc, vt, ops, true));
     }
@@ -2131,7 +2132,7 @@ public class DAGTypeLegalizer
                 lc = RTLIB.SDIV_I128;
                 break;
         }
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported SDIV!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported SDIV!");
         SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
         return splitInteger(makeLibCall(lc, vt, ops, true));
     }
@@ -2154,7 +2155,7 @@ public class DAGTypeLegalizer
                 lc = RTLIB.SREM_I128;
                 break;
         }
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported SREM!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported SREM!");
         SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
         return splitInteger(makeLibCall(lc, vt, ops, true));
     }
@@ -2177,7 +2178,7 @@ public class DAGTypeLegalizer
                 lc = RTLIB.UDIV_I128;
                 break;
         }
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported UDIV!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported UDIV!");
         SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
         return splitInteger(makeLibCall(lc, vt, ops, true));
     }
@@ -2200,7 +2201,7 @@ public class DAGTypeLegalizer
                 lc = RTLIB.UREM_I128;
                 break;
         }
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported UREM!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported UREM!");
         SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
         return splitInteger(makeLibCall(lc, vt, ops, true));
     }
@@ -2223,7 +2224,7 @@ public class DAGTypeLegalizer
             partsOpc = ISD.SRL_PARTS;
         else
         {
-            assert n.getOpcode() == ISD.SRA;
+            Util.assertion( n.getOpcode() == ISD.SRA);
             partsOpc = ISD.SRA_PARTS;
         }
 
@@ -2276,7 +2277,7 @@ public class DAGTypeLegalizer
                 break;
             }
             default:
-                assert n.getOpcode() == ISD.SRA;
+                Util.assertion( n.getOpcode() == ISD.SRA);
                 isSigned = true;
                 switch (vt.getSimpleVT().simpleVT)
                 {
@@ -2375,7 +2376,7 @@ public class DAGTypeLegalizer
             }
             return res;
         }
-        assert n.getOpcode() == ISD.SRA:"Unkown shift!";
+        Util.assertion(n.getOpcode() == ISD.SRA, "Unkown shift!");
         if (amt > vtBits)
             res[0] =res[1] = dag.getNode(ISD.SRA, nvt, t[1], dag.getConstant(nvtBits-1, shTy, false));
         else if (amt > nvtBits)
@@ -2405,7 +2406,7 @@ public class DAGTypeLegalizer
         EVT shTy = amt.getValueType();
         int shBits = shTy.getSizeInBits();
         int nvtBits = nvt.getSizeInBits();
-        assert Util.isPowerOf2(nvtBits):"Expanded integer type size must be power of two!";
+        Util.assertion(Util.isPowerOf2(nvtBits), "Expanded integer type size must be power of two!");
         APInt highBitMask = APInt.getHighBitsSet(shBits, shBits - Util.log2(nvtBits));
         APInt[] t = new APInt[2];
         dag.computeMaskedBits(n.getOperand(1), highBitMask, t, 0);
@@ -2448,7 +2449,7 @@ public class DAGTypeLegalizer
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
         EVT shTy = amt.getValueType();
         int nvtBits = nvt.getSizeInBits();
-        assert Util.isPowerOf2(nvtBits):"Expanded integer type size not a power of two!";
+        Util.assertion(Util.isPowerOf2(nvtBits), "Expanded integer type size not a power of two!");
 
         SDValue[] t = getExpandedInteger(n.getOperand(0));
         SDValue nvBitsNode = dag.getConstant(nvtBits, shTy, false);
@@ -2555,15 +2556,15 @@ public class DAGTypeLegalizer
         if (res.getNode().equals(n))
             return true;
 
-        assert res.getValueType().equals(n.getValueType(0)) &&
-                n.getNumValues() == 1:"Invalid operand expansion!";
+        Util.assertion(res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1, "Invalid operand expansion!");
+
         replaceValueWith(new SDValue(n, 0), res);
         return false;
     }
 
     private SDValue expandIntOpBitConvert(SDNode n)
     {
-        assert false:"Unimplemented!";
+        Util.assertion(false, "Unimplemented!");
         return null;
     }
 
@@ -2585,12 +2586,12 @@ public class DAGTypeLegalizer
     }
     private SDValue expandIntOpBuildVector(SDNode n)
     {
-        assert false:"Unimplemented!";
+        Util.assertion(false, "Unimplemented!");
         return null;
     }
     private SDValue expandIntOpExtractElement(SDNode n)
     {
-        assert false:"Unimplemented!";
+        Util.assertion(false, "Unimplemented!");
         return null;
     }
     private SDValue expandIntOpSelectCC(SDNode n)
@@ -2620,7 +2621,7 @@ public class DAGTypeLegalizer
         newRHS = t[1];
         if (newRHS.getNode() == null)
         {
-            assert newLHS.getValueType().equals(n.getValueType(0)):"Unexected setcc expansion!";
+            Util.assertion(newLHS.getValueType().equals(n.getValueType(0)), "Unexected setcc expansion!");
             return newLHS;
         }
         return dag.updateNodeOperands(new SDValue(n, 0),
@@ -2637,7 +2638,7 @@ public class DAGTypeLegalizer
         SDValue op = n.getOperand(0);
         EVT destVT = n.getValueType(0);
         RTLIB lc = tli.getSINTTOFP(op.getValueType(), destVT);
-        assert lc != RTLIB.UNKNOWN_LIBCALL;
+        Util.assertion( lc != RTLIB.UNKNOWN_LIBCALL);
         return makeLibCall(lc, destVT, new SDValue[]{op}, true);
     }
     private SDValue expandIntOpStore(StoreSDNode n, int opNo)
@@ -2645,8 +2646,8 @@ public class DAGTypeLegalizer
         if (n.isNormalStore())
             return expandOp_NormalStore(n, opNo);
 
-        assert n.isUNINDEXEDStore() : "Indexed store during type legalization?";
-        assert opNo == 1 : "Can only expand the stored value so far?";
+        Util.assertion(n.isUNINDEXEDStore(),  "Indexed store during type legalization?");
+        Util.assertion(opNo == 1,  "Can only expand the stored value so far?");
 
         EVT vt = n.getOperand(1).getValueType();
         EVT evt = tli.getTypeToTransformTo(vt);
@@ -2657,7 +2658,7 @@ public class DAGTypeLegalizer
         boolean isVolatile = n.isVolatile();
         SDValue lo, hi;
 
-        assert evt.isByteSized() : "Expanded type not byte sized!";
+        Util.assertion(evt.isByteSized(),  "Expanded type not byte sized!");
         if (n.getMemoryVT().bitsLE(evt))
         {
             SDValue[] t = getExpandedInteger(n.getValue());
@@ -2736,7 +2737,7 @@ public class DAGTypeLegalizer
             else if (srcVT.getSimpleVT().simpleVT == MVT.i128)
             ff = new APInt(32, f32TwoE128);
             else
-                assert false:"Unsupported UINT_TO_FP!";
+                Util.assertion(false, "Unsupported UINT_TO_FP!");
 
             SDValue lo, hi;
             SDValue[] t = getExpandedInteger(op);
@@ -2768,7 +2769,7 @@ public class DAGTypeLegalizer
             return dag.getNode(ISD.FADD, destVT, signedConv, fudge);
         }
         RTLIB lc = tli.getUINTTOFP(srcVT, destVT);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Don't know how to expand this UINT_TO_FP!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Don't know how to expand this UINT_TO_FP!");
         return makeLibCall(lc, destVT, new SDValue[]{op}, true);
     }
 
@@ -2877,16 +2878,16 @@ public class DAGTypeLegalizer
         SDValue softenedOp = softenedFloats.get(op);
         softenedOp = remapValue(softenedOp);
         softenedFloats.put(op, softenedOp);
-        assert softenedOp.getNode() != null:"Operand wasn't converted to integer?";
+        Util.assertion(softenedOp.getNode() != null, "Operand wasn't converted to integer?");
         return softenedOp;
     }
 
     private void setSoftenedFloat(SDValue op, SDValue result)
     {
-        assert result.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()));
+        Util.assertion( result.getValueType().equals(tli.getTypeToTransformTo(op.getValueType())));
         result = analyzeNewValue(result);
 
-        assert !softenedFloats.containsKey(op):"Node already converted to integer!";
+        Util.assertion(!softenedFloats.containsKey(op), "Node already converted to integer!");
         softenedFloats.put(op, result);
     }
 
@@ -3195,7 +3196,7 @@ public class DAGTypeLegalizer
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
         SDValue op = n.getOperand(0);
         RTLIB lc = tli.getFPEXT(op.getValueType(), n.getValueType(0));
-        assert lc != RTLIB.UNKNOWN_LIBCALL;
+        Util.assertion( lc != RTLIB.UNKNOWN_LIBCALL);
         return makeLibCall(lc, nvt, new SDValue[] { op }, false);
     }
     private SDValue softenFloatRes_FP_ROUND(SDNode n)
@@ -3203,7 +3204,7 @@ public class DAGTypeLegalizer
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
         SDValue op = n.getOperand(0);
         RTLIB lc = tli.getFPROUND(op.getValueType(), n.getValueType(0));
-        assert lc != RTLIB.UNKNOWN_LIBCALL;
+        Util.assertion( lc != RTLIB.UNKNOWN_LIBCALL);
         return makeLibCall(lc, nvt, new SDValue[] { op }, false);
     }
     private SDValue softenFloatRes_FPOW(SDNode n)
@@ -3222,7 +3223,7 @@ public class DAGTypeLegalizer
     }
     private SDValue softenFloatRes_FPOWI(SDNode n)
     {
-        assert n.getOperand(1).getValueType().getSimpleVT().simpleVT == MVT.i32;
+        Util.assertion( n.getOperand(1).getValueType().getSimpleVT().simpleVT == MVT.i32);
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
         SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
                 getSoftenedFloat(n.getOperand(0))};
@@ -3384,7 +3385,7 @@ public class DAGTypeLegalizer
             if (nvt.bitsGE(svt))
                 lib = signed ? tli.getSINTTOFP(nvt, rvt) : tli.getUINTTOFP(nvt, rvt);
         }
-        assert lib != RTLIB.UNKNOWN_LIBCALL;
+        Util.assertion( lib != RTLIB.UNKNOWN_LIBCALL);
         SDValue op = dag.getNode(signed ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND,
                 nvt, n.getOperand(0));
         return makeLibCall(lib, tli.getTypeToTransformTo(rvt),
@@ -3437,8 +3438,8 @@ public class DAGTypeLegalizer
         if (Objects.equals(res.getNode(), n))
             return true;
 
-        assert res.getValueType().equals(n.getValueType(0)) &&
-                n.getNumValues() == 1:"Invalid operand expansion!";
+        Util.assertion(res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1, "Invalid operand expansion!");
+
 
         replaceValueWith(new SDValue(n, 0), res);
         return false;
@@ -3471,7 +3472,7 @@ public class DAGTypeLegalizer
         EVT rvt = n.getValueType(0);
 
         RTLIB lc = tli.getFPROUND(svt, rvt);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"unsupported FP_ROUND libcall!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "unsupported FP_ROUND libcall!");
 
         SDValue op = getSoftenedFloat(n.getOperand(0));
         return makeLibCall(lc, rvt, new SDValue[] { op }, false);
@@ -3480,7 +3481,7 @@ public class DAGTypeLegalizer
     {
         EVT rvt = n.getValueType(0);
         RTLIB lc = tli.getFPTOSINT(n.getOperand(0).getValueType(), rvt);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_SINT";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported FP_TO_SINT");
         SDValue op = getSoftenedFloat(n.getOperand(0));
         return makeLibCall(lc, rvt, new SDValue[] { op }, false);
     }
@@ -3488,7 +3489,7 @@ public class DAGTypeLegalizer
     {
         EVT rvt = n.getValueType(0);
         RTLIB lc = tli.getFPTOUINT(n.getOperand(0).getValueType(), rvt);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_UINT";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported FP_TO_UINT");
         SDValue op = getSoftenedFloat(n.getOperand(0));
         return makeLibCall(lc, rvt, new SDValue[] { op }, false);
     }
@@ -3520,8 +3521,8 @@ public class DAGTypeLegalizer
 
         if (newRHS.getNode() == null)
         {
-            assert newLHS.getValueType().equals(n.getValueType(0)):
-                    "Unexpeted setcc expansion!";
+            Util.assertion(newLHS.getValueType().equals(n.getValueType(0)),                     "Unexpeted setcc expansion!");
+
             return newLHS;
         }
 
@@ -3531,8 +3532,8 @@ public class DAGTypeLegalizer
     }
     private SDValue softenFloatOp_STORE(SDNode n, int opNo)
     {
-        assert n.isUNINDEXEDStore():"Indexed store during type legalization!";
-        assert opNo == 1:"Can only soften the stored value!";
+        Util.assertion(n.isUNINDEXEDStore(), "Indexed store during type legalization!");
+        Util.assertion(opNo == 1, "Can only soften the stored value!");
         StoreSDNode st = (StoreSDNode)n;
         SDValue val = st.getValue();
 
@@ -3555,7 +3556,7 @@ public class DAGTypeLegalizer
 
         boolean isF32 = vt.getSimpleVT().simpleVT == MVT.f32;
         boolean isF64 = vt.getSimpleVT().simpleVT == MVT.f64;
-        assert isF32 || isF64:"Unsupported setcc type!";
+        Util.assertion(isF32 || isF64, "Unsupported setcc type!");
 
         RTLIB libCall = RTLIB.UNKNOWN_LIBCALL, libCall2 = RTLIB.UNKNOWN_LIBCALL;
         switch (cc)
@@ -3612,7 +3613,7 @@ public class DAGTypeLegalizer
                         libCall2 = isF32?RTLIB.OEQ_F32:RTLIB.OEQ_F64;
                         break;
                     default:
-                        assert false:"Don't know how to soften this setcc!";
+                        Util.assertion(false, "Don't know how to soften this setcc!");
                         break;
                 }
                 break;
@@ -3640,24 +3641,24 @@ public class DAGTypeLegalizer
     private SDValue[] getExpandedFloat(SDValue op)
     {
         SDValue[] res = new SDValue[2];
-        assert expandedFloats.containsKey(op);
+        Util.assertion( expandedFloats.containsKey(op));
         Pair<SDValue, SDValue> entry = expandedFloats.get(op);
-        assert entry != null;
+        Util.assertion( entry != null);
         entry.first = remapValue(entry.first);
         entry.second = remapValue(entry.second);
-        assert entry.first.getNode() != null;
+        Util.assertion( entry.first.getNode() != null);
         expandedFloats.put(op, entry);
         return new SDValue[]{entry.first, entry.second};
     }
     private void setExpandedFloat(SDValue op, SDValue lo, SDValue hi)
     {
-        assert lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()))
-                && hi.getValueType().equals(lo.getValueType()):
-                "Invalid type for expanded float!";
+        Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType()))                && hi.getValueType().equals(lo.getValueType()), 
+                "Invalid type for expanded float!");
+
         lo = analyzeNewValue(lo);
         hi = analyzeNewValue(hi);
 
-        assert !expandedFloats.containsKey(op);
+        Util.assertion( !expandedFloats.containsKey(op));
         Pair<SDValue, SDValue> entry = Pair.get(lo, hi);
         expandedFloats.put(op, entry);
     }
@@ -3760,7 +3761,7 @@ public class DAGTypeLegalizer
     private SDValue[] expandFloatRes_ConstantFP(SDNode n)
     {
         EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
-        assert nvt.getSizeInBits() == 64:"Don't know how to expand this float constant!";
+        Util.assertion(nvt.getSizeInBits() == 64, "Don't know how to expand this float constant!");
 
         APInt c = ((ConstantFPSDNode)n).getValueAPF().bitcastToAPInt();
         long[] val = c.getRawData();
@@ -3771,8 +3772,8 @@ public class DAGTypeLegalizer
     }
     private SDValue[] expandFloatRes_FABS(SDNode n)
     {
-        assert n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128:
-                "Only correct for ppcf128!";
+        Util.assertion(n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128,                 "Only correct for ppcf128!");
+
         SDValue[] res = getExpandedFloat(n.getOperand(0));
         SDValue hi = dag.getNode(ISD.FABS, res[1].getValueType(), res[1]);
         SDValue lo = res[0];
@@ -3929,14 +3930,14 @@ public class DAGTypeLegalizer
             return expandRes_NormalLoad(n);
         }
 
-        assert n.isUNINDEXEDLoad():"Indexed load during type legalization!";
+        Util.assertion(n.isUNINDEXEDLoad(), "Indexed load during type legalization!");
         LoadSDNode ld = (LoadSDNode)n;
         SDValue chain = ld.getChain();
         SDValue ptr = ld.getBasePtr();
 
         EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
-        assert nvt.isByteSized():"Expanded type not byte sized!";
-        assert ld.getMemoryVT().bitsLE(nvt):"Float type not round!";
+        Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
+        Util.assertion(ld.getMemoryVT().bitsLE(nvt), "Float type not round!");
 
         SDValue hi = dag.getExtLoad(ld.getExtensionType(), nvt, chain, ptr,
                 ld.getSrcValue(), ld.getSrcValueOffset(), ld.getMemoryVT(),
@@ -3948,8 +3949,8 @@ public class DAGTypeLegalizer
     }
     private SDValue[] expandFloatRes_XINT_TO_FP(SDNode n)
     {
-        assert n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128:
-                "Unsupported UINT_TO_FP or SINT_TO_FP?";
+        Util.assertion(n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128,                 "Unsupported UINT_TO_FP or SINT_TO_FP?");
+
         EVT vt = n.getValueType(0);
         EVT nvt = tli.getTypeToTransformTo(vt);
         SDValue src = n.getOperand(0);
@@ -3978,7 +3979,7 @@ public class DAGTypeLegalizer
                 src = dag.getNode(ISD.SIGN_EXTEND, new EVT(MVT.i128), src);
                 lc = RTLIB.SINTTOFP_I128_PPCF128;
             }
-            assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported SINT_TO_FP or UINT_TO_FP?";
+            Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported SINT_TO_FP or UINT_TO_FP?");
             hi = makeLibCall(lc, vt, new SDValue[] { src }, true);
             SDValue[] t = getPairElements(hi);
             lo = t[0];
@@ -4008,7 +4009,7 @@ public class DAGTypeLegalizer
                 parts = twoE128;
                 break;
             default:
-                assert false:"Unsupported SINT_TO_FP or UINT_TO_FP!";
+                Util.assertion(false, "Unsupported SINT_TO_FP or UINT_TO_FP!");
                 break;
         }
         lo = dag.getNode(ISD.FADD, vt, hi, dag.getConstantFP(
@@ -4073,8 +4074,8 @@ public class DAGTypeLegalizer
 
         if(res.getNode().equals(n))
             return true;
-        assert res.getValueType().equals(n.getValueType(0)) &&
-                n.getNumValues() == 1:"Invalid operand expansion!";
+        Util.assertion(res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1, "Invalid operand expansion!");
+
         replaceValueWith(new SDValue(n, 0), res);
         return false;
     }
@@ -4098,8 +4099,8 @@ public class DAGTypeLegalizer
     }
     private SDValue expandFloatOp_FP_ROUND(SDNode n)
     {
-        assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
-                "Just applied for ppcf128!";
+        Util.assertion(n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128,                 "Just applied for ppcf128!");
+
         SDValue[] t = getExpandedFloat(n.getOperand(0));
         return dag.getNode(ISD.FP_ROUND, n.getValueType(0), t[1], n.getOperand(1));
     }
@@ -4108,8 +4109,8 @@ public class DAGTypeLegalizer
         EVT rvt = n.getValueType(0);
         if (rvt.getSimpleVT().simpleVT == MVT.i32)
         {
-            assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
-                    "Only applied for ppcf128!";
+            Util.assertion(n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128,                     "Only applied for ppcf128!");
+
             SDValue res = dag.getNode(ISD.FP_ROUND_INREG, new EVT(MVT.ppcf128),
                     n.getOperand(0), dag.getValueType(new EVT(MVT.f64)));
             res = dag.getNode(ISD.FP_ROUND, new EVT(MVT.f64), res,
@@ -4118,7 +4119,7 @@ public class DAGTypeLegalizer
         }
 
         RTLIB lc = tli.getFPTOSINT(n.getOperand(0).getValueType(), rvt);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_SINT!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported FP_TO_SINT!");
         return makeLibCall(lc, rvt, new SDValue[] { n.getOperand(0) }, false);
     }
     private SDValue expandFloatOp_FP_TO_UINT(SDNode n)
@@ -4126,8 +4127,8 @@ public class DAGTypeLegalizer
         EVT rvt = n.getValueType(0);
         if (rvt.getSimpleVT().simpleVT == MVT.i32)
         {
-            assert n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128:
-                    "Only applied for ppcf128!";
+            Util.assertion(n.getOperand(0).getValueType().getSimpleVT().simpleVT == MVT.ppcf128,                     "Only applied for ppcf128!");
+
             long[] twoE31 = {0x41e0000000000000L, 0};
             APFloat apf = new APFloat(new APInt(128, twoE31));
             SDValue temp = dag.getConstantFP(apf, new EVT(MVT.ppcf128),false);
@@ -4143,7 +4144,7 @@ public class DAGTypeLegalizer
         }
 
         RTLIB lc = tli.getFPTOUINT(n.getOperand(0).getValueType(), rvt);
-        assert lc != RTLIB.UNKNOWN_LIBCALL:"Unsupported FP_TO_UINT!";
+        Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL, "Unsupported FP_TO_UINT!");
         return makeLibCall(lc, rvt, new SDValue[] { n.getOperand(0) }, false);
     }
     private SDValue expandFloatOp_SELECT_CC(SDNode n)
@@ -4175,8 +4176,8 @@ public class DAGTypeLegalizer
 
         if (newRHS.getNode() == null)
         {
-            assert newLHS.getValueType().equals(n.getValueType(0)):
-                    "Unexpected setcc expansion!";
+            Util.assertion(newLHS.getValueType().equals(n.getValueType(0)),                     "Unexpected setcc expansion!");
+
             return newLHS;
         }
 
@@ -4188,14 +4189,14 @@ public class DAGTypeLegalizer
         if (n.isNormalStore())
             return expandOp_NormalStore(n, opNo);
 
-        assert n.isUNINDEXEDStore():"Indexed store during type legalization!";
-        assert opNo == 1:"Can only expand the stored value so far!";
+        Util.assertion(n.isUNINDEXEDStore(), "Indexed store during type legalization!");
+        Util.assertion(opNo == 1, "Can only expand the stored value so far!");
         SDValue chain = n.getChain();
         SDValue ptr = n.getBasePtr();
 
         EVT nvt = tli.getTypeToTransformTo(n.getValue().getValueType());
-        assert nvt.isByteSized():"Expanded type not byte sized!";
-        assert n.getMemoryVT().bitsLE(nvt):"Float type not round!";
+        Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
+        Util.assertion(n.getMemoryVT().bitsLE(nvt), "Float type not round!");
 
         SDValue[] t = getExpandedOp(n.getValue());
         return dag.getTruncStore(chain, t[1], ptr,
@@ -4212,7 +4213,7 @@ public class DAGTypeLegalizer
         t2 = getExpandedFloat(newRHS);
         SDValue lhsLO = t1[0], lhsHI = t1[1], rhsLO = t2[0], rhsHI = t2[1];
         EVT vt = newLHS.getValueType();
-        assert vt.getSimpleVT().simpleVT == MVT.ppcf128:"Unsupported setcc type!";
+        Util.assertion(vt.getSimpleVT().simpleVT == MVT.ppcf128, "Unsupported setcc type!");
 
         SDValue temp1 = dag.getSetCC(new EVT(tli.getSetCCResultType(lhsHI.getValueType())),
                 lhsHI, rhsHI, SETOEQ);
@@ -4234,17 +4235,17 @@ public class DAGTypeLegalizer
     {
         SDValue scalarizedOp = scalarizedVectors.get(op);
         scalarizedOp = remapValue(scalarizedOp);
-        assert scalarizedOp.getNode() != null;
+        Util.assertion( scalarizedOp.getNode() != null);
         scalarizedVectors.put(op, scalarizedOp);
         return scalarizedOp;
     }
 
     private void setScalarizedVector(SDValue op, SDValue result)
     {
-        assert result.getValueType().equals(op.getValueType().getVectorElementType()):
-                "Invalid type for scalarized vector!";
+        Util.assertion(result.getValueType().equals(op.getValueType().getVectorElementType()),                 "Invalid type for scalarized vector!");
+
         result = analyzeNewValue(result);
-        assert !scalarizedVectors.containsKey(op);
+        Util.assertion( !scalarizedVectors.containsKey(op));
         scalarizedVectors.put(op, result);
     }
     private void scalarizeVectorResult(SDNode n, int resNo)
@@ -4394,7 +4395,7 @@ public class DAGTypeLegalizer
     }
     private SDValue scalarizeVecRes_LOAD(LoadSDNode n)
     {
-        assert n.isUnindexed():"Indexed vector load?";
+        Util.assertion(n.isUnindexed(), "Indexed vector load?");
         SDValue result = dag.getLoad(MemIndexedMode.UNINDEXED,
                 n.getExtensionType(), n.getValueType(0).getVectorElementType(),
                 n.getChain(), n.getBasePtr(), dag.getUNDEF(n.getBasePtr().getValueType()),
@@ -4499,8 +4500,8 @@ public class DAGTypeLegalizer
         if (res.getNode().equals(n))
             return true;
 
-        assert res.getValueType().equals(n.getValueType(0)) &&
-                n.getNumValues() == 1;
+        Util.assertion( res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1);
+
         replaceValueWith(new SDValue(n, 0), res);
         return false;
     }
@@ -4525,8 +4526,8 @@ public class DAGTypeLegalizer
     }
     private SDValue scalarizeVecOp_STORE(StoreSDNode n, int opNo)
     {
-        assert n.isUnindexed():"Indexed store of one element vector?";
-        assert opNo == 1;
+        Util.assertion(n.isUnindexed(), "Indexed store of one element vector?");
+        Util.assertion( opNo == 1);
         if (n.isTruncatingStore())
             return dag.getTruncStore(n.getChain(),
                     getScalarizedVector(n.getOperand(1)),
@@ -4544,23 +4545,23 @@ public class DAGTypeLegalizer
         Pair<SDValue, SDValue> entry = splitVectors.get(op);
         entry.first = remapValue(entry.first);
         entry.second = remapValue(entry.second);
-        assert entry.first.getNode() != null;
+        Util.assertion( entry.first.getNode() != null);
         return new SDValue[]{entry.first, entry.second};
     }
 
     private void setSplitVector(SDValue op, SDValue lo, SDValue hi)
     {
-        assert lo.getValueType().getVectorElementType().
-                equals(op.getValueType().getVectorElementType()) &&
+        Util.assertion(lo.getValueType().getVectorElementType().                equals(op.getValueType().getVectorElementType()) &&
                 2*lo.getValueType().getVectorNumElements() ==
                         op.getValueType().getVectorNumElements() &&
-                hi.getValueType().equals(lo.getValueType()):
-                "Invalid type for split vector!";
+                hi.getValueType().equals(lo.getValueType()), 
+                "Invalid type for split vector!");
+
 
         lo = analyzeNewValue(lo);
         hi = analyzeNewValue(hi);
 
-        assert !splitVectors.containsKey(op);
+        Util.assertion( !splitVectors.containsKey(op));
         Pair<SDValue, SDValue> entry = Pair.get(lo, hi);
         splitVectors.put(op, entry);
     }
@@ -4737,7 +4738,7 @@ public class DAGTypeLegalizer
         switch (getTypeAction(inVT))
         {
             default:
-                assert false:"Unknown type action!";
+                Util.assertion(false, "Unknown type action!");
             case Legal:
             case PromotedInteger:
             case SoftenFloat:
@@ -4799,7 +4800,7 @@ public class DAGTypeLegalizer
         EVT loVT = vts[0], hiVT = vts[1];
         int loNumElts = loVT.getVectorNumElements();
         SDValue[] loOps = new SDValue[loNumElts];
-        assert n.getNumOperands() >= loNumElts;
+        Util.assertion( n.getNumOperands() >= loNumElts);
         int i = 0;
         for (; i < loNumElts; i++)
             loOps[i] = n.getOperand(i);
@@ -4815,7 +4816,7 @@ public class DAGTypeLegalizer
     }
     private SDValue[] splitVecRes_CONCAT_VECTORS(SDNode n)
     {
-        assert (n.getNumOperands() & 1) == 0;
+        Util.assertion( (n.getNumOperands() & 1) == 0);
         int numSubvectors = n.getNumOperands()/2;
         SDValue lo, hi;
         if (numSubvectors == 1)
@@ -4828,7 +4829,7 @@ public class DAGTypeLegalizer
         EVT[] vts = getSplitDestVTs(n.getValueType(0));
         EVT loVT = vts[0], hiVT = vts[1];
         SDValue[] loOps = new SDValue[numSubvectors];
-        assert n.getNumOperands() >= numSubvectors;
+        Util.assertion( n.getNumOperands() >= numSubvectors);
         int i = 0;
         for (; i < numSubvectors; i++)
             loOps[i] = n.getOperand(i);
@@ -4962,7 +4963,7 @@ public class DAGTypeLegalizer
     }
     private SDValue[] splitVecRes_LOAD(LoadSDNode n)
     {
-        assert n.isUNINDEXEDLoad():"Indexed load during type legalization!";
+        Util.assertion(n.isUNINDEXEDLoad(), "Indexed load during type legalization!");
         EVT[] vts = getSplitDestVTs(n.getValueType(0));
 
         LoadExtType extType = n.getExtensionType();
@@ -5169,8 +5170,8 @@ public class DAGTypeLegalizer
         if (res.getNode().equals(n))
             return true;
         
-        assert res.getValueType().equals(n.getValueType(0)) && 
-                n.getNumValues() == 1:"Invalid operand expansion!";
+        Util.assertion(res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1, "Invalid operand expansion!");
+
         replaceValueWith(new SDValue(n, 0), res);
         return false;
     }
@@ -5213,7 +5214,7 @@ public class DAGTypeLegalizer
 
         if (idxVal < loElts)
         {
-            assert idxVal + subVT.getVectorNumElements() <= loElts;
+            Util.assertion( idxVal + subVT.getVectorNumElements() <= loElts);
             return dag.getNode(ISD.EXTRACT_SUBVECTOR, subVT, lo, idx);
         }
         else
@@ -5232,7 +5233,7 @@ public class DAGTypeLegalizer
         if (idx.getNode() instanceof ConstantSDNode)
         {
             long idxVal = ((ConstantSDNode)idx.getNode()).getZExtValue();
-            assert idxVal < vecVT.getVectorNumElements();
+            Util.assertion( idxVal < vecVT.getVectorNumElements());
 
             SDValue[] t = getSplitVector(vec);
             SDValue lo = t[0], hi = t[1];
@@ -5260,8 +5261,8 @@ public class DAGTypeLegalizer
     }
     private SDValue splitVecOp_STORE(StoreSDNode n, int opNo)
     {
-        assert n.isUnindexed():"Indexed store of vector?";
-        assert opNo == 1;
+        Util.assertion(n.isUnindexed(), "Indexed store of vector?");
+        Util.assertion( opNo == 1);
         boolean isTruncating = n.isTruncatingStore();
         SDValue chain = n.getChain();
         SDValue ptr = n.getBasePtr();
@@ -5298,16 +5299,16 @@ public class DAGTypeLegalizer
     {
         SDValue widenedOp = widenedVectors.get(op);
         widenedOp = remapValue(widenedOp);
-        assert widenedOp.getNode() != null;
+        Util.assertion( widenedOp.getNode() != null);
         widenedVectors.put(op, widenedOp);
         return widenedOp;
     }
     private void setWidenedVector(SDValue op, SDValue result)
     {
-        assert result.getValueType().equals(tli.getTypeToTransformTo(
-                op.getValueType())):"Invalid type for widened vector!";
+        Util.assertion(result.getValueType().equals(tli.getTypeToTransformTo(                op.getValueType())), "Invalid type for widened vector!");
+
         result = analyzeNewValue(result);
-        assert !widenedVectors.containsKey(op);
+        Util.assertion( !widenedVectors.containsKey(op));
         widenedVectors.put(op, result);
     }
 
@@ -5425,7 +5426,7 @@ public class DAGTypeLegalizer
         switch (getTypeAction(inVT))
         {
             default:
-                assert false:"Unknown type action!";
+                Util.assertion(false, "Unknown type action!");
                 break;
             case Legal:
                 break;
@@ -5707,7 +5708,7 @@ public class DAGTypeLegalizer
         LoadSDNode ld = (LoadSDNode)n;
         EVT widenVT = tli.getTypeToTransformTo(ld.getValueType(0));
         EVT ldVT = ld.getMemoryVT();
-        assert ldVT.isVector() && widenVT.isVector();
+        Util.assertion( ldVT.isVector() && widenVT.isVector());
 
         SDValue chain = ld.getChain();
         SDValue basePtr = ld.getBasePtr();
@@ -5749,7 +5750,7 @@ public class DAGTypeLegalizer
         }
         else
         {
-            assert ldVT.getVectorElementType().equals(widenVT.getVectorElementType());
+            Util.assertion( ldVT.getVectorElementType().equals(widenVT.getVectorElementType()));
             int ldWidth = ldVT.getSizeInBits();
             result = genWidenVectorLoads(ldChain, chain, basePtr, sv, svOffset,
                     alignment, isVolatile, ldWidth, widenVT);
@@ -5792,8 +5793,8 @@ public class DAGTypeLegalizer
 
         SDValue inOp1 = getWidenedVector(n.getOperand(1));
         SDValue inOp2 = getWidenedVector(n.getOperand(2));
-        assert inOp1.getValueType().equals(widenVT)
-                && inOp2.getValueType().equals(widenVT);
+        Util.assertion( inOp1.getValueType().equals(widenVT)                && inOp2.getValueType().equals(widenVT));
+
         return dag.getNode(ISD.SELECT, widenVT, cond, inOp1, inOp2);
     }
     private SDValue widenVecRes_SELECT_CC(SDNode n)
@@ -5839,13 +5840,13 @@ public class DAGTypeLegalizer
         int widenNumElts = widenVT.getVectorNumElements();
         SDValue inOp1 = n.getOperand(0);
         EVT inVT = inOp1.getValueType();
-        assert inVT.isVector():"Can't widen not vector type!";
+        Util.assertion(inVT.isVector(), "Can't widen not vector type!");
         EVT widenInVT = EVT.getVectorVT(inVT.getVectorElementType(),widenNumElts);
         inOp1 = getWidenedVector(inOp1);
         SDValue inOp2 = getWidenedVector(n.getOperand(1));
 
-        assert inOp1.getValueType().equals(widenInVT) &&
-                inOp2.getValueType().equals(widenInVT);
+        Util.assertion( inOp1.getValueType().equals(widenInVT) &&                inOp2.getValueType().equals(widenInVT));
+
         return dag.getNode(ISD.VSETCC, widenVT, inOp1, inOp2, n.getOperand(2));
     }
 
@@ -5981,8 +5982,8 @@ public class DAGTypeLegalizer
         if (res.getNode().equals(n))
             return true;
 
-        assert res.getValueType().equals(n.getValueType(0)) &&
-                n.getNumValues() == 1:"Invalid operand expansion!";
+        Util.assertion(res.getValueType().equals(n.getValueType(0)) &&                n.getNumValues() == 1, "Invalid operand expansion!");
+
         replaceValueWith(new SDValue(n, 0), res);
         return false;
     }
@@ -6052,8 +6053,8 @@ public class DAGTypeLegalizer
         EVT stVT = st.getMemoryVT();
         EVT valVT = valOp.getValueType();
 
-        assert stVT.isVector() && valOp.getValueType().isVector();
-        assert stVT.bitsLT(valOp.getValueType());
+        Util.assertion( stVT.isVector() && valOp.getValueType().isVector());
+        Util.assertion( stVT.bitsLT(valOp.getValueType()));
 
         ArrayList<SDValue> stChain = new ArrayList<>();
         if (st.isTruncatingStore())
@@ -6080,7 +6081,7 @@ public class DAGTypeLegalizer
         }
         else
         {
-            assert stVT.getVectorElementType().equals(valVT.getVectorElementType());
+            Util.assertion( stVT.getVectorElementType().equals(valVT.getVectorElementType()));
             genWidenVectorStores(stChain, chain, basePtr, sv, svOffset,
                     alignmen, isVolatile, valOp, stVT.getSizeInBits());
         }
@@ -6120,7 +6121,7 @@ public class DAGTypeLegalizer
         {
             do
             {
-                assert eltWidth > 0;
+                Util.assertion( eltWidth > 0);
                 eltWidth = 1 << Util.log2(eltWidth-1);
                 newEltVT = EVT.getIntegerVT(eltWidth);
                 int numElts = vecVT.getSizeInBits()/eltWidth;
@@ -6132,7 +6133,7 @@ public class DAGTypeLegalizer
         {
             do
             {
-                assert eltWidth > 0;
+                Util.assertion( eltWidth > 0);
                 eltWidth = 1 << Util.log2(eltWidth-1);
                 newEltVT = EVT.getIntegerVT(eltWidth);
                 int numElts = vecVT.getSizeInBits()/eltWidth;
@@ -6288,8 +6289,8 @@ public class DAGTypeLegalizer
     private SDValue modifyToType(SDValue inOp, EVT nvt)
     {
         EVT inVT = inOp.getValueType();
-        assert inVT.getVectorElementType().equals(nvt.getVectorElementType()):
-                "Input and widen element type must match!";
+        Util.assertion(inVT.getVectorElementType().equals(nvt.getVectorElementType()),                 "Input and widen element type must match!");
+
 
         if (inVT.equals(nvt))
             return inOp;
@@ -6350,7 +6351,7 @@ public class DAGTypeLegalizer
         else
         {
             int numElts = inVT.getVectorNumElements();
-            assert (numElts&1) == 0:"Splitting vector, but not in half!";
+            Util.assertion((numElts&1) == 0, "Splitting vector, but not in half!");
             loVT = hiVT = EVT.getVectorVT(inVT.getVectorElementType(), numElts/2);
         }
         return new EVT[]{loVT, hiVT};
@@ -6451,7 +6452,7 @@ public class DAGTypeLegalizer
         switch (getTypeAction(inVT))
         {
             default:
-                assert false:"Unknown type action!";
+                Util.assertion(false, "Unknown type action!");
             case Legal:
             case PromotedInteger:
                 break;
@@ -6487,7 +6488,7 @@ public class DAGTypeLegalizer
                 hi = dag.getNode(ISD.BIT_CONVERT, nOutVT, hi);
                 return new SDValue[]{lo, hi};
             case WidenVector:
-                assert (inVT.getVectorNumElements() & 1) == 0:"Unsupported BIT_CONVERT!";
+                Util.assertion((inVT.getVectorNumElements() & 1) == 0, "Unsupported BIT_CONVERT!");
                 inOp = getWidenedVector(inOp);
                 EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
                         inVT.getVectorNumElements()/2);
@@ -6526,7 +6527,7 @@ public class DAGTypeLegalizer
             }
         }
 
-        assert nOutVT.isByteSized():"Expanded type not byte sized!";
+        Util.assertion(nOutVT.isByteSized(), "Expanded type not byte sized!");
 
         int alignment = tli.getTargetData().getPrefTypeAlignment(nOutVT.getTypeForEVT());
         SDValue stackPtr = dag.createStackTemporary(inVT, alignment);
@@ -6557,7 +6558,7 @@ public class DAGTypeLegalizer
         SDValue[] t = getExpandedOp(n.getOperand(0));
         SDValue part = ((ConstantSDNode)n.getOperand(1).getNode()).getZExtValue()
                 != 0 ? t[1] : t[0];
-        assert part.getValueType().equals(n.getValueType(0));
+        Util.assertion( part.getValueType().equals(n.getValueType(0)));
         return getPairElements(part);
     }
     private SDValue[] expandRes_EXTRACT_VECTOR_ELT(SDNode n)
@@ -6588,7 +6589,7 @@ public class DAGTypeLegalizer
     }
     private SDValue[] expandRes_NormalLoad(SDNode n)
     {
-        assert n.isNormalLoad():"This method only for normal load!";
+        Util.assertion(n.isNormalLoad(), "This method only for normal load!");
         LoadSDNode ld = (LoadSDNode)n;
         EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
         SDValue chain = ld.getChain();
@@ -6597,7 +6598,7 @@ public class DAGTypeLegalizer
         int alignment = ld.getAlignment();
         boolean isVolatile = ld.isVolatile();
 
-        assert nvt.isByteSized():"Expanded type not byte sized!";
+        Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
         SDValue lo = dag.getLoad(nvt, chain, ptr, ld.getSrcValue(), svOffset,
                 isVolatile, alignment);
         int incrementSize = nvt.getSizeInBits()/8;
@@ -6667,8 +6668,8 @@ public class DAGTypeLegalizer
         EVT oldVT = n.getOperand(0).getValueType();
         EVT newVT = tli.getTypeToTransformTo(oldVT);
 
-        assert oldVT.equals(vecVT.getVectorElementType()):
-                "BUILD_VECTOR operand type doesn't match vector element tyep!";
+        Util.assertion(oldVT.equals(vecVT.getVectorElementType()),                 "BUILD_VECTOR operand type doesn't match vector element tyep!");
+
         SDValue[] elts = new SDValue[2*numElts];
         for (int i = 0; i< numElts;i++)
         {
@@ -6700,7 +6701,7 @@ public class DAGTypeLegalizer
         EVT oldVT = val.getValueType();
         EVT newVT = tli.getTypeToTransformTo(oldVT);
 
-        assert oldVT.equals(vecVT.getVectorElementType());
+        Util.assertion( oldVT.equals(vecVT.getVectorElementType()));
 
         EVT newVecVT = EVT.getVectorVT(newVT, numElts*2);
         SDValue newVec = dag.getNode(ISD.BIT_CONVERT, newVecVT, n.getOperand(0));
@@ -6722,7 +6723,7 @@ public class DAGTypeLegalizer
     private SDValue expandOp_SCALAR_TO_VECTOR(SDNode n)
     {
         EVT vt = n.getValueType(0);
-        assert vt.getVectorElementType().equals(n.getOperand(0).getValueType());
+        Util.assertion( vt.getVectorElementType().equals(n.getOperand(0).getValueType()));
 
         int numElts = vt.getVectorNumElements();
         SDValue[] ops = new SDValue[numElts];
@@ -6734,8 +6735,8 @@ public class DAGTypeLegalizer
     }
     private SDValue expandOp_NormalStore(StoreSDNode n, int opNo)
     {
-        assert n.isNormalStore():"This method only can be for normal store!";
-        assert opNo == 1;
+        Util.assertion(n.isNormalStore(), "This method only can be for normal store!");
+        Util.assertion( opNo == 1);
         StoreSDNode st = (StoreSDNode)n;
         EVT nvt = tli.getTypeToTransformTo(st.getValue().getValueType());
         SDValue chain = st.getChain();
@@ -6744,7 +6745,7 @@ public class DAGTypeLegalizer
         int alignment = st.getAlignment();
         boolean isVolatile = st.isVolatile();
 
-        assert nvt.isByteSized():"Expanded type not byte sized!";
+        Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
         int incrementSize = nvt.getSizeInBits()/8;
 
         SDValue[] t = getExpandedOp(st.getValue());
@@ -6759,7 +6760,7 @@ public class DAGTypeLegalizer
                 alignment);
         ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
                 dag.getIntPtrConstant(incrementSize));
-        assert isTypeLegal(ptr.getValueType());
+        Util.assertion( isTypeLegal(ptr.getValueType()));
         hi = dag.getStore(chain, hi, ptr, st.getSrcValue(), svOffset+incrementSize,
                 isVolatile, Util.minAlign(alignment, incrementSize));
         return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);

@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
 import backend.value.UniqueConstantValueImpl.ConstantArrayKey;
@@ -25,13 +26,13 @@ public class ConstantArray extends Constant
 		super(ty,  ValueKind.ConstantArrayVal);
 		reserve(elementVals.size());
 
-		assert elementVals.size() == ty.getNumElements()
-				:"Invalid initializer vector for constant array";
+		Util.assertion(elementVals.size() == ty.getNumElements(), "Invalid initializer vector for constant array");
+
 		for (int i = 0, e = elementVals.size(); i < e; i++)
 		{
 			Constant c = elementVals.get(i);
-			assert c.getType() == ty.getElementType()
-					:"Initializer for array element doesn't match array element type!";
+			Util.assertion(c.getType() == ty.getElementType(), "Initializer for array element doesn't match array element type!");
+
 			setOperand(i, new Use(c, this));
 		}
 	}
@@ -122,7 +123,7 @@ public class ConstantArray extends Constant
 	@Override
 	public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
 	{
-		assert to instanceof Constant :"Can't make Constant refer to non-constant";
+		Util.assertion(to instanceof Constant, "Can't make Constant refer to non-constant");
 
 		Constant toV = (Constant)to;
 
@@ -180,7 +181,7 @@ public class ConstantArray extends Constant
 				return;
 			}
 		}
-		assert !replacement.equals(this):"I didn't contain from!";
+		Util.assertion(!replacement.equals(this), "I didn't contain from!");
 		replaceAllUsesWith(replacement);
 		destroyConstant();
 	}
@@ -198,7 +199,7 @@ public class ConstantArray extends Constant
 
 	public String getAsString()
 	{
-		assert isString():"Not a string";
+		Util.assertion(isString(), "Not a string");
 		StringBuilder sb = new StringBuilder();
 
 		for (int i =0, e = getNumOfOperands(); i != e; i++)

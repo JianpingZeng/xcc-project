@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.AsmWriterFlavorTy;
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
@@ -231,7 +232,7 @@ public class TargetAsmInfo
     /// data of the specified size to the specified numeric address space.
     protected String getDataASDirective(int Size, int AS)
     {
-        assert AS != 0 : "Don't know the directives for default addr space";
+        Util.assertion(AS != 0,  "Don't know the directives for default addr space");
         return null;
     }
 
@@ -892,7 +893,7 @@ public class TargetAsmInfo
                     flags |= SectionFlags.Small;
                     break;
                 default:
-                    assert false: "Unexpected section kind!";
+                    Util.assertion(false,  "Unexpected section kind!");
             }
         }
 
@@ -991,7 +992,7 @@ public class TargetAsmInfo
             return SectionKind.Text;
 
         GlobalVariable gvar = gv instanceof GlobalVariable ?(GlobalVariable)gv:null;
-        assert gvar != null;
+        Util.assertion( gvar != null);
         boolean isThreadLocal = gvar.isThreadLocal();
 
         if (isSuitableForBSS(gvar))

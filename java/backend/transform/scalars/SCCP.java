@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
@@ -112,7 +113,7 @@ public class SCCP implements FunctionPass
                     if (ls.isConstant())
                     {
                         Constant constVal = ls.getConstVal();
-                        assert constVal != null:"Constant lattice must have non-null constant value";
+                        Util.assertion(constVal != null, "Constant lattice must have non-null constant value");
                         inst.replaceAllUsesWith(constVal);
                         NumInstrToDels.inc();
                         inst.eraseFromParent();

@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
@@ -36,7 +37,7 @@ public interface Pass extends Printable
 		PassInfo pi = PassRegistrar.getPassInfo(klass);
 		if (pi == null) return null;
         AnalysisResolver resolver = getAnalysisResolver();
-        assert resolver != null:"Pass not resident in PassManger object!";
+        Util.assertion(resolver != null, "Pass not resident in PassManger object!");
 		return resolver.getAnalysisIfAvailable(pi, true);
 	}
 

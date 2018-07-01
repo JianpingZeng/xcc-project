@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import tools.Util;
 import backend.ir.HIRBuilder;
 import backend.support.BasicBlockUtil;
 import backend.type.PointerType;
@@ -62,7 +63,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 	 */
 	public Value getOrCreateCanonicalInductionVariable(Loop loop, Type ty)
 	{
-		assert ty.isIntegral():"Can only insert integer induction variable";
+		Util.assertion(ty.isIntegral(), "Can only insert integer induction variable");
 		SCEV s = SCEVAddRecExpr.get(se.getIntegerSCEV(0, ty),
 				se.getIntegerSCEV(1, ty), loop);
 		BasicBlock saveInsertBB = builder.getInsertBlock();
@@ -93,7 +94,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 		Value val = expand(s);
 		if (ty != null)
 		{
-			assert se.getTypeSizeBits(ty) == se.getTypeSizeBits(s.getType());
+			Util.assertion( se.getTypeSizeBits(ty) == se.getTypeSizeBits(s.getType()));
 			val = insertNoopCastOfTo(val, ty);
 		}
 		return val;
@@ -144,12 +145,11 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 	private Value insertNoopCastOfTo(Value val, Type ty)
 	{
 		Operator castOp = CastInst.getCastOpcode(val, false, ty, false);
-		assert (castOp == Operator.BitCast
-				|| castOp == Operator.PtrToInt
-				|| castOp == Operator.IntToPtr)
-				:"insertNoopCastOfTo cannot performs non-noop cast!";
-		assert se.getTypeSizeBits(val.getType()) == se.getTypeSizeBits(ty)
-				:"insertNoopCastOfTo cannot performs inequal type getNumOfSubLoop!";
+		Util.assertion((castOp == Operator.BitCast				|| castOp == Operator.PtrToInt
+				|| castOp == Operator.IntToPtr), "insertNoopCastOfTo cannot performs non-noop cast!");
+
+		Util.assertion(se.getTypeSizeBits(val.getType()) == se.getTypeSizeBits(ty), "insertNoopCastOfTo cannot performs inequal type getNumOfSubLoop!");
+
 
 		if (castOp == Operator.BitCast && val.getType() == ty)
 			return val;
@@ -400,7 +400,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 		Type ty = s.getType();
 		Loop loop = s.getLoop();
 
-		assert ty.isIntegral():"Cannot expand fp recurrence expression!";
+		Util.assertion(ty.isIntegral(), "Cannot expand fp recurrence expression!");
 
 		PhiNode canonicalIV = null;
 		PhiNode pn = loop.getCanonicalInductionVariable();
@@ -429,9 +429,9 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 			// If there's a canonical IV, just use it.
 			if (canonicalIV != null)
 			{
-				assert ty == se.getEffectiveSCEVType(canonicalIV.getType())
-						:"IVs with types different from the canonical IV"
-						+ "should already have been handled!";
+				Util.assertion(ty == se.getEffectiveSCEVType(canonicalIV.getType()), "IVs with types different from the canonical IV"
+						+ "should already have been handled!");
+
 				return canonicalIV;
 			}
 
@@ -446,10 +446,10 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 
 			int numPreds = header.getNumPredecessors();
 			int predItr = 0;
-			assert numPreds > 0:"Loop with zero preds";
+			Util.assertion(numPreds > 0, "Loop with zero preds");
 			if (!loop.contains(header.predAt(predItr))) predItr++;
-			assert predItr!=0 && loop.contains(header.predAt(predItr))
-					:"No backedge in loop!";
+			Util.assertion(predItr!=0 && loop.contains(header.predAt(predItr)), "No backedge in loop!");
+
 
 			Constant one = ConstantInt.get(ty, 1);
 			Instruction add = Instruction.BinaryOps

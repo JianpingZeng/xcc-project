@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.MemoryBuffer;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;
@@ -96,18 +97,17 @@ public final class TGLexer
 
     public String getCurStrVal()
     {
-        assert curCode == TokKind.Id ||
-                curCode == TokKind.StrVal ||
+        Util.assertion(curCode == TokKind.Id ||                curCode == TokKind.StrVal ||
                 curCode == TokKind.VarName ||
-                curCode == TokKind.CodeFragment
-                : "This is token does not have a string value!";
+                curCode == TokKind.CodeFragment,  "This is token does not have a string value!");
+
         return curStrVal;
     }
 
     long getCurIntVal()
     {
-        assert curCode == TokKind.IntVal
-                : "This is token does not have a int value!";
+        Util.assertion(curCode == TokKind.IntVal,  "This is token does not have a int value!");
+
         return curIntVal;
     }
 
@@ -398,7 +398,7 @@ public final class TGLexer
         MemoryBuffer mb2 = curBuf.clone();
         mb2.setBufferStart(curPtr);
         if (!curBuf.isRegular() && Util.isAbsolutePath(filename))
-            assert false : "Can not include relative file from non regular file";
+            Util.assertion(false,  "Can not include relative file from non regular file");
 
         if (!Util.isAbsolutePath(filename))
         {

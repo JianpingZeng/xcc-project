@@ -16,6 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
+
 /**
  * Represent assignment of one arg/retval to a location.
  * @author Xlous.zeng
@@ -81,13 +83,13 @@ public class CCValAssign
 
     public int getLocReg()
     {
-        assert isRegLoc();
+        Util.assertion( isRegLoc());
         return loc;
     }
 
     public int getLocMemOffset()
     {
-        assert isMem;
+        Util.assertion( isMem);
         return loc;
     }
 

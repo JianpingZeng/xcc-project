@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
@@ -99,10 +100,10 @@ public abstract class Constant extends User
      */
     public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
     {
-        assert getNumOfOperands() == 0:
-                "replaceUsesOfWithOnConstant must be "
-                + "implemented for all constants that have operands!";
-        assert false:"Constants that do not have operands cannot be using 'From'!";
+        Util.assertion(getNumOfOperands() == 0,                 "replaceUsesOfWithOnConstant must be "
+                + "implemented for all constants that have operands!");
+
+        Util.assertion(false, "Constants that do not have operands cannot be using 'From'!");
     }
 
     public void destroyConstant() {}
@@ -129,7 +130,7 @@ public abstract class Constant extends User
 
     public boolean canTrap()
     {
-        assert getType().isFirstClassType();
+        Util.assertion( getType().isFirstClassType());
 
         if (!(this instanceof ConstantExpr)) return false;
 

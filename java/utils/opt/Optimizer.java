@@ -16,6 +16,7 @@ package utils.opt;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.*;
 import backend.passManaging.PassManager;
 import backend.passManaging.PassRegistrationListener;
@@ -210,7 +211,7 @@ public final class Optimizer
 
     private static String computeOuputFilename(String inputname)
     {
-        assert inputname!= null && !inputname.isEmpty();
+        Util.assertion( inputname!= null && !inputname.isEmpty());
         int dotPos = inputname.lastIndexOf('.');
         if (dotPos < 0)
             dotPos = inputname.length();

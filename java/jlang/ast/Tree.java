@@ -1,5 +1,6 @@
 package jlang.ast;
 
+import tools.Util;
 import backend.value.BasicBlock;
 import jlang.basic.SourceManager;
 import jlang.clex.IdentifierInfo;
@@ -235,7 +236,7 @@ public abstract class Tree implements StmtClass
 		@Override
 		public Tree getChildren(int index)
 		{
-			assert index >= 0 && index < decls.size();
+			Util.assertion( index >= 0 && index < decls.size());
 			return decls.get(index);
 		}
 	}
@@ -323,7 +324,7 @@ public abstract class Tree implements StmtClass
 
         public Decl getSingleDecl()
         {
-            assert isSingleDecl();
+            Util.assertion( isSingleDecl());
             return decls.get(0);
         }
 
@@ -449,7 +450,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return stats[index];
         }
     }
@@ -589,7 +590,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -689,7 +690,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -771,7 +772,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >=0 && index < getNumChildren();
+            Util.assertion( index >=0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -844,7 +845,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return body;
         }
     }
@@ -955,7 +956,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >=0 && index < getNumChildren();
+            Util.assertion( index >=0 && index < getNumChildren());
             return subStmts[index];
         }
     }
@@ -1041,8 +1042,8 @@ public abstract class Tree implements StmtClass
 
         public void addSwitchCase(SwitchCase sc)
         {
-            assert sc.getNextSwitchCase() == null
-                    : "case/default already added to a switch";
+            Util.assertion(sc.getNextSwitchCase() == null,  "case/default already added to a switch");
+
             sc.setNextSwitchCase(firstCase);
             firstCase = sc;
         }
@@ -1069,7 +1070,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >=0 && index < getNumChildren();
+            Util.assertion( index >=0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -1194,7 +1195,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -1261,7 +1262,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subStmt;
         }
     }
@@ -1318,7 +1319,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return null;
         }
     }
@@ -1430,7 +1431,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return null;
         }
     }
@@ -1505,7 +1506,7 @@ public abstract class Tree implements StmtClass
          */
         public Tree getChildren(int index)
         {
-            assert index >=0 && index < getNumChildren();
+            Util.assertion( index >=0 && index < getNumChildren());
             return retValue;
         }
     }
@@ -1561,7 +1562,7 @@ public abstract class Tree implements StmtClass
 
         public void setType(QualType type)
         {
-            assert type != null;
+            Util.assertion( type != null);
             this.type = type;
         }
 
@@ -1807,8 +1808,8 @@ public abstract class Tree implements StmtClass
 	    {
 	        EvalResult res = new EvalResult();
 	        boolean result = evaluate(res, null);
-            assert result:"Cound not evaluate expression";
-            assert res.val.isInt():"Expression did not be evaluated into integer.";
+            Util.assertion(result, "Cound not evaluate expression");
+            Util.assertion(res.val.isInt(), "Expression did not be evaluated into integer.");
 		    return res.val.getInt();
 	    }
 
@@ -1847,9 +1848,9 @@ public abstract class Tree implements StmtClass
 		    }
 		    EvalResult evalResult = new EvalResult();
 		    if (!evaluate(evalResult, ctx))
-			    assert false:"ICE cannot be evaluated!";
-		    assert !evalResult.hasSideEffects :"ICE with side effect!";
-		    assert evalResult.val.isInt() :"ICE is not integer!";
+			    Util.assertion(false, "ICE cannot be evaluated!");
+		    Util.assertion(!evalResult.hasSideEffects, "ICE with side effect!");
+		    Util.assertion(evalResult.val.isInt(), "ICE is not integer!");
 		    iceResult.set(evalResult.val.getInt());
 		    return true;
 	    }
@@ -2259,8 +2260,8 @@ public abstract class Tree implements StmtClass
 	    {
 		    EvalResult evalResult = new EvalResult();
 		    boolean result = evaluate(evalResult, ctx);
-		    assert result:"Could not evaluate expression";
-		    assert evalResult.val.isInt() :"Expression did not evaluated to integer";
+		    Util.assertion(result, "Could not evaluate expression");
+		    Util.assertion(evalResult.val.isInt(), "Expression did not evaluated to integer");
 		    return evalResult.val.getInt();
 	    }
 
@@ -2301,7 +2302,7 @@ public abstract class Tree implements StmtClass
 
             public boolean isGlobalLValue()
             {
-                assert val.isLValue();
+                Util.assertion( val.isLValue());
                 return ExprEvaluatorBase.isGlobalLValue(val.getLValueBase());
             }
         }
@@ -2578,9 +2579,9 @@ public abstract class Tree implements StmtClass
                 SourceLocation loc)
         {
             super(IntegerLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
-            assert type.isIntegerType():"Illegal type in Integer literal.";
-            assert value.getBitWidth() == ctx.getTypeSize(type)
-                    :"Integer type is not the correct for constant.";
+            Util.assertion(type.isIntegerType(), "Illegal type in Integer literal.");
+            Util.assertion(value.getBitWidth() == ctx.getTypeSize(type), "Integer type is not the correct for constant.");
+
             val = value;
         }
 
@@ -2794,7 +2795,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExpr;
         }
     }
@@ -2818,7 +2819,7 @@ public abstract class Tree implements StmtClass
 
         public Expr getExpr(int idx)
         {
-            assert idx>= 0&& idx< exprs.size();
+            Util.assertion( idx>= 0&& idx< exprs.size());
             return exprs.get(idx);
         }
 
@@ -2868,7 +2869,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return exprs.get(index);
         }
     }
@@ -2892,7 +2893,7 @@ public abstract class Tree implements StmtClass
                 SourceLocation loc)
         {
             super(tag, ty, OK_Ordinary, valueKind, loc);
-            assert castKind != CK_Invalid :"creating cast with invalid cast kind.";
+            Util.assertion(castKind != CK_Invalid, "creating cast with invalid cast kind.");
             this.expr = expr;
             this.castKind = castKind;
         }
@@ -2918,7 +2919,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return expr;
         }
     }
@@ -3141,7 +3142,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -3233,13 +3234,13 @@ public abstract class Tree implements StmtClass
 
         public Expr getArgAt(int idx)
         {
-            assert idx>= 0 && idx< subExprs.length - PREARGS_START:"Arg access out of range!";
+            Util.assertion(idx>= 0 && idx< subExprs.length - PREARGS_START, "Arg access out of range!");
             return (Expr) subExprs[idx + 1];
         }
 
         public void setArgAt(int idx, Expr e)
         {
-            assert idx>= 0 && idx< subExprs.length - 1:"Arg access out of range!";
+            Util.assertion(idx>= 0 && idx< subExprs.length - 1, "Arg access out of range!");
             subExprs[idx + 1] = e;
         }
 
@@ -3321,7 +3322,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
 	}
@@ -3537,7 +3538,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return init;
         }
     }
@@ -3675,7 +3676,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExpr;
         }
 	}
@@ -3757,7 +3758,7 @@ public abstract class Tree implements StmtClass
         @Override
         public int getNumChildren()
         {
-            assert false:"Should not reaching here";
+            Util.assertion(false, "Should not reaching here");
             return 0;
         }
 
@@ -3769,7 +3770,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert false:"Should not reaching here";
+            Util.assertion(false, "Should not reaching here");
             return null;
         }
     }
@@ -3933,7 +3934,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return index == 0 ? lhs : rhs;
         }
 	}
@@ -3963,8 +3964,8 @@ public abstract class Tree implements StmtClass
             computationLHSType = compLHSType;
             computationResultType = compResultType;
 
-            assert isCompoundAssignmentOp():
-                    "Only should be used for subStmt assignments";
+            Util.assertion(isCompoundAssignmentOp(),                     "Only should be used for subStmt assignments");
+
         }
 
         public CompoundAssignExpr()
@@ -4068,7 +4069,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }
@@ -4148,15 +4149,15 @@ public abstract class Tree implements StmtClass
 
         public Expr getInitAt(int index)
         {
-            assert index >= 0 && index < getNumInits()
-                    : "Initializer access out of range!";
+            Util.assertion(index >= 0 && index < getNumInits(),  "Initializer access out of range!");
+
             return initExprs.get(index);
         }
 
         public void setInitAt(int index, Expr init)
         {
-            assert index >= 0 && index < getNumInits()
-                    : "Initializer access out of range!";
+            Util.assertion(index >= 0 && index < getNumInits(),  "Initializer access out of range!");
+
             initExprs.set(index, init);
         }
 
@@ -4291,7 +4292,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return initExprs.get(index);
         }
     }
@@ -4395,13 +4396,13 @@ public abstract class Tree implements StmtClass
 
 		public Expr getArgumentExpr()
 		{
-			assert isArgumentExpr():"calling getArgumentExpr on type!";
+			Util.assertion(isArgumentExpr(), "calling getArgumentExpr on type!");
 			return (Expr)operand;
 		}
 
 		public QualType getArgumentType()
 		{
-			assert isArgumentType():"calling getArgumentType on expr!";
+			Util.assertion(isArgumentType(), "calling getArgumentType on expr!");
 			return (QualType)operand;
 		}
 
@@ -4436,7 +4437,7 @@ public abstract class Tree implements StmtClass
         {
             if (isArgumentType())
             {
-                assert false:"Should not reaching here";
+                Util.assertion(false, "Should not reaching here");
                 return 0;
             }
             return 1;
@@ -4450,10 +4451,10 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             if (isArgumentType())
             {
-                assert false:"Should not reaching here";
+                Util.assertion(false, "Should not reaching here");
                 return null;
             }
             return getArgumentExpr();
@@ -4549,7 +4550,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subStmt;
         }
     }
@@ -4719,7 +4720,7 @@ public abstract class Tree implements StmtClass
 
             public IdentifierInfo getFieldName()
             {
-	            assert isFieldDesignator():"Only valid on a field designator";
+	            Util.assertion(isFieldDesignator(), "Only valid on a field designator");
 
             	Object obj = ((FieldDesignator)desig).nameOrField;
             	if (obj instanceof IdentifierInfo)
@@ -4730,7 +4731,7 @@ public abstract class Tree implements StmtClass
 
             public FieldDecl getField()
             {
-            	assert isFieldDesignator():"Only valid on a field designator";
+            	Util.assertion(isFieldDesignator(), "Only valid on a field designator");
 	            Object obj = ((FieldDesignator)desig).nameOrField;
 	            if (obj instanceof FieldDecl)
 		            return (FieldDecl)obj;
@@ -4740,28 +4741,28 @@ public abstract class Tree implements StmtClass
 
             public void setField(FieldDecl fd)
             {
-	            assert isFieldDesignator():"Only valid on a field designator";
+	            Util.assertion(isFieldDesignator(), "Only valid on a field designator");
 	            FieldDesignator d = ((FieldDesignator)desig);
 	            d.nameOrField = fd;
             }
 
             public SourceLocation getDotLoc()
             {
-	            assert isFieldDesignator():"Only valid on a field designator";
+	            Util.assertion(isFieldDesignator(), "Only valid on a field designator");
 	            FieldDesignator d = ((FieldDesignator)desig);
 	            return SourceLocation.getFromRawEncoding(d.dotLoc);
             }
 
             public SourceLocation getFieldLoc()
             {
-	            assert isFieldDesignator():"Only valid on a field designator";
+	            Util.assertion(isFieldDesignator(), "Only valid on a field designator");
 	            FieldDesignator d = ((FieldDesignator)desig);
 	            return SourceLocation.getFromRawEncoding(d.fieldLoc);
             }
 
 		    public SourceLocation getLBracketLoc()
 		    {
-			    assert isArrayDesignator() || isArrayRangeDesignator();
+			    Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
 			    if (isArrayDesignator())
 			    {
 			    	return SourceLocation.getFromRawEncoding(((ArrayDesignator)desig).lBracketLoc);
@@ -4774,7 +4775,7 @@ public abstract class Tree implements StmtClass
 
 		    public SourceLocation getRBracketLoc()
 		    {
-			    assert isArrayDesignator() || isArrayRangeDesignator();
+			    Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
 			    if (isArrayDesignator())
 			    {
 				    return SourceLocation.getFromRawEncoding(((ArrayDesignator)desig).rBracketLoc);
@@ -4787,13 +4788,13 @@ public abstract class Tree implements StmtClass
 
 		    public SourceLocation getEllipsisLoc()
 		    {
-			    assert isArrayRangeDesignator();
+			    Util.assertion( isArrayRangeDesignator());
 			    return SourceLocation.getFromRawEncoding(((ArrayRangeDesignator)desig).ellipsisLoc);
 		    }
 
 		    public int getFirstExprIndex()
 		    {
-		    	assert isArrayDesignator() || isArrayRangeDesignator();
+		    	Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
 			    if (isArrayDesignator())
 			    {
 				    return ((ArrayDesignator)desig).index;
@@ -4872,8 +4873,8 @@ public abstract class Tree implements StmtClass
             }
 
 		    subExprs[indexIdx++] = init;
-            assert indexIdx == subExprs.length
-                    : "Wrong number of index expressions!";
+            Util.assertion(indexIdx == subExprs.length,  "Wrong number of index expressions!");
+
 	    }
 
 	    @Override
@@ -4902,13 +4903,13 @@ public abstract class Tree implements StmtClass
 
 	    public Expr getSubExpr(int idx)
         {
-            assert idx >= 0 && idx < subExprs.length;
+            Util.assertion( idx >= 0 && idx < subExprs.length);
             return subExprs[idx];
         }
 
         public void setSubExpr(int idx, Expr e)
         {
-            assert idx >= 0 && idx < subExprs.length;
+            Util.assertion( idx >= 0 && idx < subExprs.length);
             subExprs[idx] = e;
         }
 
@@ -4944,13 +4945,13 @@ public abstract class Tree implements StmtClass
 
         public Designator getDesignator(int idx)
         {
-            assert idx >= 0 && idx < designators.length;
+            Util.assertion( idx >= 0 && idx < designators.length);
             return designators[idx];
         }
 
         public void setDesignator(int idx, Designator d)
         {
-            assert idx >= 0 && idx < designators.length;
+            Util.assertion( idx >= 0 && idx < designators.length);
             designators[idx] = d;
         }
 
@@ -4998,7 +4999,7 @@ public abstract class Tree implements StmtClass
         @Override
         public Tree getChildren(int index)
         {
-            assert index >= 0 && index < getNumChildren();
+            Util.assertion( index >= 0 && index < getNumChildren());
             return subExprs[index];
         }
     }

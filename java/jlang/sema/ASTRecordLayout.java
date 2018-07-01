@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.ast.Tree.Expr;
 import jlang.sema.Decl.FieldDecl;
 import jlang.sema.Decl.RecordDecl;
@@ -94,7 +95,7 @@ public final class ASTRecordLayout
 
     public long getFieldOffsetAt(int fieldNo)
     {
-        assert fieldNo>=0 && fieldNo< fieldCount:"Invalid field No!";
+        Util.assertion(fieldNo>=0 && fieldNo< fieldCount, "Invalid field No!");
         return fieldOffsets[fieldNo];
     }
 
@@ -113,7 +114,7 @@ public final class ASTRecordLayout
      */
     public static ASTRecordLayout getRecordLayout(ASTContext ctx, RecordDecl decl)
     {
-        assert decl.isCompleteDefinition():"Can not layout the forward declaration.";
+        Util.assertion(decl.isCompleteDefinition(), "Can not layout the forward declaration.");
         ASTRecordLayout entity = recordLayouts.get(decl);
         if (recordLayouts.containsKey(decl))
             return entity;
@@ -289,7 +290,7 @@ public final class ASTRecordLayout
 		    if (newAlign <= alignment)
 			    return;
 
-		    assert (newAlign & (newAlign - 1)) == 0 :"Alignment not a power of 2";
+		    Util.assertion((newAlign & (newAlign - 1)) == 0, "Alignment not a power of 2");
 		    alignment = newAlign;
 	    }
 

@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.StructType;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.ConstantStructKey;
@@ -42,14 +43,14 @@ public class ConstantStruct extends Constant
     protected ConstantStruct(StructType ty, ArrayList<Constant> vals)
     {
         super(ty, ValueKind.ConstantStructVal);
-        assert vals.size() == ty
-                .getNumOfElements() : "Invalid initializer vector for constant structure";
+        Util.assertion(vals.size() == ty                .getNumOfElements(),  "Invalid initializer vector for constant structure");
+
         reserve(vals.size());
         int idx = 0;
         for (Constant c : vals)
         {
-            assert c.getType() == ty.getElementType(
-                    idx) : "Initializer for struct element doesn't match struct element type!";
+            Util.assertion(c.getType() == ty.getElementType(                    idx),  "Initializer for struct element doesn't match struct element type!");
+
             setOperand(idx++, c, this);
         }
     }
@@ -108,7 +109,7 @@ public class ConstantStruct extends Constant
     @Override
     public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
     {
-        assert to instanceof Constant : "Can't make Constant refer to non-constant!";
+        Util.assertion(to instanceof Constant,  "Can't make Constant refer to non-constant!");
         Constant toV = (Constant) to;
 
         int idx = 0;
@@ -157,7 +158,7 @@ public class ConstantStruct extends Constant
             }
         }
 
-        assert !replacement.equals(this) : "I didn't contain from!";
+        Util.assertion(!replacement.equals(this),  "I didn't contain from!");
         replaceAllUsesWith(replacement);
 
         destroyConstant();

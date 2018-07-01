@@ -214,7 +214,7 @@ public final class MVT implements Comparable<MVT>
             case iPTRAny:
                 return "MVT.iPTRAny";
             default:
-                assert false : "ILLEGAL VALUE TYPE!";
+                Util.assertion(false,  "ILLEGAL VALUE TYPE!");
                 return "";
         }
     }
@@ -224,15 +224,15 @@ public final class MVT implements Comparable<MVT>
         switch (simpleVT)
         {
             case iPTR:
-                assert false : "Value type is target-dependent. Ask for TLI.";
+                Util.assertion(false,  "Value type is target-dependent. Ask for TLI.");
                 return 0;
             case iPTRAny:
             case iAny:
             case fAny:
-                assert false : "Value type is overloaded.";
+                Util.assertion(false,  "Value type is overloaded.");
                 return 0;
             default:
-                assert false : "getSizeInBits called on extended MVT.";
+                Util.assertion(false,  "getSizeInBits called on extended MVT.");
                 return 0;
             case i1:
                 return 1;
@@ -303,7 +303,7 @@ public final class MVT implements Comparable<MVT>
             case isVoid:
                 return "void";
             default:
-                assert false : "Illegal value type!";
+                Util.assertion(false,  "Illegal value type!");
                 return "";
         }
     }
@@ -441,7 +441,7 @@ public final class MVT implements Comparable<MVT>
         switch (bitWidth)
         {
             default:
-                assert false : "Bad bit width!";
+                Util.assertion(false,  "Bad bit width!");
             case 32:
                 return new MVT(f32);
             case 64:

@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import xcc.Job.Command;
 import xcc.Job.PipedJob;
 
@@ -101,8 +102,8 @@ public class Compilation
         }
         else
         {
-            assert j instanceof PipedJob;
-            assert false:"Currently PipedJob not supported!";
+            Util.assertion( j instanceof PipedJob);
+            Util.assertion(false, "Currently PipedJob not supported!");
             return 0;
         }
     }
@@ -120,8 +121,8 @@ public class Compilation
 
     public String addTempFile(String file)
     {
-        assert file != null && !file.isEmpty():"No valid filename";
-        assert !tempFiles.contains(file):"Can't add a exist temporary file!";
+        Util.assertion(file != null && !file.isEmpty(), "No valid filename");
+        Util.assertion(!tempFiles.contains(file), "Can't add a exist temporary file!");
         tempFiles.add(file);
         return file;
     }
@@ -170,8 +171,8 @@ public class Compilation
 
     public String addResultFile(String filename)
     {
-        assert !((filename == null || filename.isEmpty()
-                || resultFiles.contains(filename)));
+        Util.assertion( !((filename == null || filename.isEmpty()                || resultFiles.contains(filename))));
+
         resultFiles.add(filename);
         return filename;
     }
@@ -216,7 +217,7 @@ public class Compilation
         }
         else if (job instanceof PipedJob)
         {
-            assert false:"PipedJob is not supported currently!";
+            Util.assertion(false, "PipedJob is not supported currently!");
         }
         else
         {

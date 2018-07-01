@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
@@ -112,14 +113,14 @@ public final class TreePatternNode implements Cloneable
 
     public int getTypeNum(int num)
     {
-        assert hasTypeSet():"Doesn't have a type yet!";
-        assert types.size() > num : "Type out of range!";
+        Util.assertion(hasTypeSet(), "Doesn't have a type yet!");
+        Util.assertion(types.size() > num,  "Type out of range!");
         return types.get(num);
     }
 
     public int getExtTypeNum(int num)
     {
-        assert types.size() > num:"Extended type num out of range!";
+        Util.assertion(types.size() > num, "Extended type num out of range!");
         return types.get(num);
     }
 
@@ -141,13 +142,13 @@ public final class TreePatternNode implements Cloneable
 
     public Init getLeafValue()
     {
-        assert isLeaf();
+        Util.assertion( isLeaf());
         return val;
     }
 
     public Record getOperator()
     {
-        assert !isLeaf();
+        Util.assertion( !isLeaf());
         return operator;
     }
 
@@ -192,7 +193,7 @@ public final class TreePatternNode implements Cloneable
 
     public void addPredicateFn(String fn)
     {
-        assert fn != null && !fn.isEmpty():"Empty predicate string!";
+        Util.assertion(fn != null && !fn.isEmpty(), "Empty predicate string!");
         if (!predicateFns.contains(fn))
             predicateFns.add(fn);
     }
@@ -320,10 +321,10 @@ public final class TreePatternNode implements Cloneable
 
                 if (hasTypeSet())
                 {
-                    assert getExtTypes().size() >= 1:"TreePattern doesn't have a type!";
+                    Util.assertion(getExtTypes().size() >= 1, "TreePattern doesn't have a type!");
                     int svt = getTypeNum(0);
                     for (int i = 1, e = getExtTypes().size(); i != e; i++)
-                        assert getTypeNum(i) == svt:"TreePattern has too many types!";
+                        Util.assertion(getTypeNum(i) == svt, "TreePattern has too many types!");
 
                     svt = getTypeNum(0);
                     if (svt != iPTR && svt != iPTRAny)
@@ -355,7 +356,7 @@ public final class TreePatternNode implements Cloneable
         CodeGenIntrinsic intrinsic;
         if (getOperator().getName().equals("set"))
         {
-            assert getNumChildren() >= 2:"Missing RHS of a set?";
+            Util.assertion(getNumChildren() >= 2, "Missing RHS of a set?");
             int nc = getNumChildren();
             boolean madeChanged = false;
             for (int i = 0; i < nc - 1; i++)
@@ -438,7 +439,7 @@ public final class TreePatternNode implements Cloneable
             boolean madeChanged = false;
             int numResults = instr.getNumResults();
 
-            assert numResults <= 1:"Only supports zero or one result instrs!";
+            Util.assertion(numResults <= 1, "Only supports zero or one result instrs!");
             CodeGenInstruction instInfo = cdp.getTarget().getInstruction(getOperator().getName());
             if (numResults == 0 || instInfo.numDefs == 0)
             {
@@ -462,8 +463,8 @@ public final class TreePatternNode implements Cloneable
                 }
                 else
                 {
-                    assert resultNode.isSubClassOf("RegisterClass")
-                            :"Operands should be register class";
+                    Util.assertion(resultNode.isSubClassOf("RegisterClass"), "Operands should be register class");
+
 
                     CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(resultNode);
                     madeChanged = updateNodeType(convertVTs(rc.getValueTypes()), tp);
@@ -513,7 +514,7 @@ public final class TreePatternNode implements Cloneable
                 }
                 else
                 {
-                    assert false:"Undefined operand type!";
+                    Util.assertion(false, "Undefined operand type!");
                     System.exit(0);
                 }
                 madeChanged |= child.applyTypeConstraints(tp, notRegisters);
@@ -528,7 +529,7 @@ public final class TreePatternNode implements Cloneable
         else
         {
             //System.out.println(getOperator());
-            assert getOperator().isSubClassOf("SDNodeXForm"):"Undefined node type!";
+            Util.assertion(getOperator().isSubClassOf("SDNodeXForm"), "Undefined node type!");
 
             if (getNumChildren() != 1)
             {
@@ -761,7 +762,7 @@ public final class TreePatternNode implements Cloneable
     public boolean updateNodeType(TIntArrayList extTypes,
             TreePattern tp) throws Exception
     {
-        assert !extTypes.isEmpty():"Cannot update node type with empty type vector!";
+        Util.assertion(!extTypes.isEmpty(), "Cannot update node type with empty type vector!");
 
         if (extTypes.get(0) == EEVT.isUnknown
                 || lhsIsSubsetOfRHS(getExtTypes(), extTypes))
@@ -793,7 +794,7 @@ public final class TreePatternNode implements Cloneable
         if ((extTypes.get(0) == isInt || extTypes.get(0) == iAny)
                 && EEVT.isExtIntegerInVTs(getExtTypes()))
         {
-            assert hasTypeSet() :"should be handled above!";
+            Util.assertion(hasTypeSet(), "should be handled above!");
             TIntArrayList fvts = filterEVTs(getExtTypes(), isInteger);
             if (getExtTypes().equals(fvts))
                 return false;
@@ -817,7 +818,7 @@ public final class TreePatternNode implements Cloneable
         if ((extTypes.get(0) == isFP || extTypes.get(0) == fAny)
                 && EEVT.isExtFloatingPointInVTs(getExtTypes()))
         {
-            assert hasTypeSet(): "should be handled above!";
+            Util.assertion(hasTypeSet(),  "should be handled above!");
             TIntArrayList fvts = filterEVTs(getExtTypes(), isFloatingPoint);
             if (fvts.equals(getExtTypes()))
                 return false;
@@ -829,7 +830,7 @@ public final class TreePatternNode implements Cloneable
         if ((extTypes.get(0) == isVec || extTypes.get(0) == vAny)
                 && EEVT.isExtVectorVTs(getExtTypes()))
         {
-            assert hasTypeSet():"should be handled above!";
+            Util.assertion(hasTypeSet(), "should be handled above!");
             TIntArrayList fvts = filterEVTs(getExtTypes(), isVector);
             if (fvts.equals(getExtTypes()))
                 return false;
@@ -919,9 +920,8 @@ public final class TreePatternNode implements Cloneable
                 TreePatternNode child = getChild(i);
                 TreePatternNode newChild = child.inlinePatternFragments(pattern);
 
-                assert (child.getPredicateFns().isEmpty()
-                    || newChild.getPredicateFns().equals(child.getPredicateFns()))
-                        :"Non-empty child predicate clobbered!";
+                Util.assertion((child.getPredicateFns().isEmpty()                    || newChild.getPredicateFns().equals(child.getPredicateFns())), "Non-empty child predicate clobbered!");
+
                 setChild(i, newChild);
             }
             return this;
@@ -990,11 +990,10 @@ public final class TreePatternNode implements Cloneable
                 {
                     // We found a use of a formal argument, replace it with its
                     // value.
-                    assert argMap.containsKey(child.getName()) :"Couldn't find formal argument!";
+                    Util.assertion(argMap.containsKey(child.getName()), "Couldn't find formal argument!");
                     TreePatternNode newChild = argMap.get(child.getName());
-                    assert child.getPredicateFns().isEmpty() ||
-                            newChild.getPredicateFns().equals(child.getPredicateFns())
-                            :"Non empty child predicate clobered!";
+                    Util.assertion(child.getPredicateFns().isEmpty() ||                            newChild.getPredicateFns().equals(child.getPredicateFns()), "Non empty child predicate clobered!");
+
                     setChild(i, newChild);
                 }
             }

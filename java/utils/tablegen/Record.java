@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import tools.SourceMgr;
 import utils.tablegen.Init.*;
@@ -110,19 +111,19 @@ public final class Record implements Cloneable
 
     public void addTemplateArg(String name)
     {
-        assert !isTemplateArg(name) :"Template arg already defined!";
+        Util.assertion(!isTemplateArg(name), "Template arg already defined!");
         templateArgs.add(name);
     }
 
     public void addValue(RecordVal rv)
     {
-        assert getValue(rv.getName()) == null:"Value already defined!";
+        Util.assertion(getValue(rv.getName()) == null, "Value already defined!");
         values.add(rv.clone());
     }
 
     public void removeValue(String name)
     {
-        assert getValue(name) != null :"Cannot remove a no existing value";
+        Util.assertion(getValue(name) != null, "Cannot remove a no existing value");
         for (Iterator<RecordVal> itr = values.iterator(); itr.hasNext();)
         {
             RecordVal rv = itr.next();
@@ -132,7 +133,7 @@ public final class Record implements Cloneable
                 return;
             }
         }
-        assert false:"Name does not exist in record!";
+        Util.assertion(false, "Name does not exist in record!");
     }
 
     public boolean isSubClassOf(Record r)
@@ -151,7 +152,7 @@ public final class Record implements Cloneable
 
     public void addSuperClass(Record r)
     {
-        assert !isSubClassOf(r) :"Already subclass record!";
+        Util.assertion(!isSubClassOf(r), "Already subclass record!");
         superClasses.add(r);
     }
 
@@ -191,7 +192,7 @@ public final class Record implements Cloneable
             {
                 if (i != 0) os.print(", ");
                 RecordVal rv = r.getValue(templateArgs.get(i));
-                assert rv != null:"Template argument record not found!";
+                Util.assertion(rv != null, "Template argument record not found!");
                 rv.print(os, false);
             }
             os.print(">");

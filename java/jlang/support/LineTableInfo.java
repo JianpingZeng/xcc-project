@@ -16,6 +16,7 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
@@ -67,7 +68,7 @@ public class LineTableInfo
 
     public String getFilename(int ID)
     {
-        assert ID < filenamesByID.size() : "Invalid filenameID";
+        Util.assertion(ID < filenamesByID.size(),  "Invalid filenameID");
         return filenamesByID.get(ID).first;
     }
 
@@ -80,8 +81,8 @@ public class LineTableInfo
     {
         ArrayList<LineEntry> entries = lineEntries.get(fid);
 
-        assert entries.isEmpty() || entries.get(entries.size() - 1).fileOffset
-                < offset : "Adding line entries out of order!";
+        Util.assertion(entries.isEmpty() || entries.get(entries.size() - 1).fileOffset                < offset,  "Adding line entries out of order!");
+
 
         CharacteristicKind kind = CharacteristicKind.C_User;
 
@@ -101,7 +102,7 @@ public class LineTableInfo
     public void addLineNote(int fid, int offset, int lineNo, int filenameID,
             int entryExit, CharacteristicKind fileKind)
     {
-        assert filenameID != -1 : "Unspecified filename should use other accessor";
+        Util.assertion(filenameID != -1,  "Unspecified filename should use other accessor");
 
         ArrayList<LineEntry> entries;
         if (!lineEntries.containsKey(fid))
@@ -112,8 +113,8 @@ public class LineTableInfo
         else
             entries = lineEntries.get(fid);
 
-        assert entries.isEmpty() || entries.get(entries.size() - 1).fileOffset
-                < offset : "Adding line entries out of order!";
+        Util.assertion(entries.isEmpty() || entries.get(entries.size() - 1).fileOffset                < offset,  "Adding line entries out of order!");
+
 
         int includeOffset = 0;
         if (entryExit == 0)
@@ -126,8 +127,8 @@ public class LineTableInfo
         }
         else if (entryExit == 2)
         {
-            assert !entries.isEmpty() && entries.get(entries.size() - 1).includeOffset != 0
-                    : "PPDirectives should have caught case when popping empty include stack";
+            Util.assertion(!entries.isEmpty() && entries.get(entries.size() - 1).includeOffset != 0,  "PPDirectives should have caught case when popping empty include stack");
+
 
             includeOffset = 0;
             LineEntry prevEntry = findNearestLineEntry(fid, entries.get(entries.size() - 1).includeOffset);
@@ -142,7 +143,7 @@ public class LineTableInfo
     public LineEntry findNearestLineEntry(int fid, int offset)
     {
         ArrayList<LineEntry> entries = lineEntries.get(fid);
-        assert !entries.isEmpty() : "No #line entries for this FID after all!";
+        Util.assertion(!entries.isEmpty(),  "No #line entries for this FID after all!");
 
         if (entries.get(entries.size() - 1).fileOffset <= offset)
             return entries.get(entries.size() - 1);

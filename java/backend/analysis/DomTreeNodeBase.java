@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -67,7 +68,7 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
 
     public void setIDom(DomTreeNodeBase<T> newIDom)
     {
-        //assert iDom != null : "No immediate dominator";
+        //Util.assertion(iDom != null,  "No immediate dominator");
         if (iDom == null)
         {
             iDom = newIDom;
@@ -75,8 +76,8 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
         }
         else if (iDom != newIDom)
         {
-            assert iDom.children.contains(this)
-                    : "Not in immediate dominator chidren set";
+            Util.assertion(iDom.children.contains(this),  "Not in immediate dominator chidren set");
+
             // erase this, no longer idom's child
             iDom.children.remove(this);
             this.iDom = newIDom;

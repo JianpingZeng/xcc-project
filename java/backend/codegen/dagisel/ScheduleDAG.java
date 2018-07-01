@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
@@ -136,7 +137,7 @@ public abstract class ScheduleDAG
 			if (d.isCtrl()) continue;
 			if (d.getSUnit().copyDstRC != null)
 			{
-				assert vrBaseMap.containsKey(d.getSUnit()):"Node emitted out of order!";
+				Util.assertion(vrBaseMap.containsKey(d.getSUnit()), "Node emitted out of order!");
 				int reg = 0;
 				for (SDep s : su.succs)
 				{
@@ -151,9 +152,9 @@ public abstract class ScheduleDAG
 			}
 			else 
 			{
-				assert d.getReg() != 0:"Unknown physical register!";
+				Util.assertion(d.getReg() != 0, "Unknown physical register!");
 				int vrBase = mri.createVirtualRegister(su.copyDstRC);
-				assert !vrBaseMap.containsKey(su);
+				Util.assertion( !vrBaseMap.containsKey(su));
 				vrBaseMap.put(su, vrBase);
 				tii.copyRegToReg(mbb, insertPos++, vrBase, d.getReg(), 
 					su.copyDstRC, su.copySrcRC);

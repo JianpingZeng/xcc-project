@@ -1,5 +1,7 @@
 package jlang.cparser;
 
+import tools.Util;
+
 /**
  * This class is served as the wrapper which contains a statement or
  * expression, and known if this expression or stmt is invalid or not
@@ -32,7 +34,7 @@ public class ActionResult<T>
     public ActionResult(T data)
     {
         this(data, false);
-        assert data != null : "Bad pointer!";
+        Util.assertion(data != null,  "Bad pointer!");
     }
 
     public ActionResult(T data, boolean isInvalid)

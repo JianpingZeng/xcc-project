@@ -17,6 +17,8 @@
 
 package backend.codegen.pbqp;
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -32,7 +34,7 @@ public class PBQPSolution
 
     public int get(int idx)
     {
-        assert idx >= 0 && idx < solution.length;
+        Util.assertion( idx >= 0 && idx < solution.length);
         return solution[idx];
     }
 }

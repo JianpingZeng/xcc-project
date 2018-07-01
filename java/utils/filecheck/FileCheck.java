@@ -17,6 +17,7 @@
 
 package utils.filecheck;
 
+import tools.Util;
 import gnu.trove.list.array.TCharArrayList;
 import jlang.support.MemoryBuffer;
 import tools.SourceMgr;
@@ -69,7 +70,7 @@ public final class FileCheck
 
     private static int findFixedStringInBuffer(String str, int curPtr, MemoryBuffer buffer)
     {
-        assert !str.isEmpty():"Can't find an empty string";
+        Util.assertion(!str.isEmpty(), "Can't find an empty string");
 
         int end = buffer.length();
         String bufStr = new String(buffer.getBuffer());
@@ -294,8 +295,8 @@ public final class FileCheck
 
                 if (str.isCheckNext)
                 {
-                    assert lastMatch
-                            != 0 : "CHECK-NEXT can't be the first check in a file";
+                    Util.assertion(lastMatch                            != 0,  "CHECK-NEXT can't be the first check in a file");
+
 
                     int numNewlines = countNumNewlinesBetween(buffer, lastMatch,
                             ptr);

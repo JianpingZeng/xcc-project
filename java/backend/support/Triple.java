@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.Objects;
 
 import static backend.support.Triple.ArchType.*;
@@ -99,7 +100,7 @@ public class Triple
 
     private void parse()
     {
-        assert !isInitialized() :"Invalid parse call";
+        Util.assertion(!isInitialized(), "Invalid parse call");
 
         String archName = getArchName();
         String vendorName = getVendorName();
@@ -128,7 +129,7 @@ public class Triple
         else
             os = OSType.UnknownOS;
 
-        assert isInitialized() :"Failed to initialize!";
+        Util.assertion(isInitialized(), "Failed to initialize!");
     }
 
     public Triple()

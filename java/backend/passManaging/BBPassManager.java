@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.*;
 import backend.value.BasicBlock;
 import backend.value.Function;
@@ -159,7 +160,7 @@ public class BBPassManager extends PMDataManager implements FunctionPass
 
     public BasicBlockPass getContainedPass(int index)
     {
-        assert index >= 0 && index < getNumContainedPasses();
+        Util.assertion( index >= 0 && index < getNumContainedPasses());
         return (BasicBlockPass) passVector.get(index);
     }
 

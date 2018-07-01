@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import tools.FormattedOutputStream;
 import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
@@ -127,8 +128,8 @@ public class MachineInstr implements Cloneable
 	public void addOperand(MachineOperand mo)
 	{
 		boolean isImpReg = mo.isRegister() && mo.isImplicit();
-		assert isImpReg
-				|| !operandsComplete() : "Try to add an operand to a machine instr that is already done!";
+		Util.assertion(isImpReg				|| !operandsComplete(),  "Try to add an operand to a machine instr that is already done!");
+
 
 		MachineRegisterInfo regInfo = getRegInfo();
 		// If we are adding the operand to the end of the list, our job is simpler.
@@ -158,8 +159,8 @@ public class MachineInstr implements Cloneable
 		{
 			for (int i = opNo; i < operands.size(); i++)
 			{
-				assert operands.get(i)
-						.isRegister() : "Should only be an implicit register!";
+				Util.assertion(operands.get(i)						.isRegister(),  "Should only be an implicit register!");
+
 				operands.get(i).removeRegOperandFromRegInfo();
 			}
 
@@ -171,8 +172,8 @@ public class MachineInstr implements Cloneable
 			// re-add all the implicit ops.
 			for (int i = opNo + 1; i < operands.size(); i++)
 			{
-				assert operands.get(i)
-						.isRegister() : "Should only be an implicit register!";
+				Util.assertion(operands.get(i)						.isRegister(),  "Should only be an implicit register!");
+
 				operands.get(i).addRegOperandToRegInfo(regInfo);
 			}
 		}
@@ -187,7 +188,7 @@ public class MachineInstr implements Cloneable
 
 	public void removeOperand(int opNo)
 	{
-		assert opNo >= 0 && opNo < operands.size();
+		Util.assertion( opNo >= 0 && opNo < operands.size());
 
 		int size = operands.size();
 		if (opNo == size - 1)
@@ -238,8 +239,8 @@ public class MachineInstr implements Cloneable
 
 	public MachineOperand getOperand(int index)
 	{
-		assert index >= 0 && index < getNumOperands():
-				StringFormatter.format("%d out of bound %d", index, getNumOperands()).getValue();
+		Util.assertion(index >= 0 && index < getNumOperands(), 				StringFormatter.format("%d out of bound %d", index, getNumOperands()).getValue());
+
 		return operands.get(index);
 	}
 
@@ -271,7 +272,7 @@ public class MachineInstr implements Cloneable
 
 	public MachineInstr removeFromParent()
 	{
-		assert getParent() != null;
+		Util.assertion( getParent() != null);
 		parent.remove(this);
 		return this;
 	}
@@ -470,11 +471,11 @@ public class MachineInstr implements Cloneable
 	{
         if (getOpcode() == INLINEASM)
         {
-            assert false : "Unsupported inline asm!";
+            Util.assertion(false,  "Unsupported inline asm!");
             return false;
         }
 
-        assert getOperand(defOpIdx).isDef() : "defOpIdx is not a def!";
+        Util.assertion(getOperand(defOpIdx).isDef(),  "defOpIdx is not a def!");
         TargetInstrDesc TID = getDesc();
         for (int i = 0, e = TID.getNumOperands(); i != e; ++i)
         {
@@ -506,7 +507,7 @@ public class MachineInstr implements Cloneable
 	{
         if (getOpcode() == INLINEASM)
         {
-            assert false : "Unsupported inline asm!";
+            Util.assertion(false,  "Unsupported inline asm!");
             return false;
         }
 
@@ -830,7 +831,7 @@ public class MachineInstr implements Cloneable
 		    {
 			    Value v = mmo.getValue();
 
-			    assert mmo.isLoad() || mmo.isStore() :"SV has to be a load, store or both";
+			    Util.assertion(mmo.isLoad() || mmo.isStore(), "SV has to be a load, store or both");
 
 			    if (mmo.isVolatile())
 				    os.print("Volatile ");
@@ -957,15 +958,15 @@ public class MachineInstr implements Cloneable
 
 	public MachineMemOperand getMemOperand(int index)
 	{
-		assert index >= 0 && index < memOperands.size();
+		Util.assertion( index >= 0 && index < memOperands.size());
 		return memOperands.get(index);
 	}
 
 	public void setMachineOperandReg(int idx, int reg)
 	{
-		assert idx >= 0 && idx < getNumOperands();
-		//assert isPhysicalRegister(reg);
-		assert getOperand(idx).isRegister();
+		Util.assertion( idx >= 0 && idx < getNumOperands());
+		//Util.assertion( isPhysicalRegister(reg));
+		Util.assertion( getOperand(idx).isRegister());
 		getOperand(idx).setReg(reg);
 	}
 

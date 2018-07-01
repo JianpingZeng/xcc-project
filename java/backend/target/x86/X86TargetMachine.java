@@ -1,5 +1,6 @@
 package backend.target.x86;
 
+import tools.Util;
 import backend.codegen.ELFWriter;
 import backend.codegen.MachineCodeEmitter;
 import backend.passManaging.FunctionPassManager;
@@ -65,7 +66,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 				setRelocationModel(DynamicNoPIC);
 		}
 
-		assert getRelocationModel() != Default :"Relocation mode not picked";
+		Util.assertion(getRelocationModel() != Default, "Relocation mode not picked");
 		if (getCodeModel() == CodeModel.Default)
 			setCodeModel(Small);
 
@@ -108,7 +109,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 				subtarget.setPICStyle(StubPIC);
 			else
 			{
-				assert(getRelocationModel() == DynamicNoPIC);
+				Util.assertion((getRelocationModel() == DynamicNoPIC));
 				subtarget.setPICStyle(StubDynamicNoPIC);
 			}
 		}

@@ -17,6 +17,7 @@
 
 package backend.value;
 
+import tools.Util;
 import backend.type.VectorType;
 
 import java.util.ArrayList;
@@ -72,16 +73,15 @@ public class ConstantVector extends Constant
         int idx = 0;
         for (Constant c : vals)
         {
-            assert c.getType() == vt.getElementType() ||
-                    (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID())
-                    : "Initializer for struct element doesn't match struct element type!";
+            Util.assertion(c.getType() == vt.getElementType() ||                    (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID()),  "Initializer for struct element doesn't match struct element type!");
+
             setOperand(idx++, c, this);
         }
     }
 
     public static Constant get(VectorType vt, ArrayList<Constant> vals)
     {
-        assert vals != null && !vals.isEmpty();
+        Util.assertion( vals != null && !vals.isEmpty());
         Constant c = vals.get(0);
         boolean isZero = c.isNullValue();
         boolean isUndef = c instanceof UndefValue;
@@ -112,13 +112,13 @@ public class ConstantVector extends Constant
 
     public static Constant get(ArrayList<Constant> vals)
     {
-        assert vals != null && !vals.isEmpty();
+        Util.assertion( vals != null && !vals.isEmpty());
         return get(VectorType.get(vals.get(0).getType(), vals.size()), vals);
     }
 
     public static Constant get(Constant... vals)
     {
-        assert vals != null && vals.length > 0;
+        Util.assertion( vals != null && vals.length > 0);
         ArrayList<Constant> t = new ArrayList<>();
         for (Constant c : vals)
             t.add(c);
@@ -165,7 +165,7 @@ public class ConstantVector extends Constant
     @Override
     public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
     {
-        assert to instanceof Constant;
+        Util.assertion( to instanceof Constant);
         ArrayList<Constant> values = new ArrayList<>();
         for (int i = 0, e = getNumOfOperands(); i < e; i++)
         {
@@ -176,7 +176,7 @@ public class ConstantVector extends Constant
         }
 
         Constant replacement = get(getType(), values);
-        assert !replacement.equals(this);
+        Util.assertion( !replacement.equals(this));
         destroyConstant();
     }
 }

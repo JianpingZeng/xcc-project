@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
@@ -91,8 +92,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
     private void initIntervalSet()
     {
-        assert unhandled.isEmpty() && fixed.isEmpty() &&
-                active.isEmpty() && inactive.isEmpty();
+        Util.assertion( unhandled.isEmpty() && fixed.isEmpty() &&                active.isEmpty() && inactive.isEmpty());
+
 
         for (LiveInterval interval : li.getReg2LiveInterval().values())
         {
@@ -146,7 +147,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         {
             // remove and obtains the first live interval whose start is first.
             LiveInterval cur = unhandled.pollFirst();
-            assert cur != null;
+            Util.assertion( cur != null);
 
             for (int i = 0; i < active.size(); i++)
             {
@@ -248,7 +249,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         leadingRC = node != null?node.getValue():null;
         for (LiveInterval li : fixed)
         {
-            assert oneClassForEachPhysReg.containsKey(li.register);
+            Util.assertion( oneClassForEachPhysReg.containsKey(li.register));
             node2 = relatedRegisterClasses.findLeading(oneClassForEachPhysReg.get(li.register));
             TargetRegisterClass rcs = node2 != null ?node2.getValue():null;
             if (leadingRC != null && leadingRC == rcs && cur.overlaps(li))
@@ -330,7 +331,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
 
         ArrayList<LiveInterval> added = new ArrayList<>();
-        assert isPhysicalRegister(minReg) :"didn't choose a register to spill?";
+        Util.assertion(isPhysicalRegister(minReg), "didn't choose a register to spill?");
 
         boolean[] toSpill = new boolean[tri.getNumRegs()];
         toSpill[minReg] = true;

@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.target.TargetLowering;
@@ -193,7 +194,7 @@ public class VectorLegalizer
     private SDValue unrollVectorOp(SDValue op)
     {
         EVT vt = op.getValueType();
-        assert op.getNode().getNumValues() == 1:"Can't unroll a vector with multiple results!";
+        Util.assertion(op.getNode().getNumValues() == 1, "Can't unroll a vector with multiple results!");
         int ne = vt.getVectorNumElements();
         EVT eltVT = vt.getVectorElementType();
 
@@ -267,7 +268,7 @@ public class VectorLegalizer
     private SDValue promoteVectorOp(SDValue op)
     {
         EVT vt = op.getValueType();
-        assert op.getNode().getNumValues() == 1 :"Can't promote a vector with multiple results!";
+        Util.assertion(op.getNode().getNumValues() == 1, "Can't promote a vector with multiple results!");
         EVT nvt = tli.getTypeToTransformTo(vt);
         SDValue[] ops = new SDValue[op.getNumOperands()];
         for (int j = 0, e = op.getNumOperands(); j < e; j++)
@@ -293,7 +294,7 @@ public class VectorLegalizer
         }
 
         SDValue oldRoot = dag.getRoot();
-        assert legalizeNodes.containsKey(oldRoot):"Root didn't get legalized!";
+        Util.assertion(legalizeNodes.containsKey(oldRoot), "Root didn't get legalized!");
         dag.setRoot(legalizeNodes.get(oldRoot));
 
         legalizeNodes.clear();

@@ -275,7 +275,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             case InternalLinkage:
                 break;
             default:
-                assert false : "Unknown linkage type!";
+                Util.assertion(false,  "Unknown linkage type!");
         }
 
         emitAlignment((int) align, gv);
@@ -512,8 +512,8 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 emitGlobalConstant(field);
                 emitZero(padSize);
             }
-            assert sizeSoFar == layout.structSize :
-                    "layout of constant struct may be incorrect!";
+            Util.assertion(sizeSoFar == layout.structSize,                     "layout of constant struct may be incorrect!");
+
             return;
         }
         else if (c instanceof ConstantFP)
@@ -607,11 +607,11 @@ public abstract class AsmPrinter extends MachineFunctionPass
                         os.print(data32BitDirective);
                         break;
                     case 64:
-                        assert data64BitDirective != null:"Target cannot handle 64-bit constant!";
+                        Util.assertion(data64BitDirective != null, "Target cannot handle 64-bit constant!");
                         os.print(data64BitDirective);
                         break;
                     default:
-                        assert false:"Undefined integral type";
+                        Util.assertion(false, "Undefined integral type");
                 }
                 break;
             case Type.PointerTyID:
@@ -623,7 +623,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 break;
             case Type.FloatTyID:
             case Type.DoubleTyID:
-                assert false:"Should have already been handled above!";
+                Util.assertion(false, "Should have already been handled above!");
                 break;
         }
         emitConstantValueOnly(c);
@@ -685,11 +685,11 @@ public abstract class AsmPrinter extends MachineFunctionPass
                     break;
                 }
                 default:
-                    assert false:"Unsupported operator!";
+                    Util.assertion(false, "Unsupported operator!");
             }
         }
         else
-            assert false:"Unknown constant expression!";
+            Util.assertion(false, "Unknown constant expression!");
     }
 
     private static char toOctal(int x)
@@ -706,7 +706,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     private void printAsCString(FormattedOutputStream os, ConstantArray ca, int lastIndex)
     {
-        assert ca.isString() :"Array is not string!";
+        Util.assertion(ca.isString(), "Array is not string!");
 
         os.print("\"");
         for (int i = 0; i < lastIndex; i++)
@@ -936,7 +936,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
 
                 MachineBasicBlock header = loop.getHeaderBlock();
-                assert header != null:"No header for loop";
+                Util.assertion(header != null, "No header for loop");
 
                 if (header.equals(mbb))
                 {
@@ -965,7 +965,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                      curLoop = curLoop.getParentLoop())
                 {
                     MachineBasicBlock hBB = curLoop.getHeaderBlock();
-                    assert hBB != null:"No header for loop";
+                    Util.assertion(hBB != null, "No header for loop");
 
                     os.println();
                     os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
@@ -1018,7 +1018,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         for (MachineLoopInfo childLoop : loop.getSubLoops())
         {
             MachineBasicBlock header = childLoop.getHeaderBlock();
-            assert header != null:"No header for loop";
+            Util.assertion(header != null, "No header for loop");
 
             os.println();
             os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
@@ -1051,7 +1051,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
     private void emitLLVMUsedList(Constant list)
     {
-        assert false:"Should not reaching here!"; // TODO: 17-8-2
+        Util.assertion(false, "Should not reaching here!"); // TODO: 17-8-2
     }
 
     /**
@@ -1062,6 +1062,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     public void printLabel(long id)
     {
         os.printf("%slabel%d:%n", tai.getPrivateGlobalPrefix(), id);
+
     }
 
     /**

@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.analysis.MachineLoop;
@@ -201,8 +202,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
                 MachineInstr mi = mbb.getInstAt(i);
                 if (mi.getOpcode() == frameSetupOpcode || mi.getOpcode() == frameDestroyOpcode)
                 {
-                    assert mi.getNumOperands() >= 1 : "Call frame Setup/Destroy"
-                            + " Psedo instruction should have a single immediate argument!";
+                    Util.assertion(mi.getNumOperands() >= 1,  "Call frame Setup/Destroy"                            + " Psedo instruction should have a single immediate argument!");
+
                     long size = mi.getOperand(0).getImm();
                     if (size > maxCallFrameSize)
                         maxCallFrameSize = size;
@@ -392,7 +393,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                 if (hdr == null)
                 {
                     hdr = plp.getHeaderBlock();
-                    assert !hdr.predIsEmpty():"Loop header has no predecessor";
+                    Util.assertion(!hdr.predIsEmpty(), "Loop header has no predecessor");
                     hdr = hdr.predAt(0);
                 }
                 tlLoops.put(hdr, plp);
@@ -623,7 +624,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
     private MachineBasicBlock getTopLevelLoopPreHeader(MachineLoopInfo lp)
     {
-        assert lp != null:"Machine loop is null!";
+        Util.assertion(lp != null, "Machine loop is null!");
         MachineLoopInfo parent = getTopLevelParentLoop(lp);
         return parent.getLoopPreheader();
     }
@@ -951,13 +952,13 @@ public class PrologEpilogInserter extends MachineFunctionPass
             {
                 loopSpils.clear();
                 loopSpils.or(csrUsed.get(hdr));
-                assert !loopSpils.isEmpty():"Not CSRs used in loop?";
+                Util.assertion(!loopSpils.isEmpty(), "Not CSRs used in loop?");
             }
             else if (csrRestore.get(mbb).contains(csrSave.get(mbb)))
                 continue;
 
             exitBlocks = loop.getExitingBlocks();
-            assert !exitBlocks.isEmpty():"Loop has no top level exit blocks";
+            Util.assertion(!exitBlocks.isEmpty(), "Loop has no top level exit blocks");
             for (MachineBasicBlock exitBB : exitBlocks)
             {
                 if (!csrUsed.get(exitBB).contains(loopSpils))
@@ -1218,7 +1219,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                         tii.loadRegFromStackSlot(mbb, idx, info.getReg(),
                                 info.getFrameIdx(),
                                 info.getRegisterClass());
-                        assert idx != 0 :"loadRegFromStackSlot didn't insert any code!";
+                        Util.assertion(idx != 0, "loadRegFromStackSlot didn't insert any code!");
                         if (atStart)
                             idx = 0;
                         else
@@ -1249,7 +1250,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                     blockCSI.add(csi.get(i));
             }
 
-            assert !blockCSI.isEmpty():"Could not collect callee saved register info";
+            Util.assertion(!blockCSI.isEmpty(), "Could not collect callee saved register info");
 
             idx = 0;
             // When shrink wrapping, use stack slot stores/loads.
@@ -1278,7 +1279,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                     blockCSI.add(csi.get(i));
             }
 
-            assert !blockCSI.isEmpty():"Could not find callee saved regsiter info";
+            Util.assertion(!blockCSI.isEmpty(), "Could not find callee saved regsiter info");
 
             if (mbb.isEmpty())
                 idx = 0;
@@ -1309,7 +1310,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                 tii.loadRegFromStackSlot(mbb, idx, info.getReg(),
                         info.getFrameIdx(),
                         info.getRegisterClass());
-                assert idx != 0 :"loadRegFromStackSlot didn't insert any code!";
+                Util.assertion(idx != 0, "loadRegFromStackSlot didn't insert any code!");
                 if (atStart)
                     idx = 0;
                 else
@@ -1442,7 +1443,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
         long offset = tfi.getLocalAreaOffset();
         if (stackGrowDown)
             offset = -offset;
-        assert offset >= 0 :"Local area offset should be in direction of stack growth";
+        Util.assertion(offset >= 0, "Local area offset should be in direction of stack growth");
 
         for (int i = mfi.getObjectIndexBegin(); i != 0; ++i)
         {
@@ -1614,7 +1615,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
             return;
 
         TargetMachine tm = mf.getTarget();
-        assert tm.getRegisterInfo() != null;
+        Util.assertion( tm.getRegisterInfo() != null);
         TargetRegisterInfo regInfo = tm.getRegisterInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {

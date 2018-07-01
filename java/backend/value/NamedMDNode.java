@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public final class NamedMDNode extends MetadataBase
 
     public Value getNode(int index)
     {
-        assert index >= 0 && index < getNumOfNode();
+        Util.assertion( index >= 0 && index < getNumOfNode());
         return node.get(index);
     }
 }

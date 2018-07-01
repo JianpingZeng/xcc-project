@@ -130,8 +130,8 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             StringBuilder caretLine,
             String sourceLine)
     {
-        assert caretLine.length() == sourceLine.length():
-                "Expect a correspondence between source and caret line";
+        Util.assertion(caretLine.length() == sourceLine.length(),                 "Expect a correspondence between source and caret line");
+
         if (!range.isValid())
             return;
 
@@ -191,7 +191,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         else
             endColNo = sourceLine.length();
 
-        assert startColNo <= endColNo :"Invalid range!";
+        Util.assertion(startColNo <= endColNo, "Invalid range!");
         for (int i = startColNo; i < endColNo; ++i)
             caretLine.setCharAt(i, '~');
     }
@@ -203,7 +203,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             FixItHint[] hints,
             int columns)
     {
-        assert loc.isValid() : "must have a valid location";
+        Util.assertion(loc.isValid(),  "must have a valid location");
 
         if (!loc.isFileID())
         {
@@ -286,7 +286,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
 
             // Compute the number of spaces we need to insert.
             int numSpaces = ((i+8) & ~7) - (i + 1);
-            assert numSpaces < 8:"Invalid computation of spaces.";
+            Util.assertion(numSpaces < 8, "Invalid computation of spaces.");
 
             sourceLine.insert(i+1, Util.fixedLengthString(numSpaces, ' '));
 
@@ -616,7 +616,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             // Print diagnostic category in bold and color
             switch (diagLevel)
             {
-                case Ignored: assert false:"Invalid diagnostic type!";
+                case Ignored: Util.assertion(false, "Invalid diagnostic type!");
                 case Note: os.changeColor(noteColor, true); break;
                 case Warning: os.changeColor(warnColor, true); break;
                 case Error: os.changeColor(errorColor, true); break;
@@ -626,7 +626,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
 
         switch (diagLevel)
         {
-            case Ignored: assert false:"Invalid diagnostic type!";
+            case Ignored: Util.assertion(false, "Invalid diagnostic type!");
             case Note: os.print("note: "); break;
             case Warning: os.print("warning: "); break;
             case Error: os.print("error: "); break;
@@ -681,7 +681,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                     ranges[i] = new SourceRange();
 
                 int numRanges = info.getNumRanges();
-                assert numRanges < 20 : "Out of space";
+                Util.assertion(numRanges < 20,  "Out of space");
                 for (int i = 0; i < numRanges; i++)
                     ranges[i] = info.getRange(i);
 
@@ -691,7 +691,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                     FixItHint hint = info.getHint(i);
                     if (hint.removeRange.isValid())
                     {
-                        assert numRanges < 20 : "Out of range";
+                        Util.assertion(numRanges < 20,  "Out of range");
                         ranges[numRanges++] = hint.removeRange;
                     }
                 }

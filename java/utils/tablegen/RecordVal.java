@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import utils.tablegen.Init.UnsetInit;
 
 import java.io.ByteArrayOutputStream;
@@ -38,7 +39,7 @@ public final class RecordVal
         this.ty = ty;
         this.prefix = prefix;
         value = ty.convertValue(UnsetInit.getInstance());
-        assert value != null :"Cannot create unset value for current type!";
+        Util.assertion(value != null, "Cannot create unset value for current type!");
     }
 
     public String getName()

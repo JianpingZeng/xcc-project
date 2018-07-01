@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.EVT;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
@@ -172,18 +173,18 @@ public final class CodeGenIntrinsic
         for (int i = 0, e = typeList.getSize(); i != e; i++)
         {
             Record tyElt = typeList.getElementAsRecord(i);
-            assert tyElt.isSubClassOf("LLVMType") :"Expected a type!";
+            Util.assertion(tyElt.isSubClassOf("LLVMType"), "Expected a type!");
             int vt;
             if (tyElt.isSubClassOf("LLVMMatchType"))
             {
                 int matchTy = (int) tyElt.getValueAsInt("Number");
-                assert matchTy < overloadedVTs.size():"Invalid matching number!";
+                Util.assertion(matchTy < overloadedVTs.size(), "Invalid matching number!");
 
                 vt = overloadedVTs.get(matchTy);
 
-                assert (!tyElt.isSubClassOf("LLVMExtendedElementVectorType")
-                        && !(tyElt.isSubClassOf("llvmTruncatedElementVectorType")))
-                        || vt == iAny || vt == vAny : "Expected iAny or vAny type";
+                Util.assertion((!tyElt.isSubClassOf("LLVMExtendedElementVectorType")                        && !(tyElt.isSubClassOf("llvmTruncatedElementVectorType")))
+                        || vt == iAny || vt == vAny,  "Expected iAny or vAny type");
+
             }
             else
             {
@@ -206,18 +207,18 @@ public final class CodeGenIntrinsic
         for (int i = 0, e = typeList.getSize(); i != e; i++)
         {
             Record tyElt = typeList.getElementAsRecord(i);
-            assert tyElt.isSubClassOf("LLVMType") :"Expected a type!";
+            Util.assertion(tyElt.isSubClassOf("LLVMType"), "Expected a type!");
             int vt;
             if (tyElt.isSubClassOf("LLVMMatchType"))
             {
                 int matchTy = (int) tyElt.getValueAsInt("Number");
-                assert matchTy < overloadedVTs.size():"Invalid matching number!";
+                Util.assertion(matchTy < overloadedVTs.size(), "Invalid matching number!");
 
                 vt = overloadedVTs.get(matchTy);
 
-                assert (!tyElt.isSubClassOf("LLVMExtendedElementVectorType")
-                        && !(tyElt.isSubClassOf("llvmTruncatedElementVectorType")))
-                        || vt == iAny || vt == vAny : "Expected iAny or vAny type";
+                Util.assertion((!tyElt.isSubClassOf("LLVMExtendedElementVectorType")                        && !(tyElt.isSubClassOf("llvmTruncatedElementVectorType")))
+                        || vt == iAny || vt == vAny,  "Expected iAny or vAny type");
+
             }
             else
             {
@@ -237,8 +238,8 @@ public final class CodeGenIntrinsic
         for (int i = 0, e = propList.getSize(); i != e; i++)
         {
             Record property = propList.getElementAsRecord(i);
-            assert property.isSubClassOf("IntrinsicProperty") :
-                    "Expected a property!";
+            Util.assertion(property.isSubClassOf("IntrinsicProperty"),                     "Expected a property!");
+
 
             switch (property.getName())
             {
@@ -269,7 +270,7 @@ public final class CodeGenIntrinsic
                         break;
                     }
                     else
-                        assert false : "Unknown property!";
+                        Util.assertion(false,  "Unknown property!");
                 }
             }
         }

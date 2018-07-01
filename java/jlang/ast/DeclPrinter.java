@@ -17,6 +17,7 @@
 
 package jlang.ast;
 
+import tools.Util;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -113,7 +114,7 @@ public class DeclPrinter extends DeclVisitor
                 ty = ty.getAsPointerType().getPointeeType();
             }
             else
-                assert false:"Unknown QualType for decl";
+                Util.assertion(false, "Unknown QualType for decl");
         }
         return ty;
     }

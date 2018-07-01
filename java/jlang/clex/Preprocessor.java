@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import jlang.basic.Context;
 import jlang.basic.HeaderSearch;
@@ -164,7 +165,7 @@ public final class Preprocessor
      */
     public String getSpelling(Token tok)
     {
-        assert tok.getLength() >= 0 : "Token character range is bogus!";
+        Util.assertion(tok.getLength() >= 0,  "Token character range is bogus!");
 
         StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
         if (!tok.needsCleaning())
@@ -181,8 +182,8 @@ public final class Preprocessor
             i += charSize.get();
         }
 
-        assert result.length() != tok
-                .getLength() : "NeedsCleaning flag set on something that didn't need cleaning!";
+        Util.assertion(result.length() != tok                .getLength(),  "NeedsCleaning flag set on something that didn't need cleaning!");
+
         return result.toString();
     }
 
@@ -220,9 +221,9 @@ public final class Preprocessor
      */
     public IdentifierInfo lookupIdentifierInfo(Token identifier, char[] buf, int startPos)
     {
-        assert identifier.is(TokenKind.identifier) : "Not an identifier!";
-        assert identifier.getIdentifierInfo()
-                == null : "identifier already exists!";
+        Util.assertion(identifier.is(TokenKind.identifier),  "Not an identifier!");
+        Util.assertion(identifier.getIdentifierInfo()                == null,  "identifier already exists!");
+
 
         IdentifierInfo ii;
         if (startPos != 0 && !identifier.needsCleaning())
@@ -252,8 +253,8 @@ public final class Preprocessor
      */
     public Token handleIdentifier(Token identifier)
     {
-        assert identifier.getIdentifierInfo()
-                != null : "Can't handle identifiers without identifier info!";
+        Util.assertion(identifier.getIdentifierInfo()                != null,  "Can't handle identifiers without identifier info!");
+
 
         IdentifierInfo ii = identifier.getIdentifierInfo();
 
@@ -571,9 +572,9 @@ public final class Preprocessor
             if (existing != null)
             {
                 insertNS = existing.getIfNamespace();
-                assert insertNS != null :
-                        "Cannot have a pragma namespace and pragma"
-                                + " handler with the same asmName!";
+                Util.assertion(insertNS != null,                         "Cannot have a pragma namespace and pragma"
+                                + " handler with the same asmName!");
+
             }
             else
             {
@@ -582,7 +583,7 @@ public final class Preprocessor
             }
         }
 
-        assert insertNS.findHandler(handler.getName(), true) == null : "Pragma handler already exists for this identifier!";
+        Util.assertion(insertNS.findHandler(handler.getName(), true) == null,  "Pragma handler already exists for this identifier!");
         insertNS.addPragma(handler);
     }
 
@@ -594,11 +595,11 @@ public final class Preprocessor
         {
             IdentifierInfo nsid = getIdentifierInfo(namespace);
             PragmaHandler existing = pragmaHandlers.findHandler(nsid, true);
-            assert existing != null : "Namespace containing handler does not exist!";
+            Util.assertion(existing != null,  "Namespace containing handler does not exist!");
 
             ns = existing.getIfNamespace();
-            assert ns
-                    != null : "Invalid namespace, registered as a regular pragma handler!";
+            Util.assertion(ns                    != null,  "Invalid namespace, registered as a regular pragma handler!");
+
         }
 
         ns.removePragmaHandler(handler);
@@ -692,16 +693,16 @@ public final class Preprocessor
 
     public void addCommentHandler(CommentHandler handler)
     {
-        assert handler != null : "NULL comment handler!";
-        assert !commentHandlers.contains(handler)
-                : "Comment handler already exist";
+        Util.assertion(handler != null,  "NULL comment handler!");
+        Util.assertion(!commentHandlers.contains(handler),  "Comment handler already exist");
+
         commentHandlers.add(handler);
     }
 
     public void removeCommentHandler(CommentHandler handler)
     {
-        assert commentHandlers
-                .contains(handler) : "Comment handler not registered!";
+        Util.assertion(commentHandlers                .contains(handler),  "Comment handler not registered!");
+
         commentHandlers.remove(handler);
     }
 
@@ -711,7 +712,7 @@ public final class Preprocessor
      */
     public void enterMainSourceFile()
     {
-        assert numEnteredSourceFiles == 0 : "Cannot reenter the tmain file!";
+        Util.assertion(numEnteredSourceFiles == 0,  "Cannot reenter the tmain file!");
 
         FileID mainFileID = sourceMgr.getMainFileID();
 
@@ -725,10 +726,10 @@ public final class Preprocessor
         // Generate memory buffer for built-in predefined macroes.
         MemoryBuffer sb = MemoryBuffer
                 .getMemBuffer(predefines, "<built-in>");
-        //assert sb != null : "Cannot fail to create predefined source buffer";
+        //Util.assertion(sb != null,  "Cannot fail to create predefined source buffer");
         FileID fid = sourceMgr.createFileIDForMemBuffer(sb);
         fid.setIsBuiltin(true);
-        assert !fid.isInvalid() : "Could not create FileID for predefines?";
+        Util.assertion(!fid.isInvalid(),  "Could not create FileID for predefines?");
 
         // Star parsing the predefines.
         enterSourceFile(fid, null);
@@ -736,7 +737,7 @@ public final class Preprocessor
 
     private void enterSourceFile(FileID fid, Path curDir)
     {
-        assert curTokenLexer == null : "Cannot #include a file inside a macro!";
+        Util.assertion(curTokenLexer == null,  "Cannot #include a file inside a macro!");
         ++numEnteredSourceFiles;
 
         if (MaxIncludeStackDepth < includeMacroStack.size())
@@ -775,8 +776,8 @@ public final class Preprocessor
 
     void removeTopOfLexerStack()
     {
-        assert !includeMacroStack
-                .isEmpty() : "Ran out of stack entries to loead";
+        Util.assertion(!includeMacroStack                .isEmpty(),  "Ran out of stack entries to loead");
+
 
         popIncludeMacroStack();
     }
@@ -791,7 +792,7 @@ public final class Preprocessor
 
     private void popIncludeMacroStack()
     {
-        assert !includeMacroStack.isEmpty();
+        Util.assertion( !includeMacroStack.isEmpty());
         IncludeStackInfo info = includeMacroStack.pop();
         curLexer = info.theLexer;
         curTokenLexer = info.theTokenLexer;
@@ -809,8 +810,8 @@ public final class Preprocessor
      */
     public boolean handleEndOfFile(Token result, boolean isEndOfMacro)
     {
-        assert curTokenLexer
-                == null : "Ending a file when currently in a macro!";
+        Util.assertion(curTokenLexer                == null,  "Ending a file when currently in a macro!");
+
 
         // See if this file had a controlling macro.
         if (curLexer != null)
@@ -1345,7 +1346,7 @@ public final class Preprocessor
                     return true;
                 }
 
-                assert litParser.isIntegerLiteral():"Undefined ppnumber";
+                Util.assertion(litParser.isIntegerLiteral(), "Undefined ppnumber");
 
                 // long long is C99 feature.
                 if (!pp.getLangOptions().c99 && litParser.isLongLong)
@@ -1404,8 +1405,8 @@ public final class Preprocessor
                 }
                 else
                 {
-                    assert result.val.getBitWidth() == val.getBitWidth()
-                            :"intmax_t smaller than char?";
+                    Util.assertion(result.val.getBitWidth() == val.getBitWidth(), "intmax_t smaller than char?");
+
                     result.val.assign(val);
                 }
 
@@ -1593,7 +1594,7 @@ public final class Preprocessor
                 peekPrec = getPrecedence(peekTok.getKind());
             }
 
-            assert peekPrec <= thisPrec :"Recursion didn't work!";
+            Util.assertion(peekPrec <= thisPrec, "Recursion didn't work!");
 
             // Usual arithmetic conversions (C99 6.3.1.8p1): result is int if
             // either operand is int.
@@ -1634,7 +1635,7 @@ public final class Preprocessor
             boolean overflow = false;
             switch (operator)
             {
-                default: assert false : "Undefined operator token!";
+                default: Util.assertion(false, "Undefined operator token!");
                 case percent:
                     if (!rhs.val.eq(0))
                         res.assign(lhs.val.rem(rhs.val));
@@ -2028,7 +2029,7 @@ public final class Preprocessor
             boolean foundElse)
     {
         ++NumSkipped;
-        assert curTokenLexer == null && curLexer != null:"Lexing a macro, not file!";
+        Util.assertion(curTokenLexer == null && curLexer != null, "Lexing a macro, not file!");
 
         curLexer.pushConditionalLevel(ifTokenLoc, false, foundNonSkip, foundElse);;
 
@@ -2121,7 +2122,7 @@ public final class Preprocessor
                 checkEndOfDirective("endif", false);
                 PPConditionalInfo condInfo;
                 condInfo = curLexer.popConditionalLevel();
-                assert condInfo != null:"Can't be skipping if not in a condition";
+                Util.assertion(condInfo != null, "Can't be skipping if not in a condition");
 
                 if (!condInfo.wasSkipping)
                     break;
@@ -2155,7 +2156,7 @@ public final class Preprocessor
                 }
                 else
                 {
-                    assert curLexer.lexingRawMode : "We have to be skipping here!";
+                    Util.assertion(curLexer.lexingRawMode,  "We have to be skipping here!");
 
                     curLexer.lexingRawMode = false;
                     IdentifierInfo ifNdefMacro;
@@ -2217,7 +2218,7 @@ public final class Preprocessor
             // If the start of a top-level #ifdef, inform MIOpt.
             if (!readAnyTokensBeforeDirective)
             {
-                assert isIfndef :"#ifdef shouldn't reach here";
+                Util.assertion(isIfndef, "#ifdef shouldn't reach here");
                 curLexer.miOpt.enterTopLevelIFNDEF(macroNameTok.getIdentifierInfo());;
             }
             else
@@ -2313,8 +2314,8 @@ public final class Preprocessor
         if (curLexer.getConditionalStackDepth() == 0)
             curLexer.miOpt.enterTopLevelConditional();
 
-        assert !ci.wasSkipping && !curLexer.lexingRawMode:
-                "This code should only be reachable in the non-skipping case!";
+        Util.assertion(!ci.wasSkipping && !curLexer.lexingRawMode,                 "This code should only be reachable in the non-skipping case!");
+
     }
 
     /**
@@ -2542,7 +2543,7 @@ public final class Preprocessor
         do
         {
             lex(tmpTok);
-            assert tmpTok.isNot(eof) : "Didn't find end of -imacros!";
+            Util.assertion(tmpTok.isNot(eof),  "Didn't find end of -imacros!");
         }while (tmpTok.isNot(hashhash));
     }
 
@@ -2696,7 +2697,7 @@ public final class Preprocessor
 
             // "Poison" __VA_ARGS__, which can only appear in the expansion of a macro.
             // This gets unpoisoned where it is allowed.
-            assert Ident__VA_ARGS__.isPoisoned(): "__VA_ARGS__ should be poisoned!";
+            Util.assertion(Ident__VA_ARGS__.isPoisoned(),  "__VA_ARGS__ should be poisoned!");
             if (mi.isC99Varargs())
                 Ident__VA_ARGS__.setIsPoisoned(false);
 
@@ -2928,7 +2929,7 @@ public final class Preprocessor
         {
             // Parse and validate the string, converting it into a unique ID.
             StringLiteralParser literal = new StringLiteralParser(new Token[]{strTok}, this);
-            assert !literal.anyWide :"Didn't allow wide string in";
+            Util.assertion(!literal.anyWide, "Didn't allow wide string in");
             if (literal.hadError)
             {
                 discardUntilEndOfDirective();
@@ -3076,7 +3077,7 @@ public final class Preprocessor
                             return;
                         case pp_include_next:
                             diag(result, ext_pp_include_next_directive).emit();
-                            //assert false:"#include_next is not supported currently";
+                            //Util.assertion(false, "#include_next is not supported currently");
                             return;
                     }
                     break;
@@ -3126,7 +3127,7 @@ public final class Preprocessor
 
     public boolean handleEndOfTokenLexer(Token result)
     {
-        assert curTokenLexer != null && curLexer == null : "Ending a macro when currently in a #include file!";
+        Util.assertion(curTokenLexer != null && curLexer == null,  "Ending a macro when currently in a #include file!");
 
         // Delete the current token lexer.
         curTokenLexer = null;
@@ -3185,15 +3186,15 @@ public final class Preprocessor
         // Read arguments as unexpanded tokens.  This avoids issues, e.g., where
         // an argument value in a macro could expand to ',' or '(' or ')'.
         lexUnexpandedToken(tok);
-        assert tok.is(l_paren): "Error computing l-paren-ness?";
+        Util.assertion(tok.is(l_paren),  "Error computing l-paren-ness?");
 
         ArrayList<Token> argTokens = new ArrayList<>(64);
 
         int numActuals = 0;
         while (tok.isNot(r_paren))
         {
-            assert tok.is(l_paren) || tok.is(comma)
-                    : "only expect argument separators here";
+            Util.assertion(tok.is(l_paren) || tok.is(comma),  "only expect argument separators here");
+
 
             int argTokenStart = argTokens.size();
             SourceLocation argStartLoc = tok.getLocation();
@@ -3282,7 +3283,7 @@ public final class Preprocessor
             eofToken.setLength(0);
             argTokens.add(eofToken);
             ++numActuals;
-            assert numFixedArgsLef != 0: "Too many arguments parsed";
+            Util.assertion(numFixedArgsLef != 0,  "Too many arguments parsed");
             --numFixedArgsLef;
         }
 
@@ -3506,7 +3507,7 @@ public final class Preprocessor
     {
         // Figure out which token this is.
         IdentifierInfo ii = tok.getIdentifierInfo();
-        assert ii != null : "Can't be a tok without id info!";
+        Util.assertion(ii != null,  "Can't be a tok without id info!");
 
         // If this is an _Pragma directive, expand it, invoke the pragma handler, then
         // lex the token after it.
@@ -3653,7 +3654,7 @@ public final class Preprocessor
         }
         else
         {
-            assert false : "Undefined identifier!";
+            Util.assertion(false,  "Undefined identifier!");
         }
     }
 
@@ -3838,7 +3839,7 @@ public final class Preprocessor
 
     public void handlePragmaMark()
     {
-        assert curLexer != null : "No current lexer?";
+        Util.assertion(curLexer != null,  "No current lexer?");
         curLexer.readToEndOfLine();
     }
 
@@ -3853,8 +3854,8 @@ public final class Preprocessor
             return includeMacroStack.isEmpty();
 
         // If there are any stacked lexers, we're in a #include.
-        assert isFileLexer(includeMacroStack.get(0))
-                :"Top level include stack isn't our primary lexer?";
+        Util.assertion(isFileLexer(includeMacroStack.get(0)), "Top level include stack isn't our primary lexer?");
+
         for (int i = 1, e = includeMacroStack.size(); i != e; i++)
             if (isFileLexer(includeMacroStack.get(i)))
                 return false;
@@ -3992,7 +3993,7 @@ public final class Preprocessor
             return;
         }
 
-        assert getCurrentFileLexer() != null;
+        Util.assertion( getCurrentFileLexer() != null);
         Path curFile = getCurrentFileLexer().getFileEntry();
 
         if (curFile != null && curFile.toFile().lastModified() <
@@ -4211,7 +4212,7 @@ public final class Preprocessor
 
     public Token peekAhead(int n)
     {
-        assert cachedLexPos + n > cachedTokens.size(): "Confused caching.";
+        Util.assertion(cachedLexPos + n > cachedTokens.size(),  "Confused caching.");
         //FIXME exitCachingMode();
         for (int c = cachedLexPos + n - cachedTokens.size(); c > 0; --c)
         {
@@ -4230,9 +4231,9 @@ public final class Preprocessor
      */
     public char getSpellingOfSingleCharacterNumericConstant(Token token)
     {
-        assert token != null && token.is(numeric_constant)
-                && token.getLength() == 1:"Called on unsupported token";
-        assert !token.needsCleaning():"Token can't need cleaning with lenght 1";
+        Util.assertion(token != null && token.is(numeric_constant)                && token.getLength() == 1, "Called on unsupported token");
+
+        Util.assertion(!token.needsCleaning(), "Token can't need cleaning with lenght 1");
 
         // If the token is carrying a literal data, just return its first character.
         StrData data = token.getLiteralData();

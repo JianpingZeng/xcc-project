@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
 import jlang.support.Linkage;
@@ -36,7 +37,7 @@ public class GlobalVariable extends GlobalValue
         if (init != null)
         {
             reserve(1);
-            assert init.getType() == ty:"Initializer should be the same type as the GlobalVariable!";
+            Util.assertion(init.getType() == ty, "Initializer should be the same type as the GlobalVariable!");
             setOperand(0, new Use(init, this));
         }
         if (before != null)
@@ -66,12 +67,12 @@ public class GlobalVariable extends GlobalValue
     @Override
     public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
     {
-        assert getNumOfOperands() == 1:
-                "Attempt to replace uses of Constants on a GVar with no initializer";
-        assert operand(0).equals(from):
-                "Attempt to replace wrong constant initializer in GVar";
-        assert to instanceof Constant:
-                "Attempt to replace GVar initializer with non-constant";
+        Util.assertion(getNumOfOperands() == 1,                 "Attempt to replace uses of Constants on a GVar with no initializer");
+
+        Util.assertion(operand(0).equals(from),                 "Attempt to replace wrong constant initializer in GVar");
+
+        Util.assertion(to instanceof Constant,                 "Attempt to replace GVar initializer with non-constant");
+
         setOperand(0, (Constant)to);
     }
 
@@ -112,7 +113,7 @@ public class GlobalVariable extends GlobalValue
 
     public Constant getInitializer()
     {
-        assert hasInitializer();
+        Util.assertion( hasInitializer());
         return (Constant) operand(0);
     }
 

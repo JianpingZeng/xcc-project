@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -34,19 +35,19 @@ public interface EEVT
 
     static boolean isExtIntegerInVTs(TIntArrayList evts)
     {
-        assert !evts.isEmpty():"Cannot check for integer in empty ExtVT list!";
+        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
         return evts.get(0) == isInt || !(filterEVTs(evts, isInteger)).isEmpty();
     }
 
     static boolean isExtFloatingPointInVTs(TIntArrayList evts)
     {
-        assert !evts.isEmpty():"Cannot check for integer in empty ExtVT list!";
+        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
         return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPoint)).isEmpty();
     }
 
     static boolean isExtVectorVTs(TIntArrayList evts)
     {
-        assert !evts.isEmpty():"Cannot check for integer in empty ExtVT list!";
+        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
         return evts.get(0) == isVec || !(filterEVTs(evts, isVector)).isEmpty();
     }
 }

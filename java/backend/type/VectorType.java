@@ -17,6 +17,7 @@
 
 package backend.type;
 
+import tools.Util;
 import java.util.TreeMap;
 
 /**
@@ -64,13 +65,13 @@ public class VectorType extends SequentialType
         super(VectorTyID, eleType);
         this.numElts = numEles;
         setAbstract(eleType.isAbstract);
-        assert numEles > 0;
-        assert isValidElementType(eleType);
+        Util.assertion( numEles > 0);
+        Util.assertion( isValidElementType(eleType));
     }
 
     public static VectorType get(Type eltType, int numElts)
     {
-        assert eltType != null;
+        Util.assertion( eltType != null);
         VectorValType key = new VectorValType(eltType, numElts);
         if (vectorTypes.containsKey(key))
             return vectorTypes.get(key);
@@ -96,7 +97,7 @@ public class VectorType extends SequentialType
     public static VectorType getTruncatedElementVectorType(VectorType vty)
     {
         int eltBits = vty.getElementType().getPrimitiveSizeInBits();
-        assert (eltBits & 1) == 0;
+        Util.assertion( (eltBits & 1) == 0);
         Type eleTy = IntegerType.get(eltBits/2);
         return get(eleTy, vty.getNumElements());
     }

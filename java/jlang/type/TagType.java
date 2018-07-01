@@ -1,5 +1,6 @@
 package jlang.type;
 
+import tools.Util;
 import jlang.support.PrintingPolicy;
 import jlang.sema.Decl;
 import jlang.sema.Decl.TagDecl;
@@ -59,7 +60,7 @@ public abstract class TagType extends Type
         {
             Decl.TypeDefDecl typedef = decl.getTypedefAnonDecl();
             kind = null;
-            assert typedef.getIdentifier() != null:"Typedef without identifier!";
+            Util.assertion(typedef.getIdentifier() != null, "Typedef without identifier!");
             id = typedef.getIdentifier().getName();
         }
         else

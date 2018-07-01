@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import tools.Util;
 import java.util.Arrays;
 
 /**
@@ -42,7 +43,7 @@ public class IntEqClasses
 
     public IntEqClasses(int n)
     {
-        assert n >= 0:"Can not allocate N(less than 0)'s elements";
+        Util.assertion(n >= 0, "Can not allocate N(less than 0)'s elements");
         id = new int[n];
         size = new int[n];
         Arrays.fill(size, 1);
@@ -92,7 +93,7 @@ public class IntEqClasses
 
     public int getIDAt(int index)
     {
-        assert index >= 0 && index < getNumIds();
+        Util.assertion( index >= 0 && index < getNumIds());
         return id[index];
     }
 }

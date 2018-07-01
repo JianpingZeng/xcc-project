@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.utils.PredIterator;
@@ -58,7 +59,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
 
     public BasicBlock getRoot()
     {
-        assert roots.size() == 1:"Should always has one node!";
+        Util.assertion(roots.size() == 1, "Should always has one node!");
         return roots.get(0);
     }
 
@@ -80,9 +81,9 @@ public final class DominanceFrontier extends DominanceFrontierBase
     {
         frontiers.clear();
         DomTree dt = (DomTree)getAnalysisToUpDate(DomTree.class);
-        assert dt != null:"No available DomTree pass";
+        Util.assertion(dt != null, "No available DomTree pass");
         roots = dt.getRoots();
-        assert roots.size() == 1 :"Only have one root block!";
+        Util.assertion(roots.size() == 1, "Only have one root block!");
         calculateCooper(dt, dt.getRoot());
         return false;
     }
@@ -131,8 +132,8 @@ public final class DominanceFrontier extends DominanceFrontierBase
      */
     public void splitBlock(BasicBlock newBB)
     {
-        assert newBB.getTerminator().getNumOfSuccessors() == 1
-                :"newBB should have a single successors";
+        Util.assertion(newBB.getTerminator().getNumOfSuccessors() == 1, "newBB should have a single successors");
+
         BasicBlock succ = newBB.getTerminator().getSuccessor(0);
 
         ArrayList<BasicBlock> predBlocks = new ArrayList<>();
@@ -271,15 +272,15 @@ public final class DominanceFrontier extends DominanceFrontierBase
         do
         {
             DFCalcualteWorkObject curObject = worklist.pop();
-            assert curObject!= null :"Missing work object.";
+            Util.assertion(curObject!= null, "Missing work object.");
 
             BasicBlock currentBB = curObject.currentBB;
             BasicBlock parentBB = curObject.parentBB;
             DomTreeNodeBase<BasicBlock> currentNode = curObject.node;
             DomTreeNodeBase<BasicBlock> parentNode = curObject.parentNode;
 
-            assert currentBB != null;
-            assert currentNode != null;
+            Util.assertion( currentBB != null);
+            Util.assertion( currentNode != null);
 
             HashSet<BasicBlock> s = frontiers.get(currentBB);
 

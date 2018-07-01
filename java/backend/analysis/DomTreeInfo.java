@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -147,9 +148,9 @@ public final class DomTreeInfo implements IDomTreeInfo
 
 	private boolean dominateBySlowTreeWalk(DomTreeNodeBase<BasicBlock> A, DomTreeNodeBase<BasicBlock> B)
 	{
-		assert (A != B);
-		assert (isReachableFromEntry(B));
-		assert (isReachableFromEntry(A));
+		Util.assertion( (A != B));
+		Util.assertion( (isReachableFromEntry(B)));
+		Util.assertion( (isReachableFromEntry(A)));
 
 		DomTreeNodeBase<BasicBlock> IDom = null;
 		while ((IDom = B.getIDom()) != null && IDom != A && IDom != B)
@@ -187,16 +188,16 @@ public final class DomTreeInfo implements IDomTreeInfo
 	 */
 	public boolean isReachableFromEntry(BasicBlock BB)
 	{
-		assert isPostDominators() :
-				"This is not implemented for post dominatror";
+		Util.assertion(isPostDominators(), 				"This is not implemented for post dominatror");
+
 		BasicBlock entry = this.m.getEntryBlock();
 		return dominates(entry, BB);
 	}
 
 	public boolean isReachableFromEntry(DomTreeNodeBase<BasicBlock> node)
 	{
-		assert isPostDominators() :
-				"This is not implemented for post dominatror";
+		Util.assertion(isPostDominators(), 				"This is not implemented for post dominatror");
+
 
 		DomTreeNodeBase<BasicBlock> entry = domTreeNodes.get(m.getEntryBlock());
 		return dominates(entry, node);
@@ -360,7 +361,7 @@ public final class DomTreeInfo implements IDomTreeInfo
 				if (BBNode != null) continue;
 
 				BasicBlock ImmDom = this.iDoms.get(W);
-				assert (ImmDom != null || this.domTreeNodes.get(null) != null);
+				Util.assertion( (ImmDom != null || this.domTreeNodes.get(null) != null));
 
 				// Get or calculates the node for the imediate dominator
 				DomTreeNodeBase<BasicBlock> IDomNode = this.getTreeNodeForBlock(ImmDom);
@@ -571,8 +572,8 @@ public final class DomTreeInfo implements IDomTreeInfo
     public BasicBlock findNearestCommonDominator(BasicBlock bb1,
             BasicBlock bb2)
     {
-        assert !isPostDominators() :"This is not implement for post dominator";
-        assert bb1.getParent() == bb1.getParent():"Two blocks are not in the same function";
+        Util.assertion(!isPostDominators(), "This is not implement for post dominator");
+        Util.assertion(bb1.getParent() == bb1.getParent(), "Two blocks are not in the same function");
 
         // If either bb1 or bb2 is entry, then entry is returned.
         BasicBlock entry = bb1.getParent().getEntryBlock();
@@ -622,15 +623,15 @@ public final class DomTreeInfo implements IDomTreeInfo
     public void eraseNode(BasicBlock bb)
     {
         DomTreeNodeBase<BasicBlock> node = getTreeNodeForBlock(bb);
-        assert node != null :"Removed node is not in Dominator tree!";
-        assert node.getChildren().isEmpty():"Node is not a leaf node!";
+        Util.assertion(node != null, "Removed node is not in Dominator tree!");
+        Util.assertion(node.getChildren().isEmpty(), "Node is not a leaf node!");
 
         // Remove the node from it's immediate dominator children list.
         DomTreeNodeBase<BasicBlock> idom = node.getIDom();
         if (idom != null)
         {
-            assert idom.getChildren().contains(node) :
-                    "Not in immediate dominator children list";
+            Util.assertion(idom.getChildren().contains(node),                     "Not in immediate dominator children list");
+
             idom.getChildren().remove(node);
         }
         domTreeNodes.remove(bb, node);
@@ -662,7 +663,7 @@ public final class DomTreeInfo implements IDomTreeInfo
 
     private void splitDom(ArrayList<BasicBlock> succs, BasicBlock newBB)
     {
-		assert succs.size() == 1 :"newBB must have a single successor";
+		Util.assertion(succs.size() == 1, "newBB must have a single successor");
 
 		BasicBlock succ = succs.get(0);
 
@@ -670,7 +671,7 @@ public final class DomTreeInfo implements IDomTreeInfo
 		for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)
 			preds.add(itr.next());
 
-		assert !preds.isEmpty() :"No predecessors block!";
+		Util.assertion(!preds.isEmpty(), "No predecessors block!");
 
 		boolean newBBDominatesSucc = true;
 		for (PredIterator<BasicBlock> succPredItr = succ.predIterator();
@@ -724,7 +725,7 @@ public final class DomTreeInfo implements IDomTreeInfo
 
     private void splitPostDom(ArrayList<BasicBlock> preds, BasicBlock newBB)
     {
-	    assert preds.size() == 1 :"newBB must have a single predecessor";
+	    Util.assertion(preds.size() == 1, "newBB must have a single predecessor");
 
 	    BasicBlock pred = preds.get(0);
 
@@ -732,7 +733,7 @@ public final class DomTreeInfo implements IDomTreeInfo
 	    for (SuccIterator itr = newBB.succIterator(); itr.hasNext();)
 		    succs.add(itr.next());
 
-	    assert !succs.isEmpty() :"No successors block!";
+	    Util.assertion(!succs.isEmpty(), "No successors block!");
 
 	    boolean newBBDominatesSucc = true;
 	    for (SuccIterator itr = pred.succIterator(); itr.hasNext();)
@@ -793,9 +794,9 @@ public final class DomTreeInfo implements IDomTreeInfo
 	 */
 	public DomTreeNodeBase<BasicBlock> addNewBlock(BasicBlock bb, BasicBlock idom)
     {
-		assert getTreeNodeForBlock(bb) == null :"Block already in dominator tree";
+		Util.assertion(getTreeNodeForBlock(bb) == null, "Block already in dominator tree");
 		DomTreeNodeBase<BasicBlock> idomNode = getTreeNodeForBlock(idom);
-		assert idomNode != null :"Not immediate dominator specified for block!";
+		Util.assertion(idomNode != null, "Not immediate dominator specified for block!");
 		return domTreeNodes.put(bb, idomNode.addChidren(new DomTreeNodeBase<>(bb, idomNode)));
     }
 
@@ -807,7 +808,7 @@ public final class DomTreeInfo implements IDomTreeInfo
     public void changeIDom(DomTreeNodeBase<BasicBlock> oldIDom,
 		    DomTreeNodeBase<BasicBlock> newIDom)
     {
-		assert oldIDom != null && newIDom != null :"Cannot change null node";
+		Util.assertion(oldIDom != null && newIDom != null, "Cannot change null node");
 		oldIDom.setIDom(newIDom);
     }
 

@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import static backend.codegen.dagisel.SDep.Kind.*;
 
 public class SDep implements Cloneable
@@ -66,14 +67,14 @@ public class SDep implements Cloneable
 		{
 			case Anti:
 			case Output:
-				assert reg != 0;
+				Util.assertion( reg != 0);
 			case Data:
-				assert !isMustAlias;
-				assert !isArtificial;
+				Util.assertion( !isMustAlias);
+				Util.assertion( !isArtificial);
 				this.reg = reg;
 				break;	
 			case Order:
-				assert reg == 0;
+				Util.assertion( reg == 0);
 				order = new OrderContent();
 				order.isNormalMemory = isNormalMemory;
 				order.isArtificial = isArtificial;
@@ -134,17 +135,17 @@ public class SDep implements Cloneable
 
 	public int getReg()
 	{
-		assert getDepKind() == Data || getDepKind() == Anti
-			|| getDepKind() == Output;
+		Util.assertion( getDepKind() == Data || getDepKind() == Anti			|| getDepKind() == Output);
+
 		return reg;
 	}
 
 	public void setReg(int r)
 	{
-		assert getDepKind() == Data || getDepKind() == Anti
-			|| getDepKind() == Output;
-		assert getDepKind() != Anti || r != 0;
-		assert getDepKind() != Output || r != 0;
+		Util.assertion( getDepKind() == Data || getDepKind() == Anti			|| getDepKind() == Output);
+
+		Util.assertion( getDepKind() != Anti || r != 0);
+		Util.assertion( getDepKind() != Output || r != 0);
 		reg = r;
 	}
 

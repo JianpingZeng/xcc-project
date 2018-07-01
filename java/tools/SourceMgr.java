@@ -16,6 +16,7 @@ package tools;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.MemoryBuffer;
 
 import java.io.PrintStream;
@@ -115,19 +116,19 @@ public final class SourceMgr
 
     public SrcBuffer getBufferInfo(int i)
     {
-        assert i >= 0 && i < buffers.size() :"Invalid buffer ID!";
+        Util.assertion(i >= 0 && i < buffers.size(), "Invalid buffer ID!");
         return buffers.get(i);
     }
 
     public MemoryBuffer getMemoryBuffer(int i)
     {
-        assert i >= 0 && i < buffers.size() :"Invalid buffer ID!";
+        Util.assertion(i >= 0 && i < buffers.size(), "Invalid buffer ID!");
         return buffers.get(i).buffer;
     }
 
     public SMLoc getParentIncludeLoc(int i)
     {
-        assert i >= 0 && i < buffers.size() :"Invalid buffer ID!";
+        Util.assertion(i >= 0 && i < buffers.size(), "Invalid buffer ID!");
         return buffers.get(i).includeLoc;
     }
 
@@ -189,7 +190,7 @@ public final class SourceMgr
     public int findLineNumber(SMLoc loc, int bufferID)
     {
         if (bufferID == -1) bufferID = findBufferContainingLoc(loc);
-        assert bufferID != -1 :"Invalid location!";
+        Util.assertion(bufferID != -1, "Invalid location!");
 
         int lineNo = 1;
 
@@ -239,7 +240,7 @@ public final class SourceMgr
         PrintStream os = System.err;
 
         int curBuf = findBufferContainingLoc(loc);
-        assert curBuf != -1:"Invalid or unspecified location!";
+        Util.assertion(curBuf != -1, "Invalid or unspecified location!");
         printIncludeStack(getBufferInfo(curBuf).includeLoc, os);
 
         getMessage(loc, msg, type).print(null, os);
@@ -256,10 +257,10 @@ public final class SourceMgr
     public SMDiagnostic getMessage(SMLoc loc, String msg, String type)
     {
         int curBuf = findBufferContainingLoc(loc);
-        assert curBuf != -1 :"Invalid or unspecified location!";
+        Util.assertion(curBuf != -1, "Invalid or unspecified location!");
 
         MemoryBuffer curMB = getBufferInfo(curBuf).buffer;
-        assert curMB.getBuffer() == loc.buffer.getBuffer();
+        Util.assertion( curMB.getBuffer() == loc.buffer.getBuffer());
         int columnStart = loc.getPointer();
         while (columnStart >= curMB.getBufferStart()
                 && curMB.getCharAt(columnStart) != '\n'
@@ -292,7 +293,7 @@ public final class SourceMgr
         if (includeLoc.buffer == null) return;
 
         int curBuf = findBufferContainingLoc(includeLoc);
-        assert curBuf != -1 :"Invalid or unspecified location!";
+        Util.assertion(curBuf != -1, "Invalid or unspecified location!");
 
         printIncludeStack(getBufferInfo(curBuf).includeLoc, os);
 

@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.Pair;
 
 import java.io.PrintStream;
@@ -78,7 +79,7 @@ public final class TernOpInit extends Init.OpInit
     @Override
     public Init getOperand(int i)
     {
-        assert i >= 0 && i < 3;
+        Util.assertion( i >= 0 && i < 3);
         return i == 0 ? lhs : i == 1 ? mhs : rhs;
     }
 
@@ -88,7 +89,7 @@ public final class TernOpInit extends Init.OpInit
     {
         switch (getOpcode())
         {
-            default: assert false: "Undefined binop";
+            default: Util.assertion(false, "Undefined binop");
             case SUBST:
             {
                 DefInit lhsd;
@@ -208,14 +209,14 @@ public final class TernOpInit extends Init.OpInit
         if (!rhsIsOp)
         {
             System.err.println("!foreach requires an operator");
-            assert false:"No operator for !foreach";
+            Util.assertion(false, "No operator for !foreach");
         }
 
         boolean lhsIsType = lhs instanceof TypedInit;
         if (!lhsIsType)
         {
             System.err.println("!foreach requires typed variable");
-            assert false:"No typed variable for !foreach";
+            Util.assertion(false, "No typed variable for !foreach");
         }
 
         if ((mhsIsDag && typeIsDag) || (mhsIsList && typeIsList))
@@ -341,7 +342,7 @@ public final class TernOpInit extends Init.OpInit
     @Override
     public OpInit clone(List<Init> operands)
     {
-        assert operands.size() == 3;
+        Util.assertion( operands.size() == 3);
         return new TernOpInit(getOpcode(), operands.get(0),
                 operands.get(1), operands.get(2), getType());
     }

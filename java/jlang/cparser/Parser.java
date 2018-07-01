@@ -1,5 +1,6 @@
 package jlang.cparser;
 
+import tools.Util;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
@@ -142,7 +143,7 @@ public class Parser implements Tag,
      */
     private void exitScope()
     {
-        assert getCurScope() != null : "Scope imbalance.";
+        Util.assertion(getCurScope() != null,  "Scope imbalance.");
 
         // inform the action module that this scope is cleared if there are any
         // decls in it.
@@ -193,7 +194,7 @@ public class Parser implements Tag,
         // Prime the lexer look-ahead.
         consumeToken();
 
-        assert getCurScope() == null:"A scope is already active?";
+        Util.assertion(getCurScope() == null, "A scope is already active?");
         enterScope(DeclScope.value);
         action.actOnTranslationUnitScope(getCurScope());
 
@@ -255,7 +256,7 @@ public class Parser implements Tag,
      */
     public void compilationUnit()
     {
-        assert getCurScope() == null;
+        Util.assertion( getCurScope() == null);
         enterScope(DeclScope.value);
         action.actOnTranslationUnitScope(getCurScope());
 
@@ -264,7 +265,7 @@ public class Parser implements Tag,
         while (!parseTopLevel(result));
 
         exitScope();
-        assert getCurScope() == null : "Scope imbalance!";
+        Util.assertion(getCurScope() == null,  "Scope imbalance!");
     }
 
     /**
@@ -275,7 +276,7 @@ public class Parser implements Tag,
      */
     public boolean parseTopLevel(ArrayList<Decl> result)
     {
-        assert result != null;
+        Util.assertion( result != null);
         result.clear();
         if (nextTokenIs(eof))
         {
@@ -319,7 +320,7 @@ public class Parser implements Tag,
                 consumeToken();
                 return parseExternalDeclaration();
             case Asm:
-                //assert false:"Current inline assembly.";
+                //Util.assertion(false, "Current inline assembly.");
                 OutParamWrapper<SourceLocation> endLoc = new OutParamWrapper<>();
                 ActionResult<Expr> result = parseSimpleAsm(endLoc);
                 expectAndConsume(semi, err_expected_semi_after, "top-level asm block", semi);
@@ -363,7 +364,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Expr> parseSimpleAsm(OutParamWrapper<SourceLocation> endLoc)
     {
-        assert tok.is(Asm):"Not an inline assembly code";
+        Util.assertion(tok.is(Asm), "Not an inline assembly code");
         SourceLocation asmLoc = consumeToken();
 
         if (tok.isNot(l_paren))
@@ -666,7 +667,7 @@ public class Parser implements Tag,
 
     private Decl parseFunctionStatementBody(Decl funcDecl)
     {
-        assert nextTokenIs(l_brace);
+        Util.assertion( nextTokenIs(l_brace));
 
         SourceLocation lBraceLoc = tok.getLocation();
         ActionResult<Stmt> body = parseCompoundStatementBody(false);
@@ -838,12 +839,12 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseLabeledStatement()
     {
-        assert nextTokenIs(identifier) && tok.getIdentifierInfo() != null
-                : "Not a valid identifier";
+        Util.assertion(nextTokenIs(identifier) && tok.getIdentifierInfo() != null,  "Not a valid identifier");
+
         Token identTok = tok;  // Save the identifier token.
         consumeToken(); // Eat the identifier.
 
-        assert nextTokenIs(colon) : "Not a label";
+        Util.assertion(nextTokenIs(colon),  "Not a label");
         // identifier ':' statement
         SourceLocation colonLoc = consumeToken();
 
@@ -873,7 +874,7 @@ public class Parser implements Tag,
             boolean missingCase,
             ActionResult<Expr> expr)
     {
-        assert nextTokenIs(Case) || missingCase : "Not a case stmt!";
+        Util.assertion(nextTokenIs(Case) || missingCase,  "Not a case stmt!");
 
         // It is very very common for code to contain many case statements recursively
         // nested, as in (but usually without indentation):
@@ -971,7 +972,7 @@ public class Parser implements Tag,
             // handle all case statements
         } while(nextTokenIs(Case));
 
-        assert !topLevelCase.isInvalid() :"Should have parsed at least one case statement";
+        Util.assertion(!topLevelCase.isInvalid(), "Should have parsed at least one case statement");
 
         ActionResult<Stmt> subStmt;
         if (nextTokenIsNot(r_brace))
@@ -1004,7 +1005,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseDefaultStatement()
     {
-        assert (nextTokenIs(Default)) :"Not a default statement!";
+        Util.assertion((nextTokenIs(Default)), "Not a default statement!");
 
         // eat the 'default' keyword
         SourceLocation defaultLoc = consumeToken();
@@ -1066,7 +1067,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
-        assert tok.is(l_brace) : "Not a compound statement!";
+        Util.assertion(tok.is(l_brace),  "Not a compound statement!");
 
         // Enter a scope to hold everything within the compound stmt.
         // Compound statements can always hold declarations.
@@ -1080,7 +1081,7 @@ public class Parser implements Tag,
 
     private ActionResult<Stmt> parseCompoundStatementBody(boolean isStmtExpr)
     {
-        assert tok.is(l_brace);
+        Util.assertion( tok.is(l_brace));
         BalancedDelimiterTracker tracker = new BalancedDelimiterTracker(this, l_brace);
         if (tracker.consumeOpen())
             return stmtError();     // Eat the '{'.
@@ -1211,7 +1212,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseIfStatement()
     {
-        assert nextTokenIs(If) : "Not an if stmt!";
+        Util.assertion(nextTokenIs(If),  "Not an if stmt!");
         SourceLocation ifLoc = consumeToken(); // eat 'if'
 
         if (nextTokenIsNot(l_paren))
@@ -1411,7 +1412,7 @@ public class Parser implements Tag,
             OutParamWrapper<QualType> castTy,
             OutParamWrapper<SourceLocation> rParenLoc)
     {
-        assert nextTokenIs(l_paren):"Not a paren expression.";
+        Util.assertion(nextTokenIs(l_paren), "Not a paren expression.");
         // eat the '('.
         SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
@@ -1534,7 +1535,7 @@ public class Parser implements Tag,
             SourceLocation lParenLoc,
             SourceLocation rParenLoc)
     {
-        assert tok.is(l_brace):"The current token should be '{'";
+        Util.assertion(tok.is(l_brace), "The current token should be '{'");
         if (!getLangOption().c99)
         {
             diag(lParenLoc, ext_c99_compound_literal);
@@ -1670,7 +1671,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseSwitchStatement()
     {
-        assert tok.is(Switch) :"Not a switch statement?";
+        Util.assertion(tok.is(Switch), "Not a switch statement?");
         // eat the 'switch'
         SourceLocation switchLoc = consumeToken();
 
@@ -1738,7 +1739,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseWhileStatement()
     {
-        assert nextTokenIs(While) :"Not a while statement!";
+        Util.assertion(nextTokenIs(While), "Not a while statement!");
         // eat the 'while'
         SourceLocation whileLoc = consumeToken();
 
@@ -1801,7 +1802,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseDoStatement()
     {
-        assert nextTokenIs(Do):"Not a do stmt!";
+        Util.assertion(nextTokenIs(Do), "Not a do stmt!");
 
         // eat the 'do'.
         SourceLocation doLoc = consumeToken();
@@ -1866,7 +1867,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseForStatement()
     {
-        assert nextTokenIs(For):"Not a for loop";
+        Util.assertion(nextTokenIs(For), "Not a for loop");
         // eat the 'for'.
         SourceLocation forLoc = consumeToken();
 
@@ -2431,7 +2432,7 @@ public class Parser implements Tag,
             newSyntax += " = ";
 
             SourceLocation nameLoc = consumeToken();
-            assert tok.is(colon):"mayBeDesignationStart not working properly!";
+            Util.assertion(tok.is(colon), "mayBeDesignationStart not working properly!");
 
             SourceLocation colonLoc = consumeToken();
             diag(tok, ext_gnu_old_style_field_designator)
@@ -2465,7 +2466,7 @@ public class Parser implements Tag,
                 consumeToken(); // Consume the identifier.
                 continue;
             }
-            assert tok.is(l_bracket);
+            Util.assertion( tok.is(l_bracket));
 
             // designator: '[' constant-expression ']'
             // designator: '[' constant-expression ... constant-expression']'
@@ -2505,7 +2506,7 @@ public class Parser implements Tag,
             }
         }
 
-        assert !d.isEmpty() :"Designator is emtpy?";
+        Util.assertion(!d.isEmpty(), "Designator is emtpy?");
 
         // Handle a normal designator sequence end, which is an equal.
         if (tok.is(equal))
@@ -2537,7 +2538,7 @@ public class Parser implements Tag,
 
     private ActionResult<Stmt> parseGotoStatement()
     {
-        assert nextTokenIs(Goto):"Not a goto stmt!";
+        Util.assertion(nextTokenIs(Goto), "Not a goto stmt!");
 
         SourceLocation gotoLoc = consumeToken(); // eat the 'goto'
 
@@ -2570,7 +2571,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseContinueStatement()
     {
-        assert nextTokenIs(Continue):"Not a continue stmt!";
+        Util.assertion(nextTokenIs(Continue), "Not a continue stmt!");
         SourceLocation continueLoc = consumeToken();
         return action.actOnContinueStmt(continueLoc, getCurScope());
     }
@@ -2586,7 +2587,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseBreakStatement()
     {
-        assert nextTokenIs(Break):"Not a break stmt!";
+        Util.assertion(nextTokenIs(Break), "Not a break stmt!");
         SourceLocation breakLoc = consumeToken();
         return action.actOnBreakStmt(breakLoc, getCurScope());
     }
@@ -2601,7 +2602,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseReturnStatement()
     {
-        assert nextTokenIs(Return):"Not a return stmt!";
+        Util.assertion(nextTokenIs(Return), "Not a return stmt!");
         SourceLocation returnLoc = consumeToken();
 
         ActionResult<Expr> res = new ActionResult<>();
@@ -2633,8 +2634,7 @@ public class Parser implements Tag,
      * [C++]   namespace-definition
      * [C++]   using-directive
      * [C++]   using-declaration
-     * [C++0x] static_assert-declaration
-     * @param dc
+     * [C++0x] static_Util.assertion(-declaration     * @param dc
      * @param declEnd
      * @return
      */
@@ -2642,7 +2642,7 @@ public class Parser implements Tag,
             TheContext dc,
             OutParamWrapper<SourceLocation> declEnd)
     {
-        assert declEnd != null;
+        Util.assertion(declEnd != null);
         return parseSimpleDeclaration(declEnd, dc, false);
     }
 
@@ -2690,7 +2690,7 @@ public class Parser implements Tag,
      */
     private boolean isStartOfFunctionDefinition(Declarator declarator)
     {
-        assert declarator.isFunctionDeclarator() :"Isn't a function declarator";
+        Util.assertion(declarator.isFunctionDeclarator(), "Isn't a function declarator");
         // int X() {}
         if (tok.is(l_brace))
             return true;
@@ -2856,7 +2856,7 @@ public class Parser implements Tag,
                     declSpecs.setFunctionSpecInline(loc);
                     break;
                 case __Thread:
-                    assert false:"Thread not supported.";
+                    Util.assertion(false, "Thread not supported.");
                     break;
 
 
@@ -2976,8 +2976,8 @@ public class Parser implements Tag,
             // if the specifier is illegal, issue a diagnostic.
             if (isInvalid)
             {
-                assert prevSpec != null :"Method did not return previous specifier!";
-                assert diagID >= 0;
+                Util.assertion(prevSpec != null, "Method did not return previous specifier!");
+                Util.assertion( diagID >= 0);
                 diag(tok, diagID).addTaggedVal(prevSpec).emit();
             }
             declSpecs.setRangeEnd(tok.getLocation());
@@ -2998,7 +2998,7 @@ public class Parser implements Tag,
      */
     private boolean parseImplicitInt(DeclSpec ds)
     {
-        assert tok.is(identifier) : "should have identifier.";
+        Util.assertion(tok.is(identifier),  "should have identifier.");
         SourceLocation loc = tok.getLocation();
 
         // IfStmt we see an identifier that is not a type getIdentifier, we normally would
@@ -3013,7 +3013,7 @@ public class Parser implements Tag,
         // an identifier with implicit int, we'd get a parse error because the
         // next token is obviously invalid for a type.  Parse these as a case
         // with an invalid type specifier.
-        assert !ds.hasTypeSpecifier() : "Type specifier checked above";
+        Util.assertion(!ds.hasTypeSpecifier(),  "Type specifier checked above");
 
         // Since we know that this either implicit int (which is rare) or an
         // error, we'd do lookahead to try to do better recovery.
@@ -3334,7 +3334,7 @@ public class Parser implements Tag,
      */
     private Pair<AttributeList, SourceLocation> parseAttributes()
     {
-        assert tok.is(__Attribute):"Not an attributes list!";
+        Util.assertion(tok.is(__Attribute), "Not an attributes list!");
 
         AttributeList attr = null;
         SourceLocation loc = new SourceLocation();
@@ -3533,7 +3533,7 @@ public class Parser implements Tag,
             tagType = TST_struct;
         else
         {
-            assert tagTokKind == Union : "Not a union specifier";
+            Util.assertion(tagTokKind == Union,  "Not a union specifier");
             tagType = TST_union;
         }
 
@@ -4033,7 +4033,7 @@ public class Parser implements Tag,
              parameter list.
              */
             IdentifierInfo id = tok.getIdentifierInfo();
-            assert id != null : "Not an identifier?";
+            Util.assertion(id != null,  "Not an identifier?");
             declarator.setIdentifier(id, tok.getLocation());
             consumeToken();
         }
@@ -4064,8 +4064,8 @@ public class Parser implements Tag,
             declarator.setInvalidType(true);
         }
 
-        assert declarator.isPastIdentifier()
-                :"Haven't past the location of the identifier yet?";
+        Util.assertion(declarator.isPastIdentifier(), "Haven't past the location of the identifier yet?");
+
 
         while (true)
         {
@@ -4180,11 +4180,11 @@ public class Parser implements Tag,
     private void parseParenDeclarator(Declarator declarator)
     {
         // eat the '('.
-        assert nextTokenIs(l_paren);
+        Util.assertion( nextTokenIs(l_paren));
         SourceLocation lparenLoc = consumeParen();
 
-        assert !declarator.isPastIdentifier()
-                :"Should be called before passing identifier";
+        Util.assertion(!declarator.isPastIdentifier(), "Should be called before passing identifier");
+
 
         // Eat any attributes before we look at whether this is a grouping or function
         // declarator paren.  If this is a grouping paren, the attribute applies to
@@ -4281,7 +4281,7 @@ public class Parser implements Tag,
             Declarator declarator,
             boolean requireArg)
     {
-        assert declarator.isPastIdentifier():"Should not call before identifier!";
+        Util.assertion(declarator.isPastIdentifier(), "Should not call before identifier!");
         // this should be true when the function has typed arguments.
         // Otherwise, it will be treated as K&R style function.
         boolean hasProto = false;
@@ -4830,7 +4830,7 @@ public class Parser implements Tag,
                 nextTokPrec = getBinOpPrecedence(tok.getKind());
             }
 
-            assert (nextTokPrec <= thisPrec):"Recursive doesn't works!";
+            Util.assertion((nextTokPrec <= thisPrec), "Recursive doesn't works!");
 
             if (!lhs.isInvalid())
             {
@@ -5069,7 +5069,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Expr> parseSizeofAlignofExpression()
     {
-        assert nextTokenIs(Sizeof):"Not a sizeof expression!";
+        Util.assertion(nextTokenIs(Sizeof), "Not a sizeof expression!");
         Token opTok = tok.clone();
         SourceLocation opLoc = consumeToken();
 
@@ -5115,7 +5115,7 @@ public class Parser implements Tag,
             Token opTok,
             ParenExprArg arg)
     {
-        assert opTok.is(TokenKind.Sizeof) :"Not a sizeof/alignof expression!";
+        Util.assertion(opTok.is(TokenKind.Sizeof), "Not a sizeof/alignof expression!");
 
         ActionResult<Expr> operand;
         // If this operand doesn't start with '(',it must be an expression.
@@ -5243,9 +5243,8 @@ public class Parser implements Tag,
                         lhs = exprError();
                     else
                     {
-                        assert exprs.isEmpty()
-                                || exprs.size() == commaLocs.size() + 1
-                                :"Unexpected number of commas!";
+                        Util.assertion(exprs.isEmpty()                                || exprs.size() == commaLocs.size() + 1, "Unexpected number of commas!");
+
 
                         lhs = action.actOnCallExpr(lhs.get(), loc, exprs, tok.getLocation());
                         // eat the ')'.
@@ -5295,7 +5294,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Expr> parseStringLiteralExpression()
     {
-        assert nextTokenIs(string_literal) : "Not a string literal!";
+        Util.assertion(nextTokenIs(string_literal),  "Not a string literal!");
 
         ArrayList<Token> stringToks = new ArrayList<>();
         do
@@ -5512,8 +5511,8 @@ public class Parser implements Tag,
      */
     private SourceLocation consumeToken()
     {
-        assert !isTokenStringLiteral() && !isTokenParen() && !isTokenBracket() &&
-                !isTokenBrace() : "Should consume special tokens with Consume*Token";
+        Util.assertion(!isTokenStringLiteral() && !isTokenParen() && !isTokenBracket() &&                !isTokenBrace(),  "Should consume special tokens with Consume*Token");
+
         prevTokLocation = tok.getLocation();
         tok = new Token();
         pp.lex(tok);
@@ -5537,7 +5536,7 @@ public class Parser implements Tag,
     private int parenCount;
     private SourceLocation consumeParen()
     {
-        assert isTokenParen() : "wrong consume method";
+        Util.assertion(isTokenParen(),  "wrong consume method");
         if (tok.getKind() == l_paren)
             ++parenCount;
         else if (parenCount != 0)
@@ -5551,7 +5550,7 @@ public class Parser implements Tag,
 
     private SourceLocation consumeBracket()
     {
-        assert isTokenBracket() : "wrong consume method";
+        Util.assertion(isTokenBracket(),  "wrong consume method");
         if (tok.getKind() == l_bracket)
             ++bracketCount;
         else if (bracketCount != 0)
@@ -5565,8 +5564,8 @@ public class Parser implements Tag,
 
     private SourceLocation consumeStringToken()
     {
-        assert isTokenStringLiteral() :
-                "Should only consume string literals with this method";
+        Util.assertion(isTokenStringLiteral(),                 "Should only consume string literals with this method");
+
         prevTokLocation = tok.getLocation();
         tok = new Token();
         pp.lex(tok);
@@ -5575,8 +5574,8 @@ public class Parser implements Tag,
 
     private SourceLocation consumeBrace()
     {
-        assert nextTokenIs(r_brace) || nextTokenIs(l_brace)
-                :"Wrong consume method";
+        Util.assertion(nextTokenIs(r_brace) || nextTokenIs(l_brace), "Wrong consume method");
+
         
         if (tok.getKind() == l_brace)
             ++braceCount;

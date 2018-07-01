@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
@@ -95,7 +96,7 @@ public class MPPassManager extends PMDataManager implements Pass
 
     public ModulePass getContainedPass(int index)
     {
-        assert index >= 0 && index < getNumContainedPasses();
+        Util.assertion( index >= 0 && index < getNumContainedPasses());
         return (ModulePass) passVector.get(index);
     }
 }

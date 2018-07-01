@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
@@ -91,7 +92,7 @@ public final class PatternToMatch
                 {
                     if (TableGen.DEBUG)
                         def.dump();
-                    assert false:"Undefined predicate type!";
+                    Util.assertion(false, "Undefined predicate type!");
                 }
 
                 if(predicateCheck.length() != 0)

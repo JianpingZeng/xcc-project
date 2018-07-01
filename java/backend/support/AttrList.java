@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,8 +66,8 @@ public final class AttrList
 
     public int getParamAttriute(int index)
     {
-        assert index != ReturnIndex && index != FunctionIndex
-                :"invalid parameter index!";
+        Util.assertion(index != ReturnIndex && index != FunctionIndex, "invalid parameter index!");
+
         return getAttribute(index);
     }
 

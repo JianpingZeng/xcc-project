@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.target.TargetData;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetRegisterClass;
@@ -144,8 +145,8 @@ public class MachineFrameInfo
 
     public boolean isDeadObjectIndex(int objectIdx)
     {
-        assert objectIdx + numFixedObjects < objects
-                .size() : "Invalid Object idx!";
+        Util.assertion(objectIdx + numFixedObjects < objects                .size(),  "Invalid Object idx!");
+
 
         return objects.get(objectIdx + numFixedObjects).size == ~0;
     }
@@ -164,8 +165,8 @@ public class MachineFrameInfo
 
     public boolean isImmutableObjectIndex(int objectIdx)
     {
-        assert (objectIdx + numFixedObjects) < objects
-                .size() : "Invalid object idx!";
+        Util.assertion((objectIdx + numFixedObjects) < objects                .size(),  "Invalid object idx!");
+
         return objects.get(objectIdx + numFixedObjects).isImmutable;
     }
 
@@ -205,9 +206,9 @@ public class MachineFrameInfo
      */
     public long getObjectSize(int objectIdx)
     {
-        assert objectIdx + numFixedObjects >= 0 &&
-                objectIdx + numFixedObjects < objects
-                .size() : "Invalid Object Idx!";
+        Util.assertion(objectIdx + numFixedObjects >= 0 &&                objectIdx + numFixedObjects < objects
+                .size(),  "Invalid Object Idx!");
+
         return objects.get(objectIdx + numFixedObjects).size;
     }
 
@@ -216,9 +217,9 @@ public class MachineFrameInfo
      */
     public int getObjectAlignment(int objectIdx)
     {
-        assert objectIdx + numFixedObjects >= 0 &&
-                objectIdx + numFixedObjects < objects
-                        .size() : "Invalid Object Idx!";
+        Util.assertion(objectIdx + numFixedObjects >= 0 &&                objectIdx + numFixedObjects < objects
+                        .size(),  "Invalid Object Idx!");
+
         return objects.get(objectIdx + numFixedObjects).alignment;
     }
 
@@ -228,9 +229,9 @@ public class MachineFrameInfo
      */
     public int getObjectOffset(int objectIdx)
     {
-        assert objectIdx + numFixedObjects >= 0 &&
-                objectIdx + numFixedObjects < objects
-                        .size() : "Invalid Object Idx!";
+        Util.assertion(objectIdx + numFixedObjects >= 0 &&                objectIdx + numFixedObjects < objects
+                        .size(),  "Invalid Object Idx!");
+
         return (int) objects.get(objectIdx + numFixedObjects).spOffset;
     }
 
@@ -240,9 +241,9 @@ public class MachineFrameInfo
      */
     public void setObjectOffset(int objectIdx, long SPOffset)
     {
-        assert objectIdx + numFixedObjects >= 0 &&
-                objectIdx + numFixedObjects < objects
-                        .size() : "Invalid Object Idx!";
+        Util.assertion(objectIdx + numFixedObjects >= 0 &&                objectIdx + numFixedObjects < objects
+                        .size(),  "Invalid Object Idx!");
+
         objects.get(objectIdx + numFixedObjects).spOffset = SPOffset;
     }
 
@@ -309,7 +310,7 @@ public class MachineFrameInfo
 
     public int createFixedObject(int size, int offset, boolean isImmutable)
     {
-        assert size != 0 : "Cannot allocate zero getNumOfSubLoop fixed stack objects!";
+        Util.assertion(size != 0,  "Cannot allocate zero getNumOfSubLoop fixed stack objects!");
         objects.add(0, new StackObject(size, 1, offset, isImmutable));
         return -(++numFixedObjects);
     }
@@ -320,7 +321,7 @@ public class MachineFrameInfo
      */
     public int createStackObject(long size, int Alignment)
     {
-        assert size != 0 : "Cannot allocate zero getNumOfSubLoop stack objects!";
+        Util.assertion(size != 0,  "Cannot allocate zero getNumOfSubLoop stack objects!");
         objects.add(new StackObject(size, Alignment, -1));
         return objects.size() - numFixedObjects - 1;
     }

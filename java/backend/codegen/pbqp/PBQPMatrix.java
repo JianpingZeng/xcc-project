@@ -17,6 +17,7 @@
 
 package backend.codegen.pbqp;
 
+import tools.Util;
 import java.io.PrintStream;
 import java.util.Arrays;
 
@@ -32,7 +33,7 @@ public class PBQPMatrix
 
     public PBQPMatrix(int rows, int columns)
     {
-        assert rows > 1 && columns > 1;
+        Util.assertion( rows > 1 && columns > 1);
         this.rows = rows;
         this.columns = columns;
         data = new double[rows*columns];
@@ -40,20 +41,20 @@ public class PBQPMatrix
 
     public double get(int i, int j)
     {
-        assert i >= 0 && i < rows:"rows index out of range";
-        assert j >= 0 && j < columns:"columns index out of range";
+        Util.assertion(i >= 0 && i < rows, "rows index out of range");
+        Util.assertion(j >= 0 && j < columns, "columns index out of range");
         return data[i*columns + j];
     }
 
     public void set(int i, int j, double cost)
     {
-        assert i >= 0 && i < rows:"rows index out of range";
-        assert j >= 0 && j < columns:"columns index out of range";
+        Util.assertion(i >= 0 && i < rows, "rows index out of range");
+        Util.assertion(j >= 0 && j < columns, "columns index out of range");
         data[i*columns + j] = cost;
     }
     public double[] getRows(int i)
     {
-        assert i >= 0 && i < rows:"rows index out of range";
+        Util.assertion(i >= 0 && i < rows, "rows index out of range");
         return Arrays.copyOfRange(data, i*columns,  (i+1)*columns);
     }
 
@@ -89,15 +90,15 @@ public class PBQPMatrix
 
     public void add(PBQPMatrix rhs)
     {
-        assert rhs != null;
-        assert rows == rhs.rows && columns == rhs.columns;
+        Util.assertion( rhs != null);
+        Util.assertion( rows == rhs.rows && columns == rhs.columns);
         for (int i = 0; i < data.length; i++)
             data[i] += rhs.data[i];
     }
 
     public double getRowMin(int row)
     {
-        assert row >= 0 && row < rows;
+        Util.assertion( row >= 0 && row < rows);
         double min = Double.MIN_VALUE;
         for (int i = 0; i < columns; i++)
             if (data[row*columns + i] < min)
@@ -107,21 +108,21 @@ public class PBQPMatrix
 
     public void subRow(int row, double val)
     {
-        assert row >= 0 && row < rows;
+        Util.assertion( row >= 0 && row < rows);
         for (int i = 0; i < columns; i++)
                 data[row*columns + i] += -val;
     }
 
     public void setRow(int row, double val)
     {
-        assert row >= 0 && row < rows;
+        Util.assertion( row >= 0 && row < rows);
         for (int i = 0; i < columns; i++)
                 data[row*columns + i] = val;
     }
 
     public double getColumnMin(int col)
     {
-        assert col >= 0 && col < columns;
+        Util.assertion( col >= 0 && col < columns);
         double min = Double.MIN_VALUE;
         for (int i = 0; i < rows; i++)
             if (data[i*columns + col] < min)
@@ -131,14 +132,14 @@ public class PBQPMatrix
 
     public void subCol(int col, double val)
     {
-        assert col >= 0 && col < columns;
+        Util.assertion( col >= 0 && col < columns);
         for (int i = 0; i < rows; i++)
             data[i*columns + col] += -val;
     }
 
     public void setCol(int col, double val)
     {
-        assert col >= 0 && col < columns;
+        Util.assertion( col >= 0 && col < columns);
         for (int i = 0; i < rows; i++)
             data[i*columns + col] = val;
     }
@@ -158,7 +159,7 @@ public class PBQPMatrix
      */
     public void addRow(int row, PBQPVector vec)
     {
-        assert vec.getLength() == columns;
+        Util.assertion( vec.getLength() == columns);
         for (int i = 0; i < columns; i++)
             data[row*columns + i] += vec.get(i);
     }

@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MVT;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
@@ -91,7 +92,7 @@ public class CallingConvEmitter extends TableGenBackend
             // Emit each calling convention description in full.
             for (String dept : dependency)
             {
-                assert recNameToRec.containsKey(dept) :"No cc action have name " + dept;
+                Util.assertion(recNameToRec.containsKey(dept), "No cc action have name " + dept);
                 emitCallingConv(recNameToRec.get(dept), os);
             }
             os.println("}");
@@ -212,7 +213,7 @@ public class CallingConvEmitter extends TableGenBackend
             if (node.ins.isEmpty())
                 return node;
         }
-        assert false :"No root node for topological sort";
+        Util.assertion(false, "No root node for topological sort");
         return null;
     }
 

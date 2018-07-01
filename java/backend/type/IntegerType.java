@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.APInt;
 import tools.Util;
 
@@ -57,8 +58,8 @@ public class IntegerType extends DerivedType
 
     public static IntegerType get(int numBits)
     {
-        assert numBits>= MIN_INT_BITS:"bitwidth too small!";
-        assert numBits<= MAX_INT_BITS:"bitwidth too large!";
+        Util.assertion(numBits>= MIN_INT_BITS, "bitwidth too small!");
+        Util.assertion(numBits<= MAX_INT_BITS, "bitwidth too large!");
 
         switch (numBits)
         {

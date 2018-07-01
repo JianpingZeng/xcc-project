@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
@@ -76,7 +77,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        assert au != null;
+        Util.assertion( au != null);
         au.addPreserved(MachineLoop.class);
         au.addPreserved(LiveIntervalAnalysis.class);
         au.addPreserved(LiveVariables.class);
@@ -284,8 +285,8 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
 
                 LiveInterval intervalA = li.getInterval(regA);
                 LiveInterval intervalB = li.getInterval(regB);
-                assert intervalA.register == regA && intervalB.register == regB
-                        :"Regitser mapping is horribly broken!";
+                Util.assertion(intervalA.register == regA && intervalB.register == regB, "Regitser mapping is horribly broken!");
+
 
                 if (Util.DEBUG)
                 {
@@ -349,8 +350,8 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
             dest = temp;
         }
 
-        assert isPhysicalRegister(src.register)
-                : "First interval describe a physical register";
+        Util.assertion(isPhysicalRegister(src.register),  "First interval describe a physical register");
+
 
         for (int alias : tri.getAliasSet(src.register))
         {
@@ -375,7 +376,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
         TargetRegisterClass rc = null;
         if (isPhysicalRegister(regA))
         {
-            assert isVirtualRegister(regB):"Can't consider two physical register";
+            Util.assertion(isVirtualRegister(regB), "Can't consider two physical register");
             rc = mri.getRegClass(regB);
             return !rc.contains(regA);
         }

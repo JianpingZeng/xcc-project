@@ -18,6 +18,7 @@
 package jlang.ast;
 
 
+import tools.Util;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.support.PrintingPolicy;
@@ -323,7 +324,7 @@ public class StmtPrinter extends StmtVisitor<Void>
 
     public Void visitSelectStmt(Tree.SelectStmt stmt)
     {
-        assert false:"Cannot reaching here!";
+        Util.assertion(false, "Cannot reaching here!");
         return null;
     }
 
@@ -404,7 +405,7 @@ public class StmtPrinter extends StmtVisitor<Void>
 
     public Void visitSizeofAlignofExpr(Tree.UnaryExprOrTypeTraitExpr expr)
     {
-        assert false:"Should not handle TypeTraitExpr";
+        Util.assertion(false, "Should not handle TypeTraitExpr");
         return null;
     }
 

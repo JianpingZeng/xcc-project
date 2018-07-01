@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.*;
 import backend.value.Function;
 import backend.value.Module;
@@ -138,7 +139,7 @@ public final class FPPassManager extends PMDataManager implements ModulePass
 
     public FunctionPass getContainedPass(int index)
     {
-        assert index >=0 && index < getNumContainedPasses();
+        Util.assertion( index >=0 && index < getNumContainedPasses());
         return (FunctionPass) passVector.get(index);
     }
 

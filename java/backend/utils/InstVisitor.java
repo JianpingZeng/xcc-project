@@ -1,5 +1,6 @@
 package backend.utils;
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -36,7 +37,7 @@ public interface InstVisitor<RetTy>
 		switch (inst.getOpcode())
 		{
 			default:
-				assert false : "Undefined instruction type encountered!";
+				Util.assertion(false,  "Undefined instruction type encountered!");
 				return null;
 			case None:
 				break;

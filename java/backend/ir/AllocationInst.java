@@ -17,6 +17,7 @@
 
 package backend.ir;
 
+import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
@@ -51,7 +52,7 @@ public class AllocationInst extends Instruction.UnaryOps
 
     public void setAlignment(int align)
     {
-        assert (align & (align - 1)) == 0 : "Alignment is not a power of 2";
+        Util.assertion((align & (align - 1)) == 0,  "Alignment is not a power of 2");
         this.align = Util.log2(align) + 1;
     }
 

@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.ir.HIRBuilder;
 import backend.support.*;
 import backend.type.IntegerType;
@@ -171,7 +172,7 @@ public final class CodeGenFunction
 		if (fd.getNumParams() > 0)
 		{
             FunctionProtoType fproto = fd.getType().getAsFunctionProtoType();
-            assert fproto != null :"Function def must have prototype!";
+            Util.assertion(fproto != null, "Function def must have prototype!");
 
 			for (int i = 0, e = fd.getNumParams(); i < e; i++)
 				functionArgList.add(new Pair<>(fd.getParamDecl(i), fproto.getArgType(i)));
@@ -215,7 +216,7 @@ public final class CodeGenFunction
 		fnRetTy = resTy;
 
 		// Before emit LLVM IR code for this function, it must be declaration.
-		assert fn.isDeclaration() : "FunctionProto already has body.";
+		Util.assertion(fn.isDeclaration(),  "FunctionProto already has body.");
 
 		BasicBlock entryBB = createBasicBlock("entry", curFn);
 
@@ -271,8 +272,8 @@ public final class CodeGenFunction
 			++ai;
 		}
 		// Comment this because there is argument expansion of aggregate type.
-		assert fi.getNumOfArgs() == args.size()
-		        : "Mismatch between function signature and argumens";
+		Util.assertion(fi.getNumOfArgs() == args.size(),  "Mismatch between function signature and argumens");
+
 
 		// obtains the ABIArgInfo list (contains the type and arg AI) of formal
 		// type enclosing in FunctionType.
@@ -285,7 +286,7 @@ public final class CodeGenFunction
 			ABIArgInfo argAI = fi.getArgInfoAt(infoItr).info;
             ++infoItr;
 
-			assert ai != aiEnd: "Argument mismatch!";
+			Util.assertion(ai != aiEnd,  "Argument mismatch!");
 
 			switch (argAI.getKind())
 			{
@@ -383,7 +384,7 @@ public final class CodeGenFunction
 			}
 			++ai;
 		}
-		assert ai == aiEnd :"Argument mismatch!";
+		Util.assertion(ai == aiEnd, "Argument mismatch!");
 	}
 
     /**
@@ -432,11 +433,11 @@ public final class CodeGenFunction
             int ai)
     {
         RecordType rt = ty.getAsStructureType();
-        assert rt != null :"Can only expand argument for structure type";
+        Util.assertion(rt != null, "Can only expand argument for structure type");
 
         RecordDecl rd = rt.getDecl();
-        assert lValue.isSimple() :"Can not expand for structure type whose field"
-                + "is bitfield";
+        Util.assertion(lValue.isSimple(), "Can not expand for structure type whose field"                + "is bitfield");
+
         Value addr = lValue.getAddress();
 
         for (int i = 0, e = rd.getNumFields(); i < e; i++)
@@ -468,8 +469,8 @@ public final class CodeGenFunction
 	 */
 	private Value emitScalarConversion(Value v, QualType srcTy, QualType destTy)
 	{
-		assert !hasAggregateLLVMType(srcTy) && !hasAggregateLLVMType(
-				destTy) : "Invalid scalar expression to emit!";
+		Util.assertion(!hasAggregateLLVMType(srcTy) && !hasAggregateLLVMType(				destTy),  "Invalid scalar expression to emit!");
+
 		return new ScalarExprEmitter(this)
 				.emitScalarConversion(v, srcTy, destTy);
 	}
@@ -481,8 +482,8 @@ public final class CodeGenFunction
 	 */
 	private void emitParamDecl(VarDecl param, Value arg)
 	{
-		assert param instanceof ParamVarDecl
-                : "Invalid argument to emitParamDecl()";
+		Util.assertion(param instanceof ParamVarDecl,  "Invalid argument to emitParamDecl()");
+
 
 		QualType ty = param.getType();
 		Value destPtr;
@@ -511,7 +512,7 @@ public final class CodeGenFunction
 			}
 			arg.setName(param.getNameAsString());
 		}
-        assert !localVarMaps.containsKey(param):"Decl already existing in localVarMaps";
+        Util.assertion(!localVarMaps.containsKey(param), "Decl already existing in localVarMaps");
 		localVarMaps.put(param, destPtr);
 	}
 
@@ -560,7 +561,7 @@ public final class CodeGenFunction
 
 	public void emitStmt(Tree.Stmt stmt)
 	{
-		assert stmt != null : "Null Statement!";
+		Util.assertion(stmt != null,  "Null Statement!");
 
 		// Check if we can handle this without bother to generate an
 		// insert point.
@@ -579,7 +580,7 @@ public final class CodeGenFunction
 			{
 				// Verify that any decl statements were handled as simple, they may be in
 				// scope of subsequent reachable statements.
-				assert !(stmt instanceof DeclStmt) : "Unexpected DeclStmt!";
+				Util.assertion(!(stmt instanceof DeclStmt),  "Unexpected DeclStmt!");
 				return;
 			}
 
@@ -589,7 +590,7 @@ public final class CodeGenFunction
 		switch (stmt.getStmtClass())
 		{
 			default:
-			    assert stmt instanceof Expr:"Unknown kind of statement";
+			    Util.assertion(stmt instanceof Expr, "Unknown kind of statement");
 			    emitAnyExpr((Expr)stmt, null, false, true, false);
 			    BasicBlock bb = builder.getInsertBlock();
 			    if (bb != null && bb.getNumUses() <= 0 && bb.isEmpty())
@@ -801,8 +802,8 @@ public final class CodeGenFunction
 	public Value evaluateExprAsBool(Expr cond)
 	{
 		QualType boolTy =  getContext().BoolTy;
-		assert !cond.getType().isComplexType()
-                : "Current complex type not be supported.";
+		Util.assertion(!cond.getType().isComplexType(),  "Current complex type not be supported.");
+
 
 		return emitScalarConversion(emitScalarExpr(cond), cond.getType(),
 				boolTy);
@@ -1008,7 +1009,7 @@ public final class CodeGenFunction
 		else if (resultVal.getType().isComplexType())
 		{
 			// TODO.
-			assert false:"ComplexType is not supported!";
+			Util.assertion(false, "ComplexType is not supported!");
 		}
 		else
 		{
@@ -1195,10 +1196,10 @@ public final class CodeGenFunction
 		switch (decl.getKind())
 		{
 			default:
-				assert false : "Undefined decl type.";
+				Util.assertion(false,  "Undefined decl type.");
 				break;
 			case ParamVarDecl:
-				assert false : "ParamDecls should not be handled in emitDecl().";
+				Util.assertion(false,  "ParamDecls should not be handled in emitDecl().");
 				break;
 			case FunctionDecl: // void foo();
 			case RecordDecl:   // struct/union X;
@@ -1209,8 +1210,8 @@ public final class CodeGenFunction
 			case VarDecl:
 			{
 				VarDecl vd = (VarDecl)decl;
-				assert vd.isBlockVarDecl()
-						: "Should not see file-scope variable declaration.";
+				Util.assertion(vd.isBlockVarDecl(),  "Should not see file-scope variable declaration.");
+
 				emitBlockVarDecl(vd);
 				return;
 			}
@@ -1246,7 +1247,7 @@ public final class CodeGenFunction
 			case SC_extern:
 				return;
 		}
-		assert false : "Undefined storage class.";
+		Util.assertion(false,  "Undefined storage class.");
 	}
 
 	/**
@@ -1290,7 +1291,7 @@ public final class CodeGenFunction
 			declPtr = builder.createBitCast(vla, elemPtrTy, "temp");
 		}
 
-		assert !localVarMaps.containsKey(vd) : "Decl already exits in LocalVarMaps";
+		Util.assertion(!localVarMaps.containsKey(vd),  "Decl already exits in LocalVarMaps");
 
         localVarMaps.put(vd, declPtr);
 
@@ -1327,8 +1328,8 @@ public final class CodeGenFunction
 
 	public Value emitVLASize(QualType type)
 	{
-		assert type.isVariablyModifiedType()
-                : "Must pass variably modified type to EmitVLASizes!";
+		Util.assertion(type.isVariablyModifiedType(),  "Must pass variably modified type to EmitVLASizes!");
+
 
 		ensureInsertPoint();
 		ArrayType.VariableArrayType vat = getContext().getAsVariableArrayType(type);
@@ -1366,7 +1367,7 @@ public final class CodeGenFunction
 			return null;
 		}
 
-        assert type.getType() instanceof jlang.type.PointerType : "unknown VM type!";
+        Util.assertion(type.getType() instanceof jlang.type.PointerType,  "unknown VM type!");
 		jlang.type.PointerType ptr = (jlang.type.PointerType)type.getType();
 		emitVLASize(ptr.getPointeeType());
 		return null;
@@ -1374,8 +1375,8 @@ public final class CodeGenFunction
 
 	public Value emitScalarExpr(Tree.Expr expr, boolean ignoreResult)
 	{
-		assert expr != null && !hasAggregateLLVMType(
-				expr.getType()) : "Invalid scalar expression to emit";
+		Util.assertion(expr != null && !hasAggregateLLVMType(				expr.getType()),  "Invalid scalar expression to emit");
+
 		return new ScalarExprEmitter(this, ignoreResult).visit(expr);
 	}
 
@@ -1402,8 +1403,8 @@ public final class CodeGenFunction
 	public void emitAggExpr(Tree.Expr expr, Value destPtr, boolean ignoreResult,
 			boolean isInitializer)
 	{
-		assert expr != null && hasAggregateLLVMType(expr.getType())
-				: "Invalid aggregate expression to emit";
+		Util.assertion(expr != null && hasAggregateLLVMType(expr.getType()),  "Invalid aggregate expression to emit");
+
 		if (destPtr == null)
 			return;
 
@@ -1550,7 +1551,7 @@ public final class CodeGenFunction
 	 */
 	private void emitStaticBlockVarDecl(VarDecl vd)
 	{
-		assert !localVarMaps.containsKey(vd) : "Decl already exists in localdeclmap!";
+		Util.assertion(!localVarMaps.containsKey(vd),  "Decl already exists in localdeclmap!");
 
 		GlobalVariable gv = createStaticBlockVarDecl(vd, ".");
 
@@ -1605,13 +1606,13 @@ public final class CodeGenFunction
 			String separator)
 	{
 		QualType ty = vd.getType();
-		assert ty.isConstantSizeType() : "VLAs cann't be static";
+		Util.assertion(ty.isConstantSizeType(),  "VLAs cann't be static");
 
 		String contextName = "";
 		if (curFnDecl != null)
 			contextName = curFnDecl.getNameAsString();
 		else
-			assert false : "Undefined context for block var decl";
+			Util.assertion(false,  "Undefined context for block var decl");
 
 		String name = contextName + separator + vd.getIdentifier();
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
@@ -1637,8 +1638,8 @@ public final class CodeGenFunction
 
 	private void emitBreakStmt(Tree.BreakStmt s)
 	{
-		assert !breakContinueStack.isEmpty()
-                : "break stmt not in a loop or switch!";
+		Util.assertion(!breakContinueStack.isEmpty(),  "break stmt not in a loop or switch!");
+
 		BasicBlock breakBB = breakContinueStack.peek().breakBlock;
 		emitBranch(breakBB);
 	}
@@ -1649,8 +1650,8 @@ public final class CodeGenFunction
 	 */
 	public void finishFunction(SourceLocation endLoc)
 	{
-		assert breakContinueStack.isEmpty()
-				:"mismatched push/pop in break/continue stack!";
+		Util.assertion(breakContinueStack.isEmpty(), "mismatched push/pop in break/continue stack!");
+
 
 		// emit function epilogue (to return).
 		emitReturnBlock();
@@ -1669,7 +1670,7 @@ public final class CodeGenFunction
 
 		if (curBB != null)
 		{
-			assert curBB.getTerminator()==null:"Unexpected terminated block.";
+			Util.assertion(curBB.getTerminator()==null, "Unexpected terminated block.");
 
 			if (curBB.isEmpty() || returnBlock.isUseEmpty())
 			{
@@ -1745,7 +1746,7 @@ public final class CodeGenFunction
                     rv = createCoercedLoad(returnValue, retAI.getCoerceType(), this);
                     break;
                 case Expand:
-                    assert false :"Expand abi can not used for return argument!";
+                    Util.assertion(false, "Expand abi can not used for return argument!");
                     break;
 			}
 		}
@@ -1798,8 +1799,8 @@ public final class CodeGenFunction
 
     private void emitContinueStmt(Tree.ContinueStmt s)
 	{
-		assert !breakContinueStack
-				.isEmpty() : "break stmt not in a loop or switch!";
+		Util.assertion(!breakContinueStack				.isEmpty(),  "break stmt not in a loop or switch!");
+
 
 		BasicBlock continueBB = breakContinueStack.peek().continueBlock;
 		emitBranch(continueBB);
@@ -1808,8 +1809,8 @@ public final class CodeGenFunction
 	private void emitDefaultStmt(Tree.DefaultStmt s)
 	{
 		BasicBlock defaultBlock = switchInst.getDefaultBlock();
-		assert defaultBlock.isEmpty()
-                : "EmitDefaultStmt: Default block already defined?";
+		Util.assertion(defaultBlock.isEmpty(),  "EmitDefaultStmt: Default block already defined?");
+
 
 		emitBlock(defaultBlock);
 		emitStmt(s.getSubStmt());
@@ -1986,11 +1987,11 @@ public final class CodeGenFunction
 				return get(emitLoadOfScalar(ptr, lv.isVolatileQualified(),
 								exprType));
 
-			assert exprType.isFunctionType() : "Undefined scalar type.";
+			Util.assertion(exprType.isFunctionType(),  "Undefined scalar type.");
 			return get(ptr);
 		}
 
-		assert lv.isBitField() : "Undefined LValue exprType.";
+		Util.assertion(lv.isBitField(),  "Undefined LValue exprType.");
 		return emitLoadOfBitfieldLValue(lv, exprType);
 	}
 
@@ -2048,8 +2049,8 @@ public final class CodeGenFunction
 	{
 		// Get the actual function type. The callee type will always be a
 		// pointer to function type or a block pointer type.
-		assert calleeType.isFunctionPointerType()
-                : "Call must have function pointer type!";
+		Util.assertion(calleeType.isFunctionPointerType(),  "Call must have function pointer type!");
+
 
 		QualType fnType = calleeType.getAsPointerType().getPointeeType();
 		QualType resultType = fnType.getAsFunctionType().getResultType();
@@ -2090,8 +2091,8 @@ public final class CodeGenFunction
 		if (generator.returnTypeUseSret(callInfo))
 			args.add(createTempAlloca(convertTypeForMem(retType)));
 
-		assert callInfo.getNumOfArgs() == callArgs.size()
-                : "Mismatch between function signature & arguments.";
+		Util.assertion(callInfo.getNumOfArgs() == callArgs.size(),  "Mismatch between function signature & arguments.");
+
 		int i = 0;
 		for (Pair<RValue, QualType> ptr : callArgs)
 		{
@@ -2152,7 +2153,7 @@ public final class CodeGenFunction
                     }
                     else if (rv.isComplex())
                     {
-                        assert false:"Current complex type is not supported!";
+                        Util.assertion(false, "Current complex type is not supported!");
                     }
                     else
                     {
@@ -2232,7 +2233,7 @@ public final class CodeGenFunction
                 createCoercedStore(ci, v, this);
                 if (retType.isAnyComplexType())
                 {
-                    assert false:"Complex type is unsupported!";
+                    Util.assertion(false, "Complex type is unsupported!");
                 }
                 if (hasAggregateLLVMType(retType))
                 {
@@ -2241,10 +2242,10 @@ public final class CodeGenFunction
                 return RValue.get(emitLoadOfScalar(v, false, retType));
             }
             case Expand:
-                assert false:"Expand ABI is not allowed for return argument";
+                Util.assertion(false, "Expand ABI is not allowed for return argument");
 		}
 
-		assert false : "Unhandled ABIArgInfo.Kind";
+		Util.assertion(false,  "Unhandled ABIArgInfo.Kind");
 		return get(null);
 	}
 
@@ -2254,10 +2255,10 @@ public final class CodeGenFunction
             LinkedList<Value> args)
     {
         RecordType rt = type.getAsStructureType();
-        assert rt != null :"Can only expand struture types!";
+        Util.assertion(rt != null, "Can only expand struture types!");
 
         RecordDecl rd = rt.getDecl();
-        assert rv.isAggregate() :"Unexpected rvalue during struct expansion";
+        Util.assertion(rv.isAggregate(), "Unexpected rvalue during struct expansion");
         Value addr = rv.getAggregateAddr();
         for (int i = 0, e = rd.getNumFields(); i < e; i++)
         {
@@ -2272,8 +2273,8 @@ public final class CodeGenFunction
             else
             {
                 RValue rvalue = emitLoadOfLValue(lv, ft);
-                assert rvalue.isScalar()
-                        :"Unexpected non-scalar rvlaue during struct expansion";
+                Util.assertion(rvalue.isScalar(), "Unexpected non-scalar rvlaue during struct expansion");
+
                 args.addLast(rv.getScalarVal());
             }
         }
@@ -2322,15 +2323,14 @@ public final class CodeGenFunction
 			{
 				QualType argType = fnType.getArgType(i);
 				Expr arg = args.get(idx);
-				assert getContext().getCanonicalType(argType) == getContext().getCanonicalType(arg
-						.getType()) : "Type mismatch in call argument!";
-
+				Util.assertion(getContext().getCanonicalType(argType) ==
+                        getContext().getCanonicalType(arg.getType()),
+                        "Type mismatch in call argument!");
 				callArgs.add(new Pair<>(emitCallExpr(arg), argType));
 				idx++;
 			}
-
-			assert idx == args.size() || fnType
-					.isVariadic() : "Extra arguments in non-varidadic function!";
+			Util.assertion(idx == args.size() || fnType.isVariadic(),
+                    "Extra arguments in non-varidadic function!");
 		}
 
 		// If we still have any arguments, emit them using the type of the argument.
@@ -2381,7 +2381,7 @@ public final class CodeGenFunction
 			else
 			{
 				Value v = localVarMaps.get(vd);
-				assert v !=null:"local variable is not enterred localVarMpas?";
+				Util.assertion(v !=null, "local variable is not enterred localVarMpas?");
 				// local static.
 				lv = LValue.makeAddr(v, expr.getType().getCVRQualifiers());
 			}
@@ -2399,7 +2399,7 @@ public final class CodeGenFunction
 			Value v = generator.getAddrOfFunction(fn);
 			return LValue.makeAddr(v, expr.getType().getCVRQualifiers());
 		}
-		assert false:"Illegal DeclRefExpr.";
+		Util.assertion(false, "Illegal DeclRefExpr.");
 		return new LValue();
 	}
 
@@ -2414,11 +2414,11 @@ public final class CodeGenFunction
 		switch (expr.getOpCode())
 		{
 			default:
-				assert false:"Undefined unary operator lvalue!";
+				Util.assertion(false, "Undefined unary operator lvalue!");
 			case UO_Deref:
 			{
 				QualType t = expr.getSubExpr().getType().getPointeeType();
-				assert !t.isNull():"CodeGenFunction.emitUnaryOpLValue: illegal type";
+				Util.assertion(!t.isNull(), "CodeGenFunction.emitUnaryOpLValue: illegal type");
 
 				return LValue.makeAddr(emitScalarExpr(expr.getSubExpr()),
 						expr.getType().getCVRQualifiers());
@@ -2472,7 +2472,7 @@ public final class CodeGenFunction
 		}
 
 		QualType t = expr.getBase().getType().getPointeeType();
-		assert !t.isNull():"CodeGenFunction.emitArraySubscriptExpr():Illegal base type";
+		Util.assertion(!t.isNull(), "CodeGenFunction.emitArraySubscriptExpr():Illegal base type");
 
 		LValue lv = LValue.makeAddr(address, t.getCVRQualifiers());
 		return lv;
@@ -2481,7 +2481,7 @@ public final class CodeGenFunction
 	private Value getVLASize(ArrayType.VariableArrayType vat)
 	{
 		Value size = vlaSizeMap.get(vat.getSizeExpr());
-		assert size!= null:"Did not emti getNumOfSubLoop of type";
+		Util.assertion(size!= null, "Did not emti getNumOfSubLoop of type");
 		return size;
 	}
 
@@ -2510,8 +2510,8 @@ public final class CodeGenFunction
 			cvrQualifiers = baseType.getCVRQualifiers();
 		}
 
-		assert expr.getMemberDecl() instanceof FieldDecl
-				:"No code generation for non-field member expression";
+		Util.assertion(expr.getMemberDecl() instanceof FieldDecl, "No code generation for non-field member expression");
+
 		FieldDecl field = (FieldDecl) expr.getMemberDecl();
 		LValue memExprLV = emitLValueForField(baseValue, field, isUnion, cvrQualifiers);
 		return memExprLV;
@@ -2624,7 +2624,7 @@ public final class CodeGenFunction
 			// todo emit store for bitfield.
 		}
 
-		assert src.isScalar() : "Can't emit an agg store with this method!";
+		Util.assertion(src.isScalar(),  "Can't emit an agg store with this method!");
 		emitStoreOfScalar(src.getScalarVal(), dest.getAddress(), type);
 	}
 

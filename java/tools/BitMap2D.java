@@ -1,5 +1,6 @@
 package tools;
 
+import tools.Util;
 import java.util.BitSet;
 
 /**
@@ -40,25 +41,25 @@ public final class BitMap2D
 
 	public boolean isValidIndex(int slotIndex, int bitWithinSlotIndex)
 	{
-		assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
+		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
 		return bitIndex(slotIndex, bitWithinSlotIndex) < sizeInBits();
 	}
 
 	public boolean at(int slotIndex, int bitWithinSlotIndex)
 	{
-		assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
+		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
 		return set.get(bitIndex(slotIndex, bitWithinSlotIndex));
 	}
 
 	public void setBit(int slotIndex, int bitWithinSlotIndex)
 	{
-		assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
+		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
 		set.set(bitIndex(slotIndex, bitWithinSlotIndex));
 	}
 
 	public void clearBit(int slotIndex, int bitWithinSlotIndex)
 	{
-		assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
+		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
 		set.clear(bitIndex(slotIndex, bitWithinSlotIndex));
 	}
 

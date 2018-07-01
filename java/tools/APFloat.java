@@ -186,8 +186,8 @@ public class APFloat implements Cloneable
 
     private static void assertArithmeticOK(FltSemantics sem)
     {
-        assert sem.arithmeticOK :
-                "Compile-time arithmetic does not support these semantics";
+        Util.assertion( sem.arithmeticOK,
+                "Compile-time arithmetic does not support these semantics");
     }
 
     public APFloat(FltSemantics flt, String str)
@@ -365,13 +365,13 @@ public class APFloat implements Cloneable
 
         fs = v.convertFromZeroExtendedInteger(x, parts * 64, true, rmNearestTiesToEven);
 
-        assert fs == opOK;
+        Util.assertion( fs == opOK);
 
         fs = v.multiply(rhs, rmNearestTiesToEven);
-        assert fs == opOK || fs == opInexact;
+        Util.assertion( fs == opOK || fs == opInexact);
 
         fs = subtract(v, rmNearestTiesToEven);
-        assert fs == opOK || fs == opInexact;
+        Util.assertion( fs == opOK || fs == opInexact);
 
         if (isZero())
             sign = originSign;
@@ -405,13 +405,13 @@ public class APFloat implements Cloneable
                 return fs;
 
             fs = v.convertFromZeroExtendedInteger(x, parts * 64, true, rmNearestTiesToEven);
-            assert fs == opOK;
+            Util.assertion( fs == opOK);
 
             fs = v.multiply(rhs, rm);
-            assert fs == opOK || fs == opInexact;
+            Util.assertion( fs == opOK || fs == opInexact);
 
             fs = subtract(v, rm);
-            assert fs == opOK || fs == opInexact;
+            Util.assertion( fs == opOK || fs == opInexact);
 
             if (isZero())
                 sign = originSign;
@@ -638,7 +638,7 @@ public class APFloat implements Cloneable
     public int convertFromString(String str, RoundingMode rm)
     {
         assertArithmeticOK(semantics);
-        assert !str.isEmpty():"Invalid string length!";
+        Util.assertion( !str.isEmpty(), "Invalid string length!");
 
         int len = str.length();
         sign = str.charAt(0) == '-';
@@ -647,12 +647,12 @@ public class APFloat implements Cloneable
         {
             ++i;
             --len;
-            assert len != 0:"String has no digits";
+            Util.assertion( len != 0, "String has no digits");
         }
 
         if (len >= 2 && str.charAt(i) == '0' && (str.charAt(i+1) == 'x' || str.charAt(i+1) == 'X'))
         {
-            assert (len - 2) != 0 :"Invalid string";
+            Util.assertion( (len - 2) != 0, "Invalid string");
             return convertFromHexadecimalString(str.substring(i+2), rm);
         }
 
@@ -668,20 +668,20 @@ public class APFloat implements Cloneable
         if (semantics == IEEEquad)
             return convertQuadrupleAPFloatToAPInt();
 
-        assert semantics == x87DoubleExtended :"Unknown format!";
+        Util.assertion( semantics == x87DoubleExtended, "Unknown format!");
         return convertF80LongDoubleAPFloatToAPInt();
     }
 
     public double convertToDouble()
     {
-        assert semantics == IEEEdouble:"Invalid calling to this method!";
+        Util.assertion( semantics == IEEEdouble, "Invalid calling to this method!");
         APInt api = bitcastToAPInt();
         return api.bitsToDouble();
     }
 
     public float convertToFloat()
     {
-        assert semantics == IEEEsingle:"Invalid calling to this method!";
+        Util.assertion( semantics == IEEEsingle, "Invalid calling to this method!");
         APInt api = bitcastToAPInt();
         return api.bitsToFloat();
     }
@@ -697,7 +697,7 @@ public class APFloat implements Cloneable
         CmpResult result;
 
         assertArithmeticOK(semantics);
-        assert semantics == rhs.semantics;
+        Util.assertion( semantics == rhs.semantics);
 
         switch (category)
         {
@@ -854,12 +854,14 @@ public class APFloat implements Cloneable
         switch (category)
         {
             case fcInfinity:
-                System.arraycopy((upperCase? infinityU:infinityL).toCharArray(), 0, dest, 0, infinityU.length());;
+                System.arraycopy((upperCase? infinityU:infinityL).toCharArray(),
+                        0, dest, 0, infinityU.length());;
                 i += infinityL.length();
                 break;
 
             case fcNaN:
-                System.arraycopy((upperCase? NaNU:NaNU).toCharArray(), 0, dest, 0, NaNU.length());;
+                System.arraycopy((upperCase? NaNU:NaNU).toCharArray(), 0, dest,
+                        0, NaNU.length());;
                 i += NaNU.length();
                 break;
             case fcZero:
@@ -948,8 +950,8 @@ public class APFloat implements Cloneable
 
     private void setSignificand(int index, long value)
     {
-        assert category == fcNormal || category == fcNaN;
-        assert index < partCount() && index >= 0;
+        Util.assertion( category == fcNormal || category == fcNaN);
+        Util.assertion( index < partCount() && index >= 0);
         if (partCount() > 1)
             parts[index] = value;
         else
@@ -962,7 +964,7 @@ public class APFloat implements Cloneable
     }
     private long[] significandParts()
     {
-        assert category == fcNormal || category == fcNaN;
+        Util.assertion( category == fcNormal || category == fcNaN);
         return parts;
     }
 
@@ -980,8 +982,8 @@ public class APFloat implements Cloneable
     private long addSignificand(APFloat rhs)
     {
         long[] parts = significandParts();
-        assert semantics == rhs.semantics;
-        assert exponent == rhs.exponent;
+        Util.assertion( semantics == rhs.semantics);
+        Util.assertion( exponent == rhs.exponent);
 
         return APInt.tcAdd(parts, rhs.significandParts(), 0, partCount());
     }
@@ -989,8 +991,8 @@ public class APFloat implements Cloneable
     private long subtractSignificand(APFloat rhs, long borrow)
     {
         long[] parts = significandParts();
-        assert semantics == rhs.semantics;
-        assert exponent == rhs.exponent;
+        Util.assertion( semantics == rhs.semantics);
+        Util.assertion( exponent == rhs.exponent);
 
         return APInt.tcSubtract(parts, rhs.significandParts(), 0, partCount());
     }
@@ -1029,13 +1031,15 @@ public class APFloat implements Cloneable
 
             if (reverse)
             {
-                carry = tempRhs.subtractSignificand(this, LostFraction != tools.LostFraction.lfExactlyZero?1:0);
+                carry = tempRhs.subtractSignificand(this, LostFraction !=
+                        tools.LostFraction.lfExactlyZero?1:0);
                 copySignificand(tempRhs);
                 sign = !sign;
             }
             else
             {
-                carry = subtractSignificand(tempRhs, LostFraction!= tools.LostFraction.lfExactlyZero?1:0);
+                carry = subtractSignificand(tempRhs, LostFraction!=
+                        tools.LostFraction.lfExactlyZero?1:0);
             }
 
             if (LostFraction == tools.LostFraction.lfLessThanHalf)
@@ -1043,7 +1047,7 @@ public class APFloat implements Cloneable
             else if (LostFraction == tools.LostFraction.lfMoreThanHalf)
                 LostFraction = tools.LostFraction.lfLessThanHalf;
 
-            assert carry == 0;
+            Util.assertion( carry == 0);
         }
         else
         {
@@ -1060,7 +1064,7 @@ public class APFloat implements Cloneable
                 carry = addSignificand(rhs);
             }
 
-            assert carry == 0;
+            Util.assertion( carry == 0);
         }
         return LostFraction;
     }
@@ -1077,7 +1081,7 @@ public class APFloat implements Cloneable
         LostFraction LostFraction;
         OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
 
-        assert semantics == rhs.semantics;
+        Util.assertion( semantics == rhs.semantics);
 
         precision = semantics.precision;
         newPartCount = partCountForBits(precision * 2);
@@ -1122,7 +1126,7 @@ public class APFloat implements Cloneable
             APFloat extendedAddend =new APFloat(addend);
 
             status = extendedAddend.convert(extendedSemantics, rmTowardZero, ignored);
-            assert status == opOK;
+            Util.assertion( status == opOK);
             LostFraction = addOrSubtractSignificand(extendedAddend, false);
 
             /* Restore our state.  */
@@ -1180,7 +1184,7 @@ public class APFloat implements Cloneable
 
         LostFraction LostFraction;
 
-        assert semantics == rhs.semantics;
+        Util.assertion( semantics == rhs.semantics);
 
         lhsSignicand = significandParts();
         rhsSignicand = rhs.significandParts();
@@ -1224,7 +1228,7 @@ public class APFloat implements Cloneable
         {
             --exponent;
             APInt.tcShiftLeft(dividend, partsCounts, 1);
-            assert APInt.tcCompare(dividend, divisor, partsCounts) >= 0;
+            Util.assertion( APInt.tcCompare(dividend, divisor, partsCounts) >= 0);
         }
 
         for (bit = precision; bit != 0; --bit)
@@ -1256,7 +1260,7 @@ public class APFloat implements Cloneable
         long carry = APInt.tcIncrement(significandParts(), partCount());
 
         /* Our callers should never cause us to overflow.  */
-        assert carry == 0;
+        Util.assertion( carry == 0);
     }
 
     /***
@@ -1289,7 +1293,7 @@ public class APFloat implements Cloneable
      */
     private void shiftSignificandLeft(int bits)
     {
-        assert bits < semantics.precision;
+        Util.assertion( bits < semantics.precision);
 
         if (bits != 0)
         {
@@ -1297,14 +1301,14 @@ public class APFloat implements Cloneable
             APInt.tcShiftLeft(significandParts(), partsCount, bits);
             exponent -= bits;
 
-            assert !APInt.tcIsZero(significandParts(), partsCount);
+            Util.assertion( !APInt.tcIsZero(significandParts(), partsCount));
         }
     }
     /** Note that a zero result is NOT normalized to fcZero.  */
     private LostFraction shiftSignificandRight(int bits)
     {
         /* Our exponent should not overflow.  */
-        assert exponent + bits >= exponent;
+        Util.assertion( exponent + bits >= exponent);
         exponent += bits;
 
         return shiftRight(significandParts(), partCount(), bits);
@@ -1667,10 +1671,8 @@ public class APFloat implements Cloneable
 
             if (exponentChange < 0)
             {
-                assert LostFraction == tools.LostFraction.lfExactlyZero;
-
+                Util.assertion( LostFraction == tools.LostFraction.lfExactlyZero);
                 shiftSignificandLeft(-exponentChange);
-
                 return opOK;
             }
 
@@ -1719,7 +1721,7 @@ public class APFloat implements Cloneable
         if (omsb == semantics.precision)
             return opInexact;
 
-        assert omsb < semantics.precision;
+        Util.assertion( omsb < semantics.precision);
 
         if (omsb == 0)
             category = fcZero;
@@ -1740,7 +1742,8 @@ public class APFloat implements Cloneable
             LostFraction = addOrSubtractSignificand(rhs, subtract);
             fs = normalize(rm, LostFraction);
 
-            assert category != fcZero || LostFraction == tools.LostFraction.lfExactlyZero;
+            Util.assertion( category != fcZero || LostFraction ==
+                    tools.LostFraction.lfExactlyZero);
         }
 
         if (category == fcZero)
@@ -1756,16 +1759,17 @@ public class APFloat implements Cloneable
     {
         int compare;
 
-        assert semantics == rhs.semantics;
-        assert category == rhs.category;
-        assert rhs.category == fcNormal;
+        Util.assertion( semantics == rhs.semantics);
+        Util.assertion( category == rhs.category);
+        Util.assertion( rhs.category == fcNormal);
 
         compare = exponent - rhs.exponent;
 
         if (compare == 0)
         {
-            compare = APInt.tcCompare(significandParts(), rhs.significandParts()
-                        , partCount());
+            compare = APInt.tcCompare(significandParts(),
+                    rhs.significandParts(),
+                    partCount());
         }
 
         if (compare > 0)
@@ -1802,9 +1806,9 @@ public class APFloat implements Cloneable
      */
     private boolean roundAwayFromZero(RoundingMode rm, LostFraction LostFraction, int bit)
     {
-        assert category == fcNormal || category == fcZero;
+        Util.assertion( category == fcNormal || category == fcZero);
 
-        assert LostFraction != tools.LostFraction.lfExactlyZero;
+        Util.assertion( LostFraction != tools.LostFraction.lfExactlyZero);
 
         switch (rm)
         {
@@ -1812,12 +1816,14 @@ public class APFloat implements Cloneable
                 Util.shouldNotReachHere();
                 return false;
             case rmNearestTiesToAway:
-                return LostFraction == tools.LostFraction.lfExactlyHalf || LostFraction ==  tools.LostFraction.lfMoreThanHalf;
+                return LostFraction == tools.LostFraction.lfExactlyHalf ||
+                        LostFraction ==  tools.LostFraction.lfMoreThanHalf;
             case rmNearestTiesToEven:
                 if (LostFraction == tools.LostFraction.lfMoreThanHalf)
                     return true;
 
-                if (LostFraction == tools.LostFraction.lfExactlyHalf && category != fcZero)
+                if (LostFraction == tools.LostFraction.lfExactlyHalf &&
+                        category != fcZero)
                     return APInt.tcExtractBit(significandParts(), bit);
 
                 return false;
@@ -1972,7 +1978,7 @@ public class APFloat implements Cloneable
         if (str.charAt(i) == '.')
         {
             dot.set(i++);
-            assert end - begin != 1:"Significand has no digits";
+            Util.assertion( end - begin != 1,"Significand has no digits");
             while (i < end && str.charAt(i) == '0')
                 ++i;
         }
@@ -1988,7 +1994,8 @@ public class APFloat implements Cloneable
         return -1;
     }
 
-    private static LostFraction trailingHexadecimalFraction(String str, int begin, int end, int digitValue)
+    private static LostFraction trailingHexadecimalFraction(String str,
+            int begin, int end, int digitValue)
     {
         int hexDigits;
 
@@ -2000,7 +2007,7 @@ public class APFloat implements Cloneable
         while (str.charAt(begin) == '0')
             ++begin;
 
-        assert begin != end:"Invalid trailing hexadecimal fraction!";
+        Util.assertion( begin != end, "Invalid trailing hexadecimal fraction!");
         hexDigits = hexDigitValue(str.charAt(begin));
 
         if (hexDigits == -1)
@@ -2020,13 +2027,13 @@ public class APFloat implements Cloneable
         boolean negative, overflow;
         int exponent = 0;
 
-        assert p != end : "Exponent has no digits";
+        Util.assertion( p != end, "Exponent has no digits");
 
         negative = str.charAt(p) == '-';
         if (str.charAt(p) == '-' || str.charAt(p) == '+')
         {
             p++;
-            assert p != end : "Exponent has no digits";
+            Util.assertion( p != end, "Exponent has no digits");
         }
 
         unsignedExponent = 0;
@@ -2036,7 +2043,7 @@ public class APFloat implements Cloneable
             int value;
 
             value = decDigitValue(str.charAt(p));
-            assert value < 10 : "Invalid character in exponent";
+            Util.assertion( value < 10, "Invalid character in exponent");
 
             unsignedExponent = unsignedExponent * 10 + value;
             if (unsignedExponent > 65535)
@@ -2073,23 +2080,23 @@ public class APFloat implements Cloneable
         int overlargeExponent = 24000;  /* FIXME.  */
         int p = begin;
 
-        assert p != end : "Exponent has no digits";
+        Util.assertion( p != end, "Exponent has no digits");
 
         isNegative = (str.charAt(p) == '-');
         if (str.charAt(p) == '-' || str.charAt(p) == '+')
         {
         p++;
-        assert p != end : "Exponent has no digits";
+        Util.assertion( p != end, "Exponent has no digits");
     }
 
         absExponent = decDigitValue(str.charAt(p++));
-        assert absExponent < 10 : "Invalid character in exponent";
+        Util.assertion( absExponent < 10, "Invalid character in exponent");
 
         for (; p != end; ++p) {
             int value;
 
             value = decDigitValue(str.charAt(p));
-            assert value < 10 : "Invalid character in exponent";
+            Util.assertion( value < 10, "Invalid character in exponent");
 
             value += absExponent * 10;
             if (absExponent >= overlargeExponent) {
@@ -2099,7 +2106,7 @@ public class APFloat implements Cloneable
             absExponent = value;
         }
 
-        assert p == end : "Invalid exponent in exponent";
+        Util.assertion( p == end, "Invalid exponent in exponent");
 
         if (isNegative)
             return -absExponent;
@@ -2122,7 +2129,8 @@ public class APFloat implements Cloneable
         partsCount = partCount();
         bitPos = partsCount * 64;
         OutParamWrapper<Integer> x = new OutParamWrapper<>();
-        int begin = 0, end = str.length(), p = skipLeadingZeroesAndAnyDot(str, begin, end, x);
+        int begin = 0, end = str.length();
+        int p = skipLeadingZeroesAndAnyDot(str, begin, end, x);
         firstSignificantDigit = p;
         dot = x.get();
 
@@ -2132,7 +2140,7 @@ public class APFloat implements Cloneable
 
             if (str.charAt(p) == '.')
             {
-                assert dot == end :"String contians multiple dots!";
+                Util.assertion( dot == end, "String contians multiple dots!");
                 dot = p++;
                 if (p == end)
                     break;
@@ -2166,10 +2174,11 @@ public class APFloat implements Cloneable
             }
         }
 
-        assert p != end:"Hex strings require an exponent";
-        assert str.charAt(p) == 'p' || str.charAt(p) == 'P' :"Invalid character in signicand";
-        assert p != begin :"Sginificand has no digits";
-        assert dot == end || p - begin != 1:"Significand has no digits";
+        Util.assertion( p != end, "Hex strings require an exponent");
+        Util.assertion( str.charAt(p) == 'p' || str.charAt(p) == 'P',
+                "Invalid character in signicand");
+        Util.assertion( p != begin, "Sginificand has no digits");
+        Util.assertion( dot == end || p - begin != 1, "Significand has no digits");
 
         if (p != firstSignificantDigit)
         {
@@ -2208,7 +2217,7 @@ public class APFloat implements Cloneable
         {
             if (str.charAt(p) == '.')
             {
-                assert dot == end : "String contains multiple dots";
+                Util.assertion( dot == end, "String contains multiple dots");
                 dot = p++;
                 if (p == end)
                     break;
@@ -2219,9 +2228,9 @@ public class APFloat implements Cloneable
 
         if (p != end)
         {
-            assert str.charAt(p) == 'e' || str.charAt(p) == 'E';
-            assert p != begin;
-            assert dot == end || p - begin != 1;
+            Util.assertion( str.charAt(p) == 'e' || str.charAt(p) == 'E');
+            Util.assertion( p != begin);
+            Util.assertion( dot == end || p - begin != 1);
 
             d.exponent = readExponent(str, p + 1, end);
             if (dot == end)
@@ -2331,7 +2340,7 @@ public class APFloat implements Cloneable
                         }
                     }
                     decValue = decDigitValue(str.charAt(p++));
-                    assert decValue < 10 : "Invalid character in significand";
+                    Util.assertion( decValue < 10, "Invalid character in significand");
                     multiplier *= 10;
                     val = val * 10 + decValue;
                     /* The maximum number that can be multiplied by ten with any
@@ -2367,8 +2376,7 @@ public class APFloat implements Cloneable
     {
         int result = count;
 
-        assert count != 0 : count <= 64 / 4;
-
+        Util.assertion( count != 0 && count <= 64 / 4);
         part >>= (64 - 4 * count);
         while ((count--) != 0)
         {
@@ -2411,7 +2419,7 @@ public class APFloat implements Cloneable
 
         long[] scratch = new long[maxPowerOfFiveParts], p1, p2, pow5;
         int result;
-        assert (power <= maxExponent);
+        Util.assertion( (power <= maxExponent));
 
         p1 = dst;
         p2 = scratch;
@@ -2550,7 +2558,7 @@ public class APFloat implements Cloneable
                 q--;
                 dest[q] = hexDigitChars.charAt(hexDigitValue(dest[q]) + 1);
             } while (dest[q] == '0');
-            assert (q >= p);
+            Util.assertion( (q >= p));
         }
         else
         {
@@ -2586,7 +2594,7 @@ public class APFloat implements Cloneable
     private static int HUerrBound(boolean inexactMultiply, int HUerr1,
             int HUerr2)
     {
-        assert (HUerr1 < 2 || HUerr2 < 2 || (HUerr1 + HUerr2 < 8));
+        Util.assertion( (HUerr1 < 2 || HUerr2 < 2 || (HUerr1 + HUerr2 < 8)));
 
         if (HUerr1 + HUerr2 == 0)
             return (inexactMultiply ? 1 : 0) * 2;  /* <= inexactMultiply half-ulps.  */
@@ -2605,7 +2613,7 @@ public class APFloat implements Cloneable
         int count, partBits;
         long part, boundary;
 
-        assert bits != 0;
+        Util.assertion( bits != 0);
 
         bits--;
         count = bits / 64;
@@ -2707,8 +2715,8 @@ public class APFloat implements Cloneable
 
             /* Both multiplySignificand and divideSignificand return the
             result with the integer bit set.  */
-            assert APInt.tcExtractBit(decSig.significandParts(),
-                    calcSemantics.precision - 1);
+            Util.assertion( APInt.tcExtractBit(decSig.significandParts(),
+                    calcSemantics.precision - 1));
 
             HUerr = HUerrBound(calcLostFraction != LostFraction.lfExactlyZero,
                     sigStatus != opOK ? 1 : 0, powHUerr);
@@ -2737,8 +2745,8 @@ public class APFloat implements Cloneable
 
     private APInt convertFloatAPFloatToAPInt()
     {
-        assert (semantics == IEEEsingle);
-        assert (partCount() == 1);
+        Util.assertion( (semantics == IEEEsingle));
+        Util.assertion( (partCount() == 1));
 
         int myexponent, mysignificand;
 
@@ -2761,7 +2769,7 @@ public class APFloat implements Cloneable
         }
         else
         {
-            assert category == fcNaN : "Unknown category!";
+            Util.assertion( category == fcNaN, "Unknown category!");
             myexponent = 0xff;
             mysignificand = (int) significandParts()[0];
         }
@@ -2773,8 +2781,8 @@ public class APFloat implements Cloneable
 
     private APInt convertDoubleAPFloatToAPInt()
     {
-        assert (semantics == IEEEdouble);
-        assert (partCount() == 1);
+        Util.assertion( (semantics == IEEEdouble));
+        Util.assertion( (partCount() == 1));
 
         long myexponent, mysignificand;
 
@@ -2797,7 +2805,7 @@ public class APFloat implements Cloneable
         }
         else
         {
-            assert category == fcNaN : "Unknown category!";
+            Util.assertion( category == fcNaN, "Unknown category!");
             myexponent = 0x7ff;
             mysignificand = significandParts()[0];
         }
@@ -2809,8 +2817,8 @@ public class APFloat implements Cloneable
 
     private APInt convertQuadrupleAPFloatToAPInt()
     {
-        assert (semantics == IEEEquad);
-        assert (partCount() == 2);
+        Util.assertion( (semantics == IEEEquad));
+        Util.assertion( (partCount() == 2));
 
         long myexponent, mysignificand, mysignificand2;
 
@@ -2834,7 +2842,7 @@ public class APFloat implements Cloneable
         }
         else
         {
-            assert category == fcNaN : "Undefined category!";
+            Util.assertion( category == fcNaN, "Undefined category!");
             myexponent = 0x7fff;
             mysignificand = significandParts()[0];
             mysignificand2 = significandParts()[1];
@@ -2850,8 +2858,8 @@ public class APFloat implements Cloneable
 
     private APInt convertF80LongDoubleAPFloatToAPInt()
     {
-        assert (semantics == x87DoubleExtended);
-        assert (partCount() == 2);
+        Util.assertion( (semantics == x87DoubleExtended));
+        Util.assertion( (partCount() == 2));
 
         long myexponent, mysignificand;
 
@@ -2874,7 +2882,7 @@ public class APFloat implements Cloneable
         }
         else
         {
-            assert category == fcNaN : "Unknown category";
+            Util.assertion( category == fcNaN, "Unknown category");
             myexponent = 0x7fff;
             mysignificand = significandParts()[0];
         }
@@ -2916,13 +2924,13 @@ public class APFloat implements Cloneable
 
     private void initFromFloatAPInt(APInt api)
     {
-        assert (api.getBitWidth() == 32);
+        Util.assertion( (api.getBitWidth() == 32));
         int i = (int) api.getRawData()[0];
         int myexponent = (i >> 23) & 0xff;
         int mysignificand = i & 0x7fffff;
 
         initialize(IEEEsingle);
-        assert (partCount() == 1);
+        Util.assertion( (partCount() == 1));
 
         sign = (i >> 31) != 0;
         if (myexponent == 0 && mysignificand == 0)
@@ -2955,13 +2963,13 @@ public class APFloat implements Cloneable
 
     private void initFromDoubleAPInt(APInt api)
     {
-        assert (api.getBitWidth() == 64);
+        Util.assertion( (api.getBitWidth() == 64));
         long i = api.getRawData()[0];
         long myexponent = (i >> 52) & 0x7ff;
         long mysignificand = i & 0xfffffffffffffL;
 
         initialize(IEEEdouble);
-        assert (partCount() == 1);
+        Util.assertion( (partCount() == 1));
 
         sign = (i >> 63) != 0;
         if (myexponent == 0 && mysignificand == 0)
@@ -2995,7 +3003,7 @@ public class APFloat implements Cloneable
 
     private void initFromQuadrupleAPInt(APInt api)
     {
-        assert (api.getBitWidth() == 128);
+        Util.assertion( (api.getBitWidth() == 128));
         long i1 = api.getRawData()[0];
         long i2 = api.getRawData()[1];
         long myexponent = (i2 >> 48) & 0x7fff;
@@ -3003,7 +3011,7 @@ public class APFloat implements Cloneable
         long mysignificand2 = i2 & 0xffffffffffffL;
 
         initialize(IEEEquad);
-        assert (partCount() == 2);
+        Util.assertion( (partCount() == 2));
 
         sign = (i2 >> 63) != 0;
         if (myexponent == 0 && (mysignificand == 0 && mysignificand2 == 0))
@@ -3048,14 +3056,14 @@ public class APFloat implements Cloneable
     /// At the moment, the first two are treated as NaNs, the second two as Normal.
     private void initFromF80LongDoubleAPInt(APInt api)
     {
-        assert (api.getBitWidth() == 80);
+        Util.assertion( (api.getBitWidth() == 80));
         long i1 = api.getRawData()[0];
         long i2 = api.getRawData()[1];
         long myexponent = (i2 & 0x7fff);
         long mysignificand = i1;
 
         initialize(x87DoubleExtended);
-        assert (partCount() == 2);
+        Util.assertion( (partCount() == 2));
 
         sign = (i2 >> 15) != 0;
         if (myexponent == 0 && mysignificand == 0)
@@ -3088,7 +3096,7 @@ public class APFloat implements Cloneable
 
     private void assign(APFloat rhs)
     {
-        assert (semantics == rhs.semantics);
+        Util.assertion( (semantics == rhs.semantics));
 
         sign = rhs.sign;
         category = rhs.category;
@@ -3099,8 +3107,8 @@ public class APFloat implements Cloneable
 
     private void copySignificand(APFloat rhs)
     {
-        assert (category == fcNormal || category == fcNaN);
-        assert (rhs.partCount() >= partCount());
+        Util.assertion( (category == fcNormal || category == fcNaN));
+        Util.assertion( (rhs.partCount() >= partCount()));
 
         APInt.tcAssign(rhs.significandParts(), significandParts(), partCount());
     }

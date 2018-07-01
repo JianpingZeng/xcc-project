@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.SourceMgr;
 import tools.commandline.*;
 
@@ -152,7 +153,7 @@ public final class TableGen
                     new JlangOptionsEmitter(records).run(outputFile);
                     break;
                 default:
-                    assert false : "Invalid action type!";
+                    Util.assertion(false,  "Invalid action type!");
                     System.exit(1);
             }
         }

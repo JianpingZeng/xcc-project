@@ -1,5 +1,6 @@
 package jlang.type;
 
+import tools.Util;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
 import jlang.type.ArrayType.ConstantArrayType;
@@ -208,7 +209,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isSpecifiedBuiltinType(int tk)
     {
-        assert tk >= BuiltinTypeBegin && tk < BuiltinTypeEnd;
+        Util.assertion( tk >= BuiltinTypeBegin && tk < BuiltinTypeEnd);
         return tk == tc;
     }
 
@@ -651,7 +652,7 @@ public abstract class Type implements TypeClass
 
     public boolean isConstantSizeType()
     {
-        assert !isIncompleteType():"This is not make sense for incomplete type";
+        Util.assertion(!isIncompleteType(), "This is not make sense for incomplete type");
         return !(canonicalType.getType() instanceof VariableArrayType);
     }
 
@@ -693,7 +694,7 @@ public abstract class Type implements TypeClass
 
     public ScalarTypeKind getScalarTypeKind()
     {
-        assert isScalarType();
+        Util.assertion( isScalarType());
 
         switch (getTypeClass())
         {
@@ -708,7 +709,7 @@ public abstract class Type implements TypeClass
             return STK_Floating;
         if (isEnumeralType())
         {
-            assert getAsEnumType().getDecl().isCompleteDefinition();
+            Util.assertion( getAsEnumType().getDecl().isCompleteDefinition());
             return STK_Integral;
         }
         if (isComplexType())

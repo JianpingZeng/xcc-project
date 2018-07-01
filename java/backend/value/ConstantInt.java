@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
@@ -44,7 +45,7 @@ public class ConstantInt extends Constant
     {
         super(ty, ValueKind.ConstantIntVal);
         val = v.clone();
-        assert v.getBitWidth() == ty.getBitWidth():"Invalid constants for type";
+        Util.assertion(v.getBitWidth() == ty.getBitWidth(), "Invalid constants for type");
     }
 
     public static ConstantInt get(IntegerType ty, long val, boolean isSigned)

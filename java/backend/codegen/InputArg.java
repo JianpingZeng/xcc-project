@@ -16,6 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
+
 /**
  * This struct carries flags and type information about a
  * single incoming (formal) argument or incoming (from the perspective
@@ -41,6 +43,6 @@ public class InputArg
         this.flags = flags;
         this.vt = vt;
         this.used = used;
-        assert vt.isSimple() :"InputArg value type must be simple!";
+        Util.assertion(vt.isSimple(), "InputArg value type must be simple!");
     }
 }

@@ -17,6 +17,7 @@
 
 package backend.analysis;
 
+import tools.Util;
 import backend.utils.PredIterator;
 import backend.value.BasicBlock;
 import backend.value.Function;
@@ -119,7 +120,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
                 }
                 --idx;
             }
-            assert idx == -1:"Remained unhandled BasicBlock";
+            Util.assertion(idx == -1, "Remained unhandled BasicBlock");
         }
 
         // Step#3: create a dom tree
@@ -186,8 +187,8 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     public boolean dominates(DomTreeNodeBase<BasicBlock> A,
             DomTreeNodeBase<BasicBlock> B)
     {
-        assert A.getBlock().getParent() == fn
-                && B.getBlock().getParent() == A.getBlock().getParent();
+        Util.assertion( A.getBlock().getParent() == fn                && B.getBlock().getParent() == A.getBlock().getParent());
+
 
         if (A == B)
             return true;
@@ -202,7 +203,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public boolean dominates(BasicBlock A, BasicBlock B)
     {
-        assert A.getParent() == fn && B.getParent() == A.getParent();
+        Util.assertion( A.getParent() == fn && B.getParent() == A.getParent());
 
         if (A == B)
             return true;
@@ -273,7 +274,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public void eraseNode(BasicBlock bb)
     {
-        assert bb != null;
+        Util.assertion( bb != null);
 
         int index = bb2Number.get(bb);
         boolean exist = false;
@@ -285,7 +286,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
                 break;
             }
         }
-        assert !exist:"Can not remove non-leaf node";
+        Util.assertion(!exist, "Can not remove non-leaf node");
         doms[index] = UNDEF;
         bb2Number.remove(bb);
         bb2DomTreeNode.remove(bb);
@@ -298,13 +299,13 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     {
         int e = newBB.getNumSuccessors();
         BasicBlock succ = newBB.suxAt(0);
-        assert e == 1 && succ != null : "newBB must have a single successor";
+        Util.assertion(e == 1 && succ != null,  "newBB must have a single successor");
 
         ArrayList<BasicBlock> preds = new ArrayList<>();
         for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)
             preds.add(itr.next());
 
-        assert !preds.isEmpty() :"No predecessors block!";
+        Util.assertion(!preds.isEmpty(), "No predecessors block!");
 
         boolean newBBDominatesSucc = true;
         for (PredIterator<BasicBlock> succPredItr = succ.predIterator();
@@ -360,7 +361,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     public DomTreeNodeBase<BasicBlock> addNewBlock(BasicBlock bb,
             BasicBlock idom)
     {
-        assert bb != null && idom != null && bb2Number.containsKey(idom);
+        Util.assertion( bb != null && idom != null && bb2Number.containsKey(idom));
         int bbIndex = reversePostOrder.size() - reversePostOrder.indexOf(bb) - 1;
         int idomIndex = bb2Number.get(idom);
         doms[bbIndex] = idomIndex;
@@ -375,8 +376,8 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     public void changeIDom(DomTreeNodeBase<BasicBlock> oldIDom,
             DomTreeNodeBase<BasicBlock> newIDom)
     {
-        assert bb2Number.containsKey(oldIDom.getBlock()) &&
-                bb2Number.containsKey(newIDom.getBlock());
+        Util.assertion( bb2Number.containsKey(oldIDom.getBlock()) &&                bb2Number.containsKey(newIDom.getBlock()));
+
         int oldIdomIndex = bb2Number.get(oldIDom.getBlock());
         int newIdomIndex = bb2Number.get(newIDom.getBlock());
         for (int idx = 0; idx < doms.length; idx++)
@@ -395,8 +396,8 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public void changeIDom(BasicBlock oldIDomBB, BasicBlock newIDomBB)
     {
-        assert bb2Number.containsKey(oldIDomBB) &&
-                bb2Number.containsKey(newIDomBB);
+        Util.assertion( bb2Number.containsKey(oldIDomBB) &&                bb2Number.containsKey(newIDomBB));
+
         int oldIdomIndex = bb2Number.get(oldIDomBB);
         int newIdomIndex = bb2Number.get(newIDomBB);
         for (int idx = 0; idx < doms.length; idx++)

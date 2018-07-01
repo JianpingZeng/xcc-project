@@ -16,6 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import tools.OutParamWrapper;
 
@@ -105,7 +106,7 @@ public class ListOpt<T> extends Option<T> implements List<T>
 
     public int getPosition(int index)
     {
-        assert index >= 0 &&index< size();
+        Util.assertion( index >= 0 &&index< size());
         return positions.get(index);
     }
 

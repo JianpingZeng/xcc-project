@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 
 /**
@@ -44,15 +45,15 @@ public class DerivedType extends Type
             AbstractTypeUser user = abstractTypeUsers.getLast();
             user.typeBecameConcrete(this);
 
-            assert abstractTypeUsers.size() < oldSize-- :
-                    "AbstractTypeUser did not remove ifself";
+            Util.assertion(abstractTypeUsers.size() < oldSize--,                     "AbstractTypeUser did not remove ifself");
+
         }
     }
 
     protected void unlockRefineAbstractTypeTo(Type newType)
     {
-        assert isAbstract():"refinedAbstractTypeto: Current type is not abstract";
-        assert this !=newType:"Can not refine to itself!";
+        Util.assertion(isAbstract(), "refinedAbstractTypeto: Current type is not abstract");
+        Util.assertion(this !=newType, "Can not refine to itself!");
 
         forwardType = newType;
 
@@ -63,8 +64,8 @@ public class DerivedType extends Type
             int oldSize = abstractTypeUsers.size();
             user.refineAbstractType(this, newType);
 
-            assert abstractTypeUsers.size() != oldSize :
-                    "AbstractTypeUser did not remove ifself from user list!";
+            Util.assertion(abstractTypeUsers.size() != oldSize,                     "AbstractTypeUser did not remove ifself from user list!");
+
         }
     }
 

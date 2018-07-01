@@ -16,6 +16,7 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
 
@@ -47,7 +48,7 @@ public final class BuiltinType extends Type
     {
         switch (tc)
         {
-            default: assert false :"Uknown builtin type!";
+            default: Util.assertion(false, "Uknown builtin type!");
             case Void: return "void";
             case Bool: return opts.bool ? "bool" : "_Bool";
             case SChar: return "char";

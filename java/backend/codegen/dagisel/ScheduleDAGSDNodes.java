@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.target.*;
@@ -199,7 +200,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 			}
 
 			boolean hasOptPRefs = tid.getNumDefs() > numResults;
-			assert !hasOptPRefs || !hasPhysRegOuts;
+			Util.assertion( !hasOptPRefs || !hasPhysRegOuts);
 			int numSkip = hasOptPRefs ? tid.getNumDefs() - numResults:0;
 			// insert new operand into this machine instruction.
 			for (int i = numSkip; i < nodeOperands; i++)
@@ -269,7 +270,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 				boolean emitted = tii.copyRegToReg(mbb, insertPos++, destReg, srcReg,
 						destRC, srcRC);
 
-				assert emitted:"Unable to issue a copy instruction!";
+				Util.assertion(emitted, "Unable to issue a copy instruction!");
 				break;
 			}
 			case ISD.CopyFromReg:
@@ -401,7 +402,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 			int vreg = getVR(node.getOperand(0), vrBaseMap);
 			TargetRegisterClass destRC = mri.getRegClass(vreg);
 			TargetRegisterClass srcRC = destRC.getSubRegisterRegClass(subIdx);
-			assert srcRC != null:"Invalid subregister index in EXTRACT_SUBREG";
+			Util.assertion(srcRC != null, "Invalid subregister index in EXTRACT_SUBREG");
 
 			if (vrBase == 0 || srcRC != mri.getRegClass(vrBase))
 			{
@@ -449,7 +450,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             Util.shouldNotReachHere("Node is not insert_subreg, extract_subreg, or subreg_to_reg");
 
 		SDValue op = new SDValue(node, 0);
-		assert !vrBaseMap.containsKey(op):"Node emitted out of order!";
+		Util.assertion(!vrBaseMap.containsKey(op), "Node emitted out of order!");
 		vrBaseMap.put(op, vrBase);
 	}
 
@@ -465,9 +466,9 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	    int newVReg = mri.createVirtualRegister(destRC);
 	    boolean emitted = tii.copyRegToReg(mbb, insertPos++, newVReg, vreg,
                 destRC, srcRC);
-	    assert emitted:"Unable to issue a copy instruction!";
+	    Util.assertion(emitted, "Unable to issue a copy instruction!");
 	    SDValue op = new SDValue(node, 0);
-	    assert !vrBaseMap.containsKey(op);
+	    Util.assertion( !vrBaseMap.containsKey(op));
 	    vrBaseMap.put(op, newVReg);
     }
 
@@ -489,7 +490,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 	        return vreg;
         }
 
-        assert vrBaseMap.containsKey(op);
+        Util.assertion( vrBaseMap.containsKey(op));
 	    return vrBaseMap.get(op);
 	}
 
@@ -585,8 +586,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
         }
         else
         {
-            assert !op.getValueType().equals(new EVT(MVT.Other)) &&
-                    !op.getValueType().equals(new EVT(MVT.Flag));
+            Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&                    !op.getValueType().equals(new EVT(MVT.Flag)));
+
             addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
         }
     }
@@ -597,11 +598,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		TargetInstrDesc tid, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
 	{
-        assert !op.getValueType().equals(new EVT(MVT.Other)) &&
-                !op.getValueType().equals(new EVT(MVT.Flag));
+        Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&                !op.getValueType().equals(new EVT(MVT.Flag)));
+
 
         int vreg = getVR(op, vrBaseMap);
-        assert isVirtualRegister(vreg);
+        Util.assertion( isVirtualRegister(vreg));
 
         TargetInstrDesc ii = mi.getDesc();
         boolean isOptDef = iiOpNum < ii.getNumOperands() && ii.opInfo[iiOpNum].isOptionalDef();
@@ -612,14 +613,14 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             TargetRegisterClass destRC = null;
             if (iiOpNum < tid.getNumOperands())
                 destRC = tid.opInfo[iiOpNum].getRegisterClass(tri);
-            assert destRC != null || (ii.isVariadic() && iiOpNum >= ii.getNumOperands())
-                    :"Don't have operand info for this instruction!";
+            Util.assertion(destRC != null || (ii.isVariadic() && iiOpNum >= ii.getNumOperands()), "Don't have operand info for this instruction!");
+
             if (destRC != null && !srcRC.equals(destRC) && !srcRC.hasSuperClass(destRC))
             {
                 int newVReg = mri.createVirtualRegister(destRC);
                 boolean emitted = tii.copyRegToReg(mbb, insertPos++,
                         newVReg, vreg, destRC, srcRC);
-                assert emitted:"Unable to issue a copy instruction!";
+                Util.assertion(emitted, "Unable to issue a copy instruction!");
                 vreg = newVReg;
             }
         }
@@ -641,7 +642,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             if (isClone)
                 vrBaseMap.remove(op);
 
-            assert !vrBaseMap.containsKey(op);
+            Util.assertion( !vrBaseMap.containsKey(op));
             vrBaseMap.put(op, srcReg);
             return;
         }
@@ -723,13 +724,13 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
                 vrbase = mri.createVirtualRegister(destRC);
                 boolean emitted = tii.copyRegToReg(mbb, insertPos++, vrbase, srcReg,
                         destRC, srcRC);
-                assert emitted:"Unable to issue copy instruction!";
+                Util.assertion(emitted, "Unable to issue copy instruction!");
             }
 
             SDValue op = new SDValue(node, resNo);
             if (isClone)
                 vrBaseMap.remove(op);
-            assert !vrBaseMap.containsKey(op):"Node emitted out of order!";
+            Util.assertion(!vrBaseMap.containsKey(op), "Node emitted out of order!");
             vrBaseMap.put(op, vrbase);
         }
     }
@@ -741,7 +742,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		boolean isCloned, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
 	{
-	    assert node.getMachineOpcode() != TargetInstrInfo.IMPLICIT_DEF;
+	    Util.assertion( node.getMachineOpcode() != TargetInstrInfo.IMPLICIT_DEF);
 	    for (int i = 0; i < tid.getNumDefs(); i++)
         {
             int vrbase = 0;
@@ -750,7 +751,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             {
                 int numResult = countResults(node);
                 vrbase = ((RegisterSDNode)node.getOperand(i-numResult).getNode()).getReg();
-                assert isPhysicalRegister(vrbase);
+                Util.assertion( isPhysicalRegister(vrbase));
                 mi.addOperand(MachineOperand.createReg(vrbase, true, false));
             }
 
@@ -779,7 +780,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 
                 if (vrbase == 0)
                 {
-                    assert rc != null;
+                    Util.assertion( rc != null);
                     vrbase = mri.createVirtualRegister(rc);
                     mi.addOperand(MachineOperand.createReg(vrbase, true, false));
                 }
@@ -787,7 +788,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
                 SDValue op = new SDValue(node, i);
                 if (isClone)
                     vrBaseMap.remove(op);
-                assert !vrBaseMap.containsKey(op);
+                Util.assertion( !vrBaseMap.containsKey(op));
                 vrBaseMap.put(op, vrbase);
             }
         }
@@ -819,7 +820,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 				.simpleVT == MVT.Flag)
 			{
 				n = n.getOperand(n.getNumOperands()-1).getNode();
-				assert n.getNodeID() == -1;
+				Util.assertion( n.getNodeID() == -1);
 				n.setNodeID(nodeSUnit.nodeNum);
 			}
 
@@ -833,7 +834,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 					if (flagVal.isOperandOf(u.getUser()))
 					{
 						hasFlagUse = true;
-						assert n.getNodeID() == -1;
+						Util.assertion( n.getNodeID() == -1);
 						n.setNodeID(nodeSUnit.nodeNum);
 						n = u.getUser();
 						break;
@@ -842,7 +843,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 				if (!hasFlagUse) break;
 			}
 			nodeSUnit.setNode(n);
-			assert n.getNodeID() == -1;
+			Util.assertion( n.getNodeID() == -1);
 			n.setNodeID(nodeSUnit.nodeNum);
 
 			if (unitLatencies)
@@ -895,18 +896,18 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 					SDNode opN = n.getOperand(j).getNode();
 					if (isPassiveNode(opN)) continue;
 					SUnit opSU = sunits.get(opN.getNodeID());
-					assert opSU != null;
+					Util.assertion( opSU != null);
 					if (Objects.equals(opSU, su)) continue;
 
 					EVT opVT = n.getOperand(j).getValueType();
-					assert !opVT.equals(new EVT(MVT.Flag));
+					Util.assertion( !opVT.equals(new EVT(MVT.Flag)));
 					boolean isChain = opVT.equals(new EVT(MVT.Other));			
 
 					int[] res = checkForPhysRegDependency(opN, n, i, tri, tii);
 					int physReg = res[0];
 					int cost = res[1];
 
-					assert physReg == 0 || !isChain;
+					Util.assertion( physReg == 0 || !isChain);
 					if (cost >= 0)
 						physReg = 0;
 

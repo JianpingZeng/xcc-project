@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.Value;
 import tools.Pair;
 
@@ -44,19 +45,19 @@ public final class RValue
 
     public Value getScalarVal()
     {
-        assert isScalar():"Not a scalar!";
+        Util.assertion(isScalar(), "Not a scalar!");
         return v1;
     }
 
     public Pair<Value, Value> getComplexVal()
     {
-        assert isComplex():"Not a complex!";
+        Util.assertion(isComplex(), "Not a complex!");
         return new Pair<>(v1, v2);
     }
 
     public Value getAggregateAddr()
     {
-        assert isAggregate():"Not a aggregate type!";
+        Util.assertion(isAggregate(), "Not a aggregate type!");
         return v1;
     }
 

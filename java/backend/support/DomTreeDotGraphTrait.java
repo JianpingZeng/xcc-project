@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.IDomTreeInfo;
@@ -94,7 +95,7 @@ public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
         while (!queue.isEmpty())
         {
             DomTreeNodeBase<BasicBlock> cur = queue.poll().curBB;
-            assert cur != null;
+            Util.assertion( cur != null);
             String nodeAttrites = getNodeAttributes(cur.getBlock());
             os.printf("\tNode0x%x [shape=record,", cur.getBlock().hashCode());
             if (!nodeAttrites.isEmpty())

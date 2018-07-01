@@ -1,5 +1,6 @@
 /*package backend.hir;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.value.Instruction;
 import tools.BitMap2D;
@@ -95,13 +96,13 @@ public class ComputeLinearScanOrder
 		computeScanOrder(entry);
 		printBlocks();
 
-		assert verify();
+		Util.assertion( verify());
 	}
 
 	private boolean verify()
 	{
-		assert linearScanOrder.size()
-				== numBlocks : "wrong number of blocks in list";
+		Util.assertion(linearScanOrder.size()				== numBlocks,  "wrong number of blocks in list");
+
 
 		// check that all successors of a block have a higher linear-scan-number
 		// and that all predecessors of a block have a lower linear-scan-number
@@ -111,30 +112,29 @@ public class ComputeLinearScanOrder
 		{
 			BasicBlock cur = linearScanOrder.get(i);
 
-			assert cur.linearScanNumber == i : "incorrect linearScanNumber";
-			assert cur.linearScanNumber >= 0
-					&& cur.linearScanNumber == linearScanOrder
-					.indexOf(cur) : "incorrect linearScanNumber";
+			Util.assertion(cur.linearScanNumber == i,  "incorrect linearScanNumber");
+			Util.assertion(cur.linearScanNumber >= 0					&& cur.linearScanNumber == linearScanOrder
+					.indexOf(cur),  "incorrect linearScanNumber");
+
 
 			SuccIterator itr = cur.succIterator();
 			while (itr.hasNext())
 			{
 				BasicBlock sux = itr.next();
-				assert sux.linearScanNumber >= 0
-						&& sux.linearScanNumber == linearScanOrder
-						.indexOf(sux) : "incorrect linearScanNumber";
+				Util.assertion(sux.linearScanNumber >= 0						&& sux.linearScanNumber == linearScanOrder
+						.indexOf(sux),  "incorrect linearScanNumber");
+
 				if (!cur.checkBlockFlags(
 						BasicBlock.BlockFlag.LinearScanLoopEnd))
 				{
-					assert cur.linearScanNumber
-							< sux.linearScanNumber : "invalid order";
+					Util.assertion(cur.linearScanNumber							< sux.linearScanNumber,  "invalid order");
+
 				}
 				if (cur.loopDepth == sux.loopDepth)
 				{
-					assert cur.loopIndex == sux.loopIndex || sux
-							.checkBlockFlags(
-									BasicBlock.BlockFlag.LinearScanLoopHeader)
-							: "successing blocks with same loop depth must have same loop index";
+					Util.assertion(cur.loopIndex == sux.loopIndex || sux							.checkBlockFlags(
+									BasicBlock.BlockFlag.LinearScanLoopHeader),  "successing blocks with same loop depth must have same loop index");
+
 				}
 			}
 
@@ -142,48 +142,47 @@ public class ComputeLinearScanOrder
 			while(predItr.hasNext())
 			{
 			    BasicBlock pred = predItr.next();
-				assert pred.linearScanNumber >= 0
-						&& pred.linearScanNumber == linearScanOrder
-						.indexOf(pred) : "incorrect linearScanNumber";
+				Util.assertion(pred.linearScanNumber >= 0						&& pred.linearScanNumber == linearScanOrder
+						.indexOf(pred),  "incorrect linearScanNumber");
+
 				if (!cur.checkBlockFlags(
 						BasicBlock.BlockFlag.LinearScanLoopHeader))
 				{
-					assert cur.linearScanNumber
-							> pred.linearScanNumber : "invalid order";
+					Util.assertion(cur.linearScanNumber							> pred.linearScanNumber,  "invalid order");
+
 				}
 				if (cur.loopDepth == pred.loopDepth)
 				{
-					assert cur.loopIndex == pred.loopIndex || cur
-							.checkBlockFlags(
-									BasicBlock.BlockFlag.LinearScanLoopHeader)
-							: "successing blocks with same loop depth must have same loop index";
+					Util.assertion(cur.loopIndex == pred.loopIndex || cur							.checkBlockFlags(
+									BasicBlock.BlockFlag.LinearScanLoopHeader),  "successing blocks with same loop depth must have same loop index");
+
 				}
 				BasicBlock dom = DT.getIDom(cur);
-				assert dom != null;
-				assert dom.linearScanNumber
-						<= pred.linearScanNumber : "dominator must be before predecessors";
+				Util.assertion( dom != null);
+				Util.assertion(dom.linearScanNumber						<= pred.linearScanNumber,  "dominator must be before predecessors");
+
 			}
 			BasicBlock dom = DT.getIDom(cur);
 
 			// check dominator
 			if (i == 0)
 			{
-				assert dom == null : "first block has no dominator";
+				Util.assertion(dom == null,  "first block has no dominator");
 			}
 			else
 			{
-				assert dom != null : "all but first block must have dominator";
+				Util.assertion(dom != null,  "all but first block must have dominator");
 			}
-			assert cur.getNumOfPreds() != 1 || dom == cur
-					.predAt(0) : "Single predecessor must also be dominator";
+			Util.assertion(cur.getNumOfPreds() != 1 || dom == cur					.predAt(0),  "Single predecessor must also be dominator");
+
 		}
 
 		// check that all loops are continuous
 		for (int loopIdx = 0; loopIdx < numLoops; loopIdx++)
 		{
 			int blockIdx = 0;
-			assert !isBlockInLoop(loopIdx, linearScanOrder
-					.get(blockIdx)) : "the first block must not be present in any loop";
+			Util.assertion(!isBlockInLoop(loopIdx, linearScanOrder					.get(blockIdx)),  "the first block must not be present in any loop");
+
 
 			// skip blocks before the loop
 			while (blockIdx < numBlocks && !isBlockInLoop(loopIdx,
@@ -200,8 +199,8 @@ public class ComputeLinearScanOrder
 			// after the first non-loop block : there must not be another loop-block
 			while (blockIdx < numBlocks)
 			{
-				assert !isBlockInLoop(loopIdx, linearScanOrder
-						.get(blockIdx)) : "loop not continuous in linear-scan order";
+				Util.assertion(!isBlockInLoop(loopIdx, linearScanOrder						.get(blockIdx)),  "loop not continuous in linear-scan order");
+
 				blockIdx++;
 			}
 		}
@@ -257,16 +256,16 @@ public class ComputeLinearScanOrder
 			return true;
 		if (--forwardBranches[block.getID()] != 0)
 			return false;
-		assert !linearScanOrder.contains(
-				block) : "block already processed(block can be ready only once)";
-		assert !workList.contains(
-				block) : "block already in work list(block can be ready only once)";
+		Util.assertion(!linearScanOrder.contains(				block),  "block already processed(block can be ready only once)");
+
+		Util.assertion(!workList.contains(				block),  "block already in work list(block can be ready only once)");
+
 		return true;
 	}
 
 	private void sortInWorkList(BasicBlock block)
 	{
-		assert !workList.contains(block) : "block already in work list";
+		Util.assertion(!workList.contains(block),  "block already in work list");
 
 		int curWdeight = computeWeight(block);
 
@@ -291,10 +290,10 @@ public class ComputeLinearScanOrder
 
 		for (int i = 0; i < workList.size(); i++)
 		{
-			assert workList.get(i).linearScanNumber > 0 : "weight not set";
+			Util.assertion(workList.get(i).linearScanNumber > 0,  "weight not set");
 
-			assert i == 0 || workList.get(i - 1).linearScanNumber <= workList
-					.get(i).linearScanNumber : "incorrect order";
+			Util.assertion(i == 0 || workList.get(i - 1).linearScanNumber <= workList					.get(i).linearScanNumber,  "incorrect order");
+
 		}
 	}
 
@@ -347,16 +346,16 @@ public class ComputeLinearScanOrder
 		// guarantee that weight is > 0
 		weight |= 1;
 
-		assert curBit >= 0 : "too many flags";
-		assert weight > 0 : "weight cannot become negative";
+		Util.assertion(curBit >= 0,  "too many flags");
+		Util.assertion(weight > 0,  "weight cannot become negative");
 
 		return weight;
 	}
 
 	private void appendBlock(BasicBlock block)
 	{
-		assert !linearScanOrder.contains(
-				block) : "duplicate append into linear scan order list";
+		Util.assertion(!linearScanOrder.contains(				block),  "duplicate append into linear scan order list");
+
 
 		block.linearScanNumber = linearScanOrder.size();
 		linearScanOrder.add(block);
@@ -373,7 +372,7 @@ public class ComputeLinearScanOrder
 		System.out.println("computes finally linear scan order.");
 
 		linearScanOrder = new ArrayList<>(numBlocks);
-		assert workList.isEmpty() : "work list must be empty before computing";
+		Util.assertion(workList.isEmpty(),  "work list must be empty before computing");
 
 		if (isReadyProcess(entry))
 			sortInWorkList(entry);
@@ -490,9 +489,9 @@ public class ComputeLinearScanOrder
 		if (isActive(start))
 		{
 			TTY.println("Backward edge.");
-			assert isVisited(
-					start) : "The backward block must be visied and actived";
-			assert parent != null : "Backward block must heve parent";
+			Util.assertion(isVisited(					start),  "The backward block must be visied and actived");
+
+			Util.assertion(parent != null,  "Backward block must heve parent");
 
 			start.setBlockFlags(BasicBlock.BlockFlag.LinearScanLoopHeader);
 			start.setBlockFlags(BasicBlock.BlockFlag.BackwardBrachTarget);
@@ -529,8 +528,8 @@ public class ComputeLinearScanOrder
 		if (start
 				.checkBlockFlags(BasicBlock.BlockFlag.LinearScanLoopHeader))
 		{
-			assert start.loopIndex
-					== -1 : "Can not set the loop index twice";
+			Util.assertion(start.loopIndex					== -1,  "Can not set the loop index twice");
+
 
 			TTY.println("CompoundStmt B%d is loop header of loop %d",
 					start.getID(), numLoops);
@@ -556,14 +555,12 @@ public class ComputeLinearScanOrder
 			TTY.println("Processing the loop from block%d to block%d(loop%d)",
 					loopHeader.getID(), loopEnd.getID(), loopIndex);
 
-			assert loopEnd.checkBlockFlags(
-					BasicBlock.BlockFlag.LinearScanLoopEnd)
-					: "loop end must be seted.";
-			assert loopHeader.checkBlockFlags(
-					BasicBlock.BlockFlag.LinearScanLoopHeader)
-					: "loop header must be seted";
-			assert loopIndex >= 0 && loopIndex
-					< numLoops : "numLoops: loop index must be set";
+			Util.assertion(loopEnd.checkBlockFlags(					BasicBlock.BlockFlag.LinearScanLoopEnd),  "loop end must be seted.");
+
+			Util.assertion(loopHeader.checkBlockFlags(					BasicBlock.BlockFlag.LinearScanLoopHeader),  "loop header must be seted");
+
+			Util.assertion(loopIndex >= 0 && loopIndex					< numLoops,  "numLoops: loop index must be set");
+
 			// add the end-block of the loop to the working list
 			workList.add(loopEnd);
 			bitset.setBit(loopIndex, loopEnd.getID());
@@ -573,8 +570,8 @@ public class ComputeLinearScanOrder
 				BasicBlock top = workList.removeLast();
 				TTY.println("-----------Processing CompoundStmt%d", top.getID());
 
-				assert isBlockInLoop(loopIndex,
-						top) : "bit in loop map must be set when block is in work list";
+				Util.assertion(isBlockInLoop(loopIndex,						top),  "bit in loop map must be set when block is in work list");
+
 
 				// recursively processing predecessor ends when the loop header
 				// block is reached
@@ -604,14 +601,14 @@ public class ComputeLinearScanOrder
 	private boolean isVisited(BasicBlock block)
 	{
 		boolean result = visitedBlocks.get(block.getID());
-		assert result : "Visited already set.";
+		Util.assertion(result,  "Visited already set.");
 		return result;
 	}
 
 	private boolean isActive(BasicBlock block)
 	{
 		boolean result = activeBlocks.get(block.getID());
-		assert result : "Active already set.";
+		Util.assertion(result,  "Active already set.");
 		return result;
 	}
 

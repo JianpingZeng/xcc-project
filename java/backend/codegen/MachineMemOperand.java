@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.Value;
 import tools.FoldingSetNodeID;
 import tools.Util;
@@ -55,8 +56,8 @@ public class MachineMemOperand
         this.size = s;
         this.val = v;
         this.flags = (f &0xf) | (Util.log2(a)+1)<<3;
-        assert Util.isPowerOf2(a):"Alignment is not a power of 2!";
-        assert isLoad() || isStore() :"Not a Load/Store!";
+        Util.assertion(Util.isPowerOf2(a), "Alignment is not a power of 2!");
+        Util.assertion(isLoad() || isStore(), "Not a Load/Store!");
     }
 
     public Value getValue()
@@ -101,7 +102,7 @@ public class MachineMemOperand
 
     public void profile(FoldingSetNodeID id)
     {
-        assert id != null;
+        Util.assertion( id != null);
         id.addInteger(offset);
         id.addInteger(size);
         id.addInteger(val.hashCode());

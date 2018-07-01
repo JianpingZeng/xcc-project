@@ -46,8 +46,8 @@ public abstract class Instruction extends User
         opcode = opc;
         if (insertBefore != null)
         {
-            assert (insertBefore.getParent()
-                    != null) : "Instruction to insert before is not in a basic block";
+            Util.assertion((insertBefore.getParent()                    != null),  "Instruction to insert before is not in a basic block");
+
             int idx = insertBefore.getParent().indexOf(insertBefore);
             insertBefore.getParent().insertBefore(this, idx);
             setParent(insertBefore.getParent());
@@ -65,8 +65,8 @@ public abstract class Instruction extends User
         parent = insertAtEnd;
         setName(name);
         // append this instruction into the basic block
-        assert (insertAtEnd != null) :
-                "Basic block to append to may not be NULL!";
+        Util.assertion((insertAtEnd != null),                 "Basic block to append to may not be NULL!");
+
         insertAtEnd.appendInst(this);
     }
 
@@ -83,8 +83,8 @@ public abstract class Instruction extends User
      */
     public void eraseFromParent()
     {
-        assert parent != null :
-                "The basic block where the instruction reside to be erased!";
+        Util.assertion(parent != null,                 "The basic block where the instruction reside to be erased!");
+
         parent.removeInst(this);
         parent = null;
         // FIXME, remove this instruction from def-use.
@@ -116,7 +116,7 @@ public abstract class Instruction extends User
      */
     public void insertAfter(Instruction insertPos)
     {
-        assert (insertPos != null);
+        Util.assertion( (insertPos != null));
         BasicBlock bb = insertPos.getParent();
         int index = bb.lastIndexOf(insertPos);
         if (index >= 0 && index < bb.size())
@@ -130,7 +130,7 @@ public abstract class Instruction extends User
      */
     public void insertBefore(Instruction insertPos)
     {
-        assert (insertPos != null);
+        Util.assertion( (insertPos != null));
         BasicBlock bb = insertPos.getParent();
         int index = bb.lastIndexOf(insertPos);
         if (index >= 0 && index < bb.size())
@@ -555,8 +555,8 @@ public abstract class Instruction extends User
         {
             super(ty, opcode, name, insertBefore);
             reserve(2);
-            assert lhs.getType().equals(rhs.getType())
-                    : "Can not create binary operation with two operands of differing jlang.type.";
+            Util.assertion(lhs.getType().equals(rhs.getType()),  "Can not create binary operation with two operands of differing jlang.type.");
+
             init(lhs, rhs);
         }
 
@@ -569,8 +569,8 @@ public abstract class Instruction extends User
                 BasicBlock insertAtEnd)
         {
             super(ty, opcode, name, insertAtEnd);
-            assert lhs.getType().equals(rhs.getType())
-                    : "Can not create binary operation with two operands of differing jlang.type.";
+            Util.assertion(lhs.getType().equals(rhs.getType()),  "Can not create binary operation with two operands of differing jlang.type.");
+
             init(lhs, rhs);
         }
 
@@ -587,8 +587,8 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            assert lhs.getType().equals(rhs.getType())
-                    : "Cannot create binary operator with two operands of differing type!";
+            Util.assertion(lhs.getType().equals(rhs.getType()),  "Cannot create binary operator with two operands of differing type!");
+
             return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertBefore);
         }
 
@@ -598,8 +598,8 @@ public abstract class Instruction extends User
                 Value rhs,
                 String name)
         {
-            assert lhs.getType() == rhs.getType()
-                    : "Cannot create binary operator with two operands of differing type!";
+            Util.assertion(lhs.getType() == rhs.getType(),  "Cannot create binary operator with two operands of differing type!");
+
             return new BinaryOps(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
         }
 
@@ -610,8 +610,8 @@ public abstract class Instruction extends User
                 String name,
                 BasicBlock insertAtEnd)
         {
-            assert lhs.getType() == rhs.getType()
-                    : "Cannot create binary operator with two operands of differing type!";
+            Util.assertion(lhs.getType() == rhs.getType(),  "Cannot create binary operator with two operands of differing type!");
+
             return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
         }
 
@@ -1029,8 +1029,8 @@ public abstract class Instruction extends User
                 String instName,
                 Instruction insertBefore)
         {
-            assert value.getType().isIntegerType() && destTy.isIntegerType()
-                    :"Invalid type!";
+            Util.assertion(value.getType().isIntegerType() && destTy.isIntegerType(), "Invalid type!");
+
             int srcBits = value.getType().getScalarSizeBits();
             int destBits = destTy.getScalarSizeBits();
             Operator opcode = srcBits == destBits? BitCast
@@ -1058,7 +1058,7 @@ public abstract class Instruction extends User
                 case IntToPtr: return new IntToPtrInst(value, ty, name, insertBefore);
                 case BitCast: return new BitCastInst(value, ty, name, insertBefore);
                 default:
-                    assert false:"Invalid opcode provided!";
+                    Util.assertion(false, "Invalid opcode provided!");
             }
             return null;
         }
@@ -1070,8 +1070,8 @@ public abstract class Instruction extends User
             int srcBits = srcTy.getScalarSizeBits();
             int destBits = destTy.getScalarSizeBits();
 
-            assert srcTy.isFirstClassType() && destTy.isFirstClassType()
-                    :"Only first class types are casted";
+            Util.assertion(srcTy.isFirstClassType() && destTy.isFirstClassType(), "Only first class types are casted");
+
 
             if (destTy.isIntegral())
             {
@@ -1098,8 +1098,8 @@ public abstract class Instruction extends User
                 }
                 else
                 {
-                    assert srcTy instanceof PointerType
-                            :"Casting from a value that is not first-class type";
+                    Util.assertion(srcTy instanceof PointerType, "Casting from a value that is not first-class type");
+
                     return Operator.PtrToInt;
                 }
             }
@@ -1129,11 +1129,11 @@ public abstract class Instruction extends User
                 else if (srcTy.isIntegral())
                     return Operator.IntToPtr;
                 else
-                    assert false : "Casting pointer to other than pointer type!";
+                    Util.assertion(false,  "Casting pointer to other than pointer type!");
             }
             else
             {
-                assert false : "Casting to type that is not first-class type!";
+                Util.assertion(false,  "Casting to type that is not first-class type!");
             }
             return Operator.BitCast;
         }
@@ -1489,7 +1489,7 @@ public abstract class Instruction extends User
         {
             switch (pred)
             {
-                default: assert false: ("Undefined cmp predicate!");
+                default: Util.assertion(false, "Undefined cmp predicate!");
                 case ICMP_EQ: return ICMP_NE;
                 case ICMP_NE: return ICMP_EQ;
                 case ICMP_UGT: return ICMP_ULE;
@@ -1524,7 +1524,7 @@ public abstract class Instruction extends User
         {
             switch (pred)
             {
-                default: assert false:"Undefined cmp predicate!";
+                default: Util.assertion(false, "Undefined cmp predicate!");
                 case ICMP_EQ:
                 case ICMP_NE:
                 case FCMP_FALSE: case FCMP_TRUE:
@@ -1713,46 +1713,46 @@ public abstract class Instruction extends User
                 Value rhs, String name, Instruction insertBefore)
         {
             super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, insertBefore);
-            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
-                    :"Invalid FCmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to FCmp instruction are not of the same type!";
-            assert lhs.getType().isFloatingPointType():
-                    "Invalid operand types for FCmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0, "Invalid FCmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to FCmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isFloatingPointType(),                     "Invalid operand types for FCmp instruction");
+
         }
 
         public FCmpInst(Predicate pred, Value lhs,
                 Value rhs, String name, BasicBlock insertAtEnd)
         {
             super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, insertAtEnd);
-            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
-                    :"Invalid FCmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to FCmp instruction are not of the same type!";
-            assert lhs.getType().isFloatingPointType():
-                    "Invalid operand types for FCmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0, "Invalid FCmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to FCmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isFloatingPointType(),                     "Invalid operand types for FCmp instruction");
+
         }
 
         public FCmpInst(Predicate pred, Value lhs, Value rhs)
         {
             super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, "", (Instruction)null);
-            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
-                    :"Invalid FCmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to FCmp instruction are not of the same type!";
-            assert lhs.getType().isFloatingPointType():
-                    "Invalid operand types for FCmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0, "Invalid FCmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to FCmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isFloatingPointType(),                     "Invalid operand types for FCmp instruction");
+
         }
 
         public FCmpInst(Predicate pred, Value lhs, Value rhs, String name)
         {
             super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, (Instruction)null);
-            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
-                    :"Invalid FCmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to FCmp instruction are not of the same type!";
-            assert lhs.getType().isFloatingPointType():
-                    "Invalid operand types for FCmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0, "Invalid FCmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to FCmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isFloatingPointType(),                     "Invalid operand types for FCmp instruction");
+
         }
 
         public boolean isEquality()
@@ -1798,55 +1798,55 @@ public abstract class Instruction extends User
                 Value rhs, String name, Instruction insertBefore)
         {
             super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, insertBefore);
-            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
-                    :"Invalid ICmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType() || lhs.getType() instanceof PointerType:
-                    "Invalid operand types for ICmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0, "Invalid ICmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to ICmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isIntegerType() || lhs.getType() instanceof PointerType,                     "Invalid operand types for ICmp instruction");
+
         }
 
         public ICmpInst( Predicate pred, Value lhs,
                 Value rhs, String name, BasicBlock insertAtEnd)
         {
             super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, insertAtEnd);
-            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
-                    :"Invalid ICmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType():
-                    "Invalid operand types for ICmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0, "Invalid ICmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to ICmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isIntegerType(),                     "Invalid operand types for ICmp instruction");
+
         }
 
         public ICmpInst( Predicate pred, Value lhs,
                 Value rhs)
         {
             super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, "", (Instruction) null);
-            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
-                    :"Invalid ICmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType():
-                    "Invalid operand types for ICmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0, "Invalid ICmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to ICmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isIntegerType(),                     "Invalid operand types for ICmp instruction");
+
         }
 
         public ICmpInst(Predicate pred, Value lhs,
                 Value rhs, String name)
         {
             super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, (Instruction) null);
-            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
-                    :"Invalid ICmp predicate value";
-            assert lhs.getType() == rhs.getType():
-                    "Both operands to ICmp instruction are not of the same type!";
-            assert lhs.getType().isIntegerType() || lhs.getType().isPointerType():
-                    "Invalid operand types for ICmp instruction";
+            Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0, "Invalid ICmp predicate value");
+
+            Util.assertion(lhs.getType() == rhs.getType(),                     "Both operands to ICmp instruction are not of the same type!");
+
+            Util.assertion(lhs.getType().isIntegerType() || lhs.getType().isPointerType(),                     "Invalid operand types for ICmp instruction");
+
         }
 
         public static Predicate getSignedPredicate(Predicate pred)
         {
             switch (pred)
             {
-                default:assert false:"Undefined icmp predicate!";
+                default:Util.assertion(false, "Undefined icmp predicate!");
                 case ICMP_EQ: case ICMP_NE:
                 case ICMP_SGT: case ICMP_SLT: case ICMP_SGE: case ICMP_SLE:
                 return pred;
@@ -1865,7 +1865,7 @@ public abstract class Instruction extends User
         public static Predicate getUnsignedPredicate(Predicate pred)
         {
             switch (pred) {
-                default: assert false: "Undefined icmp predicate!";
+                default: Util.assertion(false, "Undefined icmp predicate!");
                 case ICMP_EQ: case ICMP_NE:
                 case ICMP_UGT: case ICMP_ULT: case ICMP_UGE: case ICMP_ULE:
                     return pred;
@@ -1896,7 +1896,7 @@ public abstract class Instruction extends User
             switch (pred)
             {
                 default:
-                    assert false : ("Undefined icmp predicate!");
+                    Util.assertion(false,  ("Undefined icmp predicate!"));
                 case ICMP_SGT:
                 case ICMP_SLT:
                 case ICMP_SGE:
@@ -2104,14 +2104,14 @@ public abstract class Instruction extends User
 
         public Value getCondition()
         {
-            assert (isConditional()) : "can not get a condition of uncondition branch";
+            Util.assertion((isConditional()),  "can not get a condition of uncondition branch");
             return operand(2);
         }
 
         public void setCondition(Value cond)
         {
-            assert (cond != null) : "can not update condition with null";
-            assert (isConditional()) : "can not set condition of uncondition branch";
+            Util.assertion((cond != null),  "can not update condition with null");
+            Util.assertion((isConditional()),  "can not set condition of uncondition branch");
             setOperand(2, cond, this);
         }
 
@@ -2129,7 +2129,7 @@ public abstract class Instruction extends User
         @Override
         public BasicBlock getSuccessor(int index)
         {
-            assert (index >= 0 && index < getNumOfSuccessors());
+            Util.assertion( (index >= 0 && index < getNumOfSuccessors()));
             return (BasicBlock) operand(index);
         }
 
@@ -2147,7 +2147,7 @@ public abstract class Instruction extends User
         @Override
         public void setSuxAt(int index, BasicBlock bb)
         {
-            assert (index >= 0 && index < getNumOfSuccessors() && bb != null);
+            Util.assertion( (index >= 0 && index < getNumOfSuccessors() && bb != null));
             setOperand(index, bb, this);
         }
 
@@ -2156,7 +2156,7 @@ public abstract class Instruction extends User
          */
         public void swapSuccessor()
         {
-            assert isConditional() : "can not swap successor of uncondition branch";
+            Util.assertion(isConditional(),  "can not swap successor of uncondition branch");
             {
                 Value temp = operand(0);
                 setOperand(0, operand(1));
@@ -2236,7 +2236,7 @@ public abstract class Instruction extends User
         @Override
         public BasicBlock getSuccessor(int index)
         {
-            assert true:"ReturnInst has no successors!";
+            Util.assertion(true, "ReturnInst has no successors!");
             return null;
         }
 
@@ -2249,7 +2249,7 @@ public abstract class Instruction extends User
         @Override
         public void setSuxAt(int index, BasicBlock bb)
         {
-            assert true:("ReturnInst has no successors!");
+            Util.assertion(true, ("ReturnInst has no successors!"));
         }
     }
 
@@ -2290,8 +2290,8 @@ public abstract class Instruction extends User
                     Operator.Call, name, insertBefore);
 
             reserve(ArgumentOffset + args.size());
-            assert (getNumOfOperands() == ArgumentOffset + args.size())
-                    : "NumOperands not set up?";
+            Util.assertion((getNumOfOperands() == ArgumentOffset + args.size()),  "NumOperands not set up?");
+
             setOperand(0, callee, this);
             int idx = ArgumentOffset;
             for (Value arg : args)
@@ -2339,9 +2339,9 @@ public abstract class Instruction extends User
         private void init(Value target, Value[] args)
         {
             reserve(ArgumentOffset + args.length);
-            assert (getNumOfOperands() == ArgumentOffset + args.length)
-                    : "NumOperands not set up?";
-            assert target instanceof Function:"Callee is not Function?";
+            Util.assertion((getNumOfOperands() == ArgumentOffset + args.length),  "NumOperands not set up?");
+
+            Util.assertion(target instanceof Function, "Callee is not Function?");
             Function fn = (Function)target;
             setOperand(0, target, this);
             int idx = ArgumentOffset;
@@ -2360,13 +2360,13 @@ public abstract class Instruction extends User
 
         public void setArgument(int index, Value val)
         {
-            assert index >= 0 && index < getNumsOfArgs();
+            Util.assertion( index >= 0 && index < getNumsOfArgs());
             setOperand(index + ArgumentOffset, val, this);
         }
 
         public Value argumentAt(int index)
         {
-            assert index >= 0 && index < getNumsOfArgs();
+            Util.assertion( index >= 0 && index < getNumsOfArgs());
             return operand(index + ArgumentOffset);
         }
 
@@ -2641,8 +2641,8 @@ public abstract class Instruction extends User
 
         public void removeCase(int idx)
         {
-            assert(idx != 0) : "Cannot remove the default case!";
-            assert(idx*2 < getNumOfOperands()): "Successor index out of range!!!";
+            Util.assertion((idx != 0),  "Cannot remove the default case!");
+            Util.assertion((idx*2 < getNumOfOperands()),  "Successor index out of range!!!");
 
             // unlink the last value.
             operandList.remove(idx);
@@ -2684,8 +2684,8 @@ public abstract class Instruction extends User
          */
         public Constant getCaseValues(int index)
         {
-            assert index >= 0 && index < getNumOfCases()
-                    : "Illegal case value to get";
+            Util.assertion(index >= 0 && index < getNumOfCases(),  "Illegal case value to get");
+
             return getSuccessorValue(index);
         }
 
@@ -2718,30 +2718,30 @@ public abstract class Instruction extends User
 
         public ConstantInt getSuccessorValue(int index)
         {
-            assert index >= 0 && index < getNumOfSuccessors()
-                    : "Successor value index out of range for switch";
+            Util.assertion(index >= 0 && index < getNumOfSuccessors(),  "Successor value index out of range for switch");
+
             return (ConstantInt) operand(2*index);
         }
 
         public BasicBlock getSuccessor(int index)
         {
-            assert index >= 0 && index < getNumOfSuccessors()
-                    : "Successor index out of range for switch";
+            Util.assertion(index >= 0 && index < getNumOfSuccessors(),  "Successor index out of range for switch");
+
             return (BasicBlock) operand(2*index + 1);
 
         }
         public void setSuccessor(int index, BasicBlock newBB)
         {
-            assert index >= 0 && index < getNumOfSuccessors()
-                    : "Successor index out of range for switch";
+            Util.assertion(index >= 0 && index < getNumOfSuccessors(),  "Successor index out of range for switch");
+
             setOperand(index * 2 + 1, newBB, this);
         }
         // setSuccessorValue - Updates the value associated with the specified
         // successor.
         public void setSuccessorValue(int idx, Constant SuccessorValue)
         {
-            assert(idx>=0 && idx < getNumOfSuccessors())
-                    : "Successor # out of range!";
+            Util.assertion((idx>=0 && idx < getNumOfSuccessors()),  "Successor # out of range!");
+
             setOperand(idx*2, SuccessorValue, this);
         }
 
@@ -2827,11 +2827,11 @@ public abstract class Instruction extends User
          */
         public void addIncoming(Value value, BasicBlock block)
         {
-            assert value != null : "Phi node got a null value";
-            assert block != null : "Phi node got a null basic block";
-            assert value.getType().equals(getType())
-                    : "All of operands of Phi must be same type.";
-            assert index < getNumOfOperands();
+            Util.assertion(value != null,  "Phi node got a null value");
+            Util.assertion(block != null,  "Phi node got a null basic block");
+            Util.assertion(value.getType().equals(getType()),  "All of operands of Phi must be same type.");
+
+            Util.assertion( index < getNumOfOperands());
 
             operandList.set(index, new Use(value, this));
             operandList.set(index+1, new Use(block, this));
@@ -2846,22 +2846,22 @@ public abstract class Instruction extends User
          */
         public Value getIncomingValue(int index)
         {
-            assert index >= 0 && index < getNumberIncomingValues()
-                    : "The index is beyond out the num of list";
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
+
             return operand(index << 1);
         }
 
         public void setIncomingValue(int index, Value val)
         {
-            assert index >= 0 && index < getNumberIncomingValues()
-                    : "The index is beyond out the num of list";
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
+
             setOperand(index << 1, val, this);
         }
 
         public Value getIncomingValueForBlock(BasicBlock bb)
         {
            int idx = getBasicBlockIndex(bb);
-            assert idx >= 0 : "Invalid basic block argument";
+            Util.assertion(idx >= 0,  "Invalid basic block argument");
             return getIncomingValue(idx);
         }
 
@@ -2873,22 +2873,22 @@ public abstract class Instruction extends User
          */
         public BasicBlock getIncomingBlock(int index)
         {
-            assert index >= 0 && index < getNumberIncomingValues()
-                    : "The index is beyond out the num of list";
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
+
             return (BasicBlock) operand(index*2 + 1);
         }
 
         public void setIncomingBlock(int index, BasicBlock bb)
         {
-            assert index >= 0 && index < getNumberIncomingValues()
-                    : "The index is beyond out the num of list";
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
+
             setOperand(index*2 + 1, bb, this);
         }
 
         public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
         {
-            assert index >= 0 && index < getNumberIncomingValues()
-                    : "The index is beyond out the num of list";
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
+
 
             Value old = operand(index*2);
             operandList.remove(index);
@@ -2911,14 +2911,14 @@ public abstract class Instruction extends User
         public Value removeIncomingValue(BasicBlock bb, boolean deletePhiIfEmpty)
         {
             int index = getBasicBlockIndex(bb);
-            assert index >= 0 : "invalid basic block argument to remove";
+            Util.assertion(index >= 0,  "invalid basic block argument to remove");
             return removeIncomingValue(index, deletePhiIfEmpty);
         }
 
         public int getBasicBlockIndex(BasicBlock basicBlock)
         {
-            assert (basicBlock != null)
-                    : "PhiNode.getBasicBlockIndex(<null>) is invalid";
+            Util.assertion((basicBlock != null),  "PhiNode.getBasicBlockIndex(<null>) is invalid");
+
             for (int i = 0; i < getNumberIncomingValues(); i++)
             {
                 if (getIncomingBlock(i) == basicBlock)
@@ -2960,7 +2960,7 @@ public abstract class Instruction extends User
          */
         public BasicBlock getIncomingBlock(Use u)
         {
-            assert u.getUser().equals(this);
+            Util.assertion( u.getUser().equals(this));
             return ((Instruction)u.getValue()).getParent();
         }
 
@@ -2998,8 +2998,8 @@ public abstract class Instruction extends User
                     arraySize == null ? ConstantInt.get(LLVMContext.Int32Ty, 1):
                     arraySize, alignment, name, insertBefore);
 
-            assert getArraySize().getType() == LLVMContext.Int32Ty
-                    :"Alloca array getNumOfSubLoop != UnsignedIntTy";
+            Util.assertion(getArraySize().getType() == LLVMContext.Int32Ty, "Alloca array getNumOfSubLoop != UnsignedIntTy");
+
         }
 
         public AllocaInst(Type ty, Value arraySize, int alignment)
@@ -3108,12 +3108,12 @@ public abstract class Instruction extends User
 
         private void init(Value value, Value ptr)
         {
-            assert value != null :
-                    "The value written into memory must be not null.";
-            assert ptr != null :
-                    "The memory address of StoreInst must be not null.";
-            assert ptr.getType().isPointerType()
-                    : "the destination of StoreInst must be AllocaInst!";
+            Util.assertion(value != null,                     "The value written into memory must be not null.");
+
+            Util.assertion(ptr != null,                     "The memory address of StoreInst must be not null.");
+
+            Util.assertion(ptr.getType().isPointerType(),  "the destination of StoreInst must be AllocaInst!");
+
             reserve(2);
             setOperand(0, value, this);
             setOperand(1, ptr, this);
@@ -3146,7 +3146,7 @@ public abstract class Instruction extends User
 
         public void setAlignment(int align)
         {
-            assert (align & (align - 1)) == 0 :"Alignment must be power of 2";
+            Util.assertion((align & (align - 1)) == 0, "Alignment must be power of 2");
             alignment = align;
         }
 
@@ -3194,8 +3194,8 @@ public abstract class Instruction extends User
 
         private void assertOK()
         {
-            assert (operand(0).getType().isPointerType())
-                    :"Ptr must have pointer type.";
+            Util.assertion(operand(0).getType().isPointerType()
+                    ,"Ptr must have pointer type.");
         }
 
         public Value getPointerOperand()
@@ -3220,7 +3220,7 @@ public abstract class Instruction extends User
 
         public void setAlignment(int align)
         {
-            assert (align & (align - 1)) == 0 :"Alignment must be power of 2!";
+            Util.assertion((align & (align - 1)) == 0, "Alignment must be power of 2!");
             alignment = align;
         }
 
@@ -3287,7 +3287,7 @@ public abstract class Instruction extends User
 
         private void init(Value ptr, Value idx)
         {
-            assert getNumOfOperands() == 2:"NumOperands not initialized.";
+            Util.assertion(getNumOfOperands() == 2, "NumOperands not initialized.");
             setOperand(0, ptr, this);
             setOperand(1, idx, this);
         }
@@ -3300,7 +3300,7 @@ public abstract class Instruction extends User
          */
         public static Type checkType(Type ty)
         {
-            assert ty!=null:"Invalid GetElementPtrInst indice for type!";
+            Util.assertion(ty!=null, "Invalid GetElementPtrInst indices for type!");
             return ty;
         }
 

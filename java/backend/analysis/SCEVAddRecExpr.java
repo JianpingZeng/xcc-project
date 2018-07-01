@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import tools.Util;
 import backend.value.*;
 import backend.value.Operator;
 import backend.type.Type;
@@ -31,8 +32,8 @@ public class SCEVAddRecExpr extends SCEV
 		this.loop = loop;
 		operands.forEach(op->
 		{
-			assert op.isLoopInvariant(loop)
-					: "Operands of AddRec expression must be Loop Invariant";
+			Util.assertion(op.isLoopInvariant(loop),  "Operands of AddRec expression must be Loop Invariant");
+
 		});
 	}
 
@@ -169,7 +170,7 @@ public class SCEVAddRecExpr extends SCEV
 
     public SCEV getOperand(int index)
     {
-        assert index >= 0 && index < getNumOperands();
+        Util.assertion( index >= 0 && index < getNumOperands());
         return operands.get(index);
     }
 
@@ -267,9 +268,8 @@ public class SCEVAddRecExpr extends SCEV
                 return SCEVCouldNotCompute.getInstance();
 
             // Ensure that the previous value is in the range.
-            assert range.contains(evaluateConstantChrecAtConstant(this,
-                    ConstantInt.get(exitItrNum.sub(1))).getValue())
-                    : "Linear scev computation is off in a bad way!";
+            Util.assertion(range.contains(evaluateConstantChrecAtConstant(this,                    ConstantInt.get(exitItrNum.sub(1))).getValue()),  "Linear scev computation is off in a bad way!");
+
             return SCEVConstant.get(exitValue);
         }
         else if (isQuadratic())
@@ -342,7 +342,7 @@ public class SCEVAddRecExpr extends SCEV
      */
 	public static Pair<SCEV, SCEV> solveQuadraticEquation(SCEVAddRecExpr addRec)
     {
-        assert addRec.getNumOperands() ==3 :"The addrec is invalid!";
+        Util.assertion(addRec.getNumOperands() ==3, "The addrec is invalid!");
         SCEV c1 = addRec.getOperand(0);
         SCEV c2 = addRec.getOperand(1);
         SCEV c3 = addRec.getOperand(2);
@@ -403,8 +403,8 @@ public class SCEVAddRecExpr extends SCEV
     {
         SCEV itrNumber = SCEVConstant.get(itNum);
         SCEV res = addRec.evaluateAtIteration(itrNumber);
-        assert (res instanceof SCEVConstant)
-                : "Evaluation of SCEV at constant didn't fold correctly!";
+        Util.assertion((res instanceof SCEVConstant),  "Evaluation of SCEV at constant didn't fold correctly!");
+
         return ((SCEVConstant)res).getValue();
     }
 

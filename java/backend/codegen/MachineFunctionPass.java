@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.*;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -43,7 +44,7 @@ public abstract class MachineFunctionPass implements FunctionPass
 	public boolean runOnFunction(Function f)
 	{
 		MachineFunction mf = f.getMachineFunc();
-		assert mf != null:"Instruction selector did not be runned?";
+		Util.assertion(mf != null, "Instruction selector did not be runned?");
 		return runOnMachineFunction(mf);
 	}
 

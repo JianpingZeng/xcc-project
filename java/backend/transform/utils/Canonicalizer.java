@@ -1,6 +1,7 @@
 
 /*package backend.transform.scalars;
 
+import tools.Util;
 import backend.ir.*;
 import backend.value.Constant;
 import backend.value.Instruction;
@@ -882,7 +883,7 @@ public class Canonicalizer implements InstVisitor
 
 	public void visitCompare(Cmp inst)
 	{
-		assert inst.kind != LIRKind.Void;
+		Util.assertion( inst.kind != LIRKind.Void);
 
 		Value x = inst.x;
 		Value y = inst.y;
@@ -903,8 +904,8 @@ public class Canonicalizer implements InstVisitor
 					{
 						float xval = x.asLIRConstant().asFloat();
 						Integer res = foldFloatCompare(cond, x.asLIRConstant().asFloat(), y.asLIRConstant().asFloat());
-						assert res
-								!= null : "invalid comparison operation in float";
+						Util.assertion(res								!= null,  "invalid comparison operation in float");
+
 						setIntConstant(res);
 					}
 					break;
@@ -913,7 +914,7 @@ public class Canonicalizer implements InstVisitor
 					{
 						double xval = x.asLIRConstant().asDouble();
 						Integer res = foldDoubleCompare(cond, x.asLIRConstant().asDouble(), y.asLIRConstant().asDouble());
-						assert res != null : "invalid comparison in double";
+						Util.assertion(res != null,  "invalid comparison in double");
 						setIntConstant(res);
 					}
 					break;
@@ -936,8 +937,8 @@ public class Canonicalizer implements InstVisitor
 				{
 					Integer value = foldFloatCompare(cond,
 							x.asLIRConstant().asFloat(), y.asLIRConstant().asFloat());
-					assert value
-							!= null : "invalid operation in float comparison";
+					Util.assertion(value							!= null,  "invalid operation in float comparison");
+
 					setIntConstant(value);
 					break;
 				}
@@ -946,14 +947,14 @@ public class Canonicalizer implements InstVisitor
 					Integer value = foldDoubleCompare(cond,
 							x.asLIRConstant().asDouble(),
 							y.asLIRConstant().asDouble());
-					assert value
-							!= null : "invalid operation in float comparison";
+					Util.assertion(value							!= null,  "invalid operation in float comparison");
+
 					setIntConstant(value);
 					break;
 				}
 			}
 		}
-		assert Util.archKindEqual(inst.kind, result.kind);
+		Util.assertion( Util.archKindEqual(inst.kind, result.kind));
 	}
 
 	/**

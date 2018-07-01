@@ -92,17 +92,17 @@ public class Util
 
 	public static void shouldNotReachHere()
 	{
-		assert false:"should not reach here";
+		Util.assertion(false, "should not reach here");
 	}
 
 	public static void shouldNotReachHere(String msg)
 	{
-		assert false: "should not reach here, " + msg;
+		Util.assertion(false,  "should not reach here, " + msg);
 	}
 
 	public static void unimplemented()
 	{
-		assert false:"Unimplemented method";
+		Util.assertion(false, "Unimplemented method");
 	}
 
 	/**
@@ -151,10 +151,10 @@ public class Util
 			{
 				list.add(filler);
 			}
-			assert list.size() == pos + 1;
+			Util.assertion( list.size() == pos + 1);
 		}
 
-		assert list.size() >= pos + 1;
+		Util.assertion( list.size() >= pos + 1);
 		list.set(pos, x);
 	}
 
@@ -413,7 +413,7 @@ public class Util
 	 */
 	public static boolean isAbsolutePath(String path)
 	{
-	    assert !(path == null || path.isEmpty());
+	    Util.assertion( !(path == null || path.isEmpty()));
 		if (OSInfo.isWindows())
         {
             // Windows operation system.
@@ -735,5 +735,16 @@ public class Util
             }
         }
         return buf.toString();
+    }
+
+    public static void assertion(boolean cond, String msg)
+    {
+        if (!cond)
+            throw new RuntimeException(msg);
+    }
+
+    public static void assertion(boolean cond)
+    {
+        assertion(cond, "");
     }
 }

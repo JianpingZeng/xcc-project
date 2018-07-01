@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
@@ -90,7 +91,7 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private void assignVirToPhyReg(int virReg, int phyReg)
 	{
-		assert phyRegUsed[phyReg] == -1:"phyreg is already assigned!";
+		Util.assertion(phyRegUsed[phyReg] == -1, "phyreg is already assigned!");
 
 		phyRegUsed[phyReg] = virReg;
 		virToPhyRegMap.put(virReg, phyReg);
@@ -105,17 +106,17 @@ public class RegAllocLocal extends MachineFunctionPass
 
 		if (phyReg == 0)
 		{
-			assert !phyRegsUseOrder.isEmpty():"No allocatable registers";
+			Util.assertion(!phyRegsUseOrder.isEmpty(), "No allocatable registers");
 
 
 			// Spill a the least used physical register into memory.
 			for (int i = 0; phyReg == 0; i++)
 			{
-				assert i != phyRegsUseOrder.size()
-						: "Can't find a register of the appropriate class";
+				Util.assertion(i != phyRegsUseOrder.size(),  "Can't find a register of the appropriate class");
+
 
 				int r = phyRegsUseOrder.get(i);
-                assert r != -1 :"Physical register in phyRegsUseOrder, but it not allocated!";
+                Util.assertion(r != -1, "Physical register in phyRegsUseOrder, but it not allocated!");
 
                 // We just can spill those physical register occupied with virtual
                 // register
@@ -146,7 +147,7 @@ public class RegAllocLocal extends MachineFunctionPass
                 }
 			}
 
-			assert phyReg != 0:"Physical register not be assigned";
+			Util.assertion(phyReg != 0, "Physical register not be assigned");
 
 			spillPhyReg(mbb, insertPos, phyReg, false);
 		}
@@ -182,7 +183,7 @@ public class RegAllocLocal extends MachineFunctionPass
 		{
 			if (isPhyRegAvailable(phyReg))
 			{
-				assert phyReg!=0:"Can not use register!";
+				Util.assertion(phyReg!=0, "Can not use register!");
 				return phyReg;
 			}
 		}
@@ -191,7 +192,7 @@ public class RegAllocLocal extends MachineFunctionPass
 
 	private void markVirRegModified(int virReg, boolean isModified)
 	{
-		assert virReg >= FirstVirtualRegister;
+		Util.assertion( virReg >= FirstVirtualRegister);
 		virReg -= FirstVirtualRegister;
 		virRegModified[virReg]=isModified;
 	}
@@ -240,7 +241,7 @@ public class RegAllocLocal extends MachineFunctionPass
 	{
         if(phyRegUsed[phyReg] != -1)
         {
-            assert phyRegUsed[phyReg] != -2:"Non allocatable register used!";
+            Util.assertion(phyRegUsed[phyReg] != -2, "Non allocatable register used!");
             if (phyRegUsed[phyReg] != 0 || !onlyVirReg)
                 spillVirReg(mbb, insertPos, phyRegUsed[phyReg], phyReg);
         }
@@ -260,9 +261,9 @@ public class RegAllocLocal extends MachineFunctionPass
 
 	private boolean isVirRegModified(int virReg)
 	{
-		assert virReg >= FirstVirtualRegister : "Illegal virReg!";
-		assert  virReg - FirstVirtualRegister < virRegModified.length
-				: "Illegal virReg!";
+		Util.assertion(virReg >= FirstVirtualRegister,  "Illegal virReg!");
+		Util.assertion(virReg - FirstVirtualRegister < virRegModified.length,  "Illegal virReg!");
+
 		return virRegModified[virReg - FirstVirtualRegister];
 	}
 
@@ -686,8 +687,8 @@ public class RegAllocLocal extends MachineFunctionPass
                 }
 				else
 				{
-                    assert phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1:
-							"Silently clearing a virtual register?";
+                    Util.assertion(phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1, 							"Silently clearing a virtual register?");
+
 				}
 
 				if (phyReg != 0)
@@ -839,7 +840,7 @@ public class RegAllocLocal extends MachineFunctionPass
 				if (isVirtualRegister(virReg))
 				{
 					phyReg = virToPhyRegMap.get(virReg);
-					assert phyReg != 0;
+					Util.assertion( phyReg != 0);
 					virToPhyRegMap.remove(virReg);
 				}
 				else if (phyRegUsed[phyReg] == -2)
@@ -906,7 +907,7 @@ public class RegAllocLocal extends MachineFunctionPass
         // using 0 to indicate the specified physical register is fixed allocated.
         // Arrays.fill(phyRegUsed, -1);
 
-		assert virToPhyRegMap.isEmpty():"Virtual register still in phys reg?";
+		Util.assertion(virToPhyRegMap.isEmpty(), "Virtual register still in phys reg?");
 
 		// Clear any physical register which appear live at the end of the basic
 		// block, but which do not hold any virtual registers.  e.g., the stack
