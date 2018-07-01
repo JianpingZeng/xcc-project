@@ -1847,6 +1847,17 @@ public abstract class Decl
         {
             hasWrittenPrototype = value;
         }
+
+        /**
+         * Returns the minimum number of arguments needed to call this function.
+         * This may be fewer than the number of parameters in function prototype
+         * (C++).
+         * @return
+         */
+        public int getMinRequiredArguments()
+        {
+            return getNumParams();
+        }
     }
 
     /**
