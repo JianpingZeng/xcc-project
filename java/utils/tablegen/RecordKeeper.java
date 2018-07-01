@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,25 +63,25 @@ public final class RecordKeeper
 
     public void addClass(Record r)
     {
-        assert getClass(r.getName()) == null:"Class already exist!";
+        Util.assertion(getClass(r.getName()) == null, "Class already exist!");
         classes.put(r.getName(), r);
     }
 
     public void addDef(Record r)
     {
-        assert getDef(r.getName()) == null:"Def already exist!";
+        Util.assertion(getDef(r.getName()) == null, "Def already exist!");
         defs.put(r.getName(), r);
     }
 
     public void removeClass(String name)
     {
-        assert classes.containsKey(name) :"Class does not exist!";
+        Util.assertion(classes.containsKey(name), "Class does not exist!");
         classes.remove(name);
     }
 
     public void removeDef(String name)
     {
-        assert defs.containsKey(name) :"Def does not exist!";
+        Util.assertion(defs.containsKey(name), "Def does not exist!");
         defs.remove(name);
     }
 

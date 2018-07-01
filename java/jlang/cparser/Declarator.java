@@ -1,5 +1,6 @@
 package jlang.cparser;
 
+import tools.Util;
 import jlang.ast.Tree;
 import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
@@ -273,7 +274,7 @@ public class Declarator
      */
     public boolean isFunctionDeclarator(OutParamWrapper<Integer> index)
     {
-        assert index != null;
+        Util.assertion( index != null);
 
         for (int i = 0, size = declTypeInfos.size(); i < size; ++i)
         {
@@ -321,7 +322,7 @@ public class Declarator
      */
     public FunctionTypeInfo getFunctionTypeInfo()
     {
-        assert isFunctionDeclarator():"Not a function declarator!";
+        Util.assertion(isFunctionDeclarator(), "Not a function declarator!");
         OutParamWrapper<Integer> index = new OutParamWrapper<>();
         isFunctionDeclarator(index);
         return (FunctionTypeInfo) declTypeInfos.get(index.get()).typeInfo;
@@ -329,7 +330,7 @@ public class Declarator
 
     public DeclaratorChunk getTypeObject(int i)
     {
-        assert i >= 0 && i < declTypeInfos.size();
+        Util.assertion( i >= 0 && i < declTypeInfos.size());
         return declTypeInfos.get(i);
     }
 

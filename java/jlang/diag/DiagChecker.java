@@ -17,6 +17,7 @@
 
 package jlang.diag;
 
+import tools.Util;
 import jlang.basic.SourceManager;
 import jlang.clex.Lexer;
 import jlang.clex.Preprocessor;
@@ -222,7 +223,7 @@ public class DiagChecker
             ArrayList<Pair<SourceLocation, String>> expectedNotes)
     {
         DiagnosticClient client = pp.getDiagnostics().getClient();
-        assert client != null;
+        Util.assertion( client != null);
         TextDiagnosticBuffer diag = (TextDiagnosticBuffer)client;
         SourceManager sgm = pp.getSourceManager();
 

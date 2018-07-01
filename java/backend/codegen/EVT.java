@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
@@ -189,7 +190,7 @@ public class EVT implements Comparable<EVT>
 
     public EVT getRoundIntegerType()
     {
-        assert isInteger() && !isVector() :"Invalid integer type!";
+        Util.assertion(isInteger() && !isVector(), "Invalid integer type!");
         int bitwidth = getSizeInBits();
         if (bitwidth <= 8)
             return new EVT(i8);
@@ -205,7 +206,7 @@ public class EVT implements Comparable<EVT>
 
     public int getVectorNumElements()
     {
-        assert isVector():"Invalid vector type!";
+        Util.assertion(isVector(), "Invalid vector type!");
         if (isSimple())
             return v.getVectorNumElements();
         else
@@ -292,8 +293,8 @@ public class EVT implements Comparable<EVT>
         switch (v.simpleVT)
         {
             default:
-                assert isExtended() : "Type is not extended!";
-                assert false:"Vector type currently not supported";
+                Util.assertion(isExtended(),  "Type is not extended!");
+                Util.assertion(false, "Vector type currently not supported");
                 return llvmTy;
             case isVoid:
                 return LLVMContext.VoidTy;
@@ -413,19 +414,19 @@ public class EVT implements Comparable<EVT>
     {
         EVT vt = new EVT();
         vt.llvmTy = IntegerType.get(bitWidth);
-        assert vt.isExtended() :"Type is not extended!";
+        Util.assertion(vt.isExtended(), "Type is not extended!");
         return vt;
     }
 
     private static EVT getExtendedVectorVT(EVT vt, int numElements)
     {
-        assert false:"Should not reaching here!";
+        Util.assertion(false, "Should not reaching here!");
         return null;
     }
 
     private boolean isExtendedFloatingPoint()
     {
-        assert isExtended():"Type is not extended";
+        Util.assertion(isExtended(), "Type is not extended");
         // FIXME: 17-7-1 Vector type is not supported currently.
         return false;
         //return llvmTy.isFPOrFPVector();
@@ -433,7 +434,7 @@ public class EVT implements Comparable<EVT>
 
     private boolean isExtendedInteger()
     {
-        assert isExtended():"Type is not extended";
+        Util.assertion(isExtended(), "Type is not extended");
         // FIXME: 17-7-1 Vector type is not supported currently.
         return false;
         //return llvmTy.isIntOrIntVector();
@@ -441,7 +442,7 @@ public class EVT implements Comparable<EVT>
 
     private boolean isExtendedVector()
     {
-        assert isExtended():"Type is not extended";
+        Util.assertion(isExtended(), "Type is not extended");
         // FIXME: 17-7-1 Vector type is not supported currently.
         return false;
         //return llvmTy instanceof VectorType;
@@ -464,7 +465,7 @@ public class EVT implements Comparable<EVT>
 
     private EVT getExtendedVectorElementType()
     {
-        assert isExtended():"Type is not extended!";
+        Util.assertion(isExtended(), "Type is not extended!");
         // FIXME: 17-7-1 Vector type is not supported currently.
         return null;
         //return EVT.getEVT(((VectorType)llvmTy).getElementType());
@@ -472,7 +473,7 @@ public class EVT implements Comparable<EVT>
 
     private int getExtendedVectorNumElements()
     {
-        assert isExtended():"Type is not extended!";
+        Util.assertion(isExtended(), "Type is not extended!");
         // FIXME: 17-7-1 Vector type is not supported currently.
         return -1;
         //return ((VectorType)llvmTy).getNumElements();
@@ -480,7 +481,7 @@ public class EVT implements Comparable<EVT>
 
     private int getExtendedSizeInBits()
     {
-        assert isExtended():"Type is not extended!";
+        Util.assertion(isExtended(), "Type is not extended!");
         if (llvmTy instanceof IntegerType)
         {
             return ((IntegerType)llvmTy).getBitWidth();
@@ -492,13 +493,13 @@ public class EVT implements Comparable<EVT>
         }
         */
         // FIXME: 17-7-1 Vector type is not supported currently.
-        assert false:"Unrecognized extended type!";
+        Util.assertion(false, "Unrecognized extended type!");
         return 0;
     }
 
     public EVT getVectorElementType()
     {
-        assert isVector():"Invalid vector type!";
+        Util.assertion(isVector(), "Invalid vector type!");
         if (isSimple())
             return new EVT(v.getVectorElementType());
         else
@@ -507,7 +508,7 @@ public class EVT implements Comparable<EVT>
 
     public MVT getSimpleVT()
     {
-        assert isSimple():"Expected a int!";
+        Util.assertion(isSimple(), "Expected a int!");
         return v;
     }
 

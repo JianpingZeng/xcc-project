@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.value.*;
@@ -143,7 +144,7 @@ public final class LowerSwitch implements FunctionPass
                 break;
             PhiNode pn = (PhiNode)i;
             int blockIdx =pn.getBasicBlockIndex(originBB);
-            assert blockIdx != -1:"Switch didn't go to this succcessor?";
+            Util.assertion(blockIdx != -1, "Switch didn't go to this succcessor?");
             pn.setIncomingBlock(blockIdx, newDefaultBB);
         }
 
@@ -321,7 +322,7 @@ public final class LowerSwitch implements FunctionPass
                 pn.removeIncomingValue(origBlock);
 
             int blockIdx = pn.getBasicBlockIndex(origBlock);
-            assert blockIdx != -1:"Switch didn't go to this sucessor!";
+            Util.assertion(blockIdx != -1, "Switch didn't go to this sucessor!");
             pn.setIncomingBlock(blockIdx, newLeaf);
         }
 

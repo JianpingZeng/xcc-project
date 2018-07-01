@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Constant;
@@ -39,7 +40,7 @@ public final class SCEVMulExpr extends SCEVCommutativeExpr
 
     public static SCEV get(ArrayList<SCEV> ops)
     {
-        assert !ops.isEmpty() :"Cannot get empty mul!";
+        Util.assertion(!ops.isEmpty(), "Cannot get empty mul!");
 
         groupByComplexity(ops);
 

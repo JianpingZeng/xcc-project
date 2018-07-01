@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
@@ -139,8 +140,8 @@ public abstract class TargetLowering
 
         public boolean shrinkDemandedOp(SDValue op, int bitwidth, APInt demanded)
         {
-            assert op.getNumOperands() == 2;
-            assert op.getNode().getNumValues() == 1;
+            Util.assertion( op.getNumOperands() == 2);
+            Util.assertion( op.getNode().getNumValues() == 1);
 
             if (!op.getNode().hasOneUse())
                 return false;
@@ -571,22 +572,22 @@ public abstract class TargetLowering
 
     public void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action)
     {
-        assert vt < 64*4 && im.ordinal() < loadExtActions.length:"Table isn't big enough!";
+        Util.assertion(vt < 64*4 && im.ordinal() < loadExtActions.length, "Table isn't big enough!");
         loadExtActions[im.ordinal()] &= ~(3L << (vt*2));
         loadExtActions[im.ordinal()] |= action.ordinal() << (vt*2);
     }
 
     public void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action)
     {
-        assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length
-                :"Table isn't big enough!";
+        Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length, "Table isn't big enough!");
+
         indexedModeActions[vt][0][im.ordinal()] = action.ordinal();
     }
 
     public void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action)
     {
-        assert vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length
-                :"Table isn't big enough!";
+        Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length, "Table isn't big enough!");
+
         indexedModeActions[vt][1][im.ordinal()] = action.ordinal();
     }
 
@@ -667,8 +668,8 @@ public abstract class TargetLowering
 
     public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action)
     {
-        assert vt.simpleVT < 64*4 && extType.ordinal() < loadExtActions.length:
-                "Table isn't big enough!";
+        Util.assertion(vt.simpleVT < 64*4 && extType.ordinal() < loadExtActions.length,                 "Table isn't big enough!");
+
         loadExtActions[extType.ordinal()] &= ~(3L << vt.simpleVT*2);
         loadExtActions[extType.ordinal()] |= ((long)action.ordinal() << vt.simpleVT*2);
     }
@@ -691,8 +692,7 @@ public abstract class TargetLowering
      * eturn the EVT corresponding to this LLVM type.
      * This is fixed by the LLVM operations except for the pointer size.  If
      * AllowUnknown is true, this will return MVT.Other for types with no EVT
-     * counterpart (e.g. structs), otherwise it will assert.
-     *
+     * counterpart (e.g. structs), otherwise it will Util.assertion(.     *
      * @param type
      * @param allowUnknown
      * @return
@@ -721,7 +721,7 @@ public abstract class TargetLowering
      */
     public boolean isTypeLegal(EVT vt)
     {
-        assert !vt.isSimple() || vt.getSimpleVT().simpleVT < registerClassForVT.length;
+        Util.assertion( !vt.isSimple() || vt.getSimpleVT().simpleVT < registerClassForVT.length);
         return vt.isSimple() && registerClassForVT[vt.getSimpleVT().simpleVT] != null;
     }
 
@@ -729,10 +729,10 @@ public abstract class TargetLowering
     {
         if (vt.isSimple())
         {
-            assert vt.getSimpleVT().simpleVT < transformToType.length;
+            Util.assertion( vt.getSimpleVT().simpleVT < transformToType.length);
             EVT nvt = transformToType[vt.getSimpleVT().simpleVT];
-            assert getTypeAction(nvt)
-                    != Promote : "Promote may not follow expand or promote";
+            Util.assertion(getTypeAction(nvt)                    != Promote,  "Promote may not follow expand or promote");
+
             return nvt;
         }
 
@@ -768,13 +768,13 @@ public abstract class TargetLowering
                         nvt;
             }
         }
-        assert false : "Unsupported extended type!";
+        Util.assertion(false,  "Unsupported extended type!");
         return new EVT(new MVT(MVT.Other));
     }
 
     public EVT getTypeToExpandTo(EVT vt)
     {
-        assert !vt.isVector();
+        Util.assertion( !vt.isVector());
         while (true)
         {
             switch (getTypeAction(vt))
@@ -785,7 +785,7 @@ public abstract class TargetLowering
                     vt = getTypeToTransformTo(vt);
                     break;
                 default:
-                    assert false:"Type is illegal or to be expanded!";
+                    Util.assertion(false, "Type is illegal or to be expanded!");
                     return vt;
             }
         }
@@ -807,9 +807,9 @@ public abstract class TargetLowering
 
     public TargetRegisterClass getRegClassFor(EVT vt)
     {
-        assert vt.isSimple() : "getRegClassFor called on illegal type!";
+        Util.assertion(vt.isSimple(),  "getRegClassFor called on illegal type!");
         TargetRegisterClass rc = registerClassForVT[vt.getSimpleVT().simpleVT];
-        assert rc != null : "This value type is not natively supported!";
+        Util.assertion(rc != null,  "This value type is not natively supported!");
         return rc;
     }
 
@@ -827,7 +827,7 @@ public abstract class TargetLowering
      */
     public void addRegisterClass(int vt, TargetRegisterClass regClass)
     {
-        assert vt < registerClassForVT.length;
+        Util.assertion( vt < registerClassForVT.length);
         availableRegClasses.add(Pair.get(new EVT(vt), regClass));
         registerClassForVT[vt] = regClass;
     }
@@ -880,7 +880,7 @@ public abstract class TargetLowering
     {
         if (valueVT.isSimple())
         {
-            assert valueVT.getSimpleVT().simpleVT < registerTypeForVT.length;
+            Util.assertion( valueVT.getSimpleVT().simpleVT < registerTypeForVT.length);
             return registerTypeForVT[valueVT.getSimpleVT().simpleVT];
         }
         if (valueVT.isVector())
@@ -894,13 +894,13 @@ public abstract class TargetLowering
         {
             return getRegisterType(getTypeToTransformTo(valueVT));
         }
-        assert false : "Unsupported extended type!";
+        Util.assertion(false,  "Unsupported extended type!");
         return new EVT(MVT.Other);
     }
 
     public int getNumRegisters(EVT valueVT)
     {
-        assert valueVT.getSimpleVT().simpleVT < numRegistersForVT.length;
+        Util.assertion( valueVT.getSimpleVT().simpleVT < numRegistersForVT.length);
         return numRegistersForVT[valueVT.getSimpleVT().simpleVT];
     }
 
@@ -967,7 +967,7 @@ public abstract class TargetLowering
         // Find the largest integer register class.
         int largetestIntReg = MVT.LAST_INTEGER_VALUETYPE;
         for (; registerClassForVT[largetestIntReg] == null; --largetestIntReg)
-            assert largetestIntReg != MVT.i1 : "No integer register defined";
+            Util.assertion(largetestIntReg != MVT.i1,  "No integer register defined");
 
         // Every integer value type larger than this largest register takes twice as
         // many registers to represent as the previous ValueType.
@@ -1125,8 +1125,8 @@ public abstract class TargetLowering
             APInt[] knownVals, SelectionDAG selectionDAG, int depth)
     {
         int opc = op.getOpcode();
-        assert opc >= ISD.BUILTIN_OP_END || opc == ISD.INTRINSIC_VOID
-                || opc == ISD.INTRINSIC_W_CHAIN || opc == ISD.INTRINSIC_WO_CHAIN;
+        Util.assertion( opc >= ISD.BUILTIN_OP_END || opc == ISD.INTRINSIC_VOID                || opc == ISD.INTRINSIC_W_CHAIN || opc == ISD.INTRINSIC_WO_CHAIN);
+
         knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
     }
 
@@ -1139,7 +1139,7 @@ public abstract class TargetLowering
             boolean isReturnValueUsed, SDValue callee,
             ArrayList<ArgListEntry> args, SelectionDAG dag)
     {
-        assert !isTailCall || EnablePerformTailCallOpt.value;
+        Util.assertion( !isTailCall || EnablePerformTailCallOpt.value);
         ArrayList<OutputArg> outs = new ArrayList<>(32);
         for (int i = 0, e = args.size(); i < e; i++)
         {
@@ -1338,8 +1338,8 @@ public abstract class TargetLowering
     public LegalizeAction getOperationAction(int opc, EVT vt)
     {
         if (vt.isExtended()) return Expand;
-        assert opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64*8:
-                "Table isn't big enough!";
+        Util.assertion(opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64*8,                 "Table isn't big enough!");
+
         int i = vt.getSimpleVT().simpleVT;
         int j = i & 31;
         i = i >> 5;
@@ -1355,8 +1355,8 @@ public abstract class TargetLowering
 
     public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt)
     {
-        assert lType.ordinal() < loadExtActions.length &&
-                vt.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        Util.assertion(lType.ordinal() < loadExtActions.length &&                vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
         return LegalizeAction.values()[(int) (loadExtActions[lType.ordinal()]
                 >> ((2*vt.getSimpleVT().simpleVT)&3))];
     }
@@ -1369,16 +1369,16 @@ public abstract class TargetLowering
 
     public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT)
     {
-        assert valVT.getSimpleVT().simpleVT < truncStoreActions.length &&
-                memVT.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        Util.assertion(valVT.getSimpleVT().simpleVT < truncStoreActions.length &&                memVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
         return LegalizeAction.values()[(int) (truncStoreActions[valVT.getSimpleVT().simpleVT] >>
                         ((2*memVT.getSimpleVT().simpleVT)&3))];
     }
 
     public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action)
     {
-        assert valVT < truncStoreActions.length &&
-                memVT < 64*4:"Table isn't big enough!";
+        Util.assertion(valVT < truncStoreActions.length &&                memVT < 64*4, "Table isn't big enough!");
+
         truncStoreActions[valVT] &= ~(3L << memVT*2);
         truncStoreActions[valVT] |= (long)action.ordinal() << memVT*2;
     }
@@ -1392,17 +1392,17 @@ public abstract class TargetLowering
 
     public LegalizeAction getIndexedLoadAction(int idxMode, EVT vt)
     {
-        assert idxMode < indexedModeActions[0][0].length &&
-                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE :
-                "Table isn't big enough!";
+        Util.assertion(idxMode < indexedModeActions[0][0].length &&                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, 
+                "Table isn't big enough!");
+
         return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][0][idxMode]];
     }
 
     public void setIndexedModeAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action)
     {
-        assert vt.simpleVT < MVT.LAST_VALUETYPE &&
-                idxMode.ordinal() < indexedModeActions[0][0].length:
-                "Table isn't big enough!";
+        Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE &&                idxMode.ordinal() < indexedModeActions[0][0].length, 
+                "Table isn't big enough!");
+
         indexedModeActions[vt.simpleVT][0][idxMode.ordinal()] = action.ordinal();
     }
 
@@ -1414,17 +1414,17 @@ public abstract class TargetLowering
 
     public LegalizeAction getIndexedStoreAction(int idxMode, EVT vt)
     {
-        assert idxMode < indexedModeActions[0][1].length &&
-                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE :
-                "Table is't big enough!";
+        Util.assertion(idxMode < indexedModeActions[0][1].length &&                vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, 
+                "Table is't big enough!");
+
         return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][1][idxMode]];
     }
 
     public void setIndexedStoreAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action)
     {
-        assert vt.simpleVT < MVT.LAST_VALUETYPE &&
-                idxMode.ordinal() < indexedModeActions[0][1].length:
-                "Table isn't big enough!";
+        Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE &&                idxMode.ordinal() < indexedModeActions[0][1].length, 
+                "Table isn't big enough!");
+
         indexedModeActions[vt.simpleVT][1][idxMode.ordinal()] = action.ordinal();
     }
 
@@ -1436,25 +1436,25 @@ public abstract class TargetLowering
 
     public LegalizeAction getConvertAction(EVT fromVT, EVT toVT)
     {
-        assert fromVT.getSimpleVT().simpleVT < condCodeActions.length &&
-                toVT.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        Util.assertion(fromVT.getSimpleVT().simpleVT < condCodeActions.length &&                toVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
         return LegalizeAction.values()[(int) condCodeActions[fromVT.getSimpleVT().simpleVT >>
                 (2*toVT.getSimpleVT().simpleVT) & 3]];
     }
 
     public LegalizeAction getCondCodeAction(CondCode cc, EVT vt)
     {
-        assert cc.ordinal() < condCodeActions.length &&
-                vt.getSimpleVT().simpleVT < 32:"Table isn't big enough!";
+        Util.assertion(cc.ordinal() < condCodeActions.length &&                vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
         LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
                         (2*vt.getSimpleVT().simpleVT)&3)];
-        assert action != Promote:"Can't promote condition code!";
+        Util.assertion(action != Promote, "Can't promote condition code!");
         return action;
     }
 
     public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action)
     {
-        assert vt < 64*4 && cc.ordinal() < condCodeActions.length:"Table isn't big enough!";
+        Util.assertion(vt < 64*4 && cc.ordinal() < condCodeActions.length, "Table isn't big enough!");
         condCodeActions[cc.ordinal()] &= ~(3L << vt*2);
         condCodeActions[cc.ordinal()] |= ((long)action.ordinal() << vt*2);
     }
@@ -1477,13 +1477,13 @@ public abstract class TargetLowering
 
     public APFloat getLegalImmediate(int idx)
     {
-        assert idx >= 0 && idx < getNumLegalFPImmediate();
+        Util.assertion( idx >= 0 && idx < getNumLegalFPImmediate());
         return legalFPImmediates.get(idx);
     }
 
     public void setTargetDAGCombine(int opc)
     {
-        assert (opc>>3) < targetDAGCombineArray.length;
+        Util.assertion( (opc>>3) < targetDAGCombineArray.length);
         targetDAGCombineArray[opc>>3] |= 1 << (opc&3);
     }
 
@@ -1494,19 +1494,19 @@ public abstract class TargetLowering
 
     public EVT getTypeToPromoteType(int opc, EVT vt)
     {
-        assert getOperationAction(opc, vt) == Promote:
-                "This operation isn't promoted!";
+        Util.assertion(getOperationAction(opc, vt) == Promote,                 "This operation isn't promoted!");
+
         Pair<Integer, Integer> key = Pair.get(opc, vt.getSimpleVT().simpleVT);
         if (promoteType.containsKey(key))
             return new EVT(promoteType.get(key));
 
-        assert vt.isInteger() || vt.isFloatingPoint();
+        Util.assertion( vt.isInteger() || vt.isFloatingPoint());
         EVT nvt = vt;
         do
         {
             nvt = new EVT(nvt.getSimpleVT().simpleVT+1);
-            assert nvt.isInteger() == vt.isInteger() && !nvt.equals(new EVT(MVT.isVoid))
-                    : "Didn't find type to promote to!";
+            Util.assertion(nvt.isInteger() == vt.isInteger() && !nvt.equals(new EVT(MVT.isVoid)),  "Didn't find type to promote to!");
+
         }while (!isTypeLegal(nvt) || getOperationAction(opc, nvt) == Promote);
         return nvt;
     }
@@ -1519,7 +1519,7 @@ public abstract class TargetLowering
     public void replaceNodeResults(SDNode n, ArrayList<SDValue> results,
             SelectionDAG dag)
     {
-        assert false:"this method should be implemented for this target!";
+        Util.assertion(false, "this method should be implemented for this target!");
     }
 
     public void lowerOperationWrapper(
@@ -1996,8 +1996,8 @@ public abstract class TargetLowering
                             val = lhs.getOperand(0);
                         else
                         {
-                            assert lhs.getOpcode() == ISD.AND &&
-                                    lhs.getOperand(0).getOpcode() == ISD.XOR;
+                            Util.assertion( lhs.getOpcode() == ISD.AND &&                                    lhs.getOperand(0).getOpcode() == ISD.XOR);
+
                             val = dag.getNode(ISD.AND, lhs.getValueType(),
                                     lhs.getOperand(0).getOperand(0),
                                     lhs.getOperand(1));
@@ -2241,7 +2241,7 @@ public abstract class TargetLowering
                     }
                     else if (rhs.getNode().hasOneUse())
                     {
-                        assert rhsOpc == ISD.SUB:"Unexpected operation!";
+                        Util.assertion(rhsOpc == ISD.SUB, "Unexpected operation!");
                         SDValue sh = dag.getNode(ISD.SHL, rhs.getValueType(),
                                 lhs, dag.getConstant(1, new EVT(getShiftAmountTy()), false));
                         if (!dagCBI.isCalledByLegalizer())
@@ -2369,7 +2369,7 @@ public abstract class TargetLowering
 
     public boolean hasTargetDAGCombine(int opc)
     {
-        assert (opc >> 3) < targetDAGCombineArray.length;
+        Util.assertion( (opc >> 3) < targetDAGCombineArray.length);
         return (targetDAGCombineArray[opc>>3] & (1 << (opc&7))) != 0;
     }
 
@@ -2416,10 +2416,10 @@ public abstract class TargetLowering
     {
         // res[0] -- knownZero
         // res[1] -- knownOne
-        assert res != null && res.length == 2:"Invalid res passed through!";
-        assert depth >= 0;
+        Util.assertion(res != null && res.length == 2, "Invalid res passed through!");
+        Util.assertion( depth >= 0);
         int bitwidth = demandedMask.getBitWidth();
-        assert op.getValueSizeInBits() == bitwidth:"Mask size mismatches value type size!";
+        Util.assertion(op.getValueSizeInBits() == bitwidth, "Mask size mismatches value type size!");
         APInt newMask = demandedMask;
         res[0] = new APInt(bitwidth, 0);
         res[1] = new APInt(bitwidth,0);
@@ -2471,12 +2471,12 @@ public abstract class TargetLowering
                 if (simplifyDemandedBits(op.getOperand(1), newMask, tlo, res,
                         depth + 1))
                     return true;
-                assert res[0].and(res[1]).eq(0);
+                Util.assertion( res[0].and(res[1]).eq(0));
                 APInt[] lhsRes = new APInt[2];
                 if (simplifyDemandedBits(op.getOperand(0), res[0].not().and(newMask),
                         tlo, lhsRes, depth + 1))
                     return true;
-                assert lhsRes[0].and(lhsRes[1]).eq(0);
+                Util.assertion( lhsRes[0].and(lhsRes[1]).eq(0));
                 if (newMask.and(lhsRes[0].not()).and(res[1]).eq(lhsRes[0].not().and(newMask)))
                 {
                     return tlo.combineTo(op, op.getOperand(0));
@@ -2512,7 +2512,7 @@ public abstract class TargetLowering
                         tlo, res, depth+1))
                     return true;
 
-                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
                 if (res[0].intersects(inSignBit))
                 {
                     return tlo.combineTo(op, tlo.dag.getZeroExtendInReg(
@@ -2547,7 +2547,7 @@ public abstract class TargetLowering
                 {
                     return true;
                 }
-                assert res[0].add(res[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(res[0].add(res[1]).eq(0), "Bits known to be one AND zero?");
                 res[0].zext(bitwidth);
                 res[1].zext(bitwidth);
                 res[0].orAssign(newBits);
@@ -2598,7 +2598,7 @@ public abstract class TargetLowering
                 inMask.trunc(operandBitWidth);
                 if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth+1))
                     return true;
-                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
                 res[0].zext(bitwidth);
                 res[1].zext(bitwidth);
                 break;
@@ -2642,7 +2642,7 @@ public abstract class TargetLowering
                             break;
                     }
                 }
-                assert res[0].and(res[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
                 break;
             }
             case ISD.AssertSext:
@@ -2652,7 +2652,7 @@ public abstract class TargetLowering
                 if (simplifyDemandedBits(op.getOperand(0), inMask.and(newMask),
                         tlo, res, depth+1))
                     return true;
-                assert res[0].andAssign(res[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(res[0].andAssign(res[1]).eq(0), "Bits known to be one AND zero?");
                 res[0].orAssign(inMask.not().and(newMask));
                 break;
             }
@@ -2777,7 +2777,7 @@ public abstract class TargetLowering
 
         ConstantSDNode n1C = n.getOperand(1).getNode() instanceof ConstantSDNode ?
                 (ConstantSDNode)n.getOperand(1).getNode() : null;
-        assert n1C != null;
+        Util.assertion( n1C != null);
 
         APInt.MU magics = n1C.getAPIntValue().magicu();
         SDValue q;
@@ -2796,7 +2796,7 @@ public abstract class TargetLowering
 
         if (magics.a)
         {
-            assert magics.s < n1C.getAPIntValue().getBitWidth();
+            Util.assertion( magics.s < n1C.getAPIntValue().getBitWidth());
             return dag.getNode(ISD.SRL, vt, q,
                     dag.getConstant(magics.s, new EVT(getShiftAmountTy()), false));
         }

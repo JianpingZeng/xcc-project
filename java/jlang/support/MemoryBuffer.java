@@ -17,6 +17,7 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -107,8 +108,8 @@ public class MemoryBuffer implements Cloneable
 
     public String getSubString(int lineStart, int lineEnd)
     {
-        assert 0 <= lineStart && lineStart <= lineEnd
-                && lineEnd < buffer.length;
+        Util.assertion( 0 <= lineStart && lineStart <= lineEnd                && lineEnd < buffer.length);
+
         if (lineEnd == lineStart) return "";
 
         StringBuilder sb = new StringBuilder();

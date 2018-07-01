@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
@@ -103,17 +104,17 @@ public class DAGCombiner
             if (rv.getNode() == null || rv.getNode().equals(n))
                 continue;
 
-            assert n.getOpcode() != ISD.DELETED_NODE &&
-                    rv.getNode().getOpcode() != ISD.DELETED_NODE:
-                    "Node was deleted but visit returned new node!";
+            Util.assertion(n.getOpcode() != ISD.DELETED_NODE &&                    rv.getNode().getOpcode() != ISD.DELETED_NODE, 
+                    "Node was deleted but visit returned new node!");
+
 
             WorklistRemover remover = new WorklistRemover(this);
             if (n.getNumValues() == rv.getNode().getNumValues())
                 dag.replaceAllUsesWith(n, rv.getNode(), remover);
             else
             {
-                assert n.getValueType(0).equals(rv.getValueType()) &&
-                        n.getNumValues() == 1:"Type mismatch!";
+                Util.assertion(n.getValueType(0).equals(rv.getValueType()) &&                        n.getNumValues() == 1, "Type mismatch!");
+
                 dag.replaceAllUsesWith(n, rv, remover);
             }
 
@@ -139,7 +140,7 @@ public class DAGCombiner
         SDValue rv = visit(n);
         if (rv.getNode() == null)
         {
-            assert n.getOpcode() != ISD.DELETED_NODE:"Node was deleted but visit returned null!";
+            Util.assertion(n.getOpcode() != ISD.DELETED_NODE, "Node was deleted but visit returned null!");
 
             if (n.getOpcode() >= ISD.BUILTIN_OP_END ||
                     tli.hasTargetDAGCombine(n.getOpcode()))
@@ -609,7 +610,7 @@ public class DAGCombiner
             else
             {
                 // indexed loads.
-                assert n.getValueType(2).equals(new EVT(MVT.Other)):"Malformed indexed load?";
+                Util.assertion(n.getValueType(2).equals(new EVT(MVT.Other)), "Malformed indexed load?");
                 if (n.hasNumUsesOfValue(0, 0) && n.hasNumUsesOfValue(0, 1))
                 {
                     SDValue undef = dag.getUNDEF(n.getValueType(0));
@@ -1083,8 +1084,8 @@ public class DAGCombiner
     {
         if (op.getOpcode() == ISD.FNEG) return op.getOperand(0);
 
-        assert op.hasOneUse():"Unknown reuse!";
-        assert depth <= 6:"getNegatedExpression doesn't match isNegatibleForFree";
+        Util.assertion(op.hasOneUse(), "Unknown reuse!");
+        Util.assertion(depth <= 6, "getNegatedExpression doesn't match isNegatibleForFree");
         switch (op.getOpcode())
         {
             default:
@@ -1098,7 +1099,7 @@ public class DAGCombiner
             }
             case ISD.FADD:
             {
-                assert EnableUnsafeFPMath.value;
+                Util.assertion( EnableUnsafeFPMath.value);
                 if (isNegatibleForFree(op.getOperand(0), legalOpration, depth+1) != 0)
                     return dag.getNode(ISD.FSUB, op.getValueType(),
                             getNegatedExpression(op.getOperand(0), legalOpration, depth+1),
@@ -1110,7 +1111,7 @@ public class DAGCombiner
             }
             case ISD.FSUB:
             {
-                assert EnableUnsafeFPMath.value;
+                Util.assertion( EnableUnsafeFPMath.value);
                 ConstantFPSDNode fp = op.getOperand(0).getNode() instanceof ConstantFPSDNode ?
                         (ConstantFPSDNode)op.getOperand(0).getNode() : null;
 
@@ -1581,7 +1582,7 @@ public class DAGCombiner
 
     private SDValue combineConsecutiveLoads(SDNode n, EVT vt)
     {
-        assert n.getOpcode() == ISD.BUILD_PAIR;
+        Util.assertion( n.getOpcode() == ISD.BUILD_PAIR);
         SDNode t = getBuildPairElt(n, 0);
         LoadSDNode ld1 = t instanceof LoadSDNode ?
                 (LoadSDNode)t : null;
@@ -2573,8 +2574,8 @@ public class DAGCombiner
 
     private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2)
     {
-        assert n0.getOpcode() == ISD.SETCC:
-                "First argument must be a SetCC node!";;
+        Util.assertion(n0.getOpcode() == ISD.SETCC,                 "First argument must be a SetCC node!");;
+
         SDValue scc = simplifySelectCC(n0.getOperand(0),
                 n0.getOperand(1), n1, n2,
                 ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition());
@@ -3232,7 +3233,7 @@ public class DAGCombiner
     {
         SDValue n0 = n.getOperand(0), n1 = n.getOperand(1);
         EVT vt = n0.getValueType();
-        assert n0.getOpcode() == n1.getOpcode():"Bad input!";
+        Util.assertion(n0.getOpcode() == n1.getOpcode(), "Bad input!");
 
         // For each of OP in AND/OR/XOR:
         // fold (OP (zext x), (zext y)) -> (zext (OP x, y))
@@ -3644,7 +3645,7 @@ public class DAGCombiner
      */
     private static boolean matchRotateHalf(SDValue op, SDValue[] res)
     {
-        assert res != null && res.length == 2;
+        Util.assertion( res != null && res.length == 2);
         if (op.getOpcode() == ISD.AND)
         {
             SDValue rhs = op.getOperand(1);
@@ -4764,7 +4765,7 @@ public class DAGCombiner
         if (legalOprations) return new SDValue();
 
         EVT vt = n.getValueType(0);
-        assert vt.isVector():"simplifyVBinOp only works for vector type!";
+        Util.assertion(vt.isVector(), "simplifyVBinOp only works for vector type!");
 
         EVT eltVT = vt.getVectorElementType();
         SDValue lhs = n.getOperand(0);
@@ -4801,9 +4802,9 @@ public class DAGCombiner
                     }
                 }
                 SDValue res = dag.getNode(n.getOpcode(), eltVT, lhsOp, rhsOp);
-                assert res.getOpcode() == ISD.UNDEF||
-                        res.getOpcode() == ISD.Constant ||
-                        res.getOpcode() == ISD.ConstantFP:"Scalar binop didn't be folded!";
+                Util.assertion(res.getOpcode() == ISD.UNDEF||                        res.getOpcode() == ISD.Constant ||
+                        res.getOpcode() == ISD.ConstantFP, "Scalar binop didn't be folded!");
+
                 ops.add(res);
                 addToWorkList(res.getNode());
             }
@@ -4829,7 +4830,7 @@ public class DAGCombiner
     }
     public SDValue combineTo(SDNode n, SDValue[] to, boolean addTo)
     {
-        assert n.getNumValues() == to.length;
+        Util.assertion( n.getNumValues() == to.length);
         WorklistRemover remover = new WorklistRemover(this);
         dag.replaceAllUsesWith(n, to, remover);
         if (addTo)

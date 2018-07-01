@@ -1,5 +1,6 @@
 package backend.target.x86;
 
+import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
@@ -149,7 +150,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             int memOp = opTbl2Addr[i][1];
 
             if (regOp2MemOpTable2Addr.put(regOp, Pair.get(memOp, 0)) != null)
-                assert false : "Dupliate entries?";
+                Util.assertion(false,  "Dupliate entries?");
 
             int auxInfo = 0 | (1 << 4) | (1 << 5);
             if (memOp2RegOpTable.put(memOp, Pair.get(memOp, auxInfo)) != null)
@@ -206,7 +207,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             int align = opTbl0[i][3];
 
             if (regOp2MemOpTable0.put(regOp, Pair.get(memOp, align)) != null)
-                assert false : "Duplicated entries?";
+                Util.assertion(false,  "Duplicated entries?");
 
             int foldedLoad = opTbl0[i][2];
             int auxInfo = 0 | (foldedLoad << 4) | ((foldedLoad ^ 1) << 5);
@@ -296,7 +297,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             int alig = opTbl1[i][2];
 
             if (regOp2MemOpTable1.put(regOp, Pair.get(memOp, alig)) != null)
-                assert false : "Duplicated entries?";
+                Util.assertion(false,  "Duplicated entries?");
 
             // Index 1, folded load
             int auxInfo = 1 | (1 << 4);
@@ -414,7 +415,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             int memOp = opTbl2[i][1];
             int align = opTbl2[i][2];
             if (regOp2MemOpTable2.put(regOp, Pair.get(memOp, align)) != null)
-                assert false : "Duplicated entries?";
+                Util.assertion(false,  "Duplicated entries?");
 
             // Index 2, folded load
             int auxInfo = 2 | (1 << 4);
@@ -423,7 +424,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
 
         // Remove ambiguous entries.
-        assert ambEntries.isEmpty() : "Duplicated entries in unfolded map?";
+        Util.assertion(ambEntries.isEmpty(),  "Duplicated entries in unfolded map?");
     }
 
     /**
@@ -473,9 +474,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case MOVPS2SSrr:
             case MOVPD2SDrr:
             case MMX_MOVQ64rr:
-                assert mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister()
-                        && mi.getOperand(1)
-                        .isRegister() : "invalid register-register move instruction";
+                Util.assertion(mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister()                        && mi.getOperand(1)
+                        .isRegister(),  "invalid register-register move instruction");
+
                 srcReg.set(mi.getOperand(1).getReg());
                 destReg.set(mi.getOperand(0).getReg());
                 if (srcSubIdx != null)
@@ -576,7 +577,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             if (defMI.getOpcode() != MOVPC32r)
                 return false;
 
-            assert !isPICBase : "More than one PIC base?";
+            Util.assertion(!isPICBase,  "More than one PIC base?");
             isPICBase = true;
         }
         return isPICBase;
@@ -668,7 +669,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         if (defMI.getOpcode() != MOVPC32r)
                             return false;
 
-                        assert !isPICBase : "More than one PIC base?";
+                        Util.assertion(!isPICBase,  "More than one PIC base?");
                         isPICBase = true;
                     }
                     return isPICBase;
@@ -904,7 +905,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         {
             case SHUFPSrri:
             {
-                assert mi.getNumOperands() == 4:"Undefined shufps instruction!";
+                Util.assertion(mi.getNumOperands() == 4, "Undefined shufps instruction!");
                 if (!tm.getSubtarget().hasSSE2())
                     return null;
 
@@ -923,7 +924,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             }
             case SHL64ri:
             {
-                assert mi.getNumOperands() >= 3:"Unknown shift instruction";
+                Util.assertion(mi.getNumOperands() >= 3, "Unknown shift instruction");
                 long shAmt = mi.getOperand(2).getImm();
                 if (shAmt == 0 || shAmt >= 4) return null;
 
@@ -938,7 +939,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             }
             case SHL32ri:
             {
-                assert mi.getNumOperands() >= 3:"Undefined shufps instruction!";
+                Util.assertion(mi.getNumOperands() >= 3, "Undefined shufps instruction!");
                 long shAmt = mi.getOperand(2).getImm();
                 if (shAmt == 0 || shAmt >= 4) return null;
 
@@ -954,7 +955,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             }
             case SHL16ri:
             {
-                assert mi.getNumOperands() >= 3:"Undefined shift instruction";
+                Util.assertion(mi.getNumOperands() >= 3, "Undefined shift instruction");
 
                 long shAmt = mi.getOperand(2).getImm();
                 if (shAmt == 0 || shAmt >= 4)
@@ -1018,7 +1019,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case INC32r:
                     case INC64_32r:
                     {
-                        assert mi.getNumOperands() >= 2:"Undefined inc instruction";
+                        Util.assertion(mi.getNumOperands() >= 2, "Undefined inc instruction");
                         int opc = miOpc == INC64r ? LEA64r : (is64Bit ? LEA64_32r : LEA32r);
                         newMI = addLeaRegOffset(buildMI(get(opc))
                             .addReg(dest, Define | getDeadRegState(isDead)), src, isKill, 1)
@@ -1030,7 +1031,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     {
                         if (disableLEA16)
                             return null;
-                        assert mi.getNumOperands() >= 2 :"Undefined inc instruction";
+                        Util.assertion(mi.getNumOperands() >= 2, "Undefined inc instruction");
                         newMI = addRegOffset(buildMI(get(LEA16r)).
                                 addReg(dest, Define | getDeadRegState(isDead)),
                                 src, isKill, 1)
@@ -1041,7 +1042,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case DEC32r:
                     case DEC64_32r:
                     {
-                        assert mi.getNumOperands() >= 2 :"Unknown dec instruction";
+                        Util.assertion(mi.getNumOperands() >= 2, "Unknown dec instruction");
                         int opc = miOpc == DEC64r ? LEA64r : (is64Bit ? LEA64_32r : LEA32r);
                         newMI = addLeaRegOffset(buildMI(get(opc)).
                                 addReg(dest, Define | getDeadRegState(isDead)),
@@ -1052,7 +1053,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case DEC16r:
                     case DEC64_16r:
                         if (disableLEA16) return null;
-                        assert mi.getNumOperands() >= 2 : "Unknown dec instruction!";
+                        Util.assertion(mi.getNumOperands() >= 2,  "Unknown dec instruction!");
                         newMI = addRegOffset(buildMI(get(LEA16r))
                                         .addReg(dest, Define | getDeadRegState(isDead)),
                                 src, isKill, -1)
@@ -1060,7 +1061,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         break;
                     case ADD64rr:
                     case ADD32rr: {
-                        assert mi.getNumOperands() >= 3 : "Unknown add instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3,  "Unknown add instruction!");
                         int Opc = miOpc == ADD64rr ? LEA64r
                                 : (is64Bit ? LEA64_32r : LEA32r);
                         int Src2 = mi.getOperand(2).getReg();
@@ -1076,7 +1077,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case ADD16rr: {
                         if (disableLEA16)
                             return null;
-                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3,  "Undefined add instruction!");
                         int Src2 = mi.getOperand(2).getReg();
                         boolean isKill2 = mi.getOperand(2).isKill();
                         newMI = addRegReg(buildMI(get(LEA16r))
@@ -1089,7 +1090,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     }
                     case ADD64ri32:
                     case ADD64ri8:
-                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3,  "Undefined add instruction!");
                         if (mi.getOperand(2).isImm())
                             newMI = addLeaRegOffset(buildMI(get(LEA64r))
                                             .addReg(dest, Define | getDeadRegState(isDead)),
@@ -1098,7 +1099,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         break;
                     case ADD32ri:
                     case ADD32ri8:
-                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3,  "Undefined add instruction!");
                         if (mi.getOperand(2).isImm()) {
                             int Opc = is64Bit ? LEA64_32r : LEA32r;
                             newMI = addLeaRegOffset(buildMI(get(Opc))
@@ -1110,7 +1111,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case ADD16ri:
                     case ADD16ri8:
                         if (disableLEA16) return null;
-                        assert mi.getNumOperands() >= 3 : "Unknown add instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3,  "Unknown add instruction!");
                         if (mi.getOperand(2).isImm())
                             newMI = addRegOffset(buildMI(get(LEA16r))
                                             .addReg(dest, Define | getDeadRegState(isDead)),
@@ -1121,8 +1122,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         if (disableLEA16) return null;
                     case SHL32ri:
                     case SHL64ri: {
-                        assert mi.getNumOperands() >= 3 && mi.getOperand(2).isImm() :
-                                "Unknown shl instruction!";
+                        Util.assertion(mi.getNumOperands() >= 3 && mi.getOperand(2).isImm(),                                 "Unknown shl instruction!");
+
                         long ShAmt = mi.getOperand(2).getImm();
                         if (ShAmt == 1 || ShAmt == 2 || ShAmt == 3) {
                             X86AddressMode am = new X86AddressMode();
@@ -1504,8 +1505,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             // where all conditional branches branch to the same destination
             // and their condition opcodes fit one of the special
             // multi-branch idioms.
-            assert(cond.size() == 1);
-            assert(tbb != null);
+            Util.assertion((cond.size() == 1));
+            Util.assertion((tbb != null));
             // Only handle the case where all conditional branches branch to
             // the same destination.
             if (!tbb.get().equals(mi.getOperand(0).getMBB()))
@@ -1565,16 +1566,16 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         // FIXME this should probably have a DebugLoc operand
         // DebugLoc dl = DebugLoc::getUnknownLoc();
         // Shouldn't be a fall through.
-        assert tbb != null :
-                "insertBranch must not be told to insert a fallthrough";
-        assert (cond.size() == 1 || cond.size()
-                == 0) : "X86 branch conditions have one component!";
+        Util.assertion(tbb != null,                 "insertBranch must not be told to insert a fallthrough");
+
+        Util.assertion((cond.size() == 1 || cond.size()                == 0),  "X86 branch conditions have one component!");
+
 
         if (cond.isEmpty())
         {
             // Unconditional branch?
-            assert fbb
-                    == null : "Unconditional branch with multiple successors!";
+            Util.assertion(fbb                    == null,  "Unconditional branch with multiple successors!");
+
             buildMI(mbb, get(JMP)).addMBB(tbb);
             return 1;
         }
@@ -2225,7 +2226,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             MachineOperand MO = MI.getOperand(i);
             if (i == OpNo)
             {
-                assert MO.isRegister() : "Expected to fold into reg operand!";
+                Util.assertion(MO.isRegister(),  "Expected to fold into reg operand!");
                 int NumAddrOps = MOs.size();
                 for (int j = 0; j != NumAddrOps; ++j)
                     MIB.addOperand(MOs.get(j));
@@ -2793,7 +2794,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     @Override
     public boolean reverseBranchCondition(ArrayList<MachineOperand> cond)
     {
-        assert cond.size() == 1 : "Invalid X86 branch condition!";
+        Util.assertion(cond.size() == 1,  "Invalid X86 branch condition!");
         long CC = cond.get(0).getImm();
         if (CC == COND_NE_OR_P || CC == COND_NP_OR_E)
             return true;
@@ -3164,8 +3165,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
         else
         {  // We need a SIB byte, so start by outputting the ModR/M byte first
-            assert IndexReg.getReg() != ESP && IndexReg.getReg()
-                    != RSP : "Cannot use ESP as index reg!";
+            Util.assertion(IndexReg.getReg() != ESP && IndexReg.getReg()                    != RSP,  "Cannot use ESP as index reg!");
+
 
             boolean ForceDisp32 = false;
             if (BaseReg == 0 || DispForReloc != null)
@@ -3313,7 +3314,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         break;
                     case INLINEASM:
                     {
-                        assert false : "Inline asm is not supported yet!";
+                        Util.assertion(false,  "Inline asm is not supported yet!");
                         break;
                     }
                     case DBG_LABEL:
@@ -3583,8 +3584,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
      */
     public int getGlobalBaseReg(MachineFunction mf)
     {
-        assert !tm.getSubtarget()
-                .is64Bit() : "X86-64 PIC uses RIP relative addressing";
+        Util.assertion(!tm.getSubtarget()                .is64Bit(),  "X86-64 PIC uses RIP relative addressing");
+
 
         X86MachineFunctionInfo X86FI = (X86MachineFunctionInfo) mf.getInfo();
         int GlobalBaseReg = X86FI.getGlobalBaseReg();

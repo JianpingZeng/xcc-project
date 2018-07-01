@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.support.Printable;
 import backend.value.Module;
 import tools.FoldingSetNodeID;
@@ -83,7 +84,7 @@ public final class PassInfo implements Printable
         {
             e.printStackTrace();
         }
-        assert false:"Can not create instance without default ctor!";
+        Util.assertion(false, "Can not create instance without default ctor!");
         return null;
     }
 

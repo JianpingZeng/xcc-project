@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.ast.Tree;
 
 /**
@@ -38,7 +39,7 @@ public class LValue
 
     public void setFrom(final APValue v)
     {
-        assert v.isLValue();
+        Util.assertion( v.isLValue());
         base = v.getLValueBase();
         offset= v.getLValueOffset();
     }

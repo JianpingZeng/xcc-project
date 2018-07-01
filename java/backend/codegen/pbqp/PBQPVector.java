@@ -17,6 +17,7 @@
 
 package backend.codegen.pbqp;
 
+import tools.Util;
 import java.io.PrintStream;
 
 /**
@@ -39,13 +40,13 @@ public class PBQPVector implements Cloneable
 
     public void set(int idx, double val)
     {
-        assert idx>=0 && idx < data.length;
+        Util.assertion( idx>=0 && idx < data.length);
         data[idx] = val;
     }
 
     public double get(int idx)
     {
-        assert idx>=0 && idx < data.length;
+        Util.assertion( idx>=0 && idx < data.length);
         return data[idx];
     }
 
@@ -56,14 +57,14 @@ public class PBQPVector implements Cloneable
 
     public void add(PBQPVector other)
     {
-        assert other!= null && other.data.length == data.length;
+        Util.assertion( other!= null && other.data.length == data.length);
         for (int i = 0; i < data.length; i++)
             data[i] += other.data[i];
     }
 
     public void add(double[] row)
     {
-        assert row != null && row.length == data.length;
+        Util.assertion( row != null && row.length == data.length);
         for (int i = 0; i < data.length; i++)
             data[i] += row[i];
     }

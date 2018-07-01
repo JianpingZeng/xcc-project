@@ -1,6 +1,7 @@
 package backend.value;
 
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.utils.BackwardIterator;
 import backend.utils.PredIterator;
@@ -102,7 +103,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
     public void setParent(Function fn)
     {
-    	assert fn != null;
+    	Util.assertion( fn != null);
     	parent = fn;
     }
 
@@ -204,7 +205,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		this.instructions = new LinkedList<>();
         if (insertBefore != null)
         {
-            assert newParent!=null:"Can't insert block before another block";
+            Util.assertion(newParent!=null, "Can't insert block before another block");
             newParent.addBasicBlockBefore(insertBefore, this);
         }
         else if (newParent != null)
@@ -332,9 +333,9 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void insertAt(Instruction inst, int index)
 	{
-		assert (inst != null) : "Cannot add null instruction to block";
-		assert (index >= 0 && index < instructions.size()):
-				"The index into insertion of gieven inst is bound out.";
+		Util.assertion((inst != null),  "Cannot add null instruction to block");
+		Util.assertion((index >= 0 && index < instructions.size()), 				"The index into insertion of gieven inst is bound out.");
+
 
 		instructions.add(index, inst);
 	}
@@ -347,15 +348,15 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void appendInst(Instruction inst)
 	{
-		assert (inst != null) : "Can't add null instructions to block";
+		Util.assertion((inst != null),  "Can't add null instructions to block");
 		if (instructions.isEmpty() || !(instructions.getLast() instanceof BranchInst))
 		{
 			instructions.add(inst);
 		}
 		else 
 		{
-			assert (getLastInst() instanceof BranchInst) :
-				"Can not insert more than one branch in basic block";
+			Util.assertion((getLastInst() instanceof BranchInst), 				"Can not insert more than one branch in basic block");
+
 			instructions.add(inst);
 		}
 		inst.setParent(this);
@@ -380,7 +381,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public void insertAfter(Instruction inst, int after)
 	{
-		assert after >=1 && after < getNumOfInsts();
+		Util.assertion( after >=1 && after < getNumOfInsts());
 		if (after == getNumOfInsts() - 1)
 			instructions.add(inst);
 		else
@@ -390,10 +391,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public void insertAfter(Instruction inst, Instruction insertAfter)
 	{
-		assert inst != null && insertAfter != null:"Can't use null inst";
-		assert insertAfter != null:"May use append method to add it to the last!";
+		Util.assertion(inst != null && insertAfter != null, "Can't use null inst");
+		Util.assertion(insertAfter != null, "May use append method to add it to the last!");
 		int index = instructions.indexOf(insertAfter);
-		assert index != -1 :"insertAfter isn't exists in current basic block!";
+		Util.assertion(index != -1, "insertAfter isn't exists in current basic block!");
 		insertAfter(inst, index);
 		inst.setParent(this);
 	}
@@ -406,14 +407,14 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			return;
 		}
 		int index = instructions.indexOf(insertBefore);
-		assert index != - 1:"InsertBefore is not exists in Instruction list";
+		Util.assertion(index != - 1, "InsertBefore is not exists in Instruction list");
 		insertBefore(inst, index);
 		inst.setParent(this);
 	}
 	
 	public void insertBefore(Instruction inst, int insertBefore)
 	{
-		assert insertBefore >= 0 && insertBefore < getNumOfInsts();
+		Util.assertion( insertBefore >= 0 && insertBefore < getNumOfInsts());
 		instructions.add(insertBefore, inst);
 		inst.setParent(this);
 	}
@@ -425,7 +426,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void insertAfterFirst(Instruction inst)
 	{
-		assert inst != null;
+		Util.assertion( inst != null);
 
 		if (instructions.isEmpty())
 			instructions.addFirst(inst);
@@ -472,7 +473,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		PhiNode pn = (PhiNode) getFirstInst();
 
 		int idx = pn.getNumberIncomingValues();
-		assert idx != 0:"PHI node in block with 0 predecessors!";
+		Util.assertion(idx != 0, "PHI node in block with 0 predecessors!");
 
 		if (idx == 2)
 		{
@@ -599,7 +600,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public BasicBlock suxAt(int index)
 	{
-		assert index >= 0 && index < getNumSuccessors();
+		Util.assertion( index >= 0 && index < getNumSuccessors());
 		TerminatorInst inst = getTerminator();
 		if (inst == null) return null;
 		return inst.getSuccessor(index);
@@ -616,7 +617,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public BasicBlock predAt(int index)
 	{
-		assert index >= 0 && index < getNumPredecessors();
+		Util.assertion( index >= 0 && index < getNumPredecessors());
 		for (Use u : usesList)
 		{
 			if (u.getUser() instanceof TerminatorInst)
@@ -626,7 +627,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 				--index;
 			}
 		}
-		assert false:"Should not reaching here!";
+		Util.assertion(false, "Should not reaching here!");
 		return null;
 	}
 

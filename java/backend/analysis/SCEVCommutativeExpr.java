@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.Loop;
 import tools.Pair;
@@ -52,7 +53,7 @@ public abstract class SCEVCommutativeExpr extends SCEV
 
     public final SCEV getOperand(int index)
     {
-        assert index >= 0 && index < operands.size();
+        Util.assertion( index >= 0 && index < operands.size());
         return operands.get(index);
     }
 
@@ -106,7 +107,7 @@ public abstract class SCEVCommutativeExpr extends SCEV
                 if (this instanceof SCEVMulExpr)
                     return SCEVMulExpr.get(res);
 
-                assert false:"Invalid comutative opr!";
+                Util.assertion(false, "Invalid comutative opr!");
             }
         }
         return this;

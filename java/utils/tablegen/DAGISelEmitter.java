@@ -88,7 +88,7 @@ public class DAGISelEmitter extends TableGenBackend
             os.printf("public SDValue transform_%s(SDNode %s){%n", itr.getKey(), var);
             if (!className.equals("SDNode"))
             {
-                os.printf("%s assert %s instanceof %s;%n", ident, var, className);
+                os.printf("%s Util.assertion( %s instanceof %s);%n", ident, var, className);
                 os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
             }
             code = stripOutNewLineInEnding(code);
@@ -127,7 +127,7 @@ public class DAGISelEmitter extends TableGenBackend
                 os.printf("public boolean predicate_%s(SDNode %s) {%n", patFrag.getName(), var);
                 if (!className.equals("SDNode"))
                 {
-                    os.printf("%s assert %s instanceof %s;%n", ident, var, className);
+                    os.printf("%s Util.assertion( %s instanceof %s);%n", ident, var, className);
                     os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
                 }
             }
@@ -178,7 +178,7 @@ public class DAGISelEmitter extends TableGenBackend
             }
             catch(Exception e)
             {
-                assert false:"Error: can't find consistent types for something we already decided was ok!";
+                Util.assertion(false, "Error: can't find consistent types for something we already decided was ok!");
                 System.exit(-1);
             }
 
@@ -551,7 +551,7 @@ public class DAGISelEmitter extends TableGenBackend
         {
             String opName = itr.getKey();
             ArrayList<PatternToMatch> patternOfOps = itr.getValue();
-            assert !patternOfOps.isEmpty():"No patterns but map has entry?";
+            Util.assertion(!patternOfOps.isEmpty(), "No patterns but map has entry?");
 
             // split the patterns into groups by type.
             TreeMap<Integer, ArrayList<PatternToMatch>> patternsByType = new TreeMap<>();
@@ -801,8 +801,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "  int nvt = n.getNode().getValueType(0).getSimpleVT().simpleVT;\n"
                 + "  switch (n.getOpcode()) {\n"
                 + "  default:\n"
-                + "    assert !n.isMachineOpcode() : \"Node already selected!\";\n"
-                + "    break;\n"
+                + "    Util.assertion(!n.isMachineOpcode(),  \"Node already selected!\");\n"                + "    break;\n"
                 + "  case ISD.EntryToken:       // These nodes remain the same.\n"
                 + "  case ISD.MEMOPERAND:\n"
                 + "  case ISD.BasicBlock:\n"
@@ -831,6 +830,7 @@ public class DAGISelEmitter extends TableGenBackend
                 + "  case ISD.EH_LABEL: return select_EH_LABEL(n);\n"
                 + "  case ISD.DECLARE: return select_DECLARE(n);\n"
                 + "  case ISD.UNDEF: return select_UNDEF(n);\n");
+
 
         for (Map.Entry<String, ArrayList<PatternToMatch>> itr : patternsByOpcode.entrySet())
         {
@@ -901,7 +901,7 @@ public class DAGISelEmitter extends TableGenBackend
     @Override
     public void run(String outputFile) throws Exception
     {
-        assert outputFile != null && !outputFile.isEmpty();
+        Util.assertion( outputFile != null && !outputFile.isEmpty());
         try(PrintStream os = !outputFile.equals("-") ?
                 new PrintStream(new FileOutputStream(outputFile)) :
                 System.out)
@@ -924,6 +924,7 @@ public class DAGISelEmitter extends TableGenBackend
             os.println("import backend.target.TargetMachine.RelocModel;");
             os.println("import backend.target.TargetMachine.CodeModel;");
             os.println("import backend.value.GlobalValue;");
+            os.println("import tools.Util;");
             os.println();
 
             os.println("import java.util.ArrayList;");

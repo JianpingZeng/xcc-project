@@ -1,5 +1,6 @@
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
@@ -91,8 +92,8 @@ public final class LoopSimplify implements FunctionPass
 			for (Loop sub : loop.getSubLoops())
 				changed |= processLoop(sub);
 
-			assert loop.getBlocks().get(0) == loop
-					.getHeaderBlock() : "Header isn't in the first";
+			Util.assertion(loop.getBlocks().get(0) == loop					.getHeaderBlock(),  "Header isn't in the first");
+
 			preHeader = loop.getLoopPreheader();
 			if (preHeader == null)
 			{
@@ -214,7 +215,7 @@ public final class LoopSimplify implements FunctionPass
 
 				// Success. The block is now dead, so remove it from the loop,
 				// update the dominator tree and dominance frontier, and delete it.
-				assert !itr.hasNext();
+				Util.assertion( !itr.hasNext());
 				changed = true;
 				li.removeBlock(exitingBB);
 
@@ -381,7 +382,7 @@ public final class LoopSimplify implements FunctionPass
 	 */
 	private void addPredecessorToBlock(BasicBlock succ, BasicBlock newPred, BasicBlock exitPred)
 	{
-		assert exitPred.hasSuccessor(succ) :"ExitPred is not a predecessor of succ";
+		Util.assertion(exitPred.hasSuccessor(succ), "ExitPred is not a predecessor of succ");
 		if (!(succ.getFirstInst() instanceof PhiNode))
 			return;   // early terminates if there is no PHI node in succ.
 
@@ -405,7 +406,7 @@ public final class LoopSimplify implements FunctionPass
 	 */
 	private void insertUniqueBackedgeBlock(Loop loop, BasicBlock preHeader)
 	{
-		assert loop.getNumBackEdges() > 1:"Must have at least two backedge!";
+		Util.assertion(loop.getNumBackEdges() > 1, "Must have at least two backedge!");
 
 		BasicBlock header = loop.getHeaderBlock();
 		Function f = header.getParent();
@@ -462,7 +463,7 @@ public final class LoopSimplify implements FunctionPass
 			}
 
 			// Delete all of the incoming values from the old PN except the preheader's
-			assert preheadIdx != ~0 :"PHI has no preheader entry?";
+			Util.assertion(preheadIdx != ~0, "PHI has no preheader entry?");
 			if (preheadIdx != 0)
 			{
 				pn.setIncomingValue(0, pn.getIncomingValue(preheadIdx));
@@ -754,7 +755,7 @@ public final class LoopSimplify implements FunctionPass
 				loopBlocks.add(pred);
 		}
 
-		assert !loopBlocks.isEmpty() : "No edges coming in from outside the loop?";;
+		Util.assertion(!loopBlocks.isEmpty(),  "No edges coming in from outside the loop?");;
 		BasicBlock newBB = splitBlockPredecessors(exitBB, loopBlocks, ".loopexit", this);
 
 		// Update loop information.

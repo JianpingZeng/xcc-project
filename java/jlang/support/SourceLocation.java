@@ -16,6 +16,7 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.basic.SourceManager;
 
 import java.io.PrintStream;
@@ -67,7 +68,7 @@ public class SourceLocation implements Comparable<SourceLocation>
 
     public static SourceLocation getFileLoc(int id)
     {
-        assert (id & macroBit) == 0 : "Ran out of source location";
+        Util.assertion((id & macroBit) == 0,  "Ran out of source location");
         SourceLocation l =  new SourceLocation();
         l.id = id;
         return l;
@@ -75,7 +76,7 @@ public class SourceLocation implements Comparable<SourceLocation>
 
     public static SourceLocation getMacroLoc(int id)
     {
-        assert (id & macroBit) == 0 : "Ran out of source location";
+        Util.assertion((id & macroBit) == 0,  "Ran out of source location");
         SourceLocation l =  new SourceLocation();
         l.id = id + macroBit;
         return l;
@@ -83,7 +84,7 @@ public class SourceLocation implements Comparable<SourceLocation>
 
     public SourceLocation getFileLocWithOffset(int offset)
     {
-        assert ((getOffset() + offset) & macroBit) == 0 :"invalid location";
+        Util.assertion(((getOffset() + offset) & macroBit) == 0, "invalid location");
         SourceLocation l = new SourceLocation();
         l.id = id + offset;
         return l;

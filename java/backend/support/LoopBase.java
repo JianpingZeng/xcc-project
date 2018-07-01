@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -58,7 +59,7 @@ public abstract class LoopBase<BlockT, LoopT>
     }
     protected LoopBase(BlockT block)
     {
-        assert block!= null;
+        Util.assertion( block!= null);
         blocks = new LinkedList<BlockT>();
         blocks.add(block);
         subLoops = new ArrayList<>();
@@ -72,7 +73,7 @@ public abstract class LoopBase<BlockT, LoopT>
      */
     public BlockT getBlock(int index)
     {
-        assert index >= 0 && index < blocks.size();
+        Util.assertion( index >= 0 && index < blocks.size());
         return blocks.get(index);
     }
 
@@ -82,7 +83,7 @@ public abstract class LoopBase<BlockT, LoopT>
      */
     public BlockT getHeaderBlock()
     {
-        assert blocks != null && !blocks.isEmpty() :"There is no block in loop";
+        Util.assertion(blocks != null && !blocks.isEmpty(), "There is no block in loop");
         return blocks.get(0);
     }
 
@@ -170,8 +171,8 @@ public abstract class LoopBase<BlockT, LoopT>
 
     public void addFirstBlock(BlockT bb)
     {
-        assert bb != null : "parent not be null";
-        assert !contains(bb) : "duplicated block added";
+        Util.assertion(bb != null,  "parent not be null");
+        Util.assertion(!contains(bb),  "duplicated block added");
 
         blocks.addFirst(bb);
     }
@@ -229,20 +230,20 @@ public abstract class LoopBase<BlockT, LoopT>
 
     public LoopT removeChildLoop(int index)
     {
-        assert index>= 0 && index < subLoops.size();
+        Util.assertion( index>= 0 && index < subLoops.size());
         return subLoops.remove(index);
     }
 
     public void addBlockEntry(BlockT bb)
     {
-        assert bb != null;
+        Util.assertion( bb != null);
         blocks.add(bb);
     }
 
     public void removeBlockFromLoop(BlockT bb)
     {
-        assert bb != null : "parent not be null";
-        assert contains(bb) : "parent must contained in loop";
+        Util.assertion(bb != null,  "parent not be null");
+        Util.assertion(contains(bb),  "parent must contained in loop");
         blocks.remove(bb);
     }
 

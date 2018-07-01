@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -52,7 +53,7 @@ public final class CodeGenRegisterClass
 
     public int getValueTypeAt(int idx)
     {
-        assert idx >= 0 && idx < vts.size();
+        Util.assertion( idx >= 0 && idx < vts.size());
         return vts.get(idx);
     }
 
@@ -79,7 +80,7 @@ public final class CodeGenRegisterClass
             vts.add(getValueType(ty, null));
         }
 
-        assert !vts.isEmpty();
+        Util.assertion( !vts.isEmpty());
 
         ArrayList<Record> regList = r.getValueAsListOfDefs("MemberList");
         for (Record reg : regList)
@@ -118,7 +119,7 @@ public final class CodeGenRegisterClass
         /**
         if (vt == MVT.SimpleValueType.isPtr)
         {
-            assert cgt!= null:"Use a pointer type in a place that isn't supported as yet!";;
+            Util.assertion(cgt!= null, "Use a pointer type in a place that isn't supported as yet!");;
             vt = cgt.getPointerType();
         }
          */

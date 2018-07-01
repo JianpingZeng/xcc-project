@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import tools.TypeMap;
 
@@ -43,7 +44,7 @@ public class PointerType extends SequentialType
 
     public static PointerType get(Type valueType, int addrSpace)
     {
-        assert valueType != null:"Can't get a pointer to <null> type";
+        Util.assertion(valueType != null, "Can't get a pointer to <null> type");
         PointerType pt = pointerTypes.get(valueType);
         if (pt != null)
             return pt;
@@ -90,7 +91,7 @@ public class PointerType extends SequentialType
     @Override
     public void refineAbstractType(DerivedType oldTy, Type newTy)
     {
-        assert oldTy != newTy;
+        Util.assertion( oldTy != newTy);
         for (int i = 0, e = getNumContainedTypes(); i < e; i++)
         {
             if (containedTys[i].getType() == oldTy)

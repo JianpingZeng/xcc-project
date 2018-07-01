@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import tools.TypeMap;
 
@@ -80,8 +81,8 @@ public class FunctionType extends DerivedType
         int i = 1;
         for (Type argTy : argsType)
         {
-            assert isValidArgumentType(argTy)
-                    : "Not a valid type for function argument";
+            Util.assertion(isValidArgumentType(argTy),  "Not a valid type for function argument");
+
             containedTys[i++] = new PATypeHandle(argTy, this);
             isAbstract |= argTy.isAbstract();
         }
@@ -144,7 +145,7 @@ public class FunctionType extends DerivedType
 
     public Type getParamType(int index)
     {
-        assert index >= 0 && index < getNumParams();
+        Util.assertion( index >= 0 && index < getNumParams());
         return containedTys[index+1].getType();
     }
 

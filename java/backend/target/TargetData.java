@@ -1,5 +1,6 @@
 package backend.target;
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.ImmutablePass;
 import backend.type.ArrayType;
@@ -53,7 +54,7 @@ public class TargetData implements ImmutablePass
                 byte prefAlign,
                 int typeBitWidth)
         {
-            assert abiAlign <= prefAlign :"Preferred alignment worse than ABI";
+            Util.assertion(abiAlign <= prefAlign, "Preferred alignment worse than ABI");
             TargetAlignElem elem = new TargetAlignElem();
             elem.alignType = alignType;
             elem.prefAlign = prefAlign;
@@ -159,7 +160,7 @@ public class TargetData implements ImmutablePass
 	{
 		alignments = new ArrayList<>();
 		String dataLayout = m.getDataLayout();
-		assert dataLayout!=null && !dataLayout.isEmpty();
+		Util.assertion( dataLayout!=null && !dataLayout.isEmpty());
 		init(dataLayout);
 	}
 
@@ -294,7 +295,7 @@ public class TargetData implements ImmutablePass
 
 	private void setAlignment(AlignTypeEnum alignType, byte abiAlign, byte prefAlign, int bitWidth)
     {
-        assert abiAlign <= prefAlign :"Preferred alignment worse than abi alignemnt.";
+        Util.assertion(abiAlign <= prefAlign, "Preferred alignment worse than abi alignemnt.");
         for (int i = 0, e = alignments.size(); i < e; ++i)
         {
             if (alignments.get(i).alignType == alignType
@@ -318,7 +319,7 @@ public class TargetData implements ImmutablePass
 		pointerMemSize = ptrSize;
 		pointerPrefAlign = ptrAlign;
 		doubleAlignment = doubleAlign;
-		assert pointerPrefAlign == doubleAlignment;
+		Util.assertion( pointerPrefAlign == doubleAlignment);
 		floatAlignment = floatAlign;
 		longAlignment = longAlign;
 		intAlignment = intAlign;
@@ -357,7 +358,7 @@ public class TargetData implements ImmutablePass
 
 	public long getTypeSizeInBits(Type type)
 	{
-        assert type.isSized() :"Can not getTypeInfo for unsized type";
+        Util.assertion(type.isSized(), "Can not getTypeInfo for unsized type");
 
         switch (type.getTypeID())
         {
@@ -389,7 +390,7 @@ public class TargetData implements ImmutablePass
             }
             default:
             {
-                assert false:"Bad type for getTypeInfo!";
+                Util.assertion(false, "Bad type for getTypeInfo!");
                 break;
             }
         }
@@ -502,13 +503,13 @@ public class TargetData implements ImmutablePass
 
         public long getElementOffset(long idx)
         {
-        	assert idx >= 0 && idx < memberOffsets.size();
+        	Util.assertion( idx >= 0 && idx < memberOffsets.size());
         	return memberOffsets.get((int) idx);
         }
 
         public long getElementOffsetInBits(long idx)
         {
-	        assert idx >= 0 && idx < memberOffsets.size();
+	        Util.assertion( idx >= 0 && idx < memberOffsets.size());
 	        return memberOffsets.get((int) idx) * 8;
         }
     }
@@ -528,7 +529,7 @@ public class TargetData implements ImmutablePass
 	public int getAlignment(Type ty, boolean abiOrPref)
 	{
 		AlignTypeEnum alignType = null;
-		assert ty.isSized() :"Cannot getTypeInfo() on a type that is unsized";
+		Util.assertion(ty.isSized(), "Cannot getTypeInfo() on a type that is unsized");
 		switch (ty.getTypeID())
 		{
 			case LabelTyID:
@@ -598,7 +599,7 @@ public class TargetData implements ImmutablePass
 			}
 			else
 			{
-				assert false:"Unknown alignment type!";
+				Util.assertion(false, "Unknown alignment type!");
 			}
 		}
 		return abiInfo ? alignments.get(bestMatchIdx).abiAlign : alignments.get(bestMatchIdx).prefAlign;
@@ -611,7 +612,7 @@ public class TargetData implements ImmutablePass
 
 	public static long roundUpAlignment(long val, long aligment)
 	{
-		assert (aligment & (aligment -1)) == 0:"Alignment must be power of 2!";
+		Util.assertion((aligment & (aligment -1)) == 0, "Alignment must be power of 2!");
 		return (val + aligment -1) & ~(aligment - 1);
 	}
 

@@ -17,6 +17,8 @@
 
 package backend.value;
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -41,20 +43,20 @@ public class UnreachableInst extends Instruction.TerminatorInst
     @Override
     public BasicBlock getSuccessor(int index)
     {
-        assert false:"UnreachableInst has no successor";
+        Util.assertion(false, "UnreachableInst has no successor");
         return null;
     }
 
     @Override
     public int getNumOfSuccessors()
     {
-        //assert false:"UnreachableInst has no successor";
+        //Util.assertion(false, "UnreachableInst has no successor");
         return 0;
     }
 
     @Override
     public void setSuxAt(int index, BasicBlock bb)
     {
-        assert false:"UnreachableInst has no successor";
+        Util.assertion(false, "UnreachableInst has no successor");
     }
 }

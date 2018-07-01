@@ -18,6 +18,7 @@
 package backend.codegen.pbqp;
 
 import tools.Util;
+import tools.Util;
 
 /**
  * A PBQP problem solver using heuristic algorithm.
@@ -34,16 +35,16 @@ public class HeuristicSolver implements PBQPSolver
     {
         for (int u = 0; u < problem.numNodes; u++)
         {
-            assert problem.nodeCosts[u] != null;
+            Util.assertion( problem.nodeCosts[u] != null);
             for (AdjNode adj = problem.adjList[u]; adj != null; adj = adj.next)
             {
                 int v = adj.adj;
-                assert v >= 0 && v <= problem.numNodes;
+                Util.assertion( v >= 0 && v <= problem.numNodes);
                 if (u < v)
                 {
                     PBQPMatrix cost = adj.cost;
-                    assert cost.rows == problem.nodeCosts[u].getLength() &&
-                            cost.columns == problem.nodeCosts[v].getLength();
+                    Util.assertion( cost.rows == problem.nodeCosts[u].getLength() &&                            cost.columns == problem.nodeCosts[v].getLength());
+
                 }
             }
         }
@@ -54,7 +55,7 @@ public class HeuristicSolver implements PBQPSolver
     @Override
     public PBQPSolution solve(PBQPGraph problem)
     {
-        assert problem != null;
+        Util.assertion( problem != null);
         /* check vector & matrix dimensions */
         checkPBQP(problem);
 
@@ -111,7 +112,7 @@ public class HeuristicSolver implements PBQPSolver
         for (AdjNode adj = graph.adjList[u]; adj != null; adj = adj.next)
         {
             int v = adj.adj;
-            assert v >= 0 && v < graph.numNodes;
+            Util.assertion( v >= 0 && v < graph.numNodes);
 
             PBQPMatrix costs = graph.getCostMatrix(u, v);
             graph.nodeCosts[v].add(new PBQPVector(costs.getRows(0)));
@@ -127,7 +128,7 @@ public class HeuristicSolver implements PBQPSolver
             for (AdjNode adj = graph.adjList[u]; adj != null; adj= adj.next)
             {
                 int v = adj.adj;
-                assert v >= 0 && v < graph.numNodes;
+                Util.assertion( v >= 0 && v < graph.numNodes);
                 if (u < v)
                 {
                     simplifyEdge(u, v);
@@ -157,7 +158,7 @@ public class HeuristicSolver implements PBQPSolver
     {
         int rows = costs.rows;
         int columns = costs.columns;
-        assert rows == u.getLength() && columns == v.getLength();
+        Util.assertion( rows == u.getLength() && columns == v.getLength());
 
         for (int r = 0; r < rows; r++)
         {
@@ -204,7 +205,7 @@ public class HeuristicSolver implements PBQPSolver
 
     private void createBucket(int u, int degree)
     {
-        assert u >= 0 && u < graph.numNodes;
+        Util.assertion( u >= 0 && u < graph.numNodes);
         BucketNode node = new BucketNode(u);
         graph.bucketNodes[u] = node;
         graph.addToBucketList(node, degree);
@@ -212,7 +213,7 @@ public class HeuristicSolver implements PBQPSolver
 
     private void reducePBQPGraph()
     {
-        assert graph.bucketList != null;
+        Util.assertion( graph.bucketList != null);
         int round = 1;
         int u;
         while (true)
@@ -258,11 +259,11 @@ public class HeuristicSolver implements PBQPSolver
      */
     private void solveTrivialNodes()
     {
-        assert graph.bucketList != null;
+        Util.assertion( graph.bucketList != null);
         while (graph.bucketList[0] != null)
         {
             int u = graph.popNode(0);
-            assert u >= 0 && u < graph.numNodes;
+            Util.assertion( u >= 0 && u < graph.numNodes);
             graph.solution[u] = graph.nodeCosts[u].minIndex();
             graph.min += graph.nodeCosts[u].get(graph.solution[u]);
         }
@@ -270,13 +271,13 @@ public class HeuristicSolver implements PBQPSolver
 
     private void backPropagate()
     {
-        assert graph.stack != null;
-        assert graph.stackPtr < graph.numNodes;
+        Util.assertion( graph.stack != null);
+        Util.assertion( graph.stackPtr < graph.numNodes);
 
         for (int i = graph.stackPtr -1 ; i>= 0; i--)
         {
             int u = graph.stack[i];
-            assert u >= 0 && u < graph.numNodes;
+            Util.assertion( u >= 0 && u < graph.numNodes);
             graph.reinsertNode(u);
             if (graph.solution[u] == -1)
             {
@@ -287,18 +288,18 @@ public class HeuristicSolver implements PBQPSolver
 
     private void applyRI(int u)
     {
-        assert u >= 0 && u < graph.numNodes;
-        assert graph.adjList[u] != null;
-        assert graph.adjList[u].next ==  null;
+        Util.assertion( u >= 0 && u < graph.numNodes);
+        Util.assertion( graph.adjList[u] != null);
+        Util.assertion( graph.adjList[u].next ==  null);
         int v = graph.adjList[u].adj;
-        assert v >= 0 && v < graph.numNodes;
+        Util.assertion( v >= 0 && v < graph.numNodes);
 
         int uLen = graph.nodeCosts[u].getLength();
         int vLen = graph.nodeCosts[v].getLength();
 
         PBQPVector vecU = graph.nodeCosts[u];
         PBQPMatrix costMat = graph.getCostMatrix(v, u);
-        assert costMat != null;
+        Util.assertion( costMat != null);
 
         PBQPVector delta = new PBQPVector(vLen);
 
@@ -318,21 +319,21 @@ public class HeuristicSolver implements PBQPSolver
 
         graph.removeNode(u);
         graph.reorderAdjNode(u);
-        assert graph.stackPtr < graph.numNodes;
+        Util.assertion( graph.stackPtr < graph.numNodes);
         graph.stack[graph.stackPtr++] = u;
     }
 
     private void applyRII(int u)
     {
-        assert u >= 0 && u < graph.numNodes;
-        assert graph.adjList[u] != null;
-        assert graph.adjList[u].next !=  null;
-        assert graph.adjList[u].next.next ==  null;
+        Util.assertion( u >= 0 && u < graph.numNodes);
+        Util.assertion( graph.adjList[u] != null);
+        Util.assertion( graph.adjList[u].next !=  null);
+        Util.assertion( graph.adjList[u].next.next ==  null);
 
         int y = graph.adjList[u].adj;
         int z = graph.adjList[u].next.adj;
-        assert y >= 0 && y < graph.numNodes;
-        assert z >= 0 && z < graph.numNodes;
+        Util.assertion( y >= 0 && y < graph.numNodes);
+        Util.assertion( z >= 0 && z < graph.numNodes);
 
         int ulen = graph.nodeCosts[u].getLength();
         int ylen = graph.nodeCosts[y].getLength();
@@ -341,7 +342,7 @@ public class HeuristicSolver implements PBQPSolver
         PBQPVector vecU = graph.nodeCosts[u];
         PBQPMatrix matYU = graph.getCostMatrix(y, u);
         PBQPMatrix matZU = graph.getCostMatrix(z, u);
-        assert matYU != null && matZU != null;
+        Util.assertion( matYU != null && matZU != null);
 
         PBQPMatrix delta = new PBQPMatrix(ylen, zlen);
 
@@ -365,14 +366,14 @@ public class HeuristicSolver implements PBQPSolver
         graph.removeNode(u);
         simplifyEdge(y, z);
         graph.reorderAdjNode(u);
-        assert graph.stackPtr < graph.numNodes;
+        Util.assertion( graph.stackPtr < graph.numNodes);
         graph.stack[graph.stackPtr++] = u;
     }
 
     private void applyRN(int u)
     {
-        assert u >= 0 && u < graph.numNodes;
-        assert graph.nodeCosts[u] != null;
+        Util.assertion( u >= 0 && u < graph.numNodes);
+        Util.assertion( graph.nodeCosts[u] != null);
         int ulen = graph.nodeCosts[u].getLength();
 
         // After simplification of RN rule no optimality can be guaranted.
@@ -390,7 +391,7 @@ public class HeuristicSolver implements PBQPSolver
                 PBQPMatrix mat = graph.getCostMatrix(u, y);
                 PBQPVector vec = graph.nodeCosts[y].clone();
 
-                assert mat != null;
+                Util.assertion( mat != null);
                 mat.addRow(sol, vec);
                 h += vec.min();
             }
@@ -401,7 +402,7 @@ public class HeuristicSolver implements PBQPSolver
             }
         }
 
-        assert minSol >= 0 && minSol < ulen;
+        Util.assertion( minSol >= 0 && minSol < ulen);
         graph.solution[u] = minSol;
 
         graph.min += graph.nodeCosts[u].get(minSol);
@@ -411,7 +412,7 @@ public class HeuristicSolver implements PBQPSolver
             PBQPMatrix mat = graph.getCostMatrix(u, y);
             mat.addRow(minSol, graph.nodeCosts[y]);
         }
-        assert graph.stackPtr < graph.numNodes;
+        Util.assertion( graph.stackPtr < graph.numNodes);
         graph.stack[graph.stackPtr++] = u;
         graph.removeNode(u);
         graph.reorderAdjNode(u);

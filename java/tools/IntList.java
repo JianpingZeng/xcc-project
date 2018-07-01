@@ -1,5 +1,6 @@
 package tools;
 
+import tools.Util;
 import java.util.Arrays;
 
 /**
@@ -32,7 +33,7 @@ public final class IntList
 	 */
 	public IntList(int[] array, int initialSize)
 	{
-		assert initialSize <= array.length;
+		Util.assertion( initialSize <= array.length);
 		this.array = array;
 		this.size = initialSize;
 	}
@@ -64,7 +65,7 @@ public final class IntList
 	public static IntList copy(IntList other, int startIndex, int length,
 			int initialCapacity)
 	{
-		assert initialCapacity >= length : "initialCapacity < getArraySize";
+		Util.assertion(initialCapacity >= length,  "initialCapacity < getArraySize");
 		int[] array = new int[initialCapacity];
 		System.arraycopy(other.array, startIndex, array, 0, length);
 		return new IntList(array, length);

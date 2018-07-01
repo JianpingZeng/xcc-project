@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 
 /**
@@ -86,25 +87,25 @@ public final class DAGInstruction
 
     public Record getResult(int idx)
     {
-        assert idx >= 0 && idx < results.size();
+        Util.assertion( idx >= 0 && idx < results.size());
         return results.get(idx);
     }
 
     public Record getOperand(int idx)
     {
-        assert idx >= 0 && idx < operands.size();
+        Util.assertion( idx >= 0 && idx < operands.size());
         return operands.get(idx);
     }
 
     public Record getImpResult(int idx)
     {
-        assert idx >= 0 && idx < impResults.size();
+        Util.assertion( idx >= 0 && idx < impResults.size());
         return impResults.get(idx);
     }
 
     public Record getImpOperand(int idx)
     {
-        assert idx >= 0 && idx < impOperands.size();
+        Util.assertion( idx >= 0 && idx < impOperands.size());
         return impOperands.get(idx);
     }
 }

@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
@@ -97,8 +98,8 @@ public final class Attribute
         if (i == 0)
             return 0;
 
-        assert Util.isPowerOf2(i) : "Alignment must be a power of two.";
-        assert i <= 0x40000000 : "Alignment too large.";
+        Util.assertion(Util.isPowerOf2(i),  "Alignment must be a power of two.");
+        Util.assertion(i <= 0x40000000,  "Alignment too large.");
         return (Util.log2(i) + 1) << 16;
     }
 
@@ -170,7 +171,7 @@ public final class Attribute
             result.append(" ");
         }
         // Trim the trailing space.
-        assert result.length() != 0 : "Unknown attribute!";
+        Util.assertion(result.length() != 0,  "Unknown attribute!");
         result.deleteCharAt(result.length() - 1);
         return result.toString();
     }

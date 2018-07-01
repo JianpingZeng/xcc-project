@@ -1,5 +1,6 @@
 package backend.support;
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.Function;
 import backend.value.Instruction.CallInst;
@@ -44,7 +45,7 @@ public class CallSite
 	 */
 	public Value getCalledValue()
 	{
-		assert inst != null:"Not a call instruction!";
+		Util.assertion(inst != null, "Not a call instruction!");
 		return inst.operand(0);
 	}
 
@@ -63,22 +64,22 @@ public class CallSite
 
 	public void setCalledFunction(Value v)
 	{
-		assert inst!= null:"Not a call inst";
+		Util.assertion(inst!= null, "Not a call inst");
 		inst.setOperand(0, v, inst);
 	}
 
 	public Value getArgument(int idx)
 	{
-		assert idx>=0 && idx < inst.getNumsOfArgs()
-				: StringFormatter.format("Argument #%d out of range!", idx).getValue();
+		Util.assertion(idx>=0 && idx < inst.getNumsOfArgs(),  StringFormatter.format("Argument #%d out of range!", idx).getValue());
+
 		return inst.operand(ArgumentOffset+idx);
 	}
 
 	public void setArgument(int idx, Value newVal)
 	{
-		assert inst!= null:"Not a call inst";
-		assert idx + ArgumentOffset >=1 && idx + 1 < inst.getNumsOfArgs()
-				:"Argument # out of range!";
+		Util.assertion(inst!= null, "Not a call inst");
+		Util.assertion(idx + ArgumentOffset >=1 && idx + 1 < inst.getNumsOfArgs(), "Argument # out of range!");
+
 		inst.setOperand(idx + ArgumentOffset, newVal, inst);
 	}
 

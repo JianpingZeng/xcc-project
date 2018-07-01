@@ -16,6 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
 import config.Config;
@@ -97,8 +98,8 @@ public final class CL
         // Process all registered options.
         getOptionInfo(positionalOpts, sinkOpts, optionsMap);
 
-        assert !(optionsMap.isEmpty() && positionalOpts
-                .isEmpty()) : "No options specified";
+        Util.assertion(!(optionsMap.isEmpty() && positionalOpts                .isEmpty()),  "No options specified");
+
 
         // Copy the program name into ProgName, making sure not to overflow it.
         if (args[0].equals("launcher"))
@@ -127,8 +128,8 @@ public final class CL
         {
             if (positionalOpts.get(0).getNumOccurrencesFlag() == ConsumeAfter)
             {
-                assert positionalOpts.size()
-                        > 1 : "Cannot specify ConsumeAfter without a positional argument!";
+                Util.assertion(positionalOpts.size()                        > 1,  "Cannot specify ConsumeAfter without a positional argument!");
+
                 ConsumeAfterOpt = positionalOpts.get(0);
             }
 
@@ -279,14 +280,14 @@ public final class CL
                         {
                             Value = ArgName.substring(length);
                             String prefixName = ArgName.substring(0, length);
-                            assert optionsMap.containsKey(prefixName)
-                                    && optionsMap.get(prefixName) == PGOpt;
+                            Util.assertion( optionsMap.containsKey(prefixName)                                    && optionsMap.get(prefixName) == PGOpt);
+
                             Handler = PGOpt;
                         }
                         else if (PGOpt != null)
                         {
                             // This must be a grouped option... handle them now.
-                            assert isGrouping.apply(PGOpt) : "Broken getOptionPred!";
+                            Util.assertion(isGrouping.apply(PGOpt),  "Broken getOptionPred!");
 
                             do
                             {
@@ -297,8 +298,8 @@ public final class CL
                                 // Because ValueRequired is an invalid flag for grouped arguments,
                                 // we don't need to pass args.length/args in...
                                 //
-                                assert PGOpt.getValueExpectedFlag()
-                                        != ValueRequired : "OptionInfo can not be Grouping AND ValueRequired!";
+                                Util.assertion(PGOpt.getValueExpectedFlag()                                        != ValueRequired,  "OptionInfo can not be Grouping AND ValueRequired!");
+
                                 OutParamWrapper<Integer> Dummy = new OutParamWrapper<>();
                                 ErrorParsing |= ProvideOption(PGOpt,
                                         RealArgName, null, null, Dummy);
@@ -432,8 +433,8 @@ public final class CL
         }
         else
         {
-            assert (ConsumeAfterOpt != null && NumPositionalRequired <= PositionalVals
-                    .size());
+            Util.assertion( (ConsumeAfterOpt != null && NumPositionalRequired <= PositionalVals                    .size()));
+
             int ValNo = 0;
             for (int j = 1, e = positionalOpts.size(); j != e; ++j)
                 if (RequiresValue(positionalOpts.get(j)))

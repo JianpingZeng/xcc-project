@@ -17,6 +17,7 @@
 
 package backend.transform.utils;
 
+import tools.Util;
 import backend.analysis.aa.AliasSetTracker;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
@@ -241,7 +242,7 @@ public final class PromoteMemToReg
 	public void run()
 	{
 		Function f = df.getRoot().getParent();
-		assert (f != null) : "The function of this Dominator Tree can not be null";
+		Util.assertion((f != null),  "The function of this Dominator Tree can not be null");
 
 		AllocaInfo info = new AllocaInfo();
 		LargeBlockInfo lbi = new LargeBlockInfo();
@@ -251,10 +252,10 @@ public final class PromoteMemToReg
 		for (int allocaNum = 0; allocaNum < allocas.size(); allocaNum++)
 		{
             AllocaInst ai = allocas.get(allocaNum);
-			assert isAllocaPromotable(ai)
-                    : "Can't promote non-promotable alloca";
-			assert ai.getParent().getParent().equals(f)
-                    : "All allocas should in the same method, which is same as DF!";
+			Util.assertion(isAllocaPromotable(ai),  "Can't promote non-promotable alloca");
+
+			Util.assertion(ai.getParent().getParent().equals(f),  "All allocas should in the same method, which is same as DF!");
+
 
 			// if it's use an intrinsic instruction, just remove it from
 			// attached basic block.
@@ -536,8 +537,8 @@ public final class PromoteMemToReg
                         if (itr.next().equals(curBB))
                             ++numEdges;
 
-					assert numEdges > 0
-                            : "Must be at least one edge form pred to curBB!";
+					Util.assertion(numEdges > 0,  "Must be at least one edge form pred to curBB!");
+
 
 					int idx = 1;
 					do
@@ -939,7 +940,7 @@ public final class PromoteMemToReg
 			User user = u.getUser();
 			if (!(user instanceof LoadInst))
 			{
-				assert (user instanceof StoreInst) : "Should only have store/load instruction.";
+				Util.assertion((user instanceof StoreInst),  "Should only have store/load instruction.");
 				continue;
 			}
 
@@ -1076,8 +1077,8 @@ public final class PromoteMemToReg
 		 */
 		public int getIndexOfInstruction(Instruction inst)
 		{
-			assert isIntertestingInstruction(inst)
-                    : "Not a load/store to/from an alloca?";
+			Util.assertion(isIntertestingInstruction(inst),  "Not a load/store to/from an alloca?");
+
 
 			// if it already exit in instNumbers list
 			if (instNumbers.containsKey(inst))
@@ -1095,8 +1096,8 @@ public final class PromoteMemToReg
 				if (isIntertestingInstruction(it))
 					instNumbers.put(it, no);
 			}
-			assert instNumbers.contains(inst)
-                    : "No this instruction in current basic block.";
+			Util.assertion(instNumbers.contains(inst),  "No this instruction in current basic block.");
+
 			return instNumbers.get(inst);
 		}
 
@@ -1117,8 +1118,8 @@ public final class PromoteMemToReg
 		 */
 		public void deleteValue(Instruction inst)
 		{
-			assert inst
-					!= null : "LargeBlockInformation.deleteValue(<null>) is invalid";
+			Util.assertion(inst					!= null,  "LargeBlockInformation.deleteValue(<null>) is invalid");
+
 			instNumbers.remove(inst);
 		}
 	}

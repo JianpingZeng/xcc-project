@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Loop;
@@ -44,14 +45,14 @@ public final class SCEVCouldNotCompute extends SCEV
     @Override
     public boolean isLoopInvariant(Loop loop)
     {
-        assert false : "Attempt to use a SCEVCouldNotCompute object!";
+        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
         return false;
     }
 
     @Override
     public boolean hasComputableLoopEvolution(Loop loop)
     {
-        assert false : "Attempt to use a SCEVCouldNotCompute object!";
+        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
         return false;
     }
 
@@ -64,7 +65,7 @@ public final class SCEVCouldNotCompute extends SCEV
     @Override
     public Type getType()
     {
-        assert false : "Attempt to use a SCEVCouldNotCompute object!";
+        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
         return null;
     }
 

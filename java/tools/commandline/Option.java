@@ -16,6 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 
 import static tools.commandline.FormattingFlags.FormattingMask;
@@ -88,7 +89,7 @@ public abstract class Option<T>
         optionName = "";
         helpStr = "";
         value = null;
-        assert getNumOccurrencesFlag() != null : "Not all default flags specified!";
+        Util.assertion(getNumOccurrencesFlag() != null,  "Not all default flags specified!");
     }
 
     public NumOccurrences getNumOccurrencesFlag()
@@ -229,7 +230,7 @@ public abstract class Option<T>
 
     public void addArgument()
     {
-        assert nextRegistered == null :"Could not register option multiple";
+        Util.assertion(nextRegistered == null, "Could not register option multiple");
 
         nextRegistered = CL.registeredOptionList;
         CL.registeredOptionList = this;

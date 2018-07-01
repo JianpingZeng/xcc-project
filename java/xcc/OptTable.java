@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import xcc.Arg.PositionalArg;
 import xcc.Option.OptionGroup;
 
@@ -41,7 +42,7 @@ public class OptTable
                 break;
             }
         }
-        assert firstSearchableOption < getNumOptions();
+        Util.assertion( firstSearchableOption < getNumOptions());
     }
 
     public int getNumOptions()
@@ -69,7 +70,7 @@ public class OptTable
         if (index == OPT_INVALID)
             return null;
 
-        assert index < getNumOptions();
+        Util.assertion( index < getNumOptions());
         if (options[index] != null)
             return options[index];
         else
@@ -82,7 +83,7 @@ public class OptTable
 
     public OptionGroup getOptionGroup(int groupID)
     {
-        assert groupID >= GroupID.GRP_INVALID && groupID < GroupID.GRP_Last;
+        Util.assertion( groupID >= GroupID.GRP_INVALID && groupID < GroupID.GRP_Last);
         if (groupID == GroupID.GRP_INVALID)
             return null;
 
@@ -99,7 +100,7 @@ public class OptTable
                 break;
             }
         }
-        assert grp != null:"Unknown group id!";
+        Util.assertion(grp != null, "Unknown group id!");
         groups[groupID] = new OptionGroup(groupID, grp.name, getOptionGroup(grp.group));
         return groups[groupID];
     }
@@ -142,9 +143,9 @@ public class OptTable
                 res = Option.UnknownOption.staticFactory();
                 break;
             default:
-                assert false:"Unknown Option kind!";
+                Util.assertion(false, "Unknown Option kind!");
         }
-        assert res != null;
+        Util.assertion( res != null);
         int flags = info.flags;
         if ((flags & JlangFlags.CC1Option) != 0)
             res.setCC1Option(true);

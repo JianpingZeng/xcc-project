@@ -17,6 +17,7 @@
 
 package utils.llc;
 
+import tools.Util;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.RegAllocLinearScan;
 import backend.codegen.RegAllocLocal;
@@ -377,7 +378,7 @@ public class LLC
                 }
                 return true;
                 default:
-                assert false:"Unknown output file type";
+                Util.assertion(false, "Unknown output file type");
                 return false;
         }
     }
@@ -435,7 +436,7 @@ public class LLC
      */
     private static void computeFeatureMap(TargetInfo target, HashMap<String, Boolean> features)
     {
-        assert features.isEmpty() :"Invalid map";
+        Util.assertion(features.isEmpty(), "Invalid map");
 
         // Initialze the feature map based on the target.
         String targetCPU = TargetCPU.value;

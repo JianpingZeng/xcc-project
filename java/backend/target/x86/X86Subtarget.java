@@ -16,6 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.CallingConv;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
@@ -203,7 +204,7 @@ public class X86Subtarget extends TargetSubtarget
 
         Util.Debug("Subtarget features: SSELevel " + x86SSELevel
                 + ", 3DNowLevel " + x863DNowLevel + ", 64bit " + hasX86_64);
-        assert !is64bit || hasX86_64 :"64-bit code requested on a subtarget that doesn't support it!";
+        Util.assertion(!is64bit || hasX86_64, "64-bit code requested on a subtarget that doesn't support it!");
         if (tt.length() > 5)
         {
             int pos = -1;

@@ -26,9 +26,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
 
-import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralStatementOperand;
-import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralTextOperand;
-import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isMachineInstrOperand;
+import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.*;
 
 /**
  * This class defined for generating partial code of AsmWriter, like Intel or
@@ -435,6 +433,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 + "import backend.codegen.MachineInstr;\n"
                 + "import backend.target.TargetAsmInfo;\n\n"
                 + "import java.io.OutputStream;");
+        os.println("import tools.Util;");
 
         emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
         CodeGenTarget target = new CodeGenTarget();
@@ -559,7 +558,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 break;
 
             int numBits = Util.log2Ceil(uniqueOperandCommands.size());
-            assert bitsLeft >= numBits:"Not enough bits to densely encode %d more bits\n";
+            Util.assertion(bitsLeft >= numBits, "Not enough bits to densely encode %d more bits\n");
             operandOffsets.add(numBits);
             for (int i = 0, e = instIdxs.size(); i != e; i++)
             {
@@ -579,7 +578,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                     if (!inst.operands.isEmpty())
                     {
                         int numOps = numInstOpsHandled.get(instIdxs.get(j));
-                        assert numOps <= inst.operands.size() : "Can't remove this many ops!";
+                        Util.assertion(numOps <= inst.operands.size(),  "Can't remove this many ops!");
                         for (int t = 0; t != numOps; t++)
                         {
                             inst.operands.remove(t);
@@ -594,7 +593,7 @@ public final class AsmWriterEmitter extends TableGenBackend
             tableDrivenOperandPrinters.add(uniqueOperandCommands);
         }
 
-        assert operandOffsets.size() == tableDrivenOperandPrinters.size();
+        Util.assertion( operandOffsets.size() == tableDrivenOperandPrinters.size());
 
         os.printf("\tprivate static final long[][] opInfo = {\n");
         for (int i = 0, e = numberedInstructions.size(); i != e; i++)
@@ -624,12 +623,11 @@ public final class AsmWriterEmitter extends TableGenBackend
 
             if (aggregateString.charAt(i) == '\\')
             {
-                assert i + 1 < aggregateString.length() :"Incomplete escape sequence!";
+                Util.assertion(i + 1 < aggregateString.length(), "Incomplete escape sequence!");
                 if (Character.isDigit(aggregateString.charAt(i+1)))
                 {
-                    assert Character.isDigit(aggregateString.charAt(i + 2))
-                            && Character.isDigit(aggregateString.charAt(i + 3))
-                            : "Expected 3 digit octal escape!";
+                    Util.assertion(Character.isDigit(aggregateString.charAt(i + 2))                            && Character.isDigit(aggregateString.charAt(i + 3)),  "Expected 3 digit octal escape!");
+
                     os.print(aggregateString.charAt(++i));
                     os.print(aggregateString.charAt(++i));
                     os.print(aggregateString.charAt(++i));
@@ -657,7 +655,7 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         os.print("\t\t// Emit the opcode for the instruction.\n\n"
                 + "\t\tlong bits = opInfo[mi.getOpcode()][0];\n"
-                + "\t\tassert bits != 0 : \"Cannot print this instruction\";\n\n");
+                + "\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n\n");
         int asmStrBitsMask = (1 << asmStrBits) - 1;
         os.printf("\t\t// Starting index of asm name encoded into %d bit%n", asmStrBits);
 
@@ -836,9 +834,9 @@ public final class AsmWriterEmitter extends TableGenBackend
 
     private AsmWriterInst getAsmWriterInstByID(int id)
     {
-        assert id < numberedInstructions.size();
+        Util.assertion( id < numberedInstructions.size());
         CodeGenInstruction inst = numberedInstructions.get(id);
-        assert cgiMapToawi.containsKey(inst):"Didn't find inst!";
+        Util.assertion(cgiMapToawi.containsKey(inst), "Didn't find inst!");
         return cgiMapToawi.get(inst);
     }
 

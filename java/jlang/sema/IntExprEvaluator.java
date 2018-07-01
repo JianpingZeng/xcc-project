@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.ast.Tree.*;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
@@ -45,11 +46,11 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
     protected boolean success(final APSInt si, final Expr e)
     {
-        assert e.getType().isIntegralOrEnumerationType()
-                :"Invalid evaluation result.";
-        assert si.isSigned() == context.isSignedIntegerOrEnumerationType(e.getType())
-                :"Invalid evaluation result.";
-        assert si.getBitWidth() == context.getIntWidth(e.getType()):"Invalid evaluation result.";
+        Util.assertion(e.getType().isIntegralOrEnumerationType(), "Invalid evaluation result.");
+
+        Util.assertion(si.isSigned() == context.isSignedIntegerOrEnumerationType(e.getType()), "Invalid evaluation result.");
+
+        Util.assertion(si.getBitWidth() == context.getIntWidth(e.getType()), "Invalid evaluation result.");
 
         result.set(new APValue(si));
         return true;
@@ -57,9 +58,9 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
     protected boolean success(final APInt i, final Expr e)
     {
-        assert e.getType().isIntegralOrEnumerationType()
-                :"Invalid evaluation result.";
-        assert i.getBitWidth() == context.getIntWidth(e.getType()):"Invalid evaluation result.";
+        Util.assertion(e.getType().isIntegralOrEnumerationType(), "Invalid evaluation result.");
+
+        Util.assertion(i.getBitWidth() == context.getIntWidth(e.getType()), "Invalid evaluation result.");
 
         result.set(new APValue(new APSInt(i)));
         result.get().getInt().setIsUnsigned(
@@ -69,8 +70,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
     private boolean success(long value, final  Expr e)
     {
-        assert e.getType().isIntegralOrEnumerationType()
-                :"Invalid evaluation result.";
+        Util.assertion(e.getType().isIntegralOrEnumerationType(), "Invalid evaluation result.");
+
         result.set(new APValue(context.makeIntValue(value, e.getType())));
         return true;
     }
@@ -128,9 +129,10 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             }
             else
             {
-                // Get rid of mismatch (otherwise Success assertions will fail)
+                // Get rid of mismatch (otherwise Success assertion will fail)
                 // by computing a new value matching the jlang.type of E.
                 APSInt val = ecd.getInitValue();
+
                 if (!sameSign)
                     val.setIssigned(!ecd.getInitValue().isSigned());
                 if (!sameWidth)
@@ -252,7 +254,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         if (lhsTy.isComplexType())
         {
-            assert rhsTy.isComplexType():"Invalid comparison";
+            Util.assertion(rhsTy.isComplexType(), "Invalid comparison");
             // TODO Clang 3.0 ExprConstant.clex:1398
         }
 
@@ -548,7 +550,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         // Handle alignof separately.
         if (!expr.isSizeof())
         {
-            assert false:"Alignof operator not supported currently";
+            Util.assertion(false, "Alignof operator not supported currently");
             return false;
         }
 

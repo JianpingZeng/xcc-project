@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.type.FunctionType;
@@ -78,7 +79,7 @@ public class CodeGenTypes
 
         public void setReturnInfo(ABIArgInfo retInfo)
         {
-            assert args != null && args.length > 0;
+            Util.assertion( args != null && args.length > 0);
             args[0].info = retInfo;
         }
 
@@ -88,14 +89,14 @@ public class CodeGenTypes
 
         public ArgInfo getArgInfoAt(int idx)
         {
-            assert idx>=0 && idx < getNumOfArgs();
+            Util.assertion( idx>=0 && idx < getNumOfArgs());
             return args[idx+1];
         }
 
         public void setArgInfo(int index, ABIArgInfo argInfo)
         {
-            assert  args != null && args.length > 1 &&
-                    index >= 0 && index < getNumOfArgs();
+            Util.assertion(  args != null && args.length > 1 &&                    index >= 0 && index < getNumOfArgs());
+
             args[index + 1].info = argInfo;
         }
 
@@ -225,7 +226,7 @@ public class CodeGenTypes
             return theABIInfo;
 
         String prefix = getContext().target.getTargetPrefix();
-        assert prefix.equals("x86") :"Not supported CPU architecture '" + prefix + "'";
+        Util.assertion(prefix.equals("x86"), "Not supported CPU architecture '" + prefix + "'");
         int bitwidth = getContext().target.getPointerWidth(0);
         switch (bitwidth)
         {
@@ -243,7 +244,7 @@ public class CodeGenTypes
     public backend.type.FunctionType getFunctionType(CGFunctionInfo fi, boolean isVaridic)
     {
         boolean inserted = functionBeingProcessed.contains(fi);
-        assert !inserted:"recursively process function.";
+        Util.assertion(!inserted, "recursively process function.");
 
         functionBeingProcessed.add(fi);
         ArrayList<Type> argTypes = new ArrayList<>();
@@ -323,21 +324,21 @@ public class CodeGenTypes
             }
         }
         boolean erased = functionBeingProcessed.remove(fi);
-        assert erased:"Not in set?";
+        Util.assertion(erased, "Not in set?");
         return FunctionType.get(restType, argTypes, isVaridic);
     }
 
     private void getExpandedTypes(QualType ty, ArrayList<Type> argTys)
     {
         RecordType rt = ty.getAsStructureType();
-        assert rt != null:"Can only expand structure types.";
+        Util.assertion(rt != null, "Can only expand structure types.");
         Decl.RecordDecl rd = rt.getDecl();
-        assert !rd.hasFlexibleArrayNumber():"Cannot expand structure with flexible array";
+        Util.assertion(!rd.hasFlexibleArrayNumber(), "Cannot expand structure with flexible array");
 
         for (int i = 0, e = rd.getNumFields(); i != e; i++)
         {
             FieldDecl fd = rd.getDeclAt(i);
-            assert !fd.isBitField():"Canot expand structure with bit field members";
+            Util.assertion(!fd.isBitField(), "Canot expand structure with bit field members");
 
             QualType fdTy = fd.getType();
             if (hasAggregateLLVMType(fdTy))
@@ -380,7 +381,7 @@ public class CodeGenTypes
             return LLVMContext.FP128Ty;
         if (flt.equals(APFloat.x87DoubleExtended))
             return LLVMContext.X86_FP80Ty;
-        assert false:"Unknown float format!";
+        Util.assertion(false, "Unknown float format!");
         return null;
     }
 
@@ -482,7 +483,7 @@ public class CodeGenTypes
             case Complex:
             {
                 // TODO 9/26
-                assert false:"ComplexType is not supported";
+                Util.assertion(false, "ComplexType is not supported");
                 break;
             }
             case Pointer:
@@ -496,7 +497,7 @@ public class CodeGenTypes
             case VariableArray:
             {
                 VariableArrayType a = (VariableArrayType)ty;
-                assert a.getIndexTypeQuals() == 0 : "FIXME: we only handle trivial array!";
+                Util.assertion(a.getIndexTypeQuals() == 0,  "FIXME: we only handle trivial array!");
 
                 // VLAs resolve to the innermost element type; this matches
                 // the return of alloca, and there isn't any obviously better choice.
@@ -505,8 +506,8 @@ public class CodeGenTypes
             case IncompleteArray:
             {
                 ArrayType.IncompleteArrayType a = (ArrayType.IncompleteArrayType) ty;
-                assert a.getIndexTypeQuals() == 0
-                        : "FIXME: we only handle trivial array!";
+                Util.assertion(a.getIndexTypeQuals() == 0,  "FIXME: we only handle trivial array!");
+
 
                 // int X[] -> [0 x int], unless the element type is not sized.  If it is
                 // unsized (e.g. an incomplete struct) just use [0 x i8].
@@ -680,14 +681,14 @@ public class CodeGenTypes
 
         // Okay, this is a definition of a type.  Compile the implementation now.
         boolean insertResult = recordBeingLaidOut.add(key);
-        assert insertResult:"Recursively compiling a struct?";
+        Util.assertion(insertResult, "Recursively compiling a struct?");
 
         CGRecordLayout layout = CGRecordLayoutBuilder.computeLayout(this, decl);
         cgRecordLayout.put(key, layout);
 
         // We're done laying out this struct.
         boolean eraseResult = recordBeingLaidOut.remove(key);
-        assert eraseResult:"struct not in RecordsBeingLaidOut set?";
+        Util.assertion(eraseResult, "struct not in RecordsBeingLaidOut set?");
 
         if (skipLayout)
             typeCaches.clear();
@@ -895,8 +896,8 @@ public class CodeGenTypes
 
     public int getFieldNo(FieldDecl field)
     {
-        assert !field.isBitField():"Don't use getFieldNo on bitfield.";
-        assert fieldInfo.containsKey(field):"Unable to find field no!";
+        Util.assertion(!field.isBitField(), "Don't use getFieldNo on bitfield.");
+        Util.assertion(fieldInfo.containsKey(field), "Unable to find field no!");
         return fieldInfo.get(field);
     }
 
@@ -907,7 +908,7 @@ public class CodeGenTypes
 
     public BitFieldInfo getBitFieldInfo(FieldDecl field)
     {
-        assert bitfields.containsKey(field):"Unable to find field no!";
+        Util.assertion(bitfields.containsKey(field), "Unable to find field no!");
 
         return bitfields.get(field);
     }
@@ -930,14 +931,14 @@ public class CodeGenTypes
     public void getExpandedType(QualType type, ArrayList<Type> argTys)
     {
         RecordType rt = type.getAsStructureType();
-        assert rt != null:"Can only expand structure types!";
+        Util.assertion(rt != null, "Can only expand structure types!");
         Decl.RecordDecl rd = rt.getDecl();
-        assert !rd.hasFlexibleArrayNumber():
-                "Can not expand structure with flexible member!";
+        Util.assertion(!rd.hasFlexibleArrayNumber(),                 "Can not expand structure with flexible member!");
+
         for (int i = 0, e = rd.getNumFields(); i < e; i++)
         {
             FieldDecl fd = rd.getDeclAt(i);
-            assert !fd.isBitField():"Can't expand structure with bit field!";
+            Util.assertion(!fd.isBitField(), "Can't expand structure with bit field!");
             QualType qt = fd.getType();
             if (hasAggregateLLVMType(qt))
             {

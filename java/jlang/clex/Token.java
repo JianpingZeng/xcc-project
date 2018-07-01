@@ -1,5 +1,6 @@
 package jlang.clex;
 
+import tools.Util;
 import jlang.support.SourceLocation;
 
 import static jlang.clex.Token.TokenFlags.*;
@@ -91,19 +92,19 @@ public class Token implements Cloneable
 
     public StrData getLiteralData()
     {
-        assert isLiteral(): "Cannot get literal data of non-literal";
+        Util.assertion(isLiteral(),  "Cannot get literal data of non-literal");
         return (StrData) data;
     }
 
     public void setLiteralData(char[] buffer, int offset)
     {
-        assert isLiteral(): "Cannot get literal data of non-literal";
+        Util.assertion(isLiteral(),  "Cannot get literal data of non-literal");
         data = new StrData(buffer, offset);
     }
 
     public void setLiteralData(StrData data)
     {
-        assert isLiteral(): "Cannot get literal data of non-literal";
+        Util.assertion(isLiteral(),  "Cannot get literal data of non-literal");
         this.data = data;
     }
 

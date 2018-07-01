@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -44,7 +45,7 @@ public class InputArgList extends ArgList
     @Override
     public String getArgString(int index)
     {
-        assert index >= 0 && index < argStrings.size();
+        Util.assertion( index >= 0 && index < argStrings.size());
         return argStrings.get(index);
     }
 

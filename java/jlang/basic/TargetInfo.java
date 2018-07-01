@@ -16,6 +16,7 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.FltSemantics;
 import jlang.support.LangOptions;
 import backend.support.Triple;
@@ -135,7 +136,7 @@ public abstract class TargetInfo
     private static void defineStd(StringBuilder buf, String macroName,
             LangOptions langOpts)
     {
-        assert macroName.charAt(0) != '_' : "identifier should be in user space";
+        Util.assertion(macroName.charAt(0) != '_',  "identifier should be in user space");
         // If we are in gnu mode (e.g. -std=gnu99 but not -std=c99)
         // define the raw identifier in the user's namespace.
         if (langOpts.gnuMode)
@@ -401,7 +402,7 @@ public abstract class TargetInfo
             case UnsignedLongLong:
                 return "unsigned long long int";
             default:
-                assert false : "not an integer type!";
+                Util.assertion(false,  "not an integer type!");
         }
         return null;
     }

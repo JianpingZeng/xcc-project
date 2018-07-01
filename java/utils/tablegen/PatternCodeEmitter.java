@@ -17,6 +17,7 @@
 
 package utils.tablegen;
 
+import tools.Util;
 import backend.codegen.MVT;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -112,20 +113,20 @@ public class PatternCodeEmitter
 
     public void emitDecl(String decl)
     {
-        assert decl!= null && !decl.isEmpty():"Invalid declaration";
+        Util.assertion(decl!= null && !decl.isEmpty(), "Invalid declaration");
         generatedDecls.add(decl);
     }
 
     public void emitOpcode(String opc)
     {
-        assert opc != null && !opc.isEmpty():"Invalid opcode!";
+        Util.assertion(opc != null && !opc.isEmpty(), "Invalid opcode!");
         targetOpcodes.add(opc);
         opcNo++;
     }
 
     public void emitVT(String vt)
     {
-        assert vt != null && !vt.isEmpty():"Invalid vt!";
+        Util.assertion(vt != null && !vt.isEmpty(), "Invalid vt!");
         targetVTs.add(vt);
         vtNo++;
     }
@@ -208,7 +209,7 @@ public class PatternCodeEmitter
             }
             else if (!nodeIsComplexPattern(node))
             {
-                assert false:"Must be complex pattern for leaf value!";
+                Util.assertion(false, "Must be complex pattern for leaf value!");
                 System.exit(-1);
             }
         }
@@ -404,8 +405,8 @@ public class PatternCodeEmitter
             }
             if (nodeHasProperty(child, SDNPOutFlag, cgp))
             {
-                assert (foldedFlag.first == null || foldedFlag.first.isEmpty())
-                        && foldedFlag.second == 0;
+                Util.assertion( (foldedFlag.first == null || foldedFlag.first.isEmpty())                        && foldedFlag.second == 0);
+
                 foldedFlag = Pair.get(rootName, info.getNumResults() + hasChain);
             }
         }
@@ -444,7 +445,7 @@ public class PatternCodeEmitter
                 {
                     // handle complex pattern.
                     ComplexPattern cp = nodeGetComplexPattern(child, cgp);
-                    assert cp != null;
+                    Util.assertion( cp != null);
                     String fn = cp.getSelectFunc();
 
                     int numOps = cp.getNumOperands();
@@ -493,7 +494,7 @@ public class PatternCodeEmitter
                             rootName, leafRec.getName()));
                 }
                 else
-                    assert false:"Unknown leaf value!";
+                    Util.assertion(false, "Unknown leaf value!");
                 child.getPredicateFns().forEach(pred->
                 {
                     emitCheck(pred + "("+rootName+".getNode())");
@@ -510,7 +511,7 @@ public class PatternCodeEmitter
                 emitCheck("cn"+cTmp+" == " + ii+"L");
             }
             else
-                assert false:"Unknown leaf value!";
+                Util.assertion(false, "Unknown leaf value!");
         }
         return foundChain;
     }
@@ -710,12 +711,12 @@ public class PatternCodeEmitter
     static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp)
     {
         int extVT = pat.getExtTypeNum(0);
-        assert isExtIntegerInVTs(pat.getExtTypes()) ||
-                isExtFloatingPointInVTs(pat.getExtTypes())||
+        Util.assertion(isExtIntegerInVTs(pat.getExtTypes()) ||                isExtFloatingPointInVTs(pat.getExtTypes())||
                 extVT == MVT.isVoid ||
                 extVT == MVT.Flag ||
                 extVT == MVT.iPTR ||
-                extVT == MVT.iPTRAny:"Not a valid pattern node to size";
+                extVT == MVT.iPTRAny, "Not a valid pattern node to size");
+
         int size = 3;
         if (pat.isLeaf() && pat.getLeafValue() instanceof IntInit)
             size += 2;
@@ -841,7 +842,7 @@ public class PatternCodeEmitter
             int resNo = tmpNo++;
             if (!node.isLeaf() && node.getOperator().getName().equals("imm"))
             {
-                assert node.getExtTypes().size() == 1 :"Multiple types not handled!";
+                Util.assertion(node.getExtTypes().size() == 1, "Multiple types not handled!");
                 String castType = null, tmpVar = "tmp" + resNo;
                 switch(node.getTypeNum(0))
                 {
@@ -871,7 +872,7 @@ public class PatternCodeEmitter
             }
             else if (!node.isLeaf() && node.getOperator().getName().equals("fpimm"))
             {
-                assert node.getExtTypes().size() == 1:"Multiple types not be handled yet!";
+                Util.assertion(node.getExtTypes().size() == 1, "Multiple types not be handled yet!");
                 String tmpVar = "tmp" + resNo;
                 emitCode(String.format("SDValue %s = curDAG.getTargetConstantFP(((ConstantFPSDNode)%s)"
                         + ".getConstantFPValue(), ((ConstantFPSDNode)%s).getValueType(0));",
@@ -976,14 +977,14 @@ public class PatternCodeEmitter
             {
                 IntInit ii = (IntInit)node.getLeafValue();
                 int resNo = tmpNo++;
-                assert node.getExtTypes().size() == 1:"Multiple types are not handled yet!";
+                Util.assertion(node.getExtTypes().size() == 1, "Multiple types are not handled yet!");
                 emitCode(String.format("SDValue tmp%d = curDAG.getTargetConstant(%dL, new EVT(%s));",
                       resNo, ii.getValue(), getEnumName(node.getTypeNum(0))));
                 nodeOps.add("tmp"+resNo);
                 return nodeOps;
             }
 
-            assert false :"Unknown leaf value!";
+            Util.assertion(false, "Unknown leaf value!");
             return nodeOps;
         }
 
@@ -1136,7 +1137,7 @@ public class PatternCodeEmitter
 
             StringBuilder code = new StringBuilder("opc" + opcNo);
 
-            assert !cgInst.theDef.getName().isEmpty();
+            Util.assertion( !cgInst.theDef.getName().isEmpty());
             emitOpcode(cgp.getTarget().getName()+"GenInstrNames."+cgInst.theDef.getName());
 
             if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid)
@@ -1291,7 +1292,7 @@ public class PatternCodeEmitter
                     }
                     else
                     {
-                        assert nodeHasProperty(pattern, SDNPOutFlag, cgp);
+                        Util.assertion( nodeHasProperty(pattern, SDNPOutFlag, cgp));
                         replaceFroms.add(String.format("new SDValue(n.getNode(), %d)",
                                 numPatResults + (inputHasChain ? 1 : 0)));
                         replaceTos.add("inFlag");
@@ -1379,7 +1380,7 @@ public class PatternCodeEmitter
 
         if (op.isSubClassOf("SDNodeXForm"))
         {
-            assert node.getNumChildren() == 1:"node xform should have one child!";
+            Util.assertion(node.getNumChildren() == 1, "node xform should have one child!");
 
             ArrayList<String> ops = emitResultCode(node.getChild(0), destRegs,
                     inFlagDecled, resNodeDecled, true, false);

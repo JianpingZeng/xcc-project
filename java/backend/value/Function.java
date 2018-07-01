@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.codegen.MachineFunction;
 import backend.intrinsic.Intrinsic;
 import backend.support.AttrList;
@@ -55,7 +56,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         for (int i = 0, e = ty.getNumParams(); i < e; i++)
         {
             Type t = ty.getParamType(i);
-            assert !t.isVoidType() : "Can't have void typed argument!";
+            Util.assertion(!t.isVoidType(),  "Can't have void typed argument!");
             Argument arg = new Argument(t);
             argumentList.add(arg);
             arg.setParent(this);
@@ -126,7 +127,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
      */
     public void addBasicBlock(BasicBlock bb)
     {
-        assert bb != null:"Can't add a null block!";
+        Util.assertion(bb != null, "Can't add a null block!");
         if (basicBlockList.contains(bb))
             return;
 
@@ -137,8 +138,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public void addBasicBlockBefore(BasicBlock beforePos, BasicBlock bb)
     {
-        assert beforePos != null && basicBlockList.contains(beforePos);
-        assert bb != null && !basicBlockList.contains(bb);
+        Util.assertion( beforePos != null && basicBlockList.contains(beforePos));
+        Util.assertion( bb != null && !basicBlockList.contains(bb));
         int idx = basicBlockList.indexOf(beforePos);
         basicBlockList.add(idx, bb);
         bb.setParent(this);
@@ -147,8 +148,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public void addBasicBlockAfter(BasicBlock afterPos, BasicBlock bb)
     {
-        assert afterPos != null && basicBlockList.contains(afterPos);
-        assert bb != null && !basicBlockList.contains(bb);
+        Util.assertion( afterPos != null && basicBlockList.contains(afterPos));
+        Util.assertion( bb != null && !basicBlockList.contains(bb));
         int idx = basicBlockList.indexOf(afterPos);
         basicBlockList.add(idx+1, bb);
         bb.setParent(this);
@@ -230,7 +231,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public Argument argAt(int index)
     {
-        assert index >= 0 && index < getNumOfArgs();
+        Util.assertion( index >= 0 && index < getNumOfArgs());
         return argumentList.get(index);
     }
 

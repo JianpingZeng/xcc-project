@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import tools.Pair;
@@ -162,9 +163,9 @@ public final class MachineDomTreeInfo
 
     private boolean dominateBySlowTreeWalk(DomTreeNodeBase<MachineBasicBlock> A, DomTreeNodeBase<MachineBasicBlock> B)
     {
-        assert (A != B);
-        assert (isReachableFromEntry(B));
-        assert (isReachableFromEntry(A));
+        Util.assertion( (A != B));
+        Util.assertion( (isReachableFromEntry(B)));
+        Util.assertion( (isReachableFromEntry(A)));
 
         DomTreeNodeBase<MachineBasicBlock> IDom = null;
         while ((IDom = B.getIDom()) != null && IDom != A && IDom != B)
@@ -207,16 +208,16 @@ public final class MachineDomTreeInfo
      */
     public boolean isReachableFromEntry(MachineBasicBlock BB)
     {
-        assert isPostDominators() :
-                "This is not implemented for post dominatror";
+        Util.assertion(isPostDominators(),                 "This is not implemented for post dominatror");
+
         MachineBasicBlock entry = m.getEntryBlock();
         return dominates(entry, BB);
     }
 
     public boolean isReachableFromEntry(DomTreeNodeBase<MachineBasicBlock> node)
     {
-        assert isPostDominators() :
-                "This is not implemented for post dominatror";
+        Util.assertion(isPostDominators(),                 "This is not implemented for post dominatror");
+
 
         DomTreeNodeBase<MachineBasicBlock> entry = domTreeNodes.get(m.getEntryBlock());
         return dominates(entry, node);
@@ -379,7 +380,7 @@ public final class MachineDomTreeInfo
                 if (BBNode != null) continue;
 
                 MachineBasicBlock ImmDom = this.iDoms.get(W);
-                assert (ImmDom != null || this.domTreeNodes.get(null) != null);
+                Util.assertion( (ImmDom != null || this.domTreeNodes.get(null) != null));
 
                 // Get or calculates the node for the imediate dominator
                 DomTreeNodeBase<MachineBasicBlock> IDomNode = this.getTreeNodeForBlock(ImmDom);
@@ -588,8 +589,8 @@ public final class MachineDomTreeInfo
     public MachineBasicBlock findNearestCommonDominator(MachineBasicBlock bb1,
             MachineBasicBlock bb2)
     {
-        assert !isPostDominators() :"This is not implement for post dominator";
-        assert bb1.getParent() == bb1.getParent():"Two blocks are not in the same function";
+        Util.assertion(!isPostDominators(), "This is not implement for post dominator");
+        Util.assertion(bb1.getParent() == bb1.getParent(), "Two blocks are not in the same function");
 
         // If either bb1 or bb2 is entry, then entry is returned.
         MachineBasicBlock entry = bb1.getParent().getEntryBlock();
@@ -639,15 +640,15 @@ public final class MachineDomTreeInfo
     public void eraseNode(MachineBasicBlock bb)
     {
         DomTreeNodeBase<MachineBasicBlock> node = getTreeNodeForBlock(bb);
-        assert node != null :"Removed node is not in Dominator tree!";
-        assert node.getChildren().isEmpty():"Node is not a leaf node!";
+        Util.assertion(node != null, "Removed node is not in Dominator tree!");
+        Util.assertion(node.getChildren().isEmpty(), "Node is not a leaf node!");
 
         // Remove the node from it's immediate dominator children list.
         DomTreeNodeBase<MachineBasicBlock> idom = node.getIDom();
         if (idom != null)
         {
-            assert idom.getChildren().contains(node) :
-                    "Not in immediate dominator children list";
+            Util.assertion(idom.getChildren().contains(node),                     "Not in immediate dominator children list");
+
             idom.getChildren().remove(node);
         }
         domTreeNodes.remove(bb, node);

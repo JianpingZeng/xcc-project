@@ -1,5 +1,6 @@
 package backend.target.x86;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
 import backend.support.Attribute;
@@ -248,7 +249,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				return 7;
 
 			default:
-				assert isVirtualRegister(regNo) : "Undefined physical register!";
+				Util.assertion(isVirtualRegister(regNo),  "Undefined physical register!");
 				Util.shouldNotReachHere(
 						"Register allocator hasn't allocated reg correctly yet!");
 				return 0;
@@ -270,7 +271,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 */
 	public int getDwarfRegNum(int regNum, boolean isEH)
 	{
-		assert false : "Shoult not reaching here!";
+		Util.assertion(false,  "Shoult not reaching here!");
 		return 0;
 	}
 
@@ -554,8 +555,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 			int frameIndex = mfi.createFixedObject(slotSize,
 					-slotSize + tfi.getLocalAreaOffset());
-			assert frameIndex == mfi
-					.getObjectIndexBegin() : "Slot for EBP register must be last in order to be found!";
+			Util.assertion(frameIndex == mfi					.getObjectIndexBegin(),  "Slot for EBP register must be last in order to be found!");
+
 		}
 	}
 
@@ -563,7 +564,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			int framePtr)
 	{
 		// TODO: 17-7-20
-		assert false : "Should not reaching here";
+		Util.assertion(false,  "Should not reaching here");
 	}
 
 	@Override public int getRARegister()
@@ -594,7 +595,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			else
 			{
 				int align = mfi.getObjectAlignment(fi);
-				assert (-(offset + stackSize)) % align == 0;
+				Util.assertion( (-(offset + stackSize)) % align == 0);
 				align = 0;
 				return offset + stackSize;
 			}
@@ -870,7 +871,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				}
 				else
 				{
-					assert old.getOpcode() == getCallFrameDestroyOpcode();
+					Util.assertion( old.getOpcode() == getCallFrameDestroyOpcode());
 
 					long calleeAmt = old.getOperand(1).getImm();
 					amount -= calleeAmt;
@@ -931,8 +932,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		{
 			// creates a stack object for saving EBP.
 			int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
-			assert frameIndex == mf.getFrameInfo().getObjectIndexEnd()
-					- 1 : "The slot for EBP must be last";
+			Util.assertion(frameIndex == mf.getFrameInfo().getObjectIndexEnd()					- 1,  "The slot for EBP must be last");
+
 		}
 	}
 
@@ -944,8 +945,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		while (!mi.getOperand(i).isFrameIndex())
 		{
 			i++;
-			assert i < mi.getNumOperands()
-                    : "Instr have not frame index operand!";
+			Util.assertion(i < mi.getNumOperands(),  "Instr have not frame index operand!");
+
 		}
 
 		int frameIndex = mi.getOperand(i).getIndex();
@@ -1249,8 +1250,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		// get the position where epilogue code will inserts after.
 		int mbbi = mbb.size()-1;
 		MachineInstr mi;
-		assert mbb.getInstAt(mbbi).getOpcode() == RET
-				:"Can only insert epilogue code into returning blocks";
+		Util.assertion(mbb.getInstAt(mbbi).getOpcode() == RET, "Can only insert epilogue code into returning blocks");
+
 
 		if (hasFP(mf))
 		{
@@ -1292,7 +1293,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 */
 	public TargetRegisterClass getRegClassForType(Type ty)
 	{
-		assert false:"Should not reaching here";
+		Util.assertion(false, "Should not reaching here");
 		return null;
 	}
 	/**
@@ -1337,10 +1338,10 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			case X86GenInstrNames.MOVPS2SSrr:
 			case X86GenInstrNames.MOVPD2SDrr:
 			case X86GenInstrNames.MMX_MOVQ64rr:
-				assert mi.getNumOperands() >= 2 &&
-						mi.getOperand(0).isRegister() &&
-						mi.getOperand(1).isRegister() :
-						"invalid register-register move instruction";
+				Util.assertion(mi.getNumOperands() >= 2 &&						mi.getOperand(0).isRegister() &&
+						mi.getOperand(1).isRegister(), 
+						"invalid register-register move instruction");
+
 				regs[0] = mi.getOperand(1).getReg();
 				regs[1] = mi.getOperand(0).getReg();
 				regs[2] = mi.getOperand(1).getSubReg();

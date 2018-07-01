@@ -1,5 +1,6 @@
 /*package backend.hir;
 
+import tools.Util;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
@@ -157,7 +158,7 @@ public class EnterSSA
 		@Override
 		public void visitInstruction(Instruction inst)
 		{
-			assert false : "It should not reach here.";
+			Util.assertion(false,  "It should not reach here.");
 		}
 
 		@Override

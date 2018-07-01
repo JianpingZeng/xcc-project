@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.ir.HIRBuilder;
 import backend.support.LLVMContext;
 import jlang.ast.Tree.*;
@@ -79,7 +80,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
      */
     private Value emitConversionToBool(Value v, QualType srcTy)
     {
-        assert srcTy.isCanonical() : "EmitScalarConversion strips typedefs";
+        Util.assertion(srcTy.isCanonical(),  "EmitScalarConversion strips typedefs");
 
         if (srcTy.isFloatingType())
         {
@@ -88,8 +89,8 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             return builder.createFCmpUNE(v, zero, "tobool");
         }
 
-        assert srcTy.isIntegerType() || srcTy.isPointerType()
-                :"Undefined scalar type to convert";
+        Util.assertion(srcTy.isIntegerType() || srcTy.isPointerType(), "Undefined scalar type to convert");
+
 
         // Because of the type rules of C, we often end up computing a logical value,
         // then zero extending it to int, then wanting it as a logical value again.
@@ -154,7 +155,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             {
                 return builder.createBitCast(v, dstTy, "conv");
             }
-            assert  srcTy.isIntegerType():"Not ptr->ptr or int->ptr";
+            Util.assertion(srcTy.isIntegerType(), "Not ptr->ptr or int->ptr");
 
             // First, convert to the correct width so that we control the kind of
             // extension.
@@ -169,7 +170,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (v.getType() instanceof PointerType)
         {
             // must be an ptr -> int cast.
-            assert dstTy instanceof IntegerType:"Not ptr->int.";
+            Util.assertion(dstTy instanceof IntegerType, "Not ptr->int.");
             return builder.createPtrToInt(v, dstTy, "conv");
         }
 
@@ -185,7 +186,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 return builder.createUIToFP(v, dstTy, "conv");
         }
 
-        assert v.getType().isFloatingPointType():"Undefined real conversion";
+        Util.assertion(v.getType().isFloatingPointType(), "Undefined real conversion");
         if (dstTy instanceof IntegerType)
         {
             if (dstTy.isSigned())
@@ -194,7 +195,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 return builder.createFPToUI(v, dstTy, "conv");
         }
 
-        assert dstTy.isFloatingPointType():"Undefined real conversion";
+        Util.assertion(dstTy.isFloatingPointType(), "Undefined real conversion");
         if (dstTy.getTypeID() < v.getType().getTypeID())
             return builder.createFPTrunc(v, dstTy, "conv");
         else
@@ -311,7 +312,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         else
         {
             pt = info.expr.getRHS().getType().getAsPointerType();
-            assert pt != null:"Invalid add expr";
+            Util.assertion(pt != null, "Invalid add expr");
             ptr = info.rhs;
             idx = info.lhs;
             idxExpr = info.expr.getLHS();
@@ -861,20 +862,20 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     public Value visitUnaryReal(UnaryExpr expr)
     {
         // TODO.
-        assert false:"Currently, visitUnaryReal() is not supported!";
+        Util.assertion(false, "Currently, visitUnaryReal() is not supported!");
         return null;
     }
 
     public Value visitUnaryImag(UnaryExpr expr)
     {
         // TODO.
-        assert false:"Currently, visitUnaryImag() is not supported!";
+        Util.assertion(false, "Currently, visitUnaryImag() is not supported!");
         return null;
     }
 
     public Value visitStmt(Tree.Stmt s)
     {
-        assert false:"Stmt cann't have a complex type!";
+        Util.assertion(false, "Stmt cann't have a complex type!");
         return null;
     }
     @Override
@@ -964,15 +965,15 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // expression as lvalue.
         if (op.getType().isArrayType())
         {
-            assert expr.getCastKind() == CastKind.CK_ArrayToPointerDecay;
+            Util.assertion( expr.getCastKind() == CastKind.CK_ArrayToPointerDecay);
             Value v = emitLValue(op).getAddress();
 
             // Note that VLA pointers are always decayed, so we don't need to do
             // anything here.
             if (!op.getType().isVariableArrayType())
             {
-                assert v.getType() instanceof PointerType;
-                assert ((PointerType)v.getType()).getElementType() instanceof backend.type.ArrayType;
+                Util.assertion( v.getType() instanceof PointerType);
+                Util.assertion( ((PointerType)v.getType()).getElementType() instanceof backend.type.ArrayType);
                 v = builder.createStructGEPInbounds(v, 0, "arraydecay");
             }
 
@@ -983,7 +984,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                     v = builder.createBitCast(v, destTy, "ptrconv");
                 else
                 {
-                    assert destTy instanceof IntegerType;
+                    Util.assertion( destTy instanceof IntegerType);
                     v = builder.createPtrToInt(v, destTy, "ptrconv");
                 }
             }
@@ -997,7 +998,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     {
         if (expr.getType().isVariablyModifiedType())
         {
-            assert false:"VLA not supported yet!";
+            Util.assertion(false, "VLA not supported yet!");
         }
         return emitCastExpr(expr.getSubExpr(), expr.getType());
     }
@@ -1027,7 +1028,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             return emitScalarConversion(src, expr.getType(), destTy);
         }
 
-        assert !expr.getType().isComplexType():"Complex type not supported!";
+        Util.assertion(!expr.getType().isComplexType(), "Complex type not supported!");
         // TODO complex type.
 
         // Okay, this is a cast from an aggregate.  It must be a cast to void.  Just
@@ -1096,7 +1097,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         else
         {
             // Add the inc/dec to the real part.
-            assert (inVal.getType() == LLVMContext.FloatTy || inVal.getType() == LLVMContext.DoubleTy);
+            Util.assertion( (inVal.getType() == LLVMContext.FloatTy || inVal.getType() == LLVMContext.DoubleTy));
 
             nextVal = ConstantFP.get(new APFloat(amountVal));
             nextVal = builder.createFAdd(inVal, nextVal, isInc?"inc":"dec");
@@ -1174,7 +1175,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
         if (lhs == null || rhs == null)
         {
-            assert expr.getType().isVoidType():"Can not generate value for non-void type";
+            Util.assertion(expr.getType().isVoidType(), "Can not generate value for non-void type");
             return null;
         }
         PhiNode pn = builder.createPhiNode(lhs.getType(), 2, "cond");
@@ -1193,7 +1194,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
      */
     private static boolean isCheapEnoughToEvaluateUnconditionally(Expr expr)
     {
-        assert expr != null:"Can't evaluate a null expression!";
+        Util.assertion(expr != null, "Can't evaluate a null expression!");
         if (expr instanceof ParenExpr)
             return isCheapEnoughToEvaluateUnconditionally(((ParenExpr)expr).getSubExpr());
 
@@ -1238,7 +1239,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
         else
         {
-            assert expr.isArgumentExpr();
+            Util.assertion( expr.isArgumentExpr());
             ty = expr.getArgumentExpr().getType();
         }
         long size = cgf.getContext().getTypeSize(ty)/8;

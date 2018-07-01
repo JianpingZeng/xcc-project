@@ -1,5 +1,6 @@
 package xcc;
 
+import tools.Util;
 import config.Config;
 import jlang.diag.Diagnostic;
 import jlang.diag.DiagnosticClient;
@@ -71,7 +72,7 @@ public class Jlang
 
     private void getExecutableFile(String path)
     {
-        assert !(path == null || path.isEmpty());
+        Util.assertion( !(path == null || path.isEmpty()));
         int lastBlash = path.lastIndexOf('/');
         if (lastBlash < 0)
         {
@@ -88,7 +89,7 @@ public class Jlang
       */
     public int compile(String[] args)
     {
-        assert !(args == null || args.length <= 0);
+        Util.assertion( !(args == null || args.length <= 0));
 
         String executableFilePath;
         if (args[0].equals("launcher"))

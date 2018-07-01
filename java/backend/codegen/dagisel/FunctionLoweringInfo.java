@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
@@ -218,7 +219,7 @@ public class FunctionLoweringInfo
                 if (!(inst instanceof PhiNode) || inst.isUseEmpty())
                     continue;
                 pn = (PhiNode)inst;
-                assert valueMap.containsKey(pn):"PhiNode must be assigned with a virtual register!";
+                Util.assertion(valueMap.containsKey(pn), "PhiNode must be assigned with a virtual register!");
                 int vreg = valueMap.get(pn);
                 ArrayList<EVT> vts = new ArrayList<>();
                 computeValueVTs(tli, pn.getType(), vts);
@@ -323,7 +324,7 @@ public class FunctionLoweringInfo
 
     public int initializeRegForValue(Value v)
     {
-        assert !valueMap.containsKey(v):"Already initialized this value register!";
+        Util.assertion(!valueMap.containsKey(v), "Already initialized this value register!");
         int r = createRegForValue(v);
         valueMap.put(v, r);
         return r;

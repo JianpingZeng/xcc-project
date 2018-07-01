@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
 import utils.tablegen.RecTy.BitsRecTy;
@@ -265,14 +266,14 @@ public abstract class Init
 
         public Init getBit(int bit)
         {
-            assert bit < bits.size() :"Bit index out of range";
+            Util.assertion(bit < bits.size(), "Bit index out of range");
             return bits.get(bit);
         }
 
         public void setBit(int bit, Init val)
         {
-            assert bit < bits.size() :"Bit index out of range";
-            assert !setted.get(bit) :"Bit already set!";
+            Util.assertion(bit < bits.size(), "Bit index out of range");
+            Util.assertion(!setted.get(bit), "Bit already set!");
             bits.set(bit, val);
             setted.set(bit, true);
         }
@@ -392,7 +393,7 @@ public abstract class Init
 
         public boolean printAsVariable(PrintStream os)
         {
-            assert getNumBits() != 0;
+            Util.assertion( getNumBits() != 0);
             Init bit = getBit(0);
             if (!(bit instanceof VarBitInit)) return true;
 
@@ -488,7 +489,7 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            assert false:"Illegal bit reference off int";
+            Util.assertion(false, "Illegal bit reference off int");
             return null;
         }
 
@@ -496,7 +497,7 @@ public abstract class Init
         public Init resolveListElementReference(Record r, RecordVal rval,
                 int elt)
         {
-            assert false:"Illegal element reference off int";
+            Util.assertion(false, "Illegal element reference off int");
             return null;
         }
 
@@ -556,7 +557,7 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            assert false:"Illegal bit reference off string";
+            Util.assertion(false, "Illegal bit reference off string");
             return null;
         }
 
@@ -564,7 +565,7 @@ public abstract class Init
         public Init resolveListElementReference(Record r, RecordVal rval,
                 int elt)
         {
-            assert false:"Illegal element reference off string";
+            Util.assertion(false, "Illegal element reference off string");
             return null;
         }
     }
@@ -589,7 +590,7 @@ public abstract class Init
 
         public Init getElement(int idx)
         {
-            assert idx >= 0 && idx < getSize() :"List element index out of range";
+            Util.assertion(idx >= 0 && idx < getSize(), "List element index out of range");
             return values.get(idx);
         }
 
@@ -609,7 +610,7 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            assert false:"Illegal bit reference off list!";
+            Util.assertion(false, "Illegal bit reference off list!");
             return null;
         }
 
@@ -697,8 +698,8 @@ public abstract class Init
 
         public Record getElementAsRecord(int index) throws Exception
         {
-            assert index >= 0
-                    && index < getSize() : "List element index out of range!";
+            Util.assertion(index >= 0                    && index < getSize(),  "List element index out of range!");
+
             if (values.get(index) instanceof DefInit)
             {
                 return ((DefInit)values.get(index)).getDef();
@@ -749,7 +750,7 @@ public abstract class Init
         @Override
         public Init getOperand(int i)
         {
-            assert i == 0 || i == 1:"Invalid operand index";
+            Util.assertion(i == 0 || i == 1, "Invalid operand index");
             return i == 0 ? lhs : rhs;
         }
 
@@ -760,7 +761,7 @@ public abstract class Init
             switch (getOpcode())
             {
                 default:
-                    assert false:"Unknown binop";
+                    Util.assertion(false, "Unknown binop");
                 case CONCAT:
                 {
                     DagInit lhss, rhss;
@@ -826,7 +827,7 @@ public abstract class Init
                         long result;
                         switch (getOpcode())
                         {
-                            default:assert false:"Bad opcode!";
+                            default:Util.assertion(false, "Bad opcode!");
                             case SHL: result = lhsv << rhsv; break;
                             case SRA: result = lhsv >> rhsv; break;
                             case SRL: result = lhsv >>> rhsv; break;
@@ -860,7 +861,7 @@ public abstract class Init
                         if(curRec.isTemplateArg(templateArgName))
                         {
                             RecordVal rv = curRec.getValue(templateArgName);
-                            assert rv != null:"Template arg doesn't exist?";
+                            Util.assertion(rv != null, "Template arg doesn't exist?");
 
                             if (!rv.getType().equals(getType()))
                                 throw new Exception("type mismatch in nameconcat");
@@ -876,7 +877,7 @@ public abstract class Init
                             if(curMultiClass.rec.isTemplateArg(mcname))
                             {
                                 RecordVal rv = curMultiClass.rec.getValue(mcname);
-                                assert rv != null :"Template arg doesn't exist?";
+                                Util.assertion(rv != null, "Template arg doesn't exist?");
 
                                 if (!rv.getType().equals(getType()))
                                     throw new Exception("type mismatch in nameconcat");
@@ -889,7 +890,7 @@ public abstract class Init
                             return new DefInit(r);
 
                         System.err.println("Variable not defined in !nameconcat: '" + name + "'");
-                        assert false:"Variable not found in !nameconcat";
+                        Util.assertion(false, "Variable not found in !nameconcat");
                         return null;
                     }
                 }
@@ -900,7 +901,7 @@ public abstract class Init
         @Override
         public OpInit clone(List<Init> operands)
         {
-            assert operands.size() == 2:"Wrong number of operands for binary operator";
+            Util.assertion(operands.size() == 2, "Wrong number of operands for binary operator");
             return new BinOpInit(getOpcode(), operands.get(0), operands.get(1), getType());
         }
 
@@ -1096,9 +1097,8 @@ public abstract class Init
         {
             ti = init;
             this.bit = bit;
-            assert init.getType() != null && init.getType() instanceof BitsRecTy
-                    &&((BitsRecTy)init.getType()).getNumBits() > bit
-                    :"Illegal VarBitInit expression!";
+            Util.assertion(init.getType() != null && init.getType() instanceof BitsRecTy                    &&((BitsRecTy)init.getType()).getNumBits() > bit, "Illegal VarBitInit expression!");
+
         }
 
         @Override
@@ -1158,8 +1158,8 @@ public abstract class Init
             super(((ListRecTy)init.getType()).getElementType());
             ti = init;
             element = elt;
-            assert init.getType() != null && init.getType() instanceof ListRecTy
-                    :"Illegal VarBitInit expression!";
+            Util.assertion(init.getType() != null && init.getType() instanceof ListRecTy, "Illegal VarBitInit expression!");
+
         }
 
         public TypedInit getVariable() {return ti;}
@@ -1264,7 +1264,7 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            assert false:"Illegal bit reference off def";
+            Util.assertion(false, "Illegal bit reference off def");
             return null;
         }
 
@@ -1272,7 +1272,7 @@ public abstract class Init
         public Init resolveListElementReference(Record r, RecordVal rval,
                 int elt)
         {
-            assert false:"Illegal element reference off def";
+            Util.assertion(false, "Illegal element reference off def");
             return null;
         }
 
@@ -1346,25 +1346,25 @@ public abstract class Init
 
         public Init getArg(int num)
         {
-            assert num>= 0 && num < args.size():"Arg number out of range!";
+            Util.assertion(num>= 0 && num < args.size(), "Arg number out of range!");
             return args.get(num);
         }
 
         public String getArgName(int num)
         {
-            assert num>= 0 && num < argNames.size():"Arg number out of range!";
+            Util.assertion(num>= 0 && num < argNames.size(), "Arg number out of range!");
             return argNames.get(num);
         }
 
         public void setArg(int num, Init init)
         {
-            assert num>= 0 && num < args.size():"Arg number out of range!";
+            Util.assertion(num>= 0 && num < args.size(), "Arg number out of range!");
             args.set(num, init);
         }
 
         public void setArgName(int num, String argName)
         {
-            assert num>= 0 && num < argNames.size():"Arg number out of range!";
+            Util.assertion(num>= 0 && num < argNames.size(), "Arg number out of range!");
             argNames.set(num, argName);
         }
 
@@ -1409,7 +1409,7 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            assert false:"Illegal bit reference off dag";
+            Util.assertion(false, "Illegal bit reference off dag");
             return null;
         }
 
@@ -1417,7 +1417,7 @@ public abstract class Init
         public Init resolveListElementReference(Record r, RecordVal rval,
                 int elt)
         {
-            assert false:"Illegal element reference off dag";
+            Util.assertion(false, "Illegal element reference off dag");
             return null;
         }
 
@@ -1488,11 +1488,11 @@ public abstract class Init
             if (rval != null && !rval.getName().equals(getName())) return null;
 
             RecordVal rv = r.getValue(getName());
-            assert rv != null :"Reference to a non-existant variable?";
-            assert rv.getValue() instanceof BitsInit;
+            Util.assertion(rv != null, "Reference to a non-existant variable?");
+            Util.assertion( rv.getValue() instanceof BitsInit);
             BitsInit bi = (BitsInit)rv.getValue();
 
-            assert bit < bi.getNumBits() :"Bit reference out of range!";
+            Util.assertion(bit < bi.getNumBits(), "Bit reference out of range!");
             Init b = bi.getBit(bit);
 
             if (!(b instanceof UnsetInit))
@@ -1508,8 +1508,8 @@ public abstract class Init
             if (rval != null && rval.getName() != getName()) return null;
 
             RecordVal rv = r.getValue(getName());
-            assert rv != null :"Reference to a non-existant variable?";
-            assert rv.getValue() instanceof ListInit :"Invalid list element!";
+            Util.assertion(rv != null, "Reference to a non-existant variable?");
+            Util.assertion(rv.getValue() instanceof ListInit, "Invalid list element!");
             ListInit li = (ListInit)rv.getValue();
 
             if (elt >= li.getSize())
@@ -1561,7 +1561,7 @@ public abstract class Init
                 if (rv != null)
                 {
                     Init theInit = rv.getValue();
-                    assert theInit != this :"Infinite loop detected";
+                    Util.assertion(theInit != this, "Infinite loop detected");
                     Init i = theInit.getFieldInit(r, fieldName);
                     return i;
                 }
@@ -1598,7 +1598,7 @@ public abstract class Init
             super(r.getFieldType(fname));
             rec = r;
             fieldName = fname;
-            assert getType() != null :"FieldInit with non record type!";
+            Util.assertion(getType() != null, "FieldInit with non record type!");
         }
 
         @Override
@@ -1616,7 +1616,7 @@ public abstract class Init
                 if (bitsVal instanceof BitsInit)
                 {
                     BitsInit bi = (BitsInit)bitsVal;
-                    assert bit < bi.getNumBits() :"Bit reference out of range!";
+                    Util.assertion(bit < bi.getNumBits(), "Bit reference out of range!");
                     Init b = bi.getBit(bit);
 
                     if (b instanceof BitInit)
@@ -1809,7 +1809,7 @@ public abstract class Init
         @Override
         public Init getOperand(int i)
         {
-            assert i >= 0 && i <1;
+            Util.assertion( i >= 0 && i <1);
             return lhs;
         }
 
@@ -1820,7 +1820,7 @@ public abstract class Init
             switch (opc)
             {
                 default:
-                    assert false:"Unknown unop";
+                    Util.assertion(false, "Unknown unop");
                     return null;
                 case CAST:
                 {
@@ -1856,7 +1856,7 @@ public abstract class Init
                                 if (curRec.isTemplateArg(templateArgName))
                                 {
                                     rv = curRec.getValue(templateArgName);
-                                    assert rv != null :"Template arg doesn't exist?";
+                                    Util.assertion(rv != null, "Template arg doesn't exist?");
 
                                     if (!rv.getType().equals(getType()))
                                         throw new Exception("type mismatch in nameconcat");
@@ -1871,7 +1871,7 @@ public abstract class Init
                                 if (curMultiClass.rec.isTemplateArg(mcName))
                                 {
                                     RecordVal rv = curMultiClass.rec.getValue(mcName);
-                                    assert rv != null :"Template arg doesn't exist?";
+                                    Util.assertion(rv != null, "Template arg doesn't exist?");
 
                                     if (!rv.getType().equals(getType()))
                                     {
@@ -1886,7 +1886,7 @@ public abstract class Init
                                 return new DefInit(d);
 
                             System.err.println("Variable not defined: '" + name + "'");
-                            assert false:"Variale not found";
+                            Util.assertion(false, "Variale not found");
                             return null;
                         }
                     }
@@ -1899,7 +1899,7 @@ public abstract class Init
                         ListInit li = (ListInit)lhs;
                         if (li.getSize() == 0)
                         {
-                            assert false:"empty list in car";
+                            Util.assertion(false, "empty list in car");
                             return null;
                         }
                         return li.getElement(0);
@@ -1913,7 +1913,7 @@ public abstract class Init
                         ListInit li = (ListInit)lhs;
                         if (li.getSize() == 0)
                         {
-                            assert false:"empty list in cdr";
+                            Util.assertion(false, "empty list in cdr");
                             return null;
                         }
                         ArrayList<Init> list = new ArrayList<>();
@@ -1951,7 +1951,7 @@ public abstract class Init
         @Override
         public OpInit clone(List<Init> operands)
         {
-            assert operands.size() == 1:"Wrong number of operands for unary operation";
+            Util.assertion(operands.size() == 1, "Wrong number of operands for unary operation");
             return new UnOpInit(opc, operands.get(0), getType());
         }
 

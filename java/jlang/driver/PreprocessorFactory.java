@@ -16,6 +16,7 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.basic.HeaderSearch;
 import jlang.basic.SourceManager;
 import jlang.basic.TargetInfo;
@@ -145,7 +146,7 @@ class PreprocessorFactory
             defineBuiltinMacro(buf, "__OPTIMIZE_SIZE__=1");
 
         // Initialize target-specific preprocessor defines.
-        assert target.getCharWidth() == 8 :"Only support 8 bit char so far";
+        Util.assertion(target.getCharWidth() == 8, "Only support 8 bit char so far");
         defineBuiltinMacro(buf, "__CHAR_BIT__=8");
 
         int intMaxWidth;
@@ -162,7 +163,7 @@ class PreprocessorFactory
         }
         else
         {
-            assert target.getIntMaxType() == TargetInfo.IntType.SignedInt;
+            Util.assertion( target.getIntMaxType() == TargetInfo.IntType.SignedInt);
             intMaxWidth = target.getIntWidth();
             intMaxSuffix = "";
         }
@@ -187,8 +188,8 @@ class PreprocessorFactory
         defineBuiltinMacro(buf, "__POINTER_WIDTH__=" + target.getPointerWidth(0));
 
         // Define fixed-sized integer types for stdint.h
-        assert target.getCharWidth() == 8 : "unsupported target types";
-        assert target.getShortWidth() == 16 : "unsupported target types";
+        Util.assertion(target.getCharWidth() == 8,  "unsupported target types");
+        Util.assertion(target.getShortWidth() == 16,  "unsupported target types");
         defineBuiltinMacro(buf, "__INT8_TYPE__=char");
         defineBuiltinMacro(buf, "__INT16_TYPE__=short");
 
@@ -196,7 +197,7 @@ class PreprocessorFactory
             defineBuiltinMacro(buf, "__INT32_TYPE__=int");
         else
             {
-            assert target.getLongLongWidth() == 32 : "unsupported target types";
+            Util.assertion(target.getLongLongWidth() == 32,  "unsupported target types");
             defineBuiltinMacro(buf, "__INT32_TYPE__=long long");
         }
 
@@ -307,7 +308,7 @@ class PreprocessorFactory
             return ieeeDoubleVal;
         if (sem == APFloat.x87DoubleExtended)
             return x87DoubleExtendedVal;
-        assert sem == APFloat.IEEEquad;
+        Util.assertion( sem == APFloat.IEEEquad);
         return ieeeQuadVal;
     }
 

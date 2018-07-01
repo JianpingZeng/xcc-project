@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.CharSourceRange;
 import jlang.support.SourceRange;
 import jlang.diag.FixItHint;
@@ -126,8 +127,8 @@ public final class PartialDiagnostic
 		if (diagStorage == null)
 			diagStorage = getStorage();
 
-		assert diagStorage.numDiagRanges < diagStorage.diagRanges.length :
-				"Too many arguments to diagnostic!";
+		Util.assertion(diagStorage.numDiagRanges < diagStorage.diagRanges.length, 				"Too many arguments to diagnostic!");
+
 		diagStorage.diagRanges[diagStorage.numDiagRanges++] = r;
 		return this;
 	}
@@ -139,8 +140,8 @@ public final class PartialDiagnostic
 
 		if (diagStorage == null)
 			diagStorage = getStorage();
-		assert diagStorage.numFixItHints < Diagnostic.maxFixItHints :
-				"Too many code modification hints!";
+		Util.assertion(diagStorage.numFixItHints < Diagnostic.maxFixItHints, 				"Too many code modification hints!");
+
 		if (diagStorage.numFixItHints >= Diagnostic.maxFixItHints)
 			return;  // Don't crash in release builds
 		diagStorage.fixItHints[diagStorage.numFixItHints++] = hint;
@@ -179,8 +180,8 @@ public final class PartialDiagnostic
 	{
 		if (diagStorage == null)
 			diagStorage = getStorage();
-		assert diagStorage.numDiagArgs < Diagnostic.maxArguments
-				: "Too many arguments to diagnostic!";
+		Util.assertion(diagStorage.numDiagArgs < Diagnostic.maxArguments,  "Too many arguments to diagnostic!");
+
 		diagStorage.diagArgumentsVal[diagStorage.numDiagArgs] = V;
 		diagStorage.diagArgumentsKind[diagStorage.numDiagArgs++] = Kind;
 		return this;
@@ -191,8 +192,8 @@ public final class PartialDiagnostic
 		if (diagStorage == null)
 			diagStorage = getStorage();
 
-		assert diagStorage.numDiagArgs < Diagnostic.maxArguments
-				:"Too many arguments to diagnostic!";
+		Util.assertion(diagStorage.numDiagArgs < Diagnostic.maxArguments, "Too many arguments to diagnostic!");
+
 		diagStorage.diagArgumentsKind[diagStorage.numDiagArgs] = ArgumentKind.ak_std_string;
 		diagStorage.diagArgumentsStr[diagStorage.numDiagArgs++] = V;
 		return this;

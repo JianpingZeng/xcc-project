@@ -17,6 +17,7 @@
 
 package jlang.ast;
 
+import tools.Util;
 import jlang.sema.Decl;
 import jlang.sema.Decl.*;
 
@@ -61,7 +62,7 @@ public class DeclVisitor
                 visitParamVarDecl((ParamVarDecl)decl);
                 return;
             case OriginalParamVar:
-                assert false:"Should not reaching here!";
+                Util.assertion(false, "Should not reaching here!");
                 return;
             case FileScopeAsmDecl:
                 visitFileScopeAsmDecl((FileScopeAsmDecl)decl);

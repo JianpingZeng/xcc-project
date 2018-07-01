@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MVT;
 import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.IntInit;
@@ -239,7 +240,7 @@ public final class FastISelEmitter extends TableGenBackend
                     os.printf("ConstantFP f%d", i);
                 else
                 {
-                    assert false:"Undefined operand kind";
+                    Util.assertion(false, "Undefined operand kind");
                     System.exit(1);
                 }
                 if(i < e - 1)
@@ -249,7 +250,7 @@ public final class FastISelEmitter extends TableGenBackend
 
         public void printArguments(PrintStream os, ArrayList<String> pr)
         {
-            assert pr.size() == operands.size();
+            Util.assertion( pr.size() == operands.size());
             boolean printedArg = false;
             for (int i = 0, e = operands.size(); i != e; i++)
             {
@@ -272,7 +273,7 @@ public final class FastISelEmitter extends TableGenBackend
                         printedArg = true;
                         break;
                     default:
-                        assert false:"Undefined operand kind";
+                        Util.assertion(false, "Undefined operand kind");
                         System.exit(1);
                 }
             }
@@ -294,7 +295,7 @@ public final class FastISelEmitter extends TableGenBackend
                         os.printf("f%d", i);
                         break;
                     default:
-                        assert false:"Undefined operand kind";
+                        Util.assertion(false, "Undefined operand kind");
                         System.exit(1);
                 }
                 if (i < e - 1)
@@ -542,8 +543,8 @@ public final class FastISelEmitter extends TableGenBackend
                     System.err.println(predicateCheck);
                 }*/
 
-                //assert !simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)
-                //        : "Duplicate pattern!";
+                //Util.assertion(!simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)                //,  "Duplicate pattern!");
+
                 simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).put(predicateCheck, memo);
             }
         }
@@ -600,9 +601,9 @@ public final class FastISelEmitter extends TableGenBackend
                                     InstructionMemo memo = pi.getValue();
                                     if (predicateCheck.isEmpty())
                                     {
-                                        assert !hasPred :
-                                                "Multiple instructions match, at least one has "
-                                                        + "a predicate and at least one doesn't!";
+                                        Util.assertion(!hasPred,                                                 "Multiple instructions match, at least one has "
+                                                        + "a predicate and at least one doesn't!");
+
                                     }
                                     else
                                     {
@@ -713,8 +714,8 @@ public final class FastISelEmitter extends TableGenBackend
 
                                 if (predicateCheck.isEmpty())
                                 {
-                                    assert !hasPred :"Multiple instructions match, at least one has " +
-                                            "a predicate and at least one doesn't!";
+                                    Util.assertion(!hasPred, "Multiple instructions match, at least one has " +                                            "a predicate and at least one doesn't!");
+
                                 }
                                 else
                                 {

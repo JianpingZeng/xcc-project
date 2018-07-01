@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import java.util.ArrayList;
 
 import static xcc.Arg.ArgClass.*;
@@ -152,7 +153,7 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert false:"Invalid index!";
+            Util.assertion(false, "Invalid index!");
             return null;
         }
 
@@ -215,7 +216,7 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert index < getNumValues();
+            Util.assertion( index < getNumValues());
             return list.getArgString(getIndex()).substring(getOption().getName().length());
         }
 
@@ -247,7 +248,7 @@ public abstract class Arg
         {
             super(SeparateClass, opt, index, baseArg);
             this.numValues = numValues;
-            assert numValues > 0;
+            Util.assertion( numValues > 0);
         }
 
         @Override
@@ -259,7 +260,7 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert index < getNumValues();
+            Util.assertion( index < getNumValues());
             return list.getArgString(getIndex()+index+1);
         }
 
@@ -268,7 +269,7 @@ public abstract class Arg
         {
             if (getOption().isForceJoinRender())
             {
-                assert getNumValues() == 1;
+                Util.assertion( getNumValues() == 1);
                 String joind = getOption().getName();
                 joind += args.getArgString(getIndex());
                 outputs.add(joind);
@@ -319,7 +320,7 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert index < getNumValues();
+            Util.assertion( index < getNumValues());
             return values.get(index);
         }
 
@@ -351,7 +352,7 @@ public abstract class Arg
         @Override
         public String getValue(ArgList list, int index)
         {
-            assert index < getNumValues();
+            Util.assertion( index < getNumValues());
             if (index == 0)
                 return list.getArgString(index).substring(getOption().getName().length());
 

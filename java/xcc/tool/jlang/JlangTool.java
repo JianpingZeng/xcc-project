@@ -17,6 +17,7 @@
 
 package xcc.tool.jlang;
 
+import tools.Util;
 import xcc.*;
 import xcc.tool.Tool;
 
@@ -45,7 +46,7 @@ public class JlangTool extends Tool
         Driver driver = c.getDriver();
         ArrayList<String> cmdStrings = new ArrayList<>();
 
-        assert inputs.size() == 1:"Unable to compile multiple files!";
+        Util.assertion(inputs.size() == 1, "Unable to compile multiple files!");
 
         cmdStrings.add("-triple");
         cmdStrings.add(getToolChain().getTripleString());
@@ -65,7 +66,7 @@ public class JlangTool extends Tool
         }
         else
         {
-            assert ja instanceof Action.CompileJobAction:"Invalid action for Jlang frontend!";
+            Util.assertion(ja instanceof Action.CompileJobAction, "Invalid action for Jlang frontend!");
 
             if (ja.getOutputType() == TY_Nothing)
                 cmdStrings.add("-fsyntax-only");
@@ -75,7 +76,7 @@ public class JlangTool extends Tool
             }
             else if (ja.getOutputType() == TY_LLVMBC)
             {
-                assert false:"No able to generate llvm bitcode!";
+                Util.assertion(false, "No able to generate llvm bitcode!");
             }
             else if (ja.getOutputType() == TY_PP_Asm)
                 cmdStrings.add("-S");
@@ -95,7 +96,7 @@ public class JlangTool extends Tool
         }
         else
         {
-            assert output.isNothing()||output.isInputArg():"Unknown output type!";
+            Util.assertion(output.isNothing()||output.isInputArg(), "Unknown output type!");
         }
         cmdStrings.add("-main-file-name");
         cmdStrings.add(inputs.get(0).getFilename());

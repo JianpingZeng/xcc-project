@@ -16,6 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
@@ -1093,8 +1094,8 @@ public class X86TargetLowering extends TargetLowering
         boolean is64Bit = subtarget.is64Bit();
         boolean isWin64 = subtarget.isTargetWin64();
 
-        assert !(varArg && callingConv
-                == CallingConv.Fast) : "VarArg is not supported in Fast Calling convention";
+        Util.assertion(!(varArg && callingConv                == CallingConv.Fast),  "VarArg is not supported in Fast Calling convention");
+
 
         ArrayList<CCValAssign> argLocs = new ArrayList<>();
         CCState ccInfo = new CCState(callingConv, varArg, getTargetMachine(),
@@ -1106,7 +1107,7 @@ public class X86TargetLowering extends TargetLowering
         for (int i = 0, e = argLocs.size(); i < e; i++)
         {
             CCValAssign va = argLocs.get(i);
-            assert va.getValNo() != lastVal;
+            Util.assertion( va.getValNo() != lastVal);
             lastVal = va.getValNo();
 
             if (va.isRegLoc())
@@ -1159,7 +1160,7 @@ public class X86TargetLowering extends TargetLowering
             }
             else
             {
-                assert va.isMemLoc();
+                Util.assertion( va.isMemLoc());
                 argValue = lowerMemArgument(chain, callingConv, ins, dag, va,
                         mfi, i);
             }
@@ -1240,8 +1241,8 @@ public class X86TargetLowering extends TargetLowering
                 int numXMMRegs = ccInfo.getFirstUnallocated(xmmArgRegs);
 
                 boolean notImplicitFloatOps = fn.hasFnAttr(Attribute.NoImplicitFloat);
-                assert !(numXMMRegs != 0 && !subtarget.hasSSE1());
-                assert !(numXMMRegs != 0 && notImplicitFloatOps);
+                Util.assertion( !(numXMMRegs != 0 && !subtarget.hasSSE1()));
+                Util.assertion( !(numXMMRegs != 0 && notImplicitFloatOps));
                 if (notImplicitFloatOps || !subtarget.hasSSE1())
                     totalNumXMMRegs = 0;
 
@@ -1415,10 +1416,10 @@ public class X86TargetLowering extends TargetLowering
             int depth)
     {
         int opc = op.getOpcode();
-        assert opc >= ISD.BUILTIN_OP_END ||
-                opc == ISD.INTRINSIC_WO_CHAIN ||
+        Util.assertion( opc >= ISD.BUILTIN_OP_END ||                opc == ISD.INTRINSIC_WO_CHAIN ||
                 opc == ISD.INTRINSIC_W_CHAIN ||
-                opc == ISD.INTRINSIC_VOID;
+                opc == ISD.INTRINSIC_VOID);
+
 
         knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
         switch (opc)
@@ -1475,7 +1476,7 @@ public class X86TargetLowering extends TargetLowering
         for (int i = 0; i < rvLocs.size(); i++)
         {
             CCValAssign va = rvLocs.get(i);
-            assert va.isRegLoc();
+            Util.assertion( va.isRegLoc());
             SDValue valToCopy = outs.get(i).val;
 
             if (va.getLocReg() == X86GenRegisterNames.ST0 ||
@@ -1599,10 +1600,10 @@ public class X86TargetLowering extends TargetLowering
         MachineFunction mf = dag.getMachineFunction();
         boolean is64Bit = subtarget.is64Bit();
         boolean isStructRet = callIsStructReturn(outs);
-        assert !isTailCall || (cc == CallingConv.Fast
-                && EnablePerformTailCallOpt.value) : "isEligibleForTailCallOptimization missed a case!";
-        assert !(isVarArg && cc
-                == CallingConv.Fast) : "Var args not supported with calling convention fastcc!";
+        Util.assertion(!isTailCall || (cc == CallingConv.Fast                && EnablePerformTailCallOpt.value),  "isEligibleForTailCallOptimization missed a case!");
+
+        Util.assertion(!(isVarArg && cc                == CallingConv.Fast),  "Var args not supported with calling convention fastcc!");
+
         ArrayList<CCValAssign> argLocs = new ArrayList<>();
         CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), argLocs);
         ccInfo.analyzeCallOperands(outs, ccAssignFnForNode(cc));
@@ -1684,7 +1685,7 @@ public class X86TargetLowering extends TargetLowering
             {
                 if (!isTailCall || (isTailCall && isByVal))
                 {
-                    assert va.isMemLoc();
+                    Util.assertion( va.isMemLoc());
                     if (stackPtr.getNode() == null)
                     {
                         stackPtr = dag.getCopyFromReg(chain, x86StackPtr, new EVT(getPointerTy()));
@@ -1738,7 +1739,7 @@ public class X86TargetLowering extends TargetLowering
                     X86GenRegisterNames.XMM4, X86GenRegisterNames.XMM5,
                     X86GenRegisterNames.XMM6, X86GenRegisterNames.XMM7, };
             int numXMMRegs = ccInfo.getFirstUnallocated(XMMArgRegs);
-            assert subtarget.hasSSE1() || numXMMRegs == 0;
+            Util.assertion( subtarget.hasSSE1() || numXMMRegs == 0);
             chain = dag.getCopyToReg(chain, X86GenRegisterNames.AL,
                     dag.getConstant(numXMMRegs, new EVT(MVT.i8), false), inFlag);
             inFlag = chain.getValue(1);
@@ -1756,7 +1757,7 @@ public class X86TargetLowering extends TargetLowering
                 CCValAssign va = argLocs.get(i);
                 if (!va.isRegLoc())
                 {
-                    assert va.isMemLoc();
+                    Util.assertion( va.isMemLoc());
                     SDValue arg = outs.get(i).val;
                     ArgFlagsTy flags = outs.get(i).flags;
 
@@ -1887,11 +1888,11 @@ public class X86TargetLowering extends TargetLowering
                 }
             }
             int calleeReg;
-            assert (callee.getOpcode() == ISD.Register &&
-                    (calleeReg = ((RegisterSDNode)callee.getNode()).getReg()) != 0 &&
+            Util.assertion( (callee.getOpcode() == ISD.Register &&                    (calleeReg = ((RegisterSDNode)callee.getNode()).getReg()) != 0 &&
                     (calleeReg == X86GenRegisterNames.EAX || calleeReg == X86GenRegisterNames.R9)) ||
                     callee.getOpcode() == ISD.TargetExternalSymbol ||
-                    callee.getOpcode() == ISD.TargetGlobalAddress;
+                    callee.getOpcode() == ISD.TargetGlobalAddress);
+
 
             return dag.getNode(X86ISD.TC_RETURN, vts, ops);
         }
@@ -2516,8 +2517,8 @@ public class X86TargetLowering extends TargetLowering
         newMBB.addSuccessor(nextMBB);
         newMBB.addSuccessor(newMBB);
 
-        assert mi.getNumOperands() < X86AddrNumOperands + 4:
-                "unexpected number of operands";
+        Util.assertion(mi.getNumOperands() < X86AddrNumOperands + 4,                 "unexpected number of operands");
+
 
         MachineOperand destOp = mi.getOperand(0);
         MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
@@ -2540,8 +2541,8 @@ public class X86TargetLowering extends TargetLowering
             tt = t1;
 
         int t2 = mf.getMachineRegisterInfo().createVirtualRegister(rc);
-        assert argOps[valArgIndex].isRegister() || argOps[valArgIndex].isMBB()
-                :"invalid operand!";
+        Util.assertion(argOps[valArgIndex].isRegister() || argOps[valArgIndex].isMBB(), "invalid operand!");
+
 
         if (argOps[valArgIndex].isRegister())
             mib = buildMI(newMBB, tii.get(regOpc), t2);
@@ -2556,7 +2557,7 @@ public class X86TargetLowering extends TargetLowering
         for (int i = 0; i <= lastAddrIndex; i++)
             mib.addOperand(argOps[i]);
         mib.addReg(t2);
-        assert mi.hasOneMemOperand():"Unexpected number of memoperand!";
+        Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand!");
         mib.addMemOperand(mi.getMemOperand(0));
 
         mib = buildMI(newMBB, tii.get(copyOpc), destOp.getReg()).addReg(eaxReg);
@@ -2604,8 +2605,8 @@ public class X86TargetLowering extends TargetLowering
         mf.insert(itr, newMBB);
         mf.insert(itr, nextMBB);
 
-        assert mi.getNumOperands() < X86AddrNumOperands + 14:
-                "unexpected number of operands!";
+        Util.assertion(mi.getNumOperands() < X86AddrNumOperands + 14,                 "unexpected number of operands!");
+
         MachineOperand dest1Op = mi.getOperand(0);
         MachineOperand dest2Op = mi.getOperand(1);
         MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
@@ -2652,8 +2653,8 @@ public class X86TargetLowering extends TargetLowering
         }
 
         int valArgIndex = lastAddrIndex + 1;
-        assert argOps[valArgIndex].isRegister() ||
-                argOps[valArgIndex].isImm():"Invalid operand!";
+        Util.assertion(argOps[valArgIndex].isRegister() ||                argOps[valArgIndex].isImm(), "Invalid operand!");
+
         int t5 = mri.createVirtualRegister(rc);
         int t6 = mri.createVirtualRegister(rc);
         if (argOps[valArgIndex].isRegister())
@@ -2664,8 +2665,8 @@ public class X86TargetLowering extends TargetLowering
         if (regOpcL != X86GenInstrNames.MOV32rr)
             mib.addReg(tt1);
         mib.addOperand(argOps[valArgIndex]);
-        assert argOps[valArgIndex+1].isRegister() || argOps[valArgIndex].isRegister();
-        assert argOps[valArgIndex+1].isImm() || argOps[valArgIndex].isImm();
+        Util.assertion( argOps[valArgIndex+1].isRegister() || argOps[valArgIndex].isRegister());
+        Util.assertion( argOps[valArgIndex+1].isImm() || argOps[valArgIndex].isImm());
 
         if (argOps[valArgIndex+1].isRegister())
             mib = buildMI(newMBB, tii.get(regOpcH), t6);
@@ -2685,7 +2686,7 @@ public class X86TargetLowering extends TargetLowering
         for (int i = 0; i<= lastAddrIndex; i++)
             mib.addOperand(argOps[i]);
 
-        assert mi.hasOneMemOperand():"Unexpected number of memoperand!";
+        Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand!");
         mib.addMemOperand(mi.getMemOperand(0));
         buildMI(newMBB, tii.get(copyOpc), t3).addReg(X86GenRegisterNames.EAX);
         buildMI(newMBB, tii.get(copyOpc), t4).addReg(X86GenRegisterNames.EDX);
@@ -2732,8 +2733,8 @@ public class X86TargetLowering extends TargetLowering
         newMBB.addSuccessor(nextMBB);
         newMBB.addSuccessor(newMBB);
 
-        assert mi.getNumOperands() < X86AddrNumOperands + 4:
-                "unexpected number of operands";
+        Util.assertion(mi.getNumOperands() < X86AddrNumOperands + 4,                 "unexpected number of operands");
+
 
         MachineOperand destOp = mi.getOperand(0);
         MachineOperand[] argOps = new MachineOperand[2+X86AddrNumOperands];
@@ -2749,7 +2750,7 @@ public class X86TargetLowering extends TargetLowering
         for (int i = 0; i <= lastAddrIndex; i++)
             mib.addOperand(argOps[i]);
 
-        assert argOps[valArgIndex].isRegister() || argOps[valArgIndex].isImm();
+        Util.assertion( argOps[valArgIndex].isRegister() || argOps[valArgIndex].isImm());
 
         int t2 = mri.createVirtualRegister(rc);
         // FIXME, redundant if condition?  2018/5/6
@@ -2773,7 +2774,7 @@ public class X86TargetLowering extends TargetLowering
             mib.addOperand(argOps[i]);
 
         mib.addReg(t3);
-        assert mi.hasOneMemOperand():"Unexpected number of memoperand";
+        Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand");
         mib.addMemOperand(mi.getMemOperand(0));
 
         buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), destOp.getReg())
@@ -3234,7 +3235,7 @@ public class X86TargetLowering extends TargetLowering
 
     private SDValue getOnesVector(EVT vt, SelectionDAG dag)
     {
-        assert vt.isVector();
+        Util.assertion( vt.isVector());
 
         SDValue cst = dag.getTargetConstant(~0, new EVT(MVT.i32));
         SDValue vec;
@@ -3247,7 +3248,7 @@ public class X86TargetLowering extends TargetLowering
 
     private static SDValue getZeroVector(EVT vt, boolean hasSSE2, SelectionDAG dag)
     {
-        assert vt.isVector();
+        Util.assertion( vt.isVector());
         SDValue vec;
         if (vt.getSizeInBits() == 64)
         {
@@ -3762,13 +3763,13 @@ public class X86TargetLowering extends TargetLowering
             operandFlag = is64? X86II.MO_TPOFF : X86II.MO_NTPOFF;
         else if (is64)
         {
-            assert model == InitialExec;
+            Util.assertion( model == InitialExec);
             operandFlag = X86II.MO_GOTTPOFF;
             wrapperKind = X86ISD.WrapperRIP;
         }
         else
         {
-            assert model == InitialExec;
+            Util.assertion( model == InitialExec);
             operandFlag = X86II.MO_INDNTPOFF;
         }
 
@@ -3787,7 +3788,7 @@ public class X86TargetLowering extends TargetLowering
 
     private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag)
     {
-        assert subtarget.isTargetELF() :"TLS not implemented in other platform except for ELF!";
+        Util.assertion(subtarget.isTargetELF(), "TLS not implemented in other platform except for ELF!");
         GlobalAddressSDNode ga = (GlobalAddressSDNode)op.getNode();
         GlobalValue gv = ga.getGlobalValue();
         TLSModel model = getTLSModel(gv, tm.getRelocationModel());
@@ -3838,7 +3839,7 @@ public class X86TargetLowering extends TargetLowering
 
     private SDValue lowerShift(SDValue op, SelectionDAG dag)
     {
-        assert op.getNumOperands() == 3:"Not a double-shift!";
+        Util.assertion(op.getNumOperands() == 3, "Not a double-shift!");
         EVT vt = op.getValueType();
         int vtBits = vt.getSizeInBits();
         EVT i8VT = new EVT(MVT.i8);
@@ -3933,8 +3934,8 @@ public class X86TargetLowering extends TargetLowering
             return new SDValue();
         }
 
-        assert srcVT.getSimpleVT().simpleVT <= MVT.i64 &&
-                srcVT.getSimpleVT().simpleVT >= MVT.i16:"Unknown SINT_TO_FP to lower!";
+        Util.assertion(srcVT.getSimpleVT().simpleVT <= MVT.i64 &&                srcVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown SINT_TO_FP to lower!");
+
 
         if (srcVT.equals(new EVT(MVT.i32)) && isScalarFPTypeInSSEReg(op.getValueType()))
             return op;
@@ -3970,7 +3971,7 @@ public class X86TargetLowering extends TargetLowering
         else if (srcVT.getSimpleVT().simpleVT == MVT.i32 && x86ScalarSSEf64)
             return lowerUINT_TO_FP_i32(op, dag);
 
-        assert srcVT.getSimpleVT().simpleVT == MVT.i32:"Unknown UINT_TO_FP to lower!";
+        Util.assertion(srcVT.getSimpleVT().simpleVT == MVT.i32, "Unknown UINT_TO_FP to lower!");
 
         SDValue stackSlot = dag.createStackTemporary(new EVT(MVT.i64));
         SDValue wordOff = dag.getConstant(4, new EVT(getPointerTy()), false);
@@ -4065,12 +4066,12 @@ public class X86TargetLowering extends TargetLowering
         EVT destVT = op.getValueType();
         if (!isSigned)
         {
-            assert destVT.getSimpleVT().simpleVT == MVT.i32:"Unexpected FP_TO_XINT";
+            Util.assertion(destVT.getSimpleVT().simpleVT == MVT.i32, "Unexpected FP_TO_XINT");
             destVT = new EVT(MVT.i64);
         }
 
-        assert destVT.getSimpleVT().simpleVT <= MVT.i64 &&
-                destVT.getSimpleVT().simpleVT >= MVT.i16:"Unknown FP_TO_XINT to lower!";
+        Util.assertion(destVT.getSimpleVT().simpleVT <= MVT.i64 &&                destVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown FP_TO_XINT to lower!");
+
 
         if (destVT.getSimpleVT().simpleVT == MVT.i32 &&
                 isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
@@ -4096,7 +4097,7 @@ public class X86TargetLowering extends TargetLowering
         SDValue value = op.getOperand(0);
         if (isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
         {
-            assert destVT.getSimpleVT().simpleVT == MVT.i64;
+            Util.assertion( destVT.getSimpleVT().simpleVT == MVT.i64);
             chain = dag.getStore(chain, value, slot,
                     PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
             SDVTList vts = dag.getVTList(op.getOperand(0).getValueType(), new EVT(MVT.Other));
@@ -4128,7 +4129,7 @@ public class X86TargetLowering extends TargetLowering
         Pair<SDValue, SDValue> res = fpToIntHelper(op, dag, false);
         SDValue fist = res.first;
         SDValue slot = res.second;
-        assert fist.getNode() != null;
+        Util.assertion( fist.getNode() != null);
         return dag.getLoad(op.getValueType(), fist, slot, null, 0);
     }
     private SDValue lowerFABS(SDValue op, SelectionDAG dag)
@@ -4271,8 +4272,8 @@ public class X86TargetLowering extends TargetLowering
     }
     private SDValue lowerSETCC(SDValue op, SelectionDAG dag)
     {
-        assert op.getValueType().getSimpleVT().simpleVT ==MVT.i8:
-                "SetCC type must be 8-bits integer!";
+        Util.assertion(op.getValueType().getSimpleVT().simpleVT ==MVT.i8,                 "SetCC type must be 8-bits integer!");
+
         SDValue op0 = op.getOperand(0);
         SDValue op1 = op.getOperand(1);
         backend.codegen.dagisel.CondCode cc = ((CondCodeSDNode)op.getOperand(2).getNode()).getCondition();
@@ -4464,7 +4465,7 @@ public class X86TargetLowering extends TargetLowering
             EVT vt0 = op0.getValueType();
             boolean isV4F32 = vt0.equals(new EVT(MVT.v4f32));
             boolean isV2F64 = vt0.equals(new EVT(MVT.v2f64));
-            assert isV2F64 || isV4F32;
+            Util.assertion( isV2F64 || isV4F32);
             int opc = isV4F32 ? X86ISD.CMPPS : X86ISD.CMPPD;
             boolean swap = false;
 
@@ -4772,7 +4773,7 @@ public class X86TargetLowering extends TargetLowering
                             SDValue falseBB = user.getOperand(1);
                             SDValue newBR = dag.updateNodeOperands(user,
                                 user.getOperand(0), dest);
-                            assert newBR.equals(user);
+                            Util.assertion( newBR.equals(user));
                             dest = falseBB;
                             chain = dag.getNode(X86ISD.BRCOND, op.getValueType(),
                                 chain, dest, cc, cmp);
@@ -4844,8 +4845,8 @@ public class X86TargetLowering extends TargetLowering
      */
     private SDValue lowerDYNAMIC_STACKALLOC(SDValue op, SelectionDAG dag)
     {
-        assert subtarget.isTargetCygMing():
-                "This method should only be called on Cygwin or MinGW platform!";
+        Util.assertion(subtarget.isTargetCygMing(),                 "This method should only be called on Cygwin or MinGW platform!");
+
         SDValue chain = op.getOperand(0);
         SDValue size = op.getOperand(1);
         SDValue flag = new SDValue();
@@ -4914,10 +4915,10 @@ public class X86TargetLowering extends TargetLowering
     private SDValue lowerVAARG(SDValue op, SelectionDAG dag)
     {
         // X86-64 va_list is a struct { i32, i32, i8*, i8* }.
-        assert subtarget.is64Bit():"This is code should only be used on 64-bit target!";
-        assert subtarget.isTargetELF() || subtarget.isTargetDarwin():
-                "VAARG only handlded in ELF/Darwin";
-        assert op.getNode().getNumOperands() == 4;
+        Util.assertion(subtarget.is64Bit(), "This is code should only be used on 64-bit target!");
+        Util.assertion(subtarget.isTargetELF() || subtarget.isTargetDarwin(),                 "VAARG only handlded in ELF/Darwin");
+
+        Util.assertion( op.getNode().getNumOperands() == 4);
 
         SDValue chain = op.getOperand(0);
         SDValue srcPtr = op.getOperand(1);
@@ -4942,8 +4943,8 @@ public class X86TargetLowering extends TargetLowering
 
         if (argNode == 2)
         {
-            assert !GenerateSoftFloatCalls.value && !(dag.getMachineFunction().
-                    getFunction().hasFnAttr(Attribute.NoImplicitFloat));
+            Util.assertion( !GenerateSoftFloatCalls.value && !(dag.getMachineFunction().                    getFunction().hasFnAttr(Attribute.NoImplicitFloat)));
+
         }
 
         ArrayList<SDValue> instOps = new ArrayList<>();
@@ -4963,7 +4964,7 @@ public class X86TargetLowering extends TargetLowering
     private SDValue lowerVACOPY(SDValue op, SelectionDAG dag)
     {
         // X86-64 va_list is a struct { i32, i32, i8*, i8* }.
-        assert subtarget.is64Bit():"lowerVACOPY should be handled in X86-bit";
+        Util.assertion(subtarget.is64Bit(), "lowerVACOPY should be handled in X86-bit");
         SDValue chain = op.getOperand(0);
         SDValue destPtr = op.getOperand(1);
         SDValue srcPtr = op.getOperand(2);
@@ -5269,7 +5270,7 @@ public class X86TargetLowering extends TargetLowering
         //  AhiBlo = __builtin_ia32_psllqi128( AhiBlo, 32 );
         //  return AloBlo + AloBhi + AhiBlo;
         EVT vt = op.getValueType();
-        assert vt.equals(new EVT(MVT.v2i64)):"Only know how to lower v2i64 multiply!";
+        Util.assertion(vt.equals(new EVT(MVT.v2i64)), "Only know how to lower v2i64 multiply!");
         Util.shouldNotReachHere("Not implemented!");
         return null;
     }
@@ -5350,13 +5351,13 @@ public class X86TargetLowering extends TargetLowering
         switch (vt.getSimpleVT().simpleVT)
         {
             default:
-                assert false:"Invalid value type!";
+                Util.assertion(false, "Invalid value type!");
                 break;
             case MVT.i8: reg = X86GenRegisterNames.AL; size = 1; break;
             case MVT.i16: reg = X86GenRegisterNames.AX; size = 2; break;
             case MVT.i32: reg = X86GenRegisterNames.EAX; size = 4; break;
             case MVT.i64:
-                assert subtarget.is64Bit();
+                Util.assertion( subtarget.is64Bit());
                 reg = X86GenRegisterNames.RAX; size = 8; break;
         }
         SDValue ins = dag.getCopyToReg(op.getOperand(0), reg,
@@ -5376,7 +5377,7 @@ public class X86TargetLowering extends TargetLowering
         EVT vt = n.getValueType(0);
         SDValue negOp = dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false),
                 n.getOperand(2));
-        assert n instanceof AtomicSDNode;
+        Util.assertion( n instanceof AtomicSDNode);
         AtomicSDNode as = (AtomicSDNode)n;
 
         return dag.getAtomic(ISD.ATOMIC_LOAD_ADD,
@@ -5386,7 +5387,7 @@ public class X86TargetLowering extends TargetLowering
     }
     private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag)
     {
-        assert subtarget.is64Bit():"Result not type legalized!";
+        Util.assertion(subtarget.is64Bit(), "Result not type legalized!");
         SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
         SDValue chain = op.getOperand(0);
 
@@ -5473,14 +5474,14 @@ public class X86TargetLowering extends TargetLowering
         EVT destTy = op.getValueType();
         if (!isSigned)
         {
-            assert destTy.getSimpleVT().simpleVT == MVT.i32
-                    :"Unexpected FP_TO_UINT";
+            Util.assertion(destTy.getSimpleVT().simpleVT == MVT.i32, "Unexpected FP_TO_UINT");
+
             destTy = new EVT(MVT.i64);
         }
 
-        assert destTy.getSimpleVT().simpleVT <= MVT.i64 &&
-                destTy.getSimpleVT().simpleVT >= MVT.i16:
-                "Unknown FP_TO_SINT to lower!";
+        Util.assertion(destTy.getSimpleVT().simpleVT <= MVT.i64 &&                destTy.getSimpleVT().simpleVT >= MVT.i16, 
+                "Unknown FP_TO_SINT to lower!");
+
 
         if (destTy.getSimpleVT().simpleVT == MVT.i32 &&
                 isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
@@ -5514,8 +5515,8 @@ public class X86TargetLowering extends TargetLowering
         SDValue value = op.getOperand(0);
         if (isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
         {
-            assert destTy.getSimpleVT().simpleVT == MVT.i64:
-                    "Invalid FP_TO_SINT to lower!";
+            Util.assertion(destTy.getSimpleVT().simpleVT == MVT.i64,                     "Invalid FP_TO_SINT to lower!");
+
             chain = dag.getStore(chain, value, stackSlot,
                     PseudoSourceValue.getFixedStack(ssfi), 0, false, 0);
             SDVTList vts = dag.getVTList(op.getOperand(0).getValueType(),
@@ -5579,8 +5580,8 @@ public class X86TargetLowering extends TargetLowering
             case ISD.ATOMIC_CMP_SWAP:
             {
                 EVT vt = n.getValueType(0);
-                assert vt.getSimpleVT().simpleVT == MVT.i64:
-                        "Only know how to expand i64 cmp and swap!";
+                Util.assertion(vt.getSimpleVT().simpleVT == MVT.i64,                         "Only know how to expand i64 cmp and swap!");
+
                 SDValue cpInL, cpInH;
                 EVT i32 = new EVT(MVT.i32);
                 cpInL = dag.getNode(ISD.EXTRACT_ELEMENT, i32, n.getOperand(2),
@@ -5643,8 +5644,8 @@ public class X86TargetLowering extends TargetLowering
             SelectionDAG dag, int newOpc)
     {
         EVT vt = n.getValueType(0);
-        assert vt.getSimpleVT().simpleVT == MVT.i64:
-                "Only know how to expand i64 atomics!";
+        Util.assertion(vt.getSimpleVT().simpleVT == MVT.i64,                 "Only know how to expand i64 atomics!");
+
 
         SDValue chain = n.getOperand(0);
         SDValue in1 = n.getOperand(1);

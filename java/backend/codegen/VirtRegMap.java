@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.TargetRegisterClass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.SetMultiMap;
@@ -46,19 +47,19 @@ public class VirtRegMap
 
     public int getPhys(int virReg)
     {
-        assert isVirtualRegister(virReg);
+        Util.assertion( isVirtualRegister(virReg));
         return v2pMap.get(virReg);
     }
 
     public boolean isAssignedReg(int virtReg)
     {
-        assert isVirtualRegister(virtReg);
+        Util.assertion( isVirtualRegister(virtReg));
         return v2pMap.containsKey(virtReg);
     }
 
     public void assignVirt2Phys(int virtReg, int phyReg)
     {
-        assert isVirtualRegister(virtReg) && isPhysicalRegister(phyReg);
+        Util.assertion( isVirtualRegister(virtReg) && isPhysicalRegister(phyReg));
         v2pMap.put(virtReg, phyReg);
     }
 
@@ -72,8 +73,8 @@ public class VirtRegMap
 
     public void assignVirt2StackSlot(int virtReg, int slot)
     {
-        assert isVirtualRegister(virtReg);
-        assert !v2StackSlotMap.containsKey(virtReg);
+        Util.assertion( isVirtualRegister(virtReg));
+        Util.assertion( !v2StackSlotMap.containsKey(virtReg));
         v2StackSlotMap.put(virtReg, slot);
     }
 
@@ -89,22 +90,22 @@ public class VirtRegMap
 
     public boolean hasStackSlot(int virtReg)
     {
-        assert isVirtualRegister(virtReg) : "Should be virtual register";
+        Util.assertion(isVirtualRegister(virtReg),  "Should be virtual register");
         return v2StackSlotMap.containsKey(virtReg);
     }
 
     public int getStackSlot(int virtReg)
     {
-        assert isVirtualRegister(virtReg) : "Should be virtual register";
+        Util.assertion(isVirtualRegister(virtReg),  "Should be virtual register");
         return v2StackSlotMap.get(virtReg);
     }
 
     public void virtFolded(int virtReg, MachineInstr oldMI, MachineInstr newMI)
     {
         // move previous memory references folded to new instruction
-        assert mi2vMap.containsKey(oldMI);
+        Util.assertion( mi2vMap.containsKey(oldMI));
         Set<Integer> regs = mi2vMap.get(oldMI);
-        assert regs != null;
+        Util.assertion( regs != null);
         regs.forEach(reg -> mi2vMap.remove(oldMI, reg));
 
         regs.forEach(reg ->

@@ -115,7 +115,7 @@ public class APInt implements Cloneable
 
     public APInt(long[] val, int bits)
     {
-        assert bits > 0 : "bitwidth too small";
+        Util.assertion(bits > 0,  "bitwidth too small");
         bitWidth = bits;
         pVal = val;
     }
@@ -228,9 +228,11 @@ public class APInt implements Cloneable
      */
     private void fromString(int numBits, String str, int radix)
     {
-        assert !str.isEmpty() : "Invalid string length";
-        assert (radix == 10 || radix == 8 || radix == 2
-                || radix == 16) : "Radix should be 2, 8, 10, or 16!";
+        Util.assertion(!str.isEmpty(),  "Invalid string length");
+        Util.assertion((radix == 10 || radix == 8
+                || radix == 2 || radix == 16),
+                "Radix should be 2, 8, 10, or 16!");
+
 
         int slen = str.length();
         char[] arr = str.toCharArray();
@@ -240,16 +242,16 @@ public class APInt implements Cloneable
         {
             i++;
             slen--;
-            assert slen != 0 : "String is only a sign, needs a value.";
+            Util.assertion(slen != 0,  "String is only a sign, needs a value.");
         }
 
-        assert slen < numBits || radix != 2 : "Insufficient bit width";
-        assert (slen - 1) * 3 <= numBits
-                || radix != 8 : "Insufficient bit width";
-        assert (slen - 1) * 4 <= numBits
-                || radix != 16 : "Insufficient bit width";
-        assert ((slen - 1) * 64) / 22 <= numBits
-                || radix != 10 : "Insufficient bit width";
+        Util.assertion(slen < numBits || radix != 2,  "Insufficient bit width");
+        Util.assertion((slen - 1) * 3 <= numBits                || radix != 8,  "Insufficient bit width");
+
+        Util.assertion((slen - 1) * 4 <= numBits                || radix != 16,  "Insufficient bit width");
+
+        Util.assertion(((slen - 1) * 64) / 22 <= numBits                || radix != 10,  "Insufficient bit width");
+
 
         // Allocate memory.
         if (!isSingleWord())
@@ -267,7 +269,7 @@ public class APInt implements Cloneable
         for (; i != str.length(); i++)
         {
             int digit = getDigit(arr[i], radix);
-            assert digit < radix && digit >= 0: "Invalid character in digit string";
+            Util.assertion(digit < radix && digit >= 0,  "Invalid character in digit string");
 
             // Shift or mul the value by the radix
             if (slen > 1)
@@ -349,8 +351,8 @@ public class APInt implements Cloneable
 
     private void initFromArray(long[] bigVal, int len)
     {
-        assert bitWidth > 0 : "bitwidth too small " + bitWidth;
-        assert bigVal != null : "empty list";
+        Util.assertion(bitWidth > 0,  "bitwidth too small " + bitWidth);
+        Util.assertion(bigVal != null,  "empty list");
         if (isSingleWord())
             val = bigVal[0];
         else
@@ -364,8 +366,8 @@ public class APInt implements Cloneable
 
     private void initFromArray(ArrayList<Long> bigVal)
     {
-        assert bitWidth > 0 : "bitwidth too small " + bitWidth;
-        assert !bigVal.isEmpty() : "empty list";
+        Util.assertion(bitWidth > 0,  "bitwidth too small " + bitWidth);
+        Util.assertion(!bigVal.isEmpty(),  "empty list");
         if (isSingleWord())
             val = bigVal.get(0);
         else
@@ -470,14 +472,14 @@ public class APInt implements Cloneable
             return this;
         if (bitWidth == rhs.bitWidth)
         {
-            assert !isSingleWord();
+            Util.assertion( !isSingleWord());
             System.arraycopy(rhs.pVal, 0, pVal, 0, getNumWords() * APINT_WORD_SIZE);
             return this;
         }
 
         if (isSingleWord())
         {
-            assert !rhs.isSingleWord();
+            Util.assertion( !rhs.isSingleWord());
             val = 0;
             pVal = new long[rhs.getNumWords()];
             System.arraycopy(rhs.pVal, 0, pVal, 0, rhs.getNumWords() * APINT_WORD_SIZE);
@@ -540,7 +542,7 @@ public class APInt implements Cloneable
     {
         bitWidth = numBits;
         this.val = 0;
-        assert bitWidth > 0 : "bitwidth too small";
+        Util.assertion(bitWidth > 0,  "bitwidth too small");
         if (isSingleWord())
             this.val = val;
         else
@@ -569,7 +571,7 @@ public class APInt implements Cloneable
     public APInt(int numBits, String str, int radix)
     {
         bitWidth = numBits;
-        assert numBits > 0 : "bitwidth too small";
+        Util.assertion(numBits > 0,  "bitwidth too small");
         fromString(numBits, str, radix);
     }
 
@@ -582,7 +584,7 @@ public class APInt implements Cloneable
     {
         bitWidth = that.bitWidth;
         val = 0;
-        assert bitWidth > 0 : "bitwidth too small";
+        Util.assertion(bitWidth > 0,  "bitwidth too small");
         if (isSingleWord())
             val = that.val;
         else
@@ -690,7 +692,7 @@ public class APInt implements Cloneable
      */
     public APInt zext(int width)
     {
-        assert width > bitWidth : "Invalid APInt ZeroExtend request";
+        Util.assertion(width > bitWidth,  "Invalid APInt ZeroExtend request");
         int wordBefore = getNumWords();
         bitWidth = width;
         int wordAfter = getNumWords();
@@ -708,7 +710,7 @@ public class APInt implements Cloneable
 
     public APInt sext(int width)
     {
-        assert width > bitWidth : "Invalid APInt SignExtend request";
+        Util.assertion(width > bitWidth,  "Invalid APInt SignExtend request");
 
         // if the sign bits of this is not set, this is the zext.
         if (!isNegative())
@@ -758,8 +760,8 @@ public class APInt implements Cloneable
 
     public APInt trunc(int width)
     {
-        assert width < bitWidth : "Invalid APInt Truncate request";
-        assert width > 0 : " Can't truncate to 0 bits";
+        Util.assertion(width < bitWidth,  "Invalid APInt Truncate request");
+        Util.assertion(width > 0,  " Can't truncate to 0 bits");
 
         int wordsBefore = getNumWords();
         bitWidth = width;
@@ -810,7 +812,7 @@ public class APInt implements Cloneable
 
     public boolean ult(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit widths must be same for comparision";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit widths must be same for comparision");
         if (isSingleWord())
             return Util.ult(val, rhs.val);
         // Get active bit length of both operands
@@ -825,7 +827,7 @@ public class APInt implements Cloneable
         if (n1 > n2)
             return false;
         // reach here, the n1 must equal to n2.
-        assert n1 == n2;
+        Util.assertion( n1 == n2);
 
         // If they bot fit in a word, just compare the low order word
         if (n1 < APINT_BITS_PER_WORD)
@@ -850,8 +852,8 @@ public class APInt implements Cloneable
 
     public boolean slt(final APInt rhs)
     {
-        assert bitWidth
-                == rhs.bitWidth : "Bit width must be same for comparison";
+        Util.assertion(bitWidth                == rhs.bitWidth,  "Bit width must be same for comparison");
+
         if (isSingleWord())
         {
             return val < rhs.val;
@@ -985,7 +987,7 @@ public class APInt implements Cloneable
      */
     public boolean eq(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Comparison requires equal bit widths";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Comparison requires equal bit widths");
         if (isSingleWord())
             return val == rhs.val;
         return equalSlowCase(rhs);
@@ -1011,8 +1013,8 @@ public class APInt implements Cloneable
             boolean isSigned,
             boolean formatAsCLiteral)
     {
-        assert radix == 10 || radix == 8 || radix == 16 || radix == 2
-                || radix == 36 : "radix sholud be 2, 4, 8, 16!";
+        Util.assertion(radix == 10 || radix == 8 || radix == 16 || radix == 2                || radix == 36,  "radix sholud be 2, 4, 8, 16!");
+
 
         String prefix = "";
         if (formatAsCLiteral)
@@ -1114,7 +1116,7 @@ public class APInt implements Cloneable
                 apDigit = x.get();
                 temp2 = y.get();
                 long digit = apDigit.getZExtValue();
-                assert digit < radix : "div failure";
+                Util.assertion(digit < radix,  "div failure");
                 buffer.append(digits.charAt((int) digit));
                 temp = temp2;
             }
@@ -1145,7 +1147,7 @@ public class APInt implements Cloneable
      */
     public boolean isIntN(int N)
     {
-        assert N > 0;
+        Util.assertion( N > 0);
         if (N >= getBitWidth())
             return true;
 
@@ -1253,7 +1255,7 @@ public class APInt implements Cloneable
      */
     public boolean isSignedIntN(int N)
     {
-        assert N > 0;
+        Util.assertion( N > 0);
         return getMinSignedBits() <= N;
     }
 
@@ -1411,7 +1413,7 @@ public class APInt implements Cloneable
 
     public boolean get(int bitPosition)
     {
-        assert bitPosition < getBitWidth() : "Bit position out of bounds!";
+        Util.assertion(bitPosition < getBitWidth(),  "Bit position out of bounds!");
         return (maskBit(bitPosition) & (isSingleWord() ? val : pVal[whichWord(bitPosition)])) != 0;
     }
 
@@ -1420,7 +1422,7 @@ public class APInt implements Cloneable
         if (isSingleWord())
             return (val << ((APINT_BITS_PER_WORD - bitWidth))) >> (
                     APINT_BITS_PER_WORD - bitWidth);
-        assert getMinSignedBits() <= 64 : "Too many bits for long";
+        Util.assertion(getMinSignedBits() <= 64,  "Too many bits for long");
         return pVal[0];
     }
 
@@ -1428,7 +1430,7 @@ public class APInt implements Cloneable
     {
         if (isSingleWord())
             return val;
-        assert getActiveBits() <= 64 : "Too many bits for long";
+        Util.assertion(getActiveBits() <= 64,  "Too many bits for long");
         return pVal[0];
     }
 
@@ -1447,7 +1449,7 @@ public class APInt implements Cloneable
      */
     public APInt ashr(long shiftAmt)
     {
-        assert shiftAmt <= bitWidth : "Invalid shift amount";
+        Util.assertion(shiftAmt <= bitWidth,  "Invalid shift amount");
         if (shiftAmt == 0)
             return this;
 
@@ -1629,7 +1631,7 @@ public class APInt implements Cloneable
      */
     public APInt shl(int shiftAmt)
     {
-        assert shiftAmt <= bitWidth : "Invalid shift amounts";
+        Util.assertion(shiftAmt <= bitWidth,  "Invalid shift amounts");
         if (isSingleWord())
         {
             if (shiftAmt == bitWidth)
@@ -1767,7 +1769,7 @@ public class APInt implements Cloneable
 
     public APInt add(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "bit width must be same!");
 
         if (isSingleWord())
             return new APInt(bitWidth, val + rhs.val);
@@ -1817,7 +1819,7 @@ public class APInt implements Cloneable
 
     public APInt sub(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
 
         if (isSingleWord())
             return new APInt(bitWidth, val - rhs.val);
@@ -1890,7 +1892,7 @@ public class APInt implements Cloneable
      */
     public static void mul(long[] dest, long[] x, int lenX, long[] y, int lenY)
     {
-        assert dest.length >= lenX + lenY;
+        Util.assertion( dest.length >= lenX + lenY);
         dest[lenX] = mul1(dest, x, lenX, y[0]);
 
         for (int i = 1; i < lenY; i++)
@@ -1929,7 +1931,7 @@ public class APInt implements Cloneable
 
     public APInt mul(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bitwidth must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bitwidth must be same!");
         if (isSingleWord())
             return new APInt(bitWidth, val * rhs.val);
         APInt result = new APInt(bitWidth, 0);
@@ -1950,7 +1952,7 @@ public class APInt implements Cloneable
      */
     public APInt andAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
         if (isSingleWord())
         {
             val &= rhs.val;
@@ -1971,7 +1973,7 @@ public class APInt implements Cloneable
      */
     public APInt orAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
         if (isSingleWord())
         {
             val |= rhs.val;
@@ -1992,7 +1994,7 @@ public class APInt implements Cloneable
      */
     public APInt xorAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
         if (isSingleWord())
         {
             val ^= rhs.val;
@@ -2007,7 +2009,7 @@ public class APInt implements Cloneable
 
     public APInt addAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
 
         if (isSingleWord())
         {
@@ -2033,7 +2035,7 @@ public class APInt implements Cloneable
 
     public APInt subAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
 
         if (isSingleWord())
             val -= rhs.val;
@@ -2068,7 +2070,7 @@ public class APInt implements Cloneable
      */
     public APInt mulAssign(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
         if (isSingleWord())
         {
             val *= rhs.val;
@@ -2109,19 +2111,19 @@ public class APInt implements Cloneable
      */
     public APInt udiv(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
 
         // first, deal with the easy case.
         if (isSingleWord())
         {
-            assert rhs.val != 0 : "Divide by zero?";
+            Util.assertion(rhs.val != 0,  "Divide by zero?");
             return new APInt(bitWidth, val / rhs.val);
         }
 
         // Get some facts about the LHS and RHS number of bits and words
         int rhsBits = rhs.getActiveBits();
         int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
-        assert rhsWords != 0 : "div by zeror?";
+        Util.assertion(rhsWords != 0,  "div by zeror?");
 
         int lhsBits = getActiveBits();
         int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
@@ -2187,7 +2189,7 @@ public class APInt implements Cloneable
             int rhsWords, OutParamWrapper<APInt> quotient,
             OutParamWrapper<APInt> remainder)
     {
-        assert lhsWords >= rhsWords : "Fractional result";
+        Util.assertion(lhsWords >= rhsWords,  "Fractional result");
 
         // First, compose the values into an array of 32-bit words instead of
         // 64-bit words. This is a necessity of both the "short division" algorithm
@@ -2272,7 +2274,7 @@ public class APInt implements Cloneable
         // by a 32-bit quantity at hardware speed and short division is simply a
         // series of such operations. This is just like doing short division but we
         // are using base 2^32 instead of base 10.
-        assert n != 0 : "Divide by zero?";
+        Util.assertion(n != 0,  "Divide by zero?");
 
         if (n == 1)
         {
@@ -2343,8 +2345,8 @@ public class APInt implements Cloneable
             }
             else
             {
-                assert !quotient.get()
-                        .isSingleWord() : "Quotient APInt not large enough";
+                Util.assertion(!quotient.get()                        .isSingleWord(),  "Quotient APInt not large enough");
+
                 for (int i = 0; i < lhsWords; i++)
                     quotient.get().pVal[i] =
                             (long) (q[i * 2]) | ((long) (q[i * 2 + 1]) << (
@@ -2383,8 +2385,8 @@ public class APInt implements Cloneable
                 }
                 else
                 {
-                    assert !remainder.get()
-                            .isSingleWord() : "Remainder APInt not large enough";
+                    Util.assertion(!remainder.get()                            .isSingleWord(),  "Remainder APInt not large enough");
+
                     for (int i = 0; i < rhsWords; i++)
                         remainder.get().pVal[i] =
                                 (long) r[i * 2] | (long) r[2 * i + 1] << (
@@ -2415,11 +2417,11 @@ public class APInt implements Cloneable
      */
     private static void knuthDiv(int[] U, int[] V, int[] Q, int[] R, int m, int n)
     {
-        assert U != null : "Must provide dividend!";
-        assert V != null : "Must provide divisor!";
-        assert Q != null : "Must provide quotient!";
-        assert U != V && U != Q && V != Q : "Must use different memory";
-        assert n > 1 : "n must be >1";
+        Util.assertion(U != null,  "Must provide dividend!");
+        Util.assertion(V != null,  "Must provide divisor!");
+        Util.assertion(Q != null,  "Must provide quotient!");
+        Util.assertion(U != V && U != Q && V != Q,  "Must use different memory");
+        Util.assertion(n > 1,  "n must be >1");
 
         // Knuth uses the value b as the base of the number system. In our case b
         // is 2^31 so we just set it to -1u.
@@ -2588,10 +2590,10 @@ public class APInt implements Cloneable
      */
     public APInt urem(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        Util.assertion(bitWidth == rhs.bitWidth,  "Bit width must be same!");
         if (isSingleWord())
         {
-            assert rhs.val != 0 : "Remainder by zero?";
+            Util.assertion(rhs.val != 0,  "Remainder by zero?");
             return new APInt(bitWidth, val % rhs.val);
         }
 
@@ -2600,7 +2602,7 @@ public class APInt implements Cloneable
 
         int rhsBits = rhs.getActiveBits();
         int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
-        assert rhsWords != 0 : "Performing rem operation by zero ???";
+        Util.assertion(rhsWords != 0,  "Performing rem operation by zero ???");
 
         if (lhsWords == 0)
         {
@@ -2737,7 +2739,7 @@ public class APInt implements Cloneable
 
     public APInt and(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        Util.assertion(bitWidth == rhs.bitWidth, "Bit widths must be the same");
         if (isSingleWord())
             return new APInt(getBitWidth(), val & rhs.val);
         return andSlowCase(rhs);
@@ -2750,7 +2752,7 @@ public class APInt implements Cloneable
 
     public APInt or(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        Util.assertion(bitWidth == rhs.bitWidth, "Bit widths must be the same");
         if (isSingleWord())
             return new APInt(getBitWidth(), val | rhs.val);
         return orSlowCase(rhs);
@@ -2763,7 +2765,7 @@ public class APInt implements Cloneable
 
     public APInt xor(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        Util.assertion(bitWidth == rhs.bitWidth, "Bit widths must be the same");
         if (isSingleWord())
             return new APInt(getBitWidth(), val ^ rhs.val);
         return xorSlowCase(rhs);
@@ -2780,7 +2782,7 @@ public class APInt implements Cloneable
      */
     public static APInt getLowBitsSet(int numBits, int loBitsSet)
     {
-        assert loBitsSet <=numBits;
+        Util.assertion( loBitsSet <=numBits);
         if (loBitsSet == 0)
             return new APInt(numBits, 0);
         if (loBitsSet == APINT_BITS_PER_WORD)
@@ -2793,8 +2795,8 @@ public class APInt implements Cloneable
 
     public static APInt getBitsSet(int numBits, int loBit, int hiBit)
     {
-        assert hiBit <= numBits;
-        assert loBit < numBits;
+        Util.assertion( hiBit <= numBits);
+        Util.assertion( loBit < numBits);
         if (hiBit < loBit)
             return getLowBitsSet(numBits, hiBit).or(getHighBitsSet(numBits, numBits-loBit));
         return getLowBitsSet(numBits, hiBit-loBit).shl(loBit);
@@ -2809,7 +2811,7 @@ public class APInt implements Cloneable
      */
     public static APInt getHighBitsSet(int numBits, int hiBitsSet)
     {
-        assert hiBitsSet <= numBits :"Too many bits to set";
+        Util.assertion(hiBitsSet <= numBits, "Too many bits to set");
         if(hiBitsSet == 0)
             return new APInt(numBits, 0);
         int shiftAmt = numBits - hiBitsSet;
@@ -3036,7 +3038,7 @@ public class APInt implements Cloneable
         }
         else
         {
-            assert hiWord > 0 :"huh?";
+            Util.assertion(hiWord > 0, "huh?");
             long hiBits = temp.pVal[(int)hiWord] << (52 - n % APINT_BITS_PER_WORD);
             long loBits = temp.pVal[(int)(hiWord-1)] >>> (11 + n % APINT_BITS_PER_WORD);
             mantissa = hiBits | loBits;
@@ -3111,7 +3113,7 @@ public class APInt implements Cloneable
      */
     public static void tcSet(long[] dest, int part, int parts)
     {
-        assert dest != null && dest.length > 0;
+        Util.assertion( dest != null && dest.length > 0);
 
         dest[0] = part;
         for (int i = 1; i < parts; i++)
@@ -3227,7 +3229,7 @@ public class APInt implements Cloneable
 
     public static long lowBitMask(int bits)
     {
-        assert (bits != 0 && bits <= 64);
+        Util.assertion( (bits != 0 && bits <= 64));
 
         return ~0;
     }
@@ -3241,7 +3243,7 @@ public class APInt implements Cloneable
     {
         int firstSrcPart = 0, dstParts = 0, shift = 0, n = 0;
         dstParts = (srcBits + 64 - 1) / 64;
-        assert dstParts <= dstCount;
+        Util.assertion( dstParts <= dstCount);
 
         firstSrcPart = srcLSB / 64;
         System.arraycopy(src, firstSrcPart, dest, 0, dstParts);
@@ -3271,7 +3273,7 @@ public class APInt implements Cloneable
     public static long tcAdd(long[] dst, long[] rhs, long c, int parts)
     {
         int i = 0;
-        assert c >= 0 && c <= 1;
+        Util.assertion( c >= 0 && c <= 1);
         for (; i < parts; i++)
         {
             long l = dst[i];
@@ -3301,7 +3303,7 @@ public class APInt implements Cloneable
     public static long tcSubtract(long[] dst, long[] rhs, long c, int parts)
     {
         int i;
-        assert c >= 0 && c <= 1;
+        Util.assertion( c >= 0 && c <= 1);
 
         for (i = 0; i < parts; i++)
         {
@@ -3358,7 +3360,7 @@ public class APInt implements Cloneable
             long carry, int srcParts, int dstParts, boolean add)
     {
         int i, n;
-        assert dstParts <= srcParts + 1;
+        Util.assertion( dstParts <= srcParts + 1);
 
         /* N loops; minimum of dstParts and srcParts.  */
         n = dstParts < srcParts ? dstParts : srcParts;
@@ -3413,7 +3415,7 @@ public class APInt implements Cloneable
 
         if (i < dstParts)
         {
-            assert  i + 1 == dstParts;
+            Util.assertion(  i + 1 == dstParts);
             dst[i + dstFromIndex] = carry;
             return 0;
         }
@@ -3439,7 +3441,7 @@ public class APInt implements Cloneable
         int i;
         int overflow;
 
-        assert (dst != lhs && dst != rhs);
+        Util.assertion( (dst != lhs && dst != rhs));
 
         overflow = 0;
         tcSet(dst, 0, parts);
@@ -3467,7 +3469,7 @@ public class APInt implements Cloneable
         {
             int n;
 
-            assert (dst != lhs && dst != rhs);
+            Util.assertion( (dst != lhs && dst != rhs));
 
             tcSet(dst, 0, rhsParts);
 
@@ -3497,7 +3499,7 @@ public class APInt implements Cloneable
         int n, shiftCount;
         long mask;
 
-        assert (lhs != remainder && lhs != srhs && remainder != srhs);
+        Util.assertion( (lhs != remainder && lhs != srhs && remainder != srhs));
 
         shiftCount = tcMSB(rhs, parts) + 1;
         if (shiftCount == 0)
@@ -3692,7 +3694,7 @@ public class APInt implements Cloneable
 
     public APInt byteSwap()
     {
-        assert bitWidth >= 16 && bitWidth % 16 == 0;
+        Util.assertion( bitWidth >= 16 && bitWidth % 16 == 0);
         if (bitWidth == 16)
             return new APInt(bitWidth, Util.byteSwap16((short) val));
         if (bitWidth == 32)

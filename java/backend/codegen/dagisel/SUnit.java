@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.MachineInstr;
 import backend.target.TargetRegisterClass;
 
@@ -100,25 +101,25 @@ public class SUnit
 
 	public void setNode(SDNode n)
 	{
-		assert instr == null;
+		Util.assertion( instr == null);
 		node = n;
 	}
 
 	public SDNode getNode()
 	{
-		assert instr == null;
+		Util.assertion( instr == null);
 		return node;	
 	}
 
 	public void setInstr(MachineInstr mi)
 	{
-		assert node == null;
+		Util.assertion( node == null);
 		instr = mi;
 	}
 
 	public MachineInstr getInstr()
 	{
-		assert node == null;
+		Util.assertion( node == null);
 		return instr;	
 	}
 
@@ -178,7 +179,7 @@ public class SUnit
 						break;
 					}
 				}
-				assert foundSucc:"Mismatch pred/succ pair!";
+				Util.assertion(foundSucc, "Mismatch pred/succ pair!");
 				preds.remove(i);
 
 				if (d.getDepKind() == Data)

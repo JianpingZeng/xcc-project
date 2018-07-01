@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.Value;
 import jlang.type.QualType;
 
@@ -76,8 +77,7 @@ public final class LValue
      * Simple value.
      * @return
      */
-    public Value getAddress() { assert isSimple(); return v;}
-
+    public Value getAddress() { Util.assertion( isSimple()); return v;}
     public Value getBitFieldAddr() { assert isBitField(); return v;}
     public int getBitfieldStartBits(){assert isBitField(); return bitFieldData.startBit;}
     public int getBitfieldSize() {assert isBitField(); return bitFieldData.size;}
@@ -85,6 +85,7 @@ public final class LValue
     public static LValue makeAddr(Value v, int qualifers)
     {
         LValue r = new LValue();
+
         r.LVType = Kind.Simple;
         r.v = v;
         setQualifiers(qualifers, r);

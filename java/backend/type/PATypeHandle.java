@@ -17,6 +17,8 @@
 
 package backend.type;
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -28,7 +30,7 @@ public class PATypeHandle
 
     private void addUser()
     {
-        assert ty != null:"Type handle has a null type";
+        Util.assertion(ty != null, "Type handle has a null type");
         if (ty.isAbstract())
             ty.addAbstractTypeUser(user);
     }

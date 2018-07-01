@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
@@ -145,7 +146,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             {
                 TargetRegisterClass rc = mri.getRegClass(regs.second);
                 boolean emitted = tii.copyRegToReg(entryBB, 0, regs.second, regs.first, rc, rc);
-                assert emitted:"Fail to emit a copy of live-in register!";
+                Util.assertion(emitted, "Fail to emit a copy of live-in register!");
             }
         }
     }
@@ -213,7 +214,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         {
             BasicBlock succBB = llvmBB.suxAt(i);
             MachineBasicBlock succMBB = funcInfo.mbbmap.get(succBB);
-            assert succBB != null && succMBB != null;
+            Util.assertion( succBB != null && succMBB != null);
 
             if (!handled.add(succMBB)) continue;
 
@@ -245,8 +246,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                     }
                     else
                     {
-                        assert incomingOp instanceof AllocaInst &&
-                                funcInfo.staticAllocaMap.containsKey(incomingOp);
+                        Util.assertion( incomingOp instanceof AllocaInst &&                                funcInfo.staticAllocaMap.containsKey(incomingOp));
+
                         reg = funcInfo.createRegForValue(incomingOp);
                         sdl.copyValueToVirtualRegister(incomingOp, reg);
                         funcInfo.valueMap.put(incomingOp, reg);
@@ -411,9 +412,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         SDValue newRoot = targetLowering.lowerFormalArguments(dag.getRoot(),
                 fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals);
 
-        assert newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other))
-                :"lowerFormalArguments din't return a valid chain!";
-        assert inVals.size() == ins.size():"lowerFormalArguments didn't emit the correct number of values";
+        Util.assertion(newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other)), "lowerFormalArguments din't return a valid chain!");
+
+        Util.assertion(inVals.size() == ins.size(), "lowerFormalArguments didn't emit the correct number of values");
 
         dag.setRoot(newRoot);
 
@@ -452,7 +453,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             ++idx;
         }
 
-        assert i == inVals.size();
+        Util.assertion( i == inVals.size());
 
         emitFunctionEntryCode(fn, mf);
         return false;
@@ -488,7 +489,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++)
             {
                 MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a phi node!";
+                Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a phi node!");
                 phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
                         false, false));
                 phi.addOperand(MachineOperand.createMBB(mbb, 0));
@@ -533,7 +534,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             {
                 MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
                 MachineBasicBlock mbb = phi.getParent();
-                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a phi node!";
+                Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a phi node!");
 
                 if (mbb.equals(sdl.bitTestCases.get(i).defaultMBB))
                 {
@@ -585,7 +586,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             {
                 MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
                 MachineBasicBlock phiMBB = phi.getParent();
-                assert phi.getOpcode() == TargetInstrInfo.PHI:"This is not a PHI node!";
+                Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a PHI node!");
                 if (phiMBB.equals(sdl.jtiCases.get(i).second.defaultMBB))
                 {
                     phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
@@ -605,7 +606,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++)
         {
             MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-            assert phi.getOpcode() == TargetInstrInfo.PHI;
+            Util.assertion( phi.getOpcode() == TargetInstrInfo.PHI);
             if (mbb.isSuccessor(phi.getParent()))
             {
                 phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
@@ -632,7 +633,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                     MachineInstr phi = mbb.getInstAt(pi);
                     for (int pn = 0; ; ++pn)
                     {
-                        assert pn != sdl.phiNodesToUpdate.size():"Didn't find PHI entry!";
+                        Util.assertion(pn != sdl.phiNodesToUpdate.size(), "Didn't find PHI entry!");
                         if (sdl.phiNodesToUpdate.get(pn).first.equals(phi))
                         {
                             phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pn).second,
@@ -649,7 +650,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                 sdl.switchCases.get(i).trueMBB = sdl.switchCases.get(i).falseMBB;
                 sdl.switchCases.get(i).falseMBB = null;
             }
-            assert sdl.switchCases.get(i).trueMBB == null && sdl.switchCases.get(i).falseMBB == null;
+            Util.assertion( sdl.switchCases.get(i).trueMBB == null && sdl.switchCases.get(i).falseMBB == null);
         }
 
         sdl.switchCases.clear();
@@ -703,7 +704,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                 if (use.equals(immedUse) || use.equals(root))
                     continue;
 
-                assert !Objects.equals(n, root);
+                Util.assertion( !Objects.equals(n, root));
                 return true;
             }
 

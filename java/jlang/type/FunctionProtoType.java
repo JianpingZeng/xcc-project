@@ -16,6 +16,7 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.PrintingPolicy;
 import tools.FoldingSetNode;
 import tools.FoldingSetNodeID;
@@ -62,7 +63,7 @@ public final class FunctionProtoType extends FunctionType implements
 
     public QualType getArgType(int idx)
     {
-        assert idx >= 0 && idx < getNumArgs();
+        Util.assertion( idx >= 0 && idx < getNumArgs());
         return argInfo[idx];
     }
 

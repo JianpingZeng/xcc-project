@@ -16,6 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
@@ -95,7 +96,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
             case OR32ri:
             case XOR16ri:
             case XOR32ri:
-                assert curMI.getNumOperands() == 3:"There should have 3 opernds!";
+                Util.assertion(curMI.getNumOperands() == 3, "There should have 3 opernds!");
                 if (curMI.getOperand(2).isImm())
                 {
                     long val = curMI.getOperand(2).getImm();
@@ -105,7 +106,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         int opcode;
                         switch (curMI.getOpcode())
                         {
-                            default: assert false:"Undefined opcode value!";
+                            default: Util.assertion(false, "Undefined opcode value!");
                             case ADD16ri: opcode = ADD16ri8;break;
                             case ADD32ri: opcode = ADD32ri8; break;
                             case SUB16ri: opcode = SUB16ri8; break;

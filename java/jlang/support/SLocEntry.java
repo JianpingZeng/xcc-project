@@ -16,6 +16,8 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -71,14 +73,14 @@ public abstract class SLocEntry
         @Override
         public FileInfo getFile()
         {
-            assert isFile() :"Not in a file entry";
+            Util.assertion(isFile(), "Not in a file entry");
             return file;
         }
 
         @Override
         public InstantiationInfo getInstantiation()
         {
-            assert false:"Should not reaching here";
+            Util.assertion(false, "Should not reaching here");
             return null;
         }
     }
@@ -101,7 +103,7 @@ public abstract class SLocEntry
         @Override
         public FileInfo getFile()
         {
-            assert false:"Should not reaching here";
+            Util.assertion(false, "Should not reaching here");
             return null;
         }
 

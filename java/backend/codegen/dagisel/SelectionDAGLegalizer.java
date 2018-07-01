@@ -16,6 +16,7 @@
  */
 
 package backend.codegen.dagisel;
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.support.CallingConv;
@@ -96,7 +97,7 @@ public class SelectionDAGLegalizer
         }
 
         SDValue oldRoot = dag.getRoot();
-        assert legalizeNodes.containsKey(oldRoot):"Root didn't get legalized!";
+        Util.assertion(legalizeNodes.containsKey(oldRoot), "Root didn't get legalized!");
         dag.setRoot(legalizeNodes.get(oldRoot));
 
         legalizeNodes.clear();
@@ -120,13 +121,13 @@ public class SelectionDAGLegalizer
 
         SDNode node = val.getNode();
         for (int i = 0, e = node.getNumValues(); i < e; i++)
-            assert getTypeAction(node.getValueType(i)) ==
-                    TargetLowering.LegalizeAction.Legal:"Unexpected illegal type!";
+            Util.assertion(getTypeAction(node.getValueType(i)) ==                    TargetLowering.LegalizeAction.Legal, "Unexpected illegal type!");
+
 
         for (int i = 0, e = node.getNumOperands(); i < e; i++)
-            assert isTypeLegal(node.getOperand(i).getValueType()) ||
-                    node.getOperand(i).getOpcode() == ISD.TargetConstant :
-                    "Unexpected illegal type!";
+            Util.assertion(isTypeLegal(node.getOperand(i).getValueType()) ||                    node.getOperand(i).getOpcode() == ISD.TargetConstant, 
+                    "Unexpected illegal type!");
+
 
         if (legalizeNodes.containsKey(val))
             return legalizeNodes.get(val);
@@ -335,11 +336,11 @@ public class SelectionDAGLegalizer
                 if (node.getNumValues() == 2)
                     addLegalizedOperand(val.getValue(1), result.getValue(1));
 
-                assert !isLegalizingCall:"Inconsistent sequentialization of calls!";
+                Util.assertion(!isLegalizingCall, "Inconsistent sequentialization of calls!");
                 lastCALLSEQ_END = new SDValue(callEnd, 0);
                 isLegalizingCall = true;
                 legalizeOp(lastCALLSEQ_END);
-                assert !isLegalizingCall;
+                Util.assertion( !isLegalizingCall);
                 return result;
             }
             case ISD.CALLSEQ_END:
@@ -347,8 +348,8 @@ public class SelectionDAGLegalizer
                 if (!lastCALLSEQ_END.getNode().equals(node))
                 {
                     legalizeOp(new SDValue(findCallStartFromCallEnd(node), 0));
-                    assert legalizeNodes.containsKey(val):
-                            "Legalizing the call start should have legalized this node!";
+                    Util.assertion(legalizeNodes.containsKey(val),                             "Legalizing the call start should have legalized this node!");
+
                     return legalizeNodes.get(val);
                 }
 
@@ -379,7 +380,7 @@ public class SelectionDAGLegalizer
                         result = dag.updateNodeOperands(result, ops);
                     }
                 }
-                assert isLegalizingCall:"Call sequence imbalance between start/end";
+                Util.assertion(isLegalizingCall, "Call sequence imbalance between start/end");
                 isLegalizingCall = false;
 
                 addLegalizedOperand(new SDValue(node, 0), result.getValue(0));
@@ -431,7 +432,7 @@ public class SelectionDAGLegalizer
                             break;
                         case Promote:
                         {
-                            assert vt.isVector():"Can't promote this load!";
+                            Util.assertion(vt.isVector(), "Can't promote this load!");
                             EVT nvt = tli.getTypeToPromoteType(node.getOpcode(), vt);
                             temp1 = dag.getLoad(nvt, temp1, temp2, ld.getSrcValue(),
                                     ld.getSrcValueOffset(), ld.isVolatile(),
@@ -484,13 +485,13 @@ public class SelectionDAGLegalizer
                     else if ((srcWidth & (srcWidth - 1)) != 0)
                     {
                         // If not loading a power-of-2 number of bits, expand as two loads.
-                        assert srcVT.isExtended() && !srcVT.isVector():"Unsupported extload!";
+                        Util.assertion(srcVT.isExtended() && !srcVT.isVector(), "Unsupported extload!");
                         int roundWidth = 1 << Util.log2(srcWidth);
-                        assert roundWidth < srcWidth;
+                        Util.assertion( roundWidth < srcWidth);
                         int extraWidth = srcWidth - roundWidth;
-                        assert extraWidth < roundWidth;
-                        assert (roundWidth&7) == 0 && (extraWidth&7) == 0 :
-                                "Load size not an integeral number of bytes!";
+                        Util.assertion( extraWidth < roundWidth);
+                        Util.assertion((roundWidth&7) == 0 && (extraWidth&7) == 0,                                 "Load size not an integeral number of bytes!");
+
                         EVT roundVT = EVT.getIntegerVT(roundWidth);
                         EVT extraVT = EVT.getIntegerVT(extraWidth);
                         SDValue lo, hi, ch;
@@ -592,7 +593,7 @@ public class SelectionDAGLegalizer
                                     temp2 = legalizeOp(load.getValue(1));
                                     break;
                                 }
-                                assert extType != EXTLOAD;
+                                Util.assertion( extType != EXTLOAD);
                                 result = dag.getExtLoad(EXTLOAD,
                                         node.getValueType(0),
                                         temp1, temp2, ld.getSrcValue(),
@@ -618,7 +619,7 @@ public class SelectionDAGLegalizer
             }
             case ISD.STORE:
             {
-                assert node instanceof StoreSDNode;
+                Util.assertion( node instanceof StoreSDNode);
                 StoreSDNode st = (StoreSDNode)node;
                 temp1 = legalizeOp(st.getChain());
                 temp2 = legalizeOp(st.getBasePtr());
@@ -661,7 +662,7 @@ public class SelectionDAGLegalizer
                                 result = temp1;
                             break;
                         case Promote:
-                            assert vt.isVector():"Unknown legal promote case!";
+                            Util.assertion(vt.isVector(), "Unknown legal promote case!");
                             temp3 = dag.getNode(ISD.BIT_CONVERT, tli.getTypeToPromoteType(
                                     ISD.STORE, vt), temp3);
                             result = dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
@@ -685,14 +686,14 @@ public class SelectionDAGLegalizer
                     }
                     else if ((stWidth & (stWidth-1)) != 0)
                     {
-                        assert stVT.isExtended() && !stVT.isVector():
-                                "Unsupported truncstore!";
+                        Util.assertion(stVT.isExtended() && !stVT.isVector(),                                 "Unsupported truncstore!");
+
                         int roundWidth = 1 << Util.log2(stWidth);
-                        assert roundWidth < stWidth;
+                        Util.assertion( roundWidth < stWidth);
                         int extraWidth = stWidth - roundWidth;
-                        assert extraWidth < roundWidth;
-                        assert (roundWidth&7) == 0 && (extraWidth&7) == 0:
-                                "Store size not an integral number of bytes!";
+                        Util.assertion( extraWidth < roundWidth);
+                        Util.assertion((roundWidth&7) == 0 && (extraWidth&7) == 0,                                 "Store size not an integral number of bytes!");
+
                         EVT roundVT = EVT.getIntegerVT(roundWidth);
                         EVT extraVT = EVT.getIntegerVT(extraWidth);
 
@@ -760,7 +761,7 @@ public class SelectionDAGLegalizer
                                 result = tli.lowerOperation(result, dag);
                                 break;
                             case Expand:
-                                assert isTypeLegal(stVT);
+                                Util.assertion( isTypeLegal(stVT));
                                 temp3 = dag.getNode(ISD.TRUNCATE, stVT, temp3);
                                 result = dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
                                         svOffset, isVolatile, alignment);
@@ -780,7 +781,7 @@ public class SelectionDAGLegalizer
                 Util.shouldNotReachHere("Don't know how to legalize this operator!");
                 break;
         }
-        assert result.getValueType().equals(val.getValueType()):"Bad legalization";
+        Util.assertion(result.getValueType().equals(val.getValueType()), "Bad legalization");
 
         if (!result.equals(val))
             result = legalizeOp(result);
@@ -914,8 +915,8 @@ public class SelectionDAGLegalizer
                 return dag.getMergeValues(ops);
             }
         }
-        assert loadedVT.isInteger() && !loadedVT.isVector():
-                "Unaligned load of unsupported type!";
+        Util.assertion(loadedVT.isInteger() && !loadedVT.isVector(),                 "Unaligned load of unsupported type!");
+
         int numBits = loadedVT.getSizeInBits();
         EVT newLoadedVT = EVT.getIntegerVT(numBits/2);
         numBits >>= 1;
@@ -959,12 +960,12 @@ public class SelectionDAGLegalizer
 
     private static SDNode findCallStartFromCallEnd(SDNode node)
     {
-        assert node != null:"Didn't find callseq_start for a call?";
+        Util.assertion(node != null, "Didn't find callseq_start for a call?");
 
         if (node.getOpcode() == ISD.CALLSEQ_START)
             return node;
-        assert node.getOperand(0).getValueType().equals(new EVT(MVT.Other))
-                :"Node doesn't have a token chain argument!";
+        Util.assertion(node.getOperand(0).getValueType().equals(new EVT(MVT.Other)), "Node doesn't have a token chain argument!");
+
         return findCallStartFromCallEnd(node.getOperand(0).getNode());
     }
 
@@ -1117,7 +1118,7 @@ public class SelectionDAGLegalizer
         int numDestElts = nvt.getVectorNumElements();
         int numEltsGrowth = numDestElts/numMaskElts;
 
-        assert numEltsGrowth != 0;
+        Util.assertion( numEltsGrowth != 0);
         if (numEltsGrowth == 1)
             return dag.getVectorShuffle(nvt, n1, n2, mask);
 
@@ -1133,8 +1134,8 @@ public class SelectionDAGLegalizer
                     newMask.add(idx*numEltsGrowth + j);
             }
         }
-        assert newMask.size() == numDestElts;
-        assert tli.isShuffleMaskLegal(newMask, nvt);
+        Util.assertion( newMask.size() == numDestElts);
+        Util.assertion( tli.isShuffleMaskLegal(newMask, nvt));
         return dag.getVectorShuffle(nvt, n1, n2, newMask.toArray());
     }
 
@@ -1178,7 +1179,7 @@ public class SelectionDAGLegalizer
      */
     private void legalizeSetCCCondCode(EVT vt, SDValue[] values)
     {
-        assert values != null && values.length == 3;
+        Util.assertion( values != null && values.length == 3);
         SDValue lhs = values[0], rhs = values[1], cc = values[2];
 
         EVT opVT = lhs.getValueType();
@@ -1280,7 +1281,7 @@ public class SelectionDAGLegalizer
                     sv, 0, slotVT, false, srcAlign);
         else
         {
-            assert srcSize == slotSize:"Invalid store!";
+            Util.assertion(srcSize == slotSize, "Invalid store!");
             store = dag.getStore(dag.getEntryNode(), srcOp, ptr,
                     sv, 0, false, srcAlign);
         }
@@ -1289,7 +1290,7 @@ public class SelectionDAGLegalizer
         {
             return dag.getLoad(destVT, store, ptr, sv, 0, false, destAlign);
         }
-        assert slotSize < destSize:"Unknown extension!";
+        Util.assertion(slotSize < destSize, "Unknown extension!");
         return dag.getExtLoad(EXTLOAD, destVT, store, ptr, sv,
                 0, slotVT, false, destAlign);
     }
@@ -1353,7 +1354,7 @@ public class SelectionDAGLegalizer
                 }
                 else
                 {
-                    assert op.getOpcode() == ISD.UNDEF;
+                    Util.assertion( op.getOpcode() == ISD.UNDEF);
                     Type opTy = opVT.getTypeForEVT();
                     cv.add(Value.UndefValue.get(opTy));
                 }
@@ -1405,7 +1406,7 @@ public class SelectionDAGLegalizer
     private void expandDynamicStackAlloc(SDNode node, ArrayList<SDValue> results)
     {
         int spreg = tli.getStackPointerRegisterToSaveRestore();
-        assert spreg != 0;
+        Util.assertion( spreg != 0);
         EVT vt = node.getValueType(0);
         SDValue temp1 = new SDValue(node, 0);
         SDValue temp2 = new SDValue(node, 1);
@@ -1433,7 +1434,7 @@ public class SelectionDAGLegalizer
         SDValue temp1 = node.getOperand(0);
         SDValue temp2 = node.getOperand(1);
         int simpleVT = temp2.getValueType().getSimpleVT().simpleVT;
-        assert simpleVT == MVT.f32 || simpleVT == MVT.f64;
+        Util.assertion( simpleVT == MVT.f32 || simpleVT == MVT.f64);
         SDValue signBit;
         EVT iVT = temp2.getValueType().getSimpleVT().simpleVT == MVT.f64 ?
                 new EVT(MVT.i64) : new EVT(MVT.i32);
@@ -1441,10 +1442,10 @@ public class SelectionDAGLegalizer
             signBit = dag.getNode(ISD.BIT_CONVERT, iVT, temp2);
         else
         {
-            assert isTypeLegal(new EVT(tli.getPointerTy())) &&
-                    (tli.getPointerTy().simpleVT == MVT.i32 ||
-                    tli.getPointerTy().simpleVT == MVT.i64):
-                    "Legal type for load?";
+            Util.assertion(isTypeLegal(new EVT(tli.getPointerTy())) &&                    (tli.getPointerTy().simpleVT == MVT.i32 ||
+                    tli.getPointerTy().simpleVT == MVT.i64), 
+                    "Legal type for load?");
+
             SDValue stackPtr = dag.createStackTemporary(temp2.getValueType());
             SDValue storePtr = stackPtr, loadPtr = stackPtr;
             SDValue ch = dag.getStore(dag.getEntryNode(), temp2, storePtr,
@@ -1512,7 +1513,7 @@ public class SelectionDAGLegalizer
                 result = dag.getNode(ISD.FP_EXTEND, destVT, sub);
             return result;
         }
-        assert !isSigned:"Legalize can't expand SINT_TO_FP for i64 yet!";
+        Util.assertion(!isSigned, "Legalize can't expand SINT_TO_FP for i64 yet!");
         SDValue temp1 = dag.getNode(ISD.SINT_TO_FP, destVT, op);
         SDValue signSet = dag.getSetCC(new EVT(tli.getSetCCResultType(op.getValueType())),
                 op, dag.getConstant(0, op.getValueType(), false),
@@ -1570,7 +1571,7 @@ public class SelectionDAGLegalizer
         while (true)
         {
             newInTy = new EVT(newInTy.getSimpleVT().simpleVT+1);
-            assert newInTy.isInteger():"Ran out of possiblilities!";
+            Util.assertion(newInTy.isInteger(), "Ran out of possiblilities!");
 
             if (tli.isOperationLegalOrCustom(ISD.SINT_TO_FP, newInTy))
             {
@@ -1600,7 +1601,7 @@ public class SelectionDAGLegalizer
         while (true)
         {
             newOutTy = new EVT(newOutTy.getSimpleVT().simpleVT+1);
-            assert newOutTy.isInteger():"Ran out of possiblilities!";
+            Util.assertion(newOutTy.isInteger(), "Ran out of possiblilities!");
 
             if (tli.isOperationLegalOrCustom(ISD.FP_TO_SINT, newOutTy))
             {
@@ -2159,8 +2160,8 @@ public class SelectionDAGLegalizer
         ConstantFP c = fp.getConstantFPValue();
         if (!useCP)
         {
-            assert vt.equals(new EVT(MVT.f64)) ||
-                    vt.equals(new EVT(MVT.f32)) :"Invalid type expansion!";
+            Util.assertion(vt.equals(new EVT(MVT.f64)) ||                    vt.equals(new EVT(MVT.f32)), "Invalid type expansion!");
+
             return dag.getConstant(c.getValueAPF().bitcastToAPInt(),
                     vt.equals(new EVT(MVT.f64)) ? new EVT(MVT.i64) :
                             new EVT(MVT.i32), false);
@@ -2229,7 +2230,7 @@ public class SelectionDAGLegalizer
 
     private SDValue expandLibCall(RTLIB lc, SDNode node,boolean isSigned)
     {
-        assert isLegalizingCall:"Can't overlap legalization of calle!";
+        Util.assertion(isLegalizingCall, "Can't overlap legalization of calle!");
         SDValue inChain = dag.getEntryNode();
 
         ArrayList<ArgListEntry> args = new ArrayList<>();

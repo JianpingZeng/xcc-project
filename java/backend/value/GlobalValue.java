@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
 
@@ -143,7 +144,7 @@ public abstract class GlobalValue extends Constant
 
     public void setAlignment(int align)
     {
-        assert (align & (align - 1)) == 0:"Alignment must be power of 2!";
+        Util.assertion((align & (align - 1)) == 0, "Alignment must be power of 2!");
         alignment = align;
     }
 

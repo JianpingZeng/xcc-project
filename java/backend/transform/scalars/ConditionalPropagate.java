@@ -17,6 +17,7 @@
 
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -184,8 +185,8 @@ public class ConditionalPropagate implements FunctionPass
         while (bb.getFirstInst() instanceof PhiNode)
         {
             PhiNode pn = (PhiNode)bb.getFirstInst();
-            assert pn.getNumberIncomingValues() == 1
-                    : "Just one incoming value is valid";
+            Util.assertion(pn.getNumberIncomingValues() == 1,  "Just one incoming value is valid");
+
             if (!pn.getIncomingValue(0).equals(pn))
                 pn.replaceAllUsesWith(pn.getIncomingValue(0));
             else
@@ -203,7 +204,7 @@ public class ConditionalPropagate implements FunctionPass
      */
     private void simplifyPredecessor(SwitchInst si)
     {
-        assert si.getCondition() instanceof PhiNode;
+        Util.assertion( si.getCondition() instanceof PhiNode);
         PhiNode pn = (PhiNode)si.getCondition();
         if (!pn.hasOneUses())
             return;
@@ -242,11 +243,11 @@ public class ConditionalPropagate implements FunctionPass
      */
     private void revectorBlockTo(BasicBlock fromBB, BasicBlock toBB)
     {
-        assert fromBB.getTerminator() != null &&
-                fromBB.getTerminator() instanceof BranchInst;
+        Util.assertion( fromBB.getTerminator() != null &&                fromBB.getTerminator() instanceof BranchInst);
+
 
         BranchInst fromBr = (BranchInst) fromBB.getTerminator();
-        assert fromBr.isUnconditional();
+        Util.assertion( fromBr.isUnconditional());
 
         BasicBlock oldSucc = fromBr.getSuccessor(0);
 
@@ -269,7 +270,7 @@ public class ConditionalPropagate implements FunctionPass
      */
     private void simplifyPredecessor(BranchInst bi)
     {
-        assert bi.getCondition() instanceof PhiNode;
+        Util.assertion( bi.getCondition() instanceof PhiNode);
         PhiNode pn = (PhiNode)bi.getCondition();
 
         if (pn.getNumberIncomingValues() == 1)

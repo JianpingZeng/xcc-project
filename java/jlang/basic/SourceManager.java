@@ -16,6 +16,7 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import jlang.clex.StrData;
@@ -127,10 +128,10 @@ public class SourceManager
 
         if (preallocationID != 0)
         {
-            assert preallocationID < slocEntryLoaded.size():"Preallocated ID out of range";
-            assert slocEntryTable.get(preallocationID) == null :
-                    "Source location entry already loaded";
-            assert offset != 0 :"Preallocated source location cannot have zero offset";
+            Util.assertion(preallocationID < slocEntryLoaded.size(), "Preallocated ID out of range");
+            Util.assertion(slocEntryTable.get(preallocationID) == null,                     "Source location entry already loaded");
+
+            Util.assertion(offset != 0, "Preallocated source location cannot have zero offset");
 
             slocEntryTable.set(preallocationID, SLocEntry.get(offset, ii));
             slocEntryLoaded.set(preallocationID, true);
@@ -138,8 +139,8 @@ public class SourceManager
         }
 
         slocEntryTable.add(SLocEntry.get(nextOffset, ii));
-        assert nextOffset + tokLength + 1 >nextOffset :
-                " Ran out of source locations!";
+        Util.assertion(nextOffset + tokLength + 1 >nextOffset,                 " Ran out of source locations!");
+
 
         nextOffset += tokLength + 1;
         return SourceLocation.getMacroLoc(nextOffset - (tokLength + 1));
@@ -152,7 +153,7 @@ public class SourceManager
 
     public FileID createMainFileID(Path sourceFile, SourceLocation includePos)
     {
-        assert mainFileID.isInvalid() :"MainFileID already setted";
+        Util.assertion(mainFileID.isInvalid(), "MainFileID already setted");
         mainFileID = createFileID(sourceFile, includePos, C_User, 0, 0);;
         return mainFileID;
     }
@@ -186,28 +187,28 @@ public class SourceManager
 
     public FileID createMainFileIDForMemBuffer(MemoryBuffer buffer)
     {
-        assert mainFileID.isInvalid();
+        Util.assertion( mainFileID.isInvalid());
         mainFileID = createFileIDForMemBuffer(buffer, 0, 0);
         return mainFileID;
     }
 
     public SLocEntry getSLocEntry(FileID fid)
     {
-        assert fid.getID() < slocEntryTable.size():"invalid id!";
+        Util.assertion(fid.getID() < slocEntryTable.size(), "invalid id!");
         return slocEntryTable.get(fid.getID());
     }
 
     public MemoryBuffer getBuffer(FileID fid)
     {
         SLocEntry entry = getSLocEntry(fid);
-        assert entry.isFile(): "Cann't get buffer for instantiation id";
+        Util.assertion(entry.isFile(),  "Cann't get buffer for instantiation id");
         return entry.getFile().getContentCache().getBuffer();
     }
 
     public Path getFileEntryForID(FileID fid)
     {
         SLocEntry entry = getSLocEntry(fid);
-        assert entry.isFile(): "Cann't get buffer for instantiation id";
+        Util.assertion(entry.isFile(),  "Cann't get buffer for instantiation id");
         return entry.getFile().getContentCache().fileEntry;
     }
 
@@ -223,8 +224,8 @@ public class SourceManager
 
     public SourceLocation getLocForStartOfFile(FileID fid)
     {
-        assert fid.getID() < slocEntryTable.size():"FileID out of range";
-        assert getSLocEntry(fid).isFile():"FileID is not a file";
+        Util.assertion(fid.getID() < slocEntryTable.size(), "FileID out of range");
+        Util.assertion(getSLocEntry(fid).isFile(), "FileID is not a file");
         int fileOffset = getSLocEntry(fid).getOffset();
         return SourceLocation.getFileLoc(fileOffset);
     }
@@ -237,7 +238,7 @@ public class SourceManager
 
     public SourceRange getImmediateInstantiationRange(SourceLocation loc)
     {
-        assert loc.isMacroID() :"Not an instantiation identLoc!";
+        Util.assertion(loc.isMacroID(), "Not an instantiation identLoc!");
         InstantiationInfo ii = getSLocEntry(getFileID(loc)).getInstantiation();
         return ii.getInstantiationLocRange();
     }
@@ -499,7 +500,7 @@ public class SourceManager
 
     public CharacteristicKind getFileCharacteristicKind(SourceLocation loc)
     {
-        assert loc.isValid() : "Can't get file characteristic of invalid identLoc!";
+        Util.assertion(loc.isValid(),  "Can't get file characteristic of invalid identLoc!");
 
         Pair<FileID, Integer> locInfo = getDecomposedInstantiationLoc(loc);
 
@@ -508,7 +509,7 @@ public class SourceManager
         if (!fi.hasLineDirectives())
             return fi.getFileCharacteristic();
 
-        assert lineTable != null: "Can't have linetable entries without a LineTable!";
+        Util.assertion(lineTable != null,  "Can't have linetable entries without a LineTable!");
 
         LineEntry entry = lineTable.findNearestLineEntry(locInfo.first.getID(), locInfo.second);;
 
@@ -536,7 +537,7 @@ public class SourceManager
 
         if (fi.hasLineDirectives())
         {
-            assert lineTable != null;
+            Util.assertion( lineTable != null);
 
             LineEntry entry = lineTable.findNearestLineEntry(locInfo.first.getID(), locInfo.second);
 
@@ -615,8 +616,8 @@ public class SourceManager
     {
         if (filenameID == -1)
         {
-            assert !isFileEntry && !isFileExit && !isSystemHeader
-                    : "Can't set flags without setting the filename!";
+            Util.assertion(!isFileEntry && !isFileExit && !isSystemHeader,  "Can't set flags without setting the filename!");
+
             addLineNote(loc, lineNo, filenameID);
             return;
         }
@@ -667,8 +668,8 @@ public class SourceManager
      */
     public SourceLocation getLocation(Path sourcefile, int line, int col)
     {
-        assert sourcefile != null : "Null source file!";
-        assert line != 0 && col != 0 : "Line and column should start from 1!";
+        Util.assertion(sourcefile != null,  "Null source file!");
+        Util.assertion(line != 0 && col != 0,  "Line and column should start from 1!");
 
         if (!fileInfo.containsKey(sourcefile))
             return new SourceLocation();
@@ -701,7 +702,7 @@ public class SourceManager
 
     public boolean isBeforeTranslationUnit(SourceLocation lhs, SourceLocation rhs)
     {
-        assert lhs.isValid() && rhs.isValid(): "Passed invalid source location!";
+        Util.assertion(lhs.isValid() && rhs.isValid(),  "Passed invalid source location!");
         if (rhs.equals(lhs))
             return false;
 
@@ -779,7 +780,7 @@ public class SourceManager
         // which one should be considered first.
         // FIXME: Should there be a way to "include" memory buffers in the translation
         // unit ?
-        assert (lentry != null || rentry != null) : "Locations in memory buffers.";
+        Util.assertion((lentry != null || rentry != null),  "Locations in memory buffers.");
 
         // Consider the memory buffer as coming before the file in the translation
         // unit.
@@ -787,7 +788,7 @@ public class SourceManager
             return lastResForBeforeTUCheck = true;
         else
         {
-            assert rentry == null : "Locations in not #included files ?";
+            Util.assertion(rentry == null,  "Locations in not #included files ?");
             return lastResForBeforeTUCheck = false;
         }
     }
@@ -851,9 +852,9 @@ public class SourceManager
     {
         if (preallocatedID != 0)
         {
-            assert preallocatedID < slocEntryLoaded.size();
-            assert slocEntryLoaded.get(preallocatedID) == null;
-            assert offset != 0;
+            Util.assertion( preallocatedID < slocEntryLoaded.size());
+            Util.assertion( slocEntryLoaded.get(preallocatedID) == null);
+            Util.assertion( offset != 0);
             slocEntryTable.set(preallocatedID, SLocEntry.get(offset,
                     FileInfo.get(includePos, cache, fileCharacter)));
             slocEntryLoaded.set(preallocatedID, true);
@@ -866,7 +867,7 @@ public class SourceManager
         slocEntryTable.add(SLocEntry.get(nextOffset, FileInfo.get(includePos,
                 cache, fileCharacter)));
         long filesize = cache.getSize();
-        assert nextOffset + filesize + 1 > nextOffset;
+        Util.assertion( nextOffset + filesize + 1 > nextOffset);
         nextOffset += filesize + 1;
 
         FileID fid = new FileID(slocEntryTable.size() - 1);
@@ -877,7 +878,7 @@ public class SourceManager
 
     private ContentCache getOrCreateContentCache(Path file)
     {
-        assert file!= null:"Didn't specify a file entry to use?";
+        Util.assertion(file!= null, "Didn't specify a file entry to use?");
 
         if (fileInfo.containsKey(file))
             return fileInfo.get(file);
@@ -905,7 +906,7 @@ public class SourceManager
      */
     private FileID getFileIDSlow(int slocOffset)
     {
-        assert slocOffset != 0 : "Invalid FileID";
+        Util.assertion(slocOffset != 0,  "Invalid FileID");
 
         int i = 0;
         if (Integer.compareUnsigned(slocEntryTable.get(lastFileIDLookup.getID()).getOffset(),

@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -37,7 +38,7 @@ public class CFGDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     private String funcName;
     CFGDotGraphTrait(Function func)
     {
-        assert func !=null:"Function can't be null!";
+        Util.assertion(func !=null, "Function can't be null!");
         fn = func;
         funcName = func.getName();
     }
@@ -101,7 +102,7 @@ public class CFGDotGraphTrait extends DefaultDotGraphTrait<BasicBlock>
     {
         this.os = writer.getOut();
         BasicBlock entryBB = fn.getEntryBlock();
-        assert entryBB != null:"No entry block for Function?";
+        Util.assertion(entryBB != null, "No entry block for Function?");
         LinkedList<BasicBlock> stack = new LinkedList<>();
         stack.addLast(entryBB);
         ArrayList<BasicBlock> list = DepthFirstOrder.dfs(entryBB);

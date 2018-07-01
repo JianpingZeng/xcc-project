@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.dagisel.SDNode.LoadSDNode;
 
@@ -163,13 +164,13 @@ public class SDValue implements Comparable<SDValue>, Cloneable
 
     public SDValue getOperand(int idx)
     {
-        assert idx >= 0 && idx < getNumOperands();
+        Util.assertion( idx >= 0 && idx < getNumOperands());
         return node.getOperand(idx);
     }
 
     public long getConstantOperandVal(int idx)
     {
-        assert idx >= 0 && idx < getNumOperands();
+        Util.assertion( idx >= 0 && idx < getNumOperands());
         return node.getConstantOperandVal(idx);
     }
 
@@ -185,7 +186,7 @@ public class SDValue implements Comparable<SDValue>, Cloneable
 
     public int getMachineOpcode()
     {
-        assert isMachineOpcode():"Can't calling this method on non-machine opcode!";
+        Util.assertion(isMachineOpcode(), "Can't calling this method on non-machine opcode!");
         return node.getMachineOpcode();
     }
 

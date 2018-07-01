@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.support.*;
 import backend.type.Type;
 import tools.FormattedOutputStream;
@@ -75,11 +76,11 @@ public class Value implements Cloneable
 	 */
 	public void replaceAllUsesWith(Value newValue)
 	{
-		assert newValue != null
-				: "Instruction.replaceAllusesWith(<null>) is invalid.";
-		assert getType() == newValue.getType()
-                : "replaceAllUses of value with new value of different type";
-		assert this != newValue:"Can not replaceAllUsesWith itself!";
+		Util.assertion(newValue != null,  "Instruction.replaceAllusesWith(<null>) is invalid.");
+
+		Util.assertion(getType() == newValue.getType(),  "replaceAllUses of value with new value of different type");
+
+		Util.assertion(this != newValue, "Can not replaceAllUsesWith itself!");
 
 		// replaces all old uses with new one.
 		while (!usesList.isEmpty())
@@ -126,7 +127,7 @@ public class Value implements Cloneable
 
 	public Use useAt(int index)
     {
-        assert(index >= 0 && index < usesList.size());
+        Util.assertion((index >= 0 && index < usesList.size()));
         return usesList.get(index);
     }
 
@@ -175,7 +176,7 @@ public class Value implements Cloneable
 	 */
 	public void addUse(Use use)
 	{
-		assert use != null : "the use chain must be no null";
+		Util.assertion(use != null,  "the use chain must be no null");
 		usesList.add(use);
 	}
 
@@ -252,7 +253,7 @@ public class Value implements Cloneable
         }
         else
         {
-            assert val instanceof Constant : "Unknown value type!";
+            Util.assertion(val instanceof Constant,  "Unknown value type!");
         }
         return null;
     }
@@ -444,7 +445,7 @@ public class Value implements Cloneable
         @Override
         public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
         {
-            assert false:"Should not reaching here!";
+            Util.assertion(false, "Should not reaching here!");
         }
 
         @Override

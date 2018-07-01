@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
@@ -215,7 +216,7 @@ public final class LiveVariables extends MachineFunctionPass
             for (int i = 0, e = mbb.getLiveIns().size(); i < e; i++)
             {
                 int preg = mbb.getLiveIns().get(i);
-                assert isPhysicalRegister(preg):"Virtual register can not used in Live-in";
+                Util.assertion(isPhysicalRegister(preg), "Virtual register can not used in Live-in");
                 handlePhyRegDef(preg, null);
             }
 
@@ -299,7 +300,7 @@ public final class LiveVariables extends MachineFunctionPass
                 for (int i = 0; i < liveouts.size(); i++)
                 {
                     int preg = liveouts.get(i);
-                    assert isPhysicalRegister(preg):"Virtual register can't used as Live-out";
+                    Util.assertion(isPhysicalRegister(preg), "Virtual register can't used as Live-out");
                     handlePhyRegUse(preg, ret);
 
                     // Add this physical register as implicit-use operand of ret instr
@@ -405,7 +406,7 @@ public final class LiveVariables extends MachineFunctionPass
 
     private void handleVirRegUse(int virReg, MachineInstr mi)
     {
-        assert machineRegInfo.getDefMI(virReg) != null:"register use before def!";
+        Util.assertion(machineRegInfo.getDefMI(virReg) != null, "register use before def!");
         VarInfo varInfo = getVarInfo(virReg);
         MachineBasicBlock mbb = mi.getParent();
         MachineBasicBlock defBB = machineRegInfo.getDefMI(virReg).getParent();
@@ -482,7 +483,7 @@ public final class LiveVariables extends MachineFunctionPass
                         if (mo != null)
                         {
                             needDef = false;
-                            assert !mo.isDead();
+                            Util.assertion( !mo.isDead());
                         }
                     }
 
@@ -615,7 +616,7 @@ public final class LiveVariables extends MachineFunctionPass
                         live.remove(ss);
                 }
             }
-            assert live.isEmpty():"Not all defined registers are killed/dead";
+            Util.assertion(live.isEmpty(), "Not all defined registers are killed/dead");
         }
 
         if (mi != null)
@@ -683,7 +684,7 @@ public final class LiveVariables extends MachineFunctionPass
     private void handleVirRegDef(int virReg, MachineInstr mi)
     {
         VarInfo varInfo = getVarInfo(virReg);
-        assert varInfo.defInst == null:"Multiple defs";
+        Util.assertion(varInfo.defInst == null, "Multiple defs");
         varInfo.defInst = mi;
 
         // if the varInfo is not alive in any block, default to dead.
@@ -699,9 +700,8 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public VarInfo getVarInfo(int regIdx)
     {
-        assert machineRegInfo.isVirtualReg(regIdx)
-                && regIdx <= machineRegInfo.getLastVirReg()
-                :"not a valid virtual register!";
+        Util.assertion(machineRegInfo.isVirtualReg(regIdx)                && regIdx <= machineRegInfo.getLastVirReg(), "not a valid virtual register!");
+
         regIdx -= FirstVirtualRegister;
         if (regIdx >= virRegInfo.length)
         {
@@ -797,7 +797,7 @@ public final class LiveVariables extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        assert au != null;
+        Util.assertion( au != null);
         au.addRequired(UnreachableMachineBlockElim.class);
         au.setPreservedAll();
         super.getAnalysisUsage(au);

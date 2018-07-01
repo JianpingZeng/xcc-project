@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.MachineOperand.RegState;
@@ -94,19 +95,19 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
         TargetInstrInfo tii = mf.getTarget().getInstrInfo();
 
         MachineOperand mo0 = mi.getOperand(0), mo1 = mi.getOperand(1);
-        assert mo0.isRegister() && mo0.isDef() &&
-                mo1.isRegister() && mo1.isUse() &&
-                mi.getOperand(2).isImm():"Malformed extract_subreg";
+        Util.assertion(mo0.isRegister() && mo0.isDef() &&                mo1.isRegister() && mo1.isUse() &&
+                mi.getOperand(2).isImm(), "Malformed extract_subreg");
+
 
         int destReg = mo0.getReg();
         int superReg = mo1.getReg();
         int subIdx = (int) mi.getOperand(2).getImm();
         int srcReg = tri.getSubReg(superReg, subIdx);
 
-        assert TargetRegisterInfo.isPhysicalRegister(destReg):
-                "Extract superreg source must be a physical register";
-        assert TargetRegisterInfo.isPhysicalRegister(destReg):
-                "Extract superreg dest must be a physical register";
+        Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg),                 "Extract superreg source must be a physical register");
+
+        Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg),                 "Extract superreg dest must be a physical register");
+
 
         if (srcReg == destReg)
         {
@@ -132,7 +133,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
             TargetRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
             boolean emitted = tii.copyRegToReg(mbb, mi.index(), destReg, srcReg,
                     destRC, srcRC);
-            assert emitted:"Subreg and dest must be of compatible register class!";
+            Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
             if (mo0.isDead())
                 transferDeadFlag(mi, destReg, tri);
             if (mo1.isKill())
@@ -156,24 +157,24 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
                 mo2 = mi.getOperand(2),
                 mo3 = mi.getOperand(3);
 
-        assert mo0.isRegister() && mo0.isDef() &&
-                mo1.isRegister() && mo1.isUse() &&
+        Util.assertion(mo0.isRegister() && mo0.isDef() &&                mo1.isRegister() && mo1.isUse() &&
                 mo2.isRegister() && mo2.isUse() &&
-                mo3.isImm():"Malformed insert_subreg";
+                mo3.isImm(), "Malformed insert_subreg");
+
 
         int destReg = mo0.getReg();
         int srcReg = mo1.getReg();
         int insReg = mo2.getReg();
         int subIdx = (int) mo3.getImm();
 
-        assert destReg == srcReg:"insert_subreg not a two-address instruction?";
-        assert subIdx > 0:"Invalid index for insert_subreg";
+        Util.assertion(destReg == srcReg, "insert_subreg not a two-address instruction?");
+        Util.assertion(subIdx > 0, "Invalid index for insert_subreg");
         int destSubReg = tri.getSubReg(srcReg, subIdx);
-        assert destSubReg > 0 :"Invalid subregister!";
-        assert TargetRegisterInfo.isPhysicalRegister(srcReg):
-                "insert superreg source must be a physical register";
-        assert TargetRegisterInfo.isPhysicalRegister(insReg):
-                "inserted value must be a physical register";
+        Util.assertion(destSubReg > 0, "Invalid subregister!");
+        Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg),                 "insert superreg source must be a physical register");
+
+        Util.assertion(TargetRegisterInfo.isPhysicalRegister(insReg),                 "inserted value must be a physical register");
+
 
         if (destSubReg == insReg)
         {
@@ -208,10 +209,10 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
             {
                 boolean emitted = tii.copyRegToReg(mbb, mi.index(), destSubReg,
                         insReg, destRC, srcRC);
-                assert emitted:"Subreg and dest must be of compatible register class!";
+                Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
             }
             MachineInstr copyMI = mi.getParent().getInstAt(mi.index()-1);
-            assert copyMI != null;
+            Util.assertion( copyMI != null);
             if (!mo1.isUndef())
                 copyMI.addOperand(createReg(destReg, false, true, true, false, false, false, 0));
 
@@ -245,15 +246,15 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
                 mo2 = mi.getOperand(2),
                 mo3 = mi.getOperand(3);
 
-        assert mo0.isRegister() && mo0.isDef() &&
-                mo1.isImm() &&
+        Util.assertion(mo0.isRegister() && mo0.isDef() &&                mo1.isImm() &&
                 mo2.isRegister() && mo2.isUse() &&
-                mo3.isImm():"Malformed insert_subreg";
+                mo3.isImm(), "Malformed insert_subreg");
+
         int destReg = mo0.getReg();
         int insReg = mo2.getReg();
         int insSIdx = mo2.getSubReg();
         int subIdx = (int) mo3.getImm();
-        assert subIdx > 0:"Invalid index for insert_subreg!";
+        Util.assertion(subIdx > 0, "Invalid index for insert_subreg!");
         int destSubReg = tri.getSubReg(destReg, subIdx);
         if (destSubReg == insReg && insSIdx == 0)
         {
@@ -298,7 +299,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
         {
             if (mbb.getInstAt(i).addRegisterDead(destReg, tri))
                 break;
-            assert i != 0 :"copyRegToReg doesn't reference destination register!";
+            Util.assertion(i != 0, "copyRegToReg doesn't reference destination register!");
         }
     }
     private void transferKillFlag(MachineInstr mi, int srcReg, TargetRegisterInfo tri)
@@ -324,7 +325,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass
         {
             if (mbb.getInstAt(i).addRegisterKilled(srcReg, tri, addIfNotFound))
                 break;
-            assert i != 0 :"copyRegToReg doesn't reference source register!";
+            Util.assertion(i != 0, "copyRegToReg doesn't reference source register!");
         }
     }
 

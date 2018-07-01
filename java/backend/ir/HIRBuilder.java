@@ -16,6 +16,7 @@ package backend.ir;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.transform.utils.ConstantFolder;
 import backend.type.Type;
@@ -60,13 +61,13 @@ public class HIRBuilder
 		curBB = insertPoint;
 		// null indicates the new instruction should be inserted at the end of block.
 		insertPtr = null;
-		//assert insertPtr != null:"Can not set an empty BasicBlock as insert point";
+		//Util.assertion(insertPtr != null, "Can not set an empty BasicBlock as insert point");
 	}
 
 	public void setInsertPoint(BasicBlock theBB, Instruction pos)
 	{
 		curBB = theBB;
-		assert pos.getParent().equals(theBB);
+		Util.assertion( pos.getParent().equals(theBB));
 		insertPtr = pos;
 	}
 

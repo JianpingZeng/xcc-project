@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.SourceLocation;
 import tools.APFloat;
 import tools.APInt;
@@ -111,7 +112,7 @@ public class NumericLiteralParser
         while (curPos < suffixBegin)
         {
             int ch = hexDigitValue(tokenStr[curPos++]);
-            assert ch < radix :"NumericLiteralParser constructor should have reject this";
+            Util.assertion(ch < radix, "NumericLiteralParser constructor should have reject this");
 
             charVal.assign(ch);
 
@@ -293,7 +294,7 @@ public class NumericLiteralParser
      */
     private void parseNumberStartingWithZero(SourceLocation loc)
     {
-        assert tokenStr[curPos] == '0' :"Invalid method called";
+        Util.assertion(tokenStr[curPos] == '0', "Invalid method called");
         curPos++;
 
         // If it just a '0'.

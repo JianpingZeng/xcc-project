@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import java.util.ArrayList;
 
 public abstract class ArgList
@@ -59,7 +60,7 @@ public abstract class ArgList
 
     public Option getOption(int index)
     {
-        assert index >= 0 && index < size();
+        Util.assertion( index >= 0 && index < size());
         return list.get(index).getOption();
     }
 
@@ -126,7 +127,7 @@ public abstract class ArgList
 
     public Arg getArgs(int index)
     {
-        assert index >= 0 && index < list.size();
+        Util.assertion( index >= 0 && index < list.size());
         return list.get(index);
     }
 

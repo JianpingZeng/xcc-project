@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import tools.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.target.TargetMachine;
@@ -405,61 +406,61 @@ public class MachineOperand
 
 	public int getReg()
 	{
-		assert isRegister():"This is not a register operand!";
+		Util.assertion(isRegister(), "This is not a register operand!");
 		return reg.regNo;
 	}
 
 	public int getSubReg()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return subReg;
 	}
 
 	public boolean isUse()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return !isDef;
 	}
 
 	public boolean isDef()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isDef;
 	}
 
 	public boolean isImplicit()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isImp;
 	}
 
 	public boolean isDead()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isDead;
 	}
 
 	public boolean isKill()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isKill;
 	}
 
 	public boolean isUndef()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isUndef;
 	}
 
 	public boolean isEarlyClobber()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return isEarlyClobber;
 	}
 
 	public MachineOperand getNextOperandForReg()
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		return reg.next;
 	}
 
@@ -494,119 +495,119 @@ public class MachineOperand
 
 	public void setSubreg(int subreg)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		this.subReg = subreg;
 	}
 
 	public void setIsUse(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isDef = !val;
 	}
 
 	public void setIsDef(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isDef = val;
 	}
 
 	public void setImplicit(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isImp = val;
 	}
 
 	public void setIsKill(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isKill = val;
 	}
 
 	public void setIsDead(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isDead = val;
 	}
 
 	public void setIsUndef(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isUndef = val;
 	}
 
 	public void setIsEarlyClobber(boolean val)
 	{
-		assert isRegister():"Wrong MachineOperand accessor";
+		Util.assertion(isRegister(), "Wrong MachineOperand accessor");
 		isEarlyClobber = val;
 	}
 
 	public long getImm()
 	{
-		assert isImm() : "Wrong MachineOperand accessor";
+		Util.assertion(isImm(),  "Wrong MachineOperand accessor");
 		return immedVal;
 	}
 
 	public ConstantFP getFPImm()
 	{
-		assert isFPImm() : "Wrong MachineOperand accessor";
+		Util.assertion(isFPImm(),  "Wrong MachineOperand accessor");
 		return cfp;
 	}
 
 	public MachineBasicBlock getMBB()
 	{
-		assert isMBB() : "Can't get mbb in non-mbb operand!";
+		Util.assertion(isMBB(),  "Can't get mbb in non-mbb operand!");
 		return mbb;
 	}
 
 	public int getIndex()
 	{
-		assert isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex()
-				: "Wrong MachineOperand accessor";
+		Util.assertion(isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex(),  "Wrong MachineOperand accessor");
+
 		return offsetedInfo.val.index;
 	}
 
 	public long getOffset()
 	{
-		assert isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex()
-				: "Wrong MachineOperand accessor";
+		Util.assertion(isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex(),  "Wrong MachineOperand accessor");
+
 		return offsetedInfo.offset;
 	}
 
 	public GlobalValue getGlobal()
 	{
-		assert isGlobalAddress() : "Wrong MachineOperand accessor";
+		Util.assertion(isGlobalAddress(),  "Wrong MachineOperand accessor");
 		return offsetedInfo.val.gv;
 	}
 
 	public String getSymbolName()
 	{
-		assert isExternalSymbol() : "Wrong MachineOperand accessor";
+		Util.assertion(isExternalSymbol(),  "Wrong MachineOperand accessor");
 		return offsetedInfo.val.symbolName;
 	}
 
 	public void setImm(long imm)
 	{
-		assert isImm(): "Wrong MachineOperand accessor";
+		Util.assertion(isImm(),  "Wrong MachineOperand accessor");
 		immedVal = imm;
 	}
 
 	public void setOffset(long offset)
 	{
-		assert isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex()
-				: "Wrong MachineOperand accessor";
+		Util.assertion(isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex(),  "Wrong MachineOperand accessor");
+
 		offsetedInfo.offset = offset;
 	}
 
 	public void setIndex(int idx)
 	{
-		assert isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex()
-				: "Wrong MachineOperand accessor";
+		Util.assertion(isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex(),  "Wrong MachineOperand accessor");
+
 		offsetedInfo.val.index = idx;
 	}
 
 	public void setMBB(MachineBasicBlock mbb)
 	{
-		assert isMBB() : "Wrong MachineOperand accessor";
+		Util.assertion(isMBB(),  "Wrong MachineOperand accessor");
 		this.mbb = mbb;
 	}
 
@@ -679,7 +680,7 @@ public class MachineOperand
 	public void removeRegOperandFromRegInfo()
 	{
 		// Unlink this reg operand from reg def-use linked list.
-		assert isOnRegUseList() :"Reg operand is not on a use list";
+		Util.assertion(isOnRegUseList(), "Reg operand is not on a use list");
         MachineRegisterInfo regInfo = parentMI.getRegInfo();
         MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
         if (head.equals(this))
@@ -692,14 +693,14 @@ public class MachineOperand
         {
             if (reg.prev != null)
             {
-                assert reg.prev.getReg()
-                        == getReg() : "Corrupt reg use/def chain!";
+                Util.assertion(reg.prev.getReg()                        == getReg(),  "Corrupt reg use/def chain!");
+
                 reg.prev.reg.next = reg.next;
             }
             if (reg.next != null)
             {
-                assert reg.next.getReg()
-                        == getReg() : "Corrupt reg use/def chain!";
+                Util.assertion(reg.next.getReg()                        == getReg(),  "Corrupt reg use/def chain!");
+
                 reg.next.reg.prev = reg.prev;
             }
         }
@@ -715,7 +716,7 @@ public class MachineOperand
      */
 	public boolean isOnRegUseList()
 	{
-		assert isRegister():"Can only add reg operand to use lists";
+		Util.assertion(isRegister(), "Can only add reg operand to use lists");
 		if (parentMI != null)
         {
             MachineRegisterInfo regInfo = parentMI.getRegInfo();
@@ -752,7 +753,7 @@ public class MachineOperand
 	{
 		if(isRegister())
 		{
-			assert !isEarlyClobber;
+			Util.assertion( !isEarlyClobber);
 			setReg(reg);
 		}
 		else
@@ -787,7 +788,7 @@ public class MachineOperand
 	public void addRegOperandToRegInfo(MachineRegisterInfo regInfo)
 	{
 	    // FIXME 2017/11/18, this method works inproperly.
-		assert isRegister():"Can only add reg operand to use lists";
+		Util.assertion(isRegister(), "Can only add reg operand to use lists");
 
         // If the reginfo pointer is null, just explicitly null out or next/prev
         // pointers, to ensure they are not garbage.

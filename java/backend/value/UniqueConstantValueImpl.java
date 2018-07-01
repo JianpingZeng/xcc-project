@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
@@ -80,7 +81,7 @@ public final class UniqueConstantValueImpl
         Operator opc = key.opcode;
         if (opc.isComparison())
         {
-            assert key.operands.size() == 2;
+            Util.assertion( key.operands.size() == 2);
             Constant lhs = key.operands.get(0), rhs = key.operands.get(1);
             ce = new CmpConstantExpr(key.ty, opc, lhs, rhs, key.predicate);
             ExprConstantMaps.put(key, ce);
@@ -88,7 +89,7 @@ public final class UniqueConstantValueImpl
         }
         else if (opc.isBinaryOps())
         {
-            assert key.operands.size() == 2;
+            Util.assertion( key.operands.size() == 2);
             Constant lhs = key.operands.get(0), rhs = key.operands.get(1);
             ce = new BinaryConstantExpr(opc, lhs, rhs);
             ExprConstantMaps.put(key, ce);
@@ -96,7 +97,7 @@ public final class UniqueConstantValueImpl
         }
         else if (opc.isCastOps())
         {
-            assert key.operands.size() == 1;
+            Util.assertion( key.operands.size() == 1);
             Constant op = key.operands.get(0);
             ce = new UnaryConstExpr(opc, op, key.ty);
             ExprConstantMaps.put(key, ce);
@@ -109,8 +110,8 @@ public final class UniqueConstantValueImpl
         }
         else
         {
-            assert opc.isGEP():"Unknown Operator: " + opc.opName;
-            assert key.operands.size() > 1;
+            Util.assertion(opc.isGEP(), "Unknown Operator: " + opc.opName);
+            Util.assertion( key.operands.size() > 1);
             Constant base = key.operands.get(0);
             ArrayList<Constant> idx = new ArrayList<>(key.operands.subList(1, key.operands.size()));
             ce = new GetElementPtrConstantExpr(base, idx, key.ty);
@@ -218,7 +219,7 @@ public final class UniqueConstantValueImpl
 
     public MDString getOrCreate(String key)
     {
-        assert key != null && !key.isEmpty();
+        Util.assertion( key != null && !key.isEmpty());
         if (MDStringConstants.containsKey(key))
             return MDStringConstants.get(key);
 
@@ -238,7 +239,7 @@ public final class UniqueConstantValueImpl
         if (semantics == APFloat.IEEEquad)
             return LLVMContext.FP128Ty;
 
-        assert false:"Unknown FP format";
+        Util.assertion(false, "Unknown FP format");
         return null;
     }
 

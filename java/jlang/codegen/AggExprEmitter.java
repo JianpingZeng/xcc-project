@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.ir.HIRBuilder;
 import backend.type.ArrayType;
@@ -89,7 +90,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
 
     public void emitFinalDestCopy(Expr expr, LValue src, boolean Ignore)
     {
-        assert src.isSimple():"Can't have aggregate bitfield,etc";
+        Util.assertion(src.isSimple(), "Can't have aggregate bitfield,etc");
 
         emitFinalDestCopy(expr, RValue.getAggregate
                 (src.getAddress(), src.isVolatileQualified()));;
@@ -102,7 +103,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
 
     public void emitFinalDestCopy(Expr expr, RValue src, boolean ignore)
     {
-        assert src.isAggregate():"Value must be aggregate type.";
+        Util.assertion(src.isAggregate(), "Value must be aggregate type.");
 
         // If the result is ignored, don't copy from the value.
         if (destPtr == null)
@@ -191,7 +192,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         }
 
         CastKind kind = expr.getCastKind();
-        assert kind == CastKind.CK_NoOp:"Only no-op cast allowed.";
+        Util.assertion(kind == CastKind.CK_NoOp, "Only no-op cast allowed.");
         return visit(expr.getSubExpr());
     }
 
@@ -216,9 +217,8 @@ public class AggExprEmitter extends StmtVisitor<Void>
         // So as to assignment to work correctly, the value on the right
         // side must has the type compatible with type of right side.
 
-        assert cgf.getContext().hasSameUnqualifiedType(expr.getLHS().getType(),
-                expr.getRHS().getType())
-                :"Invalid assignment";
+        Util.assertion(cgf.getContext().hasSameUnqualifiedType(expr.getLHS().getType(),                expr.getRHS().getType()), "Invalid assignment");
+
 
         LValue lhsLV = cgf.emitLValue(expr.getLHS());
 
@@ -309,7 +309,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
             return null;
         }
 
-        assert expr.getType().isRecordType():"Only supported struct/unions here!";
+        Util.assertion(expr.getType().isRecordType(), "Only supported struct/unions here!");
 
         // Do struct initialization; this code just sets each individual member
         // to the approprate value.  This makes bitfield support automatic;

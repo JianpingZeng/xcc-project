@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import xcc.Arg.CommaJoinedArg;
 import xcc.Arg.FlagArg;
 import xcc.Arg.JoinedArg;
@@ -226,7 +227,7 @@ public abstract class Option
         @Override
         public Arg accept(InputArgList list)
         {
-            assert false:"Shouldn't call accept method in OptionGroup";
+            Util.assertion(false, "Shouldn't call accept method in OptionGroup");
             return null;
         }
     }
@@ -244,7 +245,7 @@ public abstract class Option
         @Override
         public Arg accept(InputArgList list)
         {
-            assert false:"Shouldn't call accept method in InputOption";
+            Util.assertion(false, "Shouldn't call accept method in InputOption");
             return null;
         }
 
@@ -271,7 +272,7 @@ public abstract class Option
         @Override
         public Arg accept(InputArgList list)
         {
-            assert false:"Shouldn't call accept method in UnknownOption";
+            Util.assertion(false, "Shouldn't call accept method in UnknownOption");
             return null;
         }
     }
@@ -377,7 +378,7 @@ public abstract class Option
                               OptionGroup group, Option alias, int numArgs)
         {
             super(OptionClass.MultiArgClass, id, name, group, alias);
-            assert numArgs >= 0:"Invalid numArgs";
+            Util.assertion(numArgs >= 0, "Invalid numArgs");
             this.numArgs = numArgs;
         }
 

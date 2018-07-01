@@ -1,5 +1,6 @@
 package backend.target;
 
+import tools.Util;
 import backend.codegen.*;
 import tools.BitMap;
 import tools.OutParamWrapper;
@@ -99,8 +100,8 @@ public abstract class TargetRegisterInfo
                         System.err.print(getName(r)+",");
                     System.err.print("]\n");
                 }
-				assert phyRegClasses[reg]
-						== null : "register in more than one class!";
+				Util.assertion(phyRegClasses[reg]						== null,  "register in more than one class!");
+
 				phyRegClasses[reg] = regClasses[i];
 			}
 		}
@@ -131,13 +132,13 @@ public abstract class TargetRegisterInfo
 
 	public static boolean isPhysicalRegister(int reg)
 	{
-		assert reg != 0 : "this is not a register";
+		Util.assertion(reg != 0,  "this is not a register");
 		return reg < FirstVirtualRegister;
 	}
 
 	public static boolean isVirtualRegister(int reg)
 	{
-		assert reg != 0 : "this is not a register";
+		Util.assertion(reg != 0,  "this is not a register");
 		return reg >= FirstVirtualRegister;
 	}
 
@@ -148,7 +149,7 @@ public abstract class TargetRegisterInfo
 
 	public TargetRegisterClass getPhysicalRegisterRegClass(int reg, EVT vt)
 	{
-		assert isPhysicalRegister(reg):"reg must be physical register!";
+		Util.assertion(isPhysicalRegister(reg), "reg must be physical register!");
 
 		TargetRegisterClass bestRC = null;
 		for (TargetRegisterClass rc : regClasses)
@@ -212,7 +213,7 @@ public abstract class TargetRegisterInfo
 	 */
 	public TargetRegisterDesc get(int regNo)
 	{
-		assert regNo >= 0 && regNo < desc.length;
+		Util.assertion( regNo >= 0 && regNo < desc.length);
 		return desc[regNo];
 	}
 
@@ -384,7 +385,7 @@ public abstract class TargetRegisterInfo
 	 */
 	public TargetRegisterClass getRegClass(int i)
 	{
-		assert i >=1 && i <= regClasses.length;
+		Util.assertion( i >=1 && i <= regClasses.length);
 		return regClasses[i-1];
 	}
 
@@ -398,7 +399,7 @@ public abstract class TargetRegisterInfo
 	 */
 	public TargetRegisterClass getPointerRegClass(int kind)
 	{
-		assert false : "Target didn't implement getPointerRegClass!";
+		Util.assertion(false,  "Target didn't implement getPointerRegClass!");
 		return null;
 	}
 
@@ -519,11 +520,11 @@ public abstract class TargetRegisterInfo
             MachineFunction mf,
             MachineInstr old)
 	{
-		assert (getCallFrameSetupOpcode() == -1
-				&& getCallFrameDestroyOpcode() == -1) :
+		Util.assertion((getCallFrameSetupOpcode() == -1				&& getCallFrameDestroyOpcode() == -1), 
 				"eliminateCallFramePseudoInstr must be implemented if using"
-						+ " call frame setup/destroy pseudo instructions!";
-		assert false : "Call Frame Pseudo Instructions do not exist on this target!";
+						+ " call frame setup/destroy pseudo instructions!");
+
+		Util.assertion(false,  "Call Frame Pseudo Instructions do not exist on this target!");
 	}
 
 	public void processFunctionBeforeCalleeSavedScan(MachineFunction mf)

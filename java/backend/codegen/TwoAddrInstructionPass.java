@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
@@ -163,8 +164,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                         int regB = mi.getOperand(si).getReg();
                         int regASubIdx = mi.getOperand(ti).getSubReg();
 
-                        assert isVirtualRegister(regA) && isVirtualRegister(
-                                regB) : "cannot update physical register live information";
+                        Util.assertion(isVirtualRegister(regA) && isVirtualRegister(                                regB),  "cannot update physical register live information");
+
 
                         InstructionRearranged:
                         {
@@ -172,8 +173,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                             {
                                 if (tid.isCommutable() && mbb.getInstAt(i).getNumOperands() >= 3)
                                 {
-                                    assert mbb.getInstAt(i).getOperand(3 - si).isRegister()
-                                            : "Not a proper commutative instruction";
+                                    Util.assertion(mbb.getInstAt(i).getOperand(3 - si).isRegister(),  "Not a proper commutative instruction");
+
                                     int regC = mbb.getInstAt(i).getOperand(3 - si).getReg();
                                     if (mbb.getInstAt(i).killsRegister(regC))
                                     {
@@ -199,8 +200,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                         for (int j = si + 1, numOps = tid.getNumOperands();
                                              j != numOps; ++j)
                                         {
-                                            assert tid.getOperandConstraint(j,
-                                                    TIED_TO) == -1;
+                                            Util.assertion( tid.getOperandConstraint(j,                                                    TIED_TO) == -1);
+
                                         }
                                     }
 
@@ -343,7 +344,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                 mi.getOperand(j).setReg(regA);
                         }
                     }
-                    assert mi.getOperand(ti).isDef() && mi.getOperand(si).isUse();
+                    Util.assertion( mi.getOperand(ti).isDef() && mi.getOperand(si).isUse());
                     mi.getOperand(ti).setReg(mi.getOperand(si).getReg());
                     madeChange = true;
 
@@ -520,7 +521,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        assert au != null;
+        Util.assertion( au != null);
         au.setPreservesCFG();
         au.addPreserved(LiveVariables.class);
         au.addPreserved(MachineLoop.class);

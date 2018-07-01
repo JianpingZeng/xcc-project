@@ -245,7 +245,7 @@ public class RegsForValue
             EVT partVT, EVT valueVT, int assertOp)
     {
         int numParts = parts.length;
-        assert numParts > 0 :"No parts to assemble!";
+        Util.assertion(numParts > 0, "No parts to assemble!");
         TargetLowering tli = dag.getTargetLoweringInfo();
         SDValue val = parts[0];
         if (numParts > 1)
@@ -314,10 +314,10 @@ public class RegsForValue
 
                 int numRegs = tli.getVectorTypeBreakdown(valueVT, intermediateVT,
                         numIntermidates, registerVT);
-                assert numRegs ==numParts;
+                Util.assertion( numRegs ==numParts);
                 numParts = numRegs;
-                assert registerVT.get().equals(partVT);
-                assert registerVT.get().equals(parts[0].getValueType());
+                Util.assertion( registerVT.get().equals(partVT));
+                Util.assertion( registerVT.get().equals(parts[0].getValueType()));
 
                 ArrayList<SDValue> ops = new ArrayList<>();
                 if (numIntermidates.get() == numParts)
@@ -331,7 +331,7 @@ public class RegsForValue
                 }
                 else if (numParts > 0)
                 {
-                    assert numParts % numIntermidates.get() == 0;
+                    Util.assertion( numParts % numIntermidates.get() == 0);
                     int factor = numParts / numIntermidates.get();
                     for (int i = 0; i < numIntermidates.get(); i++)
                     {
@@ -347,7 +347,7 @@ public class RegsForValue
             }
             else if (partVT.isFloatingPoint())
             {
-                assert valueVT.equals(new EVT(MVT.ppcf128)) || partVT.equals(new EVT(MVT.f64));
+                Util.assertion( valueVT.equals(new EVT(MVT.ppcf128)) || partVT.equals(new EVT(MVT.f64)));
                 SDValue lo, hi;
                 lo = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), parts[0]);
                 hi = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), parts[1]);
@@ -361,7 +361,7 @@ public class RegsForValue
             }
             else
             {
-                assert valueVT.isFloatingPoint() && partVT.isInteger() &&!partVT.isVector();
+                Util.assertion( valueVT.isFloatingPoint() && partVT.isInteger() &&!partVT.isVector());
                 EVT intVT = EVT.getIntegerVT(valueVT.getSizeInBits());
                 SDValue[] temp = new SDValue[numParts];
                 System.arraycopy(parts, 0, temp, 0, numParts);
@@ -375,14 +375,14 @@ public class RegsForValue
 
         if (partVT.isVector())
         {
-            assert valueVT.isVector();
+            Util.assertion( valueVT.isVector());
             return dag.getNode(ISD.BIT_CONVERT, valueVT, val);
         }
 
         if (valueVT.isVector())
         {
-            assert valueVT.getVectorElementType().equals(partVT) &&
-                    valueVT.getVectorNumElements() == 1;
+            Util.assertion( valueVT.getVectorElementType().equals(partVT) &&                    valueVT.getVectorNumElements() == 1);
+
             return dag.getNode(ISD.BUILD_VECTOR, valueVT, val);
         }
 
@@ -427,7 +427,7 @@ public class RegsForValue
         EVT valueVT = val.getValueType();
         int partBits = partVT.getSizeInBits();
         int originNumParts = numParts;
-        assert tli.isTypeLegal(partVT):"Copying to an illegal type!";
+        Util.assertion(tli.isTypeLegal(partVT), "Copying to an illegal type!");
 
         if (numParts <= 0) return;
 
@@ -435,7 +435,7 @@ public class RegsForValue
         {
             if (partVT.equals(valueVT))
             {
-                assert numParts == 1:"No-op copy with multiple parts!";
+                Util.assertion(numParts == 1, "No-op copy with multiple parts!");
                 parts[0] = val;
                 return;
             }
@@ -444,7 +444,7 @@ public class RegsForValue
             {
                 if (partVT.isFloatingPoint() && valueVT.isFloatingPoint())
                 {
-                    assert numParts == 1;
+                    Util.assertion( numParts == 1);
                     val = dag.getNode(ISD.FP_EXTEND, partVT, val);
                 }
                 else if (partVT.isInteger() && valueVT.isInteger())
@@ -459,7 +459,7 @@ public class RegsForValue
             }
             else if (partBits == valueVT.getSizeInBits())
             {
-                assert numParts == 1 && !partVT.equals(valueVT);
+                Util.assertion( numParts == 1 && !partVT.equals(valueVT));
                 val = dag.getNode(ISD.BIT_CONVERT, partVT, val);
             }
             else if (numParts * partBits < valueVT.getSizeInBits())
@@ -474,18 +474,18 @@ public class RegsForValue
             }
 
             valueVT = val.getValueType();
-            assert numParts*partBits == valueVT.getSizeInBits();
+            Util.assertion( numParts*partBits == valueVT.getSizeInBits());
 
             if (numParts == 1)
             {
-                assert partVT.equals(valueVT);
+                Util.assertion( partVT.equals(valueVT));
                 parts[0] = val;
                 return;
             }
 
             if ((numParts & (numParts - 1)) != 0)
             {
-                assert partVT.isInteger() && valueVT.isInteger();
+                Util.assertion( partVT.isInteger() && valueVT.isInteger());
                 int roundParts = 1 << Util.log2(numParts);
                 int roundBits = roundParts * partBits;
                 int oddParts = numParts - roundParts;
@@ -558,8 +558,9 @@ public class RegsForValue
                 }
                 else
                 {
-                    assert valueVT.getVectorElementType().equals(partVT)
-                            && valueVT.getVectorNumElements() == 1;
+                    Util.assertion( valueVT.getVectorElementType().equals(partVT)
+                            && valueVT.getVectorNumElements() == 1);
+
                     val = dag.getNode(ISD.EXTRACT_VECTOR_ELT, partVT, val,
                             dag.getConstant(0, ptrVT, false));
                 }
@@ -575,9 +576,9 @@ public class RegsForValue
                 registerVT);
 
         int numElts = valueVT.getVectorNumElements();
-        assert numRegs == numParts;
+        Util.assertion( numRegs == numParts);
         numParts = numRegs;
-        assert registerVT.get().equals(partVT);
+        Util.assertion( registerVT.get().equals(partVT));
 
         ArrayList<SDValue> ops = new ArrayList<>();
         for (int i = 0; i < numIntermediates.get(); i++)
@@ -603,7 +604,7 @@ public class RegsForValue
         }
         else if (numParts > 0)
         {
-            assert numParts % numIntermediates.get() == 0;
+            Util.assertion( numParts % numIntermediates.get() == 0);
             int factor = numParts / numIntermediates.get();
             for (int i = 0; i < numIntermediates.get();i++)
             {

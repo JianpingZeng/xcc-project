@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
@@ -116,19 +117,19 @@ public class MachineFunction
 
 	public MachineBasicBlock getMBBAt(int blockNo)
 	{
-		assert blockNo >= 0 && blockNo < mbbNumber.size();
+		Util.assertion( blockNo >= 0 && blockNo < mbbNumber.size());
 		return mbbNumber.get(blockNo);
 	}
 
 	public MachineBasicBlock removeMBBAt(int blockNo)
     {
-        assert blockNo >= 0 && blockNo < mbbNumber.size();
+        Util.assertion( blockNo >= 0 && blockNo < mbbNumber.size());
         return mbbNumber.remove(blockNo);
     }
 
     public int getIndexOfMBB(MachineBasicBlock mbb)
     {
-    	assert mbb != null;
+    	Util.assertion( mbb != null);
     	return mbbNumber.indexOf(mbb);
     }
 
@@ -166,7 +167,7 @@ public class MachineFunction
 			mbbNumber.get(i).setNumber(blockNo);
 		}
 
-		assert blockNo <= mbbNumber.size():"Mismatch!";
+		Util.assertion(blockNo <= mbbNumber.size(), "Mismatch!");
 		mbbNumber.ensureCapacity(blockNo);
 	}
 
@@ -266,7 +267,7 @@ public class MachineFunction
 	 */
 	public int addLiveIn(int locReg, TargetRegisterClass rc)
 	{
-		assert rc.contains(locReg):"Not the current regclass!";
+		Util.assertion(rc.contains(locReg), "Not the current regclass!");
 		int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
 		getMachineRegisterInfo().addLiveIn(locReg, virReg);
 		return virReg;
@@ -279,7 +280,7 @@ public class MachineFunction
 
     public void insert(int insertPos, MachineBasicBlock mbb)
     {
-        assert insertPos >= 0 && insertPos < mbbNumber.size();
+        Util.assertion( insertPos >= 0 && insertPos < mbbNumber.size());
         mbbNumber.add(insertPos, mbb);
     }
 

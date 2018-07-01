@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 
@@ -71,8 +72,8 @@ public class LiveInterval implements Comparable<LiveInterval>
         int idx = upperBound(ranges, 0, begin);
 
         --idx;
-        assert  ranges.get(idx).contains(end-1)
-                : "Range is not entirely in interval!";
+        Util.assertion(ranges.get(idx).contains(end-1),  "Range is not entirely in interval!");
+
 
         if (ranges.get(idx).start == begin)
         {
@@ -117,19 +118,19 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     public LiveRange getRange(int idx)
     {
-        assert idx >= 0 && idx < ranges.size();
+        Util.assertion( idx >= 0 && idx < ranges.size());
         return ranges.get(idx);
     }
 
     public int endNumber()
     {
-        assert !isEmpty();
+        Util.assertion( !isEmpty());
         return ranges.get(ranges.size() - 1).end;
     }
 
     public int beginNumber()
     {
-        assert !isEmpty();
+        Util.assertion( !isEmpty());
         return ranges.get(0).start;
     }
 
@@ -200,7 +201,7 @@ public class LiveInterval implements Comparable<LiveInterval>
     public LiveRange getLiveRangeContaining(int idx)
     {
         int found = upperBound(ranges,0, idx);
-        assert found >= 0;
+        Util.assertion( found >= 0);
         LiveRange lr = ranges.get(found - 1);
         if (lr.contains(idx))
             return lr;
@@ -220,7 +221,7 @@ public class LiveInterval implements Comparable<LiveInterval>
     {
         LiveRange sourceLR = other.getLiveRangeContaining(copyIdx-1);
         LiveRange destLR = getLiveRangeContaining(copyIdx);
-        assert sourceLR != null && destLR != null;
+        Util.assertion( sourceLR != null && destLR != null);
 
         int otherValIdx = sourceLR.valId;
         int thisValIdx = destLR.valId;
@@ -280,7 +281,7 @@ public class LiveInterval implements Comparable<LiveInterval>
     {
         LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
         LiveRange destLR = getLiveRangeContaining(copyIdx);
-        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        Util.assertion(sourceLR != null && destLR != null, "Not joining due to copy?");
         int otherValIdx = sourceLR.valId;
         int thisValIdx = destLR.valId;
 
@@ -364,8 +365,8 @@ public class LiveInterval implements Comparable<LiveInterval>
         int i = 0, ie = ranges.size();
         int j = startPos, je = other.ranges.size();
 
-        assert other.getRange(startPos).start <= getRange(i).start ||
-                startPos == 0:"Bogus start position hint!";
+        Util.assertion(other.getRange(startPos).start <= getRange(i).start ||                startPos == 0, "Bogus start position hint!");
+
 
         if (getRange(i).start < other.getRange(j).start)
         {
@@ -378,7 +379,7 @@ public class LiveInterval implements Comparable<LiveInterval>
             if (startPos != other.ranges.size() &&
                     other.getRange(startPos).start <= getRange(i).start)
             {
-                assert startPos < other.ranges.size() && i < ranges.size();
+                Util.assertion( startPos < other.ranges.size() && i < ranges.size());
                 j = upperBound(other.ranges, j, je, getRange(i).start);
                 if (j != -1) --j;
             }
@@ -439,8 +440,8 @@ public class LiveInterval implements Comparable<LiveInterval>
             }
             else
             {
-                assert ranges.get(prior).end <= start:
-                        "Can not overlap two LiveRanges with differing valID";
+                Util.assertion(ranges.get(prior).end <= start,                         "Can not overlap two LiveRanges with differing valID");
+
             }
         }
 
@@ -461,8 +462,8 @@ public class LiveInterval implements Comparable<LiveInterval>
             }
             else
             {
-                assert ranges.get(idx).start >= end:
-                        "Cannot overlap two LiveRanges with differing valID";
+                Util.assertion(ranges.get(idx).start >= end,                         "Cannot overlap two LiveRanges with differing valID");
+
             }
         }
         // Otherwise, this is just a new range that doesn't interact with anything.
@@ -475,7 +476,7 @@ public class LiveInterval implements Comparable<LiveInterval>
     {
         LiveRange sourceLR = other.getLiveRangeContaining(copyIdx-1);
         LiveRange destLR = getLiveRangeContaining(copyIdx);
-        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        Util.assertion(sourceLR != null && destLR != null, "Not joining due to copy?");
         int mergedSrcValIdx = sourceLR.valId;
         int mergedDstValIdx = destLR.valId;
 
@@ -516,15 +517,15 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     private void extendIntervalEndTo(int idxToRange, int newEnd)
     {
-        assert idxToRange < ranges.size():"Not a valid interval!";
+        Util.assertion(idxToRange < ranges.size(), "Not a valid interval!");
 
         int valId = ranges.get(idxToRange).valId;
 
         int mergeTo = idxToRange + 1;
         for (; mergeTo != ranges.size() && newEnd >= ranges.get(mergeTo).end; ++mergeTo)
         {
-            assert ranges.get(mergeTo).valId == valId
-                    : "Cannot merge with differing values!";
+            Util.assertion(ranges.get(mergeTo).valId == valId,  "Cannot merge with differing values!");
+
         }
 
         ranges.get(idxToRange).end = Math.max(newEnd, ranges.get(mergeTo-1).end);
@@ -535,7 +536,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     private int extendIntervalStartTo(int idxToRange, int newStart)
     {
-        assert idxToRange != ranges.size():"Not a valid interval!";
+        Util.assertion(idxToRange != ranges.size(), "Not a valid interval!");
         int valId = ranges.get(idxToRange).valId;
 
         int mergeTo = idxToRange;
@@ -548,7 +549,7 @@ public class LiveInterval implements Comparable<LiveInterval>
                     ranges.remove(i);
                 return idxToRange;
             }
-            assert ranges.get(mergeTo).valId == valId;
+            Util.assertion( ranges.get(mergeTo).valId == valId);
             --mergeTo;
         }while (newStart <= ranges.get(mergeTo).start);
 

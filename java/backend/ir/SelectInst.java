@@ -17,6 +17,7 @@
 
 package backend.ir;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
@@ -50,7 +51,7 @@ public final class SelectInst extends Instruction
 
     private void init(Value cond, Value lhs, Value rhs)
     {
-        assert areValidOperands(cond, lhs, rhs):"Invalid operands!";
+        Util.assertion(areValidOperands(cond, lhs, rhs), "Invalid operands!");
         reserve(3);
         setOperand(0, cond, this);
         setOperand(1, lhs, this);

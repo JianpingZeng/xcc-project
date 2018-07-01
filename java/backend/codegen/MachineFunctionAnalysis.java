@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.pass.RegisterPass;
@@ -73,8 +74,8 @@ public class MachineFunctionAnalysis implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
-        assert f.getMachineFunc() == null :
-                "MachineFunctionAnalysis already initialized!";
+        Util.assertion(f.getMachineFunc() == null,                 "MachineFunctionAnalysis already initialized!");
+
         new MachineFunction(f, tm);
         return false;
     }

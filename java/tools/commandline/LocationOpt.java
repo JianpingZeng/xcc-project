@@ -17,6 +17,8 @@
 
 package tools.commandline;
 
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -31,8 +33,8 @@ public class LocationOpt<T> extends Opt<T>
 
     private void check()
     {
-        assert lc != null :"LocationClassApplicator::apply not called"
-                + " for a command line option with external storage";
+        Util.assertion(lc != null, "LocationClassApplicator::apply not called"                + " for a command line option with external storage");
+
     }
 
     @Override

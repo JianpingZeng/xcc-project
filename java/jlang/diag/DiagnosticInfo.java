@@ -16,6 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.diag.Diagnostic.ArgumentKind;
@@ -63,7 +64,7 @@ public final class DiagnosticInfo
      */
     public ArgumentKind getArgKind(int index)
     {
-        assert index >= 0 && index < getNumArgs() :"Argument index out of range!";
+        Util.assertion(index >= 0 && index < getNumArgs(), "Argument index out of range!");
         return diagObj.getDiagArgKind(index);
     }
 
@@ -84,7 +85,7 @@ public final class DiagnosticInfo
 
     public SourceRange getRange(int idx)
     {
-        assert idx >= 0 && idx < getNumRanges():"Invalid range index";
+        Util.assertion(idx >= 0 && idx < getNumRanges(), "Invalid range index");
         return diagObj.getRange(idx);
     }
 
@@ -146,14 +147,14 @@ public final class DiagnosticInfo
 
                     for (; diagStr.charAt(i) != '}' && i < e; ++i);
 
-                    assert i < e: "Mismatched {}'s in diagnostic string!";
+                    Util.assertion(i < e,  "Mismatched {}'s in diagnostic string!");
                     argumentLen = i - argument;
                     ++i;  // Skip }.
                 }
             }
 
-            assert i < e && Character.isDigit(diagStr.charAt(i)) :
-                    "Invalid format for argument in diagnostic";
+            Util.assertion(i < e && Character.isDigit(diagStr.charAt(i)),                     "Invalid format for argument in diagnostic");
+
             int argNo = diagStr.charAt(i++) - '0';
 
             switch (getArgKind(argNo))
@@ -163,7 +164,7 @@ public final class DiagnosticInfo
                 case ak_c_string:
                 {
                     String s = getArgStdStr(argNo);
-                    assert modifierLen == 0 : "No modifiers for strings yet";
+                    Util.assertion(modifierLen == 0,  "No modifiers for strings yet");
                     outStr.append(s);
                     break;
                 }
@@ -187,7 +188,7 @@ public final class DiagnosticInfo
                     }
                     else
                     {
-                        assert modifierLen == 0 : "Undefined integer modifier";
+                        Util.assertion(modifierLen == 0,  "Undefined integer modifier");
                         outStr.append(val);
                     }
                     break;
@@ -196,7 +197,7 @@ public final class DiagnosticInfo
                 case ak_identifier:
                 {
                     IdentifierInfo II = getArgIdentifier(argNo);
-                    assert modifierLen == 0 : "No modifiers for strings yet";
+                    Util.assertion(modifierLen == 0,  "No modifiers for strings yet");
 
                     // Don't crash if get passed a null pointer by accident.
                     if (II == null)
@@ -221,7 +222,7 @@ public final class DiagnosticInfo
 
     private IdentifierInfo getArgIdentifier(int idx)
     {
-        assert getArgKind(idx) == ArgumentKind.ak_identifier;
+        Util.assertion( getArgKind(idx) == ArgumentKind.ak_identifier);
         return (IdentifierInfo)diagObj.getRawArg(idx);
     }
 
@@ -237,11 +238,11 @@ public final class DiagnosticInfo
         int start = 0;
         while (true)
         {
-            assert start < end:"Plural expression didn't match";
+            Util.assertion(start < end, "Plural expression didn't match");
             int exprEnd = 0;
             while (argument.charAt(exprEnd) != ':')
             {
-                assert exprEnd != end:"Plural missing expression end";
+                Util.assertion(exprEnd != end, "Plural missing expression end");
                 ++exprEnd;
             }
 
@@ -281,8 +282,8 @@ public final class DiagnosticInfo
             }
             else
             {
-                assert c == '[' || Character.isDigit(c):
-                        "Bad plural expression syntax: unexpected character";
+                Util.assertion(c == '[' || Character.isDigit(c),                         "Bad plural expression syntax: unexpected character");
+
                 OutParamWrapper<Integer> x = new OutParamWrapper<>(start);
                 // Range expression
                 boolean b = testPluralRange(valNo, str, x, end);
@@ -323,7 +324,7 @@ public final class DiagnosticInfo
         Pair<Integer, Integer> res = pluralNumber(str, begin, end);
         int low = res.first;
         begin = res.second;
-        assert str.charAt(begin) == ',': "Bad plural expression syntax: expected ,";
+        Util.assertion(str.charAt(begin) == ',',  "Bad plural expression syntax: expected ,");
         ++begin;
 
         res = pluralNumber(str,begin, end);
@@ -389,8 +390,8 @@ public final class DiagnosticInfo
         while (valNo != 0)
         {
             int nextVal = argument.indexOf('|');
-            assert nextVal >= 0 : "Value for integer select modifier was"+
-                " larger than the number of options in the diagnostic string!";
+            Util.assertion(nextVal >= 0,  "Value for integer select modifier was"+                " larger than the number of options in the diagnostic string!");
+
             start = nextVal + 1;
             --valNo;
         }
@@ -406,7 +407,7 @@ public final class DiagnosticInfo
 
     public FixItHint getHint(int index)
     {
-        assert index >= 0 && index < getNumFixtItHints();
+        Util.assertion( index >= 0 && index < getNumFixtItHints());
         return diagObj.getFixItHint(index);
     }
 

@@ -17,6 +17,7 @@
 
 package backend.target.x86;
 
+import tools.Util;
 import backend.codegen.MachineInstrBuilder;
 
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
@@ -37,14 +38,14 @@ public class X86InstrBuilder
     public static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
             X86AddressMode am)
     {
-        assert am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8;
+        Util.assertion( am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8);
 
         if (am.baseType == RegBase)
             mib.addReg(am.base.getBase());
         else if (am.baseType == FrameIndexBase)
             mib.addFrameIndex(am.base.getBase());
         else
-            assert false;
+            Util.assertion( false);
 
         mib.addImm(am.scale).addReg(am.indexReg);
         if (am.gv != null)

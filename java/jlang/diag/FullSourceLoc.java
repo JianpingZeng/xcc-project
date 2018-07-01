@@ -16,6 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.FileID;
 import jlang.support.MemoryBuffer;
 import jlang.basic.SourceManager;
@@ -49,67 +50,67 @@ public class FullSourceLoc extends SourceLocation
 
     public FileID getFileID()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getFileID(this);
     }
 
     public FullSourceLoc getInstantiationLoc()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return new FullSourceLoc(sourceMgr.getInstantiationLoc(this), sourceMgr);
     }
 
     public FullSourceLoc getSpellingLoc()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return new FullSourceLoc(sourceMgr.getLiteralLoc(this), sourceMgr);
     }
 
     public int getInstantiationLineNumber()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getInstantiationLineNumber(this);
     }
 
     public int getIntantiationColumnNumber()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getInstantiationColumnNumber(this);
     }
 
     public int getSpellingLineNumber()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getLiteralLineNumber(this);
     }
 
     public int getSpellingColumnNumber()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getLiteralColumnNumber(this);
     }
 
     public boolean isInSystemHeader()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.isInSystemHeader(this);
     }
 
     public StrData getCharacterData()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getCharacterData(this);
     }
 
     public MemoryBuffer getBuffer()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return sourceMgr.getBuffer(sourceMgr.getFileID(this));
     }
 
     public char[] getBufferData()
     {
-        assert isValid();
+        Util.assertion( isValid());
         return getBuffer().getBuffer();
     }
 

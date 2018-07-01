@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
@@ -95,7 +96,7 @@ public class SelectionDAG
     }
     private void add(int pos, SDNode n)
     {
-        assert pos >= 0 && pos < allNodes.size():"Postion to be inserted out of range!";
+        Util.assertion(pos >= 0 && pos < allNodes.size(), "Postion to be inserted out of range!");
         if (allNodes.contains(n)) return;
         allNodes.add(pos, n);
     }
@@ -219,18 +220,18 @@ public class SelectionDAG
             default:
                 break;
             case ISD.SELECT_CC:
-                assert numOps == 5 : "SELECT_CC takes five operands!";
-                assert ops[0].getValueType().equals(ops[1]
-                        .getValueType()) : "LHS and RHS of condition must have same type!";
-                assert ops[2].getValueType().equals(ops[3]
-                        .getValueType()) : "True and False parts of SELECT_CC must have same type!";
-                assert ops[2].getValueType()
-                        .equals(vt) : "SELECT_CC node must be same type as true/false part!";
+                Util.assertion(numOps == 5,  "SELECT_CC takes five operands!");
+                Util.assertion(ops[0].getValueType().equals(ops[1]                        .getValueType()),  "LHS and RHS of condition must have same type!");
+
+                Util.assertion(ops[2].getValueType().equals(ops[3]                        .getValueType()),  "True and False parts of SELECT_CC must have same type!");
+
+                Util.assertion(ops[2].getValueType()                        .equals(vt),  "SELECT_CC node must be same type as true/false part!");
+
                 break;
             case ISD.BR_CC:
-                assert numOps == 5 : "BR_CC takes five operands!";
-                assert ops[2].getValueType().equals(ops[3]
-                        .getValueType()) : "LHS/RHS of comparison should match types!";
+                Util.assertion(numOps == 5,  "BR_CC takes five operands!");
+                Util.assertion(ops[2].getValueType().equals(ops[3]                        .getValueType()),  "LHS/RHS of comparison should match types!");
+
                 break;
         }
 
@@ -402,42 +403,42 @@ public class SelectionDAG
                 return op0;
             case ISD.FP_ROUND:
             case ISD.FP_EXTEND:
-                assert vt.isFloatingPoint() && op0.getValueType()
-                        .isFloatingPoint() : "Invalid FP cast!";
+                Util.assertion(vt.isFloatingPoint() && op0.getValueType()                        .isFloatingPoint(),  "Invalid FP cast!");
+
                 if (op0.getValueType().equals(vt))
                     return op0;
                 if (op0.getOpcode() == ISD.UNDEF)
                     return getUNDEF(vt);
                 break;
             case ISD.SIGN_EXTEND:
-                assert vt.isInteger() && op0.getValueType()
-                        .isInteger() : "Invalid Integer cast!";
+                Util.assertion(vt.isInteger() && op0.getValueType()                        .isInteger(),  "Invalid Integer cast!");
+
                 if (op0.getValueType().equals(vt))
                     return op0;
-                assert op0.getValueType()
-                        .bitsLT(vt) : "Invalid sext node, dest < src!";
+                Util.assertion(op0.getValueType()                        .bitsLT(vt),  "Invalid sext node, dest < src!");
+
                 if (opOpcode == ISD.SIGN_EXTEND || opOpcode == ISD.ZERO_EXTEND)
                     return getNode(opOpcode, vt, op0.getNode().getOperand(0));
                 break;
             case ISD.ANY_EXTEND:
             case ISD.ZERO_EXTEND:
-                assert vt.isInteger() && op0.getValueType()
-                        .isInteger() : "Invalid Integer cast!";
+                Util.assertion(vt.isInteger() && op0.getValueType()                        .isInteger(),  "Invalid Integer cast!");
+
                 if (op0.getValueType().equals(vt))
                     return op0;
-                assert op0.getValueType()
-                        .bitsLT(vt) : "Invalid zext node, dest < src!";
+                Util.assertion(op0.getValueType()                        .bitsLT(vt),  "Invalid zext node, dest < src!");
+
                 if (opOpcode == ISD.SIGN_EXTEND || opOpcode == ISD.ZERO_EXTEND)
                     return getNode(opOpcode, vt, op0.getNode().getOperand(0));
                 break;
 
             case ISD.TRUNCATE:
-                assert vt.isInteger() && op0.getValueType()
-                        .isInteger() : "Invalid Integer cast!";
+                Util.assertion(vt.isInteger() && op0.getValueType()                        .isInteger(),  "Invalid Integer cast!");
+
                 if (op0.getValueType().equals(vt))
                     return op0;
-                assert op0.getValueType()
-                        .bitsGT(vt) : "Invalid truncate node, dest > src!";
+                Util.assertion(op0.getValueType()                        .bitsGT(vt),  "Invalid truncate node, dest > src!");
+
                 if (opOpcode == ISD.TRUNCATE)
                     return getNode(ISD.TRUNCATE, vt, op0.getNode().getOperand(0));
                 else if (opOpcode == ISD.ZERO_EXTEND || opOpcode == ISD.SIGN_EXTEND
@@ -453,8 +454,8 @@ public class SelectionDAG
                 }
                 break;
             case ISD.BIT_CONVERT:
-                assert vt.getSizeInBits() == op0.getValueType()
-                        .getSizeInBits() : "Can't perform bit conversion between different size!";
+                Util.assertion(vt.getSizeInBits() == op0.getValueType()                        .getSizeInBits(),  "Can't perform bit conversion between different size!");
+
                 if (vt.equals(op0.getValueType()))
                     return op0;
                 if (opOpcode == ISD.BIT_CONVERT)
@@ -463,11 +464,11 @@ public class SelectionDAG
                     return getUNDEF(vt);
                 break;
             case ISD.SCALAR_TO_VECTOR:
-                assert vt.isVector() && !op0.getValueType().isVector() && (
-                        vt.getVectorElementType().equals(op0.getValueType())
+                Util.assertion(vt.isVector() && !op0.getValueType().isVector() && (                        vt.getVectorElementType().equals(op0.getValueType())
                                 || (vt.getVectorElementType().isInteger() && op0
                                 .getValueType().isInteger() && vt.getVectorElementType().bitsLE(op0
-                                .getValueType()))) : "Illegal SCALAR_TO_VECTOR node!";
+                                .getValueType()))),  "Illegal SCALAR_TO_VECTOR node!");
+
                 if (opOpcode == ISD.UNDEF)
                     return getUNDEF(vt);
 
@@ -563,8 +564,8 @@ public class SelectionDAG
             default:
                 break;
             case ISD.TokenFactor:
-                assert vt.equals(new EVT(MVT.Other)) && op0.getValueType().equals(new EVT(MVT.Other))
-                        && op1.getValueType().equals(new EVT(MVT.Other));
+                Util.assertion( vt.equals(new EVT(MVT.Other)) && op0.getValueType().equals(new EVT(MVT.Other))                        && op1.getValueType().equals(new EVT(MVT.Other)));
+
                 // fold trivial token factors.
                 if (op0.getOpcode() == ISD.EntryToken)
                     return op1;
@@ -589,8 +590,8 @@ public class SelectionDAG
                 }
                 break;
             case ISD.AND:
-                assert vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()
-                        .isInteger() : "Binary operator types must match!";
+                Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()                        .isInteger(),  "Binary operator types must match!");
+
                 // X & 0 ==> 0
                 if (cn1 != null && cn1.isNullValue())
                     return op1;
@@ -602,15 +603,15 @@ public class SelectionDAG
             case ISD.XOR:
             case ISD.ADD:
             case ISD.SUB:
-                assert vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()
-                        .isInteger() : "Binary operator types must match!";
+                Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()                        .isInteger(),  "Binary operator types must match!");
+
                 // (X ^|+- 0) = X
                 if (cn1 != null && cn1.isNullValue())
                     return op0;
                 break;
             case ISD.MUL:
-                assert vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()
-                        .isInteger() : "Binary operator types must match!";
+                Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType()                        .isInteger(),  "Binary operator types must match!");
+
                 // X * 0 == 0
                 if (cn1 != null && cn1.isNullValue())
                     return op0;
@@ -620,10 +621,10 @@ public class SelectionDAG
             case ISD.SRL:
             case ISD.ROTL:
             case ISD.ROTR:
-                assert vt.equals(op0.getValueType()) :
-                        "Shift operators return tyep must be the same as their arg";
-                assert vt.isInteger() && op1.getValueType().isInteger() :
-                        "Shift operator only works on integer type!";
+                Util.assertion(vt.equals(op0.getValueType()),                         "Shift operators return tyep must be the same as their arg");
+
+                Util.assertion(vt.isInteger() && op1.getValueType().isInteger(),                         "Shift operator only works on integer type!");
+
 
                 if (vt.equals(new EVT(MVT.i1)))
                     return op0;
@@ -964,8 +965,8 @@ public class SelectionDAG
     public SDValue getConstant(long val, EVT vt, boolean isTarget)
     {
         EVT eltVt = vt.isVector() ? vt.getVectorElementType() : vt;
-        assert eltVt.getSizeInBits() >= 64 || (val >> eltVt.getSizeInBits()) + 1
-                < 2 : "getConstant with a long value that doesn't fit in type!";
+        Util.assertion(eltVt.getSizeInBits() >= 64 || (val >> eltVt.getSizeInBits()) + 1                < 2,  "getConstant with a long value that doesn't fit in type!");
+
         return getConstant(new APInt(eltVt.getSizeInBits(), val), vt, isTarget);
     }
 
@@ -998,7 +999,7 @@ public class SelectionDAG
 
     public SDVTList getVTList(EVT... vts)
     {
-        assert vts != null && vts.length > 0 : "Can't have an emtpy list!";
+        Util.assertion(vts != null && vts.length > 0,  "Can't have an emtpy list!");
         for (int i = vtlist.size() - 1; i >= 0; i--)
         {
             SDVTList list = vtlist.get(i);
@@ -1029,10 +1030,10 @@ public class SelectionDAG
 
     public SDValue getConstant(ConstantInt ci, EVT vt, boolean isTarget)
     {
-        assert vt.isInteger() : "Can't create FP integer constant";
+        Util.assertion(vt.isInteger(),  "Can't create FP integer constant");
         EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
-        assert ci.getBitsWidth() == eltVT
-                .getSizeInBits() : "APInt size doesn't match type size!";
+        Util.assertion(ci.getBitsWidth() == eltVT                .getSizeInBits(),  "APInt size doesn't match type size!");
+
 
         int opc = isTarget ? ISD.TargetConstant : ISD.Constant;
         FoldingSetNodeID id = new FoldingSetNodeID();
@@ -1072,8 +1073,8 @@ public class SelectionDAG
 
     public SDValue getConstantFP(ConstantFP val, EVT vt, boolean isTarget)
     {
-        assert vt
-                .isFloatingPoint() : "Can't calling getConstantFP method on non-floating";
+        Util.assertion(vt                .isFloatingPoint(),  "Can't calling getConstantFP method on non-floating");
+
         EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
 
         int opc = isTarget ? ISD.TargetConstantFP : ISD.ConstantFP;
@@ -1290,8 +1291,8 @@ public class SelectionDAG
 
     public void setRoot(SDValue root)
     {
-        assert root.getNode() == null || root.getValueType()
-                .equals(new EVT(MVT.Other)) : "Not a legal root!";
+        Util.assertion(root.getNode() == null || root.getValueType()                .equals(new EVT(MVT.Other)),  "Not a legal root!");
+
         this.root = root;
     }
 
@@ -1482,16 +1483,16 @@ public class SelectionDAG
     {
         APInt[] res = new APInt[2];
         computeMaskedBits(op, mask, res, depth);
-        assert res[0].and(res[1]).eq(0);
+        Util.assertion( res[0].and(res[1]).eq(0));
         return res[0].and(mask).eq(mask);
     }
 
     public void computeMaskedBits(SDValue op, APInt mask, APInt[] knownVals, int depth)
     {
-        assert knownVals!= null && knownVals.length == 2:"Illegal knownVals";
+        Util.assertion(knownVals!= null && knownVals.length == 2, "Illegal knownVals");
 
         int bitwidth = mask.getBitWidth();
-        assert bitwidth == op.getValueType().getSizeInBits();
+        Util.assertion( bitwidth == op.getValueType().getSizeInBits());
         knownVals[0] = new APInt(bitwidth, 0);
         knownVals[1] = new APInt(bitwidth, 0);
         if (depth == 6 || mask.eq(0))
@@ -1510,8 +1511,8 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask.and(knownVals[0].not()),
                         knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].or(knownVals2[0]);
@@ -1520,8 +1521,8 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask.and(knownVals[1].not()),
                         knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
                 knownVals[1] = knownVals[1].or(knownVals2[1]);
@@ -1530,8 +1531,8 @@ public class SelectionDAG
             {
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask, knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 APInt knownZeroOut = knownVals[0].and(knownVals2[0]).or(knownVals[1].and(knownVals2[1]));
                 knownVals[1] = knownVals[0].and(knownVals2[1]).or(knownVals[1].and(knownVals2[0]));
@@ -1543,8 +1544,8 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(1), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(0), mask.and(knownVals[0].not()),
                         knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 knownVals[0].clear();
                 int trailOne = knownVals[0].countTrailingOnes() + knownVals2[0].countTrailingOnes();
@@ -1580,8 +1581,8 @@ public class SelectionDAG
             {
                 computeMaskedBits(op.getOperand(2), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(1), mask, knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
@@ -1591,8 +1592,8 @@ public class SelectionDAG
             {
                 computeMaskedBits(op.getOperand(3), mask, knownVals, depth + 1);
                 computeMaskedBits(op.getOperand(2), mask, knownVals2, depth + 1);
-                assert knownVals[0].and(knownVals[1]).eq(0);
-                assert knownVals2[0].and(knownVals2[1]).eq(0);
+                Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
+                Util.assertion( knownVals2[0].and(knownVals2[1]).eq(0));
 
                 knownVals[1] = knownVals[1].and(knownVals2[1]);
                 knownVals[0] = knownVals[0].and(knownVals2[0]);
@@ -1627,7 +1628,7 @@ public class SelectionDAG
 
                     computeMaskedBits(op.getOperand(0), mask.lshr(shAmt),
                             knownVals, depth + 1);
-                    assert knownVals[0].and(knownVals[1]).eq(0);
+                    Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
                     knownVals[0] = knownVals[0].shl((int) shAmt);
                     knownVals[1] = knownVals[1].shl((int) shAmt);
                     knownVals[0] = knownVals[0]
@@ -1646,7 +1647,7 @@ public class SelectionDAG
 
                     computeMaskedBits(op.getOperand(0), mask.shl((int) shAmt),
                             knownVals, depth + 1);
-                    assert knownVals[0].and(knownVals[1]).eq(0);
+                    Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
                     knownVals[0] = knownVals[0].lshr((int) shAmt);
                     knownVals[1] = knownVals[1].lshr((int) shAmt);
                     knownVals[0] = knownVals[0]
@@ -1671,7 +1672,7 @@ public class SelectionDAG
 
                     computeMaskedBits(op.getOperand(0), inDemandedMask,
                             knownVals, depth + 1);
-                    assert knownVals[0].and(knownVals[1]).eq(0);
+                    Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
 
                     knownVals[0] = knownVals[0].lshr((int) shAmt);
                     knownVals[1] = knownVals[1].lshr((int) shAmt);
@@ -1700,7 +1701,7 @@ public class SelectionDAG
                     inputDemandedBits.orAssign(inSignBit);
 
                 computeMaskedBits(op.getOperand(0), inputDemandedBits, knownVals, depth+1);
-                assert knownVals[0].add(knownVals[1]).eq(0):"Bits known to be one AND zero?";
+                Util.assertion(knownVals[0].add(knownVals[1]).eq(0), "Bits known to be one AND zero?");
                 if (knownVals[0].intersects(inSignBit))
                 {
                     knownVals[0].orAssign(newBits);
@@ -1771,7 +1772,7 @@ public class SelectionDAG
                 computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
                 boolean signBitKnownZero = knownVals[0].isNegative();
                 boolean signBitKnownOne = knownVals[1].isNegative();
-                assert !(signBitKnownOne && signBitKnownZero);
+                Util.assertion( !(signBitKnownOne && signBitKnownZero));
                 inMask = new APInt(mask);
                 inMask.trunc(inBits);
                 knownVals[0].andAssign(inMask);
@@ -1850,11 +1851,11 @@ public class SelectionDAG
             {
                 APInt mask2 = APInt.getLowBitsSet(bitwidth, mask.countTrailingOnes());
                 computeMaskedBits(op.getOperand(0), mask2, knownVals2, depth + 1);
-                assert knownVals2[0].and(knownVals[1]).eq(0);
+                Util.assertion( knownVals2[0].and(knownVals[1]).eq(0));
                 int knownZeroOut = knownVals2[0].countTrailingOnes();
 
                 computeMaskedBits(op.getOperand(1), mask2, knownVals2, depth + 1);
-                assert knownVals2[0].and(knownVals[1]).eq(0);
+                Util.assertion( knownVals2[0].and(knownVals[1]).eq(0));
                 knownZeroOut = Math.min(knownZeroOut, knownVals2[0].countTrailingOnes());
 
                 knownVals[0].orAssign(APInt.getLowBitsSet(bitwidth, knownZeroOut));
@@ -1879,7 +1880,7 @@ public class SelectionDAG
                             knownVals2[0].orAssign(lowBits.not());
 
                         knownVals[0].orAssign(knownVals2[0].and(mask));
-                        assert knownVals[0].and(knownVals[1]).eq(0);
+                        Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
                     }
                 }
                 break;
@@ -1897,7 +1898,7 @@ public class SelectionDAG
                         knownVals[0].orAssign(lowBits.negative().and(mask));
                         computeMaskedBits(op.getOperand(0), mask2, knownVals,
                                 depth + 1);
-                        assert knownVals[0].and(knownVals[1]).eq(0);
+                        Util.assertion( knownVals[0].and(knownVals[1]).eq(0));
                         break;
                     }
                 }
@@ -1941,12 +1942,12 @@ public class SelectionDAG
     public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
             SDValue ptr, SDValue val, Value ptrVal, int alignment)
     {
-        assert opcode == ISD.ATOMIC_LOAD_ADD || opcode == ISD.ATOMIC_LOAD_SUB
-                || opcode == ISD.ATOMIC_LOAD_AND || opcode == ISD.ATOMIC_LOAD_OR
+        Util.assertion( opcode == ISD.ATOMIC_LOAD_ADD || opcode == ISD.ATOMIC_LOAD_SUB                || opcode == ISD.ATOMIC_LOAD_AND || opcode == ISD.ATOMIC_LOAD_OR
                 || opcode == ISD.ATOMIC_LOAD_XOR || opcode == ISD.ATOMIC_LOAD_NAND
                 || opcode == ISD.ATOMIC_LOAD_MIN || opcode == ISD.ATOMIC_LOAD_MAX
                 || opcode == ISD.ATOMIC_LOAD_UMIN || opcode == ISD.ATOMIC_LOAD_UMAX ||
-                opcode == ISD.ATOMIC_SWAP;
+                opcode == ISD.ATOMIC_SWAP);
+
         EVT vt = val.getValueType();
 
         if (alignment == 0)
@@ -1970,9 +1971,9 @@ public class SelectionDAG
     public SDValue getAtomic(int opc, EVT memVT, SDValue chain, SDValue ptr,
             SDValue cmp, SDValue swap, Value ptrVal, int alignment)
     {
-        assert opc == ISD.ATOMIC_CMP_SWAP : "Invalid atomic op!";
-        assert cmp.getValueType()
-                .equals(swap.getValueType()) : "Invalid atomic op type!";
+        Util.assertion(opc == ISD.ATOMIC_CMP_SWAP,  "Invalid atomic op!");
+        Util.assertion(cmp.getValueType()                .equals(swap.getValueType()),  "Invalid atomic op type!");
+
 
         EVT vt = cmp.getValueType();
         if (alignment == 0)
@@ -2184,8 +2185,8 @@ public class SelectionDAG
 
     private void deleteNodeNotInCSEMap(SDNode node)
     {
-        assert !Objects.equals(node, allNodes.get(0));
-        assert node.isUseEmpty();
+        Util.assertion( !Objects.equals(node, allNodes.get(0)));
+        Util.assertion( node.isUseEmpty());
 
         node.dropOperands();
         markNodeAsDeallocated(node);
@@ -2268,10 +2269,10 @@ public class SelectionDAG
             DAGUpdateListener listener)
     {
         SDNode from = oldNode.getNode();
-        assert from.getNumValues() == 1
-                && oldNode.getResNo() == 0 : "Can't replace with this method!";
-        assert !Objects.equals(from,
-                newNode.getNode()) : "Can't replace uses of with self!";
+        Util.assertion(from.getNumValues() == 1                && oldNode.getResNo() == 0,  "Can't replace with this method!");
+
+        Util.assertion(!Objects.equals(from,                newNode.getNode()),  "Can't replace uses of with self!");
+
 
         ArrayList<SDUse> temps = new ArrayList<>();
         temps.addAll(from.useList);
@@ -2353,8 +2354,8 @@ public class SelectionDAG
                 if (degree == 0)
                 {
                     int userIdx = allNodes.indexOf(user);
-                    assert userIdx != -1 :"Illegal status!";
-                    assert insertPos <= userIdx:"Unordered list!";
+                    Util.assertion(userIdx != -1, "Illegal status!");
+                    Util.assertion(insertPos <= userIdx, "Unordered list!");
                     if (userIdx != insertPos)
                     {
                         allNodes.remove(userIdx);
@@ -2371,16 +2372,16 @@ public class SelectionDAG
         }
         SDNode firstNode = allNodes.get(0);
         SDNode lastNode = allNodes.get(allNodes.size() - 1);
-        assert insertPos == allNodes.size() : "Topological incomplete!";
-        assert firstNode.getOpcode()
-                == ISD.EntryToken : "First node in allNode is not a entry token!";
-        assert firstNode.getNodeID()
-                == 0 : "First node in allNode does't have zero id!";
-        assert lastNode.getNodeID() == allNodes.size() - 1 :
-                "Last node in topological doesn't have " + (allNodes.size() - 1)
-                        + " id!";
-        assert lastNode.isUseEmpty() : "Last node in topological shouldn't have use";
-        assert dagSize == allNodes.size() : "Node count mismatch!";
+        Util.assertion(insertPos == allNodes.size(),  "Topological incomplete!");
+        Util.assertion(firstNode.getOpcode()                == ISD.EntryToken,  "First node in allNode is not a entry token!");
+
+        Util.assertion(firstNode.getNodeID()                == 0,  "First node in allNode does't have zero id!");
+
+        Util.assertion(lastNode.getNodeID() == allNodes.size() - 1,                 "Last node in topological doesn't have " + (allNodes.size() - 1)
+                        + " id!");
+
+        Util.assertion(lastNode.isUseEmpty(),  "Last node in topological shouldn't have use");
+        Util.assertion(dagSize == allNodes.size(),  "Node count mismatch!");
         return dagSize;
     }
 
@@ -2640,7 +2641,7 @@ public class SelectionDAG
 
     public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue[] ops, int len)
     {
-        assert len >= 0 && len <= ops.length;
+        Util.assertion( len >= 0 && len <= ops.length);
         if (ops.length == len)
         {
             SDValue[] temp = new SDValue[len];
@@ -2703,8 +2704,8 @@ public class SelectionDAG
     public SDValue getGlobalAddress(GlobalValue gv, EVT vt, long offset,
             boolean isTargetGA, int targetFlags)
     {
-        assert targetFlags == 0
-                || isTargetGA : "Can't set target flags on target-independent globals!";
+        Util.assertion(targetFlags == 0                || isTargetGA,  "Can't set target flags on target-independent globals!");
+
         EVT ptr = new EVT(tli.getPointerTy());
         int bitwidth = ptr.getSizeInBits();
         if (bitwidth < 64)
@@ -2757,8 +2758,8 @@ public class SelectionDAG
 
     public SDValue getJumpTable(int jti, EVT vt, boolean isTarget, int targetFlags)
     {
-        assert targetFlags == 0
-                || isTarget : "Can't set target flags on target-independent jump table";
+        Util.assertion(targetFlags == 0                || isTarget,  "Can't set target flags on target-independent jump table");
+
         int opc = isTarget ? ISD.TargetJumpTable : ISD.JumpTable;
         FoldingSetNodeID compute = new FoldingSetNodeID();
         addNodeToIDNode(compute, opc, getVTList(vt), null, 0);
@@ -2782,8 +2783,8 @@ public class SelectionDAG
     public SDValue getConstantPool(Constant c, EVT vt, int align, int offset,
             boolean isTarget, int targetFlags)
     {
-        assert targetFlags == 0
-                || isTarget : "Can't set target flags on target-independent constant pool";
+        Util.assertion(targetFlags == 0                || isTarget,  "Can't set target flags on target-independent constant pool");
+
         int opc = isTarget ? ISD.TargetConstantPool : ISD.ConstantPool;
         FoldingSetNodeID compute = new FoldingSetNodeID();
         addNodeToIDNode(compute, opc, getVTList(vt), null, 0);
@@ -2885,8 +2886,8 @@ public class SelectionDAG
 
     public SDValue getSrcValue(Value val)
     {
-        assert val == null || val
-                .getType() instanceof backend.type.PointerType : "SrcValue is not a pointer!";
+        Util.assertion(val == null || val                .getType() instanceof backend.type.PointerType,  "SrcValue is not a pointer!");
+
         FoldingSetNodeID compute = new FoldingSetNodeID();
         addNodeToIDNode(compute, ISD.SRCVALUE, getVTList(new EVT(MVT.Other)),
                 null, 0);
@@ -2994,8 +2995,8 @@ public class SelectionDAG
         if (vt.equals(svt))
             return getStore(chain, val, ptr, sv, svOffset, isVolatile, alignment);
 
-        assert vt.bitsGT(svt);
-        assert vt.isInteger() == svt.isInteger();
+        Util.assertion( vt.bitsGT(svt));
+        Util.assertion( vt.isInteger() == svt.isInteger());
         if (alignment == 0)
             alignment = getEVTAlignment(vt);
 
@@ -3084,19 +3085,19 @@ public class SelectionDAG
         if (vt.equals(evt))
             extType = LoadExtType.NON_EXTLOAD;
         else if (extType == LoadExtType.NON_EXTLOAD)
-            assert vt.equals(evt);
+            Util.assertion( vt.equals(evt));
         else
         {
             if (vt.isInteger())
-                assert evt.getVectorNumElements() == vt.getVectorNumElements();
+                Util.assertion( evt.getVectorNumElements() == vt.getVectorNumElements());
             else
-                assert evt.bitsLT(vt);
-            assert extType == LoadExtType.EXTLOAD || vt.isInteger();
-            assert vt.isInteger() == evt.isInteger();
+                Util.assertion( evt.bitsLT(vt));
+            Util.assertion( extType == LoadExtType.EXTLOAD || vt.isInteger());
+            Util.assertion( vt.isInteger() == evt.isInteger());
         }
 
         boolean indexed = am != UNINDEXED;
-        assert indexed || offset.getOpcode() == ISD.UNDEF;
+        Util.assertion( indexed || offset.getOpcode() == ISD.UNDEF);
 
         SDVTList vts = indexed ?
                 getVTList(vt, ptr.getValueType(), new EVT(MVT.Other)) :
@@ -3135,7 +3136,7 @@ public class SelectionDAG
             MemIndexedMode am)
     {
         LoadSDNode ld = (LoadSDNode)origLoad.getNode();
-        assert ld.getOffset().getOpcode() == ISD.UNDEF;
+        Util.assertion( ld.getOffset().getOpcode() == ISD.UNDEF);
         return getLoad(am, ld.getExtensionType(), origLoad.getValueType(),
                 ld.getChain(), base, offset, ld.getSrcValue(),
                 ld.getRawSubclassData(), ld.getMemoryVT(),
@@ -3146,7 +3147,7 @@ public class SelectionDAG
             SDValue offset, MemIndexedMode am)
     {
         StoreSDNode st = (StoreSDNode)origStore.getNode();
-        assert st.getOffset().getOpcode() == ISD.UNDEF;
+        Util.assertion( st.getOffset().getOpcode() == ISD.UNDEF);
         SDVTList vts = getVTList(base.getValueType(), new EVT(MVT.Other));
         SDValue[] ops = {st.getChain(), st.getValue(), base, offset};
         FoldingSetNodeID calc = new FoldingSetNodeID();
@@ -3172,7 +3173,7 @@ public class SelectionDAG
     public SDValue updateNodeOperands(SDValue node, SDValue... ops)
     {
         SDNode n = node.getNode();
-        assert n.getNumOperands() == ops.length;
+        Util.assertion( n.getNumOperands() == ops.length);
         boolean anyChange = false;
         for (int i = 0; i < ops.length; i++)
         {
@@ -3258,7 +3259,7 @@ public class SelectionDAG
 
         if (alwaysInline)
         {
-            assert constantSize != null;
+            Util.assertion( constantSize != null);
             return getMemcpyLoadsAndStores(chain, dst, src,
                     constantSize.getZExtValue(), align, true, dstVal,
                             dstOff, srcVal, srcOff);
@@ -3328,7 +3329,7 @@ public class SelectionDAG
             else
             {
                 EVT nvt = tli.getTypeToTransformTo(vt);
-                assert nvt.bitsGE(vt);
+                Util.assertion( nvt.bitsGE(vt));
                 value = getExtLoad(LoadExtType.EXTLOAD, nvt, chain,
                         getMemBasePlusOffset(src, srcOffset),
                         srcVal, (int) (srcValOff + srcOffset), vt, false,
@@ -3360,7 +3361,7 @@ public class SelectionDAG
             return getNode(ISD.BIT_CONVERT, vt,
                     getConstant(0, EVT.getVectorVT(eltVT, numElts), false));
         }
-        assert !vt.isVector():"Can't handle vector type here!";
+        Util.assertion(!vt.isVector(), "Can't handle vector type here!");
         int numBits = vt.getSizeInBits();
         int msb = numBits/8;
         long val = 0;
@@ -3453,7 +3454,7 @@ public class SelectionDAG
             EVT lvt = new EVT(MVT.i64);
             while (!tli.isTypeLegal(lvt))
                 lvt = new EVT(lvt.getSimpleVT().simpleVT+1);
-            assert lvt.isInteger();
+            Util.assertion( lvt.isInteger());
             if (vt.bitsGT(lvt))
                 vt = lvt;
         }
@@ -3647,16 +3648,16 @@ public class SelectionDAG
 
     public int computeNumSignBits(SDValue op, int depth)
     {
-        assert false : "Unimplemented currently!";
+        Util.assertion(false,  "Unimplemented currently!");
         return 0;
     }
 
     public SDValue getVectorShuffle(EVT vt, SDValue op0, SDValue op1, int[] mask)
     {
-        assert op0.getValueType()
-                .equals(op1.getValueType()) : "Invalid VECTOR_SHUFFLE!";
-        assert vt.isVector() && op0.getValueType().isVector();
-        assert vt.getVectorElementType().equals(op0.getValueType().getVectorElementType());
+        Util.assertion(op0.getValueType()                .equals(op1.getValueType()),  "Invalid VECTOR_SHUFFLE!");
+
+        Util.assertion( vt.isVector() && op0.getValueType().isVector());
+        Util.assertion( vt.getVectorElementType().equals(op0.getValueType().getVectorElementType()));
 
         if (op0.getOpcode() == ISD.UNDEF && op1.getOpcode() == ISD.UNDEF)
             return getUNDEF(vt);
@@ -3664,7 +3665,7 @@ public class SelectionDAG
         int numElts = vt.getVectorNumElements();
         TIntArrayList maskVec = new TIntArrayList();
         for (int val : mask)
-            assert val < numElts * 2 : "Index out of range!";
+            Util.assertion(val < numElts * 2,  "Index out of range!");
         maskVec.addAll(mask);
 
         if (op0.equals(op1))
@@ -3719,7 +3720,7 @@ public class SelectionDAG
             case SETUO:
             case SETUEQ:
             case SETUNE:
-                assert !lhs.getValueType().isInteger() : "Illegal setcc for integer!";
+                Util.assertion(!lhs.getValueType().isInteger(),  "Illegal setcc for integer!");
                 break;
         }
         ConstantSDNode rhsC = rhs.getNode() instanceof ConstantSDNode ?
@@ -3882,13 +3883,13 @@ public class SelectionDAG
 
     public void repositionNode(SDNode position, SDNode n)
     {
-        assert position != null;
+        Util.assertion( position != null);
         if (position.equals(n))
             return;
         int index = allNodes.indexOf(position);
-        assert index != -1;
+        Util.assertion( index != -1);
         int nIdx = allNodes.indexOf(n);
-        assert nIdx != -1;
+        Util.assertion( nIdx != -1);
         add(index, n);
         if (index < nIdx)
             ++nIdx;

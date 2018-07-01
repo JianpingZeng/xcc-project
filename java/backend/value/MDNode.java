@@ -17,6 +17,7 @@
 
 package backend.value;
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
 
@@ -62,7 +63,7 @@ public class MDNode extends MetadataBase
 
     public Value getNode(int index)
     {
-        assert index >= 0 && index < getNumOfNode();
+        Util.assertion( index >= 0 && index < getNumOfNode());
         return nodes.get(index);
     }
 }

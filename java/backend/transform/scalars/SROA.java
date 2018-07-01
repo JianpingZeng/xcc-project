@@ -17,6 +17,7 @@
 
 package backend.transform.scalars;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
 import backend.pass.AnalysisResolver;
@@ -246,7 +247,7 @@ public final class SROA implements FunctionPass
                 }
                 else
                 {
-                    assert false:"Supported uses of AllocaInst";
+                    Util.assertion(false, "Supported uses of AllocaInst");
                 }
             }
 

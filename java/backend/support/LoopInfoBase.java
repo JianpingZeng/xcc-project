@@ -16,6 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -56,7 +57,7 @@ public interface LoopInfoBase<BlockT, LoopT>
     default LoopT removeTopLevelLoop(int index)
     {
         ArrayList<LoopT> list = getTopLevelLoop();
-        assert index >= 0 && index < list.size() :"Indices out of valid range";
+        Util.assertion(index >= 0 && index < list.size(), "Indices out of valid range");
         ensureIsTopLevel(list.get(index), "The loop not at top level");
         return list.remove(index);
     }
@@ -71,7 +72,7 @@ public interface LoopInfoBase<BlockT, LoopT>
     default void changeLoopFor(BlockT block, LoopT newOne)
     {
         LoopT old = getBBMap().get(block);
-        assert old != null :"Block not in loop as yet!";
+        Util.assertion(old != null, "Block not in loop as yet!");
         ensureIsTopLevel(newOne, "The loop not at top level");
         ensureIsTopLevel(old, "The loop not at top level");
         getBBMap().replace(block, old, newOne);
@@ -80,7 +81,7 @@ public interface LoopInfoBase<BlockT, LoopT>
     default void replaceTopLevelLoop(LoopT oldLoop, LoopT newLoop)
     {
         ArrayList<LoopT> list = getTopLevelLoop();
-        assert list.contains(oldLoop):"Old loop not at top level!";
+        Util.assertion(list.contains(oldLoop), "Old loop not at top level!");
         int idx = list.indexOf(oldLoop);
         list.set(idx, newLoop);
         ensureIsTopLevel(newLoop, "The loop not at top level");
@@ -98,7 +99,7 @@ public interface LoopInfoBase<BlockT, LoopT>
     {
         ensureIsTopLevel(loop, "Loop already in subloop!");
         ArrayList<LoopT> list = getTopLevelLoop();
-        assert !list.contains(loop) : "The loop already in list!";
+        Util.assertion(!list.contains(loop),  "The loop already in list!");
         list.add(loop);
     }
 

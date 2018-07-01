@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.APFloatKeyType;
@@ -44,7 +45,7 @@ public class ConstantFP extends Constant
     ConstantFP(Type ty, APFloat v)
     {
         super(ty, ValueKind.ConstantFPVal);
-        assert v.getSemantics() == typeToFloatSemantics(ty):"FP type mismatch!";
+        Util.assertion(v.getSemantics() == typeToFloatSemantics(ty), "FP type mismatch!");
         val = v.clone();
     }
 
@@ -59,7 +60,7 @@ public class ConstantFP extends Constant
         if (ty.equals(LLVMContext.FP128Ty))
             return APFloat.IEEEquad;
 
-        assert false:"Unkown FP format";
+        Util.assertion(false, "Unkown FP format");
         return null;
     }
 

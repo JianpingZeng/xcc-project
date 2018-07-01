@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.EVT;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -247,7 +248,7 @@ public final class SDNodeInfo
                 TreePattern pattern) throws Exception
         {
             int numResults = nodeInfo.getNumResults();
-            assert  (numResults <= 1):"We only work which nodes with zero or result so far!";
+            Util.assertion((numResults <= 1), "We only work which nodes with zero or result so far!");
 
             if (nodeInfo.getNumOperands() >= 0)
             {
@@ -262,7 +263,7 @@ public final class SDNodeInfo
 
             switch (constraintType)
             {
-                default: assert false:"Unknown constraint yet!";
+                default: Util.assertion(false, "Unknown constraint yet!");
                 case SDTCisVT:
                     return nodeToApply.updateNodeType(x, pattern);
                 case SDTCisPtrTy:
@@ -315,7 +316,7 @@ public final class SDNodeInfo
                     boolean changed = false;
                     changed |= otherNode.updateNodeType(isInt, pattern);
 
-                    assert otherNode.getExtTypes().size() == 1:"Node has too many types!";
+                    Util.assertion(otherNode.getExtTypes().size() == 1, "Node has too many types!");
                     if (otherNode.hasTypeSet() && otherNode.getTypeNum(0) <= vt)
                         otherNode.updateNodeType(Other, pattern);
 
@@ -327,11 +328,11 @@ public final class SDNodeInfo
                             numResults);
 
                     boolean changed = false;
-                    assert !(EEVT.isExtIntegerInVTs(nodeToApply.getExtTypes()) &&
-                            EEVT.isExtFloatingPointInVTs(nodeToApply.getExtTypes())) &&
+                    Util.assertion(!(EEVT.isExtIntegerInVTs(nodeToApply.getExtTypes()) &&                            EEVT.isExtFloatingPointInVTs(nodeToApply.getExtTypes())) &&
                             !((EEVT.isExtIntegerInVTs(bigOperand.getExtTypes()))
-                            && EEVT.isExtFloatingPointInVTs(bigOperand.getExtTypes())) :
-                            "SDTCisOpSmallerThanOp does not handle mixed int/fp types!";
+                            && EEVT.isExtFloatingPointInVTs(bigOperand.getExtTypes())), 
+                            "SDTCisOpSmallerThanOp does not handle mixed int/fp types!");
+
 
                     if (isExtIntegerInVTs(nodeToApply.getExtTypes()))
                         changed |= bigOperand.updateNodeType(isInt, pattern);
@@ -357,7 +358,7 @@ public final class SDNodeInfo
                         case 1:
                             return nodeToApply.updateNodeType(Other, pattern);
                         case 2:
-                            assert vts.get(0) < vts.get(1) :"Should be sorted";
+                            Util.assertion(vts.get(0) < vts.get(1), "Should be sorted");
                             changed |= nodeToApply.updateNodeType(vts.get(0), pattern);
                             changed |= bigOperand.updateNodeType(vts.get(1), pattern);
                             break;
@@ -393,7 +394,7 @@ public final class SDNodeInfo
          */
         public TreePatternNode getOperandNum(int opNo, TreePatternNode node, int numResults)
         {
-            assert numResults <= 1:"We only work with nodes with zero or one result so far!";
+            Util.assertion(numResults <= 1, "We only work with nodes with zero or one result so far!");
             if (opNo >= (numResults  + node.getNumChildren()))
             {
                 System.err.printf("Invalid operand number %d ", opNo);

@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
@@ -55,7 +56,7 @@ public final class MachineRegisterInfo
 
         public void next()
         {
-            assert op != null:"Can not increment end iterator";
+            Util.assertion(op != null, "Can not increment end iterator");
             op = op.getNextOperandForReg();
 
             // Skip those machine operand that We don't care about.
@@ -71,19 +72,19 @@ public final class MachineRegisterInfo
 
         public MachineOperand getOpearnd()
         {
-            assert op != null:"Can not derefence end iterator!";
+            Util.assertion(op != null, "Can not derefence end iterator!");
             return op;
         }
 
         public int getOperandNo()
         {
-            assert op != null:"Can not derefence end iterator!";
+            Util.assertion(op != null, "Can not derefence end iterator!");
             return getMachineInstr().getIndexOf(op);
         }
 
         public MachineInstr getMachineInstr()
         {
-            assert op != null:"Can not derefence end iterator!";
+            Util.assertion(op != null, "Can not derefence end iterator!");
             return op.getParent();
         }
 
@@ -149,7 +150,7 @@ public final class MachineRegisterInfo
     public TargetRegisterClass getRegClass(int reg)
     {
         int actualReg = rescale(reg);
-        assert actualReg< vregInfo.size():"Register out of bound!";
+        Util.assertion(actualReg< vregInfo.size(), "Register out of bound!");
         return vregInfo.get(actualReg).first;
     }
 
@@ -177,10 +178,10 @@ public final class MachineRegisterInfo
      */
     public MachineOperand getDefMO(int regNo)
     {
-        assert regNo >= FirstVirtualRegister
-                : "the regNo is not a virtual register";
+        Util.assertion(regNo >= FirstVirtualRegister,  "the regNo is not a virtual register");
+
         int actualReg = rescale(regNo);
-        assert actualReg< vregInfo.size():"Register out of bound!";
+        Util.assertion(actualReg< vregInfo.size(), "Register out of bound!");
         return vregInfo.get(actualReg).second;
     }
 
@@ -191,10 +192,10 @@ public final class MachineRegisterInfo
 
     public void setDefMO(int regNo, MachineOperand mo)
     {
-        assert regNo >= FirstVirtualRegister
-                : "the regNo is not a virtual register";
+        Util.assertion(regNo >= FirstVirtualRegister,  "the regNo is not a virtual register");
+
         int actualReg = rescale(regNo);
-        assert actualReg< vregInfo.size():"Register out of bound!";
+        Util.assertion(actualReg< vregInfo.size(), "Register out of bound!");
         vregInfo.get(regNo).second = mo;
 
     }
@@ -339,7 +340,7 @@ public final class MachineRegisterInfo
      */
     public void replaceRegWith(int oldReg, int newReg)
     {
-        assert oldReg != newReg :"It is not needed to replace the same reg";
+        Util.assertion(oldReg != newReg, "It is not needed to replace the same reg");
         DefUseChainIterator itr = getRegIterator(oldReg);
         while (itr.hasNext())
         {

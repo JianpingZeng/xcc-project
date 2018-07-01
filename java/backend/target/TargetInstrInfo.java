@@ -1,5 +1,6 @@
 package backend.target;
 
+import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode;
@@ -76,7 +77,7 @@ public abstract class TargetInstrInfo
 	public TargetInstrInfo(TargetInstrDesc[] desc)
 	{
 		descs = desc;
-		assert targetInstrDescs == null && desc != null;
+		Util.assertion( targetInstrDescs == null && desc != null);
 		targetInstrDescs = desc;
 	}
 
@@ -94,7 +95,7 @@ public abstract class TargetInstrInfo
 	 */
 	public TargetInstrDesc get(int opCode)
 	{
-		assert opCode >= 0 && opCode < getNumTotalOpCodes();
+		Util.assertion( opCode >= 0 && opCode < getNumTotalOpCodes());
 		return descs[opCode];
 	}
 
@@ -254,7 +255,7 @@ public abstract class TargetInstrInfo
 	/// returns the number of instructions that were removed.
 	public  int removeBranch(MachineBasicBlock mbb)
 	{
-		assert false : "Target didn't implement TargetInstrInfo::RemoveBranch!";
+		Util.assertion(false,  "Target didn't implement TargetInstrInfo::RemoveBranch!");
 		return 0;
 	}
 
@@ -273,7 +274,7 @@ public abstract class TargetInstrInfo
 			MachineBasicBlock fbb,
             ArrayList<MachineOperand> cond)
 	{
-		assert false : "Target didn't implement TargetInstrInfo::InsertBranch!";
+		Util.assertion(false,  "Target didn't implement TargetInstrInfo::InsertBranch!");
 		return 0;
 	}
 
@@ -287,7 +288,7 @@ public abstract class TargetInstrInfo
 			TargetRegisterClass dstRC,
 			TargetRegisterClass srcRC)
 	{
-		assert false:"Target didn't implement TargetLowering::copyRegToReg";
+		Util.assertion(false, "Target didn't implement TargetLowering::copyRegToReg");
 		return false;
 	}
 
@@ -303,7 +304,7 @@ public abstract class TargetInstrInfo
 			int frameIndex,
 			TargetRegisterClass rc)
 	{
-		assert false : "Target didn't implement TargetInstrInfo::storeRegToStackSlot!";
+		Util.assertion(false,  "Target didn't implement TargetInstrInfo::storeRegToStackSlot!");
 	}
 
 	/// loadRegFromStackSlot - Load the specified register of the given register
@@ -316,7 +317,7 @@ public abstract class TargetInstrInfo
 			int frameIndex,
 			TargetRegisterClass rc)  
 	{
-		assert false : "Target didn't implement TargetInstrInfo::loadRegFromStackSlot!";
+		Util.assertion(false,  "Target didn't implement TargetInstrInfo::loadRegFromStackSlot!");
 	}
 
 	/// spillCalleeSavedRegisters - Issues instruction(s) to spill all callee
@@ -522,7 +523,7 @@ public abstract class TargetInstrInfo
 	///
 	public int getInstSizeInBytes( MachineInstr mi)
 	{
-		assert false : "Target didn't implement TargetInstrInfo::GetInstSize!";
+		Util.assertion(false,  "Target didn't implement TargetInstrInfo::GetInstSize!");
 		return 0;
 	}
 

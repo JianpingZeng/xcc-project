@@ -17,6 +17,7 @@
 
 package jlang.cparser;
 
+import tools.Util;
 import java.util.ArrayList;
 
 /**
@@ -67,7 +68,7 @@ public class Designation
 
     public Designator getDesignator(int idx)
     {
-        assert idx >= 0 && idx < getNumDesignators();
+        Util.assertion( idx >= 0 && idx < getNumDesignators());
         return designators.get(idx);
     }
 

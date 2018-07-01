@@ -16,6 +16,7 @@
  */
 
 package utils.tablegen;
+import tools.Util;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -62,7 +63,7 @@ public class JlangOptionsEmitter extends TableGenBackend
                     r1.getValueAsDef("Kind").dump();
                     r2.getValueAsDef("Kind").dump();
                 }
-                assert pred1 != pred2:"Two equivalent options";
+                Util.assertion(pred1 != pred2, "Two equivalent options");
                 return pred1 < pred2 ? -1 : 1;
             }
             catch (Exception e)
@@ -310,7 +311,7 @@ public class JlangOptionsEmitter extends TableGenBackend
 
     public String getDirname(String path)
     {
-        assert path != null;
+        Util.assertion( path != null);
         int lastBlash = path.lastIndexOf('/');
         if (lastBlash < 0)
             lastBlash = path.length();
@@ -319,14 +320,14 @@ public class JlangOptionsEmitter extends TableGenBackend
 
     public String getBasename(String path)
     {
-        assert path != null;
+        Util.assertion( path != null);
         int lastBlash = path.lastIndexOf('/');
-        assert lastBlash >= 0:"No basename!";
+        Util.assertion(lastBlash >= 0, "No basename!");
         ++lastBlash;
         int lastDot = path.lastIndexOf('.');
         if (lastDot < 0)
             lastDot = path.length();
-        assert lastDot >= lastBlash:"Invalid OptionInfo filename!";
+        Util.assertion(lastDot >= lastBlash, "Invalid OptionInfo filename!");
         return path.substring(lastBlash, lastDot);
     }
 
@@ -339,8 +340,8 @@ public class JlangOptionsEmitter extends TableGenBackend
     @Override
     public void run(String outputFile) throws Exception
     {
-        assert outputFile != null && !outputFile.isEmpty()
-                :"Invalid path to output file";
+        Util.assertion(outputFile != null && !outputFile.isEmpty(), "Invalid path to output file");
+
 
         ArrayList<Record> options = records.getAllDerivedDefinition("Option");
         ArrayList<Record> groups = records.getAllDerivedDefinition("OptionGroup");

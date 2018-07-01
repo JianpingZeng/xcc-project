@@ -17,6 +17,7 @@
 
 package jlang.ast;
 
+import tools.Util;
 import jlang.ast.Tree.DeclStmt;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
@@ -223,7 +224,7 @@ public class StmtDumper extends StmtVisitor<Void>
         }
         else
         {
-            assert false:"Unexpected decl";
+            Util.assertion(false, "Unexpected decl");
         }
     }
 

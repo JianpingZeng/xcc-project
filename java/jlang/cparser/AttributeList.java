@@ -17,6 +17,7 @@
 
 package jlang.cparser;
 
+import tools.Util;
 import jlang.clex.IdentifierInfo;
 import jlang.support.SourceLocation;
 
@@ -171,7 +172,7 @@ public class AttributeList
 
     public void addAttributeList(AttributeList alist)
     {
-        assert alist != null:"addAttributeList(): alist is null";
+        Util.assertion(alist != null, "addAttributeList(): alist is null");
         AttributeList next = this, prev;
         do
         {
@@ -188,7 +189,7 @@ public class AttributeList
 
     public Object getArg(int index)
     {
-        assert index < getNumArgs() :"Arg access out of range";
+        Util.assertion(index < getNumArgs(), "Arg access out of range");
         return args[index];
     }
 

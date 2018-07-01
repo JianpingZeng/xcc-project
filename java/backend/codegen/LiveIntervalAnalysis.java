@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
@@ -177,7 +178,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
-                assert !(mi2Idx.containsKey(mi)):"Duplicate mi2Idx entry";
+                Util.assertion(!(mi2Idx.containsKey(mi)), "Duplicate mi2Idx entry");
                 mi2Idx.put(mi, idx);
                 putIndex2MI(idx, mi);
                 idx += InstrSlots.NUM;
@@ -278,7 +279,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
     public int getInstructionIndex(MachineInstr mi)
     {
-        assert mi2Idx.containsKey(mi);
+        Util.assertion( mi2Idx.containsKey(mi));
         return mi2Idx.get(mi);
     }
 
@@ -352,7 +353,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 // live range.
                 if (killIdx > defIdx)
                 {
-                    assert vi.aliveBlocks.isEmpty():"Shouldn't be alive across any block";
+                    Util.assertion(vi.aliveBlocks.isEmpty(), "Shouldn't be alive across any block");
                     LiveRange range = new LiveRange(defIdx, killIdx, li.getNextValue());
                     li.addRange(range);
                     return;
@@ -448,7 +449,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                     //    br end
                     // end:
                     //    ret %res.
-                    assert vi.kills.size() == 1:"PHI elimination vreg should have one kill, the PHI itself";
+                    Util.assertion(vi.kills.size() == 1, "PHI elimination vreg should have one kill, the PHI itself");
 
                     MachineInstr killer = vi.kills.get(0);
                     int start = getInstructionIndex(killer.getParent().getInsts().getFirst());
@@ -510,7 +511,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private MachineInstr getInstructionFromIndex(int idx)
     {
         MachineInstr mi = getMIByIdx(idx);
-        assert mi != null;
+        Util.assertion( mi != null);
         return mi;
     }
 
@@ -551,11 +552,11 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 }
             }
 
-            assert isLiveIn :"phyreg was not killed in defining block!";
+            Util.assertion(isLiveIn, "phyreg was not killed in defining block!");
             end = getDefIndex(start) + 1;
         }
 
-        assert start < end :"did not find end of intervals";
+        Util.assertion(start < end, "did not find end of intervals");
 
         // Finally, if this is defining a new range for the physical register, and if
         // that physreg is just a copy from a vreg, and if THAT vreg was a copy from
@@ -570,7 +571,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
             if (srcInterval.containsOneValue())
             {
-                assert !srcInterval.isEmpty() :"Can't contain a value and be empty";
+                Util.assertion(!srcInterval.isEmpty(), "Can't contain a value and be empty");
 
                 int startIdx = srcInterval.getRange(0).start;
                 MachineInstr srcDefMI = getInstructionFromIndex(startIdx);
@@ -627,8 +628,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     {
         ArrayList<LiveInterval> added = new ArrayList<>();
 
-        assert interval.weight != Float.MAX_VALUE
-                : "attempt to spill already spilled interval";
+        Util.assertion(interval.weight != Float.MAX_VALUE,  "attempt to spill already spilled interval");
+
 
         if (Util.DEBUG)
         {
@@ -699,7 +700,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                                 mi.setMachineOperandReg(i, nReg);
                                 vrm.assignVirt2StackSlot(nReg, slot);
                                 LiveInterval ni = getOrCreateInterval(nReg);
-                                assert ni.isEmpty();
+                                Util.assertion( ni.isEmpty());
 
                                 ni.weight = Float.MAX_VALUE;
                                 LiveRange r = new LiveRange(start, end, ni.getNextValue());

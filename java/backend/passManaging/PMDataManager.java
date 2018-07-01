@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.*;
 import backend.support.BackendCmdOptions;
 import backend.value.Function;
@@ -284,7 +285,7 @@ public abstract class PMDataManager
             if (reqPass == null)
                 continue;
             AnalysisResolver resolver = p.getAnalysisResolver();
-            assert resolver != null;
+            Util.assertion( resolver != null);
             resolver.addAnalysisImplPair(req, reqPass);
         }
     }
@@ -403,7 +404,7 @@ public abstract class PMDataManager
             Pass p,
             HashSet<PassInfo> set)
     {
-        assert BackendCmdOptions.PassDebugging.value.compareTo(Details) >= 0;
+        Util.assertion( BackendCmdOptions.PassDebugging.value.compareTo(Details) >= 0);
         if (set.isEmpty())
             return;
 
@@ -438,7 +439,7 @@ public abstract class PMDataManager
 
     public PassManagerType getPassManagerType()
     {
-        assert false:"Invalid use of getPassManagerType()";
+        Util.assertion(false, "Invalid use of getPassManagerType()");
         return PassManagerType.PMT_Unknow;
     }
 

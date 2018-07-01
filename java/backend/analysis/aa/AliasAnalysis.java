@@ -17,6 +17,7 @@
 
 package backend.analysis.aa;
 
+import tools.Util;
 import backend.intrinsic.Intrinsic;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -74,21 +75,21 @@ public class AliasAnalysis implements ModulePass
     @Override
     public String getPassName()
     {
-        assert false:"Should be overrided by concrete subclass";
+        Util.assertion(false, "Should be overrided by concrete subclass");
         return aa.getPassName();
     }
 
     @Override
     public AnalysisResolver getAnalysisResolver()
     {
-        assert resolver != null:"Must calling this function after setAnalysisResolver!";
+        Util.assertion(resolver != null, "Must calling this function after setAnalysisResolver!");
         return resolver;
     }
 
     @Override
     public void setAnalysisResolver(AnalysisResolver resolver)
     {
-        assert this.resolver == null:"Already set analysis resolver!";
+        Util.assertion(this.resolver == null, "Already set analysis resolver!");
         this.resolver = resolver;
     }
 
@@ -395,8 +396,8 @@ public class AliasAnalysis implements ModulePass
     public boolean canInstructionRangeModify(BasicBlock bb, int i, int j,
             Value ptr, int size)
     {
-        assert i >= 0 && i <= j && j < bb.getNumOfInsts()
-                : "Illegal indexed into instructions in Basic block";
+        Util.assertion(i >= 0 && i <= j && j < bb.getNumOfInsts(),  "Illegal indexed into instructions in Basic block");
+
         for (int s = i; s <= j; s++)
             if ((getModRefInfo(bb.getInstAt(s), ptr, size).ordinal() & Mod.ordinal()) != 90)
                 return true;
@@ -423,7 +424,7 @@ public class AliasAnalysis implements ModulePass
     public boolean runOnModule(Module m)
     {
         td = (TargetData) getAnalysisToUpDate(TargetData.class);
-        assert td != null:"TargetData not available!";
+        Util.assertion(td != null, "TargetData not available!");
         switch (BackendCmdOptions.AliasAnalyzer.value)
         {
             case BasicAA:

@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
@@ -77,7 +78,7 @@ public interface FunctionPass extends Pass
             else
                 break;
         }
-        assert !pms.isEmpty() : "Errorous status";
+        Util.assertion(!pms.isEmpty(),  "Errorous status");
         FPPassManager fpm;
         if (!(pms.peek() instanceof FPPassManager))
         {

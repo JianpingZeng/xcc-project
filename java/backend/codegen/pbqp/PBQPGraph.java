@@ -17,6 +17,7 @@
 
 package backend.codegen.pbqp;
 
+import tools.Util;
 import java.util.Arrays;
 
 /**
@@ -44,7 +45,7 @@ public class PBQPGraph
 
     public PBQPGraph(int numNodes)
     {
-        assert numNodes > 0;
+        Util.assertion( numNodes > 0);
         this.numNodes = numNodes;
         solved = false;
         optimal = true;
@@ -65,8 +66,8 @@ public class PBQPGraph
 
     public void addNodeCosts(int node, PBQPVector costs)
     {
-        assert costs != null;
-        assert node >= 0 && node <= numNodes;
+        Util.assertion( costs != null);
+        Util.assertion( node >= 0 && node <= numNodes);
         if (nodeCosts[node] == null)
         {
             nodeCosts[node] = costs;
@@ -79,9 +80,9 @@ public class PBQPGraph
 
     public void addEdgeCosts(int node1, int node2, PBQPMatrix costs)
     {
-        assert node1 >= 0 && node1 <= numNodes;
-        assert node2 >= 0 && node2 <= numNodes;
-        assert costs != null;
+        Util.assertion( node1 >= 0 && node1 <= numNodes);
+        Util.assertion( node2 >= 0 && node2 <= numNodes);
+        Util.assertion( costs != null);
 
         PBQPMatrix m;
         // does this edge exists?
@@ -104,8 +105,8 @@ public class PBQPGraph
 
     public PBQPMatrix getCostMatrix(int node1, int node2)
     {
-        assert node1 >= 0 && node1 <= numNodes;
-        assert node2 >= 0 && node2 <= numNodes;
+        Util.assertion( node1 >= 0 && node1 <= numNodes);
+        Util.assertion( node2 >= 0 && node2 <= numNodes);
         if (adjList[node1] == null)
             return null;
 
@@ -131,8 +132,8 @@ public class PBQPGraph
 
     private void insertAdjNode(int node, AdjNode adj)
     {
-        assert node >= 0 && node <= numNodes;
-        assert adj != null;
+        Util.assertion( node >= 0 && node <= numNodes);
+        Util.assertion( adj != null);
 
         if (adjList[node] == null)
         {
@@ -158,11 +159,11 @@ public class PBQPGraph
 
     public void deleteEdge(int u, int v)
     {
-        assert u >= 0 && u < numNodes;
-        assert v >= 0 && v < numNodes;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( v >= 0 && v < numNodes);
         AdjNode adj = findAdjNode(u,v);
-        assert adj != null;
-        assert adj.reverse != null;
+        Util.assertion( adj != null);
+        Util.assertion( adj.reverse != null);
 
         AdjNode reverse = adj.reverse;
         removeAdjNode(u, adj);
@@ -171,8 +172,8 @@ public class PBQPGraph
 
     public void removeAdjNode(int u, AdjNode adj)
     {
-        assert u >= 0 && u < numNodes;
-        assert adj != null;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( adj != null);
         AdjNode prev = adj.prev;
         if (prev == null)
         {
@@ -199,11 +200,11 @@ public class PBQPGraph
      */
     public int popNode(int degree)
     {
-        assert degree >= 0 && degree <= maxDegree;
-        assert bucketList != null;
+        Util.assertion( degree >= 0 && degree <= maxDegree);
+        Util.assertion( bucketList != null);
 
         BucketNode bucket = bucketList[degree];
-        assert bucket != null;
+        Util.assertion( bucket != null);
 
         removeBucket(bucket);
         return bucket.u;
@@ -211,7 +212,7 @@ public class PBQPGraph
 
     public void removeBucket(BucketNode bucket)
     {
-        assert bucket != null;
+        Util.assertion( bucket != null);
         if (bucket.prev != null)
             bucket.prev.next = bucket.next;
         else
@@ -224,8 +225,8 @@ public class PBQPGraph
 
     public void reinsertNode(int u)
     {
-        assert u >= 0 && u < numNodes;
-        assert adjList != null;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( adjList != null);
         for (AdjNode adj = adjList[u]; adj != null; adj = adj.next)
         {
             int v = adj.adj;
@@ -236,9 +237,9 @@ public class PBQPGraph
 
     public void determineSolution(int u)
     {
-        assert u >= 0 && u < numNodes;
-        assert adjList != null;
-        assert solution != null;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( adjList != null);
+        Util.assertion( solution != null);
         PBQPVector vec = nodeCosts[u].clone();
         for (AdjNode adj = adjList[u]; adj != null; adj = adj.next)
         {
@@ -246,7 +247,7 @@ public class PBQPGraph
             int vSol = solution[v];
 
             PBQPMatrix m = getCostMatrix(v, u);
-            assert vSol >= 0 && vSol < nodeCosts[v].getLength();
+            Util.assertion( vSol >= 0 && vSol < nodeCosts[v].getLength());
             vec.add(m.getRows(vSol));
         }
         solution[u] = vec.minIndex();
@@ -268,8 +269,8 @@ public class PBQPGraph
 
     public void removeNode(int u)
     {
-        assert u >= 0 && u < numNodes;
-        assert adjList != null;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( adjList != null);
 
         for (AdjNode adj = adjList[u]; adj != null; adj = adj.next)
             removeAdjNode(adj.adj, adj.reverse);
@@ -281,8 +282,8 @@ public class PBQPGraph
      */
     public void reorderAdjNode(int u)
     {
-        assert u >= 0 && u < numNodes;
-        assert adjList != null;
+        Util.assertion( u >= 0 && u < numNodes);
+        Util.assertion( adjList != null);
         for (AdjNode adj = adjList[u]; adj != null; adj = adj.next)
             reorderNode(adj.adj);
     }
@@ -299,9 +300,9 @@ public class PBQPGraph
 
     public void addToBucketList(BucketNode node, int degree)
     {
-        assert node != null;
-        assert degree >= 0 && degree <= maxDegree;
-        assert bucketList != null;
+        Util.assertion( node != null);
+        Util.assertion( degree >= 0 && degree <= maxDegree);
+        Util.assertion( bucketList != null);
 
         nodeDegrees[node.u] = degree;
 
@@ -315,7 +316,7 @@ public class PBQPGraph
 
     public int getDeg(int u)
     {
-        assert u >= 0 && u < numNodes;
+        Util.assertion( u >= 0 && u < numNodes);
         int deg = 0;
         for (AdjNode adj = adjList[u]; adj != null; adj = adj.next)
             ++deg;

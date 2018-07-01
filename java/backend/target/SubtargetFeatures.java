@@ -17,6 +17,7 @@ package backend.target;
  */
 
 import tools.Util;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -209,8 +210,8 @@ public class SubtargetFeatures
     public int getBits(SubtargetFeatureKV[] cpuTable,
             SubtargetFeatureKV[] featureTable)
     {
-        assert cpuTable != null :"missing CPU table";
-        assert featureTable != null:"missing features table";
+        Util.assertion(cpuTable != null, "missing CPU table");
+        Util.assertion(featureTable != null, "missing features table");
 
         int bit = 0;
 
@@ -308,7 +309,7 @@ public class SubtargetFeatures
      */
     private static boolean isEnabled(String feature)
     {
-        assert !feature.isEmpty():"Empty feature string";
+        Util.assertion(!feature.isEmpty(), "Empty feature string");
         return feature.charAt(0) == '+';
     }
 
@@ -404,7 +405,7 @@ public class SubtargetFeatures
 
     private static boolean hasFlag(String feature)
     {
-        assert !feature.isEmpty() :"Empty string";
+        Util.assertion(!feature.isEmpty(), "Empty string");
 
         char ch = feature.charAt(0);
         // Check if first character is '+' or '-' flag

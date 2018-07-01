@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -90,7 +91,7 @@ public class SCCPSolver implements InstVisitor<Void>
             }
             else
             {
-                assert constVal.equals(val) : "undefined up to constant!";
+                Util.assertion(constVal.equals(val),  "undefined up to constant!");
             }
             return false;
         }
@@ -146,7 +147,7 @@ public class SCCPSolver implements InstVisitor<Void>
 
     private LatticeStatus getLatticeStatus(Value val)
     {
-        assert val != null : "null Value when calling to getLatticeStatus()";
+        Util.assertion(val != null,  "null Value when calling to getLatticeStatus()");
         if (value2LatticeMap.containsKey(val))
             return value2LatticeMap.get(val);
 
@@ -364,7 +365,7 @@ public class SCCPSolver implements InstVisitor<Void>
                 return res;
             }
         }
-        assert false:"Unknown terminator instruction";
+        Util.assertion(false, "Unknown terminator instruction");
         return null;
     }
 
@@ -744,7 +745,7 @@ public class SCCPSolver implements InstVisitor<Void>
             {
                 ops.add(ls.getConstVal());
             }
-            assert false:"Unknown Lattice value";
+            Util.assertion(false, "Unknown Lattice value");
         }
 
         Value base = inst.getPointerOperand();
@@ -759,7 +760,7 @@ public class SCCPSolver implements InstVisitor<Void>
             markConstant(inst, ConstantExpr.getGetElementPtr(ls.getConstVal(), ops));
             return null;
         }
-        assert false:"Unknown Lattice value";
+        Util.assertion(false, "Unknown Lattice value");
         return null;
     }
 
@@ -771,7 +772,7 @@ public class SCCPSolver implements InstVisitor<Void>
      */
     private boolean isEdgeFeasible(BasicBlock from, BasicBlock to)
     {
-        assert executableBBs.contains(to):"Destination block must be executable";
+        Util.assertion(executableBBs.contains(to), "Destination block must be executable");
 
         if (!executableBBs.contains(from))
             return false;
@@ -826,7 +827,7 @@ public class SCCPSolver implements InstVisitor<Void>
                 return false;
             }
         }
-        assert false:"Unknown terminator instruction.";
+        Util.assertion(false, "Unknown terminator instruction.");
         return false;
     }
 
@@ -887,7 +888,7 @@ public class SCCPSolver implements InstVisitor<Void>
     @Override
     public Void visitSelect(User u)
     {
-        assert false:"SCCP not support select instruction currently!";
+        Util.assertion(false, "SCCP not support select instruction currently!");
         return null;
     }
 }

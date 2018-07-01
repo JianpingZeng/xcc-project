@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.value.Module;
@@ -38,7 +39,7 @@ public interface ModulePass extends Pass
 			else
 				break;
 		}
-		assert !pms.isEmpty():"Unable to find appropriate pass manager!";
+		Util.assertion(!pms.isEmpty(), "Unable to find appropriate pass manager!");
 		pms.peek().add(this);
 	}
 

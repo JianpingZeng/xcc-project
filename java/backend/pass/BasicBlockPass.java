@@ -1,5 +1,6 @@
 package backend.pass;
 
+import tools.Util;
 import backend.passManaging.*;
 import backend.value.BasicBlock;
 import backend.value.Function;
@@ -62,7 +63,7 @@ public interface BasicBlockPass extends Pass
             else
                 break;
         }
-        assert !pms.isEmpty():"Errorous status";
+        Util.assertion(!pms.isEmpty(), "Errorous status");
         BBPassManager bpm;
         if (!(pms.peek() instanceof FPPassManager))
         {

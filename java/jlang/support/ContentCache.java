@@ -16,6 +16,7 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 
 import java.io.IOException;
@@ -68,7 +69,7 @@ public class ContentCache
 
     public void setBuffer(MemoryBuffer buffer)
     {
-        assert this.buffer == null :"MemoryBuffer already set!";
+        Util.assertion(this.buffer == null, "MemoryBuffer already set!");
         this.buffer = buffer;
     }
 

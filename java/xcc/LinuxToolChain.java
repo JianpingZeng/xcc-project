@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import backend.support.Triple;
 import xcc.Action.ActionClass;
 import xcc.HostInfo.LinuxHostInfo;
@@ -151,7 +152,7 @@ public class LinuxToolChain extends ToolChain
             case PreprocessJobClass:
             case PrecompileJobClass:
             default:
-                assert false:"Invalid tool kind!";
+                Util.assertion(false, "Invalid tool kind!");
                 break;
             case CompileJobClass:
                 tool = new JlangTool(this);

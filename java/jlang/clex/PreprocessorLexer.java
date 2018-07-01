@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.FileID;
 import jlang.support.SourceLocation;
 
@@ -133,7 +134,7 @@ public abstract class PreprocessorLexer
 
     protected PPConditionalInfo peekConditionalLevel()
     {
-        assert !conditionalStack.isEmpty():"No conditionals active!";
+        Util.assertion(!conditionalStack.isEmpty(), "No conditionals active!");
         return conditionalStack.peek();
     }
 
@@ -150,8 +151,8 @@ public abstract class PreprocessorLexer
      */
     public void lexIncludeFilename(Token result)
     {
-        assert parsingPreprocessorDirective && !parsingFilename
-                :"Must be in a preprocessing directive!";
+        Util.assertion(parsingPreprocessorDirective && !parsingFilename, "Must be in a preprocessing directive!");
+
 
         parsingFilename = true;
 
@@ -174,8 +175,8 @@ public abstract class PreprocessorLexer
 
     public FileID getFileID()
     {
-        assert pp != null :
-                "PreprocessorLexer::getFileID() should only be used with a Preprocessor";
+        Util.assertion(pp != null,                 "PreprocessorLexer::getFileID() should only be used with a Preprocessor");
+
         return fid;
     }
 

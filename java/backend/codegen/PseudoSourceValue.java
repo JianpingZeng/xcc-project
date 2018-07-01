@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import tools.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.value.Value;
@@ -67,7 +68,7 @@ public class PseudoSourceValue extends Value
         else if (equals(getConstantPool()))
             os.print(PSVNames[3]);
         else
-            assert false:"Invalid PseudoSourceValue";
+            Util.assertion(false, "Invalid PseudoSourceValue");
 
     }
 

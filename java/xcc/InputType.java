@@ -17,6 +17,7 @@
 
 package xcc;
 
+import tools.Util;
 import jlang.diag.CompilationPhase;
 
 /**
@@ -185,7 +186,7 @@ public enum InputType implements TypeID
     }
     public static int getCompilationPhase(int id, int n)
     {
-        assert n < getNumCompilationPhases(id):"Invalid index";
+        Util.assertion(n < getNumCompilationPhases(id), "Invalid index");
 
         if (id == TY_Object)
             return CompilationPhase.Link;

@@ -150,7 +150,7 @@ public class HIRModuleGenerator
                 // skip it.
                 break;
             default:
-                assert decl instanceof Decl.TypeDecl:"Unsupported decl kind!";
+                Util.assertion(decl instanceof Decl.TypeDecl, "Unsupported decl kind!");
                 break;
         }
     }
@@ -190,9 +190,9 @@ public class HIRModuleGenerator
         }
         else
         {
-            assert decl instanceof VarDecl;
+            Util.assertion( decl instanceof VarDecl);
             final VarDecl vd = (VarDecl)decl;
-            assert vd.isFileVarDecl():"Cann't emit code for local variable!";
+            Util.assertion(vd.isFileVarDecl(), "Cann't emit code for local variable!");
 
 
             // Defer code generation when possible if this is a static definition, inline
@@ -226,13 +226,13 @@ public class HIRModuleGenerator
 
     private boolean mayDeferGeneration(VarDecl vd)
     {
-       assert vd.isFileVarDecl() :"Invalid decl";
+       Util.assertion(vd.isFileVarDecl(), "Invalid decl");
        return vd.getStorageClass() == Decl.StorageClass.SC_static;
     }
 
     private String getMangledName(Decl.NamedDecl decl)
     {
-        assert decl.getIdentifier() != null:"Attempt to mangle unnamed decl";
+        Util.assertion(decl.getIdentifier() != null, "Attempt to mangle unnamed decl");
         return decl.getNameAsString();
     }
 
@@ -246,7 +246,7 @@ public class HIRModuleGenerator
             // This a tentative definition. tentative definitions are
             // implicitly initialized with 0.
             // They should never have incomplete type.
-            assert !astTy.getType().isIncompleteType():"Unexpected incomplete type!";
+            Util.assertion(!astTy.getType().isIncompleteType(), "Unexpected incomplete type!");
 	        init = emitNullConstant(astTy);
         }
 	    else
@@ -267,8 +267,8 @@ public class HIRModuleGenerator
 	    if (entry instanceof ConstantExpr)
 	    {
 		    ConstantExpr ce = (ConstantExpr)entry;
-		    assert ce.getOpcode() == Operator.BitCast
-				    || ce.getOpcode() == Operator.GetElementPtr;
+		    Util.assertion( ce.getOpcode() == Operator.BitCast				    || ce.getOpcode() == Operator.GetElementPtr);
+
 		    entry = ce.operand(0);
 	    }
 
@@ -334,7 +334,7 @@ public class HIRModuleGenerator
         TODO complete VisibilityModeAttr for GlobalValue.
         if (const VisibilityAttr *attr = D->getAttr<VisibilityAttr>()) {
         switch (attr->getVisibility()) {
-            default: assert(0 && "Unknown visibility!");
+            default: Util.assertion(,  assert(0 && "Unknown visibility!"));
             case VisibilityAttr::DefaultVisibility:
                 return LangOptions::Default;
             case VisibilityAttr::HiddenVisibility:
@@ -357,7 +357,7 @@ public class HIRModuleGenerator
 
         switch (getDeclVisibilityMode(d))
         {
-            default: assert false:"Unknown visibility!";
+            default: Util.assertion(false, "Unknown visibility!");
 
             case Default:
                 gv.setVisibility(GlobalValue.VisibilityTypes.DefaultVisibility);
@@ -506,7 +506,7 @@ public class HIRModuleGenerator
      */
     public Constant getAddrOfGlobalVar(VarDecl vd, backend.type.Type ty)
     {
-        assert vd.hasGlobalStorage() :"Not a global variable";
+        Util.assertion(vd.hasGlobalStorage(), "Not a global variable");
         QualType astTy = vd.getType();
         if (ty == null)
             ty = getCodeGenTypes().convertTypeForMem(astTy);
@@ -630,7 +630,7 @@ public class HIRModuleGenerator
 
         if (fd.getType().isFunctionNoProtoType())
         {
-            assert ty.isVarArg():"Didn't lower type as expected";
+            Util.assertion(ty.isVarArg(), "Didn't lower type as expected");
             ArrayList<Type> args = new ArrayList<>();
             for (int i = 0, e = ty.getNumParams(); i < e; i++)
                 args.add(ty.getParamType(i));
@@ -644,7 +644,7 @@ public class HIRModuleGenerator
         if (entry instanceof ConstantExpr)
         {
             ConstantExpr ce = (ConstantExpr)entry;
-            assert ce.getOpcode() == Operator.BitCast;
+            Util.assertion( ce.getOpcode() == Operator.BitCast);
             entry = ce.operand(0);
         }
 
@@ -652,7 +652,7 @@ public class HIRModuleGenerator
         {
             GlobalValue oldFn = (GlobalValue)entry;
 
-            assert oldFn.isDeclaration() :"Should not replace non-declaration";
+            Util.assertion(oldFn.isDeclaration(), "Should not replace non-declaration");
 
             globalDeclMaps.remove(getMangledName(fd));
             Function newFn = (Function)getAddrOfFunction(fd, ty);
@@ -722,7 +722,7 @@ public class HIRModuleGenerator
             return GVALinkage.GVA_C99Inline;
         }
 
-        assert features.c99:"Must be in c99 mode if not in C89";
+        Util.assertion(features.c99, "Must be in c99 mode if not in C89");
         if (fd.isC99InlineDefinition())
             return GVALinkage.GVA_C99Inline;
 
@@ -744,7 +744,7 @@ public class HIRModuleGenerator
         }
         else
         {
-            assert linkage == GVALinkage.GVA_StrongExternal;
+            Util.assertion( linkage == GVALinkage.GVA_StrongExternal);
             gv.setLinkage(ExternalLinkage);
         }
 
@@ -772,11 +772,11 @@ public class HIRModuleGenerator
 
         if (success)
         {
-            assert !result.hasSideEffects():"Constant expr should not have any side effects!";
+            Util.assertion(!result.hasSideEffects(), "Constant expr should not have any side effects!");
             switch (result.getValue().getKind())
             {
                 case Uninitialized:
-                    assert false:"Constant expressions should be initialized.";
+                    Util.assertion(false, "Constant expressions should be initialized.");
                     return null;
                 case LValue:
                 {

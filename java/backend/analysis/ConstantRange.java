@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import tools.Util;
 import tools.APInt;
 
 import java.io.PrintStream;
@@ -45,8 +46,8 @@ public final class ConstantRange
         this.lower = lower;
         this.upper = upper;
         int bits = lower.getBitWidth();
-        assert lower.getBitWidth() == upper.getBitWidth();
-        assert !lower.eq(upper) || (upper.isMaxValue() && lower.isMinValue());
+        Util.assertion( lower.getBitWidth() == upper.getBitWidth());
+        Util.assertion( !lower.eq(upper) || (upper.isMaxValue() && lower.isMinValue()));
     }
 
     public APInt getLower()
@@ -265,7 +266,7 @@ public final class ConstantRange
      */
     public ConstantRange subtract(APInt ci)
     {
-        assert getBitWidth() == ci.getBitWidth();
+        Util.assertion( getBitWidth() == ci.getBitWidth());
         if (lower.eq(upper))
             return this;
         return new ConstantRange(lower.sub(ci), upper.sub(ci));
@@ -281,7 +282,7 @@ public final class ConstantRange
      */
     public ConstantRange intersectWith(ConstantRange range)
     {
-        assert getBitWidth() == range.getBitWidth();
+        Util.assertion( getBitWidth() == range.getBitWidth());
 
         // Handle the common cases.
         if (isEmptySet() || range.isFullSet()) return this;
@@ -378,7 +379,7 @@ public final class ConstantRange
      */
     public ConstantRange unionWith(ConstantRange range)
     {
-        assert getBitWidth() == range.getBitWidth();
+        Util.assertion( getBitWidth() == range.getBitWidth());
 
         if (isFullSet() || range.isEmptySet()) return this;
         if (isEmptySet() || range.isFullSet()) return range;
@@ -438,7 +439,7 @@ public final class ConstantRange
                 return new ConstantRange(lower, range.upper);
         }
 
-        assert isWrappedSet() && range.isWrappedSet();
+        Util.assertion( isWrappedSet() && range.isWrappedSet());
 
         if (range.lower.ule(upper) || lower.ule(range.upper))
             return new ConstantRange(getBitWidth());
@@ -461,7 +462,7 @@ public final class ConstantRange
     public ConstantRange zeroExtend(int dstTySize)
     {
         int srcTySize = getBitWidth();
-        assert dstTySize >= srcTySize:"Not a value extension.";
+        Util.assertion(dstTySize >= srcTySize, "Not a value extension.");
         if (isFullSet())
             return new ConstantRange(new APInt(dstTySize, 0), new APInt(dstTySize, 1).shl(srcTySize));
 
@@ -480,7 +481,7 @@ public final class ConstantRange
     public ConstantRange signExtend(int dstTySize)
     {
         int srcTySize = getBitWidth();
-        assert srcTySize < dstTySize :"Not a signed extension";
+        Util.assertion(srcTySize < dstTySize, "Not a signed extension");
         if (isFullSet())
             return new ConstantRange(APInt.getHighBitsSet(dstTySize, dstTySize-srcTySize+1),
                     APInt.getLowBitsSet(dstTySize, srcTySize-1).increase());
@@ -498,7 +499,7 @@ public final class ConstantRange
     public ConstantRange truncate(int dstTySize)
     {
         int srcTySize = getBitWidth();
-        assert dstTySize < srcTySize :"Not a truncation";
+        Util.assertion(dstTySize < srcTySize, "Not a truncation");
         APInt size = APInt.getLowBitsSet(srcTySize, dstTySize);
         if (isFullSet() || getSetSize().ugt(size))
             return new ConstantRange(dstTySize);

@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.FileID;
 import jlang.support.SourceLocation;
 import jlang.basic.SourceManager;
@@ -228,7 +229,7 @@ public class TokenLexer
             SourceLocation pasteOpLoc = tokens[curToken].getLocation();
             ++curToken;
 
-            assert !isAtEnd() : "No token on the RHS of a paste operator!";
+            Util.assertion(!isAtEnd(),  "No token on the RHS of a paste operator!");
 
             // Get the RHS token.
             Token rhs = tokens[curToken];
@@ -263,7 +264,7 @@ public class TokenLexer
             {
                 pp.incrementPasteCounter(true);
 
-                assert resultTokLoc.isFileID() : "Should be a raw location into scratch buffer";
+                Util.assertion(resultTokLoc.isFileID(),  "Should be a raw location into scratch buffer");
                 SourceManager sgr = pp.getSourceManager();
                 FileID locFileID = sgr.getFileID(resultTokLoc);
 
@@ -347,7 +348,7 @@ public class TokenLexer
             if (curTok.is(TokenKind.hash))
             {
                 int argNo = macro.getArgumentNum(tokens[i + 1].getIdentifierInfo());
-                assert argNo >= 0 : "Token following # is not an argument?";
+                Util.assertion(argNo >= 0,  "Token following # is not an argument?");
 
                 Token res = actualArgs.getStringifiedArgument(argNo, pp);
 
@@ -482,7 +483,7 @@ public class TokenLexer
 
             // If this is on the RHS of a paste operator, we've already copied the
             // paste operator to the ResultToks list.  Remove it.
-            assert pasteBefore && resultToks.get(resultToks.size() - 1).is(hashhash);
+            Util.assertion( pasteBefore && resultToks.get(resultToks.size() - 1).is(hashhash));
             nextTokGetsSpace |= resultToks.get(resultToks.size() - 1).hasLeadingSpace();
             resultToks.remove(resultToks.size() - 1);
 
@@ -502,7 +503,7 @@ public class TokenLexer
 
         if (madeChange)
         {
-            assert !ownsTokens : "This would leak if we already own the token list";
+            Util.assertion(!ownsTokens,  "This would leak if we already own the token list");
 
             int numToks = resultToks.size();
 

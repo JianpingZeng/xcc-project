@@ -1,5 +1,6 @@
 package jlang.type;
 
+import tools.Util;
 import jlang.support.PrintingPolicy;
 import jlang.sema.Decl.TypeDefDecl;
 
@@ -25,7 +26,7 @@ public final class TypedefType extends Type
     {
         super(tc, canonicalType);
         decl = d;
-        assert !(canonicalType.getType() instanceof TypedefType):"Invalid canonical type!";
+        Util.assertion(!(canonicalType.getType() instanceof TypedefType), "Invalid canonical type!");
     }
 
     public String toString()

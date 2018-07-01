@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
@@ -106,7 +107,7 @@ public abstract class TargetRegisterClass
 
     public int getRegister(int i)
     {
-        assert i >= 0 && i < regs.length;
+        Util.assertion( i >= 0 && i < regs.length);
         return regs[i];
     }
 
@@ -229,7 +230,7 @@ public abstract class TargetRegisterClass
             if (itr.hasType(vt) && itr.getSubRegisterRegClass(subIdx).equals(rc))
                 return itr;
         }
-        assert false:"Couldn't find the register class!";
+        Util.assertion(false, "Couldn't find the register class!");
         return null;
     }
 

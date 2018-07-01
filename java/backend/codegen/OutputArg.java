@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.dagisel.SDValue;
 
 /**
@@ -43,6 +44,6 @@ public class OutputArg
         this.flags = flags;
         this.val = val;
         isFixed = fixed;
-        assert val.getValueType().isSimple():"OutputArg value type must be simple!";
+        Util.assertion(val.getValueType().isSimple(), "OutputArg value type must be simple!");
     }
 }

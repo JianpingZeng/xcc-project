@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.support.IntStatistic;
 import backend.target.TargetMachine;
 import tools.Util;
@@ -158,7 +159,7 @@ public abstract class VirtRegRewriter
         @Override
         public boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm)
         {
-            assert false:"Current local spiller is not supported!";
+            Util.assertion(false, "Current local spiller is not supported!");
             return false;
         }
     }

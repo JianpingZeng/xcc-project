@@ -1,5 +1,6 @@
 package jlang.sema;
 
+import tools.Util;
 import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclKind;
 import jlang.sema.Decl.NamedDecl;
@@ -59,7 +60,7 @@ public class DeclContext implements IDeclContext
     {
         this.kind = kind;
         decl = d;
-        assert decl instanceof IDeclContext :"Only IDeclContext allow to used here!";
+        Util.assertion(decl instanceof IDeclContext, "Only IDeclContext allow to used here!");
         declInScope = new ArrayList<>(32);
     }
 
@@ -82,8 +83,8 @@ public class DeclContext implements IDeclContext
 
     public void removeDecl(Decl decl)
     {
-        assert declInScope.contains(decl) :
-                "Can not calling this on element not contained in decls";
+        Util.assertion(declInScope.contains(decl),                 "Can not calling this on element not contained in decls");
+
         declInScope.remove(decl);
     }
 
@@ -177,7 +178,7 @@ public class DeclContext implements IDeclContext
     @Override
     public Decl getDeclAt(int idx)
     {
-        assert idx >= 0 && idx < declInScope.size();
+        Util.assertion( idx >= 0 && idx < declInScope.size());
         return declInScope.get(idx);
     }
 
@@ -327,7 +328,7 @@ public class DeclContext implements IDeclContext
             case FunctionDecl:
                 return this;
             default:
-                assert false :"Unknown DeclContext kind";
+                Util.assertion(false, "Unknown DeclContext kind");
                 return null;
         }
     }

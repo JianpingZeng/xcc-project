@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import tools.Util;
 import backend.target.TargetData;
 import backend.value.Constant;
 
@@ -33,7 +34,7 @@ public final class MachineConstantPool
      */
     public int getConstantPoolIndex(Constant c, int align)
     {
-        assert align != 0 : "Alignment must be specified.";
+        Util.assertion(align != 0,  "Alignment must be specified.");
         if (align > poolAlignment)
             poolAlignment = align;
 
@@ -55,7 +56,7 @@ public final class MachineConstantPool
      */
     public int getConstantPoolIndex(MachineConstantPoolValue val, int align)
     {
-        assert align != 0 : "Alignment must be specified.";
+        Util.assertion(align != 0,  "Alignment must be specified.");
         if (align > poolAlignment)
             poolAlignment = align;
 

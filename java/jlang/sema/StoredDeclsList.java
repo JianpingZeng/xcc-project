@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.sema.Decl.NamedDecl;
 
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class StoredDeclsList
 
     public void setOnlyValue(NamedDecl nd)
     {
-        assert getAsList() == null :"Not inline!";
+        Util.assertion(getAsList() == null, "Not inline!");
         data = nd;
         kind = DK_Decl;
     }
@@ -132,13 +133,13 @@ public class StoredDeclsList
         // If we have a single NamedDecl, return it.
         if (getAsDecl() != null)
         {
-            assert !isNull() :"Empty list is not allowed!";
+            Util.assertion(!isNull(), "Empty list is not allowed!");
             NamedDecl[] res = new NamedDecl[1];
             res[0] = getAsDecl();
             return res;
         }
 
-        assert getAsList() != null :"Must have a vector at this point";
+        Util.assertion(getAsList() != null, "Must have a vector at this point");
         ArrayList<Object> list = getAsList();
         NamedDecl[] res = new NamedDecl[list.size()];
         for (int i = 0; i < res.length; ++i)
@@ -188,7 +189,7 @@ public class StoredDeclsList
      */
     public void addSubsequentialDecl(NamedDecl d)
     {
-        assert !hasDeclarationIDs() :"Must materialize before adding decl!";
+        Util.assertion(!hasDeclarationIDs(), "Must materialize before adding decl!");
 
         // If this is the second decl added to the list, convert this to vector
         // form.

@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -136,7 +137,7 @@ public final class ScalarEvolution implements FunctionPass
      */
     public SCEV getSCEV(Value val)
     {
-        assert !val.getType().equals(LLVMContext.VoidTy) : "Cannot analyze void expression";
+        Util.assertion(!val.getType().equals(LLVMContext.VoidTy),  "Cannot analyze void expression");
         if (scalars.containsKey(val))
             return scalars.get(val);
         SCEV newOne = createSCEV(val);
@@ -213,7 +214,7 @@ public final class ScalarEvolution implements FunctionPass
                     int backEdge = incomingEdge^1;
 
                     SCEV symbolicName = SCEVUnknown.get(pn);
-                    assert !scalars.containsKey(pn) :"Phi node has already processed!";
+                    Util.assertion(!scalars.containsKey(pn), "Phi node has already processed!");
                     scalars.put(pn, symbolicName);
 
                     // Using this symbolic asmName for the PHI, analyze the value coming around
@@ -307,7 +308,7 @@ public final class ScalarEvolution implements FunctionPass
 
     public void setSCEV(Value val, SCEV s)
     {
-        assert scalars.containsKey(val) : "This entry already existed!";
+        Util.assertion(scalars.containsKey(val),  "This entry already existed!");
         scalars.put(val, s);
     }
 
@@ -601,7 +602,7 @@ public final class ScalarEvolution implements FunctionPass
                     }
                     if (comm instanceof SCEVAddExpr)
                         return SCEVAddExpr.get(newOps);
-                    assert(comm instanceof SCEVMulExpr) : "Only know about add and mul!";
+                    Util.assertion((comm instanceof SCEVMulExpr),  "Only know about add and mul!");
                     return SCEVMulExpr.get(newOps);
                 }
             }
@@ -687,8 +688,8 @@ public final class ScalarEvolution implements FunctionPass
             iterationCount.put(loop, itCount);
             if (itCount != unknownValue)
             {
-                assert itCount.isLoopInvariant(loop)
-                        :"Computed tri count is not loop invariant!";
+                Util.assertion(itCount.isLoopInvariant(loop), "Computed tri count is not loop invariant!");
+
                 ++numTripCountsComputed;
             }
         }
@@ -723,7 +724,7 @@ public final class ScalarEvolution implements FunctionPass
                     return unknownValue;   // More than one block exiting!
             }
         }
-        assert exitingBlock != null : "No exits from loop, something is broken!";
+        Util.assertion(exitingBlock != null,  "No exits from loop, something is broken!");
 
         // Okay, we've computed the exiting block.  See what condition causes us to
         // exit.
@@ -734,7 +735,7 @@ public final class ScalarEvolution implements FunctionPass
         if (ti instanceof BranchInst)
         {
             BranchInst exitBr = (BranchInst)ti;
-            assert exitBr.isConditional() : "If unconditional, it can't be in loop!";
+            Util.assertion(exitBr.isConditional(),  "If unconditional, it can't be in loop!");
             return computeIterationCountExhaustively(loop, exitBr.getCondition(),
                     exitBr.getSuccessor(0).equals(exitBlock));
         }
@@ -814,7 +815,7 @@ public final class ScalarEvolution implements FunctionPass
 
     public int getTypeSizeBits(Type ty)
     {
-        assert isSCEVable(ty) :"Type is not SCEVable!";
+        Util.assertion(isSCEVable(ty), "Type is not SCEVable!");
 
         if (td != null)
             return (int)td.getTypeSizeInBits(ty);
@@ -822,7 +823,7 @@ public final class ScalarEvolution implements FunctionPass
         if (ty.isIntegral())
             return ty.getPrimitiveSizeInBits();
 
-        assert (ty instanceof PointerType) :"isSCEVable permitted a non SCEVable type!";
+        Util.assertion((ty instanceof PointerType), "isSCEVable permitted a non SCEVable type!");
         return 64;
     }
 
@@ -842,7 +843,7 @@ public final class ScalarEvolution implements FunctionPass
     public SCEV getTruncateOrZeroExtend(SCEV value, Type ty)
     {
         Type srcTy = value.getType();
-        assert isSCEVable(srcTy);
+        Util.assertion( isSCEVable(srcTy));
 
         int diff = getTypeSizeBits(srcTy) - getTypeSizeBits(ty);
         return diff == 0?value: diff < 0 ?
@@ -858,7 +859,7 @@ public final class ScalarEvolution implements FunctionPass
             c = ConstantFP.get(ty, val);
         else
         {
-            assert ty.isIntegral():"Integral type is required.";
+            Util.assertion(ty.isIntegral(), "Integral type is required.");
             c = ConstantInt.get(ty, val);
         }
         return SCEVUnknown.get(c);
@@ -912,10 +913,10 @@ public final class ScalarEvolution implements FunctionPass
 
     public Type getEffectiveSCEVType(Type srcTy)
     {
-        assert isSCEVable(srcTy):"Type is not SCEVable!";
+        Util.assertion(isSCEVable(srcTy), "Type is not SCEVable!");
         if (srcTy.isIntegral())
             return srcTy;
-        assert srcTy.isPointerType():"Unexpected non-pointer type!";
+        Util.assertion(srcTy.isPointerType(), "Unexpected non-pointer type!");
         if (td != null)
             return td.getIntPtrType();
 
@@ -932,12 +933,11 @@ public final class ScalarEvolution implements FunctionPass
     public SCEV getTruncateOrNoop(SCEV src, Type destTy)
     {
         Type srcTy = src.getType();
-        assert (srcTy.isIntegral() || srcTy.isPointerType())
-                &&(destTy.isIntegral() || destTy.isPointerType())
-                :"Cannot truncate or noop with non-integer type!";
+        Util.assertion((srcTy.isIntegral() || srcTy.isPointerType())                &&(destTy.isIntegral() || destTy.isPointerType()), "Cannot truncate or noop with non-integer type!");
+
         int destBits = getTypeSizeBits(destTy);
         int srcBits = getTypeSizeBits(srcTy);
-        assert destBits <= srcBits;
+        Util.assertion( destBits <= srcBits);
         if (destBits == srcBits)
             return src;
         return getTruncateExpr(src, destTy);
@@ -951,12 +951,11 @@ public final class ScalarEvolution implements FunctionPass
     public SCEV getNoopOrAnyExtend(SCEV src, Type destTy)
     {
         Type srcTy = src.getType();
-        assert (srcTy.isIntegral() || srcTy.isPointerType())
-                &&(destTy.isIntegral() || destTy.isPointerType())
-                :"Cannot extend or noop with non-integer type!";
+        Util.assertion((srcTy.isIntegral() || srcTy.isPointerType())                &&(destTy.isIntegral() || destTy.isPointerType()), "Cannot extend or noop with non-integer type!");
+
         int destBits = getTypeSizeBits(destTy);
         int srcBits = getTypeSizeBits(srcTy);
-        assert destBits >= srcBits;
+        Util.assertion( destBits >= srcBits);
         if (destBits == srcBits)
             return src;
         return getAnyExtendExpr(src, destTy);
@@ -965,10 +964,9 @@ public final class ScalarEvolution implements FunctionPass
     public SCEV getNoopOrZeroExtend(SCEV s, Type ty)
     {
         Type srcTy = s.getType();
-        assert (srcTy.isIntegral() || srcTy.isPointerType())
-                && (ty.isIntegral() || ty.isPointerType())
-                :"Cannot noop or zero extend with non-integer arguments!";
-        assert getTypeSizeBits(srcTy) <= getTypeSizeBits(ty);
+        Util.assertion((srcTy.isIntegral() || srcTy.isPointerType())                && (ty.isIntegral() || ty.isPointerType()), "Cannot noop or zero extend with non-integer arguments!");
+
+        Util.assertion( getTypeSizeBits(srcTy) <= getTypeSizeBits(ty));
         if (getTypeSizeBits(srcTy) == getTypeSizeBits(ty))
             return s;
         return getZeroExtendExpr(s, ty);

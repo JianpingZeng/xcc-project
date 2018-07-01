@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Constant;
@@ -43,7 +44,7 @@ public final class SCEVAddExpr extends SCEVCommutativeExpr
 
     public static SCEV get(ArrayList<SCEV> ops)
     {
-        assert !ops.isEmpty() : "Cannot get empty add!";
+        Util.assertion(!ops.isEmpty(),  "Cannot get empty add!");
 
         groupByComplexity(ops);
 
@@ -53,7 +54,7 @@ public final class SCEVAddExpr extends SCEVCommutativeExpr
         {
             SCEVConstant lhsConst = (SCEVConstant) ops.get(0);
             ++idx;
-            assert idx < ops.size();
+            Util.assertion( idx < ops.size());
 
             while (ops.get(idx) instanceof SCEVConstant)
             {

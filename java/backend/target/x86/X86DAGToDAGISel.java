@@ -17,6 +17,7 @@
 
 package backend.target.x86;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
@@ -71,7 +72,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
         HandleSDNode dummy = new HandleSDNode(curDAG.getRoot());
         iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
-        assert iselPosition != -1:"Specified root node not exists in allNodes!";
+        Util.assertion(iselPosition != -1, "Specified root node not exists in allNodes!");
         iselPosition++;
         while (iselPosition != 0)
         {
@@ -418,7 +419,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am)
     {
-        assert val.getOpcode() == X86ISD.SegmentBaseAddress;
+        Util.assertion( val.getOpcode() == X86ISD.SegmentBaseAddress);
         SDValue segment = val.getOperand(0);
         if (am.segment.getNode() == null)
         {
@@ -982,14 +983,14 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected boolean selectLEAAddr(SDValue op, SDValue val, SDValue[] comp)
     {
-        assert comp.length == 4;
+        Util.assertion( comp.length == 4);
         X86ISelAddressMode am = new X86ISelAddressMode();
         SDValue copy = am.segment;
         SDValue t = curDAG.getRegister(0, new EVT(MVT.i32));
         am.segment = t;
         if (matchAddress(val, am))
             return false;
-        assert t.equals(am.segment);
+        Util.assertion( t.equals(am.segment));
         am.segment = copy;
 
         EVT vt = val.getValueType();
@@ -1034,8 +1035,8 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected boolean selectTLSADDRAddr(SDValue op, SDValue val, SDValue[] comp)
     {
-        assert comp.length == 4;
-        assert val.getOpcode() == ISD.TargetGlobalTLSAddress;
+        Util.assertion( comp.length == 4);
+        Util.assertion( val.getOpcode() == ISD.TargetGlobalTLSAddress);
         GlobalAddressSDNode ga = (GlobalAddressSDNode)val.getNode();
         X86ISelAddressMode am = new X86ISelAddressMode();
         am.gv = ga.getGlobalValue();
@@ -1068,7 +1069,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         // comp[5]  -- inChain
         // comp[6]  -- outChain
 
-        assert comp.length == 7;
+        Util.assertion( comp.length == 7);
         if (node.getOpcode() == ISD.SCALAR_TO_VECTOR)
         {
             comp[5] = node.getOperand(0).getValue(1);
@@ -1104,7 +1105,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected boolean tryFoldLoad(SDValue pred, SDValue node, SDValue[] comp)
     {
-        assert comp.length == 5;
+        Util.assertion( comp.length == 5);
         if (node.getNode().isNONExtLoad() &&
                 node.getNode().hasOneUse() &&
                 isLegalAndProfitableToFold(node.getNode(), pred.getNode(), pred.getNode()))
@@ -1295,7 +1296,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
             ops.add(load.getOperand(0));
         else
         {
-            assert chain.getOpcode() == ISD.TokenFactor;
+            Util.assertion( chain.getOpcode() == ISD.TokenFactor);
             for (int i = 0, e = chain.getNumOperands(); i < e; i++)
             {
                 if (chain.getOperand(i).getNode().equals(load.getNode()))
@@ -1374,7 +1375,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
         // comp[2] -- index
         // comp[3] -- disp
         // comp[4] -- segment
-        assert comp.length == 5;
+        Util.assertion( comp.length == 5);
         comp[0] = am.baseType == FrameIndexBase ?
                 curDAG.getTargetFrameIndex(am.base.frameIndex, new EVT(tli.getPointerTy())) :
                 am.base.reg;

@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import tools.APFloat;
 import tools.APSInt;
 import jlang.ast.Tree;
@@ -122,7 +123,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
      */
     public static boolean evaluateInteger(Expr expr, OutParamWrapper<APSInt> result, ASTContext ctx)
     {
-        assert expr.getType().isIntegralOrEnumerationType();
+        Util.assertion( expr.getType().isIntegralOrEnumerationType());
 
         OutParamWrapper<APValue> val = new OutParamWrapper<>();
         if (!evaluateIntegerOrLValue(expr, val, ctx) || !val.get().isInt())
@@ -145,7 +146,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
             OutParamWrapper<APValue> result,
             ASTContext ctx)
     {
-        assert expr.getType().isIntegralOrEnumerationType();
+        Util.assertion( expr.getType().isIntegralOrEnumerationType());
         return new IntExprEvaluator(result, ctx).visit(expr);
     }
 
@@ -153,7 +154,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
             OutParamWrapper<APFloat> result, 
             ASTContext ctx)
     {
-        assert e.getType().isRealType();
+        Util.assertion( e.getType().isRealType());
         return new FloatExprEvaluator(result, ctx).visit(e);
     }
 
@@ -162,7 +163,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
             OutParamWrapper<LValue> reslut,
             ASTContext context)
     {
-        assert e.getType().isPointerType();
+        Util.assertion( e.getType().isPointerType());
         return new PointerExprEvaluator(reslut, context).visit(e);
     }
 
@@ -260,7 +261,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         else if (e.getType().isComplexType())
         {
             // TODO
-            assert false:"Complex type is not supported!";
+            Util.assertion(false, "Complex type is not supported!");
             return false;
         }
         else

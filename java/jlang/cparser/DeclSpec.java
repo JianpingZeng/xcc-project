@@ -1,5 +1,6 @@
 package jlang.cparser;
 
+import tools.Util;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.basic.SourceManager;
@@ -229,7 +230,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             switch (kind)
             {
                 default:
-                    assert false:"unknown declarator kind";
+                    Util.assertion(false, "unknown declarator kind");
                 case Pointer:
                     return ((PointerTypeInfo)typeInfo).attrList;
                 case Array:
@@ -634,7 +635,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             OutParamWrapper<Integer> diag,
             Decl rep)
     {
-        assert isDeclRep(val):"T does not store a decl";
+        Util.assertion(isDeclRep(val), "T does not store a decl");
 
         if (typeSpecType != TST_unspecified)
         {
@@ -655,8 +656,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             OutParamWrapper<String> prevDecl,
             OutParamWrapper<Integer> diagID)
     {
-        assert !isDeclRep(val) && !isTypeRep(val)
-                :"rep required for these jlang.type-spec kinds!";
+        Util.assertion(!isDeclRep(val) && !isTypeRep(val), "rep required for these jlang.type-spec kinds!");
+
         if (typeSpecType  != TST_unspecified)
         {
             prevDecl.set(getSpecifierName(typeSpecType));
@@ -676,8 +677,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             OutParamWrapper<Integer> diag,
             QualType ty)
     {
-        assert isTypeRep(val):"T does not store a jlang.type";
-        assert ty != null:"no jlang.type provided!";
+        Util.assertion(isTypeRep(val), "T does not store a jlang.type");
+        Util.assertion(ty != null, "no jlang.type provided!");
 
         if (typeSpecType != TST_unspecified)
         {
@@ -823,7 +824,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             }
         }
 
-        assert !typeSpecOwned || isDeclRep(typeSpecType);
+        Util.assertion( !typeSpecOwned || isDeclRep(typeSpecType));
 
         // Okay, now we can infer the real jlang.type.
         // 'data definition has no jlang.type or storage class'?
@@ -860,12 +861,12 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     }
     public Decl getRepAsDecl()
     {
-        assert isDeclRep(typeSpecType) :"DeclSpec does not stores a decl";
+        Util.assertion(isDeclRep(typeSpecType), "DeclSpec does not stores a decl");
         return declRep;
     }
     public QualType getRepAsType()
     {
-        assert isTypeRep(typeSpecType) :"DeclSpec does not stores a jlang.type";
+        Util.assertion(isTypeRep(typeSpecType), "DeclSpec does not stores a jlang.type");
         return typeRep;
     }
 

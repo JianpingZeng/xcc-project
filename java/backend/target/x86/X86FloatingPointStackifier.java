@@ -17,6 +17,7 @@
 
 package backend.target.x86;
 
+import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.*;
@@ -89,7 +90,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         for (int i = 0; i < stackTop; i++)
         {
             System.err.printf(" FP%d", stack[i]);
-            assert regMap[stack[i]] == i : "Stack[] doesn't match regMap[]!";
+            Util.assertion(regMap[stack[i]] == i,  "Stack[] doesn't match regMap[]!");
         }
         for (int i = 0; i < numPendingSTs; i++)
             System.err.printf(", ST%d in FP%d", i, pendingST[i]);
@@ -120,7 +121,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             return;
         }
 
-        assert bundle.isFixed() : "Reached block before any predecessors";
+        Util.assertion(bundle.isFixed(),  "Reached block before any predecessors");
         for (int i = bundle.fixCount; i > 0; --i)
         {
             mbb.addLiveIn(X86GenRegisterNames.ST0 + i - 1);
@@ -139,7 +140,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
     private void pushReg(int reg)
     {
-        assert reg < NumFPRegs : "Register number out of range!";
+        Util.assertion(reg < NumFPRegs,  "Register number out of range!");
         if (stackTop >= 8)
             llvmReportError("Stack overflow!");
         stack[stackTop] = reg;
@@ -148,7 +149,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
     public int getSlot(int regNo)
     {
-        assert regNo < NumFPRegs : "Regno out of range";
+        Util.assertion(regNo < NumFPRegs,  "Regno out of range");
         return regMap[regNo];
     }
 
@@ -358,7 +359,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             else
                 defs &= ~(1 << regNo);
         }
-        assert (kills & defs) == 0 : "Register needs killing and def's?";
+        Util.assertion((kills & defs) == 0,  "Register needs killing and def's?");
         while (kills != 0 && defs != 0)
         {
             int kreg = Util.countTrailingZeros(kills);
@@ -410,7 +411,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             dumpStack();
         if (!(stackTop == Util.countPoplutation(mask)))
             dumpStack();
-        assert stackTop == Util.countPoplutation(mask) : "Live count mismatch";
+        Util.assertion(stackTop == Util.countPoplutation(mask),  "Live count mismatch");
     }
 
     private int shuffleStackTop(int[] fixStack, int fixCount, int insertPos)
@@ -432,10 +433,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
     private static int getFPReg(MachineOperand mo)
     {
-        assert mo.isRegister():"Expected an FP register!";
+        Util.assertion(mo.isRegister(), "Expected an FP register!");
         int reg = mo.getReg();
-        assert reg >= X86GenRegisterNames.FP0 && reg <= X86GenRegisterNames.FP6:
-                "Expected FP register!";
+        Util.assertion(reg >= X86GenRegisterNames.FP0 && reg <= X86GenRegisterNames.FP6,                 "Expected FP register!");
+
         return reg - X86GenRegisterNames.FP0;
     }
 
@@ -611,7 +612,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
     private static int getConcreteOpcode(int opcode)
     {
         int opc = lookup(opcodeTable, opcode);
-        assert opc != -1 :"FP stack instruction not in opcodeTable!";
+        Util.assertion(opc != -1, "FP stack instruction not in opcodeTable!");
         return opc;
     }
 
@@ -628,8 +629,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
     {
         MachineInstr mi = mbb.getInstAt(insertPos);
         int numOps = mi.getDesc().getNumOperands();
-        assert numOps == X86.AddrNumOperands + 1 || numOps == 1:
-                "Can only handle fst* & ftst instructions!";
+        Util.assertion(numOps == X86.AddrNumOperands + 1 || numOps == 1,                 "Can only handle fst* & ftst instructions!");
+
         int reg = getFPReg(mi.getOperand(numOps-1));
         boolean killsSrc = mi.killsRegister(X86GenRegisterNames.FP0+reg);
         if (killsSrc)
@@ -760,7 +761,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         MachineInstr mi = mbb.getInstAt(itr);
 
         int numOperands = mi.getDesc().getNumOperands();
-        assert numOperands == 3:"Illegal twoArgFP instruction!";
+        Util.assertion(numOperands == 3, "Illegal twoArgFP instruction!");
         int dest = getFPReg(mi.getOperand(0));
         int op0 = getFPReg(mi.getOperand(numOperands-2));
         int op1 = getFPReg(mi.getOperand(numOperands-1));
@@ -813,18 +814,18 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 instTable = ReverseSTiTable;
         }
         int opcode = lookup(instTable, mi.getOpcode());
-        assert opcode != -1 :"Unknown TwoArgFP pseudo instruction!";
+        Util.assertion(opcode != -1, "Unknown TwoArgFP pseudo instruction!");
         int notTOS = (tos == op0) ? op1:op0;
         mi.removeFromParent();
         buildMI(mbb, itr, tii.get(opcode)).addReg(getSTReg(notTOS));
         if (killsOp0 && killsOp1 && op0 != op1)
         {
-            assert !updateST0:"Should have updated other operand!";
+            Util.assertion(!updateST0, "Should have updated other operand!");
             itr = popStackAfter(itr);
         }
 
         int updateSlot = getSlot(updateST0?tos:notTOS);
-        assert updateSlot < stackTop && dest < 7;
+        Util.assertion( updateSlot < stackTop && dest < 7);
         stack[updateSlot] = dest;
         regMap[dest] = updateSlot;
         return itr;
@@ -834,7 +835,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
     {
         MachineInstr mi = mbb.getInstAt(itr);
         int numOperands = mi.getDesc().getNumOperands();
-        assert numOperands == 2:"Illegal PUCOM instruction!";
+        Util.assertion(numOperands == 2, "Illegal PUCOM instruction!");
         int op0 = getFPReg(mi.getOperand(0));
         int op1 = getFPReg(mi.getOperand(1));
         boolean kiilsOp0 = mi.killsRegister(X86GenRegisterNames.FP0 +op0);
@@ -877,7 +878,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
             case FpGET_ST0_32:
             case FpGET_ST0_64:
             case FpGET_ST0_80:
-                assert stackTop == 0:"Stack should be empty after a call!";
+                Util.assertion(stackTop == 0, "Stack should be empty after a call!");
                 pushReg(getFPReg(mi.getOperand(0)));
                 break;
             case FpGET_ST1_32:
@@ -894,7 +895,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 regMap[regNo] = regMap[regOnTop];
                 regMap[regOnTop] = t;
 
-                assert regMap[regOnTop] < stackTop;
+                Util.assertion( regMap[regOnTop] < stackTop);
                 t = stack[regMap[regOnTop]];
                 stack[regMap[regOnTop]] = stack[stackTop-1];
                 stack[stackTop-1] = t;
@@ -925,7 +926,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                     break;
                 }
 
-                assert stackTop == 2:"Stack should have two element on it's top";
+                Util.assertion(stackTop == 2, "Stack should have two element on it's top");
                 --stackTop;
                 break;
             case MOV_Fp3232:
@@ -944,15 +945,15 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 MachineOperand mo0 = mi.getOperand(0);
                 if (mo0.getReg() == X86GenRegisterNames.ST0 && srcReg == 0)
                 {
-                    assert mo1.isKill();
+                    Util.assertion( mo1.isKill());
 
-                    assert stackTop == 1 || stackTop == 2:"Stack should have one or two element on it to return!";
+                    Util.assertion(stackTop == 1 || stackTop == 2, "Stack should have one or two element on it to return!");
                     --stackTop;
                     break;
                 }
                 else if (mo0.getReg() == X86GenRegisterNames.ST1 && srcReg == 1)
                 {
-                    assert mo1.isKill();
+                    Util.assertion( mo1.isKill());
                     if (stackTop == 1)
                     {
                         buildMI(mbb, itr, tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
@@ -960,7 +961,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                         stackTop = 0;
                         break;
                     }
-                    assert stackTop == 2:"Stack should have two element on it to return!";
+                    Util.assertion(stackTop == 2, "Stack should have two element on it to return!");
                     --stackTop;
                     break;
                 }
@@ -969,7 +970,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 if (mi.killsRegister(X86GenRegisterNames.FP0+srcReg))
                 {
                     int slot = getSlot(srcReg);
-                    assert slot < 7 && destReg < 7:"FpMOV operands invalid!";
+                    Util.assertion(slot < 7 && destReg < 7, "FpMOV operands invalid!");
                     stack[slot] = destReg;
                     regMap[destReg] = slot;
                 }
@@ -990,8 +991,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 if (destST < 8)
                 {
                      int srcFP = getFPReg(mo1);
-                     assert isLive(srcFP):"Can't copy dead register";
-                     assert !mo0.isDead():"Can't copy to dead ST register";
+                     Util.assertion(isLive(srcFP), "Can't copy dead register");
+                     Util.assertion(!mo0.isDead(), "Can't copy to dead ST register");
 
                      while (numPendingSTs <= destST)
                          pendingST[numPendingSTs++] = NumFPRegs;
@@ -1021,11 +1022,11 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                 if(srcST < 8)
                 {
                     int destFP = getFPReg(mo0);
-                    assert !isLive(destFP):"Can't copy ST to live FP register";
-                    assert numPendingSTs<srcST:"Can't copy from dead ST register";
+                    Util.assertion(!isLive(destFP), "Can't copy ST to live FP register");
+                    Util.assertion(numPendingSTs<srcST, "Can't copy from dead ST register");
                     int srcFP = pendingST[srcST];
-                    assert isScratchReg(srcFP):"Expected ST in a scratch register";
-                    assert isLive(srcFP):"Scratch holding ST is dead";
+                    Util.assertion(isScratchReg(srcFP), "Expected ST in a scratch register");
+                    Util.assertion(isLive(srcFP), "Scratch holding ST is dead");
 
                     int slot = getSlot(srcFP);
                     stack[slot] = destFP;
@@ -1038,7 +1039,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
                 int destFP = getFPReg(mo0);
                 int srcFP = getFPReg(mo1);
-                assert isLive(srcFP):"Can't copy dead register";
+                Util.assertion(isLive(srcFP), "Can't copy dead register");
                 if (killsSrc)
                 {
                     int slot = getSlot(srcFP);
@@ -1077,14 +1078,14 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
                             || mo.getReg() > X86GenRegisterNames.FP6)
                         continue;
 
-                    assert mo.isUse() && (mo.isKill() || getFPReg(mo) == firstFPRegOp
-                    || mi.killsRegister(mo.getReg())):"Ret only defs operand, and values aren't live beyond it";
+                    Util.assertion(mo.isUse() && (mo.isKill() || getFPReg(mo) == firstFPRegOp                    || mi.killsRegister(mo.getReg())), "Ret only defs operand, and values aren't live beyond it");
+
 
                     if (firstFPRegOp == ~0)
                         firstFPRegOp = getFPReg(mo);
                     else
                     {
-                        assert secondFPRegOp == ~0:"More than two fp operands";
+                        Util.assertion(secondFPRegOp == ~0, "More than two fp operands");
                         secondFPRegOp = getFPReg(mo);
                     }
                     liveMask |= (1<<getFPReg(mo));
@@ -1099,8 +1100,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
                 if (secondFPRegOp == ~0)
                 {
-                    assert stackTop == 1&&firstFPRegOp == getStackEntry(0):
-                            "Top of stack not the right register for RET!";
+                    Util.assertion(stackTop == 1&&firstFPRegOp == getStackEntry(0),                             "Top of stack not the right register for RET!");
+
 
                     stackTop = 0;
                     return itr;
@@ -1108,23 +1109,23 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
                 if (stackTop == 1)
                 {
-                    assert firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0)
-                            :"Stack misconfiguration for RET!";
+                    Util.assertion(firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0), "Stack misconfiguration for RET!");
+
                     int newReg = getScratchReg();
                     duplicateToTop(firstFPRegOp, newReg, itr);
                     firstFPRegOp = newReg;
                 }
 
-                assert stackTop == 2:"Must have two values live!";
+                Util.assertion(stackTop == 2, "Must have two values live!");
 
                 if (getStackEntry(0) == secondFPRegOp)
                 {
-                    assert getStackEntry(1) == firstFPRegOp:"Unknown regs live";
+                    Util.assertion(getStackEntry(1) == firstFPRegOp, "Unknown regs live");
                     itr = moveToTop(firstFPRegOp, itr);
                 }
 
-                assert getStackEntry(0) == firstFPRegOp:"Unknown regs live";
-                assert getStackEntry(1) == secondFPRegOp:"Unknown regs live";
+                Util.assertion(getStackEntry(0) == firstFPRegOp, "Unknown regs live");
+                Util.assertion(getStackEntry(1) == secondFPRegOp, "Unknown regs live");
                 stackTop = 0;
                 return itr;
         }
@@ -1138,7 +1139,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
 
     private void bundleCFG(MachineFunction mf)
     {
-        assert liveBundles.isEmpty():"Stable data in liveBundles";
+        Util.assertion(liveBundles.isEmpty(), "Stable data in liveBundles");
         for (int i = 0; i < edgeBundles.getNumBundles(); i++)
             liveBundles.add(new LiveBundle());
 

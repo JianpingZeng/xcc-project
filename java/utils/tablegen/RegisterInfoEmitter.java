@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.MVT;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
@@ -38,7 +39,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
     public RegisterInfoEmitter(RecordKeeper records) throws Exception
     {
         this.records = records;
-        assert records != null;
+        Util.assertion( records != null);
         target = new CodeGenTarget();
         targetName = target.getName();
     }
@@ -869,7 +870,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         csrs.forEach(csr->
         {
             Set<CodeGenRegisterClass> rcs = regClassesBelongedTo.get(csr);
-            assert rcs != null;
+            Util.assertion( rcs != null);
             CodeGenRegisterClass rc = null;
             for (CodeGenRegisterClass tmp : rcs)
             {

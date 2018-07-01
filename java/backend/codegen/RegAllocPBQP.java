@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import tools.Util;
 import backend.analysis.MachineLoop;
 import backend.codegen.pbqp.*;
 import backend.pass.AnalysisUsage;
@@ -476,7 +477,7 @@ public final class RegAllocPBQP extends MachineFunctionPass
             if (idx != 0)
             {
                 int phyreg = allowedRegs[node].get(idx);
-                assert phyreg != 0;
+                Util.assertion( phyreg != 0);
                 vrm.assignVirt2Phys(virReg, phyreg);
                 if (Util.DEBUG)
                     System.err.printf("Assign %%reg%d to virtual register %%%s%n",

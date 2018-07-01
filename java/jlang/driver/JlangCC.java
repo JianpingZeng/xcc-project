@@ -904,7 +904,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         boolean noPreprocess = false;
         switch (lk)
         {
-            default:assert false:"Undefined language kind!";
+            default:Util.assertion(false, "Undefined language kind!");
             case langkind_asm_cpp:
                 langOption.asmPreprocessor = true;
                 // fall through.
@@ -948,7 +948,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             switch (lk)
             {
                 case langkind_unspecified:
-                    assert false : "unknown base language";
+                    Util.assertion(false,  "unknown base language");
                 case langkind_c:
                 case langkind_asm_cpp:
                 case langkind_cpp:
@@ -958,7 +958,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         }
         switch (LangStd.value)
         {
-            default:assert false:"Undefined language standard!";
+            default:Util.assertion(false, "Undefined language standard!");
             case Lang_gnu99:
             case Lang_c99:
                 options.c99 = true;
@@ -1078,7 +1078,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
      */
     private void computeFeatureMap(TargetInfo target, HashMap<String, Boolean> features)
     {
-        assert features.isEmpty() :"Invalid map";
+        Util.assertion(features.isEmpty(), "Invalid map");
 
         // Initialze the feature map based on the target.
         String targetCPU = TargetCPU.value;

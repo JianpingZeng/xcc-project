@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 import backend.value.Constant;
 
@@ -71,13 +72,13 @@ public class MachineConstantPoolEntry
 
     public MachineConstantPoolValue getValueAsCPV()
     {
-        assert val instanceof MachineConstantPoolValue;
+        Util.assertion( val instanceof MachineConstantPoolValue);
         return (MachineConstantPoolValue)val;
     }
 
     public Constant getValueAsConstant()
     {
-        assert val instanceof Constant;
+        Util.assertion( val instanceof Constant);
         return (Constant)val;
     }
 }

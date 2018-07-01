@@ -17,6 +17,7 @@
 
 package backend.codegen.dagisel;
 
+import tools.Util;
 import backend.codegen.*;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
@@ -93,7 +94,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public int getMachineOpcode()
     {
-        assert isMachineOpecode();
+        Util.assertion( isMachineOpecode());
         return ~opcode;
     }
 
@@ -114,7 +115,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public SDUse getUse(int idx)
     {
-        assert !isUseEmpty() && idx >= 0 && idx < getUseSize();
+        Util.assertion( !isUseEmpty() && idx >= 0 && idx < getUseSize());
         return useList.get(idx);
     }
 
@@ -130,7 +131,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public boolean hasNumUsesOfValue(int numOfUses, int value)
     {
-        assert value < getNumValues():"Illegal value!";
+        Util.assertion(value < getNumValues(), "Illegal value!");
         for (SDUse u : useList)
         {
             if (u.getResNo() == value)
@@ -145,7 +146,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public boolean hasAnyUseOfValue(int value)
     {
-        assert value < getNumValues():"Illegal value!";
+        Util.assertion(value < getNumValues(), "Illegal value!");
         for (SDUse u : useList)
         {
             if (u.getResNo() == value)
@@ -284,15 +285,15 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public long getConstantOperandVal(int num)
     {
-        assert num >= 0 && num < getNumOperands();
+        Util.assertion( num >= 0 && num < getNumOperands());
         SDValue op = getOperand(num);
-        assert op.getNode() instanceof ConstantSDNode;
+        Util.assertion( op.getNode() instanceof ConstantSDNode);
         return ((ConstantSDNode)op.getNode()).getZExtValue();
     }
 
     public SDValue getOperand(int num)
     {
-        assert num <= getNumOperands() && num >= 0;
+        Util.assertion( num <= getNumOperands() && num >= 0);
         return operandList[num].val;
     }
 
@@ -331,7 +332,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public EVT getValueType(int resNo)
     {
-        assert resNo < getNumValues() && resNo >= 0;
+        Util.assertion( resNo < getNumValues() && resNo >= 0);
         return valueList[resNo];
     }
 
@@ -424,13 +425,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             case ISD.INTRINSIC_WO_CHAIN:
             {
                 long iid = ((ConstantSDNode)getOperand(0).getNode()).getZExtValue();
-                assert false:"Intrinsic function not supported!";
+                Util.assertion(false, "Intrinsic function not supported!");
             }
             case ISD.INTRINSIC_VOID:
             case ISD.INTRINSIC_W_CHAIN:
             {
                 long iid = ((ConstantSDNode)getOperand(0).getNode()).getZExtValue();
-                assert false:"Intrinsic function not supported!";
+                Util.assertion(false, "Intrinsic function not supported!");
             }
 
             case ISD.BUILD_VECTOR:   return "BUILD_VECTOR";
@@ -541,7 +542,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
             case ISD.CONVERT_RNDSAT:
             {
-                assert false:"Not supported!";
+                Util.assertion(false, "Not supported!");
             }
 
             // Control flow instructions
@@ -906,7 +907,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void addUse(SDUse use)
     {
-        assert use != null;
+        Util.assertion( use != null);
         if (useList == null)
             useList = new ArrayList<>();
         useList.add(use);
@@ -914,7 +915,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     public void removeUse(SDUse use)
     {
-        assert use != null;
+        Util.assertion( use != null);
         useList.remove(use);
     }
 
@@ -971,7 +972,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     protected SDNode(int opc, SDVTList vts, SDValue[] ops)
     {
-        assert ops != null;
+        Util.assertion( ops != null);
         this.opcode = opc;
         sublassData = 0;
         nodeID = -1;
@@ -1050,7 +1051,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     protected void initOperands(ArrayList<SDValue> vals)
     {
-        assert vals != null && vals.size() > 0:"Illegal values for initialization!";
+        Util.assertion(vals != null && vals.size() > 0, "Illegal values for initialization!");
         operandList = new SDUse[vals.size()];
         for (int i = 0; i < operandList.length; i++)
         {
@@ -1062,7 +1063,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
     protected void initOperands(SDValue... vals)
     {
-        assert vals != null && vals.length > 0:"Illegal values for initialization!";
+        Util.assertion(vals != null && vals.length > 0, "Illegal values for initialization!");
         operandList = new SDUse[vals.length];
         for (int i = 0; i < operandList.length; i++)
         {
@@ -1113,8 +1114,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
     private static int encodeMemSDNodeFlags(int convType, MemIndexedMode mode,
             boolean isVolatile, int alignment)
     {
-        assert (convType & 3) == convType:"convType may not require more than 2 bits!";
-        assert (mode.ordinal()&7) == mode.ordinal():"mode may not require more than 3 bits!";
+        Util.assertion((convType & 3) == convType, "convType may not require more than 2 bits!");
+        Util.assertion((mode.ordinal()&7) == mode.ordinal(), "mode may not require more than 3 bits!");
         return convType | (mode.ordinal() << 2) |
                 ((isVolatile?1:0)<<5) |
                 ((Util.log2(alignment)+1) << 6);
@@ -1137,9 +1138,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             this.srcValue = srcVal;
             this.svOffset = svOff;
             sublassData = encodeMemSDNodeFlags(0, UNINDEXED, isVolatile, alignment);
-            assert Util.isPowerOf2(alignment);
-            assert getAlignment() == alignment;
-            assert isVolatile() == isVolatile;
+            Util.assertion( Util.isPowerOf2(alignment));
+            Util.assertion( getAlignment() == alignment);
+            Util.assertion( isVolatile() == isVolatile);
         }
 
         public MemSDNode(int opc, SDVTList vts, SDValue[] ops, EVT memVT,
@@ -1150,9 +1151,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             this.srcValue = srcVal;
             this.svOffset = svOff;
             sublassData = encodeMemSDNodeFlags(0, UNINDEXED, isVolatile, alignment);
-            assert Util.isPowerOf2(alignment);
-            assert getAlignment() == alignment;
-            assert isVolatile() == isVolatile;
+            Util.assertion( Util.isPowerOf2(alignment));
+            Util.assertion( getAlignment() == alignment);
+            Util.assertion( isVolatile() == isVolatile);
         }
 
         public int getAlignment()
@@ -1196,7 +1197,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
                 flags = MachineMemOperand.MOLoad | MachineMemOperand.MOStore;
             else
             {
-                assert false:"MemIntrinsic not supported!";
+                Util.assertion(false, "MemIntrinsic not supported!");
             }
             // alignment it in 1 byte.
             int size = (getMemoryVT().getSizeInBits() + 7) >> 3;
@@ -1380,7 +1381,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
         public boolean isValueValidForType(EVT vt, APFloat val)
         {
-            assert vt.isFloatingPoint():"Can only convert between FP types!";
+            Util.assertion(vt.isFloatingPoint(), "Can only convert between FP types!");
             APFloat val2 = new APFloat(val);
             OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
             val2.convert(EVTToAPFloatSemantics(vt), APFloat.RoundingMode.rmNearestTiesToEven,
@@ -1497,13 +1498,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
         public Constant getConstantValue()
         {
-            assert !isMachineConstantPoolValue();
+            Util.assertion( !isMachineConstantPoolValue());
             return (Constant)val;
         }
 
         public MachineConstantPoolValue getMachineConstantPoolValue()
         {
-            assert isMachineConstantPoolValue();
+            Util.assertion( isMachineConstantPoolValue());
             return (MachineConstantPoolValue)val;
         }
 
@@ -1652,12 +1653,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
                             boolean isVolatile)
         {
             super(nodeTy, vts, vt, srcVal ,srcOff, alig, isVolatile);
-            assert alig != 0 :"Loads and Stores should have non-zero alignment!";
+            Util.assertion(alig != 0, "Loads and Stores should have non-zero alignment!");
             sublassData |= mode.ordinal() << 2;
-            assert getAddressingMode() == mode;
+            Util.assertion( getAddressingMode() == mode);
             initOperands(operands);
-            assert getOffset().getOpcode() == ISD.UNDEF || isIndexed() :
-                    "Only indexed loads and stores have a non-undef offset operand!";
+            Util.assertion(getOffset().getOpcode() == ISD.UNDEF || isIndexed(),                     "Only indexed loads and stores have a non-undef offset operand!");
+
         }
 
         public SDValue getOffset()
@@ -1689,7 +1690,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         {
             super(ISD.LOAD, chainPtrOff, vts, mode, vt, sv, offset, align, isVolatile);
             sublassData |= ety.ordinal();
-            assert getExtensionType() == ety :"LoadExtType encoding error!";
+            Util.assertion(getExtensionType() == ety, "LoadExtType encoding error!");
         }
 
         public LoadExtType getExtensionType()
@@ -1718,7 +1719,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         {
             super(ISD.STORE, chainPtrOff, vts, mode, vt, sv, offset, align, isVolatile);
             sublassData |= isTrunc?1:0;
-            assert isTruncatingStore() == isTrunc;
+            Util.assertion( isTruncatingStore() == isTrunc);
         }
 
         public boolean isTruncatingStore()
@@ -1786,7 +1787,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
 
         public void getMask(TIntArrayList m)
         {
-            assert m != null;
+            Util.assertion( m != null);
             EVT vt = getValueType(0);
             m.clear();
             for (int i = 0, e = vt.getVectorNumElements(); i < e; i++)
@@ -1794,7 +1795,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
         public int getMaskElt(int idx)
         {
-            assert idx < getValueType(0).getVectorNumElements();
+            Util.assertion( idx < getValueType(0).getVectorNumElements());
             return mask[idx];
         }
         public boolean isSplat()
@@ -1807,7 +1808,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
             int i = 0, e = vt.getVectorNumElements();
             for (; i < e && mask[i] < 0; i++);
 
-            assert i != e;
+            Util.assertion( i != e);
             for (int idx = mask[i]; i < e; i++)
                 if (mask[i] >= 0 && mask[i] != idx)
                     return false;
@@ -1815,7 +1816,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         }
         public int getSplatIndex()
         {
-            assert isSplat();
+            Util.assertion( isSplat());
             return mask[0];
         }
     }

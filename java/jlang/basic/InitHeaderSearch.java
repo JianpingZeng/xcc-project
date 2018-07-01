@@ -16,6 +16,7 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,7 +72,7 @@ public final class InitHeaderSearch
     public void addPath(String path, IncludeDirGroup grp,
             boolean ignoreSysRoot)
     {
-        assert !path.isEmpty() :"can't handle empty path here";
+        Util.assertion(!path.isEmpty(), "can't handle empty path here");
 
         // Compute the actual path, taking into consideration -isysroot.
         StringBuilder buf = new StringBuilder();

@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.support.AssemblyWriter;
 import backend.support.AttrList;
 import tools.FormattedOutputStream;
@@ -245,8 +246,8 @@ public final class Module implements Iterable<Function>
 
     public void addFunction(Function fn)
     {
-        assert fn != null && !functionList.contains(fn)
-		        && fn.getName() != null;
+        Util.assertion( fn != null && !functionList.contains(fn)		        && fn.getName() != null);
+
         functionList.add(fn);
         fn.setParent(this);
         valSymTable.createValueName(fn.getName(), fn);
@@ -254,8 +255,8 @@ public final class Module implements Iterable<Function>
 
     public void addGlobalVariable(GlobalVariable gv)
     {
-        assert gv != null && !globalVariableList.contains(gv)
-                && gv.getName() != null && !gv.getName().isEmpty();
+        Util.assertion( gv != null && !globalVariableList.contains(gv)                && gv.getName() != null && !gv.getName().isEmpty());
+
         globalVariableList.add(gv);
         valSymTable.createValueName(gv.getName(), gv);
         gv.setParent(this);

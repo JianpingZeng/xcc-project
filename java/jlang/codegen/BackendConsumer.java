@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
@@ -190,8 +191,8 @@ public class BackendConsumer implements ASTConsumer
         if (theTargetData == null || theModule == null)
             return;
 
-        assert theModule == gen.getModule()
-                :"Unexpected module change when IR generation";
+        Util.assertion(theModule == gen.getModule(), "Unexpected module change when IR generation");
+
 
         // creates some necessary pass for code generation and optimization.
         createPass();

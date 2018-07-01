@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.target.TargetRegisterInfo;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
@@ -42,13 +43,13 @@ public class PhysRegTracker
 
     public boolean isRegAvail(int reg)
     {
-        assert isPhysicalRegister(reg):"should be physical register!";
+        Util.assertion(isPhysicalRegister(reg), "should be physical register!");
         return physRegUsed[reg] == 0;
     }
 
     public void addRegUse(int phyReg)
     {
-        assert isPhysicalRegister(phyReg):"should be physical register!";
+        Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
         physRegUsed[phyReg]++;
         for (int alias : tri.getAliasSet(phyReg))
             physRegUsed[alias]++;
@@ -56,7 +57,7 @@ public class PhysRegTracker
 
     public void delRegUse(int phyReg)
     {
-        assert isPhysicalRegister(phyReg):"should be physical register!";
+        Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
         physRegUsed[phyReg]--;
         for (int alias : tri.getAliasSet(phyReg))
             physRegUsed[alias]--;

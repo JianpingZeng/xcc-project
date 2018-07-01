@@ -17,6 +17,7 @@
 
 package backend.analysis.aa;
 
+import tools.Util;
 import backend.value.BasicBlock;
 import backend.support.CallSite;
 import backend.value.Instruction;
@@ -170,8 +171,8 @@ public final class AliasSetTracker
      */
     public boolean add(AliasSetTracker ast)
     {
-        assert aa.equals(ast.aa) :
-                "Merging AliasSetTracker objects with different Alias Analysis!";
+        Util.assertion(aa.equals(ast.aa),                 "Merging AliasSetTracker objects with different Alias Analysis!");
+
 
         for (AliasSet set : ast.aliasSets)
         {
@@ -384,7 +385,7 @@ public final class AliasSetTracker
         if (!pointerMap.containsKey(pair))
             return;
         AliasSet.PointerRec fromPtrEentry = pointerMap.get(pair);
-        assert fromPtrEentry.hasAliasSet():"Dead entry!";
+        Util.assertion(fromPtrEentry.hasAliasSet(), "Dead entry!");
 
         AliasSet.PointerRec toEntry = getEntryFor(to);
         // already in alias set tracker.
@@ -503,7 +504,7 @@ public final class AliasSetTracker
 
             public AliasSet getAliasSet(AliasSetTracker ast)
             {
-                assert as != null : "No AliasSet yet!";
+                Util.assertion(as != null,  "No AliasSet yet!");
                 if (as.forward != null)
                 {
                     as = as.getForwardedTarget(ast);
@@ -513,7 +514,7 @@ public final class AliasSetTracker
 
             public void setAliasSet(AliasSet as)
             {
-                assert this.as == null : "Already have an alias set";
+                Util.assertion(this.as == null,  "Already have an alias set");
                 this.as = as;
             }
 
@@ -648,14 +649,14 @@ public final class AliasSetTracker
 
         private void removeFromTracker(AliasSetTracker ast)
         {
-            assert ast != null;
+            Util.assertion( ast != null);
             ast.getAliasSets().remove(this);
         }
 
         private void addPointer(AliasSetTracker ast, PointerRec entry, int size,
                 boolean knownMustAlias)
         {
-            assert !entry.hasAliasSet() :"Entry already in set!";
+            Util.assertion(!entry.hasAliasSet(), "Entry already in set!");
 
             if (isMustAlias() && !knownMustAlias)
             {
@@ -669,8 +670,8 @@ public final class AliasSetTracker
                         aliasTy = MayAlias;
                     else
                         p.updateSize(size);
-                    assert result != NoAlias
-                            : "Cannot be part of must set!";
+                    Util.assertion(result != NoAlias,  "Cannot be part of must set!");
+
                 }
             }
 
@@ -728,10 +729,10 @@ public final class AliasSetTracker
         {
             if (aliasTy == MustAlias)
             {
-                assert callSites.isEmpty() : "Illegal must alias set";
+                Util.assertion(callSites.isEmpty(),  "Illegal must alias set");
 
                 PointerRec somePtr = getSomePointer();
-                assert somePtr != null : "Empty must alias set?";
+                Util.assertion(somePtr != null,  "Empty must alias set?");
                 return aa.alias(somePtr.getPointer(),
                         somePtr.getSize(), ptr, size) != NoAlias;
             }

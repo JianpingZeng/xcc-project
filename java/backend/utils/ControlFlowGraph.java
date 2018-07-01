@@ -1,5 +1,6 @@
 /*package backend.utils;
 
+import tools.Util;
 import backend.analysis.DomTree;
 import backend.hir.CriticalEdgeFinder;
 import backend.hir.Statistics;
@@ -364,12 +365,12 @@ public class ControlFlowGraph
 		newSucc.setBlockFlags(BasicBlock.BlockFlag.CriticalEdgeSplit);
 
 		int index = from.getSuccs().indexOf(to);
-		assert  index >= 0;
+		Util.assertion(  index >= 0);
 
 		from.getSuccs().set(index, newSucc);
 
 		index = to.getPreds().indexOf(from);
-		assert index >= 0;
+		Util.assertion( index >= 0);
 
 		to.getPreds().set(index, newSucc);
 		newSucc.addPred(from);

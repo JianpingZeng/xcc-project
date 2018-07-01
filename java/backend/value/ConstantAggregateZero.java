@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import backend.type.Type;
 
 import java.util.HashMap;
@@ -44,7 +45,7 @@ public class ConstantAggregateZero extends Constant
 
     public static ConstantAggregateZero get(Type ty)
     {
-        assert ty.isArrayType() || ty.isStructType():"Invalid aggregate type!";
+        Util.assertion(ty.isArrayType() || ty.isStructType(), "Invalid aggregate type!");
         if (aggZeroConstants.containsKey(ty))
             return aggZeroConstants.get(ty);
 

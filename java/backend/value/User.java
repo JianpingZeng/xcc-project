@@ -1,5 +1,6 @@
 package backend.value;
 
+import tools.Util;
 import backend.type.Type;
 
 import java.util.ArrayList;
@@ -29,7 +30,7 @@ public abstract class User extends Value
 
 	protected void reserve(int numOperands)
     {
-        assert numOperands>0;
+        Util.assertion( numOperands>0);
         operandList = new ArrayList<>();
         for (; numOperands > 0; --numOperands)
             operandList.add(null);
@@ -42,7 +43,7 @@ public abstract class User extends Value
      */
 	public Value operand(int index)
     {
-        assert (index >= 0 && index < getNumOfOperands());
+        Util.assertion( (index >= 0 && index < getNumOfOperands()));
         return operandList.get(index).getValue();
     }
 
@@ -58,7 +59,7 @@ public abstract class User extends Value
      */
     public void setOperand(int index, Use use)
     {
-        assert use != null;
+        Util.assertion( use != null);
         if (operandList == null)
             operandList = new ArrayList<>();
         if (index >= getNumOfOperands())
@@ -71,13 +72,13 @@ public abstract class User extends Value
 
     public void setOperand(int index, Value opVal)
     {
-        assert index >= 0 && index < getNumOfOperands();
+        Util.assertion( index >= 0 && index < getNumOfOperands());
         operandList.get(index).setValue(opVal);
     }
 
     public Use getOperand(int index)
     {
-        assert (index >= 0 && index < getNumOfOperands());
+        Util.assertion( (index >= 0 && index < getNumOfOperands()));
         return operandList.get(index);
     }
 
@@ -107,8 +108,8 @@ public abstract class User extends Value
     {
         if (from == to)return;
 
-        assert !(this instanceof Constant) || (this instanceof GlobalValue)
-                :"Cannot call User.replaceUsesOfWith() on a constant";
+        Util.assertion(!(this instanceof Constant) || (this instanceof GlobalValue), "Cannot call User.replaceUsesOfWith() on a constant");
+
 
         for (int i = 0, e = getNumOfOperands(); i < e; i++)
         {

@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
@@ -67,7 +68,7 @@ public class MacroArgs
             Token[] unexpArgTokens,
             boolean varargsElided)
     {
-        assert mi.isFunctionLike():"Can't have args for ab object-like macro!";
+        Util.assertion(mi.isFunctionLike(), "Can't have args for ab object-like macro!");
 
         MacroArgs result = new MacroArgs(unexpArgTokens.length, varargsElided);
         System.arraycopy(unexpArgTokens, 0,
@@ -97,7 +98,7 @@ public class MacroArgs
     ///
     public Token[] getUnexpandedArgument(int arg)
     {
-        assert arg >= 0;
+        Util.assertion( arg >= 0);
         int lastEOF = -1;
         int end = 0;
         int e = unexpandedArgTokens.length;
@@ -114,7 +115,7 @@ public class MacroArgs
                 lastEOF = i;
             }
         }
-        assert lastEOF < end && end <= e:"Illegal macro arguments tokenized!";
+        Util.assertion(lastEOF < end && end <= e, "Illegal macro arguments tokenized!");
         return Arrays.copyOfRange(unexpandedArgTokens, lastEOF+1, end+1);
     }
 
@@ -133,7 +134,7 @@ public class MacroArgs
     /// argument.
     public ArrayList<Token> getPreExpArgument(int arg, Preprocessor pp)
     {
-        assert arg >= 0 && arg < getNumArguments():"Invalid argument number!";
+        Util.assertion(arg >= 0 && arg < getNumArguments(), "Invalid argument number!");
 
         if (preExpArgTokens.isEmpty())
         {
@@ -170,8 +171,8 @@ public class MacroArgs
     /// that has been 'stringified' as required by the # operator.
     public Token getStringifiedArgument(int argNo, Preprocessor pp)
     {
-        assert argNo >= 0 && argNo < getNumArguments()
-                : "Invalid argument number!";
+        Util.assertion(argNo >= 0 && argNo < getNumArguments(),  "Invalid argument number!");
+
         if (stringifiedArgs.isEmpty())
         {
             for (int i = 0; i < getNumArguments(); i++)
