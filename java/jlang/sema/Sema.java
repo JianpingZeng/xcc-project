@@ -46,6 +46,7 @@ import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.LookupResult.LookupResultKind.NotFound;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Sema.AssignAction.AA_Initializing;
+import static jlang.sema.Sema.AssignAction.AA_Passing;
 import static jlang.sema.Sema.AssignAction.AA_Returning;
 import static jlang.sema.Sema.LookupNameKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
@@ -8219,8 +8220,8 @@ public final class Sema implements DiagnosticParseTag,
         VariadicCallType callType = proto.isVariadic() ?
                 VariadicCallType.VariadicFunction
                 : VariadicCallType.VariadicDoesNotApply;
-        invalid = gatherArgumentsForCall(call.getLocStart(), fndecl,
-                proto, 0, args, allArgs, callType);
+
+        invalid = gatherArgumentsForCall(proto, 0, args, allArgs, callType);
 
         if (invalid)
             return true;
@@ -8233,16 +8234,13 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private boolean gatherArgumentsForCall(
-            SourceLocation callLoc,
-            FunctionDecl fnDecl,
             FunctionProtoType proto,
             int firstProtoArg,
             ArrayList<Expr> args,
             ArrayList<Expr> allArgs)
     {
-        return gatherArgumentsForCall(callLoc, fnDecl, proto,
-                firstProtoArg, args, allArgs,
-                VariadicCallType.VariadicDoesNotApply);
+        return gatherArgumentsForCall(proto, firstProtoArg, args,
+                allArgs, VariadicCallType.VariadicDoesNotApply);
     }
 
 	/**
@@ -8271,12 +8269,11 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-     * Collector argument expressions for various form of call prototypes.
+     * Converts the arguments specified in args to the parameter types of the
+     * function fnDecl with function prototype.
      * @return
      */
     private boolean gatherArgumentsForCall(
-            SourceLocation callLoc,
-            FunctionDecl fnDecl,
             FunctionProtoType proto,
             int firstProtoArg,
             ArrayList<Expr> args,
@@ -8287,10 +8284,11 @@ public final class Sema implements DiagnosticParseTag,
         int numArgsToCheck = args.size();
 
         boolean invalid = false;
-        if (numArgsToCheck != numArgInProto)
+        if (numArgsToCheck < numArgInProto)
+        {
             // Use default arguments for missing arguments
             numArgsToCheck = numArgInProto;
-
+        }
         int argIdx = 0;
         for (int i = firstProtoArg; i < numArgsToCheck; ++i)
         {
@@ -8300,7 +8298,6 @@ public final class Sema implements DiagnosticParseTag,
             if (argIdx < numArgsToCheck)
             {
                 arg = args.get(argIdx++);
-
                 if (requireCompleteType(arg.getLocStart(),
                         protoArgType,
                         pdiag(err_call_incomplete_argument)
@@ -8310,27 +8307,17 @@ public final class Sema implements DiagnosticParseTag,
                 }
 
                 // Pass the argument
-                ParamVarDecl param = null;
-                if (fnDecl != null && i < fnDecl.getNumParams())
-                    param = fnDecl.getParamDecl(i);
-
-	            /**
-                 * TODO
-                 *    InitializedEntity Entity =
-                 Param? InitializedEntity::InitializeParameter(Context, Param)
-                 : InitializedEntity::InitializeParameter(Context, ProtoArgType,
-                 Proto.isArgConsumed(i));
-                 ExprResult ArgE = PerformCopyInitialization(Entity,
-                 SourceLocation(),
-                 Owned(Arg));
-                 if (ArgE.isInvalid())
-                 return true;
-
-                 Arg = ArgE.takeAs<Expr>();
-                 */
+                OutParamWrapper<Expr> out = new OutParamWrapper<>(arg);
+                boolean res = performCopyInitialization(out, protoArgType, AA_Passing);
+                arg = out.get();
+                if (res) return true;
             }
-            checkArrayAccess(arg);
+            else
+            {
+                Util.shouldNotReachHere("Default argument is a feature in C++!");
+            }
 
+            checkArrayAccess(arg);
             allArgs.add(arg);
         }
 
@@ -8338,10 +8325,9 @@ public final class Sema implements DiagnosticParseTag,
         if (callType != VariadicCallType.VariadicDoesNotApply)
         {
             // Do argument promotion, (C99 6.5.2.2p7).
-            for (int i = argIdx; i < numArgsToCheck; i++)
+            for (int i = numArgInProto; i < numArgsToCheck; i++)
             {
                 ActionResult<Expr> arg = defaultArgumentPromotion(args.get(i));
-
                 invalid |= arg.isInvalid();
                 allArgs.add(arg.get());
             }
@@ -8450,20 +8436,11 @@ public final class Sema implements DiagnosticParseTag,
                 for (int i = 0, e = args.size(); i < e; i++)
                 {
                     Expr arg = args.get(i);
-                    if (proto != null && i < proto.getNumArgs())
-                    {
-                        // TODO: 2017/4/9 initialize the arguments
-                    }
-                    else
-                    {
-                        ActionResult<Expr> argE = defaultArgumentPromotion(arg);
+                    ActionResult<Expr> argE = defaultArgumentPromotion(arg);
+                    if (argE.isInvalid())
+                        return exprError();
 
-                        if (argE.isInvalid())
-                            return exprError();
-
-                        arg = argE.get();
-                    }
-
+                    arg = argE.get();
                     if (requireCompleteType(arg.getLocStart(),
                                             arg.getType(),
                             pdiag(err_call_incomplete_argument)
