@@ -130,7 +130,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     public int beginNumber()
     {
-        Util.assertion( !isEmpty());
+        Util.assertion(!isEmpty());
         return ranges.get(0).start;
     }
 
@@ -440,8 +440,8 @@ public class LiveInterval implements Comparable<LiveInterval>
             }
             else
             {
-                Util.assertion(ranges.get(prior).end <= start,                         "Can not overlap two LiveRanges with differing valID");
-
+                Util.assertion(ranges.get(prior).end <= start,
+                        "Can not overlap two LiveRanges with differing valID");
             }
         }
 
@@ -462,8 +462,8 @@ public class LiveInterval implements Comparable<LiveInterval>
             }
             else
             {
-                Util.assertion(ranges.get(idx).start >= end,                         "Cannot overlap two LiveRanges with differing valID");
-
+                Util.assertion(ranges.get(idx).start >= end,
+                        "Cannot overlap two LiveRanges with differing valID");
             }
         }
         // Otherwise, this is just a new range that doesn't interact with anything.
@@ -643,7 +643,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     public void mergeRangesInAsValue(LiveInterval rhs, int lhsValNumber)
     {
-        int insertPos = beginNumber();
+        int insertPos = 0;
         for (LiveRange r : rhs.getRanges())
         {
             r.valId = lhsValNumber;

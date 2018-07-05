@@ -17,7 +17,6 @@
 
 package backend.codegen.dagisel;
 
-import tools.Util;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
@@ -278,7 +277,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         String blockName = mf.getFunction().getName() + ":" +
                 mbb.getBasicBlock().getName();
 
-        if (ViewDAGBeforeCodeGen.value || Util.DEBUG)
+        if (ViewDAGBeforeCodeGen.value)
         {
             curDAG.viewGraph("dag-input-combine-first for " + blockName);
         }
@@ -286,13 +285,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         // combine
         curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
 
-        if (Util.DEBUG)
+        if (false)
         {
             curDAG.viewGraph("dag-before-legalize for " + blockName);
         }
 
         boolean changed = curDAG.legalizeTypes();
-        if (Util.DEBUG)
+        if (false)
         {
             curDAG.viewGraph("dag-after-first-legalize-types for " + blockName);
         }
@@ -300,7 +299,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         if (changed)
         {
             curDAG.combine(CombineLevel.NoIllegalTypes, aa, optLevel);
-            if (Util.DEBUG)
+            if (false)
             {
                 curDAG.viewGraph("dag-after-second-combines for " + blockName);
             }
@@ -313,31 +312,31 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             if (changed)
                 curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
         }
-        if (Util.DEBUG)
+        if (false)
         {
             curDAG.viewGraph("dag-after-combine2 for " + blockName);
         }
 
         curDAG.legalize(false, optLevel);
-        if (Util.DEBUG)
+        if (false)
         {
             curDAG.viewGraph("dag-after-legalizations for " + blockName);
         }
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
-        if (ViewDAGBeforeISel.value || Util.DEBUG)
+        if (ViewDAGBeforeISel.value)
         {
             curDAG.viewGraph("dag-before-isel for " + blockName);
         }
         instructionSelect();
 
-        if (ViewDAGBeforeSched.value || Util.DEBUG)
+        if (ViewDAGBeforeSched.value)
         {
             curDAG.viewGraph("dag-before-sched for " + blockName);
         }
 
         ScheduleDAG scheduler = createScheduler(this, optLevel);
         scheduler.run(curDAG, mbb, mbb.size());
-        if (ViewDAGAfterSched.value || Util.DEBUG)
+        if (ViewDAGAfterSched.value)
         {
             scheduler.viewGraph("dag-after-sched for " + blockName);
         }

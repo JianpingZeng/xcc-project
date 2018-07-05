@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.transform.scalars.Mem2Reg;
 
 /**
  * @author Xlous.zeng
@@ -50,7 +51,7 @@ public class PassCreator
 			// remove useless Basic block.
 			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 			// remove redundant alloca.
-			//pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
+			pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 
 			//pm.add(InstructionCombine.createInstructionCombinePass());
 			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());

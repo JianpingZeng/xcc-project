@@ -16,7 +16,6 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
@@ -375,7 +374,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 // LiveRange to the LiveInterval.
                 int bbIdx = vi.aliveBlocks.get(i);
                 MachineBasicBlock block = mf.getMBBAt(bbIdx);
-                if (block != null)
+                if (block != null && !block.isEmpty())
                 {
                     int begin = getInstructionIndex(block.getInsts().getFirst());
                     int end = getInstructionIndex(block.getInsts().getLast()) + InstrSlots.NUM;
@@ -510,9 +509,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
     private MachineInstr getInstructionFromIndex(int idx)
     {
-        MachineInstr mi = getMIByIdx(idx);
-        Util.assertion( mi != null);
-        return mi;
+        return getMIByIdx(idx);
     }
 
     private void handlePhysicalRegisterDef(
@@ -628,8 +625,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     {
         ArrayList<LiveInterval> added = new ArrayList<>();
 
-        Util.assertion(interval.weight != Float.MAX_VALUE,  "attempt to spill already spilled interval");
-
+        Util.assertion(interval.weight < Float.MAX_VALUE,
+                "attempt to spill already spilled interval");
 
         if (Util.DEBUG)
         {
@@ -648,7 +645,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             for (; index != end; index += InstrSlots.NUM)
             {
                 // Skip deleted instructions.
-                while ( index != end && getInstructionFromIndex(index) == null)
+                while (index != end && getInstructionFromIndex(index) == null)
                 {
                     index += InstrSlots.NUM;
                 }
