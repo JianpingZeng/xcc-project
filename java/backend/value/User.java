@@ -44,7 +44,8 @@ public abstract class User extends Value
 	public Value operand(int index)
     {
         Util.assertion( (index >= 0 && index < getNumOfOperands()));
-        return operandList.get(index).getValue();
+        return operandList.get(index) != null ?
+            operandList.get(index).getValue() : null;
     }
 
     public void setOperand(int index, Value val, User user)
@@ -88,7 +89,7 @@ public abstract class User extends Value
      */
     public int getNumOfOperands()
     {
-        return operandList.size();
+        return operandList != null ? operandList.size() : 0;
     }
 
     /**

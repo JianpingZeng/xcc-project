@@ -16,7 +16,6 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
@@ -92,8 +91,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
     private void initIntervalSet()
     {
-        Util.assertion( unhandled.isEmpty() && fixed.isEmpty() &&                active.isEmpty() && inactive.isEmpty());
-
+        Util.assertion( unhandled.isEmpty() && fixed.isEmpty()
+                && active.isEmpty() && inactive.isEmpty());
 
         for (LiveInterval interval : li.getReg2LiveInterval().values())
         {
@@ -302,7 +301,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         // if the current has the minimum weight, we need to spill it and
         // add any added intervals back to unhandled, and restart
         // linearscan.
-        if (cur.weight <= minWeigth)
+        if (cur.weight < minWeigth)
         {
             if (Util.DEBUG)
             {
@@ -554,10 +553,11 @@ public class RegAllocLinearScan extends MachineFunctionPass
     {
         this.mf = mf;
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
+        ls = (LiveStackSlot)getAnalysisToUpDate(LiveStackSlot.class);
+
         tri = mf.getTarget().getRegisterInfo();
         mri = mf.getMachineRegisterInfo();
         prt = new PhysRegTracker(tri);
-
         if (relatedRegisterClasses.isEmpty())
             buildRelatedRegClasses();
 
