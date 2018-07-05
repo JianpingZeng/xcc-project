@@ -22,6 +22,7 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
+import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
 import backend.support.CFGPrinter;
 import backend.support.DomTreePrinter;
 import backend.target.TargetData;
@@ -101,6 +102,7 @@ public final class PassRegisterationUtility
         new RegisterRegAlloc("linearscan","Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);
         new RegisterRegAlloc("local","Local register allocator", RegAllocLocal::createLocalRegAllocator);
         new RegisterRegAlloc("pbqp", "PBQP Register Allocator", RegAllocPBQP::createPBQPRegisterAllocator);
+        new RegisterRegAlloc("wimmer", "Wimmer-Style Linear scan register allocator", WimmerLinearScanRegAllocator::createWimmerLinearScanRegAlloc);
 
         // Register scheduler.
         new RegisterScheduler("fast", "Fast Instruction Scheduler", ScheduleDAGFast::createFastDAGScheduler);
