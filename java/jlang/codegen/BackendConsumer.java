@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
 import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.RegisterScheduler;
@@ -348,7 +349,7 @@ public class BackendConsumer implements ASTConsumer
                 theTarget.setAsmVerbosityDefault(true);
 
                 // Set the default Register Allocator.
-                RegisterRegAlloc.setDefault(RegAllocLinearScan::createLinearScanRegAllocator);
+                RegisterRegAlloc.setDefault(WimmerLinearScanRegAllocator::createWimmerLinearScanRegAlloc);
 
                 // Set the default instruction scheduler.
                 RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);

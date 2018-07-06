@@ -53,6 +53,8 @@ public final class PassRegisterationUtility
         new RegisterPass( "Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
         new RegisterPass("Print out cfg into dot file", "dot-cfg", CFGPrinter.class, false, true);
         new RegisterPass( "Alias Analysis Pass", "alias-analysis", AliasAnalysis.class, false, true);
+        new RegisterPass("Live interval Analysis for wimmer style ra", "wimmer-li",
+                backend.codegen.linearscan.LiveIntervalAnalysis.class);
 
         // IPO transformation
         new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);

@@ -18,9 +18,13 @@
 package backend.codegen.linearscan;
 
 import backend.codegen.MachineOperand;
+import backend.target.TargetRegisterInfo;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
  * @author Xlous.zeng
@@ -29,26 +33,40 @@ import java.util.ArrayList;
 public final class LiveInterval
 {
     int regNum;
-    ArrayList<LiveRange> ranges;
+    LiveRange first;
     ArrayList<UsePoint> usePoints;
     LiveInterval splitParent;
     LiveInterval splitChilden;
 
     public LiveInterval()
     {
-        ranges = new ArrayList<>();
+        first = LiveRange.EndMarker;
         usePoints = new ArrayList<>();
     }
 
     public void addRange(int from, int to)
     {
-        ranges.add(new LiveRange(from, to));
+        Util.assertion(from < to, "Invalid range!");
+        Util.assertion(first == LiveRange.EndMarker || to < first.next.start,
+                "Not inserting at begining of interval");
+        Util.assertion(from <= first.end, "Not inserting at begining of interval");
+        if (first.start <= to)
+        {
+            // Join intersecting LiveRanges.
+            Util.assertion(first != LiveRange.EndMarker);
+            first.start = Math.min(from, first.start);
+            first.end = Math.max(to, first.end);
+        }
+        else
+        {
+            // create a new LiveRange.
+            first = new LiveRange(from, to, first);
+        }
     }
 
     public LiveRange getFirstRange()
     {
-        if (ranges.isEmpty()) return null;
-        return ranges.get(0);
+        return first;
     }
 
     public void addUsePoint(int numMI, MachineOperand mo)
@@ -56,12 +74,23 @@ public final class LiveInterval
         usePoints.add(new UsePoint(numMI, mo));
     }
 
-    public void print(PrintStream os)
+    public void print(PrintStream os, TargetRegisterInfo tri)
     {
-
+        System.err.println("******** Live Intervals ********");
+        System.err.printf("%s: ", isPhysicalRegister(regNum) ?
+                        tri.getName(regNum) : "%reg" + regNum);
+        LiveRange r = first;
+        while (r != LiveRange.EndMarker)
+        {
+            r.dump();
+            if (r.next != null)
+                System.err.print(",");
+            r = r.next;
+        }
+        System.err.println();
     }
-    public void dump()
+    public void dump(TargetRegisterInfo tri)
     {
-        print(System.err);
+        print(System.err, tri);
     }
 }

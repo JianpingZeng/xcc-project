@@ -25,12 +25,18 @@ import java.io.PrintStream;
  */
 public class LiveRange implements Comparable<LiveRange>
 {
+    public static final LiveRange EndMarker =
+            new LiveRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
+
     int start;
     int end;
-    public LiveRange(int defIdx, int killIdx)
+    LiveRange next;
+
+    public LiveRange(int defIdx, int killIdx, LiveRange next)
     {
         start = defIdx;
         end = killIdx;
+        this.next = next;
     }
 
     @Override
@@ -56,6 +62,5 @@ public class LiveRange implements Comparable<LiveRange>
     public void dump()
     {
         print(System.err);
-        System.err.println();
     }
 }

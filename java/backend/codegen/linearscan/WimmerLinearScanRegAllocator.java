@@ -19,6 +19,8 @@ package backend.codegen.linearscan;
 
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
+import backend.pass.AnalysisUsage;
+import tools.Util;
 
 /**
  * This class designed for implementing an advancing linear scan register allocator
@@ -46,8 +48,18 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     }
 
     @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.addRequired(LiveIntervalAnalysis.class);
+        super.getAnalysisUsage(au);
+    }
+
+    @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
+        LiveIntervalAnalysis li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
+        Util.assertion(li != null);
+        Util.assertion(false, "Following waiting to be finished");
         return false;
     }
 

@@ -1,6 +1,5 @@
 package tools;
 
-import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 
@@ -57,12 +56,10 @@ public final class BitMap extends BitSet implements Cloneable
 	 */
 	public void diff(BitMap other)
 	{
-		Util.assertion(length() == other.length(), 				"must have same getArraySize");
-
-		for (int i = 0; i < length(); i++)
+		for (int i = findFirst(); i >= 0;  i = findNext(i))
 		{
-			boolean tmp = get(i);
-			set(i, tmp & (!other.get(i)));
+			if (other.get(i))
+				set(i, false);
 		}
 	}
 
