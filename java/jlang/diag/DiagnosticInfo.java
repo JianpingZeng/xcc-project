@@ -285,7 +285,7 @@ public final class DiagnosticInfo
                 Util.assertion(c == '[' || Character.isDigit(c),                         "Bad plural expression syntax: unexpected character");
 
                 OutParamWrapper<Integer> x = new OutParamWrapper<>(start);
-                // Range expression
+                // LiveRange expression
                 boolean b = testPluralRange(valNo, str, x, end);
                 start = x.get();
                 if (b) return true;
