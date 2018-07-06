@@ -18,7 +18,6 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
@@ -37,6 +36,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  */
 public final class LiveIntervalAnalysis extends MachineFunctionPass
 {
+
     public interface InstrSlots
     {
         int LOAD = 0;
@@ -52,21 +52,14 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     /**
      * A mapping from MachineInstr to its number.
      */
-    private HashMap<MachineInstr, Integer> mi2Idx;
+    HashMap<MachineInstr, Integer> mi2Idx;
 
-    private TreeMap<Integer, LiveInterval> intervals;
+    TreeMap<Integer, LiveInterval> intervals;
     private TargetRegisterInfo tri;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        // Obtains the loop information used for assigning a spilling weight to
-        // each live interval. The more nested, the more weight.
-        au.addPreserved(MachineDomTree.class);
-        au.addRequired(MachineDomTree.class);
-        au.addPreserved(MachineLoop.class);
-        au.addRequired(MachineLoop.class);
-
         au.addRequired(LiveVariables.class);
         au.addPreserved(LiveVariables.class);
 
@@ -269,7 +262,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                     else
                     {
                         li = new LiveInterval();
-                        li.regNum = reg;
+                        li.register = reg;
                         intervals.put(reg, li);
                     }
                     Util.assertion(li != null);
@@ -280,7 +273,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                     }
                     else
                     {
-                        LiveRange lr = li.getFirstRange();
+                        LiveRange lr = li.getFirst();
                         Util.assertion(lr != null);
                         lr.start = num;
                         li.addUsePoint(num, mo);
@@ -295,7 +288,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                     else
                     {
                         li = new LiveInterval();
-                        li.regNum = reg;
+                        li.register = reg;
                         intervals.put(reg, li);
                     }
                     Util.assertion(li != null);
@@ -393,6 +386,20 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                 if (changed) liveIns[num] = in;
             }
         }while (changed);
+    }
+
+    public MachineBasicBlock getBlockAtId(int pos)
+    {
+        int index = pos / InstrSlots.NUM;
+        Util.assertion(index >= 0 && index < idx2MI.length);
+        return idx2MI[index].getParent();
+    }
+
+    public boolean isBlockBegin(int pos)
+    {
+        int id = pos / InstrSlots.NUM;
+        Util.assertion(id >= 0 && id < idx2MI.length);
+        return idx2MI[id].equals(idx2MI[id].getParent().getFirstInst());
     }
 
     @Override
