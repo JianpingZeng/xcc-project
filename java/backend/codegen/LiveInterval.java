@@ -72,7 +72,7 @@ public class LiveInterval implements Comparable<LiveInterval>
         int idx = upperBound(ranges, 0, begin);
 
         --idx;
-        Util.assertion(ranges.get(idx).contains(end-1),  "Range is not entirely in interval!");
+        Util.assertion(ranges.get(idx).contains(end-1),  "LiveRange is not entirely in interval!");
 
 
         if (ranges.get(idx).start == begin)

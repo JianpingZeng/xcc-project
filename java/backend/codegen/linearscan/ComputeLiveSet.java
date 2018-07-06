@@ -22,11 +22,11 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.target.TargetRegisterInfo;
+import tools.BitMap;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.*;
 
 /**
  * @author Xlous.zeng
@@ -34,6 +34,26 @@ import java.util.LinkedList;
  */
 public final class ComputeLiveSet extends MachineFunctionPass
 {
+    public interface InstrSlots
+    {
+        int LOAD = 0;
+        int USE = 1;
+        int NUM = 2;
+    }
+
+    /**
+     * A mapping from instruction number to itself.
+     */
+    private MachineInstr[] idx2MI;
+
+    /**
+     * A mapping from MachineInstr to its number.
+     */
+    private HashMap<MachineInstr, Integer> mi2Idx;
+
+    private TreeMap<Integer, LiveInterval> intervals;
+    private TargetRegisterInfo tri;
+
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
@@ -57,6 +77,8 @@ public final class ComputeLiveSet extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
+        tri = mf.getTarget().getRegisterInfo();
+
         int size = mf.getNumBlockIDs();
         int[] numIncomingBranches = new int[size];
         MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
@@ -107,8 +129,229 @@ public final class ComputeLiveSet extends MachineFunctionPass
                 System.err.printf("[%s, %d]\n", bb.getName(), bb.getNumber());
             }
         }
+
         // Step #2: compute local live set.
+        BitMap[] liveGen = new BitMap[size];
+        BitMap[] liveKill = new BitMap[size];
+        computeLocalLiveSet(sequence, liveGen, liveKill);
+
+        // Step #3: compute global live set.
+        BitMap[] liveIns = new BitMap[size];
+        BitMap[] liveOuts = new BitMap[size];
+        computeGlobalLiveSet(sequence, liveIns, liveOuts, liveGen, liveKill);
+
+        // Step #4: number the machine instruction
+        numberMachineInstr(sequence);
+
+        // Step #5: build intervals.
+        buildIntervals(sequence, liveOuts);
         return false;
+    }
+
+    /**
+     * Number the machine instructions in the specified order.
+     * @param sequence
+     */
+    private void numberMachineInstr(ArrayList<MachineBasicBlock> sequence)
+    {
+        if (sequence == null || sequence.isEmpty())
+            return;
+        int totalNumMI = 0;
+        for (MachineBasicBlock mbb : sequence)
+        {
+            totalNumMI += mbb.size();
+        }
+
+        mi2Idx = new HashMap<>();
+        idx2MI = new MachineInstr[totalNumMI];
+        int index = 0;
+        for (MachineBasicBlock mbb : sequence)
+        {
+            for (int i = 0, e = mbb.size(); i < e; i++)
+            {
+                MachineInstr mi = mbb.getInstAt(i);
+                mi2Idx.put(mi, index);
+                idx2MI[index/InstrSlots.NUM] = mi;
+                index += InstrSlots.NUM;
+            }
+        }
+        if (Util.DEBUG)
+        {
+            System.err.println("******** Number of machine instruction ********");
+            for (int i = 0; i < idx2MI.length; i++)
+            {
+                System.err.printf("%d: ", i*InstrSlots.NUM);
+                idx2MI[i].dump();
+                System.err.println();
+            }
+        }
+    }
+
+    private void buildIntervals(ArrayList<MachineBasicBlock> sequence, BitMap[] liveOuts)
+    {
+        intervals = new TreeMap<>();
+
+        for (int i = sequence.size()-1; i>= 0; i--)
+        {
+            MachineBasicBlock mbb = sequence.get(i);
+            Util.assertion(mi2Idx.containsKey(mbb.getFirstInst()));
+            Util.assertion(mi2Idx.containsKey(mbb.getLastInst()));
+            int blockFrom = mi2Idx.get(mbb.getFirstInst());
+            int blockTo = mi2Idx.get(mbb.getLastInst()) + InstrSlots.NUM;
+            BitMap map = liveOuts[mbb.getNumber()];
+            for (int reg = map.findFirst(); reg >= 0;)
+            {
+                LiveInterval li;
+                if (intervals.containsKey(reg))
+                    li = intervals.get(reg);
+                else
+                {
+                    li = new LiveInterval();
+                    intervals.put(reg, li);
+                }
+                li.addRange(blockFrom, blockTo);
+                reg = map.findNext(reg);
+            }
+
+            for (int j = mbb.size() - 1; j >= 0; j--)
+            {
+                MachineInstr mi = mbb.getInstAt(j);
+                int num = mi2Idx.get(mi);
+                if (mi.isCall())
+                {
+                    for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
+                    {
+                        if (mi.getOperand(moIdx).isRegister() &&
+                                mi.getOperand(moIdx).isUse() &&
+                                TargetRegisterInfo.isPhysicalRegister(mi.getOperand(moIdx).getReg()))
+                        {
+                            int reg = mi.getOperand(moIdx).getReg();
+                            LiveInterval li;
+                            if (intervals.containsKey(reg))
+                                li = intervals.get(reg);
+                            else
+                            {
+                                li = new LiveInterval();
+                                intervals.put(reg, li);
+                            }
+                            li.addRange(num, num+1);
+                        }
+                    }
+                }
+
+                ArrayList<MachineOperand> uses = new ArrayList<>();
+                ArrayList<MachineOperand> defs = new ArrayList<>();
+                for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
+                {
+                    MachineOperand mo = mi.getOperand(moIdx);
+                    if (mo.isRegister())
+                    {
+                        if (mo.isDef())
+                            defs.add(mo);
+                        else if (mo.isUse())
+                            uses.add(mo);
+                    }
+                }
+                for (MachineOperand mo : defs)
+                {
+                    int reg = mo.getReg();
+                    LiveInterval li = intervals.get(reg);
+                    Util.assertion(li != null);
+                    LiveRange lr = li.getFirstRange();
+                    Util.assertion(lr != null);
+                    lr.start = num;
+                    li.addUsePoint(num, mo);
+                }
+            }
+        }
+
+        if (Util.DEBUG)
+        {
+            for (LiveInterval interval : intervals.values())
+                interval.dump();
+        }
+    }
+
+    /**
+     * Compute local live set for each basic block according to classical
+     * dataflow algortihm.
+     * @param sequence
+     * @param liveGen
+     * @param liveKill
+     */
+    private void computeLocalLiveSet(ArrayList<MachineBasicBlock> sequence,
+            BitMap[] liveGen, BitMap[] liveKill)
+    {
+        for (MachineBasicBlock bb : sequence)
+        {
+            liveGen[bb.getNumber()] = new BitMap();
+            liveKill[bb.getNumber()] = new BitMap();
+
+            for (int i = bb.size()-1; i >= 0; --i)
+            {
+                MachineInstr mi = bb.getInstAt(i);
+                for (int j = mi.getNumOperands()-1; j >= 0; j--)
+                {
+                    MachineOperand mo = mi.getOperand(j);
+                    if (!mo.isRegister())
+                        continue;
+                    int reg = mo.getReg();
+                    if (mo.isUse())
+                    {
+                        if (!liveKill[bb.getNumber()].get(reg))
+                            liveGen[bb.getNumber()].set(reg);
+                    }
+                    else if (mo.isDef())
+                    {
+                        liveKill[bb.getNumber()].set(reg);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Compute LiveIn and LiveOut set for each machine basic block using
+     * iterative algorithm operated on machine basic blocks in reverse order.
+     * @param sequence
+     * @param liveIns
+     * @param liveOuts
+     */
+    private void computeGlobalLiveSet(ArrayList<MachineBasicBlock> sequence,
+            BitMap[] liveIns, BitMap[] liveOuts,
+            BitMap[] liveGens, BitMap[] liveKills)
+    {
+        for (MachineBasicBlock mbb : sequence)
+        {
+            liveIns[mbb.getNumber()] = new BitMap();
+            liveOuts[mbb.getNumber()] = new BitMap();
+        }
+        boolean changed;
+        do
+        {
+            changed = false;
+            for (int i = sequence.size()-1; i >= 0; --i)
+            {
+                MachineBasicBlock mbb = sequence.get(i);
+                int num = mbb.getNumber();
+                BitMap out = new BitMap();
+
+                if (!mbb.succIsEmpty())
+                {
+                    for (MachineBasicBlock succ : mbb.getSuccessors())
+                        out.and(liveIns[succ.getNumber()]);
+                }
+                out.and(liveOuts[num]);
+                changed = !out.equals(liveOuts[num]);
+                if (changed) liveOuts[num] = out;
+
+                BitMap in = liveOuts[num].clone();
+                in.diff(liveKills[num]);
+                in.and(liveGens[num]);
+                changed = !in.equals(liveIns[num]);
+                if (changed) liveIns[num] = in;
+            }
+        }while (changed);
     }
 
     @Override

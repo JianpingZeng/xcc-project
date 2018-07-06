@@ -308,6 +308,11 @@ public class MachineInstr implements Cloneable
 		return getDesc().isReturn();
 	}
 
+	public boolean isCall()
+	{
+		return getDesc().isCall();
+	}
+
 	public boolean isDeclare()
 	{
 		return getOpcode() == TargetInstrInfo.DECLARE;
