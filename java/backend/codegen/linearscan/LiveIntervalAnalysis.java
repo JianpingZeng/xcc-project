@@ -17,6 +17,7 @@
 
 package backend.codegen.linearscan;
 
+import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
@@ -28,11 +29,13 @@ import tools.Util;
 
 import java.util.*;
 
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class ComputeLiveSet extends MachineFunctionPass
+public final class LiveIntervalAnalysis extends MachineFunctionPass
 {
     public interface InstrSlots
     {
@@ -63,6 +66,10 @@ public final class ComputeLiveSet extends MachineFunctionPass
         au.addRequired(MachineDomTree.class);
         au.addPreserved(MachineLoop.class);
         au.addRequired(MachineLoop.class);
+
+        au.addRequired(LiveVariables.class);
+        au.addPreserved(LiveVariables.class);
+
         // Eliminate phi node.
         au.addPreserved(PhiElimination.class);
         au.addRequired(PhiElimination.class);
@@ -217,6 +224,7 @@ public final class ComputeLiveSet extends MachineFunctionPass
             {
                 MachineInstr mi = mbb.getInstAt(j);
                 int num = mi2Idx.get(mi);
+                /*
                 if (mi.isCall())
                 {
                     for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
@@ -237,14 +245,14 @@ public final class ComputeLiveSet extends MachineFunctionPass
                             li.addRange(num, num+1);
                         }
                     }
-                }
+                }*/
 
                 ArrayList<MachineOperand> uses = new ArrayList<>();
                 ArrayList<MachineOperand> defs = new ArrayList<>();
                 for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
                 {
                     MachineOperand mo = mi.getOperand(moIdx);
-                    if (mo.isRegister())
+                    if (mo.isRegister() && mo.getReg() > 0)
                     {
                         if (mo.isDef())
                             defs.add(mo);
@@ -255,11 +263,44 @@ public final class ComputeLiveSet extends MachineFunctionPass
                 for (MachineOperand mo : defs)
                 {
                     int reg = mo.getReg();
-                    LiveInterval li = intervals.get(reg);
+                    LiveInterval li;
+                    if (intervals.containsKey(reg))
+                        li = intervals.get(reg);
+                    else
+                    {
+                        li = new LiveInterval();
+                        li.regNum = reg;
+                        intervals.put(reg, li);
+                    }
                     Util.assertion(li != null);
-                    LiveRange lr = li.getFirstRange();
-                    Util.assertion(lr != null);
-                    lr.start = num;
+                    if (mo.isImplicit() && isPhysicalRegister(reg))
+                    {
+                        li.addRange(num, num + 1);
+                        li.addUsePoint(num, mo);
+                    }
+                    else
+                    {
+                        LiveRange lr = li.getFirstRange();
+                        Util.assertion(lr != null);
+                        lr.start = num;
+                        li.addUsePoint(num, mo);
+                    }
+                }
+                for (MachineOperand mo : uses)
+                {
+                    int reg = mo.getReg();
+                    LiveInterval li;
+                    if (intervals.containsKey(reg))
+                        li = intervals.get(reg);
+                    else
+                    {
+                        li = new LiveInterval();
+                        li.regNum = reg;
+                        intervals.put(reg, li);
+                    }
+                    Util.assertion(li != null);
+
+                    li.addRange(blockFrom, num);
                     li.addUsePoint(num, mo);
                 }
             }
@@ -268,7 +309,7 @@ public final class ComputeLiveSet extends MachineFunctionPass
         if (Util.DEBUG)
         {
             for (LiveInterval interval : intervals.values())
-                interval.dump();
+                interval.dump(tri);
         }
     }
 
