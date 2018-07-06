@@ -22,7 +22,8 @@ import backend.target.TargetRegisterInfo;
 import tools.Util;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.TreeSet;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
@@ -32,16 +33,22 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  */
 public final class LiveInterval
 {
-    int regNum;
+    int register;
     LiveRange first;
-    ArrayList<UsePoint> usePoints;
+    LiveRange last;
+    TreeSet<UsePoint> usePoints;
     LiveInterval splitParent;
     LiveInterval splitChilden;
+    /**
+     * Indicates if a move instruction should be inserted at the splitting position.
+     */
+    boolean insertedMove;
 
     public LiveInterval()
     {
         first = LiveRange.EndMarker;
-        usePoints = new ArrayList<>();
+        last = LiveRange.EndMarker;
+        usePoints = new TreeSet<>(Comparator.comparingInt(o -> o.id));
     }
 
     public void addRange(int from, int to)
@@ -60,13 +67,19 @@ public final class LiveInterval
         else
         {
             // create a new LiveRange.
+            last = first;
             first = new LiveRange(from, to, first);
         }
     }
 
-    public LiveRange getFirstRange()
+    public LiveRange getFirst()
     {
         return first;
+    }
+
+    public LiveRange getLast()
+    {
+        return last;
     }
 
     public void addUsePoint(int numMI, MachineOperand mo)
@@ -77,8 +90,8 @@ public final class LiveInterval
     public void print(PrintStream os, TargetRegisterInfo tri)
     {
         System.err.println("******** Live Intervals ********");
-        System.err.printf("%s: ", isPhysicalRegister(regNum) ?
-                        tri.getName(regNum) : "%reg" + regNum);
+        System.err.printf("%s: ", isPhysicalRegister(register) ?
+                        tri.getName(register) : "%reg" + register);
         LiveRange r = first;
         while (r != LiveRange.EndMarker)
         {
@@ -92,5 +105,66 @@ public final class LiveInterval
     public void dump(TargetRegisterInfo tri)
     {
         print(System.err, tri);
+    }
+
+    public boolean isExpiredAt(int pos)
+    {
+        return getLast().end < pos;
+    }
+
+    public boolean isLiveAt(int pos)
+    {
+        // TODO: 18-7-6
+        return false;
+    }
+
+    public boolean interset(LiveInterval cur)
+    {
+        // TODO: 18-7-6
+        return false;
+    }
+
+    public int intersetAt(LiveInterval cur)
+    {
+        // TODO: 18-7-6
+        return 0;
+    }
+
+    public int beginNumber()
+    {
+        return first.start;
+    }
+
+    public int endNumber()
+    {
+        return last.end;
+    }
+
+    public int getUsePointBefore(int pos)
+    {
+        UsePoint up = usePoints.floor(new UsePoint(pos, null));
+        Util.assertion(up != null);
+        return up.id;
+    }
+
+    public LiveInterval split(int pos,
+            WimmerLinearScanRegAllocator regAlloc)
+    {
+        return null;
+    }
+
+    public boolean hasHoleBetween(int from, int to)
+    {
+        return false;
+    }
+
+    public void setInsertedMove()
+    {
+        insertedMove = true;
+    }
+
+    public boolean isInsertedMove()
+    {
+        return insertedMove;
     }
 }

@@ -123,7 +123,7 @@ public abstract class TargetRegisterClass
     }
 
     /**
-     * Return the getNumOfSubLoop of the register in bytes, which is also the getNumOfSubLoop
+     * Return the number of the register in bytes, which is also the number
      * of a stack slot allocated to hold a spilled copy of this register.
      *
      * @return

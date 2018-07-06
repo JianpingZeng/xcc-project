@@ -25,11 +25,11 @@ import backend.codegen.MachineOperand;
  */
 public class UsePoint
 {
-    int numMI;
+    int id;
     MachineOperand mo;
     public UsePoint(int id, MachineOperand mo)
     {
-        numMI = id;
+        this.id = id;
         this.mo = mo;
     }
 }
