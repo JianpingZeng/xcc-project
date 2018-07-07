@@ -9,7 +9,6 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 import tools.Pair;
-import tools.Util;
 
 import java.util.*;
 
@@ -179,7 +178,7 @@ public class RegAllocLocal extends MachineFunctionPass
 
 	private int getFreeReg(TargetRegisterClass rc)
 	{
-		for (int phyReg : rc.getAllocableRegs(mf))
+		for (int phyReg : rc.getAllocatableRegs(mf))
 		{
 			if (isPhyRegAvailable(phyReg))
 			{
