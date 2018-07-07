@@ -282,7 +282,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         float minWeigth = Float.MAX_VALUE;
         int minReg = 0;
         TargetRegisterClass rc = mri.getRegClass(cur.register);
-        for (int reg : rc.getAllocableRegs(mf))
+        for (int reg : rc.getAllocatableRegs(mf))
         {
             if (spillWeights[reg] <= minWeigth)
             {
@@ -487,7 +487,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private int getFreePhysReg(LiveInterval cur)
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
-        for (int reg : rc.getAllocableRegs(mf))
+        for (int reg : rc.getAllocatableRegs(mf))
         {
             if (prt.isRegAvail(reg))
                 return reg;

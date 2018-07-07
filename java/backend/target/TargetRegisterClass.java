@@ -114,7 +114,7 @@ public abstract class TargetRegisterClass
     /**
      * Returns all of register in current target machine, and contains unavailable
      * register. If want to obtain all available registers, just consulting by
-     * {@linkplain #getAllocableRegs(MachineFunction)}.
+     * {@linkplain #getAllocatableRegs(MachineFunction)}.
      * @return
      */
     public int[] getRegs()
@@ -156,7 +156,7 @@ public abstract class TargetRegisterClass
      * GR32RegisterClass have more register (R8D, R9D etc) in 64bit subtarget.
      * @return  An array of allocatable registers for specified sub-target.
      */
-    public int[] getAllocableRegs(MachineFunction mf)
+    public int[] getAllocatableRegs(MachineFunction mf)
     {
         return regs;
     }

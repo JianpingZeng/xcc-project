@@ -173,7 +173,7 @@ public abstract class TargetRegisterInfo
 	public static void getAllocatableSetForRC(MachineFunction mf,
 			TargetRegisterClass rc, BitMap r)
 	{
-		for (int reg : rc.getAllocableRegs(mf))
+		for (int reg : rc.getAllocatableRegs(mf))
 			r.set(reg);
 	}
 
