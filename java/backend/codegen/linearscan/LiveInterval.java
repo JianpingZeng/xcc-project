@@ -23,6 +23,7 @@ import tools.Util;
 
 import java.io.PrintStream;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.TreeSet;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
@@ -38,7 +39,14 @@ public final class LiveInterval
     LiveRange last;
     TreeSet<UsePoint> usePoints;
     LiveInterval splitParent;
-    LiveInterval splitChilden;
+    TreeSet<LiveInterval> splitChildren;
+
+    /**
+     * A comparator used for sorting the use points list.
+     */
+    private final static Comparator<UsePoint> UsePointComparator =
+            Comparator.comparingInt(o -> o.id);
+
     /**
      * Indicates if a move instruction should be inserted at the splitting position.
      */
@@ -46,9 +54,11 @@ public final class LiveInterval
 
     public LiveInterval()
     {
+        register = 0;
         first = LiveRange.EndMarker;
-        last = LiveRange.EndMarker;
-        usePoints = new TreeSet<>(Comparator.comparingInt(o -> o.id));
+        last = first;
+        usePoints = new TreeSet<>(UsePointComparator);
+        splitChildren = new TreeSet<>();
     }
 
     public void addRange(int from, int to)
@@ -114,20 +124,33 @@ public final class LiveInterval
 
     public boolean isLiveAt(int pos)
     {
-        // TODO: 18-7-6
+        if (pos < first.start || pos > last.end)
+            return false;
+
+        LiveRange itr = first;
+        while (itr != LiveRange.EndMarker)
+        {
+            if (itr.contains(pos))
+                return true;
+            itr = itr.next;
+        }
         return false;
     }
 
-    public boolean interset(LiveInterval cur)
+    public boolean intersect(LiveInterval cur)
     {
-        // TODO: 18-7-6
-        return false;
+        Util.assertion(cur != null);
+        if (cur.beginNumber() > endNumber())
+            return false;
+        if (cur.endNumber() < beginNumber())
+            return false;
+
+        return intersectAt(cur) != -1;
     }
 
-    public int intersetAt(LiveInterval cur)
+    public int intersectAt(LiveInterval cur)
     {
-        // TODO: 18-7-6
-        return 0;
+        return first.intersectsAt(cur.first);
     }
 
     public int beginNumber()
@@ -140,6 +163,27 @@ public final class LiveInterval
         return last.end;
     }
 
+    public boolean isSplitParent()
+    {
+        return splitParent == this;
+    }
+
+    public boolean isSplitChildren()
+    {
+        return !isSplitParent();
+    }
+
+    public LiveInterval getSplitParent()
+    {
+        Util.assertion(isSplitParent());
+        return splitParent;
+    }
+
+    public TreeSet<LiveInterval> getSplitChildren()
+    {
+        return splitChildren;
+    }
+
     public int getUsePointBefore(int pos)
     {
         UsePoint up = usePoints.floor(new UsePoint(pos, null));
@@ -147,15 +191,91 @@ public final class LiveInterval
         return up.id;
     }
 
-    public LiveInterval split(int pos,
+    private LiveInterval newSplitChild(WimmerLinearScanRegAllocator allocator)
+    {
+        LiveInterval res = new LiveInterval();
+        res.register = register;
+        res.splitParent = getSplitParent();
+        getSplitParent().splitChildren.add(res);
+        return res;
+    }
+
+    /**
+     * Splits this interval at a specified position and returns the remainder as
+     * a new <i>child</i> interval of this interval's {@linkplain #getSplitParent()
+     * parent} interval.
+     * <p>
+     * When an interval is split, a bi-directional link is established between
+     * the original <i>parent</i> interval and the <i>children</i> intervals
+     * that are split off this interval.
+     * @param splitPos
+     * @param regAlloc
+     * @return
+     */
+    public LiveInterval split(int splitPos,
             WimmerLinearScanRegAllocator regAlloc)
     {
-        return null;
+        LiveInterval child = newSplitChild(regAlloc);
+
+        // find the live range where splitPos resides
+        LiveRange cur = first, prev = null;
+        while (cur != LiveRange.EndMarker && cur.end <= splitPos)
+        {
+            prev = cur;
+            cur = cur.next;
+        }
+        Util.assertion(cur != LiveRange.EndMarker, "SplitPos after endNumber()!");
+
+        /*
+         *     splitPos
+         *       |
+         * |----------------|
+         * ^                ^
+         * cur.from      cur.to
+         */
+        if (cur.start < splitPos)
+        {
+            child.first = new LiveRange(splitPos, cur.end, cur.next);
+            cur.end = splitPos;
+            cur.next = LiveRange.EndMarker;
+        }
+        else
+        {
+            /*
+             * splitPos
+             * |
+             * |----------------|
+             * ^                ^
+             * cur.from      cur.to
+             * where, splitPos <= cur.from
+             */
+            child.first = cur;
+            Util.assertion(prev != null, "SplitPos before beginNumber()!");
+            prev.next = LiveRange.EndMarker;
+        }
+        // split the use points.
+        Iterator<UsePoint> itr = usePoints.iterator();
+        TreeSet<UsePoint> childUsePoints = new TreeSet<>();
+
+        while (itr.hasNext())
+        {
+            UsePoint up = itr.next();
+            if (up.id >= splitPos)
+            {
+                childUsePoints.add(up);
+                itr.remove();
+            }
+        }
+        child.usePoints = childUsePoints;
+        return child;
     }
 
     public boolean hasHoleBetween(int from, int to)
     {
-        return false;
+        Util.assertion(from < to);
+        if (to <= beginNumber()) return false;
+        if (from >= endNumber()) return false;
+        return first.intersectsAt(new LiveRange(from, to, null)) == -1;
     }
 
     public void setInsertedMove()

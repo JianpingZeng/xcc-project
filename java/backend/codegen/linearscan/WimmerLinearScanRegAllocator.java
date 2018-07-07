@@ -230,8 +230,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
 
         for (LiveInterval it : inactive)
         {
-            if (it.interset(cur))
-                freeUntilPos[it.register] = it.intersetAt(cur);
+            if (it.intersect(cur))
+                freeUntilPos[it.register] = it.intersectAt(cur);
         }
 
         int reg = -1;
