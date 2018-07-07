@@ -17,6 +17,8 @@
 
 package backend.codegen.linearscan;
 
+import tools.Util;
+
 import java.io.PrintStream;
 
 /**
@@ -62,5 +64,55 @@ public class LiveRange implements Comparable<LiveRange>
     public void dump()
     {
         print(System.err);
+    }
+
+    @Override
+    public String toString()
+    {
+        return String.format("[%d, %d)", start, end);
+    }
+
+    /**
+     * Determines the first id position where this intersects with r2.
+     * If no intersection, return -1.
+     * @param r2
+     * @return
+     */
+    public int intersectsAt(LiveRange r2)
+    {
+        LiveRange r1 = this;
+        Util.assertion(r2 != null && r2 != EndMarker);
+        Util.assertion(r1 != EndMarker);
+
+        while (true)
+        {
+            if (r1.start < r2.start)
+            {
+                if (r1.end <= r2.start)
+                {
+                    r1 = r1.next;
+                    if (r1 == EndMarker)
+                        return -1;
+                }
+                else
+                {
+                    return r2.start;
+                }
+            }
+            else
+            {
+                if (r1.start == r2.start)
+                    return r1.start;
+                // Otherwise, r1 > r2.start  <--> r2.start < r1.start
+                if (r2.end <= r1.start)
+                {
+                    r2 = r2.next;
+                    if (r2 == EndMarker)
+                        return -1;
+                }
+                else
+                    return r1.start;
+            }
+        }
     }
 }
