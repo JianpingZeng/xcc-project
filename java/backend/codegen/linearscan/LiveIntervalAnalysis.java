@@ -36,7 +36,6 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  */
 public final class LiveIntervalAnalysis extends MachineFunctionPass
 {
-
     public interface InstrSlots
     {
         int LOAD = 0;
@@ -400,6 +399,11 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         int id = pos / InstrSlots.NUM;
         Util.assertion(id >= 0 && id < idx2MI.length);
         return idx2MI[id].equals(idx2MI[id].getParent().getFirstInst());
+    }
+
+    public int getIndex(int id)
+    {
+        return id / LiveIntervalAnalysis.InstrSlots.NUM;
     }
 
     @Override
