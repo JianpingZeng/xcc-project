@@ -22,6 +22,7 @@ import backend.target.TargetRegisterInfo;
 import tools.Util;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.TreeSet;
@@ -39,7 +40,7 @@ public final class LiveInterval
     LiveRange last;
     TreeSet<UsePoint> usePoints;
     LiveInterval splitParent;
-    TreeSet<LiveInterval> splitChildren;
+    ArrayList<LiveInterval> splitChildren;
 
     /**
      * A comparator used for sorting the use points list.
@@ -58,7 +59,7 @@ public final class LiveInterval
         first = LiveRange.EndMarker;
         last = first;
         usePoints = new TreeSet<>(UsePointComparator);
-        splitChildren = new TreeSet<>();
+        splitChildren = new ArrayList<>();
     }
 
     public void addRange(int from, int to)
@@ -179,16 +180,61 @@ public final class LiveInterval
         return splitParent;
     }
 
-    public TreeSet<LiveInterval> getSplitChildren()
+    public ArrayList<LiveInterval> getSplitChildren()
     {
         return splitChildren;
     }
 
+    public LiveInterval getSplitChildBeforeOpId(int id)
+    {
+        assert id >= 0 : "invalid id";
+
+        LiveInterval parent = getSplitParent();
+        LiveInterval result = null;
+
+        assert !parent.splitChildren.isEmpty() : "no split children available";
+
+        int len = parent.splitChildren.size();
+        for (int i = len - 1; i >= 0; i--)
+        {
+            LiveInterval cur = parent.splitChildren.get(i);
+            if (cur.endNumber() <= id && (result == null
+                    || result.endNumber() < cur.endNumber()))
+            {
+                result = cur;
+            }
+        }
+
+        assert result != null : "no split child found";
+        return result;
+    }
+
+    /**
+     * Get the greatest use point before specified position.
+     * @param pos
+     * @return
+     */
     public int getUsePointBefore(int pos)
     {
         UsePoint up = usePoints.floor(new UsePoint(pos, null));
         Util.assertion(up != null);
         return up.id;
+    }
+
+    /**
+     * Get the least use point after specified position.
+     * @param pos
+     * @return
+     */
+    public int getUsePointAfter(int pos)
+    {
+        UsePoint up = usePoints.ceiling(new UsePoint(pos, null));
+        return up != null ? up.id : Integer.MAX_VALUE;
+    }
+
+    public int getFirstUse()
+    {
+        return usePoints.isEmpty() ? -1 : usePoints.first().id;
     }
 
     private LiveInterval newSplitChild(WimmerLinearScanRegAllocator allocator)

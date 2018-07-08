@@ -27,7 +27,10 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.TreeSet;
+
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
  * This class designed for implementing an advancing linear scan register allocator
@@ -73,10 +76,9 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private ArrayList<LiveInterval> active;
     private ArrayList<LiveInterval> inactive;
     private LiveIntervalAnalysis li;
-    private PhysRegTracker prt;
     private TargetRegisterInfo tri;
     private MachineRegisterInfo mri;
-    private VirtRegMap vrm;
+    private IntervalLocKeeper ilk;
     private MachineFunction mf;
     private MachineLoop ml;
 
@@ -97,9 +99,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         inactive.clear();
         this.mf = mf;
         tri = mf.getTarget().getRegisterInfo();
-        prt = new PhysRegTracker(tri);
         mri = mf.getMachineRegisterInfo();
-        vrm = new VirtRegMap(mf);
+        ilk = new IntervalLocKeeper(mf);
 
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
@@ -178,8 +179,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             int phyReg = getFreePhysReg(cur);
             if (phyReg != 0)
             {
-                vrm.assignVirt2Phys(cur.register, phyReg);
-                prt.addRegUse(phyReg);
+                ilk.assignInterval2Phys(cur, phyReg);
                 active.add(cur);
                 return;
             }
@@ -201,15 +201,188 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
         int[] allocatableRegs = rc.getAllocatableRegs(mf);
-        int[] nextUsePos = new int[rc.getNumRegs()];
+        int[] freeUntilPos = new int[rc.getNumRegs()];
+        int[] blockPosBy = new int[rc.getNumRegs()];
+
         // set the free position of all free physical register as
         // integral max value.
         for (int reg : allocatableRegs)
         {
-            nextUsePos[reg] = Integer.MAX_VALUE;
+            freeUntilPos[reg] = Integer.MAX_VALUE;
+            blockPosBy[reg] = Integer.MAX_VALUE;
         }
-        // TODO: 18-7-6
-        return -1;
+        for (LiveInterval it : active)
+        {
+            if (!isPhysicalRegister(it.register))
+                freeUntilPos[ilk.getPhyReg(it)] = cur.getUsePointAfter(cur.beginNumber());
+            else
+                blockPosBy[it.register] = 0;
+        }
+        for (LiveInterval it : inactive)
+        {
+            if (!it.intersect(cur))
+                continue;
+
+            if (!isPhysicalRegister(it.register))
+                freeUntilPos[ilk.getPhyReg(it)] = cur.getUsePointAfter(cur.beginNumber());
+            else
+                blockPosBy[it.register] = it.intersectAt(cur);
+        }
+
+
+        int reg = -1;
+        int max = -1;
+        for (int i = 0; i < freeUntilPos.length; i++)
+        {
+            if (freeUntilPos[i] > max)
+            {
+                max = freeUntilPos[i];
+                reg = i;
+            }
+        }
+        Util.assertion(reg != -1, "No physical register found!");
+        int firstUseOfCurr = cur.getFirstUse();
+        if (freeUntilPos[reg] < firstUseOfCurr)
+        {
+            // all active and inactive interval are used before first use of current interval.
+            // so we need to spill current interval and split it at an optimal position
+            // before firstUseOfCurr.
+            LiveInterval splitedChild = splitBeforeUsage(cur, freeUntilPos[reg]+1, firstUseOfCurr);
+            unhandled.add(splitedChild);
+
+            // return -1 indicates current interval would be assigned with a stack slot.
+            return -1;
+        }
+        int splitPos = blockPosBy[reg];
+        boolean needsSplit = splitPos <= cur.endNumber();
+        Util.assertion(splitPos > 0);
+        Util.assertion(needsSplit || splitPos > cur.beginNumber());
+
+        // register not available for full interval : so split it
+        // FIXME 2018-7-8, assign the current interval to reg.
+        ilk.assignInterval2Phys(cur, reg);
+        if (needsSplit)
+            unhandled.add(splitIntervalWhenPartialAvailable(cur, splitPos));
+
+        // perform splitting and spilling for all affected intervals
+        splitAndSpillIntersectingInterval(reg);
+        return reg;
+    }
+
+    private void splitAndSpillIntersectingInterval(int reg)
+    {
+        for (Iterator<LiveInterval> itr = active.iterator(); itr.hasNext(); )
+        {
+            LiveInterval it = itr.next();
+            int allocatedReg = isPhysicalRegister(it.register) ? it.register :
+                    ilk.getPhyReg(it);
+            if (allocatedReg != reg)
+                continue;
+            if (it.intersect(cur))
+            {
+                itr.remove();
+                splitAndSpill(it, true);
+            }
+        }
+        for (Iterator<LiveInterval> itr = inactive.iterator(); itr.hasNext(); )
+        {
+            LiveInterval it = itr.next();
+            int allocatedReg = isPhysicalRegister(it.register) ? it.register :
+                    ilk.getPhyReg(it);
+            if (allocatedReg != reg)
+                continue;
+            if (it.intersect(cur))
+            {
+                itr.remove();
+                splitAndSpill(it, false);
+            }
+        }
+    }
+
+    private void splitAndSpill(LiveInterval it, boolean isActive)
+    {
+        if (isActive)
+        {
+            int minSplitPos = position+1;
+            int maxSplitPos = Math.min(it.getUsePointAfter(minSplitPos), it.endNumber());
+            LiveInterval splitted = splitBeforeUsage(it, minSplitPos, maxSplitPos);
+            unhandled.add(splitted);
+            splitForSpilling(it);
+        }
+        else
+        {
+            Util.assertion(it.hasHoleBetween(position-1, position+1));
+            unhandled.add(splitBeforeUsage(it, position+1, position+1));
+        }
+    }
+
+    /**
+     * <pre>
+     * split an interval at the optimal position between minSplitPos and
+     * maxSplitPos in two parts:
+     * 1) the left part has already a location assigned
+     * 2) the right part is always on the stack and therefore ignored in further processing
+     * </pre>
+     * @param it
+     */
+    private void splitForSpilling(LiveInterval it)
+    {
+        int maxSplitPos = position;
+        int minSplitPos = Math.max(it.getUsePointBefore(maxSplitPos)+1, it.beginNumber());
+
+        // the whole interval is never used, so spill it entirely to memory
+        if(minSplitPos == it.beginNumber())
+        {
+            Util.assertion(it.getFirstUse() > position);
+            ilk.assignInterval2StackSlot(it);
+
+            LiveInterval parent = it;
+            while (parent != null && parent.isSplitChildren())
+            {
+                parent = parent.getSplitChildBeforeOpId(parent.beginNumber());
+                if (ilk.isAssignedPhyReg(parent))
+                {
+                    if (parent.getFirstUse() == Integer.MAX_VALUE)
+                    {
+                        // parent is never used, so kick it out of its assigned register
+                        ilk.assignInterval2StackSlot(parent);
+                    }
+                    else
+                    {
+                        // exit!
+                        parent = null;
+                    }
+                }
+            }
+        }
+        else
+        {
+            int optimalSplitPos = findOptimalSplitPos(it, minSplitPos, maxSplitPos);
+            LiveInterval splittedChild = it.split(optimalSplitPos, this);
+            ilk.assignInterval2StackSlot(splittedChild);
+            insertMove(optimalSplitPos, it, splittedChild);
+        }
+    }
+
+    /**
+     * Insert a move instruction at the specified position from source interval to
+     * destination interval.
+     * @param insertedPos
+     * @param srcIt
+     * @param destIt
+     */
+    private void insertMove(int insertedPos, LiveInterval srcIt, LiveInterval destIt)
+    {
+        // output all moves here. When source and target are equal, the move is
+        // optimized away later in assignRegNums
+        insertedPos = (insertedPos + 1) & ~1;
+        MachineBasicBlock mbb = li.getBlockAtId(insertedPos);
+        Util.assertion(mbb != null);
+
+        int index = li.getIndex(insertedPos) - li.getIndex(li.mi2Idx.get(mbb.getFirstInst()));
+        Util.assertion(index >= 0 && index < mbb.size());
+        Util.shouldNotReachHere("Should insert move instruction");
+        // TODO 2018-7-8, insert new instruction before instruction at position index
     }
 
     private int getFreePhysReg(LiveInterval cur)
@@ -226,12 +399,12 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // set the free position of that register occupied by active
         // as 0.
         for (LiveInterval it : active)
-            freeUntilPos[it.register] = 0;
+            freeUntilPos[ilk.getPhyReg(it)] = 0;
 
         for (LiveInterval it : inactive)
         {
             if (it.intersect(cur))
-                freeUntilPos[it.register] = it.intersectAt(cur);
+                freeUntilPos[ilk.getPhyReg(it)] = it.intersectAt(cur);
         }
 
         int reg = -1;
@@ -258,7 +431,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         {
             // register available for first part of current interval.
             // split current at optimal position before freePos[reg].
-            splitIntervalWhenPartialAvailable(cur, freeUntilPos[reg]);
+            unhandled.add(splitIntervalWhenPartialAvailable(cur, freeUntilPos[reg]));
             return reg;
         }
     }
@@ -268,10 +441,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
      * @param it
      * @param regAvaliableUntil
      */
-    private void splitIntervalWhenPartialAvailable(LiveInterval it, int regAvaliableUntil)
+    private LiveInterval splitIntervalWhenPartialAvailable(LiveInterval it, int regAvaliableUntil)
     {
         int minSplitPos = Math.max(it.getUsePointBefore(regAvaliableUntil), it.beginNumber());
-        splitBeforeUsage(it, minSplitPos, regAvaliableUntil);
+        return splitBeforeUsage(it, minSplitPos, regAvaliableUntil);
     }
 
     /**
@@ -286,7 +459,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
      * @param minSplitPos
      * @param maxSplitPos
      */
-    private void splitBeforeUsage(LiveInterval it, int minSplitPos, int maxSplitPos)
+    private LiveInterval splitBeforeUsage(LiveInterval it, int minSplitPos, int maxSplitPos)
     {
         Util.assertion(minSplitPos < maxSplitPos);
         Util.assertion(minSplitPos > cur.beginNumber());
@@ -300,12 +473,11 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         {
             // If the optimal split position is at the end of current interval,
             // so splitting is not at all necessary.
-            return;
+            return null;
         }
         LiveInterval rightPart = it.split(optimalSplitPos, this);
         rightPart.setInsertedMove();
-
-        unhandled.add(rightPart);
+        return rightPart;
     }
 
     private int findOptimalSplitPos(
