@@ -311,7 +311,7 @@ public abstract class TargetInstrInfo
 	/// class from the specified stack frame index. The load instruction is to be
 	/// added to the given machine basic block before the specified machine
 	/// instruction.
-	public  void loadRegFromStackSlot(MachineBasicBlock mbb,
+	public void loadRegFromStackSlot(MachineBasicBlock mbb,
 			int pos,
 			int destReg,
 			int frameIndex,
