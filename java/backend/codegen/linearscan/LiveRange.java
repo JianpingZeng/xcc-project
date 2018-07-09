@@ -53,12 +53,12 @@ public class LiveRange implements Comparable<LiveRange>
 
     public boolean contains(int idx)
     {
-        return start <= idx && idx <= end;
+        return start < idx && idx < end;
     }
 
     public void print(PrintStream os)
     {
-        os.printf("[%d,%d)", start, end);
+        os.print(toString());
     }
 
     public void dump()
@@ -69,7 +69,7 @@ public class LiveRange implements Comparable<LiveRange>
     @Override
     public String toString()
     {
-        return String.format("[%d, %d)", start, end);
+        return String.format("[%d, %d]", start, end);
     }
 
     /**

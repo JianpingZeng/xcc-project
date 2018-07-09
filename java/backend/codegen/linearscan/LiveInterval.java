@@ -83,8 +83,16 @@ public final class LiveInterval
         else
         {
             // create a new LiveRange.
-            last = first;
-            first = new LiveRange(from, to, first);
+            if (first == last)
+            {
+                first = last = new LiveRange(from, to, first);
+            }
+            else
+            {
+                LiveRange r = new LiveRange(from, to, last.next);
+                last.next = r;
+                last = r;
+            }
         }
     }
 
@@ -112,11 +120,19 @@ public final class LiveInterval
         while (r != LiveRange.EndMarker)
         {
             r.dump();
-            if (r.next != null)
-                System.err.print(",");
+            System.err.print(",");
             r = r.next;
         }
-        System.err.println();
+        System.err.print(" Use points: [");
+        int i = 0, size = usePoints.size();
+        for (UsePoint up : usePoints)
+        {
+            System.err.printf("%d", up.id);
+            if (i < size - 1)
+                System.err.print(",");
+            ++i;
+        }
+        System.err.println("]");
     }
     public void dump(TargetRegisterInfo tri)
     {
@@ -125,12 +141,12 @@ public final class LiveInterval
 
     public boolean isExpiredAt(int pos)
     {
-        return getLast().end < pos;
+        return getLast().end <= pos;
     }
 
     public boolean isLiveAt(int pos)
     {
-        if (pos < first.start || pos > last.end)
+        if (pos <= first.start || pos >= last.end)
             return false;
 
         LiveRange itr = first;
@@ -181,8 +197,10 @@ public final class LiveInterval
 
     public LiveInterval getSplitParent()
     {
-        Util.assertion(isSplitParent());
-        return splitParent;
+        if (isSplitParent())
+            return this;
+        else
+            return splitParent.getSplitParent();
     }
 
     public ArrayList<LiveInterval> getSplitChildren()
@@ -190,6 +208,10 @@ public final class LiveInterval
         return splitChildren;
     }
 
+    public boolean hasSplitChildren()
+    {
+        return splitChildren != null && !splitChildren.isEmpty();
+    }
     public LiveInterval getSplitChildBeforeOpId(int id)
     {
         assert id >= 0 : "invalid id";
@@ -197,8 +219,7 @@ public final class LiveInterval
         LiveInterval parent = getSplitParent();
         LiveInterval result = null;
 
-        assert !parent.splitChildren.isEmpty() : "no split children available";
-
+        Util.assertion(parent.hasSplitChildren(), "no split children available");
         int len = parent.splitChildren.size();
         for (int i = len - 1; i >= 0; i--)
         {
@@ -209,14 +230,24 @@ public final class LiveInterval
                 result = cur;
             }
         }
-
-        assert result != null : "no split child found";
+        Util.assertion(result != null, "no split child found");
         return result;
     }
 
     public LiveInterval getSplitChildAtOpId(int id)
     {
-        // TODO: 18-7-9
+        LiveInterval parent = getSplitParent();
+        LiveInterval result = null;
+        Util.assertion(parent.hasSplitChildren(), "no split children available");
+
+        int len = parent.splitChildren.size();
+        for (int i = len - 1; i >= 0; i--)
+        {
+            LiveInterval cur = parent.splitChildren.get(i);
+            if (cur.isLiveAt(id))
+                result = cur;
+        }
+        return result;
     }
 
     /**
