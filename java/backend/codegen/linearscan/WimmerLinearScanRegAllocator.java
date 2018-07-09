@@ -81,6 +81,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private IntervalLocKeeper ilk;
     private MachineFunction mf;
     private MachineLoop ml;
+    private MoveResolver resolver;
 
     public WimmerLinearScanRegAllocator()
     {
@@ -88,6 +89,16 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         handled = new ArrayList<>();
         active = new ArrayList<>();
         inactive = new ArrayList<>();
+    }
+
+    public TargetRegisterInfo getRegisterInfo()
+    {
+        return tri;
+    }
+
+    public IntervalLocKeeper getIntervalLocKeeper()
+    {
+        return ilk;
     }
 
     @Override
@@ -101,6 +112,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         tri = mf.getTarget().getRegisterInfo();
         mri = mf.getMachineRegisterInfo();
         ilk = new IntervalLocKeeper(mf);
+        resolver = new MoveResolver(this);
 
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
@@ -113,6 +125,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // walk the intervals
         linearScan();
         Util.assertion(false, "Following waiting to be finished");
+
         return false;
     }
 
@@ -258,8 +271,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         Util.assertion(splitPos > 0);
         Util.assertion(needsSplit || splitPos > cur.beginNumber());
 
-        // register not available for full interval : so split it
-        // FIXME 2018-7-8, assign the current interval to reg.
+        // register not available for full interval : so split it, assign the current interval to reg.
         ilk.assignInterval2Phys(cur, reg);
         if (needsSplit)
             unhandled.add(splitIntervalWhenPartialAvailable(cur, splitPos));
@@ -381,8 +393,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
 
         int index = li.getIndex(insertedPos) - li.getIndex(li.mi2Idx.get(mbb.getFirstInst()));
         Util.assertion(index >= 0 && index < mbb.size());
-        Util.shouldNotReachHere("Should insert move instruction");
-        // TODO 2018-7-8, insert new instruction before instruction at position index
+        resolver.insertMoveInstr(mbb, index-1);
+        resolver.addMapping(srcIt, destIt);
     }
 
     private int getFreePhysReg(LiveInterval cur)
