@@ -77,6 +77,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private ArrayList<LiveInterval> handled;
     private ArrayList<LiveInterval> active;
     private ArrayList<LiveInterval> inactive;
+    private ArrayList<LiveInterval> fixed;
     private LiveIntervalAnalysis li;
     private TargetRegisterInfo tri;
     private MachineRegisterInfo mri;
@@ -95,6 +96,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         handled = new ArrayList<>();
         active = new ArrayList<>();
         inactive = new ArrayList<>();
+        fixed = new ArrayList<>();
     }
 
     public LiveIntervalAnalysis getLiveIntervals()
@@ -140,6 +142,13 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // Step #2: walk the intervals
         linearScan();
 
+        // after linearscan, if there are any interval contained in active or inactive,
+        // remove ti from original list and add it into handled list.
+        if (!active.isEmpty())
+            handled.addAll(active);
+        if (!inactive.isEmpty())
+            handled.addAll(inactive);
+
         // Step #3: resolve move
         resolveDataflow();
 
@@ -155,6 +164,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         handled.clear();
         active.clear();
         inactive.clear();
+        fixed.clear();
         li = null;
         tri = null;
         mri = null;
@@ -220,6 +230,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             Util.assertion(cur != null);
 
             position = cur.getFirst().start;
+
             // pre-handling, like move expired interval from active to handled list.
             prehandled(position);
 
@@ -231,7 +242,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             {
                 ilk.assignInterval2Phys(cur, phyReg);
                 active.add(cur);
-                return;
+                continue;
             }
 
             if (Util.DEBUG)
@@ -262,8 +273,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
         int[] allocatableRegs = rc.getAllocatableRegs(mf);
-        int[] freeUntilPos = new int[rc.getNumRegs()];
-        int[] blockPosBy = new int[rc.getNumRegs()];
+        int[] freeUntilPos = new int[tri.getNumRegs()];
+        int[] blockPosBy = new int[tri.getNumRegs()];
 
         // set the free position of all free physical register as
         // integral max value.
@@ -449,7 +460,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
         int[] allocatableRegs = rc.getAllocatableRegs(mf);
-        int[] freeUntilPos = new int[rc.getNumRegs()];
+        int[] freeUntilPos = new int[tri.getNumRegs()];
         // set the free position of all free physical register as
         // integral max value.
         for (int reg : allocatableRegs)
@@ -599,7 +610,13 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
 
     private void initIntervalSet()
     {
-        unhandled.addAll(li.intervals.values());
+        for (LiveInterval it : li.intervals.values())
+        {
+            if (isPhysicalRegister(it.register))
+                fixed.add(it);
+            else
+                unhandled.add(it);
+        }
     }
 
     private void resolveDataflow()
@@ -623,11 +640,12 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
                     if (liveIn.isEmpty())
                         continue;
 
-                    // FIXME: 18-7-9
                     for (int reg = liveIn.findFirst(); reg != -1; reg = liveIn.findNext(reg))
                     {
                         LiveInterval parent = li.intervals.get(reg);
                         Util.assertion(parent != null);
+                        parent = parent.getSplitParent();
+
                         LiveInterval srcIt = parent.getSplitChildAtOpId(li.mi2Idx.get(cur.getLastInst()));
                         LiveInterval dstIt = parent.getSplitChildAtOpId(li.mi2Idx.get(succ.getFirstInst()));
                         if (!srcIt.equals(dstIt))

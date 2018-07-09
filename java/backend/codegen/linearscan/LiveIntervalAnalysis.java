@@ -73,6 +73,9 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         // target, for example, X86.
         au.addRequired(TwoAddrInstructionPass.class);
 
+        au.addPreserved(MachineLoop.class);
+        au.addRequired(MachineLoop.class);
+
         super.getAnalysisUsage(au);
     }
 
@@ -84,6 +87,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         int size = mf.getNumBlocks();
         int[] numIncomingBranches = new int[size];
         MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+        Util.assertion(ml != null);
 
         ArrayList<MachineBasicBlock> mbbs = mf.getBasicBlocks();
         for (int i = 0; i < size; i++)

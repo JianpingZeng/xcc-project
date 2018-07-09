@@ -38,7 +38,7 @@ public class IntervalLocKeeper
         mfi = mf.getFrameInfo();
         tri = mf.getTarget().getRegisterInfo();
         interval2PhyReg = new TObjectIntHashMap<>();
-        interval2PhyReg = new TObjectIntHashMap<>();
+        interval2StackSlot = new TObjectIntHashMap<>();
     }
 
     public void assignInterval2Phys(LiveInterval it, int phyReg)
