@@ -24,6 +24,7 @@ import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
+import tools.BitMap;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -603,8 +604,60 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
 
     private void resolveDataflow()
     {
-        //
-        // TODO: 18-7-9
+        // find the position where a move instruction needs to be inserted.
+        TreeSet<MachineBasicBlock> uniqueMBBs = new TreeSet<>();
+        BitMap[] liveIns = li.liveIns;
+        Util.assertion(liveIns.length == mf.getNumBlocks());
+
+        for (MachineBasicBlock cur : mf.getBasicBlocks())
+        {
+            if (!cur.succIsEmpty())
+            {
+                for (Iterator<MachineBasicBlock> itr = cur.succIterator(); itr.hasNext();)
+                {
+                    MachineBasicBlock succ = itr.next();
+                    // avoiding handle a block multiple times.
+                    if (!uniqueMBBs.add(succ))
+                        continue;
+                    BitMap liveIn = liveIns[succ.getNumber()];
+                    if (liveIn.isEmpty())
+                        continue;
+
+                    // FIXME: 18-7-9
+                    for (int reg = liveIn.findFirst(); reg != -1; reg = liveIn.findNext(reg))
+                    {
+                        LiveInterval parent = li.intervals.get(reg);
+                        Util.assertion(parent != null);
+                        LiveInterval srcIt = parent.getSplitChildAtOpId(li.mi2Idx.get(cur.getLastInst()));
+                        LiveInterval dstIt = parent.getSplitChildAtOpId(li.mi2Idx.get(succ.getFirstInst()));
+                        if (!srcIt.equals(dstIt))
+                        {
+                            resolver.addMapping(srcIt, dstIt);
+                        }
+                    }
+
+                    // find a position to insert a move instruction.
+                    findPosAndInsertMove(cur, succ);
+                    // resolve map
+                    resolver.resolveMappings();
+                }
+                uniqueMBBs.clear();
+            }
+        }
+    }
+
+    private void findPosAndInsertMove(MachineBasicBlock src, MachineBasicBlock dst)
+    {
+        if (src.getNumSuccessors() <= 1)
+        {
+            // insert a move instruction at the end of source basic block.
+            resolver.insertMoveInstr(src, src.getLastInst().index());
+        }
+        else
+        {
+            // insert a move instruction at the begining of destination block.
+            resolver.insertMoveInstr(dst, dst.getFirstInst().index());
+        }
     }
 
     @Override

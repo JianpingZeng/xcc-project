@@ -108,7 +108,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
         }
 
         // cleanup phi node.
-        for (int i = 0, e = mf.getNumBlockIDs(); i < e; i++)
+        for (int i = 0, e = mf.getNumBlocks(); i < e; i++)
         {
             // Prune the unneeded PHI nodes.
             MachineBasicBlock mbb = mf.getMBBAt(i);

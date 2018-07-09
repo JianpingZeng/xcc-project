@@ -162,7 +162,7 @@ public final class MoveResolver
         }
     }
 
-    private void  resolveMappings()
+    public void  resolveMappings()
     {
         // Block all registers that are used as input operands of a move.
         // When a register is blocked, no move to this register is emitted.

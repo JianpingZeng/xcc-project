@@ -56,6 +56,8 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     private TargetRegisterInfo tri;
 
     TreeMap<Integer, LiveInterval> intervals;
+    BitMap[] liveIns;
+    BitMap[] liveOuts;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -79,7 +81,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     {
         tri = mf.getTarget().getRegisterInfo();
 
-        int size = mf.getNumBlockIDs();
+        int size = mf.getNumBlocks();
         int[] numIncomingBranches = new int[size];
         MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
 
@@ -136,8 +138,8 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         computeLocalLiveSet(sequence, liveGen, liveKill);
 
         // Step #3: compute global live set.
-        BitMap[] liveIns = new BitMap[size];
-        BitMap[] liveOuts = new BitMap[size];
+        liveIns = new BitMap[size];
+        liveOuts = new BitMap[size];
         computeGlobalLiveSet(sequence, liveIns, liveOuts, liveGen, liveKill);
 
         // Step #4: number the machine instruction
