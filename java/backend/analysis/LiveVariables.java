@@ -198,8 +198,8 @@ public final class LiveVariables extends MachineFunctionPass
         phyRegDef = new MachineInstr[numRegs];
         phyRegUses = new MachineInstr[numRegs];
 
-        phiVarInfo = new TIntArrayList[mf.getNumBlockIDs()];
-        for (int i = 0; i < mf.getNumBlockIDs(); i++)
+        phiVarInfo = new TIntArrayList[mf.getNumBlocks()];
+        for (int i = 0; i < mf.getNumBlocks(); i++)
             phiVarInfo[i] = new TIntArrayList();
 
         analyzePhiNodes(mf);

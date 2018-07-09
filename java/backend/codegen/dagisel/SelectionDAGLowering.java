@@ -851,7 +851,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
         MachineBasicBlock nextMBB = null;
         int itr = funcInfo.mf.getIndexOfMBB(curMBB);
-        if (++itr < funcInfo.mf.getNumBlockIDs())
+        if (++itr < funcInfo.mf.getNumBlocks())
             nextMBB = funcInfo.mf.getMBBAt(itr);
 
         if (bi.isUnconditional())
@@ -1083,7 +1083,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
 
         MachineBasicBlock nextBlock = null;
         int idx = curMBB.getParent().getIndexOfMBB(curMBB);
-        if (++idx < curMBB.getParent().getNumBlockIDs())
+        if (++idx < curMBB.getParent().getNumBlocks())
             nextBlock = curMBB.getParent().getMBBAt(idx);
 
         if (cb.trueMBB.equals(nextBlock))
@@ -1121,7 +1121,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         SwitchInst si = (SwitchInst) inst;
         MachineBasicBlock nextBB = null;
         int idx = curMBB.getParent().getIndexOfMBB(curMBB);
-        if (++idx < curMBB.getParent().getNumBlockIDs())
+        if (++idx < curMBB.getParent().getNumBlocks())
             nextBB = curMBB.getParent().getMBBAt(idx);
 
         MachineBasicBlock defaultBB = funcInfo.mbbmap.get(si.getDefaultBlock());
@@ -1444,7 +1444,7 @@ public class SelectionDAGLowering implements InstVisitor<Void>
             }
         }
 
-        BitMap succHandled = new BitMap(cr.mbb.getParent().getNumBlockIDs());
+        BitMap succHandled = new BitMap(cr.mbb.getParent().getNumBlocks());
         for (MachineBasicBlock mbb : destMBBs)
         {
             if (!succHandled.get(mbb.getNumber()))

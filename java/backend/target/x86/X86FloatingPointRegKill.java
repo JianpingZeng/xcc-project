@@ -67,7 +67,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass
         boolean changed = false;
 
         X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
-        for (int i = 0, e = mf.getNumBlockIDs();i < e; i++)
+        for (int i = 0, e = mf.getNumBlocks(); i < e; i++)
         {
             MachineBasicBlock mbb = mf.getMBBAt(i);
             // if this mbb is return mbb, ignore it. We don't want to insert an FP_REG_KILL

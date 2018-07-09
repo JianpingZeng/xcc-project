@@ -13,7 +13,6 @@ import backend.value.Function;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Pair;
-import tools.Util;
 
 import java.util.ArrayList;
 
@@ -1096,7 +1095,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rr : MOV32rr), framePtr).addReg(stackPtr);
 
 			// mark the frameptr as live-in in every block excepts the entry.
-			for (int i = 1, e = mf.getNumBlockIDs(); i < e; i++)
+			for (int i = 1, e = mf.getNumBlocks(); i < e; i++)
 			{
 				mf.getBasicBlocks().get(i).addLiveIn(framePtr);
 

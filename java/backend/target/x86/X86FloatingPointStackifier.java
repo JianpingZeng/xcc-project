@@ -27,7 +27,6 @@ import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
-import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1329,7 +1328,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass
         }
 
         // Process any unreachable basic block.
-        if (processed.size() != mf.getNumBlockIDs())
+        if (processed.size() != mf.getNumBlocks())
         {
             HashSet<MachineBasicBlock> set = new HashSet<>();
             set.addAll(processed);

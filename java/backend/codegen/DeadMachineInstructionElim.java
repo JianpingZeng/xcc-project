@@ -85,7 +85,7 @@ public class DeadMachineInstructionElim extends MachineFunctionPass
         boolean changed = false;
         TIntArrayList defRegs = new TIntArrayList();
         TIntArrayList useRegs = new TIntArrayList();
-        for (int i = mf.getNumBlockIDs() - 1; i >= 0; --i)
+        for (int i = mf.getNumBlocks() - 1; i >= 0; --i)
         {
             MachineBasicBlock mbb = mf.getMBBAt(i);
             livePhysReg.setFrom(noAllocatableSet);

@@ -66,7 +66,7 @@ public class EdgeBundles extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
-        ec = new IntEqClasses(mf.getNumBlockIDs()*2);
+        ec = new IntEqClasses(mf.getNumBlocks()*2);
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             int outEdge = mbb.getNumber()*2 + 1;
@@ -88,7 +88,7 @@ public class EdgeBundles extends MachineFunctionPass
                 groupID.put(leading, nextID++);
         }
 
-        for (int i = 0, e = mf.getNumBlockIDs(); i < e; i++)
+        for (int i = 0, e = mf.getNumBlocks(); i < e; i++)
         {
             int b0 = getBundles(i, false);
             int b1 = getBundles(i, true);

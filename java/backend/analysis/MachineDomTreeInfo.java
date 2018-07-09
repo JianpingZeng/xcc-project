@@ -242,7 +242,7 @@ public final class MachineDomTreeInfo
     public void recalculate(MachineFunction mf)
     {
         m = mf;
-        this.Vertex = new MachineBasicBlock[m.getNumBlockIDs()];
+        this.Vertex = new MachineBasicBlock[m.getNumBlocks()];
         if (!IsPostDominators)
         {
             // initialize the root

@@ -110,7 +110,7 @@ public class MachineFunction
 	 * returns the number of allocated blocks ID.
 	 * @return
 	 */
-	public int getNumBlockIDs()
+	public int getNumBlocks()
 	{
 		return mbbNumber.size();
 	}
