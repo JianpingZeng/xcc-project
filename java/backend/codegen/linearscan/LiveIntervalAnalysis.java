@@ -53,8 +53,9 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
      */
     HashMap<MachineInstr, Integer> mi2Idx;
 
-    TreeMap<Integer, LiveInterval> intervals;
     private TargetRegisterInfo tri;
+
+    TreeMap<Integer, LiveInterval> intervals;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -189,7 +190,6 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     private void buildIntervals(ArrayList<MachineBasicBlock> sequence, BitMap[] liveOuts)
     {
         intervals = new TreeMap<>();
-
         for (int i = sequence.size()-1; i>= 0; i--)
         {
             MachineBasicBlock mbb = sequence.get(i);
@@ -206,6 +206,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                 else
                 {
                     li = new LiveInterval();
+                    li.register = reg;
                     intervals.put(reg, li);
                 }
                 li.addRange(blockFrom, blockTo);

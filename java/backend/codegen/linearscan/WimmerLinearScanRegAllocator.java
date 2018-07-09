@@ -21,6 +21,7 @@ import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
@@ -82,6 +83,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private MachineFunction mf;
     private MachineLoop ml;
     private MoveResolver resolver;
+    private TargetInstrInfo tii;
+    private LiveInterval cur;
+    private int position;
+    private SimpleVirtualRegSpiller spiller;
 
     public WimmerLinearScanRegAllocator()
     {
@@ -89,6 +94,11 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         handled = new ArrayList<>();
         active = new ArrayList<>();
         inactive = new ArrayList<>();
+    }
+
+    public LiveIntervalAnalysis getLiveIntervals()
+    {
+        return li;
     }
 
     public TargetRegisterInfo getRegisterInfo()
@@ -101,32 +111,60 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         return ilk;
     }
 
+    public TargetInstrInfo getInstrInfo()
+    {
+        return tii;
+    }
+
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        unhandled.clear();
-        handled.clear();
-        active.clear();
-        inactive.clear();
         this.mf = mf;
         tri = mf.getTarget().getRegisterInfo();
+        tii = mf.getTarget().getInstrInfo();
         mri = mf.getMachineRegisterInfo();
         ilk = new IntervalLocKeeper(mf);
         resolver = new MoveResolver(this);
 
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+        spiller = new SimpleVirtualRegSpiller(ilk);
+
         Util.assertion(ml != null);
         Util.assertion(li != null);
 
         // Step #1: initialize the interval list.
         initIntervalSet();
 
-        // walk the intervals
+        // Step #2: walk the intervals
         linearScan();
-        Util.assertion(false, "Following waiting to be finished");
 
-        return false;
+        // Step #3: resolve move
+        resolveDataflow();
+
+        // Step #4: rewrite the instruction's operand according to it's assigned location.
+        spiller.runOnMachineFunction(mf, handled);
+        clear();
+        return true;
+    }
+
+    private void clear()
+    {
+        unhandled.clear();
+        handled.clear();
+        active.clear();
+        inactive.clear();
+        li = null;
+        tri = null;
+        mri = null;
+        ilk = null;
+        mf = null;
+        ml = null;
+        resolver = null;
+        tii = null;
+        cur = null;
+        position = -1;
+        spiller = null;
     }
 
     private void prehandled(int position)
@@ -172,8 +210,6 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             }
         }
     }
-    private LiveInterval cur;
-    private int position;
 
     private void linearScan()
     {
@@ -206,7 +242,18 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             }
 
             phyReg = allocateBlockedRegister(cur);
-            Util.assertion(phyReg != 0, "No register to be assigned!");
+            if (phyReg != 0)
+            {
+                ilk.assignInterval2Phys(cur, phyReg);
+                active.add(cur);
+            }
+            else
+            {
+                // Otherwise, current interval would be splitted and spill it's right part
+                // into stack.
+                ilk.assignInterval2StackSlot(cur);
+                handled.add(cur);
+            }
         }
     }
 
@@ -263,8 +310,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             LiveInterval splitedChild = splitBeforeUsage(cur, freeUntilPos[reg]+1, firstUseOfCurr);
             unhandled.add(splitedChild);
 
-            // return -1 indicates current interval would be assigned with a stack slot.
-            return -1;
+            // return 0 indicates current interval would be assigned with a stack slot.
+            return 0;
         }
         int splitPos = blockPosBy[reg];
         boolean needsSplit = splitPos <= cur.endNumber();
@@ -552,6 +599,12 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private void initIntervalSet()
     {
         unhandled.addAll(li.intervals.values());
+    }
+
+    private void resolveDataflow()
+    {
+        //
+        // TODO: 18-7-9
     }
 
     @Override

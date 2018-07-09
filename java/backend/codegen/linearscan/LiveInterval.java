@@ -62,6 +62,11 @@ public final class LiveInterval
         splitChildren = new ArrayList<>();
     }
 
+    public TreeSet<UsePoint> getUsePoints()
+    {
+        return usePoints;
+    }
+
     public void addRange(int from, int to)
     {
         Util.assertion(from < to, "Invalid range!");
