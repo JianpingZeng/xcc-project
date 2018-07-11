@@ -622,7 +622,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private void resolveDataflow()
     {
         // find the position where a move instruction needs to be inserted.
-        TreeSet<MachineBasicBlock> uniqueMBBs = new TreeSet<>();
+        TreeSet<MachineBasicBlock> uniqueMBBs = new TreeSet<>(Comparator.comparingInt(Object::hashCode));
         BitMap[] liveIns = li.liveIns;
         Util.assertion(liveIns.length == mf.getNumBlocks());
 

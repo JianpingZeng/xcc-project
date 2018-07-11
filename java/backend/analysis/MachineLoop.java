@@ -127,7 +127,7 @@ public class MachineLoop extends MachineFunctionPass
                     }
                 }
 
-                l.blocks.add(cur);
+                l.addBasicBlockIntoLoop(cur, this);
                 for (Iterator<MachineBasicBlock> predItr = cur.predIterator();
                      predItr.hasNext();)
                 {

@@ -18,8 +18,7 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineLoop;
-import backend.analysis.MachineLoopInfo;
+import backend.analysis.MachineDomTree;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterInfo;
@@ -73,8 +72,8 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         // target, for example, X86.
         au.addRequired(TwoAddrInstructionPass.class);
 
-        au.addPreserved(MachineLoop.class);
-        au.addRequired(MachineLoop.class);
+        au.addPreserved(MachineDomTree.class);
+        au.addRequired(MachineDomTree.class);
 
         super.getAnalysisUsage(au);
     }
@@ -86,23 +85,21 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
 
         int size = mf.getNumBlocks();
         int[] numIncomingBranches = new int[size];
-        MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
-        Util.assertion(ml != null);
+        MachineDomTree dt = (MachineDomTree) getAnalysisToUpDate(MachineDomTree.class);
+        Util.assertion(dt != null);
 
         ArrayList<MachineBasicBlock> mbbs = mf.getBasicBlocks();
         for (int i = 0; i < size; i++)
         {
             MachineBasicBlock mbb = mbbs.get(i);
             int num = mbb.getNumPredecessors();
-            MachineLoopInfo loopInfo = ml.getLoopFor(mbb);
-            if (loopInfo != null)
+
+            for (int j = 0, e = mbb.getNumPredecessors(); j < e; j++)
             {
-                for (int j = 0, e = mbb.getNumPredecessors(); j < e; j++)
-                {
-                    if (loopInfo.contains(mbb.predAt(j)))
-                        num--;
-                }
+                if (dt.dominates(mbb, mbb.predAt(j)))
+                    num--;
             }
+
             numIncomingBranches[i] = num;
         }
 

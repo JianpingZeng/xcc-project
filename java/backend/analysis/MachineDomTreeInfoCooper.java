@@ -17,7 +17,6 @@
 
 package backend.analysis;
 
-import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -185,27 +184,27 @@ public class MachineDomTreeInfoCooper implements IMachineDomTreeInfo
     }
 
     @Override
-    public boolean dominates(MachineBasicBlock A, MachineBasicBlock B)
+    public boolean dominates(MachineBasicBlock mbb1, MachineBasicBlock mbb2)
     {
-        Util.assertion( A.getParent() == fn && B.getParent() == A.getParent());
+        Util.assertion( mbb1.getParent() == fn && mbb2.getParent() == mbb1.getParent());
 
-        if (A == B)
+        if (mbb1.equals(mbb2))
             return true;
-        int indexA = bb2Number.get(A);
-        int indexB = bb2Number.get(B);
+        int indexA = bb2Number.get(mbb1);
+        int indexB = bb2Number.get(mbb2);
         while (indexB != indexA && indexB != doms[indexB])
         {
             indexB = doms[indexB];
         }
 
-        return indexB != doms[indexB];
+        return indexB == indexA;
     }
 
     @Override
-    public boolean strictDominate(DomTreeNodeBase<MachineBasicBlock> A,
-            DomTreeNodeBase<MachineBasicBlock> B)
+    public boolean strictDominate(DomTreeNodeBase<MachineBasicBlock> a,
+            DomTreeNodeBase<MachineBasicBlock> b)
     {
-        return dominates(A, B) && A != B;
+        return dominates(a, b) && a != b;
     }
 
     @Override
