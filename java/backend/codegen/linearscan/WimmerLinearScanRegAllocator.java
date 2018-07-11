@@ -131,7 +131,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
 
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
-        spiller = new SimpleVirtualRegSpiller(ilk);
+        spiller = new SimpleVirtualRegSpiller(ilk, mri);
 
         Util.assertion(ml != null);
         Util.assertion(li != null);
@@ -616,7 +616,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         for (LiveInterval it : li.intervals.values())
         {
             if (isPhysicalRegister(it.register))
+            {
                 fixed.add(it);
+                mri.setPhysRegUsed(it.register);
+            }
             else
                 unhandled.add(it);
         }
