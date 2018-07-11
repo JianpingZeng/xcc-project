@@ -138,7 +138,7 @@ public class MachineInstr implements Cloneable
 		{
 			if (operands.isEmpty() || operands.size() < totalOperands)
 			{
-				mo.setParentMI(this);
+				mo.setParent(this);
 				operands.add(mo);
 				if (mo.isRegister())
 					mo.addRegOperandToRegInfo(regInfo);
@@ -149,7 +149,7 @@ public class MachineInstr implements Cloneable
 		int opNo = operands.size() - numImplicitOps;
 		if (regInfo == null)
 		{
-			mo.setParentMI(this);
+			mo.setParent(this);
 			operands.add(opNo, mo);
 
 			if (mo.isRegister())
@@ -165,7 +165,7 @@ public class MachineInstr implements Cloneable
 			}
 
 			operands.add(opNo, mo);
-			mo.setParentMI(this);
+			mo.setParent(this);
 			if (mo.isRegister())
 				mo.addRegOperandToRegInfo(regInfo);
 
@@ -181,7 +181,7 @@ public class MachineInstr implements Cloneable
 		{
 			removeRegOperandsFromUseList();
 			operands.add(opNo, mo);
-			mo.setParentMI(this);
+			mo.setParent(this);
 			addRegOperandsToUseLists(regInfo);
 		}
 	}

@@ -17,6 +17,7 @@
 
 package backend.codegen.linearscan;
 
+import backend.codegen.MachineInstr;
 import backend.codegen.MachineOperand;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
@@ -46,7 +47,42 @@ public final class LiveInterval
      * A comparator used for sorting the use points list.
      */
     private final static Comparator<UsePoint> UsePointComparator =
-            Comparator.comparingInt(o -> o.id);
+            new Comparator<UsePoint>()
+    {
+        @Override
+        public int compare(UsePoint o1, UsePoint o2)
+        {
+            if (o1.id < o2.id) return -1;
+            if (o1.id > o2.id) return 1;
+            MachineOperand mo1 = o1.mo, mo2 = o2.mo;
+
+            Util.assertion(mo1.getParent().equals(mo2.getParent()), "Use a different machine instr");
+            if (mo1.equals(mo2)) return 0;
+
+            MachineInstr mi = mo1.getParent();
+            int idx1 = -1, idx2 = -1;
+            for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+            {
+                MachineOperand mo = mi.getOperand(i);
+                int reg;
+                if (!mo.isRegister() || (reg = mo.getReg()) == 0)
+                    continue;
+
+                if (mo.equals(mo1))
+                {
+                    Util.assertion(idx1 == -1);
+                    idx1 = i;
+                }
+                else if (mo.equals(mo2))
+                {
+                    Util.assertion(idx2 == -1);
+                    idx2 = i;
+                }
+            }
+            Util.assertion(idx1 != -1 && idx2 != -1);
+            return idx1 - idx2;
+        }
+    };
 
     /**
      * Indicates if a move instruction should be inserted at the splitting position.

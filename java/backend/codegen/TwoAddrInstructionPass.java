@@ -29,7 +29,6 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.OutParamWrapper;
-import tools.Util;
 
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetInstrInfo.INLINEASM;
@@ -437,7 +436,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             itr.next();
             if (!useMO.isKill())
                 continue;
-            killMI = useMO.getParentMI();
+            killMI = useMO.getParent();
             break;
         }
 

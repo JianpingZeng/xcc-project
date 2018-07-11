@@ -187,7 +187,7 @@ public final class MachineRegisterInfo
 
     public MachineInstr getDefMI(int regNo)
     {
-        return getDefMO(regNo).getParentMI();
+        return getDefMO(regNo).getParent();
     }
 
     public void setDefMO(int regNo, MachineOperand mo)
