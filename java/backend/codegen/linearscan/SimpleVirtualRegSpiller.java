@@ -19,6 +19,7 @@ package backend.codegen.linearscan;
 
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineOperand;
+import backend.codegen.MachineRegisterInfo;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -30,9 +31,12 @@ import java.util.ArrayList;
 public class SimpleVirtualRegSpiller
 {
     private IntervalLocKeeper ilk;
-    public SimpleVirtualRegSpiller(IntervalLocKeeper ilk)
+    private MachineRegisterInfo mri;
+
+    public SimpleVirtualRegSpiller(IntervalLocKeeper ilk, MachineRegisterInfo mri)
     {
         this.ilk = ilk;
+        this.mri = mri;
     }
 
     public boolean runOnMachineFunction(MachineFunction mf, ArrayList<LiveInterval> handled)
@@ -48,6 +52,7 @@ public class SimpleVirtualRegSpiller
             {
                 MachineOperand mo = up.mo;
                 mo.setReg(reg);
+                mri.setPhysRegUsed(reg);
             }
         }
         return true;

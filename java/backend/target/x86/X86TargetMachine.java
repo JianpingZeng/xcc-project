@@ -1,12 +1,10 @@
 package backend.target.x86;
 
-import tools.Util;
 import backend.codegen.ELFWriter;
 import backend.codegen.MachineCodeEmitter;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 import backend.target.*;
-import backend.value.Module;
 import tools.Util;
 
 import java.io.OutputStream;
@@ -136,18 +134,6 @@ public class X86TargetMachine extends LLVMTargetMachine
 	{
 		return dataLayout;
 	}
-
-	/**
-     * Allocates and returns a subclass of {@linkplain TargetMachine} that
-     * implements the IA32 machine.
-     * @param module
-     * @return
-     */
-    public static TargetMachine allocateIA32TargetMachine(Module module)
-    {
-        // return new X86TargetMachine(module);
-        return null;
-    }
 
     @Override
 	public TargetInstrInfo getInstrInfo()
