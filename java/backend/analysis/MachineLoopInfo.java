@@ -171,7 +171,8 @@ public final class MachineLoopInfo
     public void addBasicBlockIntoLoop(MachineBasicBlock bb,
             LoopInfoBase<MachineBasicBlock, MachineLoopInfo> li)
     {
-        Util.assertion(blocks.isEmpty() || li.getLoopFor(getHeaderBlock()) != null, "Incorrect LI specifed for this loop");
+        Util.assertion(blocks.isEmpty() || li.getLoopFor(getHeaderBlock()) != null,
+                "Incorrect LI specified for this loop");
 
         Util.assertion( bb != null);
         Util.assertion( li.getLoopFor(bb) == null);
