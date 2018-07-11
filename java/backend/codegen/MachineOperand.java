@@ -7,7 +7,6 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
-import tools.Util;
 
 import java.io.PrintStream;
 
@@ -221,6 +220,11 @@ public class MachineOperand
 		return parentMI;
 	}
 
+	public void setParent(MachineInstr parentMI)
+	{
+		this.parentMI = parentMI;
+	}
+
 	public void print(PrintStream os)
 	{
 		print(os, null);
@@ -253,7 +257,7 @@ public class MachineOperand
 					// The used register is physical register.
 					if (tm == null)
 					{
-						MachineInstr mi = getParentMI();
+						MachineInstr mi = getParent();
 						if (mi != null)
 						{
 							MachineBasicBlock mbb = mi.getParent();
@@ -609,16 +613,6 @@ public class MachineOperand
 	{
 		Util.assertion(isMBB(),  "Wrong MachineOperand accessor");
 		this.mbb = mbb;
-	}
-
-	public MachineInstr getParentMI()
-	{
-		return parentMI;
-	}
-
-	public void setParentMI(MachineInstr parentMI)
-	{
-		this.parentMI = parentMI;
 	}
 
 	/**

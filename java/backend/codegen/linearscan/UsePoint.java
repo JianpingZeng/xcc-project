@@ -32,4 +32,14 @@ public class UsePoint
         this.id = id;
         this.mo = mo;
     }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (getClass() != obj.getClass()) return false;
+        UsePoint up = (UsePoint)obj;
+        return id == up.id && mo.equals(up.mo);
+    }
 }
