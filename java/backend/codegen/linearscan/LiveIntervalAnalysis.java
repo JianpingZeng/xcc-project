@@ -277,7 +277,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                     else
                     {
                         LiveRange lr = li.getFirst();
-                        Util.assertion(lr != null);
+                        Util.assertion(lr != LiveRange.EndMarker);
                         lr.start = num;
                         li.addUsePoint(num, mo);
                     }

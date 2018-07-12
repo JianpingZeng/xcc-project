@@ -477,15 +477,20 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                 }
             }
         }
-
+        Util.assertion(killMO != null);
         killMO.setIsKill(false);
         killMO = mi.findRegisterUseOperand(savedReg, false, tri);
         killMO.setIsKill(true);
 
         if (lv != null)
             lv.replaceKillInstruction(savedReg, killMI, mi);
+
+        if (killPos == mi.index())
+            return false;
+
+        Util.assertion(killPos > mi.index(), "must sink the specified instr");
         mi.removeFromParent();
-        mbb.insert(killPos, mi);
+        mbb.insert(killPos-1, mi);
         return true;
     }
 
