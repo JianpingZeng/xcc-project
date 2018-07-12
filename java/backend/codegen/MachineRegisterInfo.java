@@ -440,4 +440,33 @@ public final class MachineRegisterInfo
 
         return regClass2VRegMap.get(rc.getID());
     }
+
+    public void replaceDefRegInfo(int defReg, MachineInstr oldMI, MachineInstr newMI)
+    {
+        Util.assertion(oldMI.getOperand(0).isRegister() && newMI.getOperand(0).isRegister());
+        Util.assertion(oldMI.getOperand(0).getReg() == newMI.getOperand(0).getReg());
+        Util.assertion(oldMI.getOperand(0).getReg() > 0);
+
+        MachineOperand newDef = newMI.getOperand(0);
+        DefUseChainIterator itr = getDefIterator(defReg);
+        while (itr.hasNext())
+        {
+            MachineInstr mi = itr.getMachineInstr();
+            if (mi.equals(oldMI))
+            {
+                MachineOperand mo = itr.getOpearnd();
+                // unlink this def reg and link the new def register into def/use chain.
+                newDef.reg.next = mo.reg.next;
+                if (mo.reg.next != null)
+                    newDef.reg.next.reg.prev = newDef;
+
+                if (mo.reg.prev != null)
+                    mo.reg.prev.reg.next = newDef;
+                newDef.reg.prev = mo.reg.prev;
+                mo.reg.clear();
+            }
+            itr.next();
+        }
+        updateRegUseDefListHead(defReg, newDef);
+    }
 }

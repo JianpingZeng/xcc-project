@@ -53,10 +53,10 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     HashMap<MachineInstr, Integer> mi2Idx;
 
     private TargetRegisterInfo tri;
-
     TreeMap<Integer, LiveInterval> intervals;
     BitMap[] liveIns;
     BitMap[] liveOuts;
+    private BitMap allocatableRegs;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -82,6 +82,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         tri = mf.getTarget().getRegisterInfo();
+        allocatableRegs = tri.getAllocatableSet(mf);
 
         int size = mf.getNumBlocks();
         int[] numIncomingBranches = new int[size];
@@ -196,6 +197,9 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         for (int i = sequence.size()-1; i>= 0; i--)
         {
             MachineBasicBlock mbb = sequence.get(i);
+            if (mbb.isEmpty())
+                continue;
+
             Util.assertion(mi2Idx.containsKey(mbb.getFirstInst()));
             Util.assertion(mi2Idx.containsKey(mbb.getLastInst()));
             int blockFrom = mi2Idx.get(mbb.getFirstInst());
@@ -220,29 +224,6 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
             {
                 MachineInstr mi = mbb.getInstAt(j);
                 int num = mi2Idx.get(mi);
-                /*
-                if (mi.isCall())
-                {
-                    for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
-                    {
-                        if (mi.getOperand(moIdx).isRegister() &&
-                                mi.getOperand(moIdx).isUse() &&
-                                TargetRegisterInfo.isPhysicalRegister(mi.getOperand(moIdx).getReg()))
-                        {
-                            int reg = mi.getOperand(moIdx).getReg();
-                            LiveInterval li;
-                            if (intervals.containsKey(reg))
-                                li = intervals.get(reg);
-                            else
-                            {
-                                li = new LiveInterval();
-                                intervals.put(reg, li);
-                            }
-                            li.addRange(num, num+1);
-                        }
-                    }
-                }*/
-
                 ArrayList<MachineOperand> uses = new ArrayList<>();
                 ArrayList<MachineOperand> defs = new ArrayList<>();
                 for (int moIdx = 0, sz = mi.getNumOperands(); moIdx < sz; moIdx++)
@@ -250,6 +231,10 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                     MachineOperand mo = mi.getOperand(moIdx);
                     if (mo.isRegister() && mo.getReg() > 0)
                     {
+                        // Skip unallocable register.
+                        if (isPhysicalRegister(mo.getReg()) &&
+                                !allocatableRegs.get(mo.getReg()))
+                            continue;
                         if (mo.isDef())
                             defs.add(mo);
                         else if (mo.isUse())
@@ -259,27 +244,18 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                 for (MachineOperand mo : defs)
                 {
                     int reg = mo.getReg();
-                    LiveInterval li;
-                    if (intervals.containsKey(reg))
-                        li = intervals.get(reg);
-                    else
+                    handleRegisterDef(reg, mo, num);
+                    if (isPhysicalRegister(reg))
                     {
-                        li = new LiveInterval();
-                        li.register = reg;
-                        intervals.put(reg, li);
-                    }
-                    Util.assertion(li != null);
-                    if (mo.isImplicit() && isPhysicalRegister(reg))
-                    {
-                        li.addRange(num, num + 1);
-                        li.addUsePoint(num, mo);
-                    }
-                    else
-                    {
-                        LiveRange lr = li.getFirst();
-                        Util.assertion(lr != LiveRange.EndMarker);
-                        lr.start = num;
-                        li.addUsePoint(num, mo);
+                        int[] subregs = tri.getSubRegisters(reg);
+                        if (subregs != null && subregs.length > 0)
+                        {
+                            for (int sub : subregs)
+                                // avoiding such sub-register explicitly modified by this mi.
+                                // because it would be explicitly processed after.
+                                if (!mi.modifiedRegister(sub, tri))
+                                    handleRegisterDef(sub, mo, num);
+                        }
                     }
                 }
                 for (MachineOperand mo : uses)
@@ -309,9 +285,35 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         }
     }
 
+    private void handleRegisterDef(int reg, MachineOperand mo, int start)
+    {
+        LiveInterval li;
+        if (intervals.containsKey(reg))
+            li = intervals.get(reg);
+        else
+        {
+            li = new LiveInterval();
+            li.register = reg;
+            intervals.put(reg, li);
+        }
+        Util.assertion(li != null);
+        if (mo.isDead())
+        {
+            li.addRange(start, start + 1);
+            li.addUsePoint(start, mo);
+        }
+        else
+        {
+            LiveRange lr = li.getFirst();
+            //Util.assertion(lr != LiveRange.EndMarker, "Should be EndMarkder for " + getRegisterName(reg));
+            lr.start = start;
+            li.addUsePoint(start, mo);
+        }
+    }
+
     /**
      * Compute local live set for each basic block according to classical
-     * dataflow algortihm.
+     * dataflow algorithm.
      * @param sequence
      * @param liveGen
      * @param liveKill

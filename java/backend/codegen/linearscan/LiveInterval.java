@@ -92,7 +92,7 @@ public final class LiveInterval
     public LiveInterval()
     {
         register = 0;
-        first = LiveRange.EndMarker;
+        first = LiveRange.EndMarker.clone();
         last = first;
         usePoints = new TreeSet<>(UsePointComparator);
         splitChildren = new ArrayList<>();
@@ -106,7 +106,7 @@ public final class LiveInterval
     public void addRange(int from, int to)
     {
         Util.assertion(from < to, "Invalid range!");
-        Util.assertion(first == LiveRange.EndMarker || to < first.next.start,
+        Util.assertion(first.equals(LiveRange.EndMarker) || to < first.next.start,
                 "Not inserting at begining of interval");
         Util.assertion(from <= first.end, "Not inserting at begining of interval");
         if (first.start <= to)
@@ -154,7 +154,7 @@ public final class LiveInterval
         System.err.printf("%s: ", isPhysicalRegister(register) ?
                         tri.getName(register) : "%reg" + register);
         LiveRange r = first;
-        while (r != LiveRange.EndMarker)
+        while (!r.equals(LiveRange.EndMarker))
         {
             r.dump();
             System.err.print(",");
