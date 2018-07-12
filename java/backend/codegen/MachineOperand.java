@@ -99,7 +99,7 @@ public class MachineOperand
 	// For constant FP.
 	private ConstantFP cfp;
 
-	private static class RegOp
+	static class RegOp
 	{
 		int regNo;
 		MachineOperand prev;   // Access list for register.
@@ -116,9 +116,16 @@ public class MachineOperand
             this.prev = prev;
             this.next = next;
         }
+
+		public void clear()
+		{
+			regNo = 0;
+			prev = null;
+			next = null;
+		}
 	}
 	// For register operand.
-	private RegOp reg;
+	RegOp reg;
 
 	private static class Val
 	{
@@ -687,13 +694,13 @@ public class MachineOperand
         {
             if (reg.prev != null)
             {
-                Util.assertion(reg.prev.getReg()                        == getReg(),  "Corrupt reg use/def chain!");
+                Util.assertion(reg.prev.getReg() == getReg(),  "Corrupt reg use/def chain!");
 
                 reg.prev.reg.next = reg.next;
             }
             if (reg.next != null)
             {
-                Util.assertion(reg.next.getReg()                        == getReg(),  "Corrupt reg use/def chain!");
+                Util.assertion(reg.next.getReg() == getReg(),  "Corrupt reg use/def chain!");
 
                 reg.next.reg.prev = reg.prev;
             }

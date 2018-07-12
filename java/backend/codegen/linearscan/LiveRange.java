@@ -20,12 +20,13 @@ package backend.codegen.linearscan;
 import tools.Util;
 
 import java.io.PrintStream;
+import java.util.Objects;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LiveRange implements Comparable<LiveRange>
+public class LiveRange implements Comparable<LiveRange>, Cloneable
 {
     public static final LiveRange EndMarker =
             new LiveRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
@@ -114,5 +115,21 @@ public class LiveRange implements Comparable<LiveRange>
                     return r1.start;
             }
         }
+    }
+
+    @Override
+    public LiveRange clone()
+    {
+        return new LiveRange(start, end, next != null?next.clone():null);
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (obj == this) return true;
+        if (getClass() != obj.getClass()) return false;
+        LiveRange lr = (LiveRange)obj;
+        return start == lr.start && end == lr.end && Objects.equals(next, lr.next);
     }
 }

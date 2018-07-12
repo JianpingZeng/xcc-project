@@ -152,13 +152,20 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // Step #3: resolve move
         resolveDataflow();
 
+        if (Util.DEBUG)
+        {
+            System.err.println("******** Handled Intervals ***********");
+            for (LiveInterval it : handled)
+            {
+                it.dump(tri);
+            }
+        }
         // Step #4: rewrite the instruction's operand according to it's assigned location.
         spiller.runOnMachineFunction(mf, handled);
         clear();
         return true;
 
         // TODO: 18-7-11  Coalescing identical registers joined by move operation.
-        // FIXME: 18-7-11 handle multiple uses in the same machine instruction.
     }
 
     private void clear()

@@ -163,8 +163,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                         int regB = mi.getOperand(si).getReg();
                         int regASubIdx = mi.getOperand(ti).getSubReg();
 
-                        Util.assertion(isVirtualRegister(regA) && isVirtualRegister(                                regB),  "cannot update physical register live information");
-
+                        Util.assertion(isVirtualRegister(regA) && isVirtualRegister(regB),
+                                "cannot update physical register live information");
 
                         InstructionRearranged:
                         {
@@ -196,12 +196,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                 {
                                     if (Util.DEBUG)
                                     {
-                                        for (int j = si + 1, numOps = tid.getNumOperands();
-                                             j != numOps; ++j)
-                                        {
-                                            Util.assertion( tid.getOperandConstraint(j,                                                    TIED_TO) == -1);
-
-                                        }
+                                        for (int j = si + 1, numOps = tid.getNumOperands(); j != numOps; ++j)
+                                            Util.assertion( tid.getOperandConstraint(j,TIED_TO) == -1);
                                     }
 
                                     MachineInstr oldMI = mbb.getInstAt(i);
@@ -225,8 +221,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                         }
                                         oldMI.removeFromParent();
 
-                                        //mbb.remove(oldMI);  // Nuke the old mi.
-
+                                        mri.replaceDefRegInfo(regA, oldMI, newMI);
                                         if (!sunk)
                                         {
                                             distanceMap.put(newMI.index(), i + 1);
