@@ -112,7 +112,8 @@ public final class LiveInterval
         if (first.start <= to)
         {
             // Join intersecting LiveRanges.
-            Util.assertion(first != LiveRange.EndMarker);
+            Util.assertion(first != LiveRange.EndMarker,
+                    "First range must not be EndMarker for "+"%reg" + register);
             first.start = Math.min(from, first.start);
             first.end = Math.max(to, first.end);
         }
