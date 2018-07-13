@@ -49,21 +49,23 @@ public abstract class TargetInfo
             case x86:
                 switch (os)
                 {
-                    case FreeBSD:
-                    case Solaris:
+                    case Darwin:
+                        return new DarwinI386TargetInfo(triStr);
                     case Linux:
-                    default:
                         return new LinuxX86_32TargetInfo(triStr);
+                    default:
+                        return new X86_32TargetInfo(triStr);
                 }
             case x86_64:
             {
                 switch (os)
                 {
-                    case FreeBSD:
-                    case Solaris:
+                    case Darwin:
+                        return new DarwinX86_64TargetInfo(triStr);
                     case Linux:
-                    default:
                         return new LinuxX86_64TargetInfo(triStr);
+                    default:
+                        return new X86_64TargetInfo(triStr);
                 }
             }
         }
@@ -114,7 +116,12 @@ public abstract class TargetInfo
             new GCCRegAlias(new String[] { "esp", "rsp" }, "sp"),
             new GCCRegAlias(new String[] { "ebp", "rbp" }, "bp"), };
 
-    private static void define(StringBuilder buf, String macro, String val)
+    protected static void define(StringBuilder buf, String macro)
+    {
+        define(buf, macro, "1");
+    }
+
+    protected static void define(StringBuilder buf, String macro, String val)
     {
         String def = "#define ";
         buf.append(def);
@@ -173,7 +180,7 @@ public abstract class TargetInfo
     protected int intMaxTWidth;
     protected String descriptionString;
 
-    protected IntType SizeType, IntMaxType, UIntMaxType, PtrDiffType, IntPtrType, WCharType, Char16Type, Char32Type, Int64Type;
+    protected IntType sizeType, IntMaxType, UIntMaxType, PtrDiffType, intPtrType, WCharType, Char16Type, Char32Type, int64Type;
 
     protected String userLabelPrefix;
     protected FltSemantics floatFormat, doubleFormat, longDoubleFormat;
@@ -193,12 +200,12 @@ public abstract class TargetInfo
         doubleWidth = doubleAlign = 64;
         longDoubleWidth = longDoubleAlign = 64;
         intMaxTWidth = 64;
-        SizeType = IntType.UnsignedLong;
+        sizeType = IntType.UnsignedLong;
         PtrDiffType = IntType.SignedLong;
         IntMaxType = IntType.SignedLongLong;
         UIntMaxType = IntType.UnsignedLongLong;
-        IntPtrType = IntType.SignedLong;
-        Int64Type = IntType.SignedLongLong;
+        intPtrType = IntType.SignedLong;
+        int64Type = IntType.SignedLongLong;
         floatFormat = IEEEsingle;
         doubleFormat = IEEEdouble;
         longDoubleFormat = IEEEdouble;
@@ -224,7 +231,7 @@ public abstract class TargetInfo
 
     public IntType getSizeType()
     {
-        return SizeType;
+        return sizeType;
     }
 
     public IntType getIntMaxType()
@@ -239,7 +246,7 @@ public abstract class TargetInfo
 
     public IntType getIntPtrType()
     {
-        return IntPtrType;
+        return intPtrType;
     }
 
     public IntType getWCharType()
@@ -259,7 +266,7 @@ public abstract class TargetInfo
 
     public IntType getInt64Type()
     {
-        return Int64Type;
+        return int64Type;
     }
 
     public int getBoolWidth()
@@ -821,9 +828,9 @@ public abstract class TargetInfo
                             + "i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-"
                             + "a0:0:64-f80:32:32";
 
-            SizeType = IntType.UnsignedInt;
+            sizeType = IntType.UnsignedInt;
             PtrDiffType = IntType.SignedInt;
-            IntPtrType = IntType.SignedInt;
+            intPtrType = IntType.SignedInt;
             regParmMax = 3;
         }
 
@@ -845,7 +852,7 @@ public abstract class TargetInfo
             longDoubleAlign = 128;
             IntMaxType = IntType.SignedLong;
             UIntMaxType = IntType.UnsignedLong;
-            Int64Type = IntType.SignedLong;
+            int64Type = IntType.SignedLong;
             regParmMax = 6;
 
             descriptionString =

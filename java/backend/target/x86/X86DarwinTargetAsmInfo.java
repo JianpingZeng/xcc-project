@@ -15,40 +15,41 @@ package backend.target.x86;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-
 import backend.support.BackendCmdOptions;
 import backend.support.Triple;
-import backend.target.TargetAsmInfo;
+import backend.target.DarwinTargetAsmInfo;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86ELFTargetAsmInfo extends TargetAsmInfo
+public class X86DarwinTargetAsmInfo extends DarwinTargetAsmInfo
 {
-    public X86ELFTargetAsmInfo(Triple theTriple)
+    public X86DarwinTargetAsmInfo(Triple triple)
     {
+        super();
         asmTransCBE = x86_asm_table;
         assemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
+        boolean is64Bit = triple.getArch() == Triple.ArchType.x86_64;
+        TextAlignFillValue = 0x90;
+        if (!is64Bit)
+            Data64bitsDirective = "";
+        COMMDirectiveTakesAlignment = triple.getDarwinMajorNumber() > 9;
+        if (is64Bit)
+        {
+            PersonalityPrefix = "";
+            PersonalitySuffix = "+4@GOTPCREL";
+        }
+        else
+        {
+            PersonalityPrefix = "L";
+            PersonalitySuffix = "$non_lazy_ptr";
+        }
 
-        privateGlobalPrefix = ".L";
-        weakRefDirective = "\t.weak\t";
-        setDirective = "\t.set\t";
+        CommentString = "##";
         pcSymbol = ".";
-
-        // Set up DWARF directives
-        hasLEB128 = true;  // Target asm supports leb128 directives (little-endian)
-
-        // Debug Information
-        absoluteDebugSectionOffsets = true;
         supportsDebugInformation = true;
-
-        // Exceptions handling
-        // ExceptionsType = ExceptionHandling::Dwarf;
+        DwarfUsesInlineInfoSection = true;
         absoluteEHSectionOffsets = false;
-
-        // On Linux we must declare when we can use a non-executable stack.
-        if (theTriple.getOS() == Triple.OSType.Linux)
-            nonexecutableStackDirective = "\t.section\t.note.GNU-stack,\"\",@progbits";
     }
 }

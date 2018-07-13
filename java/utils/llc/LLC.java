@@ -50,6 +50,7 @@ import java.util.Map;
 import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
 import static backend.target.TargetMachine.CodeGenFileType.ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
+import static jlang.driver.JlangCC.MacOSVersionMin;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.Initializer.init;
@@ -463,6 +464,72 @@ public class LLC
         }
     }
     /**
+     * If -mmacosx-version-min=10.12 is specified, change the triple
+     * from being something like i386-apple-darwin17 to i386-apple-darwin16.
+     * @param triple
+     * @return
+     */
+    private static String handleMacOSVersionMin(String triple)
+    {
+        int darwinDashIdx = triple.indexOf("-darwin");
+        if (darwinDashIdx == -1)
+        {
+            java.lang.System.err.println("-mmacosx-version-min only valid for darwin (Mac OS X) targets");
+            java.lang.System.exit(-1);
+        }
+        int darwinNumIdx = darwinDashIdx + "-darwin".length();
+        // remove the darwin version number.
+        triple = triple.substring(0, darwinNumIdx);
+        String macosxmin = MacOSVersionMin.value;
+        boolean macosxMinVersionInvalid = false;
+        int versionNum = 0;
+
+        // macos x version min must like this, 10.12.1
+        if (macosxmin.length() < 4 || !macosxmin.startsWith("10.") ||
+                !Process.isDigit(macosxmin.charAt(3)))
+        {
+            macosxMinVersionInvalid = true;
+        }
+        else
+        {
+            try
+            {
+                macosxmin = macosxmin.substring(3);
+                int dotIdx = macosxmin.indexOf('.');
+                if (dotIdx != -1)
+                    // like 10.12.1
+                    versionNum = Integer.parseInt(macosxmin.substring(0, dotIdx));
+                else
+                    // like 10.12
+                    versionNum = Integer.parseInt(macosxmin);
+                macosxMinVersionInvalid = versionNum > 13;
+                triple += (versionNum + 4);
+                if (dotIdx != -1) {
+                    triple += macosxmin.substring(dotIdx);
+                }
+            }
+            catch (NumberFormatException e)
+            {
+                macosxMinVersionInvalid = true;
+            }
+        }
+
+        if (macosxMinVersionInvalid)
+        {
+            java.lang.System.err.printf("-mmacosx-version-min=%s is invalid, expected something like '10.4'.\n",
+                    MacOSVersionMin.value);
+            java.lang.System.exit(-1);
+        }
+        else if (versionNum < 4 && triple.startsWith("x86_64"))
+        {
+            java.lang.System.err.printf("-mmacosx-version-min=%s is invalid with -arch x86_64.\n",
+                    MacOSVersionMin.value);
+            java.lang.System.exit(-1);
+        }
+        return triple;
+    }
+
+    /**
      * Process the various options that may affects the target triple and build a
      * final aggregate string that we are compiling for.
      * @return
@@ -474,6 +541,9 @@ public class LLC
         String triple = TargetTriple.value;
         if (triple == null || triple.isEmpty())
             triple = Process.getHostTriple();
+
+        if (!MacOSVersionMin.value.isEmpty())
+            triple = handleMacOSVersionMin(triple);
 
         return triple;
     }
