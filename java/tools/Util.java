@@ -87,7 +87,7 @@ public class Util
 
 	public static boolean isPowerOf2(long val)
 	{
-		return val != 0 && (val & val -1) == 0;
+		return val == 0 || (val & val -1) == 0;
 	}
 
 	public static void shouldNotReachHere()

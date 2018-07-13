@@ -166,7 +166,19 @@ public abstract class AsmPrinter extends MachineFunctionPass
         // If the target wants to know about weak references, print them all.
         if (tai.getWeakDefDirective() != null)
         {
-            return false;
+            // Print out module-level global variables here.
+            for (GlobalVariable gv : m.getGlobalVariableList())
+            {
+                if (gv.hasExternalLinkage())
+                    os.printf("%s%s\n", tai.getWeakDefDirective(),
+                            mangler.getValueName(gv));
+            }
+            for (Function fn : m.getFunctionList())
+            {
+                if (fn.hasExternalWeakLinkage())
+                    os.printf("%s%s\n", tai.getWeakDefDirective(),
+                            mangler.getValueName(fn));
+            }
         }
         if (tai.getSetDirective() != null)
             os.println();

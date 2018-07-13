@@ -37,6 +37,9 @@ public abstract class GlobalValue extends Constant
          * Externally visible function
          */
         ExternalLinkage,
+
+        ExternalWeakLinkage,
+
 	    /**
 	     * Rename collisions when linking (static functions).
          */
@@ -96,7 +99,10 @@ public abstract class GlobalValue extends Constant
     public void setParent(Module newParent) {parent = newParent;}
 
     public boolean hasExternalLinkage() {return linkageType == LinkageType.ExternalLinkage;}
-
+    public boolean hasExternalWeakLinkage()
+    {
+        return linkageType == ExternalWeakLinkage;
+    }
     public boolean hasInternalLinkage() {return linkageType == LinkageType.InternalLinkage;}
 
     public boolean hasPrivateLinkage() {return linkageType == LinkageType.PrivateLinkage;}
