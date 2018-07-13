@@ -178,7 +178,7 @@ public class RegAllocLocal extends MachineFunctionPass
 
 	private int getFreeReg(TargetRegisterClass rc)
 	{
-		for (int phyReg : rc.getAllocatableRegs(mf))
+		for (int phyReg : rc.getAllocableRegs(mf))
 		{
 			if (isPhyRegAvailable(phyReg))
 			{

@@ -34,62 +34,73 @@ import static backend.target.TargetOptions.DontPlaceZerosInBSS;
  */
 public class TargetAsmInfo
 {
-    /// TextSection - Section directive for standard text.
+    protected static String[] x86_asm_table = {
+            "{si}", "S",
+            "{di}", "D",
+            "{ax}", "a",
+            "{cx}", "c",
+            "{memory}", "memory",
+            "{flags}", "",
+            "{dirflag}", "",
+            "{fpsr}", "",
+            "{cc}", "cc",
+    };
+    /// textSection - Section directive for standard text.
     ///
-    protected Section TextSection = new Section(".text");           // Defaults to ".text".
+    protected Section textSection = new Section(".text");           // Defaults to ".text".
 
-    /// DataSection - Section directive for standard data.
+    /// dataSection - Section directive for standard data.
     ///
-    protected Section DataSection = new Section(".data");           // Defaults to ".data".
+    protected Section dataSection = new Section(".data");           // Defaults to ".data".
 
-    /// BSSSection - Section directive for uninitialized data.  Null if this
+    /// bssSection - Section directive for uninitialized data.  Null if this
     /// target doesn't support a BSS section.
     ///
-    protected String BSSSection = ".bss";               // Default to ".bss".
-    protected Section BSSSection_ = new Section(".bss");
+    protected String bssSection = ".bss";               // Default to ".bss".
+    protected Section bssSection_ = new Section(".bss");
 
-    /// ReadOnlySection - This is the directive that is emitted to switch to a
+    /// readOnlySection - This is the directive that is emitted to switch to a
     /// read-only section for constant data (e.g. data declared const,
     /// jump tables).
-    protected Section ReadOnlySection;       // Defaults to NULL
+    protected Section readOnlySection;       // Defaults to NULL
 
-    /// SmallDataSection - This is the directive that is emitted to switch to a
+    /// smallDataSection - This is the directive that is emitted to switch to a
     /// small data section.
     ///
-    protected Section SmallDataSection;      // Defaults to NULL
+    protected Section smallDataSection;      // Defaults to NULL
 
-    /// SmallBSSSection - This is the directive that is emitted to switch to a
+    /// smallBSSSection - This is the directive that is emitted to switch to a
     /// small bss section.
     ///
-    protected Section SmallBSSSection;       // Defaults to NULL
+    protected Section smallBSSSection;       // Defaults to NULL
 
-    /// SmallRODataSection - This is the directive that is emitted to switch to
+    /// smallRODataSection - This is the directive that is emitted to switch to
     /// a small read-only data section.
     ///
-    protected Section SmallRODataSection;    // Defaults to NULL
+    protected Section smallRODataSection;    // Defaults to NULL
 
-    /// TLSDataSection - Section directive for Thread Local data.
+    /// tlsDataSection - Section directive for Thread Local data.
     ///
-    protected Section TLSDataSection = new Section(".tdata");        // Defaults to ".tdata".
+    protected Section tlsDataSection = new Section(".tdata");        // Defaults to ".tdata".
 
-    /// TLSBSSSection - Section directive for Thread Local uninitialized data.
+    /// tlsBSSSection - Section directive for Thread Local uninitialized data.
     /// Null if this target doesn't support a BSS section.
     ///
-    protected Section TLSBSSSection = new Section(".tbss");         // Defaults to ".tbss".
+    protected Section tlsBSSSection = new Section(".tbss");         // Defaults to ".tbss".
     //===------------------------------------------------------------------===//
     // Properties to be set by the target writer, used to configure asm printer.
     //
 
-    /// ZeroFillDirective - Directive for emitting a global to the ZeroFill
+    /// zeroFillDirective - Directive for emitting a global to the ZeroFill
     /// section on this target.  null if this target doesn't support zerofill.
-    protected String ZeroFillDirective;        // Default is null.
+    protected String zeroFillDirective;        // Default is null.
 
-    /// NonexecutableStackDirective - Directive for declaring to the
+    /// nonexecutableStackDirective - Directive for declaring to the
     /// linker and beyond that the emitted code does not require stack
     /// memory to be executable.
-    protected String NonexecutableStackDirective; // Default is null.
+    protected String nonexecutableStackDirective; // Default is null.
 
-    /// NeedsSet - True if target asm treats expressions in data directives
+    /// needsSet - True if target asm treats expressions in data directives
     /// as linktime-relocatable.  For assembly-time computation, we need to
     /// use a .set.  Thus:
     /// .set w, x-y
@@ -98,15 +109,15 @@ public class TargetAsmInfo
     /// .long x-y
     /// is relocated if the relative locations of x and y change at linktime.
     /// We want both these things in different places.
-    protected boolean NeedsSet;                        // Defaults to false.
+    protected boolean needsSet;                        // Defaults to false.
 
-    /// MaxInstLength - This is the maximum possible length of an instruction,
+    /// maxInstLength - This is the maximum possible length of an instruction,
     /// which is needed to compute the size of an inline asm.
-    protected int MaxInstLength;               // Defaults to 4.
+    protected int maxInstLength;               // Defaults to 4.
 
-    /// PCSymbol - The symbol used to represent the current PC.  Used in PC
+    /// pcSymbol - The symbol used to represent the current PC.  Used in PC
     /// relative expressions.
-    protected String PCSymbol;                 // Defaults to "$".
+    protected String pcSymbol;                 // Defaults to "$".
 
     /// SeparatorChar - This character, if specified, is used to separate
     /// instructions from each other when on the same line.  This is used to
@@ -125,10 +136,10 @@ public class TargetAsmInfo
     /// onto all global symbols.  This is often used for "_" or ".".
     protected String GlobalPrefix;             // Defaults to ""
 
-    /// PrivateGlobalPrefix - This prefix is used for globals like constant
+    /// privateGlobalPrefix - This prefix is used for globals like constant
     /// pool entries that are completely private to the .s file and should not
     /// have names in the .o file.  This is often "." or "L".
-    protected String PrivateGlobalPrefix;      // Defaults to "."
+    protected String privateGlobalPrefix;      // Defaults to "."
 
     /// LinkerPrivateGlobalPrefix - This prefix is used for symbols that should
     /// be passed through the assembler but be removed by the linker.  This
@@ -167,8 +178,8 @@ public class TargetAsmInfo
     protected String InlineAsmStart;           // Defaults to "#APP\n"
     protected String InlineAsmEnd;             // Defaults to "#NO_APP\n"
 
-    /// AssemblerDialect - Which dialect of an assembler variant to use.
-    protected AsmWriterFlavorTy AssemblerDialect;            // Defaults to AT&T
+    /// assemblerDialect - Which dialect of an assembler variant to use.
+    protected AsmWriterFlavorTy assemblerDialect;            // Defaults to AT&T
 
     /// AllowQuotesInName - This is true if the assembler allows for complex
     /// symbol names to be surrounded in quotes.  This defaults to false.
@@ -281,9 +292,9 @@ public class TargetAsmInfo
     ///
     protected String ExternDirective;          // Defaults to null.
 
-    /// SetDirective - This is the name of a directive that can be used to tell
+    /// setDirective - This is the name of a directive that can be used to tell
     /// the assembler to set the value of a variable to some expression.
-    protected String SetDirective;             // Defaults to null.
+    protected String setDirective;             // Defaults to null.
 
     /// LCOMMDirective - This is the name of a directive (if supported) that can
     /// be used to efficiently declare a local (internal) block of zero
@@ -311,9 +322,9 @@ public class TargetAsmInfo
     /// code elimination on some targets.
     protected String UsedDirective;            // Defaults to null.
 
-    /// WeakRefDirective - This directive, if non-null, is used to declare a
+    /// weakRefDirective - This directive, if non-null, is used to declare a
     /// global as being a weak undefined symbol.
-    protected String WeakRefDirective;         // Defaults to null.
+    protected String weakRefDirective;         // Defaults to null.
 
     /// WeakDefDirective - This directive, if non-null, is used to declare a
     /// global as being a weak defined symbol.
@@ -329,26 +340,26 @@ public class TargetAsmInfo
 
     //===--- Dwarf Emission Directives -----------------------------------===//
 
-    /// AbsoluteDebugSectionOffsets - True if we should emit abolute section
+    /// absoluteDebugSectionOffsets - True if we should emit abolute section
     /// offsets for debug information. Defaults to false.
-    protected boolean AbsoluteDebugSectionOffsets;
+    protected boolean absoluteDebugSectionOffsets;
 
-    /// AbsoluteEHSectionOffsets - True if we should emit abolute section
+    /// absoluteEHSectionOffsets - True if we should emit abolute section
     /// offsets for EH information. Defaults to false.
-    protected boolean AbsoluteEHSectionOffsets;
+    protected boolean absoluteEHSectionOffsets;
 
-    /// HasLEB128 - True if target asm supports leb128 directives.
+    /// hasLEB128 - True if target asm supports leb128 directives.
     ///
-    protected boolean HasLEB128; // Defaults to false.
+    protected boolean hasLEB128; // Defaults to false.
 
     /// hasDotLocAndDotFile - True if target asm supports .loc and .file
     /// directives for emitting debugging information.
     ///
     protected boolean HasDotLocAndDotFile; // Defaults to false.
 
-    /// SupportsDebugInformation - True if target supports emission of debugging
+    /// supportsDebugInformation - True if target supports emission of debugging
     /// information.
-    protected boolean SupportsDebugInformation;
+    protected boolean supportsDebugInformation;
 
     /// SupportsExceptionHandling - True if target supports
     /// exception handling.
@@ -382,20 +393,20 @@ public class TargetAsmInfo
 
     //===--- CBE Asm Translation Table -----------------------------------===//
 
-    protected String[] AsmTransCBE; // Defaults to empty
+    protected String[] asmTransCBE; // Defaults to empty
 
     public TargetAsmInfo()
     {
-        ZeroFillDirective = null;
-        NonexecutableStackDirective = null;
-        NeedsSet = false;
-        MaxInstLength = 4;
-        PCSymbol = "$";
+        zeroFillDirective = null;
+        nonexecutableStackDirective = null;
+        needsSet = false;
+        maxInstLength = 4;
+        pcSymbol = "$";
         SeparatorChar = ';';
         CommentColumn = 60;
         CommentString = "#";
         GlobalPrefix = "";
-        PrivateGlobalPrefix = ".";
+        privateGlobalPrefix = ".";
         LinkerPrivateGlobalPrefix = "";
         JumpTableSpecialLabelPrefix = null;
         GlobalVarAddrPrefix = "";
@@ -407,7 +418,7 @@ public class TargetAsmInfo
         NeedsIndirectEncoding = false;
         InlineAsmStart = "APP";
         InlineAsmEnd = "NO_APP";
-        AssemblerDialect = AsmWriterFlavorTy.ATT;
+        assemblerDialect = AsmWriterFlavorTy.ATT;
         AllowQuotesInName = false;
         ZeroDirective = "\t.zero\t";
         ZeroDirectiveSuffix = null;
@@ -427,23 +438,23 @@ public class TargetAsmInfo
         JumpTableDirective = null;
         PICJumpTableDirective = null;
         GlobalDirective = "\t.globl\t";
-        SetDirective = null;
+        setDirective = null;
         LCOMMDirective = null;
         COMMDirective = "\t.comm\t";
         COMMDirectiveTakesAlignment = true;
         HasDotTypeDotSizeDirective = true;
         HasSingleParameterDotFile = true;
         UsedDirective = null;
-        WeakRefDirective = null;
+        weakRefDirective = null;
         WeakDefDirective = null;
         // FIXME: These are ELFish - move to ELFTAI.
         HiddenDirective = "\t.hidden\t";
         ProtectedDirective = "\t.protected\t";
-        AbsoluteDebugSectionOffsets = false;
-        AbsoluteEHSectionOffsets = false;
-        HasLEB128 = false;
+        absoluteDebugSectionOffsets = false;
+        absoluteEHSectionOffsets = false;
+        hasLEB128 = false;
         HasDotLocAndDotFile = false;
-        SupportsDebugInformation = false;
+        supportsDebugInformation = false;
         //ExceptionsType = ExceptionHandling::None;
         DwarfRequiresFrameSection = true;
         DwarfUsesInlineInfoSection = false;
@@ -452,7 +463,7 @@ public class TargetAsmInfo
         SupportsWeakOmittedEHFrame = true;
         DwarfSectionOffsetDirective = null;
 
-        AsmTransCBE = null;
+        asmTransCBE = null;
     }
 
     /// getSLEB128Size - Compute the number of bytes required for a signed
@@ -541,27 +552,27 @@ public class TargetAsmInfo
     //
     public String getZeroFillDirective()
     {
-        return ZeroFillDirective;
+        return zeroFillDirective;
     }
 
     public String getNonexecutableStackDirective()
     {
-        return NonexecutableStackDirective;
+        return nonexecutableStackDirective;
     }
 
     public boolean needsSet()
     {
-        return NeedsSet;
+        return needsSet;
     }
 
     public int getMaxInstLength()
     {
-        return MaxInstLength;
+        return maxInstLength;
     }
 
     public String getPCSymbol()
     {
-        return PCSymbol;
+        return pcSymbol;
     }
 
     public char getSeparatorChar()
@@ -586,7 +597,7 @@ public class TargetAsmInfo
 
     public String getPrivateGlobalPrefix()
     {
-        return PrivateGlobalPrefix;
+        return privateGlobalPrefix;
     }
 
     public String getLinkerPrivateGlobalPrefix()
@@ -646,7 +657,7 @@ public class TargetAsmInfo
 
     public AsmWriterFlavorTy getAssemblerDialect()
     {
-        return AssemblerDialect;
+        return assemblerDialect;
     }
 
     public boolean doesAllowQuotesInName()
@@ -706,7 +717,7 @@ public class TargetAsmInfo
 
     public String getSetDirective()
     {
-        return SetDirective;
+        return setDirective;
     }
 
     public String getLCOMMDirective()
@@ -741,7 +752,7 @@ public class TargetAsmInfo
 
     public String getWeakRefDirective()
     {
-        return WeakRefDirective;
+        return weakRefDirective;
     }
 
     public String getWeakDefDirective()
@@ -761,17 +772,17 @@ public class TargetAsmInfo
 
     public boolean isAbsoluteDebugSectionOffsets()
     {
-        return AbsoluteDebugSectionOffsets;
+        return absoluteDebugSectionOffsets;
     }
 
     public boolean isAbsoluteEHSectionOffsets()
     {
-        return AbsoluteEHSectionOffsets;
+        return absoluteEHSectionOffsets;
     }
 
     public boolean hasLEB128()
     {
-        return HasLEB128;
+        return hasLEB128;
     }
 
     public boolean hasDotLocAndDotFile()
@@ -781,7 +792,7 @@ public class TargetAsmInfo
 
     public boolean doesSupportDebugInformation()
     {
-        return SupportsDebugInformation;
+        return supportsDebugInformation;
     }
 
     public boolean doesDwarfRequireFrameSection()
@@ -816,7 +827,7 @@ public class TargetAsmInfo
 
     public String[] getAsmCBE()
     {
-        return AsmTransCBE;
+        return asmTransCBE;
     }
 
     public boolean isAlignIsInByte()
@@ -926,9 +937,9 @@ public class TargetAsmInfo
         SectionKind kind = sectionKindForGlobal(gv);
         if (kind == SectionKind.Text)
             return getTextSection();
-        else if (isBSS(kind) && getBSSSection_() != null)
+        else if (isBSS(kind) && getBssSection_() != null)
         {
-            return getBSSSection_();
+            return getBssSection_();
         }
         else if (getReadOnlySection() != null && isReadOnly(kind))
             return getReadOnlySection();
@@ -936,54 +947,54 @@ public class TargetAsmInfo
         return getDataSection();
     }
 
-    public Section getBSSSection_()
+    public Section getBssSection_()
     {
-        return BSSSection_;
+        return bssSection_;
     }
 
     public Section getDataSection()
     {
-        return DataSection;
+        return dataSection;
     }
 
     public Section getTextSection()
     {
-        return TextSection;
+        return textSection;
     }
 
     public String getBSSSection()
     {
-        return BSSSection;
+        return bssSection;
     }
 
     public Section getSmallBSSSection()
     {
-        return SmallBSSSection;
+        return smallBSSSection;
     }
 
     public Section getSmallDataSection()
     {
-        return SmallDataSection;
+        return smallDataSection;
     }
 
     public Section getReadOnlySection()
     {
-        return ReadOnlySection;
+        return readOnlySection;
     }
 
     public Section getSmallRODataSection()
     {
-        return SmallRODataSection;
+        return smallRODataSection;
     }
 
-    public Section getTLSBSSSection()
+    public Section getTlsBSSSection()
     {
-        return TLSBSSSection;
+        return tlsBSSSection;
     }
 
-    public Section getTLSDataSection()
+    public Section getTlsDataSection()
     {
-        return TLSDataSection;
+        return tlsDataSection;
     }
 
     public SectionKind sectionKindForGlobal(GlobalValue gv)

@@ -57,7 +57,10 @@ public class X86TargetInfo
         Triple theTriple = new Triple(triple);
         switch (theTriple.getOS())
         {
-            default: return new X86ELFTargetAsmInfo(theTriple);
+            case Darwin:
+                return new X86DarwinTargetAsmInfo(theTriple);
+            default:
+                return new X86ELFTargetAsmInfo(theTriple);
         }
     };
 

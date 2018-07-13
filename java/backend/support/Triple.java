@@ -74,9 +74,17 @@ public class Triple
     {
         UnknownOS,
 
+        Cygwin,
+        Darwin,
+        DragonFly,
         FreeBSD,
         Linux,
+        MinGW32,
+        MinGW64,
+        NetBSD,
+        OpenBSD,
         Solaris,
+        Win32
     }
 
     private String data;
@@ -126,6 +134,8 @@ public class Triple
             os = OSType.Linux;
         else if (osName.startsWith("freebsd"))
             os = OSType.FreeBSD;
+        else if (osName.startsWith("darwin"))
+            os = OSType.Darwin;
         else
             os = OSType.UnknownOS;
 
@@ -379,5 +389,45 @@ public class Triple
             default:
                 return UnknownArch;
         }
+    }
+
+    /**
+     * Use an integral array to carry out three version number,
+     * major, minor, revision number.
+     * @param nums
+     */
+    public void getDarwinNumber(int[] nums)
+    {
+        Util.assertion(nums != null && nums.length == 3);
+        Util.assertion(getOS() == OSType.Darwin);
+        String osname = getOSName();
+        Util.assertion(osname.startsWith("darwin"));
+        // strip off 'darwin'
+        osname = osname.substring(6);
+        nums[0] = nums[1] = nums[2];
+
+        if (osname.isEmpty() || osname.charAt(0) < '0' ||
+                os.name().charAt(0) > '9')
+            return;
+        String[] res = osname.split("\\.");
+        nums[0] = Integer.parseInt(res[0]);
+        if (res.length > 1 && !(res[1].isEmpty()) ||
+                res[1].charAt(0) < '0' || res[1].charAt(0) > '9')
+        {
+            nums[1] = Integer.parseInt(res[1]);
+        }
+        if (res.length > 2 && !(res[2].isEmpty()) ||
+                res[2].charAt(0) < '0' || res[2].charAt(0) > '9')
+        {
+            nums[2] = Integer.parseInt(res[2]);
+        }
+    }
+
+    public int getDarwinMajorNumber()
+    {
+        int[] nums = new int[3];
+        // use a integral array to carry out major, minor, rev number.
+        getDarwinNumber(nums);
+        return nums[0];
     }
 }

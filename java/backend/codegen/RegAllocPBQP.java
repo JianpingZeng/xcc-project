@@ -284,7 +284,7 @@ public final class RegAllocPBQP extends MachineFunctionPass
         for (int node = 0; node < li2Nodes.length; node++)
         {
             LiveInterval interval = li2Nodes[node];
-            int[] allowedSet = mri.getRegClass(interval.register).getAllocatableRegs(mf);
+            int[] allowedSet = mri.getRegClass(interval.register).getAllocableRegs(mf);
             TIntArrayList isAllowed = new TIntArrayList();
             isAllowed.addAll(allowedSet);
 
@@ -508,7 +508,7 @@ public final class RegAllocPBQP extends MachineFunctionPass
             int phyReg = interval.register;
             if (phyReg == 0)
             {
-                phyReg = mri.getRegClass(interval.register).getAllocatableRegs(mf)[0];
+                phyReg = mri.getRegClass(interval.register).getAllocableRegs(mf)[0];
             }
             vrm.assignVirt2Phys(interval.register, phyReg);
         }

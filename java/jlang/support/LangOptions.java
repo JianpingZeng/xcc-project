@@ -82,6 +82,10 @@ public final class LangOptions
      * Whether emit all decls even unused.
      */
     public boolean emitAllDecls;
+    /**
+     * block extension to C language.
+     */
+    public boolean blocks;
 
     public enum VisibilityMode
     {

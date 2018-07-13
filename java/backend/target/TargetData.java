@@ -283,6 +283,8 @@ public class TargetData implements ImmutablePass
 	private String getToken(StringBuilder str, String delimiters)
     {
     	String src = str.toString();
+    	if (src.isEmpty()) return "0";
+
     	int start = Util.findFirstNonOf(src, delimiters);
     	int end = Util.findFirstOf(src, delimiters, start);
     	if (end < 0)

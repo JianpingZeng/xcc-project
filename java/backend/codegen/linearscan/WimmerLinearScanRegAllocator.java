@@ -282,7 +282,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private int allocateBlockedRegister(LiveInterval cur)
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
-        int[] allocatableRegs = rc.getAllocatableRegs(mf);
+        int[] allocatableRegs = rc.getAllocableRegs(mf);
         int[] freeUntilPos = new int[tri.getNumRegs()];
         int[] blockPosBy = new int[tri.getNumRegs()];
 
@@ -469,7 +469,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     private int getFreePhysReg(LiveInterval cur)
     {
         TargetRegisterClass rc = mri.getRegClass(cur.register);
-        int[] allocatableRegs = rc.getAllocatableRegs(mf);
+        int[] allocatableRegs = rc.getAllocableRegs(mf);
         int[] freeUntilPos = new int[tri.getNumRegs()];
         // set the free position of all free physical register as
         // integral max value.
