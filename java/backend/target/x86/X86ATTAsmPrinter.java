@@ -94,9 +94,15 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     @Override
     public boolean doFinalization(Module m)
     {
-        if (subtarget.isTargetDarwin() || subtarget.isTargetCygMing())
+        // Print out module-level global variables here.
+        if (subtarget.isTargetDarwin())
         {
-            Util.assertion(false, "Currently, Darwin, Cygwin, MinGW not supported");
+            // All darwin targets use mach-o.
+            // TODO: 2018/7/13
+        }
+        if (subtarget.isTargetCygMing())
+        {
+            Util.assertion(false, "Currently, Cygwin, MinGW not supported");
         }
         super.doFinalization(m);
         return false;

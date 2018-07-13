@@ -1125,7 +1125,10 @@ public abstract class TargetLowering
             APInt[] knownVals, SelectionDAG selectionDAG, int depth)
     {
         int opc = op.getOpcode();
-        Util.assertion( opc >= ISD.BUILTIN_OP_END || opc == ISD.INTRINSIC_VOID                || opc == ISD.INTRINSIC_W_CHAIN || opc == ISD.INTRINSIC_WO_CHAIN);
+        Util.assertion( opc >= ISD.BUILTIN_OP_END ||
+                opc == ISD.INTRINSIC_VOID ||
+                opc == ISD.INTRINSIC_W_CHAIN ||
+                opc == ISD.INTRINSIC_WO_CHAIN);
 
         knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
     }

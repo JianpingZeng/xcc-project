@@ -57,6 +57,7 @@ public class TargetData implements ImmutablePass
             Util.assertion(abiAlign <= prefAlign, "Preferred alignment worse than ABI");
             TargetAlignElem elem = new TargetAlignElem();
             elem.alignType = alignType;
+            elem.abiAlign = abiAlign;
             elem.prefAlign = prefAlign;
             elem.typeBitWidth = typeBitWidth;
             return elem;
