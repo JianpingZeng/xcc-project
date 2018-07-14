@@ -150,8 +150,7 @@ public final class LiveInterval
 
     public void print(PrintStream os, TargetRegisterInfo tri)
     {
-        System.err.println("******** Live Intervals ********");
-        System.err.printf("%s: ", isPhysicalRegister(register) ?
+        os.printf("%s: ", isPhysicalRegister(register) ?
                         tri.getName(register) : "%reg" + register);
         LiveRange r = first;
         while (!r.equals(LiveRange.EndMarker))
@@ -160,13 +159,13 @@ public final class LiveInterval
             System.err.print(",");
             r = r.next;
         }
-        System.err.print(" Use points: [");
+        os.print(" Use points: [");
         int i = 0, size = usePoints.size();
         for (UsePoint up : usePoints)
         {
             System.err.printf("%d", up.id);
             if (i < size - 1)
-                System.err.print(",");
+                os.print(",");
             ++i;
         }
         System.err.println("]");
