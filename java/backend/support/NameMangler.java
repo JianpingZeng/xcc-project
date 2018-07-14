@@ -16,7 +16,6 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.intrinsic.Intrinsic;
 import backend.value.Module;
 import backend.type.Type;
 import backend.value.Function;
@@ -24,6 +23,7 @@ import backend.value.GlobalValue;
 import backend.value.GlobalVariable;
 import backend.value.Value;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +42,10 @@ public class NameMangler
      * symbol is marked as not needed this prefix.
      */
     private String prefix;
+
+    private String privatePrefix;
+    private String linkerPrivatePrefix;
+
     /**
      * If this set, the target accepts global names in input.
      * e.g. "foo bar" is a legal asmName. This syntax is used instead
@@ -63,15 +67,20 @@ public class NameMangler
     private HashSet<GlobalValue> mangledGlobals;
 
     private int acceptableChars[];
+    private static int globalID = 0;
 
     public NameMangler(Module m)
     {
-        this(m, "");
+        this(m, "", "", "");
     }
 
-    public NameMangler(Module m, String prefix)
+    public NameMangler(Module m, String globalPrefix,
+                       String privateGlobalPrefix,
+                       String linkerPrivateGlobalPrefix)
     {
-        this.prefix = prefix;
+        this.prefix = globalPrefix;
+        this.privatePrefix = privateGlobalPrefix;
+        this.linkerPrivatePrefix = linkerPrivateGlobalPrefix;
         useQuotes = false;
         memo = new HashMap<>();
         count = 0;
@@ -139,48 +148,41 @@ public class NameMangler
         if (e == 0) e = ++typeCount;
         return e;
     }
-
-    public String getValueName(Value v)
+    enum ManglerPrefixTy
     {
-        if (v instanceof GlobalValue)
-            return getValueName((GlobalValue)v);
-
-        String name = memo.get(v);
-        if (name != null)
-            return name;
-
-        name = "ltmp_" + String.valueOf(count++) + "_" + String.valueOf(getTypeID(v.getType()));
-        memo.put(v, name);
-        return name;
+        /**
+         * Emit default string before each symbol.
+         */
+        Default,
+        /**
+         * Emit "private" prefix before each symbol.
+         */
+        Private,
+        /**
+         * Emit "linker private" prefix before each symbol.
+         */
+        LinkerPrivate
     }
 
-    private static int globalID = 0;
-    public String getValueName(GlobalValue gv)
+    public String getMangledName(GlobalValue gv, String suffix, boolean forceprivate)
     {
-        String name = memo.get(gv);
-        if (name != null)
-            return name;
+        Util.assertion(!(gv instanceof Function) || !((Function)gv).isIntrinsicID(),
+                "Intrinsic function shouldn't be mangled!");
+        ManglerPrefixTy prefixTy =
+                (gv.hasPrivateLinkage() || forceprivate) ? ManglerPrefixTy.Private
+                        : gv.hasLinkerPrivateLinkage() ? ManglerPrefixTy.LinkerPrivate :
+                        ManglerPrefixTy.Default;
+        if (gv.hasName())
+            return makeNameProper(gv.getName()+suffix, prefixTy);
 
-        if (gv instanceof Function && ((Function)gv).getIntrinsicID() != Intrinsic.ID.not_intrinsic)
-        {
-            name = gv.getName();
-        }
-        else if (!gv.hasName())
-        {
-            int typeUniqueID = getTypeID(gv.getType());
-            name = "__unnamed_" + String.valueOf(typeUniqueID) + "_" + globalID++;
-        }
-        else if (!mangledGlobals.contains(gv))
-        {
-            name = makeNameProper(gv.getName(), prefix);
-        }
-        else
-        {
-            int typeUniqueID = getTypeID(gv.getType());
-            name = "1" + typeUniqueID + "_" + makeNameProper(gv.getName(), "");
-        }
-        memo.put(gv, name);
-        return name;
+        int typeUniqueID = getTypeID(gv.getType());
+        String name = "__unnamed_" + typeUniqueID + "_" + globalID++;
+        return makeNameProper(name+suffix, prefixTy);
+    }
+
+    public String getMangledName(GlobalValue gv)
+    {
+        return getMangledName(gv, "", false);
     }
 
     private static char hexDigit(int v)
@@ -193,19 +195,21 @@ public class NameMangler
         return "_" + hexDigit(digit >> 4) + hexDigit(digit&15) + "_";
     }
 
-    private String makeNameProper(String origin, String prefix)
+    private String makeNameProper(String origin, ManglerPrefixTy prefixTy)
     {
-        String result = "";
-        if (origin.isEmpty()) return origin;
+        Util.assertion(!origin.isEmpty(), "Can't mangle an empty string");
 
+        String result = "";
         if (!useQuotes)
         {
             int i = 0;
-            if (origin.charAt(i) != '1')
-                result = prefix;
-            else
-                i++;
-
+            boolean needsPrefix = true;
+            if (origin.charAt(i) == '1')
+            {
+                needsPrefix = false;
+                ++i;
+            }
+            // Mangle the first letter specially, don't allow numbers.
             if (origin.charAt(i) >= '0' && origin.charAt(i) <= '9')
                 result += mangleLetter(origin.charAt(i++));
 
@@ -217,7 +221,79 @@ public class NameMangler
                 else
                     result += ch;
             }
+            if (needsPrefix)
+            {
+                result = prefix + result;
+                if (prefixTy == ManglerPrefixTy.Private)
+                    result = privatePrefix + result;
+                else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
+                    result = linkerPrivatePrefix + result;
+            }
+            return result;
         }
+        boolean needsPrefix = true;
+        boolean needsQuotes = false;
+        int i = 0;
+        if (origin.charAt(i) == '1')
+        {
+            needsPrefix = false;
+            ++i;
+        }
+
+        if (origin.charAt(i) >= '0' && origin.charAt(i) <= '9')
+            needsQuotes = true;
+        // Do an initial scan of the string, checking to see if we need quotes or
+        // to escape a '"' or not.
+        if (!needsQuotes)
+        {
+            for(; i < origin.length(); i++)
+            {
+                char ch = origin.charAt(i);
+                if (!isCharAcceptable(ch))
+                {
+                    needsQuotes = true;
+                    break;
+                }
+            }
+        }
+
+        if (!needsQuotes)
+        {
+            if (!needsPrefix)
+                return origin.substring(1);
+
+            result = prefix + origin;
+            if (prefixTy == ManglerPrefixTy.Private)
+                result = privatePrefix + result;
+            else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
+                result = linkerPrivatePrefix + result;
+
+            return result;
+        }
+
+        if (needsPrefix)
+            result = origin.substring(0, i);
+
+        // Otherwise, construct the string in expensive way.
+        for (; i < origin.length(); i++)
+        {
+            char ch = origin.charAt(i);
+            if (ch == '"')
+                result += "_QQ_";
+            else if (ch == '\n')
+                result += "_NL_";
+            else
+                result += ch;
+        }
+        if (needsPrefix)
+        {
+            result = prefix + result;
+            if (prefixTy == ManglerPrefixTy.Private)
+                result = privatePrefix + result;
+            else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
+                result = linkerPrivatePrefix + result;
+        }
+        result = '"' + result + '"';
         return result;
     }
 
