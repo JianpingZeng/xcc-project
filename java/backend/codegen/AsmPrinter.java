@@ -142,7 +142,9 @@ public abstract class AsmPrinter extends MachineFunctionPass
     @Override
     public boolean doInitialization(Module m)
     {
-        mangler = new NameMangler(m);
+        mangler = new NameMangler(m, tai.getGlobalPrefix(),
+                tai.getPrivateGlobalPrefix(),
+                tai.getLinkerPrivateGlobalPrefix());
 
         if (tai.doesAllowQuotesInName())
             mangler.setUseQuotes(true);
@@ -171,13 +173,13 @@ public abstract class AsmPrinter extends MachineFunctionPass
             {
                 if (gv.hasExternalLinkage())
                     os.printf("%s%s\n", tai.getWeakDefDirective(),
-                            mangler.getValueName(gv));
+                            mangler.getMangledName(gv));
             }
             for (Function fn : m.getFunctionList())
             {
                 if (fn.hasExternalWeakLinkage())
                     os.printf("%s%s\n", tai.getWeakDefDirective(),
-                            mangler.getValueName(fn));
+                            mangler.getMangledName(fn));
             }
         }
         if (tai.getSetDirective() != null)
@@ -207,7 +209,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             return;
         }
 
-        String name = mangler.getValueName(gv);
+        String name = mangler.getMangledName(gv);
         Constant c = gv.getInitializer();
         Type ty = c.getType();
         long size = td.getTypePaddedSize(ty);
@@ -337,7 +339,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     protected void setupMachineFunction(MachineFunction mf)
     {
-        curFnName = mangler.getValueName(mf.getFunction());
+        curFnName = mangler.getMangledName(mf.getFunction());
         incrementFnNumeber();
 
         if (verboseAsm)
@@ -663,14 +665,14 @@ public abstract class AsmPrinter extends MachineFunctionPass
             {
                 String functionAddrPrefix = tai.getFunctionAddrPrefix();
                 String functionAddrSuffix = tai.getFunctionAddrSuffix();
-                os.print(functionAddrPrefix + mangler.getValueName(gv));
+                os.print(functionAddrPrefix + mangler.getMangledName(gv));
                 os.print(functionAddrSuffix);
             }
             else
             {
                 String globalVarAddrPrefix = tai.getGlobalVarAddrPrefix();
                 String globalVarAddrSuffix = tai.getGlobalVarAddrSuffix();
-                os.print(globalVarAddrPrefix + mangler.getValueName(gv));
+                os.print(globalVarAddrPrefix + mangler.getMangledName(gv));
                 os.print(globalVarAddrSuffix);
             }
         }

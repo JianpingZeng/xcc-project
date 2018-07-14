@@ -23,6 +23,7 @@ public class DarwinTargetAsmInfo extends TargetAsmInfo
 {
     public DarwinTargetAsmInfo()
     {
+        super();
         GlobalPrefix = "_";
         privateGlobalPrefix = "L";
         LinkerPrivateGlobalPrefix = "l";
@@ -47,7 +48,7 @@ public class DarwinTargetAsmInfo extends TargetAsmInfo
         zeroFillDirective = "\t.zerofill\t";
         setDirective = "\t.set";
         ProtectedDirective = "\t.globl\t";
-        HasDotLocAndDotFile = false;
+        HasDotTypeDotSizeDirective = false;
         UsedDirective = "\t.no_dead_strip\t";
 
         Is_EHSymbolPrivate = false;

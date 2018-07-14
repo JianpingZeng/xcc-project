@@ -26,7 +26,6 @@ import backend.type.FunctionType;
 import backend.type.Type;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.Util;
 
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -207,7 +206,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                     suffix.append("$non_lazy_ptr");
                 }
 
-                String name = mangler.getValueName(gv) + suffix.toString();
+                String name = mangler.getMangledName(gv) + suffix.toString();
                 if (subtarget.isTargetCygMing())
                     name = decorateName(name, gv);
 
@@ -215,12 +214,12 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                 if (ts ==X86II.MO_DLLIMPORT)
                     name = "__imp_" + name;
                 if (ts == X86II.MO_DARWIN_NONLAZY || ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE)
-                    gvStubs.put(name, mangler.getValueName(gv));
+                    gvStubs.put(name, mangler.getMangledName(gv));
                 else if (ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
                         ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE)
-                    hiddenGVStubs.put(name, mangler.getValueName(gv));
+                    hiddenGVStubs.put(name, mangler.getMangledName(gv));
                 else if (ts == X86II.MO_DARWIN_STUB)
-                    fnStubs.put(name, mangler.getValueName(gv));
+                    fnStubs.put(name, mangler.getMangledName(gv));
 
                 // If the name begins with a dollar-sign, enclose it in parens.  We do this
                 // to avoid having it look like an integer immediate to the assembler.
@@ -334,6 +333,21 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                 emitAlignment(fnAlign, f);
                 os.println("\t.globl\t" + curFnName);
                 break;
+            case LinkerPrivateLinkage:
+                switchSection(".text", f);
+                emitAlignment(fnAlign, f);
+                if (subtarget.isTargetDarwin())
+                {
+                    os.printf("\t.globl\t %s%n" + curFnName);
+                    os.printf("%s%s%n", tai.getWeakDefDirective(),
+                            curFnName);
+                }
+                else if (subtarget.isTargetCygMing())
+                {
+                    os.printf("\t.globl\t %s%n\t.linkonce discard%n" + curFnName);
+                }
+                else
+                    os.printf("\t.weak\t%s%n", curFnName);
             default:
                 Util.assertion(false,  "Undefined linkage type!");
                 break;
@@ -486,7 +500,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                 MachineBasicBlock mbb = mo.getMBB();
                 os.print(tai.getPrivateGlobalPrefix());
                 os.print("BB");
-                os.print(mangler.getValueName(mbb.getBasicBlock().getParent()));
+                os.print(mangler.getMangledName(mbb.getBasicBlock().getParent()));
                 os.print("_");
                 os.print(mbbNumber.get(mbb));
                 os.print("\t#");
@@ -505,7 +519,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                         null;
 
                 boolean isThreadLocal = gvar != null && gvar.isThreadLocal();
-                String name = mangler.getValueName(gv);
+                String name = mangler.getMangledName(gv);
                 if (subtarget.isTargetCygMing())
                     name = decorateName(name, gv);
 
