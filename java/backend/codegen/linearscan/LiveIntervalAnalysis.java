@@ -277,12 +277,6 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                 }
             }
         }
-
-        if (Util.DEBUG)
-        {
-            for (LiveInterval interval : intervals.values())
-                interval.dump(tri);
-        }
     }
 
     private void handleRegisterDef(int reg, MachineOperand mo, int start)

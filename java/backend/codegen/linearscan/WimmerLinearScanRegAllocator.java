@@ -139,6 +139,13 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // Step #1: initialize the interval list.
         initIntervalSet();
 
+        if (Util.DEBUG)
+        {
+            System.err.println("******** Unhandled Intervals ********\n");
+            for (LiveInterval interval : unhandled)
+                interval.dump(tri);
+        }
+
         // Step #2: walk the intervals
         linearScan();
 
@@ -158,6 +165,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             for (LiveInterval it : handled)
             {
                 it.dump(tri);
+                if (ilk.isAssignedPhyReg(it))
+                    System.err.printf("         assigned phy reg<%s>%n", tri.getName(ilk.getPhyReg(it)));
+                else
+                    System.err.printf("         assigned slot <fi#%d>%n", ilk.getStackSlot(it));
             }
         }
         // Step #4: rewrite the instruction's operand according to it's assigned location.
