@@ -30,31 +30,25 @@ loop invariant code motion, unused loop deletion, loop inversion, sparse conditi
 constant propagation, scalar replacement of aggregate, tail call elimination,
 unreachable basic block elimination etc.
 
-Apart from fore-end and middle optimizer, Implementing the same semantic of
-IR code with machine-specific instructions is also greatly important part of
-complete compiler. In "XCC", all of those work was implemented in directory backend,
-it consists of instruction selection, [TODO]instruction scheduling,
-register allocation. Currently, a naive instruction selection based on macro
-expansion has been completed. "XCC" supports three kind of register allocator,
-SimpleAllocator scoped in single instruction, LocalAllocator focused on basic block,
-and linear scan register allocator focused on whole machine function.
+Apart from fore-end and middle optimizer, implementing same semantic of
+LLVM IR code with machine-specific instructions is also greatly important part of
+a complete compiler. Regarding of "XCC", all of those work was implemented in
+directory backend, which consists of instruction selector based dag covering to
+accomplish the purpose, great code quality, maintenance-friendly, simple and fast
+list-based instruction scheduler, and register allocator based on Christan Wimmer's paper.
 
-Currently, only X86 target is supported.
+Note that, only X86 target is supported on Linux and Mac OSX system. It is expected
+to add supporting for MIPS or ARM in the future.
 
 ## Future plan
-Make the performance improvement of phase of instruction selection by leverage of
-tree-pattern matching. Add a default instruction scheduling to reduce pipeline stall
-as minimal as possible. Also, there are some valuable points to improve register
-allocator, for example, we can take the use point into consideration to avoid
-code spill and to split whole LiveInterval into multiple parts
+First of all, add a greedy list scheduler to reduce pipeline stall as small as possible
+for X86 target. Secondly, considering iterated register coalescing to eliminate redundant
+move instruction linked two different virtual or physical register. There are many benchmarks
+presented by researchers indicated about 50% move instructions can be striped off, so
+this technology is a powerful tool and desired to be implemented in the future.
 
-### Todo List
-For the register allocation, a live interval coalescing and live interval spliting
-should be added to avoiding redundant move instruction. Another point should be
-improved is peephole optimization after instruction inselection, currently naive
-instruction selection generates very poorly machine code.
-
-Supports generation of conversion instruction between fp and integer for FastISel.
+Most importantly, supporting for other target, such as MIPS, ARM, is a interesting work to be
+finished in the future, but I can't promise it.
 
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
