@@ -1269,10 +1269,9 @@ public abstract class TargetLowering
         }
 
         if (returnValues.isEmpty())
-            return Pair.get(new SDValue(), new SDValue());
+            return Pair.get(new SDValue(), chain);
 
-        SDValue res = dag
-                .getNode(ISD.MERGE_VALUES, dag.getVTList(retTys), returnValues);
+        SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(retTys), returnValues);
         return Pair.get(res, chain);
     }
 

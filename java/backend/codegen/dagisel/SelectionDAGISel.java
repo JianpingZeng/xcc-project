@@ -178,10 +178,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
             for (; bi != end && !sdl.hasTailCall(); ++bi)
             {
                 Instruction inst = llvmBB.getInstAt(bi);
-                if (Util.DEBUG)
-                {
-                    Util.Debug(inst.toString());
-                }
+                Util.Debug(inst.toString());
                 if (!(inst instanceof TerminatorInst))
                     sdl.visit(inst);
             }
