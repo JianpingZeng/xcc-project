@@ -8,6 +8,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -144,16 +145,12 @@ public abstract class Instruction extends User
      */
     public String toString()
     {
-        StringBuilder res = new StringBuilder();
-        res.append('[');
-        if (opcode != null)
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintStream os = new PrintStream(baos))
         {
-            res.append(opcode.opName);
-            res.append(',');
+            print(os);
+            return baos.toString();
         }
-        res.append(getName());
-        res.append(']');
-        return res.toString();
     }
 
     public boolean mayHasSideEffects()
@@ -192,11 +189,6 @@ public abstract class Instruction extends User
     {
         // TODO should be overidden by concrete subclasses.
         return (Instruction) super.clone();
-    }
-
-    public void print(PrintStream os)
-    {
-        // TODO: 17-11-5
     }
 
     public int getIndexToBB()
