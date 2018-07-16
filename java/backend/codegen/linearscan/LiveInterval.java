@@ -44,6 +44,11 @@ public final class LiveInterval
     ArrayList<LiveInterval> splitChildren;
 
     /**
+     * Indicates if a move instruction should be inserted at the splitting position.
+     */
+    boolean insertedMove;
+
+    /**
      * A comparator used for sorting the use points list.
      */
     private final static Comparator<UsePoint> UsePointComparator =
@@ -83,11 +88,6 @@ public final class LiveInterval
             return idx1 - idx2;
         }
     };
-
-    /**
-     * Indicates if a move instruction should be inserted at the splitting position.
-     */
-    boolean insertedMove;
 
     public LiveInterval()
     {
@@ -237,6 +237,11 @@ public final class LiveInterval
             return this;
         else
             return splitParent.getSplitParent();
+    }
+
+    public void setSplitParent(LiveInterval parent)
+    {
+        splitParent = parent;
     }
 
     public ArrayList<LiveInterval> getSplitChildren()
@@ -409,5 +414,87 @@ public final class LiveInterval
     public boolean isInsertedMove()
     {
         return insertedMove;
+    }
+
+    /**
+     * Two intervals are joinable if the either don't overlap at all
+     * or if the destination of the copy is a single assignment value, and it
+     * only overlaps with one value in the source interval.
+     * @param it
+     * @param moveIdx
+     * @return
+     */
+    public boolean joinable(LiveInterval it, int moveIdx)
+    {
+        LiveRange srcLR = getLiveIntervalContains(moveIdx-1);
+        LiveRange dstLR = getLiveIntervalContains(moveIdx);
+        Util.assertion(srcLR != null && dstLR != null);
+        return srcLR.intersectsAt(dstLR) != -1;
+    }
+
+    private LiveRange getLiveIntervalContains(int pos)
+    {
+        LiveRange cur = first;
+        while (!cur.equals(LiveRange.EndMarker))
+        {
+            if (cur.contains(pos))
+                return cur;
+            cur = cur.next;
+        }
+        return null;
+    }
+
+    /**
+     * Move all live ranges from it into current live interval.
+     * @param it
+     */
+    public void join(LiveInterval it)
+    {
+        LiveRange cur = it.first;
+        while (!cur.equals(LiveRange.EndMarker))
+        {
+            addRange(cur.start, cur.end);
+            cur = cur.next;
+        }
+        usePoints.addAll(it.usePoints);
+        if (it.splitChildren != null && !it.splitChildren.isEmpty())
+        {
+            for (LiveInterval child : it.splitChildren)
+            {
+                splitChildren.add(child);
+                child.setSplitParent(this);
+            }
+        }
+    }
+
+    public void swap(LiveInterval it)
+    {
+        int r = register;
+        register = it.register;
+        it.register = r;
+
+        LiveRange lr = first;
+        first = it.first;
+        it.first = lr;
+
+        lr = last;
+        last = it.last;
+        it.last = lr;
+
+        TreeSet<UsePoint> ups = usePoints;
+        usePoints = it.usePoints;
+        it.usePoints = ups;
+
+        LiveInterval parent = splitParent;
+        splitParent = it.splitParent;
+        it.splitParent = parent;
+
+        ArrayList<LiveInterval> its = splitChildren;
+        splitChildren = it.splitChildren;
+        it.splitChildren = its;
+
+        boolean move = insertedMove;
+        insertedMove = it.insertedMove;
+        it.insertedMove = move;
     }
 }
