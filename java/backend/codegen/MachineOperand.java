@@ -279,7 +279,7 @@ public class MachineOperand
 					if (tm != null)
 						os.printf("%%%s", tm.getRegisterInfo().getName(getReg()));
 					else
-						os.printf("%%mreg%d", getReg());
+						os.printf("%%reg%d", getReg());
 				}
 				if (getSubReg() != 0)
 					os.printf(":%d", getSubReg());

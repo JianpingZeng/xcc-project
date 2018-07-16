@@ -167,7 +167,9 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
             for (LiveInterval it : handled)
             {
                 it.dump(tri);
-                if (ilk.isAssignedPhyReg(it))
+                if (isPhysicalRegister(it.register))
+                    System.err.printf("            fixed phy reg<%s>%n", tri.getName(it.register));
+                else if (ilk.isAssignedPhyReg(it))
                     System.err.printf("         assigned phy reg<%s>%n", tri.getName(ilk.getPhyReg(it)));
                 else
                     System.err.printf("         assigned slot <fi#%d>%n", ilk.getStackSlot(it));
@@ -177,8 +179,6 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         spiller.runOnMachineFunction(mf, handled);
         clear();
         return true;
-
-        // TODO: 18-7-11  Coalescing identical registers joined by move operation.
     }
 
     private void clear()
@@ -473,7 +473,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         MachineBasicBlock mbb = li.getBlockAtId(insertedPos);
         Util.assertion(mbb != null);
 
-        int index = li.getIndex(insertedPos) - li.getIndex(li.mi2Idx.get(mbb.getFirstInst()));
+        int index = li.getIndexAtMBB(insertedPos) - li.getIndexAtMBB(li.mi2Idx.get(mbb.getFirstInst()));
         Util.assertion(index >= 0 && index < mbb.size());
         resolver.insertMoveInstr(mbb, index-1);
         resolver.addMapping(srcIt, destIt);
@@ -493,12 +493,19 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         // set the free position of that register occupied by active
         // as 0.
         for (LiveInterval it : active)
-            freeUntilPos[ilk.getPhyReg(it)] = 0;
-
+        {
+            int reg = isPhysicalRegister(it.register) ?
+                    freeUntilPos[it.register] = 0 : ilk.getPhyReg(it);
+            freeUntilPos[reg] = 0;
+        }
         for (LiveInterval it : inactive)
         {
             if (it.intersect(cur))
-                freeUntilPos[ilk.getPhyReg(it)] = it.intersectAt(cur);
+            {
+                int reg = isPhysicalRegister(it.register) ?
+                        freeUntilPos[it.register] = 0 : ilk.getPhyReg(it);
+                freeUntilPos[reg] = it.intersectAt(cur);
+            }
         }
 
         int reg = -1;
@@ -637,7 +644,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
         {
             if (isPhysicalRegister(it.register))
             {
-                fixed.add(it);
+                active.add(it);
                 mri.setPhysRegUsed(it.register);
             }
             else

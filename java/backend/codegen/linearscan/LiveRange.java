@@ -54,7 +54,7 @@ public class LiveRange implements Comparable<LiveRange>, Cloneable
 
     public boolean contains(int idx)
     {
-        return start < idx && idx < end;
+        return start <= idx && idx < end;
     }
 
     public void print(PrintStream os)
@@ -82,8 +82,8 @@ public class LiveRange implements Comparable<LiveRange>, Cloneable
     public int intersectsAt(LiveRange r2)
     {
         LiveRange r1 = this;
-        Util.assertion(r2 != null && r2 != EndMarker);
-        Util.assertion(r1 != EndMarker);
+        Util.assertion(r2 != null && !r2.equals(EndMarker));
+        Util.assertion(!r1.equals(EndMarker));
 
         while (true)
         {
@@ -92,7 +92,7 @@ public class LiveRange implements Comparable<LiveRange>, Cloneable
                 if (r1.end <= r2.start)
                 {
                     r1 = r1.next;
-                    if (r1 == EndMarker)
+                    if (r1.equals(EndMarker))
                         return -1;
                 }
                 else
@@ -108,7 +108,7 @@ public class LiveRange implements Comparable<LiveRange>, Cloneable
                 if (r2.end <= r1.start)
                 {
                     r2 = r2.next;
-                    if (r2 == EndMarker)
+                    if (r2.equals(EndMarker))
                         return -1;
                 }
                 else

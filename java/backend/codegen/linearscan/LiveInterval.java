@@ -106,23 +106,49 @@ public final class LiveInterval
     public void addRange(int from, int to)
     {
         Util.assertion(from < to, "Invalid range!");
-        Util.assertion(first.equals(LiveRange.EndMarker) || to < first.next.start,
+        if (first.equals(LiveRange.EndMarker) || to < first.end)
+        {
+            first = insertRangeBefore(from, to, first);
+        }
+        else
+        {
+            LiveRange cur = first;
+            while (!cur.equals(LiveRange.EndMarker))
+            {
+                if (to >= cur.end)
+                    cur = cur.next;
+                else
+                    break;
+            }
+            cur = insertRangeBefore(from, to, cur);
+        }
+    }
+
+    /**
+     * Insert a live range before specified position.
+     * @param from
+     * @param to
+     * @param cur
+     */
+    private LiveRange insertRangeBefore(int from, int to, LiveRange cur)
+    {
+        Util.assertion(cur.equals(LiveRange.EndMarker) || to < cur.next.start,
                 "Not inserting at begining of interval");
-        Util.assertion(from <= first.end, "Not inserting at begining of interval");
-        if (first.start <= to)
+        Util.assertion(from <= cur.end, "Not inserting at begining of interval");
+        if (cur.start <= to)
         {
             // Join intersecting LiveRanges.
-            Util.assertion(first != LiveRange.EndMarker,
-                    "First range must not be EndMarker for "+"%reg" + register);
-            first.start = Math.min(from, first.start);
-            first.end = Math.max(to, first.end);
+            Util.assertion(cur != LiveRange.EndMarker,
+                    "First range must not be EndMarker for " + "%reg" + register);
+            cur.start = Math.min(from, cur.start);
+            cur.end = Math.max(to, cur.end);
         }
         else
         {
             // create a new LiveRange.
-            if (first == last)
+            if (cur == last)
             {
-                first = last = new LiveRange(from, to, first);
+                cur = last = new LiveRange(from, to, cur);
             }
             else
             {
@@ -131,6 +157,7 @@ public final class LiveInterval
                 last = r;
             }
         }
+        return cur;
     }
 
     public LiveRange getFirst()
@@ -426,10 +453,10 @@ public final class LiveInterval
      */
     public boolean joinable(LiveInterval it, int moveIdx)
     {
-        LiveRange srcLR = getLiveIntervalContains(moveIdx-1);
+        LiveRange srcLR = it.getLiveIntervalContains(moveIdx-1);
         LiveRange dstLR = getLiveIntervalContains(moveIdx);
         Util.assertion(srcLR != null && dstLR != null);
-        return srcLR.intersectsAt(dstLR) != -1;
+        return srcLR.intersectsAt(dstLR) == -1;
     }
 
     private LiveRange getLiveIntervalContains(int pos)
