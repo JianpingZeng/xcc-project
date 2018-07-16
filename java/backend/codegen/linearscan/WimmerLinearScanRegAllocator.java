@@ -63,6 +63,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addRequired(LiveIntervalAnalysis.class);
+        au.addRequired(SimpleRegisterCoalescer.class);
+
         // Obtains the loop information used for assigning a spilling weight to
         // each live interval. The more nested, the more weight.
         au.addPreserved(MachineDomTree.class);

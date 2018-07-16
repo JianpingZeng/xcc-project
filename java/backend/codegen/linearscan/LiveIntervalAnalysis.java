@@ -45,7 +45,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     /**
      * A mapping from instruction number to itself.
      */
-    private MachineInstr[] idx2MI;
+    MachineInstr[] idx2MI;
 
     /**
      * A mapping from MachineInstr to its number.
@@ -76,6 +76,17 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         au.addRequired(MachineDomTree.class);
 
         super.getAnalysisUsage(au);
+    }
+
+    public int getNumIntervals()
+    {
+        return intervals == null?0:intervals.values().size();
+    }
+
+    public LiveInterval getInterval(int reg)
+    {
+        Util.assertion(reg > 0);
+        return intervals.getOrDefault(reg, null);
     }
 
     @Override
@@ -399,6 +410,12 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
         int id = pos / InstrSlots.NUM;
         Util.assertion(id >= 0 && id < idx2MI.length);
         return idx2MI[id].equals(idx2MI[id].getParent().getFirstInst());
+    }
+
+    public int getIndex(MachineInstr mi)
+    {
+        Util.assertion(mi2Idx.containsKey(mi));
+        return getIndex(mi2Idx.get(mi));
     }
 
     public int getIndex(int id)

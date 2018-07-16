@@ -22,6 +22,7 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
+import backend.codegen.linearscan.SimpleRegisterCoalescer;
 import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
 import backend.support.CFGPrinter;
 import backend.support.DomTreePrinter;
@@ -111,6 +112,8 @@ public final class PassRegisterationUtility
 
 
         new RegisterPass("register-coalescing", "Simple register coalescer", LiveIntervalCoalescing.class);
+        new RegisterPass("simple-register-coalescer", "Simple Register Coalescer", SimpleRegisterCoalescer.class);
+
         new RegisterPass("live-stack-slot", "Live Analysis of Stack Slot", LiveStackSlot.class);
         new RegisterPass("edge-bundles", "Bundle Machine CFG Edges", EdgeBundles.class);
         new RegisterPass("dead-mi-elimination", "Remove dead machine instruction", DeadMachineInstructionElim.class);
