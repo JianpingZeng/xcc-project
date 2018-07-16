@@ -432,7 +432,7 @@ public class MachineBasicBlock
             if (tri!= null)
                 os.printf(" %%s", tri.getName(reg));
             else
-                os.printf(" %%mreg(%d)", reg);
+                os.printf(" %%reg(%d)", reg);
         }
         else
         {

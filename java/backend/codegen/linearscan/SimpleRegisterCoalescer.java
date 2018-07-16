@@ -103,9 +103,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
 
         // perform a final pass over the instructions and compute spill
         // weights, coalesce virtual registers and remove identity moves
-        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
         TargetInstrInfo tii = tm.getInstrInfo();
-
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             for (int i = 0; i < mbb.size(); i++)
@@ -141,7 +139,8 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
                         {
                             // Replace register with representative register.
                             int repReg = rep(reg);
-                            if (reg != repReg) mi.setMachineOperandReg(j, reg);
+                            if (reg != repReg)
+                                mi.setMachineOperandReg(j, repReg);
                         }
                     }
                 }
@@ -181,41 +180,38 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
             System.err.println("************ Joining Intervals *************");
 
         MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
-        if (loopInfo != null)
+        if (loopInfo == null || loopInfo.isNoTopLevelLoop())
         {
-            if (loopInfo.isNoTopLevelLoop())
-            {
-                // If there are no loops in the function, join intervals in function
-                // order.
-                for (MachineBasicBlock mbb : mf.getBasicBlocks())
-                    joinIntervalsInMachineBB(mbb);
-            }
-            else
-            {
-                // Otherwise, join intervals in inner loops before other intervals.
-                // Unfortunately we can't just iterate over loop hierarchy here because
-                // there may be more MBB's than BB's.  Collect MBB's for sorting.
-                ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
-                mf.getBasicBlocks().forEach(mbb -> {
-                    mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb),
-                            mbb));
-                });
+            // If there are no loops in the function, join intervals in function
+            // order.
+            for (MachineBasicBlock mbb : mf.getBasicBlocks())
+                joinIntervalsInMachineBB(mbb);
+        }
+        else
+        {
+            // Otherwise, join intervals in inner loops before other intervals.
+            // Unfortunately we can't just iterate over loop hierarchy here because
+            // there may be more MBB's than BB's.  Collect MBB's for sorting.
+            ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
+            mf.getBasicBlocks().forEach(mbb -> {
+                mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb),
+                        mbb));
+            });
 
-                // Sort mbb by loop depth.
-                mbbs.sort((lhs, rhs) ->
-                {
-                    if (lhs.first > rhs.first)
-                        return -1;
-                    if (lhs.first.equals(rhs.first) && lhs.second.getNumber() < rhs.second.getNumber())
-                        return 0;
-                    return 1;
-                });
+            // Sort mbb by loop depth.
+            mbbs.sort((lhs, rhs) ->
+            {
+                if (lhs.first > rhs.first)
+                    return -1;
+                if (lhs.first.equals(rhs.first) && lhs.second.getNumber() < rhs.second.getNumber())
+                    return 0;
+                return 1;
+            });
 
-                // Finally, joi intervals in loop nest order.
-                for (Pair<Integer, MachineBasicBlock> pair : mbbs)
-                {
-                    joinIntervalsInMachineBB(pair.second);
-                }
+            // Finally, joi intervals in loop nest order.
+            for (Pair<Integer, MachineBasicBlock> pair : mbbs)
+            {
+                joinIntervalsInMachineBB(pair.second);
             }
         }
 
@@ -292,19 +288,18 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
                 if (intervalB.joinable(intervalA, midDefIdx) &&
                         !overlapsAliases(intervalA, intervalB))
                 {
-                    intervalB.join(intervalA);
-
-                    if (!isPhysicalRegister(regA))
+                    if (isPhysicalRegister(regB))
                     {
+                        intervalB.join(intervalA);
                         r2rMap.remove(regA);
                         r2rMap.put(regA, regB);
                         li.intervals.remove(regA, li.intervals.get(regA));
                     }
                     else
                     {
+                        intervalA.join(intervalB);
+                        r2rMap.remove(regB);
                         r2rMap.put(regB, regA);
-                        intervalB.register = regA;
-                        intervalA.swap(intervalB);
                         li.intervals.remove(regB, li.intervals.get(regB));
                     }
                     numJoins.inc();

@@ -415,10 +415,10 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
     public int getIndex(MachineInstr mi)
     {
         Util.assertion(mi2Idx.containsKey(mi));
-        return getIndex(mi2Idx.get(mi));
+        return mi2Idx.get(mi);
     }
 
-    public int getIndex(int id)
+    public int getIndexAtMBB(int id)
     {
         return id / LiveIntervalAnalysis.InstrSlots.NUM;
     }

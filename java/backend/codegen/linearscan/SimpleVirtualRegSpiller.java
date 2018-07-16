@@ -24,6 +24,8 @@ import tools.Util;
 
 import java.util.ArrayList;
 
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -46,6 +48,8 @@ public class SimpleVirtualRegSpiller
 
         for (LiveInterval it : handled)
         {
+            if (isPhysicalRegister(it.register))
+                continue;
             Util.assertion(ilk.isAssignedPhyReg(it), "No free register?");
             int reg = ilk.getPhyReg(it);
             for (UsePoint up : it.getUsePoints())
