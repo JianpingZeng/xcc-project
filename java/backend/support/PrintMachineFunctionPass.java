@@ -22,6 +22,8 @@ import backend.pass.AnalysisUsage;
 
 import java.io.PrintStream;
 
+import static backend.support.BackendCmdOptions.isFunctionInPrintList;
+
 public class PrintMachineFunctionPass extends MachineFunctionPass
 {
     private PrintStream os;
@@ -36,8 +38,11 @@ public class PrintMachineFunctionPass extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        os.printf(banner);
-        mf.print(os);
+        if (isFunctionInPrintList(mf.getFunction().getName()))
+        {
+            os.println(banner + ":");
+            mf.print(os);
+        }
         return false;
     }
 
