@@ -1,10 +1,13 @@
 package backend.pass;
 
+import backend.support.PrintBasicBlockPass;
 import tools.Util;
 import backend.passManaging.*;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Module;
+
+import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -86,5 +89,11 @@ public interface BasicBlockPass extends Pass
 	default void assignPassManager(PMStack pms)
 	{
 		assignPassManager(pms, PassManagerType.PMT_BasicBlockPassManager);
+	}
+
+	@Override
+	default Pass createPrinterPass(PrintStream os, String banner)
+	{
+		return PrintBasicBlockPass.createPrintBasicBlockPass(os, banner);
 	}
 }

@@ -19,7 +19,7 @@ package backend.analysis;
 import tools.Util;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
-import backend.codegen.MachineFunctionPass;
+import backend.support.MachineFunctionPass;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.LoopInfoBase;

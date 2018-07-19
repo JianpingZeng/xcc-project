@@ -16,17 +16,23 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
+import backend.support.PrintModulePass;
 import backend.pass.*;
 import backend.support.BackendCmdOptions;
 import backend.value.Module;
+import tools.Util;
 
-import java.util.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 import static backend.passManaging.PMDataManager.PassDebugLevel.Arguments;
 import static backend.passManaging.PMDataManager.PassDebugLevel.Structures;
 import static backend.passManaging.PMTopLevelManager.TopLevelPassManagerType.TLM_Pass;
-import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
+import static backend.support.BackendCmdOptions.shouldPrintAfterPass;
+import static backend.support.BackendCmdOptions.shouldPrintBeforePass;
 
 /**
  * @author Xlous.zeng
@@ -63,6 +69,12 @@ public class PassManagerImpl extends PMDataManager implements
     {
         super(depth);
         initTopLevelManager();
+    }
+
+    @Override
+    public Pass createPrinterPass(PrintStream os, String banner)
+    {
+        return PrintModulePass.createPrintModulePass(os);
     }
 
     private void initTopLevelManager()
@@ -152,9 +164,7 @@ public class PassManagerImpl extends PMDataManager implements
 
         PassInfo pi = p.getPassInfo();
         if (pi != null && pi.isAnalysis() && findAnalysisPass(pi) != null)
-        {
             return;
-        }
 
         AnalysisUsage au = findAnalysisUsage(p);
         boolean checkAnalysis = true;
@@ -191,13 +201,7 @@ public class PassManagerImpl extends PMDataManager implements
                 }
             }
         }
-        // Now all required passes are available.
-        addTopLevelPass(p);
-    }
 
-    @Override
-    public void addTopLevelPass(Pass p)
-    {
         ImmutablePass ip = p.getAsImmutablePass();
         if (ip != null)
         {
@@ -208,11 +212,31 @@ public class PassManagerImpl extends PMDataManager implements
             initializeAnalysisImpl(p);
             addImmutablePass(ip);
             recordAvailableAnalysis(ip);
+            return;
         }
-        else
+
+        if (pi != null && !pi.isAnalysis() && shouldPrintBeforePass(pi))
         {
-            p.assignPassManager(getActiveStack(), PMT_ModulePassManager);
+            Pass pp = p.createPrinterPass(System.err,
+                    String.format("*** IR Dump Before %s ***", p.getPassName()));
+            pp.assignPassManager(activeStack, getTopLevelPassManagerType());
         }
+
+        // Now all required passes are available.
+        p.assignPassManager(activeStack, getTopLevelPassManagerType());
+
+        if (pi != null && !pi.isAnalysis() && shouldPrintAfterPass(pi))
+        {
+            Pass pp = p.createPrinterPass(System.err,
+                    String.format("*** IR Dump After %s ***", p.getPassName()));
+            pp.assignPassManager(activeStack, getTopLevelPassManagerType());
+        }
+    }
+
+    @Override
+    public PassManagerType getTopLevelPassManagerType()
+    {
+        return PassManagerType.PMT_ModulePassManager;
     }
 
     @Override

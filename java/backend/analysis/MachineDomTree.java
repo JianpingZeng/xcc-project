@@ -18,7 +18,7 @@ package backend.analysis;
 
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
-import backend.codegen.MachineFunctionPass;
+import backend.support.MachineFunctionPass;
 import backend.codegen.MachineInstr;
 import backend.pass.AnalysisUsage;
 

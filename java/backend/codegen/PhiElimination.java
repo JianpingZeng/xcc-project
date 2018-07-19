@@ -1,5 +1,7 @@
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
+import backend.support.PrintMachineFunctionPass;
 import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;

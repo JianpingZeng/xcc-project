@@ -1,9 +1,12 @@
 package backend.pass;
 
+import backend.support.PrintModulePass;
 import tools.Util;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.value.Module;
+
+import java.io.PrintStream;
 
 import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
 
@@ -46,5 +49,11 @@ public interface ModulePass extends Pass
 	default PassManagerType getPotentialPassManagerType()
 	{
 		return PMT_ModulePassManager;
+	}
+
+	@Override
+	default Pass createPrinterPass(PrintStream os, String banner)
+	{
+		return PrintModulePass.createPrintModulePass(os);
 	}
 }

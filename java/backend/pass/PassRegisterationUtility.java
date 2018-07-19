@@ -24,8 +24,7 @@ import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.codegen.linearscan.SimpleRegisterCoalescer;
 import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
-import backend.support.CFGPrinter;
-import backend.support.DomTreePrinter;
+import backend.support.*;
 import backend.target.TargetData;
 import backend.transform.ipo.RaiseAllocations;
 import backend.transform.scalars.*;
@@ -118,11 +117,16 @@ public final class PassRegisterationUtility
         new RegisterPass("edge-bundles", "Bundle Machine CFG Edges", EdgeBundles.class);
         new RegisterPass("dead-mi-elimination", "Remove dead machine instruction", DeadMachineInstructionElim.class);
 
-        new RegisterPass("Print out Function", "print-function", PrintMachineFunctionPass.class);
-        new RegisterPass("Print out Module", "print-module", PrintModulePass.class);
         new RegisterPass("Verify generated machine code","machine-verifier", MachineCodeVerifier.class);
 
         // Immutable Passes.
         new RegisterPass("Target Data Layout", "targetdata", TargetData.class, false, true);
+
+        new RegisterPass("Print Module to stderr", "print-module", PrintModulePass.class);
+        new RegisterPass("Print Function to stderr", "print-function", PrintFunctionPass.class);
+        new RegisterPass("Print Basic Block to stderr", "print-bb", PrintBasicBlockPass.class);
+        new RegisterPass("Print out Machine Function to stderr", "print-machine-function", PrintMachineFunctionPass.class);
+        new RegisterPass("Print Loop to stderr", "print-loop", PrintLoopPass.class);
+
     }
 }

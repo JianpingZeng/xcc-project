@@ -225,6 +225,11 @@ public class AssemblyWriter
         printModule(m);
     }
 
+    public void write(Function fn)
+    {
+        printFunction(fn);
+    }
+
     public void write(GlobalValue gv)
     {
         if (gv instanceof GlobalVariable)

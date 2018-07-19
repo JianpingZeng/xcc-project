@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.analysis.MachineLoop;
 import backend.codegen.pbqp.*;

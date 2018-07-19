@@ -19,7 +19,6 @@ package utils.opt;
 import tools.Util;
 import backend.pass.*;
 import backend.passManaging.PassManager;
-import backend.passManaging.PassRegistrationListener;
 import backend.target.TargetData;
 import backend.value.Module;
 import tools.OutParamWrapper;
@@ -29,9 +28,8 @@ import tools.commandline.*;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.Comparator;
 
-import static backend.codegen.PrintModulePass.createPrintModulePass;
+import static backend.support.PrintModulePass.createPrintModulePass;
 import static backend.pass.PassCreator.createStandardModulePasses;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
@@ -46,55 +44,6 @@ import static tools.commandline.ValueDesc.valueDesc;
  */
 public final class Optimizer
 {
-    private static class PassNameParser extends Parser<PassInfo> implements
-            PassRegistrationListener
-    {
-        public PassNameParser()
-        {
-            registerListener();
-        }
-
-        @Override
-        public <PassInfo> void initialize(Option<PassInfo> opt)
-        {
-            super.initialize(opt);
-            // Add all of the passes to the map that got initialized before 'this' did.
-            enumeratePasses();
-        }
-
-        public boolean ignorablePass(PassInfo pi)
-        {
-            return pi.getPassArgument() == null || pi.getPassArgument().isEmpty()
-                    || pi.getKlass() == null;
-        }
-
-        @Override
-        public void passRegistered(PassInfo pi)
-        {
-            if (ignorablePass(pi)) return;
-            int idx = findOption(pi.getPassArgument());
-            if (idx != -1)
-            {
-                System.err.printf("No pass '%s' found\n", pi.getPassArgument());
-                System.exit(-1);
-            }
-            addLiteralOption(pi.getPassArgument(), pi, pi.getPassName());
-        }
-
-        @Override
-        public void passEnumerate(PassInfo pi)
-        {
-            passRegistered(pi);
-        }
-
-        @Override
-        public void printOptionInfo(Option<?> opt, int globalWidth)
-        {
-            values.sort(Comparator.comparing(o -> o.first));
-            super.printOptionInfo(opt, globalWidth);
-        }
-    }
-
     // The OptimizationList is automatically populated with registered Passes by
     // the PassNameParser.
     private static final ListOpt<PassInfo> AvailablePasses =

@@ -23,6 +23,7 @@ import backend.mc.MCStreamer;
 import backend.pass.AnalysisUsage;
 import backend.support.BackendCmdOptions;
 import backend.support.LLVMContext;
+import backend.support.MachineFunctionPass;
 import backend.support.NameMangler;
 import backend.target.*;
 import backend.type.Type;

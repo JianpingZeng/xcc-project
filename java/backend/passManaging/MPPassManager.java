@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import backend.support.PrintModulePass;
 import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -23,6 +24,7 @@ import backend.pass.ModulePass;
 import backend.pass.Pass;
 import backend.value.Module;
 
+import java.io.PrintStream;
 import java.util.HashMap;
 
 /**
@@ -87,6 +89,12 @@ public class MPPassManager extends PMDataManager implements Pass
     public PMDataManager getAsPMDataManager()
     {
         return this;
+    }
+
+    @Override
+    public Pass createPrinterPass(PrintStream os, String banner)
+    {
+        return PrintModulePass.createPrintModulePass(os);
     }
 
     public Pass getAsPass()

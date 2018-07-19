@@ -21,6 +21,7 @@ import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;

@@ -21,7 +21,7 @@ import tools.Util;
 import backend.analysis.aa.AliasSetTracker;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
-import backend.codegen.PrintModulePass;
+import backend.support.PrintModulePass;
 import backend.type.PointerType;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -31,7 +31,6 @@ import backend.value.Value.UndefValue;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.OutParamWrapper;
 import tools.Pair;
-import tools.Util;
 
 import java.util.*;
 

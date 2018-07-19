@@ -17,16 +17,13 @@
 
 package backend.codegen;
 
+import backend.support.*;
 import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.support.Attribute;
-import backend.support.BackendCmdOptions;
-import backend.support.DepthFirstOrder;
-import backend.support.IntStatistic;
 import backend.target.*;
 import backend.value.Function;
 import tools.BitMap;

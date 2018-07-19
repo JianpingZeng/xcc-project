@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
@@ -26,7 +27,6 @@ import backend.pass.FunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import tools.Util;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.MachineOperand.createReg;

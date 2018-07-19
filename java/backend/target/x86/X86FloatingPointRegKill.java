@@ -23,6 +23,7 @@ import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.LLVMContext;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.utils.SuccIterator;

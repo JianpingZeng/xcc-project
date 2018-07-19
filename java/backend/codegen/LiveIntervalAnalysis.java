@@ -22,6 +22,7 @@ import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;

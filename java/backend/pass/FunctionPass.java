@@ -1,5 +1,6 @@
 package backend.pass;
 
+import backend.support.PrintFunctionPass;
 import tools.Util;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
@@ -112,5 +113,11 @@ public interface FunctionPass extends Pass
     default void print(PrintStream os, Module m)
     {
         os.printf("Pass::print not implemented for pass: '%s'%n", getPassName());
+    }
+
+    @Override
+    default Pass createPrinterPass(PrintStream os, String banner)
+    {
+        return PrintFunctionPass.createPrintFunctionPass(os, banner);
     }
 }
