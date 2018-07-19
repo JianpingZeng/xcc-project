@@ -468,7 +468,7 @@ public final class CFGSimplifyPass implements FunctionPass
         {
             pn = (PhiNode) curInst;
             Value falseVal = pn.getIncomingValue(Objects.equals(ifBlock0, ifTrue) ? 1:0);
-            Value trueVal = pn.getIncomingValue(Objects.equals(ifBlock1, ifFalse) ? 1:0);
+            Value trueVal = pn.getIncomingValue(Objects.equals(ifBlock1, ifFalse) ? 0:1);
             Instruction select = new SelectInst(condVal, trueVal, falseVal, "", pn);
             pn.replaceAllUsesWith(select);
             select.setName(pn.getName());
