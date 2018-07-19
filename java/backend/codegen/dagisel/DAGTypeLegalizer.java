@@ -1212,7 +1212,7 @@ public class DAGTypeLegalizer
             case ISD.SCALAR_TO_VECTOR:
                 res = promoteOpScalarToVector(node); break;
             case ISD.SELECT:
-                res = promoteOpSelectCC(node, opNo); break;
+                res = promoteOpSelect(node, opNo); break;
             case ISD.SELECT_CC:
                 res = promoteOpSelectCC(node, opNo); break;
             case ISD.SETCC:
@@ -1361,7 +1361,7 @@ public class DAGTypeLegalizer
     }
     private SDValue promoteOpSelectCC(SDNode node, int opNo)
     {
-        Util.assertion( opNo == 0);
+        Util.assertion(opNo == 0);
         SDValue lhs = node.getOperand(0);
         SDValue rhs = node.getOperand(1);
         promoteSetCCOperands(lhs, rhs, ((CondCodeSDNode)node.getOperand(4).getNode()).getCondition());

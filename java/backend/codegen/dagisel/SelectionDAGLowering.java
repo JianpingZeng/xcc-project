@@ -2465,16 +2465,16 @@ public class SelectionDAGLowering implements InstVisitor<Void>
         computeValueVTs(tli, u.getType(), valueVTs);
         if (!valueVTs.isEmpty())
         {
-            ArrayList<SDValue> values = new ArrayList<>(valueVTs.size());
+            SDValue[] values = new SDValue[valueVTs.size()];
             SDValue cond = getValue(u.operand(0));
             SDValue trueVal = getValue(u.operand(1));
             SDValue falseVal = getValue(u.operand(2));
             for (int i = 0; i < valueVTs.size(); i++)
             {
-                values.set(i, dag.getNode(ISD.SELECT,
+                values[i] = dag.getNode(ISD.SELECT,
                         trueVal.getValueType(), cond,
                         new SDValue(trueVal.getNode(), trueVal.getResNo()+i),
-                        new SDValue(falseVal.getNode(), falseVal.getResNo()+i)));
+                        new SDValue(falseVal.getNode(), falseVal.getResNo()+i));
             }
             setValue(u, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs),
                     values));
