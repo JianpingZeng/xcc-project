@@ -67,6 +67,26 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         attributeList = new AttrList(new ArrayList<>());
     }
 
+    /**
+     * Returns the number of basic blocks in this function.
+     * @return
+     */
+    public int size()
+    {
+        return basicBlockList == null ? 0 : basicBlockList.size();
+    }
+
+    /**
+     * Return the basic block at the position specified by given index.
+     * @param index
+     * @return
+     */
+    public BasicBlock getBlockAt(int index)
+    {
+        Util.assertion(index >= 0 && index < size());
+        return basicBlockList.get(index);
+    }
+
     public Type getReturnType()
     {
         return getFunctionType().getReturnType();

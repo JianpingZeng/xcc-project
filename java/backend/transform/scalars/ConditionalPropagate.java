@@ -17,6 +17,7 @@
 
 package backend.transform.scalars;
 
+import backend.transform.utils.ConstantFolder;
 import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -110,7 +111,7 @@ public class ConditionalPropagate implements FunctionPass
         {
             while (!deadBlocks.isEmpty())
             {
-                deleteDeadBlock(deadBlocks.removeLast());
+                ConstantFolder.deleteDeadBlock(deadBlocks.removeLast());
             }
         }
         return everMadeChange;
@@ -352,24 +353,5 @@ public class ConditionalPropagate implements FunctionPass
         }
         madeChange = true;
         return true;
-    }
-
-    /**
-     * Delete the specified dead basic block.
-     * @param bb    A dead basic block to be removed from CFG.
-     */
-    private void deleteDeadBlock(BasicBlock bb)
-    {
-        LinkedList<Instruction> list = bb.getInstList();
-        while (!list.isEmpty())
-        {
-            Instruction inst = list.getFirst();
-            list.removeFirst();
-            if (inst == null)
-                continue;
-            if (inst.hasOneUses())
-                inst.replaceAllUsesWith(UndefValue.get(inst.getType()));
-            inst.eraseFromParent();
-        }
     }
 }

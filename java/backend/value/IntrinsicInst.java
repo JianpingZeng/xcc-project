@@ -16,6 +16,8 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.intrinsic.Intrinsic;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -25,5 +27,10 @@ public class IntrinsicInst extends Instruction.CallInst
     public IntrinsicInst(Value[] args, Value target)
     {
         super(args, target);
+    }
+
+    public Intrinsic.ID getIntrinsicID()
+    {
+        return getCalledFunction().getIntrinsicID();
     }
 }
