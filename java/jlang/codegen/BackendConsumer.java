@@ -17,6 +17,7 @@ package jlang.codegen;
  */
 
 import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
+import backend.support.PrintModulePass;
 import tools.Util;
 import backend.codegen.*;
 import backend.codegen.dagisel.RegisterScheduler;

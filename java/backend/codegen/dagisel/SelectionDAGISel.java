@@ -22,6 +22,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
+import backend.support.MachineFunctionPass;
 import backend.target.*;
 import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.PointerType;

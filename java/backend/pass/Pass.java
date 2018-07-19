@@ -1,6 +1,5 @@
 package backend.pass;
 
-import tools.Util;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
@@ -97,5 +96,15 @@ public interface Pass extends Printable
     {
     	os.printf("[Pass: %s]\n", getPassName());
     }
+
+	/**
+	 * An interface used for creating a printer pass for each kind of pass.
+	 * So, most of kinds,like ModulePass, FunctionPass, MachineFunctionPass,
+	 * LoopPass, CallGraphSCCPass, should implement this method.
+	 * @param os
+	 * @param banner
+	 * @return
+	 */
+    Pass createPrinterPass(PrintStream os, String banner);
 }
 

@@ -21,9 +21,13 @@ import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAG;
 import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.codegen.dagisel.SelectionDAGISel;
+import backend.pass.PassInfo;
 import backend.passManaging.PMDataManager;
 import backend.target.TargetMachine;
 import tools.commandline.*;
+
+import java.util.Objects;
+import java.util.TreeSet;
 
 import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
 import static backend.codegen.AsmWriterFlavorTy.ATT;
@@ -231,5 +235,67 @@ public class BackendCmdOptions
      */
     public static void registerBackendCommandLineOptions()
     {
+    }
+
+    /**
+     * A command line option used for indicateing we should print IR after what pass.
+     */
+    public final static ListOpt<PassInfo> PrintBefore = new ListOpt<PassInfo>(
+            new PassNameParser(),
+            optionName("print-before"),
+            desc("Print IR before specified passes"),
+            new OptionHiddenApplicator(Hidden));
+
+    public final static ListOpt<PassInfo> PrintAfter = new ListOpt<PassInfo>(
+            new PassNameParser(),
+            optionName("print-after"),
+            desc("Print IR after specified passes"),
+            new OptionHiddenApplicator(Hidden));
+
+    public final static BooleanOpt PrintBeforeAll = new BooleanOpt(
+            optionName("print-before-all"),
+            desc("Print IR before each pass"),
+            init(false));
+
+    public final static BooleanOpt PrintAfterAll = new BooleanOpt(
+            optionName("print-after-all"),
+            desc("Print IR after each pass"),
+            init(false));
+
+    public final static ListOpt<String> PrintFuncsList = new ListOpt<String>(
+            new ParserString(),
+            optionName("filter-print-funcs"), valueDesc("function names"),
+                    desc("Only print IR for functions whose name" +
+                    " match this for all print-[before|after][-all] options"),
+                    new MiscFlagsApplicator(MiscFlags.CommaSeparated));
+
+    public static boolean shouldPrintBeforeOrAfterPass(PassInfo pi,
+            ListOpt<PassInfo> passesToPrint)
+    {
+        for (PassInfo info : passesToPrint)
+        {
+            if (info != null && Objects.equals(info.getPassArgument(), pi.getPassArgument()))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean shouldPrintBeforePass(PassInfo pi)
+    {
+        return PrintBeforeAll.value || shouldPrintBeforeOrAfterPass(pi, PrintBefore);
+    }
+
+    public static boolean shouldPrintAfterPass(PassInfo pi)
+    {
+        return PrintAfterAll.value || shouldPrintBeforeOrAfterPass(pi, PrintAfter);
+    }
+
+    public static boolean isFunctionInPrintList(String functionName)
+    {
+        TreeSet<String> printFuncNames = new TreeSet<>();
+        printFuncNames.addAll(PrintFuncsList);
+        return printFuncNames.isEmpty() || printFuncNames.contains(functionName);
     }
 }

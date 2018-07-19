@@ -18,7 +18,7 @@ package backend.target.x86;
 
 import backend.codegen.MachineFrameInfo;
 import backend.codegen.MachineFunction;
-import backend.codegen.MachineFunctionPass;
+import backend.support.MachineFunctionPass;
 import backend.codegen.MachineRegisterInfo;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterInfo;

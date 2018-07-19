@@ -18,8 +18,7 @@ package backend.target.x86;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunction;
-import backend.codegen.MachineFunctionPass;
-import backend.target.x86.X86TargetMachine;
+import backend.support.MachineFunctionPass;
 
 /**
  * @author Xlous.zeng

@@ -17,6 +17,8 @@
 
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
+import backend.support.PrintMachineFunctionPass;
 import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
@@ -30,7 +32,7 @@ import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.OutParamWrapper;
 
-import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
+import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetInstrInfo.INLINEASM;
 import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;

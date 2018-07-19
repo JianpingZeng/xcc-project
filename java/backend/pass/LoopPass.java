@@ -16,6 +16,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.support.PrintLoopPass;
 import tools.Util;
 import backend.analysis.LoopInfo;
 import backend.passManaging.FPPassManager;
@@ -23,6 +24,8 @@ import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.value.Loop;
+
+import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -86,5 +89,11 @@ public interface LoopPass extends Pass
     default void assignPassManager(PMStack pms)
     {
         assignPassManager(pms, PassManagerType.PMT_LoopPassManager);
+    }
+
+    @Override
+    default Pass createPrinterPass(PrintStream os, String banner)
+    {
+        return PrintLoopPass.createPrintLoopPass(os, banner);
     }
 }

@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;

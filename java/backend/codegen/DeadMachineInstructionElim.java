@@ -17,6 +17,7 @@
 
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;

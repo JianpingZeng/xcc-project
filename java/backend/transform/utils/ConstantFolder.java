@@ -100,7 +100,8 @@ public final class ConstantFolder
                 ConstantInt ci = (ConstantInt)si.getCondition();
                 BasicBlock theOnlyDest = si.getSuccessor(0);    // The default dest.
                 BasicBlock defaultDest = theOnlyDest;
-                Util.assertion(theOnlyDest.equals(si.getDefaultBlock()),  "Default destination is not successor #0?");
+                Util.assertion(theOnlyDest.equals(si.getDefaultBlock()),
+                        "Default destination is not successor #0?");
 
                 for (int i = 1, e = si.getNumOfSuccessors(); i != e; i++)
                 {

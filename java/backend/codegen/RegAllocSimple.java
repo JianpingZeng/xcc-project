@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.pass.AnalysisUsage;
 import backend.target.*;

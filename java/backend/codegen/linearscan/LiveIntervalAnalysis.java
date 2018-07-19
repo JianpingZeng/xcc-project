@@ -21,6 +21,7 @@ import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetRegisterInfo;
 import tools.BitMap;
 import tools.Util;

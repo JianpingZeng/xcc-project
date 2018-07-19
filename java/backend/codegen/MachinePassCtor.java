@@ -17,6 +17,8 @@
 
 package backend.codegen;
 
+import backend.support.MachineFunctionPass;
+
 /**
  * @author Xlous.zeng
  * @version 0.1

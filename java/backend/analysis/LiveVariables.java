@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.codegen.*;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;

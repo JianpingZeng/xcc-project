@@ -20,6 +20,7 @@ import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.EquivalenceClass;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;

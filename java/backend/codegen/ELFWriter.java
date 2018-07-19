@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.MachineFunctionPass;
 import backend.target.TargetMachine;
 
 import java.io.PrintStream;

@@ -22,6 +22,7 @@ import backend.analysis.MachineLoop;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
@@ -33,7 +34,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 
-import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
+import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;

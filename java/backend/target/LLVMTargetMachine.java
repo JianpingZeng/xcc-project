@@ -27,7 +27,7 @@ import backend.support.BackendCmdOptions;
 import java.io.OutputStream;
 
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
-import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
+import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
 import static backend.target.TargetOptions.PrintMachineCode;

@@ -17,6 +17,7 @@
 
 package backend.target.x86;
 
+import backend.support.MachineFunctionPass;
 import tools.Util;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;

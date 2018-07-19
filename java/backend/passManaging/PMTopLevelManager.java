@@ -50,12 +50,7 @@ public interface PMTopLevelManager
      */
     void schedulePass(Pass p);
 
-    /**
-     * This method should be overridden by subclass.
-     *
-     * @param p
-     */
-    void addTopLevelPass(Pass p);
+    PassManagerType getTopLevelPassManagerType();
 
     void setLastUser(ArrayList<Pass> analysisPasses, Pass p);
 
