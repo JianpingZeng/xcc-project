@@ -573,7 +573,6 @@ public final class ConstantFolder
         pred.getTerminator().eraseFromParent();
         for (Instruction inst : bb)
         {
-            inst.eraseFromParent();
             pred.appendInst(inst);
         }
         bb.replaceAllUsesWith(pred);
