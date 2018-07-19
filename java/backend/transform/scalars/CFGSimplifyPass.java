@@ -16,20 +16,24 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
+import backend.ir.SelectInst;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
-import backend.utils.PredIterator;
+import backend.type.PointerType;
 import backend.utils.SuccIterator;
 import backend.value.*;
-import backend.value.Instruction.PhiNode;
-import backend.value.Instruction.TerminatorInst;
+import backend.value.Instruction.*;
+import backend.value.Value.UndefValue;
+import tools.Util;
 
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Objects;
 import java.util.Stack;
 
 import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
+import static backend.transform.utils.ConstantFolder.deleteDeadBlock;
+import static backend.transform.utils.ConstantFolder.recursivelyDeleteTriviallyDeadInstructions;
 
 /**
  * This pass defined here for removing the unreachable basic block resides inside
@@ -54,6 +58,43 @@ public final class CFGSimplifyPass implements FunctionPass
         return resolver;
     }
 
+    private boolean removeUnreachableBlocksFromFn(Function f)
+    {
+        HashSet<BasicBlock> reachables = new HashSet<>();
+        boolean changed = markActiveBlocks(f.getEntryBlock(), reachables);
+
+        // If there are unreachable blocks in current cfg.
+        if (reachables.size() != f.size())
+        {
+            Util.assertion(reachables.size() < f.size());
+
+            // Loop over all unreachable blocks, and drop off all internal reference.
+            for (int i = 0; i < f.size(); i++)
+            {
+                BasicBlock bb = f.getBlockAt(i);
+                if (!reachables.contains(bb))
+                {
+                    for (SuccIterator itr = bb.succIterator();itr.hasNext();)
+                    {
+                        BasicBlock succ = itr.next();
+                        succ.removePredecessor(bb);
+                    }
+                    bb.dropAllReferences();
+                }
+            }
+
+            for (int i = 1; i < f.size();)
+            {
+                BasicBlock bb = f.getBlockAt(i);
+                if (!reachables.contains(bb))
+                    f.getBasicBlockList().remove(i);
+                else
+                    i++;
+            }
+            changed = true;
+        }
+        return changed;
+    }
     /**
      * calling this method to simplify cfg. It is possible that multiple passes
      * are needed loop over function.
@@ -64,71 +105,65 @@ public final class CFGSimplifyPass implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
-        HashSet<BasicBlock> reachables = new HashSet<>();
-        boolean changed = markActiveBlocks(f.getEntryBlock(), reachables);
+        boolean everChanged = removeUnreachableBlocksFromFn(f);
+        if (!everChanged) return false;
 
-        // If there are unreachable blocks in current cfg.
-        if (reachables.size() != f.getBasicBlockList().size())
+        boolean changed;
+        do
         {
-            Util.assertion( reachables.size() < f.getBasicBlockList().size());
-
-            // Loop over all unreachable blocks, and drop off all internal reference.
-            for (int i = 0; i < f.getBasicBlockList().size(); i++)
-            {
-                BasicBlock bb = f.getBasicBlockList().get(i);
-                if (!reachables.contains(bb))
-                {
-                    for (SuccIterator itr = bb.succIterator();itr.hasNext();)
-                    {
-                        BasicBlock succ = itr.next();
-                        if (reachables.contains(succ))
-                            succ.removePredecessor(succ);
-                    }
-                    bb.dropAllReferences();
-                }
-            }
-
-            for (int i = 1; i < f.getBasicBlockList().size();)
-            {
-                BasicBlock bb = f.getBasicBlockList().get(i);
-                if (!reachables.contains(bb))
-                    f.getBasicBlockList().remove(i);
-                else
-                    i++;
-            }
-            changed = true;
-        }
-        boolean localChanged = true;
-        while(localChanged)
-        {
-            localChanged = false;
+            changed = false;
             // Loop over all of the basic blocks (except the first one) and remove them
             // if they are unneeded.
-            for (int i = 1; i < f.getBasicBlockList().size(); i++)
+            for (int i = 1; i < f.size(); i++)
             {
-                if (simplifyCFG(f.getBasicBlockList().get(i)))
+                if (simplifyCFG(f.getBlockAt(i)))
                 {
-                    localChanged = false;
+                    changed = true;
                 }
             }
-            changed |= localChanged;
+            changed |= removeUnreachableBlocksFromFn(f);
+        }while (changed);
+        return true;
+    }
+
+    /**
+     * Insert a UnreachableInst before the specified position and mark all instructions after unreachable inst
+     * as dead.
+     * @param inst
+     */
+    private void changeToUnreachable(Instruction inst)
+    {
+        Util.assertion(inst != null);
+        BasicBlock parent = inst.getParent();
+        Util.assertion(parent != null);
+
+        // remove the predecessor of any successor block of current parent block.
+        for (Iterator<BasicBlock> succItr = parent.succIterator(); succItr.hasNext(); )
+        {
+            BasicBlock succ = succItr.next();
+            succ.removePredecessor(parent);
         }
-        return changed;
+        new UnreachableInst(inst);
+        for (int i = inst.getIndexToBB(), e = parent.size(); i < e; i++)
+        {
+            Instruction curInst = parent.getInstAt(i);
+            if (!curInst.isUseEmpty())
+                curInst.replaceAllUsesWith(UndefValue.get(curInst.getType()));
+            curInst.eraseFromParent();
+            --e;
+            --i;
+        }
     }
 
     private boolean markActiveBlocks(BasicBlock entry,
             HashSet<BasicBlock> reachables)
     {
-        if (reachables.contains(entry)) return false;
-        reachables.add(entry);
-
         boolean changed = false;
-        changed |= constantFoldTerminator(entry);
+
         // uses a queue for simulating recursively calling this function for efficiency
         // with standard pre-order method.
         Stack<BasicBlock> worklist = new Stack<>();
-        for (SuccIterator sItr = entry.succIterator(); sItr.hasNext();)
-            worklist.push(sItr.next());
+        worklist.push(entry);
 
         while (!worklist.isEmpty())
         {
@@ -136,6 +171,39 @@ public final class CFGSimplifyPass implements FunctionPass
             if (!reachables.contains(currBB))
                 reachables.add(currBB);
 
+            // Converts CallInst(StoreInst) without returned value into UnreachableInst
+            for (int i = 0, e = currBB.size(); i < e; i++)
+            {
+                Instruction inst = currBB.getInstAt(i);
+                if (inst instanceof CallInst)
+                {
+                    // Transform the CallInst into UnreachableInst if it haven't returned value.
+                    CallInst ci = (CallInst)inst;
+                    if (ci.doesNotReturn())
+                    {
+                        ++i;
+                        if (!(currBB.getInstAt(i) instanceof TerminatorInst))
+                        {
+                            changeToUnreachable(currBB.getInstAt(i));
+                            changed = true;
+                        }
+                        break;
+                    }
+                }
+                else if (inst instanceof StoreInst)
+                {
+                    StoreInst si = (StoreInst)inst;
+                    Value ptr = si.getPointerOperand();
+                    if (ptr instanceof UndefValue ||
+                            (ptr instanceof ConstantPointerNull &&
+                                    ((PointerType)ptr.getType()).getAddressSpace() == 0))
+                    {
+                        changeToUnreachable(si);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
             changed |= constantFoldTerminator(currBB);
 
             // add all successors block of currBB into worklist.
@@ -146,11 +214,469 @@ public final class CFGSimplifyPass implements FunctionPass
     }
 
     /**
+     * Get the condition as returned value, trueBlock when true path was taken,
+     * falseBlock when false path was taken for specified phi-node.
+     * trueBlock and falseBlock would be passed through {@code resultBBs}.
+     * @param bb
+     * @param resultBBs
+     * @return
+     */
+    private Value getIfCondition(BasicBlock bb, BasicBlock[] resultBBs)
+    {
+        Util.assertion(resultBBs != null && resultBBs.length == 2);
+        // We only handle the block exactly with two preds.
+        if (bb.getNumPredecessors() != 2) return null;
+
+        BasicBlock pred1 = bb.predAt(0), pred2 = bb.predAt(1);
+
+        if (!(pred1.getTerminator() instanceof BranchInst) ||
+                !(pred2.getTerminator() instanceof BranchInst))
+            return null;
+        BranchInst pred1Br = (BranchInst) pred1.getTerminator();
+        BranchInst pred2Br = (BranchInst) pred2.getTerminator();
+        // We can't handle the situation that both two preds's branch instruction
+        // is conditional.
+        if (pred1Br.isConditional() && pred2Br.isConditional())
+            return null;
+
+        // Transform following situation:
+        //      If Block(pred2)
+        //      /        \
+        //     /          \
+        //truePart(pred1) |
+        //     \         |
+        //      \       /
+        //      current BB
+        // to
+        //      If Block(pred1)
+        //      /        \
+        //     /          \
+        //truePart(pred2) |
+        //     \         |
+        //      \       /
+        //      current BB
+        if (pred2Br.isConditional())
+        {
+            // swap preds and branch inst.
+            BasicBlock t = pred1;
+            pred1 = pred2;
+            pred2 = t;
+
+            BranchInst br = pred1Br;
+            pred1Br = pred2Br;
+            pred2Br = br;
+        }
+
+        // If we got here, checks if current block is the common successor of pred1 and pred2.
+        if (pred1Br.isConditional())
+        {
+            if (pred1.getNumSuccessors() != 2)
+                return null;
+            if (pred1.suxAt(0).equals(pred2) && pred1.suxAt(1).equals(bb))
+            {
+                resultBBs[0] = pred2;
+                resultBBs[1] = pred1;
+            }
+            else if (pred1.suxAt(0).equals(bb) && pred1.suxAt(1).equals(pred2))
+            {
+                resultBBs[0] = pred1;
+                resultBBs[1] = pred2;
+            }
+            else
+                return null;
+            return pred1Br.getCondition();
+        }
+
+        // If we got here that indicates both two preds's branch instruction aren't conditional.
+        // So it should looks like following figure.
+        //
+        //      commonPred
+        //      /        \
+        //     /          \
+        // true(pred1) false(pred2)
+        //     \         |
+        //      \       /
+        //      current BB
+        BasicBlock commonPred = pred1.getSinglePredecessor();
+        if (commonPred == null || !commonPred.equals(pred2.getSinglePredecessor()))
+            return null;
+        if (commonPred.getTerminator() instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst) commonPred.getTerminator();
+            if (br.isUnconditional())
+                return null;
+
+            if (br.getSuccessor(0).equals(pred1) && br.getSuccessor(1).equals(pred2))
+            {
+                resultBBs[0] = pred1;
+                resultBBs[1] = pred2;
+            }
+            else
+            {
+                resultBBs[0] = pred2;
+                resultBBs[1] = pred1;
+            }
+            return br.getCondition();
+        }
+        return null;
+    }
+
+    private boolean dominatesMergeBlock(Value cond, BasicBlock bb,
+            HashSet<Instruction> aggressiveInst)
+    {
+        // We assume all non-instruction always dominates the merge block.
+        if (!(cond instanceof Instruction))
+            return true;
+
+        Instruction inst = (Instruction)cond;
+        BasicBlock pred = inst.getParent();
+
+        // Currently, we aren't going handle self-loop dominates.
+        if (Objects.equals(pred, bb))
+            return false;
+
+        if (pred.getTerminator() instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst)pred.getTerminator();
+            if (br.isUnconditional() && br.getSuccessor(0).equals(bb))
+            {
+                if (aggressiveInst == null) return false;
+                if (!inst.isSafeToSpecutativelyExecute())
+                    return false;
+
+                switch (inst.getOpcode())
+                {
+                    default: return false;
+                    case Load:
+                        // We need to check if there are any other instruction precedes inst
+                        // in pred block. Because we want to move inst up to dominates block.
+                        if (!inst.equals(pred.getFirstInst()))
+                            return false;
+                        break;
+                    case Add:
+                    case Sub:
+                    case And:
+                    case Or:
+                    case Xor:
+                    case Shl:
+                    case AShr:
+                    case LShr:
+                    case ICmp:
+                        break;
+                }
+
+                for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
+                {
+                    if (!dominatesMergeBlock(inst.operand(i), bb, null))
+                        return false;
+                }
+                // add the inst into aggressiveInst set.
+                aggressiveInst.add(inst);
+            }
+        }
+        return true;
+    }
+
+    private boolean foldTwoEntitiesPhiNode(PhiNode pn)
+    {
+        Util.assertion(pn != null);
+        BasicBlock bb = pn.getParent();
+        // array used for storing ifTrue and ifFalse block.
+        BasicBlock[] bbs = new BasicBlock[2];
+        Value condVal = getIfCondition(bb, bbs);
+        BasicBlock ifTrue = bbs[0], ifFalse = bbs[1];
+        if (condVal == null)
+            return false;
+
+        HashSet<Instruction> aggressiveInst = new HashSet<>();
+        int i = 0, e = bb.size();
+        while (i < e && bb.getInstAt(i) instanceof PhiNode)
+        {
+            PhiNode inst = (PhiNode)bb.getInstAt(i);
+            Value val0 = inst.getIncomingValue(0), val1 = inst.getIncomingValue(1);
+            if (val0.equals(val1))
+            {
+                if (!val0.equals(inst))
+                    inst.replaceAllUsesWith(val0);
+                else
+                    inst.replaceAllUsesWith(UndefValue.get(inst.getType()));
+            }
+            else
+            {
+                if (!dominatesMergeBlock(val0, bb, aggressiveInst) ||
+                        dominatesMergeBlock(val1, bb, aggressiveInst))
+                    return false;
+            }
+        }
+        pn = (PhiNode) bb.getFirstInst();
+        BasicBlock pred = pn.getIncomingBlock(0);
+        BasicBlock ifBlock0 = null, ifBlock1 = null;
+        BasicBlock domBlock = null;
+        if (pred.getTerminator() instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst)pred.getTerminator();
+            if (br.isUnconditional())
+            {
+                ifBlock0 = pred;
+                domBlock = ifBlock0.predAt(0);
+                for (int j = 0, sz = pred.size(); j < sz &&
+                        !(pred.getInstAt(j) instanceof TerminatorInst);)
+                {
+                    // If it isn't worth moving those instruction from if's part up
+                    // to dominates block.
+                    if (!aggressiveInst.contains(pred.getInstAt(j)))
+                        return false;
+                }
+            }
+        }
+
+        pred = pn.getIncomingBlock(1);
+        if (pred.getTerminator() instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst)pred.getTerminator();
+            if (br.isUnconditional())
+            {
+                ifBlock1 = pred;
+                domBlock = ifBlock1.predAt(0);
+                for (int j = 0, sz = pred.size(); j < sz &&
+                        !(pred.getInstAt(j) instanceof TerminatorInst);)
+                {
+                    // If it isn't worth moving those instruction from if's part up
+                    // to dominates block.
+                    if (!aggressiveInst.contains(pred.getInstAt(j)))
+                        return false;
+                }
+            }
+        }
+
+        // Move all instructions except for terminator up to dom block.
+        if (ifBlock0 != null)
+        {
+            Util.assertion(domBlock != null);
+            Instruction term = domBlock.getTerminator();
+            Util.assertion(term != null);
+            i = 0;
+            e = ifBlock0.size();
+            for (; i < e && !(ifBlock0.getInstAt(i) instanceof TerminatorInst); i++)
+            {
+                domBlock.insertBefore(ifBlock0.getInstAt(i), term);
+            }
+        }
+        if (ifBlock1 != null)
+        {
+            Util.assertion(domBlock != null);
+            Instruction term = domBlock.getTerminator();
+            Util.assertion(term != null);
+            i = 0;
+            e = ifBlock1.size();
+            for (; i < e && !(ifBlock1.getInstAt(i) instanceof TerminatorInst); i++)
+            {
+                domBlock.insertBefore(ifBlock1.getInstAt(i), term);
+            }
+        }
+        Instruction curInst;
+        while (!bb.isEmpty() && (curInst = bb.getFirstInst()) instanceof PhiNode)
+        {
+            pn = (PhiNode) curInst;
+            Value falseVal = pn.getIncomingValue(Objects.equals(ifBlock0, ifTrue) ? 1:0);
+            Value trueVal = pn.getIncomingValue(Objects.equals(ifBlock1, ifFalse) ? 1:0);
+            Instruction select = new SelectInst(condVal, trueVal, falseVal, "", pn);
+            pn.replaceAllUsesWith(select);
+            select.setName(pn.getName());
+            pn.eraseFromParent();
+        }
+        return true;
+    }
+
+    private boolean isTerminateInstFirstRelevantInst(BasicBlock bb, TerminatorInst ret)
+    {
+        int i = 0, e = bb.size();
+        for (; i < e && bb.getInstAt(i) instanceof PhiNode; i++){}
+        if (i < e - 1) return false;
+        if (!bb.getInstAt(i).equals(ret)) return false;
+        return true;
+    }
+
+    private static void eraseTerminatorInstAndDCECond(TerminatorInst ti)
+    {
+        if (ti == null) return;
+        Value cond = null;
+        if (ti instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst)ti;
+            if (br.isConditional())
+                cond = br.getCondition();
+        }
+        else if (ti instanceof SwitchInst)
+        {
+            cond = ((SwitchInst)ti).getCondition();
+        }
+        else
+            return;
+        ti.eraseFromParent();
+        if (cond != null)
+            recursivelyDeleteTriviallyDeadInstructions(cond);
+    }
+
+    /**
+     * If we find a conditional branch to two return blocks, we going to try to merge those
+     * blocks into a single one, when desired, folding branch instruction to select instruction.
+     * @param br
+     * @return
+     */
+    private boolean simplifyCondBranchToTwoReturns(BranchInst br)
+    {
+        Util.assertion(br != null && br.isConditional(), "Must be a conditional branch");
+        BasicBlock curBB = br.getParent();
+
+        BasicBlock retBB1 = br.getSuccessor(0), retBB2 = br.getSuccessor(1);
+        ReturnInst rt1 = (ReturnInst) retBB1.getTerminator(), rt2 = (ReturnInst) retBB2.getTerminator();
+        Util.assertion(rt1 != null && rt2 != null);
+
+        if (!isTerminateInstFirstRelevantInst(retBB1, rt1))
+            return false;
+        if (!isTerminateInstFirstRelevantInst(retBB2, rt2))
+            return false;
+
+        // If we find there is no return value in this function, just folding the branch into
+        // return regarding of other thing.
+        if (rt1.getNumOfOperands() == 0)
+        {
+            retBB1.removePredecessor(curBB);
+            retBB2.removePredecessor(curBB);
+            new ReturnInst(null, "", br);
+            eraseTerminatorInstAndDCECond(br);
+            return true;
+        }
+
+        // If we going to here, we know situation to be hanled as follows.
+        //    br cond, bb1, bb2
+        //   /            \
+        // retBB1         retBB2
+        Value trueVal = rt1.getReturnValue();
+        Value falseVal = rt2.getReturnValue();
+        if (trueVal instanceof PhiNode && ((PhiNode) trueVal).getParent() == retBB1)
+            trueVal = ((PhiNode)trueVal).getIncomingValueForBlock(curBB);
+        if (falseVal instanceof PhiNode && ((PhiNode) falseVal).getParent() == retBB2)
+            falseVal = ((PhiNode)falseVal).getIncomingValueForBlock(curBB);
+
+        retBB1.removePredecessor(curBB);
+        retBB2.removePredecessor(curBB);
+
+        Value cond = br.getCondition();
+        // if falseVal == trueVal, select inst isn't needed, just return inst is desired.
+        if (trueVal != null)
+        {
+            // Insert a select if the results differ.
+            if (trueVal.equals(falseVal))
+            {
+                // do nothing.
+            }
+            else if (!(trueVal instanceof UndefValue) && !(falseVal instanceof UndefValue))
+            {
+                trueVal = new SelectInst(cond, trueVal, falseVal,"retVal",br);
+            }
+            else
+            {
+                if (!(falseVal instanceof UndefValue))
+                    trueVal = falseVal;
+            }
+        }
+        Instruction retInst = trueVal != null ? new ReturnInst(trueVal, "ret", br)
+                : new ReturnInst(br);
+        if (Util.DEBUG)
+        {
+            System.err.println("Change branch to two return block with: ");
+            System.err.print("New Inst: ");
+            retInst.dump();
+            System.err.println();
+            System.err.printf("True Block: %s, False Block: %d\n", retBB1.getName(), retBB2.getName());
+        }
+        eraseTerminatorInstAndDCECond(br);
+        return true;
+    }
+
+    /**
+     * If this is a returning block with only PHI nodes in it, fold the return
+     * instruction into any unconditional branch predecessors.
+     * <br></br>
+     * If any predecessor is a conditional branch that just selects among
+     * different return values, fold the replace the branch/return with a select
+     * and return.
+     * @param bb
+     * @return
+     */
+    private boolean foldOnlyReturnInBlock(BasicBlock bb)
+    {
+        Util.assertion(bb != null && bb.getTerminator() instanceof ReturnInst);
+        if (!isTerminateInstFirstRelevantInst(bb, bb.getTerminator()))
+            return false;
+
+        ReturnInst rt = (ReturnInst)bb.getTerminator();
+
+        // gathers unconditonal and conditional branch instruction from all preds.
+        HashSet<BasicBlock> unconditionals = new HashSet<>();
+        HashSet<BranchInst> conditionals = new HashSet<>();
+        for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext();)
+        {
+            BasicBlock pred = itr.next();
+            Util.assertion(pred.getTerminator() instanceof BranchInst);
+            BranchInst br = (BranchInst) pred.getTerminator();
+            if (br.isUnconditional())
+                unconditionals.add(pred);
+            else
+                conditionals.add(br);
+        }
+
+        if (!unconditionals.isEmpty())
+        {
+            // converts unconditional jump in pred to return inst.
+            for (BasicBlock pred : unconditionals)
+            {
+                ReturnInst ret = (ReturnInst) rt.clone();
+                TerminatorInst ti = pred.getTerminator();
+                Util.assertion(ti != null);
+                pred.insertBefore(ti, ret);
+
+                // If the return inst has operands and it's operand is phinode, just do so.
+                for (int j = 0, sz = ret.getNumOfOperands(); j < sz; j++)
+                {
+                    Value op = ret.operand(j);
+                    if (op instanceof PhiNode)
+                    {
+                        PhiNode pn = (PhiNode)op;
+                        ret.setOperand(j, pn.getIncomingValueForBlock(pred));
+                    }
+                }
+                bb.removePredecessor(pred);
+                ti.eraseFromParent();
+            }
+            // If after remove all preds, the current block becomes unreachable, so delete it.
+            if (bb.getNumPredecessors() <= 0)
+                bb.eraseFromParent();
+            return true;
+        }
+        if (!conditionals.isEmpty())
+        {
+            boolean localChanged = false;
+            for (BranchInst br : conditionals)
+            {
+                if (br.getSuccessor(0).getTerminator() instanceof ReturnInst &&
+                    br.getSuccessor(0).getTerminator() instanceof ReturnInst &&
+                    simplifyCondBranchToTwoReturns(br))
+                    localChanged |= true;
+            }
+            return localChanged;
+        }
+        return false;
+    }
+
+    /**
      * This function used for do a simplification of a CFG. For example, it
      * adjusts branches to branches to eliminate the extra hop. It eliminates
      * unreachable basic blocks ,and does other "peephole" optimization of the
      * CFG.
-     * @param bb
+     * @param bb    The basic block to be simplified.
      * @return Returns true if a modification was made.
      */
     private boolean simplifyCFG(BasicBlock bb)
@@ -158,261 +684,43 @@ public final class CFGSimplifyPass implements FunctionPass
         boolean changed = false;
         Function f = bb.getParent();
 
-        Util.assertion(bb != null && f != null, "Basic block not embedded in function");
+        Util.assertion(f != null, "Basic block not embedded in function");
         Util.assertion(bb.getTerminator() != null, "degnerate basic block is bing simplified");
-        Util.assertion(bb != f.getBasicBlockList().getFirst(), "Can not simplify entry block");
+        Util.assertion(bb != f.getEntryBlock(), "Can not simplify entry block");
 
-        // Removes the basic block which has no predecessors.
-        PredIterator<BasicBlock> predItr = bb.predIterator();
-        if (!predItr.hasNext() && !bb.hasConstantReference())
+        // Remove basic blocks that have no predecessors... or that just have themself
+        // as a predecessor.  These are unreachable.
+        int numPreds = bb.getNumPredecessors();
+        if (numPreds <= 1 && (numPreds <= 0 || Objects.equals(bb.predAt(0), bb)))
         {
-            for (SuccIterator succItr = bb.succIterator(); succItr.hasNext();)
-            {
-                succItr.next().removePredecessor(bb);
-            }
-
-            while (!bb.isEmpty())
-            {
-                Instruction i = bb.getInstList().getLast();
-                // If this instruction is used, replaces the uses with
-                // arbitrary constant value. Since the control flow can
-                // not reach here, we don't care what will be replaced with.
-                // And all values contained it must dominate their uses,
-                // that all uses will be removed eventually.
-                if (!i.isUseEmpty())
-                    i.replaceAllUsesWith(Constant.getNullValue(i.getType()));;
-
-                // remove the instruction from basic block contains it.
-                bb.getInstList().removeLast();
-            }
-
-            f.getBasicBlockList().remove(bb);
+            deleteDeadBlock(bb);
             return true;
         }
 
-        // Check to see if we can constant propagate this terminator instruction
-        changed |= constantFoldTerminator(bb);
-
-        // Check to see if this block has no non-phi instructions and only a single
-        // successor.  If so, replace references to this basic block with references
-        // to the successor.
-        SuccIterator sucItr = bb.succIterator();
-        if (bb.getNumSuccessors() == 1)
+        // If there is a trivial two-entry PHI node in this basic block, and we can
+        // eliminate it, do so now.
+        PhiNode pn = bb.getFirstInst() instanceof PhiNode ? (PhiNode)bb.getFirstInst() : null;
+        if (pn != null && pn.getNumberIncomingValues() == 2)
         {
-            // There is just one successor.
-            int i = 0;
-            // skips all PhiNode ahead of other instructions.
-            while (bb.getInstAt(i) instanceof PhiNode) i++;
-
-            if (bb.getInstAt(i) instanceof TerminatorInst)
-            {
-                // Terminator instruction is the only one non-phi instruction.
-                BasicBlock succ = sucItr.next();
-
-                if (succ != bb)
-                {
-                    // parent is not in infinite loop!!!
-                    if (!propagatePredecessorForPHIs(bb, succ))
-                    {
-                        // If our successor has PHI nodes, then we need to update them to
-                        // include entries for BB's predecessors, not for BB itself.
-                        // Be careful though, if this transformation fails (returns true) then
-                        // we cannot do this transformation!
-
-                        String oldName = bb.getName();
-                        ArrayList<BasicBlock> oldSuccPreds = new ArrayList<>();
-                        for (PredIterator itr = succ.predIterator(); predItr.hasNext();)
-                            oldSuccPreds.add(itr.next());
-
-                        // Move all PHI nodes in parent to succ if they are alive,
-                        // otherwise delete them.
-                        for (int j = 0; j< bb.getInstList().size();)
-                        {
-                            if (!(bb.getInstAt(j) instanceof PhiNode))
-                                break;
-                            PhiNode pn = (PhiNode)bb.getInstAt(i);
-                            if (pn.isUseEmpty()) // remove the useless phi node.
-                                bb.getInstList().remove(i);
-                            else
-                            {
-                                // The instruction is alive, so this means that Succ must have
-                                // *ONLY* had BB as a predecessor, and the PHI node is still valid
-                                // now.  Simply move it into Succ, because we know that BB
-                                // strictly dominated Succ.
-                                bb.getInstList().remove(i);
-                                succ.getInstList().addFirst(pn);
-
-                                //
-                                for (int k = 0, e = oldSuccPreds.size(); k < e; k++)
-                                {
-                                    if (oldSuccPreds.get(i) != bb)
-                                        pn.addIncoming(pn, oldSuccPreds.get(i));
-                                }
-                            }
-                            // everything that jumped to parent now goes to succ!!!
-                            bb.replaceAllUsesWith(succ);
-                            f.getBasicBlockList().remove(bb);
-
-                            if (!oldName.isEmpty() && !succ.hasName())
-                                succ.setName(oldName);
-
-                            return true;
-                        }
-                    }
-                }
-            }
+            changed |= foldTwoEntitiesPhiNode(pn);
         }
+        // If this is a returning block with only PHI nodes in it, fold the return
+        // instruction into any unconditional branch predecessors.
 
-        // Merge basic blocks into their predecessor if there is only one distinct
-        // pred, and if there is only one distinct successor of the predecessor, and
-        // if there are no PHI nodes.
-        if (!bb.hasConstantReference())
-        {
-            PredIterator pred_Itr = bb.predIterator();
-            BasicBlock onlyPred = pred_Itr.next();
-            while(pred_Itr.hasNext())
-            {
-                if (pred_Itr.next() != onlyPred)
-                {
-                    onlyPred = null;
-                    break;
-                }
-            }
+        // If any predecessor is a conditional branch that just selects among
+        // different return values, fold the replace the branch/return with a select
+        // and return.
+        Util.assertion(bb.getTerminator() != null);
+        if (bb.getTerminator() instanceof ReturnInst)
+            changed |= foldOnlyReturnInBlock(bb);
+        else if (bb.getTerminator() instanceof SwitchInst)
+        {}
+        else if (bb.getTerminator() instanceof BranchInst)
+        {}
+        else if (bb.getTerminator() instanceof UnreachableInst)
+        {}
 
-            BasicBlock onlySucc = null;
-            if (onlyPred != null && onlyPred != bb)
-            {
-                // Check to see if there is only one distinct successor.
-                SuccIterator succ_Itr = bb.succIterator();
-                onlySucc = succ_Itr.next();
-                while (succ_Itr.hasNext())
-                {
-                    if (onlySucc != succ_Itr.next())
-                    {
-                        onlySucc = null;
-                        break;
-                    }
-                }
-
-                if (onlySucc != null)
-                {
-                    TerminatorInst term = onlyPred.getTerminator();
-
-                    // Resolve any PHI nodes at the start of the block.  They are all
-                    // guaranteed to have exactly one entry if they exist
-                    for (int i = 0; i< bb.getInstList().size(); i++)
-                    {
-                        if (!(bb.getInstAt(i) instanceof PhiNode))
-                            break;
-                        PhiNode pn = (PhiNode)bb.getInstAt(i);
-                        pn.replaceAllUsesWith(pn.getIncomingValue(0));;
-                        bb.getInstList().remove(i);
-                    }
-
-                    // Delete the unconditional branch from predecessor.
-                    onlyPred.getInstList().removeLast();
-
-                    // Move all definition in the successor to the predecessor.
-                    onlyPred.getInstList().addAll(bb.getInstList());
-
-                    bb.replaceAllUsesWith(onlyPred);
-
-                    f.getBasicBlockList().remove(bb);
-                    String oldName = bb.getName();
-                    if (!oldName.isEmpty() && !onlyPred.hasName())
-                        onlyPred.setName(oldName);
-
-                    return true;
-                }
-            }
-        }
         return changed;
-    }
-
-    /**
-     * Assumption: Succ is the single successor for BB when this method is called.
-     * and parent is the one to be removed.
-     *
-     * This is a little tricky because "Succ" has PHI nodes, which need to
-     * have extra slots added to them to hold the merge edges from BB's
-     * predecessors, and BB itself might have had PHI nodes in it.  This function
-     * returns true (failure) if the Succ BB already has a predecessor that is a
-     * predecessor of BB and incoming PHI arguments would not be discernible.
-     * @param bb
-     * @param succ
-     * @return
-     */
-    private boolean propagatePredecessorForPHIs(BasicBlock bb, BasicBlock succ)
-    {
-        Util.assertion((bb.succIterator().next() == succ), "Succ is not successor of parent!");
-
-        // There is no phi node in parent.
-        if (!(succ.getInstAt(0) instanceof PhiNode))
-            return false;
-
-        // If there is more than one predecessor, and there are PHI nodes in
-        // the successor, then we need to add incoming edges for the PHI nodes
-        ArrayList<BasicBlock> predList = new ArrayList<>();
-        for (PredIterator itr = bb.predIterator(); itr.hasNext();)
-        {
-            predList.add(itr.next());
-        }
-
-        // Check to see if one of the predecessors of BB is already a predecessor of
-        // Succ.  If so, we cannot do the transformation if there are any PHI nodes
-        // with incompatible values coming in from the two edges!
-        for (PredIterator predItr = succ.predIterator(); predItr.hasNext(); )
-        {
-            BasicBlock pred = predItr.next();
-            if (predList.contains(pred))
-            {
-                // Loop over all of the PHI nodes checking to see if there are
-                // incompatible values coming in.
-                for (int i = 0, e = succ.getNumOfInsts(); i < e; i++)
-                {
-                    if (!(succ.getInstAt(i) instanceof PhiNode))
-                        break;
-
-                    PhiNode pn = (PhiNode)succ.getInstAt(i);;
-                    int idx1 = pn.getBasicBlockIndex(bb);
-                    int idx2 = pn.getBasicBlockIndex(pred);
-                    Util.assertion(idx1 != -1 && idx2 != -1, "Didn't have entries for predecesssor!");
-
-
-                    if (pn.getIncomingValue(idx1) != pn.getIncomingValue(idx2))
-                        return true;
-                }
-            }
-        }
-
-        // Loop over all of the PHI nodes in the successor BB
-        for (int i = 0, e = succ.getNumOfInsts(); i < e; i++)
-        {
-            if (!(succ.getInstAt(i) instanceof PhiNode))
-                break;
-
-            PhiNode pn = (PhiNode)succ.getInstAt(i);
-            Value oldVal = pn.removeIncomingValue(bb, false);
-            Util.assertion(oldVal != null, "No enry in PHI for Pred parent!");
-
-            // If this incoming value is one of the PHI nodes in BB...
-            if (oldVal instanceof PhiNode && ((PhiNode)oldVal).getParent() == bb)
-            {
-                PhiNode oldValPn = (PhiNode)oldVal;
-                for (BasicBlock pred : predList)
-                {
-                    pn.addIncoming(oldValPn.getIncomingValueForBlock(pred), pred);
-                }
-            }
-            else
-            {
-                for (BasicBlock pred : predList)
-                {
-                    pn.addIncoming(oldVal, pred);
-                }
-            }
-        }
-        return false;
     }
 
     @Override

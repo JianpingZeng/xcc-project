@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.transform.scalars.CFGSimplifyPass;
 import backend.transform.scalars.Mem2Reg;
 
 /**
@@ -15,11 +16,10 @@ public class PassCreator
 	{
 		if (optimizationLevel > 0)
 		{
-			//fpm.add(new CFGSimplificationPass());
-			/*
+			fpm.add(CFGSimplifyPass.createCFGSimplificationPass());
+
 			if (optimizationLevel == 1)
-				fpm.add(new PromoteMemToReg());
-			*/
+				fpm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 		}
 	}
 
@@ -49,12 +49,12 @@ public class PassCreator
 		else
 		{
 			// remove useless Basic block.
-			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 			// remove redundant alloca.
 			pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 
 			//pm.add(InstructionCombine.createInstructionCombinePass());
-			//pm.add(CFGSimplifyPass.createCFGSimplificationPass());
+			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 
 			if (inliningPass != null)
 				pm.add(inliningPass);

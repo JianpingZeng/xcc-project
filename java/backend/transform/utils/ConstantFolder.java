@@ -16,24 +16,26 @@ package backend.transform.utils;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
-import backend.value.BasicBlock;
+import backend.type.Type;
+import backend.value.*;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.ICmpInst;
 import backend.value.Instruction.SwitchInst;
 import backend.value.Instruction.TerminatorInst;
-import backend.value.Operator;
-import backend.type.Type;
-import backend.value.*;
-import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
 import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Stack;
+
+import static backend.intrinsic.Intrinsic.ID.stacksave;
 
 /**
  * Performs some local constant folding optimizaiton.
@@ -71,7 +73,7 @@ public final class ConstantFolder
                 BasicBlock destination = ci.getZExtValue() != 0 ? dest1 : dest2;
                 BasicBlock oldDest = ci.getZExtValue() != 0 ? dest2 : dest1;
 
-                Util.assertion(bi.getParent() != null,                         "Terminator not inserted into basic block");
+                Util.assertion(bi.getParent() != null, "Terminator not inserted into basic block");
 
                 oldDest.removePredecessor(bi.getParent());
 
@@ -99,7 +101,6 @@ public final class ConstantFolder
                 BasicBlock theOnlyDest = si.getSuccessor(0);    // The default dest.
                 BasicBlock defaultDest = theOnlyDest;
                 Util.assertion(theOnlyDest.equals(si.getDefaultBlock()),  "Default destination is not successor #0?");
-
 
                 for (int i = 1, e = si.getNumOfSuccessors(); i != e; i++)
                 {
@@ -432,5 +433,74 @@ public final class ConstantFolder
     public static Constant createICmp(Predicate pred, Constant lhs, Constant rhs)
     {
         return ConstantExpr.getCompare(pred, lhs, rhs);
+    }
+
+    /**
+     * Delete the specified dead basic block.
+     * @param bb    A dead basic block to be removed from CFG.
+     */
+    public static void deleteDeadBlock(BasicBlock bb)
+    {
+        LinkedList<Instruction> list = bb.getInstList();
+        while (!list.isEmpty())
+        {
+            Instruction inst = list.getFirst();
+            list.removeFirst();
+            if (inst == null)
+                continue;
+            if (inst.hasOneUses())
+                inst.replaceAllUsesWith(UndefValue.get(inst.getType()));
+            inst.eraseFromParent();
+        }
+    }
+
+    /**
+     * Delete the dead instruction and it's operands.
+     * @param val
+     */
+    public static void recursivelyDeleteTriviallyDeadInstructions(Value val)
+    {
+        if (!(val instanceof Instruction)) return;
+        Instruction inst = (Instruction)val;
+        if (!inst.isUseEmpty() || !isInstructionTriviallyDead(inst))
+            return;
+
+        Stack<Instruction> worklist = new Stack<>();
+        worklist.push(inst);
+        while (!worklist.isEmpty())
+        {
+            inst = worklist.pop();
+            inst.eraseFromParent();
+
+            for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
+            {
+                val = inst.operand(0);
+                if (!val.isUseEmpty()) continue;
+                if (!(val instanceof Instruction)) continue;
+                if (isInstructionTriviallyDead((Instruction) val))
+                    worklist.push((Instruction) val);
+            }
+        }
+    }
+
+    /**
+     * Return true if the value produced by the specified instruction is not used.
+     * @param inst
+     * @return
+     */
+    private static boolean isInstructionTriviallyDead(Instruction inst)
+    {
+        if (!inst.isUseEmpty() || inst instanceof TerminatorInst)
+            return false;
+
+        if (!inst.mayHasSideEffects())
+            return true;
+        if (inst instanceof IntrinsicInst)
+        {
+            IntrinsicInst ii = (IntrinsicInst)inst;
+            if (ii.getIntrinsicID() == stacksave)
+                return true;
+        }
+        return false;
     }
 }
