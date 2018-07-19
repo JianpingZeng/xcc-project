@@ -2164,7 +2164,7 @@ public abstract class Instruction extends User
         public void setUnconditionalDest(BasicBlock dest)
         {
             ArrayList<Use> list = new ArrayList<>();
-            list.set(0, getOperand(0));
+            list.add(getOperand(0));
             operandList = list;
             setOperand(0, dest);
         }

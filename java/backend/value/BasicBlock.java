@@ -543,6 +543,21 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	{
 	    if (parent != null)
 		    parent.getBasicBlockList().remove(this);
+	    TerminatorInst ti = getTerminator();
+	    if (ti != null)
+        {
+            for (int i = 0, e = ti.getNumOfOperands(); i < e; i++)
+            {
+                if (ti.operand(0) instanceof BasicBlock)
+                {
+                    BasicBlock bb = (BasicBlock) ti.operand(0);
+                    bb.getUseList().remove(ti.getOperand(i));
+                    ti.operandList.remove(i);
+                    --e;
+                    --i;
+                }
+            }
+        }
 	}
 	/**
 	 * Returns the terminator instruction if the block is well formed or

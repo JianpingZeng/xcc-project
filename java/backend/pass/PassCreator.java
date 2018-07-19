@@ -4,6 +4,7 @@ import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
 import backend.transform.scalars.CFGSimplifyPass;
 import backend.transform.scalars.Mem2Reg;
+import backend.transform.scalars.SROA;
 
 /**
  * @author Xlous.zeng
@@ -20,6 +21,8 @@ public class PassCreator
 
 			if (optimizationLevel == 1)
 				fpm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
+			else
+				fpm.add(SROA.createScalarRreplacementOfAggregatePass());
 		}
 	}
 

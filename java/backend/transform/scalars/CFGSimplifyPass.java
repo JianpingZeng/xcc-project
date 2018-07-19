@@ -26,14 +26,9 @@ import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
 import tools.Util;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Stack;
+import java.util.*;
 
-import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
-import static backend.transform.utils.ConstantFolder.deleteDeadBlock;
-import static backend.transform.utils.ConstantFolder.recursivelyDeleteTriviallyDeadInstructions;
+import static backend.transform.utils.ConstantFolder.*;
 
 /**
  * This pass defined here for removing the unreachable basic block resides inside
@@ -106,21 +101,14 @@ public final class CFGSimplifyPass implements FunctionPass
     public boolean runOnFunction(Function f)
     {
         boolean everChanged = removeUnreachableBlocksFromFn(f);
+        everChanged |= simplifyCFG(f);
         if (!everChanged) return false;
 
         boolean changed;
         do
         {
             changed = false;
-            // Loop over all of the basic blocks (except the first one) and remove them
-            // if they are unneeded.
-            for (int i = 1; i < f.size(); i++)
-            {
-                if (simplifyCFG(f.getBlockAt(i)))
-                {
-                    changed = true;
-                }
-            }
+            changed |= simplifyCFG(f);
             changed |= removeUnreachableBlocksFromFn(f);
         }while (changed);
         return true;
@@ -404,9 +392,10 @@ public final class CFGSimplifyPass implements FunctionPass
             else
             {
                 if (!dominatesMergeBlock(val0, bb, aggressiveInst) ||
-                        dominatesMergeBlock(val1, bb, aggressiveInst))
+                        !dominatesMergeBlock(val1, bb, aggressiveInst))
                     return false;
             }
+            ++i;
         }
         pn = (PhiNode) bb.getFirstInst();
         BasicBlock pred = pn.getIncomingBlock(0);
@@ -671,6 +660,182 @@ public final class CFGSimplifyPass implements FunctionPass
         return false;
     }
 
+    private boolean simplifyCFG(Function f)
+    {
+        boolean changed = false;
+        // Loop over all of the basic blocks (except the first one) and remove them
+        // if they are unneeded.
+        ArrayList<BasicBlock> worklist = new ArrayList<>(f.getBasicBlockList());
+        for (int i = 1, e = worklist.size(); i < e; i++)
+        {
+            if (simplifyCFG(worklist.get(i)))
+            {
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /**
+     * Checks if it is safe to merge bb into succ block.
+     * @param bb
+     * @param succ
+     * @return
+     */
+    private boolean canPropagatePredecessorsForPHIs(BasicBlock bb, BasicBlock succ)
+    {
+        Util.assertion(bb.getTerminator() instanceof BranchInst);
+        BranchInst br = (BranchInst) bb.getTerminator();
+        Util.assertion(br.isUnconditional());
+        Util.assertion(br.getSuccessor(0) == succ);
+
+        BasicBlock pred = succ.getSinglePredecessor();
+        if (pred != null && pred == bb)
+            return true;
+
+        HashSet<BasicBlock> bbPreds = new HashSet<>();
+        for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext();)
+            bbPreds.add(itr.next());
+
+        HashSet<BasicBlock> commonPreds = new HashSet<>();
+        for (Iterator<BasicBlock> itr = succ.predIterator(); itr.hasNext();)
+        {
+            BasicBlock b = itr.next();
+            if (bbPreds.contains(b))
+                commonPreds.add(b);
+        }
+
+        if (commonPreds.isEmpty())
+            return true;
+
+        // Look at all the phi nodes in Succ, to see if they present a conflict when
+        // merging these blocks
+        for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i) instanceof PhiNode; i++)
+        {
+            PhiNode pn = (PhiNode) succ.getInstAt(i);
+            Value val = pn.getIncomingValueForBlock(bb);
+            PhiNode pn2 = val instanceof PhiNode ? (PhiNode) val : null;
+            if (pn2 != null && pn2.getParent() == bb)
+            {
+                for (BasicBlock commonPred : commonPreds)
+                {
+                    if (!pn2.getIncomingValueForBlock(commonPred).
+                            equals(pn.getIncomingValueForBlock(commonPred)))
+                        return false;
+                }
+            }
+            else
+            {
+                for (BasicBlock commonPred : commonPreds)
+                {
+                    if (!val.equals(pn.getIncomingValueForBlock(commonPred)))
+                        return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean tryToSimplifyUncondBranchFromEmptyBlock(BasicBlock bb, BasicBlock succ)
+    {
+        if (!canPropagatePredecessorsForPHIs(bb, succ)) return false;
+
+        if (succ.getSinglePredecessor() == null)
+        {
+            for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i) instanceof PhiNode; i++)
+            {
+                PhiNode pn = (PhiNode)succ.getInstAt(i);
+                for (Use u : pn.getUseList())
+                {
+                    if (u.getUser() instanceof PhiNode)
+                    {
+                        PhiNode pn2 = (PhiNode)u.getUser();
+                        if (pn2.getIncomingBlock(u) != bb)
+                            return false;
+                    }
+                    else
+                        return false;
+                }
+            }
+        }
+
+        if (succ.getFirstInst() instanceof PhiNode)
+        {
+            ArrayList<BasicBlock> preds = new ArrayList<>();
+            for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+                preds.add(itr.next());
+
+            for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i) instanceof PhiNode; i++)
+            {
+                PhiNode pn = (PhiNode) succ.getInstAt(i);
+                Value oldVal = pn.removeIncomingValue(bb, false);
+                Util.assertion(oldVal != null, "No entry in PHI node!");
+
+                if (oldVal instanceof PhiNode && ((PhiNode) oldVal).getParent() == bb)
+                {
+                    PhiNode oldValPN = (PhiNode)oldVal;
+                    for (int j = 0, sz = oldValPN.getNumberIncomingValues(); j < sz; j++)
+                    {
+                        pn.addIncoming(oldValPN.getIncomingValue(j),
+                                oldValPN.getIncomingBlock(j));
+                    }
+                }
+                else
+                {
+                    for (BasicBlock b : preds)
+                        pn.addIncoming(oldVal, b);
+                }
+            }
+        }
+
+        if (succ.getSinglePredecessor() != null)
+        {
+            while (!bb.isEmpty() && bb.getFirstInst() instanceof PhiNode)
+            {
+                Instruction inst = bb.getFirstInst();
+                inst.eraseFromParent();
+                succ.insertAt(inst, 0);
+            }
+        }
+        else
+        {
+            while (!bb.isEmpty() && bb.getFirstInst() instanceof PhiNode)
+            {
+                Instruction inst = bb.getFirstInst();
+                Util.assertion(inst.isUseEmpty());
+                inst.eraseFromParent();
+            }
+        }
+
+        bb.replaceAllUsesWith(succ);
+        if (!succ.hasName())
+            succ.setName(bb.getName());
+        bb.eraseFromParent();
+        return true;
+    }
+
+    private boolean foldBranchInstAsTermInst(BasicBlock bb)
+    {
+        Util.assertion(bb != null && bb.getTerminator() instanceof BranchInst);
+        BranchInst br = (BranchInst)bb.getTerminator();
+
+        if (br.isUnconditional())
+        {
+            Instruction firstNotPhi = bb.getInstAt(bb.getFirstNonPhi());
+            BasicBlock succ = br.getSuccessor(0);
+
+            if (firstNotPhi == br && bb != succ)
+                if (tryToSimplifyUncondBranchFromEmptyBlock(bb, succ))
+                    return true;
+        }
+        else
+        {
+            // conditional branch to two successors.
+
+        }
+        return false;
+    }
+
     /**
      * This function used for do a simplification of a CFG. For example, it
      * adjusts branches to branches to eliminate the extra hop. It eliminates
@@ -697,6 +862,8 @@ public final class CFGSimplifyPass implements FunctionPass
             return true;
         }
 
+        changed |= constantFoldTerminator(bb);
+
         // If there is a trivial two-entry PHI node in this basic block, and we can
         // eliminate it, do so now.
         PhiNode pn = bb.getFirstInst() instanceof PhiNode ? (PhiNode)bb.getFirstInst() : null;
@@ -716,10 +883,22 @@ public final class CFGSimplifyPass implements FunctionPass
         else if (bb.getTerminator() instanceof SwitchInst)
         {}
         else if (bb.getTerminator() instanceof BranchInst)
-        {}
+        {
+            changed |= foldBranchInstAsTermInst(bb);
+        }
         else if (bb.getTerminator() instanceof UnreachableInst)
         {}
 
+        // Merge basic blocks into their predecessor if there is only one distinct
+        // pred, and if there is only one distinct successor of the predecessor, and
+        // if there are no PHI nodes.
+        //
+        if (mergeBlockToPredecessor(bb))
+            return true;
+
+        // Otherwise, if this block only has a single predecessor, and if that block
+        // is a conditional branch, see if we can hoist any code from this block up
+        // into our predecessor.
         return changed;
     }
 
