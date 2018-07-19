@@ -16,14 +16,14 @@ package backend.transform.utils;
  * permissions and limitations under the License.
  */
 
+import backend.analysis.DomTree;
+import backend.analysis.DomTreeNodeBase;
+import backend.pass.Pass;
 import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.*;
-import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.value.Instruction.ICmpInst;
-import backend.value.Instruction.SwitchInst;
-import backend.value.Instruction.TerminatorInst;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
@@ -32,6 +32,7 @@ import tools.OutParamWrapper;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Stack;
 
@@ -89,7 +90,8 @@ public final class ConstantFolder
                 // and changes it into:  br label %dest1
                 Util.assertion( bi.getParent() != null);
                 dest1.removePredecessor(bi.getParent());
-                bi.setUnconditionalDest(dest1);
+                bi.setUnconditionalDest(dest2);
+                return true;
             }
         }
         else if (ti instanceof SwitchInst)
@@ -277,10 +279,10 @@ public final class ConstantFolder
     public static Constant constantFoldInstruction(Instruction inst)
     {
         // handle phi nodes here
-        if (inst instanceof Instruction.PhiNode)
+        if (inst instanceof PhiNode)
         {
             Constant commonValue = null;
-            Instruction.PhiNode PH = (Instruction.PhiNode) inst;
+            PhiNode PH = (PhiNode) inst;
             for (int i = 0; i < PH.getNumberIncomingValues(); i++)
             {
                 Value incomingValue = PH.getIncomingValue(i);
@@ -503,5 +505,99 @@ public final class ConstantFolder
                 return true;
         }
         return false;
+    }
+
+    /**
+     * Merge the bb into it's single predecessor.
+     * @param bb
+     * @return
+     */
+    public static boolean mergeBlockToPredecessor(BasicBlock bb)
+    {
+        return mergeBlockToPredecessor(bb, null);
+    }
+
+    /**
+     * Merge the bb into it's single predecessor.
+     * @param bb
+     * @param p
+     * @return
+     */
+    public static boolean mergeBlockToPredecessor(BasicBlock bb, Pass p)
+    {
+        Util.assertion(bb != null);
+        ArrayList<BasicBlock> preds = new ArrayList<>();
+        for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+        {
+            preds.add(itr.next());
+        }
+
+        BasicBlock pred = null;
+        for (BasicBlock b : preds)
+        {
+            if (pred == null)
+                pred = b;
+            else if (pred != b)
+                return false;
+        }
+
+        // can't handl self-loop.
+        if (pred == null || pred == bb)return false;
+
+        ArrayList<BasicBlock> succs = new ArrayList<>();
+        for (Iterator<BasicBlock> itr = pred.succIterator(); itr.hasNext(); )
+            succs.add(itr.next());
+
+        BasicBlock succ = null;
+        for (BasicBlock b : succs)
+        {
+            if (succ == null)
+                succ = b;
+            else if (succ != b)
+                return false;
+        }
+        if (succ == null || succ != bb)
+            return false;
+
+        bb.removePredecessor(pred);
+
+        // If we going to here, we can merge bb into it's predecessor.
+        for (int i = 0, e = bb.size(); i < e && bb.getInstAt(i) instanceof PhiNode; i++)
+        {
+            PhiNode pn = (PhiNode) bb.getInstAt(i);
+            pn.replaceAllUsesWith(pn.getIncomingValueForBlock(pred));
+            pn.eraseFromParent();
+        }
+
+        // remove the br instruction in pred.
+        pred.getTerminator().eraseFromParent();
+        for (Instruction inst : bb)
+        {
+            inst.eraseFromParent();
+            pred.appendInst(inst);
+        }
+        bb.replaceAllUsesWith(pred);
+        if (!pred.hasName())
+            pred.setName(bb.getName());
+
+        if (p != null)
+        {
+            DomTree dt = (DomTree) p.getAnalysisToUpDate(DomTree.class);
+            if (dt != null)
+            {
+                DomTreeNodeBase<BasicBlock> dtBB = dt.getNode(bb);
+                DomTreeNodeBase<BasicBlock> dtPred = dt.getNode(pred);
+
+                if (dtBB.getNumbChidren() > 0)
+                {
+                    for (DomTreeNodeBase<BasicBlock> node : dtBB.getChildren())
+                    {
+                        node.setIDom(dtPred);
+                    }
+                }
+            }
+        }
+        bb.eraseFromParent();
+        return true;
     }
 }
