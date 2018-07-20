@@ -2109,7 +2109,10 @@ public abstract class Instruction extends User
 
         public BranchInst clone()
         {
-            return null;
+            if (isConditional())
+                return new BranchInst(getSuccessor(0), getSuccessor(1), getCondition());
+            else
+                return new BranchInst(getSuccessor(0), getName());
         }
 
         /**
@@ -2777,6 +2780,8 @@ public abstract class Instruction extends User
      */
     public static class PhiNode extends Instruction
     {
+        private int numOperands;
+
         public PhiNode(Type ty,
                 int numReservedValues,
                 String name)
@@ -2810,7 +2815,6 @@ public abstract class Instruction extends User
             reserve(numReservedValue*2);
         }
 
-        private int index;
         /**
          * Appends a pair that consists of both value and block into argument list.
          *
@@ -2822,12 +2826,14 @@ public abstract class Instruction extends User
             Util.assertion(value != null,  "Phi node got a null value");
             Util.assertion(block != null,  "Phi node got a null basic block");
             Util.assertion(value.getType().equals(getType()),  "All of operands of Phi must be same type.");
-
-            Util.assertion( index < getNumOfOperands());
-
-            operandList.set(index, new Use(value, this));
-            operandList.set(index+1, new Use(block, this));
-            index += 2;
+            if (numOperands+2 > getNumOfOperands())
+            {
+                operandList.add(null);
+                operandList.add(null);
+            }
+            operandList.set(numOperands, new Use(value, this));
+            operandList.set(numOperands+1, new Use(block, this));
+            numOperands += 2;
         }
 
         /**
@@ -2838,15 +2844,15 @@ public abstract class Instruction extends User
          */
         public Value getIncomingValue(int index)
         {
-            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
-
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),
+                    "The index is beyond out the num of list");
             return operand(index << 1);
         }
 
         public void setIncomingValue(int index, Value val)
         {
-            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
-
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),
+                    "The index is beyond out the num of list");
             setOperand(index << 1, val, this);
         }
 
@@ -2865,31 +2871,37 @@ public abstract class Instruction extends User
          */
         public BasicBlock getIncomingBlock(int index)
         {
-            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
-
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),
+                    "The index is beyond out the num of list");
             return (BasicBlock) operand(index*2 + 1);
         }
 
         public void setIncomingBlock(int index, BasicBlock bb)
         {
-            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
-
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),
+                    "The index is beyond out the num of list");
             setOperand(index*2 + 1, bb, this);
         }
 
         public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
         {
-            Util.assertion(index >= 0 && index < getNumberIncomingValues(),  "The index is beyond out the num of list");
-
-
+            Util.assertion(index >= 0 && index < getNumberIncomingValues(),
+                    "The index is beyond out the num of list");
             Value old = operand(index*2);
-            operandList.remove(index);
-            operandList.remove(index+1);
+            int numOps = getNumOfOperands();
+            for (int i = (index+1)*2; i < numOps; i++)
+            {
+                operandList.set(i-2, operandList.get(i));
+                operandList.set(i-2+1, operandList.get(i+1));
+            }
+            numOperands -= 2;
+            operandList.set(numOps-2, null);
+            operandList.set(numOps-2+1, null);
 
             // delete this phi node if it has zero entities.
-            if (getNumOfOperands()==0 && deletePhiIfEmpty)
+            if (numOps == 2 && deletePhiIfEmpty)
             {
-                replaceAllUsesWith(Constant.getNullValue(getType()));
+                replaceAllUsesWith(UndefValue.get(getType()));
                 eraseFromParent();
             }
             return old;
@@ -2917,6 +2929,12 @@ public abstract class Instruction extends User
                     return i;
             }
             return -1;
+        }
+
+        @Override
+        public int getNumOfOperands()
+        {
+            return numOperands;
         }
 
         /**

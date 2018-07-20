@@ -19,11 +19,15 @@ package backend.transform.scalars;
 import backend.ir.SelectInst;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
+import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.utils.SuccIterator;
 import backend.value.*;
 import backend.value.Instruction.*;
+import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value.UndefValue;
+import tools.OutParamWrapper;
+import tools.Pair;
 import tools.Util;
 
 import java.util.*;
@@ -742,9 +746,9 @@ public final class CFGSimplifyPass implements FunctionPass
 
         if (succ.getSinglePredecessor() == null)
         {
-            for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i) instanceof PhiNode; i++)
+            for (int i = 0, e = bb.size(); i < e && bb.getInstAt(i) instanceof PhiNode; i++)
             {
-                PhiNode pn = (PhiNode)succ.getInstAt(i);
+                PhiNode pn = (PhiNode)bb.getInstAt(i);
                 for (Use u : pn.getUseList())
                 {
                     if (u.getUser() instanceof PhiNode)
@@ -837,6 +841,403 @@ public final class CFGSimplifyPass implements FunctionPass
     }
 
     /**
+     * Returns it if the specified terminator instr checks to see if the
+     * condition is equal to a constant integer value.
+     * @param ti
+     * @return
+     */
+    private Value isValueEqualityComparison(TerminatorInst ti)
+    {
+        Util.assertion(ti != null);
+        if (ti instanceof BranchInst)
+        {
+            BranchInst br = (BranchInst)ti;
+            Value cond = br.getCondition();
+            if (br.isConditional() && cond instanceof ICmpInst)
+            {
+                ICmpInst ci = (ICmpInst)cond;
+                if ((ci.getPredicate() == Predicate.ICMP_EQ ||
+                        ci.getPredicate() == Predicate.ICMP_NE))
+                {
+                    if (ci.operand(0) instanceof ConstantInt)
+                    {
+                        ci.swapOperands();
+                    }
+                    if (ci.operand(1) instanceof ConstantInt)
+                        return ci.operand(0);
+                }
+            }
+        }
+        else if (ti instanceof SwitchInst)
+        {
+            // Don't permit to merge successor into it's predecessor unless there is
+            // exactly one predecessor.
+            if (ti.getNumOfSuccessors() * ti.getParent().getNumPredecessors() > 128)
+                return null;
+
+            return ((SwitchInst) ti).getCondition();
+        }
+        return null;
+    }
+
+    private BasicBlock getValueEqualityComparisonCases(TerminatorInst ti,
+            ArrayList<Pair<ConstantInt, BasicBlock>> cases)
+    {
+        if (ti instanceof SwitchInst)
+        {
+            SwitchInst si = (SwitchInst) ti;
+            for (int i = 1, e = si.getNumOfCases(); i < e; i++)
+            {
+                cases.add(Pair.get(si.getSuccessorValue(i), si.getSuccessor(i)));
+            }
+            return si.getDefaultBlock();
+        }
+        else
+        {
+            Util.assertion(ti instanceof BranchInst);
+            BranchInst br = (BranchInst) ti;
+            Util.assertion(br.getCondition() instanceof ICmpInst);
+            ICmpInst ic = (ICmpInst) br.getCondition();
+            ConstantInt ci = (ConstantInt) ic.operand(1);
+            BasicBlock bb = br.getSuccessor(ic.getPredicate() == Predicate.ICMP_EQ ?0:1);
+            BasicBlock defaultBB = br.getSuccessor(ic.getPredicate() == Predicate.ICMP_EQ ?1:0);
+            cases.add(Pair.get(ci, bb));
+            return defaultBB;
+        }
+    }
+
+    private void eliminateBlockCases(BasicBlock defaultBB, ArrayList<Pair<ConstantInt, BasicBlock>> cases)
+    {
+        for (int i = 0, e = cases.size(); i< e; i++)
+        {
+            if (cases.get(i).second == defaultBB)
+            {
+                cases.remove(i);
+                --i;
+                --e;
+            }
+        }
+    }
+
+    private static final Comparator<ConstantInt> ConstantIntOrdering = new Comparator<ConstantInt>()
+    {
+        @Override
+        public int compare(ConstantInt o1, ConstantInt o2)
+        {
+            return o1.getValue().ult(o2.getValue()) ? -1 :
+                    o1.getValue().eq(o2.getValue()) ? 0 : 1;
+        }
+    };
+
+    // sort the case1 and case2.
+    private static final Comparator<Pair<ConstantInt, BasicBlock>> Cmp = new Comparator<Pair<ConstantInt, BasicBlock>>()
+    {
+        @Override
+        public int compare(Pair<ConstantInt, BasicBlock> o1, Pair<ConstantInt, BasicBlock> o2)
+        {
+            return ConstantIntOrdering.compare(o1.first, o2.first);
+        }
+    };
+
+    private boolean valueOverlaps(ArrayList<Pair<ConstantInt, BasicBlock>> cases1,
+                                    ArrayList<Pair<ConstantInt, BasicBlock>> cases2)
+    {
+        if (cases1.isEmpty() || cases2.isEmpty()) return false;
+
+        if (cases1.size() > cases2.size())
+        {
+            ArrayList<Pair<ConstantInt, BasicBlock>> t = cases1;
+            cases1 = cases2;
+            cases2 = t;
+        }
+
+        if (cases1.size() == 1)
+        {
+            for (Pair<ConstantInt, BasicBlock> itr : cases2)
+            {
+                if (itr.first.getValue().equals(cases1.get(0).first.getValue()))
+                    return true;
+            }
+        }
+
+        cases1.sort(Cmp);
+        cases2.sort(Cmp);
+
+        int i = 0, ei = cases1.size(), j = 0, ej = cases2.size();
+        while (i < ei && j < ej)
+        {
+            Pair<ConstantInt, BasicBlock> itr = cases1.get(i);
+            Pair<ConstantInt, BasicBlock> itr2 = cases2.get(j);
+            if (itr.first.getValue().equals(itr2.first.getValue()))
+                return true;
+            else if (itr.first.getValue().ult(itr2.first.getValue()))
+                ++i;
+            else
+                ++j;
+        }
+        return false;
+    }
+
+    private boolean simplifyEqualityComparisonWithOnlyPredecessor(TerminatorInst ti, BasicBlock pred)
+    {
+        Value predVal = isValueEqualityComparison(pred.getTerminator());
+        if (predVal == null) return false;
+
+        Value thisVal = isValueEqualityComparison(ti);
+        if (thisVal == null) return false;
+
+        if (!Objects.equals(predVal, thisVal)) return false;
+
+        ArrayList<Pair<ConstantInt, BasicBlock>> predCases = new ArrayList<>();
+        BasicBlock predDefaultBB = getValueEqualityComparisonCases(pred.getTerminator(), predCases);
+        // remove default block for each cases value.
+        eliminateBlockCases(predDefaultBB, predCases);
+
+        ArrayList<Pair<ConstantInt, BasicBlock>> thisCases = new ArrayList<>();
+        BasicBlock thisDefaultBB = getValueEqualityComparisonCases(ti, thisCases);
+        // remove default block for each cases value.
+        eliminateBlockCases(thisDefaultBB, thisCases);
+
+        // If the default block of teriminator of pred is targe to tibb, then we can optimize
+        // some code away by taking merit of this knowledge.
+        BasicBlock tiBB = ti.getParent();
+        if (predDefaultBB == tiBB)
+        {
+            // If we reach here, we know the value is none of those cases listed in
+            // predCases list. If there are any cases in thisCases that are in predCases,
+            // we can simplify it.
+            if (valueOverlaps(predCases, thisCases))
+            {
+                if (ti instanceof BranchInst)
+                {
+                    Util.assertion(thisCases.size() == 1);
+                    // We know the program will reach thisDefaultBB.
+                    new BranchInst(thisDefaultBB, ti);
+                    thisCases.get(0).second.removePredecessor(tiBB);
+                    eraseTerminatorInstAndDCECond(ti);
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            ConstantInt targetCI = null;
+            for (Pair<ConstantInt, BasicBlock> itr : predCases)
+            {
+                if (itr.second == tiBB)
+                {
+                    if (targetCI == null)
+                        targetCI = itr.first;
+                    else
+                        // We can't handle this case that multiple value to this block.
+                        return false;
+                }
+            }
+
+            Util.assertion(targetCI != null);
+            BasicBlock realDestBB = null;
+            for (Pair<ConstantInt, BasicBlock> itr : thisCases)
+            {
+                if (itr.first.equals(targetCI))
+                {
+                    realDestBB = itr.second;
+                    break;
+                }
+            }
+
+            if (realDestBB == null)
+                realDestBB = thisDefaultBB;
+
+            for (Iterator<BasicBlock> itr = tiBB.succIterator(); itr.hasNext(); )
+            {
+                BasicBlock succ = itr.next();
+                if (succ != realDestBB)
+                    succ.removePredecessor(tiBB);
+            }
+
+            new BranchInst(realDestBB, ti);
+            eraseTerminatorInstAndDCECond(ti);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * If the specified terminator's condition looks like "x == 1" or "x != 1". Checks to see if
+     * the predecessor of terminator's basic block have this situation too. If so, we try to fold
+     * current block into it's predecessor, if succeed, return true. Otherwise return false.
+     * @param ti
+     * @return
+     */
+    private boolean foldValueComparisonIntoPredecessors(TerminatorInst ti)
+    {
+        Value cond = isValueEqualityComparison(ti);
+        if (cond == null) return false;
+        BasicBlock tiBB = ti.getParent();
+        boolean changed = false;
+
+        for (Iterator<BasicBlock> predItr = tiBB.predIterator(); predItr.hasNext(); )
+        {
+            BasicBlock pred = predItr.next();
+
+            Value cond2 = isValueEqualityComparison(pred.getTerminator());
+            if (!cond.equals(cond2)) return false;
+
+            TerminatorInst predTI = pred.getTerminator();
+            // If we going here, it indicates the last terminator's condition is same as ti's
+            // so we attempt to optimize this program based on this knowledge.
+            if (isSafeToMergeTerminator(ti, predTI))
+            {
+                ArrayList<Pair<ConstantInt, BasicBlock>> bbCases = new ArrayList<>();
+                BasicBlock bbDefault = getValueEqualityComparisonCases(ti, bbCases);
+
+                ArrayList<Pair<ConstantInt, BasicBlock>> predCases = new ArrayList<>();
+                BasicBlock predDeffault = getValueEqualityComparisonCases(predTI, predCases);
+
+                ArrayList<BasicBlock> newSuccs = new ArrayList<>();
+                if (predDeffault == tiBB)
+                {
+                    TreeSet<ConstantInt> handled = new TreeSet<>(ConstantIntOrdering);
+                    for (int i = 0, e = predCases.size(); i < e; i++)
+                    {
+                        if (predCases.get(i).second != tiBB)
+                            handled.add(predCases.get(i).first);
+                        else
+                        {
+                            predCases.remove(i);
+                            --i;
+                            --e;
+                        }
+                    }
+
+                    if (predDeffault != bbDefault)
+                    {
+                        predDeffault.removePredecessor(pred);
+                        predDeffault = bbDefault;
+                        newSuccs.add(bbDefault);
+                    }
+                    for (Pair<ConstantInt, BasicBlock> itr : bbCases)
+                    {
+                        if (!handled.contains(itr.first) &&
+                                itr.second != bbDefault)
+                        {
+                            predCases.add(itr);
+                            newSuccs.add(itr.second);
+                        }
+                    }
+                }
+                else
+                {
+                    // if this is not the default destination from predTI, only the
+                    // edges in si that ocurrs in predTI with a destination of bb would
+                    // be activated.
+                    TreeSet<ConstantInt> handled = new TreeSet<>(ConstantIntOrdering);
+                    for (int i = 0, e = predCases.size(); i < e; i++)
+                    {
+                        if (predCases.get(i).second == tiBB)
+                        {
+                            handled.add(predCases.get(i).first);
+                            predCases.remove(i);
+                            --i;
+                            --e;
+                        }
+                    }
+
+                    for (Pair<ConstantInt, BasicBlock> itr : bbCases)
+                    {
+                        if (handled.contains(itr.first))
+                        {
+                            predCases.add(itr);
+                            newSuccs.add(itr.second);
+                            handled.remove(itr.first);
+                        }
+                    }
+
+                    handled.forEach(ci->
+                    {
+                        predCases.add(Pair.get(ci, bbDefault));
+                        newSuccs.add(bbDefault);
+                    });
+                }
+
+                // Okay, at this point, we know which new successor Pred will get.  Make
+                // sure we update the number of entries in the PHI nodes for these
+                // successors.
+                newSuccs.forEach(succ->
+                {
+                    addPredecessorToBlock(succ, pred, tiBB);
+                });
+
+                SwitchInst si = new SwitchInst(cond, predDeffault, predCases.size(), "", predTI);
+                predCases.forEach(itr->
+                {
+                    si.addCase(itr.first, itr.second);
+                });
+
+                eraseTerminatorInstAndDCECond(predTI);
+
+                BasicBlock infLoopBlock = null;
+                for (int i = 0, e = si.getNumOfSuccessors(); i < e; i++)
+                {
+                    if (si.getSuccessor(i) == tiBB)
+                    {
+                        if (infLoopBlock == null)
+                        {
+                            infLoopBlock = BasicBlock.createBasicBlock("infloop", tiBB.getParent());
+                            new BranchInst(infLoopBlock, infLoopBlock);
+                        }
+                        si.setSuccessor(i, infLoopBlock);
+                    }
+                }
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private void addPredecessorToBlock(BasicBlock succ, BasicBlock pred, BasicBlock bb)
+    {
+        if (!(succ.getFirstInst() instanceof PhiNode)) return;
+
+        PhiNode pn;
+        for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i) instanceof PhiNode; i++)
+        {
+            pn = (PhiNode) succ.getInstAt(i);
+            pn.addIncoming(pn.getIncomingValueForBlock(bb), pred);
+        }
+    }
+
+    private boolean isSafeToMergeTerminator(TerminatorInst ti, TerminatorInst predTI)
+    {
+        if (ti == predTI) return false;
+
+        BasicBlock bb = ti.getParent();
+        BasicBlock pred = predTI.getParent();
+
+        HashSet<BasicBlock> bbSuccs = new HashSet<>();
+        for (Iterator<BasicBlock> itr = bb.succIterator(); itr.hasNext(); )
+            bbSuccs.add(itr.next());
+
+        for (Iterator<BasicBlock> itr = pred.succIterator(); itr.hasNext(); )
+        {
+            BasicBlock commonSucc = itr.next();
+            if (bbSuccs.contains(commonSucc))
+            {
+                int i = 0, e = commonSucc.size();
+                while (i < e && commonSucc.getInstAt(i) instanceof PhiNode)
+                {
+                    PhiNode pn = (PhiNode) commonSucc.getInstAt(i);
+                    if (!pn.getIncomingValueForBlock(bb).
+                            equals(pn.getIncomingValueForBlock(pred)))
+                        return false;
+                    ++i;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
      * This function used for do a simplification of a CFG. For example, it
      * adjusts branches to branches to eliminate the extra hop. It eliminates
      * unreachable basic blocks ,and does other "peephole" optimization of the
@@ -879,12 +1280,34 @@ public final class CFGSimplifyPass implements FunctionPass
         // and return.
         Util.assertion(bb.getTerminator() != null);
         if (bb.getTerminator() instanceof ReturnInst)
-            changed |= foldOnlyReturnInBlock(bb);
+        {
+            if (foldOnlyReturnInBlock(bb))
+                return true;
+        }
         else if (bb.getTerminator() instanceof SwitchInst)
-        {}
+        {
+            SwitchInst si = (SwitchInst) bb.getTerminator();
+            if (isValueEqualityComparison(bb.getTerminator()) != null)
+            {
+                BasicBlock singlePred = bb.getSinglePredecessor();
+                if (singlePred != null && simplifyEqualityComparisonWithOnlyPredecessor(si, singlePred))
+                {
+                    simplifyCFG(bb);
+                    return true;
+                }
+            }
+            // if the switch inst is first one, checks to see if we can fold the block
+            // away into any preds.
+            if (si == bb.getFirstInst() && foldValueComparisonIntoPredecessors(si))
+            {
+                simplifyCFG(bb);
+                return true;
+            }
+        }
         else if (bb.getTerminator() instanceof BranchInst)
         {
-            changed |= foldBranchInstAsTermInst(bb);
+            if (foldBranchInstAsTermInst(bb))
+                return true;
         }
         else if (bb.getTerminator() instanceof UnreachableInst)
         {}
@@ -899,7 +1322,284 @@ public final class CFGSimplifyPass implements FunctionPass
         // Otherwise, if this block only has a single predecessor, and if that block
         // is a conditional branch, see if we can hoist any code from this block up
         // into our predecessor.
+        BasicBlock onlyPredBB = null;
+        for (int i = 0, e = bb.getNumPredecessors(); i < e; i++)
+        {
+            BasicBlock pred = bb.predAt(i);
+            if (onlyPredBB == null)
+                onlyPredBB = pred;
+            else if (onlyPredBB != pred)
+            {
+                onlyPredBB = null;
+                break;
+            }
+        }
+        if (onlyPredBB != null)
+        {
+            if (onlyPredBB.getTerminator() instanceof BranchInst)
+            {
+                BranchInst br = (BranchInst) onlyPredBB.getTerminator();
+                if (br.isConditional())
+                {
+                    // obtain the other block.
+                    BasicBlock otherBB = br.getSuccessor(br.getSuccessor(0) == bb ? 1:0);
+                    //   pred
+                    //  |    |
+                    //  v    v
+                    //  bb  otherBB
+                    if (otherBB.getNumPredecessors() == 1)
+                    {
+                        // // We have a conditional branch to two blocks that are only reachable
+                        // from the condbr.  We know that the condbr dominates the two blocks,
+                        // so see if there is any identical code in the "then" and "else"
+                        // blocks.  If so, we can hoist it up to the branching block.
+                        changed |= hoistThenElseCodeToIf(br);
+                    }
+                    else
+                    {
+                        BasicBlock onlySucc = null;
+                        for (Iterator<BasicBlock> itr = bb.succIterator(); itr.hasNext(); )
+                        {
+                            BasicBlock succ = itr.next();
+                            if (onlySucc == null)
+                                onlySucc = succ;
+                            else if (onlySucc != succ)
+                            {
+                                onlySucc = null;
+                                break;
+                            }
+                        }
+
+                        if (onlySucc == otherBB)
+                        {
+                            //   pred
+                            //  |    |
+                            //  v    |
+                            //  bb   |
+                            //   \   |
+                            //  otherBB(onlySucc).
+                            // Checks see if we can hoist any code from this block up
+                            // to the "if" block
+                            changed |= speculativelyExecuteBB(br, bb);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+        {
+            BasicBlock pred = itr.next();
+            TerminatorInst ti = pred.getTerminator();
+            if (ti != null && ti instanceof BranchInst)
+            {
+                // Change br (X == 0 | X == 1), T, F into a switch instruction.
+                BranchInst br = (BranchInst) ti;
+                Value val;
+                if (br.isConditional() && (val = br.getCondition()) != null &&
+                        val instanceof Instruction)
+                {
+                    Instruction cond = (Instruction) val;
+                    OutParamWrapper<Value> x = new OutParamWrapper<>(null);
+                    ArrayList<ConstantInt> values = new ArrayList<>();
+                    boolean trueWhenEqual = gatherValueComparisons(cond, x, values);
+                    Value compVal = x.get();
+                    if (compVal != null && compVal.getType().isInteger())
+                    {
+                        Util.unique(values);
+                        values.sort(ConstantIntOrdering);
+                        BasicBlock defaultBB = br.getSuccessor(1);
+                        BasicBlock edgeBB = br.getSuccessor(0);
+                        if (!trueWhenEqual)
+                        {
+                            BasicBlock t = defaultBB;
+                            defaultBB = edgeBB;
+                            edgeBB = t;
+                        }
+
+                        SwitchInst si = new SwitchInst(compVal, defaultBB, values.size(), "", br);
+                        // add all 'case' to the switch instruction.
+                        for (ConstantInt value : values)
+                        {
+                            si.addCase(value, edgeBB);
+                        }
+
+                        for (int i = 0, e = edgeBB.size(); i < e && edgeBB.getInstAt(i) instanceof PhiNode; i++)
+                        {
+                            pn = (PhiNode) edgeBB.getInstAt(i);
+                            Value inVal = pn.getIncomingValueForBlock(pred);
+                            for (int j = 0, sz = values.size()-1; j < sz; j++)
+                                pn.addIncoming(inVal, pred);
+                        }
+                        eraseTerminatorInstAndDCECond(br);
+                        return true;
+                    }
+                }
+            }
+        }
         return changed;
+    }
+
+    private boolean speculativelyExecuteBB(BranchInst br, BasicBlock bb)
+    {
+        // TODO: 18-7-20
+        return false;
+    }
+
+    private boolean gatherValueComparisons(Instruction cond, OutParamWrapper<Value> compVal,
+            ArrayList<ConstantInt> values)
+    {
+        switch (cond.getOpcode())
+        {
+            case Or:
+                compVal.set(gatherConstantSetEQs(cond, values));
+                return true;
+            case And:
+                compVal.set(gatherConstantSetNEs(cond, values));
+                return false;
+        }
+        return false;
+    }
+
+    private Value gatherConstantSetEQs(Value cond, ArrayList<ConstantInt> values)
+    {
+        if (!(cond instanceof Instruction)) return null;
+        Instruction inst = (Instruction)cond;
+        if (inst.getOpcode() == Operator.ICmp &&
+                ((ICmpInst)inst).getPredicate() == Predicate.ICMP_EQ)
+        {
+            if (inst.operand(1) instanceof ConstantInt)
+            {
+                values.add((ConstantInt) inst.operand(1));
+                return inst.operand(0);
+            }
+            else if (inst.operand(0) instanceof ConstantInt)
+            {
+                values.add((ConstantInt) inst.operand(0));
+                return inst.operand(1);
+            }
+        }
+        else if (inst.getOpcode() == Operator.Or)
+        {
+            Value lhs = gatherConstantSetEQs(inst.operand(0), values);
+            Value rhs = gatherConstantSetEQs(inst.operand(1), values);
+            if (lhs != null && rhs != null && lhs.equals(rhs))
+                return lhs;
+        }
+        return null;
+    }
+
+    private Value gatherConstantSetNEs(Value cond, ArrayList<ConstantInt> values)
+    {
+        if (!(cond instanceof Instruction)) return null;
+        Instruction inst = (Instruction)cond;
+        if (inst.getOpcode() == Operator.ICmp &&
+                ((ICmpInst)inst).getPredicate() == Predicate.ICMP_NE)
+        {
+            if (inst.operand(1) instanceof ConstantInt)
+            {
+                values.add((ConstantInt) inst.operand(1));
+                return inst.operand(0);
+            }
+            else if (inst.operand(0) instanceof ConstantInt)
+            {
+                values.add((ConstantInt) inst.operand(0));
+                return inst.operand(1);
+            }
+        }
+        else if (inst.getOpcode() == Operator.And)
+        {
+            Value lhs = gatherConstantSetNEs(inst.operand(0), values);
+            Value rhs = gatherConstantSetNEs(inst.operand(1), values);
+            if (lhs != null && rhs != null && lhs.equals(rhs))
+                return lhs;
+        }
+        return null;
+    }
+
+    private boolean hoistThenElseCodeToIf(BranchInst br)
+    {
+        BasicBlock bb1 = br.getSuccessor(0);
+        BasicBlock bb2 = br.getSuccessor(1);
+        int i = 0, e1 = bb1.size(), j = 0, e2 = bb2.size();
+        BasicBlock parentBB = br.getParent();
+
+        if (bb1.getInstAt(i).getOpcode() == Operator.Phi ||
+                bb1.getInstAt(i).getOpcode() != bb2.getInstAt(i).getOpcode() ||
+                !bb1.getInstAt(i).isIdenticalToWhenDefined(bb2.getInstAt(j)))
+            return false;
+
+        TerminatorInst ti = parentBB.getTerminator();
+        // As we going here, we know at least one instruction could be hoisted to parentBB.
+        HoistTerminator:
+        {
+            do
+            {
+                if (bb1.getInstAt(i) instanceof TerminatorInst)
+                    break HoistTerminator;
+
+                parentBB.insertBefore(bb1.getInstAt(i), ti);
+                bb2.getInstAt(j).replaceAllUsesWith(bb1.getInstAt(i));
+                bb1.getInstAt(i).intersectOptionalDataWith(bb2.getInstAt(j));
+                bb2.getInstAt(j).eraseFromParent();
+
+            } while (i < e1 && j < e2 && bb1.getInstAt(i).
+                    isIdenticalToWhenDefined(bb2.getInstAt(j)));
+            return true;
+        }
+
+        Instruction inst = bb1.getInstAt(i).clone();
+        parentBB.insertBefore(inst, br);
+        if (inst.getType() != LLVMContext.VoidTy)
+        {
+            bb1.getInstAt(i).replaceAllUsesWith(inst);
+            bb2.getInstAt(j).replaceAllUsesWith(inst);
+            inst.setName(bb1.getInstAt(i).getName());
+        }
+
+        // Hoisting one of the terminators from our successor is a great thing.
+        // Unfortunately, the successors of the if/else blocks may have PHI nodes in
+        // them.  If they do, all PHI entries for BB1/BB2 must agree for all PHI
+        // nodes, so we insert select instruction to compute the final result.
+        HashMap<Pair<Value, Value>, SelectInst> insertedSelects = new HashMap<>();
+        for (Iterator<BasicBlock> itr = bb1.succIterator(); itr.hasNext(); )
+        {
+            BasicBlock succ = itr.next();
+            for (int k = 0, sz = succ.size(); k < sz && succ.getInstAt(k) instanceof PhiNode; ++k)
+            {
+                PhiNode pn = (PhiNode) succ.getInstAt(k);
+                Value bb1V = pn.getIncomingValueForBlock(bb1);
+                Value bb2V = pn.getIncomingValueForBlock(bb2);
+                if (!bb1V.equals(bb2V))
+                {
+                    Pair<Value, Value> key = Pair.get(bb1V, bb2V);
+                    SelectInst si;
+                    if (!insertedSelects.containsKey(key))
+                    {
+                        si = new SelectInst(br.getCondition(), bb1V, bb2V,
+                                bb1V.getName()+"."+bb2V.getName(), inst);
+                        insertedSelects.put(key, si);
+                    }
+                    else
+                        si = insertedSelects.get(key);
+                    // Make the PHI node use the select for all incoming values for BB1/BB2
+                    for (int n = 0, sz2 = pn.getNumberIncomingValues(); n < sz2; ++n)
+                    {
+                        if (pn.getIncomingBlock(n) == bb1 ||
+                                pn.getIncomingBlock(n) == bb2)
+                            pn.setIncomingValue(n, si);
+
+                    }
+                }
+            }
+        }
+
+        for (Iterator<BasicBlock> itr = bb1.succIterator(); itr.hasNext(); )
+        {
+            addPredecessorToBlock(itr.next(), parentBB, bb1);
+        }
+        eraseTerminatorInstAndDCECond(br);
+        return true;
     }
 
     @Override

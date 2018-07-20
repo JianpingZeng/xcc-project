@@ -30,7 +30,7 @@ public abstract class User extends Value
 
 	protected void reserve(int numOperands)
     {
-        Util.assertion( numOperands>0);
+        Util.assertion(numOperands>0);
         operandList = new ArrayList<>();
         for (; numOperands > 0; --numOperands)
             operandList.add(null);

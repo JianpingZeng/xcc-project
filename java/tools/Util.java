@@ -1,6 +1,7 @@
 package tools;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -747,4 +748,12 @@ public class Util
     {
         assertion(cond, "");
     }
+
+    public static <T> void unique(List<T> list)
+	{
+		HashSet<T> unique = new HashSet<>();
+		unique.addAll(list);
+		list.clear();
+		list.addAll(unique);
+	}
 }

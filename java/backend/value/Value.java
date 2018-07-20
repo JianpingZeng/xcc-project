@@ -1,6 +1,5 @@
 package backend.value;
 
-import tools.Util;
 import backend.support.*;
 import backend.type.Type;
 import tools.FormattedOutputStream;
@@ -403,6 +402,11 @@ public class Value implements Cloneable
     {
         return super.equals(obj);
     }
+
+	public void intersectOptionalDataWith(Instruction val)
+	{
+		// TODO: 18-7-20
+	}
 
     /**
      * 'undef' values are things that do not have specified contents.
