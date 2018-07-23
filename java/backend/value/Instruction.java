@@ -187,8 +187,8 @@ public abstract class Instruction extends User
     @Override
     public Instruction clone()
     {
-        // TODO should be overidden by concrete subclasses.
-        return (Instruction) super.clone();
+        setParent(null);
+        return this;
     }
 
     public int getIndexToBB()

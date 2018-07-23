@@ -160,8 +160,9 @@ public final class CFGSimplifyPass implements FunctionPass
         while (!worklist.isEmpty())
         {
             BasicBlock currBB = worklist.pop();
-            if (!reachables.contains(currBB))
-                reachables.add(currBB);
+            if (reachables.contains(currBB))
+                continue;
+            reachables.add(currBB);
 
             // Converts CallInst(StoreInst) without returned value into UnreachableInst
             for (int i = 0, e = currBB.size(); i < e; i++)

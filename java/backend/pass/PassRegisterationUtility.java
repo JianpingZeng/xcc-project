@@ -44,11 +44,11 @@ public final class PassRegisterationUtility
         new RegisterPass("Live Interval Analysis", "liveintervals", LiveIntervalAnalysis.class);
         new RegisterPass( "Dominance Frontier Construction", "domfrontier", DominanceFrontier.class, true, true);
         new RegisterPass("Dominator Tree Construction", "domtree", DomTree.class, true, true);
-        new RegisterPass( "Induction Variable Users", "iv-users",IVUsers.class,false, true);
+        new RegisterPass( "Induction Variable Users", "iv-users",IVUsers.class, false, true);
         new RegisterPass( "Live Variable Analysis", "livevars", LiveVariables.class);
         new RegisterPass( "Natural Loop Information", "loops", LoopInfo.class, true, true);
-        new RegisterPass( "Machine Dominator Tree Construction", "machinedomtree", MachineDomTree.class, true);
-        new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoop.class, true);
+        new RegisterPass( "Machine Dominator Tree Construction", "machinedomtree", MachineDomTree.class, true, true);
+        new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoop.class, true, true);
         new RegisterPass( "Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
         new RegisterPass( "Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
         new RegisterPass("Print out cfg into dot file", "dot-cfg", CFGPrinter.class, false, true);
