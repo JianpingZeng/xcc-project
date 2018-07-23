@@ -137,7 +137,7 @@ public final class PhiElimination extends MachineFunctionPass
 		MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
 
 		// Delete the PHI node whose index to 0
-        mbb.remove(0);
+        phiMI.removeFromParent();
 		LiveVariables lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 		if (lv != null)
 		{
@@ -160,8 +160,7 @@ public final class PhiElimination extends MachineFunctionPass
 		for (int i = phiMI.getNumOperands() - 1; i >= 1; i-=2)
 		{
 			int srcReg = phiMI.getOperand(i-1).getReg();
-			Util.assertion(mri.isVirtualReg(srcReg), 					"Machine PHI Operands must all be virtual registers!");
-
+			Util.assertion(mri.isVirtualReg(srcReg), "Machine PHI Operands must all be virtual registers!");
 
 			MachineBasicBlock opBB = phiMI.getOperand(i).getMBB();
 

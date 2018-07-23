@@ -23,10 +23,7 @@ import backend.target.TargetRegisterInfo;
 import tools.Util;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.TreeSet;
+import java.util.*;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
@@ -105,7 +102,7 @@ public final class LiveInterval
 
     public void addRange(int from, int to)
     {
-        Util.assertion(from < to, "Invalid range!");
+        Util.assertion(from <= to, "Invalid range!");
         if (first.equals(LiveRange.EndMarker) || to < first.end)
         {
             first = insertRangeBefore(from, to, first);
@@ -132,7 +129,8 @@ public final class LiveInterval
      */
     private LiveRange insertRangeBefore(int from, int to, LiveRange cur)
     {
-        Util.assertion(cur.equals(LiveRange.EndMarker) || to < cur.next.start,
+        Util.assertion(cur.equals(LiveRange.EndMarker) || cur.end == Integer.MAX_VALUE
+                        || (cur.next != null && to < cur.next.start),
                 "Not inserting at begining of interval");
         Util.assertion(from <= cur.end, "Not inserting at begining of interval");
         if (cur.start <= to)
@@ -162,6 +160,11 @@ public final class LiveInterval
 
     public LiveRange getFirst()
     {
+        if (first.equals(LiveRange.EndMarker))
+        {
+            first = new LiveRange(Integer.MAX_VALUE, Integer.MAX_VALUE, first);
+            last = first;
+        }
         return first;
     }
 
@@ -180,7 +183,7 @@ public final class LiveInterval
         os.printf("%s: ", isPhysicalRegister(register) ?
                         tri.getName(register) : "%reg" + register);
         LiveRange r = first;
-        while (!r.equals(LiveRange.EndMarker))
+        while (r != null && !Objects.equals(r, LiveRange.EndMarker))
         {
             r.dump();
             System.err.print(",");
@@ -478,7 +481,7 @@ public final class LiveInterval
     public void join(LiveInterval it)
     {
         LiveRange cur = it.first;
-        while (!cur.equals(LiveRange.EndMarker))
+        while (cur != null && !cur.equals(LiveRange.EndMarker))
         {
             addRange(cur.start, cur.end);
             cur = cur.next;

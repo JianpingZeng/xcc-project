@@ -223,8 +223,6 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
             {
                 System.err.printf(" reg %d -> reg %d\n", key, r2rMap.get(key));
             }
-            System.err.println("\n**** After Register coalescing ****");
-            li.print(System.err, mf.getFunction().getParent());
         }
     }
 

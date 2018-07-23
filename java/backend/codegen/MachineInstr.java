@@ -273,7 +273,15 @@ public class MachineInstr implements Cloneable
 	public MachineInstr removeFromParent()
 	{
 		Util.assertion( getParent() != null);
-		parent.remove(this);
+		for (int i = 0, e = getNumOperands(); i < e; i++)
+        {
+            MachineOperand mo = getOperand(i);
+            if (mo.isRegister() && mo.getReg() > 0)
+            {
+                mo.removeRegOperandFromRegInfo();
+            }
+        }
+        parent.remove(this);
 		return this;
 	}
 

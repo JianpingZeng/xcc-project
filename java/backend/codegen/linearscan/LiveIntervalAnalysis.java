@@ -283,8 +283,11 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass
                         intervals.put(reg, li);
                     }
                     Util.assertion(li != null);
-
                     li.addRange(blockFrom, num);
+                    // extends the use to cross current instruction.
+                    if (li.getFirst().end == num)
+                        --li.getFirst().start;
+
                     li.addUsePoint(num, mo);
                 }
             }
