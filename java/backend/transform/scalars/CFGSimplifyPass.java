@@ -20,6 +20,7 @@ import backend.ir.SelectInst;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.support.LLVMContext;
+import backend.transform.utils.ConstantFolder;
 import backend.type.PointerType;
 import backend.utils.SuccIterator;
 import backend.value.*;
@@ -836,9 +837,368 @@ public final class CFGSimplifyPass implements FunctionPass
         else
         {
             // conditional branch to two successors.
+            if (isValueEqualityComparison(br) != null)
+            {
+                // If we have only one predecessor, and if
+                // it is branch on the same value as br's condition,
+                // check to see if that predecessor totally determines
+                // the outcome of this branch.
+                BasicBlock onlyPred = bb.getSinglePredecessor();
+                if (onlyPred != null)
+                {
+                    if (simplifyEqualityComparisonWithOnlyPredecessor(br, onlyPred))
+                    {
+                        simplifyCFG(bb);
+                        return true;
+                    }
+                }
 
+                // Reaches here, this block must be empty, except for the
+                // condition and branch
+                if (bb.getFirstInst() == br)
+                {
+                    if (foldValueComparisonIntoPredecessors(br))
+                    {
+                        simplifyCFG(bb);
+                        return true;
+                    }
+                }
+                else if (bb.getFirstInst() == br.getCondition())
+                {
+                    if (bb.getInstAt(1) == br &&
+                            foldValueComparisonIntoPredecessors(br))
+                    {
+                        simplifyCFG(bb);
+                        return true;
+                    }
+                }
+            }
+
+            // If this is a branch on a phi node in the current block, thread control
+            // through this block if any PHI node entries are constants.
+            if (br.getCondition() instanceof PhiNode)
+            {
+                PhiNode pn = (PhiNode) br.getCondition();
+                if (pn.getParent() == bb && foldCondBranchOnPhi(br))
+                {
+                    simplifyCFG(bb);
+                    return true;
+                }
+            }
+            if (foldBranchToCommonDest(br))
+            {
+                simplifyCFG(bb);
+                return true;
+            }
+            for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext();)
+            {
+                BasicBlock pred = itr.next();
+                if(pred.getTerminator() instanceof BranchInst)
+                {
+                    BranchInst predBR = (BranchInst) pred.getTerminator();
+                    if (predBR != br && predBR.isConditional() &&
+                            simplifyCondBranchToCondBranch(predBR, br))
+                    {
+                        simplifyCFG(bb);
+                        return true;
+                    }
+                }
+            }
         }
         return false;
+    }
+
+    private boolean simplifyCondBranchToCondBranch(BranchInst predBR, BranchInst br)
+    {
+        return false;
+    }
+
+    /**
+     * Thread through the specified basic block if there is only setcc and branch inst
+     * existing in the br's block and there is common successor of pred and current block,
+     * we attempt to transform the branch in predecessor to branch based on predication
+     * condition, reducing branch to current block.
+     * @param br
+     * @return
+     */
+    private boolean foldBranchToCommonDest(BranchInst br)
+    {
+        BasicBlock bb = br.getParent();
+        Util.assertion(bb != null, "Parent of br must not be null!");
+        Value c = br.getCondition();
+        Util.assertion(c instanceof Instruction, "cond must be instruction");
+        Instruction cond = (Instruction) c;
+        // we should ensure the condition resides in the same block as br.
+        if (cond.getParent() != bb) return false;
+
+        // we should ensure there are setcc and branch inst in current block.
+        Instruction firstInst = bb.getFirstInst();
+        if (firstInst != cond || (!(firstInst instanceof ICmpInst) &&
+                !(firstInst instanceof BinaryOps)) || !cond.hasOneUses())
+            return false;
+
+        // the current block must only have 2 instructions, including condition and
+        // branch inst.
+        if (bb.getInstAt(1) != br)
+            return false;
+
+        // avoiding self-loop.
+        BasicBlock trueDest = br.getSuccessor(0);
+        BasicBlock falseDest = br.getSuccessor(1);
+        if (trueDest == bb || falseDest == bb)
+            return false;
+
+        if (cond.operand(0) instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr) cond.operand(0);
+            if (ce.canTrap())
+                return false;
+        }
+        if (cond.operand(1) instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr) cond.operand(1);
+            if (ce.canTrap())
+                return false;
+        }
+
+        for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+        {
+            BasicBlock pred = itr.next();
+            TerminatorInst ti = pred.getTerminator();
+            Util.assertion(ti instanceof BranchInst);
+            BranchInst predBR = (BranchInst) ti;
+
+            boolean invertPredCond = false;
+            Operator opc = null;
+            if (predBR.getSuccessor(0) == trueDest)
+            {
+                //     pred  ...
+                //    /     \
+                //   |      bb
+                //   |   /     \
+                //   trueDest  falseDest
+                opc = Operator.Or;
+            }
+            else if (predBR.getSuccessor(1) == trueDest)
+            {
+                //          pred  ...
+                //       /       \
+                //      bb         \
+                //   /      \        \
+                // trueDest falseDest |
+                //  |<---------------/
+                opc = Operator.Or;
+                invertPredCond = true;
+            }
+            else if (predBR.getSuccessor(0) == falseDest)
+            {
+                opc = Operator.And;
+                invertPredCond = true;
+            }
+            else if (predBR.getSuccessor(1) == falseDest)
+            {
+                //          pred  ...
+                //       /      \
+                //      bb       \
+                //   /     \      \
+                // trueDest  falseDest
+                opc = Operator.Or;
+            }
+            Util.assertion(opc != null, "unknown situation to be handled!");
+            if (invertPredCond)
+            {
+                Instruction newCond = BinaryOps.createNot(cond, cond.getName()+".not", predBR);
+                predBR.setCondition(newCond);
+                BasicBlock succ0 = predBR.getSuccessor(0);
+                BasicBlock succ1 = predBR.getSuccessor(1);
+                predBR.setSuxAt(0, succ1);
+                predBR.setSuxAt(1, succ0);
+            }
+            Instruction v = cond.clone();
+            pred.insertBefore(v, predBR);
+            cond.setName(cond.getName()+".old");
+            Instruction newCond = BinaryOps.create(opc, predBR.getCondition(),
+                    v, "or.cond", predBR);
+            predBR.setCondition(newCond);
+            if (predBR.getSuccessor(0) == bb)
+            {
+                addPredecessorToBlock(trueDest, pred, bb);
+                predBR.setSuxAt(0, trueDest);
+            }
+            if (predBR.getSuccessor(1) == bb)
+            {
+                addPredecessorToBlock(falseDest, pred, bb);
+                predBR.setSuxAt(1, falseDest);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean foldCondBranchOnPhi(BranchInst br)
+    {
+        BasicBlock bb = br.getParent();
+        PhiNode pn = br.getCondition() instanceof PhiNode ?
+                (PhiNode)br.getCondition() : null;
+        if (pn == null || pn.getParent() != bb || !pn.hasOneUses())
+            return false;
+        if (pn.getNumberIncomingValues() == 1)
+        {
+            foldSingleEntryPhiNodes(bb);
+            return true;
+        }
+        // the block must be simple enough.
+        if (!blockIsSimpleEnoughToThreadThrough(bb)) return false;
+
+        // So if we reach here, we know the block have multiple predecessors
+        // and two successors. Checks to see if any phi nodes are constant value.
+        // CFG maybe looks like following figure.
+        //  pred1  ... predn
+        //     \     /
+        //       bb(condition on phinode)
+        //       |
+        //    realDest
+        // transformed into following.
+        //  pred1  ...  predn
+        //    |         |
+        //    \    bb   |
+        //      \  |   /
+        //       edgeBB
+        //       |
+        //    realDest
+
+        for (int i = 0, e = pn.getNumberIncomingValues(); i < e; i++)
+        {
+            Value val = pn.getIncomingValue(i);
+            if (val instanceof ConstantInt && val.getType() == LLVMContext.Int1Ty)
+            {
+                ConstantInt ci = (ConstantInt)val;
+                BasicBlock predBlock = pn.getIncomingBlock(i);
+                BasicBlock realDest = br.getSuccessor(ci.getZExtValue() !=0? 0 : 1);
+
+                // avoiding self-loop.
+                if (realDest == bb) continue;
+
+                BasicBlock edgeBB = BasicBlock.createBasicBlock(
+                        realDest.getName()+".critedge",
+                        realDest.getParent(), realDest);
+                // insert a branch targeting to realDest in the end of edgeBB.
+                new BranchInst(realDest, edgeBB);
+                // create phi-value connection between realDest and edgeBB.
+                for (Instruction inst : realDest)
+                {
+                    if (!(inst instanceof PhiNode))
+                        break;
+                    PhiNode n = (PhiNode) inst;
+                    Value v = n.getIncomingValueForBlock(bb);
+                    n.addIncoming(v, edgeBB);
+                }
+
+                // set the inserted position pointer to the begining of edgeBB.
+                int insertPtr = 0;
+                HashMap<Value, Value> translateMap = new HashMap<>();
+                // Track translated values.
+                for (Instruction inst : bb)
+                {
+                    if (inst instanceof PhiNode)
+                    {
+                        Value v = pn.getIncomingValueForBlock(predBlock);
+                        translateMap.put(pn, v);
+                    }
+                    else
+                    {
+                        // Clone this instruction.
+                        Instruction n = inst.clone();
+                        if (inst.hasName())
+                            n.setName(inst.getName()+".c");
+
+                        // update all operands refer to phi with given value.
+                        for (int j = 0, sz = n.getNumOfOperands(); j < sz;j++)
+                        {
+                            Value v = n.operand(j);
+                            if (translateMap.containsKey(v))
+                                n.setOperand(j, translateMap.get(v));
+                        }
+
+                        // insert the cloned instruction into edgeBB.
+                        Constant c = ConstantFolder.constantFoldInstruction(n);
+                        if (c != null)
+                        {
+                            translateMap.put(inst, c);
+                            inst.eraseFromParent();
+                        }
+                        else
+                        {
+                            edgeBB.insertAfter(n, insertPtr);
+                            ++insertPtr;
+                            if (!inst.isUseEmpty())
+                                translateMap.put(inst, n);
+                        }
+                    }
+                }
+
+                // Loop over all of the edges from PredBB to BB, changing them to branch
+                // to EdgeBB instead.
+                TerminatorInst ti = predBlock.getTerminator();
+                Util.assertion(ti != null);
+                for (int j = 0, sz = predBlock.getNumSuccessors(); j < sz; j++)
+                {
+                    BasicBlock succ = predBlock.suxAt(j);
+                    if (succ == bb)
+                    {
+                        bb.removePredecessor(predBlock);
+                        ti.setSuxAt(j, edgeBB);
+                    }
+                }
+                // recursively simplify this branch.
+                foldCondBranchOnPhi(br);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks to see if the specified block is simple enough to be thread
+     * through and reduce the complexity of CFG.
+     * @param bb
+     * @return
+     */
+    private boolean blockIsSimpleEnoughToThreadThrough(BasicBlock bb)
+    {
+        BranchInst br = (BranchInst) bb.getTerminator();
+        int size = 0;
+        for (Instruction inst : bb)
+        {
+            // can not thread through large block.
+            if (size > 10) return false;
+            ++size;
+
+            for (Use u : inst.getUseList())
+            {
+                Instruction uInst = (Instruction) u.getUser();
+                if (uInst.getParent() != bb || uInst instanceof PhiNode)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private void foldSingleEntryPhiNodes(BasicBlock bb)
+    {
+        if (!(bb.getFirstInst() instanceof PhiNode))
+            return;
+
+        while (bb.getFirstInst() instanceof PhiNode)
+        {
+            PhiNode pn = (PhiNode) bb.getFirstInst();
+            Value onlyEntry = pn.getIncomingValue(0);
+            if (onlyEntry.equals(pn))
+                pn.replaceAllUsesWith(UndefValue.get(pn.getType()));
+            else
+                pn.replaceAllUsesWith(onlyEntry);
+            pn.eraseFromParent();
+        }
     }
 
     /**
