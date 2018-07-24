@@ -17,17 +17,17 @@
 
 package backend.transform.scalars;
 
-import backend.transform.utils.ConstantFolder;
-import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
+import backend.transform.utils.ConstantFolder;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.SwitchInst;
 import backend.value.Value.UndefValue;
+import tools.Util;
 
 import java.util.LinkedList;
 
@@ -258,7 +258,7 @@ public class ConditionalPropagate implements FunctionPass
         foldSingleEntryPHINodes(toBB);
 
         oldSucc.removePredecessor(fromBB);
-        fromBr.setSuxAt(0, toBB);
+        fromBr.setSuccessor(0, toBB);
         madeChange = true;
     }
 
@@ -325,7 +325,7 @@ public class ConditionalPropagate implements FunctionPass
 
             foldSingleEntryPHINodes(toBB);
             oldSucc.removePredecessor(fromBB);
-            fromBr.setSuxAt(0, toBB);
+            fromBr.setSuccessor(0, toBB);
         }
         else
         {

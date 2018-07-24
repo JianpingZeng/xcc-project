@@ -55,7 +55,7 @@ public class UnreachableInst extends Instruction.TerminatorInst
     }
 
     @Override
-    public void setSuxAt(int index, BasicBlock bb)
+    public void setSuccessor(int index, BasicBlock bb)
     {
         Util.assertion(false, "UnreachableInst has no successor");
     }

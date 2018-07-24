@@ -16,7 +16,6 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
@@ -177,7 +176,7 @@ public final class BreakCriticalEdge implements FunctionPass
                 tibb.getName()+"."+destBB.getName()+"_crit_edge",
                 f);
         BranchInst br = new BranchInst(destBB, newBB);
-        ti.setSuxAt(succNum, newBB);
+        ti.setSuccessor(succNum, newBB);
 
         // Insert the newBB into the correct position right after tibb.
         f.addBasicBlockBefore(tibb, newBB);
@@ -202,7 +201,7 @@ public final class BreakCriticalEdge implements FunctionPass
                     continue;
 
                 destBB.removePredecessor(tibb);
-                ti.setSuxAt(i, newBB);
+                ti.setSuccessor(i, newBB);
             }
         }
 

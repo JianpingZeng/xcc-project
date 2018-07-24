@@ -1991,7 +1991,7 @@ public abstract class Instruction extends User
          * @param index
          * @param bb
          */
-        public abstract void setSuxAt(int index, BasicBlock bb);
+        public abstract void setSuccessor(int index, BasicBlock bb);
     }
 
     /**
@@ -2140,7 +2140,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void setSuxAt(int index, BasicBlock bb)
+        public void setSuccessor(int index, BasicBlock bb)
         {
             Util.assertion( (index >= 0 && index < getNumOfSuccessors() && bb != null));
             setOperand(index, bb, this);
@@ -2242,7 +2242,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void setSuxAt(int index, BasicBlock bb)
+        public void setSuccessor(int index, BasicBlock bb)
         {
             Util.assertion(true, ("ReturnInst has no successors!"));
         }
@@ -2727,7 +2727,8 @@ public abstract class Instruction extends User
         }
         public void setSuccessor(int index, BasicBlock newBB)
         {
-            Util.assertion(index >= 0 && index < getNumOfSuccessors(),  "Successor index out of range for switch");
+            Util.assertion(index >= 0 && index < getNumOfSuccessors(),
+                    "Successor index out of range for switch");
 
             setOperand(index * 2 + 1, newBB, this);
         }
@@ -2735,7 +2736,8 @@ public abstract class Instruction extends User
         // successor.
         public void setSuccessorValue(int idx, Constant SuccessorValue)
         {
-            Util.assertion((idx>=0 && idx < getNumOfSuccessors()),  "Successor # out of range!");
+            Util.assertion((idx>=0 && idx < getNumOfSuccessors()),
+                    "Successor # out of range!");
 
             setOperand(idx*2, SuccessorValue, this);
         }
@@ -2757,18 +2759,6 @@ public abstract class Instruction extends User
         public int getNumOfSuccessors()
         {
             return getNumOfOperands() >> 1;
-        }
-
-        /**
-         * Updates basic block at specified index position.
-         *
-         * @param index
-         * @param bb
-         */
-        @Override
-        public void setSuxAt(int index, BasicBlock bb)
-        {
-            setSuccessor(index, bb);
         }
     }
 

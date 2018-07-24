@@ -908,9 +908,153 @@ public final class CFGSimplifyPass implements FunctionPass
         return false;
     }
 
+    /**
+     * We attempt to simplify this branch to another block has also a conditional branch.
+     * @param predBR
+     * @param br
+     * @return
+     */
     private boolean simplifyCondBranchToCondBranch(BranchInst predBR, BranchInst br)
     {
-        return false;
+        Util.assertion(predBR.isConditional() && br.isConditional());
+        BasicBlock bb = br.getParent();
+        Value cond = br.getCondition();
+
+        if (predBR.getCondition().equals(br.getCondition()) &&
+                predBR.getSuccessor(0) != predBR.getSuccessor(1))
+        {
+            BasicBlock singlePred = bb.getSinglePredecessor();
+            if (singlePred != null)
+            {
+                boolean condIsTrue = predBR.getSuccessor(0) == bb;
+                br.setCondition(condIsTrue?ConstantInt.getTrue():ConstantInt.getFalse());
+                return true;
+            }
+
+            if (blockIsSimpleEnoughToThreadThrough(bb))
+            {
+                PhiNode newPHI = new PhiNode(LLVMContext.Int1Ty, cond.getName()+".pr", bb.getFirstInst());
+                for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+                {
+                    BasicBlock pred = itr.next();
+                    BranchInst brInt = pred.getTerminator() instanceof BranchInst ?
+                            (BranchInst)pred.getTerminator() : null;
+                    if (brInt != null && brInt.getCondition().equals(cond) &&
+                            brInt.isConditional() && !brInt.equals(br) &&
+                            brInt.getSuccessor(0) != brInt.getSuccessor(1))
+                    {
+                        boolean condIsTrue = brInt.getSuccessor(0) == bb;
+                        newPHI.addIncoming(condIsTrue?ConstantInt.getTrue():ConstantInt.getFalse(),
+                                pred);
+                    }
+                    else
+                    {
+                        newPHI.addIncoming(brInt.getCondition(), pred);
+                    }
+                }
+                br.setCondition(newPHI);
+                return true;
+            }
+        }
+
+        // If this is a conditional branch in an empty block, and if any
+        // predecessors is a conditional branch to one of our destinations,
+        // fold the conditions into logical ops and one cond br.
+        if (bb.size() != 1)
+            return false;
+
+        if (cond instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr) cond;
+            if (ce.canTrap())
+                return false;
+        }
+
+        int predBROp, brOp;
+        if (predBR.getSuccessor(0) == br.getSuccessor(0))
+            predBROp = brOp = 0;
+        else if (predBR.getSuccessor(0) == br.getSuccessor(1))
+        { predBROp = 0; brOp = 1; }
+        else if (predBR.getSuccessor(1) == br.getSuccessor(0))
+        { predBROp = 1; brOp = 0; }
+        else if (predBR.getSuccessor(1) == br.getSuccessor(1))
+            predBROp = brOp = 1;
+        else
+            return false;
+
+        // avoiding self-loop.
+        if (predBR.getSuccessor(predBROp) == bb)
+            return false;
+
+        BasicBlock commonDest = predBR.getSuccessor(predBROp);
+        int numPhis = 0;
+        for (Instruction inst : commonDest)
+        {
+            if (inst instanceof PhiNode)
+                ++numPhis;
+            if (numPhis > 2)
+                return false;
+        }
+
+        BasicBlock otherDest = br.getSuccessor(brOp^1);
+        // self-loop
+        //   <----|
+        //   |    |
+        //  bb    |
+        //   |---->
+        if (otherDest == bb)
+        {
+            BasicBlock infLoopBlock = BasicBlock.createBasicBlock("infloop", bb.getParent());
+            new BranchInst(infLoopBlock, infLoopBlock);
+            otherDest = infLoopBlock;
+        }
+
+        Value predBRCond = predBR.getCondition();
+        if (predBROp != 0)
+            predBRCond = BinaryOps.createNot(predBRCond, predBRCond+".not", predBR);
+
+        Value brCond = cond;
+        if (brOp != 0)
+            brCond = BinaryOps.createNot(brCond, brCond.getName()+".not", br);
+
+        Value mergedCond = BinaryOps.createOr(predBRCond, brCond, "mergebr", predBR);
+        predBR.setCondition(mergedCond);
+        predBR.setSuccessor(0, commonDest);
+        predBR.setSuccessor(1, otherDest);
+
+        // OtherDest may have phi nodes.  If so, add an entry from PBI's
+        // block that are identical to the entries for BI's block.
+        PhiNode pn;
+        for (Instruction inst : otherDest)
+        {
+            if (!(inst instanceof PhiNode))
+                break;
+            pn = (PhiNode) inst;
+            Value v = pn.getIncomingValueForBlock(bb);
+            pn.addIncoming(v, predBR.getParent());
+        }
+
+        // We know that the CommonDest already had an edge from PBI to
+        // it.  If it has PHIs though, the PHIs may have different
+        // entries for BB and PBI's BB.  If so, insert a select to make
+        // them agree.
+        for (Instruction inst : commonDest)
+        {
+            if (!(inst instanceof PhiNode))
+                break;
+            pn = (PhiNode) inst;
+            Value bbVal = pn.getIncomingValueForBlock(bb);
+            int predIdx = pn.getBasicBlockIndex(predBR.getParent());
+            Value predVal = pn.getIncomingValue(predIdx);
+
+            if (!bbVal.equals(predVal))
+            {
+                bbVal = new SelectInst(predBRCond, bbVal, predVal,
+                        predBR.getName()+".mux", predBR);
+                pn.setIncomingValue(predIdx, bbVal);
+            }
+        }
+        return true;
     }
 
     /**
@@ -1011,8 +1155,8 @@ public final class CFGSimplifyPass implements FunctionPass
                 predBR.setCondition(newCond);
                 BasicBlock succ0 = predBR.getSuccessor(0);
                 BasicBlock succ1 = predBR.getSuccessor(1);
-                predBR.setSuxAt(0, succ1);
-                predBR.setSuxAt(1, succ0);
+                predBR.setSuccessor(0, succ1);
+                predBR.setSuccessor(1, succ0);
             }
             Instruction v = cond.clone();
             pred.insertBefore(v, predBR);
@@ -1023,12 +1167,12 @@ public final class CFGSimplifyPass implements FunctionPass
             if (predBR.getSuccessor(0) == bb)
             {
                 addPredecessorToBlock(trueDest, pred, bb);
-                predBR.setSuxAt(0, trueDest);
+                predBR.setSuccessor(0, trueDest);
             }
             if (predBR.getSuccessor(1) == bb)
             {
                 addPredecessorToBlock(falseDest, pred, bb);
-                predBR.setSuxAt(1, falseDest);
+                predBR.setSuccessor(1, falseDest);
             }
             return true;
         }
@@ -1147,7 +1291,7 @@ public final class CFGSimplifyPass implements FunctionPass
                     if (succ == bb)
                     {
                         bb.removePredecessor(predBlock);
-                        ti.setSuxAt(j, edgeBB);
+                        ti.setSuccessor(j, edgeBB);
                     }
                 }
                 // recursively simplify this branch.

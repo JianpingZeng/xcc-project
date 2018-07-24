@@ -16,9 +16,11 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.ir.HIRBuilder;
-import backend.support.*;
+import backend.support.AttrList;
+import backend.support.AttributeWithIndex;
+import backend.support.CallSite;
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -42,6 +44,7 @@ import jlang.type.*;
 import tools.APInt;
 import tools.APSInt;
 import tools.Pair;
+import tools.Util;
 
 import java.util.*;
 
@@ -1085,7 +1088,7 @@ public final class CodeGenFunction
 
 		// Update the default block in case explicit case range tests have
 		// been chained on top.
-		switchInst.setSuxAt(0, caseRangeBlock);
+		switchInst.setSuccessor(0, caseRangeBlock);
 
 		if (defaultBB.getParent() == null)
 		{

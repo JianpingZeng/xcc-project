@@ -1,6 +1,5 @@
 package backend.transform.scalars;
 
-import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
@@ -14,6 +13,7 @@ import backend.utils.SuccIterator;
 import backend.value.*;
 import backend.value.Instruction.*;
 import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.*;
 
@@ -306,8 +306,8 @@ public final class LoopSimplify implements FunctionPass
 				pbi.setCondition(newCond);
 				BasicBlock oldTrue = pbi.getSuccessor(0);
 				BasicBlock oldFalse = pbi.getSuccessor(1);
-				pbi.setSuxAt(0, oldFalse);
-				pbi.setSuxAt(1, oldTrue);
+				pbi.setSuccessor(0, oldFalse);
+				pbi.setSuccessor(1, oldTrue);
 			}
 
 			// Clone Cond into the predecessor basic block, and or/and the
@@ -323,12 +323,12 @@ public final class LoopSimplify implements FunctionPass
 			if (pbi.getSuccessor(0) == bb)
 			{
 				addPredecessorToBlock(trueDest, predBlock, bb);
-				pbi.setSuxAt(0, trueDest);
+				pbi.setSuccessor(0, trueDest);
 			}
 			if (pbi.getSuccessor(1) == bb)
 			{
 				addPredecessorToBlock(falseDest, predBlock, bb);
-				pbi.setSuxAt(1, falseDest);
+				pbi.setSuccessor(1, falseDest);
 			}
 			return true;
 		}
@@ -487,7 +487,7 @@ public final class LoopSimplify implements FunctionPass
 			TerminatorInst ti = backedgeBlocks.get(i).getTerminator();
 			for (int op = 0, sz = ti.getNumOfSuccessors(); op < sz; op++)
 				if (ti.getSuccessor(op) == header)
-					ti.setSuxAt(op, beBlock);
+					ti.setSuccessor(op, beBlock);
 		}
 
 		// Update Loop Information - we know that this block is now in the current
