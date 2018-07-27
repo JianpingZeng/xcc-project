@@ -6,12 +6,9 @@ import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.transform.utils.RDF;
-import backend.value.BasicBlock;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.StoreInst;
-import backend.value.User;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -42,11 +39,11 @@ public class DCE implements FunctionPass
 	/**
 	 * The list where all critical instruction in Module term resides.
 	 */
-	private LinkedList<Instruction> criticalInst;
+	private HashSet<Instruction> criticalInst;
 	/**
-	 * The list that isDeclScope more than one critical instruction.
+	 * The list contains basic block that owns more than one critical instructions.
 	 */
-	private LinkedList<BasicBlock> usefulBlocks;
+	private HashSet<BasicBlock> usefulBlocks;
 
 	/**
 	 * The list isDeclScope all of no dead instruction.
@@ -73,8 +70,8 @@ public class DCE implements FunctionPass
 
 	private void initialize(Function f)
 	{
-		criticalInst = new LinkedList<>();
-		usefulBlocks = new LinkedList<>();
+		criticalInst = new HashSet<>();
+		usefulBlocks = new HashSet<>();
 		liveInsts = new HashSet<>();
 		m = f;
 		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
@@ -99,6 +96,8 @@ public class DCE implements FunctionPass
 	@Override
 	public boolean runOnFunction(Function f)
 	{
+		if (f == null || f.empty())
+			return false;
 		initialize(f);
 
 		// 1.Initialization stage
@@ -107,26 +106,28 @@ public class DCE implements FunctionPass
 		// 2.Mark stage
 		while (!worklist.isEmpty())
 		{
-			Instruction curr = worklist.removeLast();
-
-			for (int i = 0, e = curr.getNumUses(); i < e; i++)
+			Instruction curr = worklist.pop();
+            if (curr == null) continue;
+            liveInsts.add(curr);
+			for (int i = 0, e = curr.getNumOfOperands(); i < e; i++)
 			{
-				User u = curr.getOperand(i).getUser();
+				Value u = curr.operand(i);
 				if (u instanceof Instruction)
 				{
+				    // avoiding duplicate.
 					if (liveInsts.add((Instruction) u))
-						worklist.add((Instruction)u);
+						worklist.push((Instruction)u);
 				}
 			}
 			// marks branch instruction.
 			markBranch(curr, worklist);
 		}
 		// 3. Sweep stage
-		sweep();
+		boolean everChanged = sweep();
 
 		// peephole backend.transform
-		eliminateDeadBlock();
-		return false;
+		everChanged |= eliminateDeadBlock();
+		return everChanged;
 	}
 
 	/**
@@ -134,8 +135,9 @@ public class DCE implements FunctionPass
 	 * branch with an unconditional branch to the nearest and useful dominate
 	 * block.
 	 */
-	private void sweep()
+	private boolean sweep()
 	{
+	    boolean changed = false;
 		for (BasicBlock BB : m)
 		{
 			for (Instruction inst : BB)
@@ -154,31 +156,45 @@ public class DCE implements FunctionPass
 						BranchInst go = new BranchInst(nearestDom, "gotoInst");
 						inst.insertBefore(go);
 						inst.eraseFromParent();
+						changed = true;
 					}
 					// the function invocation instruction is handled specially
 					// for conservative and safe.
 					else if (!(inst instanceof Instruction.CallInst))
-						inst.eraseFromParent();
+					{
+                        inst.eraseFromParent();
+                        changed = true;
+                    }
 				}
 			}
 		}
+		return changed;
 	}
 
-	private void eliminateDeadBlock()
+	private boolean eliminateDeadBlock()
 	{
+	    boolean changed = false;
+	    // If there is only entry block existing in function, return false.
+	    if (m.size() == 1) return false;
+
 		for (BasicBlock BB : m)
 		{
 			if (BB.getNumPredecessors() == 0)
 			{
 				BB.eraseFromParent();
+				changed = true;
 			}
 			if (BB.getNumPredecessors() == 1)
 			{
 				BasicBlock pred = BB.predAt(0);
 				if (pred.getNumSuccessors() == 0)
-					merge(pred, BB);
+				{
+                    merge(pred, BB);
+                    changed = true;
+                }
 			}
 		}
+		return changed;
 	}
 
 	/**
@@ -240,7 +256,7 @@ public class DCE implements FunctionPass
 			{
 				liveInsts.add(last);
 				usefulBlocks.add(block);
-				worklist.addLast(last);
+				worklist.push(last);
 			}
 		}
 	}

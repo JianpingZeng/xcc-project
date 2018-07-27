@@ -17,10 +17,7 @@
 
 package backend.support;
 
-import backend.pass.AnalysisResolver;
-import backend.pass.LPPassManager;
-import backend.pass.LoopPass;
-import backend.pass.Pass;
+import backend.pass.*;
 import backend.value.BasicBlock;
 import backend.value.Loop;
 
@@ -40,6 +37,12 @@ public class PrintLoopPass implements LoopPass
     {
         this.os = os;
         this.banner = banner;
+    }
+
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.setPreservedAll();
     }
 
     @Override

@@ -18,6 +18,7 @@
 package backend.support;
 
 import backend.pass.AnalysisResolver;
+import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
 import tools.FormattedOutputStream;
 import backend.value.Module;
@@ -35,6 +36,12 @@ public class PrintModulePass implements ModulePass
 	private FormattedOutputStream os;
 
 	private AnalysisResolver resolver;
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.setPreservedAll();
+	}
 
 	@Override
 	public void setAnalysisResolver(AnalysisResolver resolver)

@@ -71,6 +71,9 @@ public final class DepthFirstOrder
     private static void visit(BasicBlock bb, LinkedList<BasicBlock> res,
             HashSet<BasicBlock> visited)
     {
+        if (bb == null)
+            return;
+
         if (visited.add(bb))
         {
             for (SuccIterator itr = bb.succIterator(); itr.hasNext(); )

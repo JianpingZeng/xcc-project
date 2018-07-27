@@ -18,6 +18,7 @@
 package backend.support;
 
 import backend.pass.AnalysisResolver;
+import backend.pass.AnalysisUsage;
 import backend.pass.BasicBlockPass;
 import backend.pass.Pass;
 import backend.value.BasicBlock;
@@ -38,6 +39,12 @@ public class PrintBasicBlockPass implements BasicBlockPass
     {
         this.os = os;
         this.banner = banner;
+    }
+
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.setPreservedAll();
     }
 
     @Override

@@ -2,9 +2,7 @@ package backend.pass;
 
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
-import backend.transform.scalars.CFGSimplifyPass;
-import backend.transform.scalars.Mem2Reg;
-import backend.transform.scalars.SROA;
+import backend.transform.scalars.*;
 
 /**
  * @author Xlous.zeng
@@ -23,6 +21,7 @@ public class PassCreator
 				fpm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 			else
 				fpm.add(SROA.createScalarRreplacementOfAggregatePass());
+			fpm.add(InstructionCombine.createInstructionCombinePass());
 		}
 	}
 
@@ -62,22 +61,21 @@ public class PassCreator
 			if (inliningPass != null)
 				pm.add(inliningPass);
 			pm.add(SROA.createScalarRreplacementOfAggregatePass());
-			/*pm.add(InstructionCombine.createInstructionCombinePass());
+			//pm.add(InstructionCombine.createInstructionCombinePass());
 			pm.add(ConditionalPropagate.createCondPropagatePass());
 			pm.add(TailCallElim.createTailCallElimination());
 			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 			pm.add(DCE.createDeadCodeEliminationPass());
-			pm.add(GVNPRE.createGVNPREPass());
+			//pm.add(GVNPRE.createGVNPREPass());
 			pm.add(LoopSimplify.createLoopSimplifyPass());
-			pm.add(LCSSA.createLCSSAPass());
-			pm.add(IndVarSimplify.createIndVarSimplifyPass());
-			pm.add(LICM.createLICMPass());
-			pm.add(LoopDeletion.createLoopDeletionPass());
-			pm.add(GVNPRE.createGVNPREPass());
+			//pm.add(LCSSA.createLCSSAPass());
+			//pm.add(IndVarSimplify.createIndVarSimplifyPass());
+			//pm.add(LICM.createLICMPass());
+			//pm.add(LoopDeletion.createLoopDeletionPass());
+			//pm.add(GVNPRE.createGVNPREPass());
 			pm.add(SCCP.createSparseConditionalConstantPropagatePass());
 			pm.add(DCE.createDeadCodeEliminationPass());
 			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
-			*/
 		}
 	}
 }

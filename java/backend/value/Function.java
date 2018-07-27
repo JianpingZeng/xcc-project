@@ -127,7 +127,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
      */
     public BasicBlock getEntryBlock()
     {
-        return basicBlockList.getFirst();
+        return basicBlockList == null || basicBlockList.isEmpty() ?
+                null : basicBlockList.getFirst();
     }
 
     /**

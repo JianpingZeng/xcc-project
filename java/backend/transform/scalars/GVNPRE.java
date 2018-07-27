@@ -1021,6 +1021,9 @@ public final class GVNPRE implements FunctionPass
             ArrayList<Value> curTemps,
             HashSet<BasicBlock> visited)
     {
+        if (!anticipatibleIn.containsKey(block))
+            anticipatibleIn.put(block, new ValueNumberedSet());
+
         ValueNumberedSet antiIn = anticipatibleIn.get(block);
         int old = antiIn.size();
 
@@ -1110,6 +1113,11 @@ public final class GVNPRE implements FunctionPass
             LinkedList<BasicBlock> po = DepthFirstOrder.postOrder(f.getEntryBlock());
             for (BasicBlock bb : po)
             {
+                if (!generatedExprs.containsKey(bb))
+                    generatedExprs.put(bb, new ValueNumberedSet());
+                if (!generatedTemps.containsKey(bb))
+                    generatedTemps.put(bb, new ArrayList<>());
+
                 int result = buildSetAntiIn(bb, antiOut, generatedExprs.get(bb),
                         generatedTemps.get(bb), visited);
 
@@ -1468,7 +1476,8 @@ public final class GVNPRE implements FunctionPass
         generatedPhis.clear();
 
         boolean changedFunction = false;
-
+        if (f == null || f.empty())
+            return false;
         // Step #1: Builds the flow set.
         buildSets(f);
 

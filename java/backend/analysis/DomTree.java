@@ -76,6 +76,8 @@ public final class DomTree implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
+        if (f == null || f.empty())
+            return false;
         dt.recalculate(f);
         return false;
     }

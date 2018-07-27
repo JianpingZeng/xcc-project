@@ -105,6 +105,8 @@ public final class CFGSimplifyPass implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
+        if (f == null || f.empty())
+            return false;
         boolean everChanged = removeUnreachableBlocksFromFn(f);
         everChanged |= simplifyCFG(f);
         if (!everChanged) return false;

@@ -102,6 +102,9 @@ public final class SROA implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
+        if (f == null || f.empty())
+            return false;
+
         td = (TargetData) getAnalysisToUpDate(TargetData.class);
         boolean madeChange = false;
         boolean localChange;

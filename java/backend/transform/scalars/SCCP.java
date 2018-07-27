@@ -68,6 +68,9 @@ public class SCCP implements FunctionPass
     @Override
     public boolean runOnFunction(Function f)
     {
+        if (f == null || f.empty())
+            return false;
+
         SCCPSolver solver = new SCCPSolver();
 
         // Mark entry block of this function as executable and push it into
@@ -106,10 +109,11 @@ public class SCCP implements FunctionPass
             }
             else
             {
-                for (int i = 0; i != bb.getNumOfInsts(); i++)
+                for (int i = 0; i != bb.size(); i++)
                 {
                     Instruction inst = bb.getInstAt(i);
                     LatticeStatus ls = latticeStatus.get(inst);
+                    if (ls == null) continue;
                     if (ls.isConstant())
                     {
                         Constant constVal = ls.getConstVal();

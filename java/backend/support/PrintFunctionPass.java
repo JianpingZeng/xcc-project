@@ -18,6 +18,7 @@
 package backend.support;
 
 import backend.pass.AnalysisResolver;
+import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
 import backend.value.Function;
@@ -37,6 +38,12 @@ public class PrintFunctionPass implements FunctionPass
     {
         this.os = os;
         this.banner = banner;
+    }
+
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.setPreservedAll();
     }
 
     @Override
