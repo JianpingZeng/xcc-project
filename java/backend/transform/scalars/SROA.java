@@ -180,6 +180,12 @@ public final class SROA implements FunctionPass
         while (!list.isEmpty())
         {
             AllocaInst ai = list.pop();
+            if (ai.isUseEmpty())
+            {
+                ai.eraseFromParent();
+                NumReplaced.inc();
+                continue;
+            }
             if (ai.getAllocatedType().isStructType())
             {
                 if (!isSafeStructAllocaToReplace(ai))
