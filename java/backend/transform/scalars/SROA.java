@@ -17,6 +17,7 @@
 
 package backend.transform.scalars;
 
+import backend.target.TargetData;
 import tools.Util;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
@@ -76,6 +77,7 @@ public final class SROA implements FunctionPass
             new IntStatistic("scalarrepl", "Number of allocas promoted");
 
     private AnalysisResolver resolver;
+    private TargetData td;
 
     @Override
     public void setAnalysisResolver(AnalysisResolver resolver)
@@ -94,21 +96,24 @@ public final class SROA implements FunctionPass
     {
         au.addRequired(DominanceFrontier.class);
         au.addRequired(DomTree.class);
+        au.addRequired(TargetData.class);
     }
 
     @Override
     public boolean runOnFunction(Function f)
     {
+        td = (TargetData) getAnalysisToUpDate(TargetData.class);
         boolean madeChange = false;
+        boolean localChange;
         do
         {
-            boolean localChange = promotion(f);
-            if (!localChange)
-                break;
-            madeChange = true;
             localChange = performReplacement(f);
             if (!localChange)
                 break;
+            localChange = promotion(f);
+            if (!localChange)
+                break;
+            madeChange = true;
         }while (true);
 
         return madeChange;
@@ -117,7 +122,7 @@ public final class SROA implements FunctionPass
     @Override
     public String getPassName()
     {
-        return "Scalar Replacement of Aggregate";
+        return "Scalar Replacement of Aggregates";
     }
 
     private boolean promotion(Function f)
@@ -158,23 +163,23 @@ public final class SROA implements FunctionPass
         for (Instruction inst : f.getEntryBlock())
         {
             if (inst instanceof AllocaInst)
-                list.push((AllocaInst)inst);
+            {
+                AllocaInst ai = (AllocaInst) inst;
+                // Skip it when AllocaInst is Array allocation or
+                // it's allocated type is not both ArrayType and StructType.
+                if (!ai.isArrayAllocation() &&
+                        (ai.getAllocatedType().isArrayType() ||
+                                ai.getAllocatedType().isStructType()))
+                {
+                    list.push((AllocaInst) inst);
+                }
+            }
         }
 
         boolean changed = false;
         while (!list.isEmpty())
         {
             AllocaInst ai = list.pop();
-
-            // Skip it when AllocaInst is Array allocation or
-            // it's allocated type is not both ArrayType and StructType.
-            if (ai.isArrayAllocation() ||
-                    (!ai.getAllocatedType().isArrayType() &&
-                    !ai.getAllocatedType().isStructType()))
-            {
-                continue;
-            }
-
             if (ai.getAllocatedType().isStructType())
             {
                 if (!isSafeStructAllocaToReplace(ai))
@@ -189,43 +194,46 @@ public final class SROA implements FunctionPass
             changed =true;
 
             // So the ai is safe to replaced by scalar variable.
-            ArrayList<AllocaInst> scalars = new ArrayList<>();
+            AllocaInst[] scalars = null;
             if (ai.getAllocatedType().isStructType())
             {
                 StructType st = (StructType) ai.getAllocatedType();
                 int i = 0;
-                for (int e = st.getNumOfElements(); i != e; i++)
+                int e = st.getNumOfElements();
+                Util.assertion(e >= 0, "non-negative number of member datas in struct!");
+                scalars = new AllocaInst[e];
+                for (; i != e; i++)
                 {
                     Type ty = st.getContainedType(i);
                     AllocaInst tmp = new AllocaInst(ty, ai.getName()+"."+ i, ai);
-                    scalars.add(tmp);
-                    list.push(tmp);
+                    scalars[i] = tmp;
                 }
             }
             else
             {
                 ArrayType at = (ArrayType) ai.getAllocatedType();
                 Type eltType = at.getElementType();
-                for (long i = 0, e = at.getNumElements(); i != e; i++)
+                int e = (int) at.getNumElements();
+                Util.assertion(e >= 0, "non-negative number of member datas in struct!");
+                scalars = new AllocaInst[e];
+                for (int i = 0; i != e; i++)
                 {
                     AllocaInst tmp = new AllocaInst(eltType, ai.getName()+"."+ i, ai);
-                    scalars.add(tmp);
-
-                    // Recursive handle.
-                    list.push(tmp);
+                    scalars[i] = tmp;
                 }
             }
 
-            for (Use u : ai.getUseList())
+            ArrayList<Use> tempList = new ArrayList<>(ai.getUseList());
+            for (Use u : tempList)
             {
                 User user = u.getUser();
                 if (user instanceof GetElementPtrInst)
                 {
                     GetElementPtrInst gep = (GetElementPtrInst)user;
                     // We now know that the GEP is of the form: GEP <ptr>, 0, <cst>
-                    long idx = ((ConstantInt)gep.operand(2)).getZExtValue();
+                    int idx = (int)((ConstantInt)gep.operand(2)).getZExtValue();
                     Value repValue;
-                    AllocaInst allocasToUse = scalars.get((int) idx);
+                    AllocaInst allocasToUse = scalars[idx];
                     if (gep.getNumOfOperands() == 3)
                     {
                         repValue = allocasToUse;
@@ -250,7 +258,6 @@ public final class SROA implements FunctionPass
                     Util.assertion(false, "Supported uses of AllocaInst");
                 }
             }
-
             ai.eraseFromParent();
             NumReplaced.inc();
         }
@@ -280,13 +287,20 @@ public final class SROA implements FunctionPass
             return false;
 
         GetElementPtrInst gep = (GetElementPtrInst)u;
-        if (gep.getNumOfOperands() <= 2
-                || !gep.operand(1).equals(ConstantInt.getNullValue(LLVMContext.Int64Ty))
-                || (!(gep.operand(2) instanceof ConstantInt)
-                && !(gep.operand(2) instanceof ConstantExpr)))
-            return false;
 
-        return true;
+        Type intTy = null;
+        if (td.getPointerSizeInBits() == 32)
+            intTy = LLVMContext.Int32Ty;
+        else if (td.getPointerSizeInBits() == 64)
+            intTy = LLVMContext.Int64Ty;
+        else
+            Util.shouldNotReachHere("Unknown pointer size!");
+
+        Constant ci = ConstantInt.getNullValue(intTy);
+        return gep.getNumOfOperands() > 2
+                && gep.operand(1).equals(ci)
+                && (gep.operand(2) instanceof ConstantInt
+                || gep.operand(2) instanceof ConstantExpr);
     }
 
     private boolean isSafeElementUse(User inst)

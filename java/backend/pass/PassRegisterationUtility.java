@@ -121,11 +121,10 @@ public final class PassRegisterationUtility
         // Immutable Passes.
         new RegisterPass("Target Data Layout", "targetdata", TargetData.class, false, true);
 
-        new RegisterPass("Print Module to stderr", "print-module", PrintModulePass.class);
-        new RegisterPass("Print Function to stderr", "print-function", PrintFunctionPass.class);
-        new RegisterPass("Print Basic Block to stderr", "print-bb", PrintBasicBlockPass.class);
-        new RegisterPass("Print out Machine Function to stderr", "print-machine-function", PrintMachineFunctionPass.class);
-        new RegisterPass("Print Loop to stderr", "print-loop", PrintLoopPass.class);
-
+        new RegisterPass("Print Module to stderr", "print-module", PrintModulePass.class, false, true);
+        new RegisterPass("Print Function to stderr", "print-function", PrintFunctionPass.class, true, true);
+        new RegisterPass("Print Basic Block to stderr", "print-bb", PrintBasicBlockPass.class, true, true);
+        new RegisterPass("Print out Machine Function to stderr", "print-machine-function", PrintMachineFunctionPass.class, true, true);
+        new RegisterPass("Print Loop to stderr", "print-loop", PrintLoopPass.class, true, true);
     }
 }

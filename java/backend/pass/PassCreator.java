@@ -61,8 +61,8 @@ public class PassCreator
 
 			if (inliningPass != null)
 				pm.add(inliningPass);
-			/*pm.add(SROA.createScalarRreplacementOfAggregatePass());
-			pm.add(InstructionCombine.createInstructionCombinePass());
+			pm.add(SROA.createScalarRreplacementOfAggregatePass());
+			/*pm.add(InstructionCombine.createInstructionCombinePass());
 			pm.add(ConditionalPropagate.createCondPropagatePass());
 			pm.add(TailCallElim.createTailCallElimination());
 			pm.add(CFGSimplifyPass.createCFGSimplificationPass());

@@ -193,9 +193,8 @@ public class BackendConsumer implements ASTConsumer
         if (theTargetData == null || theModule == null)
             return;
 
-        Util.assertion(theModule == gen.getModule(), "Unexpected module change when IR generation");
-
-
+        Util.assertion(theModule == gen.getModule(),
+                "Unexpected module change when IR generation");
         // creates some necessary pass for code generation and optimization.
         createPass();
         OutParamWrapper<String> error = new OutParamWrapper<>("");
@@ -247,7 +246,7 @@ public class BackendConsumer implements ASTConsumer
         if (perModulePasses == null)
         {
             perModulePasses = new PassManager();
-            perModulePasses.add(new TargetData(theTargetData));;
+            perModulePasses.add(new TargetData(theTargetData));
         }
         return perModulePasses;
     }

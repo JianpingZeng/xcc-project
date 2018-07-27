@@ -3023,7 +3023,7 @@ public abstract class Instruction extends User
 
         /**
          * Checks if this is a allocation of array not not.
-         * ReturnStmt true if the array getTypeSize is not 1.
+         * Return true if the array getTypeSize is not 1.
          * @return
          */
         public boolean isArrayAllocation()
