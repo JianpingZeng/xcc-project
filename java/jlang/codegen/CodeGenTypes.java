@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.Triple;
 import tools.Util;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
@@ -225,15 +226,20 @@ public class CodeGenTypes
         if (theABIInfo != null)
             return theABIInfo;
 
-        String prefix = getContext().target.getTargetPrefix();
-        Util.assertion(prefix.equals("x86"), "Not supported CPU architecture '" + prefix + "'");
+        Triple triple = getContext().getTargetInfo().getTriple();
+        Util.assertion(triple.getArch() == Triple.ArchType.x86 ||
+            triple.getArch() == Triple.ArchType.x86_64,
+                String.format("'%s' is not supported CPU architecture", triple.getArchName()));
+
         int bitwidth = getContext().target.getPointerWidth(0);
-        boolean isDarwin = target.getTargetTriple().startsWith("darwin");
+        boolean isDarwin = triple.isDarwin();
         boolean isSmallStructInRegs = isDarwin ||
-                target.getTargetTriple().startsWith("cygwin") ||
-                target.getTargetTriple().startsWith("mingw") ||
-                target.getTargetTriple().startsWith("freebsd") ||
-                target.getTargetTriple().startsWith("openbsd");
+                triple.getOS() == Triple.OSType.Cygwin||
+                triple.getOS() == Triple.OSType.MinGW32 ||
+                triple.getOS() == Triple.OSType.MinGW64 ||
+                triple.getOS() == Triple.OSType.FreeBSD ||
+                triple.getOS() == Triple.OSType.NetBSD ||
+                triple.getOS() == Triple.OSType.OpenBSD;
         switch (bitwidth)
         {
             case 32:
@@ -241,8 +247,10 @@ public class CodeGenTypes
                 break;
             case 64:
                 theABIInfo = new X86_64ABIInfo();
+                break;
             default:
                 theABIInfo = new DefaultABIInfo();
+                break;
         }
         return theABIInfo;
     }

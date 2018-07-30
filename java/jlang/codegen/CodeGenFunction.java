@@ -485,9 +485,8 @@ public final class CodeGenFunction
 	 */
 	private void emitParamDecl(VarDecl param, Value arg)
 	{
-		Util.assertion(param instanceof ParamVarDecl,  "Invalid argument to emitParamDecl()");
-
-
+		Util.assertion(param instanceof ParamVarDecl,
+				"Invalid argument to emitParamDecl()");
 		QualType ty = param.getType();
 		Value destPtr;
 		if (!ty.isConstantSizeType())
@@ -497,7 +496,7 @@ public final class CodeGenFunction
 		}
 		else
 		{
-			// A fixed getNumOfSubLoop single-value varibale becomes an alloca in the entry block.
+			// A fixed number single-value varibale becomes an alloca in the entry block.
 			Type lty = convertTypeForMem(ty);
 			if (lty.isSingleValueType())
 			{
