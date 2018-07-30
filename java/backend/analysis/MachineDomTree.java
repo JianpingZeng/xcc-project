@@ -27,7 +27,7 @@ import java.util.ArrayList;
 /**
  * Represents a machine function pass for computing the dominator tree on
  * MachineFunction using class {@linkplain MachineDomTreeInfoCooper}.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineDomTree extends MachineFunctionPass

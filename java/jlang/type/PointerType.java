@@ -5,7 +5,7 @@ import tools.FoldingSetNode;
 import tools.FoldingSetNodeID;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class PointerType extends Type implements FoldingSetNode

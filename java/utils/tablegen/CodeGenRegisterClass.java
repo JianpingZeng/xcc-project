@@ -23,7 +23,7 @@ import gnu.trove.list.array.TIntArrayList;
 import java.util.ArrayList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CodeGenRegisterClass

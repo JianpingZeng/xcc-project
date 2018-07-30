@@ -1,7 +1,7 @@
 package jlang.diag;
 /*
  * Extremely C language Compiler.
- * Copyright (c), 2015-2017, Xlous Zeng.
+ * Copyright (c), 2015-2017, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"),;
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import static jlang.diag.Diagnostic.DiagnosticClass.*;
 import static jlang.diag.Diagnostic.Mapping.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum  DiagnosticFrontendKinds implements DiagnosticFrontendKindsTag 

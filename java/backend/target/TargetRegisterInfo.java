@@ -12,7 +12,7 @@ import java.util.ArrayList;
  * target machines register file.  This information is used for a variety of
  * purposed, especially register allocation.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetRegisterInfo

@@ -20,7 +20,7 @@ import static backend.value.Instruction.CmpInst.Predicate.FCMP_FALSE;
 /**
  * This class is used for keep track of unique constant object for specified
  * integer, float, struct, array etc.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class UniqueConstantValueImpl

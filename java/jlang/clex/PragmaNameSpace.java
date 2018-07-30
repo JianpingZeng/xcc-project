@@ -1,7 +1,7 @@
 package jlang.clex;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import static jlang.diag.DiagnosticLexKindsTag.warn_pragma_ignored;
  * allowing hierarchical pragmas to be defined.  Common examples of namespaces
  * are "#pragma GCC", "#pragma STDC", and "#pragma omp", but any namespaces may
  * be (potentially recursively) defined.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class PragmaNameSpace extends PragmaHandler

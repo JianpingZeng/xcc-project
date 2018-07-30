@@ -1,7 +1,7 @@
 package jlang.clex;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import static jlang.clex.TokenKind.*;
 import static jlang.diag.DiagnosticLexKindsTag.pp_invalid_string_literal;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MacroArgs

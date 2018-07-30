@@ -22,7 +22,7 @@ import backend.value.Module;
 /**
  * This class just a thin wrapper of class {@linkplain backend.passManaging.PassManagerImpl}.
  * This provides simple interface methods with client.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class PassManager implements PassManagerBase

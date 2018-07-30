@@ -14,7 +14,7 @@ import java.util.LinkedList;
  * <p>This defines a class which implements constant propgation
  * and constant folding as subtask.
  * <p>This file is a member of Machine Indepedence Optimization</p>.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @see DCE
  * @see GVNPRE
  * @see CFGSimplifyPass

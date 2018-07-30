@@ -1,7 +1,7 @@
 package backend.support;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import static backend.support.Triple.ArchType.*;
  * Clients should generally avoid using getOSName() and related APIs unless
  * they are familiar with the triple format (this is particularly true when
  * rewriting a triple).
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Triple

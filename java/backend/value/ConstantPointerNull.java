@@ -23,7 +23,7 @@ import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * A constant pointer value that points to null.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConstantPointerNull extends Constant

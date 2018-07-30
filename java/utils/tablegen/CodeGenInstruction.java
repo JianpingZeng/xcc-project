@@ -29,7 +29,7 @@ import java.util.Objects;
 import static utils.tablegen.Init.BinOpInit.BinaryOp.CONCAT;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CodeGenInstruction

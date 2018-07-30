@@ -24,7 +24,7 @@ import java.util.HashSet;
  * The client should creates an instance of this class when rewriting is
  * needed.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class SCEVExpander implements SCEVVisitor<Value>

@@ -24,7 +24,7 @@ import jlang.type.QualType;
  * This represents an lvalue references.  Because C allow bitfields,
  * this is not a simple HIR pointer, it may be a pointer plus a bitrange.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class LValue

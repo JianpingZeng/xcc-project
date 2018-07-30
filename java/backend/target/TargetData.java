@@ -18,7 +18,7 @@ import static backend.type.LLVMTypeID.*;
 
 /**
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class TargetData implements ImmutablePass

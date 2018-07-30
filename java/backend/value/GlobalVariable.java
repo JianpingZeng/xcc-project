@@ -6,7 +6,7 @@ import backend.type.Type;
 import jlang.support.Linkage;
 
 /**
- * @author Xlous.zeng  
+ * @author Jianping Zeng
  */
 public class GlobalVariable extends GlobalValue
 {

@@ -17,7 +17,7 @@ import static backend.value.Instruction.CmpInst.Predicate.ICMP_ULT;
  * This node represents a polynomial recurrence on the trip count of the specified loop.
  * </p>
  * Note that all operands of an {@code AddRec} are required to be loop invariant.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class SCEVAddRecExpr extends SCEV

@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
 /**
  * This pass propagates information about conditional expressions through the
  * program, allowing it to eliminate conditional branches in some cases.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConditionalPropagate implements FunctionPass

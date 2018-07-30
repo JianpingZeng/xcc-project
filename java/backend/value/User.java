@@ -6,7 +6,7 @@ import backend.type.Type;
 import java.util.ArrayList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class User extends Value

@@ -1,7 +1,7 @@
 package jlang.clex;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * Note that the PragmaNamespace class can be used to subdivide pragmas, e.g.
  * we treat "#pragma STDC" and "#pragma GCC" as namespace that contain other
  * pragmas.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class PragmaHandler

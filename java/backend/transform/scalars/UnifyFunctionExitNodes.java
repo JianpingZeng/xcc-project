@@ -30,7 +30,7 @@ import backend.value.Instruction.ReturnInst;
 import java.util.LinkedList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class UnifyFunctionExitNodes implements FunctionPass

@@ -31,7 +31,7 @@ import java.util.List;
  * This file defines a class behaves replacing all switch into chained
  * branch instruction.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class LowerSwitch implements FunctionPass

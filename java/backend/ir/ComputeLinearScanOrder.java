@@ -12,7 +12,7 @@ import java.util.*;
  * This class defined for computing the linear scanning order upon given control
  * flow graph.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  *
 public class ComputeLinearScanOrder

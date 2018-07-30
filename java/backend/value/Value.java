@@ -12,7 +12,7 @@ import java.util.LinkedList;
 import static backend.support.AssemblyWriter.*;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Value implements Cloneable

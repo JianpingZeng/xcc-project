@@ -22,7 +22,7 @@ package backend.type;
  * Note: If you add an element to this, you need to add an element to the
  * Type::getPrimitiveType function, or else things will break!
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface LLVMTypeID

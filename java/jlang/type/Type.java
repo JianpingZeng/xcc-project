@@ -39,7 +39,7 @@ import static jlang.type.QualType.ScalarTypeKind.*;
  * because they implicitly, recursively, strip all typedefs out of a type.
  * </p>
  * Types, once created, are immutable.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class Type implements TypeClass

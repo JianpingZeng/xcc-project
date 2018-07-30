@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * This class is representation at the Module(high-level IR) of a function or method.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Function extends GlobalValue implements Iterable<BasicBlock>

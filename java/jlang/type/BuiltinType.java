@@ -22,7 +22,7 @@ import jlang.support.PrintingPolicy;
 
 /**
  * This class represents the primitive type of C language.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class BuiltinType extends Type

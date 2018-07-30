@@ -1,7 +1,7 @@
 package backend.target.x86;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.Fast
 import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdCall;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class X86ATTAsmPrinter extends AsmPrinter

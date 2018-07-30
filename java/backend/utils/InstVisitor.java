@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * A Value Visitor for Instruction or Value using Visitor pattern.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public interface InstVisitor<RetTy>
 {

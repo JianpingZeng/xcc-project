@@ -1,7 +1,7 @@
 package jlang.cparser;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum DeclKind

@@ -1,7 +1,7 @@
 package backend.passManaging;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.ON_FUNCTION
  * BBPassManager manages BasicBlockPass, itself is a Function Pass. It batches
  * all the pass together and sequence them to process one basic block before
  * processing next basic block.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class BBPassManager extends PMDataManager implements FunctionPass

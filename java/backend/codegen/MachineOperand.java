@@ -43,7 +43,7 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
  *   -	Ptr will also be of virtual register type MO_VirtualReg.
  *	Again, the field Value value identifies the value.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 

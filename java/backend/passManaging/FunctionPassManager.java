@@ -7,7 +7,7 @@ import backend.value.Module;
 
 /**
  * FunctionPassManager manages FunctionPasses and BasicBlockPassManagers.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class FunctionPassManager implements PassManagerBase

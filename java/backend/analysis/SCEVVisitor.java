@@ -5,7 +5,7 @@ import tools.Util;
 /**
  * This class defines a simple visitor class that may be used for various
  * SCEV analysis purposes.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface SCEVVisitor<RetVal>

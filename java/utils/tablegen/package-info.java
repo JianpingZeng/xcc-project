@@ -19,7 +19,7 @@
  * 本包下的所有类都用于实现一个TableGen语法的Parser，并且输出Register, RegisterClass,
  * RegisterAliasSet和Instr info。
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 package utils.tablegen;

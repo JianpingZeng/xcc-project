@@ -17,7 +17,7 @@ package jlang.support;
  */
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum Visibility

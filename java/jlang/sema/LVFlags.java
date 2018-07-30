@@ -18,7 +18,7 @@ package jlang.sema;
 
 /**
  * Flags controlling the computation of linkage and visibility.
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class LVFlags

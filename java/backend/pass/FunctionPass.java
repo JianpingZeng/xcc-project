@@ -19,7 +19,7 @@ import java.io.PrintStream;
  *  1. Optimizations are organized globally, i.e., a function at a time
  *  2. Optimizing a function does not cause the addition or removal of any
  *     functions in the module
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface FunctionPass extends Pass

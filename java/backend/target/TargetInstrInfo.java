@@ -15,7 +15,7 @@ import java.util.ArrayList;
  * used for representing the information about machine instruction which
  * specified with target.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetInstrInfo

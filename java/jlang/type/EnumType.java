@@ -20,7 +20,7 @@ package jlang.type;
 import jlang.sema.Decl.EnumDecl;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class EnumType extends TagType

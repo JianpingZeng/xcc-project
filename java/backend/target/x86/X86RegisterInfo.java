@@ -24,7 +24,7 @@ import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class X86RegisterInfo extends X86GenRegisterInfo

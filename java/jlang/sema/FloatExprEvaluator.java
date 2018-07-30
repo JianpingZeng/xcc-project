@@ -25,7 +25,7 @@ import tools.OutRef;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>

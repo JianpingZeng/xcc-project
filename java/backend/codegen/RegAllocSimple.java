@@ -14,7 +14,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * This pass performs a pass of very simple register allocation, reloading operand
  * from stack slot into physical register and spill it into memory back.
  * It not keeps track of values in register across instructions.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class RegAllocSimple extends MachineFunctionPass

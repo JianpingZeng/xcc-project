@@ -23,7 +23,7 @@ import java.util.LinkedHashSet;
 import static backend.pass.PassRegistrar.getPassInfo;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class AnalysisUsage

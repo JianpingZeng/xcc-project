@@ -5,7 +5,7 @@ import java.util.ArrayList;
 /**
  * Keeps track of various options which control how the code is optimized and
  * passed to the backend.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class CompileOptions

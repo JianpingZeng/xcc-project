@@ -5,7 +5,7 @@ import jlang.sema.ASTContext;
 /**
  * C99 6.7.5.3 - FunctionProto Declarators.
  *
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class FunctionType extends Type

@@ -1,7 +1,7 @@
 package backend.target.x86;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface X86II

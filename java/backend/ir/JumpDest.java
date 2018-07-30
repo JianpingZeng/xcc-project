@@ -22,7 +22,7 @@ import backend.value.BasicBlock;
  * A jump destination is an abstract label, branching
  * which may require a jump out through normal cleanups.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class JumpDest

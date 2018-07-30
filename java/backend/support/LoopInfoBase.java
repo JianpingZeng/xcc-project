@@ -23,7 +23,7 @@ import java.util.HashMap;
 /**
  * This class contains all information about the top level loop structure
  * in the specified function.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface LoopInfoBase<BlockT, LoopT>

@@ -31,7 +31,7 @@ import tools.APFloat.CmpResult;
  * This class represents a implementation of evaluating whether the value of constant
  * expression is an integer. Otherwise, issue error messages if failed.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>

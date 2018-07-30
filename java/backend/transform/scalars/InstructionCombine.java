@@ -1,7 +1,7 @@
 package backend.transform.scalars;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2017, Xlous Zeng.
+ * Copyright (c) 2015-2017, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,20 +18,75 @@ package backend.transform.scalars;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
+import backend.support.DepthFirstOrder;
+import backend.transform.scalars.instructionCombine.Combiner;
+import backend.value.BasicBlock;
 import backend.value.Function;
+import backend.value.Instruction;
+import backend.value.Value;
+import tools.Util;
+
+import java.util.HashSet;
+import java.util.Iterator;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class InstructionCombine implements FunctionPass
 {
     private AnalysisResolver resolver;
+    private Combiner combiner;
+
+    public InstructionCombine()
+    {
+        combiner = new Combiner();
+    }
 
     @Override
     public boolean runOnFunction(Function f)
     {
-        return false;
+        if (f == null || f.empty()) return false;
+        BasicBlock entryBB = f.getEntryBlock();
+        HashSet<BasicBlock> reachable = new HashSet<>(DepthFirstOrder.dfTraversal(entryBB));
+
+        boolean everChanged = false;
+        for (Iterator<BasicBlock> itr = f.getBasicBlockList().iterator(); itr.hasNext();)
+        {
+            BasicBlock bb = itr.next();
+            if (!reachable.contains(bb))
+            {
+                // delete the dead block.
+                Util.assertion(bb.isUseEmpty(), "Unreachable block must no use");
+                itr.remove();
+                bb.eraseFromParent();
+                everChanged = true;
+                continue;
+            }
+            for (int i = 0, e = bb.size(); i < e; i++)
+            {
+                Instruction inst = bb.getInstAt(i);
+                // There are three status returned,
+                // (1). null indicates the specified instruction is dead
+                // and should be removed from enclosing block.
+                // (2). as same as inst indicates that no transformation was performed.
+                // (3). Otherwise calling to replaceAllUsesWith() to update it.
+                Value res = combiner.visit(inst);
+                if (res == null)
+                {
+                    --i;
+                    --e;
+                    everChanged = true;
+                }
+                else if (!res.equals(inst))
+                {
+                    res.replaceAllUsesWith(inst);
+                    inst.eraseFromParent();
+                    everChanged = true;
+                }
+            }
+        }
+        return everChanged;
     }
 
     @Override

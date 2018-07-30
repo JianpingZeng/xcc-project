@@ -28,7 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineLoopInfo

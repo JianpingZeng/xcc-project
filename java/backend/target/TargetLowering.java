@@ -1,7 +1,7 @@
 package backend.target;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ import static backend.target.TargetOptions.EnablePerformTailCallOpt;
  *
  * This class also defines callbacks that targets must implement to lower
  * target-specific constructs to SelectionDAG operators.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetLowering

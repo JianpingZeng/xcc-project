@@ -40,7 +40,7 @@ import static backend.transform.utils.ConstantFolder.constantFoldCall;
 /**
  * This class is the main scalar evolution jlang.driver. Since client code (intentionally)
  * can't do much the SCEV objects directly, they must query this class for services.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class ScalarEvolution implements FunctionPass

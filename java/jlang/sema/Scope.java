@@ -8,7 +8,7 @@ import static jlang.sema.Scope.ScopeFlags.*;
  * A scope is a transient data structure that is used while parsing the
  * program. It consists with resolving identifiers to the appropriate declaration.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class Scope

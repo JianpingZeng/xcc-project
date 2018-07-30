@@ -23,7 +23,7 @@ import tools.Util;
 import java.util.HashMap;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class IntegerType extends DerivedType

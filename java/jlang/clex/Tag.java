@@ -4,7 +4,7 @@ package jlang.clex;
  * An interface that defines codes for C language source tokens
  * returned from lexical analysis.
  *  
- * @author Xlous.zeng  
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface Tag

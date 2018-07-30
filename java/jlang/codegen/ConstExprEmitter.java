@@ -21,7 +21,7 @@ import jlang.ast.StmtVisitor;
 import jlang.ast.Tree;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConstExprEmitter extends StmtVisitor<Constant>

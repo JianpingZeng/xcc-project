@@ -29,7 +29,7 @@ import static utils.tablegen.Record.records;
 import static utils.tablegen.TableGen.ActionType.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class TableGen

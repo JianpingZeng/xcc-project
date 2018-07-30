@@ -32,7 +32,7 @@ import java.util.ArrayList;
 /**
  * This pass is a simple pass wrapper around the PromoteMemToReg function call
  * exposed by the Utils library.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class Mem2Reg implements FunctionPass

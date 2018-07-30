@@ -5,7 +5,7 @@ import tools.FormattedOutputStream;
 /**
  * A specialized PseudoSourceValue for holding FixedStack values, which must
  * include a frame index.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class FixedStackPseudoSourceValue extends PseudoSourceValue

@@ -18,7 +18,7 @@ package jlang.support;
 
 /**
  *  Describes the different kinds of linkage.
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum Linkage

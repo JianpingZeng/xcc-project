@@ -28,7 +28,7 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.x86.X86GenInstrNames.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class X86PeepholeOptimizer extends MachineFunctionPass

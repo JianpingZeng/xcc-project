@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.Objects;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineBasicBlock

@@ -53,7 +53,7 @@ import static jlang.sema.Sema.TagUseKind.*;
  * binary operation expression, also, the special three-operation(?:) is handled
  * as binary operation for specially.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Parser implements Tag,

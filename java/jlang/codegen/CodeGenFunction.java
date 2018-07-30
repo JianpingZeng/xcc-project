@@ -54,7 +54,7 @@ import static jlang.codegen.RValue.*;
 /**
  * This class responsible for generating LLVM code from AST.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CodeGenFunction

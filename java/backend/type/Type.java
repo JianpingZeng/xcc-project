@@ -36,7 +36,7 @@ import java.util.LinkedList;
  * are created, Type instances can only be created via static factory methods
  * in class Type and in derived classes.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Type implements LLVMTypeID, AbstractTypeUser

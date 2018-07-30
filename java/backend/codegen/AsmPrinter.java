@@ -49,7 +49,7 @@ import static tools.Util.floatToBits;
  * This is a common base class be used for target-specific asmwriters. This
  * class just primarily tack care of printing global constants, which is printed
  * in a very similar way across different target.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class AsmPrinter extends MachineFunctionPass

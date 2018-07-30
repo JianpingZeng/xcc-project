@@ -1,7 +1,7 @@
 package backend.codegen;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import tools.Util;
  /// to describe lowered loads and stores. Also, the special PseudoSourceValue
  /// objects can be used to represent loads and stores to memory locations
  /// that aren't explicit in the regular LLVM IR.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineMemOperand

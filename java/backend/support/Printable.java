@@ -5,7 +5,7 @@ import backend.value.Module;
 import java.io.PrintStream;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface Printable

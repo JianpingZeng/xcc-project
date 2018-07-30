@@ -25,7 +25,7 @@ import backend.value.Value;
  * represents a specifically sized array, pointer types are unsized/unknown getNumOfSubLoop
  * arrays.  SequentialType holds the common features of both, which stem from
  * the fact that both lay their components out in memory identically.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class SequentialType extends CompositeType

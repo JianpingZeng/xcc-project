@@ -26,7 +26,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class SCEVCommutativeExpr extends SCEV

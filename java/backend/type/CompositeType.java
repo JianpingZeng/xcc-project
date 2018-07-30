@@ -20,7 +20,7 @@ import backend.value.Value;
 
 /**
  * Common super class of ArrayType, StructType, and PointerType.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class CompositeType extends Type

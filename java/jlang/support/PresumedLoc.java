@@ -1,7 +1,7 @@
 package jlang.support;
 /*
  * Extremely C language Compiler.
- * Copyright (c) 2null15-2null17, Xlous Zeng.
+ * Copyright (c) 2null15-2null17, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.null (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package jlang.support;
  */
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version null.1
  */
 public class PresumedLoc

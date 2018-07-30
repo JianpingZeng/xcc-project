@@ -25,7 +25,7 @@ import jlang.diag.Diagnostic.ArgumentKind;
 import jlang.type.QualType;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class PartialDiagnostic

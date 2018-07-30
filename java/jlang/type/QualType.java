@@ -14,7 +14,7 @@ import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
  * Which provides the same API as {@linkplain Type} by directly invoking those
  * methods of {@linkplain Type}.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class QualType implements Cloneable, FoldingSetNode

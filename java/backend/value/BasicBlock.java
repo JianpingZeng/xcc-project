@@ -26,7 +26,7 @@ import java.util.*;
  * constructor of {@link BasicBlock}, you should create it via a
  * Control flow graph so that id id is unique.
  * <p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 1.0
  * @see Instruction
  */

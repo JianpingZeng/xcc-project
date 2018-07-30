@@ -11,7 +11,7 @@ import backend.pass.Pass;
  * Pass will operates.
  * @PassType Represents the type of pass.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface PassManagerBase

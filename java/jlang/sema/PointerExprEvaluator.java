@@ -24,7 +24,7 @@ import tools.APSInt;
 import tools.OutRef;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>

@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ import static backend.llReader.LLTokenKind.*;
  * This file defines a class which responsible for a frontend pipeline, reading
  * character stream for external file, tokenizing character stream read. finally,
  * parses a valid Module where function and global value resides.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class LLParser

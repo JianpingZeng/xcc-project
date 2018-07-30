@@ -20,7 +20,7 @@ import static jlang.diag.Diagnostic.DiagnosticClass.*;
 import static jlang.diag.Diagnostic.Mapping.*;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum DiagnosticParseKinds implements DiagnosticParseTag

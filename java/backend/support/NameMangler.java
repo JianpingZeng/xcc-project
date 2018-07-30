@@ -32,7 +32,7 @@ import java.util.HashSet;
  * This file defines a class which responsible for make asmName mangling for global
  * linkage entity of a module.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class NameMangler

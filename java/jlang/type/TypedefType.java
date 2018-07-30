@@ -6,7 +6,7 @@ import jlang.sema.Decl.TypeDefDecl;
 
 /**
  * This class was served as represents typedef declaration in C language.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class TypedefType extends Type

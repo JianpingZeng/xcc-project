@@ -1,7 +1,7 @@
 package backend.ir;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  * the handling of Expression is the focus. We uses some arithmetic, logical,
  * comparison, shift-wise operation to accompolish this purpose.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class HIRBuilder

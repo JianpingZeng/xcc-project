@@ -30,7 +30,7 @@ import static backend.target.TargetRegisterInfo.NoRegister;
 
 /**
  * Maps register number to register classes which used to assist register allocation.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineRegisterInfo

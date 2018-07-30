@@ -13,7 +13,7 @@ import static backend.codegen.MachineMemOperand.MOStore;
  * This is a convenient helper class for creating a machine instruction on
  * specified target machine, e.g.X86.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineInstrBuilder

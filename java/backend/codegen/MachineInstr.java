@@ -37,7 +37,7 @@ import static backend.target.TargetInstrInfo.INLINEASM;
  * a CALL (if any), and return value of a RETURN.</li>
  * </ol>
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineInstr implements Cloneable

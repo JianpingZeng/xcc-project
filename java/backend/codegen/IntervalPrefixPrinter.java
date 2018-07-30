@@ -1,7 +1,7 @@
 package backend.codegen;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class IntervalPrefixPrinter extends PrefixPrinter

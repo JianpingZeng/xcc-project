@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 /**
  * Intrinsic instruction.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Intrinsic

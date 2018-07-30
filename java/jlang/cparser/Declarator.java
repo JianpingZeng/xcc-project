@@ -24,7 +24,7 @@ import java.util.ArrayList;
  *  Abstract declarators are used when parsing jlang.type, and don't have
  *  and identifier. Normal declarators do have ID.
  *  </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Declarator

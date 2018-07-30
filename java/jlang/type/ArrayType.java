@@ -12,7 +12,7 @@ import tools.FoldingSetNodeID;
 /**
  * ConstantArrayType - C99 6.7.5.2 - Array Declarators.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class ArrayType extends Type implements FoldingSetNode

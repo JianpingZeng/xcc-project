@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
  * It has been modified to not explicitly use the DJ graph data structure and to
  * directly compute pruned SSA using per-variable liveness information.
  * <p>
- * Created by Xlous Zeng  on 2016/3/3.
+ * Created by Jianping Zeng  on 2016/3/3.
  */
 public final class PromoteMemToReg
 {

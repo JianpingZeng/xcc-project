@@ -78,7 +78,7 @@ import java.util.Stack;
  * This transformation should be followed by strength reduction after all of the
  * desired loop transformations have been performed.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class IndVarSimplify implements LoopPass

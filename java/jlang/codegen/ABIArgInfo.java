@@ -6,7 +6,7 @@ import backend.type.Type;
 import static jlang.codegen.ABIArgInfo.Kind.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ABIArgInfo

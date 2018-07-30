@@ -31,7 +31,7 @@ import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.*;
 /**
  * This class defined for generating partial code of AsmWriter, like Intel or
  * AT&T grammar.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class AsmWriterEmitter extends TableGenBackend

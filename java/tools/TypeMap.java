@@ -23,7 +23,7 @@ import java.util.HashMap;
  * created on any given run of the compiler...
  * note that this involves updating our map if an abstract type gets refined
  * somehow...
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class TypeMap<K, V> extends HashMap<K, V>

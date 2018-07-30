@@ -28,7 +28,7 @@ import java.util.ArrayList;
 /**
  * Defines a class for computing dominator tree info on Function using
  * class {@linkplain DomTreeInfo}.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class DomTree implements FunctionPass

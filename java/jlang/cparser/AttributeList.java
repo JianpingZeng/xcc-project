@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import jlang.support.SourceLocation;
  * 2: __attribute__(( mode(byte) )). ParmName used, Args/NumArgs unused.
  * 3: __attribute__(( format(printf, 1, 2) )). ParmName/Args/NumArgs all used.
  * 4: __attribute__(( aligned(16) )). ParmName is unused, Args/Num used.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class AttributeList

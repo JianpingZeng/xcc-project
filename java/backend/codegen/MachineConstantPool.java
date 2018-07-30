@@ -9,7 +9,7 @@ import java.util.ArrayList;
 
 /**
  * Keeps track of information for constant spilled into stack frame.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineConstantPool

@@ -6,7 +6,7 @@ import jlang.sema.Decl.RecordDecl;
 /**
  * This class is intended to represent record jlang.type, like struct in C or class
  * in C++.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class RecordType extends TagType

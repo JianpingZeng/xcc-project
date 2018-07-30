@@ -9,7 +9,7 @@ import java.io.PrintStream;
 import java.util.Objects;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class PassInfo implements Printable

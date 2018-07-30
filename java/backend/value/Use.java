@@ -7,7 +7,7 @@ package backend.value;
  * its all usesList list.
  * <p>
  * @see Value
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public class Use
 {

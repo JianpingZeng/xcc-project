@@ -26,7 +26,7 @@ import java.util.ArrayList;
 /**
  * Represents a prototype with argument number and jlang.type info,
  * e.g. <pre>int foo(int)</pre> or <pre>int foo(void)</pre>.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class FunctionProtoType extends FunctionType implements

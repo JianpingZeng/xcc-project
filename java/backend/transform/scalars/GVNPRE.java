@@ -29,7 +29,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
  * from another paper "An Implementation of GVN-PRE in LLVM, Prashanth Radhakrishnan"
  * </p>
  * 
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class GVNPRE implements FunctionPass

@@ -22,7 +22,7 @@ import static backend.value.Operator.*;
  * operation, control flow operators,PhiNode assignment, function calling
  * conditional statement.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 1.0
  * @see BasicBlock
  * @see User
@@ -523,7 +523,7 @@ public abstract class Instruction extends User
     /**
      * This class just for binary operation definition.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      */
     public static class BinaryOps extends Instruction
     {
@@ -1941,7 +1941,7 @@ public abstract class Instruction extends User
      * TerminatorInst - Subclasses of this class are all able to terminate
      * a basic block.  Thus, these are all the flow control jlang.type of operations.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      * @version 0.1
      */
     public static abstract class TerminatorInst extends Instruction
@@ -1997,7 +1997,7 @@ public abstract class Instruction extends User
     /**
      * An abstract representation of branch instruction.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      */
     public final static class BranchInst extends TerminatorInst
     {
@@ -2178,7 +2178,7 @@ public abstract class Instruction extends User
      * ReturnStmt a value (possibly void), from a function.
      * Execution does not continue in this function any longer.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      */
     public static class ReturnInst extends TerminatorInst
     {
@@ -2251,7 +2251,7 @@ public abstract class Instruction extends User
     /**
      * FunctionProto invocation instruction.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      */
     public static class CallInst extends Instruction
     {
@@ -2766,7 +2766,7 @@ public abstract class Instruction extends User
      * The {@code PhiNode} instruction represents the merging of data flow in the
      * instruction graph. It refers to a join block and a variable.
      *
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      */
     public static class PhiNode extends Instruction
     {

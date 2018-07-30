@@ -34,7 +34,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
 /**
  * Concrete subclass of DominanceFrontierBase that is used to compute a
  * forward dominator frontiers.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class DominanceFrontier extends DominanceFrontierBase

@@ -23,7 +23,7 @@ import tools.TypeMap;
 import java.util.ArrayList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class FunctionType extends DerivedType

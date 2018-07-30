@@ -27,7 +27,7 @@ import backend.support.LoopInfoBase;
 import java.util.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineLoop extends MachineFunctionPass

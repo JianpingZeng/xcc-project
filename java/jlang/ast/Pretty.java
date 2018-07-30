@@ -13,7 +13,7 @@ import java.util.List;
  * <p>
  * Prints out the C source file as a tree.
  *
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class Pretty extends StmtVisitor

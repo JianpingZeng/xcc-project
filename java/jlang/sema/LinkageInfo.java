@@ -25,7 +25,7 @@ import static jlang.support.Visibility.DefaultVisibility;
 import static jlang.support.Visibility.minVisibility;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class LinkageInfo

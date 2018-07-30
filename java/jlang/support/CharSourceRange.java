@@ -23,7 +23,7 @@ package jlang.support;
  * last token of the range (a "token range").  In the token range case, the
  * size of the last token must be measured to determine the actual end of the
  * range.
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CharSourceRange 

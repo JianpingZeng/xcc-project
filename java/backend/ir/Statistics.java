@@ -4,7 +4,7 @@ package backend.ir;
  * Contains statistics gathered during the compilation of a method and reported back
  * from the jlang.driver as the getReturnValue of compilation.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public class Statistics
 {

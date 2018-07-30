@@ -20,7 +20,7 @@ import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class FixItHint

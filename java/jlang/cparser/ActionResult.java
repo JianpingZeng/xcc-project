@@ -7,7 +7,7 @@ import tools.Util;
  * expression, and known if this expression or stmt is invalid or not
  * according invoking some method.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ActionResult<T>

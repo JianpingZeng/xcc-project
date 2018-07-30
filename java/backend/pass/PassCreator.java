@@ -5,7 +5,7 @@ import backend.passManaging.PassManager;
 import backend.transform.scalars.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class PassCreator

@@ -18,7 +18,7 @@ package backend.pass;
 
 /**
  * This class declares all passes registeration method.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class InitializePasses

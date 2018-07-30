@@ -61,7 +61,7 @@ import static backend.value.GlobalValue.LinkageType.*;
  * register.
  * </p>
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 1.0
  */
 public class HIRModuleGenerator

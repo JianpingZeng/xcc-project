@@ -10,7 +10,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineFrameInfo

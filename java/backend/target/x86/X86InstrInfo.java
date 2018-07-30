@@ -38,7 +38,7 @@ import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class X86InstrInfo extends TargetInstrInfoImpl

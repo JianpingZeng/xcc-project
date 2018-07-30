@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class IVUsers implements LoopPass

@@ -28,7 +28,7 @@ import jlang.ast.Tree.*;
  * extends your class from {@linkplain StmtVisitor}.
  *
  * @see StmtVisitor
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface IStmtVisitor<T>

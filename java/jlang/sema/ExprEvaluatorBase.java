@@ -24,7 +24,7 @@ import jlang.ast.Tree.*;
 import tools.OutRef;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<RetTy>

@@ -21,7 +21,7 @@ import jlang.diag.Diagnostic;
 import static jlang.diag.Diagnostic.*;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class SemaDiagnosticBuilder extends DiagnosticBuilder

@@ -32,7 +32,7 @@ import java.util.LinkedList;
  * just only have one successor.
  * <br>
  * </p>
- * Created by Xlous zeng on 2016/3/8.
+ * Created by Jianping Zeng on 2016/3/8.
  */
 public class DCE implements FunctionPass
 {

@@ -35,7 +35,7 @@ import java.util.HashMap;
  *	transformation is that it makes many other loop optimizations, such as
  *	LoopUnswitching, simpler.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class LCSSA implements LoopPass

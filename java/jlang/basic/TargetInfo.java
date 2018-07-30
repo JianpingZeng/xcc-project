@@ -26,7 +26,7 @@ import java.util.HashMap;
 import static tools.APFloat.*;
 
 /**
- * @author xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetInfo

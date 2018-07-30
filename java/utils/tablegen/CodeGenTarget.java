@@ -25,7 +25,7 @@ import static backend.codegen.MVT.Other;
 
 /**
  * This class corresponds to the Target class in .td file.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CodeGenTarget

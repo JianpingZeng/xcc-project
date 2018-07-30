@@ -6,7 +6,7 @@ import jlang.sema.Decl;
 import jlang.sema.Decl.TagDecl;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TagType extends Type

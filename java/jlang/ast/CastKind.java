@@ -18,7 +18,7 @@ package jlang.ast;
 
 /**
  * The kind of operator required for type conversion.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum CastKind

@@ -1,7 +1,7 @@
 package backend.passManaging;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.ON_FUNCTION
  * It batches all function passes and basic block pass managers together and
  * sequence them to process one function at a time before processing next
  * function.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class FPPassManager extends PMDataManager implements ModulePass

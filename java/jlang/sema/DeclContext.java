@@ -32,7 +32,7 @@ import static jlang.cparser.DeclKind.*;
  * @see jlang.sema.Decl.EnumDecl
  * @see jlang.sema.Decl.RecordDecl
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class DeclContext implements IDeclContext

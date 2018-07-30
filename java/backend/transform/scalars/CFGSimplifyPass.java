@@ -39,7 +39,7 @@ import static backend.transform.utils.ConstantFolder.*;
  * This pass defined here for removing the unreachable basic block resides inside
  * FunctionProto.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class CFGSimplifyPass implements FunctionPass

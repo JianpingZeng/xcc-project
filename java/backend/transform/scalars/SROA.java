@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ import static backend.transform.utils.PromoteMemToReg.isAllocaPromotable;
  * }
  * </pre>
  * After performed, suitable aggregates would in favour of subsequent optimization.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class SROA implements FunctionPass
@@ -262,13 +262,17 @@ public final class SROA implements FunctionPass
                     gep.replaceAllUsesWith(repValue);
                     gep.eraseFromParent();
                 }
+                /*
                 else
                 {
-                    Util.assertion(false, "Supported uses of AllocaInst");
-                }
+                    Util.assertion(false, "Unsupported uses of AllocaInst");
+                }*/
             }
-            ai.eraseFromParent();
-            NumReplaced.inc();
+            if (ai.isUseEmpty())
+            {
+                ai.eraseFromParent();
+                NumReplaced.inc();
+            }
         }
         return changed;
     }
@@ -281,7 +285,7 @@ public final class SROA implements FunctionPass
         for (Use u : ai.getUseList())
         {
             if (!isSafeUseOfAlloca(u.getUser()))
-                return true;
+                return false;
 
             GetElementPtrInst gep = (GetElementPtrInst)u.getUser();
             if (gep != null && gep.getNumOfOperands() == 3 && !isSafeElementUse(gep))
@@ -296,15 +300,10 @@ public final class SROA implements FunctionPass
             return false;
 
         GetElementPtrInst gep = (GetElementPtrInst)u;
+        if (gep.getNumOfOperands() <= 2)
+            return false;
 
-        Type intTy = null;
-        if (td.getPointerSizeInBits() == 32)
-            intTy = LLVMContext.Int32Ty;
-        else if (td.getPointerSizeInBits() == 64)
-            intTy = LLVMContext.Int64Ty;
-        else
-            Util.shouldNotReachHere("Unknown pointer size!");
-
+        Type intTy = gep.operand(1).getType();
         Constant ci = ConstantInt.getNullValue(intTy);
         return gep.getNumOfOperands() > 2
                 && gep.operand(1).equals(ci)
@@ -357,7 +356,7 @@ public final class SROA implements FunctionPass
         for (Use u : ai.getUseList())
         {
             if (!isSafeUseOfAlloca(u.getUser()))
-                return true;
+                return false;
 
             GetElementPtrInst gep = (GetElementPtrInst)u.getUser();
             if (gep != null && gep.getNumOfOperands() >= 3)

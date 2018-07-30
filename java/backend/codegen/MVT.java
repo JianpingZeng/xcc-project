@@ -21,7 +21,7 @@ import tools.Util;
 /**
  * Machine Value Type, which contains the various low-level value types.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MVT implements Comparable<MVT>

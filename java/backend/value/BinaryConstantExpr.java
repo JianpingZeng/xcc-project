@@ -17,7 +17,7 @@ package backend.value;
  */
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class BinaryConstantExpr extends ConstantExpr

@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import static jlang.cparser.Designator.DesignatorKind.FieldDesignator;
  *     [8 ... 47]  field:     // GNU extensions: 2 designators
  * These occur in initializers, e.g.:
  *  int a[10] = {2, 4, [8]=9, 10};
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Designator

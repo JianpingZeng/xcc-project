@@ -57,7 +57,7 @@ import static jlang.support.Linkage.NoLinkage;
  * This file defines the {@linkplain Sema} class, which performs semantic
  * analysis and builds ASTs for C language.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class Sema implements DiagnosticParseTag,

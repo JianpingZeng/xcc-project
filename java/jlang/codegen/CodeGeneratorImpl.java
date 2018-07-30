@@ -10,7 +10,7 @@ import jlang.sema.Decl;
 import java.util.ArrayList;
 
 /**
- * Extremely C Compiler. Xlous zeng.
+ * Extremely C Compiler. Jianping Zeng.
  */
 public class CodeGeneratorImpl implements CodeGenerator
 {

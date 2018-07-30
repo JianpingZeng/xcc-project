@@ -25,7 +25,7 @@ import tools.Pair;
  * evaluated. It can be one of three cases: either a simple HIR SSA value,
  * a pair of SSA values for complex numbers, or the address of an aggregate value
  * in the memory.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class RValue

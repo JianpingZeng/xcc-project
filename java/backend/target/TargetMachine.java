@@ -12,7 +12,7 @@ import java.io.PrintStream;
  * Our goal is that all backend.target-specific information should accessible through
  * this interface.
  * @see TargetData
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetMachine

@@ -17,7 +17,7 @@ import tool.Util;
  * <p>This file is a member of <a href={@docRoot/opt}>Machine Independence
  * Optimization</a>.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @see DCE
  * @see ConstantPropagation
  * @see GVNPRE

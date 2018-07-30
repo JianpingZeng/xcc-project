@@ -32,7 +32,7 @@ import java.util.ListIterator;
  * This pass used for eliminating the unreachable machine basic block from
  * machine function.
  * It must be performed after LoopInfo and DomTree.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class UnreachableMachineBlockElim extends MachineFunctionPass

@@ -6,7 +6,7 @@ import jlang.support.SourceLocation;
 import static jlang.clex.Token.TokenFlags.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Token implements Cloneable

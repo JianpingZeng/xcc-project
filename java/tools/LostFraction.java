@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ package tools;
  * When bits of a floating point number are truncated, this enum is
  * used to indicate what fraction of the LSB those bits represented.
  * It essentially combines the roles of guard and sticky bits.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum LostFraction

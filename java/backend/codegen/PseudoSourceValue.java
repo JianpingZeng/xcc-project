@@ -16,7 +16,7 @@ import static backend.value.ValueKind.PseudoSourceValueVal;
  * analysis. It indicates that the a memory access references the functions
  * stack frame (e.g., a spill slot), below the stack frame (e.g., argument
  * space), or constant pool.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class PseudoSourceValue extends Value

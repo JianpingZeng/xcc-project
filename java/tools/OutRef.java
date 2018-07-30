@@ -20,7 +20,7 @@ package tools;
  * This class takes a role in wrapping a out parameter in parameter list.,
  * so that simulates the semantic of 'out' keyword of C#.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class OutRef<T>

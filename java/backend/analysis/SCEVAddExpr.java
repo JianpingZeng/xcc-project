@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import static backend.analysis.SCEV.SCEVType.scAddRecExpr;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class SCEVAddExpr extends SCEVCommutativeExpr

@@ -29,7 +29,7 @@ import java.util.HashMap;
 /**
  * This class contains the layout information for a {@linkplain RecordDecl}
  * whic is a struct/union class. The decl represented must be definition.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class ASTRecordLayout
@@ -133,7 +133,7 @@ public final class ASTRecordLayout
     }
 
     /**
-     * @author xlous.zeng
+     * @author Jianping Zeng
      * @version 0.1
      */
     public static class ASTRecordLayoutBuilder

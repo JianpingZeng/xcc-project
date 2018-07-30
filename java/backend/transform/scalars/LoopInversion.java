@@ -26,7 +26,7 @@ import backend.value.Value;
  *    							}	
  *    							1.b).after inversion
  * </pre>                                
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 /*

@@ -29,7 +29,7 @@ import static jlang.cparser.DeclSpec.TST.*;
  * which encompasses storage-class-specifiers, jlang.type-specifiers,
  * jlang.type-qualifiers, and function-specifiers.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag

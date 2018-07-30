@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  * This class is an entry for compiling specified input LLVM assembly code into
  * machine code targeting specific machine (X86, X86_64 etc) in assembly or
  * object code.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class LLC

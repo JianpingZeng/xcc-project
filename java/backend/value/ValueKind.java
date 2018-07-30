@@ -18,7 +18,7 @@ package backend.value;
 
 /**
  * An enumeration for keeping track of the concrete subclass.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ValueKind

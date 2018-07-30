@@ -16,7 +16,7 @@
  */
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 package jlang;

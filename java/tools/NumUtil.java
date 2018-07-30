@@ -1,7 +1,7 @@
 package tools;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public class NumUtil
 {

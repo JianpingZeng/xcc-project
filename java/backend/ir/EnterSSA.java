@@ -24,7 +24,7 @@ import frontend.exception.MemoryPromoteError;
  * does not modify the CFG of the function at all.  All allocas must be from
  * the same function.
  * </p>
- * @author Xlous.zeng.
+ * @author Jianping Zeng.
  *
 public class EnterSSA
 {

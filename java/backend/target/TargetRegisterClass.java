@@ -23,7 +23,7 @@ import backend.codegen.MachineFunction;
 import gnu.trove.set.hash.TIntHashSet;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class TargetRegisterClass

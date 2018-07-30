@@ -18,7 +18,7 @@ import static backend.target.TargetRegisterInfo.*;
 /**
  * This pass performs a pass of performing local register allocation on Machine
  * Basic Block.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class RegAllocLocal extends MachineFunctionPass

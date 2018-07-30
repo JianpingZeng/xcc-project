@@ -28,7 +28,7 @@ import java.util.*;
  * dominance construction and queries according to Lengauer-Tarjan algorithm for
  * Machine CFG.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineDomTreeInfo

@@ -25,7 +25,7 @@ import java.util.ArrayList;
  * This is an abstract base class for client reading AST nodes in dependent of
  * AST producer (e.g. {@linkplain jlang.cparser.Parser}, AST dumper).
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface ASTConsumer

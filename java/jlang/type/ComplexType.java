@@ -5,7 +5,7 @@ import tools.FoldingSetNode;
 import tools.FoldingSetNodeID;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class ComplexType extends Type implements FoldingSetNode

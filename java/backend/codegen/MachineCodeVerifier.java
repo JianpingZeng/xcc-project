@@ -3,7 +3,7 @@ package backend.codegen;
 import backend.support.MachineFunctionPass;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class MachineCodeVerifier extends MachineFunctionPass

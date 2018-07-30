@@ -5,7 +5,7 @@ import java.io.File;
 /** 
  * A class was served as representing a source file with different
  * jlang.type, such as .c, assembly, object and executable file.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class SourceFile

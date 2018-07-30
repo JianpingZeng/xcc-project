@@ -4,7 +4,7 @@ package jlang.type;
  * An interfaces for jlang.type tc VALUES, which distinguish between
  * different sorts of types.
  * 
- * @author Xlous.zeng  
+ * @author Jianping Zeng
  * @version 1.0
  */
 public interface TypeClass

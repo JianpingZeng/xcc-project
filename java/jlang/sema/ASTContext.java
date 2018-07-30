@@ -73,7 +73,7 @@ import static jlang.type.TypeClass.VariableArray;
 import static jlang.type.TypeClass.Void;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class ASTContext

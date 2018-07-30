@@ -6,7 +6,7 @@ import static backend.value.Operator.Flags.COMMUTATIVE;
  * This file defines a enumerator that isDeclScope all of operators which represents
  * as a integer in Module instruction.
  *
- * @author xlous.zeng
+ * @author Jianping Zeng
  */
 public enum Operator
 {

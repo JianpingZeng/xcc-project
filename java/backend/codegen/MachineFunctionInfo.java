@@ -19,7 +19,7 @@ package backend.codegen;
 /**
  * This class can be derived from and used by targets to
  * hold private target-specific information for each MachineFunction.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class MachineFunctionInfo

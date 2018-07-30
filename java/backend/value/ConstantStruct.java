@@ -29,7 +29,7 @@ import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 /**
  * This class defines internal data structure for representing constant struct
  * in LLVM IR, like '{1, 2, 3}' defines a constant struct with 3 integer.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConstantStruct extends Constant

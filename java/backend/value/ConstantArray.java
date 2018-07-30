@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConstantArray extends Constant

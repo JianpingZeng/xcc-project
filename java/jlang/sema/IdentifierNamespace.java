@@ -20,7 +20,7 @@ package jlang.sema;
  * The different namespaces in which declarations may appear.
  * According to C99 6.2.3, there are four namespaces, labels, tags, members and
  * ordinary identifiers.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum IdentifierNamespace

@@ -22,7 +22,7 @@ package jlang.sema;
  * with the C99 grammar productions.  Low precedences numbers bind
  * more weakly than high numbers.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class PrecedenceLevel

@@ -27,7 +27,7 @@ import static backend.support.BasicBlockUtil.splitBlockPredecessors;
  * <b>Loop inversion(also called of <a href ="http://llvm.org/docs/doxygen/html/LoopSimplify_8cpp_source.html">
  * Loop rotation</a>)</b> and <b>Insertion of pre-header</b>.
  * 
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class LoopSimplify implements FunctionPass

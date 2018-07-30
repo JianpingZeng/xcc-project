@@ -29,7 +29,7 @@ import static backend.type.LLVMTypeID.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class ConstantFP extends Constant

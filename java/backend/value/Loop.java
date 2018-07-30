@@ -25,7 +25,7 @@ import java.util.HashSet;
  * and optimized. In other word, all of irreducible loops were ignored when 
  * performing loop backend.transform.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Loop extends LoopBase<BasicBlock, Loop>

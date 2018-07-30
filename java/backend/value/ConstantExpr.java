@@ -34,7 +34,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public abstract class ConstantExpr extends Constant

@@ -6,7 +6,7 @@ import backend.value.Value;
 /**
  * Keeps track of one use of a strided induction variable, where the stride
  * is stored externally.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class IVStrideUses

@@ -6,7 +6,7 @@ import backend.value.Value;
 import java.util.LinkedList;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class IVUsersOfOneStride

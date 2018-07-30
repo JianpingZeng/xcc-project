@@ -6,7 +6,7 @@ import tools.Pair;
  * This class defines an interface used for obtaining stack frame layout
  * information about the specified target machine.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class TargetFrameInfo

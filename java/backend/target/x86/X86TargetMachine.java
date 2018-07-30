@@ -21,7 +21,7 @@ import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifie
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class X86TargetMachine extends LLVMTargetMachine

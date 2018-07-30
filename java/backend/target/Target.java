@@ -1,7 +1,7 @@
 package backend.target;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous Zeng.
+ * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import java.util.Iterator;
  * will be zero initialized), and pass that instance to the TargetRegistry as
  * part of their initialization.
  * </p
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class Target
@@ -167,7 +167,7 @@ public class Target
 
     /**
      * A target registry factory.
-     * @author Xlous.zeng
+     * @author Jianping Zeng
      * @version 0.1
      */
     public static class TargetRegistry

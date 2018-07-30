@@ -45,7 +45,7 @@ import static jlang.sema.UnaryOperatorKind.*;
  * other package. The abstract class {@link StmtVisitor} is the abstract root
  * class for visiting different tree.
  * 
- * @author Xlous.zeng  
+ * @author Jianping Zeng
  * @version 1.0
  *
  */
@@ -183,7 +183,7 @@ public abstract class Tree implements StmtClass
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
 	 *
-	 * @author Xlous.zeng
+	 * @author Jianping Zeng
 	 * @version 0.1
 	 */
 	public static class TopLevel extends Tree
@@ -262,7 +262,7 @@ public abstract class Tree implements StmtClass
 	}
 	/**
      * This is the null statement ";": C99 6.8.3p3.
-	 * @author Xlous.zeng
+	 * @author Jianping Zeng
 	 * @version 0.1
 	 */
 	public static class NullStmt extends Stmt
@@ -4114,7 +4114,7 @@ public abstract class Tree implements StmtClass
      */
     public static class InitListExpr extends Expr
     {
-        // TODO improve it in the future. 2016.10.15 xlous.zeng.
+        // TODO improve it in the future. 2016.10.15 Jianping Zeng.
         private SourceLocation lBraceLoc, rBraceLoc;
         private ArrayList<Expr> initExprs;
 

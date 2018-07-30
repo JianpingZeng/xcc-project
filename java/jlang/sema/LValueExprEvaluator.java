@@ -26,7 +26,7 @@ import jlang.type.RecordType;
 import tools.OutRef;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>

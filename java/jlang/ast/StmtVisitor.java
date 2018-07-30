@@ -8,7 +8,7 @@ import jlang.ast.Tree.*;
  * using Visitor pattern. So that the semantic analysis and code generation
  * can be implemented as same format.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 1.0
  */
 public abstract class StmtVisitor<T> implements IStmtVisitor<T>

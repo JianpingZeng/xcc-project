@@ -19,7 +19,7 @@ package tools;
 import java.util.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class SetMultiMap<K, V>

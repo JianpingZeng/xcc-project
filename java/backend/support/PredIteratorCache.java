@@ -13,7 +13,7 @@ import java.util.List;
  * iterator quires. This is very useful for the code that repeatedly wants
  * the predecessor list for the same blocks.
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class PredIteratorCache

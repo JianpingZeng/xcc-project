@@ -24,7 +24,7 @@ import java.io.PrintStream;
 import java.util.*;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class InstrInfoEmitter extends TableGenBackend

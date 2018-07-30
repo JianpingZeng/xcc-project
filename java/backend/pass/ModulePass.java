@@ -11,7 +11,7 @@ import java.io.PrintStream;
 import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public interface ModulePass extends Pass

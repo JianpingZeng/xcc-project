@@ -18,7 +18,7 @@ package jlang.sema;
 
 /**
  * Represents the result of getIdentifier lookup up.
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 

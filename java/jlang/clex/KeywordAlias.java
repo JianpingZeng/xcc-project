@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c), 2015-2017, Xlous Zeng.
+ * Copyright (c), 2015-2017, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"),;
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import static jlang.clex.IdentifierTable.KEYALL;
  * This enumerate defines some Alias for GNU extension keyword, like "__asm" kind
  * to "asm".
  *
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public enum KeywordAlias

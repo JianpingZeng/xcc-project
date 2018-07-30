@@ -31,7 +31,7 @@ import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
  * order of program. At the any basic block, a large amount of quads are ordered 
  * in execution order.
  * </p>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public final class Module implements Iterable<Function>
 {

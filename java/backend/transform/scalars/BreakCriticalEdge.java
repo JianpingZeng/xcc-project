@@ -58,7 +58,7 @@ import java.util.LinkedList;
  *      /    \
  *     S1      S2    [Two successor blocks]
  * </pre>
- * @author Xlous.zeng
+ * @author Jianping Zeng
  * @version 0.1
  */
 public final class BreakCriticalEdge implements FunctionPass

@@ -6,7 +6,7 @@ import gnu.trove.set.hash.TIntHashSet;
 import java.util.BitSet;
 
 /**
- * @author Xlous.zeng
+ * @author Jianping Zeng
  */
 public final class BitMap extends BitSet implements Cloneable
 {
