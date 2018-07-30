@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.type.VectorType;
 import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.Type;
@@ -24,6 +25,8 @@ import tools.APFloat;
 import tools.APSInt;
 import tools.FltSemantics;
 import tools.OutRef;
+
+import java.util.Arrays;
 
 import static backend.type.LLVMTypeID.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -155,5 +158,29 @@ public class ConstantFP extends Constant
                         val2.getSemantics() == APFloat.IEEEdouble ||
                         val2.getSemantics() == APFloat.IEEEquad;
         }
+    }
+
+    public static ConstantFP getNegativeZero(Type type)
+    {
+        APFloat opf = ((ConstantFP)Constant.getNullValue(type)).getValueAPF();
+        opf.changeSign();
+        return get(opf);
+    }
+
+    public static Value getZeroValueForNegation(Type type)
+    {
+        if (type instanceof VectorType)
+        {
+            VectorType vty = (VectorType) type;
+            if (vty.getElementType().isFloatingPoint())
+            {
+                Constant[] zeros = new Constant[vty.getNumElements()];
+                Arrays.fill(zeros, getNegativeZero(vty.getElementType()));
+                return ConstantVector.get(zeros);
+            }
+        }
+        if (type.isFloatingPoint())
+            return getNegativeZero(type);
+        return Constant.getNullValue(type);
     }
 }
