@@ -29,7 +29,7 @@ import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectDoubleHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -199,9 +199,9 @@ public final class RegAllocPBQP extends MachineFunctionPass
         {
             for (MachineInstr mi : mbb.getInsts())
             {
-                OutParamWrapper<Integer> src, dest;
-                src = new OutParamWrapper<>();
-                dest = new OutParamWrapper<>();
+                OutRef<Integer> src, dest;
+                src = new OutRef<>();
+                dest = new OutRef<>();
                 if (!tii.isMoveInstr(mi, src, dest, null, null))
                     continue;
 

@@ -1371,9 +1371,9 @@ public final class ASTContext
 	//                          Builtin Type Computation
 	//===----------------------------------------------------------------------===//
 	private static QualType decodeTypeFromStr(String str,
-			OutParamWrapper<Integer> idx,
+			OutRef<Integer> idx,
 			ASTContext context,
-			OutParamWrapper<GetBuiltinTypeError> error)
+			OutRef<GetBuiltinTypeError> error)
 	{
 		return decodeTypeFromStr(str, idx, context, error, true);
 	}
@@ -1381,9 +1381,9 @@ public final class ASTContext
 	/// DecodeTypeFromStr - This decodes one type descriptor from Str, advancing the
 	/// pointer over the consumed characters.  This returns the resultant type.
 	private static QualType decodeTypeFromStr(String str,
-			OutParamWrapper<Integer> idx, ASTContext context,
-			OutParamWrapper<GetBuiltinTypeError> error,
-			boolean allowTypeModifiers)
+                                              OutRef<Integer> idx, ASTContext context,
+                                              OutRef<GetBuiltinTypeError> error,
+                                              boolean allowTypeModifiers)
 	{
 		int howLong = 0;
 		boolean signed = false, unsigned = false;
@@ -1555,8 +1555,8 @@ public final class ASTContext
 		ArrayList<QualType> argTypes = new ArrayList<>();
 
 		//GetBuiltinTypeError error = GE_None;
-		OutParamWrapper<Integer> idx = new OutParamWrapper<>(0);
-		OutParamWrapper<GetBuiltinTypeError> error = new OutParamWrapper<>(GE_None);
+		OutRef<Integer> idx = new OutRef<>(0);
+		OutRef<GetBuiltinTypeError> error = new OutRef<>(GE_None);
 		QualType resType = decodeTypeFromStr(typeStr, idx, this, error);
 		if (error.get() != GE_None)
 			return Pair.get(new QualType(), error.get());

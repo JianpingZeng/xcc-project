@@ -20,7 +20,7 @@ import tools.Util;
 import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.diag.Diagnostic.ArgumentKind;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 /**
@@ -274,7 +274,7 @@ public final class DiagnosticInfo
                 start = res.second;
                 ++start;
                 int valMod = valNo % arg;
-                OutParamWrapper<Integer> x = new OutParamWrapper<>(start);
+                OutRef<Integer> x = new OutRef<>(start);
                 boolean b = testPluralRange(valMod, str, x, end);
                 start = x.get();
                 if (b)
@@ -284,7 +284,7 @@ public final class DiagnosticInfo
             {
                 Util.assertion(c == '[' || Character.isDigit(c),                         "Bad plural expression syntax: unexpected character");
 
-                OutParamWrapper<Integer> x = new OutParamWrapper<>(start);
+                OutRef<Integer> x = new OutRef<>(start);
                 // LiveRange expression
                 boolean b = testPluralRange(valNo, str, x, end);
                 start = x.get();
@@ -308,7 +308,7 @@ public final class DiagnosticInfo
      * @return
      */
     private static boolean testPluralRange(int val, String str,
-            OutParamWrapper<Integer> start, int end)
+                                           OutRef<Integer> start, int end)
     {
         int begin = start.get();
         if (str.charAt(begin) != '[')

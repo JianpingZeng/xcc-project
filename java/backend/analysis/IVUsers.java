@@ -23,8 +23,7 @@ import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.value.*;
 import backend.value.Instruction.PhiNode;
-import tools.OutParamWrapper;
-import tools.Util;
+import tools.OutRef;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -121,8 +120,8 @@ public final class IVUsers implements LoopPass
 		Loop useLoop = li.getLoopFor(inst.getParent());
 		SCEV start = se.getIntegerSCEV(0, ise.getType());
 		SCEV stride = start;
-		OutParamWrapper<SCEV> startOut = new OutParamWrapper<>(start);
-		OutParamWrapper<SCEV> strideOut = new OutParamWrapper<>(stride);
+		OutRef<SCEV> startOut = new OutRef<>(start);
+		OutRef<SCEV> strideOut = new OutRef<>(stride);
 		if (!getSCEVStartAndStride(ise, loop, useLoop, startOut, strideOut, se, dt))
 			return false;
 
@@ -258,8 +257,8 @@ public final class IVUsers implements LoopPass
 	 * @return
 	 */
 	private static boolean getSCEVStartAndStride(SCEV sh, Loop loop,
-			Loop useLoop, OutParamWrapper<SCEV> start,
-			OutParamWrapper<SCEV> stride,
+			Loop useLoop, OutRef<SCEV> start,
+			OutRef<SCEV> stride,
 			ScalarEvolution se, DomTree dt)
 	{
 		SCEV theAddRec = start.get();

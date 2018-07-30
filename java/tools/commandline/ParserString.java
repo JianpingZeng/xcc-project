@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -27,7 +27,7 @@ public class ParserString extends Parser<String>
     @Override
     public boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<String> val)
+            OutRef<String> val)
     {
         val.set(arg);
         return false;

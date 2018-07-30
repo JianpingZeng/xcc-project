@@ -35,8 +35,7 @@ import backend.value.ConstantArray;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
-import tools.OutParamWrapper;
-import tools.Util;
+import tools.OutRef;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -693,9 +692,9 @@ public class DAGCombiner
         if ((ptr.getOpcode() != ISD.ADD && ptr.getOpcode() != ISD.SUB) ||
                 ptr.hasOneUse())
             return false;
-        OutParamWrapper<SDValue> x = new OutParamWrapper<>(new SDValue());
-        OutParamWrapper<SDValue> x2 = new OutParamWrapper<>(new SDValue());
-        OutParamWrapper<MemIndexedMode> x3 = new OutParamWrapper<>(UNINDEXED);
+        OutRef<SDValue> x = new OutRef<>(new SDValue());
+        OutRef<SDValue> x2 = new OutRef<>(new SDValue());
+        OutRef<MemIndexedMode> x3 = new OutRef<>(UNINDEXED);
         if (!tli.isPreIndexedAddressPart(n, x, x2, x3, dag))
             return false;
 
@@ -815,9 +814,9 @@ public class DAGCombiner
                 user.getOpcode() != ISD.SUB))
                 continue;
 
-            OutParamWrapper<SDValue> x = new OutParamWrapper<>(new SDValue());
-            OutParamWrapper<SDValue> x2 = new OutParamWrapper<>(new SDValue());
-            OutParamWrapper<MemIndexedMode> x3 = new OutParamWrapper<>(UNINDEXED);
+            OutRef<SDValue> x = new OutRef<>(new SDValue());
+            OutRef<SDValue> x2 = new OutRef<>(new SDValue());
+            OutRef<MemIndexedMode> x3 = new OutRef<>(UNINDEXED);
             boolean res = !tli.isPreIndexedAddressPart(n, x, x2, x3, dag);
             SDValue basePtr = x.get(), offset = x2.get();
             MemIndexedMode am = x3.get();

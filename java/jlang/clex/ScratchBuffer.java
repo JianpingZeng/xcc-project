@@ -20,7 +20,7 @@ import jlang.support.FileID;
 import jlang.support.MemoryBuffer;
 import jlang.support.SourceLocation;
 import jlang.basic.SourceManager;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -47,7 +47,7 @@ public class ScratchBuffer
      /// previous method, but returns a location that indicates the physloc of the
      /// token.
      */
-    SourceLocation getToken(char[] buf, OutParamWrapper<Integer> dest)
+    SourceLocation getToken(char[] buf, OutRef<Integer> dest)
     {
         if (byteUsed + buf.length +2 > ScratchBufSize)
             allocateScratchBuffer(buf.length + 2);

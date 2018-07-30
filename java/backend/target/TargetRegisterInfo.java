@@ -3,7 +3,7 @@ package backend.target;
 import tools.Util;
 import backend.codegen.*;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 
@@ -467,7 +467,7 @@ public abstract class TargetRegisterInfo
 	}
 
 	public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
-			OutParamWrapper<Integer> frameIdx)
+			OutRef<Integer> frameIdx)
 	{
 		return false;
 	}

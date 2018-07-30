@@ -28,7 +28,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
 import backend.value.Function;
 import backend.value.GlobalValue;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -1116,7 +1116,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
 
     protected void preprocessForRMW()
     {
-        OutParamWrapper<SDValue> x = new OutParamWrapper<>();
+        OutRef<SDValue> x = new OutRef<>();
         for (SDNode node : curDAG.allNodes)
         {
             if (node.getOpcode() == X86ISD.CALL)
@@ -1218,7 +1218,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
     }
 
     static boolean isRMWLoad(SDValue n, SDValue chain, SDValue address,
-            OutParamWrapper<SDValue> load)
+            OutRef<SDValue> load)
     {
         if (n.getOpcode() == ISD.BIT_CONVERT)
             n = n.getOperand(0);
@@ -1261,7 +1261,7 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel
                 store.getOperand(2), store.getOperand(3));
     }
 
-    static boolean isCalleeLoad(SDValue callee, OutParamWrapper<SDValue> chain)
+    static boolean isCalleeLoad(SDValue callee, OutRef<SDValue> chain)
     {
         if (callee.getNode().equals(chain.get().getNode()) || !callee.hasOneUse())
             return false;

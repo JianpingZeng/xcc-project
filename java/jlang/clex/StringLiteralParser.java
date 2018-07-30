@@ -17,7 +17,7 @@ package jlang.clex;
  */
 
 import tools.Util;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * This decodes string escape characters and performs
@@ -96,8 +96,8 @@ public class StringLiteralParser
                 }
 
                 // Otherwise, this is a non-UCN escape character.  Process it.
-                OutParamWrapper<Boolean> x = new OutParamWrapper<>(hadError);
-                OutParamWrapper<Integer> y = new OutParamWrapper<>(j);
+                OutRef<Boolean> x = new OutRef<>(hadError);
+                OutRef<Integer> y = new OutRef<>(j);
                 char resultChar = LiteralSupport
                         .processCharEscape(buf,y , x, tok.getLocation(), pp);
                 hadError = x.get();
@@ -139,8 +139,8 @@ public class StringLiteralParser
                 continue;
             }
 
-            OutParamWrapper<Boolean> hasError = new OutParamWrapper<>(false);
-            OutParamWrapper<Integer> y = new OutParamWrapper<>(i);
+            OutRef<Boolean> hasError = new OutRef<>(false);
+            OutRef<Integer> y = new OutRef<>(i);
             LiteralSupport.processCharEscape(spelling, y, hasError, tok.getLocation(), pp);
             i = y.get();
             Util.assertion(!hasError.get(),  "This method isn't valid on erronuous strings");

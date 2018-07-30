@@ -8,7 +8,7 @@ import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
 //import backend.transform.scalars.LoopSimplify;
 import backend.value.Instruction.PhiNode;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -62,14 +62,14 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	}
 
 	public boolean makeLoopInvariant(Value val,
-			OutParamWrapper<Boolean> changed,
+			OutRef<Boolean> changed,
 			Instruction insertPtr)
 	{
 		return makeLoopInvariant(val, changed, null);
 	}
 
 	public boolean makeLoopInvariant(Value val,
-			OutParamWrapper<Boolean> changed)
+			OutRef<Boolean> changed)
 	{
 		if (val instanceof Instruction)
 		{
@@ -79,7 +79,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	}
 
 	public boolean makeLoopInvariant(Instruction inst,
-			OutParamWrapper<Boolean> changed,
+			OutRef<Boolean> changed,
 			Instruction insertPtr)
 	{
 		if (isLoopInVariant(inst))
@@ -106,7 +106,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	}
 
 	public boolean makeLoopInvariant(Instruction inst,
-			OutParamWrapper<Boolean> changed)
+			OutRef<Boolean> changed)
 	{
 		return makeLoopInvariant(inst, changed, null);
 	}

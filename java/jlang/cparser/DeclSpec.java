@@ -12,7 +12,7 @@ import jlang.support.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.type.QualType;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.List;
 
@@ -621,8 +621,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public boolean setTypeSpecType(TST val,
             SourceLocation loc,
-            OutParamWrapper<String> prevDecl,
-            OutParamWrapper<Integer> diag,
+            OutRef<String> prevDecl,
+            OutRef<Integer> diag,
             QualType ty)
     {
         return setTypeSpecType(val, loc, loc, prevDecl, diag, ty);
@@ -631,8 +631,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     public boolean setTypeSpecType(TST val,
             SourceLocation tagKwLoc,
             SourceLocation tagNameLoc,
-            OutParamWrapper<String> prevDecl,
-            OutParamWrapper<Integer> diag,
+            OutRef<String> prevDecl,
+            OutRef<Integer> diag,
             Decl rep)
     {
         Util.assertion(isDeclRep(val), "T does not store a decl");
@@ -653,8 +653,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public boolean setTypeSpecType(TST val,
             SourceLocation loc,
-            OutParamWrapper<String> prevDecl,
-            OutParamWrapper<Integer> diagID)
+            OutRef<String> prevDecl,
+            OutRef<Integer> diagID)
     {
         Util.assertion(!isDeclRep(val) && !isTypeRep(val), "rep required for these jlang.type-spec kinds!");
 
@@ -673,8 +673,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     public boolean setTypeSpecType(TST val,
             SourceLocation tagKwLoc,
             SourceLocation tagNameLoc,
-            OutParamWrapper<String> prevDecl,
-            OutParamWrapper<Integer> diag,
+            OutRef<String> prevDecl,
+            OutRef<Integer> diag,
             QualType ty)
     {
         Util.assertion(isTypeRep(val), "T does not store a jlang.type");

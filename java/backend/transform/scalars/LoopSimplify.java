@@ -12,7 +12,7 @@ import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
 import backend.value.*;
 import backend.value.Instruction.*;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.*;
@@ -197,7 +197,7 @@ public final class LoopSimplify implements FunctionPass
 				{
 					if (inst == ci)
 						continue;
-					OutParamWrapper<Boolean> x = new OutParamWrapper<>(changed);
+					OutRef<Boolean> x = new OutRef<>(changed);
 					if (!loop.makeLoopInvariant(inst, x, preHeader.getTerminator()))
 					{
 						allInvariant = false;

@@ -6,7 +6,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SelectionDAG;
 import gnu.trove.list.array.TIntArrayList;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 
@@ -120,22 +120,22 @@ public abstract class TargetInstrInfo
 	}
 
 	public boolean isMoveInstr(MachineInstr mi,
-			OutParamWrapper<Integer> srcReg,
-			OutParamWrapper<Integer> destReg,
-			OutParamWrapper<Integer> srcSubIdx,
-			OutParamWrapper<Integer> destSubIdx)
+			OutRef<Integer> srcReg,
+			OutRef<Integer> destReg,
+			OutRef<Integer> srcSubIdx,
+			OutRef<Integer> destSubIdx)
 	{
 		return false;
 	}
 
 	public int isLoadFromStackSlot(MachineInstr mi,
-			OutParamWrapper<Integer> frameIndex)
+			OutRef<Integer> frameIndex)
 	{
 		return 0;
 	}
 
 	public int isStoreToStackSlot(MachineInstr mi,
-			OutParamWrapper<Integer> frameIndex)
+			OutRef<Integer> frameIndex)
 	{
 		return 0;
 	}
@@ -202,8 +202,8 @@ public abstract class TargetInstrInfo
 	/// is not in a form which this routine understands.
 	public abstract boolean findCommutedOpIndices(
 			MachineInstr mi,
-			OutParamWrapper<Integer> srcOpIdx1,
-		OutParamWrapper<Integer> srcOpIdx2);
+			OutRef<Integer> srcOpIdx1,
+		OutRef<Integer> srcOpIdx2);
 
 	public  boolean analyzeBranch(
 			MachineBasicBlock mbb,

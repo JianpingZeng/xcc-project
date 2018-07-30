@@ -39,7 +39,7 @@ import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 import jlang.type.*;
 import tools.APSInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -1191,12 +1191,12 @@ public abstract class Decl
         {
             if (!isFileVarDecl())
                 return false;
-            OutParamWrapper<VarDecl> def = new OutParamWrapper<>();
+            OutRef<VarDecl> def = new OutRef<>();
             return (getDefinition(def) == null && (sc == StorageClass.SC_none
                     || sc == StorageClass.SC_static));
         }
 
-        public Expr getDefinition(OutParamWrapper<VarDecl> def)
+        public Expr getDefinition(OutRef<VarDecl> def)
         {
             RedeclIterator<VarDecl> itr = getRedeclIterator();
             Decl.VarDecl current = null;
@@ -1508,10 +1508,10 @@ public abstract class Decl
          */
         public boolean hasBody()
         {
-            return hasBody(new OutParamWrapper<>());
+            return hasBody(new OutRef<>());
         }
 
-        public boolean hasBody(OutParamWrapper<FunctionDecl> def)
+        public boolean hasBody(OutRef<FunctionDecl> def)
         {
             RedeclIterator<FunctionDecl> itr = getRedeclIterator();
             while (itr.hasNext())
@@ -1532,10 +1532,10 @@ public abstract class Decl
          */
         public boolean isDefined()
         {
-            return isDefined(new OutParamWrapper<>());
+            return isDefined(new OutRef<>());
         }
 
-        public boolean isDefined(OutParamWrapper<FunctionDecl> def)
+        public boolean isDefined(OutRef<FunctionDecl> def)
         {
             RedeclIterator<FunctionDecl> itr = getRedeclIterator();
             while (itr.hasNext())
@@ -1553,11 +1553,11 @@ public abstract class Decl
         @Override
         public Tree.Stmt getBody()
         {
-            OutParamWrapper<FunctionDecl> def = new OutParamWrapper<>();
+            OutRef<FunctionDecl> def = new OutRef<>();
             return getBody(def);
         }
 
-        public Tree.Stmt getBody(OutParamWrapper<FunctionDecl> def)
+        public Tree.Stmt getBody(OutRef<FunctionDecl> def)
         {
             RedeclIterator<FunctionDecl> itr = getRedeclIterator();
             while (itr.hasNext())

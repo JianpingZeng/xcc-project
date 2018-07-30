@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -26,7 +26,7 @@ public class ParserUInt extends Parser<Integer>
 {
     public boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<Integer> val)
+            OutRef<Integer> val)
     {
         try
         {

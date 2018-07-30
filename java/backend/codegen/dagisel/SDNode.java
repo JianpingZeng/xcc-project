@@ -1368,7 +1368,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         public boolean isExactlyValue(double v)
         {
             APFloat tmp = new APFloat(v);
-            OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+            OutRef<Boolean> ignored = new OutRef<>(false);
             tmp.convert(value.getValueAPF().getSemantics(),
                     APFloat.RoundingMode.rmNearestTiesToEven, ignored);
             return isExactlyValue(tmp);
@@ -1383,7 +1383,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode
         {
             Util.assertion(vt.isFloatingPoint(), "Can only convert between FP types!");
             APFloat val2 = new APFloat(val);
-            OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+            OutRef<Boolean> ignored = new OutRef<>(false);
             val2.convert(EVTToAPFloatSemantics(vt), APFloat.RoundingMode.rmNearestTiesToEven,
                     ignored);
             return !ignored.get();

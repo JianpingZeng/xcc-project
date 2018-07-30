@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -26,7 +26,7 @@ public class ParseFloat extends Parser<Float>
 {
     public boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<Float> val)
+            OutRef<Float> val)
     {
         try
         {

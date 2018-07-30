@@ -37,7 +37,7 @@ import jlang.sema.Sema;
 import jlang.support.*;
 import jlang.support.LangOptions.VisibilityMode;
 import jlang.system.Process;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 import tools.commandline.*;
@@ -221,7 +221,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     public static class OptLevelParser extends ParserUInt
     {
         public boolean parse(Option<?> O, String ArgName,
-                String Arg, OutParamWrapper<Integer> Val)
+                String Arg, OutRef<Integer> Val)
         {
             if (super.parse(O, ArgName, Arg, Val))
                 return true;

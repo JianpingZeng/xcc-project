@@ -8,7 +8,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.Value;
 import com.sun.javafx.binding.StringFormatter;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -480,7 +480,7 @@ public class MachineInstr implements Cloneable
      * @param useOpIdx
      * @return
      */
-	public boolean isRegTiedToUseOperand(int defOpIdx, OutParamWrapper<Integer> useOpIdx)
+	public boolean isRegTiedToUseOperand(int defOpIdx, OutRef<Integer> useOpIdx)
 	{
         if (getOpcode() == INLINEASM)
         {
@@ -516,7 +516,7 @@ public class MachineInstr implements Cloneable
      * @param defOpIdx
      * @return
      */
-	public boolean isRegTiedToDefOperand(int useOpIdx, OutParamWrapper<Integer> defOpIdx)
+	public boolean isRegTiedToDefOperand(int useOpIdx, OutRef<Integer> defOpIdx)
 	{
         if (getOpcode() == INLINEASM)
         {
@@ -746,7 +746,7 @@ public class MachineInstr implements Cloneable
 	/// SawStore is set to true, it means that there is a store (or call) between
 	/// the instruction's location and its intended destination.
 	public boolean isSafeToMove(TargetInstrInfo tii,
-            OutParamWrapper<Boolean> sawStore)
+            OutRef<Boolean> sawStore)
 	{
 	    if (tid.mayStore() || tid.isCall())
         {
@@ -767,7 +767,7 @@ public class MachineInstr implements Cloneable
 	/// instruction which defined the specified register instead of copying it.
 	public boolean isSafeToReMat(TargetInstrInfo tii, int dstReg)
 	{
-	    OutParamWrapper<Boolean> sawStore = new OutParamWrapper<>(false);
+	    OutRef<Boolean> sawStore = new OutRef<>(false);
 
 	    if (!getDesc().isRematerializable() ||
                 !tii.isTriviallyReMaterializable(this) ||

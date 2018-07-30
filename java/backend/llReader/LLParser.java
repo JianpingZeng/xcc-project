@@ -83,7 +83,7 @@ public final class LLParser
     private TIntObjectHashMap<Pair<GlobalValue, SMLoc>> forwardRefValIDs;
     private ArrayList<GlobalValue> numberedVals;
 
-    public LLParser(MemoryBuffer buf, SourceMgr smg, Module m, OutParamWrapper<SMDiagnostic> diag)
+    public LLParser(MemoryBuffer buf, SourceMgr smg, Module m, OutRef<SMDiagnostic> diag)
     {
         lexer = new LLLexer(buf, smg, diag);
         this.m = m;
@@ -200,8 +200,8 @@ public final class LLParser
                 case kw_external:
                 case kw_extern_weak:
                 {
-                    OutParamWrapper<LinkageType> linkage = new OutParamWrapper<>();
-                    OutParamWrapper<VisibilityTypes> visibility = new OutParamWrapper<>();
+                    OutRef<LinkageType> linkage = new OutRef<>();
+                    OutRef<VisibilityTypes> visibility = new OutRef<>();
                     if (parseOptionalLinkage(linkage)
                             || parseOptionalVisibility(visibility)
                             || parseGlobal("", new SMLoc(), linkage.get(), true,
@@ -215,7 +215,7 @@ public final class LLParser
                 case kw_hidden:
                 case kw_protected:
                 {
-                    OutParamWrapper<VisibilityTypes> visibility = new OutParamWrapper<>();
+                    OutRef<VisibilityTypes> visibility = new OutRef<>();
                     if (parseOptionalVisibility(visibility) || parseGlobal("",
                             new SMLoc(), LinkageType.ExternalLinkage, false,
                             visibility.get()))
@@ -260,7 +260,7 @@ public final class LLParser
         lexer.lex();
 
         ArrayList<MetadataBase> elts = new ArrayList<>();
-        OutParamWrapper<MetadataBase> node = new OutParamWrapper<>();
+        OutRef<MetadataBase> node = new OutRef<>();
         do
         {
             if (lexer.getTokKind() != Metadata)
@@ -290,7 +290,7 @@ public final class LLParser
         Util.assertion( lexer.getTokKind() == Metadata);
         lexer.lex();
 
-        OutParamWrapper<Integer> val = new OutParamWrapper<>();
+        OutRef<Integer> val = new OutRef<>();
         if (parseInt32(val))
             return true;
         int metataID = val.get();
@@ -301,8 +301,8 @@ public final class LLParser
         if (parseToken(equal, "expected '=' here"))
             return true;
 
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<SMLoc> loc = new OutRef<>();
+        OutRef<Type> ty = new OutRef<>();
         if (parseType(ty, loc, false))
             return false;
 
@@ -340,9 +340,9 @@ public final class LLParser
 
         ///   GlobalVar '=' OptionalVisibility ALIAS ...
         ///   GlobalVar '=' OptionalLinkage OptionalVisibility ...   -> global variable
-        OutParamWrapper<Boolean> hasLinkage = new OutParamWrapper<>();
-        OutParamWrapper<LinkageType> linkage = new OutParamWrapper<>();
-        OutParamWrapper<VisibilityTypes> visbility = new OutParamWrapper<>();
+        OutRef<Boolean> hasLinkage = new OutRef<>();
+        OutRef<LinkageType> linkage = new OutRef<>();
+        OutRef<VisibilityTypes> visbility = new OutRef<>();
         if (parseToken(equal, "expected '=' after name") || parseOptionalLinkage(linkage, hasLinkage)
                 || parseOptionalVisibility(visbility))
             return true;
@@ -375,9 +375,9 @@ public final class LLParser
                 return true;
         }
 
-        OutParamWrapper<Boolean> hasLinkage = new OutParamWrapper<>();
-        OutParamWrapper<LinkageType> linkage = new OutParamWrapper<>();
-        OutParamWrapper<VisibilityTypes> visbility = new OutParamWrapper<>();
+        OutRef<Boolean> hasLinkage = new OutRef<>();
+        OutRef<LinkageType> linkage = new OutRef<>();
+        OutRef<VisibilityTypes> visbility = new OutRef<>();
         if (parseOptionalLinkage(linkage, hasLinkage) || parseOptionalVisibility(visbility))
             return true;
 
@@ -399,7 +399,7 @@ public final class LLParser
         SMLoc nameLoc = lexer.getLoc();
         lexer.lex();    // eat LocalVar
 
-        OutParamWrapper<Type> result = new OutParamWrapper<>();
+        OutRef<Type> result = new OutRef<>();
         if (parseToken(equal, "expected '=' after name") || parseToken(kw_type,
                 "expected 'type' after '='") || parseType(result, false))
             return true;
@@ -458,7 +458,7 @@ public final class LLParser
         SMLoc typeLoc = lexer.getLoc();
         lexer.lex();
 
-        OutParamWrapper<Type> result = new OutParamWrapper<>();
+        OutRef<Type> result = new OutRef<>();
         if (parseType(result, false))
             return true;
 
@@ -494,7 +494,7 @@ public final class LLParser
             if (lexer.getTokKind() == rsquare)
                 return false;   // empty list
 
-            OutParamWrapper<String> str = new OutParamWrapper<>();
+            OutRef<String> str = new OutRef<>();
             if (parseStringConstant(str))
                 return true;
             while (expectToken(comma))
@@ -521,7 +521,7 @@ public final class LLParser
     {
         Util.assertion( lexer.getTokKind() == kw_target);
 
-        OutParamWrapper<String> str = new OutParamWrapper<>();
+        OutRef<String> str = new OutRef<>();
         boolean tripleOrDataLayout = true;
         lexer.lex();    // eat 'target'
 
@@ -555,7 +555,7 @@ public final class LLParser
      * @param isConstant
      * @return
      */
-    private boolean parseGlobalType(OutParamWrapper<Boolean> isConstant)
+    private boolean parseGlobalType(OutRef<Boolean> isConstant)
     {
         LLTokenKind tok = lexer.getTokKind();
         switch (tok)
@@ -577,17 +577,17 @@ public final class LLParser
     private boolean parseGlobal(String name, SMLoc nameLoc, LinkageType linkage,
             boolean hasLinkage, VisibilityTypes visibility)
     {
-        OutParamWrapper<Integer> val = new OutParamWrapper<>(0);
-        OutParamWrapper<Boolean> val2 = new OutParamWrapper<>(false);
-        OutParamWrapper<Boolean> val3 = new OutParamWrapper<>(false);
-        OutParamWrapper<SMLoc> tmpLoc = new OutParamWrapper<>(null);
+        OutRef<Integer> val = new OutRef<>(0);
+        OutRef<Boolean> val2 = new OutRef<>(false);
+        OutRef<Boolean> val3 = new OutRef<>(false);
+        OutRef<SMLoc> tmpLoc = new OutRef<>(null);
 
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Type> ty = new OutRef<>();
         if (parseOptionalToken(kw_thread_local, val2) || parseOptionalAddrSpace(
                 val) || parseGlobalType(val3) || parseType(ty, tmpLoc, false))
             return true;
 
-        OutParamWrapper<Constant> c = new OutParamWrapper<>(null);
+        OutRef<Constant> c = new OutRef<>(null);
         if (!hasLinkage || (linkage != LinkageType.ExternalLinkage))
         {
             if (parseGlobalValue(ty.get(), c))
@@ -663,7 +663,7 @@ public final class LLParser
             }
             else if (lexer.getTokKind() == kw_align)
             {
-                OutParamWrapper<Integer> align = new OutParamWrapper<>();
+                OutRef<Integer> align = new OutRef<>();
                 if (parseOptionalAlignment(align))
                     return true;
                 gv.setAlignment(align.get());
@@ -676,7 +676,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseOptionalToken(LLTokenKind kind, OutParamWrapper<Boolean> present)
+    private boolean parseOptionalToken(LLTokenKind kind, OutRef<Boolean> present)
     {
         if (lexer.getTokKind() != kind)
             present.set(false);
@@ -698,7 +698,7 @@ public final class LLParser
         Util.assertion( lexer.getTokKind() == LLTokenKind.kw_declare);
         lexer.lex();
 
-        OutParamWrapper<Function> f = new OutParamWrapper<>();
+        OutRef<Function> f = new OutRef<>();
         return parseFunctionHeader(f, false);
     }
 
@@ -711,17 +711,17 @@ public final class LLParser
      * @param isDefine
      * @return
      */
-    private boolean parseFunctionHeader(OutParamWrapper<Function> f, boolean isDefine)
+    private boolean parseFunctionHeader(OutRef<Function> f, boolean isDefine)
     {
         // parse linkage
         SMLoc linkageLoc = lexer.getLoc();
-        OutParamWrapper<LinkageType> linkage = new OutParamWrapper<>();
-        OutParamWrapper<VisibilityTypes> visibility = new OutParamWrapper<>();
-        OutParamWrapper<CallingConv> cc = new OutParamWrapper<>();
-        OutParamWrapper<Type> resultTy = new OutParamWrapper<>();
+        OutRef<LinkageType> linkage = new OutRef<>();
+        OutRef<VisibilityTypes> visibility = new OutRef<>();
+        OutRef<CallingConv> cc = new OutRef<>();
+        OutRef<Type> resultTy = new OutRef<>();
 
         SMLoc retTypeLoc = lexer.getLoc();
-        OutParamWrapper<Integer> retAttrs = new OutParamWrapper<>();
+        OutRef<Integer> retAttrs = new OutRef<>();
         if (parseOptionalLinkage(linkage) || parseOptionalVisibility(visibility)
                 || parseCallingConv(cc) || parseOptionalAttrs(retAttrs, 1)
                 || parseType(resultTy, true/*void allowed*/))
@@ -775,11 +775,11 @@ public final class LLParser
         }
 
         ArrayList<ArgInfo> argList = new ArrayList<>();
-        OutParamWrapper<Boolean> isVarArg = new OutParamWrapper<>(false);
-        OutParamWrapper<Integer> funcAttrs = new OutParamWrapper<>(0);
-        OutParamWrapper<String> section = new OutParamWrapper<>("");
-        OutParamWrapper<Integer> alignment = new OutParamWrapper<>(0);
-        OutParamWrapper<String> gc = new OutParamWrapper<>("");
+        OutRef<Boolean> isVarArg = new OutRef<>(false);
+        OutRef<Integer> funcAttrs = new OutRef<>(0);
+        OutRef<String> section = new OutRef<>("");
+        OutRef<Integer> alignment = new OutRef<>(0);
+        OutRef<String> gc = new OutRef<>("");
 
         if (parseArgumentList(argList, isVarArg, false) || parseOptionalAttrs(
                 funcAttrs, 2) || (expectToken(kw_section) && parseStringConstant(section)) || parseOptionalAlignment(
@@ -923,9 +923,9 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseOptionalLinkage(OutParamWrapper<LinkageType> linkage)
+    private boolean parseOptionalLinkage(OutRef<LinkageType> linkage)
     {
-        OutParamWrapper<Boolean> hasLinkage = new OutParamWrapper<>();
+        OutRef<Boolean> hasLinkage = new OutRef<>();
         return parseOptionalLinkage(linkage, hasLinkage);
     }
 
@@ -946,8 +946,8 @@ public final class LLParser
      * ///   ::= 'extern_weak'
      * ///   ::= 'external'
      */
-    private boolean parseOptionalLinkage(OutParamWrapper<LinkageType> linkage,
-            OutParamWrapper<Boolean> hasLinkage)
+    private boolean parseOptionalLinkage(OutRef<LinkageType> linkage,
+                                         OutRef<Boolean> hasLinkage)
     {
         hasLinkage.set(false);
         switch (lexer.getTokKind())
@@ -987,7 +987,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseOptionalVisibility(OutParamWrapper<VisibilityTypes> visibility)
+    private boolean parseOptionalVisibility(OutRef<VisibilityTypes> visibility)
     {
         switch (lexer.getTokKind())
         {
@@ -1024,7 +1024,7 @@ public final class LLParser
      * @param cc
      * @return
      */
-    private boolean parseCallingConv(OutParamWrapper<CallingConv> cc)
+    private boolean parseCallingConv(OutRef<CallingConv> cc)
     {
         switch (lexer.getTokKind())
         {
@@ -1056,7 +1056,7 @@ public final class LLParser
         return true;
     }
 
-    private boolean parseOptionalAlignment(OutParamWrapper<Integer> align)
+    private boolean parseOptionalAlignment(OutRef<Integer> align)
     {
         if (!expectToken(LLTokenKind.kw_align))
             return false;
@@ -1069,7 +1069,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseInt32(OutParamWrapper<Integer> align)
+    private boolean parseInt32(OutRef<Integer> align)
     {
         if (lexer.getTokKind() != LLTokenKind.APSInt || lexer.getAPsIntVal().isSigned())
             return tokError("expected integer");
@@ -1083,7 +1083,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseOptionalCommaAlignment(OutParamWrapper<Integer> align)
+    private boolean parseOptionalCommaAlignment(OutRef<Integer> align)
     {
         if (!expectToken(LLTokenKind.comma))
             return false;
@@ -1099,7 +1099,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseStringConstant(OutParamWrapper<String> result)
+    private boolean parseStringConstant(OutRef<String> result)
     {
         if (lexer.getTokKind() != LLTokenKind.StringConstant)
             return false;
@@ -1113,7 +1113,7 @@ public final class LLParser
         if (lexer.getTokKind() != LLTokenKind.comma)
             return tokError("expected ',' as start of index list");
 
-        OutParamWrapper<Integer> index = new OutParamWrapper<>(0);
+        OutRef<Integer> index = new OutRef<>(0);
         while (expectToken(LLTokenKind.comma))
         {
             if (parseInt32(index))
@@ -1132,7 +1132,7 @@ public final class LLParser
      * @param attrs
      * @return
      */
-    private boolean parseOptionalAttrs(OutParamWrapper<Integer> attrs, int attrKind)
+    private boolean parseOptionalAttrs(OutRef<Integer> attrs, int attrKind)
     {
         int attr = Attribute.None;
         SMLoc attrLoc = lexer.getLoc();
@@ -1226,7 +1226,7 @@ public final class LLParser
 
                 case kw_align:
                 {
-                    OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
+                    OutRef<Integer> align = new OutRef<>(0);
                     if (parseOptionalAlignment(align))
                     {
                         attrs.set(attr);
@@ -1240,14 +1240,14 @@ public final class LLParser
         }
     }
 
-    private boolean parseType(OutParamWrapper<Type> result,
-            OutParamWrapper<SMLoc> retLoc, boolean allowVoid)
+    private boolean parseType(OutRef<Type> result,
+                              OutRef<SMLoc> retLoc, boolean allowVoid)
     {
         retLoc.set(lexer.getLoc());
         return parseType(result, allowVoid);
     }
 
-    private boolean parseType(OutParamWrapper<Type> result, boolean allowVoid)
+    private boolean parseType(OutRef<Type> result, boolean allowVoid)
     {
         SMLoc typeLoc = lexer.getLoc();
         if (parseTypeRec(result))
@@ -1261,7 +1261,7 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseTypeRec(OutParamWrapper<Type> result)
+    private boolean parseTypeRec(OutRef<Type> result)
     {
         switch (lexer.getTokKind())
         {
@@ -1334,7 +1334,7 @@ public final class LLParser
             case backslash:
                 // TypeRec ::= '\' 4
                 lexer.lex();
-                OutParamWrapper<Integer> val = new OutParamWrapper<>(0);
+                OutRef<Integer> val = new OutRef<>(0);
                 if (parseInt32(val))
                     return true;
                 OpaqueType ot = OpaqueType.get();
@@ -1374,7 +1374,7 @@ public final class LLParser
                     if (!PointerType.isValidElementType(result.get()))
                         return tokError("pointer to this type is invalid");
 
-                    OutParamWrapper<Integer> addrSpace = new OutParamWrapper<>(0);
+                    OutRef<Integer> addrSpace = new OutRef<>(0);
                     if (parseOptionalAddrSpace(addrSpace) || parseToken(star,
                             "expected '*' in address space"))
                         return true;
@@ -1399,7 +1399,7 @@ public final class LLParser
      * @param addrSpace
      * @return
      */
-    private boolean parseOptionalAddrSpace(OutParamWrapper<Integer> addrSpace)
+    private boolean parseOptionalAddrSpace(OutRef<Integer> addrSpace)
     {
         if (!expectToken(kw_addrspace))
             return false;
@@ -1425,7 +1425,7 @@ public final class LLParser
         }
     }
 
-    private boolean parseFunctionType(OutParamWrapper<Type> result)
+    private boolean parseFunctionType(OutRef<Type> result)
     {
         Util.assertion( lexer.getTokKind() == lparen);
 
@@ -1433,8 +1433,8 @@ public final class LLParser
             return tokError("invalid function return type");
 
         ArrayList<ArgInfo> argList = new ArrayList<>();
-        OutParamWrapper<Boolean> isVarArg = new OutParamWrapper<>();
-        OutParamWrapper<Integer> attrs = new OutParamWrapper<>(0);
+        OutRef<Boolean> isVarArg = new OutRef<>();
+        OutRef<Integer> attrs = new OutRef<>(0);
         if (parseArgumentList(argList, isVarArg, true) || parseOptionalAttrs(
                 attrs, 2))
         {
@@ -1481,7 +1481,7 @@ public final class LLParser
      * @return
      */
     private boolean parseArgumentList(ArrayList<ArgInfo> argList,
-            OutParamWrapper<Boolean> isVarArg, boolean inType)
+                                      OutRef<Boolean> isVarArg, boolean inType)
     {
         isVarArg.set(false);
         Util.assertion( lexer.getTokKind() == lparen);
@@ -1499,8 +1499,8 @@ public final class LLParser
         {
             SMLoc typeLoc = lexer.getLoc();
             String name = "";
-            OutParamWrapper<Integer> attr = new OutParamWrapper<>();
-            OutParamWrapper<backend.type.Type> argTy = new OutParamWrapper<>();
+            OutRef<Integer> attr = new OutRef<>();
+            OutRef<backend.type.Type> argTy = new OutRef<>();
             if ((inType ? parseTypeRec(argTy) : parseType(argTy, false))
                     || parseOptionalAttrs(attr, 0))
                 return true;
@@ -1556,7 +1556,7 @@ public final class LLParser
         return parseToken(rparen, "expected ')' at end of argument list");
     }
 
-    private boolean parseStructType(OutParamWrapper<Type> result, boolean packed)
+    private boolean parseStructType(OutRef<Type> result, boolean packed)
     {
         Util.assertion( lexer.getTokKind() == lbrace);
         lexer.lex();    // eat the '{'
@@ -1646,7 +1646,7 @@ public final class LLParser
      * @param isVector
      * @return
      */
-    private boolean parseArrayVectorType(OutParamWrapper<Type> result, boolean isVector)
+    private boolean parseArrayVectorType(OutRef<Type> result, boolean isVector)
     {
         if (lexer.getTokKind() != APSInt || lexer.getAPsIntVal().isSigned()
                 || lexer.getAPsIntVal().getBitWidth() > 64)
@@ -1660,7 +1660,7 @@ public final class LLParser
             return true;
 
         SMLoc typeLoc = lexer.getLoc();
-        OutParamWrapper<Type> eltTy = new OutParamWrapper<>(LLVMContext.VoidTy);
+        OutRef<Type> eltTy = new OutRef<>(LLVMContext.VoidTy);
         if (parseTypeRec(eltTy))
             return error(typeLoc, "array and vector element type can't be void");
 
@@ -1695,7 +1695,7 @@ public final class LLParser
     {
         Util.assertion( lexer.getTokKind() == kw_define);
         lexer.lex();    // eat the 'define'
-        OutParamWrapper<Function> f = new OutParamWrapper<>();
+        OutRef<Function> f = new OutRef<>();
         return parseFunctionHeader(f, true) || parseFunctionBody(f);
     }
 
@@ -1709,7 +1709,7 @@ public final class LLParser
      * @param f
      * @return
      */
-    private boolean parseFunctionBody(OutParamWrapper<Function> f)
+    private boolean parseFunctionBody(OutRef<Function> f)
     {
         if (lexer.getTokKind() != lbrace && lexer.getTokKind() != kw_begin)
         {
@@ -1753,7 +1753,7 @@ public final class LLParser
         // Parse the instructions in this block until we get a terminator.
         String nameStr;
 
-        OutParamWrapper<Instruction> inst = new OutParamWrapper<>();
+        OutRef<Instruction> inst = new OutRef<>();
         while (true)
         {
             // This instruction may have three possibilities for a name: a) none
@@ -1803,8 +1803,8 @@ public final class LLParser
      * @param pfs
      * @return
      */
-    private boolean parseInstruction(OutParamWrapper<Instruction> inst,
-            BasicBlock bb, PerFunctionState pfs)
+    private boolean parseInstruction(OutRef<Instruction> inst,
+                                     BasicBlock bb, PerFunctionState pfs)
     {
         LLTokenKind kind = lexer.getTokKind();
         if (kind == Eof)
@@ -1967,16 +1967,16 @@ public final class LLParser
      *   ::= 'getelementptr' 'inbounds'? TypeAndValue (',' TypeAndValue)*
      * </pre>
      */
-    private boolean parseGetElementPtr(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs)
+    private boolean parseGetElementPtr(OutRef<Instruction> inst,
+                                       PerFunctionState pfs)
     {
         boolean inBounds = expectToken(kw_inbounds);
-        OutParamWrapper<Value> ptr, val;
-        OutParamWrapper<SMLoc> loc, eltLoc;
-        ptr = new OutParamWrapper<>();
-        val = new OutParamWrapper<>();
-        loc = new OutParamWrapper<>();
-        eltLoc = new OutParamWrapper<>();
+        OutRef<Value> ptr, val;
+        OutRef<SMLoc> loc, eltLoc;
+        ptr = new OutRef<>();
+        val = new OutRef<>();
+        loc = new OutRef<>();
+        eltLoc = new OutRef<>();
 
         if (parseTypeAndValue(ptr, loc, pfs))
             return true;
@@ -2018,15 +2018,15 @@ public final class LLParser
      * @param isVolatile
      * @return
      */
-    private boolean parseStore(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, boolean isVolatile)
+    private boolean parseStore(OutRef<Instruction> inst,
+                               PerFunctionState pfs, boolean isVolatile)
     {
-        OutParamWrapper<Value> val, ptr;
-        val = new OutParamWrapper<>();
-        ptr = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> valLoc = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> ptrLoc = new OutParamWrapper<>();
-        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
+        OutRef<Value> val, ptr;
+        val = new OutRef<>();
+        ptr = new OutRef<>();
+        OutRef<SMLoc> valLoc = new OutRef<>();
+        OutRef<SMLoc> ptrLoc = new OutRef<>();
+        OutRef<Integer> align = new OutRef<>(0);
 
         if (parseTypeAndValue(val, valLoc, pfs) || parseToken(comma,
                 "expected a ',' in store instruction") || parseTypeAndValue(ptr,
@@ -2060,12 +2060,12 @@ public final class LLParser
      * @param isVolatile
      * @return
      */
-    private boolean parseLoad(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, boolean isVolatile)
+    private boolean parseLoad(OutRef<Instruction> inst,
+                              PerFunctionState pfs, boolean isVolatile)
     {
-        OutParamWrapper<Value> ptr = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
-        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
+        OutRef<Value> ptr = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
+        OutRef<Integer> align = new OutRef<>(0);
         if (parseTypeAndValue(ptr, loc, pfs) || parseOptionalCommaAlignment(
                 align))
             return true;
@@ -2087,11 +2087,11 @@ public final class LLParser
      * @param pfs
      * @return
      */
-    private boolean parseFree(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs)
+    private boolean parseFree(OutRef<Instruction> inst,
+                              PerFunctionState pfs)
     {
-        OutParamWrapper<Value> ptrVal = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
+        OutRef<Value> ptrVal = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
         if (parseTypeAndValue(ptrVal, loc, pfs))
             return true;
         if (!(ptrVal.get().getType() instanceof PointerType))
@@ -2114,16 +2114,16 @@ public final class LLParser
      * @param opc
      * @return
      */
-    private boolean parseAlloc(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, Operator opc)
+    private boolean parseAlloc(OutRef<Instruction> inst,
+                               PerFunctionState pfs, Operator opc)
     {
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Type> ty = new OutRef<>();
         if (parseType(ty, false))
             return true;
 
-        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
-        OutParamWrapper<Value> val = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
+        OutRef<Integer> align = new OutRef<>(0);
+        OutRef<Value> val = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
 
         if (expectToken(comma))
         {
@@ -2166,18 +2166,18 @@ public final class LLParser
      * @param isTail
      * @return
      */
-    private boolean parseCall(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, boolean isTail)
+    private boolean parseCall(OutRef<Instruction> inst,
+                              PerFunctionState pfs, boolean isTail)
     {
-        OutParamWrapper<CallingConv> cc = new OutParamWrapper<>();
+        OutRef<CallingConv> cc = new OutRef<>();
         // return attribute
-        OutParamWrapper<Integer> attrs1 = new OutParamWrapper<>();
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> retLoc = new OutParamWrapper<>();
+        OutRef<Integer> attrs1 = new OutRef<>();
+        OutRef<Type> ty = new OutRef<>();
+        OutRef<SMLoc> retLoc = new OutRef<>();
         ValID valID = new ValID();
 
         // function attribute
-        OutParamWrapper<Integer> attrs2 = new OutParamWrapper<>();
+        OutRef<Integer> attrs2 = new OutRef<>();
         ArrayList<backend.llReader.ParamInfo> argList = new ArrayList<>();
         SMLoc callLoc = lexer.getLoc();
 
@@ -2211,7 +2211,7 @@ public final class LLParser
         }
 
         // Lookup callee.
-        OutParamWrapper<Value> callee = new OutParamWrapper<>();
+        OutRef<Value> callee = new OutRef<>();
         if (convertValIDToValue(ptr, valID, callee, pfs))
             return true;
 
@@ -2297,10 +2297,10 @@ public final class LLParser
             // empty argument list.
             return false;
         }
-        OutParamWrapper<Type> argTy = new OutParamWrapper<>();
-        OutParamWrapper<Integer> attrsBeforeVal = new OutParamWrapper<>();
-        OutParamWrapper<Integer> attrsAfterVal = new OutParamWrapper<>();
-        OutParamWrapper<Value> val = new OutParamWrapper<>();
+        OutRef<Type> argTy = new OutRef<>();
+        OutRef<Integer> attrsBeforeVal = new OutRef<>();
+        OutRef<Integer> attrsAfterVal = new OutRef<>();
+        OutRef<Value> val = new OutRef<>();
         while (lexer.getTokKind() != rparen)
         {
             SMLoc loc = lexer.getLoc();
@@ -2330,12 +2330,12 @@ public final class LLParser
      * @param opc
      * @return
      */
-    private boolean parseCast(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, Operator opc)
+    private boolean parseCast(OutRef<Instruction> inst,
+                              PerFunctionState pfs, Operator opc)
     {
-        OutParamWrapper<Value> val = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Value> val = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
+        OutRef<Type> ty = new OutRef<>();
 
         if (parseTypeAndValue(val, loc, pfs) || parseToken(kw_to,
                 "expected a 'to' in cast op") || parseType(ty, false/*allow void*/))
@@ -2364,21 +2364,21 @@ public final class LLParser
      * @return  Return false when no occurence of error. Otherwise return false.
      */
     private boolean parseSelect(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs)
     {
         SMLoc typeLoc = lexer.getLoc();
-        OutParamWrapper<Type> condTy = new OutParamWrapper<>();
+        OutRef<Type> condTy = new OutRef<>();
         if (parseType(condTy, false))
             return true;
 
         if (!condTy.get().equals(LLVMContext.Int1Ty))
             return error(typeLoc, "the type of condition in select instruction must be i1");
-        OutParamWrapper<Value> cond = new OutParamWrapper<>();
-        OutParamWrapper<Type> trueType = new OutParamWrapper<>();
-        OutParamWrapper<Value> trueVal = new OutParamWrapper<>();
-        OutParamWrapper<Type> falseType = new OutParamWrapper<>();
-        OutParamWrapper<Value> falseVal = new OutParamWrapper<>();
+        OutRef<Value> cond = new OutRef<>();
+        OutRef<Type> trueType = new OutRef<>();
+        OutRef<Value> trueVal = new OutRef<>();
+        OutRef<Type> falseType = new OutRef<>();
+        OutRef<Value> falseVal = new OutRef<>();
 
         if (parseValue(condTy.get(), cond, pfs)
                 || parseToken(comma, "expected a ',' after the condition")
@@ -2403,19 +2403,19 @@ public final class LLParser
      * @return
      */
     private boolean parsePHI(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs)
     {
         SMLoc typeLoc = lexer.getLoc();
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Type> ty = new OutRef<>();
         if (parseType(ty, false))
             return true;
 
         if (!ty.get().isFirstClassType())
             return error(typeLoc, "phi node must have first class type");
 
-        OutParamWrapper<Value> val = new OutParamWrapper<>();
-        OutParamWrapper<Value> val2 = new OutParamWrapper<>();
+        OutRef<Value> val = new OutRef<>();
+        OutRef<Value> val2 = new OutRef<>();
         if (parseToken(lsquare, "expected '[' at beginning of phi op")||
                 parseValue(ty.get(), val, pfs) ||
                 parseToken(comma, "expected ',' in phi value list")
@@ -2456,13 +2456,13 @@ public final class LLParser
      * @return
      */
     private boolean parseCompare(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs, Operator opc)
     {
-        OutParamWrapper<Predicate> p = new OutParamWrapper<>();
-        OutParamWrapper<Value> val1 = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
-        OutParamWrapper<Value> val2 = new OutParamWrapper<>();
+        OutRef<Predicate> p = new OutRef<>();
+        OutRef<Value> val1 = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
+        OutRef<Value> val2 = new OutRef<>();
 
         if (parseCmpPredicate(p, opc)
                 || parseTypeAndValue(val1, loc, pfs)
@@ -2497,12 +2497,12 @@ public final class LLParser
      * @param opc
      * @return
      */
-    private boolean parseLogical(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs, Operator opc)
+    private boolean parseLogical(OutRef<Instruction> inst,
+                                 PerFunctionState pfs, Operator opc)
     {
-        OutParamWrapper<Value> val1 = new OutParamWrapper<>();
-        OutParamWrapper<Value> val2 = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
+        OutRef<Value> val1 = new OutRef<>();
+        OutRef<Value> val2 = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
         if (parseTypeAndValue(val1, loc, pfs) ||
             parseToken(comma, "expected a ',' after first operand of logical op") ||
             parseValue(val1.get().getType(), val2, pfs))
@@ -2528,10 +2528,10 @@ public final class LLParser
      * @return
      */
     private boolean parseRet(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs)
     {
-        OutParamWrapper<Type> retTy = new OutParamWrapper<>();
+        OutRef<Type> retTy = new OutRef<>();
         if (parseType(retTy, true/*allow void type*/))
             return true;
         if (retTy.get().equals(LLVMContext.VoidTy))
@@ -2540,7 +2540,7 @@ public final class LLParser
             return false;
         }
 
-        OutParamWrapper<Value> rv = new OutParamWrapper<>();
+        OutRef<Value> rv = new OutRef<>();
         if (parseValue(retTy.get(), rv, pfs)) return true;
 
         // the normal case is one return value.
@@ -2550,21 +2550,21 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseTypeAndValue(OutParamWrapper<Value> op,
-            OutParamWrapper<SMLoc> loc, PerFunctionState pfs)
+    private boolean parseTypeAndValue(OutRef<Value> op,
+                                      OutRef<SMLoc> loc, PerFunctionState pfs)
     {
         loc.set(lexer.getLoc());
         return parseTypeAndValue(op, pfs);
     }
 
-    private boolean parseTypeAndValue(OutParamWrapper<Value> val,
-            PerFunctionState pfs)
+    private boolean parseTypeAndValue(OutRef<Value> val,
+                                      PerFunctionState pfs)
     {
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Type> ty = new OutRef<>();
         return parseType(ty, false) || parseValue(ty.get(), val, pfs);
     }
 
-    private boolean parseValue(Type ty, OutParamWrapper<Value> val,
+    private boolean parseValue(Type ty, OutRef<Value> val,
             PerFunctionState pfs)
     {
         ValID id = new ValID();
@@ -2625,7 +2625,7 @@ public final class LLParser
 
                 // standalone metadata reference.
                 // !{...}
-                OutParamWrapper<MetadataBase> x = new OutParamWrapper<>();
+                OutRef<MetadataBase> x = new OutRef<>();
                 if (!parseMDNode(x))
                 {
                     id.metadataVal = x.get();
@@ -2789,8 +2789,8 @@ public final class LLParser
             {
                 Operator opc = parseOperator(tok);
                 lexer.lex();
-                OutParamWrapper<Type> destTy = new OutParamWrapper<>();
-                OutParamWrapper<Constant> srcVal = new OutParamWrapper<>();
+                OutRef<Type> destTy = new OutRef<>();
+                OutRef<Constant> srcVal = new OutRef<>();
                 if (parseToken(lparen, "expected '(' after constantexpr cast")
                         || parseGlobalTypeAndValue(srcVal) ||
                         parseToken(kw_to, "expected 'to' in constantexpr cast")
@@ -2810,9 +2810,9 @@ public final class LLParser
             case kw_fcmp:
             {
                 Operator opc = parseOperator(tok);
-                OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
-                OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
-                OutParamWrapper<Predicate> pred = new OutParamWrapper<>();
+                OutRef<Constant> val0 = new OutRef<>();
+                OutRef<Constant> val1 = new OutRef<>();
+                OutRef<Predicate> pred = new OutRef<>();
 
                 lexer.lex();
                 if (parseCmpPredicate(pred, opc) ||
@@ -2861,8 +2861,8 @@ public final class LLParser
             {
                 boolean nuw = false, nsw = false;
                 Operator opc = parseOperator(tok);
-                OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
-                OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
+                OutRef<Constant> val0 = new OutRef<>();
+                OutRef<Constant> val1 = new OutRef<>();
                 boolean exact = false;
                 lexer.lex();
 
@@ -2919,8 +2919,8 @@ public final class LLParser
             case kw_xor:
             {
                 Operator opc = parseOperator(tok);
-                OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
-                OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
+                OutRef<Constant> val0 = new OutRef<>();
+                OutRef<Constant> val1 = new OutRef<>();
                 lexer.lex();
 
                 if (parseToken(lparen, "expected '(' in logical constantexpr")
@@ -2997,7 +2997,7 @@ public final class LLParser
         if (token == rbrace || token == rsquare
                 || token == greater || token == rparen)
             return false;
-        OutParamWrapper<Constant> c = new OutParamWrapper<>();
+        OutRef<Constant> c = new OutRef<>();
         if (parseGlobalTypeAndValue(c))
             return true;
 
@@ -3016,9 +3016,9 @@ public final class LLParser
      * @param node
      * @return
      */
-    private boolean parseMDNode(OutParamWrapper<MetadataBase> node)
+    private boolean parseMDNode(OutRef<MetadataBase> node)
     {
-        OutParamWrapper<Integer> mid = new OutParamWrapper<>();
+        OutRef<Integer> mid = new OutRef<>();
         if (parseInt32(mid)) return true;
 
         int id = mid.get();
@@ -3068,12 +3068,12 @@ public final class LLParser
             }
             else
             {
-                OutParamWrapper<Type> ty = new OutParamWrapper<>();
+                OutRef<Type> ty = new OutRef<>();
                 if (parseType(ty, false)) return true;
                 if (lexer.getTokKind() == Metadata)
                 {
                     lexer.lex();
-                    OutParamWrapper<MetadataBase> md = new OutParamWrapper<>();
+                    OutRef<MetadataBase> md = new OutRef<>();
                     if (!parseMDNode(md)) v = md.get();
                     else
                     {
@@ -3083,7 +3083,7 @@ public final class LLParser
                 }
                 else
                 {
-                    OutParamWrapper<Constant> c = new OutParamWrapper<>();
+                    OutRef<Constant> c = new OutRef<>();
                     if (parseGlobalValue(ty.get(), c)) return true;
                     v = c.get();
                 }
@@ -3099,9 +3099,9 @@ public final class LLParser
      * @param md
      * @return
      */
-    private boolean parseMDString(OutParamWrapper<MetadataBase> md)
+    private boolean parseMDString(OutRef<MetadataBase> md)
     {
-        OutParamWrapper<String> name = new OutParamWrapper<>();
+        OutRef<String> name = new OutRef<>();
         if (parseStringConstant(name)) return true;
         md.set(MDString.get(name.get()));
         return false;
@@ -3120,7 +3120,7 @@ public final class LLParser
         if (tok == lbrace || tok == lsquare || tok == lparen || tok == less)
             return false;
 
-        OutParamWrapper<Constant> c = new OutParamWrapper<>();
+        OutRef<Constant> c = new OutRef<>();
         if (parseGlobalTypeAndValue(c)) return true;
 
         elts.add(c.get());
@@ -3132,13 +3132,13 @@ public final class LLParser
         return false;
     }
 
-    private boolean parseGlobalTypeAndValue(OutParamWrapper<Constant> val)
+    private boolean parseGlobalTypeAndValue(OutRef<Constant> val)
     {
-        OutParamWrapper<Type> ty = new OutParamWrapper<>();
+        OutRef<Type> ty = new OutRef<>();
         return parseType(ty, false) || parseGlobalValue(ty.get(), val);
     }
 
-    private boolean parseGlobalValue(Type ty, OutParamWrapper<Constant> val)
+    private boolean parseGlobalValue(Type ty, OutRef<Constant> val)
     {
         ValID valID = new ValID();
         return parseValID(valID) || convertGlobalValIDToValue(ty, valID, val);
@@ -3146,7 +3146,7 @@ public final class LLParser
 
     private boolean convertGlobalValIDToValue(
             Type ty, ValID id,
-            OutParamWrapper<Constant> val)
+            OutRef<Constant> val)
     {
         if (ty instanceof FunctionType)
             return error(id.loc, "functions are not values, refer to them as pointers");
@@ -3186,7 +3186,7 @@ public final class LLParser
                 {
                     id.apFloatVal.convert(tools.APFloat.IEEEsingle,
                             tools.APFloat.RoundingMode.rmNearestTiesToEven,
-                            new OutParamWrapper<>(false));
+                            new OutRef<>(false));
                 }
                 val.set(ConstantFP.get(id.apFloatVal));
                 if (!val.get().getType().equals(ty))
@@ -3432,7 +3432,7 @@ public final class LLParser
         }
     }
 
-    private boolean parseCmpPredicate(OutParamWrapper<Predicate> pred, Operator opc)
+    private boolean parseCmpPredicate(OutRef<Predicate> pred, Operator opc)
     {
         if (opc == Operator.FCmp)
         {
@@ -3478,7 +3478,7 @@ public final class LLParser
     }
 
     private boolean convertValIDToValue(Type ty, ValID id,
-            OutParamWrapper<Value> val, PerFunctionState pfs)
+                                        OutRef<Value> val, PerFunctionState pfs)
     {
         if (id.kind == ValID.ValIDKind.t_LocalID)
             val.set(pfs.getVal(id.intVal, ty, id.loc));
@@ -3494,7 +3494,7 @@ public final class LLParser
         }
         else
         {
-            OutParamWrapper<Constant> c = new OutParamWrapper<>();
+            OutRef<Constant> c = new OutRef<>();
             if (convertGlobalValIDToValue(ty, id, c)) return true;
             val.set(c.get());
             return false;
@@ -3510,15 +3510,15 @@ public final class LLParser
      * @param pfs
      * @return
      */
-    private boolean parseBr(OutParamWrapper<Instruction> inst,
-            PerFunctionState pfs)
+    private boolean parseBr(OutRef<Instruction> inst,
+                            PerFunctionState pfs)
     {
-        OutParamWrapper<SMLoc> loc1 = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc2 = new OutParamWrapper<>();
+        OutRef<SMLoc> loc1 = new OutRef<>();
+        OutRef<SMLoc> loc2 = new OutRef<>();
 
-        OutParamWrapper<Value> op0 = new OutParamWrapper<>();
-        OutParamWrapper<Value> op1 = new OutParamWrapper<>();
-        OutParamWrapper<Value> op2 = new OutParamWrapper<>();
+        OutRef<Value> op0 = new OutRef<>();
+        OutRef<Value> op1 = new OutRef<>();
+        OutRef<Value> op2 = new OutRef<>();
 
         if (parseTypeAndValue(op0, loc1, pfs))
             return true;
@@ -3567,11 +3567,11 @@ public final class LLParser
      * @return
      */
     private boolean parseSwitch(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs)
     {
-        OutParamWrapper<Value> valWrapper = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> locWrapper = new OutParamWrapper<>();
+        OutRef<Value> valWrapper = new OutRef<>();
+        OutRef<SMLoc> locWrapper = new OutRef<>();
         if (parseTypeAndValue(valWrapper, locWrapper, pfs)) return true;
 
         Value cond = valWrapper.get();
@@ -3589,8 +3589,8 @@ public final class LLParser
         {
             SMLoc lsquareLoc = lexer.getLoc();
 
-            OutParamWrapper<Value> val2 = new OutParamWrapper<>();
-            OutParamWrapper<SMLoc> loc2 = new OutParamWrapper<>();
+            OutRef<Value> val2 = new OutRef<>();
+            OutRef<SMLoc> loc2 = new OutRef<>();
             HashSet<Constant> elts = new HashSet<>();
             ArrayList<BasicBlock> dests = new ArrayList<>();
 
@@ -3645,14 +3645,14 @@ public final class LLParser
      * @return
      */
     private boolean parseArithmetic(
-            OutParamWrapper<Instruction> inst,
+            OutRef<Instruction> inst,
             PerFunctionState pfs,
             Operator opc,
             int operandType)
     {
-        OutParamWrapper<Value> val = new OutParamWrapper<>();
-        OutParamWrapper<Value> val2 = new OutParamWrapper<>();
-        OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
+        OutRef<Value> val = new OutRef<>();
+        OutRef<Value> val2 = new OutRef<>();
+        OutRef<SMLoc> loc = new OutRef<>();
 
         if (parseTypeAndValue(val, loc, pfs) ||
                 parseToken(comma, "expected a ',' after first operand of binary op") ||

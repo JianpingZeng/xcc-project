@@ -23,16 +23,16 @@ package tools;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class OutParamWrapper <T>
+public final class OutRef<T>
 {
     private Object[] ptr;
 
-    public OutParamWrapper()
+    public OutRef()
     {
         ptr = new Object[1];
     }
 
-    public OutParamWrapper(T data)
+    public OutRef(T data)
     {
         ptr = new Object[1];
         ptr[0] = data;

@@ -21,7 +21,7 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineInstr;
 import backend.codegen.MachineOperand;
 import gnu.trove.list.array.TIntArrayList;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 
@@ -63,8 +63,8 @@ public abstract class TargetInstrInfoImpl extends TargetInstrInfo
 
     @Override
     public boolean findCommutedOpIndices(MachineInstr mi,
-            OutParamWrapper<Integer> srcOpIdx1,
-            OutParamWrapper<Integer> srcOpIdx2)
+            OutRef<Integer> srcOpIdx1,
+            OutRef<Integer> srcOpIdx2)
     {
         return false;
     }

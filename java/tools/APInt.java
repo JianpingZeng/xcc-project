@@ -1108,8 +1108,8 @@ public class APInt implements Cloneable
             {
                 APInt apDigit = new APInt(1, 0);
                 APInt temp2 = new APInt(temp.getBitWidth(), 0);
-                OutParamWrapper<APInt> x = new OutParamWrapper<>(apDigit);
-                OutParamWrapper<APInt> y = new OutParamWrapper<>(temp2);
+                OutRef<APInt> x = new OutRef<>(apDigit);
+                OutRef<APInt> y = new OutRef<>(temp2);
 
                 divide(temp, temp.getNumWords(), divisor, divisor.getNumWords(),
                         x, y);
@@ -2149,7 +2149,7 @@ public class APInt implements Cloneable
 
         // We have to compute it the hard way. Call the Knuth div algorithm.
         APInt quotient = new APInt(1, 0);
-        OutParamWrapper<APInt> x = new OutParamWrapper<>(quotient);
+        OutRef<APInt> x = new OutRef<>(quotient);
         divide(this, lhsWords, rhs, rhsWords, x, null);
         return x.get();
     }
@@ -2186,8 +2186,8 @@ public class APInt implements Cloneable
      * @param remainder
      */
     public static void divide(final APInt lhs, int lhsWords, final APInt rhs,
-            int rhsWords, OutParamWrapper<APInt> quotient,
-            OutParamWrapper<APInt> remainder)
+            int rhsWords, OutRef<APInt> quotient,
+            OutRef<APInt> remainder)
     {
         Util.assertion(lhsWords >= rhsWords,  "Fractional result");
 
@@ -2626,7 +2626,7 @@ public class APInt implements Cloneable
         }
 
         APInt rem = new APInt(1, 0);
-        OutParamWrapper<APInt> x = new OutParamWrapper<>(rem);
+        OutRef<APInt> x = new OutRef<>(rem);
         divide(this, lhsWords, rhs, rhsWords, null, x);
         return x.get();
     }
@@ -2662,8 +2662,8 @@ public class APInt implements Cloneable
      */
     public static void udivrem(final APInt lhs,
             final APInt rhs,
-            OutParamWrapper<APInt> quotient,
-            OutParamWrapper<APInt> remainder)
+            OutRef<APInt> quotient,
+            OutRef<APInt> remainder)
     {
         int lhsBits = lhs.getActiveBits();
         int rhsBits = rhs.getActiveBits();
@@ -2714,8 +2714,8 @@ public class APInt implements Cloneable
 
     public static void sdivrem(final APInt lhs,
             final APInt rhs,
-            OutParamWrapper<APInt> quotient,
-            OutParamWrapper<APInt> remainder)
+            OutRef<APInt> quotient,
+            OutRef<APInt> remainder)
     {
         if (lhs.isNegative())
         {

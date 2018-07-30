@@ -23,7 +23,7 @@ import backend.target.TargetLowering;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import gnu.trove.list.array.TIntArrayList;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -86,8 +86,8 @@ public class RegsForValue
     }
 
     public SDValue getCopyFromRegs(SelectionDAG dag,
-            OutParamWrapper<SDValue> chain,
-            OutParamWrapper<SDValue> flag)
+            OutRef<SDValue> chain,
+            OutRef<SDValue> flag)
     {
         SDValue[] values = new SDValue[valueVTs.size()];
 
@@ -184,8 +184,8 @@ public class RegsForValue
 
     public void getCopyToRegs(SDValue val,
             SelectionDAG dag,
-            OutParamWrapper<SDValue> chain,
-            OutParamWrapper<SDValue> flag)
+            OutRef<SDValue> chain,
+            OutRef<SDValue> flag)
     {
         int numRegs = regs.size();
         ArrayList<SDValue> parts = new ArrayList<>(numRegs);
@@ -308,9 +308,9 @@ public class RegsForValue
             }
             else if (valueVT.isVector())
             {
-                OutParamWrapper<EVT> intermediateVT = new OutParamWrapper<>(),
-                        registerVT = new OutParamWrapper<>();
-                OutParamWrapper<Integer> numIntermidates = new OutParamWrapper<>(0);
+                OutRef<EVT> intermediateVT = new OutRef<>(),
+                        registerVT = new OutRef<>();
+                OutRef<Integer> numIntermidates = new OutRef<>(0);
 
                 int numRegs = tli.getVectorTypeBreakdown(valueVT, intermediateVT,
                         numIntermidates, registerVT);
@@ -569,9 +569,9 @@ public class RegsForValue
             return;
         }
 
-        OutParamWrapper<EVT> intermidiateVT = new OutParamWrapper<>(),
-                registerVT = new OutParamWrapper<>();
-        OutParamWrapper<Integer> numIntermediates = new OutParamWrapper<>(0);
+        OutRef<EVT> intermidiateVT = new OutRef<>(),
+                registerVT = new OutRef<>();
+        OutRef<Integer> numIntermediates = new OutRef<>(0);
         int numRegs = tli.getVectorTypeBreakdown(valueVT, intermidiateVT, numIntermediates,
                 registerVT);
 

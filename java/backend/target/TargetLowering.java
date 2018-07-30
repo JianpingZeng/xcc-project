@@ -833,9 +833,9 @@ public abstract class TargetLowering
     }
 
     public int getVectorTypeBreakdown(EVT vt,
-            OutParamWrapper<EVT> intermediateVT,
-            OutParamWrapper<Integer> numIntermediates,
-            OutParamWrapper<EVT> registerVT)
+            OutRef<EVT> intermediateVT,
+            OutRef<Integer> numIntermediates,
+            OutRef<EVT> registerVT)
     {
         int numElts = vt.getVectorNumElements();
         EVT eltTy = vt.getVectorElementType();
@@ -885,9 +885,9 @@ public abstract class TargetLowering
         }
         if (valueVT.isVector())
         {
-            OutParamWrapper<EVT> registerVT = new OutParamWrapper<>();
-            getVectorTypeBreakdown(valueVT, new OutParamWrapper<>(),
-                    new OutParamWrapper<>(), registerVT);
+            OutRef<EVT> registerVT = new OutRef<>();
+            getVectorTypeBreakdown(valueVT, new OutRef<>(),
+                    new OutRef<>(), registerVT);
             return registerVT.get();
         }
         if (valueVT.isInteger())
@@ -905,9 +905,9 @@ public abstract class TargetLowering
     }
 
     private static int getVectorTypeBreakdownMVT(MVT vt,
-            OutParamWrapper<MVT> intermediateVT,
-            OutParamWrapper<Integer> numIntermediates,
-            OutParamWrapper<EVT> registerVT, TargetLowering tli)
+                                                 OutRef<MVT> intermediateVT,
+                                                 OutRef<Integer> numIntermediates,
+                                                 OutRef<EVT> registerVT, TargetLowering tli)
     {
         int numElts = vt.getVectorNumElements();
         MVT eltTy = vt.getVectorElementType();
@@ -1046,9 +1046,9 @@ public abstract class TargetLowering
             MVT vt = new MVT(i);
             if (!isTypeLegal(new EVT(vt)))
             {
-                OutParamWrapper<MVT> intermediateVT = new OutParamWrapper<>(new MVT());
-                OutParamWrapper<EVT> registerVT = new OutParamWrapper<>(new EVT());
-                OutParamWrapper<Integer> numIntermediates = new OutParamWrapper<>(
+                OutRef<MVT> intermediateVT = new OutRef<>(new MVT());
+                OutRef<EVT> registerVT = new OutRef<>(new EVT());
+                OutRef<Integer> numIntermediates = new OutRef<>(
                         0);
 
                 numRegistersForVT[i] = getVectorTypeBreakdownMVT(vt,
@@ -2849,10 +2849,10 @@ public abstract class TargetLowering
                     return true;
             }
         }
-        OutParamWrapper<GlobalValue> gv1 = new OutParamWrapper<>();
-        OutParamWrapper<GlobalValue> gv2 = new OutParamWrapper<>();
-        OutParamWrapper<Long> offset1 = new OutParamWrapper<Long>(0L);
-        OutParamWrapper<Long> offset2 = new OutParamWrapper<Long>(0L);
+        OutRef<GlobalValue> gv1 = new OutRef<>();
+        OutRef<GlobalValue> gv2 = new OutRef<>();
+        OutRef<Long> offset1 = new OutRef<Long>(0L);
+        OutRef<Long> offset2 = new OutRef<Long>(0L);
 
         boolean isGA1 = isGAPlusOffset(loc.getNode(), gv1, offset1);
         boolean isGA2 = isGAPlusOffset(baseLoc.getNode(), gv2, offset2);;
@@ -2862,8 +2862,8 @@ public abstract class TargetLowering
     }
 
     public boolean isGAPlusOffset(SDNode n,
-                                   OutParamWrapper<GlobalValue> gv,
-                                   OutParamWrapper<Long> offset)
+                                   OutRef<GlobalValue> gv,
+                                   OutRef<Long> offset)
     {
         if (n instanceof GlobalAddressSDNode)
         {
@@ -2899,9 +2899,9 @@ public abstract class TargetLowering
     }
 
     public boolean isPreIndexedAddressPart(SDNode n,
-            OutParamWrapper<SDValue> basePtr,
-            OutParamWrapper<SDValue> offset,
-            OutParamWrapper<MemIndexedMode> am,
+            OutRef<SDValue> basePtr,
+            OutRef<SDValue> offset,
+            OutRef<MemIndexedMode> am,
             SelectionDAG dag)
     {
         return false;

@@ -19,7 +19,7 @@ package utils.tablegen;
 
 import backend.codegen.MVT;
 import gnu.trove.stack.array.TIntArrayStack;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 import utils.tablegen.Init.IntInit;
@@ -148,8 +148,8 @@ public class DAGISelEmitter extends TableGenBackend
             ArrayList<Pair<GeneratedCodeKind, String>> generatedCode,
             TreeSet<String> generatedDecls, ArrayList<String> targetOpcodes,
             ArrayList<String> targetVTs,
-            OutParamWrapper<Boolean> outputIsVariadic,
-            OutParamWrapper<Integer> numInputRootOps) throws Exception
+            OutRef<Boolean> outputIsVariadic,
+            OutRef<Integer> numInputRootOps) throws Exception
     {
         // create an instance served as emitting pattern code.
         PatternCodeEmitter emitter = new PatternCodeEmitter(
@@ -583,8 +583,8 @@ public class DAGISelEmitter extends TableGenBackend
                     TreeSet<String> generatedDecls = new TreeSet<>();
                     ArrayList<String> targetOpcodes = new ArrayList<>();
                     ArrayList<String> targetVTs = new ArrayList<>();
-                    OutParamWrapper<Boolean> outputIsVariadic = new OutParamWrapper<>(false);
-                    OutParamWrapper<Integer> numInputRootOps = new OutParamWrapper<>(0);
+                    OutRef<Boolean> outputIsVariadic = new OutRef<>(false);
+                    OutRef<Integer> numInputRootOps = new OutRef<>(0);
                     generateCodeForPattern(pat, generatedCode, generatedDecls,
                             targetOpcodes, targetVTs, outputIsVariadic, numInputRootOps);
 

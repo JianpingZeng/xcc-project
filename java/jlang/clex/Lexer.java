@@ -21,7 +21,7 @@ import jlang.basic.*;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import jlang.support.*;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import static jlang.clex.Token.TokenFlags.LeadingSpace;
@@ -283,7 +283,7 @@ public class Lexer extends PreprocessorLexer
      * @return
      */
     public static char getCharAndSizeNoWarn(char[] chars, int startPos,
-            OutParamWrapper<Integer> charSize, LangOptions langOpts)
+                                            OutRef<Integer> charSize, LangOptions langOpts)
     {
         if (isIdentifierBody(chars[startPos]))
         {
@@ -315,7 +315,7 @@ public class Lexer extends PreprocessorLexer
     }
 
     private static char handleEscapedLine(char[] chars, int startPos,
-            OutParamWrapper<Integer> size, LangOptions langOpts)
+                                          OutRef<Integer> size, LangOptions langOpts)
     {
         if (!isWhitespace(chars[startPos]))
             return '\\';
@@ -367,7 +367,7 @@ public class Lexer extends PreprocessorLexer
     }
 
     public static char getCharAndSizeSlowNoWarn(char[] chars, int startPos,
-            OutParamWrapper<Integer> size, LangOptions langOpts)
+                                                OutRef<Integer> size, LangOptions langOpts)
     {
         if (chars[startPos] == '\\')
         {
@@ -674,7 +674,7 @@ public class Lexer extends PreprocessorLexer
         return pp.diag(getSourceLocation(curPos, 1), diagID);
     }
 
-    private char handleLeadingSlash(int curPos, OutParamWrapper<Integer> size,
+    private char handleLeadingSlash(int curPos, OutRef<Integer> size,
             Token tok)
     {
         // it just a '\\'
@@ -745,7 +745,7 @@ public class Lexer extends PreprocessorLexer
      * @param tok
      * @return
      */
-    private char getCharAndSizeSlow(int curPos, OutParamWrapper<Integer> size,
+    private char getCharAndSizeSlow(int curPos, OutRef<Integer> size,
             Token tok)
     {
         if (buffer[curPos] == '\\')
@@ -775,7 +775,7 @@ public class Lexer extends PreprocessorLexer
         return buffer[curPos];
     }
 
-    private char getAndAdvanceChar(OutParamWrapper<Integer> curPos, Token tok)
+    private char getAndAdvanceChar(OutRef<Integer> curPos, Token tok)
     {
         if (isObviouslySimpleCharacter(buffer[curPos.get()]))
         {
@@ -784,7 +784,7 @@ public class Lexer extends PreprocessorLexer
             return ch;
         }
 
-        OutParamWrapper<Integer> size = new OutParamWrapper<>(0);
+        OutRef<Integer> size = new OutRef<>(0);
         char ch = getCharAndSizeSlow(curPos.get(), size, tok);
         curPos.set(curPos.get() + size.get());
         return ch;
@@ -805,7 +805,7 @@ public class Lexer extends PreprocessorLexer
         int curPos = this.bufferPtr;
         while (true)
         {
-            OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+            OutRef<Integer> x = new OutRef<>(curPos);
             char ch = getAndAdvanceChar(x, tmp);
             curPos = x.get();
             switch (ch)
@@ -1028,7 +1028,7 @@ public class Lexer extends PreprocessorLexer
             int oldPos = curPos;
             boolean oldRawMode = isLexingRawMode();
             lexingRawMode = true;
-            OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+            OutRef<Integer> x = new OutRef<>(curPos);
             ch = getAndAdvanceChar(x, result);
             curPos = x.get();
             lexingRawMode = oldRawMode;
@@ -1110,7 +1110,7 @@ public class Lexer extends PreprocessorLexer
         return false;
     }
 
-    private char getCharAndSize(int curPos, OutParamWrapper<Integer> size)
+    private char getCharAndSize(int curPos, OutRef<Integer> size)
     {
         if (isObviouslySimpleCharacter(buffer[curPos]))
         {
@@ -1180,7 +1180,7 @@ public class Lexer extends PreprocessorLexer
 
     private boolean skipBlockComment(Token result, int curPos)
     {
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+        OutRef<Integer> x = new OutRef<>(0);
         char ch = getCharAndSize(curPos, x);
         int size = x.get();
         curPos += size;
@@ -1304,7 +1304,7 @@ public class Lexer extends PreprocessorLexer
      */
     private void lexNumbericConstant(Token result, int curPos)
     {
-        OutParamWrapper<Integer> size = new OutParamWrapper<>(0);
+        OutRef<Integer> size = new OutRef<>(0);
         char ch = getCharAndSize(curPos, size);
         char prevChar = 0;
         while (isNumberBody(ch))
@@ -1358,7 +1358,7 @@ public class Lexer extends PreprocessorLexer
     private void lexIdentifier(Token result, int curPos)
     {
         // Match [_A-Za-z0-9]*, we have already matched [_A-Za-z$]
-        OutParamWrapper<Integer> size = new OutParamWrapper<>(0);
+        OutRef<Integer> size = new OutRef<>(0);
         char ch = buffer[curPos++];
         while (isIdentifierBody(ch))
             ch = buffer[curPos++];
@@ -1419,7 +1419,7 @@ public class Lexer extends PreprocessorLexer
         // Does this character contain the \0 character?
         int nullCharacterPos = 0;
 
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+        OutRef<Integer> x = new OutRef<>(curPos);
         char ch = getAndAdvanceChar(x, result);
         if (ch == '\'')
         {
@@ -1483,7 +1483,7 @@ public class Lexer extends PreprocessorLexer
     private void lexStringConstant(Token result, int curPos, boolean wide)
     {
         int nullCharPos = 0;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+        OutRef<Integer> x = new OutRef<>(curPos);
         char ch = getAndAdvanceChar(x, result);
 
         while (ch != '"')
@@ -1526,7 +1526,7 @@ public class Lexer extends PreprocessorLexer
     private void lexAngledStringLiteral(Token result, int curPos)
     {
         int nullCharacterPos = 0;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+        OutRef<Integer> x = new OutRef<>(curPos);
         char ch = getAndAdvanceChar(x, result);
 
         while (ch != '>')
@@ -1565,7 +1565,7 @@ public class Lexer extends PreprocessorLexer
         if (size == 1)
             return curPos + size;
 
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+        OutRef<Integer> x = new OutRef<>(0);
         getCharAndSizeSlow(curPos, x, tok);
         return curPos + x.get();
     }
@@ -1610,7 +1610,7 @@ public class Lexer extends PreprocessorLexer
         int sizeTmp = 0, sizeTmp2 = 0;   // Temporaries for use in cases below.
 
         // Read a character, advancing over it.
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(curPos);
+        OutRef<Integer> x = new OutRef<>(curPos);
         char ch = getAndAdvanceChar(x, result);
         curPos = x.get();
 
@@ -1717,7 +1717,7 @@ public class Lexer extends PreprocessorLexer
             }
             case 'L':
             {
-                x = new OutParamWrapper<>(curPos);
+                x = new OutRef<>(curPos);
                 ch = getAndAdvanceChar(x, result);
                 if (ch == '"')
                 {
@@ -1801,10 +1801,10 @@ public class Lexer extends PreprocessorLexer
                 break;
             case '.':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
-                OutParamWrapper<Integer> y = new OutParamWrapper<>(sizeTmp2);
+                OutRef<Integer> y = new OutRef<>(sizeTmp2);
                 if (ch >= '0' && ch <= '9')
                 {
                     // Notify MIOpt that we read a non-whitespace/non-comment token.
@@ -1827,7 +1827,7 @@ public class Lexer extends PreprocessorLexer
             }
             case '&':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '&')
@@ -1848,7 +1848,7 @@ public class Lexer extends PreprocessorLexer
             }
             case '*':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -1864,7 +1864,7 @@ public class Lexer extends PreprocessorLexer
             }
             case '+':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '+')
@@ -1885,7 +1885,7 @@ public class Lexer extends PreprocessorLexer
             }
             case '-':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '-')
@@ -1916,7 +1916,7 @@ public class Lexer extends PreprocessorLexer
             }
             case '!':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -1931,13 +1931,13 @@ public class Lexer extends PreprocessorLexer
                 break;
             }
             case '/':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '/')
                 {
                     // BCPL comment.
-                    OutParamWrapper<Integer> xx = new OutParamWrapper<>(sizeTmp2);
+                    OutRef<Integer> xx = new OutRef<>(sizeTmp2);
                     char tmp = getCharAndSize(curPos + sizeTmp, xx);
                     sizeTmp2 = xx.get();
                     if (langOpts.bcplComment || tmp != '*')
@@ -1971,7 +1971,7 @@ public class Lexer extends PreprocessorLexer
                 break;
             case '%':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -1991,7 +1991,7 @@ public class Lexer extends PreprocessorLexer
                     x.set(sizeTmp);
                     ch = getCharAndSize(curPos, x);
                     sizeTmp = x.get();
-                    OutParamWrapper<Integer> y = new OutParamWrapper<>(sizeTmp2);
+                    OutRef<Integer> y = new OutRef<>(sizeTmp2);
                     char t = getCharAndSize(curPos + sizeTmp, y);
                     sizeTmp2 = y.get();
 
@@ -2038,10 +2038,10 @@ public class Lexer extends PreprocessorLexer
                 break;
             }
             case '<':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
-                OutParamWrapper<Integer> y = new OutParamWrapper<>(sizeTmp2);
+                OutRef<Integer> y = new OutRef<>(sizeTmp2);
                 if (parsingFilename)
                 {
                     lexAngledStringLiteral(result, curPos);
@@ -2082,10 +2082,10 @@ public class Lexer extends PreprocessorLexer
                 break;
             case '>':
             {
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
-                y = new OutParamWrapper<>(sizeTmp2);
+                y = new OutRef<>(sizeTmp2);
                 if (ch == '=')
                 {
                     curPos = consumeChar(curPos, sizeTmp, result);
@@ -2109,7 +2109,7 @@ public class Lexer extends PreprocessorLexer
                 break;
             }
             case '^':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -2123,7 +2123,7 @@ public class Lexer extends PreprocessorLexer
                 }
                 break;
             case '|':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -2142,7 +2142,7 @@ public class Lexer extends PreprocessorLexer
                 }
                 break;
             case ':':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '>' && langOpts.digraphs)
@@ -2160,7 +2160,7 @@ public class Lexer extends PreprocessorLexer
                 kind = semi;
                 break;
             case '=':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '=')
@@ -2177,7 +2177,7 @@ public class Lexer extends PreprocessorLexer
                 kind = comma;
                 break;
             case '#':
-                x = new OutParamWrapper<>(sizeTmp);
+                x = new OutRef<>(sizeTmp);
                 // 9358
                 // 9443
                 // sys-cdef.h 12139

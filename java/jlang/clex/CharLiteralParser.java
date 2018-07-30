@@ -19,7 +19,7 @@ package jlang.clex;
 import tools.Util;
 import jlang.support.SourceLocation;
 import tools.APInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static jlang.clex.LiteralSupport.processCharEscape;
 import static jlang.diag.DiagnosticLexKindsTag.ext_four_char_character_literal;
@@ -57,8 +57,8 @@ public class CharLiteralParser
                 resultChar = tokStr[pos++];
             else
             {
-                OutParamWrapper<Boolean> x = new OutParamWrapper<>(hadError);
-                OutParamWrapper<Integer> y = new OutParamWrapper<>(pos);
+                OutRef<Boolean> x = new OutRef<>(hadError);
+                OutRef<Integer> y = new OutRef<>(pos);
                 resultChar = processCharEscape(String.valueOf(tokStr), y, x, loc, pp);
                 hadError = x.get();
                 pos = y.get();

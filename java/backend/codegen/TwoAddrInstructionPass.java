@@ -30,7 +30,7 @@ import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetInstrInfo.INLINEASM;
@@ -130,7 +130,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                     if (!op.isRegister() || op.getReg() == 0 || !op.isUse())
                         continue;
 
-                    OutParamWrapper<Integer> tmp = new OutParamWrapper<>(0);
+                    OutRef<Integer> tmp = new OutRef<>(0);
                     if (!mi.isRegTiedToDefOperand(si, tmp))
                         continue;
 
@@ -179,7 +179,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                     int regC = mbb.getInstAt(i).getOperand(3 - si).getReg();
                                     if (mbb.getInstAt(i).killsRegister(regC))
                                     {
-                                        OutParamWrapper<Integer> arg = new OutParamWrapper<>(i);
+                                        OutRef<Integer> arg = new OutRef<>(i);
                                         boolean res = commuteInstruction(arg, mbb, regC, i,
                                                 distanceMap);
                                         i = arg.get();
@@ -243,7 +243,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                 if (isProfitableToCommute(regB, regC, mi, mbb,
                                         i + 1, distanceMap))
                                 {
-                                    OutParamWrapper<Integer> arg = new OutParamWrapper<>(i);
+                                    OutRef<Integer> arg = new OutRef<>(i);
                                     boolean res = commuteInstruction(arg, mbb, regC, i + 1,
                                             distanceMap);
                                     i = arg.get();
@@ -397,7 +397,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             int savedReg,
             int oldMI)
     {
-        OutParamWrapper<Boolean> x = new OutParamWrapper<>(true);
+        OutRef<Boolean> x = new OutRef<>(true);
         if (!mi.isSafeToMove(tii, x))
             return false;
         boolean seenStore = x.get();
@@ -492,7 +492,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     }
 
     private boolean commuteInstruction(
-            OutParamWrapper<Integer> mi,
+            OutRef<Integer> mi,
             MachineBasicBlock mbb,
             int regC,
             int dist,
@@ -559,7 +559,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
         if (!mi.killsRegister(regC))
             return false;
 
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+        OutRef<Integer> x = new OutRef<>(0);
         if (notUseAfterLastDef(regC, mbb, dist, distanceMap, x))
             return false;
 
@@ -577,7 +577,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             MachineBasicBlock mbb,
             int dist,
             TIntIntHashMap distanceMap,
-            OutParamWrapper<Integer> lastDef)
+            OutRef<Integer> lastDef)
     {
         lastDef.set(0);
         int lastUse = dist;

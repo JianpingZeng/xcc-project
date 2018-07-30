@@ -20,9 +20,8 @@ import tools.Util;
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
 import config.Config;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
-import tools.Util;
 
 import java.io.File;
 import java.util.*;
@@ -242,7 +241,7 @@ public final class CL
                 // option is another positional argument.  If so, treat it as an argument,
                 // otherwise feed it to the eating positional.
                 ArgName = args[i] + 1;
-                OutParamWrapper<String> x = new OutParamWrapper<>();
+                OutRef<String> x = new OutRef<>();
                 Handler = lookupOption(ArgName, x, optionsMap);
                 Value = x.get();
                 if (Handler == null
@@ -256,7 +255,7 @@ public final class CL
             else
             {     // We start with a '-', must be an argument...
                 ArgName = args[i].substring(1);
-                OutParamWrapper<String> x = new OutParamWrapper<>();
+                OutRef<String> x = new OutRef<>();
                 Handler = lookupOption(ArgName, x, optionsMap);
                 Value = x.get();
 
@@ -267,7 +266,7 @@ public final class CL
                     if (RealName.length() > 1)
                     {
                         int length = 0;
-                        OutParamWrapper<Integer> len = new OutParamWrapper<>(length);
+                        OutRef<Integer> len = new OutRef<>(length);
                         Option PGOpt = getOptionPred(RealName, len,
                                 isPrefixedOrGrouping, optionsMap);
 
@@ -300,7 +299,7 @@ public final class CL
                                 //
                                 Util.assertion(PGOpt.getValueExpectedFlag()                                        != ValueRequired,  "OptionInfo can not be Grouping AND ValueRequired!");
 
-                                OutParamWrapper<Integer> Dummy = new OutParamWrapper<>();
+                                OutRef<Integer> Dummy = new OutRef<>();
                                 ErrorParsing |= ProvideOption(PGOpt,
                                         RealArgName, null, null, Dummy);
 
@@ -341,7 +340,7 @@ public final class CL
                 while (Pos >= 0)
                 {
                     // Process the portion before the comma...
-                    OutParamWrapper<Integer> x = new OutParamWrapper<>(i);
+                    OutRef<Integer> x = new OutRef<>(i);
                     ErrorParsing |= ProvideOption(Handler, ArgName,
                             Val.substring(0, Pos),
                             args, x);
@@ -361,7 +360,7 @@ public final class CL
                 ActivePositionalArg = Handler;
             else
             {
-                OutParamWrapper<Integer> x = new OutParamWrapper<>(i);
+                OutRef<Integer> x = new OutRef<>(i);
                 ErrorParsing |= ProvideOption(Handler, ArgName, Value, args, x);
                 i = x.get();
             }
@@ -561,7 +560,7 @@ public final class CL
     /// command line.  If there is a value specified (after an equal sign) return
     /// that as well.
     static Option lookupOption(String arg,
-            OutParamWrapper<String> value,
+            OutRef<String> value,
             HashMap<String, Option> optionsMap)
     {
         int i = 0;
@@ -586,7 +585,7 @@ public final class CL
     }
 
     static boolean ProvideOption(Option Handler, String ArgName, String Value,
-            String[] args, OutParamWrapper<Integer> i)
+            String[] args, OutRef<Integer> i)
     {
         // Is this a multi-argument option?
         int NumAdditionalVals = Handler.getNumAdditionalVals();
@@ -665,7 +664,7 @@ public final class CL
     static boolean ProvidePositionalOption(Option Handler, String Arg, int i)
     {
         return ProvideOption(Handler, Handler.optionName,
-                Arg,null, new OutParamWrapper<>(i));
+                Arg,null, new OutRef<>(i));
     }
 
     // OptionInfo predicates...
@@ -685,7 +684,7 @@ public final class CL
     // see if there options that satisfy the predicate.  If we find one, return it,
     // otherwise return null.
     //
-    static Option getOptionPred(String name, OutParamWrapper<Integer> length,
+    static Option getOptionPred(String name, OutRef<Integer> length,
             Function<Option, Boolean> Pred, HashMap<String, Option> OptionsMap)
     {
         if (OptionsMap.containsKey(name) && Pred.apply(OptionsMap.get(name)))

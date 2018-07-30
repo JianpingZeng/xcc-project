@@ -28,7 +28,7 @@ import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 import tools.APFloat;
 import tools.APInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -203,7 +203,7 @@ public final class ConstantFolder
                 if (val instanceof ConstantFP)
                 {
                     ConstantFP fp = (ConstantFP)val;
-                    OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+                    OutRef<Boolean> ignored = new OutRef<>(false);
                     APFloat v = fp.getValueAPF();
                     v.convert(destTy.equals(LLVMContext.FloatTy) ? APFloat.IEEEsingle :
                                 destTy.equals(LLVMContext.DoubleTy) ? APFloat.IEEEdouble:

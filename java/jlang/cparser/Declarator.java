@@ -10,7 +10,7 @@ import jlang.sema.UnqualifiedId;
 import jlang.sema.UnqualifiedId.DeclarationKind;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 
@@ -263,7 +263,7 @@ public class Declarator
 
     public boolean isFunctionDeclarator()
     {
-        OutParamWrapper<Integer> index = new OutParamWrapper<>();
+        OutRef<Integer> index = new OutRef<>();
         return isFunctionDeclarator(index);
     }
 
@@ -272,7 +272,7 @@ public class Declarator
      * (looking through parenthesis).
      * @return
      */
-    public boolean isFunctionDeclarator(OutParamWrapper<Integer> index)
+    public boolean isFunctionDeclarator(OutRef<Integer> index)
     {
         Util.assertion( index != null);
 
@@ -323,7 +323,7 @@ public class Declarator
     public FunctionTypeInfo getFunctionTypeInfo()
     {
         Util.assertion(isFunctionDeclarator(), "Not a function declarator!");
-        OutParamWrapper<Integer> index = new OutParamWrapper<>();
+        OutRef<Integer> index = new OutRef<>();
         isFunctionDeclarator(index);
         return (FunctionTypeInfo) declTypeInfos.get(index.get()).typeInfo;
     }

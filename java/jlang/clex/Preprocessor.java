@@ -30,7 +30,7 @@ import jlang.diag.FixItHint;
 import jlang.diag.FullSourceLoc;
 import jlang.support.*;
 import tools.APSInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.nio.file.Path;
@@ -175,7 +175,7 @@ public final class Preprocessor
         StringBuilder result = new StringBuilder();
         for (int i = tokStart.offset, e = tok.getLength() + tokStart.offset; i < e; )
         {
-            OutParamWrapper<Integer> charSize = new OutParamWrapper<>(0);
+            OutRef<Integer> charSize = new OutRef<>(0);
             result.append(
                     Lexer.getCharAndSizeNoWarn(tokStart.buffer, i,
                             charSize, langInfo));
@@ -191,7 +191,7 @@ public final class Preprocessor
             SourceLocation instantiationLoc)
     {
         tok.setLength(spelling.length());
-        OutParamWrapper<Integer> x = new OutParamWrapper<>();
+        OutRef<Integer> x = new OutRef<>();
         SourceLocation loc = scrachBuf.getToken(spelling.toCharArray(), x);
         int dest = x.get();
 
@@ -276,7 +276,7 @@ public final class Preprocessor
             {
                 if (mi.isEnabled())
                 {
-                    OutParamWrapper<Token> x = new OutParamWrapper<>(identifier);
+                    OutRef<Token> x = new OutRef<>(identifier);
                     boolean res = !handleMacroExpandedIdentifier(x, mi);
                     identifier = x.get();
                     if (res)
@@ -938,7 +938,7 @@ public final class Preprocessor
      */
     private static boolean getLineValue(
             Token digitTok,
-            OutParamWrapper<Integer> lineNo,
+            OutRef<Integer> lineNo,
             int diagID,
             Preprocessor pp)
     {
@@ -998,9 +998,9 @@ public final class Preprocessor
      * @return
      */
     private static boolean readLineMarkerFlags(
-            OutParamWrapper<Boolean> isFileEntry,
-            OutParamWrapper<Boolean> isFileExit,
-            OutParamWrapper<Boolean> isSystemHeader,
+            OutRef<Boolean> isFileEntry,
+            OutRef<Boolean> isFileExit,
+            OutRef<Boolean> isSystemHeader,
             Preprocessor pp)
     {
         int flagVal = 0;
@@ -1008,7 +1008,7 @@ public final class Preprocessor
         pp.lex(flagTok);
 
         if (flagTok.is(eom)) return false;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(flagVal);
+        OutRef<Integer> x = new OutRef<>(flagVal);
         if (getLineValue(flagTok, x, err_pp_linemarker_invalid_filename, pp))
             return true;
 
@@ -1020,7 +1020,7 @@ public final class Preprocessor
 
             pp.lex(flagTok);
             if (flagTok.is(eom)) return false;
-            x = new OutParamWrapper<>(flagVal);
+            x = new OutRef<>(flagVal);
             if (getLineValue(flagTok, x, err_pp_linemarker_invalid_flag, pp))
                 return true;
 
@@ -1095,7 +1095,7 @@ public final class Preprocessor
     {
         // Validate the number and convert it to an int.  GNU does not have a
         // line # limit other than it fit in 32-bits.
-        OutParamWrapper<Integer> lineNo = new OutParamWrapper<>(0);
+        OutRef<Integer> lineNo = new OutRef<>(0);
         if (getLineValue(digitTok, lineNo, err_pp_linemarker_requires_integer, this))
             return;
 
@@ -1128,9 +1128,9 @@ public final class Preprocessor
             filenameID = sourceMgr.getLineTableFilenameID(literal.getString());
 
             // If a filename was present, read any flags that are present.
-            OutParamWrapper<Boolean> x = new OutParamWrapper<>(isFileEntry),
-            y = new OutParamWrapper<>(isFileExit),
-            z = new OutParamWrapper<>(isSystemHeader);
+            OutRef<Boolean> x = new OutRef<>(isFileEntry),
+            y = new OutRef<>(isFileExit),
+            z = new OutRef<>(isSystemHeader);
 
             if (readLineMarkerFlags(x, y, z, this))
                 return;
@@ -1895,7 +1895,7 @@ public final class Preprocessor
      * @param ifNDefMacro
      * @return
      */
-    private boolean evaluateDirectiveExpression(OutParamWrapper<IdentifierInfo> ifNDefMacro)
+    private boolean evaluateDirectiveExpression(OutRef<IdentifierInfo> ifNDefMacro)
     {
         // Peek ahead one token.
         Token tok = new Token();
@@ -1952,7 +1952,7 @@ public final class Preprocessor
 
         // Parse and evaluation the conditional expression.
         IdentifierInfo ifNDefMacro;
-        OutParamWrapper<IdentifierInfo> x = new OutParamWrapper<>();
+        OutRef<IdentifierInfo> x = new OutRef<>();
         boolean conditionalTrue = evaluateDirectiveExpression(x);
         ifNDefMacro = x.get();
 
@@ -2160,7 +2160,7 @@ public final class Preprocessor
 
                     curLexer.lexingRawMode = false;
                     IdentifierInfo ifNdefMacro;
-                    OutParamWrapper<IdentifierInfo> x = new OutParamWrapper<>();
+                    OutRef<IdentifierInfo> x = new OutRef<>();
                     shouldEnter = evaluateDirectiveExpression(x);
                     ifNdefMacro = x.get();
                     curLexer.lexingRawMode = true;
@@ -2403,7 +2403,7 @@ public final class Preprocessor
     private Path lookupFile(String filename,
             boolean isAngled,
             Path lookupFromDir,
-            OutParamWrapper<Path> curDir)
+            OutRef<Path> curDir)
     {
         // If the header file lookup mechanism may be relative to the current
         // file, pass in information about where this file in.
@@ -2493,7 +2493,7 @@ public final class Preprocessor
             diag(filenameTok, err_pp_include_too_deep).emit();
             return;
         }
-        OutParamWrapper<Path> curDir = new OutParamWrapper<>();
+        OutRef<Path> curDir = new OutRef<>();
         Path file = lookupFile(filename.toString(), isAngled, lookupFrom, curDir);
         if (file == null)
         {
@@ -2903,7 +2903,7 @@ public final class Preprocessor
         Token digitTok = new Token();
         lex(digitTok);
 
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+        OutRef<Integer> x = new OutRef<>(0);
         if (getLineValue(digitTok, x, err_pp_line_requires_integer, this))
             return;
         int lineNo = x.get();
@@ -3175,7 +3175,7 @@ public final class Preprocessor
     }
 
     private Pair<MacroArgs, SourceLocation> readFunctionLikeMacroArgs(
-            OutParamWrapper<Token> macroName, MacroInfo mi)
+            OutRef<Token> macroName, MacroInfo mi)
     {
         SourceLocation macroEnd = null;
         int numFixedArgsLef = mi.getNumArgs();
@@ -3460,7 +3460,7 @@ public final class Preprocessor
 
         for (; charNo != 0; --charNo)
         {
-            OutParamWrapper<Integer> size = new OutParamWrapper<>(0);
+            OutRef<Integer> size = new OutRef<>(0);
             Lexer.getCharAndSizeSlowNoWarn(buffer, offset, size, langInfo);
             offset += size.get();
             physOffset += size.get();
@@ -3700,7 +3700,7 @@ public final class Preprocessor
      * @return
      */
     private boolean handleMacroExpandedIdentifier(
-            OutParamWrapper<Token> identifier, MacroInfo mi)
+            OutRef<Token> identifier, MacroInfo mi)
     {
         Token ident = identifier.get();
         if (callbacks != null)
@@ -3983,7 +3983,7 @@ public final class Preprocessor
         if (sb.length() == 0)
             return;
 
-        OutParamWrapper<Path> curDir = new OutParamWrapper<>(null);
+        OutRef<Path> curDir = new OutRef<>(null);
         Path file = lookupFile(sb.toString(), isAngled, null, curDir);
         if (file == null)
         {

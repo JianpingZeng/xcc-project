@@ -19,7 +19,7 @@ package jlang.basic;
 import jlang.clex.ExternalIdentifierLookup;
 import jlang.clex.IdentifierInfo;
 import jlang.support.CharacteristicKind;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -159,7 +159,7 @@ public final class HeaderSearch
             String filename,
             boolean isAngled,
             Path fromDir,
-            OutParamWrapper<Path> curDir,
+            OutRef<Path> curDir,
             Path curFileEntry)
     {
         // If 'Filename' is absolute, check to see if it exists and no searching.

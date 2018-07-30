@@ -34,9 +34,8 @@ import backend.value.Module;
 import jlang.basic.TargetInfo;
 import jlang.driver.JlangCC;
 import jlang.system.Process;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.SMDiagnostic;
-import tools.Util;
 import tools.commandline.*;
 
 import java.io.File;
@@ -97,7 +96,7 @@ public class LLC
     public static class OptLevelParser extends ParserUInt
     {
         public boolean parse(Option<?> O, String ArgName,
-                String Arg, OutParamWrapper<Integer> Val)
+                String Arg, OutRef<Integer> Val)
         {
             if (super.parse(O, ArgName, Arg, Val))
                 return true;
@@ -191,7 +190,7 @@ public class LLC
 
             Util.DEBUG = DebugMode.value;
 
-            OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
+            OutRef<SMDiagnostic> diag = new OutRef<>();
             theModule = backend.llReader.Parser
                     .parseAssemblyFile(InputFilename.value, diag);
             if (theModule == null)
@@ -216,7 +215,7 @@ public class LLC
 
         // creates some necessary pass for code generation and optimization.
         createPass();
-        OutParamWrapper<String> error = new OutParamWrapper<>("");
+        OutRef<String> error = new OutRef<>("");
         if (!addEmitPasses(error))
         {
             ErrorHandling.llvmReportError("UNKNOWN: " + error.get());
@@ -305,7 +304,7 @@ public class LLC
                 inliningPass);
     }
 
-    private static boolean addEmitPasses(OutParamWrapper<String> error)
+    private static boolean addEmitPasses(OutRef<String> error)
     {
         switch (OutFiletype.value)
         {

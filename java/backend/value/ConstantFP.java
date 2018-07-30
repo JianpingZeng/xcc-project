@@ -23,7 +23,7 @@ import backend.value.UniqueConstantValueImpl.APFloatKeyType;
 import tools.APFloat;
 import tools.APSInt;
 import tools.FltSemantics;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static backend.type.LLVMTypeID.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -67,7 +67,7 @@ public class ConstantFP extends Constant
     public static Constant get(Type ty, double v)
     {
         APFloat fv = new APFloat(v);
-        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>();
+        OutRef<Boolean> ignored = new OutRef<>();
         fv.convert(typeToFloatSemantics(ty.getScalarType()),
                 rmNearestTiesToEven, ignored);
 
@@ -125,7 +125,7 @@ public class ConstantFP extends Constant
     public static boolean isValueValidForType(Type ty, APFloat val)
     {
         APFloat val2 = new APFloat(val);
-        OutParamWrapper<Boolean> loseInfo = new OutParamWrapper<>(false);
+        OutRef<Boolean> loseInfo = new OutRef<>(false);
 
         switch (ty.getTypeID())
         {

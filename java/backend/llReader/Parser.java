@@ -19,7 +19,7 @@ package backend.llReader;
 import backend.value.Module;
 import com.sun.javafx.binding.StringFormatter;
 import jlang.support.MemoryBuffer;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;
@@ -30,7 +30,7 @@ import tools.SourceMgr.SMLoc;
  */
 public final class Parser
 {
-    public static Module parseAssemblyFile(String filename, OutParamWrapper<SMDiagnostic> diag)
+    public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag)
     {
         MemoryBuffer f = MemoryBuffer.getFileOrSTDIN(filename);
         SourceMgr srcMgr = new SourceMgr();

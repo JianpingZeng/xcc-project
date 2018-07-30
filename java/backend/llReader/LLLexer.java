@@ -40,7 +40,7 @@ public final class LLLexer
 {
     private MemoryBuffer buffer;
     private int curPtr;
-    private OutParamWrapper<SMDiagnostic> errorInfo;
+    private OutRef<SMDiagnostic> errorInfo;
     private SourceMgr smg;
 
     private String error;
@@ -69,7 +69,7 @@ public final class LLLexer
     private TreeMap<String, backend.type.Type> typeKeywords;
     private TreeMap<String, Pair<Operator, LLTokenKind>> opcKeywords;
 
-    public LLLexer(MemoryBuffer buf, SourceMgr smg, OutParamWrapper<SMDiagnostic> diag)
+    public LLLexer(MemoryBuffer buf, SourceMgr smg, OutRef<SMDiagnostic> diag)
     {
         this.buffer = buf;
         curPtr = buf.getBufferStart();

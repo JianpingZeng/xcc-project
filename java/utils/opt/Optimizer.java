@@ -21,7 +21,7 @@ import backend.pass.*;
 import backend.passManaging.PassManager;
 import backend.target.TargetData;
 import backend.value.Module;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.commandline.*;
 
@@ -86,7 +86,7 @@ public final class Optimizer
 
             CL.parseCommandLineOptions(args, "An optimizer on LLVM IR");
 
-            OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
+            OutRef<SMDiagnostic> diag = new OutRef<>();
             Module m = backend.llReader.Parser
                     .parseAssemblyFile(InputFilename.value, diag);
             if (m == null)

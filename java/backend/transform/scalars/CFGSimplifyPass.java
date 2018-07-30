@@ -27,7 +27,7 @@ import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value.UndefValue;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
@@ -1907,7 +1907,7 @@ public final class CFGSimplifyPass implements FunctionPass
                         val instanceof Instruction)
                 {
                     Instruction cond = (Instruction) val;
-                    OutParamWrapper<Value> x = new OutParamWrapper<>(null);
+                    OutRef<Value> x = new OutRef<>(null);
                     ArrayList<ConstantInt> values = new ArrayList<>();
                     boolean trueWhenEqual = gatherValueComparisons(cond, x, values);
                     Value compVal = x.get();
@@ -1953,7 +1953,7 @@ public final class CFGSimplifyPass implements FunctionPass
         return false;
     }
 
-    private boolean gatherValueComparisons(Instruction cond, OutParamWrapper<Value> compVal,
+    private boolean gatherValueComparisons(Instruction cond, OutRef<Value> compVal,
             ArrayList<ConstantInt> values)
     {
         switch (cond.getOpcode())

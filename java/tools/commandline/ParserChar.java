@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -26,7 +26,7 @@ public class ParserChar extends Parser<Character>
 {
     public boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<Character> val)
+            OutRef<Character> val)
     {
         val.set(arg.charAt(0));
         return false;

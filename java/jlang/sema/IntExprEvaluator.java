@@ -36,9 +36,9 @@ import tools.APFloat.CmpResult;
  */
 public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    private OutParamWrapper<APValue> result;
+    private OutRef<APValue> result;
 
-    public IntExprEvaluator(OutParamWrapper<APValue> result, ASTContext ctx)
+    public IntExprEvaluator(OutRef<APValue> result, ASTContext ctx)
     {
         super(ctx);
         this.result = result;
@@ -216,8 +216,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         if (expr.isLogicalOp())
         {
-            OutParamWrapper<Boolean> lhsResult = new OutParamWrapper<>()
-                    , rhsResult = new OutParamWrapper<>();
+            OutRef<Boolean> lhsResult = new OutRef<>()
+                    , rhsResult = new OutRef<>();
             if (handleConversionToBool(expr.getLHS(), lhsResult, context))
             {
                 // make constant folding operation.
@@ -260,8 +260,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         if (lhsTy.isRealFloatingType() && rhsTy.isRealFloatingType())
         {
-            OutParamWrapper<APFloat> rhs = new OutParamWrapper<>(new APFloat(0.0));
-            OutParamWrapper<APFloat> lhs = new OutParamWrapper<>(new APFloat(0.0));
+            OutRef<APFloat> rhs = new OutRef<>(new APFloat(0.0));
+            OutRef<APFloat> lhs = new OutRef<>(new APFloat(0.0));
 
             if (!evaluateFloat(expr.getRHS(), rhs, context))
                 return false;
@@ -314,11 +314,11 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             if (expr.getOpcode() == BinaryOperatorKind.BO_Sub
                     || expr.isEqualityOp())
             {
-                OutParamWrapper<LValue> lhsValue =new OutParamWrapper<>();
+                OutRef<LValue> lhsValue =new OutRef<>();
                 if (!evaluatePointer(expr.getLHS(), lhsValue, context))
                     return false;
 
-                OutParamWrapper<LValue> rhsValue =new OutParamWrapper<>();
+                OutRef<LValue> rhsValue =new OutRef<>();
                 if (!evaluatePointer(expr.getRHS(), rhsValue, context))
                     return false;
 
@@ -335,7 +335,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                         return false;
                     }
 
-                    OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
+                    OutRef<Boolean> bres = new OutRef<>();
                     if (evaluatePointerValueAsBool(lhsValue.get(), bres))
                         return false;
                     return success(bres.get()?1:
@@ -352,7 +352,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                         return false;
                     }
 
-                    OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
+                    OutRef<Boolean> bres = new OutRef<>();
                     if (evaluatePointerValueAsBool(rhsValue.get(), bres))
                         return false;
                     return success(bres.get()?1:
@@ -399,7 +399,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         if (!visit(expr.getLHS()))
             return false; // error in sub-expression.
 
-        OutParamWrapper<APValue> rhsVal = new OutParamWrapper<>();
+        OutRef<APValue> rhsVal = new OutRef<>();
         if (!evaluateIntegerOrLValue(expr.getRHS(), rhsVal, context))
             return false;
 
@@ -495,7 +495,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         {
             // LNot's operand isn't necessarily an integer, so
             // we handle it specially.
-            OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
+            OutRef<Boolean> bres = new OutRef<>();
             if (!handleConversionToBool(expr.getSubExpr(), bres, context))
                 return false;
 
@@ -608,7 +608,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             case CK_FloatingComplexToBoolean:
             case CK_IntegralComplexToBoolean:
             {
-                OutParamWrapper<Boolean> boolResult = new OutParamWrapper<>();
+                OutRef<Boolean> boolResult = new OutRef<>();
                 if (!handleConversionToBool(subExpr, boolResult, context))
                     return false;
                 return success(boolResult.get()?1:0, expr);
@@ -630,7 +630,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
             case CK_PointerToIntegral:
             {
-                OutParamWrapper<LValue> lv = new OutParamWrapper<>();
+                OutRef<LValue> lv = new OutRef<>();
                 if (!evaluatePointer(subExpr, lv, context))
                     return false;
 
@@ -653,7 +653,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             }
             case CK_FloatingToIntegral:
             {
-                OutParamWrapper<APFloat> f = new OutParamWrapper<>();
+                OutRef<APFloat> f = new OutRef<>();
                 if (!evaluateFloat(subExpr, f, context))
                     return false;
 

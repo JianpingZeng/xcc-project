@@ -29,7 +29,7 @@ import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.*;
@@ -757,7 +757,7 @@ public final class PromoteMemToReg
             // specified bb.
             dfs.removeIf(b->!liveInBlocks.contains(b));
 
-            OutParamWrapper<Integer> res = new OutParamWrapper<>(currentVersion);
+            OutRef<Integer> res = new OutRef<>(currentVersion);
             for (BasicBlock b : dfs)
             {
                 res.set(currentVersion);
@@ -779,7 +779,7 @@ public final class PromoteMemToReg
 	 */
 	private boolean queuePhiNode(BasicBlock bb,
             int allocaNo,
-            OutParamWrapper<Integer> version,
+            OutRef<Integer> version,
             HashSet<PhiNode> insertedPHINodes)
 	{
         // Look up the basic-block in question.

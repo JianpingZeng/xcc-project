@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ public interface ParserInterface<T>
 {
     boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<T> val);
+            OutRef<T> val);
 
     int getNumOptions();
 

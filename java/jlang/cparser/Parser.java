@@ -22,7 +22,7 @@ import jlang.support.LangOptions;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 import jlang.type.QualType;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -321,7 +321,7 @@ public class Parser implements Tag,
                 return parseExternalDeclaration();
             case Asm:
                 //Util.assertion(false, "Current inline assembly.");
-                OutParamWrapper<SourceLocation> endLoc = new OutParamWrapper<>();
+                OutRef<SourceLocation> endLoc = new OutRef<>();
                 ActionResult<Expr> result = parseSimpleAsm(endLoc);
                 expectAndConsume(semi, err_expected_semi_after, "top-level asm block", semi);
                 if (result.isInvalid())
@@ -337,7 +337,7 @@ public class Parser implements Tag,
             case Typedef:
             {
                 // A function definition can not start with those keyword.
-                OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
+                OutRef<SourceLocation> declEnd = new OutRef<>();
                 return parseDeclaration(FileContext, declEnd);
             }
             /**
@@ -362,7 +362,7 @@ public class Parser implements Tag,
      *              'asm' '(' asm-string-literal ')'
      * @return
      */
-    private ActionResult<Expr> parseSimpleAsm(OutParamWrapper<SourceLocation> endLoc)
+    private ActionResult<Expr> parseSimpleAsm(OutRef<SourceLocation> endLoc)
     {
         Util.assertion(tok.is(Asm), "Not an inline assembly code");
         SourceLocation asmLoc = consumeToken();
@@ -497,8 +497,8 @@ public class Parser implements Tag,
         // declaration-specifiers are completely optional in the grammar.
         if (getLangOption().implicitInt && declarator.getDeclSpec().isEmpty())
         {
-            OutParamWrapper<String> x = new OutParamWrapper<>("");
-            OutParamWrapper<Integer> y = new OutParamWrapper<>(0);
+            OutRef<String> x = new OutRef<>("");
+            OutRef<Integer> y = new OutRef<>(0);
             declarator.getDeclSpec().setTypeSpecType(TST_int,
                     declarator.getIdentifierLoc(),
                     x, y);
@@ -745,7 +745,7 @@ public class Parser implements Tag,
                 if (!onlyStatements && isDeclarationSpecifier())
                 {
                     SourceLocation declStart = tok.getLocation();
-                    OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
+                    OutRef<SourceLocation> end = new OutRef<>();
                     ArrayList<Decl> decls = parseDeclaration(TheContext.BlockContext, end);
                     SourceLocation declEnd = end.get();
 
@@ -1145,7 +1145,7 @@ public class Parser implements Tag,
                 {
                     // __extension__ silence warnings in the subdecalaration.
                     SourceLocation declStart = tok.getLocation();
-                    OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
+                    OutRef<SourceLocation> declEnd = new OutRef<>();
                     ArrayList<Decl> decls = parseDeclaration(TheContext.BlockContext, declEnd);
                     res = action.actOnDeclStmt(decls, declStart, declEnd.get());
                 }
@@ -1228,7 +1228,7 @@ public class Parser implements Tag,
 
         ParseScope ifScope = new ParseScope(this, DeclScope.value, isC99);
         ActionResult<Expr> condExpr;
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>();
+        OutRef<ActionResult<Expr>> x = new OutRef<>();
         if (parseParenExprOrCondition(x, ifLoc, true))
             return stmtError();
 
@@ -1315,7 +1315,7 @@ public class Parser implements Tag,
      * @return
      */
     private boolean parseParenExprOrCondition(
-            OutParamWrapper<ActionResult<Expr>> exprResult,
+            OutRef<ActionResult<Expr>> exprResult,
             SourceLocation ifLoc,
             boolean convertToBoolean)
     {
@@ -1406,11 +1406,11 @@ public class Parser implements Tag,
      * @return
      */
     private ActionResult<Expr> parseParenExpression(
-            OutParamWrapper<ParenParseOption> exprType,
+            OutRef<ParenParseOption> exprType,
             boolean stopIfCastExpr,
             boolean parseAsExprList,
-            OutParamWrapper<QualType> castTy,
-            OutParamWrapper<SourceLocation> rParenLoc)
+            OutRef<QualType> castTy,
+            OutRef<SourceLocation> rParenLoc)
     {
         Util.assertion(nextTokenIs(l_paren), "Not a paren expression.");
         // eat the '('.
@@ -1689,7 +1689,7 @@ public class Parser implements Tag,
 
         // Parse the condition expression.
         ActionResult<Expr> condExpr;
-        OutParamWrapper<ActionResult<Expr>> res = new OutParamWrapper<>();
+        OutRef<ActionResult<Expr>> res = new OutRef<>();
         if (parseParenExprOrCondition(res, switchLoc, false))
         {
             return stmtError();
@@ -1764,7 +1764,7 @@ public class Parser implements Tag,
 
         ParseScope whileScope = new ParseScope(this, scopeFlags);
 
-        OutParamWrapper<ActionResult<Expr>> wrapper = new OutParamWrapper<>();
+        OutRef<ActionResult<Expr>> wrapper = new OutRef<>();
 
         // parse the condition.
         if (parseParenExprOrCondition(wrapper, whileLoc, true))
@@ -1906,7 +1906,7 @@ public class Parser implements Tag,
         {
             // parse the declaration, for (int X = 4;
             SourceLocation declStart = tok.getLocation();
-            OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
+            OutRef<SourceLocation> end = new OutRef<>();
             ArrayList<Decl> declGroup = parseSimpleDeclaration(end,
                     TheContext.ForContext, false);
 
@@ -2050,7 +2050,7 @@ public class Parser implements Tag,
      * @return
      */
     private ArrayList<Decl> parseSimpleDeclaration(
-            OutParamWrapper<SourceLocation> end,
+            OutRef<SourceLocation> end,
             TheContext context, boolean requiredSemi)
     {
         // Parse the common declaration-specifiers piece.
@@ -2081,7 +2081,7 @@ public class Parser implements Tag,
     private ArrayList<Decl> parseDeclGroup(DeclSpec ds,
             TheContext context,
             boolean allowFunctionDefinition,
-            OutParamWrapper<SourceLocation> end)
+            OutRef<SourceLocation> end)
     {
         Declarator d = new Declarator(ds, context);
         parseDeclarator(d);
@@ -2234,7 +2234,7 @@ public class Parser implements Tag,
         // If a simple-asm-expr is present, parse it.
         if (tok.is(Asm))
         {
-            OutParamWrapper<SourceLocation> loc = new OutParamWrapper<>();
+            OutRef<SourceLocation> loc = new OutRef<>();
             ActionResult<Expr> res = parseSimpleAsm(loc);
             if (res.isInvalid())
             {
@@ -2640,7 +2640,7 @@ public class Parser implements Tag,
      */
     private ArrayList<Decl> parseDeclaration(
             TheContext dc,
-            OutParamWrapper<SourceLocation> declEnd)
+            OutRef<SourceLocation> declEnd)
     {
         Util.assertion(declEnd != null);
         return parseSimpleDeclaration(declEnd, dc, false);
@@ -2811,8 +2811,8 @@ public class Parser implements Tag,
                         break out;
                     }
 
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
 
                     isInvalid = declSpecs.setTypeSpecType(TST_typename, loc,
                             wrapper1, wrapper2, type);
@@ -2881,8 +2881,8 @@ public class Parser implements Tag,
                     break;
                 case Char:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_char, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2890,8 +2890,8 @@ public class Parser implements Tag,
                 }
                 case Int:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_int, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2899,8 +2899,8 @@ public class Parser implements Tag,
                 }
                 case Float:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_float, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2908,8 +2908,8 @@ public class Parser implements Tag,
                 }
                 case Double:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_double, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2917,8 +2917,8 @@ public class Parser implements Tag,
                 }
                 case Void:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_void, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2926,8 +2926,8 @@ public class Parser implements Tag,
                 }
                 case Bool:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
+                    OutRef<String> wrapper1 = new OutRef<>(prevSpec);
+                    OutRef<Integer> wrapper2 = new OutRef<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_bool, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -3056,8 +3056,8 @@ public class Parser implements Tag,
         }
         diag(loc, err_unknown_typename).addTaggedVal(identifierInfo).emit();
 
-        OutParamWrapper<String> prevSpec = new OutParamWrapper<>();
-        OutParamWrapper<Integer> diag = new OutParamWrapper<>();
+        OutRef<String> prevSpec = new OutRef<>();
+        OutRef<Integer> diag = new OutRef<>();
         // mark as an error
         ds.setTypeSpecType(TST_error, loc, prevSpec, diag);
         ds.setRangeEnd(tok.getLocation());
@@ -3180,8 +3180,8 @@ public class Parser implements Tag,
          if (tok.is(l_brace))
             parseEnumBody(startLoc, tagDecl.get());
 
-        OutParamWrapper<String> prevSpecWrapper = new OutParamWrapper<>();
-        OutParamWrapper<Integer> diagWrapper = new OutParamWrapper<>();
+        OutRef<String> prevSpecWrapper = new OutRef<>();
+        OutRef<Integer> diagWrapper = new OutRef<>();
 
         if (ds.setTypeSpecType(TST_enum,
                 startLoc,
@@ -3606,8 +3606,8 @@ public class Parser implements Tag,
             return;
         }
 
-        OutParamWrapper<String> w1 = new OutParamWrapper<>("");
-        OutParamWrapper<Integer> w2 = new OutParamWrapper<>(0);
+        OutRef<String> w1 = new OutRef<>("");
+        OutRef<Integer> w2 = new OutRef<>(0);
         String prevSpec = null;
         int diagID = 0;
         boolean result;
@@ -4854,7 +4854,7 @@ public class Parser implements Tag,
             boolean isAddressOfOperand,
             boolean isTypeCast)
     {
-        OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+        OutRef<Boolean> x = new OutRef<>(false);
         ActionResult<Expr> res = parseCastExpression(isUnaryExpression,
                 isAddressOfOperand, isTypeCast, x);
         if (x.get())
@@ -4883,7 +4883,7 @@ public class Parser implements Tag,
             boolean isUnaryExpression,
             boolean isAddressOfOperand,
             boolean isTypeCast,
-            OutParamWrapper<Boolean> notCastExpr)
+            OutRef<Boolean> notCastExpr)
     {
         ActionResult<Expr> res = null;
         Token nextTok = tok;
@@ -4895,14 +4895,14 @@ public class Parser implements Tag,
             case l_paren:
             {
                 QualType castTy = null;
-                OutParamWrapper<QualType> out1 = new OutParamWrapper<>();
+                OutRef<QualType> out1 = new OutRef<>();
                 SourceLocation rParenLoc = SourceLocation.NOPOS;
-                OutParamWrapper<SourceLocation> out2 =
-                        new OutParamWrapper<>(rParenLoc);
+                OutRef<SourceLocation> out2 =
+                        new OutRef<>(rParenLoc);
 
                 ParenParseOption parenExprTppe =
                         isUnaryExpression ? CompoundLiteral:CastExpr;
-                OutParamWrapper<ParenParseOption> out3 = new OutParamWrapper<>(parenExprTppe);
+                OutRef<ParenParseOption> out3 = new OutRef<>(parenExprTppe);
 
                 res = parseParenExpression(out3, false, isTypeCast,
                         out1, out2);
@@ -5133,14 +5133,14 @@ public class Parser implements Tag,
             // type-ident, or it is a unary-expression that starts with a compound
             // literal, or starts with a primary-expression that is a parenthesized
             // expression.
-            OutParamWrapper<ParenParseOption> exprType =
-                    new OutParamWrapper<>(CastExpr);
-            OutParamWrapper<SourceLocation> lparenLoc =
-                    new OutParamWrapper<>(opTok.getLocation());
-            OutParamWrapper<SourceLocation> rParenLoc =
-                    new OutParamWrapper<>(new SourceLocation());
-            OutParamWrapper<QualType> castTy =
-                    new OutParamWrapper<>(arg.castTy);
+            OutRef<ParenParseOption> exprType =
+                    new OutRef<>(CastExpr);
+            OutRef<SourceLocation> lparenLoc =
+                    new OutRef<>(opTok.getLocation());
+            OutRef<SourceLocation> rParenLoc =
+                    new OutRef<>(new SourceLocation());
+            OutRef<QualType> castTy =
+                    new OutRef<>(arg.castTy);
             operand = parseParenExpression(exprType, true, false,castTy, rParenLoc);
 
             arg.castRange = new SourceRange(lparenLoc.get(), rParenLoc.get());

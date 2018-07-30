@@ -508,7 +508,7 @@ public class X86TargetLowering extends TargetLowering
             setOperationAction(ISD.UNDEF,     MVT.f80, Expand);
             setOperationAction(ISD.FCOPYSIGN, MVT.f80, Expand);
             {
-                OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+                OutRef<Boolean> ignored = new OutRef<>(false);
 
                 APFloat TmpFlt = new APFloat(+0.0);
                 TmpFlt.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
@@ -1626,7 +1626,7 @@ public class X86TargetLowering extends TargetLowering
 
         chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(numBytes, true));
 
-        OutParamWrapper<SDValue> retAddrFrIdx = new OutParamWrapper<>();
+        OutRef<SDValue> retAddrFrIdx = new OutRef<>();
         chain = emitTailCallLoadRetAddr(dag, retAddrFrIdx, chain, isTailCall,
                 is64Bit, fpDiff);
 
@@ -2039,8 +2039,8 @@ public class X86TargetLowering extends TargetLowering
     }
 
     private SDValue emitTailCallLoadRetAddr(SelectionDAG dag,
-            OutParamWrapper<SDValue> outRetAddr, SDValue chain,
-            boolean isTailCall, boolean is64Bit, int fpDiff)
+                                            OutRef<SDValue> outRetAddr, SDValue chain,
+                                            boolean isTailCall, boolean is64Bit, int fpDiff)
     {
         if (!isTailCall || fpDiff == 0) return chain;
 
@@ -5911,8 +5911,8 @@ public class X86TargetLowering extends TargetLowering
 
     @Override
     public boolean isGAPlusOffset(SDNode n,
-                                  OutParamWrapper<GlobalValue> gv,
-                                  OutParamWrapper<Long> offset)
+                                  OutRef<GlobalValue> gv,
+                                  OutRef<Long> offset)
     {
         if (n.getOpcode() == X86ISD.Wrapper)
         {

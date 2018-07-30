@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -35,7 +35,7 @@ public class ParserBool extends Parser<Boolean>
      * @return  True returned when error occur.
      */
     public boolean parse(Option<?> opt, String optName, String arg,
-            OutParamWrapper<Boolean> value)
+            OutRef<Boolean> value)
     {
         switch (arg)
         {

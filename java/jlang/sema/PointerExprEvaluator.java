@@ -21,7 +21,7 @@ import jlang.ast.Tree.Expr;
 import jlang.type.PointerType;
 import jlang.type.QualType;
 import tools.APSInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -29,8 +29,8 @@ import tools.OutParamWrapper;
  */
 public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    private OutParamWrapper<LValue> result;
-    public PointerExprEvaluator(OutParamWrapper<LValue> result, ASTContext ctx)
+    private OutRef<LValue> result;
+    public PointerExprEvaluator(OutRef<LValue> result, ASTContext ctx)
     {
         super(ctx);
         this.result = result;
@@ -80,7 +80,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         // So that, the pExpr must be pointer jlang.type
         APSInt offset = new APSInt();
-        OutParamWrapper<APSInt> x = new OutParamWrapper<>(offset);
+        OutRef<APSInt> x = new OutRef<>(offset);
         if (!evaluateInteger(iExpr, x, context))
             return false;
         offset = x.get();
@@ -139,7 +139,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
             case CK_IntegralToPointer:
             {
                 APValue value = new APValue();
-                OutParamWrapper<APValue> x = new OutParamWrapper<>(value);
+                OutRef<APValue> x = new OutRef<>(value);
                 if (!evaluateIntegerOrLValue(subExp, x, context))
                     break;
 

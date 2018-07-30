@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -24,9 +24,9 @@ import tools.OutParamWrapper;
  */
 public interface CCCustomFn
 {
-    boolean apply(OutParamWrapper<Integer> valNo,
-            OutParamWrapper<Integer> valVT, OutParamWrapper<EVT> locVT,
-            OutParamWrapper<CCValAssign.LocInfo> locInfo,
-            OutParamWrapper<ArgFlagsTy> argFlags,
-            CCState state);
+    boolean apply(OutRef<Integer> valNo,
+                  OutRef<Integer> valVT, OutRef<EVT> locVT,
+                  OutRef<CCValAssign.LocInfo> locInfo,
+                  OutRef<ArgFlagsTy> argFlags,
+                  CCState state);
 }

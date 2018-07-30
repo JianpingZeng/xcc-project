@@ -1837,7 +1837,7 @@ public abstract class Tree implements StmtClass
 	    }
 
 	    public boolean isIntegerConstantExpr(
-			    OutParamWrapper<APSInt> iceResult,
+			    OutRef<APSInt> iceResult,
 			    ASTContext ctx)
 	    {
 		    ICEDiag d = checkICE(this, ctx);
@@ -1857,7 +1857,7 @@ public abstract class Tree implements StmtClass
 
 	    public boolean isIntegerConstantExpr(ASTContext ctx)
 	    {
-	    	OutParamWrapper<APSInt> x = new OutParamWrapper<>(new APSInt());
+	    	OutRef<APSInt> x = new OutRef<>(new APSInt());
 	    	return isIntegerConstantExpr(x, ctx);
 	    }
 
@@ -1882,9 +1882,9 @@ public abstract class Tree implements StmtClass
          * @return
          */
 	    public boolean isUnusedResultAWarning(
-	    		OutParamWrapper<SourceLocation> loc,
-			    OutParamWrapper<SourceRange> r1,
-			    OutParamWrapper<SourceRange> r2)
+	    		OutRef<SourceLocation> loc,
+			    OutRef<SourceRange> r1,
+			    OutRef<SourceRange> r2)
 	    {
 	        switch (getStmtClass())
             {
@@ -2036,7 +2036,7 @@ public abstract class Tree implements StmtClass
 
             // If we have an integer constant expression, we need to *evaluate* it and
             // test for the value 0.
-            OutParamWrapper<APSInt> x = new OutParamWrapper<>(new APSInt());
+            OutRef<APSInt> x = new OutRef<>(new APSInt());
             return isIntegerConstantExpr(x, context) && x.get().eq(0);
 	    }
 
@@ -2441,7 +2441,7 @@ public abstract class Tree implements StmtClass
 
 	    public IsModifiableLvalueResult isModifiableLvalue(
 			    ASTContext context,
-			    OutParamWrapper<SourceLocation> loc)
+			    OutRef<SourceLocation> loc)
 	    {
 			IsLvalueResult lvalResult = isLvalue(context);
 

@@ -19,9 +19,8 @@ package utils.tablegen;
 
 import tools.Util;
 import backend.codegen.MVT;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
-import tools.Util;
 import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.IntInit;
 
@@ -541,9 +540,9 @@ public class PatternCodeEmitter
 
     private void emitIntFlagSelectCode(TreePatternNode node,
                                        String rootName,
-                                       OutParamWrapper<Boolean> chainEmitted,
-                                       OutParamWrapper<Boolean> inFlagDecled,
-                                       OutParamWrapper<Boolean> resNodeDecled,
+                                       OutRef<Boolean> chainEmitted,
+                                       OutRef<Boolean> inFlagDecled,
+                                       OutRef<Boolean> resNodeDecled,
                                        boolean isRoot)
     {
         CodeGenTarget target = cgp.getTarget();
@@ -1089,9 +1088,9 @@ public class PatternCodeEmitter
             boolean chainEmitted = nodeHasChain;
             if (nodeHasInFlag || hasImpInputs)
             {
-                OutParamWrapper<Boolean> x = new OutParamWrapper<>(chainEmitted);
-                OutParamWrapper<Boolean> y = new OutParamWrapper<>(inFlagDecled);
-                OutParamWrapper<Boolean> z = new OutParamWrapper<>(resNodeDecled);
+                OutRef<Boolean> x = new OutRef<>(chainEmitted);
+                OutRef<Boolean> y = new OutRef<>(inFlagDecled);
+                OutRef<Boolean> z = new OutRef<>(resNodeDecled);
                 emitIntFlagSelectCode(pattern, "n", x, y, z, true);
                 chainEmitted = x.get();
                 inFlagDecled = y.get();

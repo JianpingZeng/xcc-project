@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.ArrayList;
 
@@ -39,7 +39,7 @@ public class Opt<T> extends Option<T>
     protected boolean handleOccurrence(int pos, String optionName, String arg)
     {
         T val;
-        OutParamWrapper<T> x = new OutParamWrapper<>();
+        OutRef<T> x = new OutRef<>();
         if (parser.parse(this, optionName, arg, x))
             return true;
         val = x.get();

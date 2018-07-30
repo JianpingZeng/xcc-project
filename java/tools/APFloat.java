@@ -358,7 +358,7 @@ public class APFloat implements Cloneable
         int parts = partCount();
         long[] x = new long[parts];
 
-        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+        OutRef<Boolean> ignored = new OutRef<>(false);
         fs = v.convertToInteger(x, parts * 64, true, rmNearestTiesToEven, ignored);
         if (fs == opInvalidOp)
             return fs;
@@ -398,7 +398,7 @@ public class APFloat implements Cloneable
 
             int parts = partCount();
             long[] x = new long[parts];
-            OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+            OutRef<Boolean> ignored = new OutRef<>(false);
             fs = v.convertToInteger(x, parts * 64, true, rmTowardZero, ignored);
 
             if (fs == opInvalidOp)
@@ -482,7 +482,7 @@ public class APFloat implements Cloneable
     }
 
     /***Conversion*/
-    public int convert(FltSemantics toSem, RoundingMode rm, OutParamWrapper<Boolean> loseInfo)
+    public int convert(FltSemantics toSem, RoundingMode rm, OutRef<Boolean> loseInfo)
     {
         LostFraction LostFraction;
         int newPartCount, oldPartCount;
@@ -559,7 +559,7 @@ public class APFloat implements Cloneable
     }
 
     public int convertToInteger(long[] parts, int width, boolean isSigned,
-            RoundingMode rm, OutParamWrapper<Boolean> isExact)
+            RoundingMode rm, OutRef<Boolean> isExact)
     {
         int fs = convertToSignExtendedInteger(parts, width, isSigned, rm, isExact);
 
@@ -1079,7 +1079,7 @@ public class APFloat implements Cloneable
         long[] scratch = new long[4];
         long[] fullSignificand;
         LostFraction LostFraction;
-        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(false);
+        OutRef<Boolean> ignored = new OutRef<>(false);
 
         Util.assertion( semantics == rhs.semantics);
 
@@ -1837,7 +1837,7 @@ public class APFloat implements Cloneable
     }
 
     private int convertToSignExtendedInteger(long[] parts, int width,
-            boolean isSigned, RoundingMode rm, OutParamWrapper<Boolean> isExact)
+            boolean isSigned, RoundingMode rm, OutRef<Boolean> isExact)
     {
         LostFraction lostFraction;
         assertArithmeticOK(semantics);
@@ -1966,7 +1966,7 @@ public class APFloat implements Cloneable
     }
 
     private static int skipLeadingZeroesAndAnyDot(String str, int begin, int end,
-            OutParamWrapper<Integer> dot)
+            OutRef<Integer> dot)
     {
         int i = begin;
         dot.set(end);
@@ -2128,7 +2128,7 @@ public class APFloat implements Cloneable
         significand = significandParts();
         partsCount = partCount();
         bitPos = partsCount * 64;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>();
+        OutRef<Integer> x = new OutRef<>();
         int begin = 0, end = str.length();
         int p = skipLeadingZeroesAndAnyDot(str, begin, end, x);
         firstSignificantDigit = p;
@@ -2204,7 +2204,7 @@ public class APFloat implements Cloneable
     private static decimalInfo interpretDecimal(String str, int begin, int end)
     {
         int dot = end;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(dot);
+        OutRef<Integer> x = new OutRef<>(dot);
         int p = skipLeadingZeroesAndAnyDot(str, begin, end, x);
         dot = x.get();
         decimalInfo d = new decimalInfo();

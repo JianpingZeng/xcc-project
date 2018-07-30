@@ -1002,7 +1002,7 @@ public final class Sema implements DiagnosticParseTag,
         if (t.isVariablyModifiedType())
         {
             boolean sizeIsNegative;
-            OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+            OutRef<Boolean> x = new OutRef<>(false);
             QualType fixedTy = tryToFixInvalidVariablyModifiedType(t, context, x);
             sizeIsNegative = x.get();
 
@@ -1022,7 +1022,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         boolean zeroWidth = false;
-        OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+        OutRef<Boolean> x = new OutRef<>(false);
         if (bitWidth != null && verifyField(loc, ii, t, bitWidth, x))
         {
             invalidDecl = true;
@@ -1050,7 +1050,7 @@ public final class Sema implements DiagnosticParseTag,
             IdentifierInfo fieldName,
             QualType fieldTy,
             Expr bitWidth,
-            OutParamWrapper<Boolean> zeroWidth)
+            OutRef<Boolean> zeroWidth)
     {
         if (zeroWidth != null)
             zeroWidth.set(true);
@@ -1074,7 +1074,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         APSInt value = new APSInt();
-        OutParamWrapper<APSInt> x = new OutParamWrapper<>(value);
+        OutRef<APSInt> x = new OutRef<>(value);
         if (verifyIntegerConstantExpression(bitWidth, x))
             return true;
         value = x.get();
@@ -1283,7 +1283,7 @@ public final class Sema implements DiagnosticParseTag,
             FltSemantics format = context.getFloatTypeSemantics(ty);
 
             boolean isExact;
-            OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+            OutRef<Boolean> x = new OutRef<>(false);
             APFloat val = literal.getFloatValue(format, x);
             isExact = x.get();
             res = new FloatingLiteral(val, isExact, ty, token.getLocation());
@@ -1437,7 +1437,7 @@ public final class Sema implements DiagnosticParseTag,
 
         diagnoseFunctionSpecifiers(paramDecls);
 
-        OutParamWrapper<DeclaratorInfo> x = new OutParamWrapper<>();
+        OutRef<DeclaratorInfo> x = new OutRef<>();
         QualType paramDeclType = getTypeForDeclarator(paramDecls, x);
         DeclaratorInfo dInfo = x.get();
 
@@ -1619,7 +1619,7 @@ public final class Sema implements DiagnosticParseTag,
                 val = temp;
             }
             // C99 6.7.2.2p2: Make sure we have an integer constant expression.
-            OutParamWrapper<APSInt> xx = new OutParamWrapper<>(enumVal);
+            OutRef<APSInt> xx = new OutRef<>(enumVal);
             boolean verifyRet = verifyIntegerConstantExpression(val, xx);
             enumVal = xx.get();
             if (verifyRet)
@@ -1990,7 +1990,7 @@ public final class Sema implements DiagnosticParseTag,
         IDeclContext dc,
         QualType ty,
         NamedDecl prevDecl,
-        OutParamWrapper<Boolean> redeclaration)
+        OutRef<Boolean> redeclaration)
     {
         diagnoseFunctionSpecifiers(d);
 
@@ -2076,7 +2076,7 @@ public final class Sema implements DiagnosticParseTag,
         New = previous.getFoundDecl();
 
         boolean redeclaration = false;
-        OutParamWrapper<Boolean> xx = new OutParamWrapper<>(false);
+        OutRef<Boolean> xx = new OutRef<>(false);
 
         if (d.getDeclSpec().getStorageClassSpec() == SCS.SCS_typedef)
         {
@@ -2108,7 +2108,7 @@ public final class Sema implements DiagnosticParseTag,
             IDeclContext dc,
             QualType ty,
             NamedDecl prevDecl,
-            OutParamWrapper<Boolean> redeclaration)
+            OutRef<Boolean> redeclaration)
     {
         Util.assertion( ty.isFunctionType());
 
@@ -2216,7 +2216,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // Perform semantic checking on function declaration.
-        OutParamWrapper<NamedDecl> prev = new OutParamWrapper<>(prevDecl);
+        OutRef<NamedDecl> prev = new OutRef<>(prevDecl);
         checkFunctionDeclaration(newFD, prev, redeclaration);
         prevDecl = prev.get();
 
@@ -2237,8 +2237,8 @@ public final class Sema implements DiagnosticParseTag,
      */
     private void checkFunctionDeclaration(
             FunctionDecl newFD,
-            OutParamWrapper<NamedDecl> prevDecl,
-            OutParamWrapper<Boolean> redecalration)
+            OutRef<NamedDecl> prevDecl,
+            OutRef<Boolean> redecalration)
     {
         if (newFD.isInvalidDecl())
             return;
@@ -2633,7 +2633,7 @@ public final class Sema implements DiagnosticParseTag,
     private static QualType tryToFixInvalidVariablyModifiedType(
             QualType ty,
             ASTContext context,
-            OutParamWrapper<Boolean> sizeIsNegative)
+            OutRef<Boolean> sizeIsNegative)
     {
         sizeIsNegative.set(false);
 
@@ -2787,7 +2787,7 @@ public final class Sema implements DiagnosticParseTag,
     private void checkVariableDeclaration(
             VarDecl newVD,
             NamedDecl prevDecl,
-            OutParamWrapper<Boolean> redeclaration)
+            OutRef<Boolean> redeclaration)
     {
         // If the decl is already known invalid, don't check it.
         if (newVD.isInvalidDecl())
@@ -2810,7 +2810,7 @@ public final class Sema implements DiagnosticParseTag,
                 (ty.isVariableArrayType() && newVD.hasGlobalStorage()))
         {
             // TODO
-            OutParamWrapper<Boolean> SizeIsNegative = new OutParamWrapper<>(false);
+            OutRef<Boolean> SizeIsNegative = new OutRef<>(false);
             QualType FixedTy = tryToFixInvalidVariablyModifiedType(ty, context, SizeIsNegative);
 
             if (FixedTy.isNull() && ty.isVariableArrayType()) {
@@ -2870,7 +2870,7 @@ public final class Sema implements DiagnosticParseTag,
             IDeclContext dc,
             QualType ty,
             NamedDecl prevDecl,
-            OutParamWrapper<Boolean> redeclaration)
+            OutRef<Boolean> redeclaration)
     {
         IdentifierInfo name = d.getIdentifier();
         SourceLocation nameLoc = d.getIdentifierLoc();
@@ -3147,7 +3147,7 @@ public final class Sema implements DiagnosticParseTag,
      * @param d
      * @return
      */
-    private QualType getTypeForDeclarator(Declarator d, OutParamWrapper<DeclaratorInfo> dInfo)
+    private QualType getTypeForDeclarator(Declarator d, OutRef<DeclaratorInfo> dInfo)
     {
         // long long is C99 feature.
         if (!getLangOptions().c99 && d.getDeclSpec().getTypeSpecWidth() == DeclSpec.TSW.TSW_longlong)
@@ -3486,7 +3486,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         APSInt constVal = new APSInt(32);
-        OutParamWrapper<APSInt> outVal = new OutParamWrapper<>(constVal);
+        OutRef<APSInt> outVal = new OutRef<>(constVal);
 
         if (arraySize == null)
         {
@@ -3809,14 +3809,14 @@ public final class Sema implements DiagnosticParseTag,
     private boolean verifyIntegerConstantExpression(Expr expr)
     {
         APSInt result = new APSInt(32);
-        OutParamWrapper<APSInt> xx = new OutParamWrapper<>();
+        OutRef<APSInt> xx = new OutRef<>();
         return verifyIntegerConstantExpression(expr, xx);
     }
 
     private boolean verifyIntegerConstantExpression(Expr expr,
-            OutParamWrapper<APSInt> result)
+            OutRef<APSInt> result)
     {
-        OutParamWrapper<APSInt> iceResult = new OutParamWrapper<>();
+        OutRef<APSInt> iceResult = new OutRef<>();
 
         if (expr.isIntegerConstantExpr(iceResult, context))
         {
@@ -3886,9 +3886,9 @@ public final class Sema implements DiagnosticParseTag,
         // Ignores expressions that have void type.
         if (e.getType().isVoidType())
             return;
-        OutParamWrapper<SourceLocation> loc = new OutParamWrapper<>();
-        OutParamWrapper<SourceRange> r1 = new OutParamWrapper<>();
-        OutParamWrapper<SourceRange> r2 = new OutParamWrapper<>();
+        OutRef<SourceLocation> loc = new OutRef<>();
+        OutRef<SourceRange> r1 = new OutRef<>();
+        OutRef<SourceRange> r2 = new OutRef<>();
         if (!e.isUnusedResultAWarning(loc, r1, r2))
             return;
 
@@ -4944,7 +4944,7 @@ public final class Sema implements DiagnosticParseTag,
             // C99 6.8.6.4p3(136): The return statement is not an assignment. The
             // overlap restriction of subclause 6.5.16.1 does not apply to the case of
             // function return.
-            OutParamWrapper<Expr> out = new OutParamWrapper<>(retValExpr);
+            OutRef<Expr> out = new OutRef<>(retValExpr);
             if (performCopyInitialization(out, retType, AA_Returning))
                 return stmtError();
 
@@ -5083,8 +5083,8 @@ public final class Sema implements DiagnosticParseTag,
         ActionResult<Expr> lhsExpr = new ActionResult<>(lhs);
         ActionResult<Expr> rhsExpr = new ActionResult<>(rhs);
 
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(lhsExpr);
-        OutParamWrapper<ActionResult<Expr>> y = new OutParamWrapper<>(rhsExpr);
+        OutRef<ActionResult<Expr>> x = new OutRef<>(lhsExpr);
+        OutRef<ActionResult<Expr>> y = new OutRef<>(rhsExpr);
 
         // Result type of binary operator.
         QualType resultTy = new QualType();
@@ -5154,7 +5154,7 @@ public final class Sema implements DiagnosticParseTag,
                 break;
             case BO_AddAssign:
             {
-                OutParamWrapper<QualType> xx = new OutParamWrapper<>(compLHSTy);
+                OutRef<QualType> xx = new OutRef<>(compLHSTy);
                 compResultTy = checkAdditionOperands(x, y, opLoc, xx);
                 compLHSTy = xx.get();
 
@@ -5166,7 +5166,7 @@ public final class Sema implements DiagnosticParseTag,
             }
             case BO_SubAssign:
             {
-                OutParamWrapper<QualType> xx = new OutParamWrapper<>(compLHSTy);
+                OutRef<QualType> xx = new OutRef<>(compLHSTy);
                 compResultTy = checkSubtractionOperands(x, y, opLoc, xx);
                 compLHSTy = xx.get();
 
@@ -5314,8 +5314,8 @@ public final class Sema implements DiagnosticParseTag,
         // arithmetic conversion.
         if (lhsTy.isArithmeticType() && rhsTy.isArithmeticType())
         {
-            OutParamWrapper<ActionResult<Expr>> lhsWrapper = new OutParamWrapper<>(lhs);
-            OutParamWrapper<ActionResult<Expr>> rhsWrapper = new OutParamWrapper<>(rhs);
+            OutRef<ActionResult<Expr>> lhsWrapper = new OutRef<>(lhs);
+            OutRef<ActionResult<Expr>> rhsWrapper = new OutRef<>(rhs);
             usualArithmeticConversions(lhsWrapper, rhsWrapper, false);
             lhs.set(lhsWrapper.get().get());
             rhs.set(rhsWrapper.get().get());
@@ -5464,7 +5464,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     private QualType checkAssignmentOperands(
             Expr lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation loc,
             QualType compoundType)
     {
@@ -5507,7 +5507,7 @@ public final class Sema implements DiagnosticParseTag,
         else
         {
             // Compound assignment "x+y".
-            OutParamWrapper<CastKind> castKind = new OutParamWrapper<>(CK_Invalid);
+            OutRef<CastKind> castKind = new OutRef<>(CK_Invalid);
             convTy = checkAssignmentConstraints(lhsType, rhs, castKind);
         }
 
@@ -5549,14 +5549,14 @@ public final class Sema implements DiagnosticParseTag,
 
     public AssignConvertType checkSingleAssignmentConstraints(
             QualType lhsType,
-            OutParamWrapper<ActionResult<Expr>> rhsExpr)
+            OutRef<ActionResult<Expr>> rhsExpr)
     {
         // Check is the left type is pointer type and right expression is
         // a null pointer constant.
         if (lhsType.isPointerType())
         {
             Expr rhsType = rhsExpr.get().get();
-            OutParamWrapper<APSInt> iceResult = new OutParamWrapper<>();
+            OutRef<APSInt> iceResult = new OutRef<>();
             if (rhsType.isIntegerConstantExpr(iceResult, context))
             {
                 CastKind ck = iceResult.get().eq(0)? CK_NullToPointer : CK_IntegralToPointer;
@@ -5574,7 +5574,7 @@ public final class Sema implements DiagnosticParseTag,
         // Perform type checking on usual assignment expression.
         QualType rhsType = rhsExpr.get().get().getType();
 
-        OutParamWrapper<CastKind> x = new OutParamWrapper<>(CK_Invalid);
+        OutRef<CastKind> x = new OutRef<>(CK_Invalid);
         AssignConvertType result = checkAssignmentConstraints(lhsType, rhsExpr, x);
         CastKind ck = x.get();
 
@@ -5609,8 +5609,8 @@ public final class Sema implements DiagnosticParseTag,
      */
     private AssignConvertType checkAssignmentConstraints(
             QualType lhsType,
-            OutParamWrapper<ActionResult<Expr>> rhsExpr,
-            OutParamWrapper<CastKind> castKind)
+            OutRef<ActionResult<Expr>> rhsExpr,
+            OutRef<CastKind> castKind)
     {
         // Discard type qualifier on this type.
         lhsType = context.getCanonicalType(lhsType).getUnQualifiedType();
@@ -5716,7 +5716,7 @@ public final class Sema implements DiagnosticParseTag,
             QualType srcType,
             Expr srcExpr,
             AssignAction action,
-            OutParamWrapper<Boolean> complained)
+            OutRef<Boolean> complained)
     {
         if (complained != null)
             complained.set(false);
@@ -5791,7 +5791,7 @@ public final class Sema implements DiagnosticParseTag,
      * @return  The kind of CastKind.
      */
     private CastKind prepareScalarCast(
-            OutParamWrapper<ActionResult<Expr>> srcExpr,
+            OutRef<ActionResult<Expr>> srcExpr,
             QualType dstType)
     {
         QualType srcType = srcExpr.get().get().getType();
@@ -6054,8 +6054,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkMultiplyDivideOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             boolean isCompAssign,
             boolean isDiv)
@@ -6096,8 +6096,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private boolean handleIntegerToComplexFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> intExpr,
-            OutParamWrapper<ActionResult<Expr>> complexExpr,
+            OutRef<ActionResult<Expr>> intExpr,
+            OutRef<ActionResult<Expr>> complexExpr,
             QualType intType,
             QualType complexType,
             boolean skipCast)
@@ -6124,8 +6124,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType handleComplexFloatToComplexFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> lhsExpr,
-            OutParamWrapper<ActionResult<Expr>> rhsExpr,
+            OutRef<ActionResult<Expr>> lhsExpr,
+            OutRef<ActionResult<Expr>> rhsExpr,
             QualType lhsType,
             QualType rhsType,
             boolean isCompAssign)
@@ -6160,8 +6160,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
 	 */
     private QualType handleOtherComplexFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> complexExpr,
-            OutParamWrapper<ActionResult<Expr>> otherExpr,
+            OutRef<ActionResult<Expr>> complexExpr,
+            OutRef<ActionResult<Expr>> otherExpr,
             QualType complexType,
             QualType otherType,
             boolean convertComplexExpr,
@@ -6208,8 +6208,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType handleComplexFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             QualType lhsType,
             QualType rhsType,
             boolean isCompAssign)
@@ -6259,8 +6259,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType handleFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             QualType LHSType,
             QualType RHSType,
             boolean IsCompAssign)
@@ -6307,8 +6307,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType handleIntToFloatConversion(
-            OutParamWrapper<ActionResult<Expr>> floatExpr,
-            OutParamWrapper<ActionResult<Expr>> intExpr,
+            OutRef<ActionResult<Expr>> floatExpr,
+            OutRef<ActionResult<Expr>> intExpr,
             QualType floatTy,
             QualType intTy,
             boolean convertInt,
@@ -6351,8 +6351,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType handleIntegerConversion(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             QualType lhsType,
             QualType rhsType,
             boolean isCompAssign)
@@ -6437,8 +6437,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType usualArithmeticConversions(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             boolean isCompAssign)
     {
         if (!isCompAssign)
@@ -6503,8 +6503,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkRemainderOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             boolean isCompAssign)
     {
@@ -6524,10 +6524,10 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkAdditionOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
-            OutParamWrapper<QualType> compLHSTy)
+            OutRef<QualType> compLHSTy)
     {
         QualType compType = usualArithmeticConversions(lhs, rhs, compLHSTy!=null);
         if (lhs.get().isInvalid() || rhs.get().isInvalid())
@@ -6576,8 +6576,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkAdditionOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>>  rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc)
     {
         return checkAdditionOperands(lhs, rhs, opLoc, null);
@@ -6783,8 +6783,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkSubtractionOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc)
     {
         return checkSubtractionOperands(lhs, rhs, opLoc, null);
@@ -6833,10 +6833,10 @@ public final class Sema implements DiagnosticParseTag,
 
     // C99 6.5.6
     private QualType checkSubtractionOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
-            OutParamWrapper<QualType> compLHSTy)
+            OutRef<QualType> compLHSTy)
     {
         checkArithmeticNull(this, lhs.get(), rhs.get(), opLoc, /*isCompare*/false);
 
@@ -6898,8 +6898,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkShiftOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             BinaryOperatorKind opc)
 
@@ -6908,8 +6908,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkShiftOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             BinaryOperatorKind opc,
             boolean isCompAssign)
@@ -6951,8 +6951,8 @@ public final class Sema implements DiagnosticParseTag,
      */
     private static void checkEnumComparison(Sema s,
             SourceLocation loc,
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs)
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs)
     {
         QualType lhsStrippedType = lhs.get().get().ignoreParenCasts().getType();
         QualType rhsStrippedType = rhs.get().get().ignoreParenCasts().getType();
@@ -6991,8 +6991,8 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType checkComparisonOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             BinaryOperatorKind opc,
             boolean isRelational)
@@ -7305,8 +7305,8 @@ public final class Sema implements DiagnosticParseTag,
     private static void diagnoseDistinctPointerComparison(
             Sema sema,
             SourceLocation opLoc,
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             boolean isError)
     {
         sema.diag(opLoc, isError ?
@@ -7322,8 +7322,8 @@ public final class Sema implements DiagnosticParseTag,
     private static void diagnoseFunctionPointerToVoidComparison(
             Sema sema,
             SourceLocation opLoc,
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             boolean isError)
     {
         sema.diag(opLoc, isError ?
@@ -7349,16 +7349,16 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private QualType checkBitwiseOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc)
     {
         return checkBitwiseOperands(lhs, rhs, opLoc, false);
     }
 
     private QualType checkBitwiseOperands(
-            OutParamWrapper<ActionResult<Expr>> lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> lhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             boolean isCompAssign)
     {
@@ -7386,7 +7386,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private QualType checkCommaOperands(
             Expr lhs,
-            OutParamWrapper<ActionResult<Expr>> rhs,
+            OutRef<ActionResult<Expr>> rhs,
             SourceLocation loc)
     {
         rhs.set(defaultFunctionArrayConversion(rhs.get().get()));
@@ -7537,7 +7537,7 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private QualType checkIndirectOperand(Expr op,
-            OutParamWrapper<ExprValueKind> vk,
+            OutRef<ExprValueKind> vk,
             SourceLocation opLoc)
     {
         ActionResult<Expr> convRes = usualUnaryConversions(op);
@@ -7579,7 +7579,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private QualType checkInrementDecrementOperand(
             Expr op,
-            OutParamWrapper<ExprValueKind> vk,
+            OutRef<ExprValueKind> vk,
             SourceLocation opLoc,
             boolean isIncre,
             boolean isPrefix)
@@ -7649,7 +7649,7 @@ public final class Sema implements DiagnosticParseTag,
         // recursively, any member or element of all contained aggregates or unions)
         // with a const-qualified type.
         SourceLocation originLoc = oploc.clone();
-        OutParamWrapper<SourceLocation> x = new OutParamWrapper<>(oploc);
+        OutRef<SourceLocation> x = new OutRef<>(oploc);
         Expr.IsModifiableLvalueResult res = e.isModifiableLvalue(context, x);
         oploc = x.get();
         int diag = 0;
@@ -7733,7 +7733,7 @@ public final class Sema implements DiagnosticParseTag,
         // the jlang.parser.
         Util.assertion(d.getIdentifier() == null, "Type must have no identifier!");
 
-        OutParamWrapper<DeclaratorInfo> x = new OutParamWrapper<>(null);
+        OutRef<DeclaratorInfo> x = new OutRef<>(null);
         QualType t = getTypeForDeclarator(d, x);
         if (d.isInvalidType())
             return new ActionResult<>();
@@ -7765,8 +7765,8 @@ public final class Sema implements DiagnosticParseTag,
     private boolean checkCastTypes(
             SourceRange range,
             QualType castTy,
-            OutParamWrapper<Expr> expr,
-            OutParamWrapper<CastKind> kind)
+            OutRef<Expr> expr,
+            OutRef<CastKind> kind)
     {
         expr.set(defaultFunctionArrayConversion(expr.get()).get());
 
@@ -7862,7 +7862,7 @@ public final class Sema implements DiagnosticParseTag,
             }
         }
 
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(new ActionResult<>(expr.get()));
+        OutRef<ActionResult<Expr>> x = new OutRef<>(new ActionResult<>(expr.get()));
 
         kind.set(prepareScalarCast(x, castTy));
         expr.set(x.get().get());
@@ -7882,8 +7882,8 @@ public final class Sema implements DiagnosticParseTag,
 
         if (castExpr instanceof ParenListExpr)
             return actOnCastOfParenListExpr(s, lParenLoc, rParenLoc, castExpr, castTy);
-        OutParamWrapper<CastKind> x = new OutParamWrapper<>(kind);
-        OutParamWrapper<Expr> e = new OutParamWrapper<>(castExpr);
+        OutRef<CastKind> x = new OutRef<>(kind);
+        OutRef<Expr> e = new OutRef<>(castExpr);
         if (checkCastTypes(new SourceRange(lParenLoc, rParenLoc), castTy, e, x))
             return exprError();
 
@@ -8310,7 +8310,7 @@ public final class Sema implements DiagnosticParseTag,
                 }
 
                 // Pass the argument
-                OutParamWrapper<Expr> out = new OutParamWrapper<>(arg);
+                OutRef<Expr> out = new OutRef<>(arg);
                 boolean res = performCopyInitialization(out, protoArgType, AA_Passing);
                 arg = out.get();
                 if (res) return true;
@@ -8496,7 +8496,7 @@ public final class Sema implements DiagnosticParseTag,
 
         LookupResult res = new LookupResult(this, name, opLoc, LookupMemberName);
         ActionResult<Expr> baseResult = new ActionResult<>(base);
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(baseResult);
+        OutRef<ActionResult<Expr>> x = new OutRef<>(baseResult);
         result = lookupMemberExpr(res, x, isArrow, opLoc);
         baseResult = x.get();
 
@@ -8645,7 +8645,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private ActionResult<Expr> lookupMemberExpr(
             LookupResult lookupResult,
-            OutParamWrapper<ActionResult<Expr>> baseExpr,
+            OutRef<ActionResult<Expr>> baseExpr,
             boolean isArrow,
             SourceLocation opLoc)
     {
@@ -8995,7 +8995,7 @@ public final class Sema implements DiagnosticParseTag,
             case UO_PreDec:
             case UO_PostDec:
             case UO_PostInc:
-                OutParamWrapper<ExprValueKind> o1 = new OutParamWrapper<>(vk);
+                OutRef<ExprValueKind> o1 = new OutRef<>(vk);
                 resultTy = checkInrementDecrementOperand(input.get(), o1, opLoc,
                         opc == UO_PreInc || opc == UO_PostInc,
                         opc == UO_PostDec || opc == UO_PreDec);
@@ -9006,7 +9006,7 @@ public final class Sema implements DiagnosticParseTag,
                 break;
             case UO_Deref:
                 input = defaultFunctionArrayLValueConversion(inputExpr);
-                o1 = new OutParamWrapper<>(vk);
+                o1 = new OutRef<>(vk);
                 resultTy = checkIndirectOperand(input.get(), o1, opLoc);
                 vk = o1.get();
                 break;
@@ -9162,8 +9162,8 @@ public final class Sema implements DiagnosticParseTag,
             diag(nameLoc, warn_implicit_function_decl)
                     .addTaggedVal(name).emit();
         DeclSpec ds = new DeclSpec();
-        OutParamWrapper<String> x = new OutParamWrapper<>("");
-        OutParamWrapper<Integer> y = new OutParamWrapper<>(-1);
+        OutRef<String> x = new OutRef<>("");
+        OutRef<Integer> y = new OutRef<>(-1);
         boolean error = ds.setTypeSpecType(TST.TST_int, nameLoc, x, y);
         String dummy = x.get();
         int diagID = y.get();
@@ -9607,7 +9607,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // Check redefinition.
-        OutParamWrapper<VarDecl> def = new OutParamWrapper<>(null);
+        OutRef<VarDecl> def = new OutRef<>(null);
         if (vd.getDefinition(def) != null)
         {
             diag(vd.getLocation(), err_redefinition)
@@ -9632,8 +9632,8 @@ public final class Sema implements DiagnosticParseTag,
             }
             else if(!vd.isInvalidDecl())
             {
-                OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
-                OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
+                OutRef<Expr> x = new OutRef<>(init);
+                OutRef<QualType> y = new OutRef<>(declTy);
                 boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getIdentifier(), directDecl);
                 init = x.get();
                 declTy = y.get();
@@ -9661,8 +9661,8 @@ public final class Sema implements DiagnosticParseTag,
             }
             if (!vd.isInvalidDecl())
             {
-                OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
-                OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
+                OutRef<Expr> x = new OutRef<>(init);
+                OutRef<QualType> y = new OutRef<>(declTy);
                 boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getIdentifier(), directDecl);
                 init = x.get();
                 declTy = y.get();
@@ -9905,8 +9905,8 @@ public final class Sema implements DiagnosticParseTag,
                     // Implicitly declare the argument as type 'int' for lack of a better
                     // type.
                     DeclSpec ds = new DeclSpec();
-                    OutParamWrapper<String> prevSpec = new OutParamWrapper<>("");
-                    OutParamWrapper<Integer> diagID = new OutParamWrapper<>(-1);
+                    OutRef<String> prevSpec = new OutRef<>("");
+                    OutRef<Integer> diagID = new OutRef<>(-1);
                     ds.setTypeSpecType(TST.TST_int, fti.argInfo.get(i).identLoc,
                             prevSpec, diagID);
                     Declarator paramDeclarator = new Declarator(ds, KNRTypeListContext);
@@ -9992,8 +9992,8 @@ public final class Sema implements DiagnosticParseTag,
             return exprError();
         }
 
-        OutParamWrapper<Expr> x = new OutParamWrapper<>(literalExpr);
-        OutParamWrapper<QualType> y = new OutParamWrapper<>(literalType);
+        OutRef<Expr> x = new OutRef<>(literalExpr);
+        OutRef<QualType> y = new OutRef<>(literalType);
 
         if (checkInitializerTypes(x, y, lParenLoc, new IdentifierInfo(),false))
             return exprError();
@@ -10013,8 +10013,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private boolean checkInitializerTypes(
-            OutParamWrapper<Expr> literalExpr,
-            OutParamWrapper<QualType> literalType,
+            OutRef<Expr> literalExpr,
+            OutRef<QualType> literalType,
             SourceLocation initLoc,
             IdentifierInfo initEntity,
             boolean directInit)
@@ -10053,7 +10053,7 @@ public final class Sema implements DiagnosticParseTag,
             return checkSingleInitializer(literalExpr, literalType.get(), directInit, this);
         }
 
-        OutParamWrapper<InitListExpr> x = new OutParamWrapper<>(initList);
+        OutRef<InitListExpr> x = new OutRef<>(initList);
         boolean hadError = checkInitList(x, literalType);
         literalExpr.set(x.get());
         return hadError;
@@ -10083,7 +10083,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private static void checkStringInit(Expr str,
-            OutParamWrapper<QualType> declType,
+            OutRef<QualType> declType,
             Sema s)
     {
         long strLength = s.context.getAsConstantArrayType
@@ -10116,15 +10116,15 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private boolean checkSingleInitializer(
-            OutParamWrapper<Expr> init,
+            OutRef<Expr> init,
             QualType declType,
             boolean directInit,
             Sema s)
     {
         QualType initType = init.get().getType();
 
-        OutParamWrapper<ActionResult<Expr>> x =
-                new OutParamWrapper<>(new ActionResult<>(init.get()));
+        OutRef<ActionResult<Expr>> x =
+                new OutRef<>(new ActionResult<>(init.get()));
         AssignConvertType convTy = s.checkSingleAssignmentConstraints(declType, x);
         init.set(x.get().get());
         return s.diagnoseAssignmentResult(convTy, init.get().getLocStart(),
@@ -10132,8 +10132,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private boolean checkInitList(
-            OutParamWrapper<InitListExpr> initList,
-            OutParamWrapper<QualType> declType)
+            OutRef<InitListExpr> initList,
+            OutRef<QualType> declType)
     {
         InitListChecker checker = new InitListChecker(this, initList.get(), declType);
         if (!checker.hadError())
@@ -10242,7 +10242,7 @@ public final class Sema implements DiagnosticParseTag,
         SourceLocation loc = index.getSourceRange().getBegin();
 
         APSInt res = new APSInt();
-        OutParamWrapper<APSInt> x = new OutParamWrapper<>(res);
+        OutRef<APSInt> x = new OutRef<>(res);
 
         // Make sure this is an integer constant expression.
         if (s.verifyIntegerConstantExpression(index, x))
@@ -10272,13 +10272,13 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     public boolean performCopyInitialization(
-            OutParamWrapper<Expr> from,
+            OutRef<Expr> from,
             QualType toType,
             AssignAction aa)
     {
         QualType fromType = from.get().getType();
 
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(new ActionResult<>(from.get()));
+        OutRef<ActionResult<Expr>> x = new OutRef<>(new ActionResult<>(from.get()));
         AssignConvertType convTy = checkSingleAssignmentConstraints(toType, x);
         from.set(x.get().get());
 

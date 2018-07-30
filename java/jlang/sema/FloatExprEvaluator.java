@@ -20,7 +20,7 @@ import jlang.type.QualType;
 import tools.APFloat;
 import jlang.ast.Tree;
 import tools.APSInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
@@ -30,8 +30,8 @@ import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
  */
 public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    private OutParamWrapper<APFloat> result;
-    public FloatExprEvaluator(OutParamWrapper<APFloat> result, ASTContext ctx)
+    private OutRef<APFloat> result;
+    public FloatExprEvaluator(OutRef<APFloat> result, ASTContext ctx)
     {
         super(ctx);
         this.result = result;
@@ -84,7 +84,7 @@ public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
     @Override
     public Boolean visitBinaryExpr(Tree.BinaryExpr expr)
     {
-        OutParamWrapper<APFloat> rhs = new OutParamWrapper<>(new APFloat(0.0));
+        OutRef<APFloat> rhs = new OutRef<>(new APFloat(0.0));
         if (!evaluateFloat(expr.getRHS(), result, context))
             return false;
         if (!evaluateFloat(expr.getLHS(), rhs, context))
@@ -121,7 +121,7 @@ public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
         Tree.Expr subExpr = expr.getSubExpr();
         if (subExpr.getType().isIntegerType())
         {
-            OutParamWrapper<APSInt> intResult = new OutParamWrapper<>(new APSInt());
+            OutRef<APSInt> intResult = new OutRef<>(new APSInt());
             if (!evaluateInteger(subExpr, intResult, context))
                 return false;
 
@@ -157,7 +157,7 @@ public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         value.convert(ctx.getFloatTypeSemantics(destTy),
                 rmNearestTiesToEven,
-                new OutParamWrapper<>(false));
+                new OutRef<>(false));
         return value;
     }
 }

@@ -17,7 +17,7 @@ package tools.commandline;
  */
 
 import tools.Util;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -56,7 +56,7 @@ public class Parser<T> implements ParserInterface<T>
 
     @Override
     public boolean parse(Option<?> opt, String optName, String arg,
-            OutParamWrapper<T> val)
+            OutRef<T> val)
     {
         String argVal = hasOptionName ? arg : optName;
 

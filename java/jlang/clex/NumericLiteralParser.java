@@ -21,7 +21,7 @@ import jlang.support.SourceLocation;
 import tools.APFloat;
 import tools.APInt;
 import tools.FltSemantics;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static tools.APFloat.FltCategory.fcZero;
 import static tools.APFloat.OpStatus.opOK;
@@ -129,7 +129,7 @@ public class NumericLiteralParser
         return overflowOccurred;
     }
 
-    public APFloat getFloatValue(FltSemantics format, OutParamWrapper<Boolean> isExact)
+    public APFloat getFloatValue(FltSemantics format, OutRef<Boolean> isExact)
     {
         StringBuilder buf = new StringBuilder();
         int n = Math.min(suffixBegin, tokenStr.length);

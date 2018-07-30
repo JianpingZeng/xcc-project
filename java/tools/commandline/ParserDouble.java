@@ -16,7 +16,7 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -26,7 +26,7 @@ public class ParserDouble extends Parser<Double>
 {
     public boolean parse(Option<?> opt,
             String optName, String arg,
-            OutParamWrapper<Double> val)
+            OutRef<Double> val)
     {
         try
         {

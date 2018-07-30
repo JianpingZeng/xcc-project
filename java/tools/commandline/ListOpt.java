@@ -18,7 +18,7 @@ package tools.commandline;
 
 import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.*;
 
@@ -53,7 +53,7 @@ public class ListOpt<T> extends Option<T> implements List<T>
     protected boolean handleOccurrence(int pos, String optionName, String arg)
     {
         T val;
-        OutParamWrapper<T> x = new OutParamWrapper<>();
+        OutRef<T> x = new OutRef<>();
         if (parser.parse(this, optionName, arg, x))
             return true;
         val = x.get();

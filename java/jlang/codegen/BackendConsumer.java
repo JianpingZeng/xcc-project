@@ -41,7 +41,7 @@ import jlang.sema.Decl;
 import jlang.support.BackendAction;
 import jlang.support.CompileOptions;
 import jlang.support.LangOptions;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -197,7 +197,7 @@ public class BackendConsumer implements ASTConsumer
                 "Unexpected module change when IR generation");
         // creates some necessary pass for code generation and optimization.
         createPass();
-        OutParamWrapper<String> error = new OutParamWrapper<>("");
+        OutRef<String> error = new OutRef<>("");
         if (!addEmitPasses(error))
         {
             ErrorHandling.llvmReportError("UNKNOWN: " + error.get());
@@ -299,7 +299,7 @@ public class BackendConsumer implements ASTConsumer
                 inliningPass);
     }
 
-    private boolean addEmitPasses(OutParamWrapper<String> error)
+    private boolean addEmitPasses(OutRef<String> error)
     {
         if (action == Backend_EmitNothing)
             return true;

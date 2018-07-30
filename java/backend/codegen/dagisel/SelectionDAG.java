@@ -360,7 +360,7 @@ public class SelectionDAG
                     case ISD.FP_ROUND:
                     case ISD.FP_EXTEND:
                     {
-                        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(
+                        OutRef<Boolean> ignored = new OutRef<>(
                                 false);
                         val.convert(EVTToAPFloatSemantics(vt),
                                 rmNearestTiesToEven, ignored);
@@ -370,7 +370,7 @@ public class SelectionDAG
                     case ISD.FP_TO_UINT:
                     {
                         long[] x = { 0, 0 };
-                        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>(
+                        OutRef<Boolean> ignored = new OutRef<>(
                                 false);
                         int opStatus = val
                                 .convertToInteger(x, vt.getSizeInBits(), opc == ISD.FP_TO_SINT,
@@ -3305,8 +3305,8 @@ public class SelectionDAG
         if (!alwaysInline)
             limit = tli.getMaxStoresPerMemcpy();
         int destAlign = align;
-        OutParamWrapper<String> str = new OutParamWrapper<>("");
-        OutParamWrapper<Boolean> copyFromStr = new OutParamWrapper<>(false);
+        OutRef<String> str = new OutRef<>("");
+        OutRef<Boolean> copyFromStr = new OutRef<>(false);
         if (!meetsMaxMemopRequirement(memOps, dst, src, limit, size,destAlign,
                 str, copyFromStr))
         {
@@ -3404,8 +3404,8 @@ public class SelectionDAG
                                              int limit,
                                              long size,
                                              int destAlign,
-                                             OutParamWrapper<String> str,
-                                             OutParamWrapper<Boolean> isSrcStr)
+                                             OutRef<String> str,
+                                             OutRef<Boolean> isSrcStr)
     {
         isSrcStr.set(isMemSrcFromString(src, str));
         boolean isSrcConst = src.getNode() instanceof ConstantSDNode;
@@ -3490,7 +3490,7 @@ public class SelectionDAG
         return true;
     }
 
-    private boolean isMemSrcFromString(SDValue src, OutParamWrapper<String> str)
+    private boolean isMemSrcFromString(SDValue src, OutRef<String> str)
     {
         int srcDelta = 0;
         GlobalAddressSDNode gad = null;
@@ -3512,7 +3512,7 @@ public class SelectionDAG
     }
 
     private boolean getConstantStringInfo(Value val,
-                                          OutParamWrapper<String> str,
+                                          OutRef<String> str,
                                           long offset,
                                           boolean stopAtNul)
     {

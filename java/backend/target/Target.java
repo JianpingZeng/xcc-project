@@ -20,7 +20,7 @@ import tools.Util;
 import backend.codegen.AsmPrinter;
 import backend.support.Triple;
 import backend.support.Triple.ArchType;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.io.OutputStream;
 import java.util.Iterator;
@@ -230,7 +230,7 @@ public class Target
         }
 
         public static Target lookupTarget(String triple,
-                OutParamWrapper<String> error)
+                OutRef<String> error)
         {
             if (firstTarget == null)
             {

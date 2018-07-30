@@ -28,7 +28,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
@@ -110,8 +110,8 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
             for (int i = 0; i < mbb.size(); i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
-                OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
-                OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
+                OutRef<Integer> srcReg = new OutRef<>(0);
+                OutRef<Integer> dstReg = new OutRef<>(0);
                 int regRep;
 
                 // If the move will be an identify move delete it.
@@ -243,8 +243,8 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass
             // we only join virtual registers with allocatable
             // physical registers since we do not have liveness information
             // on not allocatable physical registers
-            OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
-            OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
+            OutRef<Integer> srcReg = new OutRef<>(0);
+            OutRef<Integer> dstReg = new OutRef<>(0);
             if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
                     && (isVirtualRegister(srcReg.get())
                     || lv.getAllocatablePhyRegs().get(srcReg.get()))

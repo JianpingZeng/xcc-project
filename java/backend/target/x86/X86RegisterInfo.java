@@ -11,7 +11,7 @@ import backend.target.TargetRegisterClass;
 import backend.type.Type;
 import backend.value.Function;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -506,7 +506,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	@Override
     public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
-			OutParamWrapper<Integer> frameIdx)
+			OutRef<Integer> frameIdx)
 	{
 		if (reg == framePtr && hasFP(mf))
 		{
@@ -1151,11 +1151,11 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		}
 		else if (numBytes != 0)
 		{
-			OutParamWrapper<Integer> x = new OutParamWrapper<>(mbbi);
+			OutRef<Integer> x = new OutRef<>(mbbi);
 			numBytes -= mergeSPUpdates(mbb, x, stackPtr, true);
 			mbbi = x.get();
-			x = new OutParamWrapper<>(numBytes);
-			mergeSPUpdatesDown(mbb, new OutParamWrapper<>(mbbi), stackPtr, x);
+			x = new OutRef<>(numBytes);
+			mergeSPUpdatesDown(mbb, new OutRef<>(mbbi), stackPtr, x);
 			numBytes = x.get();
 
 			if (numBytes != 0)
@@ -1165,7 +1165,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	private int mergeSPUpdates(
 			MachineBasicBlock mbb,
-			OutParamWrapper<Integer> mbbi,
+			OutRef<Integer> mbbi,
 			int stackPtr,
 			boolean doMergeWithPrevious)
 	{
@@ -1203,9 +1203,9 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	private void mergeSPUpdatesDown(
 			MachineBasicBlock mbb,
-			OutParamWrapper<Integer> mbbi,
+			OutRef<Integer> mbbi,
 			int stackPtr,
-			OutParamWrapper<Integer> numBytes)
+			OutRef<Integer> numBytes)
 	{
 	}
 

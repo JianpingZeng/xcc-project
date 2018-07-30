@@ -27,7 +27,7 @@ import backend.pass.FunctionPass;
 import backend.target.*;
 import backend.value.Function;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 
 import java.util.*;
@@ -1386,7 +1386,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
             int reg = info.getReg();
             TargetRegisterClass rc = info.getRegisterClass();
 
-            OutParamWrapper<Integer> temp = new OutParamWrapper<>(0);
+            OutRef<Integer> temp = new OutRef<>(0);
             if (regInfo.hasReservedSpillSlot(mf, reg, temp))
             {
                 info.setFrameIdx(temp.get());
@@ -1490,8 +1490,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
             int sfi = rs.getScavengingFrameIndex();
             if (sfi >= 0)
             {
-                OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
-                OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+                OutRef<Long> t1 = new OutRef<>(offset);
+                OutRef<Integer> t2 = new OutRef<>(maxAlign);
                 adjustStackOffset(mfi, sfi, stackGrowDown, t1, t2);
                 offset = t1.get();
                 maxAlign = t2.get();
@@ -1499,8 +1499,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
         }
 
         //todo if (mfi.getStackProtectorIndex()>0) for StackProtector.
-        OutParamWrapper<Long> t1 = new OutParamWrapper<>();
-        OutParamWrapper<Integer> t2 = new OutParamWrapper<>();
+        OutRef<Long> t1 = new OutRef<>();
+        OutRef<Integer> t2 = new OutRef<>();
         for (int i = 0, e = mfi.getObjectIndexEnd(); i != e; i++)
         {
             if (i >= minCSFrameIndex && i <= maxCSFrameIndex)
@@ -1561,8 +1561,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
             MachineFrameInfo mfi,
             int frameIdx,
             boolean stackGrowDown,
-            OutParamWrapper<Long> offset,
-            OutParamWrapper<Integer> maxAlign)
+            OutRef<Long> offset,
+            OutRef<Integer> maxAlign)
     {
         if (stackGrowDown)
             offset.set(offset.get() + mfi.getObjectSize(frameIdx));

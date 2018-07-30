@@ -530,7 +530,7 @@ public class AssemblyWriter
                 APFloat apf = fp.getValueAPF();
                 if (!isDouble)
                 {
-                    OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+                    OutRef<Boolean> x = new OutRef<>(false);
                     apf.convert(APFloat.IEEEdouble, rmNearestTiesToEven, x);
                     ignored = x.get();
                 }
@@ -759,7 +759,7 @@ public class AssemblyWriter
                 APFloat apf = fp.getValueAPF();
                 if (!isDouble)
                 {
-                    OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+                    OutRef<Boolean> x = new OutRef<>(false);
                     apf.convert(APFloat.IEEEdouble, rmNearestTiesToEven, x);
                     ignored = x.get();
                 }

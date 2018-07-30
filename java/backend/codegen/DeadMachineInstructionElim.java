@@ -24,7 +24,7 @@ import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.DCE;
 import gnu.trove.list.array.TIntArrayList;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
@@ -49,7 +49,7 @@ public class DeadMachineInstructionElim extends MachineFunctionPass
      */
     private boolean isDead(MachineInstr mi)
     {
-        OutParamWrapper<Boolean> sawStore = new OutParamWrapper<>(false);
+        OutRef<Boolean> sawStore = new OutRef<>(false);
         if (!mi.isSafeToMove(tii, sawStore) && !mi.isPHI())
             return false;
 

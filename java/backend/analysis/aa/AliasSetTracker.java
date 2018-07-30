@@ -25,9 +25,8 @@ import backend.value.Instruction.CallInst;
 import backend.value.Instruction.LoadInst;
 import backend.value.Instruction.StoreInst;
 import backend.value.Value;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
-import tools.Util;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -94,14 +93,14 @@ public final class AliasSetTracker
      */
     public boolean add(Value ptr, int size)
     {
-        OutParamWrapper<Boolean> res = new OutParamWrapper<>(false);
+        OutRef<Boolean> res = new OutRef<>(false);
         addPointer(ptr, size, NoModRef, res);
         return res.get();
     }
 
     public boolean add(LoadInst li)
     {
-        OutParamWrapper<Boolean> res = new OutParamWrapper<>(false);
+        OutRef<Boolean> res = new OutRef<>(false);
         AliasSet as = addPointer(li.getPointerOperand(), aa.getTypeStoreSize(li.getType()),
                 Refs, res);
         if (li.isVolatile()) as.setVolatile(true);
@@ -111,7 +110,7 @@ public final class AliasSetTracker
 
     public boolean add(StoreInst st)
     {
-        OutParamWrapper<Boolean> res = new OutParamWrapper<>(false);
+        OutRef<Boolean> res = new OutRef<>(false);
         Value val = st.operand(0);
         AliasSet as = addPointer(st.operand(1), aa.getTypeStoreSize(val.getType()),
                 Mods, res);
@@ -183,7 +182,7 @@ public final class AliasSetTracker
                 for (CallSite cs : set.callSites)
                     add(cs);
 
-                OutParamWrapper<Boolean> res = new OutParamWrapper<>(false);
+                OutRef<Boolean> res = new OutRef<>(false);
                 for (AliasSet.PointerRec rec : set.pointerRecs)
                 {
                     AliasSet newAS = addPointer(rec.getPointer(), rec.getSize(), set.accessTy, res);
@@ -288,7 +287,7 @@ public final class AliasSetTracker
      * @return
      */
     public AliasSet getAliasSetForPointer(Value ptr, int size,
-            OutParamWrapper<Boolean> newSet)
+            OutRef<Boolean> newSet)
     {
         AliasSet.PointerRec entry = getEntryFor(ptr);
         AliasSet as;
@@ -415,7 +414,7 @@ public final class AliasSetTracker
     }
 
     private AliasSet addPointer(Value ptr, int size, int accessTy,
-            OutParamWrapper<Boolean> newSet)
+            OutRef<Boolean> newSet)
     {
         newSet.set(false);
         AliasSet as = getAliasSetForPointer(ptr, size, newSet);

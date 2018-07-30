@@ -23,7 +23,7 @@ import tools.APSInt;
 import jlang.type.PointerType;
 import jlang.type.QualType;
 import jlang.type.RecordType;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 /**
  * @author Xlous.zeng
@@ -31,8 +31,8 @@ import tools.OutParamWrapper;
  */
 public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    private OutParamWrapper<LValue> result;
-    public LValueExprEvaluator(OutParamWrapper<LValue> result, ASTContext context)
+    private OutRef<LValue> result;
+    public LValueExprEvaluator(OutRef<LValue> result, ASTContext context)
     {
         super(context);
         this.result = result;
@@ -124,7 +124,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
             return false;
 
         APSInt index = new APSInt();
-        OutParamWrapper<APSInt> x = new OutParamWrapper<>(index);
+        OutRef<APSInt> x = new OutRef<>(index);
         if (!evaluateInteger(expr.getIdx(), x, context))
             return false;
 

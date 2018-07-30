@@ -29,7 +29,7 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import java.util.*;
 
@@ -352,7 +352,7 @@ public final class LiveVariables extends MachineFunctionPass
         return false;
     }
 
-    private MachineInstr findLastPartialDef(int reg, OutParamWrapper<Integer> partDefReg)
+    private MachineInstr findLastPartialDef(int reg, OutRef<Integer> partDefReg)
     {
         int lastDefReg = 0;
         int lastDefDist = 0;
@@ -377,7 +377,7 @@ public final class LiveVariables extends MachineFunctionPass
     {
         if (phyRegDef[phyReg] == null && phyRegUses[phyReg] == null)
         {
-            OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+            OutRef<Integer> x = new OutRef<>(0);
             MachineInstr lastPartialDef = findLastPartialDef(phyReg, x);
             int partDefReg = x.get();
             if (lastPartialDef != null)

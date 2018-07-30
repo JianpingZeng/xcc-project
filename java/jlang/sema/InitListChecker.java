@@ -30,7 +30,7 @@ import jlang.type.ArrayType;
 import jlang.type.QualType;
 import jlang.type.RecordType;
 import tools.APSInt;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -49,14 +49,14 @@ public class InitListChecker
     private InitListExpr fullyStructuredList;
 
     public InitListChecker(Sema sema, InitListExpr initList,
-            OutParamWrapper<QualType> declType)
+            OutRef<QualType> declType)
     {
         hadError = false;
         this.sema = sema;
         syntacticToSemantic = new HashMap<>();
 
-        OutParamWrapper<Integer> newIndex = new OutParamWrapper<>(0);
-        OutParamWrapper<Integer> newStructuredIndex = new OutParamWrapper<>(0);
+        OutRef<Integer> newIndex = new OutRef<>(0);
+        OutRef<Integer> newStructuredIndex = new OutRef<>(0);
 
         fullyStructuredList = getStructuredSubobjectInit(initList,
                 newIndex.get(), declType.get(), null, 0, initList.getSourceRange());
@@ -190,13 +190,13 @@ public class InitListChecker
     }
 
     private static boolean checkSingleInitializer(
-            OutParamWrapper<Expr> init,
+            OutRef<Expr> init,
             QualType declType,
             Sema s)
     {
         QualType initType = init.get().getType();
 
-        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(new ActionResult<>(init.get()));
+        OutRef<ActionResult<Expr>> x = new OutRef<>(new ActionResult<>(init.get()));
         AssignConvertType convTy = s.checkSingleAssignmentConstraints(declType, x);
         if (x.get().isInvalid())
         {
@@ -212,9 +212,9 @@ public class InitListChecker
     private void checkScalarType(
             InitListExpr initList,
             QualType declType,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex)
+            OutRef<Integer> structuredIndex)
     {
         if (index.get() < initList.getNumInits())
         {
@@ -244,7 +244,7 @@ public class InitListChecker
             }
 
             Expr saveExpr = expr;
-            OutParamWrapper<Expr> e = new OutParamWrapper<>(expr);
+            OutRef<Expr> e = new OutRef<>(expr);
             boolean failure = checkSingleInitializer(e, declType, sema);
             expr = e.get();
             if (failure)
@@ -277,12 +277,12 @@ public class InitListChecker
     private void checkStructUnionTypes(
             InitListExpr initList,
             QualType declType,
-            OutParamWrapper<Decl.RecordDecl> structDecl,
+            OutRef<Decl.RecordDecl> structDecl,
             int field,
             boolean subObjectIsDesignatedContext,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex,
+            OutRef<Integer> structuredIndex,
             boolean topLevelObject)
     {
         if (structDecl.get().isInvalidDecl())
@@ -319,8 +319,8 @@ public class InitListChecker
                 if (!subObjectIsDesignatedContext)
                     return;
 
-                OutParamWrapper<Integer> fieldWrapper = new OutParamWrapper<>(field);
-                OutParamWrapper<QualType> tyWrapper = new OutParamWrapper<>(declType);
+                OutRef<Integer> fieldWrapper = new OutRef<>(field);
+                OutRef<QualType> tyWrapper = new OutRef<>(declType);
                 if (checkDesignatedInitializer(initList, die,
                         0, tyWrapper, structDecl,
                         fieldWrapper,
@@ -412,7 +412,7 @@ public class InitListChecker
     }
 
     private static void checkStringInit(Expr str,
-            OutParamWrapper<QualType> declType, Sema s)
+                                        OutRef<QualType> declType, Sema s)
     {
         long strLength = s.context.getAsConstantArrayType(str.getType())
                 .getSize().getZExtValue();
@@ -451,7 +451,7 @@ public class InitListChecker
     }
 
     private void updateStructuredListElement(InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex, Expr expr)
+                                             OutRef<Integer> structuredIndex, Expr expr)
     {
         if (structuredList == null)
             return;
@@ -474,31 +474,31 @@ public class InitListChecker
     private void checkSubElementType(
             InitListExpr initList,
             QualType elementType,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex)
+            OutRef<Integer> structuredIndex)
     {
         Expr expr = initList.getInitAt(index.get());
         Expr str;
         if (expr instanceof InitListExpr)
         {
             InitListExpr subList = (InitListExpr)expr;
-            OutParamWrapper<Integer> newIndex = new OutParamWrapper<>(0);
-            OutParamWrapper<Integer> newStructuredIndex = new OutParamWrapper<>(0);
+            OutRef<Integer> newIndex = new OutRef<>(0);
+            OutRef<Integer> newStructuredIndex = new OutRef<>(0);
             InitListExpr newStructuredList = getStructuredSubobjectInit(
                     initList, index.get(),
                     elementType, structuredList,
                     structuredIndex.get(),
                     subList.getSourceRange());
             checkExplicitInitList(subList, newIndex,
-                    new OutParamWrapper<>(elementType), newStructuredList,
+                    new OutRef<>(elementType), newStructuredList,
                     newStructuredIndex, false);
             structuredIndex.set(structuredIndex.get() + 1);
             index.set(index.get() + 1);
         }
         else if ((str = isStringInit(expr, elementType, sema.context)) != null)
         {
-            checkStringInit(str, new OutParamWrapper<>(elementType), sema);
+            checkStringInit(str, new OutRef<>(elementType), sema);
             updateStructuredListElement(structuredList, structuredIndex, str);
             index.set(index.get() + 1);
         }
@@ -530,7 +530,7 @@ public class InitListChecker
             }
             else
             {
-                sema.performCopyInitialization(new OutParamWrapper<>(expr),
+                sema.performCopyInitialization(new OutRef<>(expr),
                         elementType, AA_Initializing);
                 hadError = true;
                 index.set(index.get() + 1);
@@ -551,9 +551,9 @@ public class InitListChecker
             DesignatedInitExpr die,
             int desigIdx,
             Decl.FieldDecl field,
-            OutParamWrapper<Decl.RecordDecl> structDecl,
-            OutParamWrapper<Integer> fieldItr,
-            OutParamWrapper<Integer> fieldIndex)
+            OutRef<Decl.RecordDecl> structDecl,
+            OutRef<Integer> fieldItr,
+            OutRef<Integer> fieldIndex)
     {
         ArrayList<Decl.FieldDecl> path = new ArrayList<>();
         sema.buildAnonymousStructUnionMemberPath(field, path);
@@ -602,13 +602,13 @@ public class InitListChecker
             InitListExpr initList,
             DesignatedInitExpr die,
             int desigIdx,
-            OutParamWrapper<QualType> currentObjectType,
-            OutParamWrapper<Decl.RecordDecl> structDecl,
-            OutParamWrapper<Integer> nextField,
-            OutParamWrapper<APSInt> nextElementIndex,
-            OutParamWrapper<Integer> index,
+            OutRef<QualType> currentObjectType,
+            OutRef<Decl.RecordDecl> structDecl,
+            OutRef<Integer> nextField,
+            OutRef<APSInt> nextElementIndex,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex,
+            OutRef<Integer> structuredIndex,
             boolean finishSubobjectInit,
             boolean topLevelObject)
     {
@@ -706,9 +706,9 @@ public class InitListChecker
             else if (knownField == null && ((Decl.RecordDecl)rt.getDecl().getDeclAt
                     (field).getDeclContext()).isAnonymousStructOrUnion())
             {
-                OutParamWrapper<Decl.RecordDecl> x3 = new OutParamWrapper<>(rd);
-                OutParamWrapper<Integer> x = new OutParamWrapper<>(field);
-                OutParamWrapper<Integer> x2 = new OutParamWrapper<>(fieldIndex);
+                OutRef<Decl.RecordDecl> x3 = new OutRef<>(rd);
+                OutRef<Integer> x = new OutRef<>(field);
+                OutRef<Integer> x2 = new OutRef<>(fieldIndex);
 
                 expandAnonymousFieldDesignator(sema, die, desigIdx,
                         rt.getDecl().getDeclAt(fieldIndex),
@@ -791,7 +791,7 @@ public class InitListChecker
 
                 initList.setInitAt(index.get(), die.getInit());
                 checkSubElementType(initList, fd.getType(), index,
-                        structuredList, new OutParamWrapper<>(fieldIndex));
+                        structuredList, new OutRef<>(fieldIndex));
                 initList.setInitAt(oldIndx, die);
                 if (hadError && !prevHadError)
                 {
@@ -814,9 +814,9 @@ public class InitListChecker
                 QualType fieldType = fd.getType();
                 if (checkDesignatedInitializer(initList,
                         die, desigIdx + 1,
-                        new OutParamWrapper<>(fieldType), null,
+                        new OutRef<>(fieldType), null,
                         null, null, index,
-                        structuredList, new OutParamWrapper<>(fieldIndex),
+                        structuredList, new OutRef<>(fieldIndex),
                         true, false))
                 {
                     return true;
@@ -846,7 +846,7 @@ public class InitListChecker
 
             boolean prevHadError = hadError;
             checkStructUnionTypes(initList, currentObjectType.get(),
-                    new OutParamWrapper<>(rd), field, false, index,
+                    new OutRef<>(rd), field, false, index,
                     structuredList, structuredIndex, false);
 
             return hadError && !prevHadError;
@@ -953,9 +953,9 @@ public class InitListChecker
             index.set(oldIndex);
 
             if (checkDesignatedInitializer(initList, die, desigIdx + 1,
-                    new OutParamWrapper<>(elementType),
+                    new OutRef<>(elementType),
                     null, null, null, index, structuredList,
-                    new OutParamWrapper<>(elementIndex),
+                    new OutRef<>(elementIndex),
                     (designatedStartIndex.eq(designatedEndIndex)),
                     false))
             {
@@ -979,18 +979,18 @@ public class InitListChecker
 
         boolean prevHadError = hadError;
         checkArrayType(initList, currentObjectType, designatedStartIndex, false,
-                index, structuredList, new OutParamWrapper<>(elementIndex));
+                index, structuredList, new OutRef<>(elementIndex));
         return hadError && !prevHadError;
     }
 
     private void checkArrayType(
             InitListExpr initList,
-            OutParamWrapper<QualType> declType,
+            OutRef<QualType> declType,
             APSInt elementIndex,
             boolean subObjectIsDesignatedContext,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex)
+            OutRef<Integer> structuredIndex)
     {
         // Check for the special-case of initializing an array with a string.
         if (index.get() < initList.getNumInits())
@@ -1049,7 +1049,7 @@ public class InitListChecker
 
                 // Handle this designated initializer. elementIndex will be
                 // updated to be the next array element we'll initialize.
-                OutParamWrapper<APSInt> x = new OutParamWrapper<>(elementIndex);
+                OutRef<APSInt> x = new OutRef<>(elementIndex);
                 boolean res = checkDesignatedInitializer(initList, die, 0, declType,
                         null, null, x, index, structuredList, structuredIndex,
                         true, false);
@@ -1103,11 +1103,11 @@ public class InitListChecker
 
     private void checkListElementType(
             InitListExpr initList,
-            OutParamWrapper<QualType> type,
+            OutRef<QualType> type,
             boolean subObjectIsDesignatedContext,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex,
+            OutRef<Integer> structuredIndex,
             boolean topLevelObject)
     {
         if (type.get().isScalarType())
@@ -1117,7 +1117,7 @@ public class InitListChecker
         else if (type.get().isRecordType())
         {
             Decl.RecordDecl rd = type.get().getAsRecordType().getDecl();
-            checkStructUnionTypes(initList, type.get(), new OutParamWrapper<>(rd),
+            checkStructUnionTypes(initList, type.get(), new OutRef<>(rd),
                     0, subObjectIsDesignatedContext,
                     index, structuredList, structuredIndex, topLevelObject);
         }
@@ -1175,9 +1175,9 @@ public class InitListChecker
     private void checkImplicitInitList(
             InitListExpr parentInitList,
             QualType type,
-            OutParamWrapper<Integer> index,
+            OutRef<Integer> index,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuredIndex,
+            OutRef<Integer> structuredIndex,
             boolean topLevelObject)
     {
         int maxElements = 0;
@@ -1206,11 +1206,11 @@ public class InitListChecker
                 new SourceRange(parentInitList.getInitAt(index.get()).getSourceRange().getBegin(),
                         parentInitList.getSourceRange().getEnd()));
 
-        OutParamWrapper<Integer> structuredSubobjectInitIndex = new OutParamWrapper<>(0);
+        OutRef<Integer> structuredSubobjectInitIndex = new OutRef<>(0);
         int startIndex = index.get();
 
         checkListElementType(parentInitList,
-                new OutParamWrapper<>(type), false, index,
+                new OutRef<>(type), false, index,
                 structuredSubobjectInitList,
                 structuredSubobjectInitIndex, topLevelObject);
         int endIndex = (index.get() == startIndex) ? startIndex : index.get() - 1;
@@ -1225,10 +1225,10 @@ public class InitListChecker
 
     private void checkExplicitInitList(
             InitListExpr initList,
-            OutParamWrapper<Integer> index,
-            OutParamWrapper<QualType> type,
+            OutRef<Integer> index,
+            OutRef<QualType> type,
             InitListExpr structuredList,
-            OutParamWrapper<Integer> structuedIndex,
+            OutRef<Integer> structuedIndex,
             boolean topLevelObject)
     {
         Util.assertion(initList.isExplicit(), "Illegal implicit InitListExpr!");

@@ -30,7 +30,7 @@ import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -481,8 +481,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         else if (allocatableRegs.get(reg))
         {
             // If the reg is physical, checking on if it is allocable or not.
-            OutParamWrapper<Integer> srcReg = new OutParamWrapper<>();
-            OutParamWrapper<Integer> destReg = new OutParamWrapper<>();
+            OutRef<Integer> srcReg = new OutRef<>();
+            OutRef<Integer> destReg = new OutRef<>();
             if (!tii.isMoveInstr(mbb.getInstAt(index), srcReg, destReg, null, null))
             {
                 srcReg.set(0);
@@ -574,8 +574,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 int startIdx = srcInterval.getRange(0).start;
                 MachineInstr srcDefMI = getInstructionFromIndex(startIdx);
 
-                OutParamWrapper<Integer> vregSrcSrc = new OutParamWrapper<>();
-                OutParamWrapper<Integer> vregSrcDest = new OutParamWrapper<>();
+                OutRef<Integer> vregSrcSrc = new OutRef<>();
+                OutRef<Integer> vregSrcDest = new OutRef<>();
                 if (tii.isMoveInstr(srcDefMI, vregSrcSrc, vregSrcDest, null, null)
                         && srcReg == vregSrcDest.get()
                         && destReg == vregSrcSrc.get())

@@ -10,7 +10,7 @@ import backend.target.*;
 import backend.value.GlobalVariable;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import tools.OutParamWrapper;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 import tools.commandline.BooleanOpt;
@@ -437,10 +437,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     @Override
-    public boolean isMoveInstr(MachineInstr mi, OutParamWrapper<Integer> srcReg,
-            OutParamWrapper<Integer> destReg,
-            OutParamWrapper<Integer> srcSubIdx,
-            OutParamWrapper<Integer> destSubIdx)
+    public boolean isMoveInstr(MachineInstr mi, OutRef<Integer> srcReg,
+            OutRef<Integer> destReg,
+            OutRef<Integer> srcSubIdx,
+            OutRef<Integer> destSubIdx)
     {
         switch (mi.getOpcode())
         {
@@ -487,7 +487,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     @Override public int isLoadFromStackSlot(MachineInstr mi,
-            OutParamWrapper<Integer> frameIndex)
+            OutRef<Integer> frameIndex)
     {
         switch (mi.getOpcode())
         {
@@ -524,7 +524,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 
     @Override
     public int isStoreToStackSlot(MachineInstr mi,
-            OutParamWrapper<Integer> frameIndex)
+            OutRef<Integer> frameIndex)
     {
         switch (mi.getOpcode())
         {
@@ -1443,8 +1443,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 
     public boolean analyzeBranch(
             MachineBasicBlock mbb,
-            OutParamWrapper<MachineBasicBlock> tbb,
-            OutParamWrapper<MachineBasicBlock> fbb,
+            OutRef<MachineBasicBlock> tbb,
+            OutRef<MachineBasicBlock> fbb,
             ArrayList<MachineOperand> cond,
             boolean allowModify)
     {

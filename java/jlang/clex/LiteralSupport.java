@@ -17,7 +17,7 @@ package jlang.clex;
  */
 
 import jlang.support.SourceLocation;
-import tools.OutParamWrapper;
+import tools.OutRef;
 
 import static jlang.diag.DiagnosticLexKindsTag.*;
 
@@ -63,9 +63,9 @@ public class LiteralSupport
         return ch >= '0' && ch <='7';
     }
 
-    static char processCharEscape(String buf, OutParamWrapper<Integer> startPos,
-            OutParamWrapper<Boolean> hadError, SourceLocation loc,
-            Preprocessor pp)
+    static char processCharEscape(String buf, OutRef<Integer> startPos,
+                                  OutRef<Boolean> hadError, SourceLocation loc,
+                                  Preprocessor pp)
     {
         // Skip the '\' char.
         startPos.set(startPos.get() + 1);
