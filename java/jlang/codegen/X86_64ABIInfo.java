@@ -27,10 +27,7 @@ import jlang.sema.ASTContext;
 import jlang.sema.ASTRecordLayout;
 import jlang.sema.Decl;
 import jlang.type.*;
-import tools.APFloat;
-import tools.FltSemantics;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import static jlang.codegen.CodeGenFunction.hasAggregateLLVMType;
 
@@ -89,9 +86,6 @@ public class X86_64ABIInfo implements ABIInfo
     }
     private TargetInfo target;
 
-    public X86_64ABIInfo()
-    {}
-
     @Override
     public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx)
     {
@@ -107,11 +101,98 @@ public class X86_64ABIInfo implements ABIInfo
         // integer register.
         if (retInfo.isIndirect())
             --freeIntRegisters;
+
+        // handle each argument for left to right.
+        for (int i = 0, e = fi.getNumOfArgs(); i < e; i++)
+        {
+            OutRef<Integer> needsIntRegs = new OutRef<>(0);
+            OutRef<Integer> needsSSERegs = new OutRef<>(0);
+            ABIArgInfo info = classifyArgumentType(fi.getArgInfoAt(i).type,
+                    ctx, needsIntRegs, needsSSERegs);
+
+            if (freeIntRegisters >= needsIntRegs.get() &&
+                    freeSSERegisters >= needsSSERegs.get())
+            {
+                freeIntRegisters -= needsIntRegs.get();
+                freeSSERegisters -= needsSSERegs.get();
+            }
+            else
+                info = getIndirectResult(fi.getArgInfoAt(i).type, ctx);
+            fi.setArgInfo(i, info);
+        }
+    }
+
+    private ABIArgInfo classifyArgumentType(QualType argType, ASTContext ctx,
+                                            OutRef<Integer> needsIntRegs,
+                                            OutRef<Integer> needsSSERegs)
+    {
+        Pair<Integer, Integer> resClass = classify(argType, 0, ctx);
+        int hi = resClass.first, lo = resClass.second;
+        Util.assertion(hi != Class.MEMORY || lo == Class.MEMORY, "unknown memory class");
+        Util.assertion(hi != Class.SSEUP || lo == Class.SSE, "unknown sse class");
+
+        backend.type.Type resType = null;
+        switch (lo)
+        {
+            case Class.NO_CLASS:
+                return ABIArgInfo.getIgnore();
+            case Class.MEMORY:
+            case Class.COMPLEX_X87:
+            case Class.X87:
+                return getIndirectResult(argType, ctx);
+            case Class.INTEGER:
+                needsIntRegs.set(needsIntRegs.get()+1);
+                resType = LLVMContext.Int64Ty;
+                break;
+            case Class.SSE:
+                needsSSERegs.set(needsSSERegs.get()+1);
+                resType = LLVMContext.DoubleTy;
+                break;
+            case Class.SSEUP:
+            case Class.X87UP:
+                Util.assertion(false, "invalid classification for lo word!");
+            default:
+                Util.shouldNotReachHere("SEEUp and X87_UP should not be setted as high");
+        }
+
+        switch (hi)
+        {
+            case Class.MEMORY:
+            case Class.X87:
+            case Class.COMPLEX_X87:
+                Util.shouldNotReachHere("invalid classification for hi word!");
+                break;
+            case Class.NO_CLASS:
+                break;  // handled previously.
+            case Class.INTEGER:
+                resType = StructType.get(resType, LLVMContext.Int64Ty);
+                needsIntRegs.set(needsIntRegs.get()+1);
+                break;
+            case Class.X87UP:
+            case Class.SSE:
+                resType = StructType.get(resType, LLVMContext.DoubleTy);
+                needsSSERegs.set(needsSSERegs.get()+1);
+                break;
+            case Class.SSEUP:
+                //Util.assertion(lo == Class.SSE, "Unexpected SSEUP classification");
+                resType = VectorType.get(resType, 2);
+                break;
+        }
+        Util.assertion(resType != null);
+        return getCoerseResult(argType, resType, ctx);
     }
 
     @Override
     public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf)
     {
+        // Assume that va_list type is correct; should be pointer to LLVM type:
+        // struct {
+        //   i32 gp_offset;
+        //   i32 fp_offset;
+        //   i8* overflow_arg_area;
+        //   i8* reg_save_area;
+        // };
+        Util.shouldNotReachHere("VAArg not implemented currently");
         return null;
     }
 

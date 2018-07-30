@@ -267,7 +267,9 @@ public class TargetData implements ImmutablePass
                             alignType = AGGREGATE_ALIGN;
                             break;
                     }
-                    int size = Integer.parseInt(arg0.substring(1));
+
+                    int size = arg0.length()<=1 ? 0 :
+                            Integer.parseInt(String.valueOf(arg0.charAt(1)));
                     byte abiAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / (byte) 8);
                     byte prefAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / 8);
                     if (prefAlign == 0)
