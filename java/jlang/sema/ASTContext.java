@@ -730,13 +730,13 @@ public final class ASTContext
 			EnumType ety = lhs.getAsEnumType();
 			if (ety != null)
 			{
-				if (ety.getDecl().getPromotionType().equals(rhs.getUnQualifiedType()))
+				if (ety.getDecl().getIntegerType().equals(rhs.getUnQualifiedType()))
 					return rhs;
 			}
 			ety = rhs.getAsEnumType();
 			if (ety != null)
 			{
-				if (ety.getDecl().getPromotionType().equals(lhs.getUnQualifiedType()))
+				if (ety.getDecl().getIntegerType().equals(lhs.getUnQualifiedType()))
 					return rhs;
 			}
 
@@ -927,7 +927,7 @@ public final class ASTContext
 		if (type.isEnumeralType())
 		{
 			EnumType et = type.getAsEnumType();
-			QualType qt = et.getDecl().getPromotionType();
+			QualType qt = et.getDecl().getIntegerType();
 			if (qt.isNull())
 				return false;
 
@@ -950,7 +950,7 @@ public final class ASTContext
 		Util.assertion( isPromotableIntegerType(type));
 
 		if (type.getType() instanceof EnumType)
-			return ((EnumType) type.getType()).getDecl().getPromotionType();
+			return ((EnumType) type.getType()).getDecl().getIntegerType();
 		if (type.isSignedIntegerType())
 			return IntTy;
 		long promotableSize = getTypeSize(type);
@@ -1088,7 +1088,7 @@ public final class ASTContext
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return et.getDecl().getPromotionType().isSignedIntegerType();
+				return et.getDecl().getIntegerType().isSignedIntegerType();
 		}
 		return false;
 	}
@@ -1104,7 +1104,7 @@ public final class ASTContext
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return !et.getDecl().getPromotionType().isSignedIntegerType();
+				return !et.getDecl().getIntegerType().isSignedIntegerType();
 		}
 		return false;
 	}
@@ -1113,7 +1113,7 @@ public final class ASTContext
 	{
 		if (t.isEnumeralType())
 		{
-			t = new QualType(t.getAsEnumType().getDecl().getPromotionType().getType());
+			t = new QualType(t.getAsEnumType().getDecl().getIntegerType().getType());
 		}
 		if (t.isBooleanType())
 			return 1;
@@ -1180,7 +1180,7 @@ public final class ASTContext
 					break;
 				}
 				if (tt instanceof EnumType)
-					return getTypeInfo(((EnumType)tt).getDecl().getPromotionType() );
+					return getTypeInfo(((EnumType)tt).getDecl().getIntegerType() );
 
 				RecordType rt = (RecordType)tt;
 				ASTRecordLayout layout = ASTRecordLayout.getRecordLayout(this, rt.getDecl());
@@ -1678,7 +1678,7 @@ public final class ASTContext
 		if (T instanceof EnumType)
 		{
 			EnumType et = (EnumType)T;
-			T = et.getDecl().getPromotionType().getType();
+			T = et.getDecl().getIntegerType().getType();
 		}
 
 		switch (T.getTypeClass())
@@ -1755,7 +1755,7 @@ public final class ASTContext
 		// For enums, we return the unsigned version of the base type.
 		if (type.isEnumeralType())
 		{
-			type = (getAs(type, EnumType.class)).getDecl().getPromotionType();
+			type = (getAs(type, EnumType.class)).getDecl().getIntegerType();
 		}
 		
 		Util.assertion(type.isBuiltinType(),  "Unexpected signed integer type");

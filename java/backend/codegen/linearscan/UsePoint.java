@@ -42,4 +42,10 @@ public class UsePoint
         UsePoint up = (UsePoint)obj;
         return id == up.id && mo.equals(up.mo);
     }
+
+    @Override
+    public int hashCode()
+    {
+        return id << 13 + mo.hashCode();
+    }
 }

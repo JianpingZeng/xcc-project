@@ -1654,7 +1654,7 @@ public abstract class Tree implements StmtClass
             {
                 EnumType et = type.getAsEnumType();
                 if (et.getDecl().isCompleteDefinition())
-                    return et.getDecl().getPromotionType().isSignedIntegerType();
+                    return et.getDecl().getIntegerType().isSignedIntegerType();
             }
             return false;
         }

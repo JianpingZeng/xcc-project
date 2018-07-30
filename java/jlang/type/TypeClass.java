@@ -45,7 +45,9 @@ public interface TypeClass
     int ConstantArrayWithoutExpr = ConstantArrayWithExpr + 1;
     int IncompleteArray = ConstantArrayWithoutExpr + 1;
     int VariableArray = IncompleteArray + 1;
-    int Struct = VariableArray + 1;
+    int Vector = VariableArray + 1;
+    int ExtVector = Vector + 1;
+    int Struct = ExtVector + 1;
     int Union = Struct + 1;
     int Enum = Union + 1;
     int TypeDef = Enum + 1;

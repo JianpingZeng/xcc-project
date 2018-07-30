@@ -110,6 +110,14 @@ public class StructType extends CompositeType
         return st;
     }
 
+    public static StructType get(Type... tys)
+    {
+        ArrayList<Type> elts = new ArrayList<>();
+        for (Type t : tys)
+            elts.add(t);
+        return get(elts, false);
+    }
+
     public static StructType get(boolean packed)
     {
         return get(new ArrayList<>(), packed);

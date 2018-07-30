@@ -586,8 +586,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
         }
         else
         {
-            Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&                    !op.getValueType().equals(new EVT(MVT.Flag)));
-
+            Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&
+					!op.getValueType().equals(new EVT(MVT.Flag)));
             addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
         }
     }
@@ -598,8 +598,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
 		TargetInstrDesc tid, 
 		TObjectIntHashMap<SDValue> vrBaseMap)
 	{
-        Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&                !op.getValueType().equals(new EVT(MVT.Flag)));
-
+        Util.assertion( !op.getValueType().equals(new EVT(MVT.Other)) &&
+				!op.getValueType().equals(new EVT(MVT.Flag)));
 
         int vreg = getVR(op, vrBaseMap);
         Util.assertion( isVirtualRegister(vreg));
@@ -613,7 +613,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG
             TargetRegisterClass destRC = null;
             if (iiOpNum < tid.getNumOperands())
                 destRC = tid.opInfo[iiOpNum].getRegisterClass(tri);
-            Util.assertion(destRC != null || (ii.isVariadic() && iiOpNum >= ii.getNumOperands()), "Don't have operand info for this instruction!");
+            Util.assertion(destRC != null || (ii.isVariadic() &&
+					iiOpNum >= ii.getNumOperands()), "Don't have operand info for this instruction!");
 
             if (destRC != null && !srcRC.equals(destRC) && !srcRC.hasSuperClass(destRC))
             {

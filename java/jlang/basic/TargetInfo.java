@@ -214,9 +214,9 @@ public abstract class TargetInfo
         userLabelPrefix = "_";
     }
 
-    public String getTriple()
+    public Triple getTriple()
     {
-        return triple;
+        return new Triple(triple);
     }
 
     public void setTriple(String triple)

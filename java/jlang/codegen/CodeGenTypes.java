@@ -228,10 +228,16 @@ public class CodeGenTypes
         String prefix = getContext().target.getTargetPrefix();
         Util.assertion(prefix.equals("x86"), "Not supported CPU architecture '" + prefix + "'");
         int bitwidth = getContext().target.getPointerWidth(0);
+        boolean isDarwin = target.getTargetTriple().startsWith("darwin");
+        boolean isSmallStructInRegs = isDarwin ||
+                target.getTargetTriple().startsWith("cygwin") ||
+                target.getTargetTriple().startsWith("mingw") ||
+                target.getTargetTriple().startsWith("freebsd") ||
+                target.getTargetTriple().startsWith("openbsd");
         switch (bitwidth)
         {
             case 32:
-                theABIInfo = new X86_32ABIInfo(context);
+                theABIInfo = new X86_32ABIInfo(context, isSmallStructInRegs);
                 break;
             case 64:
                 theABIInfo = new X86_64ABIInfo();
@@ -436,7 +442,7 @@ public class CodeGenTypes
         // If this is enum decl, just treat it as integral type.
         if (td.isEnum())
         {
-            return convertTypeRecursive(((Decl.EnumDecl)td).getPromotionType());
+            return convertTypeRecursive(((Decl.EnumDecl)td).getIntegerType());
         }
 
         OpaqueType placeHolderType = OpaqueType.get();

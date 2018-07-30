@@ -40,10 +40,10 @@ public class X86_32ABIInfo implements ABIInfo
     private ASTContext context;
     private boolean isSmallStructInRegABI;
 
-    public X86_32ABIInfo(ASTContext ctx)
+    public X86_32ABIInfo(ASTContext ctx, boolean isSmallStructInRegABI)
     {
         context = ctx;
-        isSmallStructInRegABI = false;
+        this.isSmallStructInRegABI = isSmallStructInRegABI;
     }
 
     public static boolean isRegisterSize(long size)

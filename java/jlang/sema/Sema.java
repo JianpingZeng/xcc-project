@@ -574,7 +574,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (enumUnderlying != null)
                 {
                     EnumDecl ed = (EnumDecl)newDecl;
-                    ed.setPromotionType(enumUnderlying);
+                    ed.setIntegerType(enumUnderlying);
                 }
             }
             else

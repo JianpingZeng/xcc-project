@@ -430,4 +430,9 @@ public class Triple
         getDarwinNumber(nums);
         return nums[0];
     }
+
+    public boolean isDarwin()
+    {
+        return getOS() == OSType.Darwin;
+    }
 }

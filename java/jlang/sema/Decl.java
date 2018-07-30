@@ -2454,7 +2454,7 @@ public abstract class Decl
          * The integer type that values of this type should promote to.
          * In C, enumerators are generally of an integer tyep directly.
          */
-        private QualType promotionType;
+        private QualType integerType;
 
         private EnumDecl(
                 IdentifierInfo name,
@@ -2463,7 +2463,7 @@ public abstract class Decl
                 EnumDecl prevDecl)
         {
             super(EnumDecl, TTK_enum, context, name, loc, prevDecl);
-            promotionType = new QualType();
+            integerType = new QualType();
         }
 
         public static EnumDecl create(ASTContext ctx, IdentifierInfo name,
@@ -2485,18 +2485,18 @@ public abstract class Decl
         public void completeDefinition(QualType newType)
         {
             Util.assertion(!isCompleteDefinition(), "Cannot redefine enums!");
-            promotionType = newType;
+            integerType = newType;
             super.completeDefinition();
         }
 
-        public QualType getPromotionType()
+        public QualType getIntegerType()
         {
-            return promotionType;
+            return integerType;
         }
 
-        public void setPromotionType(QualType enumUnderlying)
+        public void setIntegerType(QualType enumUnderlying)
         {
-            promotionType = enumUnderlying;
+            integerType = enumUnderlying;
         }
     }
 

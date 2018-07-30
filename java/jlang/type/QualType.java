@@ -513,6 +513,11 @@ public final class QualType implements Cloneable, FoldingSetNode
         return type.isRecordType();
     }
 
+    public boolean isVectorType()
+    {
+        return type.isVectorType();
+    }
+
     // Type Checking Functions: Check to see if this type is structurally the
     // specified type, ignoring typedefs and qualifiers, and return a pointer to
     // the best type we can.

@@ -7,7 +7,6 @@ import jlang.type.ArrayType.ConstantArrayType;
 import jlang.type.ArrayType.IncompleteArrayType;
 import jlang.type.ArrayType.VariableArrayType;
 import jlang.type.QualType.ScalarTypeKind;
-import tools.Util;
 
 import static jlang.type.QualType.ScalarTypeKind.*;
 
@@ -430,6 +429,11 @@ public abstract class Type implements TypeClass
         return canonicalType.getUnQualifiedType().getType() instanceof RecordType;
     }
 
+    public boolean isVectorType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof VectorType;
+    }
+
     // Type Checking Functions: Check to see if this type is structurally the
     // specified type, ignoring typedefs and qualifiers, and return a pointer to
     // the best type we can.
@@ -639,7 +643,7 @@ public abstract class Type implements TypeClass
             return true;
         EnumType et = getAsEnumType();
         if (et != null)
-            return et.getDecl().getPromotionType().isSignedIntegerType();;
+            return et.getDecl().getIntegerType().isSignedIntegerType();;
 
         return false;
     }
