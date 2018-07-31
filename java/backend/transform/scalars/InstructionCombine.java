@@ -17,17 +17,17 @@ package backend.transform.scalars;
  */
 
 import backend.pass.AnalysisResolver;
+import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
+import backend.target.TargetData;
 import backend.transform.scalars.instructionCombine.Combiner;
-import backend.value.BasicBlock;
-import backend.value.Function;
-import backend.value.Instruction;
-import backend.value.Value;
+import backend.value.*;
 import tools.Util;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 /**
  * @author Jianping Zeng
@@ -37,22 +37,24 @@ public class InstructionCombine implements FunctionPass
 {
     private AnalysisResolver resolver;
     private Combiner combiner;
+    private LinkedList<Instruction> worklist;
+    private HashSet<Instruction> existed;
+    private TargetData td;
 
     public InstructionCombine()
     {
-        combiner = new Combiner();
+        worklist = new LinkedList<>();
+        existed = new HashSet<>();
+        combiner = new Combiner(this);
     }
 
-    @Override
-    public boolean runOnFunction(Function f)
+    private boolean collectReachableInsts(Function f)
     {
-        if (f == null || f.empty()) return false;
         BasicBlock entryBB = f.getEntryBlock();
         HashSet<BasicBlock> reachable = new HashSet<>(DepthFirstOrder.dfTraversal(entryBB));
 
         boolean everChanged = false;
-        for (Iterator<BasicBlock> itr = f.getBasicBlockList().iterator(); itr.hasNext();)
-        {
+        for (Iterator<BasicBlock> itr = f.getBasicBlockList().iterator(); itr.hasNext(); ) {
             BasicBlock bb = itr.next();
             if (!reachable.contains(bb))
             {
@@ -66,25 +68,96 @@ public class InstructionCombine implements FunctionPass
             for (int i = 0, e = bb.size(); i < e; i++)
             {
                 Instruction inst = bb.getInstAt(i);
-                // There are three status returned,
-                // (1). null indicates the specified instruction is dead
-                // and should be removed from enclosing block.
-                // (2). as same as inst indicates that no transformation was performed.
-                // (3). Otherwise calling to replaceAllUsesWith() to update it.
-                Value res = combiner.visit(inst);
-                if (res == null)
-                {
-                    --i;
-                    --e;
-                    everChanged = true;
-                }
-                else if (!res.equals(inst))
-                {
-                    res.replaceAllUsesWith(inst);
-                    inst.eraseFromParent();
-                    everChanged = true;
-                }
+                addToWorklist(inst);
             }
+        }
+        return everChanged;
+    }
+
+    public void addToWorklist(User u)
+    {
+        if (u instanceof Instruction)
+        {
+            Instruction inst = (Instruction) u;
+            if (existed.add(inst))
+                worklist.addLast(inst);
+        }
+    }
+
+    public void addUserToWorklist(Instruction inst)
+    {
+        Util.assertion(inst != null, "inst shouldn't be null");
+        for (Use u : inst.getUseList())
+        {
+            addToWorklist(u.getUser());
+        }
+    }
+
+    public Instruction replaceInstUsesWith(Instruction inst, Value newVal)
+    {
+        addUserToWorklist(inst);
+        if (inst.equals(newVal))
+        {
+            inst.replaceAllUsesWith(Value.UndefValue.get(inst.getType()));
+            return inst;
+        }
+        else
+        {
+            inst.replaceAllUsesWith(newVal);
+            return inst;
+        }
+    }
+
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.addRequired(TargetData.class);
+        au.addPreserved(TargetData.class);
+    }
+
+    public TargetData getTargetData()
+    {
+        return td;
+    }
+
+    private boolean doIterate(Function f)
+    {
+        boolean everChanged = collectReachableInsts(f);
+        while (!worklist.isEmpty())
+        {
+            Instruction inst = worklist.removeFirst();
+            // There are three status returned,
+            // (1). null indicates the specified instruction is dead
+            // and should be removed from enclosing block.
+            // (2). as same as inst indicates that no transformation was performed.
+            // (3). Otherwise calling to replaceAllUsesWith() to update it.
+            Value res = combiner.visit(inst);
+            if (res == null) {
+                //empty block.
+            }
+            else if (!res.equals(inst))
+            {
+                res.replaceAllUsesWith(inst);
+                inst.eraseFromParent();
+                everChanged |= true;
+            }
+        }
+        worklist.clear();
+        existed.clear();
+        return everChanged;
+    }
+    @Override
+    public boolean runOnFunction(Function f)
+    {
+        if (f == null || f.empty()) return false;
+        td = (TargetData) getAnalysisToUpDate(TargetData.class);
+        boolean everChanged = false;
+        while (true)
+        {
+            boolean localChanged = doIterate(f);
+            if (!localChanged)
+                break;
+            everChanged = true;
         }
         return everChanged;
     }
@@ -94,19 +167,16 @@ public class InstructionCombine implements FunctionPass
     {
         return "Instruction Combiner";
     }
-
     @Override
     public AnalysisResolver getAnalysisResolver()
     {
         return resolver;
     }
-
     @Override
     public void setAnalysisResolver(AnalysisResolver resolver)
     {
         this.resolver = resolver;
     }
-
     public static FunctionPass createInstructionCombinePass()
     {
         return new InstructionCombine();

@@ -195,8 +195,6 @@ public abstract class ConstantExpr extends Constant
         Util.assertion(c.getType().isIntegerType(), "ZExt operand must be integer");
         Util.assertion(ty.isIntegerType(), "ZExt produces only integral");
         Util.assertion(c.getType().getScalarSizeBits() < ty.getScalarSizeBits(), "SrcTy must be smaller than DestTy for Trunc!");
-
-
         return getFoldedCast(Operator.ZExt, c, ty);
     }
 
@@ -205,9 +203,18 @@ public abstract class ConstantExpr extends Constant
         Util.assertion(c.getType().isIntegerType(), "Trunc operand must be integer");
         Util.assertion(ty.isIntegerType(), "Trunc produces only integral");
         Util.assertion(c.getType().getScalarSizeBits()> ty.getScalarSizeBits(), "SrcTy must be larger than DestTy for Trunc!");
-
-
         return getFoldedCast(Operator.Trunc, c, ty);
+    }
+
+    public static Constant getIntegerCast(Constant c, Type ty, boolean isSigned)
+    {
+        int srcSize = c.getType().getScalarSizeBits();
+        int destSize = ty.getScalarSizeBits();
+        if (srcSize == destSize)
+            return c;
+        Operator opc = destSize > srcSize ? (isSigned ? Operator.SExt : Operator.ZExt) :
+                Operator.Trunc;
+        return getFoldedCast(opc, c, ty);
     }
 
     /**

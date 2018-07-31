@@ -17,78 +17,399 @@ package backend.transform.scalars.instructionCombine;
  * permissions and limitations under the License.
  */
 
+import backend.ir.AllocationInst;
+import backend.ir.MallocInst;
+import backend.support.LLVMContext;
+import backend.target.TargetData;
+import backend.transform.scalars.InstructionCombine;
+import backend.type.*;
 import backend.utils.InstVisitor;
-import backend.value.User;
-import backend.value.Value;
+import backend.value.*;
+import backend.value.Instruction.AllocaInst;
+import backend.value.Instruction.BinaryOps;
+import backend.value.Instruction.BitCastInst;
+import backend.value.Instruction.GetElementPtrInst;
+import tools.APInt;
+import tools.Util;
+
+import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class Combiner implements InstVisitor<Value>
+public class Combiner implements InstVisitor<Instruction>
 {
+    private InstructionCombine com;
+    private TargetData td;
+
+    public Combiner(InstructionCombine com)
+    {
+        this.com = com;
+        td = com.getTargetData();
+    }
+
+    /**
+     * Transform the case that bitcast from integral pointer to
+     * aggregate pointer, get rid of redundant bitcast instruction.
+     * @param inst
+     * @return
+     */
     @Override
-    public Value visitRet(User inst)
+    public Instruction visitBitCast(User inst)
+    {
+        Util.assertion(inst != null);
+        BitCastInst bc = (BitCastInst) inst;
+        // optimize the case like this:
+        // %t = alloca %struct.Test
+        // %1 = bitcast %struct.Test* %t to i64*
+        // store i64 %0, i64* %1, align 1
+        Value srcOp = bc.operand(0);
+        if (!(srcOp instanceof AllocationInst))
+            return null;
+        // if no td available, we can't go on.
+        if (td == null)
+            return null;
+
+        AllocationInst ai = (AllocationInst) srcOp;
+
+        Type srcTy = ai.getType();
+        Type destTy = bc.getType();
+
+        if (srcTy.isPointerType() && destTy.isPointerType())
+        {
+            Type srcEleTy = ((PointerType)srcTy).getElementType();
+            Type destEleTy = ((PointerType)destTy).getElementType();
+            if (!srcEleTy.isSized() || !destEleTy.isSized())
+                return null;
+            int srcEleTyAlign = td.getABITypeAlignment(srcEleTy);
+            int destEleTyAlign = td.getABITypeAlignment(destEleTy);
+            if (destEleTyAlign < srcEleTyAlign)
+                return null;
+
+            // If the allocation has multiple uses, only promote it if we are strictly
+            // increasing the alignment of the resultant allocation.  If we keep it the
+            // same, we open the door to infinite loops of various kinds.
+            if (!ai.hasOneUses() && destEleTyAlign == srcEleTyAlign)
+                return null;
+
+            long srcEleTySize = td.getTypeSize(srcEleTy);
+            long destEleTySize = td.getTypeSize(destEleTy);
+            if (srcEleTySize == 0 || destEleTySize == 0)
+                return null;
+            if ((destEleTySize%srcEleTySize) != 0)
+                return null;
+
+            if (srcEleTy.isAggregateType() && destEleTy.isIntegerType())
+            {
+                int scale = (int) (srcEleTySize / destEleTySize);
+                Value numElements = ai.operand(0);
+                Value amt;
+                if (scale == 1)
+                    amt = numElements;
+                else
+                {
+                    // If the allocation size is constant, form a constant mul expression
+                    amt = ConstantInt.get(LLVMContext.Int32Ty, scale);
+                    if (numElements instanceof ConstantInt)
+                    {
+                        amt = ConstantExpr.getMul((ConstantInt)amt, (ConstantInt)numElements);
+                    }
+                    else
+                    {
+                        Instruction tmp = BinaryOps.createMul(amt, numElements, "tmp");
+                        tmp.insertBefore(ai);
+                        amt = tmp;
+                    }
+                }
+                AllocationInst newAI;
+                if (ai instanceof MallocInst)
+                    newAI = new MallocInst(destEleTy, amt, "tmp", ai.getAlignment(), ai);
+                else
+                    newAI = new AllocaInst(destEleTy, amt, ai.getAlignment(), "tmp", ai);
+                newAI.setName(ai.getName());
+
+                // If the allocation has multiple real uses, insert a cast and change all
+                // things that used it to use the new cast.  This will also hack on CI, but it
+                // will die soon.
+                if (!bc.isUseEmpty())
+                {
+                    com.addUserToWorklist(ai);
+                    Instruction.CastInst cast = new BitCastInst(newAI, ai.getType(), "tmpcast");
+                    cast.insertBefore(ai);
+                    ai.replaceAllUsesWith(cast);
+                }
+                return com.replaceInstUsesWith(bc, newAI);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Instruction visitRet(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitBr(User inst)
+    public Instruction visitBr(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitSwitch(User inst)
+    public Instruction visitSwitch(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitICmp(User inst)
+    public Instruction visitICmp(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitFCmp(User inst)
+    public Instruction visitFCmp(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitLoad(User inst)
+    public Instruction visitLoad(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitStore(User inst)
+    public Instruction visitStore(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitCall(User inst)
+    public Instruction visitCall(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitGetElementPtr(User inst)
+    public Instruction visitGetElementPtr(User inst)
+    {
+        Util.assertion(inst instanceof GetElementPtrInst);
+        GetElementPtrInst gep = (GetElementPtrInst) inst;
+        Value ptrOp = gep.operand(0);
+        if (gep.getNumOfOperands() == 1)
+            return com.replaceInstUsesWith(gep, ptrOp);
+        boolean firstIndexIsZero = false;
+        if (gep.operand(1) instanceof ConstantInt)
+        {
+            firstIndexIsZero = ((ConstantInt)gep.operand(1)).isNullValue();
+        }
+        if (gep.getNumOfOperands() == 2 && firstIndexIsZero)
+            return com.replaceInstUsesWith(gep, ptrOp);
+
+        // Checks to see if we can simplify:
+        // X = bitcast A to struct T*
+        // Y = gep X, <... constant index...>
+        if (ptrOp instanceof BitCastInst)
+        {
+            BitCastInst bci = (BitCastInst) ptrOp;
+            if (td != null && !(bci.operand(0) instanceof BitCastInst) &&
+                    gep.hasAllConstantIndices())
+            {
+                ConstantInt offsetVal = (ConstantInt) emitGEPOffset(gep, gep);
+                long offset = offsetVal.getSExtValue();
+                if (offset == 0)
+                {
+                    // If this GEP instruction doesn't move the pointer, just replace the GEP
+                    // with a bitcast of the real input to the dest type.
+                    if (bci.operand(0) instanceof AllocationInst)
+                    {
+                        Instruction i = visitBitCast(bci);
+                        if (i != null)
+                        {
+                            if (!i.equals(bci))
+                            {
+                                i.setName(bci.getName());
+                                bci.eraseFromParent();
+                                com.replaceInstUsesWith(bci, i);
+                            }
+                            return gep;
+                        }
+                    }
+                    return new BitCastInst(bci.operand(0), gep.getType(), "bitcast");
+                }
+
+                // Otherwise, if the offset is non-zero, we need to find out if there is a
+                // field at Offset in 'A's type.  If so, we can pull the cast through the
+                // GEP.
+                ArrayList<Value> newIndices = new ArrayList<>();
+                Type intTy = ((PointerType)bci.operand(0).getType()).getElementType();
+                if (findElementAtOffset(intTy, offset,newIndices, td) != null)
+                {
+                    Instruction newGEP = new GetElementPtrInst(bci.operand(0), newIndices, "gep.new");
+                    if (newGEP.getType().equals(gep.getType()))
+                        return gep;
+                    if (gep.getInbounds())
+                        ((GetElementPtrInst)newGEP).setInbounds(true);
+
+                    newGEP.insertBefore(gep);
+                    return new BitCastInst(newGEP, gep.getType(), "bitcast");
+                }
+            }
+        }
+        return null;
+    }
+
+    private Type findElementAtOffset(Type ty,
+                                     long offset,
+                                     ArrayList<Value> newIndices,
+                                     TargetData td)
+    {
+        if (td == null || !ty.isSized()) return null;
+
+        Type intPtrTy = td.getIntPtrType();
+        long firstIdx = 0;
+        long tySize = td.getTypeAllocSize(ty);
+        if (tySize != 0)
+        {
+            firstIdx = offset / tySize;
+            offset -= firstIdx*tySize;
+            if (offset < 0)
+            {
+                --firstIdx;
+                offset += tySize;
+                Util.assertion(offset == 0);
+            }
+            Util.assertion(offset < tySize, "out of range");
+        }
+
+        newIndices.add(ConstantInt.get(intPtrTy, firstIdx));
+        while (offset != 0)
+        {
+            if (offset*8 >= td.getTypeSizeInBits(ty))
+                return null;
+            if (ty instanceof StructType)
+            {
+                StructType sty = (StructType) ty;
+                TargetData.StructLayout layout = td.getStructLayout(sty);
+                Util.assertion(offset < layout.getSizeInBits(),
+                        "Offset must stay within the indexed type");
+                int elt = layout.getElementContainingOffset(offset);
+                newIndices.add(ConstantInt.get(LLVMContext.Int32Ty, elt));
+                offset -= layout.getElementOffset(elt);
+                ty = sty.getElementType(elt);
+            }
+            else if (ty instanceof ArrayType)
+            {
+                ArrayType aty = (ArrayType) ty;
+                long eleSize = td.getTypeAllocSize(aty.getElementType());
+                Util.assertion(eleSize != 0, "can't index into zero-sized array");
+                newIndices.add(ConstantInt.get(intPtrTy, offset/eleSize));
+                offset %= eleSize;
+                ty = aty.getElementType();
+            }
+            else
+                // otherwise, we can't index into the middle of this typeo.
+                return null;
+        }
+        return ty;
+    }
+
+    private Value emitGEPOffset(GetElementPtrInst gep,
+                                             Instruction inst)
+    {
+        Type intPtrTy = td.getIntPtrType();
+        GEPTypeIterator gepItr = new GEPTypeIterator(gep);
+
+        Value result = ConstantInt.getNullValue(intPtrTy);
+        int intPtrWidth = td.getPointerSizeInBits();
+        long ptrSizeMask = ~0L >>> (64-intPtrWidth);
+        CompositeType ct = (CompositeType) gep.getPointerOperandType().getElementType();
+
+        for (int i = 1, e = gep.getNumOfOperands(); i<e && gepItr.hasNext();i++)
+        {
+            Value op = gep.operand(i);
+            long size = td.getTypeAllocSize(gepItr.getIndexedType()) & ptrSizeMask;
+            if (op instanceof ConstantInt)
+            {
+                ConstantInt ci = (ConstantInt) op;
+                if (ci.isZero()) continue;
+
+                if (gepItr.getCurType() instanceof StructType)
+                {
+                    StructType sty = (StructType) gepItr.getCurType();
+                    size = td.getStructLayout(sty).getElementOffset(ci.getZExtValue());
+
+                    if (result instanceof ConstantInt)
+                    {
+                        ConstantInt rc = (ConstantInt) result;
+                        result = ConstantInt.get(rc.getValue().add(new APInt(intPtrWidth, size)));
+                    }
+                    else
+                    {
+                        result = BinaryOps.createAdd(result, ConstantInt.get(intPtrTy, size),
+                                gep.getName()+".offs", gep);
+                    }
+                    continue;
+                }
+
+                Constant scale = ConstantInt.get(intPtrTy, size);
+                Constant oc = ConstantExpr.getIntegerCast(ci, intPtrTy, true);
+                scale = ConstantExpr.getMul(oc, scale);
+                if (result instanceof Constant)
+                    result = ConstantExpr.getAdd((Constant) result, scale);
+                else
+                {
+                    // emit an add instruction.
+                    result = BinaryOps.createAdd(result, scale, gep.getName()+".offs", gep);
+                }
+                continue;
+            }
+            if (!op.getType().equals(intPtrTy))
+            {
+                if (op instanceof Constant)
+                {
+                    Constant opC = (Constant) op;
+                    op = ConstantExpr.getIntegerCast(opC, intPtrTy, true);
+                }
+                else
+                    op = Instruction.CastInst.createIntegerCast(op, intPtrTy, true,
+                            op.getName()+".c", gep);
+            }
+
+            if (size != 1)
+            {
+                Constant scale = ConstantInt.get(intPtrTy, size);
+                if (op instanceof Constant)
+                {
+                    Constant opC = (Constant) op;
+                    op = ConstantExpr.getMul(scale, opC);
+                }
+                else
+                    op = BinaryOps.createMul(scale, op, gep.getName()+".idx", gep);
+            }
+
+            // emit an add instruction.
+            if (op instanceof Constant && result instanceof Constant)
+            {
+                result = ConstantExpr.getAdd((Constant) result, (Constant) op);
+            }
+            else
+                result = BinaryOps.createAdd(result, op, op.getName()+".add", gep);
+        }
+        return result;
+    }
+
+    @Override
+    public Instruction visitPhiNode(User inst)
     {
         return null;
     }
 
     @Override
-    public Value visitPhiNode(User inst)
-    {
-        return null;
-    }
-
-    @Override
-    public Value visitSelect(User inst)
+    public Instruction visitSelect(User inst)
     {
         return null;
     }

@@ -517,6 +517,30 @@ public class TargetData implements ImmutablePass
 	        Util.assertion( idx >= 0 && idx < memberOffsets.size());
 	        return memberOffsets.get((int) idx) * 8;
         }
+
+		/**
+		 * Given a valid offset into the structure,
+		 * return the structure index that contains it.
+		 * @param offset
+		 * @return
+		 */
+		public int getElementContainingOffset(long offset)
+		{
+			int index = 0;
+			for (int e = memberOffsets.size(); index < e; ++index)
+			{
+				if (memberOffsets.get(index) >= offset)
+					continue;
+				break;
+			}
+			Util.assertion(index != 0, "offset isn't in this structure!");;
+			--index;
+			Util.assertion(memberOffsets.get(index) <= offset,
+					"Upper bound search didn't work!");
+			Util.assertion(index == 0 || memberOffsets.get(index-1) <= offset,
+					"Upper bound search didn't work!");
+			return index;
+		}
     }
 
 	/**

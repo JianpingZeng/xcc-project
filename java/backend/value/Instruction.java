@@ -3387,5 +3387,20 @@ public abstract class Instruction extends User
         {
             return inbounds;
         }
+
+        /**
+         * Checks to see if all indices in this gep instruction are
+         * constant.
+         * @return
+         */
+        public boolean hasAllConstantIndices()
+        {
+            for (int i = 1, e = getNumOfOperands(); i < e; i++)
+            {
+                if (!(operand(i) instanceof ConstantInt))
+                    return false;
+            }
+            return true;
+        }
     }
 }
