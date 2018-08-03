@@ -45,7 +45,6 @@ public class InstructionCombine implements FunctionPass
     {
         worklist = new LinkedList<>();
         existed = new HashSet<>();
-        combiner = new Combiner(this);
     }
 
     private boolean collectReachableInsts(Function f)
@@ -104,7 +103,7 @@ public class InstructionCombine implements FunctionPass
         else
         {
             inst.replaceAllUsesWith(newVal);
-            return inst;
+            return (Instruction) newVal;
         }
     }
 
@@ -112,7 +111,6 @@ public class InstructionCombine implements FunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addRequired(TargetData.class);
-        au.addPreserved(TargetData.class);
     }
 
     public TargetData getTargetData()
@@ -137,7 +135,6 @@ public class InstructionCombine implements FunctionPass
             }
             else if (!res.equals(inst))
             {
-                res.replaceAllUsesWith(inst);
                 inst.eraseFromParent();
                 everChanged |= true;
             }
@@ -150,7 +147,9 @@ public class InstructionCombine implements FunctionPass
     public boolean runOnFunction(Function f)
     {
         if (f == null || f.empty()) return false;
-        td = (TargetData) getAnalysisToUpDate(TargetData.class);
+        this.td = (TargetData) getAnalysisToUpDate(TargetData.class);
+        combiner = new Combiner(this);
+
         boolean everChanged = false;
         while (true)
         {

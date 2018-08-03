@@ -138,6 +138,7 @@ public class Combiner implements InstVisitor<Instruction>
                     Instruction.CastInst cast = new BitCastInst(newAI, ai.getType(), "tmpcast");
                     cast.insertBefore(ai);
                     ai.replaceAllUsesWith(cast);
+                    ai.eraseFromParent();
                 }
                 return com.replaceInstUsesWith(bc, newAI);
             }
@@ -218,7 +219,11 @@ public class Combiner implements InstVisitor<Instruction>
             if (td != null && !(bci.operand(0) instanceof BitCastInst) &&
                     gep.hasAllConstantIndices())
             {
-                ConstantInt offsetVal = (ConstantInt) emitGEPOffset(gep, gep);
+                Value gepRes = emitGEPOffset(gep, gep);
+                if (!(gepRes instanceof ConstantInt))
+                            return null;
+
+                ConstantInt offsetVal = (ConstantInt)gepRes;
                 long offset = offsetVal.getSExtValue();
                 if (offset == 0)
                 {
@@ -238,7 +243,8 @@ public class Combiner implements InstVisitor<Instruction>
                             return gep;
                         }
                     }
-                    return new BitCastInst(bci.operand(0), gep.getType(), "bitcast");
+                    Instruction res = new BitCastInst(bci.operand(0), gep.getType(), "bitcast", gep);
+                    return com.replaceInstUsesWith(gep, res);
                 }
 
                 // Otherwise, if the offset is non-zero, we need to find out if there is a
@@ -255,7 +261,8 @@ public class Combiner implements InstVisitor<Instruction>
                         ((GetElementPtrInst)newGEP).setInbounds(true);
 
                     newGEP.insertBefore(gep);
-                    return new BitCastInst(newGEP, gep.getType(), "bitcast");
+                    Instruction res = new BitCastInst(newGEP, gep.getType(), "bitcast", gep);
+                    return com.replaceInstUsesWith(gep, res);
                 }
             }
         }

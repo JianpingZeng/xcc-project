@@ -55,13 +55,13 @@ public class PassCreator
 			// remove redundant alloca.
 			pm.add(Mem2Reg.createPromoteMemoryToRegisterPass());
 
-			//pm.add(InstructionCombine.createInstructionCombinePass());
+			pm.add(InstructionCombine.createInstructionCombinePass());
 			pm.add(CFGSimplifyPass.createCFGSimplificationPass());
 
 			if (inliningPass != null)
 				pm.add(inliningPass);
 			pm.add(SROA.createScalarRreplacementOfAggregatePass());
-			//pm.add(InstructionCombine.createInstructionCombinePass());
+			pm.add(InstructionCombine.createInstructionCombinePass());
 			pm.add(ConditionalPropagate.createCondPropagatePass());
 			pm.add(TailCallElim.createTailCallElimination());
 			pm.add(CFGSimplifyPass.createCFGSimplificationPass());

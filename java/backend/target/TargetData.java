@@ -344,6 +344,8 @@ public class TargetData implements ImmutablePass
 		intAlignment = td.intAlignment;
 		shortAlignment = td.shortAlignment;
 		byteAlignment = td.byteAlignment;
+		alignments = new ArrayList<>(td.alignments);
+		resolver = td.resolver;
 	}
 
 	public IntegerType getIntPtrType()
@@ -451,7 +453,7 @@ public class TargetData implements ImmutablePass
 	 * This class is used to lazily compute structure layout information for
 	 * a backend.target machine, based on this TargetData structure.
 	 */
-	public class StructLayout
+	public static class StructLayout
 	{
 		public ArrayList<Long> memberOffsets;
 		public long structSize;
@@ -465,8 +467,8 @@ public class TargetData implements ImmutablePass
 			for (int i = 0,e = st.getNumOfElements(); i != e; i++)
 			{
 				Type eltTy = st.getElementType(i);
-				long tySize = getTypeSize(eltTy);
-				int tyAlign = getTypeAlign(eltTy);
+				long tySize = td.getTypeSize(eltTy);
+				int tyAlign = td.getTypeAlign(eltTy);
 
 				// Add padding if necessary to make the data alignment properly.
 				if (structSize % tyAlign != 0)

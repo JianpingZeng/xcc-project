@@ -64,7 +64,7 @@ public interface InstVisitor<RetTy>
 			case Call:
 				break;
 			case GetElementPtr:
-				break;
+				return visitGetElementPtr(inst);
 			case Select:
 				break;
 			case Add:
