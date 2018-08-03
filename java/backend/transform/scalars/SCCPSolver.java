@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.value.Value.UndefValue;
 import tools.Util;
 import backend.utils.InstVisitor;
 import backend.value.*;
@@ -154,6 +155,11 @@ public class SCCPSolver implements InstVisitor<Void>
         // Set up the lattice value as Undefined by default.
         LatticeStatus status = new LatticeStatus();
         value2LatticeMap.put(val, status);
+        if (val instanceof Constant)
+        {
+            if (!(val instanceof UndefValue))
+                status.markConstant((Constant) val);
+        }
         return status;
     }
 
@@ -606,86 +612,17 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitTrunc(User inst)
+    public Void visitCastInst(User inst)
     {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitZExt(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitSExt(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitFPToUI(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitFPToSI(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitUIToFP(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitSIToFP(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitFPTrunc(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitFPExt(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitPtrToInt(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitIntToPtr(User inst)
-    {
-        visitCastInst(inst);
-        return null;
-    }
-
-    @Override
-    public Void visitBitCast(User inst)
-    {
-        visitCastInst(inst);
+        Operator opc = ((CastInst)inst).getOpcode();
+        Value v = inst.operand(0);
+        LatticeStatus ls = getLatticeStatus(v);
+        if (ls.markOverdefined())
+            markOverdefined(inst);
+        else if (ls.isConstant())
+            markConstant((Instruction) inst,
+                    ConstantExpr.getCast(opc, ls.getConstVal(),
+                    inst.getType()));
         return null;
     }
 
@@ -732,10 +669,12 @@ public class SCCPSolver implements InstVisitor<Void>
             return null;
 
         ArrayList<Constant> ops = new ArrayList<>();
-        for (int i = inst.getIndexBegin(), e = inst.getIndexEnd(); i != e; i++)
+        for (int i = 0, e = inst.getNumOfOperands(); i != e; i++)
         {
             Value op = inst.operand(i);
             LatticeStatus ls = getLatticeStatus(op);
+            if (ls.isUndefined())
+                return null;
             if (ls.isOverdefined())
             {
                 markOverdefined(inst);
