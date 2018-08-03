@@ -25,10 +25,7 @@ import backend.transform.scalars.InstructionCombine;
 import backend.type.*;
 import backend.utils.InstVisitor;
 import backend.value.*;
-import backend.value.Instruction.AllocaInst;
-import backend.value.Instruction.BinaryOps;
-import backend.value.Instruction.BitCastInst;
-import backend.value.Instruction.GetElementPtrInst;
+import backend.value.Instruction.*;
 import tools.APInt;
 import tools.Util;
 
@@ -135,7 +132,7 @@ public class Combiner implements InstVisitor<Instruction>
                 if (!bc.isUseEmpty())
                 {
                     com.addUserToWorklist(ai);
-                    Instruction.CastInst cast = new BitCastInst(newAI, ai.getType(), "tmpcast");
+                    CastInst cast = new BitCastInst(newAI, ai.getType(), "tmpcast");
                     cast.insertBefore(ai);
                     ai.replaceAllUsesWith(cast);
                     ai.eraseFromParent();
@@ -382,7 +379,7 @@ public class Combiner implements InstVisitor<Instruction>
                     op = ConstantExpr.getIntegerCast(opC, intPtrTy, true);
                 }
                 else
-                    op = Instruction.CastInst.createIntegerCast(op, intPtrTy, true,
+                    op = CastInst.createIntegerCast(op, intPtrTy, true,
                             op.getName()+".c", gep);
             }
 

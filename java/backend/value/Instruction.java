@@ -131,7 +131,7 @@ public abstract class Instruction extends User
      */
     public void insertBefore(Instruction insertPos)
     {
-        Util.assertion( (insertPos != null));
+        Util.assertion(insertPos != null);
         BasicBlock bb = insertPos.getParent();
         int index = bb.lastIndexOf(insertPos);
         if (index >= 0 && index < bb.size())

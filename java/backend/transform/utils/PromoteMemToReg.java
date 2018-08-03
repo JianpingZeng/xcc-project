@@ -17,6 +17,7 @@
 
 package backend.transform.utils;
 
+import backend.value.IntrinsicInst.DbgInfoIntrinsic;
 import tools.Util;
 import backend.analysis.aa.AliasSetTracker;
 import backend.analysis.DomTree;
@@ -195,7 +196,7 @@ public final class PromoteMemToReg
             else if (inst instanceof BitCastInst)
             {
                 bc = (BitCastInst)inst;
-                if (!bc.hasOneUses())
+                if (!bc.hasOneUses() || !(bc.useAt(0).getUser() instanceof DbgInfoIntrinsic))
                     return false;
 
                 if (ai.hasOneUses())
@@ -252,9 +253,8 @@ public final class PromoteMemToReg
 		{
             AllocaInst ai = allocas.get(allocaNum);
 			Util.assertion(isAllocaPromotable(ai),  "Can't promote non-promotable alloca");
-
-			Util.assertion(ai.getParent().getParent().equals(f),  "All allocas should in the same method, which is same as DF!");
-
+			Util.assertion(ai.getParent().getParent().equals(f),
+                    "All allocas should in the same method, which is same as DF!");
 
 			// if it's use an intrinsic instruction, just remove it from
 			// attached basic block.
@@ -894,11 +894,9 @@ public final class PromoteMemToReg
 				// exclude defined block
 				if (defBlocks.contains(pred))
 					continue;
-
 				liveBlockWorkList.addLast(pred);
 			}
 		}
-
 	}
 
 	/**
@@ -1117,8 +1115,8 @@ public final class PromoteMemToReg
 		 */
 		public void deleteValue(Instruction inst)
 		{
-			Util.assertion(inst					!= null,  "LargeBlockInformation.deleteValue(<null>) is invalid");
-
+			Util.assertion(inst					!= null,
+                    "LargeBlockInformation.deleteValue(<null>) is invalid");
 			instNumbers.remove(inst);
 		}
 	}
@@ -1207,6 +1205,14 @@ public final class PromoteMemToReg
 					usingBlocks.add(li.getParent());
 					allocaPointerVar = li;
 				}
+				else
+                {
+                    Util.assertion(inst.hasOneUses(), "unexpected use for bitcast");
+                    DbgInfoIntrinsic dbg = (DbgInfoIntrinsic)inst.useAt(0).getUser();
+                    inst.eraseFromParent();
+                    dbg.eraseFromParent();
+                    continue;
+                }
 
 				if (onlyUsedOneBlock)
 				{

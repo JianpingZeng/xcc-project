@@ -334,10 +334,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public void insertAt(Instruction inst, int index)
 	{
 		Util.assertion((inst != null),  "Cannot add null instruction to block");
-		Util.assertion((index >= 0 && index < instructions.size()), 				"The index into insertion of gieven inst is bound out.");
-
+		Util.assertion((index >= 0 && index < instructions.size()),
+				"The index into insertion of gieven inst is bound out.");
 
 		instructions.add(index, inst);
+		inst.setParent(this);
 	}
 
 	/**

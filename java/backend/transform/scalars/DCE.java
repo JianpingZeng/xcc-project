@@ -247,6 +247,8 @@ public class DCE implements FunctionPass
 	private void markBranch(Instruction inst, LinkedList<Instruction> worklist)
 	{
 		BasicBlock bb = inst.getParent();
+		// collects live branch instruction from reverse dominator frontier.
+		// any branch instruction of basic block in rdf is live.
 		LinkedList<BasicBlock> rdf = RDF.run(dt.getDomTree(), bb);
 		for (BasicBlock block : rdf)
 		{

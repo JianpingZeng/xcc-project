@@ -24,13 +24,48 @@ import backend.intrinsic.Intrinsic;
  */
 public class IntrinsicInst extends Instruction.CallInst
 {
-    public IntrinsicInst(Value[] args, Value target)
+    public IntrinsicInst()
     {
-        super(args, target);
+        super((Value[]) null, null);
     }
 
     public Intrinsic.ID getIntrinsicID()
     {
         return getCalledFunction().getIntrinsicID();
+    }
+
+    /**
+     * A common base class for llvm debug information.
+     */
+    public static abstract class DbgInfoIntrinsic extends IntrinsicInst
+    {
+        public static Value castOperand(Value val)
+        {
+            if (val instanceof ConstantExpr)
+            {
+                ConstantExpr ce = (ConstantExpr) val;
+                if (ce.isCast())
+                    return ce.operand(0);
+            }
+            return null;
+        }
+
+        public static Value stripCast(Value val)
+        {
+            Value res = castOperand(val);
+            if (res != null)
+                res = stripCast(res);
+            else if (val instanceof GlobalVariable)
+            {
+                GlobalVariable gv = (GlobalVariable) val;
+                if (gv.hasInitializer())
+                {
+                    res = castOperand(gv.getInitializer());
+                    if (res != null)
+                        res = stripCast(res);
+                }
+            }
+            return res;
+        }
     }
 }
