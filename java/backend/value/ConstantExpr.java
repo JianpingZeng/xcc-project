@@ -267,10 +267,11 @@ public abstract class ConstantExpr extends Constant
 
     public static Constant get(Operator op, Constant c1, Constant c2)
     {
-        Util.assertion(op.compareTo(Operator.BinaryOpsBegin) >= 0 &&                op.compareTo(Operator.BinaryOpsEnd) < 0,  "invalid binary opcode in binary constant expresion");
-
-        Util.assertion(c1.getType().equals(c2.getType()),                 "Operand type in binary constant expresion should be indentical");
-
+        Util.assertion(op.compareTo(Operator.BinaryOpsBegin) >= 0 &&
+                op.compareTo(Operator.BinaryOpsEnd) < 0,
+                "invalid binary opcode in binary constant expresion");
+        Util.assertion(c1.getType().equals(c2.getType()),
+                "Operand type in binary constant expresion should be indentical");
 
         if (c1.getType().isFloatingPointType())
         {

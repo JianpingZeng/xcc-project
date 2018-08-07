@@ -945,12 +945,16 @@ public abstract class Instruction extends User
         /**
          * This method is used for attempting to swap the two operands of this
          * binary instruction.
+         * @return  Returns true if this binary operation is not commutative.
          */
-        public void swapOperands()
+        public boolean swapOperands()
         {
+            if (!isCommutative())
+                return true;
             Value temp = operand(0);
             setOperand(0, operand(1), this);
             setOperand(1, temp, this);
+            return false;
         }
 
         @Override
@@ -977,6 +981,56 @@ public abstract class Instruction extends User
                     && x.equals(op.operand(0))
                     && y.equals(op.operand(1));
         }
+
+        private static boolean isConstantAllOnes(Value val)
+        {
+            if (!(val instanceof ConstantInt))
+                return false;
+            ConstantInt ci = (ConstantInt) val;
+            return ci.isAllOnesValue();
+        }
+        /**
+         * Checks to see if the specified value is a binary operation that could be converted to
+         * not operation.
+         * @param val
+         * @return
+         */
+        public static boolean isNot(Value val)
+        {
+            if (val instanceof Instruction)
+            {
+                Instruction inst = (Instruction) val;
+                if (inst.getOpcode() == Operator.Xor &&
+                        (isConstantAllOnes(inst.operand(1)) ||
+                        isConstantAllOnes(inst.operand(0))))
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    public static boolean isNeg(Value val)
+    {
+        if(val instanceof Instruction)
+        {
+            Instruction inst = (Instruction) val;
+            if (inst.getOpcode() == Operator.Sub &&
+                    inst.operand(0).isNullConstant())
+                return true;
+        }
+        return false;
+    }
+
+    public static boolean isFNeg(Value val)
+    {
+        if(val instanceof Instruction)
+        {
+            Instruction inst = (Instruction) val;
+            if (inst.getOpcode() == Operator.FSub &&
+                    inst.operand(0).isNullConstant())
+                return true;
+        }
+        return false;
     }
 
     public static class CastInst extends UnaryOps

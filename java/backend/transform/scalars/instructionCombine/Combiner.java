@@ -19,6 +19,7 @@ package backend.transform.scalars.instructionCombine;
 
 import backend.ir.AllocationInst;
 import backend.ir.MallocInst;
+import backend.ir.SelectInst;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.transform.scalars.InstructionCombine;
@@ -26,6 +27,7 @@ import backend.type.*;
 import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.*;
+import backend.value.Value.UndefValue;
 import tools.APInt;
 import tools.Util;
 
@@ -414,6 +416,157 @@ public class Combiner implements InstVisitor<Instruction>
 
     @Override
     public Instruction visitSelect(User inst)
+    {
+        return null;
+    }
+
+    /***
+     * <pre>
+     * Rank the specified value, order the value ascend from undef, const, unary, other inst.
+     * 0 -> undef, 1 -> Const, 2 -> Other, 3 -> Arg, 3 -> Unary, 4 -> OtherInst
+     * </pre>
+     * @param val
+     * @return
+     */
+    private int getComplexity(Value val)
+    {
+        if (val instanceof UndefValue) return 0;
+        else if (val instanceof Constant) return 1;
+        else if (val instanceof Instruction)
+        {
+            if (BinaryOps.isNot(val) || BinaryOps.isNeg(val) || BinaryOps.isFNeg(val))
+                return 3;
+            return 4;
+        }
+        else if (val instanceof Argument)
+            return 3;
+        else
+            return 2;
+
+    }
+
+    /**
+     * Reorder the expression list as the order from most complexity to less complexity.
+     * 1. Transform: (op (op V, C1), C2) ==> (op V, (op C1, C2)).
+     * 2. Transform: (op (op V1, C1), (op V2, C2)) ==> (op (op V1, V2), (op C1,C2)).
+     * @param inst
+     * @return
+     */
+    private boolean simplifyCommutative(BinaryOps inst)
+    {
+        boolean changed = false;
+        if (getComplexity(inst.operand(0)) < getComplexity(inst.operand(1)))
+            changed = !inst.swapOperands();
+
+        if (!inst.isAssociative()) return changed;
+        Value op0 = inst.operand(0), op1 = inst.operand(1);
+        if (op0 instanceof BinaryOps)
+        {
+            BinaryOps binOp0 = (BinaryOps) op0;
+            if (binOp0.getOpcode() == inst.getOpcode())
+            {
+                if (binOp0.operand(1) instanceof ConstantInt)
+                {
+                    ConstantInt ci1 = (ConstantInt) binOp0.operand(1);
+                    if (op1 instanceof ConstantInt)
+                    {
+                        Constant foldedCE = ConstantExpr.get(inst.getOpcode(),
+                                ci1, (Constant) op1);
+                        inst.setOperand(0, binOp0.operand(0));
+                        inst.setOperand(1, foldedCE);
+                        changed = true;
+                    }
+                    else if (op1 instanceof BinaryOps &&
+                            ((BinaryOps)op1).getOpcode() == inst.getOpcode())
+                    {
+                        BinaryOps binaryOp1 = (BinaryOps) op1;
+                        if (binaryOp1.operand(1) instanceof ConstantInt)
+                        {
+                            ConstantInt ci2 = (ConstantInt) binaryOp1.operand(1);
+                            inst.setOperand(0, BinaryOps.create(inst.getOpcode(),
+                                    binOp0.operand(0), binaryOp1.operand(0), "tmp", inst));
+                            inst.setOperand(1, ConstantExpr.get(inst.getOpcode(),
+                                    ci1, ci2));
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    @Override
+    public Instruction visitAdd(User inst)
+    {
+        BinaryOps binOps = (BinaryOps) inst;
+        boolean changed = simplifyCommutative(binOps);
+        Value lhs = binOps.operand(0), rhs = binOps.operand(1);
+        // any + C
+        if (rhs instanceof Constant)
+        {
+            Constant rhsC = (Constant)rhs;
+            // any + undef --> undef.
+            if (rhs instanceof UndefValue)
+                return com.replaceInstUsesWith(binOps, lhs);
+            // X + 0 --> X
+            if (rhs.isNullConstant())
+                return com.replaceInstUsesWith(binOps, rhs);
+            // zext(bool) + C --> bool ? C+1 : C.
+            if (rhs instanceof ConstantInt)
+            {
+                ConstantInt ci = (ConstantInt) rhs;
+                if (lhs instanceof ZExtInst &&
+                        ((ZExtInst) lhs).operand(0).hasOneUses() &&
+                        ((ZExtInst) lhs).operand(0).getType() == LLVMContext.Int1Ty)
+                {
+                    Value cond = ((ZExtInst) lhs).operand(0);
+                    return com.replaceInstUsesWith(binOps, new SelectInst(cond,
+                            ConstantExpr.getAdd(ci, ConstantInt.getTrue()), ci, "", binOps));
+                }
+            }
+            if (lhs instanceof Constant)
+            {
+                Constant lhsC = (Constant)lhs;
+                return com.replaceInstUsesWith(binOps, ConstantExpr.getAdd(lhsC, rhsC));
+            }
+            // simplify it with pattern matching technology.
+        }
+        return null;
+    }
+
+    @Override
+    public Instruction visitFAdd(User inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Instruction visitSub(User inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Instruction visitFSub(User inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Instruction visitMul(User inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Instruction visitFMul(User inst)
+    {
+        return null;
+    }
+
+    @Override
+    public Instruction visitFDiv(User inst)
     {
         return null;
     }
