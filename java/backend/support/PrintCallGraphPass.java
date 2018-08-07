@@ -1,6 +1,6 @@
-package backend.passManaging;
+package backend.support;
 /*
- * Extremely C language Compiler
+ * Extremely C language Compiler.
  * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,22 +15,28 @@ package backend.passManaging;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+import backend.analysis.CallGraphNode;
+import backend.pass.CallGraphSCCPass;
 
-/**
- * @author Jianping Zeng
- * @version 0.1
- */
-public enum PassManagerType
+import java.io.PrintStream;
+import java.util.ArrayList;
+
+public class PrintCallGraphPass extends CallGraphSCCPass
 {
-    PMT_Unknow,
+    public PrintCallGraphPass(String banner, PrintStream os)
+    {
 
-    PMT_ModulePassManager,
+    }
 
-    PMT_CallGraphPassManager,
+    @Override
+    public boolean runOnSCC(ArrayList<CallGraphNode> nodes)
+    {
+        return false;
+    }
 
-    PMT_FunctionPassManager,
-
-    PMT_LoopPassManager,
-
-    PMT_BasicBlockPassManager,
+    @Override
+    public String getPassName()
+    {
+        return "Printing Call Graph Pass";
+    }
 }

@@ -1,6 +1,6 @@
-package backend.passManaging;
+package backend.transform.ipo;
 /*
- * Extremely C language Compiler
+ * Extremely C language Compiler.
  * Copyright (c) 2015-2018, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,22 +15,13 @@ package backend.passManaging;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+import backend.pass.CallGraphSCCPass;
 
 /**
- * @author Jianping Zeng
- * @version 0.1
+ * @author Jianping Zeng.
+ * @version 0.4
  */
-public enum PassManagerType
+public abstract class Inliner extends CallGraphSCCPass
 {
-    PMT_Unknow,
 
-    PMT_ModulePassManager,
-
-    PMT_CallGraphPassManager,
-
-    PMT_FunctionPassManager,
-
-    PMT_LoopPassManager,
-
-    PMT_BasicBlockPassManager,
 }

@@ -1,4 +1,7 @@
-package backend.passManaging;
+package backend.analysis;
+
+import backend.value.Function;
+
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Jianping Zeng.
@@ -15,22 +18,12 @@ package backend.passManaging;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-
-/**
- * @author Jianping Zeng
- * @version 0.1
- */
-public enum PassManagerType
+public class CallGraphNode
 {
-    PMT_Unknow,
+    private Function function;
 
-    PMT_ModulePassManager,
-
-    PMT_CallGraphPassManager,
-
-    PMT_FunctionPassManager,
-
-    PMT_LoopPassManager,
-
-    PMT_BasicBlockPassManager,
+    public Function getFunction()
+    {
+        return function;
+    }
 }
