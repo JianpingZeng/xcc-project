@@ -1,5 +1,6 @@
 package backend.value;
 
+import backend.analysis.CallGraphAnalysis;
 import tools.Util;
 import backend.support.AssemblyWriter;
 import backend.support.AttrList;
@@ -99,6 +100,10 @@ public final class Module implements Iterable<Function>
 		return globalVariableList;
 	}
 
+	public int getNumFunctions()
+	{
+		return functionList!=null?functionList.size():0;
+	}
 	/**
 	 * Return the first global value in the module with the specified getIdentifier, of
 	 * arbitrary type.  This method returns null if a global with the specified
@@ -246,8 +251,8 @@ public final class Module implements Iterable<Function>
 
     public void addFunction(Function fn)
     {
-        Util.assertion( fn != null && !functionList.contains(fn)		        && fn.getName() != null);
-
+        Util.assertion( fn != null && !functionList.contains(fn)
+				&& fn.getName() != null);
         functionList.add(fn);
         fn.setParent(this);
         valSymTable.createValueName(fn.getName(), fn);
@@ -255,8 +260,8 @@ public final class Module implements Iterable<Function>
 
     public void addGlobalVariable(GlobalVariable gv)
     {
-        Util.assertion( gv != null && !globalVariableList.contains(gv)                && gv.getName() != null && !gv.getName().isEmpty());
-
+        Util.assertion( gv != null && !globalVariableList.contains(gv) &&
+				gv.getName() != null && !gv.getName().isEmpty());
         globalVariableList.add(gv);
         valSymTable.createValueName(gv.getName(), gv);
         gv.setParent(this);

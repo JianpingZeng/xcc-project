@@ -384,7 +384,7 @@ public abstract class PMDataManager
                 System.err.printf(" ' on Module '%s'...\n", msg);
                 break;
             case ON_CG_MSG:
-                System.err.printf(" ' on CallGraph '%s'...\n", msg);
+                System.err.printf(" ' on CallGraphAnalysis '%s'...\n", msg);
                 break;
         }
     }

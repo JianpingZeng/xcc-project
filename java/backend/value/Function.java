@@ -438,4 +438,13 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         else
             removeAttribute(n, Attribute.NoCapture);
     }
+
+    /***
+     * Determines if this function is a main function in translation unit or not.
+     * @return
+     */
+    public boolean isMain()
+    {
+        return getName().equals("main");
+    }
 }

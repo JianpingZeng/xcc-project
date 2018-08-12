@@ -55,6 +55,7 @@ public final class PassRegisterationUtility
         new RegisterPass( "Alias Analysis Pass", "alias-analysis", AliasAnalysis.class, false, true);
         new RegisterPass("Live interval Analysis for wimmer style ra", "wimmer-li",
                 backend.codegen.linearscan.LiveIntervalAnalysis.class);
+        new RegisterPass("Basic Call Graph Analysis", "call-graph", CallGraphAnalysis.class, false, true);
 
         // IPO transformation
         new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);

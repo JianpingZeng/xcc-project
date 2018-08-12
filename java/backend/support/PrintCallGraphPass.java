@@ -16,21 +16,46 @@ package backend.support;
  * permissions and limitations under the License.
  */
 import backend.analysis.CallGraphNode;
+import backend.pass.AnalysisUsage;
 import backend.pass.CallGraphSCCPass;
+import backend.value.Function;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 
+import static backend.support.BackendCmdOptions.isFunctionInPrintList;
+
 public class PrintCallGraphPass extends CallGraphSCCPass
 {
+    private PrintStream out;
+    private String ban;
     public PrintCallGraphPass(String banner, PrintStream os)
     {
+        out = os;
+        ban = banner;
+    }
 
+    @Override
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.setPreservedAll();
+        super.getAnalysisUsage(au);
     }
 
     @Override
     public boolean runOnSCC(ArrayList<CallGraphNode> nodes)
     {
+        out.print(ban);
+        for (CallGraphNode n : nodes)
+        {
+            Function f = n.getFunction();
+            if (f != null) {
+                if (isFunctionInPrintList(f.getName()))
+                    f.print(out);
+            }
+            else
+                out.println("\nPrint <null> Function");
+        }
         return false;
     }
 
