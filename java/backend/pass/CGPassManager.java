@@ -15,7 +15,7 @@ package backend.pass;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-import backend.analysis.CallGraphAnalysis;
+import backend.analysis.CallGraph;
 import backend.analysis.CallGraphNode;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
@@ -28,6 +28,10 @@ import java.util.ArrayList;
 
 import static backend.passManaging.PMDataManager.PassDebuggingString.*;
 
+/**
+ * @author Jianping Zeng.
+ * @version 0.4
+ */
 public class CGPassManager extends PMDataManager implements  ModulePass
 {
     private AnalysisResolver resolver;
@@ -45,10 +49,10 @@ public class CGPassManager extends PMDataManager implements  ModulePass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(CallGraphAnalysis.class);
+        au.addRequired(CallGraph.class);
     }
 
-    public boolean doInitialization(CallGraphAnalysis cg)
+    public boolean doInitialization(CallGraph cg)
     {
         boolean changed = false;
         for (int i = 0, e = getNumContainedPasses(); i < e;i++)
@@ -72,11 +76,11 @@ public class CGPassManager extends PMDataManager implements  ModulePass
     @Override
     public boolean runOnModule(Module m)
     {
-        CallGraphAnalysis cg = (CallGraphAnalysis) getAnalysisToUpDate(CallGraphAnalysis.class);
+        CallGraph cg = (CallGraph) getAnalysisToUpDate(CallGraph.class);
         boolean changed = doInitialization(cg);
 
         // iterating over SCC.
-        CallGraphAnalysis.SCCIterator itr = cg.getSCCIterator();
+        CallGraph.SCCIterator itr = cg.getSCCIterator();
         while (itr.hasNext())
         {
             ArrayList<CallGraphNode> cgNodes = itr.next();
@@ -119,7 +123,7 @@ public class CGPassManager extends PMDataManager implements  ModulePass
         changed |= doFinalization(cg);
         return changed;
     }
-    public boolean doFinalization(CallGraphAnalysis cg)
+    public boolean doFinalization(CallGraph cg)
     {
         boolean changed = false;
         for (int i = 0, e = getNumContainedPasses(); i < e;i++)

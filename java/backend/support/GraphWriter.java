@@ -29,7 +29,7 @@ import java.nio.file.Paths;
 
 /**
  * This file defines a class used for writing a specific kind graph
- * (like CFG, CallGraphAnalysis, DomTree, Dominance Frontier) into dot file.
+ * (like CFG, CallGraph, DomTree, Dominance Frontier) into dot file.
  * @author Jianping Zeng
  * @version 0.1
  */

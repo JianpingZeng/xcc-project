@@ -121,7 +121,7 @@ public class TObjectIntCustomHashMap<K> extends TCustomObjectHash<K>
      * value at or near the specified capacity and load factor.
      *
      * @param initialCapacity used to find a prime capacity for the table.
-     * @param loadFactor used to calculate the threshold over which
+     * @param loadFactor used to calculate the inlineThreshold over which
      * rehashing takes place.
      * @param noEntryValue the value used to represent null.
      */

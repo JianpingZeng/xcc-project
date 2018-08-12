@@ -101,7 +101,7 @@ abstract public class TCharShortHash extends TPrimitiveHash {
      * value at or near the specified capacity and load factor.
      *
      * @param initialCapacity used to find a prime capacity for the table.
-     * @param loadFactor used to calculate the threshold over which
+     * @param loadFactor used to calculate the inlineThreshold over which
      * rehashing takes place.
      */
     public TCharShortHash( int initialCapacity, float loadFactor ) {
@@ -116,7 +116,7 @@ abstract public class TCharShortHash extends TPrimitiveHash {
      * value at or near the specified capacity and load factor.
      *
      * @param initialCapacity used to find a prime capacity for the table.
-     * @param loadFactor used to calculate the threshold over which
+     * @param loadFactor used to calculate the inlineThreshold over which
      * rehashing takes place.
      * @param no_entry_value value that represents null
      */

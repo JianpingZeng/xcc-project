@@ -26,6 +26,8 @@ import backend.codegen.linearscan.SimpleRegisterCoalescer;
 import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
 import backend.support.*;
 import backend.target.TargetData;
+import backend.transform.ipo.AlwaysInliner;
+import backend.transform.ipo.BasicInliner;
 import backend.transform.ipo.RaiseAllocations;
 import backend.transform.scalars.*;
 
@@ -55,7 +57,9 @@ public final class PassRegisterationUtility
         new RegisterPass( "Alias Analysis Pass", "alias-analysis", AliasAnalysis.class, false, true);
         new RegisterPass("Live interval Analysis for wimmer style ra", "wimmer-li",
                 backend.codegen.linearscan.LiveIntervalAnalysis.class);
-        new RegisterPass("Basic Call Graph Analysis", "call-graph", CallGraphAnalysis.class, false, true);
+        new RegisterPass("Basic Call Graph Analysis", "call-graph", CallGraph.class, false, true);
+        new RegisterPass("Basic Function Inlining/Integration", "inline", BasicInliner.class, false, false);
+        new RegisterPass("Inliner for always_inline functions", "always-inline", AlwaysInliner.class, false, false);
 
         // IPO transformation
         new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);

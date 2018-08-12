@@ -15,7 +15,7 @@ package backend.pass;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-import backend.analysis.CallGraphAnalysis;
+import backend.analysis.CallGraph;
 import backend.analysis.CallGraphNode;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
@@ -36,11 +36,11 @@ public abstract class CallGraphSCCPass implements Pass
 {
     private AnalysisResolver resolver;
 
-    public boolean doInitialization(CallGraphAnalysis cg)
+    public boolean doInitialization(CallGraph cg)
     {
         return false;
     }
-    public boolean doFinalization(CallGraphAnalysis cg)
+    public boolean doFinalization(CallGraph cg)
     {
         return false;
     }
@@ -101,8 +101,8 @@ public abstract class CallGraphSCCPass implements Pass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(CallGraphAnalysis.class);
-        au.addPreserved(CallGraphAnalysis.class);
+        au.addRequired(CallGraph.class);
+        au.addPreserved(CallGraph.class);
     }
 
     public Pass createPrinterPass(PrintStream os, String banner)

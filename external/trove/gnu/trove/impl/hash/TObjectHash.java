@@ -86,7 +86,7 @@ abstract public class TObjectHash<T> extends THash {
      * value at or near the specified capacity and load factor.
      *
      * @param initialCapacity used to find a prime capacity for the table.
-     * @param loadFactor      used to calculate the threshold over which
+     * @param loadFactor      used to calculate the inlineThreshold over which
      *                        rehashing takes place.
      */
     public TObjectHash(int initialCapacity, float loadFactor) {

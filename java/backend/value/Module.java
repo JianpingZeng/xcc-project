@@ -1,6 +1,5 @@
 package backend.value;
 
-import backend.analysis.CallGraphAnalysis;
 import tools.Util;
 import backend.support.AssemblyWriter;
 import backend.support.AttrList;

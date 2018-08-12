@@ -40,22 +40,11 @@ import tools.Util;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class CallGraphAnalysis implements ModulePass
+public class CallGraph implements ModulePass
 {
     protected Module mod;
     private AnalysisResolver resolver;
     protected HashMap<Function, CallGraphNode> functionMap;
-
-    /**
-     * This class used for representing the node in adjacent list for call graph.
-     */
-    private static final class AdjNode
-    {
-        CallGraphNode vertex;
-        AdjNode next;
-        AdjNode() { this(null); }
-        AdjNode(CallGraphNode node) { vertex = node; }
-    }
 
     /**
      * The main function or null.
@@ -69,7 +58,7 @@ public class CallGraphAnalysis implements ModulePass
 
     private CallGraphNode[] nodes;
 
-    public CallGraphAnalysis()
+    public CallGraph()
     {
         functionMap = new HashMap<>();
     }
@@ -187,7 +176,7 @@ public class CallGraphAnalysis implements ModulePass
     @Override
     public String getPassName()
     {
-        return "Collecting CallGraphAnalysis over Module Pass";
+        return "Collecting CallGraph over Module Pass";
     }
 
     @Override

@@ -3386,7 +3386,7 @@ public class SelectionDAG
 
     /**
      * Determines if the number of memory ops required to replace the memset/memcpy
-     * is below the threshold. If also returns the types of the sequence of memory
+     * is below the inlineThreshold. If also returns the types of the sequence of memory
      * ops to perform memset/memcpy.
      * @param memOps
      * @param dst

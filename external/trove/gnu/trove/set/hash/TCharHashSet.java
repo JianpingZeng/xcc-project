@@ -77,7 +77,7 @@ public class TCharHashSet extends TCharHash implements TCharSet, Externalizable 
      * value at or near the specified capacity and load factor.
      *
      * @param initialCapacity used to find a prime capacity for the table.
-     * @param load_factor used to calculate the threshold over which
+     * @param load_factor used to calculate the inlineThreshold over which
      * rehashing takes place.
      */
     public TCharHashSet( int initialCapacity, float load_factor ) {

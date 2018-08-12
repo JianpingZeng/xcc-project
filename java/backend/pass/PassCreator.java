@@ -17,6 +17,8 @@ package backend.pass;
  */
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.transform.ipo.AlwaysInliner;
+import backend.transform.ipo.BasicInliner;
 import backend.transform.scalars.*;
 
 /**
@@ -42,14 +44,16 @@ public class PassCreator
 
 	public static Pass createFunctionInliningPass(int threshold)
 	{
-		// TODO inliner.
-		return null;
+		return BasicInliner.createFunctionInlinePass(threshold);
 	}
 
+	/**
+	 * Creates an always inliner pass.
+	 * @return
+	 */
 	public static Pass createAlwaysInliningPass()
 	{
-		// TODO always inliner.
-		return null;
+		return AlwaysInliner.createAlwaysInlinerPass();
 	}
 
 	public static void createStandardModulePasses(PassManager pm,
