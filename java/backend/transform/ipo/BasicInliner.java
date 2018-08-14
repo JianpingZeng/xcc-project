@@ -64,13 +64,13 @@ public class BasicInliner extends Inliner
     }
 
     @Override
-    public int getInlineCost(CallSite cs)
+    public InlineCost getInlineCost(CallSite cs)
     {
         return analyzer.getInlineCost(cs, neverInlined);
     }
 
     @Override
-    public int getInlineFudgeFactor(CallSite cs)
+    public float getInlineFudgeFactor(CallSite cs)
     {
         return analyzer.getInlineFudgeFactor(cs);
     }

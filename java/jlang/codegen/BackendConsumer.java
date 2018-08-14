@@ -268,24 +268,22 @@ public class BackendConsumer implements ASTConsumer
             PassCreator.createStandardFunctionPasses(getPerFunctionPasses(),
                     compileOptions.optimizationLevel);
 
-        // todo:add inline pass to function pass manager.
-
         Pass inliningPass = null;
         switch (compileOptions.inlining)
         {
+            default:
             case NoInlining: break;
             case NormalInlining:
             {
-                // inline small function.
-                int threshold = (compileOptions.optimizeSize ||
-                                compileOptions.optimizationLevel<3)?50:200;
-
-                inliningPass = PassCreator.createFunctionInliningPass(threshold);
+                inliningPass = PassCreator.createAlwaysInliningPass();
                 break;
             }
             case OnlyAlwaysInlining:
             {
-                inliningPass = PassCreator.createAlwaysInliningPass();
+                // inline small function.
+                int threshold = (compileOptions.optimizeSize ||
+                        compileOptions.optimizationLevel<3)?50:200;
+                inliningPass = PassCreator.createFunctionInliningPass(threshold);
                 break;
             }
         }

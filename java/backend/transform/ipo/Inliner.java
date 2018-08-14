@@ -52,7 +52,9 @@ public abstract class Inliner extends CallGraphSCCPass
     public int getInlineThreshold() { return inlineThreshold; }
 
     @Override
-    public boolean runOnSCC(ArrayList<CallGraphNode> nodes) {
+    public boolean runOnSCC(ArrayList<CallGraphNode> nodes)
+    {
+        // TODO: 2018/8/13
         return false;
     }
 
@@ -65,17 +67,24 @@ public abstract class Inliner extends CallGraphSCCPass
 
     public boolean shouldInline(CallSite cs)
     {
-        return false;
+        InlineCost cost = analyzer.getInlineCost(cs, neverInlined);
+        float fudgeFactor = analyzer.getInlineFudgeFactor(cs);
+        if (cost.isNeverInline())
+            return false;
+        if (cost.isAlwaysInline())
+            return true;
+        return cost.getCost() <= fudgeFactor*inlineThreshold;
     }
-
-    public abstract int getInlineCost(CallSite cs);
-    public abstract int getInlineFudgeFactor(CallSite cs);
-
     public boolean inlineCallIfPossible()
     {
+        // TODO: 2018/8/13
         return false;
     }
     public void removeDeadFunctions(CallGraph cg, HashSet<Function> deadFuncs)
     {
+        // TODO: 2018/8/13
     }
+
+    public abstract InlineCost getInlineCost(CallSite cs);
+    public abstract float getInlineFudgeFactor(CallSite cs);
 }

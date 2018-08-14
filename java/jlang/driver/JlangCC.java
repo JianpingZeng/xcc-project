@@ -838,10 +838,10 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         }
 
         // We must always run at least the always inlining pass.
-        if (compOpt.optimizationLevel > 1)
-            compOpt.inlining = NormalInlining;
-        else
+        if (compOpt.optimizationLevel <= 1)
             compOpt.inlining = OnlyAlwaysInlining;
+        else
+            compOpt.inlining = NormalInlining;
 
         // Can not unroll loops when enable optimize code size.
         compOpt.unrollLoops = compOpt.optimizationLevel > 1 && !OptSize.value;

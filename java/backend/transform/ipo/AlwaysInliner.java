@@ -34,7 +34,7 @@ public class AlwaysInliner extends Inliner
     {
         // Uses a negative number as threshold to always enable
         // inline on call site.
-        super(-20000);
+        super(-2000000);
         analyzer = new InlineCostAnalyzer();
     }
 
@@ -52,13 +52,13 @@ public class AlwaysInliner extends Inliner
     }
 
     @Override
-    public int getInlineCost(CallSite cs)
+    public InlineCost getInlineCost(CallSite cs)
     {
         return analyzer.getInlineCost(cs, neverInlined);
     }
 
     @Override
-    public int getInlineFudgeFactor(CallSite cs)
+    public float getInlineFudgeFactor(CallSite cs)
     {
         return analyzer.getInlineFudgeFactor(cs);
     }

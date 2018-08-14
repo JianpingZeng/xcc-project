@@ -3097,6 +3097,18 @@ public abstract class Instruction extends User
         {
             return operand(0);
         }
+
+        /**
+         * Checks if this alloca instruction is in the entry block of function and
+         * has a constant allocated size.
+         * @return
+         */
+        public boolean isStaticAlloca()
+        {
+            if (getParent() != getParent().getParent().getEntryBlock())
+                return false;
+            return getArraySize() instanceof ConstantInt;
+        }
     }
 
     /**
