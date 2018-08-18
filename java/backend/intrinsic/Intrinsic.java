@@ -2,7 +2,6 @@ package backend.intrinsic;
 
 import backend.support.LLVMContext;
 import backend.type.FunctionType;
-import backend.type.IntegerType;
 import backend.value.Module;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -10,6 +9,7 @@ import backend.value.Function;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Intrinsic instruction.
@@ -47,7 +47,7 @@ public class Intrinsic
 		ctlz("llvm.ctlz"),
 		ctpop("llvm.ctpop"),
 		stacksave("llvm.stacksave"),
-		stackstore("llvm.stackstore"),
+		stackrestore("llvm.stackrestore"),
 		stackprotector("llvm.stackprotector"),
 		trap("llvm.trap"),
 		uadd_with_overflow("llvm.uadd_with_overflow"),
@@ -65,6 +65,10 @@ public class Intrinsic
 
 	public static ID getID(int id) {return ID.values()[id];}
 
+	public static String getName(ID id)
+	{
+		return id.name;
+	}
 	public static String getName(ID id, ArrayList<Type> types)
 	{
 		if (types.isEmpty())
@@ -82,7 +86,10 @@ public class Intrinsic
 		}
 		return result.toString();
 	}
-
+	public static backend.type.FunctionType getType(ID id)
+	{
+		return getType(id, null);
+	}
 	public static backend.type.FunctionType getType(ID id, ArrayList<Type> types)
 	{
 		backend.type.Type resultTy = null;
@@ -108,6 +115,13 @@ public class Intrinsic
 				argTys.add(types.get(0));
 				argTys.add(LLVMContext.Int32Ty);
 				break;
+			case stacksave:
+				resultTy = PointerType.getUnqual(LLVMContext.Int8Ty);
+				break;
+			case stackrestore:
+				resultTy = LLVMContext.VoidTy;
+				argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+				break;
 			default:
 				Util.shouldNotReachHere("Unknown intrinsic function!");
 				break;
@@ -119,5 +133,16 @@ public class Intrinsic
 	{
 		// We must to ensure that the intrinsic function can have only one global declaration.
 		return (Function) m.getOrInsertFunction(getName(id, types), getType(id, types));
+	}
+
+	public static Function getDeclaration(Module m, ID id, Type[] tys)
+	{
+		ArrayList<Type> res = new ArrayList<>();
+		res.addAll(Arrays.asList(tys));
+		return (Function)m.getOrInsertFunction(getName(id, res), getType(id, res));
+	}
+	public static Function getDeclaration(Module m, ID id)
+	{
+		return (Function) m.getOrInsertFunction(getName(id), getType(id));
 	}
 }

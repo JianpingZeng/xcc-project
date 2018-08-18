@@ -22,6 +22,7 @@ import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.ConstantStructKey;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
@@ -55,7 +56,8 @@ public class ConstantStruct extends Constant
         }
     }
 
-    @Override public boolean isNullValue()
+    @Override
+    public boolean isNullValue()
     {
         return false;
     }
@@ -72,6 +74,10 @@ public class ConstantStruct extends Constant
             }
         }
         return ConstantAggregateZero.get(type);
+    }
+    public static Constant get(StructType type, Constant[] elts)
+    {
+        return get(type, Arrays.asList(elts));
     }
 
     public static Constant get(Constant[] elts, boolean packed)

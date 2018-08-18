@@ -176,7 +176,7 @@ public final class UCE extends FunctionPass
     {
         for (Instruction inst : second)
         {
-            first.appendInst(inst);
+            first.appendInstAfter(inst);
         }
         first.removeSuccssor(second);
         for (BasicBlock succ : second.getSuccs())

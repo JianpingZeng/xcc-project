@@ -66,7 +66,7 @@ public final class LoopInversion implements LoopPass
 		{
 			Instruction inst = header.getInstAt(i);
 			inst.eraseFromParent();
-			newHeader.appendInst(inst);
+			newHeader.appendInstAfter(inst);
 		}
 		
 		for (BasicBlock sux : header.getSuccs())
@@ -110,7 +110,7 @@ public final class LoopInversion implements LoopPass
 		
 		// replace the true TargetData of branch with new header
 		newBR.replaceTargetWith(header, newHeader);		
-		exitBlock.appendInst(newBR);
+		exitBlock.appendInstAfter(newBR);
 		
 		for (BasicBlock parent : loop.exitBlocks())
 		{

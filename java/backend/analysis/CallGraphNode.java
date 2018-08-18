@@ -2,6 +2,8 @@ package backend.analysis;
 
 import backend.support.CallSite;
 import backend.value.Function;
+import backend.value.Instruction;
+import backend.value.Instruction.CallInst;
 import tools.Pair;
 import tools.Util;
 
@@ -53,6 +55,11 @@ public class CallGraphNode implements Iterable<Pair<CallSite, CallGraphNode>>
     public void addCalledFunction(CallSite cs, CallGraphNode targetNode)
     {
         calledFunctions.add(Pair.get(cs, targetNode));
+    }
+
+    public void addCalledFunction(CallInst ci, CallGraphNode targetNode)
+    {
+        calledFunctions.add(Pair.get(new CallSite(ci), targetNode));
     }
     public boolean isEmpty()
     {

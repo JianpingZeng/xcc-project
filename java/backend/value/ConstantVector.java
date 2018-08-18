@@ -21,7 +21,9 @@ import tools.Util;
 import backend.type.VectorType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import static backend.value.ValueKind.ConstantVectorVal;
 
@@ -35,7 +37,7 @@ public class ConstantVector extends Constant
     {
         VectorType vt;
         ArrayList<Constant> vals;
-        public ConstantVectorKey(VectorType ty, ArrayList<Constant> v)
+        public ConstantVectorKey(VectorType ty, List<Constant> v)
         {
             vt = ty;
             vals = new ArrayList<>();
@@ -66,20 +68,25 @@ public class ConstantVector extends Constant
      * Constructs a new instruction representing the specified constants.
      *
      */
-    protected ConstantVector(VectorType vt, ArrayList<Constant> vals)
+    protected ConstantVector(VectorType vt, List<Constant> vals)
     {
         super(vt, ConstantVectorVal);
         reserve(vals.size());
         int idx = 0;
         for (Constant c : vals)
         {
-            Util.assertion(c.getType() == vt.getElementType() ||                    (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID()),  "Initializer for struct element doesn't match struct element type!");
-
+            Util.assertion(c.getType() == vt.getElementType() ||
+                    (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID()),
+                    "Initializer for struct element doesn't match struct element type!");
             setOperand(idx++, c, this);
         }
     }
 
-    public static Constant get(VectorType vt, ArrayList<Constant> vals)
+    public static Constant get(VectorType vt, Constant[] elts)
+    {
+        return get(vt, Arrays.asList(elts));
+    }
+    public static Constant get(VectorType vt, List<Constant> vals)
     {
         Util.assertion( vals != null && !vals.isEmpty());
         Constant c = vals.get(0);

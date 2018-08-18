@@ -20,6 +20,7 @@ import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.pass.Pass;
 import backend.support.LLVMContext;
+import backend.target.TargetData;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -598,5 +599,27 @@ public final class ConstantFolder
         }
         bb.eraseFromParent();
         return true;
+    }
+
+    public static Constant constantFoldCompareInstOperands(Predicate predicate,
+                                                           ArrayList<Constant> ops,
+                                                           TargetData td)
+    {
+        // TODO: 2018/8/17
+        return null;
+    }
+    public static Constant constantFoldLoadThroughGEPConstantExpr(Constant initializer,
+                                                                  ConstantExpr ce)
+    {
+        // TODO: 2018/8/17
+        return null;
+    }
+    public static Constant constantFoldInstOperands(Operator opcode,
+                                                    Type type,
+                                                    ArrayList<Constant> ops,
+                                                    TargetData td)
+    {
+        // TODO: 2018/8/17
+        return null;
     }
 }

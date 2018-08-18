@@ -202,6 +202,12 @@ public class CallGraph implements ModulePass
     public void print(PrintStream os, Module m)
     {}
 
+    public CallGraphNode getNode(Function f)
+    {
+        Util.assertion(f != null && functionMap.containsKey(f));
+        return functionMap.get(f);
+    }
+
     public final class SCCIterator implements Iterator<ArrayList<CallGraphNode>>
     {
         private ArrayList<HashSet<CallGraphNode>> sccs;

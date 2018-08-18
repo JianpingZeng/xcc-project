@@ -1,6 +1,7 @@
 package backend.value;
 
 
+import com.sun.org.apache.regexp.internal.RE;
 import tools.Util;
 import backend.support.LLVMContext;
 import backend.utils.BackwardIterator;
@@ -247,6 +248,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return new BasicBlock(bbName, null, insertBefore);
 	}
 
+	public static BasicBlock createBasicBlock()
+	{
+		return new BasicBlock(null, null, null);
+	}
+
 	/**
 	 * Returns iterator over Instructions in this basic block in forward order.
 	 *
@@ -356,12 +362,54 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		}
 		else 
 		{
-			Util.assertion((getLastInst() instanceof BranchInst), 				"Can not insert more than one branch in basic block");
-
+			Util.assertion((getLastInst() instanceof BranchInst),
+					"Can not insert more than one branch in basic block");
 			instructions.add(inst);
 		}
 		inst.setParent(this);
 	}
+
+    /**
+     * Appends a list of instruction to the end of this basic block's instruction list.
+     * @param insts
+     */
+	public void appendInst(List<Instruction> insts)
+    {
+        if (insts == null || insts.isEmpty()) return;
+        insts.forEach(this::appendInst);
+    }
+
+    /**
+     * Inserts some instructions right after the specified position.
+     * @param afterInst
+     * @param insts
+     */
+    public void appendInstAfter(Instruction afterInst, List<Instruction> insts)
+    {
+        if (insts == null || insts.isEmpty()) return;
+        int startIdx = indexOf(afterInst);
+        if (startIdx < 0) return;
+        for (Instruction inst : insts)
+        {
+            insertAfter(inst, startIdx++);
+        }
+    }
+
+    /**
+     * Inserts some instructions right before the specified position.
+     * @param beforeInst
+     * @param insts
+     */
+    public void appendInstBefore(Instruction beforeInst, List<Instruction> insts)
+    {
+        if (insts == null || insts.isEmpty()) return;
+        int startIdx = indexOf(beforeInst);
+        if (startIdx < 0) return;
+        for (Instruction inst : insts)
+        {
+            insertBefore(inst, startIdx++);
+        }
+    }
 
 	public int getID()
 	{
@@ -658,4 +706,41 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	    while (getInstAt(i) instanceof PhiNode) i++;
 		return i;
 	}
+
+    /**
+     * Checks if there are phinodes exist in instruction list.
+     * @return
+     */
+    public boolean hasNoPhiNode()
+    {
+        return isUseEmpty() || !(getFirstInst() instanceof PhiNode);
+    }
+
+    /**
+     * Split this basic block at the specified position.
+     * @param splitPosition
+     * @param name
+     * @return
+     */
+    public BasicBlock splitBasicBlock(Instruction splitPosition, String name)
+    {
+        int startIdx = indexOf(splitPosition);
+        Util.assertion(startIdx >= 0, "illegal split position");
+        BasicBlock res = BasicBlock.createBasicBlock(name, (Function) null);
+        getParent().addBasicBlockAfter(this, res);
+
+        LinkedList<Instruction> worklist = new LinkedList<>();
+        for (int i = startIdx, e = size(); i < e-1; i++)
+            worklist.add(getInstAt(i));
+
+        for (Instruction inst : worklist)
+        {
+            inst.eraseFromParent();
+            res.appendInst(inst);
+        }
+        // remove the last terminator instruction.
+        getInstList().removeLast();
+        new BranchInst(res, this);
+        return res;
+    }
 }
