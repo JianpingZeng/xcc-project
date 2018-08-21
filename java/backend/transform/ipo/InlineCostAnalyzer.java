@@ -299,4 +299,14 @@ public class InlineCostAnalyzer
         cost += info.numInsts*5;
         return InlineCost.get(cost);
     }
+
+    /**
+     * invalidate the cached {@linkplain FunctionInliningInfo} for
+     * specified function {@code f}.
+     * @param f
+     */
+    public void resetCachedCostInfo(Function f)
+    {
+        cachedFunctionInfos.remove(f);
+    }
 }

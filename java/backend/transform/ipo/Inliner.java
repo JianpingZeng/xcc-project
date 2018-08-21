@@ -30,11 +30,10 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
+import tools.Pair;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 import static backend.transform.utils.PruningFunctionCloner.cloneAndPruneFunctionInfo;
 
@@ -52,10 +51,7 @@ public abstract class Inliner extends CallGraphSCCPass
     protected HashSet<Function> neverInlined;
     protected InlineCostAnalyzer analyzer;
 
-    public Inliner()
-    {
-        this(0);
-    }
+    public Inliner() { this(0); }
 
     public Inliner(int threshold)
     {
@@ -442,12 +438,47 @@ public abstract class Inliner extends CallGraphSCCPass
         return true;
     }
 
+    /**
+     * Update the call graph when you made changes on Call Graph via
+     * inlining the specified callee function into caller function.
+     * The works we should complete are add call edge connecting to
+     * callee's callee over call graph, and remove call edge connecting to
+     * callee function.
+     * @param ci
+     * @param firstNewBlock
+     * @param valueMap
+     * @param cg
+     */
     private static void updateCallGraphAfterInlining(CallInst ci,
                                                      BasicBlock firstNewBlock,
                                                      HashMap<Value, Value> valueMap,
                                                      CallGraph cg)
     {
-        // TODO: 2018/8/17
+        Function callee = ci.getCalledFunction();
+        Function caller = ci.getParent().getParent();
+        CallGraphNode calleeNode = cg.getNode(callee);
+        CallGraphNode callerNode = cg.getNode(caller);
+
+        Iterator<Pair<CallSite, CallGraphNode>> itr = calleeNode.iterator();
+        ArrayList<Pair<CallSite, CallGraphNode>> cached = new ArrayList<>();
+        if (callee == caller)
+        {
+            while (itr.hasNext()) cached.add(itr.next());
+            itr = cached.iterator();
+        }
+        while (itr.hasNext())
+        {
+            Pair<CallSite, CallGraphNode> item = itr.next();
+            CallInst inst = item.first.getInstruction();
+            CallGraphNode node = item.second;
+            if (valueMap.containsKey(inst))
+            {
+                CallInst newInst = (CallInst) valueMap.get(inst);
+                Util.assertion(newInst != null, "We should't use a null in ValueMap!");
+                callerNode.addCalledFunction(newInst, node);
+            }
+        }
+        callerNode.removeCallEdgeFor(CallSite.get(ci));
     }
 
     /**
@@ -493,11 +524,36 @@ public abstract class Inliner extends CallGraphSCCPass
 
     private void resetCachedCostInfo(Function f)
     {
-        // TODO: 2018/8/15
+        analyzer.resetCachedCostInfo(f);
     }
-    public void removeDeadFunctions(CallGraph cg, HashSet<Function> deadFuncs)
+
+    /**
+     * Remove any dead function if it is not contained in {@code notRemoved}.
+     * @param cg
+     * @param notRemoved
+     * @return Return true if Call graph was changed.
+     */
+    public boolean removeDeadFunctions(CallGraph cg, HashSet<Function> notRemoved)
     {
-        // TODO: 2018/8/13
+        HashSet<CallGraphNode> toBeRemoved = new HashSet<>();
+        for (Map.Entry<Function, CallGraphNode> entry : cg.getFunctionMap().entrySet())
+        {
+            CallGraphNode node = entry.getValue();
+            Function f = node.getFunction();
+            if (f == null ||f.isDeclaration() || notRemoved.contains(f))
+                continue;
+
+            node.removeAllCalledFunctions();
+            toBeRemoved.add(node);
+        }
+        boolean change = false;
+        for (CallGraphNode node : toBeRemoved)
+        {
+            resetCachedCostInfo(node.getFunction());
+            cg.removeFunctionFromModule(node);
+            change = true;
+        }
+        return change;
     }
 
     public abstract InlineCost getInlineCost(CallSite cs);
