@@ -26,6 +26,10 @@ def HasStdExtC : Predicate<"subtarget.hasStdExtC()">
 def isRV64 : Predicate<"subtarget.is64Bit()">;
 def isRV32 : Predicate<"!subtarget.is64Bit()">;
 
+
+def RV64           : HwMode<"+64bit">;
+def RV32           : HwMode<"-64bit">;
+
 //===----------------------------------------------------------------------===//
 // Defines sub-cpu types for RISCV target.
 //===----------------------------------------------------------------------===//
@@ -55,7 +59,7 @@ def : Proc<"generic-rv64", [Feature64Bit]>;
 // Defines RISCV Instruction information.
 //===----------------------------------------------------------------------===//
 def RISCVInstrInfo : InstrInfo {
-  let isLittleEndianEncoding = 0;
+  let isLittleEndianEncoding = 1;
 }
 
 //===----------------------------------------------------------------------===//

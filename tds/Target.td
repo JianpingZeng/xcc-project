@@ -3,9 +3,95 @@ include "Intrinsics.td"
 
 class RegisterClass; // Forward def
 
+class HwMode<string FS> {
+  // A string represents subtarget features that turn on in
+  // this Hardware mode. for example, "+sse1,-sse2" will
+  // indicates the mode is enabled when "sse1" is enabled and
+  // "sse2" is disabled.
+  string Features = FS;
+}
+
+// Default HW mode for target when there is no other mode active.
+def DefaultMode : HwMode<"">;
+
+class HwModeSelect<list<HwMode> Ms> {
+  list<HwMode> Modes = Ms;
+}
+
+class ValueTypeByHwMode<list<HwMode> Ms, list<ValueType> Ts>
+    : HwModeSelect<Ms> {
+  list<ValueType> Objects = Ts;
+}
+
+class RegInfo<int RS, int SS, int SA> {
+  int RegSize = RS;
+  int SpillSize = SS;
+  int SpillAlignment = SA;
+}
+
+class RegInfoByHwMode<list<HwMode> Ms, list<RegInfo> Rs>
+    : HwModeSelect<Ms> {
+  list<RegInfo> Objects = Rs;
+}
+
+// SubRegIndex - Use instances of SubRegIndex to identify subregisters.
+class SubRegIndex<int size, int offset = 0> {
+  string Namespace = "";
+
+  // Size - Size (in bits) of the sub-registers represented by this index.
+  int Size = size;
+
+  // Offset - Offset of the first bit that is part of this sub-register index.
+  // Set it to -1 if the same index is used to represent sub-registers that can
+  // be at different offsets (for example when using an index to access an
+  // element in a register tuple).
+  int Offset = offset;
+
+  // ComposedOf - A list of two SubRegIndex instances, [A, B].
+  // This indicates that this SubRegIndex is the result of composing A and B.
+  // See ComposedSubRegIndex.
+  list<SubRegIndex> ComposedOf = [];
+
+  // CoveringSubRegIndices - A list of two or more sub-register indexes that
+  // cover this sub-register.
+  //
+  // This field should normally be left blank as TableGen can infer it.
+  //
+  // TableGen automatically detects sub-registers that straddle the registers
+  // in the SubRegs field of a Register definition. For example:
+  //
+  //   Q0    = dsub_0 -> D0, dsub_1 -> D1
+  //   Q1    = dsub_0 -> D2, dsub_1 -> D3
+  //   D1_D2 = dsub_0 -> D1, dsub_1 -> D2
+  //   QQ0   = qsub_0 -> Q0, qsub_1 -> Q1
+  //
+  // TableGen will infer that D1_D2 is a sub-register of QQ0. It will be given
+  // the synthetic index dsub_1_dsub_2 unless some SubRegIndex is defined with
+  // CoveringSubRegIndices = [dsub_1, dsub_2].
+  list<SubRegIndex> CoveringSubRegIndices = [];
+}
+
+// ComposedSubRegIndex - A sub-register that is the result of composing A and B.
+// Offset is set to the sum of A and B's Offsets. Size is set to B's Size.
+class ComposedSubRegIndex<SubRegIndex A, SubRegIndex B>
+  : SubRegIndex<B.Size, !if(!eq(A.Offset, -1), -1,
+                        !if(!eq(B.Offset, -1), -1,
+                            !add(A.Offset, B.Offset)))> {
+  // See SubRegIndex.
+  let ComposedOf = [A, B];
+}
+
+// RegAltNameIndex - The alternate name set to use for register operands of
+// this register class when printing.
+class RegAltNameIndex {
+  string Namespace = "";
+}
+def NoRegAltName : RegAltNameIndex;
+
 class Register<string n> {
   string Namespace = "";
   string AsmName = n;
+  list<string> AltNames;
 
   int SpillSize = 0;
 
@@ -16,6 +102,33 @@ class Register<string n> {
   list<Register> SubRegs = [];
 
   list<int> DwarfNumbers = [];
+
+  // SubRegIndices - For each register in SubRegs, specify the SubRegIndex used
+  // to address it. Sub-sub-register indices are automatically inherited from
+  // SubRegs.
+  list<SubRegIndex> SubRegIndices = [];
+
+  // RegAltNameIndices - The alternate name indices which are valid for this
+  // register.
+  list<RegAltNameIndex> RegAltNameIndices = [];
+
+  // CostPerUse - Additional cost of instructions using this register compared
+  // to other registers in its class. The register allocator will try to
+  // minimize the number of instructions using a register with a CostPerUse.
+  // This is used by the x86-64 and ARM Thumb targets where some registers
+  // require larger instruction encodings.
+  int CostPerUse = 0;
+
+  // CoveredBySubRegs - When this bit is set, the value of this register is
+  // completely determined by the value of its sub-registers.  For example, the
+  // x86 register AX is covered by its sub-registers AL and AH, but EAX is not
+  // covered by its sub-register AX.
+  bit CoveredBySubRegs = 0;
+
+  // The target specific hardware encoding for this target.
+  bits<16> HWEncoding = 0;
+
+  bit isArtificial = 0;
 }
 
 class RegisterWithSubRegs<string n, list<Register> subregs> : Register<n> {
@@ -34,7 +147,6 @@ class RegisterClass<string namespace, list<ValueType> regTypes, int alignment,
   string Namespace = namespace;
 
   list<ValueType> RegTypes = regTypes;
-
 
   int Size = 0;
 
@@ -68,7 +180,7 @@ class DwarfRegNum<list<int> Numbers> {
 
 //===----------------------------------------------------------------------===//
 // Pull in the common support for scheduling
-// Commented by Xlous zeng on 2017.6.19
+// Commented by Jianping Zeng on 2017.6.19
 include "./TargetSchedule.td"
 
 class Predicate; // Forward def
@@ -227,7 +339,7 @@ class AsmOperandClass {
   /// whether the operand is an instance of this class. If not set, this will
   /// default to "isFoo", where Foo is the AsmOperandClass name. The method
   /// signature should be:
-  ///   bool isFoo() const;
+  ///   boolean isFoo();
   string PredicateMethod = ?;
 
   /// The name of the method on the target specific operand to call to add the
@@ -236,6 +348,8 @@ class AsmOperandClass {
   /// signature should be:
   ///   void addFooOperands(MCInst &Inst, unsigned N) const;
   string RenderMethod = ?;
+
+  string DiagnosticType = ?;
 }
 
 def ImmAsmOperand : AsmOperandClass {
@@ -427,6 +541,47 @@ class AsmParser {
 }
 def DefaultAsmParser : AsmParser;
 
+/// This class allows targets to define assembler mnemonic
+/// aliases.  This should be used when all forms of one mnemonic are accepted
+/// with a different mnemonic.  For example, X86 allows:
+///   sal %al, 1    -> shl %al, 1
+///   sal %ax, %cl  -> shl %ax, %cl
+///   sal %eax, %cl -> shl %eax, %cl
+/// etc.  Though "sal" is accepted with many forms, all of them are directly
+/// translated to a shl, so it can be handled with (in the case of X86, it
+/// actually has one for each suffix as well):
+///   def : MnemonicAlias<"sal", "shl">;
+///
+/// Mnemonic aliases are mapped before any other translation in the match phase,
+/// and do allow Requires predicates, e.g.:
+///
+///  def : MnemonicAlias<"pushf", "pushfq">, Requires<[In64BitMode]>;
+///  def : MnemonicAlias<"pushf", "pushfl">, Requires<[In32BitMode]>;
+///
+/// Mnemonic aliases can also be constrained to specific variants, e.g.:
+///
+///  def : MnemonicAlias<"pushf", "pushfq", "att">, Requires<[In64BitMode]>;
+///
+/// If no variant (e.g., "att" or "intel") is specified then the alias is
+/// applied unconditionally.
+class MnemonicAlias<string From, string To, string VariantName = ""> {
+  string FromMnemonic = From;
+  string ToMnemonic = To;
+  string AsmVariantName = VariantName;
+  list<Predicate> Predicates = [];
+}
+
+/// This defines an alternate assembly syntax that is allowed to
+/// match an instruction that has a different (more canonical) assembly
+/// representation.
+class InstAlias<string Asm, dag Result, int Emit = 1> {
+  string AsmString = Asm;
+  dag ResultInst = Result;
+  int EmitPriority = Emit;
+  list<Predicate> Predicates = [];
+  bit UseInstAsmMatchConverter = 1;
+  string AsmVariantName = "";
+}
 
 //===----------------------------------------------------------------------===//
 // AsmWriter - This class can be implemented by targets that need to customize
@@ -531,11 +686,11 @@ class Processor<string n, ProcessorItineraries pi, list<SubtargetFeature> f> {
 
 //===----------------------------------------------------------------------===//
 // Pull in the common support for calling conventions.
-// Commented by Xlous zeng on 2017.6.19
+// Commented by Jianping Zeng on 2017.6.19
 include "./TargetCallingConv.td"
 
 //===----------------------------------------------------------------------===//
 // Pull in the common support for DAG isel generation.
 //
-// Commented by Xlous zeng on 2017.6.19
+// Commented by Jianping Zeng on 2017.6.19
 include "./TargetSelectionDAG.td"

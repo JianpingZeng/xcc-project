@@ -28,7 +28,13 @@ import gnu.trove.set.hash.TIntHashSet;
  */
 public abstract class TargetRegisterClass
 {
+    /**
+     * The id of this {@linkplain TargetRegisterClass}.
+     */
     private int id;
+    /**
+     * The name of this {@linkplain TargetRegisterClass}.
+     */
     private String name;
     private TIntHashSet regSet;
     private EVT[] vts;
@@ -39,9 +45,12 @@ public abstract class TargetRegisterClass
     private int copyCost;
 
     /**
-     * The register getNumOfSubLoop and alignment in Bytes.
+     * The register size and alignment in Bytes.
      */
     private int regSize, regAlign;
+    /**
+     * The register list contained in this {@linkplain TargetRegisterClass}.
+     */
     private int[] regs;
 
     protected TargetRegisterClass(int id,

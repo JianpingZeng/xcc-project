@@ -468,6 +468,31 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
 class PatLeaf<dag frag, code pred = [{}], SDNodeXForm xform = NOOP_SDNodeXForm>
  : PatFrag<(ops), frag, pred, xform>;
 
+// ImmLeaf is a pattern fragment with a constraint on the immediate.  The
+// constraint is a function that is run on the immediate (always with the value
+// sign extended out to an int64) as Imm.  For example:
+//
+//  def immSExt8 : ImmLeaf<i16, [{ return (short)Imm == Imm; }]>;
+//
+// this is a more convenient form to match 'imm' nodes in than PatLeaf and also
+// is preferred over using PatLeaf because it allows the code generator to
+// reason more about the constraint.
+//
+// If FastIsel should ignore all instructions that have an operand of this type,
+// the FastIselShouldIgnore flag can be set.  This is an optimization to reduce
+// the code size of the generated fast instruction selector.
+class ImmLeaf<ValueType vt, code pred, SDNodeXForm xform = NOOP_SDNodeXForm,
+              SDNode ImmNode = imm>
+  : PatFrag<(ops), (vt ImmNode), [{}], xform> {
+  let ImmediateCode = pred;
+
+  // Is the data type of the immediate an APInt?
+  bit IsAPInt = 0;
+
+  // Is the data type of the immediate an APFloat?
+  bit IsAPFloat = 0;
+}
+
 // Leaf fragments.
 
 def vtInt      : PatLeaf<(vt),  [{ return n.getVT().isInteger(); }]>;
