@@ -46,7 +46,7 @@ class ImmXLenAsmOperand<string prefix, string suffix = ""> : AsmOperandClass {
 
 class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
   let Name = prefix # "Imm" # width # suffix;
-  let PrintMethod = "renderImmOperands";
+  let RenderMethod = "renderImmOperands";
   let DiagnosticType = !strconcat("Invalid", Name);
 }
 
@@ -60,7 +60,7 @@ class UImmAsmOperand<int width, string suffix = "">
 
 def FenceArg : AsmOperandClass {
   let Name = "FenceArg";
-  let PrintMethod = "renderFenceArgOperands";
+  let RenderMethod = "renderFenceArgOperands";
   let DiagnosticType = "InvalidFenceArg";
 }
 
@@ -71,7 +71,7 @@ def fencearg : Operand<XLenVT> {
 
 def UImmLog2XLenAsmOperand : AsmOperandClass {
   let Name = "UImmLog2XLen";
-  let PrintMethod = "printImmOperands";
+  let RenderMethod = "printImmOperands";
   let DiagnosticType = "InvalidUImmLog2XLen";
 }
 
@@ -403,7 +403,7 @@ def : InstAlias<"nop",           (ADDI      X0,      X0,       0)>;
 // generate an arbitrary 64-bit immediate. However, the size does not really
 // matter since PseudoLI is currently only used in the AsmParser where it gets
 // expanded to real instructions immediately.
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Size = 32,
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0, CodeSize = 32,
     isCodeGenOnly = 0, isAsmParserOnly = 1 in
 def PseudoLI : Pseudo<(outs GPR:$rd), (ins ixlenimm:$imm), [],
                       "li", "$rd, $imm">;

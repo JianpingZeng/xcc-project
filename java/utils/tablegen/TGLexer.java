@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Pair;
 import tools.Util;
 import jlang.support.MemoryBuffer;
 import tools.SourceMgr;
@@ -43,15 +44,21 @@ public final class TGLexer
         colon, semi,        // : ;
         comma, dot,         // , .
         equal, question,    // = ?
+        paste,              // #
 
         // Keywords
         Bit, Bits, Class, Code, Dag, Def, Defm, Field, In, Int, Let, List, Multiclass, String,
 
         // !keywords.
-        XConcat, XSRA, XSRL, XSHL, XStrConcat, XNameConcat, XCast, XSubst, XForEach, XCar, XCdr, XNull, XIf,
+        XConcat, XSRA, XSRL, XSHL, XStrConcat, XNameConcat, XCast,
+        XSubst, XForEach, XCar, XCdr, XNull, XIf, XEq, XNe, XLt,
+        XLe, XGt, XGe, XAdd, XAnd,
 
         // Integer value.
         IntVal,
+
+        // Binary integer.
+        BinaryIntVal,
 
         // String valued tokens.
         Id, StrVal, VarName, CodeFragment
@@ -177,6 +184,8 @@ public final class TGLexer
                     return TokKind.l_paren;
                 case ')':
                     return TokKind.r_parne;
+                case '#':
+                    return TokKind.paste;
 
                 case 0:
                 case ' ':
@@ -579,7 +588,7 @@ public final class TGLexer
                 try
                 {
                     curIntVal = Integer.parseInt(curBuf.getSubString(numStart, curPtr), 2);
-                    return TokKind.IntVal;
+                    return TokKind.BinaryIntVal;
                 }
                 catch (NumberFormatException e)
                 {
@@ -678,9 +687,28 @@ public final class TGLexer
             case "cdr": return TokKind.XCdr;
             case "null": return TokKind.XNull;
             case "if": return TokKind.XIf;
+            case "eq": return TokKind.XEq;
+            case "ne": return TokKind.XNe;
+            case "le": return TokKind.XLe;
+            case "lt": return TokKind.XLt;
+            case "gt": return TokKind.XGt;
+            case "ge": return TokKind.XGe;
+            case "add": return TokKind.XAdd;
+            case "and": return TokKind.XAnd;
         }
         MemoryBuffer mb2 = curBuf.clone();
         mb2.setBufferStart(start - 1);
         return returnError(mb2, "Undefined operator");
+    }
+
+    /**
+     * Return a binary integer with it's value in decimal and it's bits
+     * in Pair.
+     * @return
+     */
+    public Pair<Long, Integer> getCurBinaryIntVal()
+    {
+        Util.assertion(getCode() == TokKind.BinaryIntVal);
+        return Pair.get(curIntVal, curPtr-tokStart-2);
     }
 }

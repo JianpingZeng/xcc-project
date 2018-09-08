@@ -85,7 +85,6 @@ public final class TernOpInit extends Init.OpInit
 
     @Override
     public Init fold(Record curRec, MultiClass curMultiClass)
-            throws Exception
     {
         switch (getOpcode())
         {
@@ -125,9 +124,7 @@ public final class TernOpInit extends Init.OpInit
                         rhsd = (DefInit)rhs;
                         Record Val = rhsd.getDef();
                         if (lhsd.toString().equals(rhsd.toString()))
-                        {
                             Val = mhsd.getDef();
-                        }
                         return new DefInit(Val);
                     }
                     if (rhsIsVar) 
@@ -137,9 +134,7 @@ public final class TernOpInit extends Init.OpInit
                         rhsv = (VarInit)rhs; 
                         String Val = rhsv.getName();
                         if (Objects.equals(lhsv.toString(), rhsv.toString()))
-                        {
                             Val = mhsv.getName();
-                        }
                         return new VarInit(Val, getType());
                     }
                     if (rhsIsString)
@@ -155,42 +150,31 @@ public final class TernOpInit extends Init.OpInit
                                 val.replace(lhss.getValue(), mhss.getValue());
                             }
                         } while (val.contains(lhss.getValue()));
-
                         return new StringInit(val);
                     }
                 }
                 break;
             }
-
             case FOREACH:
             {
                 Init Result = foreachHelper(lhs, mhs, rhs, getType(),
                         curRec, curMultiClass);
                 if (Result != null)
-                {
                     return Result;
-                }
                 break;
             }
-
             case IF:
             {
                 IntInit lhsi;
                 if (lhs instanceof IntInit)
                 {
                     lhsi = (IntInit)lhs;
-                    if (lhsi.getValue() != 0)
-                    {
-                        return mhs;
-                    }
-                    else {
-                        return rhs;
-                    }
+                    if (lhsi.getValue() != 0) return mhs;
+                    else return rhs;
                 }
                 break;
             }
         }
-
         return this;
     }
 

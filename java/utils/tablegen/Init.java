@@ -19,6 +19,7 @@ package utils.tablegen;
 import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
+import utils.tablegen.RecTy.BitRecTy;
 import utils.tablegen.RecTy.BitsRecTy;
 import utils.tablegen.RecTy.ListRecTy;
 import utils.tablegen.RecTy.RecordRecTy;
@@ -26,6 +27,7 @@ import utils.tablegen.RecTy.RecordRecTy;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -146,6 +148,8 @@ public abstract class Init
     @Override
     public abstract boolean equals(Object obj);
 
+    public abstract Init getBit(int bits);
+
     /**
      * Represents an uninitialized value-'?'.
      */
@@ -185,6 +189,9 @@ public abstract class Init
             UnsetInit other = (UnsetInit)obj;
             return other == instance;
         }
+
+        @Override
+        public Init getBit(int bits) { return this; }
 
         @Override
         public boolean isComplete()
@@ -236,6 +243,13 @@ public abstract class Init
         {
             os.print(value? "1":"0");
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.assertion(bits < 1 && bits >= 0);
+            return this;
+        }
     }
 
     /**
@@ -254,9 +268,31 @@ public abstract class Init
             // to avoid NullPointerException.
             for (int i = 0; i < size; i++)
             {
-                bits.add(UnsetInit.getInstance());
+                bits.add(null);
                 setted.add(false);
             }
+        }
+
+        public static BitsInit get(List<Init> bits)
+        {
+            BitsInit bi = new BitsInit(bits.size());
+            for (int i = 0, e = bits.size(); i < e; i++)
+            {
+                bi.bits.set(i, bits.get(i));
+                bi.setted.set(i, true);
+            }
+            return bi;
+        }
+
+        public static BitsInit get(Init[] bits)
+        {
+            BitsInit bi = new BitsInit(bits.length);
+            for (int i = 0, e = bits.length; i < e; i++)
+            {
+                bi.bits.set(i, bits[i]);
+                bi.setted.set(i, true);
+            }
+            return bi;
         }
 
         public int getNumBits()
@@ -264,9 +300,11 @@ public abstract class Init
             return bits.size();
         }
 
+        @Override
         public Init getBit(int bit)
         {
-            Util.assertion(bit < bits.size(), "Bit index out of range");
+            Util.assertion(bit >= 0 && bit < bits.size(),
+                    "Bit index out of range");
             return bits.get(bit);
         }
 
@@ -506,6 +544,12 @@ public abstract class Init
         {
             os.print(value);
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            return new BitInit((value & (1 << bits)) != 0);
+        }
     }
 
     /**
@@ -566,6 +610,13 @@ public abstract class Init
                 int elt)
         {
             Util.assertion(false, "Illegal element reference off string");
+            return null;
+        }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.shouldNotReachHere("Illegal bit reference to string");
             return null;
         }
     }
@@ -706,6 +757,12 @@ public abstract class Init
             }
             throw new Exception("Expected record in list!");
         }
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.shouldNotReachHere("Illegal bit reference to list");
+            return null;
+        }
     }
 
     /**
@@ -713,7 +770,8 @@ public abstract class Init
      */
     public static class BinOpInit extends OpInit
     {
-        public enum BinaryOp{ SHL, SRA, SRL, CONCAT, STRCONCAT, NAMECONCAT};
+        public enum BinaryOp{ SHL, SRA, SRL, CONCAT, STRCONCAT,
+            NAMECONCAT, EQ, NE, LT, LE, GT, GE, ADD, AND};
 
         private BinaryOp opc;
         private Init lhs, rhs;
@@ -756,7 +814,6 @@ public abstract class Init
 
         @Override
         public Init fold(Record curRec, MultiClass curMultiClass)
-                throws Exception
         {
             switch (getOpcode())
             {
@@ -782,8 +839,7 @@ public abstract class Init
                                     || !rop.getDef().getName().equals("ins")
                                     || !rop.getDef().getName().equals("defs");
 
-                            if (!lisOPs || !rIsOPs)
-                                throw new Exception("Concated Dag operators don't match");
+                            Util.assertion(lisOPs && rIsOPs, "Concated Dag operators don't match");
                         }
 
                         ArrayList<Init> args = new ArrayList<>();
@@ -818,6 +874,8 @@ public abstract class Init
                 case SHL:
                 case SRA:
                 case SRL:
+                case ADD:
+                case AND:
                 {
                     if (lhs instanceof IntInit && rhs instanceof  IntInit)
                     {
@@ -831,8 +889,37 @@ public abstract class Init
                             case SHL: result = lhsv << rhsv; break;
                             case SRA: result = lhsv >> rhsv; break;
                             case SRL: result = lhsv >>> rhsv; break;
+                            case ADD: result = lhsv + rhsv; break;
+                            case AND: result = lhsv & rhsv; break;
                         }
                         return new IntInit(result);
+                    }
+                    break;
+                }
+                case EQ:
+                case NE:
+                case LT:
+                case LE:
+                case GT:
+                case GE:
+                {
+                    if (lhs instanceof IntInit && rhs instanceof  IntInit)
+                    {
+                        IntInit lhsi = (IntInit)lhs;
+                        IntInit rhsi = (IntInit)rhs;
+                        long lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
+                        boolean result;
+                        switch (getOpcode())
+                        {
+                            default:Util.assertion(false, "Bad opcode!");
+                            case EQ: result = lhsv == rhsv; break;
+                            case NE: result = lhsv != rhsv; break;
+                            case LT: result = lhsv < rhsv; break;
+                            case LE: result = lhsv <= rhsv; break;
+                            case GT: result = lhsv > rhsv; break;
+                            case GE: result = lhsv >= rhsv; break;
+                        }
+                        return new BitInit(result);
                     }
                     break;
                 }
@@ -851,8 +938,8 @@ public abstract class Init
                             RecordVal rv = curRec.getValue(name);
                             if(rv != null)
                             {
-                                if (!rv.getType().equals(getType()))
-                                    throw new Exception("type mismatch in nameconcat");
+                                Util.assertion(rv.getType().equals(getType()),
+                                        "type mismatch in nameconcat");
                             }
                             return new VarInit(name, rv.getType());
                         }
@@ -862,25 +949,21 @@ public abstract class Init
                         {
                             RecordVal rv = curRec.getValue(templateArgName);
                             Util.assertion(rv != null, "Template arg doesn't exist?");
-
-                            if (!rv.getType().equals(getType()))
-                                throw new Exception("type mismatch in nameconcat");
+                            Util.assertion(rv.getType().equals(getType()),
+                                    "type mismatch in nameconcat");
 
                             return new VarInit(templateArgName, rv.getType());
                         }
 
-
                         if (curMultiClass != null)
                         {
                             String mcname = curMultiClass.rec.getName() + "::" + name;
-
                             if(curMultiClass.rec.isTemplateArg(mcname))
                             {
                                 RecordVal rv = curMultiClass.rec.getValue(mcname);
                                 Util.assertion(rv != null, "Template arg doesn't exist?");
-
-                                if (!rv.getType().equals(getType()))
-                                    throw new Exception("type mismatch in nameconcat");
+                                Util.assertion(rv.getType().equals(getType()),
+                                        "type mismatch in nameconcat");
 
                                 return new VarInit(mcname, rv.getType());
                             }
@@ -1020,6 +1103,13 @@ public abstract class Init
         {
             os.printf("[{%s}]", value);
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.shouldNotReachHere("Illegal bit reference to code");
+            return null;
+        }
     }
 
     /**
@@ -1142,6 +1232,13 @@ public abstract class Init
             VarBitInit vbi = (VarBitInit)obj;
             return bit == vbi.bit && ti.equals(vbi.ti);
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.assertion(bits == 0);
+            return this;
+        }
     }
 
     /**
@@ -1215,6 +1312,14 @@ public abstract class Init
         {
             Init i = getVariable().resolveListElementReference(r, rval, getElementNum());
             return i != null ? i : this;
+        }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            if (getType() instanceof BitRecTy)
+                return this;
+            return new VarBitInit(this, bits);
         }
     }
 
@@ -1291,6 +1396,13 @@ public abstract class Init
                 return false;
             DefInit di = (DefInit)obj;
             return def.equals(di.def);
+        }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.shouldNotReachHere("Illegal bit reference to def");
+            return null;
         }
     }
 
@@ -1449,6 +1561,13 @@ public abstract class Init
         {
             return varName;
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            Util.shouldNotReachHere("Illegal bit reference to dag");
+            return null;
+        }
     }
 
     /**
@@ -1577,6 +1696,13 @@ public abstract class Init
                 return val.getValue();
             return this;
         }
+
+        public Init getBit(int bit)
+        {
+            if (getType() instanceof BitRecTy)
+                return this;
+            return new VarBitInit(this, bit);
+        }
     }
 
     /**
@@ -1694,6 +1820,14 @@ public abstract class Init
             rec.print(os);
             os.printf(".%s", fieldName);
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            if (getType() instanceof BitRecTy)
+                return this;
+            return new VarBitInit(this, bits);
+        }
     }
 
     /**
@@ -1710,8 +1844,7 @@ public abstract class Init
 
         public abstract Init getOperand(int i);
 
-        public abstract Init fold(Record curRec, MultiClass curMultiClass)
-                throws Exception;
+        public abstract Init fold(Record curRec, MultiClass curMultiClass);
 
         public abstract OpInit clone(List<Init> operands);
 
@@ -1766,6 +1899,14 @@ public abstract class Init
         {
             return ty.convertValue(this);
         }
+
+        @Override
+        public Init getBit(int bits)
+        {
+            if (getType() instanceof BitRecTy)
+                return this;
+            return new VarBitInit(this, bits);
+        }
     }
 
     public static final class UnOpInit extends OpInit
@@ -1815,7 +1956,6 @@ public abstract class Init
 
         @Override
         public Init fold(Record curRec, MultiClass curMultiClass)
-                throws Exception
         {
             switch (opc)
             {
@@ -1844,11 +1984,8 @@ public abstract class Init
                                 RecordVal rv = curRec.getValue(name);
                                 if (rv != null)
                                 {
-                                    if (!rv.getType().equals(getType()))
-                                    {
-                                        throw new Exception(
-                                                "type mismatch in nameconcat");
-                                    }
+                                    Util.assertion(rv.getType().equals(getType()),
+                                            "type mismatch in nameconcat");
                                     return new VarInit(name, rv.getType());
                                 }
 
@@ -1857,10 +1994,8 @@ public abstract class Init
                                 {
                                     rv = curRec.getValue(templateArgName);
                                     Util.assertion(rv != null, "Template arg doesn't exist?");
-
-                                    if (!rv.getType().equals(getType()))
-                                        throw new Exception("type mismatch in nameconcat");
-
+                                    Util.assertion(rv.getType().equals(getType()),
+                                            "type mismatch in nameconcat");
                                     return new VarInit(templateArgName, rv.getType());
                                 }
                             }
@@ -1872,11 +2007,8 @@ public abstract class Init
                                 {
                                     RecordVal rv = curMultiClass.rec.getValue(mcName);
                                     Util.assertion(rv != null, "Template arg doesn't exist?");
-
-                                    if (!rv.getType().equals(getType()))
-                                    {
-                                        throw new Exception("type mismatch in nameconat");
-                                    }
+                                    Util.assertion(rv.getType().equals(getType()),
+                                            "type mismatch in nameconcat");
                                     return new VarInit(mcName, rv.getType());
                                 }
                             }

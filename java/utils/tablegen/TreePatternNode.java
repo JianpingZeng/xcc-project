@@ -421,12 +421,12 @@ public final class TreePatternNode implements Cloneable
         {
             SDNodeInfo ni = cdp.getSDNodeInfo(getOperator());
 
-            boolean madeChanged = ni.applyTypeConstraints(this, tp);
+            boolean madeChanged = false;
             for (int i = 0, e = getNumChildren(); i != e; ++i)
             {
                 madeChanged |= getChild(i).applyTypeConstraints(tp, notRegisters);
             }
-
+            madeChanged = ni.applyTypeConstraints(this, tp);
             if (ni.getNumResults() == 0)
             {
                 madeChanged |= updateNodeType(isVoid, tp);
@@ -919,9 +919,9 @@ public final class TreePatternNode implements Cloneable
             {
                 TreePatternNode child = getChild(i);
                 TreePatternNode newChild = child.inlinePatternFragments(pattern);
-
-                Util.assertion((child.getPredicateFns().isEmpty()                    || newChild.getPredicateFns().equals(child.getPredicateFns())), "Non-empty child predicate clobbered!");
-
+                Util.assertion((child.getPredicateFns().isEmpty()||
+                        newChild.getPredicateFns().equals(child.getPredicateFns())),
+                        "Non-empty child predicate clobbered!");
                 setChild(i, newChild);
             }
             return this;
@@ -992,8 +992,9 @@ public final class TreePatternNode implements Cloneable
                     // value.
                     Util.assertion(argMap.containsKey(child.getName()), "Couldn't find formal argument!");
                     TreePatternNode newChild = argMap.get(child.getName());
-                    Util.assertion(child.getPredicateFns().isEmpty() ||                            newChild.getPredicateFns().equals(child.getPredicateFns()), "Non empty child predicate clobered!");
-
+                    Util.assertion(child.getPredicateFns().isEmpty() ||
+                            newChild.getPredicateFns().equals(child.getPredicateFns()),
+                            "Non empty child predicate clobbered!");
                     setChild(i, newChild);
                 }
             }
@@ -1012,9 +1013,12 @@ public final class TreePatternNode implements Cloneable
         if (getClass() != obj.getClass())
             return false;
         TreePatternNode node = (TreePatternNode)obj;
-        return Objects.equals(types, node.types) && Objects.equals(operator, node.operator)
-                && Objects.equals(val, node.val) && Objects.equals(name, node.name) &&
-                Objects.equals(predicateFns, node.predicateFns) && Objects.equals(transformFn, node.transformFn)
-                && Objects.equals(children, node.children);
+        return Objects.equals(types, node.types) &&
+                Objects.equals(operator, node.operator) &&
+                Objects.equals(val, node.val) &&
+                Objects.equals(name, node.name) &&
+                Objects.equals(predicateFns, node.predicateFns) &&
+                Objects.equals(transformFn, node.transformFn) &&
+                Objects.equals(children, node.children);
     }
 }

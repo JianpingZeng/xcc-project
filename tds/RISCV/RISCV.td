@@ -22,9 +22,9 @@ def HasStdExtM : Predicate<"subtarget.hasStdExtM()">;
 def HasStdExtA : Predicate<"subtarget.hasStdExtA()">;
 def HasStdExtF : Predicate<"subtarget.hasStdExtF()">;
 def HasStdExtD : Predicate<"subtarget.hasStdExtD()">;
-def HasStdExtC : Predicate<"subtarget.hasStdExtC()">
-def isRV64 : Predicate<"subtarget.is64Bit()">;
-def isRV32 : Predicate<"!subtarget.is64Bit()">;
+def HasStdExtC : Predicate<"subtarget.hasStdExtC()">;
+def IsRV64 : Predicate<"subtarget.is64Bit()">;
+def IsRV32 : Predicate<"!subtarget.is64Bit()">;
 
 
 def RV64           : HwMode<"+64bit">;
@@ -42,17 +42,17 @@ def : Proc<"generic-rv64", [Feature64Bit]>;
 //===----------------------------------------------------------------------===//
 // RISCV Register description information.
 //===----------------------------------------------------------------------===//
-#include "RISCVRegisterInfo.td"
+include "RISCVRegisterInfo.td"
 
 //===----------------------------------------------------------------------===//
 // RISCV Instruction description information.
 //===----------------------------------------------------------------------===//
-#include "RISCVInstrInfo.td"
+include "RISCVInstrInfo.td"
 
 //===----------------------------------------------------------------------===//
 // RISCV Calling convention.
 //===----------------------------------------------------------------------===//
-#include "RISCVCallingConv.td"
+include "RISCVCallingConv.td"
 
 
 //===----------------------------------------------------------------------===//

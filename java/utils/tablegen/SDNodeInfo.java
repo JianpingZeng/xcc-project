@@ -248,30 +248,30 @@ public final class SDNodeInfo
                 TreePattern pattern) throws Exception
         {
             int numResults = nodeInfo.getNumResults();
-            Util.assertion((numResults <= 1), "We only work which nodes with zero or result so far!");
+            Util.assertion((numResults <= 1),
+                    "We only work which nodes with zero or result so far!");
 
             if (nodeInfo.getNumOperands() >= 0)
             {
                 if (node.getNumChildren() != nodeInfo.getNumOperands())
-                    pattern.error(node.getOperator().getName() + " node requires exactly "
-                        + nodeInfo.getNumOperands() + " operands");
+                    pattern.error(node.getOperator().getName() +
+                            " node requires exactly "
+                            + nodeInfo.getNumOperands() + " operands");
             }
-
             CodeGenTarget cgt = pattern.getDAGPatterns().getTarget();
-
             TreePatternNode nodeToApply = getOperandNum(operandNo, node, numResults);
-
             switch (constraintType)
             {
                 default: Util.assertion(false, "Unknown constraint yet!");
                 case SDTCisVT:
                     return nodeToApply.updateNodeType(x, pattern);
                 case SDTCisPtrTy:
+                    // Require it to be one of the legal FP VTs.
                     return nodeToApply.updateNodeType(iPTR, pattern);
                 case SDTCisInt:
                 {
+                    // Require it to be one of the legal integer VTs.
                     TIntArrayList intVTs = filterVTs(cgt.getLegalValueTypes(), isInteger);
-
                     if (intVTs.size() == 1)
                         return nodeToApply.updateNodeType(intVTs.get(0), pattern);
                     return nodeToApply.updateNodeType(isInt, pattern);

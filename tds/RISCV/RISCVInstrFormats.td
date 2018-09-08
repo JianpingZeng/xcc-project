@@ -51,7 +51,7 @@ class RVInst<dag outs, dag ins, string opcodestr, string argstr,
 			list<dag> pattern, InstFormat format> : Instruction {
   field bits<32> Inst;
   field bits<32> SoftFail = 0;
-  let size = 4;
+  let CodeSize = 4;
   bits<7> Opcode = 0;
   let Inst{6-0}  = Opcode;
   let Namespace = "RISCV";
@@ -74,7 +74,7 @@ class Pseudo<dag outs, dag ins, list<dag> pattern, string opcodestr = "",
 // Common base class for R-type instruction according to RISCV ISA preference manual.
 class RVInstR<bits<7> funct7, bits<3> funct3, RISCVOpcode opcode,
             dag outs, dag ins, string opcodestr, string argstr>
-            : RVInst<outs, ins, opcodestr, argstr, InstFormatR> {
+            : RVInst<outs, ins, opcodestr, argstr, [], InstFormatR> {
   bits<5> rs2;
   bits<5> rs1;
   bits<5> rd;
@@ -96,12 +96,12 @@ class RVInstR4<bits<2> funct2, RISCVOpcode opcode, dag outs, dag ins,
   bits<3> funct3;
   bits<5> rd;
 
-  let Inst<31-27> = rs3;
-  let Inst<26-25> = funct2;
-  let Inst<24-20> = rs2;
-  let Inst<19-15> = rs1;
-  let Inst<14-12> = funct3;
-  let iNST<11-7> = rd;
+  let Inst{31-27} = rs3;
+  let Inst{26-25} = funct2;
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
   let Opcode = opcode.Value;
 }
 
@@ -112,16 +112,17 @@ class RVInstRAtomic<bits<5> funct5, bit aq, bit rl, bits<3> funct3,
   bits<5> rs1;
   bits<5> rd;
 
-  let Inst<31-27> = funct5;
-  let Inst<26> = aq;
-  let Inst<25> = rl;
-  let Inst<24-20> = rs2;
-  let Inst<19-15> = rs1;
-  let Inst<14-7> = td;
+  let Inst{31-27} = funct5;
+  let Inst{26} = aq;
+  let Inst{25} = rl;
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
   let Opcode = opcode.Value;
 }
 
-class RVInstRFrm<bits<7> funct7, RISCVOpcode, dag outs, dag ins,
+class RVInstRFrm<bits<7> funct7, RISCVOpcode opcode, dag outs, dag ins,
         string opcodestr, string argstr>
         : RVInst<outs, ins, opcodestr, argstr, [], InstFormatR> {
   bits<5> rs2;
@@ -129,11 +130,11 @@ class RVInstRFrm<bits<7> funct7, RISCVOpcode, dag outs, dag ins,
   bits<3> funct3;
   bits<5> rd;
 
-  let Inst<31-25> = funct7;
-  let Inst<24-20> = rs2;
-  let Inst<19-15> = rs1;
-  let Inst<14-12> = funct3;
-  let Inst[11-7] = rd;
+  let Inst{31-25} = funct7;
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
   let Opcode = opcode.Value;
 }
 
@@ -224,7 +225,7 @@ class RVInstU<RISCVOpcode opcode, dag outs, dag ins,
   bits<20> imm20;
   bits<5> rd;
 
-  let Inst<31-12> = imm20;
+  let Inst{31-12} = imm20;
   let Inst{11-7} = rd;
   let Opcode = opcode.Value;
 }

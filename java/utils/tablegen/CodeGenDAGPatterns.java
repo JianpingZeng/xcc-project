@@ -95,14 +95,12 @@ public final class CodeGenDAGPatterns
         parseDefaultOperands();
         parseInstructions();
         // FIXME (Already fixed 2017.7.23) LLVM-tblgen has 1715 instructions after parseInstructions.
-        //System.err.println(patternsToMatch.size());
         parsePatterns();
 
         // For example, commutative patterns can match multiple ways.Add them
         // to patternToMatch as well.
         generateVariants();
         // FIXME LLVM-tblgen has 2605 patterns after generateVariants.
-        // System.err.println(patternsToMatch.size());
 
         // For example, we can detect loads, stores, and side effects in many
         // cases by examining an instruction's pattern.

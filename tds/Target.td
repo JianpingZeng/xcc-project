@@ -19,7 +19,7 @@ class HwModeSelect<list<HwMode> Ms> {
 }
 
 class ValueTypeByHwMode<list<HwMode> Ms, list<ValueType> Ts>
-    : HwModeSelect<Ms> {
+    : HwModeSelect<Ms>, ValueType<0,0> {
   list<ValueType> Objects = Ts;
 }
 
@@ -145,6 +145,8 @@ class SubRegSet<int n, list<Register> regs, list<Register> subregs> {
 class RegisterClass<string namespace, list<ValueType> regTypes, int alignment,
                     list<Register> regList> {
   string Namespace = namespace;
+  // The register spill size and alignment selected by hardware mode.
+  RegInfoByHwMode RegInfos;
 
   list<ValueType> RegTypes = regTypes;
 
@@ -237,6 +239,8 @@ class Instruction {
   bit hasCtrlDep   = 0;     // Does this instruction r/w ctrl-flow chains?
   bit isNotDuplicable = 0;  // Is it unsafe to duplicate this instruction?
   bit isAsCheapAsAMove = 0; // As cheap (or cheaper) than a move instruction.
+  bit isPseudo = 0;         // Is this instruction pseduo?
+  bit usesCustomInserter = 0; // Pseudo instr needing special help.
 
   // Side effect flags - When set, the flags have these meanings:
   //
@@ -260,6 +264,8 @@ class Instruction {
   // purposes.
   bit isCodeGenOnly = 0;
 
+  bit isAsmParserOnly = 0;
+
   InstrItinClass Itinerary = NoItinerary;// Execution steps used for scheduling.
 
   string Constraints = "";  // OperandConstraint, e.g. $src = $dst.
@@ -267,6 +273,17 @@ class Instruction {
   /// DisableEncoding - List of operand names (e.g. "$op1,$op2") that should not
   /// be encoded into the output machineinstr.
   string DisableEncoding = "";
+
+  // Target-specific flags which will be encoded into TargetInstrDesc.
+  bits<64> TSFlags = 0;
+}
+
+/// PseudoInstExpansion - Expansion information for a pseudo-instruction.
+/// Which instruction it expands to and how the operands map from the
+/// pseudo.
+class PseudoInstExpansion<dag Result> {
+  dag ResultInst = Result;     // The instruction to generate.
+  bit isPseudo = 1;
 }
 
 /// Predicates - These are extra conditionals which are turned into instruction

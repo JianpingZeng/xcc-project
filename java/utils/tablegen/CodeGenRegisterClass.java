@@ -103,9 +103,10 @@ public final class CodeGenRegisterClass
             subRegClasses.add(subReg);
         }
 
-        // Allow targets to override the getNumOfSubLoop in bits of the RegisterClass.
+        // Allow targets to override the size and alignment in bits of
+        // the RegisterClass.
         long size = r.getValueAsInt("Size");
-        spillSize = size != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
+        spillSize = size;// != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
         spillAlignment = r.getValueAsInt("Alignment");
         copyCost = r.getValueAsInt("CopyCost");
         methodBodies = r.getValueAsCode("MethodBodies");

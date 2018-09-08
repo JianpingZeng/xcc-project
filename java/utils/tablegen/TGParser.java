@@ -20,17 +20,17 @@ import gnu.trove.list.array.TIntArrayList;
 import jlang.support.MemoryBuffer;
 import tools.Pair;
 import tools.SourceMgr;
+import utils.tablegen.Init.BinOpInit;
 import utils.tablegen.Init.BinOpInit.BinaryOp;
 import utils.tablegen.Init.BitsInit;
+import utils.tablegen.Init.TypedInit;
 import utils.tablegen.Init.UnOpInit.UnaryOp;
 import utils.tablegen.Init.VarInit;
 import utils.tablegen.RecTy.BitsRecTy;
+import utils.tablegen.RecTy.StringRecTy;
 
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 import static utils.tablegen.Record.records;
 
@@ -570,6 +570,7 @@ public final class TGParser
         {
             default:
                 ranges.add((int) start);
+                return false;
             case minus:
                 if (lexer.lex() != TGLexer.TokKind.IntVal)
                 {
@@ -700,6 +701,56 @@ public final class TGParser
                     lexer.lex();    // Eat the field name.
                     break;
                 }
+                case paste:
+                {
+                    // create an expression like strconcat operation.
+                    SourceMgr.SMLoc pasteLoc = lexer.getLoc();
+                    if (!(result instanceof TypedInit)) {
+                        error(pasteLoc, "LHS of paste is not typed");
+                        return null;
+                    }
+                    TypedInit lhs = (TypedInit) result;
+                    if (!(lhs.getType() instanceof StringRecTy))
+                    {
+                        lhs = (TypedInit)new Init.UnOpInit(UnaryOp.CAST, lhs, new StringRecTy()).
+                                fold(curRec, null);
+                        if (lhs == null)
+                        {
+                            error(pasteLoc, "can't cast '" + lhs.toString() + "' to string");
+                            return null;
+                        }
+                    }
+                    lexer.lex(); // eat '#'
+                    TypedInit rhs = null;
+                    switch (lexer.getCode())
+                    {
+                        case colon:
+                        case semi:
+                        case l_brace:
+                            rhs = new Init.StringInit("");
+                            break;
+                        default:
+                            Init res = parseValue(curRec, null);
+                            if (!(res instanceof TypedInit))
+                            {
+                                error(pasteLoc, "RHS of paste is not typed!");
+                                return null;
+                            }
+                            rhs = (TypedInit)res;
+                            if (!(rhs.getType() instanceof StringRecTy))
+                            {
+                                rhs = (TypedInit)new Init.UnOpInit(UnaryOp.CAST, rhs, new StringRecTy()).
+                                        fold(curRec, null);
+                                if (rhs == null)
+                                {
+                                    error(pasteLoc, "can't cast '" + rhs.toString() + "' to string");
+                                    return null;
+                                }
+                            }
+                            break;
+                    }
+                    result = new BinOpInit(BinaryOp.STRCONCAT, lhs, rhs, new StringRecTy());
+                }
             }
         }
     }
@@ -736,6 +787,16 @@ public final class TGParser
             default:
                 tokError("Unknown token when parsing a value");
                 break;
+            case BinaryIntVal:
+            {
+                Pair<Long, Integer> binaryVal = lexer.getCurBinaryIntVal();
+                Init[] bits = new Init[binaryVal.second];
+                for (int i = 0; i < binaryVal.second; i++)
+                    bits[i] = new Init.BitInit((binaryVal.first & (1L<<i)) != 0);
+                res = BitsInit.get(bits);
+                lexer.lex();
+                break;
+            }
             case IntVal:
                 res = new Init.IntInit(lexer.getCurIntVal());
                 lexer.lex();
@@ -833,9 +894,33 @@ public final class TGParser
 
                 lexer.lex();
 
-                BitsInit result = new BitsInit(vals.size());
+                ArrayList<Init> newBits = new ArrayList<>();
+                // As we parse {a, b, ...}, 'a' is the first one to be parsed.
+                // We'll first read it's element from leftmost to rightmost,
+                // then we can reverse it to get the bits in the correct order
+                // for the BitsInit value.
                 for (int i = 0, e = vals.size(); i < e; i++)
                 {
+                    Init init = vals.get(i);
+                    if (init instanceof BitsInit)
+                    {
+                        BitsInit bi = (BitsInit) init;
+                        for (int j = 0, sz = bi.getNumBits(); j < sz; j++)
+                            newBits.add(bi.getBit(sz-j-1));
+                        continue;
+                    }
+                    // bits<n> can also come from variable initializers.
+                    if (init instanceof VarInit)
+                    {
+                        VarInit vi = (VarInit) init;
+                        if (vi.getType() instanceof BitsRecTy)
+                        {
+                            BitsRecTy bitsTy = (BitsRecTy) vi.getType();
+                            for (int j = 0, sz = bitsTy.getNumBits(); j < sz;j++)
+                                newBits.add(vi.getBit(sz - j - 1));
+                            continue;
+                        }
+                    }
                     Init bit = vals.get(i).convertInitializerTo(new RecTy.BitRecTy());
                     if (bit == null)
                     {
@@ -843,14 +928,14 @@ public final class TGParser
                         ") is not convertible to a bit");
                         return null;
                     }
-                    result.setBit(vals.size() -i -1, bit);
+                    newBits.add(bit);
                 }
-                return result;
+                Collections.reverse(newBits);
+                return BitsInit.get(newBits);
             }
             case l_square:
             {
                 lexer.lex();
-
                 ArrayList<Init> vals = new ArrayList<>();
 
                 RecTy deducedEltTy = null;
@@ -909,14 +994,13 @@ public final class TGParser
                  */
                 for (int i = 0, e = vals.size(); i < e; i++)
                 {
-
-                    if (!(vals.get(i) instanceof Init.TypedInit))
+                    if (!(vals.get(i) instanceof TypedInit))
                     {
                         tokError("Untyped list element");
                         return null;
                     }
 
-                    Init.TypedInit targ = (Init.TypedInit)vals.get(i);
+                    TypedInit targ = (TypedInit)vals.get(i);
                     if (eltTy != null)
                     {
                         eltTy = resolveTypes(eltTy, targ.getType());
@@ -1034,12 +1118,19 @@ public final class TGParser
             case XSHL:
             case XStrConcat:
             case XNameConcat:
+            case XCast:
             case XIf:
             case XForEach:
             case XSubst:
-            {
+            case XEq:
+            case XNe:
+            case XLt:
+            case XLe:
+            case XGt:
+            case XGe:
+            case XAdd:
+            case XAnd:
                 return parseOperation(curRec);
-            }
         }
         return res;
     }
@@ -1119,7 +1210,7 @@ public final class TGParser
 
                         if (type == null)
                         {
-                            tokError("didn't get type for unary opeartor");
+                            tokError("didn't get type for unary operator");
                             return null;
                         }
                         break;
@@ -1153,16 +1244,16 @@ public final class TGParser
                 if (opc == UnaryOp.CAR || opc == UnaryOp.CDR || opc == UnaryOp.LNULL)
                 {
                     if (!(lhs instanceof Init.ListInit) &&!(lhs instanceof Init.StringInit)
-                            && !(lhs instanceof Init.TypedInit))
+                            && !(lhs instanceof TypedInit))
                     {
                         tokError("expected list or string type argument in unary operator");
                         return null;
                     }
-                    if (lhs instanceof Init.TypedInit)
+                    if (lhs instanceof TypedInit)
                     {
-                        Init.TypedInit ti = (Init.TypedInit)lhs;
+                        TypedInit ti = (TypedInit)lhs;
                         if (!(ti.getType() instanceof RecTy.ListRecTy)
-                                && !(ti.getType() instanceof RecTy.StringRecTy))
+                                && !(ti.getType() instanceof StringRecTy))
                         {
                             tokError("expected list or string type argument in unary operator");
                             return null;
@@ -1171,7 +1262,7 @@ public final class TGParser
 
                     if (opc ==UnaryOp.CAR || opc == UnaryOp.CDR)
                     {
-                        if (!(lhs instanceof Init.ListInit) && !(lhs instanceof Init.TypedInit))
+                        if (!(lhs instanceof Init.ListInit) && !(lhs instanceof TypedInit))
                         {
                             tokError("expected list type argument in unary operator");
                             return null;
@@ -1188,13 +1279,13 @@ public final class TGParser
                             }
 
                             Init item = li.getElement(0);
-                            Init.TypedInit titem = null;
-                            if (!(item instanceof Init.TypedInit))
+                            TypedInit titem = null;
+                            if (!(item instanceof TypedInit))
                             {
                                 tokError("untyped list element in unary operator");
                                 return null;
                             }
-                            titem = (Init.TypedInit)item;
+                            titem = (TypedInit)item;
 
                             if (opc == UnaryOp.CAR)
                                 type = titem.getType();
@@ -1202,7 +1293,7 @@ public final class TGParser
                         else
                         {
                             RecTy.ListRecTy ltype;
-                            Init.TypedInit ti = (Init.TypedInit)lhs;
+                            TypedInit ti = (TypedInit)lhs;
                             if (!(ti.getType() instanceof RecTy.ListRecTy))
                             {
                                 tokError("expected list type argument in unary operator");
@@ -1241,6 +1332,14 @@ public final class TGParser
             case XSHL:
             case XStrConcat:
             case XNameConcat:
+            case XEq:
+            case XNe:
+            case XLt:
+            case XLe:
+            case XGt:
+            case XGe:
+            case XAdd:
+            case XAnd:
             {
                 // Value ::= !binop '(' Value ',' Value ')'
                 BinaryOp opc;
@@ -1272,7 +1371,7 @@ public final class TGParser
                     case XStrConcat:
                         lexer.lex();
                         opc = BinaryOp.STRCONCAT;
-                        type = new RecTy.StringRecTy();
+                        type = new StringRecTy();
                         break;
                     case XNameConcat:
                         lexer.lex();
@@ -1284,6 +1383,21 @@ public final class TGParser
                             tokError("didn't get type for binary operator");
                             return null;
                         }
+                        break;
+                    case XEq:
+                    case XNe:
+                    case XLt:
+                    case XLe:
+                    case XGt:
+                    case XGe:
+                    case XAdd:
+                    case XAnd:
+                        int idx = BinaryOp.EQ.ordinal() +
+                            lexer.getCode().ordinal() -
+                            TGLexer.TokKind.XEq.ordinal();
+                        lexer.lex();  // ignores relational operation.
+                        opc = BinaryOp.values()[idx];
+                        type = new RecTy.IntRecTy();
                         break;
                 }
                 if (lexer.getCode() != TGLexer.TokKind.l_paren)
@@ -1320,7 +1434,7 @@ public final class TGParser
                 // eat the ')'.
                 lexer.lex();
 
-                return new Init.BinOpInit(opc, lhs, rhs, type);
+                return new BinOpInit(opc, lhs, rhs, type);
             }
             case XIf:
             case XForEach:
@@ -1397,14 +1511,14 @@ public final class TGParser
                     default:Util.assertion(false, "Unhandle code");
                     case XIf:
                     {
-                        if (!(mhs instanceof Init.TypedInit) || !(rhs instanceof Init.TypedInit))
+                        if (!(mhs instanceof TypedInit) || !(rhs instanceof TypedInit))
                         {
                             tokError("couldn't get type fo !if");
                             return null;
                         }
 
-                        Init.TypedInit mhst = (Init.TypedInit)mhs;
-                        Init.TypedInit rhst = (Init.TypedInit)rhs;
+                        TypedInit mhst = (TypedInit)mhs;
+                        TypedInit rhst = (TypedInit)rhs;
 
                         if (mhst.getType().typeIsConvertiableTo(rhst.getType()))
                         {
@@ -1423,25 +1537,25 @@ public final class TGParser
                     }
                     case XForEach:
                     {
-                        if (!(mhs instanceof Init.TypedInit))
+                        if (!(mhs instanceof TypedInit))
                         {
                             tokError("couldn't get type fo !foreach");
                             return null;
                         }
 
-                        Init.TypedInit mhst = (Init.TypedInit)mhs;
+                        TypedInit mhst = (TypedInit)mhs;
                         type = mhst.getType();
                         break;
                     }
                     case XSubst:
                     {
-                        if (!(rhs instanceof Init.TypedInit))
+                        if (!(rhs instanceof TypedInit))
                         {
                             tokError("couldn't get type fo !subst");
                             return null;
                         }
 
-                        Init.TypedInit rhst = (Init.TypedInit)rhs;
+                        TypedInit rhst = (TypedInit)rhs;
                         type = rhst.getType();
                         break;
                     }
@@ -1566,7 +1680,7 @@ public final class TGParser
                 return null;
             case String:
                 lexer.lex();
-                return new RecTy.StringRecTy();
+                return new StringRecTy();
             case Bit:
                 lexer.lex();
                 return new RecTy.BitRecTy();
@@ -1772,12 +1886,10 @@ public final class TGParser
     private Record parseDef(MultiClass klass)
     {
         SourceMgr.SMLoc loc = lexer.getLoc();
-        Util.assertion(lexer.getCode() == TGLexer.TokKind.Def,  "Unknown tok");
-
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Def,
+                "Unknown tok");
         lexer.lex();
-
         Record curRec = new Record(parseObjectName(), loc);
-
         if (curMultiClass == null)
         {
             if (records.getDef(curRec.getName()) != null)
@@ -1827,7 +1939,6 @@ public final class TGParser
             lexer.lex();
             return name;
         }
-
         return "anonymous." + (anonCounter++);
     }
 
@@ -1840,20 +1951,16 @@ public final class TGParser
      */
     private boolean parseDefm()
     {
-        Util.assertion(lexer.getCode() == TGLexer.TokKind.Defm,                 "Unexpected token!");
-
-
-        if (lexer.lex() != TGLexer.TokKind.Id)
-            return tokError("expected identifier after defm");
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Defm,
+                "Unexpected token!");
+        lexer.lex(); // consume 'defm' keyword.
 
         SourceMgr.SMLoc defmPrefixLoc = lexer.getLoc();
-
-        String defmPrefix = lexer.getCurStrVal();
-        if (lexer.lex() != TGLexer.TokKind.colon)
+        String defmPrefix = parseObjectName();
+        if (lexer.getCode() != TGLexer.TokKind.colon)
             return tokError("expected ':' after defm identifier");
 
-        lexer.lex();
-
+        lexer.lex(); // eat ':'
         SourceMgr.SMLoc subClassLoc = lexer.getLoc();
         SubClassReference ref = parseSubClassReference(null, true);
 
@@ -1862,12 +1969,10 @@ public final class TGParser
             if (ref.rec == null)
                 return true;
 
-            Util.assertion(multiClasses.containsKey(ref.rec.getName()), "Didn't lookup multiclass correctly?");
-
+            Util.assertion(multiClasses.containsKey(ref.rec.getName()),
+                    "Didn't lookup multiclass correctly?");
             MultiClass mc = multiClasses.get(ref.rec.getName());
-
             ArrayList<Init> templateVals = ref.templateArgs;
-
             ArrayList<String> targs = mc.rec.getTemplateArgs();
             if (targs.size() < templateVals.size())
             {
@@ -2360,10 +2465,9 @@ public final class TGParser
      */
     private boolean parseMultiClass()
     {
-        Util.assertion(lexer.getCode() == TGLexer.TokKind.Multiclass,                 "Unexpected token");
-
+        Util.assertion(lexer.getCode() == TGLexer.TokKind.Multiclass,
+                "Unexpected token");
         lexer.lex();
-
         if (lexer.getCode() != TGLexer.TokKind.Id)
             return tokError("expected identifier after multiclass for name");
 

@@ -297,7 +297,7 @@ public final class SourceMgr
 
         printIncludeStack(getBufferInfo(curBuf).includeLoc, os);
 
-        os.printf("Included from %s:%d:", getBufferInfo(curBuf).buffer.getBufferName(),
+        os.printf("Included from %s:%d:\n", getBufferInfo(curBuf).buffer.getBufferName(),
                 findLineNumber(includeLoc, curBuf));
     }
 }

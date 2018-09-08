@@ -187,11 +187,21 @@ def STDMemBarrier : SDTypeProfile<0, 5, [   // memory barier
   SDTCisSameAs<0,1>,  SDTCisSameAs<0,2>,  SDTCisSameAs<0,3>, SDTCisSameAs<0,4>,
   SDTCisInt<0>
 ]>;
+def SDTAtomicFence : SDTypeProfile<0, 2, [
+  SDTCisSameAs<0,1>, SDTCisPtrTy<0>
+]>;
 def STDAtomic3 : SDTypeProfile<1, 3, [
   SDTCisSameAs<0,2>,  SDTCisSameAs<0,3>, SDTCisInt<0>, SDTCisPtrTy<1>
 ]>;
 def STDAtomic2 : SDTypeProfile<1, 2, [
   SDTCisSameAs<0,2>, SDTCisInt<0>, SDTCisPtrTy<1>
+]>;
+
+def SDTAtomicStore : SDTypeProfile<0, 2, [
+  SDTCisPtrTy<0>, SDTCisInt<1>
+]>;
+def SDTAtomicLoad : SDTypeProfile<1, 1, [
+  SDTCisInt<0>, SDTCisPtrTy<1>
 ]>;
 
 def SDTConvertOp : SDTypeProfile<1, 5, [ //cvtss, su, us, uu, ff, fs, fu, sf, su
@@ -220,14 +230,24 @@ def SDNPMayLoad     : SDNodeProperty;   // May read memory, sets 'mayLoad'.
 def SDNPSideEffect  : SDNodeProperty;   // Sets 'HasUnmodelledSideEffects'.
 def SDNPMemOperand  : SDNodeProperty;   // Touches memory, has assoc MemOperand
 
+
+//===----------------------------------------------------------------------===//
+// Selection DAG Pattern operations.
+//
+class SDPatternOperator {
+  list<SDNodeProperty> Properties = [];
+}
+
+
 //===----------------------------------------------------------------------===//
 // Selection DAG Node definitions.
 //
 class SDNode<string opcode, SDTypeProfile typeprof,
-             list<SDNodeProperty> props = [], string sdclass = "SDNode"> {
+             list<SDNodeProperty> props = [], string sdclass = "SDNode"> :
+             SDPatternOperator {
   string Opcode  = opcode;
   string SDClass = sdclass;
-  list<SDNodeProperty> Properties = props;
+  let Properties = props;
   SDTypeProfile TypeProfile = typeprof;
 }
 
@@ -357,6 +377,8 @@ def prefetch   : SDNode<"ISD.PREFETCH"   , STDPrefetch,
 def membarrier : SDNode<"ISD.MEMBARRIER" , STDMemBarrier,
                         [SDNPHasChain, SDNPSideEffect]>;
 
+def atomic_fence : SDNode<"ISD.ATOMIC_FENCE" , SDTAtomicFence,
+                          [SDNPHasChain, SDNPSideEffect]>;
 def atomic_cmp_swap : SDNode<"ISD.ATOMIC_CMP_SWAP" , STDAtomic3,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
 def atomic_load_add : SDNode<"ISD.ATOMIC_LOAD_ADD" , STDAtomic2,
@@ -381,7 +403,11 @@ def atomic_load_umin : SDNode<"ISD.ATOMIC_LOAD_UMIN", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
 def atomic_load_umax : SDNode<"ISD.ATOMIC_LOAD_UMAX", STDAtomic2,
                     [SDNPHasChain, SDNPMayStore, SDNPMayLoad, SDNPMemOperand]>;
-
+def atomic_load      : SDNode<"ISD.ATOMIC_LOAD", SDTAtomicLoad,
+                    [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
+def atomic_store     : SDNode<"ISD.ATOMIC_STORE", SDTAtomicStore,
+                    [SDNPHasChain, SDNPMayStore, SDNPMemOperand]>;
+                    
 // Do not use ld, st directly. Use load, extload, sextload, zextload, store,
 // and truncst (see below).
 def ld         : SDNode<"ISD.LOAD"       , SDTLoad,
@@ -456,11 +482,60 @@ def NOOP_SDNodeXForm : SDNodeXForm<imm, [{}]>;
 /// DAG, frame a single node to multiply nested other fragments.
 ///
 class PatFrag<dag ops, dag frag, code pred = [{}],
-              SDNodeXForm xform = NOOP_SDNodeXForm> {
+              SDNodeXForm xform = NOOP_SDNodeXForm> : SDPatternOperator {
   dag Operands = ops;
   dag Fragment = frag;
   code Predicate = pred;
   SDNodeXForm OperandTransform = xform;
+
+  // Is the desired pre-packaged predicate for a load?
+  bit IsLoad = ?;
+  // Is the desired pre-packaged predicate for a store?
+  bit IsStore = ?;
+  // Is the desired pre-packaged predicate for an atomic?
+  bit IsAtomic = ?;
+
+  // cast<LoadSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
+  // cast<StoreSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
+  bit IsUnindexed = ?;
+
+  // cast<LoadSDNode>(N)->getExtensionType() != ISD::NON_EXTLOAD
+  bit IsNonExtLoad = ?;
+  // cast<LoadSDNode>(N)->getExtensionType() == ISD::EXTLOAD;
+  bit IsAnyExtLoad = ?;
+  // cast<LoadSDNode>(N)->getExtensionType() == ISD::SEXTLOAD;
+  bit IsSignExtLoad = ?;
+  // cast<LoadSDNode>(N)->getExtensionType() == ISD::ZEXTLOAD;
+  bit IsZeroExtLoad = ?;
+  // !cast<StoreSDNode>(N)->isTruncatingStore();
+  // cast<StoreSDNode>(N)->isTruncatingStore();
+  bit IsTruncStore = ?;
+
+  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Monotonic
+  bit IsAtomicOrderingMonotonic = ?;
+  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Acquire
+  bit IsAtomicOrderingAcquire = ?;
+  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Release
+  bit IsAtomicOrderingRelease = ?;
+  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::AcquireRelease
+  bit IsAtomicOrderingAcquireRelease = ?;
+  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::SequentiallyConsistent
+  bit IsAtomicOrderingSequentiallyConsistent = ?;
+
+  // isAcquireOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  // !isAcquireOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  bit IsAtomicOrderingAcquireOrStronger = ?;
+
+  // isReleaseOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  // !isReleaseOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  bit IsAtomicOrderingReleaseOrStronger = ?;
+
+  // cast<LoadSDNode>(N)->getMemoryVT() == MVT::<VT>;
+  // cast<StoreSDNode>(N)->getMemoryVT() == MVT::<VT>;
+  ValueType MemoryVT = ?;
+  // cast<LoadSDNode>(N)->getMemoryVT().getScalarType() == MVT::<VT>;
+  // cast<StoreSDNode>(N)->getMemoryVT().getScalarType() == MVT::<VT>;
+  ValueType ScalarMemoryVT = ?;
 }
 
 // PatLeaf's are pattern fragments that have no operands.  This is just a helper
@@ -477,14 +552,10 @@ class PatLeaf<dag frag, code pred = [{}], SDNodeXForm xform = NOOP_SDNodeXForm>
 // this is a more convenient form to match 'imm' nodes in than PatLeaf and also
 // is preferred over using PatLeaf because it allows the code generator to
 // reason more about the constraint.
-//
-// If FastIsel should ignore all instructions that have an operand of this type,
-// the FastIselShouldIgnore flag can be set.  This is an optimization to reduce
-// the code size of the generated fast instruction selector.
 class ImmLeaf<ValueType vt, code pred, SDNodeXForm xform = NOOP_SDNodeXForm,
               SDNode ImmNode = imm>
   : PatFrag<(ops), (vt ImmNode), [{}], xform> {
-  let ImmediateCode = pred;
+  let Predicate = pred;
 
   // Is the data type of the immediate an APInt?
   bit IsAPInt = 0;
@@ -787,6 +858,56 @@ defm atomic_load_min  : binary_atomic_op<atomic_load_min>;
 defm atomic_load_max  : binary_atomic_op<atomic_load_max>;
 defm atomic_load_umin : binary_atomic_op<atomic_load_umin>;
 defm atomic_load_umax : binary_atomic_op<atomic_load_umax>;
+
+def atomic_load_8 :
+  PatFrag<(ops node:$ptr),
+          (atomic_load node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i8;
+}
+def atomic_load_16 :
+  PatFrag<(ops node:$ptr),
+          (atomic_load node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i16;
+}
+def atomic_load_32 :
+  PatFrag<(ops node:$ptr),
+          (atomic_load node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i32;
+}
+def atomic_load_64 :
+  PatFrag<(ops node:$ptr),
+          (atomic_load node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i64;
+}
+
+def atomic_store_8 :
+  PatFrag<(ops node:$val, node:$ptr),
+          (atomic_store node:$val, node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i8;
+}
+def atomic_store_16 :
+  PatFrag<(ops node:$val, node:$ptr),
+            (atomic_store node:$val, node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i16;
+}
+def atomic_store_32 :
+  PatFrag<(ops node:$val, node:$ptr),
+            (atomic_store node:$val, node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i32;
+}
+def atomic_store_64 :
+  PatFrag<(ops node:$val, node:$ptr),
+            (atomic_store node:$val, node:$ptr)> {
+  let IsAtomic = 1;
+  let MemoryVT = i64;
+}
 
 //===----------------------------------------------------------------------===//
 // Selection DAG CONVERT_RNDSAT patterns

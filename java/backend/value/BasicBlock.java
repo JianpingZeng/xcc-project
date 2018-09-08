@@ -1,7 +1,5 @@
 package backend.value;
 
-
-import com.sun.org.apache.regexp.internal.RE;
 import tools.Util;
 import backend.support.LLVMContext;
 import backend.utils.BackwardIterator;
