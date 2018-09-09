@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class AlignedAttr extends Attr
-{
-    public AlignedAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class AlignedAttr extends Attr {
+  public AlignedAttr(AttrKind kind) {
+    super(kind);
+  }
 }

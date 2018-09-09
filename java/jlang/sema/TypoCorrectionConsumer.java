@@ -29,76 +29,63 @@ import java.util.stream.Collectors;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class TypoCorrectionConsumer
-{
-    private class Record implements Comparable<Record>
-    {
-        int edit;
-        NamedDecl decl;
+public class TypoCorrectionConsumer {
+  private class Record implements Comparable<Record> {
+    int edit;
+    NamedDecl decl;
 
-        public Record(int d, NamedDecl nd)
-        {
-            edit = d;
-            decl = nd;
-        }
-
-        @Override
-        public int compareTo(Record o)
-        {
-            return edit - o.edit;
-        }
+    public Record(int d, NamedDecl nd) {
+      edit = d;
+      decl = nd;
     }
 
-    private String typo;
-    private TreeSet<Record> bestResults;
-    private int bestEditDistance;
-
-
-    public TypoCorrectionConsumer(IdentifierInfo typo)
-    {
-        this.typo = typo.getName();
-        bestResults = new TreeSet<>();
-        bestEditDistance = 0;
+    @Override
+    public int compareTo(Record o) {
+      return edit - o.edit;
     }
+  }
 
-    public void foundDecl(NamedDecl nd)
-    {
-        IdentifierInfo name = nd.getIdentifier();
-        if (name == null)
-            return;
+  private String typo;
+  private TreeSet<Record> bestResults;
+  private int bestEditDistance;
 
-        int ed = Util.getEditDistance(typo, name.getName());
-        if (bestResults.isEmpty())
-        {
-            bestResults.add(new Record(ed, nd));
-            bestEditDistance = ed;
-        }
-        else
-        {
-            if (ed < bestEditDistance)
-            {
-                bestEditDistance = ed;
-                bestResults.add(new Record(ed, nd));
-            }
-        }
+
+  public TypoCorrectionConsumer(IdentifierInfo typo) {
+    this.typo = typo.getName();
+    bestResults = new TreeSet<>();
+    bestEditDistance = 0;
+  }
+
+  public void foundDecl(NamedDecl nd) {
+    IdentifierInfo name = nd.getIdentifier();
+    if (name == null)
+      return;
+
+    int ed = Util.getEditDistance(typo, name.getName());
+    if (bestResults.isEmpty()) {
+      bestResults.add(new Record(ed, nd));
+      bestEditDistance = ed;
+    } else {
+      if (ed < bestEditDistance) {
+        bestEditDistance = ed;
+        bestResults.add(new Record(ed, nd));
+      }
     }
+  }
 
-    public ArrayList<NamedDecl> getBestResults()
-    {
-        ArrayList<NamedDecl> res = new ArrayList<>();
-        res.addAll(bestResults.stream()
-                .map(node->node.decl)
-                .collect(Collectors.toList()));
-        return res;
-    }
+  public ArrayList<NamedDecl> getBestResults() {
+    ArrayList<NamedDecl> res = new ArrayList<>();
+    res.addAll(bestResults.stream()
+        .map(node -> node.decl)
+        .collect(Collectors.toList()));
+    return res;
+  }
 
-    public int getBestEditDistance()
-    {
-        return bestEditDistance;
-    }
+  public int getBestEditDistance() {
+    return bestEditDistance;
+  }
 
-    public boolean isEmpty()
-    {
-        return bestResults.isEmpty();
-    }
+  public boolean isEmpty() {
+    return bestResults.isEmpty();
+  }
 }

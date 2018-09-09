@@ -23,15 +23,14 @@ import gnu.trove.list.array.TIntArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SectionCPs
-{
-    public MCSection s;
-    public int alignemnt;
-    public TIntArrayList cpes;
-    public SectionCPs(MCSection s, int a)
-    {
-        this.s = s;
-        alignemnt = a;
-        cpes = new TIntArrayList();
-    }
+public class SectionCPs {
+  public MCSection s;
+  public int alignemnt;
+  public TIntArrayList cpes;
+
+  public SectionCPs(MCSection s, int a) {
+    this.s = s;
+    alignemnt = a;
+    cpes = new TIntArrayList();
+  }
 }

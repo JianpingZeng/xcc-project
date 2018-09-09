@@ -17,26 +17,27 @@ package tools;
  */
 
 import config.Config;
+
 import java.io.File;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CPUInfoUtility
-{
-    static
-    {
-        File lib = new File(Config.CPUInfoUtility_Path +"/" + System.mapLibraryName(Config.CPUInfoUtility_Name));
-        System.load(lib.getAbsolutePath());
-    }
-    /**
-     * This native method is used for getting CPU ID and information by calling
-     * inline assembly in C language.
-     * @param value The catogery to query
-     * @param fourRegs  An array for holding returned four values, EAX, EBX, ECX,
-     *                  EDX.
-     * @return
-     */
-    public native static boolean getCpuIDAndInfo(int value, int[] fourRegs);
+public class CPUInfoUtility {
+  static {
+    File lib = new File(Config.CPUInfoUtility_Path + "/" + System.mapLibraryName(Config.CPUInfoUtility_Name));
+    System.load(lib.getAbsolutePath());
+  }
+
+  /**
+   * This native method is used for getting CPU ID and information by calling
+   * inline assembly in C language.
+   *
+   * @param value    The catogery to query
+   * @param fourRegs An array for holding returned four values, EAX, EBX, ECX,
+   *                 EDX.
+   * @return
+   */
+  public native static boolean getCpuIDAndInfo(int value, int[] fourRegs);
 }

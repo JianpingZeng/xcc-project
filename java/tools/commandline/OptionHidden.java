@@ -20,25 +20,22 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum OptionHidden
-{
-    NotHidden(0x20),
-    Hidden(0x40),
-    ReallyHidden(0x60),
-    HiddenMask(0x60);
+public enum OptionHidden {
+  NotHidden(0x20),
+  Hidden(0x40),
+  ReallyHidden(0x60),
+  HiddenMask(0x60);
 
-    public int value;
+  public int value;
 
-    OptionHidden(int v)
-    {
-        value = v;
-    }
+  OptionHidden(int v) {
+    value = v;
+  }
 
-    public static OptionHidden getFromValue(int v)
-    {
-        for (OptionHidden opt : values())
-            if (opt.value == v)
-                return opt;
-        return null;
-    }
+  public static OptionHidden getFromValue(int v) {
+    for (OptionHidden opt : values())
+      if (opt.value == v)
+        return opt;
+    return null;
+  }
 }

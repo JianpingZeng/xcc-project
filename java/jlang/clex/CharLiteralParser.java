@@ -16,96 +16,83 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import jlang.support.SourceLocation;
 import tools.APInt;
 import tools.OutRef;
+import tools.Util;
 
 import static jlang.clex.LiteralSupport.processCharEscape;
-import static jlang.diag.DiagnosticLexKindsTag.ext_four_char_character_literal;
-import static jlang.diag.DiagnosticLexKindsTag.ext_multichar_character_literal;
-import static jlang.diag.DiagnosticLexKindsTag.warn_char_constant_too_large;
+import static jlang.diag.DiagnosticLexKindsTag.*;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CharLiteralParser
-{
-    private long value;
-    private boolean isMultChar;
-    private boolean hadError;
+public class CharLiteralParser {
+  private long value;
+  private boolean isMultChar;
+  private boolean hadError;
 
-    public CharLiteralParser(char[] tokStr, SourceLocation loc, Preprocessor pp)
-    {
-        hadError = false;
-        int pos = 0;
-        Util.assertion(tokStr[pos] == '\'', "Invalid token lexed");
-        ++pos;
+  public CharLiteralParser(char[] tokStr, SourceLocation loc, Preprocessor pp) {
+    hadError = false;
+    int pos = 0;
+    Util.assertion(tokStr[pos] == '\'', "Invalid token lexed");
+    ++pos;
 
-        Util.assertion(pp.getTargetInfo().getCharWidth() == 8, "Asssumes char is 8bit");
-        Util.assertion(pp.getTargetInfo().getIntWidth() <= 64                && (pp.getTargetInfo().getIntWidth() & 7) == 0, 
-                "Assumes sizeof(int) on target is <= 64 and a multiple of char");
+    Util.assertion(pp.getTargetInfo().getCharWidth() == 8, "Asssumes char is 8bit");
+    Util.assertion(pp.getTargetInfo().getIntWidth() <= 64 && (pp.getTargetInfo().getIntWidth() & 7) == 0,
+        "Assumes sizeof(int) on target is <= 64 and a multiple of char");
 
 
-        APInt litVal = new APInt(pp.getTargetInfo().getIntWidth(), 0);
-        int numCharsSoFar = 0;
-        while (tokStr[pos] != '\'')
-        {
-            char resultChar;
-            if (tokStr[pos] != '\\')
-                resultChar = tokStr[pos++];
-            else
-            {
-                OutRef<Boolean> x = new OutRef<>(hadError);
-                OutRef<Integer> y = new OutRef<>(pos);
-                resultChar = processCharEscape(String.valueOf(tokStr), y, x, loc, pp);
-                hadError = x.get();
-                pos = y.get();
-            }
+    APInt litVal = new APInt(pp.getTargetInfo().getIntWidth(), 0);
+    int numCharsSoFar = 0;
+    while (tokStr[pos] != '\'') {
+      char resultChar;
+      if (tokStr[pos] != '\\')
+        resultChar = tokStr[pos++];
+      else {
+        OutRef<Boolean> x = new OutRef<>(hadError);
+        OutRef<Integer> y = new OutRef<>(pos);
+        resultChar = processCharEscape(String.valueOf(tokStr), y, x, loc, pp);
+        hadError = x.get();
+        pos = y.get();
+      }
 
-            if (numCharsSoFar != 0)
-            {
-                if (litVal.countLeadingZeros() < 8)
-                    pp.diag(loc, warn_char_constant_too_large).emit();
-                litVal.shlAssign(8);
-            }
-            litVal.assign(litVal.add(resultChar));
-            ++numCharsSoFar;
-        }
-
-        // if this is teh second character being processed, do special handling.
-        if (numCharsSoFar > 1)
-        {
-            if (numCharsSoFar != 4)
-                pp.diag(loc, ext_multichar_character_literal).emit();
-            else
-                pp.diag(loc, ext_four_char_character_literal).emit();
-            isMultChar = true;
-        }
-        else
-            isMultChar = false;
-
-        value = litVal.getZExtValue();
+      if (numCharsSoFar != 0) {
+        if (litVal.countLeadingZeros() < 8)
+          pp.diag(loc, warn_char_constant_too_large).emit();
+        litVal.shlAssign(8);
+      }
+      litVal.assign(litVal.add(resultChar));
+      ++numCharsSoFar;
     }
 
-    public CharLiteralParser(String tokStr, SourceLocation loc, Preprocessor pp)
-    {
-        this(tokStr.toCharArray(), loc, pp);
-    }
+    // if this is teh second character being processed, do special handling.
+    if (numCharsSoFar > 1) {
+      if (numCharsSoFar != 4)
+        pp.diag(loc, ext_multichar_character_literal).emit();
+      else
+        pp.diag(loc, ext_four_char_character_literal).emit();
+      isMultChar = true;
+    } else
+      isMultChar = false;
 
-    public long getValue()
-    {
-        return value;
-    }
+    value = litVal.getZExtValue();
+  }
 
-    public boolean isMultChar()
-    {
-        return isMultChar;
-    }
+  public CharLiteralParser(String tokStr, SourceLocation loc, Preprocessor pp) {
+    this(tokStr.toCharArray(), loc, pp);
+  }
 
-    public boolean hadError()
-    {
-        return hadError;
-    }
+  public long getValue() {
+    return value;
+  }
+
+  public boolean isMultChar() {
+    return isMultChar;
+  }
+
+  public boolean hadError() {
+    return hadError;
+  }
 }

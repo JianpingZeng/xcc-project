@@ -17,60 +17,60 @@ package jlang.support;
  */
 
 /**
- *  Describes the different kinds of linkage.
+ * Describes the different kinds of linkage.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum Linkage
-{
-	/**
-	 * No linkage, which means that the entity is unique and
-	 * can only be referred to from within its scope.
-	 */
-	NoLinkage,
+public enum Linkage {
+  /**
+   * No linkage, which means that the entity is unique and
+   * can only be referred to from within its scope.
+   */
+  NoLinkage,
 
-	/**
-	 * Internal linkage, which indicates that the entity can
-	 * be referred to from within the translation unit (but not other
-	 * translation units).
-	 */
-	InternalLinkage,
+  /**
+   * Internal linkage, which indicates that the entity can
+   * be referred to from within the translation unit (but not other
+   * translation units).
+   */
+  InternalLinkage,
 
-	/**
-	 * External linkage within a unique namespace. From the
-	 * langauge perspective, these entities have external
-	 * linkage. However, since they reside in an anonymous namespace,
-	 * their names are unique to this translation unit, which is
-	 * equivalent to having internal linkage from the code-generation
-	 * point of view.
-	 */
-	UniqueExternalLinkage,
+  /**
+   * External linkage within a unique namespace. From the
+   * langauge perspective, these entities have external
+   * linkage. However, since they reside in an anonymous namespace,
+   * their names are unique to this translation unit, which is
+   * equivalent to having internal linkage from the code-generation
+   * point of view.
+   */
+  UniqueExternalLinkage,
 
-	/**
-	 * External linkage, which indicates that the entity can
-	 * be referred to from other translation units.
-	 */
-	ExternalLinkage;
+  /**
+   * External linkage, which indicates that the entity can
+   * be referred to from other translation units.
+   */
+  ExternalLinkage;
 
 
-	/**
-	 * Determine whether the given linkage is semantically external.
-	 * @param L
-	 * @return
-	 */
-	public static boolean isExternalLinkage(Linkage L)
-	{
-		return L == UniqueExternalLinkage || L == ExternalLinkage;
-	}
+  /**
+   * Determine whether the given linkage is semantically external.
+   *
+   * @param L
+   * @return
+   */
+  public static boolean isExternalLinkage(Linkage L) {
+    return L == UniqueExternalLinkage || L == ExternalLinkage;
+  }
 
-	/**
-	 * Compute the minimum linkage given two linages.
-	 * @param L1
-	 * @param L2
-	 * @return
-	 */
-	public static Linkage minLinkage(Linkage L1, Linkage L2)
-	{
-		return L1.ordinal() < L2.ordinal()? L1 : L2;
-	}
+  /**
+   * Compute the minimum linkage given two linages.
+   *
+   * @param L1
+   * @param L2
+   * @return
+   */
+  public static Linkage minLinkage(Linkage L1, Linkage L2) {
+    return L1.ordinal() < L2.ordinal() ? L1 : L2;
+  }
 }

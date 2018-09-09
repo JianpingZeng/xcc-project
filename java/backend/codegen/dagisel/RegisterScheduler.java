@@ -17,54 +17,48 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.*;
+import backend.codegen.MachinePassRegistry;
+import backend.codegen.MachinePassRegistryListener;
+import backend.codegen.MachinePassRegistryNode;
+import backend.codegen.SchedPassCtor;
 
-public class RegisterScheduler extends MachinePassRegistryNode<SchedPassCtor>
-{
-	public static final MachinePassRegistry<SchedPassCtor> registry =
-		new MachinePassRegistry<>();
+public class RegisterScheduler extends MachinePassRegistryNode<SchedPassCtor> {
+  public static final MachinePassRegistry<SchedPassCtor> registry =
+      new MachinePassRegistry<>();
 
-    public RegisterScheduler(String name, String desc,
-		SchedPassCtor ctor)
-	{
-		super(name, desc, ctor);
-		registry.add(this);		
-	}
+  public RegisterScheduler(String name, String desc,
+                           SchedPassCtor ctor) {
+    super(name, desc, ctor);
+    registry.add(this);
+  }
 
-	public void clear()
-	{
-		registry.remove(this);
-	}
+  public void clear() {
+    registry.remove(this);
+  }
 
-    @Override
-    public RegisterScheduler getNext()
-    {
-        return (RegisterScheduler) super.getNext();
-    }
+  @Override
+  public RegisterScheduler getNext() {
+    return (RegisterScheduler) super.getNext();
+  }
 
-    public static RegisterScheduler getList()
-    {
-        return (RegisterScheduler) registry.getList();
-    }
+  public static RegisterScheduler getList() {
+    return (RegisterScheduler) registry.getList();
+  }
 
-    public static SchedPassCtor getDefault()
-    {
-        return registry.getDefault();
-    }
+  public static SchedPassCtor getDefault() {
+    return registry.getDefault();
+  }
 
-    public static void setDefault(SchedPassCtor ctor)
-    {
-        registry.setDefaultCtor(ctor);
-    }
+  public static void setDefault(SchedPassCtor ctor) {
+    registry.setDefaultCtor(ctor);
+  }
 
-    public static void setListener(MachinePassRegistryListener listener)
-    {
-        registry.setListener(listener);
-    }
+  public static void setListener(MachinePassRegistryListener listener) {
+    registry.setListener(listener);
+  }
 
-    @Override
-    public SchedPassCtor getCtor()
-    {
-        return super.getCtor();
-    }
+  @Override
+  public SchedPassCtor getCtor() {
+    return super.getCtor();
+  }
 }

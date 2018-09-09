@@ -22,23 +22,22 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class StatisticBase
-{
-    private String name;
-    private String desc;
+public abstract class StatisticBase {
+  private String name;
+  private String desc;
 
-    /**
-     * Keeps what number of statistic were created.
-     */
-    public static int numStats;
-    public StatisticBase(String name, String desc)
-    {
-        this.name = name;
-        this.desc = desc;
-        ++numStats;
-    }
+  /**
+   * Keeps what number of statistic were created.
+   */
+  public static int numStats;
 
-    public abstract void printValue(PrintStream os);
+  public StatisticBase(String name, String desc) {
+    this.name = name;
+    this.desc = desc;
+    ++numStats;
+  }
 
-    public abstract boolean hasSomeValue();
+  public abstract void printValue(PrintStream os);
+
+  public abstract boolean hasSomeValue();
 }

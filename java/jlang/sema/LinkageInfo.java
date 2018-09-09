@@ -28,111 +28,95 @@ import static jlang.support.Visibility.minVisibility;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LinkageInfo
-{
-	private Linkage linkage;
-	private Visibility visibility;
-	private boolean explicit;
+public class LinkageInfo {
+  private Linkage linkage;
+  private Visibility visibility;
+  private boolean explicit;
 
-	public LinkageInfo()
-	{
-		linkage = Linkage.ExternalLinkage;
-		visibility = DefaultVisibility;
-		explicit = false;
-	}
+  public LinkageInfo() {
+    linkage = Linkage.ExternalLinkage;
+    visibility = DefaultVisibility;
+    explicit = false;
+  }
 
-	public LinkageInfo(Linkage l, Visibility v, boolean e)
-	{
-		linkage = l;
-		visibility = v;
-		explicit = e;
-	}
+  public LinkageInfo(Linkage l, Visibility v, boolean e) {
+    linkage = l;
+    visibility = v;
+    explicit = e;
+  }
 
-	public static LinkageInfo external()
-	{
-		return new LinkageInfo();
-	}
+  public static LinkageInfo external() {
+    return new LinkageInfo();
+  }
 
-	public static LinkageInfo internal()
-	{
-		return new LinkageInfo(InternalLinkage, DefaultVisibility, false);
-	}
+  public static LinkageInfo internal() {
+    return new LinkageInfo(InternalLinkage, DefaultVisibility, false);
+  }
 
-	public static LinkageInfo uniqueExternal()
-	{
-		return new LinkageInfo(UniqueExternalLinkage, DefaultVisibility, false);
-	}
+  public static LinkageInfo uniqueExternal() {
+    return new LinkageInfo(UniqueExternalLinkage, DefaultVisibility, false);
+  }
 
-	public static LinkageInfo none()
-	{
-		return new LinkageInfo(NoLinkage, DefaultVisibility, false);
-	}
+  public static LinkageInfo none() {
+    return new LinkageInfo(NoLinkage, DefaultVisibility, false);
+  }
 
-	public Linkage getLinkage()
-	{
-		return linkage;
-	}
+  public Linkage getLinkage() {
+    return linkage;
+  }
 
-	public Visibility getVisibility()
-	{
-		return visibility;
-	}
+  public Visibility getVisibility() {
+    return visibility;
+  }
 
-	public boolean visibilityExplicit()
-	{
-		return explicit;
-	}
+  public boolean visibilityExplicit() {
+    return explicit;
+  }
 
-	public void setLinkage(Linkage linkage)
-	{
-		this.linkage = linkage;
-	}
+  public void setLinkage(Linkage linkage) {
+    this.linkage = linkage;
+  }
 
-	public void setVisibility(Visibility visibility)
-	{
-		this.visibility = visibility;
-	}
+  public void setVisibility(Visibility visibility) {
+    this.visibility = visibility;
+  }
 
-	public void setVisibility(Visibility visibility, boolean e)
-	{
-		this.visibility = visibility;
-		explicit = e;
-	}
+  public void setVisibility(Visibility visibility, boolean e) {
+    this.visibility = visibility;
+    explicit = e;
+  }
 
-	public void setVisibility(LinkageInfo other)
-	{
-		setVisibility(other.visibility, other.explicit);
-	}
+  public void setVisibility(LinkageInfo other) {
+    setVisibility(other.visibility, other.explicit);
+  }
 
-	public void mergeLinkage(Linkage L)
-	{
-		setLinkage(minLinkage(getLinkage(), L));
-	}
-	public void mergeLinkage(LinkageInfo Other) {
-		setLinkage(minLinkage(getLinkage(), Other.getLinkage()));
-	}
+  public void mergeLinkage(Linkage L) {
+    setLinkage(minLinkage(getLinkage(), L));
+  }
 
-	public void mergeVisibility(Visibility V)
-	{
-		setVisibility(minVisibility(getVisibility(), V));
-	}
-	public void mergeVisibility(Visibility V, boolean E)
-	{
-		setVisibility(minVisibility(getVisibility(), V), visibilityExplicit() || E);
-	}
-	public void mergeVisibility(LinkageInfo Other)
-	{
-		mergeVisibility(Other.getVisibility(), Other.visibilityExplicit());
-	}
+  public void mergeLinkage(LinkageInfo Other) {
+    setLinkage(minLinkage(getLinkage(), Other.getLinkage()));
+  }
 
-	public void merge(LinkageInfo Other)
-	{
-		mergeLinkage(Other);
-		mergeVisibility(Other);
-	}
-	public void merge(Pair<Linkage,Visibility> LV)
-	{
-		mergeLinkage(LV.first);
-		mergeVisibility(LV.second);
-	}
+  public void mergeVisibility(Visibility V) {
+    setVisibility(minVisibility(getVisibility(), V));
+  }
+
+  public void mergeVisibility(Visibility V, boolean E) {
+    setVisibility(minVisibility(getVisibility(), V), visibilityExplicit() || E);
+  }
+
+  public void mergeVisibility(LinkageInfo Other) {
+    mergeVisibility(Other.getVisibility(), Other.visibilityExplicit());
+  }
+
+  public void merge(LinkageInfo Other) {
+    mergeLinkage(Other);
+    mergeVisibility(Other);
+  }
+
+  public void merge(Pair<Linkage, Visibility> LV) {
+    mergeLinkage(LV.first);
+    mergeVisibility(LV.second);
+  }
 }

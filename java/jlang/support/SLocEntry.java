@@ -22,95 +22,83 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class SLocEntry
-{
-    protected int offset;
+public abstract class SLocEntry {
+  protected int offset;
 
-    public abstract boolean isInstantiation();
+  public abstract boolean isInstantiation();
 
-    public boolean isFile()
-    {
-        return !isInstantiation();
+  public boolean isFile() {
+    return !isInstantiation();
+  }
+
+  public abstract FileInfo getFile();
+
+  public abstract InstantiationInfo getInstantiation();
+
+  public static SLocEntry get(int offset, FileInfo info) {
+    FileSLocEntry entry = new FileSLocEntry();
+    entry.offset = offset;
+    entry.file = info;
+    return entry;
+  }
+
+  public static SLocEntry get(int offset, InstantiationInfo info) {
+    InstantiationSLocEntry entry = new InstantiationSLocEntry();
+    entry.offset = offset;
+    entry.instantiationInfo = info;
+    return entry;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public static class FileSLocEntry extends SLocEntry {
+    private FileSLocEntry() {
+      super();
     }
 
-    public abstract FileInfo getFile();
+    private FileInfo file;
 
-    public abstract InstantiationInfo getInstantiation();
-
-    public static SLocEntry get(int offset, FileInfo info)
-    {
-        FileSLocEntry entry = new FileSLocEntry();
-        entry.offset = offset;
-        entry.file = info;
-        return entry;
+    @Override
+    public boolean isInstantiation() {
+      return false;
     }
 
-    public static SLocEntry get(int offset, InstantiationInfo info)
-    {
-        InstantiationSLocEntry entry = new InstantiationSLocEntry();
-        entry.offset = offset;
-        entry.instantiationInfo = info;
-        return entry;
+    @Override
+    public FileInfo getFile() {
+      Util.assertion(isFile(), "Not in a file entry");
+      return file;
     }
 
-    public int getOffset()
-    {
-        return offset;
+    @Override
+    public InstantiationInfo getInstantiation() {
+      Util.assertion(false, "Should not reaching here");
+      return null;
+    }
+  }
+
+  public static class InstantiationSLocEntry extends SLocEntry {
+    private InstantiationInfo instantiationInfo;
+
+    public InstantiationSLocEntry() {
+      super();
     }
 
-    public static class FileSLocEntry extends SLocEntry
-    {
-        private FileSLocEntry() {super();}
-
-        private FileInfo file;
-
-        @Override
-        public boolean isInstantiation()
-        {
-            return false;
-        }
-
-        @Override
-        public FileInfo getFile()
-        {
-            Util.assertion(isFile(), "Not in a file entry");
-            return file;
-        }
-
-        @Override
-        public InstantiationInfo getInstantiation()
-        {
-            Util.assertion(false, "Should not reaching here");
-            return null;
-        }
+    @Override
+    public boolean isInstantiation() {
+      return true;
     }
 
-    public static class InstantiationSLocEntry extends SLocEntry
-    {
-        private InstantiationInfo instantiationInfo;
-
-        public InstantiationSLocEntry()
-        {
-            super();
-        }
-
-        @Override
-        public boolean isInstantiation()
-        {
-            return true;
-        }
-
-        @Override
-        public FileInfo getFile()
-        {
-            Util.assertion(false, "Should not reaching here");
-            return null;
-        }
-
-        @Override
-        public InstantiationInfo getInstantiation()
-        {
-            return instantiationInfo;
-        }
+    @Override
+    public FileInfo getFile() {
+      Util.assertion(false, "Should not reaching here");
+      return null;
     }
+
+    @Override
+    public InstantiationInfo getInstantiation() {
+      return instantiationInfo;
+    }
+  }
 }

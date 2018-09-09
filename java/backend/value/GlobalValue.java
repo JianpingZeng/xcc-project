@@ -16,215 +16,228 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
+import tools.Util;
 
-import static backend.value.GlobalValue.LinkageType.*;
+import static backend.value.GlobalValue.LinkageType.ExternalWeakLinkage;
+import static backend.value.GlobalValue.LinkageType.LinkerPrivateLinkage;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class GlobalValue extends Constant
-{
+public abstract class GlobalValue extends Constant {
+  /**
+   * An enumeration for the kinds of linkage for global variable and function.
+   */
+  public enum LinkageType {
     /**
-     * An enumeration for the kinds of linkage for global variable and function.
+     * Externally visible function
      */
-    public enum LinkageType
-    {
-	    /**
-         * Externally visible function
-         */
-        ExternalLinkage,
+    ExternalLinkage,
 
-        ExternalWeakLinkage,
-
-	    /**
-	     * Rename collisions when linking (static functions).
-         */
-        InternalLinkage,
-	    /**
-         * Like Internal, but omit from symbol table.
-         */
-        PrivateLinkage,
-	    /**
-         * Like Private, but linker removes.
-         */
-        LinkerPrivateLinkage,
-
-        CommonLinkage,
-    }
-
-    protected Module parent;
-    private LinkageType linkageType;
-    /**
-     * The section on which this value will be printed.
-     */
-    private String section;
-
-    private int alignment;
+    ExternalWeakLinkage,
 
     /**
-     * Constructs a new instruction representing the specified constant.
-     *
-     * @param
+     * Rename collisions when linking (static functions).
      */
-    public GlobalValue(Type ty, int valueType, LinkageType linkage, String name)
-    {
-        super(ty, valueType);
-        this.name = name;
-        linkageType = linkage;
-        section = "";
-    }
+    InternalLinkage,
+    /**
+     * Like Internal, but omit from symbol table.
+     */
+    PrivateLinkage,
+    /**
+     * Like Private, but linker removes.
+     */
+    LinkerPrivateLinkage,
 
-    public boolean isDeclaration()
-    {
-        if (this instanceof GlobalVariable)
-            return ((GlobalVariable)this).getNumOfOperands() == 0;
+    CommonLinkage,
+  }
 
-        if (this instanceof Function)
-            return ((Function)this).empty();
+  protected Module parent;
+  private LinkageType linkageType;
+  /**
+   * The section on which this value will be printed.
+   */
+  private String section;
 
+  private int alignment;
+
+  /**
+   * Constructs a new instruction representing the specified constant.
+   *
+   * @param
+   */
+  public GlobalValue(Type ty, int valueType, LinkageType linkage, String name) {
+    super(ty, valueType);
+    this.name = name;
+    linkageType = linkage;
+    section = "";
+  }
+
+  public boolean isDeclaration() {
+    if (this instanceof GlobalVariable)
+      return ((GlobalVariable) this).getNumOfOperands() == 0;
+
+    if (this instanceof Function)
+      return ((Function) this).empty();
+
+    return false;
+  }
+
+  /**
+   * This method unlinks 'this' from the containing module
+   * and deletes it.
+   */
+  public abstract void eraseFromParent();
+
+  public Module getParent() {
+    return parent;
+  }
+
+  public void setParent(Module newParent) {
+    parent = newParent;
+  }
+
+  public boolean hasExternalLinkage() {
+    return linkageType == LinkageType.ExternalLinkage;
+  }
+
+  public boolean hasExternalWeakLinkage() {
+    return linkageType == ExternalWeakLinkage;
+  }
+
+  public boolean hasInternalLinkage() {
+    return linkageType == LinkageType.InternalLinkage;
+  }
+
+  public boolean hasPrivateLinkage() {
+    return linkageType == LinkageType.PrivateLinkage;
+  }
+
+  public boolean hasLinkerPrivateLinkage() {
+    return linkageType == LinkerPrivateLinkage;
+  }
+
+  public boolean hasLocalLinkage() {
+    return hasInternalLinkage() || hasPrivateLinkage()
+        || hasLinkerPrivateLinkage();
+  }
+
+  public void setLinkage(LinkageType newLinkage) {
+    linkageType = newLinkage;
+  }
+
+  public LinkageType getLinkage() {
+    return linkageType;
+  }
+
+  @Override
+  public boolean isNullValue() {
+    return false;
+  }
+
+  /**
+   * The type of all of global value musts be pointer.
+   *
+   * @return
+   */
+  @Override
+  public PointerType getType() {
+    return (PointerType) super.getType();
+  }
+
+  public boolean hasSection() {
+    return section != null && !section.isEmpty();
+  }
+
+  public String getSection() {
+    return section;
+  }
+
+  public void setSection(String newSection) {
+    section = newSection;
+  }
+
+  /**
+   * Return true if the primary definition of this global value is
+   * outside of the current translation unit.
+   *
+   * @return
+   */
+  public abstract boolean isExternal();
+
+  public int getAlignment() {
+    return alignment;
+  }
+
+  public void setAlignment(int align) {
+    Util.assertion((align & (align - 1)) == 0, "Alignment must be power of 2!");
+    alignment = align;
+  }
+
+  static private boolean doesConstantDead(Constant c) {
+    if (c instanceof GlobalValue) return false;
+
+    for (int i = 0; i < c.getNumUses(); i++) {
+      User u = c.useAt(i).getUser();
+      if (!(u instanceof Constant))
         return false;
-    }
-
-    /**
-     * This method unlinks 'this' from the containing module
-     * and deletes it.
-     */
-    public abstract void eraseFromParent();
-
-    public Module getParent() {return parent;}
-    public void setParent(Module newParent) {parent = newParent;}
-
-    public boolean hasExternalLinkage() {return linkageType == LinkageType.ExternalLinkage;}
-    public boolean hasExternalWeakLinkage()
-    {
-        return linkageType == ExternalWeakLinkage;
-    }
-    public boolean hasInternalLinkage() {return linkageType == LinkageType.InternalLinkage;}
-
-    public boolean hasPrivateLinkage() {return linkageType == LinkageType.PrivateLinkage;}
-    public boolean hasLinkerPrivateLinkage() {return linkageType == LinkerPrivateLinkage;}
-    public boolean hasLocalLinkage()
-    {
-        return hasInternalLinkage() || hasPrivateLinkage()
-                || hasLinkerPrivateLinkage();
-    }
-
-    public void setLinkage(LinkageType newLinkage) {linkageType = newLinkage;}
-
-    public LinkageType getLinkage() {return linkageType;}
-
-    @Override
-    public boolean isNullValue() {return false;}
-
-    /**
-     * The type of all of global value musts be pointer.
-     * @return
-     */
-    @Override
-    public PointerType getType()
-    {
-        return (PointerType) super.getType();
-    }
-
-    public boolean hasSection()
-    {
-        return section != null && !section.isEmpty();
-    }
-
-    public String getSection() {return section;}
-
-    public void setSection(String newSection) {section = newSection;}
-
-    /**
-     * Return true if the primary definition of this global value is
-     * outside of the current translation unit.
-     * @return
-     */
-    public abstract boolean isExternal();
-
-    public int getAlignment() {return alignment; }
-
-    public void setAlignment(int align)
-    {
-        Util.assertion((align & (align - 1)) == 0, "Alignment must be power of 2!");
-        alignment = align;
-    }
-
-    static private boolean doesConstantDead(Constant c)
-    {
-        if (c instanceof GlobalValue) return false;
-
-        for (int i = 0; i < c.getNumUses(); i++)
-        {
-            User u = c.useAt(i).getUser();
-            if (!(u instanceof Constant))
-                return false;
-            if (!doesConstantDead((Constant)u))
-                return false;
-            c.getUseList().remove(i);
-        }
-        return true;
-    }
-
-    /**
-     * If there are any dead constant users dangling
-     * off of this global value, remove them.  This method is useful for clients
-     * that want to check to see if a global is unused, but don't want to deal
-     * with potentially dead constants hanging off of the globals.
-     */
-    public void removeDeadConstantUsers()
-    {
-        for(int i = 0; i < getNumUses(); i++)
-        {
-            User u = useAt(i).getUser();
-            if (!(u instanceof Constant))
-                continue;
-
-            Constant c = (Constant)u;
-            if (doesConstantDead(c))
-                usesList.remove(i);
-        }
-    }
-
-    public boolean isWeakForLinker()
-    {
-        // TODO: 17-7-19
+      if (!doesConstantDead((Constant) u))
         return false;
+      c.getUseList().remove(i);
     }
+    return true;
+  }
 
-    /**
-     * An enumeration for the kinds of visibility of global values.
-     */
-    public enum VisibilityTypes
-    {
-        DefaultVisibility,  ///< The GV is visible
-        HiddenVisibility,       ///< The GV is hidden
-        ProtectedVisibility     ///< The GV is protected
+  /**
+   * If there are any dead constant users dangling
+   * off of this global value, remove them.  This method is useful for clients
+   * that want to check to see if a global is unused, but don't want to deal
+   * with potentially dead constants hanging off of the globals.
+   */
+  public void removeDeadConstantUsers() {
+    for (int i = 0; i < getNumUses(); i++) {
+      User u = useAt(i).getUser();
+      if (!(u instanceof Constant))
+        continue;
+
+      Constant c = (Constant) u;
+      if (doesConstantDead(c))
+        usesList.remove(i);
     }
+  }
 
-    private VisibilityTypes visibility;
+  public boolean isWeakForLinker() {
+    // TODO: 17-7-19
+    return false;
+  }
 
-    public boolean hasDefaultVisibility()
-    {
-        return visibility == VisibilityTypes.DefaultVisibility;
-    }
+  /**
+   * An enumeration for the kinds of visibility of global values.
+   */
+  public enum VisibilityTypes {
+    DefaultVisibility,  ///< The GV is visible
+    HiddenVisibility,       ///< The GV is hidden
+    ProtectedVisibility     ///< The GV is protected
+  }
 
-    public boolean hasHiddenVisibility()
-    {
-        return visibility == VisibilityTypes.HiddenVisibility;
-    }
+  private VisibilityTypes visibility;
 
-    public VisibilityTypes getVisibility()
-    {
-        return visibility;
-    }
+  public boolean hasDefaultVisibility() {
+    return visibility == VisibilityTypes.DefaultVisibility;
+  }
 
-    public void setVisibility(VisibilityTypes v)
-    {
-        visibility = v;
-    }
+  public boolean hasHiddenVisibility() {
+    return visibility == VisibilityTypes.HiddenVisibility;
+  }
+
+  public VisibilityTypes getVisibility() {
+    return visibility;
+  }
+
+  public void setVisibility(VisibilityTypes v) {
+    visibility = v;
+  }
 }

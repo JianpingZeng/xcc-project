@@ -16,8 +16,8 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.type.Type;
+import tools.Util;
 
 import java.util.HashMap;
 
@@ -25,38 +25,34 @@ import java.util.HashMap;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConstantAggregateZero extends Constant
-{
-    private static HashMap<Type, ConstantAggregateZero> aggZeroConstants;
+public class ConstantAggregateZero extends Constant {
+  private static HashMap<Type, ConstantAggregateZero> aggZeroConstants;
 
-    static
-    {
-        aggZeroConstants = new HashMap<>();
-    }
-    /**
-     * Constructs a new instruction representing the specified constant.
-     *
-     * @param ty
-     */
-    public ConstantAggregateZero(Type ty)
-    {
-        super(ty, ValueKind.ConstantAggregateZeroVal);
-    }
+  static {
+    aggZeroConstants = new HashMap<>();
+  }
 
-    public static ConstantAggregateZero get(Type ty)
-    {
-        Util.assertion(ty.isArrayType() || ty.isStructType(), "Invalid aggregate type!");
-        if (aggZeroConstants.containsKey(ty))
-            return aggZeroConstants.get(ty);
+  /**
+   * Constructs a new instruction representing the specified constant.
+   *
+   * @param ty
+   */
+  public ConstantAggregateZero(Type ty) {
+    super(ty, ValueKind.ConstantAggregateZeroVal);
+  }
 
-        ConstantAggregateZero res = new ConstantAggregateZero(ty);
-        aggZeroConstants.put(ty, res);
-        return res;
-    }
+  public static ConstantAggregateZero get(Type ty) {
+    Util.assertion(ty.isArrayType() || ty.isStructType(), "Invalid aggregate type!");
+    if (aggZeroConstants.containsKey(ty))
+      return aggZeroConstants.get(ty);
 
-    @Override
-    public boolean isNullValue()
-    {
-        return true;
-    }
+    ConstantAggregateZero res = new ConstantAggregateZero(ty);
+    aggZeroConstants.put(ty, res);
+    return res;
+  }
+
+  @Override
+  public boolean isNullValue() {
+    return true;
+  }
 }

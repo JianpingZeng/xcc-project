@@ -21,76 +21,72 @@ import tools.Util;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-public class CastPattern implements Pattern
-{
-    private Operator opc;
-    private Pattern op;
-    private CastPattern(Operator opc, Pattern op)
-    {
-        this.opc = opc;
-        this.op = op;
-        Util.assertion(opc.isCastOps(), "Non casting opc for CastPattern.");
-    }
+public class CastPattern implements Pattern {
+  private Operator opc;
+  private Pattern op;
 
-    @Override
-    public boolean match(Value valueToMatch)
-    {
-        if (valueToMatch instanceof Instruction)
-        {
-            Instruction inst = (Instruction) valueToMatch;
-            if (inst.getOpcode() == opc)
-            {
-                return op.match(inst.operand(0));
-            }
-        }
-        return false;
+  private CastPattern(Operator opc, Pattern op) {
+    this.opc = opc;
+    this.op = op;
+    Util.assertion(opc.isCastOps(), "Non casting opc for CastPattern.");
+  }
+
+  @Override
+  public boolean match(Value valueToMatch) {
+    if (valueToMatch instanceof Instruction) {
+      Instruction inst = (Instruction) valueToMatch;
+      if (inst.getOpcode() == opc) {
+        return op.match(inst.operand(0));
+      }
     }
-    public static Pattern mTrunc(Pattern op)
-    {
-        return new CastPattern(Operator.Trunc, op);
-    }
-    public static Pattern mZExt(Pattern op)
-    {
-        return new CastPattern(Operator.ZExt, op);
-    }
-    public static Pattern mSExt(Pattern op)
-    {
-        return new CastPattern(Operator.SExt, op);
-    }
-    public static Pattern mFPToSI(Pattern op)
-    {
-        return new CastPattern(Operator.FPToSI, op);
-    }
-    public static Pattern mFPToUI(Pattern op)
-    {
-        return new CastPattern(Operator.FPToUI, op);
-    }
-    public static Pattern mSIToFP(Pattern op)
-    {
-        return new CastPattern(Operator.SIToFP, op);
-    }
-    public static Pattern mUIToFP(Pattern op)
-    {
-        return new CastPattern(Operator.UIToFP, op);
-    }
-    public static Pattern mFPTrunc(Pattern op)
-    {
-        return new CastPattern(Operator.FPTrunc, op);
-    }
-    public static Pattern mFPExt(Pattern op)
-    {
-        return new CastPattern(Operator.FPExt, op);
-    }
-    public static Pattern mIntToPtr(Pattern op)
-    {
-        return new CastPattern(Operator.IntToPtr, op);
-    }
-    public static Pattern mPtrToInt(Pattern op)
-    {
-        return new CastPattern(Operator.PtrToInt, op);
-    }
-    public static Pattern mBitCast(Pattern op)
-    {
-        return new CastPattern(Operator.BitCast, op);
-    }
+    return false;
+  }
+
+  public static Pattern mTrunc(Pattern op) {
+    return new CastPattern(Operator.Trunc, op);
+  }
+
+  public static Pattern mZExt(Pattern op) {
+    return new CastPattern(Operator.ZExt, op);
+  }
+
+  public static Pattern mSExt(Pattern op) {
+    return new CastPattern(Operator.SExt, op);
+  }
+
+  public static Pattern mFPToSI(Pattern op) {
+    return new CastPattern(Operator.FPToSI, op);
+  }
+
+  public static Pattern mFPToUI(Pattern op) {
+    return new CastPattern(Operator.FPToUI, op);
+  }
+
+  public static Pattern mSIToFP(Pattern op) {
+    return new CastPattern(Operator.SIToFP, op);
+  }
+
+  public static Pattern mUIToFP(Pattern op) {
+    return new CastPattern(Operator.UIToFP, op);
+  }
+
+  public static Pattern mFPTrunc(Pattern op) {
+    return new CastPattern(Operator.FPTrunc, op);
+  }
+
+  public static Pattern mFPExt(Pattern op) {
+    return new CastPattern(Operator.FPExt, op);
+  }
+
+  public static Pattern mIntToPtr(Pattern op) {
+    return new CastPattern(Operator.IntToPtr, op);
+  }
+
+  public static Pattern mPtrToInt(Pattern op) {
+    return new CastPattern(Operator.PtrToInt, op);
+  }
+
+  public static Pattern mBitCast(Pattern op) {
+    return new CastPattern(Operator.BitCast, op);
+  }
 }

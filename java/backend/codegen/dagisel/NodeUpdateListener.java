@@ -23,26 +23,22 @@ import java.util.LinkedList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class NodeUpdateListener implements DAGUpdateListener
-{
-    private DAGTypeLegalizer legalizer;
-    private LinkedList<SDNode> nodesToAnalyze;
+public class NodeUpdateListener implements DAGUpdateListener {
+  private DAGTypeLegalizer legalizer;
+  private LinkedList<SDNode> nodesToAnalyze;
 
-    public NodeUpdateListener(DAGTypeLegalizer legalizer, LinkedList<SDNode> nodesToAnalyze)
-    {
-        this.legalizer = legalizer;
-        this.nodesToAnalyze = nodesToAnalyze;
-    }
+  public NodeUpdateListener(DAGTypeLegalizer legalizer, LinkedList<SDNode> nodesToAnalyze) {
+    this.legalizer = legalizer;
+    this.nodesToAnalyze = nodesToAnalyze;
+  }
 
-    @Override
-    public void nodeDeleted(SDNode node, SDNode e)
-    {
+  @Override
+  public void nodeDeleted(SDNode node, SDNode e) {
 
-    }
+  }
 
-    @Override
-    public void nodeUpdated(SDNode node)
-    {
+  @Override
+  public void nodeUpdated(SDNode node) {
 
-    }
+  }
 }

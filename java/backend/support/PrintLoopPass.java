@@ -27,58 +27,50 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PrintLoopPass implements LoopPass
-{
-    private AnalysisResolver resolver;
-    private PrintStream os;
-    private String banner;
+public class PrintLoopPass implements LoopPass {
+  private AnalysisResolver resolver;
+  private PrintStream os;
+  private String banner;
 
-    public PrintLoopPass(PrintStream os, String banner)
-    {
-        this.os = os;
-        this.banner = banner;
-    }
+  public PrintLoopPass(PrintStream os, String banner) {
+    this.os = os;
+    this.banner = banner;
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-    @Override
-    public boolean runOnLoop(Loop loop, LPPassManager ppm)
-    {
-        if (loop.isEmpty())
-            return false;
+  @Override
+  public boolean runOnLoop(Loop loop, LPPassManager ppm) {
+    if (loop.isEmpty())
+      return false;
 
-        for (BasicBlock bb : loop.blocks)
-        {
-            if (bb != null)
-                bb.print(os);
-            else
-                os.print("Printing <null> block");
-        }
-        return false;
+    for (BasicBlock bb : loop.blocks) {
+      if (bb != null)
+        bb.print(os);
+      else
+        os.print("Printing <null> block");
     }
-    public String getPassName()
-    {
-        return "Print Loop Pass";
-    }
+    return false;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  public String getPassName() {
+    return "Print Loop Pass";
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    public static Pass createPrintLoopPass(PrintStream os, String banner)
-    {
-        return new PrintLoopPass(os, banner);
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  public static Pass createPrintLoopPass(PrintStream os, String banner) {
+    return new PrintLoopPass(os, banner);
+  }
 }

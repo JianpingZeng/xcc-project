@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class VisibilityAttr extends Attr
-{
-    public VisibilityAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class VisibilityAttr extends Attr {
+  public VisibilityAttr(AttrKind kind) {
+    super(kind);
+  }
 }

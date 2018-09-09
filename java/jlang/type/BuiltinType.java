@@ -16,60 +16,71 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
+import tools.Util;
 
 /**
  * This class represents the primitive type of C language.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class BuiltinType extends Type
-{
-    /**
-     * Constructor with one parameter which represents the kind of jlang.type
-     * for reason of comparison convenient.
-     *
-     * @param tag
-     */
-    public BuiltinType(int tag)
-    {
-        super(tag, new QualType());
-    }
+public final class BuiltinType extends Type {
+  /**
+   * Constructor with one parameter which represents the kind of jlang.type
+   * for reason of comparison convenient.
+   *
+   * @param tag
+   */
+  public BuiltinType(int tag) {
+    super(tag, new QualType());
+  }
 
-    @Override
-    public String getAsStringInternal(String inner, PrintingPolicy policy)
-    {
-        return getName(policy.opts) + " " + inner;
-    }
+  @Override
+  public String getAsStringInternal(String inner, PrintingPolicy policy) {
+    return getName(policy.opts) + " " + inner;
+  }
 
-    public String getName(LangOptions opts)
-    {
-        switch (tc)
-        {
-            default: Util.assertion(false, "Uknown builtin type!");
-            case Void: return "void";
-            case Bool: return opts.bool ? "bool" : "_Bool";
-            case SChar: return "char";
-            case Char_U: return "unsigned char";
-            case Short: return "short";
-            case UShort: return "unsigned short";
-            case Int: return "int";
-            case UInt: return "unsigned int";
-            case Long: return "long";
-            case ULong: return "unsigned long";
-            case LongLong: return "long long";
-            case ULongLong: return "unsigned long long";
-            case Float: return "float";
-            case Double : return "double";
-            case LongDouble: return "long double";
-        }
+  public String getName(LangOptions opts) {
+    switch (tc) {
+      default:
+        Util.assertion(false, "Uknown builtin type!");
+      case Void:
+        return "void";
+      case Bool:
+        return opts.bool ? "bool" : "_Bool";
+      case SChar:
+        return "char";
+      case Char_U:
+        return "unsigned char";
+      case Short:
+        return "short";
+      case UShort:
+        return "unsigned short";
+      case Int:
+        return "int";
+      case UInt:
+        return "unsigned int";
+      case Long:
+        return "long";
+      case ULong:
+        return "unsigned long";
+      case LongLong:
+        return "long long";
+      case ULongLong:
+        return "unsigned long long";
+      case Float:
+        return "float";
+      case Double:
+        return "double";
+      case LongDouble:
+        return "long double";
     }
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return tc;
-    }
+  @Override
+  public int hashCode() {
+    return tc;
+  }
 }

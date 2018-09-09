@@ -17,9 +17,9 @@
 
 package backend.value;
 
-import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,39 +31,33 @@ import static backend.value.ValueKind.MDNodeVal;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MDNode extends MetadataBase
-{
-    private ArrayList<Value> nodes;
+public class MDNode extends MetadataBase {
+  private ArrayList<Value> nodes;
 
-    public MDNode(List<Value> vals)
-    {
-        super(LLVMContext.MetadataTy, MDNodeVal);
-        nodes = new ArrayList<>();
-        reserve(vals.size());
-        for (int i = 0, e = vals.size(); i < e; i++)
-        {
-            MetadataBase mb = vals.get(i) instanceof MetadataBase ?
-                    (MetadataBase)vals.get(i) : null;
-            if (mb != null)
-                setOperand(i, mb);
-            nodes.add(vals.get(i));
-        }
+  public MDNode(List<Value> vals) {
+    super(LLVMContext.MetadataTy, MDNodeVal);
+    nodes = new ArrayList<>();
+    reserve(vals.size());
+    for (int i = 0, e = vals.size(); i < e; i++) {
+      MetadataBase mb = vals.get(i) instanceof MetadataBase ?
+          (MetadataBase) vals.get(i) : null;
+      if (mb != null)
+        setOperand(i, mb);
+      nodes.add(vals.get(i));
     }
+  }
 
-    public static MDNode get(List<Value> vals)
-    {
-        MDNodeKeyType key = new MDNodeKeyType(vals);
-        return getUniqueImpl().getOrCreate(key);
-    }
+  public static MDNode get(List<Value> vals) {
+    MDNodeKeyType key = new MDNodeKeyType(vals);
+    return getUniqueImpl().getOrCreate(key);
+  }
 
-    public int getNumOfNode()
-    {
-        return nodes.size();
-    }
+  public int getNumOfNode() {
+    return nodes.size();
+  }
 
-    public Value getNode(int index)
-    {
-        Util.assertion( index >= 0 && index < getNumOfNode());
-        return nodes.get(index);
-    }
+  public Value getNode(int index) {
+    Util.assertion(index >= 0 && index < getNumOfNode());
+    return nodes.get(index);
+  }
 }

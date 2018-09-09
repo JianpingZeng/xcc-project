@@ -20,21 +20,20 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ValueExpectedApplicator implements Modifier
-{
-    private ValueExpected ve;
-    public ValueExpectedApplicator(ValueExpected ve)
-    {
-        this.ve = ve;
-    }
+public class ValueExpectedApplicator implements Modifier {
+  private ValueExpected ve;
 
-    /**
-     * Update the value expected flag for the specified OptionInfo {@code opt}.
-     * @param opt
-     */
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setValueExpectedFlag(ve);
-    }
+  public ValueExpectedApplicator(ValueExpected ve) {
+    this.ve = ve;
+  }
+
+  /**
+   * Update the value expected flag for the specified OptionInfo {@code opt}.
+   *
+   * @param opt
+   */
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setValueExpectedFlag(ve);
+  }
 }

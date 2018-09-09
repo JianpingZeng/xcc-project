@@ -23,53 +23,46 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PATypeHandle
-{
-    private Type ty;
-    private AbstractTypeUser user;
+public class PATypeHandle {
+  private Type ty;
+  private AbstractTypeUser user;
 
-    private void addUser()
-    {
-        Util.assertion(ty != null, "Type handle has a null type");
-        if (ty.isAbstract())
-            ty.addAbstractTypeUser(user);
-    }
+  private void addUser() {
+    Util.assertion(ty != null, "Type handle has a null type");
+    if (ty.isAbstract())
+      ty.addAbstractTypeUser(user);
+  }
 
-    private void removeUser()
-    {
-        if (ty.isAbstract())
-            ty.removeAbstractTypeUser(user);
-    }
+  private void removeUser() {
+    if (ty.isAbstract())
+      ty.removeAbstractTypeUser(user);
+  }
 
-    public PATypeHandle(Type ty, AbstractTypeUser user)
-    {
-        this.ty = ty;
-        this.user = user;
-        addUser();
-    }
+  public PATypeHandle(Type ty, AbstractTypeUser user) {
+    this.ty = ty;
+    this.user = user;
+    addUser();
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
 
-        if (getClass() != obj.getClass())
-            return false;
+    if (getClass() != obj.getClass())
+      return false;
 
-        PATypeHandle handle = (PATypeHandle)obj;
-        return ty.equals(handle.ty);
-    }
+    PATypeHandle handle = (PATypeHandle) obj;
+    return ty.equals(handle.ty);
+  }
 
-    public Type getType()
-    {
-        return ty;
-    }
+  public Type getType() {
+    return ty;
+  }
 
-    public void setType(Type newTy)
-    {
-        ty = newTy;
-    }
+  public void setType(Type newTy) {
+    ty = newTy;
+  }
 }

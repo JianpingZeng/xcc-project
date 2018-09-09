@@ -6,7 +6,6 @@ import jlang.ast.ASTConsumer;
 /**
  * Extremely C Compiler. Jianping Zeng.
  */
-public interface CodeGenerator extends ASTConsumer
-{
-    Module getModule();
+public interface CodeGenerator extends ASTConsumer {
+  Module getModule();
 }

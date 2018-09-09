@@ -20,26 +20,24 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class OptionNameApplicator implements Modifier
-{
-    private String str;
-    public OptionNameApplicator(String name)
-    {
-        str = name;
-    }
+public final class OptionNameApplicator implements Modifier {
+  private String str;
 
-    /**
-     * Set the asmName of this option.
-     * @param opt
-     */
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setOptionName(str);
-    }
+  public OptionNameApplicator(String name) {
+    str = name;
+  }
 
-    public static OptionNameApplicator optionName(String name)
-    {
-        return new OptionNameApplicator(name);
-    }
+  /**
+   * Set the asmName of this option.
+   *
+   * @param opt
+   */
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setOptionName(str);
+  }
+
+  public static OptionNameApplicator optionName(String name) {
+    return new OptionNameApplicator(name);
+  }
 }

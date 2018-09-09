@@ -24,209 +24,191 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class Context
-{
-    private static Info[] BuiltinInfo = new Info[BuiltID.FirstTSBuiltin];
+public final class Context {
+  private static Info[] BuiltinInfo = new Info[BuiltID.FirstTSBuiltin];
 
-    static
-    {
-        BuiltinInfo[0] = new Info("not a builtin function", null,
-                null, null, false);
-        for (Builtin.BUILTIN item : Builtin.BUILTIN.values())
-        {
-            BuiltinInfo[item.id] = new Info(item.name, item.type, item.attr,
-                    null, false);
-        }
-
-        for (Builtin.LIBBUILTIN item : Builtin.LIBBUILTIN.values())
-        {
-            BuiltinInfo[item.id] = new Info(item.name, item.type, item.attr,
-                    item.header, false);
-        }
-    }
-    /**
-     * Target specific Builtin function information.
-     */
-    private Info[] tsRecords;
-
-    public Context(TargetInfo target)
-    {
-        tsRecords = target.getTargetBuiltins();
-    }
-    public void initializeBuiltin(IdentifierTable table)
-    {
-        initializeBuiltin(table, false);
+  static {
+    BuiltinInfo[0] = new Info("not a builtin function", null,
+        null, null, false);
+    for (Builtin.BUILTIN item : Builtin.BUILTIN.values()) {
+      BuiltinInfo[item.id] = new Info(item.name, item.type, item.attr,
+          null, false);
     }
 
-    /**
-     * Mark the identifiers for all the builtins with their
-     * appropriate builtin ID # and mark any non-portable builtin identifiers as
-     * such.
-     * @param table
-     * @param noBuiltin
-     */
-    public void initializeBuiltin(IdentifierTable table, boolean noBuiltin)
-    {
-        // Step 1, add target-independent builtins.
-        for (int i = BuiltID.NotBuiltin + 1; i != BuiltID.FirstTSBuiltin; i++)
-        {
-            Info item = BuiltinInfo[i];
-            if (!item.isSuppressed() &&
-                    (!noBuiltin || (
-                            item.getAttributes() != null &&
-                            item.getAttributes().indexOf('f') == -1)))
-                table.get(item.getName()).setBuiltID(i);
-        }
+    for (Builtin.LIBBUILTIN item : Builtin.LIBBUILTIN.values()) {
+      BuiltinInfo[item.id] = new Info(item.name, item.type, item.attr,
+          item.header, false);
+    }
+  }
 
-        // Step 2, add target specific builtins.
-        for (int i = 0; i < tsRecords.length; i++)
-        {
-            Info item = tsRecords[i];
-            if (!item.isSuppressed() &&
-                    (!noBuiltin || (
-                            item.getAttributes() != null &&
-                                    item.getAttributes().indexOf('f') == -1)))
-            {
-                table.get(item.getName()).setBuiltID(i + BuiltID.FirstTSBuiltin);
-            }
-        }
+  /**
+   * Target specific Builtin function information.
+   */
+  private Info[] tsRecords;
+
+  public Context(TargetInfo target) {
+    tsRecords = target.getTargetBuiltins();
+  }
+
+  public void initializeBuiltin(IdentifierTable table) {
+    initializeBuiltin(table, false);
+  }
+
+  /**
+   * Mark the identifiers for all the builtins with their
+   * appropriate builtin ID # and mark any non-portable builtin identifiers as
+   * such.
+   *
+   * @param table
+   * @param noBuiltin
+   */
+  public void initializeBuiltin(IdentifierTable table, boolean noBuiltin) {
+    // Step 1, add target-independent builtins.
+    for (int i = BuiltID.NotBuiltin + 1; i != BuiltID.FirstTSBuiltin; i++) {
+      Info item = BuiltinInfo[i];
+      if (!item.isSuppressed() &&
+          (!noBuiltin || (
+              item.getAttributes() != null &&
+                  item.getAttributes().indexOf('f') == -1)))
+        table.get(item.getName()).setBuiltID(i);
     }
 
-    /**
-     * Populate the String with the names of all the builtins.
-     * @param noBuiltins
-     * @return
-     */
-    public String getBuiltinNames(boolean noBuiltins)
-    {
-        StringBuilder sb = new StringBuilder();
-        // Step 1,find target-independent builtins.
-        for (int i = BuiltID.NotBuiltin + 1; i != BuiltID.FirstTSBuiltin; i++)
-        {
-            Info item = BuiltinInfo[i];
-            if (!item.isSuppressed() &&
-                    (!noBuiltins || (
-                            item.getAttributes() != null &&
-                                    item.getAttributes().indexOf('f') == -1)))
-                sb.append(item.getName());
-        }
+    // Step 2, add target specific builtins.
+    for (int i = 0; i < tsRecords.length; i++) {
+      Info item = tsRecords[i];
+      if (!item.isSuppressed() &&
+          (!noBuiltin || (
+              item.getAttributes() != null &&
+                  item.getAttributes().indexOf('f') == -1))) {
+        table.get(item.getName()).setBuiltID(i + BuiltID.FirstTSBuiltin);
+      }
+    }
+  }
 
-        // Step 2, add target specific builtins.
-        for (int i = 0; i < tsRecords.length; i++)
-        {
-            Info item = tsRecords[i];
-            if (!item.isSuppressed() &&
-                    (!noBuiltins || (
-                            item.getAttributes() != null &&
-                                    item.getAttributes().indexOf('f') == -1)))
-            {
-                sb.append(item.getName());
-            }
-        }
-        return sb.toString();
+  /**
+   * Populate the String with the names of all the builtins.
+   *
+   * @param noBuiltins
+   * @return
+   */
+  public String getBuiltinNames(boolean noBuiltins) {
+    StringBuilder sb = new StringBuilder();
+    // Step 1,find target-independent builtins.
+    for (int i = BuiltID.NotBuiltin + 1; i != BuiltID.FirstTSBuiltin; i++) {
+      Info item = BuiltinInfo[i];
+      if (!item.isSuppressed() &&
+          (!noBuiltins || (
+              item.getAttributes() != null &&
+                  item.getAttributes().indexOf('f') == -1)))
+        sb.append(item.getName());
     }
 
-    /**
-     * Get the builtin name of specified id.
-     * @param id
-     * @return
-     */
-    public String getName(int id)
-    {
-        return getRecord(id).getName();
+    // Step 2, add target specific builtins.
+    for (int i = 0; i < tsRecords.length; i++) {
+      Info item = tsRecords[i];
+      if (!item.isSuppressed() &&
+          (!noBuiltins || (
+              item.getAttributes() != null &&
+                  item.getAttributes().indexOf('f') == -1))) {
+        sb.append(item.getName());
+      }
     }
+    return sb.toString();
+  }
 
-    public String getTypeString(int id)
-    {
-        return getRecord(id).getType();
-    }
+  /**
+   * Get the builtin name of specified id.
+   *
+   * @param id
+   * @return
+   */
+  public String getName(int id) {
+    return getRecord(id).getName();
+  }
 
-    /**
-     * Return true if this function has no side effects and doesn't
-     * read memory
-     * @param id
-     * @return
-     */
-    public boolean isConst(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('c') != -1;
-    }
+  public String getTypeString(int id) {
+    return getRecord(id).getType();
+  }
 
-    public boolean isNoThrow(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('n') != -1;
-    }
+  /**
+   * Return true if this function has no side effects and doesn't
+   * read memory
+   *
+   * @param id
+   * @return
+   */
+  public boolean isConst(int id) {
+    return getRecord(id).getAttributes().indexOf('c') != -1;
+  }
 
-    public boolean isNoReturn(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('r') != -1;
-    }
+  public boolean isNoThrow(int id) {
+    return getRecord(id).getAttributes().indexOf('n') != -1;
+  }
 
-    public boolean isLibFunction(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('F') != -1;
-    }
+  public boolean isNoReturn(int id) {
+    return getRecord(id).getAttributes().indexOf('r') != -1;
+  }
 
-    public boolean isPredefinedLibFunction(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('f') != -1;
-    }
+  public boolean isLibFunction(int id) {
+    return getRecord(id).getAttributes().indexOf('F') != -1;
+  }
 
-    public String getHeaderName(int id)
-    {
-        return getRecord(id).getHeaderName();
-    }
+  public boolean isPredefinedLibFunction(int id) {
+    return getRecord(id).getAttributes().indexOf('f') != -1;
+  }
 
-    /**
-     * Determine whether this builtin is like printf in its
-     * formatting rules and, if so, set the index to the format string
-     * argument and whether this function as a va_list argument.
-     * @param id
-     * @param res
-     * @return
-     */
-    public boolean isPrintfLike(int id, Pair<Integer, Boolean> res)
-    {
-        String attr = getRecord(id).getAttributes();
-        int idx = Util.strpbrk(attr, "Pp");
-        if (idx < 0)
-            return false;
+  public String getHeaderName(int id) {
+    return getRecord(id).getHeaderName();
+  }
 
-        res.second = attr.charAt(idx) == 'P';
+  /**
+   * Determine whether this builtin is like printf in its
+   * formatting rules and, if so, set the index to the format string
+   * argument and whether this function as a va_list argument.
+   *
+   * @param id
+   * @param res
+   * @return
+   */
+  public boolean isPrintfLike(int id, Pair<Integer, Boolean> res) {
+    String attr = getRecord(id).getAttributes();
+    int idx = Util.strpbrk(attr, "Pp");
+    if (idx < 0)
+      return false;
 
-        ++idx;
-        Util.assertion(attr.charAt(idx) == ':',
-                "p or P specifier must have be followed by ':'");
-        ++idx;
-        Util.assertion(attr.indexOf(':', idx) != -1,
-                "printf specifier must end with ':'");
-        res.first = Integer.parseInt(attr.substring(idx), 10);
-        return true;
-    }
+    res.second = attr.charAt(idx) == 'P';
 
-    /**
-     * Return true of the specified builtin uses __builtin_va_list
-     * as an operand or return type.
-     * @return
-     */
-    public boolean hasVALListUse(int id)
-    {
-        return getRecord(id).getAttributes().contains("Aa");
-    }
+    ++idx;
+    Util.assertion(attr.charAt(idx) == ':',
+        "p or P specifier must have be followed by ':'");
+    ++idx;
+    Util.assertion(attr.indexOf(':', idx) != -1,
+        "printf specifier must end with ':'");
+    res.first = Integer.parseInt(attr.substring(idx), 10);
+    return true;
+  }
 
-    public boolean isConstWithoutErrno(int id)
-    {
-        return getRecord(id).getAttributes().indexOf('e') != -1;
-    }
+  /**
+   * Return true of the specified builtin uses __builtin_va_list
+   * as an operand or return type.
+   *
+   * @return
+   */
+  public boolean hasVALListUse(int id) {
+    return getRecord(id).getAttributes().contains("Aa");
+  }
 
-    private Info getRecord(int id)
-    {
-        Util.assertion( id >= 0);
-        if (id < BuiltID.FirstTSBuiltin)
-            return BuiltinInfo[id];
+  public boolean isConstWithoutErrno(int id) {
+    return getRecord(id).getAttributes().indexOf('e') != -1;
+  }
 
-        Util.assertion(id - BuiltID.FirstTSBuiltin < tsRecords.length,
-                "Invalid Builtin ID!");
-        return tsRecords[id - BuiltID.FirstTSBuiltin];
-    }
+  private Info getRecord(int id) {
+    Util.assertion(id >= 0);
+    if (id < BuiltID.FirstTSBuiltin)
+      return BuiltinInfo[id];
+
+    Util.assertion(id - BuiltID.FirstTSBuiltin < tsRecords.length,
+        "Invalid Builtin ID!");
+    return tsRecords[id - BuiltID.FirstTSBuiltin];
+  }
 }

@@ -25,21 +25,20 @@ package jlang.sema;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PrecedenceLevel
-{
-    public static final int Unkonw          = 0;   // Not binary operator.
-    public static final int Comma           = 1;    // ,
-    public static final int Assignment      = 2;    // =, *=, /=, %=, +=, -=, <<=, >>=, &=, ^=, |=
-    public static final int Conditional     = 3;    // ?
-    public static final int LogicalOr       = 4;    // ||
-    public static final int LogicalAnd      = 5;    // &&
-    public static final int InclusiveOr     = 6;    // |
-    public static final int ExclusiveOr     = 7;    // ^
-    public static final int And             = 8;    // &
-    public static final int Equality        = 9;    // ==, !=
-    public static final int Relational      = 10;   //  >=, <=, >, <
-    public static final int Shift           = 11;   // <<, >>
-    public static final int Additive        = 12;   // -, +
-    public static final int Multiplicative  = 13;   // *, /, %
-    public static final int PointerToMember = 14;    // .*, ->*
+public final class PrecedenceLevel {
+  public static final int Unkonw = 0;   // Not binary operator.
+  public static final int Comma = 1;    // ,
+  public static final int Assignment = 2;    // =, *=, /=, %=, +=, -=, <<=, >>=, &=, ^=, |=
+  public static final int Conditional = 3;    // ?
+  public static final int LogicalOr = 4;    // ||
+  public static final int LogicalAnd = 5;    // &&
+  public static final int InclusiveOr = 6;    // |
+  public static final int ExclusiveOr = 7;    // ^
+  public static final int And = 8;    // &
+  public static final int Equality = 9;    // ==, !=
+  public static final int Relational = 10;   //  >=, <=, >, <
+  public static final int Shift = 11;   // <<, >>
+  public static final int Additive = 12;   // -, +
+  public static final int Multiplicative = 13;   // *, /, %
+  public static final int PointerToMember = 14;    // .*, ->*
 }

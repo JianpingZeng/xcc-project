@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class NoinlineAttr extends Attr
-{
-    public NoinlineAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class NoinlineAttr extends Attr {
+  public NoinlineAttr(AttrKind kind) {
+    super(kind);
+  }
 }

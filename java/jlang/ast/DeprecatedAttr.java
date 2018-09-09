@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class DeprecatedAttr extends Attr
-{
-    public DeprecatedAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class DeprecatedAttr extends Attr {
+  public DeprecatedAttr(AttrKind kind) {
+    super(kind);
+  }
 }

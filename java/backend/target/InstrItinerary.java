@@ -25,30 +25,28 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class InstrItinerary
-{
-    /**
-     * Index of first stage in itinerary
-     */
-    public int firstStage;
-    /**
-     * Index of last + 1 stage in itinerary
-     */
-    public int lastStage;
-    /**
-     * Index of first operand rd/wr
-     */
-    public int firstOperandCycle;
-    /**
-     * Index of last + 1 operand rd/wr
-     */
-    public int lastOperandCycle;
+public final class InstrItinerary {
+  /**
+   * Index of first stage in itinerary
+   */
+  public int firstStage;
+  /**
+   * Index of last + 1 stage in itinerary
+   */
+  public int lastStage;
+  /**
+   * Index of first operand rd/wr
+   */
+  public int firstOperandCycle;
+  /**
+   * Index of last + 1 operand rd/wr
+   */
+  public int lastOperandCycle;
 
-    public InstrItinerary(int firstStg, int lastStg, int firstOpCycle, int lastOpCycle)
-    {
-        firstStage = firstStg;
-        lastStage = lastStg;
-        firstOperandCycle = firstOpCycle;
-        lastOperandCycle = lastOpCycle;
-    }
+  public InstrItinerary(int firstStg, int lastStg, int firstOpCycle, int lastOpCycle) {
+    firstStage = firstStg;
+    lastStage = lastStg;
+    firstOperandCycle = firstOpCycle;
+    lastOperandCycle = lastOpCycle;
+  }
 }

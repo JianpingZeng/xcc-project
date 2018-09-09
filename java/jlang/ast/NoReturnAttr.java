@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class NoReturnAttr extends Attr
-{
-    public NoReturnAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class NoReturnAttr extends Attr {
+  public NoReturnAttr(AttrKind kind) {
+    super(kind);
+  }
 }

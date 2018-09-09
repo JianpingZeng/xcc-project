@@ -18,38 +18,37 @@ package tools.commandline;
 
 /**
  * Flags for the number of occurrences allowed
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum NumOccurrences
-{
-    Optional(0x01),      // Zero or One occurrence
-    ZeroOrMore(0x02),    // Zero or more occurrences allowed
-    Required(0x03),      // One occurrence required
-    OneOrMore(0x04),     // One or more occurrences required
+public enum NumOccurrences {
+  Optional(0x01),      // Zero or One occurrence
+  ZeroOrMore(0x02),    // Zero or more occurrences allowed
+  Required(0x03),      // One occurrence required
+  OneOrMore(0x04),     // One or more occurrences required
 
-    // ConsumeAfter - Indicates that this option is fed anything that follows the
-    // last positional argument required by the application (it is an error if
-    // there are zero positional arguments, and a ConsumeAfter option is used).
-    // Thus, for example, all arguments to LLI are processed until a filename is
-    // found.  Once a filename is found, all of the succeeding arguments are
-    // passed, unprocessed, to the ConsumeAfter option.
-    //
-    ConsumeAfter(0x05),
+  // ConsumeAfter - Indicates that this option is fed anything that follows the
+  // last positional argument required by the application (it is an error if
+  // there are zero positional arguments, and a ConsumeAfter option is used).
+  // Thus, for example, all arguments to LLI are processed until a filename is
+  // found.  Once a filename is found, all of the succeeding arguments are
+  // passed, unprocessed, to the ConsumeAfter option.
+  //
+  ConsumeAfter(0x05),
 
-    OccurrencesMask(0x07);
+  OccurrencesMask(0x07);
 
-    public final int value;
-    NumOccurrences(int val)
-    {
-        value = val;
-    }
+  public final int value;
 
-    public static NumOccurrences getFromValue(int val)
-    {
-        for (NumOccurrences no : values())
-            if (no.value == val)
-                return no;
-        return null;
-    }
+  NumOccurrences(int val) {
+    value = val;
+  }
+
+  public static NumOccurrences getFromValue(int val) {
+    for (NumOccurrences no : values())
+      if (no.value == val)
+        return no;
+    return null;
+  }
 }

@@ -24,35 +24,31 @@ import java.io.PrintStream;
 /**
  * This class implements the target-independent code for emitting ELF code.
  * The different target should derives the concrete subclass of this.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ELFWriter extends MachineFunctionPass
-{
-    private MachineCodeEmitter mce;
-    private PrintStream os;
-    private TargetMachine tm;
+public class ELFWriter extends MachineFunctionPass {
+  private MachineCodeEmitter mce;
+  private PrintStream os;
+  private TargetMachine tm;
 
-    public ELFWriter(PrintStream os, TargetMachine tm)
-    {
-        this.os = os;
-        this.tm = tm;
-    }
+  public ELFWriter(PrintStream os, TargetMachine tm) {
+    this.os = os;
+    this.tm = tm;
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        return false;
-    }
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    return false;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "ELF Writer for object code";
-    }
+  @Override
+  public String getPassName() {
+    return "ELF Writer for object code";
+  }
 
-    public MachineCodeEmitter getMachineCodeEmitter()
-    {
-        return mce;
-    }
+  public MachineCodeEmitter getMachineCodeEmitter() {
+    return mce;
+  }
 }

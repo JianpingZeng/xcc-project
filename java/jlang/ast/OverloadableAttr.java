@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class OverloadableAttr extends Attr
-{
-    public OverloadableAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class OverloadableAttr extends Attr {
+  public OverloadableAttr(AttrKind kind) {
+    super(kind);
+  }
 }

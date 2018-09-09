@@ -32,70 +32,61 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class UnreachableBlockElim implements FunctionPass
-{
-    private AnalysisResolver resolver;
+public final class UnreachableBlockElim implements FunctionPass {
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Unreachable block elimination pass.";
-    }
+  @Override
+  public String getPassName() {
+    return "Unreachable block elimination pass.";
+  }
 
-    /**
-     * To run this pass on a module, we simply call runOnFunction once for
-     * each module.
-     *
-     * @param f
-     * @return
-     */
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        // marks the reachable block by visiting the CFG in the order of
-        // depth-first.
-        ArrayList<BasicBlock> visited;
-        visited = DepthFirstOrder.reversePostOrder(f.getEntryBlock());
+  /**
+   * To run this pass on a module, we simply call runOnFunction once for
+   * each module.
+   *
+   * @param f
+   * @return
+   */
+  @Override
+  public boolean runOnFunction(Function f) {
+    // marks the reachable block by visiting the CFG in the order of
+    // depth-first.
+    ArrayList<BasicBlock> visited;
+    visited = DepthFirstOrder.reversePostOrder(f.getEntryBlock());
 
-        ArrayList<BasicBlock> deadedBlocks = new ArrayList<>();
-        for (BasicBlock cur : f.getBasicBlockList())
-        {
-            if (!visited.contains(cur))
-            {
-                deadedBlocks.add(cur);
-                Instruction inst = cur.getFirstInst();
-                while (inst instanceof PhiNode)
-                {
-                    PhiNode ph = (PhiNode)inst;
-                    ph.replaceAllUsesWith(Constant.getNullValue(ph.getType()));
-                    cur.getInstList().removeFirst();
-                }
-                for (SuccIterator sucItr = cur.succIterator(); sucItr.hasNext();)
-                    sucItr.next().removePredecessor(cur);
-                cur.dropAllReferences();
-            }
+    ArrayList<BasicBlock> deadedBlocks = new ArrayList<>();
+    for (BasicBlock cur : f.getBasicBlockList()) {
+      if (!visited.contains(cur)) {
+        deadedBlocks.add(cur);
+        Instruction inst = cur.getFirstInst();
+        while (inst instanceof PhiNode) {
+          PhiNode ph = (PhiNode) inst;
+          ph.replaceAllUsesWith(Constant.getNullValue(ph.getType()));
+          cur.getInstList().removeFirst();
         }
-
-        for (BasicBlock bb : deadedBlocks)
-            bb.eraseFromParent();
-
-        return deadedBlocks.size() != 0;
+        for (SuccIterator sucItr = cur.succIterator(); sucItr.hasNext(); )
+          sucItr.next().removePredecessor(cur);
+        cur.dropAllReferences();
+      }
     }
 
-    public static UnreachableBlockElim createUnreachableBlockEliminationPass()
-    {
-        return new UnreachableBlockElim();
-    }
+    for (BasicBlock bb : deadedBlocks)
+      bb.eraseFromParent();
+
+    return deadedBlocks.size() != 0;
+  }
+
+  public static UnreachableBlockElim createUnreachableBlockEliminationPass() {
+    return new UnreachableBlockElim();
+  }
 }

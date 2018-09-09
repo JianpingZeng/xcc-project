@@ -29,54 +29,46 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PrintFunctionPass implements FunctionPass
-{
-    private AnalysisResolver resolver;
-    private PrintStream os;
-    private String banner;
-    public PrintFunctionPass(PrintStream os, String banner)
-    {
-        this.os = os;
-        this.banner = banner;
-    }
+public class PrintFunctionPass implements FunctionPass {
+  private AnalysisResolver resolver;
+  private PrintStream os;
+  private String banner;
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-    }
+  public PrintFunctionPass(PrintStream os, String banner) {
+    this.os = os;
+    this.banner = banner;
+  }
 
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        if (BackendCmdOptions.isFunctionInPrintList(f.getName()))
-        {
-            os.print(banner);
-            f.print(os);
-        }
-        return false;
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Print Function Pass";
+  @Override
+  public boolean runOnFunction(Function f) {
+    if (BackendCmdOptions.isFunctionInPrintList(f.getName())) {
+      os.print(banner);
+      f.print(os);
     }
+    return false;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public String getPassName() {
+    return "Print Function Pass";
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    public static Pass createPrintFunctionPass(PrintStream os, String banner)
-    {
-        return new PrintFunctionPass(os, banner);
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  public static Pass createPrintFunctionPass(PrintStream os, String banner) {
+    return new PrintFunctionPass(os, banner);
+  }
 }

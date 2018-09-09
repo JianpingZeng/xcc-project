@@ -20,8 +20,8 @@ package backend.support;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
-import tools.FormattedOutputStream;
 import backend.value.Module;
+import tools.FormattedOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,58 +31,47 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PrintModulePass implements ModulePass
-{
-	private FormattedOutputStream os;
+public class PrintModulePass implements ModulePass {
+  private FormattedOutputStream os;
 
-	private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-	@Override
-	public void getAnalysisUsage(AnalysisUsage au)
-	{
-		au.setPreservedAll();
-	}
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-	@Override
-	public void setAnalysisResolver(AnalysisResolver resolver)
-	{
-		this.resolver = resolver;
-	}
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-	@Override
-	public AnalysisResolver getAnalysisResolver()
-	{
-		return resolver;
-	}
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-	public PrintModulePass(OutputStream out)
-	{
-		super();
-		os = new FormattedOutputStream(out);
-	}
+  public PrintModulePass(OutputStream out) {
+    super();
+    os = new FormattedOutputStream(out);
+  }
 
-	@Override
-	public boolean runOnModule(Module m)
-	{
-        try
-        {
-            m.print(os);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        return false;
-	}
+  @Override
+  public boolean runOnModule(Module m) {
+    try {
+      m.print(os);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return false;
+  }
 
-	@Override
-    public String getPassName()
-	{
-		return "Print module into text file";
-	}
+  @Override
+  public String getPassName() {
+    return "Print module into text file";
+  }
 
-	public static PrintModulePass createPrintModulePass(PrintStream os)
-	{
-		return new PrintModulePass(os);
-	}
+  public static PrintModulePass createPrintModulePass(PrintStream os) {
+    return new PrintModulePass(os);
+  }
 }

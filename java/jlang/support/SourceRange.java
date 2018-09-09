@@ -20,67 +20,56 @@ package jlang.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SourceRange
-{
-    private SourceLocation start = new SourceLocation();
-    private SourceLocation end = new SourceLocation();
+public class SourceRange {
+  private SourceLocation start = new SourceLocation();
+  private SourceLocation end = new SourceLocation();
 
-    public SourceRange()
-    {
-    }
+  public SourceRange() {
+  }
 
-    public SourceRange(SourceLocation start, SourceLocation end)
-    {
-        this.start = start;
-        this.end = end;
-    }
+  public SourceRange(SourceLocation start, SourceLocation end) {
+    this.start = start;
+    this.end = end;
+  }
 
-    public SourceRange(SourceLocation loc)
-    {
-        this(loc, loc);
-    }
+  public SourceRange(SourceLocation loc) {
+    this(loc, loc);
+  }
 
-    public SourceLocation getBegin()
-    {
-        return start;
-    }
+  public SourceLocation getBegin() {
+    return start;
+  }
 
-    public SourceLocation getEnd()
-    {
-        return end;
-    }
+  public SourceLocation getEnd() {
+    return end;
+  }
 
-    public void setBegin(SourceLocation start)
-    {
-        this.start = start;
-    }
+  public void setBegin(SourceLocation start) {
+    this.start = start;
+  }
 
-    public void setEnd(SourceLocation end)
-    {
-        this.end = end;
-    }
+  public void setEnd(SourceLocation end) {
+    this.end = end;
+  }
 
-    public boolean isValid()
-    {
-        return start.isValid() && end.isValid();
-    }
+  public boolean isValid() {
+    return start.isValid() && end.isValid();
+  }
 
-    public boolean isInvalid()
-    {
-        return !isValid();
-    }
+  public boolean isInvalid() {
+    return !isValid();
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
-        if (getClass() != obj.getClass())
-            return false;
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
+    if (getClass() != obj.getClass())
+      return false;
 
-        SourceRange other = (SourceRange) obj;
-        return start.equals(other.start) && end.equals(other.end);
-    }
+    SourceRange other = (SourceRange) obj;
+    return start.equals(other.start) && end.equals(other.end);
+  }
 }

@@ -23,40 +23,35 @@ import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * A constant pointer value that points to null.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConstantPointerNull extends Constant
-{
-    /**
-     * Constructs a new instruction representing the specified constant.
-     *
-     * @param ty
-     */
-    ConstantPointerNull(Type ty)
-    {
-        super(ty, ValueKind.ConstantPointerNullVal);
-    }
+public class ConstantPointerNull extends Constant {
+  /**
+   * Constructs a new instruction representing the specified constant.
+   *
+   * @param ty
+   */
+  ConstantPointerNull(Type ty) {
+    super(ty, ValueKind.ConstantPointerNullVal);
+  }
 
-    public static ConstantPointerNull get(Type ty)
-    {
-        return (ConstantPointerNull) getUniqueImpl().getOrCreate(ty);
-    }
+  public static ConstantPointerNull get(Type ty) {
+    return (ConstantPointerNull) getUniqueImpl().getOrCreate(ty);
+  }
 
-    public static void removeConstant(Type ty)
-    {
-        getUniqueImpl().remove(ty);
-    }
+  public static void removeConstant(Type ty) {
+    getUniqueImpl().remove(ty);
+  }
 
-    @Override
-    public boolean isNullValue()
-    {
-        return true;
-    }
+  @Override
+  public boolean isNullValue() {
+    return true;
+  }
 
-    @Override
-    public PointerType getType()
-    {
-        return (PointerType)super.getType();
-    }
+  @Override
+  public PointerType getType() {
+    return (PointerType) super.getType();
+  }
 }

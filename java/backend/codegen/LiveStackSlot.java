@@ -17,14 +17,14 @@
 
 package backend.codegen;
 
-import backend.support.MachineFunctionPass;
-import tools.Util;
 import backend.pass.AnalysisUsage;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import tools.Util;
 
 import java.io.PrintStream;
 
@@ -32,97 +32,82 @@ import java.io.PrintStream;
  * This Pass used for computing liveness for stack slot analog to virtual register.
  * It can reuse some stack slot to avoding redundant slot by liveness analysis on
  * stack slot.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class LiveStackSlot extends MachineFunctionPass
-{
-    private TIntObjectHashMap<LiveInterval> slot2LI;
-    private TIntObjectHashMap<TargetRegisterClass> slot2RC;
-    public LiveStackSlot()
-    {
-        slot2LI = new TIntObjectHashMap<>();
-        slot2RC = new TIntObjectHashMap<>();
-    }
+public final class LiveStackSlot extends MachineFunctionPass {
+  private TIntObjectHashMap<LiveInterval> slot2LI;
+  private TIntObjectHashMap<TargetRegisterClass> slot2RC;
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        // This method should not called from FunctionPassManager.
-        return false;
-    }
+  public LiveStackSlot() {
+    slot2LI = new TIntObjectHashMap<>();
+    slot2RC = new TIntObjectHashMap<>();
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Live Stack Slot Analysis Pass";
-    }
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    // This method should not called from FunctionPassManager.
+    return false;
+  }
 
-    public LiveInterval getOrCreateInterval(int slot, TargetRegisterClass rc)
-    {
-        Util.assertion(slot >= 0, "Spill slot indice must be >= 0");
-        if (!slot2LI.containsKey(slot))
-        {
-            LiveInterval li = new LiveInterval(slot, 0.0f, true);
-            slot2LI.put(slot, li);
-            return li;
-        }
-        else
-        {
-            // Use the largest common subclass register class
-            Util.assertion( slot2RC.containsKey(slot));
-            TargetRegisterClass oldRC = slot2RC.get(slot);
-            Util.assertion( oldRC != null);
-            slot2RC.put(slot, TargetRegisterInfo.getCommonSubClass(oldRC,rc));
-            return slot2LI.get(slot);
-        }
-    }
+  @Override
+  public String getPassName() {
+    return "Live Stack Slot Analysis Pass";
+  }
 
-    public LiveInterval getInterval(int slot)
-    {
-        Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
-        Util.assertion(slot2LI.containsKey(slot), "Interval doesn't exist for stack slot #" + slot);
-        return slot2LI.get(slot);
+  public LiveInterval getOrCreateInterval(int slot, TargetRegisterClass rc) {
+    Util.assertion(slot >= 0, "Spill slot indice must be >= 0");
+    if (!slot2LI.containsKey(slot)) {
+      LiveInterval li = new LiveInterval(slot, 0.0f, true);
+      slot2LI.put(slot, li);
+      return li;
+    } else {
+      // Use the largest common subclass register class
+      Util.assertion(slot2RC.containsKey(slot));
+      TargetRegisterClass oldRC = slot2RC.get(slot);
+      Util.assertion(oldRC != null);
+      slot2RC.put(slot, TargetRegisterInfo.getCommonSubClass(oldRC, rc));
+      return slot2LI.get(slot);
     }
+  }
 
-    public boolean hasInterval(int slot)
-    {
-        return slot2LI.containsKey(slot);
-    }
+  public LiveInterval getInterval(int slot) {
+    Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
+    Util.assertion(slot2LI.containsKey(slot), "Interval doesn't exist for stack slot #" + slot);
+    return slot2LI.get(slot);
+  }
 
-    public TargetRegisterClass getIntervalRegClass(int slot)
-    {
-        Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
-        Util.assertion(slot2RC.containsKey(slot), "RegClass doesn't exist for stack slot #" + slot);
-        return slot2RC.get(slot);
-    }
+  public boolean hasInterval(int slot) {
+    return slot2LI.containsKey(slot);
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-        super.getAnalysisUsage(au);
-    }
+  public TargetRegisterClass getIntervalRegClass(int slot) {
+    Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
+    Util.assertion(slot2RC.containsKey(slot), "RegClass doesn't exist for stack slot #" + slot);
+    return slot2RC.get(slot);
+  }
 
-    @Override
-    public void print(PrintStream os, Module m)
-    {
-        os.println("**************** Intervals ******************");
-        TIntObjectIterator<LiveInterval> itr = slot2LI.iterator();
-        while (itr.hasNext())
-        {
-            int slot = itr.key();
-            LiveInterval interval = itr.value();
-            interval.print(os, null);
-            TargetRegisterClass rc = getIntervalRegClass(slot);
-            if (rc != null)
-            {
-                os.printf("[%s]\n", rc.getName());
-            }
-            else
-            {
-                os.println("[unknown]");
-            }
-        }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+    super.getAnalysisUsage(au);
+  }
+
+  @Override
+  public void print(PrintStream os, Module m) {
+    os.println("**************** Intervals ******************");
+    TIntObjectIterator<LiveInterval> itr = slot2LI.iterator();
+    while (itr.hasNext()) {
+      int slot = itr.key();
+      LiveInterval interval = itr.value();
+      interval.print(os, null);
+      TargetRegisterClass rc = getIntervalRegClass(slot);
+      if (rc != null) {
+        os.printf("[%s]\n", rc.getName());
+      } else {
+        os.println("[unknown]");
+      }
     }
+  }
 }

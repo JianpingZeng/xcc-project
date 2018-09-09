@@ -23,19 +23,17 @@ import backend.type.Type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ArgListEntry
-{
-    public SDValue node;
-    public Type ty;
-    public boolean isSExt;
-    public boolean isZExt;
-    public boolean isInReg;
-    public boolean isSRet;
-    public boolean isNest;
-    public boolean isByVal;
-    public int alignment;
+public class ArgListEntry {
+  public SDValue node;
+  public Type ty;
+  public boolean isSExt;
+  public boolean isZExt;
+  public boolean isInReg;
+  public boolean isSRet;
+  public boolean isNest;
+  public boolean isByVal;
+  public int alignment;
 
-    public ArgListEntry()
-    {
-    }
+  public ArgListEntry() {
+  }
 }

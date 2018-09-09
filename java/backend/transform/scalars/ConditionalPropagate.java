@@ -36,322 +36,297 @@ import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
 /**
  * This pass propagates information about conditional expressions through the
  * program, allowing it to eliminate conditional branches in some cases.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConditionalPropagate implements FunctionPass
-{
-    public static IntStatistic NumBrThread =
-            new IntStatistic("NumBrThread", "Number of CFG edges threaded through program");
-    public static IntStatistic NumSwThread =
-            new IntStatistic("NumSwThread", "Number of CFG edges threaded through program");
-    private boolean madeChange;
-    private LinkedList<BasicBlock> deadBlocks;
+public class ConditionalPropagate implements FunctionPass {
+  public static IntStatistic NumBrThread =
+      new IntStatistic("NumBrThread", "Number of CFG edges threaded through program");
+  public static IntStatistic NumSwThread =
+      new IntStatistic("NumSwThread", "Number of CFG edges threaded through program");
+  private boolean madeChange;
+  private LinkedList<BasicBlock> deadBlocks;
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
+
+  private ConditionalPropagate() {
+    super();
+    madeChange = false;
+    deadBlocks = new LinkedList<>();
+  }
+
+  /**
+   * A static factory method to create an instance of {@linkplain ConditionalPropagate}.
+   *
+   * @return
+   */
+  public static ConditionalPropagate createCondPropagatePass() {
+    return new ConditionalPropagate();
+  }
+
+  @Override
+  public String getPassName() {
+    return "Sparse Conditional constant propagate";
+  }
+
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addRequired(BreakCriticalEdge.class);
+  }
+
+  @Override
+  public boolean runOnFunction(Function f) {
+    boolean everMadeChange = false;
+    deadBlocks.clear();
+
+    // Keep iterating while the CFG has been changed.
+    do {
+      madeChange = false;
+      for (BasicBlock bb : f.getBasicBlockList()) {
+        simplifyBasicBlock(bb);
+      }
+      everMadeChange |= madeChange;
+
+    } while (madeChange);
+
+    if (everMadeChange) {
+      while (!deadBlocks.isEmpty()) {
+        ConstantFolder.deleteDeadBlock(deadBlocks.removeLast());
+      }
+    }
+    return everMadeChange;
+  }
+
+  private void simplifyBasicBlock(BasicBlock bb) {
+    if (bb.getTerminator() == null)
+      return;
+
+    if (bb.getTerminator() instanceof BranchInst) {
+      // If this is a conditional branch based on a phi node that is defined in
+      // this block, see if we can simplify predecessors of this block.
+      BranchInst bi = (BranchInst) bb.getTerminator();
+      if (bi.isConditional() && bi.getCondition() instanceof PhiNode
+          && ((PhiNode) bi.getCondition()).getParent().equals(bb)) {
+        simplifyPredecessor(bi);
+      }
+    } else if (bb.getTerminator() instanceof SwitchInst) {
+      SwitchInst si = (SwitchInst) bb.getTerminator();
+      if (si.getCondition() instanceof PhiNode && ((PhiNode) si.getCondition()).
+          getParent().equals(bb)) {
+        simplifyPredecessor(si);
+      }
     }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    private ConditionalPropagate()
-    {
-        super();
-        madeChange = false;
-        deadBlocks = new LinkedList<>();
-    }
+    // If possible, simplify the terminator of this block.
+    if (constantFoldTerminator(bb))
+      madeChange = true;
 
-    /**
-     * A static factory method to create an instance of {@linkplain ConditionalPropagate}.
-     * @return
-     */
-    public static ConditionalPropagate createCondPropagatePass()
-    {
-        return new ConditionalPropagate();
-    }
+    // If this block ends with a unconditonal branch and the only successor
+    // has only this block as predecessor, merge the two blocks together.
+    if (bb.getTerminator() instanceof BranchInst) {
+      BranchInst bi = (BranchInst) bb.getTerminator();
+      if (bi.isUnconditional() && bi.getSuccessor(0).getSinglePredecessor() != null
+          && !bi.getSuccessor(0).equals(bb))  // avoiding self-ref circle.
+      {
+        BasicBlock succ = bi.getSuccessor(0);
+        foldSingleEntryPHINodes(succ);
 
-    @Override
-    public String getPassName()
-    {
-        return "Sparse Conditional constant propagate";
-    }
+        // Erase this branch inst from its parent basic block.
+        bi.eraseFromParent();
+        // append all instructions in succ into this basic block.
+        bb.getInstList().addAll(succ.getInstList());
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.addRequired(BreakCriticalEdge.class);
-    }
-
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        boolean everMadeChange = false;
-        deadBlocks.clear();
-
-        // Keep iterating while the CFG has been changed.
-        do
-        {
-            madeChange = false;
-            for (BasicBlock bb : f.getBasicBlockList())
-            {
-                simplifyBasicBlock(bb);
-            }
-            everMadeChange |= madeChange;
-
-        }while (madeChange);
-
-        if (everMadeChange)
-        {
-            while (!deadBlocks.isEmpty())
-            {
-                ConstantFolder.deleteDeadBlock(deadBlocks.removeLast());
-            }
-        }
-        return everMadeChange;
-    }
-
-    private void simplifyBasicBlock(BasicBlock bb)
-    {
-        if (bb.getTerminator() == null)
-            return;
-
-        if (bb.getTerminator() instanceof BranchInst)
-        {
-            // If this is a conditional branch based on a phi node that is defined in
-            // this block, see if we can simplify predecessors of this block.
-            BranchInst bi = (BranchInst)bb.getTerminator();
-            if (bi.isConditional() && bi.getCondition() instanceof PhiNode
-                    && ((PhiNode) bi.getCondition()).getParent().equals(bb))
-            {
-                simplifyPredecessor(bi);
-            }
-        }
-        else if (bb.getTerminator() instanceof SwitchInst)
-        {
-            SwitchInst si = (SwitchInst)bb.getTerminator();
-            if (si.getCondition() instanceof PhiNode && ((PhiNode) si.getCondition()).
-                    getParent().equals(bb))
-            {
-                simplifyPredecessor(si);
-            }
-        }
-
-        // If possible, simplify the terminator of this block.
-        if (constantFoldTerminator(bb))
-            madeChange = true;
-
-        // If this block ends with a unconditonal branch and the only successor
-        // has only this block as predecessor, merge the two blocks together.
-        if (bb.getTerminator() instanceof BranchInst)
-        {
-            BranchInst bi = (BranchInst)bb.getTerminator();
-            if (bi.isUnconditional() && bi.getSuccessor(0).getSinglePredecessor() != null
-                    && !bi.getSuccessor(0).equals(bb))  // avoiding self-ref circle.
-            {
-                BasicBlock succ = bi.getSuccessor(0);
-                foldSingleEntryPHINodes(succ);
-
-                // Erase this branch inst from its parent basic block.
-                bi.eraseFromParent();
-                // append all instructions in succ into this basic block.
-                bb.getInstList().addAll(succ.getInstList());
-
-                succ.replaceAllUsesWith(bb);
-                new UnreachableInst(succ);
-                deadBlocks.add(succ);
-                madeChange = true;
-            }
-        }
-    }
-
-    /**
-     * We know that parent has one predecessor. If there are any single-entry
-     * phi nodes in it, fold them away. This handles the case when all
-     * entries to the phi nodes in a block are guaranteed equal, such as
-     * when the block has exactly one predecessor.
-     * @param bb
-     */
-    private void foldSingleEntryPHINodes(BasicBlock bb)
-    {
-        if (!(bb.getFirstInst() instanceof PhiNode))
-            return;
-
-        while (bb.getFirstInst() instanceof PhiNode)
-        {
-            PhiNode pn = (PhiNode)bb.getFirstInst();
-            Util.assertion(pn.getNumberIncomingValues() == 1,  "Just one incoming value is valid");
-
-            if (!pn.getIncomingValue(0).equals(pn))
-                pn.replaceAllUsesWith(pn.getIncomingValue(0));
-            else
-                pn.replaceAllUsesWith(UndefValue.get(pn.getType()));
-            pn.eraseFromParent();
-        }
-    }
-
-    /**
-     * We know that {@code si} switch based on a phi node defined in this
-     * block. If the phi node contains constant operands, then the blocks
-     * corresponding to those operands can be modified to jump directly to
-     * the destination instead of going through this block.
-     * @param si
-     */
-    private void simplifyPredecessor(SwitchInst si)
-    {
-        Util.assertion( si.getCondition() instanceof PhiNode);
-        PhiNode pn = (PhiNode)si.getCondition();
-        if (!pn.hasOneUses())
-            return;
-
-        BasicBlock bb = si.getParent();
-        if (!bb.getFirstInst().equals(pn))
-            return;
-
-        boolean removedPreds = false;
-        // Ok, we have this really simple case, walk the PHI operands, looking for
-        // constants.  Walk from the end to remove operands from the end when
-        // possible, and to avoid invalidating "i".
-        for (int i = pn.getNumberIncomingValues()-1; i >= 0; i--)
-        {
-            Value inVal = pn.getIncomingValue(i);
-            if (inVal instanceof ConstantInt)
-            {
-                Constant ci = (Constant)inVal;
-                int destCase = si.findCaseValue(ci);
-                revectorBlockTo(pn.getIncomingBlock(i), si.getSuccessor(destCase));
-                NumSwThread.inc();
-                removedPreds = true;
-
-                if (!si.getCondition().equals(pn))
-                    return;
-            }
-        }
-    }
-
-    /**
-     * Redirect an unconditional branch at the end of {@code fromBB} to the
-     * {@code toBB} block, which is one of the successors of it current
-     * successor.
-     * @param fromBB
-     * @param toBB
-     */
-    private void revectorBlockTo(BasicBlock fromBB, BasicBlock toBB)
-    {
-        Util.assertion( fromBB.getTerminator() != null &&                fromBB.getTerminator() instanceof BranchInst);
-
-
-        BranchInst fromBr = (BranchInst) fromBB.getTerminator();
-        Util.assertion( fromBr.isUnconditional());
-
-        BasicBlock oldSucc = fromBr.getSuccessor(0);
-
-        // OldSucc had multiple successors. If ToBB has multiple predecessors, then
-        // the edge between them would be critical, which we already took care of.
-        // If ToBB has single operand PHI node then take care of it here.
-        foldSingleEntryPHINodes(toBB);
-
-        oldSucc.removePredecessor(fromBB);
-        fromBr.setSuccessor(0, toBB);
+        succ.replaceAllUsesWith(bb);
+        new UnreachableInst(succ);
+        deadBlocks.add(succ);
         madeChange = true;
+      }
+    }
+  }
+
+  /**
+   * We know that parent has one predecessor. If there are any single-entry
+   * phi nodes in it, fold them away. This handles the case when all
+   * entries to the phi nodes in a block are guaranteed equal, such as
+   * when the block has exactly one predecessor.
+   *
+   * @param bb
+   */
+  private void foldSingleEntryPHINodes(BasicBlock bb) {
+    if (!(bb.getFirstInst() instanceof PhiNode))
+      return;
+
+    while (bb.getFirstInst() instanceof PhiNode) {
+      PhiNode pn = (PhiNode) bb.getFirstInst();
+      Util.assertion(pn.getNumberIncomingValues() == 1, "Just one incoming value is valid");
+
+      if (!pn.getIncomingValue(0).equals(pn))
+        pn.replaceAllUsesWith(pn.getIncomingValue(0));
+      else
+        pn.replaceAllUsesWith(UndefValue.get(pn.getType()));
+      pn.eraseFromParent();
+    }
+  }
+
+  /**
+   * We know that {@code si} switch based on a phi node defined in this
+   * block. If the phi node contains constant operands, then the blocks
+   * corresponding to those operands can be modified to jump directly to
+   * the destination instead of going through this block.
+   *
+   * @param si
+   */
+  private void simplifyPredecessor(SwitchInst si) {
+    Util.assertion(si.getCondition() instanceof PhiNode);
+    PhiNode pn = (PhiNode) si.getCondition();
+    if (!pn.hasOneUses())
+      return;
+
+    BasicBlock bb = si.getParent();
+    if (!bb.getFirstInst().equals(pn))
+      return;
+
+    boolean removedPreds = false;
+    // Ok, we have this really simple case, walk the PHI operands, looking for
+    // constants.  Walk from the end to remove operands from the end when
+    // possible, and to avoid invalidating "i".
+    for (int i = pn.getNumberIncomingValues() - 1; i >= 0; i--) {
+      Value inVal = pn.getIncomingValue(i);
+      if (inVal instanceof ConstantInt) {
+        Constant ci = (Constant) inVal;
+        int destCase = si.findCaseValue(ci);
+        revectorBlockTo(pn.getIncomingBlock(i), si.getSuccessor(destCase));
+        NumSwThread.inc();
+        removedPreds = true;
+
+        if (!si.getCondition().equals(pn))
+          return;
+      }
+    }
+  }
+
+  /**
+   * Redirect an unconditional branch at the end of {@code fromBB} to the
+   * {@code toBB} block, which is one of the successors of it current
+   * successor.
+   *
+   * @param fromBB
+   * @param toBB
+   */
+  private void revectorBlockTo(BasicBlock fromBB, BasicBlock toBB) {
+    Util.assertion(fromBB.getTerminator() != null && fromBB.getTerminator() instanceof BranchInst);
+
+
+    BranchInst fromBr = (BranchInst) fromBB.getTerminator();
+    Util.assertion(fromBr.isUnconditional());
+
+    BasicBlock oldSucc = fromBr.getSuccessor(0);
+
+    // OldSucc had multiple successors. If ToBB has multiple predecessors, then
+    // the edge between them would be critical, which we already took care of.
+    // If ToBB has single operand PHI node then take care of it here.
+    foldSingleEntryPHINodes(toBB);
+
+    oldSucc.removePredecessor(fromBB);
+    fromBr.setSuccessor(0, toBB);
+    madeChange = true;
+  }
+
+  /**
+   * We know that {@code bi} is a conditional branch based on a phi node
+   * defined in the same block. If the phi node contains constant operands,
+   * then the blocks corresponding to those operands can be modified to
+   * jump directly to the destination instead of going through this block.
+   *
+   * @param bi
+   */
+  private void simplifyPredecessor(BranchInst bi) {
+    Util.assertion(bi.getCondition() instanceof PhiNode);
+    PhiNode pn = (PhiNode) bi.getCondition();
+
+    if (pn.getNumberIncomingValues() == 1) {
+      // Eliminate the single-entry phi node.
+      foldSingleEntryPHINodes(pn.getParent());
     }
 
-    /**
-     * We know that {@code bi} is a conditional branch based on a phi node
-     * defined in the same block. If the phi node contains constant operands,
-     * then the blocks corresponding to those operands can be modified to
-     * jump directly to the destination instead of going through this block.
-     * @param bi
-     */
-    private void simplifyPredecessor(BranchInst bi)
-    {
-        Util.assertion( bi.getCondition() instanceof PhiNode);
-        PhiNode pn = (PhiNode)bi.getCondition();
+    // This phi node must only have one use that the branch instruction.
+    if (!pn.hasOneUses())
+      return;
 
-        if (pn.getNumberIncomingValues() == 1)
-        {
-            // Eliminate the single-entry phi node.
-            foldSingleEntryPHINodes(pn.getParent());
-        }
+    BasicBlock bb = bi.getParent();
+    if (!bb.getFirstInst().equals(pn))
+      return;
 
-        // This phi node must only have one use that the branch instruction.
-        if (!pn.hasOneUses())
-            return;
+    // Ok, we have this really simple case, walk the PHI operands, looking for
+    // constants.  Walk from the end to remove operands from the end when
+    // possible, and to avoid invalidating "i".
+    for (int i = pn.getNumberIncomingValues() - 1; i >= 0; i--) {
+      Value inVal = pn.getIncomingValue(i);
+      if (!revectorBlockTo(pn.getIncomingBlock(i), inVal, bi))
+        continue;
 
-        BasicBlock bb = bi.getParent();
-        if (!bb.getFirstInst().equals(pn))
-            return;
+      NumBrThread.inc();
 
-        // Ok, we have this really simple case, walk the PHI operands, looking for
-        // constants.  Walk from the end to remove operands from the end when
-        // possible, and to avoid invalidating "i".
-        for (int i = pn.getNumberIncomingValues()-1; i >= 0; i--)
-        {
-            Value inVal = pn.getIncomingValue(i);
-            if (!revectorBlockTo(pn.getIncomingBlock(i), inVal, bi))
-                continue;
-
-            NumBrThread.inc();
-
-            if (!bi.getCondition().equals(pn))
-                return;
-        }
+      if (!bi.getCondition().equals(pn))
+        return;
     }
+  }
 
-    private boolean revectorBlockTo(BasicBlock fromBB,
-            Value cond,
-            BranchInst bi)
-    {
-        if (!(fromBB.getTerminator() instanceof BranchInst))
-            return false;
+  private boolean revectorBlockTo(BasicBlock fromBB,
+                                  Value cond,
+                                  BranchInst bi) {
+    if (!(fromBB.getTerminator() instanceof BranchInst))
+      return false;
 
-        BranchInst fromBr = (BranchInst)fromBB.getTerminator();
-        if (!fromBr.isUnconditional())
-            return false;
+    BranchInst fromBr = (BranchInst) fromBB.getTerminator();
+    if (!fromBr.isUnconditional())
+      return false;
 
-        // Get the old block we are threading through.
-        BasicBlock oldSucc = fromBr.getSuccessor(0);
+    // Get the old block we are threading through.
+    BasicBlock oldSucc = fromBr.getSuccessor(0);
 
-        if (cond instanceof ConstantInt)
-        {
-            ConstantInt ci = (ConstantInt)cond;
-            BasicBlock toBB = bi.getSuccessor(ci.isZero() ? 1:0);
+    if (cond instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) cond;
+      BasicBlock toBB = bi.getSuccessor(ci.isZero() ? 1 : 0);
 
-            foldSingleEntryPHINodes(toBB);
-            oldSucc.removePredecessor(fromBB);
-            fromBr.setSuccessor(0, toBB);
-        }
-        else
-        {
-            BasicBlock succ0 = bi.getSuccessor(0);
+      foldSingleEntryPHINodes(toBB);
+      oldSucc.removePredecessor(fromBB);
+      fromBr.setSuccessor(0, toBB);
+    } else {
+      BasicBlock succ0 = bi.getSuccessor(0);
 
-            // Do not perform transform if the new destination has phi node,
-            // the transform will add new preds tot he phi's.
-            if (succ0.getFirstInst() instanceof PhiNode)
-                return false;
+      // Do not perform transform if the new destination has phi node,
+      // the transform will add new preds tot he phi's.
+      if (succ0.getFirstInst() instanceof PhiNode)
+        return false;
 
-            BasicBlock succ1 = bi.getSuccessor(1);
-            if (succ1.getFirstInst() instanceof PhiNode)
-                return false;
+      BasicBlock succ1 = bi.getSuccessor(1);
+      if (succ1.getFirstInst() instanceof PhiNode)
+        return false;
 
-            // Insert the new conditional branch.
-            new BranchInst(succ0, succ1, cond, fromBr);
+      // Insert the new conditional branch.
+      new BranchInst(succ0, succ1, cond, fromBr);
 
-            foldSingleEntryPHINodes(succ0);
-            foldSingleEntryPHINodes(succ1);
+      foldSingleEntryPHINodes(succ0);
+      foldSingleEntryPHINodes(succ1);
 
-            oldSucc.removePredecessor(fromBB);
+      oldSucc.removePredecessor(fromBB);
 
-            // Delete the old branch.
-            fromBr.eraseFromParent();
-        }
-        madeChange = true;
-        return true;
+      // Delete the old branch.
+      fromBr.eraseFromParent();
     }
+    madeChange = true;
+    return true;
+  }
 }

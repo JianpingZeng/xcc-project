@@ -22,27 +22,25 @@ import tools.Util;
  * This struct carries flags and type information about a
  * single incoming (formal) argument or incoming (from the perspective
  * of the caller) return value virtual register.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class InputArg
-{
-    public ArgFlagsTy flags;
-    public EVT vt;
-    public boolean used;
+public class InputArg {
+  public ArgFlagsTy flags;
+  public EVT vt;
+  public boolean used;
 
-    public InputArg()
-    {
-        flags = new ArgFlagsTy();
-        vt = new EVT(MVT.Other);
-        used = false;
-    }
+  public InputArg() {
+    flags = new ArgFlagsTy();
+    vt = new EVT(MVT.Other);
+    used = false;
+  }
 
-    public InputArg(ArgFlagsTy flags, EVT vt, boolean used)
-    {
-        this.flags = flags;
-        this.vt = vt;
-        this.used = used;
-        Util.assertion(vt.isSimple(), "InputArg value type must be simple!");
-    }
+  public InputArg(ArgFlagsTy flags, EVT vt, boolean used) {
+    this.flags = flags;
+    this.vt = vt;
+    this.used = used;
+    Util.assertion(vt.isSimple(), "InputArg value type must be simple!");
+  }
 }

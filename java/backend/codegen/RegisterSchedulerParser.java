@@ -26,29 +26,24 @@ import tools.commandline.Parser;
  * @version 0.1
  */
 public class RegisterSchedulerParser extends Parser<SchedPassCtor>
-        implements MachinePassRegistryListener<SchedPassCtor>
-{
-    @Override
-    public <T1> void initialize(Option<T1> opt)
-    {
-        super.initialize(opt);
-        for (RegisterScheduler node = RegisterScheduler.getList(); node != null;
-             node = node.getNext())
-        {
-            addLiteralOption(node.getName(), node.getCtor(), node.getDescription());
-        }
-        RegisterScheduler.setListener(this);
+    implements MachinePassRegistryListener<SchedPassCtor> {
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+    super.initialize(opt);
+    for (RegisterScheduler node = RegisterScheduler.getList(); node != null;
+         node = node.getNext()) {
+      addLiteralOption(node.getName(), node.getCtor(), node.getDescription());
     }
+    RegisterScheduler.setListener(this);
+  }
 
-    @Override
-    public void notifyAdd(String name, SchedPassCtor ctor, String desc)
-    {
-        addLiteralOption(name, ctor, desc);
-    }
+  @Override
+  public void notifyAdd(String name, SchedPassCtor ctor, String desc) {
+    addLiteralOption(name, ctor, desc);
+  }
 
-    @Override
-    public void notifyRemove(String name)
-    {
-        removeLiteralOption(name);
-    }
+  @Override
+  public void notifyRemove(String name) {
+    removeLiteralOption(name);
+  }
 }

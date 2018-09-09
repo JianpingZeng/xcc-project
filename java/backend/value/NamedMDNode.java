@@ -16,8 +16,8 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,42 +26,36 @@ import java.util.List;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class NamedMDNode extends MetadataBase
-{
-    private Module parent;
-    private ArrayList<MetadataBase> node;
+public final class NamedMDNode extends MetadataBase {
+  private Module parent;
+  private ArrayList<MetadataBase> node;
 
-    public NamedMDNode(String name, MetadataBase[] elts, Module m)
-    {
-        super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
-        parent = m;
-        node = new ArrayList<>();
-        for (MetadataBase n : elts)
-            node.add(n);
-    }
+  public NamedMDNode(String name, MetadataBase[] elts, Module m) {
+    super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
+    parent = m;
+    node = new ArrayList<>();
+    for (MetadataBase n : elts)
+      node.add(n);
+  }
 
-    public NamedMDNode(String name, List<MetadataBase> elts, Module m)
-    {
-        super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
-        parent = m;
-        node = new ArrayList<>();
-        node.addAll(elts);
-    }
+  public NamedMDNode(String name, List<MetadataBase> elts, Module m) {
+    super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
+    parent = m;
+    node = new ArrayList<>();
+    node.addAll(elts);
+  }
 
-    public static NamedMDNode create(String name, ArrayList<MetadataBase> elts,
-            Module m)
-    {
-        return new NamedMDNode(name, elts, m);
-    }
+  public static NamedMDNode create(String name, ArrayList<MetadataBase> elts,
+                                   Module m) {
+    return new NamedMDNode(name, elts, m);
+  }
 
-    public int getNumOfNode()
-    {
-        return node.size();
-    }
+  public int getNumOfNode() {
+    return node.size();
+  }
 
-    public Value getNode(int index)
-    {
-        Util.assertion( index >= 0 && index < getNumOfNode());
-        return node.get(index);
-    }
+  public Value getNode(int index) {
+    Util.assertion(index >= 0 && index < getNumOfNode());
+    return node.get(index);
+  }
 }

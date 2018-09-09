@@ -20,16 +20,15 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FormattingFlagsApplicator implements Modifier
-{
-    private FormattingFlags ff;
-    public FormattingFlagsApplicator(FormattingFlags ff)
-    {
-        this.ff = ff;
-    }
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setFormattingFlag(ff);
-    }
+public class FormattingFlagsApplicator implements Modifier {
+  private FormattingFlags ff;
+
+  public FormattingFlagsApplicator(FormattingFlags ff) {
+    this.ff = ff;
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setFormattingFlag(ff);
+  }
 }

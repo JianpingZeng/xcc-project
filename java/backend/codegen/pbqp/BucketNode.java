@@ -21,16 +21,14 @@ package backend.codegen.pbqp;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class BucketNode
-{
-    public BucketNode prev, next;
-    /**
-     * Node number
-     */
-    public int u;
+public class BucketNode {
+  public BucketNode prev, next;
+  /**
+   * Node number
+   */
+  public int u;
 
-    public BucketNode(int node)
-    {
-        u = node;
-    }
+  public BucketNode(int node) {
+    u = node;
+  }
 }

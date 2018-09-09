@@ -22,99 +22,85 @@ import tools.FoldingSetNodeID;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class Info
-{
-    private String name, type, attributes, headerName;
-    private boolean suppressed;
+public final class Info {
+  private String name, type, attributes, headerName;
+  private boolean suppressed;
 
-    public Info(String name, String type,
-            String attr, String header,
-            boolean suppressed)
-    {
-        this.name = name;
-        this.type = type;
-        attributes = attr;
-        headerName = header;
-        this.suppressed = suppressed;
-    }
+  public Info(String name, String type,
+              String attr, String header,
+              boolean suppressed) {
+    this.name = name;
+    this.type = type;
+    attributes = attr;
+    headerName = header;
+    this.suppressed = suppressed;
+  }
 
-    public String getName()
-    {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setName(String name)
-    {
-        this.name = name;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public String getType()
-    {
-        return type;
-    }
+  public String getType() {
+    return type;
+  }
 
-    public void setType(String type)
-    {
-        this.type = type;
-    }
+  public void setType(String type) {
+    this.type = type;
+  }
 
-    public String getAttributes()
-    {
-        return attributes;
-    }
+  public String getAttributes() {
+    return attributes;
+  }
 
-    public void setAttributes(String attributes)
-    {
-        this.attributes = attributes;
-    }
+  public void setAttributes(String attributes) {
+    this.attributes = attributes;
+  }
 
-    public String getHeaderName()
-    {
-        return headerName;
-    }
+  public String getHeaderName() {
+    return headerName;
+  }
 
-    public void setHeaderName(String headerName)
-    {
-        this.headerName = headerName;
-    }
+  public void setHeaderName(String headerName) {
+    this.headerName = headerName;
+  }
 
-    public boolean isSuppressed()
-    {
-        return suppressed;
-    }
+  public boolean isSuppressed() {
+    return suppressed;
+  }
 
-    public void setSuppressed(boolean suppressed)
-    {
-        this.suppressed = suppressed;
-    }
+  public void setSuppressed(boolean suppressed) {
+    this.suppressed = suppressed;
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
-        if (getClass() != obj.getClass())
-            return false;
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
+    if (getClass() != obj.getClass())
+      return false;
 
-        Info rhs = (Info)obj;
-        return name.equals(rhs.name) &&
-                type.equals(rhs.type) &&
-                attributes.equals(rhs.attributes) &&
-                headerName.equals(rhs.headerName) &&
-                suppressed == rhs.suppressed;
-    }
+    Info rhs = (Info) obj;
+    return name.equals(rhs.name) &&
+        type.equals(rhs.type) &&
+        attributes.equals(rhs.attributes) &&
+        headerName.equals(rhs.headerName) &&
+        suppressed == rhs.suppressed;
+  }
 
-    @Override
-    public int hashCode()
-    {
-        FoldingSetNodeID id = new FoldingSetNodeID();
-        id.addString(name);
-        id.addString(type);
-        id.addString(attributes);
-        id.addString(headerName);
-        id.addBoolean(suppressed);
-        return id.computeHash();
-    }
+  @Override
+  public int hashCode() {
+    FoldingSetNodeID id = new FoldingSetNodeID();
+    id.addString(name);
+    id.addString(type);
+    id.addString(attributes);
+    id.addString(headerName);
+    id.addBoolean(suppressed);
+    return id.computeHash();
+  }
 }

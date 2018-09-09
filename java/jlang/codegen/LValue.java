@@ -16,9 +16,9 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.value.Value;
 import jlang.type.QualType;
+import tools.Util;
 
 /**
  * This represents an lvalue references.  Because C allow bitfields,
@@ -27,84 +27,106 @@ import jlang.type.QualType;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class LValue
-{
-    private enum Kind
-    {
-        /**
-         * This is a normal l-value, use getAddress().
-         */
-        Simple,
-
-        /**
-         * This is a bitfield l-value, use getBitfield.
-         */
-        BitField
-    }
-    private Kind LVType;
-
-    private Value v;
-
-    private class BitFieldData
-    {
-        int startBit;
-        int size;
-        boolean isSigned;
-    }
-    private BitFieldData bitFieldData;
-
-    private boolean Volatile;
-    private boolean restrict;
-
-    private static void setQualifiers(int qualifiers, LValue r)
-    {
-        r.Volatile = (qualifiers& QualType.VOLATILE_QUALIFIER) != 0;
-        r.restrict = (qualifiers& QualType.RESTRICT_QUALIFIER) != 0;
-    }
-
-    public boolean isSimple() {return  LVType == Kind.Simple;}
-    public boolean isBitField() {return LVType == Kind.BitField;}
-
-    public boolean isVolatileQualified() { return Volatile;}
-    public boolean isRestrictQualified() {return restrict;}
-    public int getQualifiers()
-    {
-        return (Volatile? QualType.VOLATILE_QUALIFIER:0)
-                | (restrict?QualType.RESTRICT_QUALIFIER: 0);
-    }
+public final class LValue {
+  private enum Kind {
+    /**
+     * This is a normal l-value, use getAddress().
+     */
+    Simple,
 
     /**
-     * Simple value.
-     * @return
+     * This is a bitfield l-value, use getBitfield.
      */
-    public Value getAddress() { Util.assertion( isSimple()); return v;}
-    public Value getBitFieldAddr() { assert isBitField(); return v;}
-    public int getBitfieldStartBits(){assert isBitField(); return bitFieldData.startBit;}
-    public int getBitfieldSize() {assert isBitField(); return bitFieldData.size;}
+    BitField
+  }
 
-    public static LValue makeAddr(Value v, int qualifers)
-    {
-        LValue r = new LValue();
+  private Kind LVType;
 
-        r.LVType = Kind.Simple;
-        r.v = v;
-        setQualifiers(qualifers, r);
-        return r;
-    }
+  private Value v;
 
-    public static LValue makeBitfield(Value v,
-            int startBit,
-            int size,
-            boolean isSigned,
-            int qualifiers)
-    {
-        LValue r = new LValue();
-        r.v = v;
-        r.LVType = Kind.BitField;
-        r.bitFieldData.startBit = startBit;
-        r.bitFieldData.size = size;
-        r.bitFieldData.isSigned = isSigned;
-        setQualifiers(qualifiers, r);
-        return r;
-    }
+  private class BitFieldData {
+    int startBit;
+    int size;
+    boolean isSigned;
+  }
+
+  private BitFieldData bitFieldData;
+
+  private boolean Volatile;
+  private boolean restrict;
+
+  private static void setQualifiers(int qualifiers, LValue r) {
+    r.Volatile = (qualifiers & QualType.VOLATILE_QUALIFIER) != 0;
+    r.restrict = (qualifiers & QualType.RESTRICT_QUALIFIER) != 0;
+  }
+
+  public boolean isSimple() {
+    return LVType == Kind.Simple;
+  }
+
+  public boolean isBitField() {
+    return LVType == Kind.BitField;
+  }
+
+  public boolean isVolatileQualified() {
+    return Volatile;
+  }
+
+  public boolean isRestrictQualified() {
+    return restrict;
+  }
+
+  public int getQualifiers() {
+    return (Volatile ? QualType.VOLATILE_QUALIFIER : 0)
+        | (restrict ? QualType.RESTRICT_QUALIFIER : 0);
+  }
+
+  /**
+   * Simple value.
+   *
+   * @return
+   */
+  public Value getAddress() {
+    Util.assertion(isSimple());
+    return v;
+  }
+
+  public Value getBitFieldAddr() {
+    assert isBitField();
+    return v;
+  }
+
+  public int getBitfieldStartBits() {
+    assert isBitField();
+    return bitFieldData.startBit;
+  }
+
+  public int getBitfieldSize() {
+    assert isBitField();
+    return bitFieldData.size;
+  }
+
+  public static LValue makeAddr(Value v, int qualifers) {
+    LValue r = new LValue();
+
+    r.LVType = Kind.Simple;
+    r.v = v;
+    setQualifiers(qualifers, r);
+    return r;
+  }
+
+  public static LValue makeBitfield(Value v,
+                                    int startBit,
+                                    int size,
+                                    boolean isSigned,
+                                    int qualifiers) {
+    LValue r = new LValue();
+    r.v = v;
+    r.LVType = Kind.BitField;
+    r.bitFieldData.startBit = startBit;
+    r.bitFieldData.size = size;
+    r.bitFieldData.isSigned = isSigned;
+    setQualifiers(qualifiers, r);
+    return r;
+  }
 }

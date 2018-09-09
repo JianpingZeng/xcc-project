@@ -23,10 +23,8 @@ import backend.type.Type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MetadataBase extends User
-{
-    public MetadataBase(Type ty, int valueKind)
-    {
-        super(ty, valueKind);
-    }
+public class MetadataBase extends User {
+  public MetadataBase(Type ty, int valueKind) {
+    super(ty, valueKind);
+  }
 }

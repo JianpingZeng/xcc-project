@@ -4,55 +4,54 @@ package jlang.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum ProgramAction
-{
-    /**
-     * Specify the output file asmName.
-     */
-	OutputFile,
+public enum ProgramAction {
+  /**
+   * Specify the output file asmName.
+   */
+  OutputFile,
 
-    /**
-     * Specify whether just the compilation process be enabled.
-     */
-    CompilationOnly,
+  /**
+   * Specify whether just the compilation process be enabled.
+   */
+  CompilationOnly,
 
-    EmitLLVM,
-	/**
-	 * The default action taken by compiler.
-	 */
-	ParseSyntaxOnly,
+  EmitLLVM,
+  /**
+   * The default action taken by compiler.
+   */
+  ParseSyntaxOnly,
 
-    DebugParserFlag,
+  DebugParserFlag,
 
-	/**
-	 * Parse AST and dump them.
-	 */
-	ASTDump,
+  /**
+   * Parse AST and dump them.
+   */
+  ASTDump,
 
-    /**
-     * Print the AST node in terms of source code.
-     */
-    ASTPrint,
+  /**
+   * Print the AST node in terms of source code.
+   */
+  ASTPrint,
 
-    /**
-     * Just lex as fast as we can, no output.
-     */
-    RunPreprocessorOnly,
+  /**
+   * Just lex as fast as we can, no output.
+   */
+  RunPreprocessorOnly,
 
-    /**
-     * -E mode.
-     */
-    PrintPreprocessedInput,
+  /**
+   * -E mode.
+   */
+  PrintPreprocessedInput,
 
-    DumpTokens,
+  DumpTokens,
 
-    /**
-     * Parse with noop callbacks.
-     */
-    ParseNoop,
+  /**
+   * Parse with noop callbacks.
+   */
+  ParseNoop,
 
-    /**
-     * Indicates if letting the compiler emit assembly code in target machine.
-     */
-    EmitAssembly,
+  /**
+   * Indicates if letting the compiler emit assembly code in target machine.
+   */
+  EmitAssembly,
 }

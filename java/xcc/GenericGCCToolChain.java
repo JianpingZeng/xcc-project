@@ -22,41 +22,38 @@ import xcc.HostInfo.UnknownHostInfo;
 
 import java.util.ArrayList;
 
-public class GenericGCCToolChain extends ToolChain
-{
-    public GenericGCCToolChain(UnknownHostInfo unknownHostInfo, Triple triple)
-    {
-        super(unknownHostInfo, triple);
-    }
+public class GenericGCCToolChain extends ToolChain {
+  public GenericGCCToolChain(UnknownHostInfo unknownHostInfo, Triple triple) {
+    super(unknownHostInfo, triple);
+  }
 
-    @Override
-    public xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja)
-    {
-        return null;
-    }
+  @Override
+  public xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja) {
+    return null;
+  }
 
-    @Override public String getLinker()
-    {
-        return null;
-    }
+  @Override
+  public String getLinker() {
+    return null;
+  }
 
-    @Override public String getAssembler()
-    {
-        return null;
-    }
+  @Override
+  public String getAssembler() {
+    return null;
+  }
 
-    @Override public String getForcedPicModel()
-    {
-        return null;
-    }
+  @Override
+  public String getForcedPicModel() {
+    return null;
+  }
 
-    @Override public String getDefaultRelocationModel()
-    {
-        return null;
-    }
+  @Override
+  public String getDefaultRelocationModel() {
+    return null;
+  }
 
-    @Override public void addSystemIncludeDir(ArrayList<String> cmdStrings)
-    {
+  @Override
+  public void addSystemIncludeDir(ArrayList<String> cmdStrings) {
 
-    }
+  }
 }

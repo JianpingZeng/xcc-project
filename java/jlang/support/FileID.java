@@ -19,84 +19,74 @@ package jlang.support;
 /**
  * This is an opaque identifier used by SourceManager which refers to
  * a source file (MemoryBuffer) along with its #include path and #line data.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FileID implements Comparable<FileID>
-{
-    /**
-     * The unique ID for this File.
-     * It is defined by {@linkplain jlang.basic.SourceManager} and incremented
-     * automatically when encountering a new File.
-     */
-    private int id;
+public class FileID implements Comparable<FileID> {
+  /**
+   * The unique ID for this File.
+   * It is defined by {@linkplain jlang.basic.SourceManager} and incremented
+   * automatically when encountering a new File.
+   */
+  private int id;
 
-    /**
-     * A flag indicates whether this FileID stems from built-in macro instead of
-     * regulal C source file. It default to false, otherwise it is set by
-     * {@linkplain #setIsBuiltin(boolean)}.
-     */
-    private boolean isBuiltIn;
+  /**
+   * A flag indicates whether this FileID stems from built-in macro instead of
+   * regulal C source file. It default to false, otherwise it is set by
+   * {@linkplain #setIsBuiltin(boolean)}.
+   */
+  private boolean isBuiltIn;
 
-    public FileID()
-    {
-        super();
-        id = 0;
-    }
+  public FileID() {
+    super();
+    id = 0;
+  }
 
-    public FileID(int id)
-    {
-        this.id = id;
-    }
+  public FileID(int id) {
+    this.id = id;
+  }
 
-    public boolean isInvalid()
-    {
-        return id == 0;
-    }
+  public boolean isInvalid() {
+    return id == 0;
+  }
 
-    @Override
-    public int compareTo(FileID o)
-    {
-        return id - o.id;
-    }
+  @Override
+  public int compareTo(FileID o) {
+    return id - o.id;
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == this) return true;
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
 
-        if (obj == null) return false;
+    if (obj == null) return false;
 
-        if (getClass() != obj.getClass())
-            return false;
+    if (getClass() != obj.getClass())
+      return false;
 
-        FileID other = (FileID)obj;
-        return id == other.id;
-    }
+    FileID other = (FileID) obj;
+    return id == other.id;
+  }
 
-    public static FileID getSentinel()
-    {
-        return new FileID(~0);
-    }
+  public static FileID getSentinel() {
+    return new FileID(~0);
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return id;
-    }
+  @Override
+  public int hashCode() {
+    return id;
+  }
 
-    public int getID()
-    {
-        return id;
-    }
+  public int getID() {
+    return id;
+  }
 
-    public boolean getIsBuiltin()
-    {
-        return isBuiltIn;
-    }
+  public boolean getIsBuiltin() {
+    return isBuiltIn;
+  }
 
-    public void setIsBuiltin(boolean val)
-    {
-        isBuiltIn = val;
-    }
+  public void setIsBuiltin(boolean val) {
+    isBuiltIn = val;
+  }
 }

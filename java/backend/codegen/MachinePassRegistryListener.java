@@ -19,23 +19,25 @@ package backend.codegen;
 
 /**
  * A listener for client registering a MachineFunction pass.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface MachinePassRegistryListener<T>
-{
-    /**
-     * Notify the registered listener when a new machine function pass has been
-     * added into registry manager.
-     * @param name  The name of registered MachineFunction pass used to print out stdout
-     * @param ctor  The constructor interface to create a machine function pass.
-     */
-    void notifyAdd(String name, T ctor, String description);
+public interface MachinePassRegistryListener<T> {
+  /**
+   * Notify the registered listener when a new machine function pass has been
+   * added into registry manager.
+   *
+   * @param name The name of registered MachineFunction pass used to print out stdout
+   * @param ctor The constructor interface to create a machine function pass.
+   */
+  void notifyAdd(String name, T ctor, String description);
 
-    /**
-     * Notify registered listeners when a machine pass with specified name was removed
-     * for registry manager.
-     * @param name  The name of machine pass to be removed.
-     */
-    void notifyRemove(String name);
+  /**
+   * Notify registered listeners when a machine pass with specified name was removed
+   * for registry manager.
+   *
+   * @param name The name of machine pass to be removed.
+   */
+  void notifyRemove(String name);
 }

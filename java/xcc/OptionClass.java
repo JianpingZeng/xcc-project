@@ -17,16 +17,15 @@
 
 package xcc;
 
-enum OptionClass
-{
-    GroupClass,
-    InputClass,
-    UnknownClass,
-    FlagClass,
-    JoinedClass,
-    SeparateClass,
-    CommaJoinedClass,
-    MultiArgClass,
-    JoinedOrSeparateClass,
-    JoinedAndSeparateClass
+enum OptionClass {
+  GroupClass,
+  InputClass,
+  UnknownClass,
+  FlagClass,
+  JoinedClass,
+  SeparateClass,
+  CommaJoinedClass,
+  MultiArgClass,
+  JoinedOrSeparateClass,
+  JoinedAndSeparateClass
 };

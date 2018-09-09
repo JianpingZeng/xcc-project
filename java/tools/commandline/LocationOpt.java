@@ -23,29 +23,25 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LocationOpt<T> extends Opt<T>
-{
-    private LocationClass<T> lc;
-    public LocationOpt(Parser<T> parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class LocationOpt<T> extends Opt<T> {
+  private LocationClass<T> lc;
 
-    private void check()
-    {
-        Util.assertion(lc != null, "LocationClassApplicator::apply not called"                + " for a command line option with external storage");
+  public LocationOpt(Parser<T> parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    }
+  private void check() {
+    Util.assertion(lc != null, "LocationClassApplicator::apply not called" + " for a command line option with external storage");
 
-    @Override
-    public void setValue(T val)
-    {
-        check();
-        lc.setLocation(val);
-    }
+  }
 
-    public void setLocation(LocationClass<T> loc)
-    {
-        lc = loc;
-    }
+  @Override
+  public void setValue(T val) {
+    check();
+    lc.setLocation(val);
+  }
+
+  public void setLocation(LocationClass<T> loc) {
+    lc = loc;
+  }
 }

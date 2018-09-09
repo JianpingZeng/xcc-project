@@ -20,26 +20,21 @@ package backend.codegen.dagisel;
 import backend.target.TargetMachine;
 import backend.value.GlobalValue;
 
-public enum TLSModel
-{
-    GeneralDynamic,
-    LocalDynamic,
-    InitialExec,
-    LocalExec;
+public enum TLSModel {
+  GeneralDynamic,
+  LocalDynamic,
+  InitialExec,
+  LocalExec;
 
-    public static TLSModel getTLSModel(GlobalValue gv, TargetMachine.RelocModel reloc)
-    {
-        boolean isLocal = gv.hasLocalLinkage();
-        boolean isDeclaration = gv.isDeclaration();
-        boolean isHidden = gv.hasHiddenVisibility();
+  public static TLSModel getTLSModel(GlobalValue gv, TargetMachine.RelocModel reloc) {
+    boolean isLocal = gv.hasLocalLinkage();
+    boolean isDeclaration = gv.isDeclaration();
+    boolean isHidden = gv.hasHiddenVisibility();
 
-        if (reloc == TargetMachine.RelocModel.PIC_)
-        {
-            return isLocal || isHidden? LocalDynamic:GeneralDynamic;
-        }
-        else
-        {
-            return !isDeclaration || isHidden ? LocalExec : InitialExec;
-        }
+    if (reloc == TargetMachine.RelocModel.PIC_) {
+      return isLocal || isHidden ? LocalDynamic : GeneralDynamic;
+    } else {
+      return !isDeclaration || isHidden ? LocalExec : InitialExec;
     }
+  }
 }

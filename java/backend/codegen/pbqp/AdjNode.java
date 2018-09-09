@@ -21,15 +21,13 @@ package backend.codegen.pbqp;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class AdjNode
-{
-    public AdjNode prev, next, reverse;
-    public int adj;
-    public PBQPMatrix cost;
+public class AdjNode {
+  public AdjNode prev, next, reverse;
+  public int adj;
+  public PBQPMatrix cost;
 
-    public AdjNode(int adj, PBQPMatrix cost)
-    {
-        this.adj = adj;
-        this.cost = cost;
-    }
+  public AdjNode(int adj, PBQPMatrix cost) {
+    this.adj = adj;
+    this.cost = cost;
+  }
 }

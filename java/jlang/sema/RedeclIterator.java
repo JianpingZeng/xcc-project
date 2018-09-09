@@ -22,36 +22,34 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class RedeclIterator<T extends Redeclarable<T>>
-{
-    private Redeclarable<T> current;
-    private Redeclarable<T> starter;
+public final class RedeclIterator<T extends Redeclarable<T>> {
+  private Redeclarable<T> current;
+  private Redeclarable<T> starter;
 
-    public RedeclIterator(Redeclarable<T> cur)
-    {
-        current = cur;
-        starter = cur;
-    }
+  public RedeclIterator(Redeclarable<T> cur) {
+    current = cur;
+    starter = cur;
+  }
 
-    /**
-     * Obtain the next redeclaration by stepping over redeclaration link.
-     * @return  The "next" redeclaration element that is previous.
-     */
-    public T getNext()
-    {
-        Util.assertion(hasNext(), "Must be calling hasNext() to ensure next is not null");
-        T next = current.getRedeclLink().getNext();
-        current = next == starter ? null : next;
-        return next;
-    }
+  /**
+   * Obtain the next redeclaration by stepping over redeclaration link.
+   *
+   * @return The "next" redeclaration element that is previous.
+   */
+  public T getNext() {
+    Util.assertion(hasNext(), "Must be calling hasNext() to ensure next is not null");
+    T next = current.getRedeclLink().getNext();
+    current = next == starter ? null : next;
+    return next;
+  }
 
-    /**
-     * Checking whether the iterator reaches the starter beginning to walk through
-     * redeclaration link.
-     * @return  Return true if there are remained redeclaration element to be walked.
-     */
-    public boolean hasNext()
-    {
-        return current != null;
-    }
+  /**
+   * Checking whether the iterator reaches the starter beginning to walk through
+   * redeclaration link.
+   *
+   * @return Return true if there are remained redeclaration element to be walked.
+   */
+  public boolean hasNext() {
+    return current != null;
+  }
 }

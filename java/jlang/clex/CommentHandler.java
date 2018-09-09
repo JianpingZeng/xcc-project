@@ -16,32 +16,30 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.support.SourceRange;
 import jlang.sema.Sema;
+import jlang.support.SourceRange;
 
 /**
  * Abstract base class that describes a handler that will receive
  * source ranges for each of the comments encountered in the source file.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface CommentHandler
-{
-    void handleComoment(Preprocessor pp, SourceRange comment);
+public interface CommentHandler {
+  void handleComoment(Preprocessor pp, SourceRange comment);
 
-    class DefaultCommentHandler implements CommentHandler
-    {
-        private Sema actions;
+  class DefaultCommentHandler implements CommentHandler {
+    private Sema actions;
 
-        public DefaultCommentHandler(Sema actions)
-        {
-            this.actions = actions;
-        }
-        @Override
-        public void handleComoment(Preprocessor pp, SourceRange comment)
-        {
-            actions.actOnComment(comment);
-        }
+    public DefaultCommentHandler(Sema actions) {
+      this.actions = actions;
     }
+
+    @Override
+    public void handleComoment(Preprocessor pp, SourceRange comment) {
+      actions.actOnComment(comment);
+    }
+  }
 }
 

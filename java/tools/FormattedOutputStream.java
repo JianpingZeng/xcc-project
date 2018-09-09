@@ -29,215 +29,185 @@ import java.nio.charset.StandardCharsets;
  * on output content which is absence in stdout, like appending padding whitespace
  * on the end of line for beauty.
  */
-public final class FormattedOutputStream implements AutoCloseable
-{
-    private OutputStream os;
-    private byte[] buffer;
-    private int curPos;
+public final class FormattedOutputStream implements AutoCloseable {
+  private OutputStream os;
+  private byte[] buffer;
+  private int curPos;
 
-    public FormattedOutputStream(OutputStream out)
-    {
-        os = out;
-        // allocate a buffer with size of 1KB.
-        // it would be resize as appropriate.
-        buffer = new byte[1024];
-        curPos = 0;
-    }
+  public FormattedOutputStream(OutputStream out) {
+    os = out;
+    // allocate a buffer with size of 1KB.
+    // it would be resize as appropriate.
+    buffer = new byte[1024];
+    curPos = 0;
+  }
 
-    public void print(String str)
-    {
-        print(str.getBytes(StandardCharsets.UTF_8));
-    }
+  public void print(String str) {
+    print(str.getBytes(StandardCharsets.UTF_8));
+  }
 
-    public void print(char ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(char ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(int ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(int ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(short ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(short ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(long ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(long ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(float ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(float ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(double ch)
-    {
-        print(String.valueOf(ch));
-    }
+  public void print(double ch) {
+    print(String.valueOf(ch));
+  }
 
-    public void print(byte[] chs)
-    {
-        if (curPos + chs.length >= buffer.length)
-        {
-            int len = curPos + chs.length;
-            len = len > buffer.length << 1 ? len + buffer.length : buffer.length << 1;
-            byte[] temp = new byte[len];
-            System.arraycopy(buffer, 0, temp, 0, curPos);
-            buffer = temp;
-        }
-        System.arraycopy(chs, 0, buffer, curPos, chs.length);
-        curPos += chs.length;
-        try
-        {
-            os.write(chs);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+  public void print(byte[] chs) {
+    if (curPos + chs.length >= buffer.length) {
+      int len = curPos + chs.length;
+      len = len > buffer.length << 1 ? len + buffer.length : buffer.length << 1;
+      byte[] temp = new byte[len];
+      System.arraycopy(buffer, 0, temp, 0, curPos);
+      buffer = temp;
     }
+    System.arraycopy(chs, 0, buffer, curPos, chs.length);
+    curPos += chs.length;
+    try {
+      os.write(chs);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
-    public void print(boolean ch)
-    {
-        print(ch ? 1: 0);
-    }
+  public void print(boolean ch) {
+    print(ch ? 1 : 0);
+  }
 
-    public void printf(String format, Object... args)
-    {
-        if (format == null || format.isEmpty())
-            return;
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream ps = new PrintStream(baos))
-        {
-            ps.printf(format, args);
-            print(baos.toString());
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+  public void printf(String format, Object... args) {
+    if (format == null || format.isEmpty())
+      return;
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         PrintStream ps = new PrintStream(baos)) {
+      ps.printf(format, args);
+      print(baos.toString());
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+  }
 
-    public void flush() throws IOException
-    {
-        os.write(buffer, 0, curPos);
-    }
+  public void flush() throws IOException {
+    os.write(buffer, 0, curPos);
+  }
 
-    public void close() throws IOException
-    {
-        flush();
-        os.close();
-    }
+  public void close() throws IOException {
+    flush();
+    os.close();
+  }
 
-    public void println()
-    {
-        printf("%n");
-    }
+  public void println() {
+    printf("%n");
+  }
 
-    public void println(int val)
-    {
-        printf("%d%n", val);
-    }
+  public void println(int val) {
+    printf("%d%n", val);
+  }
 
-    public void println(short val)
-    {
-        printf("%d%n", val);
-    }
+  public void println(short val) {
+    printf("%d%n", val);
+  }
 
-    public void println(char val)
-    {
-        printf("%c%n", val);
-    }
+  public void println(char val) {
+    printf("%c%n", val);
+  }
 
-    public void println(long val)
-    {
-        printf("%d%n", val);
-    }
+  public void println(long val) {
+    printf("%d%n", val);
+  }
 
-    public void println(byte val)
-    {
-        printf("%d%n", val);
-    }
+  public void println(byte val) {
+    printf("%d%n", val);
+  }
 
-    public void println(float val)
-    {
-        printf("%f%n", val);
-    }
+  public void println(float val) {
+    printf("%f%n", val);
+  }
 
-    public void println(double val)
-    {
-        printf("%f%n", val);
-    }
+  public void println(double val) {
+    printf("%f%n", val);
+  }
 
-    public void println(String string)
-    {
-        printf("%s%n", string);
-    }
+  public void println(String string) {
+    printf("%s%n", string);
+  }
 
-    /**
-     * Figure out what columns where currently output stream position.
-     * @return
-     */
-    private int computeColumns()
-    {
-        int start = curPos - 1;
-        while (start >= 0)
-        {
-            if (buffer[start] == '\n')
-                return curPos - start-1;
-            --start;
-        }
-        return curPos;
+  /**
+   * Figure out what columns where currently output stream position.
+   *
+   * @return
+   */
+  private int computeColumns() {
+    int start = curPos - 1;
+    while (start >= 0) {
+      if (buffer[start] == '\n')
+        return curPos - start - 1;
+      --start;
     }
-    /**
-     * Align the output to some column number.
-     * @param newCols
-     */
-    public void padToColumn(int newCols)
-    {
-        int curCol = computeColumns();
-        int num = newCols - curCol;
-        if (num <= 1) num = 1;
-        print(Util.fixedLengthString(num, ' '));
-    }
-    /**
-     * Changes the foreground or background color of this output stream.
-     * This version differs from {@linkplain #changeColor(Colors, boolean, boolean)}
-     * in the third argument which set in false by default.
-     * @param colors    The color which stream would be set.
-     * @param bold  Indicates if the font is bold in screen.
-     */
-    public void changeColor(Colors colors, boolean bold)
-    {
-        changeColor(colors, bold, false);
-    }
-    /**
-     * Changes the foreground or background color of this output stream.
-     * @param colors    The color which stream would be set.
-     * @param bold  Indicates if the font is bold in screen.
-     * @param foreground    Indicates we should change the color of foreground or background.
-     */
-    public FormattedOutputStream changeColor(Colors colors, boolean bold, boolean foreground)
-    {
-        String colorCode = colors == Colors.SAVEDCOLOR?ColorCode.getWhiteBold():
-                ColorCode.getColorCode(colors, bold, foreground);
-        return changeColorInternal(colorCode);
-    }
+    return curPos;
+  }
 
-    public FormattedOutputStream resetColor()
-    {
-        return changeColorInternal(ColorCode.getResetColor());
-    }
+  /**
+   * Align the output to some column number.
+   *
+   * @param newCols
+   */
+  public void padToColumn(int newCols) {
+    int curCol = computeColumns();
+    int num = newCols - curCol;
+    if (num <= 1) num = 1;
+    print(Util.fixedLengthString(num, ' '));
+  }
 
-    private FormattedOutputStream changeColorInternal(String colorCode)
-    {
-        int len = colorCode.length();
-        print(colorCode);
-        curPos -= len;
-        return this;
-    }
+  /**
+   * Changes the foreground or background color of this output stream.
+   * This version differs from {@linkplain #changeColor(Colors, boolean, boolean)}
+   * in the third argument which set in false by default.
+   *
+   * @param colors The color which stream would be set.
+   * @param bold   Indicates if the font is bold in screen.
+   */
+  public void changeColor(Colors colors, boolean bold) {
+    changeColor(colors, bold, false);
+  }
+
+  /**
+   * Changes the foreground or background color of this output stream.
+   *
+   * @param colors     The color which stream would be set.
+   * @param bold       Indicates if the font is bold in screen.
+   * @param foreground Indicates we should change the color of foreground or background.
+   */
+  public FormattedOutputStream changeColor(Colors colors, boolean bold, boolean foreground) {
+    String colorCode = colors == Colors.SAVEDCOLOR ? ColorCode.getWhiteBold() :
+        ColorCode.getColorCode(colors, bold, foreground);
+    return changeColorInternal(colorCode);
+  }
+
+  public FormattedOutputStream resetColor() {
+    return changeColorInternal(ColorCode.getResetColor());
+  }
+
+  private FormattedOutputStream changeColorInternal(String colorCode) {
+    int len = colorCode.length();
+    print(colorCode);
+    curPos -= len;
+    return this;
+  }
 }

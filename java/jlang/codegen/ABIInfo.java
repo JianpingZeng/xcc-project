@@ -23,20 +23,21 @@ import jlang.type.QualType;
 /**
  * Target specific hooks for defining how a type should be passed or
  * returned from functions.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface ABIInfo
-{
-    void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx);
+public interface ABIInfo {
+  void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx);
 
-    /**
-     * Emit the target dependent code to load a value of type {@code ty} from
-     * the va_list pointed by {@code vaListAddr}.
-     * @param vaListAddr
-     * @param ty
-     * @param cgf
-     * @return
-     */
-    Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf);
+  /**
+   * Emit the target dependent code to load a value of type {@code ty} from
+   * the va_list pointed by {@code vaListAddr}.
+   *
+   * @param vaListAddr
+   * @param ty
+   * @param cgf
+   * @return
+   */
+  Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf);
 }

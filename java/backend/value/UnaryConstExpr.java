@@ -22,17 +22,15 @@ import backend.type.Type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class UnaryConstExpr extends ConstantExpr
-{
-    /**
-     * Constructs a new instruction representing the specified constants.
-     *
-     * @param ty
-     */
-    public UnaryConstExpr(Operator opcode, Constant c, Type ty)
-    {
-        super(ty, opcode);
-        reserve(1);
-        setOperand(0, new Use(c, this));
-    }
+public class UnaryConstExpr extends ConstantExpr {
+  /**
+   * Constructs a new instruction representing the specified constants.
+   *
+   * @param ty
+   */
+  public UnaryConstExpr(Operator opcode, Constant c, Type ty) {
+    super(ty, opcode);
+    reserve(1);
+    setOperand(0, new Use(c, this));
+  }
 }

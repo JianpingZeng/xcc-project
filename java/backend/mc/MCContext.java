@@ -20,6 +20,5 @@ package backend.mc;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MCContext
-{
+public class MCContext {
 }

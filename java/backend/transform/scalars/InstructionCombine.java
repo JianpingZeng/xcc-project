@@ -33,151 +33,130 @@ import java.util.LinkedList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class InstructionCombine implements FunctionPass
-{
-    private AnalysisResolver resolver;
-    private Combiner combiner;
-    private LinkedList<Instruction> worklist;
-    private HashSet<Instruction> existed;
-    private TargetData td;
+public class InstructionCombine implements FunctionPass {
+  private AnalysisResolver resolver;
+  private Combiner combiner;
+  private LinkedList<Instruction> worklist;
+  private HashSet<Instruction> existed;
+  private TargetData td;
 
-    public InstructionCombine()
-    {
-        worklist = new LinkedList<>();
-        existed = new HashSet<>();
-    }
+  public InstructionCombine() {
+    worklist = new LinkedList<>();
+    existed = new HashSet<>();
+  }
 
-    private boolean collectReachableInsts(Function f)
-    {
-        BasicBlock entryBB = f.getEntryBlock();
-        HashSet<BasicBlock> reachable = new HashSet<>(DepthFirstOrder.dfTraversal(entryBB));
+  private boolean collectReachableInsts(Function f) {
+    BasicBlock entryBB = f.getEntryBlock();
+    HashSet<BasicBlock> reachable = new HashSet<>(DepthFirstOrder.dfTraversal(entryBB));
 
-        boolean everChanged = false;
-        for (Iterator<BasicBlock> itr = f.getBasicBlockList().iterator(); itr.hasNext(); ) {
-            BasicBlock bb = itr.next();
-            if (!reachable.contains(bb))
-            {
-                // delete the dead block.
-                Util.assertion(bb.isUseEmpty(), "Unreachable block must no use");
-                itr.remove();
-                bb.eraseFromParent();
-                everChanged = true;
-                continue;
-            }
-            for (int i = 0, e = bb.size(); i < e; i++)
-            {
-                Instruction inst = bb.getInstAt(i);
-                addToWorklist(inst);
-            }
-        }
-        return everChanged;
+    boolean everChanged = false;
+    for (Iterator<BasicBlock> itr = f.getBasicBlockList().iterator(); itr.hasNext(); ) {
+      BasicBlock bb = itr.next();
+      if (!reachable.contains(bb)) {
+        // delete the dead block.
+        Util.assertion(bb.isUseEmpty(), "Unreachable block must no use");
+        itr.remove();
+        bb.eraseFromParent();
+        everChanged = true;
+        continue;
+      }
+      for (int i = 0, e = bb.size(); i < e; i++) {
+        Instruction inst = bb.getInstAt(i);
+        addToWorklist(inst);
+      }
     }
+    return everChanged;
+  }
 
-    public void addToWorklist(User u)
-    {
-        if (u instanceof Instruction)
-        {
-            Instruction inst = (Instruction) u;
-            if (existed.add(inst))
-                worklist.addLast(inst);
-        }
+  public void addToWorklist(User u) {
+    if (u instanceof Instruction) {
+      Instruction inst = (Instruction) u;
+      if (existed.add(inst))
+        worklist.addLast(inst);
     }
+  }
 
-    public void addUserToWorklist(Instruction inst)
-    {
-        Util.assertion(inst != null, "inst shouldn't be null");
-        for (Use u : inst.getUseList())
-        {
-            addToWorklist(u.getUser());
-        }
+  public void addUserToWorklist(Instruction inst) {
+    Util.assertion(inst != null, "inst shouldn't be null");
+    for (Use u : inst.getUseList()) {
+      addToWorklist(u.getUser());
     }
+  }
 
-    public Instruction replaceInstUsesWith(Instruction inst, Value newVal)
-    {
-        addUserToWorklist(inst);
-        if (inst.equals(newVal))
-        {
-            inst.replaceAllUsesWith(Value.UndefValue.get(inst.getType()));
-            return inst;
-        }
-        else
-        {
-            inst.replaceAllUsesWith(newVal);
-            return (Instruction) newVal;
-        }
+  public Instruction replaceInstUsesWith(Instruction inst, Value newVal) {
+    addUserToWorklist(inst);
+    if (inst.equals(newVal)) {
+      inst.replaceAllUsesWith(Value.UndefValue.get(inst.getType()));
+      return inst;
+    } else {
+      inst.replaceAllUsesWith(newVal);
+      return (Instruction) newVal;
     }
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.addRequired(TargetData.class);
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addRequired(TargetData.class);
+  }
 
-    public TargetData getTargetData()
-    {
-        return td;
-    }
+  public TargetData getTargetData() {
+    return td;
+  }
 
-    private boolean doIterate(Function f)
-    {
-        boolean everChanged = collectReachableInsts(f);
-        while (!worklist.isEmpty())
-        {
-            Instruction inst = worklist.removeFirst();
-            // There are three status returned,
-            // (1). null indicates the specified instruction is dead
-            // and should be removed from enclosing block.
-            // (2). as same as inst indicates that no transformation was performed.
-            // (3). Otherwise calling to replaceAllUsesWith() to update it.
-            Value res = combiner.visit(inst);
-            if (res == null) {
-                //empty block.
-            }
-            else if (!res.equals(inst))
-            {
-                inst.eraseFromParent();
-                everChanged |= true;
-            }
-        }
-        worklist.clear();
-        existed.clear();
-        return everChanged;
+  private boolean doIterate(Function f) {
+    boolean everChanged = collectReachableInsts(f);
+    while (!worklist.isEmpty()) {
+      Instruction inst = worklist.removeFirst();
+      // There are three status returned,
+      // (1). null indicates the specified instruction is dead
+      // and should be removed from enclosing block.
+      // (2). as same as inst indicates that no transformation was performed.
+      // (3). Otherwise calling to replaceAllUsesWith() to update it.
+      Value res = combiner.visit(inst);
+      if (res == null) {
+        //empty block.
+      } else if (!res.equals(inst)) {
+        inst.eraseFromParent();
+        everChanged |= true;
+      }
     }
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        if (f == null || f.empty()) return false;
-        this.td = (TargetData) getAnalysisToUpDate(TargetData.class);
-        combiner = new Combiner(this);
+    worklist.clear();
+    existed.clear();
+    return everChanged;
+  }
 
-        boolean everChanged = false;
-        while (true)
-        {
-            boolean localChanged = doIterate(f);
-            if (!localChanged)
-                break;
-            everChanged = true;
-        }
-        return everChanged;
-    }
+  @Override
+  public boolean runOnFunction(Function f) {
+    if (f == null || f.empty()) return false;
+    this.td = (TargetData) getAnalysisToUpDate(TargetData.class);
+    combiner = new Combiner(this);
 
-    @Override
-    public String getPassName()
-    {
-        return "Instruction Combiner";
+    boolean everChanged = false;
+    while (true) {
+      boolean localChanged = doIterate(f);
+      if (!localChanged)
+        break;
+      everChanged = true;
     }
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
-    public static FunctionPass createInstructionCombinePass()
-    {
-        return new InstructionCombine();
-    }
+    return everChanged;
+  }
+
+  @Override
+  public String getPassName() {
+    return "Instruction Combiner";
+  }
+
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
+
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  public static FunctionPass createInstructionCombinePass() {
+    return new InstructionCombine();
+  }
 }

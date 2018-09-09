@@ -20,18 +20,15 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MiscFlagsApplicator implements Modifier
-{
-    private MiscFlags mf;
+public class MiscFlagsApplicator implements Modifier {
+  private MiscFlags mf;
 
-    public MiscFlagsApplicator(MiscFlags mf)
-    {
-        this.mf = mf;
-    }
+  public MiscFlagsApplicator(MiscFlags mf) {
+    this.mf = mf;
+  }
 
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setMiscFlag(mf);
-    }
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setMiscFlag(mf);
+  }
 }

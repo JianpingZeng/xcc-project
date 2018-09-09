@@ -23,29 +23,26 @@ import backend.pass.PassRegistrar;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface PassRegistrationListener
-{
-    default void passRegistered(PassInfo pi) {}
+public interface PassRegistrationListener {
+  default void passRegistered(PassInfo pi) {
+  }
 
-    /**
-     * This method must be called in sub-class's constructor in absence of
-     * multi-inheritance in Java.
-     */
-    default void registerListener()
-    {
-        PassRegistrar.listeners.add(this);
-    }
+  /**
+   * This method must be called in sub-class's constructor in absence of
+   * multi-inheritance in Java.
+   */
+  default void registerListener() {
+    PassRegistrar.listeners.add(this);
+  }
 
-    default void unregisterListener()
-    {
-        PassRegistrar.listeners.remove(this);
-    }
+  default void unregisterListener() {
+    PassRegistrar.listeners.remove(this);
+  }
 
-    default void enumeratePasses()
-    {
-        PassRegistrar.enumerateWith(this);
-    }
+  default void enumeratePasses() {
+    PassRegistrar.enumerateWith(this);
+  }
 
-    default void passEnumerate(PassInfo pi)
-    {}
+  default void passEnumerate(PassInfo pi) {
+  }
 }

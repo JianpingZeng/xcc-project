@@ -16,124 +16,106 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
-import jlang.support.FileID;
-import jlang.support.MemoryBuffer;
 import jlang.basic.SourceManager;
 import jlang.clex.StrData;
+import jlang.support.FileID;
+import jlang.support.MemoryBuffer;
 import jlang.support.SourceLocation;
 import tools.Pair;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FullSourceLoc extends SourceLocation
-{
-	private SourceManager sourceMgr;
+public class FullSourceLoc extends SourceLocation {
+  private SourceManager sourceMgr;
 
-	public FullSourceLoc(SourceLocation loc, SourceManager sgr)
-	{
-		super(loc);
-		sourceMgr = sgr;
-	}
+  public FullSourceLoc(SourceLocation loc, SourceManager sgr) {
+    super(loc);
+    sourceMgr = sgr;
+  }
 
-	public FullSourceLoc()
-	{
-		super();
-	}
+  public FullSourceLoc() {
+    super();
+  }
 
-    public SourceManager getSourceMgr()
-    {
-        return sourceMgr;
-    }
+  public SourceManager getSourceMgr() {
+    return sourceMgr;
+  }
 
-    public FileID getFileID()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getFileID(this);
-    }
+  public FileID getFileID() {
+    Util.assertion(isValid());
+    return sourceMgr.getFileID(this);
+  }
 
-    public FullSourceLoc getInstantiationLoc()
-    {
-        Util.assertion( isValid());
-        return new FullSourceLoc(sourceMgr.getInstantiationLoc(this), sourceMgr);
-    }
+  public FullSourceLoc getInstantiationLoc() {
+    Util.assertion(isValid());
+    return new FullSourceLoc(sourceMgr.getInstantiationLoc(this), sourceMgr);
+  }
 
-    public FullSourceLoc getSpellingLoc()
-    {
-        Util.assertion( isValid());
-        return new FullSourceLoc(sourceMgr.getLiteralLoc(this), sourceMgr);
-    }
+  public FullSourceLoc getSpellingLoc() {
+    Util.assertion(isValid());
+    return new FullSourceLoc(sourceMgr.getLiteralLoc(this), sourceMgr);
+  }
 
-    public int getInstantiationLineNumber()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getInstantiationLineNumber(this);
-    }
+  public int getInstantiationLineNumber() {
+    Util.assertion(isValid());
+    return sourceMgr.getInstantiationLineNumber(this);
+  }
 
-    public int getIntantiationColumnNumber()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getInstantiationColumnNumber(this);
-    }
+  public int getIntantiationColumnNumber() {
+    Util.assertion(isValid());
+    return sourceMgr.getInstantiationColumnNumber(this);
+  }
 
-    public int getSpellingLineNumber()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getLiteralLineNumber(this);
-    }
+  public int getSpellingLineNumber() {
+    Util.assertion(isValid());
+    return sourceMgr.getLiteralLineNumber(this);
+  }
 
-    public int getSpellingColumnNumber()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getLiteralColumnNumber(this);
-    }
+  public int getSpellingColumnNumber() {
+    Util.assertion(isValid());
+    return sourceMgr.getLiteralColumnNumber(this);
+  }
 
-    public boolean isInSystemHeader()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.isInSystemHeader(this);
-    }
+  public boolean isInSystemHeader() {
+    Util.assertion(isValid());
+    return sourceMgr.isInSystemHeader(this);
+  }
 
-    public StrData getCharacterData()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getCharacterData(this);
-    }
+  public StrData getCharacterData() {
+    Util.assertion(isValid());
+    return sourceMgr.getCharacterData(this);
+  }
 
-    public MemoryBuffer getBuffer()
-    {
-        Util.assertion( isValid());
-        return sourceMgr.getBuffer(sourceMgr.getFileID(this));
-    }
+  public MemoryBuffer getBuffer() {
+    Util.assertion(isValid());
+    return sourceMgr.getBuffer(sourceMgr.getFileID(this));
+  }
 
-    public char[] getBufferData()
-    {
-        Util.assertion( isValid());
-        return getBuffer().getBuffer();
-    }
+  public char[] getBufferData() {
+    Util.assertion(isValid());
+    return getBuffer().getBuffer();
+  }
 
-    public Pair<FileID, Integer> getDecomposedLoc()
-    {
-        return sourceMgr.getDecomposedLoc(this);
-    }
+  public Pair<FileID, Integer> getDecomposedLoc() {
+    return sourceMgr.getDecomposedLoc(this);
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == this) return true;
-        if (obj == null) return false;
-        if (obj.getClass() != getClass())
-            return false;
-        FullSourceLoc loc = (FullSourceLoc)obj;
-        return getRawEncoding() == loc.getRawEncoding() &&
-                (sourceMgr == loc.sourceMgr || sourceMgr.equals(loc.sourceMgr));
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null) return false;
+    if (obj.getClass() != getClass())
+      return false;
+    FullSourceLoc loc = (FullSourceLoc) obj;
+    return getRawEncoding() == loc.getRawEncoding() &&
+        (sourceMgr == loc.sourceMgr || sourceMgr.equals(loc.sourceMgr));
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return getRawEncoding() << 11 + sourceMgr.hashCode();
-    }
+  @Override
+  public int hashCode() {
+    return getRawEncoding() << 11 + sourceMgr.hashCode();
+  }
 }

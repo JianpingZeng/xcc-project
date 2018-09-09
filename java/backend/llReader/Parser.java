@@ -28,28 +28,24 @@ import tools.SourceMgr.SMLoc;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class Parser
-{
-    public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag)
-    {
-        MemoryBuffer f = MemoryBuffer.getFileOrSTDIN(filename);
-        SourceMgr srcMgr = new SourceMgr();
-        srcMgr.addNewSourceBuffer(f, new SMLoc());
-        Module m = new Module(filename);
+public final class Parser {
+  public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag) {
+    MemoryBuffer f = MemoryBuffer.getFileOrSTDIN(filename);
+    SourceMgr srcMgr = new SourceMgr();
+    srcMgr.addNewSourceBuffer(f, new SMLoc());
+    Module m = new Module(filename);
 
-        if (f == null)
-        {
-            diag.set(srcMgr.getMessage(new SMLoc(),
-                    StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
-                    "fatal error"));
-            return null;
-        }
-
-        LLParser parser = new LLParser(f, srcMgr, m, diag);
-        if (parser.run())
-        {
-            return null;
-        }
-        return m;
+    if (f == null) {
+      diag.set(srcMgr.getMessage(new SMLoc(),
+          StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
+          "fatal error"));
+      return null;
     }
+
+    LLParser parser = new LLParser(f, srcMgr, m, diag);
+    if (parser.run()) {
+      return null;
+    }
+    return m;
+  }
 }

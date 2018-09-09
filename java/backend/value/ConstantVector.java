@@ -17,8 +17,8 @@
 
 package backend.value;
 
-import tools.Util;
 import backend.type.VectorType;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,159 +31,140 @@ import static backend.value.ValueKind.ConstantVectorVal;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConstantVector extends Constant
-{
-    private static class ConstantVectorKey
-    {
-        VectorType vt;
-        ArrayList<Constant> vals;
-        public ConstantVectorKey(VectorType ty, List<Constant> v)
-        {
-            vt = ty;
-            vals = new ArrayList<>();
-            vals.addAll(v);
-        }
+public class ConstantVector extends Constant {
+  private static class ConstantVectorKey {
+    VectorType vt;
+    ArrayList<Constant> vals;
 
-        @Override
-        public int hashCode()
-        {
-            return vt.hashCode() << 13 + vals.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj)
-        {
-            if (obj == null) return false;
-            if (this == obj) return true;
-            if (getClass() != obj.getClass())
-                return false;
-            ConstantVectorKey key = (ConstantVectorKey)obj;
-            return vt.equals(key.vt) && vals.equals(key.vals);
-        }
-    }
-
-    private static final HashMap<ConstantVectorKey, ConstantVector> vectorConstants =
-            new HashMap<>();
-    /**
-     * Constructs a new instruction representing the specified constants.
-     *
-     */
-    protected ConstantVector(VectorType vt, List<Constant> vals)
-    {
-        super(vt, ConstantVectorVal);
-        reserve(vals.size());
-        int idx = 0;
-        for (Constant c : vals)
-        {
-            Util.assertion(c.getType() == vt.getElementType() ||
-                    (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID()),
-                    "Initializer for struct element doesn't match struct element type!");
-            setOperand(idx++, c, this);
-        }
-    }
-
-    public static Constant get(VectorType vt, Constant[] elts)
-    {
-        return get(vt, Arrays.asList(elts));
-    }
-    public static Constant get(VectorType vt, List<Constant> vals)
-    {
-        Util.assertion( vals != null && !vals.isEmpty());
-        Constant c = vals.get(0);
-        boolean isZero = c.isNullValue();
-        boolean isUndef = c instanceof UndefValue;
-        if (isZero || isUndef)
-        {
-            for (int i = 1, e = vals.size(); i < e; i++)
-            {
-                if (!vals.get(i).equals(c))
-                {
-                    isZero = isUndef = false;
-                    break;
-                }
-            }
-        }
-
-        if (isZero)
-            return ConstantAggregateZero.get(vt);
-        if (isUndef)
-            return UndefValue.get(vt);
-
-        ConstantVectorKey key = new ConstantVectorKey(vt, vals);
-        if (vectorConstants.containsKey(key))
-            return vectorConstants.get(key);
-        ConstantVector cv = new ConstantVector(vt, vals);
-        vectorConstants.put(key, cv);
-        return cv;
-    }
-
-    public static Constant get(ArrayList<Constant> vals)
-    {
-        Util.assertion( vals != null && !vals.isEmpty());
-        return get(VectorType.get(vals.get(0).getType(), vals.size()), vals);
-    }
-
-    public static Constant get(Constant... vals)
-    {
-        Util.assertion( vals != null && vals.length > 0);
-        ArrayList<Constant> t = new ArrayList<>();
-        for (Constant c : vals)
-            t.add(c);
-        return get(t);
+    public ConstantVectorKey(VectorType ty, List<Constant> v) {
+      vt = ty;
+      vals = new ArrayList<>();
+      vals.addAll(v);
     }
 
     @Override
-    public VectorType getType()
-    {
-        return (VectorType) super.getType();
+    public int hashCode() {
+      return vt.hashCode() << 13 + vals.hashCode();
     }
 
     @Override
-    public boolean isNullValue()
-    {
+    public boolean equals(Object obj) {
+      if (obj == null) return false;
+      if (this == obj) return true;
+      if (getClass() != obj.getClass())
         return false;
+      ConstantVectorKey key = (ConstantVectorKey) obj;
+      return vt.equals(key.vt) && vals.equals(key.vals);
     }
+  }
 
-    public boolean isAllOnesValue()
-    {
-        Constant c = operand(0);
-        if (!(c instanceof ConstantInt) || !((ConstantInt)c).isAllOnesValue())
-            return false;
-        for (int i = 1, e = getNumOfOperands(); i < e; i++)
-            if (!operand(i).equals(c))
-                return false;
-        return true;
+  private static final HashMap<ConstantVectorKey, ConstantVector> vectorConstants =
+      new HashMap<>();
+
+  /**
+   * Constructs a new instruction representing the specified constants.
+   */
+  protected ConstantVector(VectorType vt, List<Constant> vals) {
+    super(vt, ConstantVectorVal);
+    reserve(vals.size());
+    int idx = 0;
+    for (Constant c : vals) {
+      Util.assertion(c.getType() == vt.getElementType() ||
+              (vt.isAbstract() && c.getType().getTypeID() == vt.getElementType().getTypeID()),
+          "Initializer for struct element doesn't match struct element type!");
+      setOperand(idx++, c, this);
     }
+  }
 
-    public Constant getSplatValue()
-    {
-        Constant c = operand(0);
-        for (int i = 1, e = getNumOfOperands(); i < e; i++)
-            if (!operand(i).equals(c))
-                return null;
-        return c;
-    }
+  public static Constant get(VectorType vt, Constant[] elts) {
+    return get(vt, Arrays.asList(elts));
+  }
 
-    public void destroyConstant()
-    {
-        // TODO: 18-6-24
-    }
-
-    @Override
-    public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
-    {
-        Util.assertion( to instanceof Constant);
-        ArrayList<Constant> values = new ArrayList<>();
-        for (int i = 0, e = getNumOfOperands(); i < e; i++)
-        {
-            Constant val = operand(i);
-            if (val.equals(from))
-                val = (Constant) to;
-            values.add(val);
+  public static Constant get(VectorType vt, List<Constant> vals) {
+    Util.assertion(vals != null && !vals.isEmpty());
+    Constant c = vals.get(0);
+    boolean isZero = c.isNullValue();
+    boolean isUndef = c instanceof UndefValue;
+    if (isZero || isUndef) {
+      for (int i = 1, e = vals.size(); i < e; i++) {
+        if (!vals.get(i).equals(c)) {
+          isZero = isUndef = false;
+          break;
         }
-
-        Constant replacement = get(getType(), values);
-        Util.assertion( !replacement.equals(this));
-        destroyConstant();
+      }
     }
+
+    if (isZero)
+      return ConstantAggregateZero.get(vt);
+    if (isUndef)
+      return UndefValue.get(vt);
+
+    ConstantVectorKey key = new ConstantVectorKey(vt, vals);
+    if (vectorConstants.containsKey(key))
+      return vectorConstants.get(key);
+    ConstantVector cv = new ConstantVector(vt, vals);
+    vectorConstants.put(key, cv);
+    return cv;
+  }
+
+  public static Constant get(ArrayList<Constant> vals) {
+    Util.assertion(vals != null && !vals.isEmpty());
+    return get(VectorType.get(vals.get(0).getType(), vals.size()), vals);
+  }
+
+  public static Constant get(Constant... vals) {
+    Util.assertion(vals != null && vals.length > 0);
+    ArrayList<Constant> t = new ArrayList<>();
+    for (Constant c : vals)
+      t.add(c);
+    return get(t);
+  }
+
+  @Override
+  public VectorType getType() {
+    return (VectorType) super.getType();
+  }
+
+  @Override
+  public boolean isNullValue() {
+    return false;
+  }
+
+  public boolean isAllOnesValue() {
+    Constant c = operand(0);
+    if (!(c instanceof ConstantInt) || !((ConstantInt) c).isAllOnesValue())
+      return false;
+    for (int i = 1, e = getNumOfOperands(); i < e; i++)
+      if (!operand(i).equals(c))
+        return false;
+    return true;
+  }
+
+  public Constant getSplatValue() {
+    Constant c = operand(0);
+    for (int i = 1, e = getNumOfOperands(); i < e; i++)
+      if (!operand(i).equals(c))
+        return null;
+    return c;
+  }
+
+  public void destroyConstant() {
+    // TODO: 18-6-24
+  }
+
+  @Override
+  public void replaceUsesOfWithOnConstant(Value from, Value to, Use u) {
+    Util.assertion(to instanceof Constant);
+    ArrayList<Constant> values = new ArrayList<>();
+    for (int i = 0, e = getNumOfOperands(); i < e; i++) {
+      Constant val = operand(i);
+      if (val.equals(from))
+        val = (Constant) to;
+      values.add(val);
+    }
+
+    Constant replacement = get(getType(), values);
+    Util.assertion(!replacement.equals(this));
+    destroyConstant();
+  }
 }

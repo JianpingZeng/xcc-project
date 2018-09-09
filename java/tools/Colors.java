@@ -16,21 +16,22 @@
  */
 
 package tools;
+
 /**
  * This class defines various of colors used for setting the background or
  * foreground color of output stream.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum Colors
-{
-    BLACK,
-    RED,
-    GREEN,
-    YELLOW,
-    BLUE,
-    MAGENTA,
-    CYAN,
-    WHITE,
-    SAVEDCOLOR
+public enum Colors {
+  BLACK,
+  RED,
+  GREEN,
+  YELLOW,
+  BLUE,
+  MAGENTA,
+  CYAN,
+  WHITE,
+  SAVEDCOLOR
 }

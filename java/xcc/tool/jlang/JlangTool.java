@@ -31,75 +31,58 @@ import static xcc.TypeID.*;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class JlangTool extends Tool
-{
-    public JlangTool(ToolChain tc)
-    {
-        super("jlang", "jlang frontend", tc);
+public class JlangTool extends Tool {
+  public JlangTool(ToolChain tc) {
+    super("jlang", "jlang frontend", tc);
+  }
+
+  @Override
+  public Job constructJob(Compilation c, Action.JobAction ja,
+                          InputInfo output, ArrayList<InputInfo> inputs, ArgList args,
+                          String linkerOutput) {
+    Driver driver = c.getDriver();
+    ArrayList<String> cmdStrings = new ArrayList<>();
+
+    Util.assertion(inputs.size() == 1, "Unable to compile multiple files!");
+
+    cmdStrings.add("-triple");
+    cmdStrings.add(getToolChain().getTripleString());
+
+    // Add filename to be compiled.
+    cmdStrings.add(inputs.get(0).getFilename());
+    if (ja instanceof Action.PreprocessJobAction) {
+      if (output.getOutputType() == TY_Dependencies)
+        cmdStrings.add("-Eonly");
+      else
+        cmdStrings.add("-E");
+    } else if (ja instanceof Action.PrecompileJobAction) {
+      cmdStrings.add("=emit=pch");
+    } else {
+      Util.assertion(ja instanceof Action.CompileJobAction, "Invalid action for Jlang frontend!");
+
+      if (ja.getOutputType() == TY_Nothing)
+        cmdStrings.add("-fsyntax-only");
+      else if (ja.getOutputType() == TY_LLVMAsm) {
+        cmdStrings.add("-emit-llvm");
+      } else if (ja.getOutputType() == TY_LLVMBC) {
+        Util.assertion(false, "No able to generate llvm bitcode!");
+      } else if (ja.getOutputType() == TY_PP_Asm)
+        cmdStrings.add("-S");
     }
 
-    @Override
-    public Job constructJob(Compilation c, Action.JobAction ja,
-            InputInfo output, ArrayList<InputInfo> inputs, ArgList args,
-            String linkerOutput)
-    {
-        Driver driver = c.getDriver();
-        ArrayList<String> cmdStrings = new ArrayList<>();
+    //cmdStrings.add("-disable-free");
 
-        Util.assertion(inputs.size() == 1, "Unable to compile multiple files!");
-
-        cmdStrings.add("-triple");
-        cmdStrings.add(getToolChain().getTripleString());
-
-        // Add filename to be compiled.
-        cmdStrings.add(inputs.get(0).getFilename());
-        if (ja instanceof Action.PreprocessJobAction)
-        {
-            if (output.getOutputType() == TY_Dependencies)
-                cmdStrings.add("-Eonly");
-            else
-                cmdStrings.add("-E");
-        }
-        else if (ja instanceof Action.PrecompileJobAction)
-        {
-            cmdStrings.add("=emit=pch");
-        }
-        else
-        {
-            Util.assertion(ja instanceof Action.CompileJobAction, "Invalid action for Jlang frontend!");
-
-            if (ja.getOutputType() == TY_Nothing)
-                cmdStrings.add("-fsyntax-only");
-            else if (ja.getOutputType() == TY_LLVMAsm)
-            {
-                cmdStrings.add("-emit-llvm");
-            }
-            else if (ja.getOutputType() == TY_LLVMBC)
-            {
-                Util.assertion(false, "No able to generate llvm bitcode!");
-            }
-            else if (ja.getOutputType() == TY_PP_Asm)
-                cmdStrings.add("-S");
-        }
-
-        //cmdStrings.add("-disable-free");
-
-        if (output.isPipe())
-        {
-            cmdStrings.add("-o");
-            cmdStrings.add("-");
-        }
-        else if (output.isFilename())
-        {
-            cmdStrings.add("-o");
-            cmdStrings.add(output.getFilename());
-        }
-        else
-        {
-            Util.assertion(output.isNothing()||output.isInputArg(), "Unknown output type!");
-        }
-        cmdStrings.add("-main-file-name");
-        cmdStrings.add(inputs.get(0).getFilename());
+    if (output.isPipe()) {
+      cmdStrings.add("-o");
+      cmdStrings.add("-");
+    } else if (output.isFilename()) {
+      cmdStrings.add("-o");
+      cmdStrings.add(output.getFilename());
+    } else {
+      Util.assertion(output.isNothing() || output.isInputArg(), "Unknown output type!");
+    }
+    cmdStrings.add("-main-file-name");
+    cmdStrings.add(inputs.get(0).getFilename());
 
         /*
         if (args.hasArg(OPT__static))
@@ -136,28 +119,25 @@ public class JlangTool extends Tool
         if (!args.hasFlag(OPT__fzero_initialized_in_bss, OPT__fno_zero_initialized_in_bss))
             cmdStrings.add("--nozero-initialized-in-bss");
         */
-        if (args.hasArg(OPT__dA) || args.hasArg(OPT__fverbose_asm))
-            cmdStrings.add("=-asm-verbose");
-        if (args.hasArg(OPT__fdebug_pass_structure))
-            cmdStrings.add("--debug-pass=Structure");
-        if (args.hasArg(OPT__fdebug_pass_arguments))
-            cmdStrings.add("--debug-pass=Arguments");
+    if (args.hasArg(OPT__dA) || args.hasArg(OPT__fverbose_asm))
+      cmdStrings.add("=-asm-verbose");
+    if (args.hasArg(OPT__fdebug_pass_structure))
+      cmdStrings.add("--debug-pass=Structure");
+    if (args.hasArg(OPT__fdebug_pass_arguments))
+      cmdStrings.add("--debug-pass=Arguments");
 
-        // Ignores options for unwind table.
-        Arg arg = args.getLastArg(OPT__march_EQ, true);
-        if (arg != null)
-        {
-            cmdStrings.add("-mcpu");
-            cmdStrings.add(arg.getValue(args, 0));
-        }
-        else
-        {
-            // Set a default CPU.
-            if (getToolChain().getArchName().equals("i386"))
-                cmdStrings.add("-mcpu=pentium4");
-            else if (getToolChain().getArchName().equals("x86_64"))
-                cmdStrings.add("-mcpu=x86-64");
-        }
+    // Ignores options for unwind table.
+    Arg arg = args.getLastArg(OPT__march_EQ, true);
+    if (arg != null) {
+      cmdStrings.add("-mcpu");
+      cmdStrings.add(arg.getValue(args, 0));
+    } else {
+      // Set a default CPU.
+      if (getToolChain().getArchName().equals("i386"))
+        cmdStrings.add("-mcpu=pentium4");
+      else if (getToolChain().getArchName().equals("x86_64"))
+        cmdStrings.add("-mcpu=x86-64");
+    }
         /*
         arg = args.getLastArg(OPT__mcmodel_EQ, true);
         if (arg != null)
@@ -166,79 +146,70 @@ public class JlangTool extends Tool
             cmdStrings.add(arg.getValue(args, 0));
         }
         */
-        if ((arg = args.getLastArg(OPT__O4, true)) != null)
-            cmdStrings.add("-O3");
-        if ((arg = args.getLastArg(OPT__O, true)) != null)
-        {
-            arg.render(args, cmdStrings);
-        }
-        Arg std;
-        if ((std = args.getLastArg(OPT__std_EQ, OPT__ansi, true)) != null)
-        {
-            if (std.getOption().matches(OPT__ansi))
-                cmdStrings.add("-std=gnu89");
-            else
-                std.render(args, cmdStrings);
+    if ((arg = args.getLastArg(OPT__O4, true)) != null)
+      cmdStrings.add("-O3");
+    if ((arg = args.getLastArg(OPT__O, true)) != null) {
+      arg.render(args, cmdStrings);
+    }
+    Arg std;
+    if ((std = args.getLastArg(OPT__std_EQ, OPT__ansi, true)) != null) {
+      if (std.getOption().matches(OPT__ansi))
+        cmdStrings.add("-std=gnu89");
+      else
+        std.render(args, cmdStrings);
 
-            if ((arg = args.getLastArg(OPT__trigraphs, true)) != null)
-            {
-                if (arg.getIndex() > std.getIndex())
-                    arg.render(args, cmdStrings);
-            }
-        }
-        else
-        {
-            args.addAllArgsTranslated(cmdStrings, OPT__std_default_EQ, "-std=", true);
-            args.addLastArg(cmdStrings, OPT__trigraphs);
-        }
-
-        if ((arg = args.getLastArg(OPT__fsigned_char, OPT__funsigned_char, true)) != null)
-        {
-            if (arg.getOption().matches(OPT__fsigned_char))
-                cmdStrings.add("-fsigned-char");
-            else
-                cmdStrings.add("-fsigned-char=0");
-        }
-
-        if (args.hasArg(OPT__fdiagnostics_show_option))
-            cmdStrings.add("-fdiagnostics-show-option");
-        if (args.hasArg(OPT__fno_color_diagnostics))
-            cmdStrings.add("-fno-color-diagnostics");
-        if (!args.hasArg(OPT__fno_show_source_location))
-            cmdStrings.add("-fno-show-source-location");
-
-        if ((arg = args.getLastArg(OPT__fdollars_in_identifiers,
-                OPT__fno_dollars_in_identifiers)) != null)
-        {
-            if (arg.getOption().matches(OPT__fdollars_in_identifiers))
-                cmdStrings.add("-fdollars-in-identifiers=1");
-            else
-                cmdStrings.add("-fno-dollars-in-identifiers=0");
-        }
-        addPreprocessingOptions(driver, args, cmdStrings, output, inputs);
-        return new Job.Command(ja, getToolChain().getCompiler(), cmdStrings);
+      if ((arg = args.getLastArg(OPT__trigraphs, true)) != null) {
+        if (arg.getIndex() > std.getIndex())
+          arg.render(args, cmdStrings);
+      }
+    } else {
+      args.addAllArgsTranslated(cmdStrings, OPT__std_default_EQ, "-std=", true);
+      args.addLastArg(cmdStrings, OPT__trigraphs);
     }
 
-    private void addPreprocessingOptions(
-            Driver driver,
-            ArgList args,
-            ArrayList<String> cmdStrings,
-            InputInfo output,
-            ArrayList<InputInfo> inputs)
-    {
-        Arg arg;
-        if ((arg = args.getLastArg(OPT__C, true)) != null ||
-                (arg = args.getLastArg(OPT__CC, true)) != null)
-        {
-            if (!args.hasArg(OPT__E))
-                driver.diag(err_drv_argument_only_allowed_with)
-                        .addString(arg.getAsString(args))
-                        .addString("-E").emit();
-            arg.render(args, cmdStrings);
-        }
-
-        args.addAllArgs(cmdStrings, OPT__D, OPT__U);
-        args.addAllArgs(cmdStrings, OPT__F, OPT__I);
-        getToolChain().addSystemIncludeDir(cmdStrings);
+    if ((arg = args.getLastArg(OPT__fsigned_char, OPT__funsigned_char, true)) != null) {
+      if (arg.getOption().matches(OPT__fsigned_char))
+        cmdStrings.add("-fsigned-char");
+      else
+        cmdStrings.add("-fsigned-char=0");
     }
+
+    if (args.hasArg(OPT__fdiagnostics_show_option))
+      cmdStrings.add("-fdiagnostics-show-option");
+    if (args.hasArg(OPT__fno_color_diagnostics))
+      cmdStrings.add("-fno-color-diagnostics");
+    if (!args.hasArg(OPT__fno_show_source_location))
+      cmdStrings.add("-fno-show-source-location");
+
+    if ((arg = args.getLastArg(OPT__fdollars_in_identifiers,
+        OPT__fno_dollars_in_identifiers)) != null) {
+      if (arg.getOption().matches(OPT__fdollars_in_identifiers))
+        cmdStrings.add("-fdollars-in-identifiers=1");
+      else
+        cmdStrings.add("-fno-dollars-in-identifiers=0");
+    }
+    addPreprocessingOptions(driver, args, cmdStrings, output, inputs);
+    return new Job.Command(ja, getToolChain().getCompiler(), cmdStrings);
+  }
+
+  private void addPreprocessingOptions(
+      Driver driver,
+      ArgList args,
+      ArrayList<String> cmdStrings,
+      InputInfo output,
+      ArrayList<InputInfo> inputs) {
+    Arg arg;
+    if ((arg = args.getLastArg(OPT__C, true)) != null ||
+        (arg = args.getLastArg(OPT__CC, true)) != null) {
+      if (!args.hasArg(OPT__E))
+        driver.diag(err_drv_argument_only_allowed_with)
+            .addString(arg.getAsString(args))
+            .addString("-E").emit();
+      arg.render(args, cmdStrings);
+    }
+
+    args.addAllArgs(cmdStrings, OPT__D, OPT__U);
+    args.addAllArgs(cmdStrings, OPT__F, OPT__I);
+    getToolChain().addSystemIncludeDir(cmdStrings);
+  }
 }

@@ -19,28 +19,27 @@ package tools.commandline;
 /**
  * This enumerate defines some enum constant for indicating whether the value
  * of this option is required.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum ValueExpected
-{
-    ValueOptional(0x08),      // The value can appear... or not
-    ValueRequired(0x10),      // The value is required to appear!
-    ValueDisallowed(0x18),      // A value may not be specified (for flags)
+public enum ValueExpected {
+  ValueOptional(0x08),      // The value can appear... or not
+  ValueRequired(0x10),      // The value is required to appear!
+  ValueDisallowed(0x18),      // A value may not be specified (for flags)
 
-    ValueMask(0x18);
+  ValueMask(0x18);
 
-    public int value;
-    ValueExpected(int val)
-    {
-        value = val;
-    }
+  public int value;
 
-    public static ValueExpected getFromValue(int val)
-    {
-        for (ValueExpected ve : values())
-            if (ve.value == val)
-                return ve;
-        return null;
-    }
+  ValueExpected(int val) {
+    value = val;
+  }
+
+  public static ValueExpected getFromValue(int val) {
+    for (ValueExpected ve : values())
+      if (ve.value == val)
+        return ve;
+    return null;
+  }
 }

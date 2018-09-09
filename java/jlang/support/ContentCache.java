@@ -16,8 +16,8 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Util;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,61 +27,51 @@ import java.nio.file.Path;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ContentCache
-{
-    /**
-     * The actual buffer containing the characters from the input
-     * file.  This is owned by the ContentCache object.
-     */
-    private MemoryBuffer buffer;
+public class ContentCache {
+  /**
+   * The actual buffer containing the characters from the input
+   * file.  This is owned by the ContentCache object.
+   */
+  private MemoryBuffer buffer;
 
-    public Path fileEntry;
+  public Path fileEntry;
 
-    public TIntArrayList sourceLineCache;
+  public TIntArrayList sourceLineCache;
 
-    /**
-     * First FileID that was created for this ContentCache.
-     * Represents the first source inclusion of the file associated with this
-     * ContentCache.
-     */
-    public FileID firstFID;
+  /**
+   * First FileID that was created for this ContentCache.
+   * Represents the first source inclusion of the file associated with this
+   * ContentCache.
+   */
+  public FileID firstFID;
 
-    public MemoryBuffer getBuffer()
-    {
-        if (buffer == null && fileEntry != null)
-        {
-            buffer = MemoryBuffer.getFile(fileEntry);
-        }
-        return buffer;
+  public MemoryBuffer getBuffer() {
+    if (buffer == null && fileEntry != null) {
+      buffer = MemoryBuffer.getFile(fileEntry);
     }
+    return buffer;
+  }
 
-    public long getSize()
-    {
-        try
-        {
-            return fileEntry != null? Files.size(fileEntry) : buffer.length();
-        }
-        catch (IOException e)
-        {
-            return 0;
-        }
+  public long getSize() {
+    try {
+      return fileEntry != null ? Files.size(fileEntry) : buffer.length();
+    } catch (IOException e) {
+      return 0;
     }
+  }
 
-    public void setBuffer(MemoryBuffer buffer)
-    {
-        Util.assertion(this.buffer == null, "MemoryBuffer already set!");
-        this.buffer = buffer;
-    }
+  public void setBuffer(MemoryBuffer buffer) {
+    Util.assertion(this.buffer == null, "MemoryBuffer already set!");
+    this.buffer = buffer;
+  }
 
-    public ContentCache()
-    {
-        this(null);
-    }
+  public ContentCache() {
+    this(null);
+  }
 
-    public ContentCache(Path entry)
-    {
-        this.fileEntry = entry;
-        firstFID = new FileID();
-        //sourceLineCache = new TIntArrayList();
-    }
+  public ContentCache(Path entry) {
+    this.fileEntry = entry;
+    firstFID = new FileID();
+    //sourceLineCache = new TIntArrayList();
+  }
 }

@@ -24,18 +24,16 @@ import jlang.ast.Tree;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConstExprEmitter extends StmtVisitor<Constant>
-{
-    private HIRModuleGenerator generator;
-    private CodeGenFunction cgf;
-    public ConstExprEmitter(HIRModuleGenerator genModule, CodeGenFunction cgf)
-    {
-        generator = genModule;
-        this.cgf = cgf;
-    }
+public class ConstExprEmitter extends StmtVisitor<Constant> {
+  private HIRModuleGenerator generator;
+  private CodeGenFunction cgf;
 
-    public Constant emitLValue(Tree.Expr expr)
-    {
-        return null;
-    }
+  public ConstExprEmitter(HIRModuleGenerator genModule, CodeGenFunction cgf) {
+    generator = genModule;
+    this.cgf = cgf;
+  }
+
+  public Constant emitLValue(Tree.Expr expr) {
+    return null;
+  }
 }

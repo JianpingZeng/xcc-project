@@ -25,18 +25,24 @@ import backend.value.BasicBlock;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class JumpDest
-{
-    private BasicBlock block;
-    private int index;
+public class JumpDest {
+  private BasicBlock block;
+  private int index;
 
-    public JumpDest(BasicBlock bb, int index)
-    {
-        block = bb;
-        this.index = index;
-    }
+  public JumpDest(BasicBlock bb, int index) {
+    block = bb;
+    this.index = index;
+  }
 
-    public boolean isValid() { return block != null;}
-    public BasicBlock getBasicBlock() { return block;}
-    public int getDestIndex() { return index;}
+  public boolean isValid() {
+    return block != null;
+  }
+
+  public BasicBlock getBasicBlock() {
+    return block;
+  }
+
+  public int getDestIndex() {
+    return index;
+  }
 }

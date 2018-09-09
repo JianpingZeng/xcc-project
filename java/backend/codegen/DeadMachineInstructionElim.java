@@ -31,123 +31,111 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 /**
  * This class implements a machine function level dead instruction elimination
  * pass similar to {@linkplain DCE}.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DeadMachineInstructionElim extends MachineFunctionPass
-{
-    private BitMap livePhysReg;
-    private TargetInstrInfo tii;
-    private MachineRegisterInfo mri;
+public class DeadMachineInstructionElim extends MachineFunctionPass {
+  private BitMap livePhysReg;
+  private TargetInstrInfo tii;
+  private MachineRegisterInfo mri;
 
-    /**
-     * Checks if the specified machine instruction is useless or not.
-     * A dead mi is such that no other mi use it's generated result
-     * and it don't have side effect.
-     * @param mi
-     * @return
-     */
-    private boolean isDead(MachineInstr mi)
-    {
-        OutRef<Boolean> sawStore = new OutRef<>(false);
-        if (!mi.isSafeToMove(tii, sawStore) && !mi.isPHI())
-            return false;
+  /**
+   * Checks if the specified machine instruction is useless or not.
+   * A dead mi is such that no other mi use it's generated result
+   * and it don't have side effect.
+   *
+   * @param mi
+   * @return
+   */
+  private boolean isDead(MachineInstr mi) {
+    OutRef<Boolean> sawStore = new OutRef<>(false);
+    if (!mi.isSafeToMove(tii, sawStore) && !mi.isPHI())
+      return false;
 
-        // check each operand.
-        for (int i = 0, e = mi.getNumOperands(); i < e; i++)
-        {
-            MachineOperand mo = mi.getOperand(i);
-            if (mo.isRegister() && mo.isDef() && mo.getReg() != 0)
-            {
-                int reg = mo.getReg();
-                if (isPhysicalRegister(reg) ? livePhysReg.get(reg) :
-                        mri.hasUseOperand(reg))
-                    return false;
-            }
-        }
-        return true;
+    // check each operand.
+    for (int i = 0, e = mi.getNumOperands(); i < e; i++) {
+      MachineOperand mo = mi.getOperand(i);
+      if (mo.isRegister() && mo.isDef() && mo.getReg() != 0) {
+        int reg = mo.getReg();
+        if (isPhysicalRegister(reg) ? livePhysReg.get(reg) :
+            mri.hasUseOperand(reg))
+          return false;
+      }
     }
+    return true;
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        TargetMachine tm = mf.getTarget();
-        TargetRegisterInfo tri = tm.getRegisterInfo();
-        tii = tm.getInstrInfo();
-        mri = mf.getMachineRegisterInfo();
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    TargetMachine tm = mf.getTarget();
+    TargetRegisterInfo tri = tm.getRegisterInfo();
+    tii = tm.getInstrInfo();
+    mri = mf.getMachineRegisterInfo();
 
-        // First, view all non-allocatable registers as live
-        BitMap noAllocatableSet = tri.getAllocatableSet(mf);
+    // First, view all non-allocatable registers as live
+    BitMap noAllocatableSet = tri.getAllocatableSet(mf);
 
-        livePhysReg = new BitMap(noAllocatableSet.length());
-        // walk through all of basic blocks from bottom to top to compute
-        // live register set for making decision about what mi should be
-        // removed.
-        boolean changed = false;
-        TIntArrayList defRegs = new TIntArrayList();
-        TIntArrayList useRegs = new TIntArrayList();
-        for (int i = mf.getNumBlocks() - 1; i >= 0; --i)
-        {
-            MachineBasicBlock mbb = mf.getMBBAt(i);
-            livePhysReg.setFrom(noAllocatableSet);
+    livePhysReg = new BitMap(noAllocatableSet.length());
+    // walk through all of basic blocks from bottom to top to compute
+    // live register set for making decision about what mi should be
+    // removed.
+    boolean changed = false;
+    TIntArrayList defRegs = new TIntArrayList();
+    TIntArrayList useRegs = new TIntArrayList();
+    for (int i = mf.getNumBlocks() - 1; i >= 0; --i) {
+      MachineBasicBlock mbb = mf.getMBBAt(i);
+      livePhysReg.setFrom(noAllocatableSet);
 
-            for (int itr = mbb.size() - 1; itr >= 0; --itr)
-            {
-                MachineInstr mi = mbb.getInstAt(itr);
+      for (int itr = mbb.size() - 1; itr >= 0; --itr) {
+        MachineInstr mi = mbb.getInstAt(itr);
 
-                // Delete useless mi
-                if (isDead(mi))
-                {
-                    mi.removeFromParent();
-                    changed = true;
-                    continue;
-                }
-
-                // record the def register.
-                defRegs.clear();
-                useRegs.clear();
-                for (int j = 0, e = mi.getNumOperands(); j < e; j++)
-                {
-                    MachineOperand mo = mi.getOperand(j);
-                    if (mo.isRegister() && mo.getReg() != 0 &&
-                            isPhysicalRegister(mo.getReg()))
-                    {
-                        if (mo.isUse())
-                            useRegs.add(mo.getReg());
-                        else
-                            defRegs.add(mo.getReg());
-                    }
-                }
-
-                for (int j = 0; j < defRegs.size(); j++)
-                {
-                    livePhysReg.clear(defRegs.get(j));
-
-                    for (int alias : tri.getAliasSet(defRegs.get(j)))
-                        livePhysReg.clear(alias);
-                }
-
-                for (int j = 0; j < useRegs.size(); j++)
-                {
-                    livePhysReg.set(useRegs.get(j));
-                    for (int alias : tri.getAliasSet(defRegs.get(j)))
-                        livePhysReg.set(alias);
-                }
-            }
+        // Delete useless mi
+        if (isDead(mi)) {
+          mi.removeFromParent();
+          changed = true;
+          continue;
         }
 
-        livePhysReg.clear();
-        return changed;
+        // record the def register.
+        defRegs.clear();
+        useRegs.clear();
+        for (int j = 0, e = mi.getNumOperands(); j < e; j++) {
+          MachineOperand mo = mi.getOperand(j);
+          if (mo.isRegister() && mo.getReg() != 0 &&
+              isPhysicalRegister(mo.getReg())) {
+            if (mo.isUse())
+              useRegs.add(mo.getReg());
+            else
+              defRegs.add(mo.getReg());
+          }
+        }
+
+        for (int j = 0; j < defRegs.size(); j++) {
+          livePhysReg.clear(defRegs.get(j));
+
+          for (int alias : tri.getAliasSet(defRegs.get(j)))
+            livePhysReg.clear(alias);
+        }
+
+        for (int j = 0; j < useRegs.size(); j++) {
+          livePhysReg.set(useRegs.get(j));
+          for (int alias : tri.getAliasSet(defRegs.get(j)))
+            livePhysReg.set(alias);
+        }
+      }
     }
 
-    @Override
-    public String getPassName()
-    {
-        return "Dead machine instruction elimination Pass";
-    }
+    livePhysReg.clear();
+    return changed;
+  }
 
-    public static MachineFunctionPass createDeadMachineInstructionElimPass()
-    {
-        return new DeadMachineInstructionElim();
-    }
+  @Override
+  public String getPassName() {
+    return "Dead machine instruction elimination Pass";
+  }
+
+  public static MachineFunctionPass createDeadMachineInstructionElimPass() {
+    return new DeadMachineInstructionElim();
+  }
 }

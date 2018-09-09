@@ -16,13 +16,13 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import backend.support.PrintModulePass;
-import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
 import backend.pass.Pass;
+import backend.support.PrintModulePass;
 import backend.value.Module;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -31,80 +31,70 @@ import java.util.HashMap;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MPPassManager extends PMDataManager implements Pass
-{
-    private HashMap<Pass, FunctionPassManagerImpl> onTheFlyManager;
+public class MPPassManager extends PMDataManager implements Pass {
+  private HashMap<Pass, FunctionPassManagerImpl> onTheFlyManager;
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    public MPPassManager()
-    {
-        super(0);
-        onTheFlyManager = new HashMap<>();
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Module Pass Manager";
-    }
+  public MPPassManager() {
+    super(0);
+    onTheFlyManager = new HashMap<>();
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-    }
+  @Override
+  public String getPassName() {
+    return "Module Pass Manager";
+  }
 
-    /**
-     * Execute all of the passes scheduled for execution.  Keep track of
-     * whether any of the passes modifies the module, and if so, return true.
-     * @param m
-     * @return
-     */
-    public boolean runOnModule(Module m)
-    {
-        boolean changed = false;
-        for (int index = 0; index < getNumContainedPasses(); ++index)
-            changed |= getContainedPass(index).runOnModule(m);
-        return changed;
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-    @Override
-    public PassManagerType getPassManagerType()
-    {
-        return PassManagerType.PMT_ModulePassManager;
-    }
+  /**
+   * Execute all of the passes scheduled for execution.  Keep track of
+   * whether any of the passes modifies the module, and if so, return true.
+   *
+   * @param m
+   * @return
+   */
+  public boolean runOnModule(Module m) {
+    boolean changed = false;
+    for (int index = 0; index < getNumContainedPasses(); ++index)
+      changed |= getContainedPass(index).runOnModule(m);
+    return changed;
+  }
 
-    public PMDataManager getAsPMDataManager()
-    {
-        return this;
-    }
+  @Override
+  public PassManagerType getPassManagerType() {
+    return PassManagerType.PMT_ModulePassManager;
+  }
 
-    @Override
-    public Pass createPrinterPass(PrintStream os, String banner)
-    {
-        return PrintModulePass.createPrintModulePass(os);
-    }
+  public PMDataManager getAsPMDataManager() {
+    return this;
+  }
 
-    public Pass getAsPass()
-    {
-        return this;
-    }
+  @Override
+  public Pass createPrinterPass(PrintStream os, String banner) {
+    return PrintModulePass.createPrintModulePass(os);
+  }
 
-    public ModulePass getContainedPass(int index)
-    {
-        Util.assertion( index >= 0 && index < getNumContainedPasses());
-        return (ModulePass) passVector.get(index);
-    }
+  public Pass getAsPass() {
+    return this;
+  }
+
+  public ModulePass getContainedPass(int index) {
+    Util.assertion(index >= 0 && index < getNumContainedPasses());
+    return (ModulePass) passVector.get(index);
+  }
 }

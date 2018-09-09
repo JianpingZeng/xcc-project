@@ -19,6 +19,7 @@
  * This package contains some important classes for lexing, parsing LLVM IR in
  * text style. Other class want to read LLVM IR from text should be the client
  * of those API provided by the package.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */

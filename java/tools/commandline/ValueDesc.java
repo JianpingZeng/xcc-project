@@ -20,21 +20,19 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ValueDesc implements Modifier
-{
-    private String desc;
-    public ValueDesc(String desc)
-    {
-        this.desc = desc;
-    }
-    @Override
-    public void apply(Option<?> opt)
-    {
-        ((Option<String>)opt).setValueStr(desc);
-    }
+public class ValueDesc implements Modifier {
+  private String desc;
 
-    public static ValueDesc valueDesc(String arg)
-    {
-        return new ValueDesc(arg);
-    }
+  public ValueDesc(String desc) {
+    this.desc = desc;
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    ((Option<String>) opt).setValueStr(desc);
+  }
+
+  public static ValueDesc valueDesc(String arg) {
+    return new ValueDesc(arg);
+  }
 }

@@ -23,33 +23,29 @@ import tools.commandline.Parser;
 /**
  * The command line option parser for registry of register allocator, like
  * RegAllocLocal, RegAllocaLinearScan etc.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
 public class RegisterRegAllocParser extends Parser<MachinePassCtor>
-        implements MachinePassRegistryListener<MachinePassCtor>
-{
-    @Override
-    public <T1> void initialize(Option<T1> opt)
-    {
-        super.initialize(opt);
-        for (RegisterRegAlloc node = RegisterRegAlloc.getList(); node != null;
-             node = node.getNext())
-        {
-            addLiteralOption(node.getName(), node.getCtor(), node.getDescription());
-        }
-        RegisterRegAlloc.setListener(this);
+    implements MachinePassRegistryListener<MachinePassCtor> {
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+    super.initialize(opt);
+    for (RegisterRegAlloc node = RegisterRegAlloc.getList(); node != null;
+         node = node.getNext()) {
+      addLiteralOption(node.getName(), node.getCtor(), node.getDescription());
     }
+    RegisterRegAlloc.setListener(this);
+  }
 
-    @Override
-    public void notifyAdd(String name, MachinePassCtor ctor, String desc)
-    {
-        addLiteralOption(name, ctor, desc);
-    }
+  @Override
+  public void notifyAdd(String name, MachinePassCtor ctor, String desc) {
+    addLiteralOption(name, ctor, desc);
+  }
 
-    @Override
-    public void notifyRemove(String name)
-    {
-        removeLiteralOption(name);
-    }
+  @Override
+  public void notifyRemove(String name) {
+    removeLiteralOption(name);
+  }
 }

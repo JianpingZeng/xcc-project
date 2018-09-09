@@ -20,16 +20,14 @@ package backend.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class AttributeWithIndex
-{
-    public int attrs;
-    public int index;
+public final class AttributeWithIndex {
+  public int attrs;
+  public int index;
 
-    public static AttributeWithIndex get(int index, int attrs)
-    {
-        AttributeWithIndex res = new AttributeWithIndex();
-        res.index = index;
-        res.attrs = attrs;
-        return res;
-    }
+  public static AttributeWithIndex get(int index, int attrs) {
+    AttributeWithIndex res = new AttributeWithIndex();
+    res.index = index;
+    res.attrs = attrs;
+    return res;
+  }
 }

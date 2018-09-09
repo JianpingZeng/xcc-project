@@ -21,11 +21,11 @@ package tools;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface FoldingSetNode
-{
-    /**
-     * A method used to compute unique hash code for each FoldingSetNode.
-     * @param id
-     */
-    void profile(FoldingSetNodeID id);
+public interface FoldingSetNode {
+  /**
+   * A method used to compute unique hash code for each FoldingSetNode.
+   *
+   * @param id
+   */
+  void profile(FoldingSetNodeID id);
 }

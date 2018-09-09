@@ -17,72 +17,61 @@ package backend.transform.scalars.instructionCombine;
  * permissions and limitations under the License.
  */
 
-import backend.value.Instruction;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.FCmpInst;
 import backend.value.Instruction.ICmpInst;
 import backend.value.Value;
 
-public abstract class CmpPattern implements Pattern
-{
-    protected Predicate pred;
-    protected Pattern lhs;
-    protected Pattern rhs;
-    private CmpPattern(Predicate pred, Pattern lhs, Pattern rhs)
-    {
-        this.pred = pred;
-        this.lhs = lhs;
-        this.rhs = rhs;
+public abstract class CmpPattern implements Pattern {
+  protected Predicate pred;
+  protected Pattern lhs;
+  protected Pattern rhs;
+
+  private CmpPattern(Predicate pred, Pattern lhs, Pattern rhs) {
+    this.pred = pred;
+    this.lhs = lhs;
+    this.rhs = rhs;
+  }
+
+  public static final class ICmpPattern extends CmpPattern {
+    private ICmpPattern(Predicate pred, Pattern lhs, Pattern rhs) {
+      super(pred, lhs, rhs);
     }
 
-    public static final class ICmpPattern extends CmpPattern
-    {
-        private ICmpPattern(Predicate pred, Pattern lhs, Pattern rhs)
-        {
-            super(pred, lhs, rhs);
-        }
+    @Override
+    public boolean match(Value valueToMatch) {
+      if (valueToMatch instanceof ICmpInst) {
+        ICmpInst ic = (ICmpInst) valueToMatch;
+        return pred == ic.getPredicate() &&
+            lhs.match(ic.operand(0)) &&
+            rhs.match(ic.operand(1));
+      }
+      return false;
+    }
+  }
 
-        @Override
-        public boolean match(Value valueToMatch)
-        {
-            if (valueToMatch instanceof ICmpInst)
-            {
-                ICmpInst ic = (ICmpInst) valueToMatch;
-                return pred == ic.getPredicate() &&
-                        lhs.match(ic.operand(0)) &&
-                        rhs.match(ic.operand(1));
-            }
-            return false;
-        }
+  public static final class FCmpPattern extends CmpPattern {
+    private FCmpPattern(Predicate pred, Pattern lhs, Pattern rhs) {
+      super(pred, lhs, rhs);
     }
 
-    public static final class FCmpPattern extends CmpPattern
-    {
-        private FCmpPattern(Predicate pred, Pattern lhs, Pattern rhs)
-        {
-            super(pred, lhs, rhs);
-        }
+    @Override
+    public boolean match(Value valueToMatch) {
+      if (valueToMatch instanceof FCmpInst) {
+        FCmpInst ic = (FCmpInst) valueToMatch;
+        return pred == ic.getPredicate() &&
+            lhs.match(ic.operand(0)) &&
+            rhs.match(ic.operand(1));
+      }
+      return false;
+    }
+  }
 
-        @Override
-        public boolean match(Value valueToMatch)
-        {
-            if (valueToMatch instanceof FCmpInst)
-            {
-                FCmpInst ic = (FCmpInst) valueToMatch;
-                return pred == ic.getPredicate() &&
-                        lhs.match(ic.operand(0)) &&
-                        rhs.match(ic.operand(1));
-            }
-            return false;
-        }
-    }
+  public static Pattern mICmp(Predicate pred, Pattern lhs, Pattern rhs) {
+    return new ICmpPattern(pred, lhs, rhs);
+  }
 
-    public static Pattern mICmp(Predicate pred, Pattern lhs, Pattern rhs)
-    {
-        return new ICmpPattern(pred, lhs, rhs);
-    }
-    public static Pattern mFCmp(Predicate pred, Pattern lhs, Pattern rhs)
-    {
-        return new FCmpPattern(pred, lhs, rhs);
-    }
+  public static Pattern mFCmp(Predicate pred, Pattern lhs, Pattern rhs) {
+    return new FCmpPattern(pred, lhs, rhs);
+  }
 }

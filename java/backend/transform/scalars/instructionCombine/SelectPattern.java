@@ -20,34 +20,29 @@ package backend.transform.scalars.instructionCombine;
 import backend.value.Instruction;
 import backend.value.Value;
 
-public class SelectPattern implements Pattern
-{
-    private Pattern cond;
-    private Pattern lhs;
-    private Pattern rhs;
+public class SelectPattern implements Pattern {
+  private Pattern cond;
+  private Pattern lhs;
+  private Pattern rhs;
 
-    private SelectPattern(Pattern cond, Pattern lhs, Pattern rhs)
-    {
-        this.cond = cond;
-        this.lhs = lhs;
-        this.rhs = rhs;
-    }
+  private SelectPattern(Pattern cond, Pattern lhs, Pattern rhs) {
+    this.cond = cond;
+    this.lhs = lhs;
+    this.rhs = rhs;
+  }
 
-    @Override
-    public boolean match(Value valueToMatch)
-    {
-        if (valueToMatch instanceof Instruction)
-        {
-            Instruction inst = (Instruction) valueToMatch;
-            return cond.match(inst.operand(0)) &&
-                    lhs.match(inst.operand(1)) &&
-                    rhs.match(inst.operand(2));
-        }
-        return false;
+  @Override
+  public boolean match(Value valueToMatch) {
+    if (valueToMatch instanceof Instruction) {
+      Instruction inst = (Instruction) valueToMatch;
+      return cond.match(inst.operand(0)) &&
+          lhs.match(inst.operand(1)) &&
+          rhs.match(inst.operand(2));
     }
+    return false;
+  }
 
-    public static Pattern mSelect(Pattern cond, Pattern lhs, Pattern rhs)
-    {
-        return new SelectPattern(cond, lhs, rhs);
-    }
+  public static Pattern mSelect(Pattern cond, Pattern lhs, Pattern rhs) {
+    return new SelectPattern(cond, lhs, rhs);
+  }
 }

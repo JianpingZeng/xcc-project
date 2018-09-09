@@ -17,6 +17,7 @@ package backend.analysis;
  */
 
 import tools.Util;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -24,117 +25,100 @@ import java.util.Iterator;
 /**
  * This class for defining actual dominator tree node.
  */
-public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
-{
-    /**
-     * The corresponding basic block of this dominator tree node.
-     */
-    private T block;
+public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>> {
+  /**
+   * The corresponding basic block of this dominator tree node.
+   */
+  private T block;
 
-    /**
-     * Immediate dominator.
-     */
-    private DomTreeNodeBase<T> iDom;
-    /**
-     * All of child node.
-     */
-    private ArrayList<DomTreeNodeBase<T>> children;
+  /**
+   * Immediate dominator.
+   */
+  private DomTreeNodeBase<T> iDom;
+  /**
+   * All of child node.
+   */
+  private ArrayList<DomTreeNodeBase<T>> children;
 
-    public int DFSNumIn = -1;
-    public int DFSNumOut = -1;
+  public int DFSNumIn = -1;
+  public int DFSNumOut = -1;
 
-    public DomTreeNodeBase()
-    {
-        iDom = null;
-        children = new ArrayList<>();
+  public DomTreeNodeBase() {
+    iDom = null;
+    children = new ArrayList<>();
+  }
+
+  public DomTreeNodeBase(T bb, DomTreeNodeBase<T> iDom) {
+    this.block = bb;
+    this.iDom = iDom;
+    children = new ArrayList<>();
+  }
+
+  public T getBlock() {
+    return block;
+  }
+
+  public DomTreeNodeBase<T> getIDom() {
+    return iDom;
+  }
+
+  public void setIDom(DomTreeNodeBase<T> newIDom) {
+    //Util.assertion(iDom != null,  "No immediate dominator");
+    if (iDom == null) {
+      iDom = newIDom;
+      newIDom.children.add(this);
+    } else if (iDom != newIDom) {
+      Util.assertion(iDom.children.contains(this), "Not in immediate dominator chidren set");
+
+      // erase this, no longer idom's child
+      iDom.children.remove(this);
+      this.iDom = newIDom;
+      newIDom.children.add(this);
     }
+  }
 
-    public DomTreeNodeBase(T bb, DomTreeNodeBase<T> iDom)
-    {
-        this.block = bb;
-        this.iDom = iDom;
-        children = new ArrayList<>();
-    }
+  public ArrayList<DomTreeNodeBase<T>> getChildren() {
+    return children;
+  }
 
-    public T getBlock()
-    {
-        return block;
-    }
+  @Override
+  public Iterator<DomTreeNodeBase<T>> iterator() {
+    if (children == null)
+      return Collections.emptyIterator();
+    else
+      return children.iterator();
+  }
 
-    public DomTreeNodeBase<T> getIDom()
-    {
-        return iDom;
-    }
+  public DomTreeNodeBase<T> addChidren(DomTreeNodeBase<T> C) {
+    children.add(C);
+    return C;
+  }
 
-    public void setIDom(DomTreeNodeBase<T> newIDom)
-    {
-        //Util.assertion(iDom != null,  "No immediate dominator");
-        if (iDom == null)
-        {
-            iDom = newIDom;
-            newIDom.children.add(this);
-        }
-        else if (iDom != newIDom)
-        {
-            Util.assertion(iDom.children.contains(this),  "Not in immediate dominator chidren set");
+  public final int getNumbChidren() {
+    return children.size();
+  }
 
-            // erase this, no longer idom's child
-            iDom.children.remove(this);
-            this.iDom = newIDom;
-            newIDom.children.add(this);
-        }
-    }
+  public final void clearChidren() {
+    children.clear();
+  }
 
-    public ArrayList<DomTreeNodeBase<T>> getChildren()
-    {
-        return children;
-    }
+  /**
+   * ReturnInst true if this node is dominated by other.
+   * Use this only if DFS info is valid.
+   *
+   * @param other
+   * @return
+   */
+  public boolean dominatedBy(DomTreeNodeBase<T> other) {
+    return this.DFSNumIn >= other.DFSNumIn
+        && this.DFSNumOut <= other.DFSNumOut;
+  }
 
-    @Override
-    public Iterator<DomTreeNodeBase<T>> iterator()
-    {
-        if (children == null)
-            return Collections.emptyIterator();
-        else
-            return children.iterator();
-    }
+  public int getDFSNumIn() {
+    return DFSNumIn;
+  }
 
-    public DomTreeNodeBase<T> addChidren(DomTreeNodeBase<T> C)
-    {
-        children.add(C);
-        return C;
-    }
-
-    public final int getNumbChidren()
-    {
-        return children.size();
-    }
-
-    public final void clearChidren()
-    {
-        children.clear();
-    }
-
-    /**
-     * ReturnInst true if this node is dominated by other.
-     * Use this only if DFS info is valid.
-     *
-     * @param other
-     * @return
-     */
-    public boolean dominatedBy(DomTreeNodeBase<T> other)
-    {
-        return this.DFSNumIn >= other.DFSNumIn
-                && this.DFSNumOut <= other.DFSNumOut;
-    }
-
-    public int getDFSNumIn()
-    {
-        return DFSNumIn;
-    }
-
-    public int getDFSNumOut()
-    {
-        return DFSNumOut;
-    }
+  public int getDFSNumOut() {
+    return DFSNumOut;
+  }
 }

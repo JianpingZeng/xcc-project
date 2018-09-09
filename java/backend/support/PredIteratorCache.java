@@ -1,7 +1,7 @@
 package backend.support;
 
-import backend.value.BasicBlock;
 import backend.utils.PredIterator;
+import backend.value.BasicBlock;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import java.util.ArrayList;
@@ -16,41 +16,36 @@ import java.util.List;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PredIteratorCache
-{
-	private HashMap<BasicBlock, List<BasicBlock>> blockToPredsMap;
-	private TObjectIntHashMap<BasicBlock> blockToPredsNumMap;
+public final class PredIteratorCache {
+  private HashMap<BasicBlock, List<BasicBlock>> blockToPredsMap;
+  private TObjectIntHashMap<BasicBlock> blockToPredsNumMap;
 
-	/**
-	 * Gets the cached predecessors list for the given basic block {@code parent}.
-	 * @param bb
-	 * @return
-	 */
-	public List<BasicBlock> getPreds(BasicBlock bb)
-	{
-		List<BasicBlock> preds;
-		if (!blockToPredsMap.containsKey(bb))
-		{
-			preds = new ArrayList<>();
-			for (PredIterator<BasicBlock> itr = bb.predIterator(); itr.hasNext();)
-				preds.add(itr.next());
-			blockToPredsMap.put(bb, preds);
-		}
-		else
-			preds = blockToPredsMap.get(bb);
-		blockToPredsNumMap.put(bb, preds.size() - 1);
-		return preds;
-	}
+  /**
+   * Gets the cached predecessors list for the given basic block {@code parent}.
+   *
+   * @param bb
+   * @return
+   */
+  public List<BasicBlock> getPreds(BasicBlock bb) {
+    List<BasicBlock> preds;
+    if (!blockToPredsMap.containsKey(bb)) {
+      preds = new ArrayList<>();
+      for (PredIterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); )
+        preds.add(itr.next());
+      blockToPredsMap.put(bb, preds);
+    } else
+      preds = blockToPredsMap.get(bb);
+    blockToPredsNumMap.put(bb, preds.size() - 1);
+    return preds;
+  }
 
-	public int getNumPreds(BasicBlock bb)
-	{
-		getPreds(bb);
-		return blockToPredsNumMap.get(bb);
-	}
+  public int getNumPreds(BasicBlock bb) {
+    getPreds(bb);
+    return blockToPredsNumMap.get(bb);
+  }
 
-	public void clear()
-	{
-		blockToPredsNumMap.clear();
-		blockToPredsMap.clear();
-	}
+  public void clear() {
+    blockToPredsNumMap.clear();
+    blockToPredsMap.clear();
+  }
 }

@@ -22,100 +22,82 @@ import java.util.Iterator;
 
 import static xcc.Job.JobClass.*;
 
-public class Job
-{
-    enum JobClass
-    {
-        CommandClass,
-        PipedJobClass,
-        JobListClass
+public class Job {
+  enum JobClass {
+    CommandClass,
+    PipedJobClass,
+    JobListClass
+  }
+
+  private JobClass kind;
+
+  public Job(JobClass kind) {
+    this.kind = kind;
+  }
+
+  public static class Command extends Job {
+    private Action source;
+    private String executable;
+    private ArrayList<String> args;
+
+    public Command(Action source, String executable, ArrayList<String> args) {
+      super(CommandClass);
+      this.source = source;
+      this.executable = executable;
+      this.args = args;
     }
 
-    private JobClass kind;
-
-    public Job(JobClass kind)
-    {
-        this.kind = kind;
+    public String getExecutable() {
+      return executable;
     }
 
-    public static class Command extends Job
-    {
-        private Action source;
-        private String executable;
-        private ArrayList<String> args;
-
-        public Command(Action source, String executable, ArrayList<String> args)
-        {
-            super(CommandClass);
-            this.source = source;
-            this.executable = executable;
-            this.args = args;
-        }
-
-        public String getExecutable()
-        {
-            return executable;
-        }
-
-        public ArrayList<String> getArgs()
-        {
-            return args;
-        }
-
-        public Action getSource()
-        {
-            return source;
-        }
+    public ArrayList<String> getArgs() {
+      return args;
     }
 
-    public static class PipedJob extends Job
-    {
-        public PipedJob()
-        {
-            super(PipedJobClass);
-        }
+    public Action getSource() {
+      return source;
+    }
+  }
+
+  public static class PipedJob extends Job {
+    public PipedJob() {
+      super(PipedJobClass);
+    }
+  }
+
+  public static class JobList extends Job implements Iterable<Job> {
+    private ArrayList<Job> jobs;
+
+    public JobList() {
+      super(JobListClass);
+      jobs = new ArrayList<>();
     }
 
-    public static class JobList extends Job implements Iterable<Job>
-    {
-        private ArrayList<Job> jobs;
-
-        public JobList()
-        {
-            super(JobListClass);
-            jobs = new ArrayList<>();
-        }
-
-        public ArrayList<Job> getJobs()
-        {
-            return jobs;
-        }
-
-        public void addJob(Job job)
-        {
-            if (jobs.contains(job)) return;
-            jobs.add(job);
-        }
-
-        public int size()
-        {
-            return jobs.size();
-        }
-
-        public boolean contains(Job job)
-        {
-            return jobs.contains(job);
-        }
-
-        public void add(Job job)
-        {
-            jobs.add(job);
-        }
-
-        @Override
-        public Iterator<Job> iterator()
-        {
-            return jobs.iterator();
-        }
+    public ArrayList<Job> getJobs() {
+      return jobs;
     }
+
+    public void addJob(Job job) {
+      if (jobs.contains(job)) return;
+      jobs.add(job);
+    }
+
+    public int size() {
+      return jobs.size();
+    }
+
+    public boolean contains(Job job) {
+      return jobs.contains(job);
+    }
+
+    public void add(Job job) {
+      jobs.add(job);
+    }
+
+    @Override
+    public Iterator<Job> iterator() {
+      return jobs.iterator();
+    }
+  }
 }

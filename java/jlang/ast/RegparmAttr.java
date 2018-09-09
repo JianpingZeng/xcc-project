@@ -17,24 +17,20 @@
 
 package jlang.ast;
 
-public class RegparmAttr extends Attr
-{
-    private int numParams;
+public class RegparmAttr extends Attr {
+  private int numParams;
 
-    public RegparmAttr(int num)
-    {
-        super(AttrKind.Regparm);
-        numParams = num;
-    }
+  public RegparmAttr(int num) {
+    super(AttrKind.Regparm);
+    numParams = num;
+  }
 
-    public int getNumParams()
-    {
-        return numParams;
-    }
+  public int getNumParams() {
+    return numParams;
+  }
 
-    @Override
-    public Attr clone()
-    {
-        return new RegparmAttr(numParams);
-    }
+  @Override
+  public Attr clone() {
+    return new RegparmAttr(numParams);
+  }
 }

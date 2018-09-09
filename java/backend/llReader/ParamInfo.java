@@ -23,16 +23,14 @@ import tools.SourceMgr;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ParamInfo
-{
-    SourceMgr.SMLoc loc;
-    Value val;
-    int attrs;
+public final class ParamInfo {
+  SourceMgr.SMLoc loc;
+  Value val;
+  int attrs;
 
-    public ParamInfo(SourceMgr.SMLoc loc, Value v, int attrs)
-    {
-        this.loc = loc;
-        val = v;
-        this.attrs = attrs;
-    }
+  public ParamInfo(SourceMgr.SMLoc loc, Value v, int attrs) {
+    this.loc = loc;
+    val = v;
+    this.attrs = attrs;
+  }
 }

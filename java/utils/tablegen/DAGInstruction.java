@@ -17,95 +17,82 @@ package utils.tablegen;
  */
 
 import tools.Util;
+
 import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class DAGInstruction
-{
-    private TreePattern pattern;
-    private ArrayList<Record> results;
-    private ArrayList<Record> operands;
-    private ArrayList<Record> impResults;
-    private ArrayList<Record> impOperands;
-    private TreePatternNode resultPattern;
+public final class DAGInstruction {
+  private TreePattern pattern;
+  private ArrayList<Record> results;
+  private ArrayList<Record> operands;
+  private ArrayList<Record> impResults;
+  private ArrayList<Record> impOperands;
+  private TreePatternNode resultPattern;
 
-    public DAGInstruction(TreePattern tp,
-            ArrayList<Record> results,
-            ArrayList<Record> operands,
-            ArrayList<Record> impResults,
-            ArrayList<Record> impOperands)
-    {
-        pattern = tp;
-        this.results = results;
-        this.operands = operands;
-        this.impResults = impResults;
-        this.impOperands = impOperands;
-    }
+  public DAGInstruction(TreePattern tp,
+                        ArrayList<Record> results,
+                        ArrayList<Record> operands,
+                        ArrayList<Record> impResults,
+                        ArrayList<Record> impOperands) {
+    pattern = tp;
+    this.results = results;
+    this.operands = operands;
+    this.impResults = impResults;
+    this.impOperands = impOperands;
+  }
 
-    public TreePattern getPattern()
-    {
-        return pattern;
-    }
+  public TreePattern getPattern() {
+    return pattern;
+  }
 
-    public int getNumResults()
-    {
-        return results.size();
-    }
+  public int getNumResults() {
+    return results.size();
+  }
 
-    public int getNumOperands()
-    {
-        return operands.size();
-    }
+  public int getNumOperands() {
+    return operands.size();
+  }
 
-    public int getNumImpResults()
-    {
-        return impResults.size();
-    }
+  public int getNumImpResults() {
+    return impResults.size();
+  }
 
-    public int getNumImpOperands()
-    {
-        return impOperands.size();
-    }
+  public int getNumImpOperands() {
+    return impOperands.size();
+  }
 
-    public ArrayList<Record> getImpResults()
-    {
-        return impResults;
-    }
+  public ArrayList<Record> getImpResults() {
+    return impResults;
+  }
 
-    public void setResultPattern(TreePatternNode resultPattern)
-    {
-        this.resultPattern = resultPattern;
-    }
+  public void setResultPattern(TreePatternNode resultPattern) {
+    this.resultPattern = resultPattern;
+  }
 
-    public TreePatternNode getResultPattern()
-    {
-        return resultPattern;
-    }
+  public TreePatternNode getResultPattern() {
+    return resultPattern;
+  }
 
-    public Record getResult(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < results.size());
-        return results.get(idx);
-    }
+  public Record getResult(int idx) {
+    Util.assertion(idx >= 0 && idx < results.size());
+    return results.get(idx);
+  }
 
-    public Record getOperand(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < operands.size());
-        return operands.get(idx);
-    }
+  public Record getOperand(int idx) {
+    Util.assertion(idx >= 0 && idx < operands.size());
+    return operands.get(idx);
+  }
 
-    public Record getImpResult(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < impResults.size());
-        return impResults.get(idx);
-    }
+  public Record getImpResult(int idx) {
+    Util.assertion(idx >= 0 && idx < impResults.size());
+    return impResults.get(idx);
+  }
 
-    public Record getImpOperand(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < impOperands.size());
-        return impOperands.get(idx);
-    }
+  public Record getImpOperand(int idx) {
+    Util.assertion(idx >= 0 && idx < impOperands.size());
+    return impOperands.get(idx);
+  }
 }

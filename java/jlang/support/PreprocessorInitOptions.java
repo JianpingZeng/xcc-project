@@ -24,23 +24,19 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PreprocessorInitOptions
-{
-    private ArrayList<Pair<String, Boolean>/*isUndef*/> macros
-            = new ArrayList<>();
+public final class PreprocessorInitOptions {
+  private ArrayList<Pair<String, Boolean>/*isUndef*/> macros
+      = new ArrayList<>();
 
-    public void addMacroDef(String name)
-    {
-        macros.add(Pair.get(name, false));
-    }
+  public void addMacroDef(String name) {
+    macros.add(Pair.get(name, false));
+  }
 
-    public void addMacroUndef(String name)
-    {
-        macros.add(Pair.get(name, true));
-    }
+  public void addMacroUndef(String name) {
+    macros.add(Pair.get(name, true));
+  }
 
-    public ArrayList<Pair<String, Boolean>> getMacros()
-    {
-        return macros;
-    }
+  public ArrayList<Pair<String, Boolean>> getMacros() {
+    return macros;
+  }
 }

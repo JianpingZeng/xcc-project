@@ -25,40 +25,35 @@ import backend.value.Value;
 
 /**
  * An instruction to allocated memory on the heap.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MallocInst extends AllocationInst
-{
-    public MallocInst(Type ty)
-    {
-        this(ty, null);
-    }
-    public MallocInst(Type ty, Value arraySize)
-    {
-        this(ty, arraySize, "");
-    }
+public class MallocInst extends AllocationInst {
+  public MallocInst(Type ty) {
+    this(ty, null);
+  }
 
-    public MallocInst(Type ty, Value arraySize, String name)
-    {
-        this(ty, arraySize, name, 0, null);
-    }
+  public MallocInst(Type ty, Value arraySize) {
+    this(ty, arraySize, "");
+  }
 
-    public MallocInst(Type ty, Value arraySize, String name, Instruction insertBefore)
-    {
-        this(ty, arraySize, name, 0, insertBefore);
-    }
+  public MallocInst(Type ty, Value arraySize, String name) {
+    this(ty, arraySize, name, 0, null);
+  }
+
+  public MallocInst(Type ty, Value arraySize, String name, Instruction insertBefore) {
+    this(ty, arraySize, name, 0, insertBefore);
+  }
 
 
-    public MallocInst(Type ty, Value arraySize,
-            String name, int align, Instruction insertBefore)
-    {
-        super(ty, Operator.Malloc, arraySize, align, name, insertBefore);
-    }
+  public MallocInst(Type ty, Value arraySize,
+                    String name, int align, Instruction insertBefore) {
+    super(ty, Operator.Malloc, arraySize, align, name, insertBefore);
+  }
 
-    public MallocInst(Type ty, Value arraySize, int align,
-            String name, BasicBlock insertAtEnd)
-    {
-        super(ty, Operator.Malloc, arraySize, align, name, insertAtEnd);
-    }
+  public MallocInst(Type ty, Value arraySize, int align,
+                    String name, BasicBlock insertAtEnd) {
+    super(ty, Operator.Malloc, arraySize, align, name, insertAtEnd);
+  }
 }

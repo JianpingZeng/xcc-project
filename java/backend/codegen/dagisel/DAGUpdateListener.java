@@ -17,9 +17,8 @@
 
 package backend.codegen.dagisel;
 
-public interface DAGUpdateListener
-{
-    void nodeDeleted(SDNode node, SDNode e);
+public interface DAGUpdateListener {
+  void nodeDeleted(SDNode node, SDNode e);
 
-    void nodeUpdated(SDNode node);
+  void nodeUpdated(SDNode node);
 }

@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class ConstAttr extends Attr
-{
-    public ConstAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class ConstAttr extends Attr {
+  public ConstAttr(AttrKind kind) {
+    super(kind);
+  }
 }

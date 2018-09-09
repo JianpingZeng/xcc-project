@@ -19,54 +19,46 @@ package backend.codegen;
 
 /**
  * Track the registration of register allocations.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class RegisterRegAlloc extends MachinePassRegistryNode<MachinePassCtor>
-{
-    public static final MachinePassRegistry<MachinePassCtor> registry =
-            new MachinePassRegistry<>();
+public class RegisterRegAlloc extends MachinePassRegistryNode<MachinePassCtor> {
+  public static final MachinePassRegistry<MachinePassCtor> registry =
+      new MachinePassRegistry<>();
 
-    public RegisterRegAlloc(String name, String desc, MachinePassCtor ctor)
-    {
-        super(name, desc, ctor);
-        registry.add(this);
-    }
+  public RegisterRegAlloc(String name, String desc, MachinePassCtor ctor) {
+    super(name, desc, ctor);
+    registry.add(this);
+  }
 
-    public void clear()
-    {
-        registry.remove(this);
-    }
+  public void clear() {
+    registry.remove(this);
+  }
 
-    @Override
-    public RegisterRegAlloc getNext()
-    {
-        return (RegisterRegAlloc) super.getNext();
-    }
+  @Override
+  public RegisterRegAlloc getNext() {
+    return (RegisterRegAlloc) super.getNext();
+  }
 
-    public static RegisterRegAlloc getList()
-    {
-        return (RegisterRegAlloc) registry.getList();
-    }
+  public static RegisterRegAlloc getList() {
+    return (RegisterRegAlloc) registry.getList();
+  }
 
-    public static MachinePassCtor getDefault()
-    {
-        return registry.getDefault();
-    }
+  public static MachinePassCtor getDefault() {
+    return registry.getDefault();
+  }
 
-    public static void setDefault(MachinePassCtor ctor)
-    {
-        registry.setDefaultCtor(ctor);
-    }
+  public static void setDefault(MachinePassCtor ctor) {
+    registry.setDefaultCtor(ctor);
+  }
 
-    public static void setListener(MachinePassRegistryListener listener)
-    {
-        registry.setListener(listener);
-    }
+  public static void setListener(MachinePassRegistryListener listener) {
+    registry.setListener(listener);
+  }
 
-    @Override
-    public MachinePassCtor getCtor()
-    {
-        return super.getCtor();
-    }
+  @Override
+  public MachinePassCtor getCtor() {
+    return super.getCtor();
+  }
 }

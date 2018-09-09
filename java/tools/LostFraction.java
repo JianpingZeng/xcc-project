@@ -16,32 +16,33 @@
  */
 
 package tools;
+
 /**
  * When bits of a floating point number are truncated, this enum is
  * used to indicate what fraction of the LSB those bits represented.
  * It essentially combines the roles of guard and sticky bits.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum LostFraction
-{
-    /**
-     * 000000
-     */
-    lfExactlyZero,
+public enum LostFraction {
+  /**
+   * 000000
+   */
+  lfExactlyZero,
 
-    /**
-     * 0xxxxx  x's not all zero.
-     */
-    lfLessThanHalf,
+  /**
+   * 0xxxxx  x's not all zero.
+   */
+  lfLessThanHalf,
 
-    /**
-     * 100000
-     */
-    lfExactlyHalf,
+  /**
+   * 100000
+   */
+  lfExactlyHalf,
 
-    /**
-     * 1xxxxx  x's not all zero
-     */
-    lfMoreThanHalf,
+  /**
+   * 1xxxxx  x's not all zero
+   */
+  lfMoreThanHalf,
 }

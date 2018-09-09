@@ -21,9 +21,8 @@ package backend.transform.utils;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public final class ClonedCodeInfo
-{
-    public boolean containsCalls;
-    public boolean containsUnwinds;
-    public boolean containsDynamicAllocas;
+public final class ClonedCodeInfo {
+  public boolean containsCalls;
+  public boolean containsUnwinds;
+  public boolean containsDynamicAllocas;
 }

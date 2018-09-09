@@ -27,60 +27,56 @@ import java.util.Stack;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FunctionScopeInfo
-{
-    /**
-     * Whether this scope information structure defined information for a block.
-     */
-    public boolean isBlockInfo;
-    /**
-     * Whether this scope contains any switch or direct goto statement.
-     */
-    public boolean hasBranchIntoScope;
+public class FunctionScopeInfo {
+  /**
+   * Whether this scope information structure defined information for a block.
+   */
+  public boolean isBlockInfo;
+  /**
+   * Whether this scope contains any switch or direct goto statement.
+   */
+  public boolean hasBranchIntoScope;
 
-    /**
-     * Whether this scope contains any indirect goto statement.
-     */
-    public boolean hasIndirectGogo;
-    /**
-     * This is the current set of active switch statements in the
-     * block.
-     */
-    public Stack<SwitchStmt> switchStack;
-    /**
-     * The list of return statements that occur within the function or
-     * block, if there is any chance of applying the named return value
-     * optimization.
-     */
-    public Stack<Tree.ReturnStmt> returnLists;
+  /**
+   * Whether this scope contains any indirect goto statement.
+   */
+  public boolean hasIndirectGogo;
+  /**
+   * This is the current set of active switch statements in the
+   * block.
+   */
+  public Stack<SwitchStmt> switchStack;
+  /**
+   * The list of return statements that occur within the function or
+   * block, if there is any chance of applying the named return value
+   * optimization.
+   */
+  public Stack<Tree.ReturnStmt> returnLists;
 
-    public void setHasBranchIntoScope()
-    {
-        hasBranchIntoScope = true;
-    }
+  public void setHasBranchIntoScope() {
+    hasBranchIntoScope = true;
+  }
 
-    public void setHasIndirectGoto()
-    {
-        hasIndirectGogo = true;
-    }
+  public void setHasIndirectGoto() {
+    hasIndirectGogo = true;
+  }
 
-    public boolean NeedsScopeChecking()
-    {
-        return hasIndirectGogo || hasBranchIntoScope;
-    }
-    public FunctionScopeInfo()
-    {
-        switchStack = new Stack<>();
-        returnLists = new Stack<>();
-    }
-    /**
-     * Clears all of information contained in current parsed scope.
-     */
-    public void clear()
-    {
-        hasBranchIntoScope = false;
-        hasIndirectGogo = false;
-        switchStack.clear();
-        returnLists.clear();
-    }
+  public boolean NeedsScopeChecking() {
+    return hasIndirectGogo || hasBranchIntoScope;
+  }
+
+  public FunctionScopeInfo() {
+    switchStack = new Stack<>();
+    returnLists = new Stack<>();
+  }
+
+  /**
+   * Clears all of information contained in current parsed scope.
+   */
+  public void clear() {
+    hasBranchIntoScope = false;
+    hasIndirectGogo = false;
+    switchStack.clear();
+    returnLists.clear();
+  }
 }

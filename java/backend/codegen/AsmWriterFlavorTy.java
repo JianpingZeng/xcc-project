@@ -21,7 +21,6 @@ package backend.codegen;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum AsmWriterFlavorTy
-{
-    ATT, Intel
+public enum AsmWriterFlavorTy {
+  ATT, Intel
 }

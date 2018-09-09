@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class UnavaliableAttr extends Attr
-{
-    public UnavaliableAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class UnavaliableAttr extends Attr {
+  public UnavaliableAttr(AttrKind kind) {
+    super(kind);
+  }
 }

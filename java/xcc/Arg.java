@@ -18,352 +18,294 @@
 package xcc;
 
 import tools.Util;
+
 import java.util.ArrayList;
 
 import static xcc.Arg.ArgClass.*;
 
-public abstract class Arg
-{
-    enum ArgClass
-    {
-        FlagClass,
-        PositionalClass,
-        JoinedClass,
-        SeparateClass,
-        CommaJoinedClass,
-        JoinedAndSeparateClass
+public abstract class Arg {
+  enum ArgClass {
+    FlagClass,
+    PositionalClass,
+    JoinedClass,
+    SeparateClass,
+    CommaJoinedClass,
+    JoinedAndSeparateClass
+  }
+
+  private boolean claim;
+
+  /**
+   * The index to InputArgList.
+   */
+  private int index;
+
+  private ArgClass kind;
+  private Option option;
+
+  private Arg baseArg;
+
+  public Arg(ArgClass kind, Option opt, int index, Arg baseArg) {
+    this.kind = kind;
+    option = opt;
+    this.index = index;
+    this.baseArg = baseArg;
+  }
+
+  public Arg(ArgClass kind, Option opt, int index) {
+    this(kind, opt, index, null);
+  }
+
+  public ArgClass getKind() {
+    return kind;
+  }
+
+  public void claim() {
+    getBaseArg().claim = true;
+  }
+
+  public boolean isClaimed() {
+    return claim;
+  }
+
+  public boolean match(int id) {
+    return getOption().getID() == id;
+  }
+
+  public int getIndex() {
+    return index;
+  }
+
+  public Option getOption() {
+    return option;
+  }
+
+  public Arg getBaseArg() {
+    return baseArg != null ? baseArg : this;
+  }
+
+  public void setBaseArg(Arg baseArg) {
+    this.baseArg = baseArg;
+  }
+
+  public abstract int getNumValues();
+
+  public abstract String getValue(ArgList list, int index);
+
+
+  public String getAsString(ArgList args) {
+    StringBuilder sb = new StringBuilder();
+    ArrayList<String> outputs = new ArrayList<>();
+    render(args, outputs);
+    for (int i = 0, e = outputs.size(); i < e; i++) {
+      if (i != 0)
+        sb.append(" ");
+      sb.append(outputs.get(i));
+    }
+    return sb.toString();
+  }
+
+  public void renderAsInput(ArgList args, ArrayList<String> outputs) {
+    if (!getOption().isNoOptAsInput()) {
+      render(args, outputs);
     }
 
-    private boolean claim;
+    for (int i = 0, e = getNumValues(); i < e; i++)
+      outputs.add(getValue(args, i));
+  }
 
-    /**
-     * The index to InputArgList.
-     */
-    private int index;
+  public abstract void render(ArgList args, ArrayList<String> outputs);
 
-    private ArgClass kind;
-    private Option option;
 
-    private Arg baseArg;
-
-    public Arg(ArgClass kind, Option opt, int index, Arg baseArg)
-    {
-        this.kind = kind;
-        option = opt;
-        this.index = index;
-        this.baseArg = baseArg;
+  public static class FlagArg extends Arg {
+    public FlagArg(Option opt, int index) {
+      this(opt, index, null);
     }
 
-    public Arg(ArgClass kind, Option opt, int index)
-    {
-        this(kind, opt, index, null);
+    public FlagArg(Option opt, int index, Arg baseArg) {
+      super(FlagClass, opt, index, baseArg);
     }
 
-    public ArgClass getKind()
-    {
-        return kind;
+    @Override
+    public int getNumValues() {
+      return 0;
     }
 
-    public void claim()
-    {
-        getBaseArg().claim = true;
+    @Override
+    public String getValue(ArgList list, int index) {
+      Util.assertion(false, "Invalid index!");
+      return null;
     }
 
-    public boolean isClaimed()
-    {
-        return claim;
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      outputs.add(args.getArgString(getIndex()));
+    }
+  }
+
+  public static class PositionalArg extends Arg {
+    public PositionalArg(Option opt, int index) {
+      this(opt, index, null);
     }
 
-    public boolean match(int id)
-    {
-        return getOption().getID() == id;
+    public PositionalArg(Option opt, int index, Arg baseArg) {
+      super(PositionalClass, opt, index, baseArg);
     }
 
-    public int getIndex()
-    {
-        return index;
+    @Override
+    public int getNumValues() {
+      return 0;
     }
 
-    public Option getOption()
-    {
-        return option;
+    @Override
+    public String getValue(ArgList list, int index) {
+      return list.getArgString(getIndex());
     }
 
-    public Arg getBaseArg()
-    {
-        return baseArg != null ? baseArg : this;
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      outputs.add(args.getArgString(getIndex()));
+    }
+  }
+
+  public static class JoinedArg extends Arg {
+    public JoinedArg(Option opt, int index) {
+      this(opt, index, null);
     }
 
-    public void setBaseArg(Arg baseArg)
-    {
-        this.baseArg = baseArg;
+    public JoinedArg(Option opt, int index, Arg baseArg) {
+      super(JoinedClass, opt, index, baseArg);
     }
 
-    public abstract int getNumValues();
-
-    public abstract String getValue(ArgList list, int index);
-
-
-    public String getAsString(ArgList args)
-    {
-        StringBuilder sb = new StringBuilder();
-        ArrayList<String> outputs = new ArrayList<>();
-        render(args, outputs);
-        for (int i = 0, e = outputs.size(); i < e; i++)
-        {
-            if (i != 0)
-                sb.append(" ");
-            sb.append(outputs.get(i));
-        }
-        return sb.toString();
+    @Override
+    public int getNumValues() {
+      return 1;
     }
 
-    public void renderAsInput(ArgList args, ArrayList<String> outputs)
-    {
-        if (!getOption().isNoOptAsInput())
-        {
-            render(args, outputs);
-        }
+    @Override
+    public String getValue(ArgList list, int index) {
+      Util.assertion(index < getNumValues());
+      return list.getArgString(getIndex()).substring(getOption().getName().length());
+    }
 
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      if (getOption().isForceSeparateRender()) {
+        outputs.add(getOption().getName());
+        outputs.add(getValue(args, 0));
+      } else {
+        outputs.add(args.getArgString(getIndex()));
+      }
+    }
+  }
+
+  public static class SeparateArg extends Arg {
+    private int numValues;
+
+    public SeparateArg(Option opt, int index, int numValues) {
+      this(opt, index, numValues, null);
+    }
+
+    public SeparateArg(Option opt, int index, int numValues, Arg baseArg) {
+      super(SeparateClass, opt, index, baseArg);
+      this.numValues = numValues;
+      Util.assertion(numValues > 0);
+    }
+
+    @Override
+    public int getNumValues() {
+      return numValues;
+    }
+
+    @Override
+    public String getValue(ArgList list, int index) {
+      Util.assertion(index < getNumValues());
+      return list.getArgString(getIndex() + index + 1);
+    }
+
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      if (getOption().isForceJoinRender()) {
+        Util.assertion(getNumValues() == 1);
+        String joind = getOption().getName();
+        joind += args.getArgString(getIndex());
+        outputs.add(joind);
+      } else {
+        outputs.add(args.getArgString(getIndex()));
         for (int i = 0, e = getNumValues(); i < e; i++)
-            outputs.add(getValue(args, i));
+          outputs.add(args.getArgString(getIndex() + i + 1));
+      }
+    }
+  }
+
+  public static class CommaJoinedArg extends Arg {
+    private ArrayList<String> values;
+
+    public CommaJoinedArg(Option opt, int index, String val) {
+      this(opt, index, val, null);
     }
 
-    public abstract void render(ArgList args, ArrayList<String> outputs);
-
-
-    public static class FlagArg extends Arg
-    {
-        public FlagArg(Option opt, int index)
-        {
-            this(opt, index, null);
+    public CommaJoinedArg(Option opt, int index, String val, Arg baseArg) {
+      super(CommaJoinedClass, opt, index, baseArg);
+      values = new ArrayList<>();
+      int i = 0;
+      int prev = i;
+      int len = val.length();
+      while (true) {
+        if (i >= len)
+          break;
+        if (val.charAt(i) == ',') {
+          values.add(val.substring(prev, i));
+          prev = i + 1;
         }
-
-        public FlagArg(Option opt, int index, Arg baseArg)
-        {
-            super(FlagClass, opt, index, baseArg);
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return 0;
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            Util.assertion(false, "Invalid index!");
-            return null;
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            outputs.add(args.getArgString(getIndex()));
-        }
+        ++i;
+      }
     }
 
-    public static class PositionalArg extends Arg
-    {
-        public PositionalArg(Option opt, int index)
-        {
-            this(opt, index, null);
-        }
-
-        public PositionalArg(Option opt, int index, Arg baseArg)
-        {
-            super(PositionalClass, opt, index, baseArg);
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return 0;
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            return list.getArgString(getIndex());
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            outputs.add(args.getArgString(getIndex()));
-        }
+    @Override
+    public int getNumValues() {
+      return values.size();
     }
 
-    public static class JoinedArg extends Arg
-    {
-        public JoinedArg(Option opt, int index)
-        {
-            this(opt, index, null);
-        }
-
-        public JoinedArg(Option opt, int index, Arg baseArg)
-        {
-            super(JoinedClass, opt, index, baseArg);
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return 1;
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            Util.assertion( index < getNumValues());
-            return list.getArgString(getIndex()).substring(getOption().getName().length());
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            if (getOption().isForceSeparateRender())
-            {
-                outputs.add(getOption().getName());
-                outputs.add(getValue(args, 0));
-            }
-            else
-            {
-                outputs.add(args.getArgString(getIndex()));
-            }
-        }
+    @Override
+    public String getValue(ArgList list, int index) {
+      Util.assertion(index < getNumValues());
+      return values.get(index);
     }
 
-    public static class SeparateArg extends Arg
-    {
-        private int numValues;
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      outputs.add(args.getArgString(getIndex()));
+    }
+  }
 
-        public SeparateArg(Option opt, int index, int numValues)
-        {
-            this(opt, index, numValues, null);
-        }
-
-        public SeparateArg(Option opt, int index, int numValues, Arg baseArg)
-        {
-            super(SeparateClass, opt, index, baseArg);
-            this.numValues = numValues;
-            Util.assertion( numValues > 0);
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return numValues;
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            Util.assertion( index < getNumValues());
-            return list.getArgString(getIndex()+index+1);
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            if (getOption().isForceJoinRender())
-            {
-                Util.assertion( getNumValues() == 1);
-                String joind = getOption().getName();
-                joind += args.getArgString(getIndex());
-                outputs.add(joind);
-            }
-            else
-            {
-                outputs.add(args.getArgString(getIndex()));
-                for (int i = 0, e = getNumValues(); i < e; i++)
-                    outputs.add(args.getArgString(getIndex() + i + 1));
-            }
-        }
+  public static class JoinedAndSeparateArg extends Arg {
+    public JoinedAndSeparateArg(Option opt, int index) {
+      this(opt, index, null);
     }
 
-    public static class CommaJoinedArg extends Arg
-    {
-        private ArrayList<String> values;
-        public CommaJoinedArg(Option opt, int index, String val)
-        {
-            this(opt, index, val, null);
-        }
-
-        public CommaJoinedArg(Option opt, int index, String val, Arg baseArg)
-        {
-            super(CommaJoinedClass, opt, index, baseArg);
-            values = new ArrayList<>();
-            int i = 0;
-            int prev = i;
-            int len = val.length();
-            while (true)
-            {
-                if (i >= len)
-                    break;
-                if (val.charAt(i) == ',')
-                {
-                    values.add(val.substring(prev, i));
-                    prev = i+1;
-                }
-                ++i;
-            }
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return values.size();
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            Util.assertion( index < getNumValues());
-            return values.get(index);
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            outputs.add(args.getArgString(getIndex()));
-        }
+    public JoinedAndSeparateArg(Option opt, int index, Arg baseArg) {
+      super(JoinedAndSeparateClass, opt, index, baseArg);
     }
 
-    public static class JoinedAndSeparateArg extends Arg
-    {
-        public JoinedAndSeparateArg(Option opt, int index)
-        {
-            this(opt, index, null);
-        }
-
-        public JoinedAndSeparateArg(Option opt, int index, Arg baseArg)
-        {
-            super(JoinedAndSeparateClass, opt, index, baseArg);
-        }
-
-        @Override
-        public int getNumValues()
-        {
-            return 2;
-        }
-
-        @Override
-        public String getValue(ArgList list, int index)
-        {
-            Util.assertion( index < getNumValues());
-            if (index == 0)
-                return list.getArgString(index).substring(getOption().getName().length());
-
-            return list.getArgString(getIndex()+1);
-        }
-
-        @Override
-        public void render(ArgList args, ArrayList<String> outputs)
-        {
-            outputs.add(args.getArgString(getIndex()));
-            outputs.add(args.getArgString(getIndex() + 1));
-        }
+    @Override
+    public int getNumValues() {
+      return 2;
     }
+
+    @Override
+    public String getValue(ArgList list, int index) {
+      Util.assertion(index < getNumValues());
+      if (index == 0)
+        return list.getArgString(index).substring(getOption().getName().length());
+
+      return list.getArgString(getIndex() + 1);
+    }
+
+    @Override
+    public void render(ArgList args, ArrayList<String> outputs) {
+      outputs.add(args.getArgString(getIndex()));
+      outputs.add(args.getArgString(getIndex() + 1));
+    }
+  }
 }

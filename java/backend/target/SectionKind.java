@@ -20,29 +20,26 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum SectionKind
-{
-    Unknown,      ///< Custom section
-    Text,             ///< Text section
-    Data,             ///< Data section
-    BSS,              ///< BSS section
-    ROData,           ///< Readonly data section
-    RODataMergeStr,   ///< Readonly data section (mergeable strings)
-    RODataMergeConst, ///< Readonly data section (mergeable constants)
-    SmallData,        ///< Small data section
-    SmallBSS,         ///< Small bss section
-    SmallROData,      ///< Small readonly section
-    ThreadData,       ///< Initialized TLS data objects
-    ThreadBSS;        ///< Uninitialized TLS data objects
+public enum SectionKind {
+  Unknown,      ///< Custom section
+  Text,             ///< Text section
+  Data,             ///< Data section
+  BSS,              ///< BSS section
+  ROData,           ///< Readonly data section
+  RODataMergeStr,   ///< Readonly data section (mergeable strings)
+  RODataMergeConst, ///< Readonly data section (mergeable constants)
+  SmallData,        ///< Small data section
+  SmallBSS,         ///< Small bss section
+  SmallROData,      ///< Small readonly section
+  ThreadData,       ///< Initialized TLS data objects
+  ThreadBSS;        ///< Uninitialized TLS data objects
 
-    public static boolean isReadOnly(SectionKind k)
-    {
-        return k == ROData || k == RODataMergeConst ||
-                k == RODataMergeStr || k == SmallROData;
-    }
+  public static boolean isReadOnly(SectionKind k) {
+    return k == ROData || k == RODataMergeConst ||
+        k == RODataMergeStr || k == SmallROData;
+  }
 
-    public static boolean isBSS(SectionKind k)
-    {
-        return k == BSS || k == SmallBSS;
-    }
+  public static boolean isBSS(SectionKind k) {
+    return k == BSS || k == SmallBSS;
+  }
 }

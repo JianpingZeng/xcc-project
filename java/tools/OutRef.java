@@ -23,36 +23,33 @@ package tools;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class OutRef<T>
-{
-    private Object[] ptr;
+public final class OutRef<T> {
+  private Object[] ptr;
 
-    public OutRef()
-    {
-        ptr = new Object[1];
-    }
+  public OutRef() {
+    ptr = new Object[1];
+  }
 
-    public OutRef(T data)
-    {
-        ptr = new Object[1];
-        ptr[0] = data;
-    }
+  public OutRef(T data) {
+    ptr = new Object[1];
+    ptr[0] = data;
+  }
 
-    /**
-     * Obtains the actual data which this wrapper contains.
-     * @return
-     */
-    public T get()
-    {
-        return (T)ptr[0];
-    }
+  /**
+   * Obtains the actual data which this wrapper contains.
+   *
+   * @return
+   */
+  public T get() {
+    return (T) ptr[0];
+  }
 
-    /**
-     * Sets the inner data which this wrapper contains.
-     * @param data
-     */
-    public void set(T data)
-    {
-        ptr[0] = data;
-    }
+  /**
+   * Sets the inner data which this wrapper contains.
+   *
+   * @param data
+   */
+  public void set(T data) {
+    ptr[0] = data;
+  }
 }

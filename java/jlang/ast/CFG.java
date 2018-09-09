@@ -21,6 +21,5 @@ package jlang.ast;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CFG
-{
+public class CFG {
 }

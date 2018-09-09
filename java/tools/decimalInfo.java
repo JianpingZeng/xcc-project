@@ -16,15 +16,15 @@
  */
 
 package tools;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class decimalInfo
-{
-    String digits;
-    int firstSigDigit;
-    int lastSigDigit;
-    int exponent;
-    int normalizedExponent;
+public class decimalInfo {
+  String digits;
+  int firstSigDigit;
+  int lastSigDigit;
+  int exponent;
+  int normalizedExponent;
 }

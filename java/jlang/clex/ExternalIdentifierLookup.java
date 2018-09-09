@@ -17,18 +17,19 @@ package jlang.clex;
  */
 
 /**
- *  An abstract class used to resolve numerical identifier
+ * An abstract class used to resolve numerical identifier
  * references (meaningful only to some external source) into IdentifierInfo.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface ExternalIdentifierLookup
-{
-    /**
-     * Return the identifier associated with the given ID number.
-     * The ID 0 is associated with the NULL identifier.
-     * @param id
-     * @return
-     */
-    IdentifierInfo getIdentifier(int id);
+public interface ExternalIdentifierLookup {
+  /**
+   * Return the identifier associated with the given ID number.
+   * The ID 0 is associated with the NULL identifier.
+   *
+   * @param id
+   * @return
+   */
+  IdentifierInfo getIdentifier(int id);
 }

@@ -16,31 +16,32 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import jlang.ast.Tree;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LValue
-{
-    Tree.Expr base;
-    long offset;
+public class LValue {
+  Tree.Expr base;
+  long offset;
 
-    public final Tree.Expr getLValueBase() { return base;}
+  public final Tree.Expr getLValueBase() {
+    return base;
+  }
 
-    public long getLValueOffset() { return  offset; }
+  public long getLValueOffset() {
+    return offset;
+  }
 
-    public APValue moveInto()
-    {
-        return new APValue(base, offset);
-    }
+  public APValue moveInto() {
+    return new APValue(base, offset);
+  }
 
-    public void setFrom(final APValue v)
-    {
-        Util.assertion( v.isLValue());
-        base = v.getLValueBase();
-        offset= v.getLValueOffset();
-    }
+  public void setFrom(final APValue v) {
+    Util.assertion(v.isLValue());
+    base = v.getLValueBase();
+    offset = v.getLValueOffset();
+  }
 }

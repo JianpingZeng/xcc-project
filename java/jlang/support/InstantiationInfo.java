@@ -20,61 +20,56 @@ package jlang.support;
  * Each InstantiationInfo encodes the Instantiation
  * location - where the token was ultimately instantiated, and the
  * SpellingLoc - where the actual character data for the token came from.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class InstantiationInfo
-{
-    /**
-     * The position of source file Where the spelling for the token can be found.
-     */
-    private int literalLoc;
+public class InstantiationInfo {
+  /**
+   * The position of source file Where the spelling for the token can be found.
+   */
+  private int literalLoc;
 
-    /**
-     * In a macro expansion, these indicate the start and end of the
-     * instantiation.  In object-like macros, these will be the same.
-     * In a function-like macro instantiation, the start will be the
-     * identifier and the end will be the ')'.
-     */
-    private int instantiationLocStart, instantiationLocEnd;
+  /**
+   * In a macro expansion, these indicate the start and end of the
+   * instantiation.  In object-like macros, these will be the same.
+   * In a function-like macro instantiation, the start will be the
+   * identifier and the end will be the ')'.
+   */
+  private int instantiationLocStart, instantiationLocEnd;
 
-    public SourceLocation getLiteralLoc()
-    {
-        return SourceLocation.getFromRawEncoding(literalLoc);
-    }
+  public SourceLocation getLiteralLoc() {
+    return SourceLocation.getFromRawEncoding(literalLoc);
+  }
 
-    public SourceLocation getInstantiationLocStart()
-    {
-        return SourceLocation.getFromRawEncoding(instantiationLocStart);
-    }
+  public SourceLocation getInstantiationLocStart() {
+    return SourceLocation.getFromRawEncoding(instantiationLocStart);
+  }
 
-    public SourceLocation getInstantiationLocEnd()
-    {
-        return SourceLocation.getFromRawEncoding(instantiationLocEnd);
-    }
+  public SourceLocation getInstantiationLocEnd() {
+    return SourceLocation.getFromRawEncoding(instantiationLocEnd);
+  }
 
-    public SourceRange getInstantiationLocRange()
-    {
-        return new SourceRange(getInstantiationLocStart(),
-                getInstantiationLocEnd());
-    }
+  public SourceRange getInstantiationLocRange() {
+    return new SourceRange(getInstantiationLocStart(),
+        getInstantiationLocEnd());
+  }
 
-    /**
-     * Return a InstantiationInfo for an expansion.
-     *
-     * @param start
-     * @param end
-     * @param literalLoc
-     * @return
-     */
-    public static InstantiationInfo get(SourceLocation start, SourceLocation end,
-            SourceLocation literalLoc)
-    {
-        InstantiationInfo X = new InstantiationInfo();
-        X.literalLoc = literalLoc.getRawEncoding();
-        X.instantiationLocStart = start.getRawEncoding();
-        X.instantiationLocEnd = end.getRawEncoding();
-        return X;
+  /**
+   * Return a InstantiationInfo for an expansion.
+   *
+   * @param start
+   * @param end
+   * @param literalLoc
+   * @return
+   */
+  public static InstantiationInfo get(SourceLocation start, SourceLocation end,
+                                      SourceLocation literalLoc) {
+    InstantiationInfo X = new InstantiationInfo();
+    X.literalLoc = literalLoc.getRawEncoding();
+    X.instantiationLocStart = start.getRawEncoding();
+    X.instantiationLocEnd = end.getRawEncoding();
+    return X;
 
-    }
+  }
 }

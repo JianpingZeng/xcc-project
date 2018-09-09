@@ -21,29 +21,29 @@ package backend.target;
  * implementation of the TargetInstrDesc class.  Clients should use the
  * predicate methods on TargetInstrDesc, not use these directly.  These
  * all correspond to bitfields in the TargetInstrDesc::Flags field.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface TID
-{
-    int Variadic = 0;
-    int hasOptionalDef = 1;
-    int Return = 2;
-    int Call = 3;
-    int Barrier = 4;
-    int Terminator = 5;
-    int Branch = 6;
-    int IndirectBranch = 7;
-    int Predicable = 8;
-    int NotDuplicable = 9;
-    int DelaySlot = 10;
-    int FoldableAsLoad = 11;
-    int MayLoad = 12;
-    int MayStore = 13;
-    int UnmodelSideEffects = 14;
-    int Commutable = 15;
-    int ConvertibleTo3Addr = 16;
-    int UsesCustomDAGSchedInserter = 17;
-    int Rematerializable = 18;
-    int CheapAsAMove = 19;
+public interface TID {
+  int Variadic = 0;
+  int hasOptionalDef = 1;
+  int Return = 2;
+  int Call = 3;
+  int Barrier = 4;
+  int Terminator = 5;
+  int Branch = 6;
+  int IndirectBranch = 7;
+  int Predicable = 8;
+  int NotDuplicable = 9;
+  int DelaySlot = 10;
+  int FoldableAsLoad = 11;
+  int MayLoad = 12;
+  int MayStore = 13;
+  int UnmodelSideEffects = 14;
+  int Commutable = 15;
+  int ConvertibleTo3Addr = 16;
+  int UsesCustomDAGSchedInserter = 17;
+  int Rematerializable = 18;
+  int CheapAsAMove = 19;
 }

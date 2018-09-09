@@ -16,82 +16,71 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DerivedType extends Type
-{
-    /**
-     * This field used to implement the abstract type refine system.
-     * When an abstract type be used to concreted, this field would be set as
-     * the corresponding new type.
-     */
-    private Type forwardType;
+public class DerivedType extends Type {
+  /**
+   * This field used to implement the abstract type refine system.
+   * When an abstract type be used to concreted, this field would be set as
+   * the corresponding new type.
+   */
+  private Type forwardType;
 
-    protected DerivedType(int typeID)
-    {
-        super(typeID);
+  protected DerivedType(int typeID) {
+    super(typeID);
+  }
+
+  protected void notifyUsesThatTypeBecameConcrete() {
+    int oldSize = abstractTypeUsers.size();
+    while (!abstractTypeUsers.isEmpty()) {
+      AbstractTypeUser user = abstractTypeUsers.getLast();
+      user.typeBecameConcrete(this);
+
+      Util.assertion(abstractTypeUsers.size() < oldSize--, "AbstractTypeUser did not remove ifself");
+
     }
+  }
 
-    protected void notifyUsesThatTypeBecameConcrete()
-    {
-        int oldSize = abstractTypeUsers.size();
-        while (!abstractTypeUsers.isEmpty())
-        {
-            AbstractTypeUser user = abstractTypeUsers.getLast();
-            user.typeBecameConcrete(this);
+  protected void unlockRefineAbstractTypeTo(Type newType) {
+    Util.assertion(isAbstract(), "refinedAbstractTypeto: Current type is not abstract");
+    Util.assertion(this != newType, "Can not refine to itself!");
 
-            Util.assertion(abstractTypeUsers.size() < oldSize--,                     "AbstractTypeUser did not remove ifself");
+    forwardType = newType;
 
-        }
+    dropAllTypeUses();
+    while (!abstractTypeUsers.isEmpty() && newType != this) {
+      AbstractTypeUser user = abstractTypeUsers.getLast();
+      int oldSize = abstractTypeUsers.size();
+      user.refineAbstractType(this, newType);
+
+      Util.assertion(abstractTypeUsers.size() != oldSize, "AbstractTypeUser did not remove ifself from user list!");
+
     }
+  }
 
-    protected void unlockRefineAbstractTypeTo(Type newType)
-    {
-        Util.assertion(isAbstract(), "refinedAbstractTypeto: Current type is not abstract");
-        Util.assertion(this !=newType, "Can not refine to itself!");
+  public void dropAllTypeUses() {
+    if (getNumContainedTypes() > 0) {
+      containedTys[0] = new PATypeHandle(OpaqueType.get(), this);
 
-        forwardType = newType;
-
-        dropAllTypeUses();
-        while (!abstractTypeUsers.isEmpty() && newType != this)
-        {
-            AbstractTypeUser user = abstractTypeUsers.getLast();
-            int oldSize = abstractTypeUsers.size();
-            user.refineAbstractType(this, newType);
-
-            Util.assertion(abstractTypeUsers.size() != oldSize,                     "AbstractTypeUser did not remove ifself from user list!");
-
-        }
+      for (int i = 0, e = getNumContainedTypes(); i < e; i++)
+        containedTys[i] = new PATypeHandle(LLVMContext.Int32Ty, this);
     }
+  }
 
-    public void dropAllTypeUses()
-    {
-        if (getNumContainedTypes() > 0)
-        {
-            containedTys[0] = new PATypeHandle(OpaqueType.get(), this);
+  public void refineAbstractTypeTo(Type newType) {
+    unlockRefineAbstractTypeTo(newType);
+  }
 
-            for (int i = 0, e = getNumContainedTypes(); i < e; i++)
-                containedTys[i] = new PATypeHandle(LLVMContext.Int32Ty, this);
-        }
-    }
+  public void dump() {
+    super.dump();
+  }
 
-    public void refineAbstractTypeTo(Type newType)
-    {
-        unlockRefineAbstractTypeTo(newType);
-    }
-
-    public void dump()
-    {
-        super.dump();
-    }
-
-    public Type getForwardType()
-    {
-        return forwardType;
-    }
+  public Type getForwardType() {
+    return forwardType;
+  }
 }

@@ -16,23 +16,19 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import jlang.diag.Diagnostic;
-
-import static jlang.diag.Diagnostic.*;
+import static jlang.diag.Diagnostic.DiagnosticBuilder;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SemaDiagnosticBuilder extends DiagnosticBuilder
-{
-	private Sema sema;
-	private int diagID;
+public class SemaDiagnosticBuilder extends DiagnosticBuilder {
+  private Sema sema;
+  private int diagID;
 
-	public SemaDiagnosticBuilder(DiagnosticBuilder db, Sema sema, int diagID)
-	{
-		super(db);
-		this.sema = sema;
-		this.diagID = diagID;
-	}
+  public SemaDiagnosticBuilder(DiagnosticBuilder db, Sema sema, int diagID) {
+    super(db);
+    this.sema = sema;
+    this.diagID = diagID;
+  }
 }

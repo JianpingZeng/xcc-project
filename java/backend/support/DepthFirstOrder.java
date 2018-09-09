@@ -27,152 +27,132 @@ import java.util.*;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class DepthFirstOrder
-{
-    /**
-     * Computes the reverse post order for the specified CFG from the start node.
-     * The reverse post order of Basic Block is restored in returned list.
-     *
-     * @param start
-     * @return
-     */
-    public static ArrayList<BasicBlock> reversePostOrder(BasicBlock start)
-    {
-        ArrayList<BasicBlock> visited = new ArrayList<>();
-        visited.addAll(postOrder(start));
-        Collections.reverse(visited);
-        return visited;
+public final class DepthFirstOrder {
+  /**
+   * Computes the reverse post order for the specified CFG from the start node.
+   * The reverse post order of Basic Block is restored in returned list.
+   *
+   * @param start
+   * @return
+   */
+  public static ArrayList<BasicBlock> reversePostOrder(BasicBlock start) {
+    ArrayList<BasicBlock> visited = new ArrayList<>();
+    visited.addAll(postOrder(start));
+    Collections.reverse(visited);
+    return visited;
+  }
+
+  /**
+   * Computes the reverse post order for the specified CFG from the start node.
+   * The reverse post order of Basic Block is restored in returned list.
+   *
+   * @param start
+   * @return
+   */
+  public static ArrayList<MachineBasicBlock> reversePostOrder(
+      MachineBasicBlock start) {
+    ArrayList<MachineBasicBlock> visited = new ArrayList<>();
+    visited.addAll(postOrder(start));
+    Collections.reverse(visited);
+    return visited;
+  }
+
+  public static LinkedList<BasicBlock> postOrder(BasicBlock startBlock) {
+    LinkedList<BasicBlock> res = new LinkedList<>();
+    HashSet<BasicBlock> visited = new HashSet<>();
+    visit(startBlock, res, visited);
+    return res;
+  }
+
+  private static void visit(BasicBlock bb, LinkedList<BasicBlock> res,
+                            HashSet<BasicBlock> visited) {
+    if (bb == null)
+      return;
+
+    if (visited.add(bb)) {
+      for (SuccIterator itr = bb.succIterator(); itr.hasNext(); )
+        visit(itr.next(), res, visited);
+
+      res.add(bb);
     }
+  }
 
-    /**
-     * Computes the reverse post order for the specified CFG from the start node.
-     * The reverse post order of Basic Block is restored in returned list.
-     *
-     * @param start
-     * @return
-     */
-    public static ArrayList<MachineBasicBlock> reversePostOrder(
-            MachineBasicBlock start)
-    {
-        ArrayList<MachineBasicBlock> visited = new ArrayList<>();
-        visited.addAll(postOrder(start));
-        Collections.reverse(visited);
-        return visited;
+  public static List<MachineBasicBlock> postOrder(MachineBasicBlock start) {
+    ArrayList<MachineBasicBlock> res = new ArrayList<>();
+    HashSet<MachineBasicBlock> visited = new HashSet<>();
+    visit(start, res, visited);
+    return res;
+  }
+
+  private static void visit(MachineBasicBlock start,
+                            ArrayList<MachineBasicBlock> result,
+                            HashSet<MachineBasicBlock> visited) {
+    if (visited.add(start)) {
+      start.getSuccessors().forEach(succ -> visit(succ, result, visited));
+      result.add(start);
     }
+  }
 
-    public static LinkedList<BasicBlock> postOrder(BasicBlock startBlock)
-    {
-        LinkedList<BasicBlock> res = new LinkedList<>();
-        HashSet<BasicBlock> visited = new HashSet<>();
-        visit(startBlock, res, visited);
-        return res;
+  public static LinkedList<DomTreeNodeBase<BasicBlock>> dfTraversal(
+      DomTreeNodeBase<BasicBlock> entryNode) {
+    LinkedList<DomTreeNodeBase<BasicBlock>> ret = new LinkedList<>();
+    Stack<DomTreeNodeBase<BasicBlock>> stack = new Stack<>();
+    stack.push(entryNode);
+    ArrayList<DomTreeNodeBase<BasicBlock>> temps = new ArrayList<>();
+
+    while (!stack.isEmpty()) {
+      DomTreeNodeBase<BasicBlock> cur = stack.pop();
+      ret.add(cur);
+
+      temps.clear();
+      Collections.copy(temps, cur.getChildren());
+
+      Collections.reverse(temps);
+      temps.forEach(stack::push);
     }
+    return ret;
+  }
 
-    private static void visit(BasicBlock bb, LinkedList<BasicBlock> res,
-            HashSet<BasicBlock> visited)
-    {
-        if (bb == null)
-            return;
-
-        if (visited.add(bb))
-        {
-            for (SuccIterator itr = bb.succIterator(); itr.hasNext(); )
-                visit(itr.next(), res, visited);
-
-            res.add(bb);
-        }
+  private static void visitDFS(MachineBasicBlock start,
+                               ArrayList<MachineBasicBlock> result,
+                               HashSet<MachineBasicBlock> visited) {
+    if (visited.add(start)) {
+      result.add(start);
+      start.getSuccessors().forEach(succ -> visitDFS(succ, result, visited));
     }
+  }
 
-    public static List<MachineBasicBlock> postOrder(MachineBasicBlock start)
-    {
-        ArrayList<MachineBasicBlock> res = new ArrayList<>();
-        HashSet<MachineBasicBlock> visited = new HashSet<>();
-        visit(start, res, visited);
-        return res;
+  public static ArrayList<MachineBasicBlock> dfs(MachineBasicBlock entry) {
+    ArrayList<MachineBasicBlock> result = new ArrayList<>();
+    HashSet<MachineBasicBlock> visited = new HashSet<>();
+    visitDFS(entry, result, visited);
+    return result;
+  }
+
+  private static void visitDFS(BasicBlock start,
+                               ArrayList<BasicBlock> result,
+                               HashSet<BasicBlock> visited) {
+    if (visited.add(start)) {
+      result.add(start);
+      SuccIterator itr = start.succIterator();
+      while (itr.hasNext()) {
+        visitDFS(itr.next(), result, visited);
+      }
     }
+  }
 
-    private static void visit(MachineBasicBlock start,
-            ArrayList<MachineBasicBlock> result,
-            HashSet<MachineBasicBlock> visited)
-    {
-        if (visited.add(start))
-        {
-            start.getSuccessors().forEach(succ -> visit(succ, result, visited));
-            result.add(start);
-        }
-    }
+  public static ArrayList<BasicBlock> dfs(BasicBlock entry) {
+    ArrayList<BasicBlock> result = new ArrayList<>();
+    HashSet<BasicBlock> visited = new HashSet<>();
+    visitDFS(entry, result, visited);
+    return result;
+  }
 
-    public static LinkedList<DomTreeNodeBase<BasicBlock>> dfTraversal(
-            DomTreeNodeBase<BasicBlock> entryNode)
-    {
-        LinkedList<DomTreeNodeBase<BasicBlock>> ret = new LinkedList<>();
-        Stack<DomTreeNodeBase<BasicBlock>> stack = new Stack<>();
-        stack.push(entryNode);
-        ArrayList<DomTreeNodeBase<BasicBlock>> temps = new ArrayList<>();
+  public static ArrayList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry) {
+    return reversePostOrder(entry);
+  }
 
-        while (!stack.isEmpty())
-        {
-            DomTreeNodeBase<BasicBlock> cur = stack.pop();
-            ret.add(cur);
-
-            temps.clear();
-            Collections.copy(temps, cur.getChildren());
-
-            Collections.reverse(temps);
-            temps.forEach(stack::push);
-        }
-        return ret;
-    }
-
-    private static void visitDFS(MachineBasicBlock start,
-            ArrayList<MachineBasicBlock> result,
-            HashSet<MachineBasicBlock> visited)
-    {
-        if (visited.add(start))
-        {
-            result.add(start);
-            start.getSuccessors().forEach(succ -> visitDFS(succ, result, visited));
-        }
-    }
-
-    public static ArrayList<MachineBasicBlock> dfs(MachineBasicBlock entry)
-    {
-        ArrayList<MachineBasicBlock> result = new ArrayList<>();
-        HashSet<MachineBasicBlock> visited = new HashSet<>();
-        visitDFS(entry, result, visited);
-        return result;
-    }
-
-    private static void visitDFS(BasicBlock start,
-            ArrayList<BasicBlock> result,
-            HashSet<BasicBlock> visited)
-    {
-        if (visited.add(start))
-        {
-            result.add(start);
-            SuccIterator itr = start.succIterator();
-            while (itr.hasNext())
-            {
-                visitDFS(itr.next(), result, visited);
-            }
-        }
-    }
-
-    public static ArrayList<BasicBlock> dfs(BasicBlock entry)
-    {
-        ArrayList<BasicBlock> result = new ArrayList<>();
-        HashSet<BasicBlock> visited = new HashSet<>();
-        visitDFS(entry, result, visited);
-        return result;
-    }
-
-    public static ArrayList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)
-    {
-        return reversePostOrder(entry);
-    }
-
-    public static ArrayList<BasicBlock> dfTraversal(BasicBlock entry)
-    {
-        return reversePostOrder(entry);
-    }
+  public static ArrayList<BasicBlock> dfTraversal(BasicBlock entry) {
+    return reversePostOrder(entry);
+  }
 }

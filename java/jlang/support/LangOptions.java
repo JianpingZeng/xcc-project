@@ -19,125 +19,117 @@ package jlang.support;
 /**
  * This class defines some options that can be enabled for controlling
  * the dialect of C accepted.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class LangOptions
-{
-    /**
-     * Whether allowing trigraph in source file.
-     */
-    public boolean trigraph;
-    /**
-     * BCPL-style comments, '//;'.
-     */
-    public boolean bcplComment;
-    /**
-     * bool, false, true keyword.
-     */
-    public boolean bool;
+public final class LangOptions {
+  /**
+   * Whether allowing trigraph in source file.
+   */
+  public boolean trigraph;
+  /**
+   * BCPL-style comments, '//;'.
+   */
+  public boolean bcplComment;
+  /**
+   * bool, false, true keyword.
+   */
+  public boolean bool;
 
-    /**
-     * Whether the '$' in identifier is allowed.
-     */
-    public boolean dollarIdents;
+  /**
+   * Whether the '$' in identifier is allowed.
+   */
+  public boolean dollarIdents;
 
-    // For C94, C99.
-    public boolean digraphs;
-    /**
-     * Preprocessor in asm mode.
-     */
-    public boolean asmPreprocessor;
-    /**
-     * True in gnu mode, false in Standard C mode.
-     */
-    public boolean gnuMode;
-    /**
-     * C89 implicit 'int'.
-     */
-    public boolean implicitInt;
-    /**
-     * Whether the hex float point number is allowed in source file.
-     */
-    public boolean hexFloats;
-    /**
-     * C99 support.
-     */
-    public boolean c99;
-    /**
-     * Whether __OPTIMIZE__ should be defined.
-     */
-    public boolean optimize;
-    /**
-     * Whether __OPTIMIZE_SIZE__ should be defined.
-     */
-    public boolean optimizeSize;
+  // For C94, C99.
+  public boolean digraphs;
+  /**
+   * Preprocessor in asm mode.
+   */
+  public boolean asmPreprocessor;
+  /**
+   * True in gnu mode, false in Standard C mode.
+   */
+  public boolean gnuMode;
+  /**
+   * C89 implicit 'int'.
+   */
+  public boolean implicitInt;
+  /**
+   * Whether the hex float point number is allowed in source file.
+   */
+  public boolean hexFloats;
+  /**
+   * C99 support.
+   */
+  public boolean c99;
+  /**
+   * Whether __OPTIMIZE__ should be defined.
+   */
+  public boolean optimize;
+  /**
+   * Whether __OPTIMIZE_SIZE__ should be defined.
+   */
+  public boolean optimizeSize;
 
-    public boolean noInline;
-    /**
-     * Flags indicates whether to tell compiler to known builtin of function.
-     */
-    public boolean noBuiltin;
-    /**
-     * Whether emit all decls even unused.
-     */
-    public boolean emitAllDecls;
-    /**
-     * block extension to C language.
-     */
-    public boolean blocks;
+  public boolean noInline;
+  /**
+   * Flags indicates whether to tell compiler to known builtin of function.
+   */
+  public boolean noBuiltin;
+  /**
+   * Whether emit all decls even unused.
+   */
+  public boolean emitAllDecls;
+  /**
+   * block extension to C language.
+   */
+  public boolean blocks;
 
-    public enum VisibilityMode
-    {
-        Default,
-        Protected,
-        Hidden
-    }
+  public enum VisibilityMode {
+    Default,
+    Protected,
+    Hidden
+  }
 
-    private VisibilityMode symbolVisibility =
-            VisibilityMode.Default;
+  private VisibilityMode symbolVisibility =
+      VisibilityMode.Default;
 
-    /**
-     * The user provided asmName for the 'main file'.
-     */
-    private String mainFileName;
+  /**
+   * The user provided asmName for the 'main file'.
+   */
+  private String mainFileName;
 
-    public enum StackProtectMode
-    {
-        SSPOff,
-        SSPOn,
-        SSPReg
-    }
+  public enum StackProtectMode {
+    SSPOff,
+    SSPOn,
+    SSPReg
+  }
 
-    private StackProtectMode stackProtectMode;
+  private StackProtectMode stackProtectMode;
 
-    public StackProtectMode getStackProtectMode()
-    {
-        return stackProtectMode;
-    }
+  public StackProtectMode getStackProtectMode() {
+    return stackProtectMode;
+  }
 
-    public void setStackProtectMode(StackProtectMode mode)
-    {
-        this.stackProtectMode = mode;
-    }
+  public void setStackProtectMode(StackProtectMode mode) {
+    this.stackProtectMode = mode;
+  }
 
-    public String getMainFileName()
-    {
-        return mainFileName;
-    }
+  public String getMainFileName() {
+    return mainFileName;
+  }
 
-    public void setMainFileName(String mainFileName)
-    {
-        this.mainFileName = mainFileName;
-    }
+  public void setMainFileName(String mainFileName) {
+    this.mainFileName = mainFileName;
+  }
 
-    public VisibilityMode getSymbolVisibility()
-    {
-        return symbolVisibility;
-    }
+  public VisibilityMode getSymbolVisibility() {
+    return symbolVisibility;
+  }
 
-    public void setSymbolVisibility(VisibilityMode symbolVisibility)
-    {
-        this.symbolVisibility = symbolVisibility;
-    }
+  public void setSymbolVisibility(VisibilityMode symbolVisibility) {
+    this.symbolVisibility = symbolVisibility;
+  }
 }

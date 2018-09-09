@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class PragmaPackAttr extends Attr
-{
-    public PragmaPackAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class PragmaPackAttr extends Attr {
+  public PragmaPackAttr(AttrKind kind) {
+    super(kind);
+  }
 }

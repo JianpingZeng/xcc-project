@@ -15,6 +15,7 @@ package backend.target.x86;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 import backend.support.BackendCmdOptions;
 import backend.support.Triple;
 import backend.target.DarwinTargetAsmInfo;
@@ -23,33 +24,28 @@ import backend.target.DarwinTargetAsmInfo;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86DarwinTargetAsmInfo extends DarwinTargetAsmInfo
-{
-    public X86DarwinTargetAsmInfo(Triple triple)
-    {
-        super();
-        asmTransCBE = x86_asm_table;
-        assemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
-        boolean is64Bit = triple.getArch() == Triple.ArchType.x86_64;
-        TextAlignFillValue = 0x90;
-        if (!is64Bit)
-            Data64bitsDirective = "";
-        COMMDirectiveTakesAlignment = triple.getDarwinMajorNumber() > 9;
-        if (is64Bit)
-        {
-            PersonalityPrefix = "";
-            PersonalitySuffix = "+4@GOTPCREL";
-        }
-        else
-        {
-            PersonalityPrefix = "L";
-            PersonalitySuffix = "$non_lazy_ptr";
-        }
-
-        CommentString = "##";
-        pcSymbol = ".";
-        supportsDebugInformation = true;
-        DwarfUsesInlineInfoSection = true;
-        absoluteEHSectionOffsets = false;
+public class X86DarwinTargetAsmInfo extends DarwinTargetAsmInfo {
+  public X86DarwinTargetAsmInfo(Triple triple) {
+    super();
+    asmTransCBE = x86_asm_table;
+    assemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
+    boolean is64Bit = triple.getArch() == Triple.ArchType.x86_64;
+    TextAlignFillValue = 0x90;
+    if (!is64Bit)
+      Data64bitsDirective = "";
+    COMMDirectiveTakesAlignment = triple.getDarwinMajorNumber() > 9;
+    if (is64Bit) {
+      PersonalityPrefix = "";
+      PersonalitySuffix = "+4@GOTPCREL";
+    } else {
+      PersonalityPrefix = "L";
+      PersonalitySuffix = "$non_lazy_ptr";
     }
+
+    CommentString = "##";
+    pcSymbol = ".";
+    supportsDebugInformation = true;
+    DwarfUsesInlineInfoSection = true;
+    absoluteEHSectionOffsets = false;
+  }
 }

@@ -16,9 +16,9 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import tools.OutRef;
 import tools.Pair;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -28,103 +28,90 @@ import static tools.commandline.CL.markOptionsChanged;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Parser<T> implements ParserInterface<T>
-{
-    protected ArrayList<Pair<String, Pair<T, String>>> values;
-    protected boolean hasOptionName;
-    
-    public int getNumOptions()
-    {
-        return values.size();
-    }
+public class Parser<T> implements ParserInterface<T> {
+  protected ArrayList<Pair<String, Pair<T, String>>> values;
+  protected boolean hasOptionName;
 
-    public String getOption(int index)
-    {
-        return values.get(index).first; 
-    }
+  public int getNumOptions() {
+    return values.size();
+  }
 
-    public String getDescription(int index)
-    {
-        return values.get(index).second.second;
-    }
+  public String getOption(int index) {
+    return values.get(index).first;
+  }
 
-    public Parser()
-    {
-        values = new ArrayList<>();
-        hasOptionName = false;
-    }
+  public String getDescription(int index) {
+    return values.get(index).second.second;
+  }
 
-    @Override
-    public boolean parse(Option<?> opt, String optName, String arg,
-            OutRef<T> val)
-    {
-        String argVal = hasOptionName ? arg : optName;
+  public Parser() {
+    values = new ArrayList<>();
+    hasOptionName = false;
+  }
 
-        for (int i = 0, e = values.size(); i < e; ++i)
-        {
-            if (argVal.equals(values.get(i).first))
-            {
-                val.set(values.get(i).second.first);
-                return false;
-            }
-        }
-        return opt.error("Cannot find option named '" + argVal + "'!");
-    }
+  @Override
+  public boolean parse(Option<?> opt, String optName, String arg,
+                       OutRef<T> val) {
+    String argVal = hasOptionName ? arg : optName;
 
-    public void addLiteralOption(String name, T val, String helpStr)
-    {
-        Util.assertion(findOption(name) < 0,  "OptionInfo already exists!");
-        values.add(Pair.get(name, Pair.get(val, helpStr)));
-        markOptionsChanged();
+    for (int i = 0, e = values.size(); i < e; ++i) {
+      if (argVal.equals(values.get(i).first)) {
+        val.set(values.get(i).second.first);
+        return false;
+      }
     }
+    return opt.error("Cannot find option named '" + argVal + "'!");
+  }
 
-    /**
-     * Remove the specified option at the specified position.
-     * @param name
-     */
-    public void removeLiteralOption(String name)
-    {
-        int index = findOption(name);
-        Util.assertion(index >= 0,  "OptionInfo not found!");
-        values.remove(index);
-    }
+  public void addLiteralOption(String name, T val, String helpStr) {
+    Util.assertion(findOption(name) < 0, "OptionInfo already exists!");
+    values.add(Pair.get(name, Pair.get(val, helpStr)));
+    markOptionsChanged();
+  }
 
-    @Override
-    public <T1> void initialize(Option<T1> opt)
-    {
-        hasOptionName = opt.hasOptionName();
-    }
+  /**
+   * Remove the specified option at the specified position.
+   *
+   * @param name
+   */
+  public void removeLiteralOption(String name) {
+    int index = findOption(name);
+    Util.assertion(index >= 0, "OptionInfo not found!");
+    values.remove(index);
+  }
 
-    @Override 
-    public ValueExpected getValueExpectedFlagDefault()
-    {
-        if (hasOptionName)
-            return ValueExpected.ValueRequired;
-        else
-            return ValueExpected.ValueDisallowed;
-    }
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+    hasOptionName = opt.hasOptionName();
+  }
 
-    /**
-     * Return the option number corresponding to the specified
-     // argument string.  If the option is not found, {@code -1} is returned.
-     * @param name
-     * @return
-     */
-    public int findOption(String name)
-    {
-        for (int i = 0, e = getNumOptions();i < e; ++i)
-        {
-            if (getOption(i).equals(name))
-                return i;
-        }
-        return -1;
-    }
+  @Override
+  public ValueExpected getValueExpectedFlagDefault() {
+    if (hasOptionName)
+      return ValueExpected.ValueRequired;
+    else
+      return ValueExpected.ValueDisallowed;
+  }
 
-    @Override 
-    public void getExtraOptionNames(ArrayList<String> optionNames)
-    {
-        if (!hasOptionName)
-            for (int i = 0, e = getNumOptions(); i < e; i++)
-                optionNames.add(getOption(i));
+  /**
+   * Return the option number corresponding to the specified
+   * // argument string.  If the option is not found, {@code -1} is returned.
+   *
+   * @param name
+   * @return
+   */
+  public int findOption(String name) {
+    for (int i = 0, e = getNumOptions(); i < e; ++i) {
+      if (getOption(i).equals(name))
+        return i;
     }
+    return -1;
+  }
+
+  @Override
+  public void getExtraOptionNames(ArrayList<String> optionNames) {
+    if (!hasOptionName)
+      for (int i = 0, e = getNumOptions(); i < e; i++)
+        optionNames.add(getOption(i));
+  }
 }

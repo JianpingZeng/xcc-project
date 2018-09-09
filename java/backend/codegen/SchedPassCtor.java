@@ -26,7 +26,6 @@ import backend.target.TargetMachine;
  * @version 0.1
  * @FunctionalInterface
  */
-public interface SchedPassCtor
-{
-    ScheduleDAG apply(SelectionDAGISel isel, TargetMachine.CodeGenOpt opt);
+public interface SchedPassCtor {
+  ScheduleDAG apply(SelectionDAGISel isel, TargetMachine.CodeGenOpt opt);
 }

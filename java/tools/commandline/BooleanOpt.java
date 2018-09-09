@@ -20,21 +20,17 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class BooleanOpt extends Opt<Boolean>
-{
-    public BooleanOpt(ParserBool parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class BooleanOpt extends Opt<Boolean> {
+  public BooleanOpt(ParserBool parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    public BooleanOpt(Modifier... mods)
-    {
-        this(new ParserBool(), mods);
-    }
+  public BooleanOpt(Modifier... mods) {
+    this(new ParserBool(), mods);
+  }
 
-    public ParserBool getParser()
-    {
-        return (ParserBool) parser;
-    }
+  public ParserBool getParser() {
+    return (ParserBool) parser;
+  }
 }
 

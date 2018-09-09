@@ -36,31 +36,33 @@ package backend.type;
  * nice, transparent way, the PATypeHandle class is used to hold "Potentially
  * Abstract Types", and keep the use list of the abstract types up-to-date.
  * </p>
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface AbstractTypeUser
-{
-    /**
-     * The callback method invoked when an abstract type is
-     * resolved to another type.  An object must override this method to update
-     * its internal state to reference NewType instead of OldType.
-     * @param oldTy
-     * @param newTy
-     */
-    void refineAbstractType(DerivedType oldTy, Type newTy);
+public interface AbstractTypeUser {
+  /**
+   * The callback method invoked when an abstract type is
+   * resolved to another type.  An object must override this method to update
+   * its internal state to reference NewType instead of OldType.
+   *
+   * @param oldTy
+   * @param newTy
+   */
+  void refineAbstractType(DerivedType oldTy, Type newTy);
 
-    /**
-     * The other case which AbstractTypeUsers must be aware of is when a type
-     * makes the transition from being abstract (where it has clients on it's
-     * AbstractTypeUsers list) to concrete (where it does not).  This method
-     * notifies ATU's when this occurs for a type.
-     * @param absTy
-     */
-    void typeBecameConcrete(DerivedType absTy);
+  /**
+   * The other case which AbstractTypeUsers must be aware of is when a type
+   * makes the transition from being abstract (where it has clients on it's
+   * AbstractTypeUsers list) to concrete (where it does not).  This method
+   * notifies ATU's when this occurs for a type.
+   *
+   * @param absTy
+   */
+  void typeBecameConcrete(DerivedType absTy);
 
-    /**
-     * For debugging.
-     */
-    void dump();
+  /**
+   * For debugging.
+   */
+  void dump();
 }

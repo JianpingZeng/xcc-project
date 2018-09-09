@@ -19,10 +19,10 @@ package jlang.support;
 /**
  * This is used to represent whether a file or directory holds normal user
  * code, system code
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum CharacteristicKind
-{
-    C_User, C_System;
+public enum CharacteristicKind {
+  C_User, C_System;
 }

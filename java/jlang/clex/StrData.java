@@ -20,23 +20,21 @@ package jlang.clex;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class StrData implements Cloneable
-{
-    /**
-     * The entire char buffer.
-     */
-    public final char[] buffer;
-    /**
-     * The starting index of the {@linkplain #} in
-     * the {@linkplain #buffer}
-     */
-    public final int offset;
+public class StrData implements Cloneable {
+  /**
+   * The entire char buffer.
+   */
+  public final char[] buffer;
+  /**
+   * The starting index of the {@linkplain #} in
+   * the {@linkplain #buffer}
+   */
+  public final int offset;
 
-    public StrData(final char[] buffer, int offset)
-    {
-        this.buffer = buffer;
-        this.offset = offset;
-    }
+  public StrData(final char[] buffer, int offset) {
+    this.buffer = buffer;
+    this.offset = offset;
+  }
 
     /*
     * FIXME Comment this to avoid deeply copy. 2017/10/29

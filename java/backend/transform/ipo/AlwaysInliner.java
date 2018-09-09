@@ -15,6 +15,7 @@ package backend.transform.ipo;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 import backend.analysis.CallGraph;
 import backend.pass.Pass;
 import backend.support.Attribute;
@@ -22,54 +23,45 @@ import backend.support.CallSite;
 import backend.value.Function;
 import backend.value.Module;
 
-import java.util.HashSet;
-
 /**
  * @author JianpingZeng
  * @version 0.4
  */
-public class AlwaysInliner extends Inliner
-{
-    public AlwaysInliner()
-    {
-        // Uses a negative number as threshold to always enable
-        // inline on call site.
-        super(-2000000);
-        analyzer = new InlineCostAnalyzer();
-    }
+public class AlwaysInliner extends Inliner {
+  public AlwaysInliner() {
+    // Uses a negative number as threshold to always enable
+    // inline on call site.
+    super(-2000000);
+    analyzer = new InlineCostAnalyzer();
+  }
 
-    @Override
-    public boolean doInitialization(CallGraph cg)
-    {
-        Module m = cg.getModule();
-        for (Function f : m)
-        {
-            if (f == null) continue;
-            if (!f.isDeclaration() && !f.hasFnAttr(Attribute.AlwaysInline))
-                neverInlined.add(f);
-        }
-        return false;
+  @Override
+  public boolean doInitialization(CallGraph cg) {
+    Module m = cg.getModule();
+    for (Function f : m) {
+      if (f == null) continue;
+      if (!f.isDeclaration() && !f.hasFnAttr(Attribute.AlwaysInline))
+        neverInlined.add(f);
     }
+    return false;
+  }
 
-    @Override
-    public InlineCost getInlineCost(CallSite cs)
-    {
-        return analyzer.getInlineCost(cs, neverInlined);
-    }
+  @Override
+  public InlineCost getInlineCost(CallSite cs) {
+    return analyzer.getInlineCost(cs, neverInlined);
+  }
 
-    @Override
-    public float getInlineFudgeFactor(CallSite cs)
-    {
-        return analyzer.getInlineFudgeFactor(cs);
-    }
+  @Override
+  public float getInlineFudgeFactor(CallSite cs) {
+    return analyzer.getInlineFudgeFactor(cs);
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Always Function Inliner Pass";
-    }
-    public static Pass createAlwaysInlinerPass()
-    {
-        return new AlwaysInliner();
-    }
+  @Override
+  public String getPassName() {
+    return "Always Function Inliner Pass";
+  }
+
+  public static Pass createAlwaysInlinerPass() {
+    return new AlwaysInliner();
+  }
 }

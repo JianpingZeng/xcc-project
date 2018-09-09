@@ -20,6 +20,5 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ParserBase
-{
+public class ParserBase {
 }

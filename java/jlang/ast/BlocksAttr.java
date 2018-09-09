@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class BlocksAttr extends Attr
-{
-    public BlocksAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class BlocksAttr extends Attr {
+  public BlocksAttr(AttrKind kind) {
+    super(kind);
+  }
 }

@@ -17,13 +17,13 @@ package jlang.sema;
  */
 
 import jlang.clex.IdentifierInfo;
+
 import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class StoredDeclsMap extends HashMap<IdentifierInfo, StoredDeclsList>
-{
+public final class StoredDeclsMap extends HashMap<IdentifierInfo, StoredDeclsList> {
 
 }

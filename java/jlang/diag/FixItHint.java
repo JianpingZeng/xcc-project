@@ -23,83 +23,80 @@ import jlang.support.SourceRange;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FixItHint
-{
-	public SourceLocation insertionLoc;
-	public String codeToInsert;
-	public SourceRange removeRange;
+public class FixItHint {
+  public SourceLocation insertionLoc;
+  public String codeToInsert;
+  public SourceRange removeRange;
 
-	public FixItHint()
-	{
-		insertionLoc = new SourceLocation();
-		codeToInsert = "";
-		removeRange = new SourceRange();
-	}
+  public FixItHint() {
+    insertionLoc = new SourceLocation();
+    codeToInsert = "";
+    removeRange = new SourceRange();
+  }
 
-	/**
-	 * Create a code modification hint that inserts the given
-	 * code string at a specific location.
-	 * @param loc
-	 * @param code
-	 * @return
-	 */
-	public static FixItHint createInsertion(
-			SourceLocation loc,
-			String code)
-	{
-		FixItHint hint = new FixItHint();
-		hint.insertionLoc = loc;
-		hint.codeToInsert = code;
-		return hint;
-	}
+  /**
+   * Create a code modification hint that inserts the given
+   * code string at a specific location.
+   *
+   * @param loc
+   * @param code
+   * @return
+   */
+  public static FixItHint createInsertion(
+      SourceLocation loc,
+      String code) {
+    FixItHint hint = new FixItHint();
+    hint.insertionLoc = loc;
+    hint.codeToInsert = code;
+    return hint;
+  }
 
-	/**
-	 * Create a code modification hint that removes the given
-	 * source range.
-	 * @param removeRange
-	 * @return
-	 */
-	public static FixItHint createRemoval(SourceRange removeRange)
-	{
-		FixItHint hint = new FixItHint();
-		hint.removeRange = removeRange;
-		return hint;
-	}
+  /**
+   * Create a code modification hint that removes the given
+   * source range.
+   *
+   * @param removeRange
+   * @return
+   */
+  public static FixItHint createRemoval(SourceRange removeRange) {
+    FixItHint hint = new FixItHint();
+    hint.removeRange = removeRange;
+    return hint;
+  }
 
-	/**
-	 * Create a code modification hint that replaces the given
-	 * source range with the given code string.
-	 * @param removeRange
-	 * @param code
-	 * @return
-	 */
-	public static FixItHint createReplacement(
-			SourceRange removeRange,
-			String code)
-	{
-		FixItHint hint = new FixItHint();
-		hint.removeRange = removeRange;
-		hint.insertionLoc = removeRange.getBegin();
-		hint.codeToInsert = code;
-		return hint;
-	}
+  /**
+   * Create a code modification hint that replaces the given
+   * source range with the given code string.
+   *
+   * @param removeRange
+   * @param code
+   * @return
+   */
+  public static FixItHint createReplacement(
+      SourceRange removeRange,
+      String code) {
+    FixItHint hint = new FixItHint();
+    hint.removeRange = removeRange;
+    hint.insertionLoc = removeRange.getBegin();
+    hint.codeToInsert = code;
+    return hint;
+  }
 
-	/**
-	 * Create a code modification hint that replaces the given
-	 * source range with the given code string.
-	 * @param removeRange
-	 * @param code
-	 * @return
-	 */
-	public static FixItHint createReplacement(
-			SourceLocation removeRange,
-			String code)
-	{
-		return createReplacement(new SourceRange(removeRange), code);
-	}
+  /**
+   * Create a code modification hint that replaces the given
+   * source range with the given code string.
+   *
+   * @param removeRange
+   * @param code
+   * @return
+   */
+  public static FixItHint createReplacement(
+      SourceLocation removeRange,
+      String code) {
+    return createReplacement(new SourceRange(removeRange), code);
+  }
 
-	public boolean isNull()
-	{
-		return !removeRange.isValid();
-	}
+  public boolean isNull() {
+    return !removeRange.isValid();
+  }
 }

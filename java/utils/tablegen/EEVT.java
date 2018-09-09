@@ -16,9 +16,9 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Util;
 
 import static utils.tablegen.CodeGenDAGPatterns.*;
 
@@ -26,28 +26,24 @@ import static utils.tablegen.CodeGenDAGPatterns.*;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface EEVT
-{
-    int isFP = MVT.LAST_VALUETYPE;
-    int isInt = isFP + 1;
-    int isVec = isInt + 1;
-    int isUnknown = isVec + 1;
+public interface EEVT {
+  int isFP = MVT.LAST_VALUETYPE;
+  int isInt = isFP + 1;
+  int isVec = isInt + 1;
+  int isUnknown = isVec + 1;
 
-    static boolean isExtIntegerInVTs(TIntArrayList evts)
-    {
-        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-        return evts.get(0) == isInt || !(filterEVTs(evts, isInteger)).isEmpty();
-    }
+  static boolean isExtIntegerInVTs(TIntArrayList evts) {
+    Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
+    return evts.get(0) == isInt || !(filterEVTs(evts, isInteger)).isEmpty();
+  }
 
-    static boolean isExtFloatingPointInVTs(TIntArrayList evts)
-    {
-        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-        return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPoint)).isEmpty();
-    }
+  static boolean isExtFloatingPointInVTs(TIntArrayList evts) {
+    Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
+    return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPoint)).isEmpty();
+  }
 
-    static boolean isExtVectorVTs(TIntArrayList evts)
-    {
-        Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-        return evts.get(0) == isVec || !(filterEVTs(evts, isVector)).isEmpty();
-    }
+  static boolean isExtVectorVTs(TIntArrayList evts) {
+    Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
+    return evts.get(0) == isVec || !(filterEVTs(evts, isVector)).isEmpty();
+  }
 }

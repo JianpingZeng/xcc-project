@@ -23,47 +23,41 @@ import backend.pass.PassRegisterationUtility;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class TargetSelect
-{
-    protected TargetSelect()
-    {
-        super();
+public class TargetSelect {
+  protected TargetSelect() {
+    super();
+  }
+
+  public static TargetSelect create() {
+    // TODO. 2017.8.12
+    TargetSelect ts = null;
+    try {
+      String targetName = "X86";
+      String className = "";
+      if (targetName.equals("X86")) {
+        className += "backend.target." +
+            targetName.toLowerCase() +
+            "." + targetName;
+      }
+      className += "TargetSelect";
+      Class<?> klass = Class.forName(className);
+      ts = (TargetSelect) klass.newInstance();
+    } catch (IllegalAccessException | InstantiationException | ClassNotFoundException e) {
+      e.printStackTrace();
     }
+    return ts;
+  }
 
-    public static TargetSelect create()
-    {
-        // TODO. 2017.8.12
-        TargetSelect ts = null;
-        try
-        {
-            String targetName = "X86";
-            String className = "";
-            if (targetName.equals("X86"))
-            {
-                className += "backend.target." +
-                        targetName.toLowerCase() +
-                        "." + targetName;
-            }
-            className += "TargetSelect";
-            Class<?> klass = Class.forName(className);
-            ts = (TargetSelect) klass.newInstance();
-        }
-        catch (IllegalAccessException | InstantiationException | ClassNotFoundException e)
-        {
-            e.printStackTrace();
-        }
-        return ts;
-    }
+  public void InitializeTargetInfo() {
+  }
 
-    public void InitializeTargetInfo() {}
+  public void LLVMInitializeTarget() {
+  }
 
-    public void LLVMInitializeTarget() {}
-
-    /**
-     * This method must be called to register all of passes.
-     */
-    public void registerAllPasses()
-    {
-        PassRegisterationUtility.registerPasses();
-    }
+  /**
+   * This method must be called to register all of passes.
+   */
+  public void registerAllPasses() {
+    PassRegisterationUtility.registerPasses();
+  }
 }

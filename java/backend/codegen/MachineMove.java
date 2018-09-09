@@ -20,41 +20,35 @@ package backend.codegen;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineMove
-{
-    private int LabelID;                     // Label ID number for post-instruction
-    // address when result of move takes
-    // effect.
-    MachineLocation Destination;          // Move to location.
-    MachineLocation Source;               // Move from location.
+public class MachineMove {
+  private int LabelID;                     // Label ID number for post-instruction
+  // address when result of move takes
+  // effect.
+  MachineLocation Destination;          // Move to location.
+  MachineLocation Source;               // Move from location.
 
-    public MachineMove()
-    {
-        LabelID = (0);
-        Destination = new MachineLocation();
-        Source = new MachineLocation();
-    }
+  public MachineMove() {
+    LabelID = (0);
+    Destination = new MachineLocation();
+    Source = new MachineLocation();
+  }
 
-    public MachineMove(int ID, MachineLocation D, MachineLocation S)
-    {
-        LabelID = ID;
-        Destination = new MachineLocation(D);
-        Source = new MachineLocation(S);
-    }
+  public MachineMove(int ID, MachineLocation D, MachineLocation S) {
+    LabelID = ID;
+    Destination = new MachineLocation(D);
+    Source = new MachineLocation(S);
+  }
 
-    // Accessors
-    public int getLabelID()
-    {
-        return LabelID;
-    }
+  // Accessors
+  public int getLabelID() {
+    return LabelID;
+  }
 
-    public MachineLocation getDestination()
-    {
-        return Destination;
-    }
+  public MachineLocation getDestination() {
+    return Destination;
+  }
 
-    public MachineLocation getSource()
-    {
-        return Source;
-    }
+  public MachineLocation getSource() {
+    return Source;
+  }
 }

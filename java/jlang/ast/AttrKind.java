@@ -19,50 +19,50 @@ package jlang.ast;
 
 /**
  * This represents the kind of attr.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum AttrKind
-{
-    Alias,
-    Aligned,
-    AlwaysInline,
-    AnalyzerNoReturn, // Clang-specific.
-    Annotate,
-    AsmLabel, // Represent GCC asm label extension.
-    Blocks,
-    Cleanup,
-    Const,
-    Constructor,
-    DLLExport,
-    DLLImport,
-    Deprecated,
-    Destructor,
-    FastCall,
-    Format,
-    FormatArg,
-    GNUInline,
-    IBOutletKind, // Clang-specific.  Use "Kind" suffix to not conflict with
-    Malloc,
-    NoReturn,
-    NoThrow,
-    Nodebug,
-    Noinline,
-    NonNull,
-    Packed,
-    PragmaPack,
-    Pure,
-    Regparm,
-    ReqdWorkGroupSize,   // OpenCL-specific
-    Section,
-    Sentinel,
-    StdCall,
-    TransparentUnion,
-    Unavailable,
-    Unused,
-    Used,
-    Visibility,
-    WarnUnusedResult,
-    Weak,
-    WeakImport
+public enum AttrKind {
+  Alias,
+  Aligned,
+  AlwaysInline,
+  AnalyzerNoReturn, // Clang-specific.
+  Annotate,
+  AsmLabel, // Represent GCC asm label extension.
+  Blocks,
+  Cleanup,
+  Const,
+  Constructor,
+  DLLExport,
+  DLLImport,
+  Deprecated,
+  Destructor,
+  FastCall,
+  Format,
+  FormatArg,
+  GNUInline,
+  IBOutletKind, // Clang-specific.  Use "Kind" suffix to not conflict with
+  Malloc,
+  NoReturn,
+  NoThrow,
+  Nodebug,
+  Noinline,
+  NonNull,
+  Packed,
+  PragmaPack,
+  Pure,
+  Regparm,
+  ReqdWorkGroupSize,   // OpenCL-specific
+  Section,
+  Sentinel,
+  StdCall,
+  TransparentUnion,
+  Unavailable,
+  Unused,
+  Used,
+  Visibility,
+  WarnUnusedResult,
+  Weak,
+  WeakImport
 }

@@ -20,39 +20,32 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Section
-{
-    private String name;
-    private int flags;
+public class Section {
+  private String name;
+  private int flags;
 
-    public Section(String name)
-    {
-        this(name, SectionFlags.Invalid);
-    }
+  public Section(String name) {
+    this(name, SectionFlags.Invalid);
+  }
 
-    public Section(String name, int flags)
-    {
-        this.name = name;
-        this.flags = flags;
-    }
+  public Section(String name, int flags) {
+    this.name = name;
+    this.flags = flags;
+  }
 
-    public boolean isNamed()
-    {
-        return (flags & SectionFlags.Named) != 0;
-    }
+  public boolean isNamed() {
+    return (flags & SectionFlags.Named) != 0;
+  }
 
-    public int getEntitySize()
-    {
-        return (flags >> 24) & 0XFF;
-    }
+  public int getEntitySize() {
+    return (flags >> 24) & 0XFF;
+  }
 
-    public String getName()
-    {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public int getFlags()
-    {
-        return flags;
-    }
+  public int getFlags() {
+    return flags;
+  }
 }

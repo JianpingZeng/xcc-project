@@ -18,39 +18,36 @@
 package xcc;
 
 import tools.Util;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class InputArgList extends ArgList
-{
-    private ArrayList<String> argStrings;
-    private ArrayList<Arg> actualArgs;
+public class InputArgList extends ArgList {
+  private ArrayList<String> argStrings;
+  private ArrayList<Arg> actualArgs;
 
-    public InputArgList(String[] args)
-    {
-        super(null);
-        actualArgs = new ArrayList<>();
-        setArg(actualArgs);
-        argStrings = new ArrayList<>();
-        argStrings.addAll(Arrays.asList(args));
-    }
-    public InputArgList(ArrayList<String> argStrings)
-    {
-        super(null);
-        actualArgs = new ArrayList<>();
-        setArg(actualArgs);
-        this.argStrings = argStrings;
-    }
+  public InputArgList(String[] args) {
+    super(null);
+    actualArgs = new ArrayList<>();
+    setArg(actualArgs);
+    argStrings = new ArrayList<>();
+    argStrings.addAll(Arrays.asList(args));
+  }
 
-    @Override
-    public String getArgString(int index)
-    {
-        Util.assertion( index >= 0 && index < argStrings.size());
-        return argStrings.get(index);
-    }
+  public InputArgList(ArrayList<String> argStrings) {
+    super(null);
+    actualArgs = new ArrayList<>();
+    setArg(actualArgs);
+    this.argStrings = argStrings;
+  }
 
-    public int getNumInputStrings()
-    {
-        return argStrings.size();
-    }
+  @Override
+  public String getArgString(int index) {
+    Util.assertion(index >= 0 && index < argStrings.size());
+    return argStrings.get(index);
+  }
+
+  public int getNumInputStrings() {
+    return argStrings.size();
+  }
 }

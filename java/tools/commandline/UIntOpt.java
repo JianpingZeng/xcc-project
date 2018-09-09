@@ -20,20 +20,16 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class UIntOpt extends Opt<Integer>
-{
-    public UIntOpt(ParserUInt parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class UIntOpt extends Opt<Integer> {
+  public UIntOpt(ParserUInt parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    public UIntOpt(Modifier... mods)
-    {
-        this(new ParserUInt(), mods);
-    }
+  public UIntOpt(Modifier... mods) {
+    this(new ParserUInt(), mods);
+  }
 
-    public ParserUInt getParser()
-    {
-        return (ParserUInt) parser;
-    }
+  public ParserUInt getParser() {
+    return (ParserUInt) parser;
+  }
 }

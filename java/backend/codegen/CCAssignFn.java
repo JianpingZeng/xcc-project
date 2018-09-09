@@ -20,8 +20,7 @@ package backend.codegen;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface CCAssignFn
-{
-    boolean apply(int valNo, EVT valVT, EVT locVT, CCValAssign.LocInfo locInfo,
-            ArgFlagsTy argFlags, CCState state);
+public interface CCAssignFn {
+  boolean apply(int valNo, EVT valVT, EVT locVT, CCValAssign.LocInfo locInfo,
+                ArgFlagsTy argFlags, CCState state);
 }

@@ -17,123 +17,105 @@
 
 package xcc;
 
-import tools.Util;
 import backend.support.Triple;
+import tools.Util;
 
 import java.util.TreeMap;
 
 import static xcc.OptionID.OPT__m32;
 
-public abstract class HostInfo
-{
-    private Driver driver;
-    private Triple triple;
-    private TreeMap<String, ToolChain> toolChains;
+public abstract class HostInfo {
+  private Driver driver;
+  private Triple triple;
+  private TreeMap<String, ToolChain> toolChains;
 
-    public HostInfo(Driver driver, Triple defaultTriple)
-    {
-        this.driver = driver;
-        this.triple = defaultTriple;
-        toolChains = new TreeMap<>();
+  public HostInfo(Driver driver, Triple defaultTriple) {
+    this.driver = driver;
+    this.triple = defaultTriple;
+    toolChains = new TreeMap<>();
+  }
+
+  public String getArchName() {
+    return triple.getArchName();
+  }
+
+  public TreeMap<String, ToolChain> getToolChains() {
+    return toolChains;
+  }
+
+  public Triple getTriple() {
+    return triple;
+  }
+
+  public abstract ToolChain getToolChain(ArgList argList, String archName);
+
+  public static HostInfo createLinuxHostInfo(Driver driver, Triple defaultTriple) {
+    return new LinuxHostInfo(driver, defaultTriple);
+  }
+
+  public static HostInfo createUnknownHostInfo(Driver driver, Triple defaultTriple) {
+    return new LinuxHostInfo(driver, defaultTriple);
+  }
+
+  public Driver getDriver() {
+    return driver;
+  }
+
+  public static class LinuxHostInfo extends HostInfo {
+
+    public LinuxHostInfo(Driver driver, Triple defaultTriple) {
+      super(driver, defaultTriple);
     }
 
-    public String getArchName()
-    {
-        return triple.getArchName();
+    @Override
+    public ToolChain getToolChain(ArgList argList, String archName) {
+      Util.assertion(archName != null);
+      archName = getArchName();
+      // Automatically handle some instances of -m32/-m64 we know about.
+      Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);
+      if (arg != null) {
+        archName = arg.getOption().getID() == OPT__m32 ? "i386" : "x86_64";
+      }
+
+      TreeMap<String, ToolChain> toolChains = getToolChains();
+      if (toolChains.containsKey(archName))
+        return toolChains.get(archName);
+      else {
+        Triple triple = new Triple(getTriple().getTriple());
+        triple.setArchName(archName);
+        ToolChain tc = new LinuxToolChain(this, triple);
+        toolChains.put(archName, tc);
+        return tc;
+      }
+    }
+  }
+
+  public static class UnknownHostInfo extends HostInfo {
+
+    public UnknownHostInfo(Driver driver, Triple defaultTriple) {
+      super(driver, defaultTriple);
     }
 
-    public TreeMap<String, ToolChain> getToolChains()
-    {
-        return toolChains;
+    @Override
+    public ToolChain getToolChain(ArgList argList, String archName) {
+      Util.assertion(archName != null);
+      archName = getArchName();
+      // Automatically handle some instances of -m32/-m64 we know about.
+      Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);
+      if (arg != null) {
+        archName = arg.getOption().getID() == OPT__m32 ? "i386" : "x86_64";
+      }
+
+      TreeMap<String, ToolChain> toolChains = getToolChains();
+      if (toolChains.containsKey(archName))
+        return toolChains.get(archName);
+      else {
+        Triple triple = new Triple(getTriple().getTriple());
+        triple.setArchName(archName);
+        ToolChain tc = new GenericGCCToolChain(this, triple);
+        toolChains.put(archName, tc);
+        return tc;
+      }
     }
-
-    public Triple getTriple()
-    {
-        return triple;
-    }
-
-    public abstract ToolChain getToolChain(ArgList argList, String archName);
-
-    public static HostInfo createLinuxHostInfo(Driver driver, Triple defaultTriple)
-    {
-        return new LinuxHostInfo(driver, defaultTriple);
-    }
-
-    public static HostInfo createUnknownHostInfo(Driver driver, Triple defaultTriple)
-    {
-        return new LinuxHostInfo(driver, defaultTriple);
-    }
-
-    public Driver getDriver()
-    {
-        return driver;
-    }
-
-    public static class LinuxHostInfo extends HostInfo
-    {
-
-        public LinuxHostInfo(Driver driver, Triple defaultTriple)
-        {
-            super(driver, defaultTriple);
-        }
-
-        @Override
-        public ToolChain getToolChain(ArgList argList, String archName)
-        {
-            Util.assertion( archName != null);
-            archName = getArchName();
-            // Automatically handle some instances of -m32/-m64 we know about.
-            Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);
-            if (arg != null)
-            {
-                archName = arg.getOption().getID() == OPT__m32?"i386":"x86_64";
-            }
-
-            TreeMap<String, ToolChain> toolChains = getToolChains();
-            if (toolChains.containsKey(archName))
-                return toolChains.get(archName);
-            else
-            {
-                Triple triple = new Triple(getTriple().getTriple());
-                triple.setArchName(archName);
-                ToolChain tc = new LinuxToolChain(this, triple);
-                toolChains.put(archName, tc);
-                return tc;
-            }
-        }
-    }
-
-    public static class UnknownHostInfo extends HostInfo
-    {
-
-        public UnknownHostInfo(Driver driver, Triple defaultTriple)
-        {
-            super(driver, defaultTriple);
-        }
-
-        @Override
-        public ToolChain getToolChain(ArgList argList, String archName)
-        {
-            Util.assertion( archName != null);
-            archName = getArchName();
-            // Automatically handle some instances of -m32/-m64 we know about.
-            Arg arg = argList.getLastArg(OPT__m32, OptionID.OPT__m64);
-            if (arg != null)
-            {
-                archName = arg.getOption().getID() == OPT__m32?"i386":"x86_64";
-            }
-
-            TreeMap<String, ToolChain> toolChains = getToolChains();
-            if (toolChains.containsKey(archName))
-                return toolChains.get(archName);
-            else
-            {
-                Triple triple = new Triple(getTriple().getTriple());
-                triple.setArchName(archName);
-                ToolChain tc = new GenericGCCToolChain(this, triple);
-                toolChains.put(archName, tc);
-                return tc;
-            }
-        }
-    }
+  }
 }

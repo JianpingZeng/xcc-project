@@ -24,119 +24,105 @@ import static utils.tablegen.SDNP.*;
 /**
  * ComplexPattern info, corresponding to the ComplexPattern
  * tablegen class in TargetSelectionDAG.td
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ComplexPattern
-{
-    /**
-     * ComplexPattern attributes.
-     */
-    public interface CPAttr
-    {
-        int CPAttrParentAsRoot = 0;
-    }
+public final class ComplexPattern {
+  /**
+   * ComplexPattern attributes.
+   */
+  public interface CPAttr {
+    int CPAttrParentAsRoot = 0;
+  }
 
-    private int ty;
-    private int numOperands;
-    private String selectFunc;
-    private ArrayList<Record> rootNodes;
-    /**
-     * Node properties.
-     */
-    private int properties;
-    /**
-     * Pattern attributes.
-     */
-    private int attributes;
+  private int ty;
+  private int numOperands;
+  private String selectFunc;
+  private ArrayList<Record> rootNodes;
+  /**
+   * Node properties.
+   */
+  private int properties;
+  /**
+   * Pattern attributes.
+   */
+  private int attributes;
 
-    public ComplexPattern()
-    {
-        super();
-    }
+  public ComplexPattern() {
+    super();
+  }
 
-    public ComplexPattern(Record r) throws Exception
-    {
-        ty = CodeGenTarget.getValueType(r.getValueAsDef("Ty"));
-        numOperands = (int) r.getValueAsInt("NumOperands");
-        selectFunc = r.getValueAsString("SelectFunc");
-        rootNodes = r.getValueAsListOfDefs("RootNodes");
+  public ComplexPattern(Record r) throws Exception {
+    ty = CodeGenTarget.getValueType(r.getValueAsDef("Ty"));
+    numOperands = (int) r.getValueAsInt("NumOperands");
+    selectFunc = r.getValueAsString("SelectFunc");
+    rootNodes = r.getValueAsListOfDefs("RootNodes");
 
-        // Parse the properties.
-        ArrayList<Record> propList = r.getValueAsListOfDefs("Properties");
-        for (Record prop : propList)
-        {
-            switch (prop.getName())
-            {
-                case "SDNPHasChain":
-                    properties |= 1 << SDNPHasChain;
-                    break;
-                case "SDNPMayStore":
-                    properties |= 1 << SDNPMayStore;
-                    break;
-                case "SDNPMayLoad":
-                    properties |= 1 << SDNPMayLoad;
-                    break;
-                case "SDNPSideEffect":
-                    properties |= 1 << SDNPSideEffect;
-                    break;
-                case "SDNPMemOperand":
-                    properties |= 1 << SDNPMemOperand;
-                    break;
-                default:
-                {
-                    System.err.printf("Unsupported SD Node property '%s' "
-                                    + "on ComplexPattern '%s'!\n", prop.getName(),
-                            r.getName());
-                    System.exit(1);
-                }
-            }
+    // Parse the properties.
+    ArrayList<Record> propList = r.getValueAsListOfDefs("Properties");
+    for (Record prop : propList) {
+      switch (prop.getName()) {
+        case "SDNPHasChain":
+          properties |= 1 << SDNPHasChain;
+          break;
+        case "SDNPMayStore":
+          properties |= 1 << SDNPMayStore;
+          break;
+        case "SDNPMayLoad":
+          properties |= 1 << SDNPMayLoad;
+          break;
+        case "SDNPSideEffect":
+          properties |= 1 << SDNPSideEffect;
+          break;
+        case "SDNPMemOperand":
+          properties |= 1 << SDNPMemOperand;
+          break;
+        default: {
+          System.err.printf("Unsupported SD Node property '%s' "
+                  + "on ComplexPattern '%s'!\n", prop.getName(),
+              r.getName());
+          System.exit(1);
         }
-
-        // Parse the attributes.
-        attributes = 0;
-        propList = r.getValueAsListOfDefs("Attributes");
-        for (Record attr : propList)
-        {
-            if (attr.getName().equals("CPAttrParentAsRoot"))
-                attributes |= 1 << CPAttrParentAsRoot;
-            else
-            {
-                System.err.printf("Unsupported pattern attribute '%s' "
-                                + "on ComplexPattern '%s'!\n",
-                        attr.getName(), r.getName());
-                System.exit(1);
-            }
-        }
+      }
     }
 
-    public int getValueType()
-    {
-        return ty;
+    // Parse the attributes.
+    attributes = 0;
+    propList = r.getValueAsListOfDefs("Attributes");
+    for (Record attr : propList) {
+      if (attr.getName().equals("CPAttrParentAsRoot"))
+        attributes |= 1 << CPAttrParentAsRoot;
+      else {
+        System.err.printf("Unsupported pattern attribute '%s' "
+                + "on ComplexPattern '%s'!\n",
+            attr.getName(), r.getName());
+        System.exit(1);
+      }
     }
+  }
 
-    public int getNumOperands()
-    {
-        return numOperands;
-    }
+  public int getValueType() {
+    return ty;
+  }
 
-    public String getSelectFunc()
-    {
-        return selectFunc;
-    }
+  public int getNumOperands() {
+    return numOperands;
+  }
 
-    public ArrayList<Record> getRootNodes()
-    {
-        return rootNodes;
-    }
+  public String getSelectFunc() {
+    return selectFunc;
+  }
 
-    public boolean hasProperty(int prop)
-    {
-        return (properties & (1<<prop)) != 0;
-    }
+  public ArrayList<Record> getRootNodes() {
+    return rootNodes;
+  }
 
-    public boolean hasAttribute(int attr)
-    {
-        return (attributes & (1 << attr)) != 0;
-    }
+  public boolean hasProperty(int prop) {
+    return (properties & (1 << prop)) != 0;
+  }
+
+  public boolean hasAttribute(int attr) {
+    return (attributes & (1 << attr)) != 0;
+  }
 }

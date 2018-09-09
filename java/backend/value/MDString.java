@@ -26,28 +26,23 @@ import static backend.value.ValueKind.MDStringVal;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MDString extends MetadataBase
-{
-    private String name;
+public class MDString extends MetadataBase {
+  private String name;
 
-    MDString(String str)
-    {
-        super(LLVMContext.LabelTy, MDStringVal);
-    }
+  MDString(String str) {
+    super(LLVMContext.LabelTy, MDStringVal);
+  }
 
-    public static MetadataBase get(String name)
-    {
-        return getUniqueImpl().getOrCreate(name);
-    }
+  public static MetadataBase get(String name) {
+    return getUniqueImpl().getOrCreate(name);
+  }
 
-    public String getString()
-    {
-        return name;
-    }
+  public String getString() {
+    return name;
+  }
 
-    @Override
-    public String toString()
-    {
-        return getString();
-    }
+  @Override
+  public String toString() {
+    return getString();
+  }
 }

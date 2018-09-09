@@ -18,7 +18,7 @@
 /**
  * This package encloses some important classes designed for implementing an
  * advancing linear scan register allocator with live internal splitting.
- *
+ * <p>
  * If you want to understand more details about this allocator, please
  * refer to the following papers:
  * <pre>
@@ -30,6 +30,7 @@
  * 4. Wimmer, Christian, and Michael Franz. "Linear scan register allocation on SSA form."
  *    Proceedings of the 8th annual IEEE/ACM international symposium on Code generation and optimization. ACM, 2010.
  * </pre>
+ *
  * @author Jianping Zeng
  * @version 0.1
  */

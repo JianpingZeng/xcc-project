@@ -23,28 +23,26 @@ import java.io.PrintStream;
 
 /**
  * Abstract base class for all machine specific constant pool value subclass.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class MachineConstantPoolValue
-{
-    private Type ty;
+public abstract class MachineConstantPoolValue {
+  private Type ty;
 
-    public MachineConstantPoolValue(Type ty)
-    {
-        this.ty = ty;
-    }
+  public MachineConstantPoolValue(Type ty) {
+    this.ty = ty;
+  }
 
-    public Type getType()
-    {
-        return ty;
-    }
+  public Type getType() {
+    return ty;
+  }
 
-    public abstract int getRelocationInfo();
+  public abstract int getRelocationInfo();
 
-    public abstract int getExistingMachineCPValue(MachineConstantPool pool, int align);
+  public abstract int getExistingMachineCPValue(MachineConstantPool pool, int align);
 
-    public abstract void addSelectionDAGCSEId(FoldingSetNodeID id);
+  public abstract void addSelectionDAGCSEId(FoldingSetNodeID id);
 
-    public abstract void print(PrintStream os);
+  public abstract void print(PrintStream os);
 }

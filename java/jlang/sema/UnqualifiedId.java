@@ -23,98 +23,86 @@ import jlang.support.SourceRange;
 
 /**
  * Represents a C unqualified id that has been parsed.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class UnqualifiedId
-{
-    public enum DeclarationKind
-    {
-        /**
-         * An abstract declarator.
-         */
-        DK_Abstract,
-
-        /**
-         * A normal declarator.
-         */
-        DK_Normal,
-    }
-
-    private IdentifierInfo identifier;
-    private DeclarationKind kind;
-    private SourceLocation startLocation;
-    private SourceLocation endLocation;
-
-    public UnqualifiedId()
-    {
-        identifier = null;
-        kind = null;
-        startLocation = new SourceLocation();
-        endLocation = new SourceLocation();
-    }
-
-    public UnqualifiedId(UnqualifiedId other)
-    {
-        identifier = other.identifier;
-        kind = other.kind;
-        startLocation = new SourceLocation(other.startLocation);
-        endLocation = new SourceLocation(other.endLocation);
-    }
+public class UnqualifiedId {
+  public enum DeclarationKind {
+    /**
+     * An abstract declarator.
+     */
+    DK_Abstract,
 
     /**
-     * Set this to invalid state.
+     * A normal declarator.
      */
-    public void clear()
-    {
-        identifier = null;
-        kind = null;
-        startLocation = new SourceLocation();
-        endLocation = new SourceLocation();
-    }
+    DK_Normal,
+  }
 
-    public boolean isValid()
-    {
-        return startLocation.isValid();
-    }
+  private IdentifierInfo identifier;
+  private DeclarationKind kind;
+  private SourceLocation startLocation;
+  private SourceLocation endLocation;
 
-    public boolean isInvalid()
-    {
-        return !isValid();
-    }
+  public UnqualifiedId() {
+    identifier = null;
+    kind = null;
+    startLocation = new SourceLocation();
+    endLocation = new SourceLocation();
+  }
 
-    public void setIdentifier(IdentifierInfo id, SourceLocation loc)
-    {
-        identifier = id;
-        startLocation = loc;
-        if (id != null)
-            kind = DeclarationKind.DK_Normal;
-        else
-            kind = DeclarationKind.DK_Abstract;
-    }
+  public UnqualifiedId(UnqualifiedId other) {
+    identifier = other.identifier;
+    kind = other.kind;
+    startLocation = new SourceLocation(other.startLocation);
+    endLocation = new SourceLocation(other.endLocation);
+  }
 
-    public IdentifierInfo getIdentifier()
-    {
-        return identifier;
-    }
+  /**
+   * Set this to invalid state.
+   */
+  public void clear() {
+    identifier = null;
+    kind = null;
+    startLocation = new SourceLocation();
+    endLocation = new SourceLocation();
+  }
 
-    public SourceRange getSourceRange()
-    {
-        return new SourceRange(startLocation, endLocation);
-    }
+  public boolean isValid() {
+    return startLocation.isValid();
+  }
 
-    public SourceLocation getStartLocation()
-    {
-        return startLocation;
-    }
+  public boolean isInvalid() {
+    return !isValid();
+  }
 
-    public SourceLocation getEndLocation()
-    {
-        return endLocation;
-    }
+  public void setIdentifier(IdentifierInfo id, SourceLocation loc) {
+    identifier = id;
+    startLocation = loc;
+    if (id != null)
+      kind = DeclarationKind.DK_Normal;
+    else
+      kind = DeclarationKind.DK_Abstract;
+  }
 
-    public DeclarationKind getkind()
-    {
-        return kind;
-    }
+  public IdentifierInfo getIdentifier() {
+    return identifier;
+  }
+
+  public SourceRange getSourceRange() {
+    return new SourceRange(startLocation, endLocation);
+  }
+
+  public SourceLocation getStartLocation() {
+    return startLocation;
+  }
+
+  public SourceLocation getEndLocation() {
+    return endLocation;
+  }
+
+  public DeclarationKind getkind() {
+    return kind;
+  }
 }

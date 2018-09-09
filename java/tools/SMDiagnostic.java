@@ -22,56 +22,50 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SMDiagnostic
-{
-    private String filename;
-    private int lineNo, columnNo;
-    private String message, lineContents;
+public final class SMDiagnostic {
+  private String filename;
+  private int lineNo, columnNo;
+  private String message, lineContents;
 
-    public SMDiagnostic()
-    {
-        lineNo = 0;
-        columnNo = 0;
+  public SMDiagnostic() {
+    lineNo = 0;
+    columnNo = 0;
+  }
+
+  public SMDiagnostic(String filename,
+                      int lineNo, int columnNo,
+                      String msg, String lineContents) {
+    this.filename = filename;
+    this.lineNo = lineNo;
+    this.columnNo = columnNo;
+    this.message = msg;
+    this.lineContents = lineContents;
+  }
+
+  public void print(String progName, PrintStream os) {
+    if (progName != null && !progName.isEmpty())
+      os.printf("%s: ", progName);
+
+    if (filename.equals("-"))
+      os.printf("<stdin>");
+    else
+      os.print(filename);
+
+    if (lineNo != -1) {
+      os.printf(":%d", lineNo);
+      if (columnNo != -1)
+        os.printf(":%d", columnNo + 1);
     }
 
-    public SMDiagnostic(String filename,
-            int lineNo, int columnNo,
-            String msg, String lineContents)
-    {
-        this.filename = filename;
-        this.lineNo = lineNo;
-        this.columnNo = columnNo;
-        this.message = msg;
-        this.lineContents = lineContents;
+    os.printf(": %s%n", message);
+    if (lineNo != -1 && columnNo != -1) {
+      os.println(lineContents);
+
+      /// print out spaces/tabs before caret.
+      for (int i = 0; i < columnNo; i++)
+        os.print(lineContents.charAt(i) == '\t' ? '\t' : ' ');
+
+      os.println("^");
     }
-
-    public void print(String progName, PrintStream os)
-    {
-        if (progName != null && !progName.isEmpty())
-            os.printf("%s: ", progName);
-
-        if (filename.equals("-"))
-            os.printf("<stdin>");
-        else
-            os.print(filename);
-
-        if (lineNo != -1)
-        {
-            os.printf(":%d", lineNo);
-            if (columnNo != -1)
-                os.printf(":%d", columnNo+1);
-        }
-
-        os.printf(": %s%n", message);
-        if (lineNo != -1 && columnNo != -1)
-        {
-            os.println(lineContents);
-
-            /// print out spaces/tabs before caret.
-            for (int i = 0; i < columnNo; i++)
-                os.print(lineContents.charAt(i) == '\t'?'\t':' ');
-
-            os.println("^");
-        }
-    }
+  }
 }

@@ -18,144 +18,125 @@
 package backend.codegen.dagisel;
 
 import tools.Util;
+
 import static backend.codegen.dagisel.SDep.Kind.*;
 
-public class SDep implements Cloneable
-{
-    public enum Kind
-    {
-        Data, Anti, Output, Order
+public class SDep implements Cloneable {
+  public enum Kind {
+    Data, Anti, Output, Order
+  }
+
+  private SUnit unit;
+  private Kind depKind;
+  private int reg;    // for data, anti,output dependency.
+
+  private static class OrderContent {
+    boolean isNormalMemory;
+    boolean isMustAlias;
+    boolean isArtificial;
+  }
+
+  private OrderContent order;
+
+  private int latency;
+
+  public SDep() {
+    depKind = Data;
+  }
+
+  public SDep(SUnit u, Kind kind, int latency, int reg) {
+    this(u, kind, latency, reg, false, false, false);
+  }
+
+  public SDep(SUnit u,
+              Kind kind,
+              int latency,
+              int reg,
+              boolean isNormalMemory,
+              boolean isMustAlias,
+              boolean isArtificial) {
+    this.depKind = kind;
+    this.unit = u;
+    this.latency = latency;
+    switch (kind) {
+      case Anti:
+      case Output:
+        Util.assertion(reg != 0);
+      case Data:
+        Util.assertion(!isMustAlias);
+        Util.assertion(!isArtificial);
+        this.reg = reg;
+        break;
+      case Order:
+        Util.assertion(reg == 0);
+        order = new OrderContent();
+        order.isNormalMemory = isNormalMemory;
+        order.isArtificial = isArtificial;
+        order.isMustAlias = isMustAlias;
+        break;
     }
+  }
 
-    private SUnit unit;
-    private Kind depKind;
-    private int reg;    // for data, anti,output dependency.
+  public int getLatency() {
+    return latency;
+  }
 
-    private static class OrderContent
-    {
-        boolean isNormalMemory;
-        boolean isMustAlias;
-        boolean isArtificial;
-    }
+  public void setLatency(int l) {
+    latency = l;
+  }
 
-    private OrderContent order;
+  public SUnit getSUnit() {
+    return unit;
+  }
 
-    private int latency;
+  public void setSUnit(SUnit u) {
+    this.unit = u;
+  }
 
-    public SDep()
-    {
-        depKind = Data;
-    }
+  public Kind getDepKind() {
+    return depKind;
+  }
 
-    public SDep(SUnit u, Kind kind, int latency, int reg)
-    {
-        this(u, kind, latency, reg, false, false, false);
-    }
+  public boolean isCtrl() {
+    return getDepKind() != Data;
+  }
 
-	public SDep(SUnit u,
-		Kind kind,
-		int latency,
-		int reg,
-		boolean isNormalMemory,
-		boolean isMustAlias, 
-		boolean isArtificial)
-	{
-		this.depKind = kind;
-		this.unit = u;
-		this.latency = latency;
-		switch(kind)
-		{
-			case Anti:
-			case Output:
-				Util.assertion( reg != 0);
-			case Data:
-				Util.assertion( !isMustAlias);
-				Util.assertion( !isArtificial);
-				this.reg = reg;
-				break;	
-			case Order:
-				Util.assertion( reg == 0);
-				order = new OrderContent();
-				order.isNormalMemory = isNormalMemory;
-				order.isArtificial = isArtificial;
-				order.isMustAlias = isMustAlias;
-				break;
-		}
-	}
+  public boolean isNormalMemory() {
+    return getDepKind() == Order && order.isNormalMemory;
+  }
 
-	public int getLatency()
-	{
-		return latency;
-	}
+  public boolean isMustAlias() {
+    return getDepKind() == Order && order.isMustAlias;
+  }
 
-	public void setLatency(int l)
-	{
-		latency = l;
-	}
+  public boolean isArtificial() {
+    return getDepKind() == Order && order.isArtificial;
+  }
 
-	public SUnit getSUnit()
-	{
-		return unit;
-	}
+  public boolean isAssignedRegDep() {
+    return getDepKind() == Data && reg != 0;
+  }
 
-	public void setSUnit(SUnit u)
-	{
-		this.unit = u;
-	}
+  public int getReg() {
+    Util.assertion(getDepKind() == Data || getDepKind() == Anti || getDepKind() == Output);
 
-	public Kind getDepKind()
-	{
-		return depKind;
-	}
+    return reg;
+  }
 
-	public boolean isCtrl()
-	{
-		return getDepKind() != Data;
-	}
+  public void setReg(int r) {
+    Util.assertion(getDepKind() == Data || getDepKind() == Anti || getDepKind() == Output);
 
-	public boolean isNormalMemory()
-	{
-		return getDepKind() == Order && order.isNormalMemory;
-	}
-
-	public boolean isMustAlias()
-	{
-		return getDepKind() == Order && order.isMustAlias;	
-	}
-
-	public boolean isArtificial()
-	{
-		return getDepKind() == Order && order.isArtificial;
-	}
-
-	public boolean isAssignedRegDep()
-	{
-		return getDepKind() == Data && reg != 0;
-	}
-
-	public int getReg()
-	{
-		Util.assertion( getDepKind() == Data || getDepKind() == Anti			|| getDepKind() == Output);
-
-		return reg;
-	}
-
-	public void setReg(int r)
-	{
-		Util.assertion( getDepKind() == Data || getDepKind() == Anti			|| getDepKind() == Output);
-
-		Util.assertion( getDepKind() != Anti || r != 0);
-		Util.assertion( getDepKind() != Output || r != 0);
-		reg = r;
-	}
+    Util.assertion(getDepKind() != Anti || r != 0);
+    Util.assertion(getDepKind() != Output || r != 0);
+    reg = r;
+  }
 
 
-	@Override
-	public SDep clone()
-	{
-		return new SDep(unit, depKind,latency, reg,
-				order != null && order.isNormalMemory,
-				order != null && order.isMustAlias,
-				order != null && order.isArtificial);
-	}
+  @Override
+  public SDep clone() {
+    return new SDep(unit, depKind, latency, reg,
+        order != null && order.isNormalMemory,
+        order != null && order.isMustAlias,
+        order != null && order.isArtificial);
+  }
 }

@@ -21,157 +21,132 @@ import java.util.ArrayList;
 
 import static xcc.Action.ActionClass.*;
 
-public class Action
-{
-    public String getClassName()
-    {
-        return getKind().name();
+public class Action {
+  public String getClassName() {
+    return getKind().name();
+  }
+
+  public enum ActionClass {
+    InputClass("Input"),
+    BindArchClass("bind-arch"),
+    PreprocessJobClass("preprocess"),
+    PrecompileJobClass("precompile"),
+    AnalyzeJobClass("analyzer"),
+    CompileJobClass("compile"),
+    AssembleJobClass("assemble"),
+    LinkJobClass("link"),
+    LipoJobClass("lipo");
+
+    public String name;
+
+    ActionClass(String name) {
+      this.name = name;
     }
 
-    public enum ActionClass
-    {
-        InputClass("Input"),
-        BindArchClass("bind-arch"),
-        PreprocessJobClass("preprocess"),
-        PrecompileJobClass("precompile"),
-        AnalyzeJobClass("analyzer"),
-        CompileJobClass("compile"),
-        AssembleJobClass("assemble"),
-        LinkJobClass("link"),
-        LipoJobClass("lipo");
+    public static final ActionClass JobClassFirst = PreprocessJobClass;
+    public static final ActionClass JobClassLast = LipoJobClass;
+  }
 
-        public String name;
+  private ActionClass kind;
+  private int outputType;
 
-        ActionClass(String name)
-        {
-            this.name = name;
-        }
-        public static final ActionClass JobClassFirst = PreprocessJobClass;
-        public static final ActionClass JobClassLast = LipoJobClass;
+  private ArrayList<Action> inputs;
+
+  public Action(ActionClass kind, int outputType) {
+    this.kind = kind;
+    this.outputType = outputType;
+    inputs = new ArrayList<>();
+  }
+
+  public Action(ActionClass kind, Action input, int outputType) {
+    this.kind = kind;
+    this.outputType = outputType;
+    inputs = new ArrayList<>();
+    inputs.add(input);
+  }
+
+  public Action(ActionClass kind, ArrayList<Action> inputs, int outputType) {
+    this.kind = kind;
+    this.outputType = outputType;
+    this.inputs = new ArrayList<>();
+    this.inputs.addAll(inputs);
+  }
+
+  public int getOutputType() {
+    return outputType;
+  }
+
+  public ActionClass getKind() {
+    return kind;
+  }
+
+  public ArrayList<Action> getInputs() {
+    return inputs;
+  }
+
+  public static class InputAction extends Action {
+    private Arg input;
+
+    public InputAction(Arg input, int outputType) {
+      super(InputClass, outputType);
+      this.input = input;
     }
 
-    private ActionClass kind;
-    private int outputType;
+    public Arg getInputArgs() {
+      return input;
+    }
+  }
 
-    private ArrayList<Action> inputs;
-    public Action(ActionClass kind, int outputType)
-    {
-        this.kind = kind;
-        this.outputType = outputType;
-        inputs = new ArrayList<>();
+  public static class BindArchAction extends Action {
+    private String archName;
+
+    public BindArchAction(Action input, String archName) {
+      super(BindArchClass, input, input.getOutputType());
+      this.archName = archName;
     }
 
-    public Action(ActionClass kind, Action input, int outputType)
-    {
-        this.kind = kind;
-        this.outputType = outputType;
-        inputs = new ArrayList<>();
-        inputs.add(input);
+    public String getArchName() {
+      return archName;
+    }
+  }
+
+  public static class JobAction extends Action {
+    public JobAction(ActionClass kind, Action input, int type) {
+      super(kind, input, type);
     }
 
-    public Action(ActionClass kind, ArrayList<Action> inputs, int outputType)
-    {
-        this.kind = kind;
-        this.outputType = outputType;
-        this.inputs = new ArrayList<>();
-        this.inputs.addAll(inputs);
+    public JobAction(ActionClass kind, ArrayList<Action> inputs, int type) {
+      super(kind, inputs, type);
     }
+  }
 
-    public int getOutputType()
-    {
-        return outputType;
+  public static class PreprocessJobAction extends JobAction {
+    public PreprocessJobAction(Action input, int outputType) {
+      super(PreprocessJobClass, input, outputType);
     }
+  }
 
-    public ActionClass getKind()
-    {
-        return kind;
+  public static class PrecompileJobAction extends JobAction {
+    public PrecompileJobAction(Action input, int outputType) {
+      super(PrecompileJobClass, input, outputType);
     }
+  }
 
-    public ArrayList<Action> getInputs()
-    {
-        return inputs;
+  public static class CompileJobAction extends JobAction {
+    public CompileJobAction(Action input, int type) {
+      super(CompileJobClass, input, type);
     }
+  }
 
-    public static class InputAction extends Action
-    {
-        private Arg input;
-        public InputAction(Arg input, int outputType)
-        {
-            super(InputClass, outputType);
-            this.input = input;
-        }
-
-        public Arg getInputArgs()
-        {
-            return input;
-        }
+  public static class AssembleJobAction extends JobAction {
+    public AssembleJobAction(Action input, int type) {
+      super(AssembleJobClass, input, type);
     }
+  }
 
-    public static class BindArchAction extends Action
-    {
-        private String archName;
-        public BindArchAction(Action input, String archName)
-        {
-            super(BindArchClass, input, input.getOutputType());
-            this.archName = archName;
-        }
-
-        public String getArchName()
-        {
-            return archName;
-        }
+  public static class LinkJobAction extends JobAction {
+    public LinkJobAction(ArrayList<Action> inputs, int type) {
+      super(LinkJobClass, inputs, type);
     }
-
-    public static class JobAction extends Action
-    {
-        public JobAction(ActionClass kind, Action input, int type)
-        {
-            super(kind, input, type);
-        }
-
-        public JobAction (ActionClass kind, ArrayList<Action> inputs, int type)
-        {
-            super(kind, inputs, type);
-        }
-    }
-
-    public static class PreprocessJobAction extends JobAction
-    {
-        public PreprocessJobAction(Action input, int outputType)
-        {
-            super(PreprocessJobClass, input, outputType);
-        }
-    }
-
-    public static class PrecompileJobAction extends JobAction
-    {
-        public PrecompileJobAction(Action input, int outputType)
-        {
-            super(PrecompileJobClass, input, outputType);
-        }
-    }
-
-    public static class CompileJobAction extends JobAction
-    {
-        public CompileJobAction(Action input, int type)
-        {
-            super(CompileJobClass, input, type);
-        }
-    }
-
-    public static class AssembleJobAction extends JobAction
-    {
-        public AssembleJobAction(Action input, int type)
-        {
-            super(AssembleJobClass, input, type);
-        }
-    }
-
-    public static class LinkJobAction extends JobAction
-    {
-        public LinkJobAction(ArrayList<Action> inputs, int type)
-        {
-            super(LinkJobClass, inputs, type);
-        }
-    }
+  }
 }

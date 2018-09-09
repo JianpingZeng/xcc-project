@@ -23,28 +23,23 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Attr implements Cloneable
-{
-    protected AttrKind kind;
+public class Attr implements Cloneable {
+  protected AttrKind kind;
 
-    public Attr(AttrKind kind)
-    {
-        this.kind = kind;
-    }
+  public Attr(AttrKind kind) {
+    this.kind = kind;
+  }
 
-    public AttrKind getKind()
-    {
-        return kind;
-    }
+  public AttrKind getKind() {
+    return kind;
+  }
 
-    public void setKind(AttrKind kind)
-    {
-        this.kind = kind;
-    }
+  public void setKind(AttrKind kind) {
+    this.kind = kind;
+  }
 
-    public Attr clone()
-    {
-        Util.shouldNotReachHere("Must be implemented by subclass!");
-        return null;
-    }
+  public Attr clone() {
+    Util.shouldNotReachHere("Must be implemented by subclass!");
+    return null;
+  }
 }

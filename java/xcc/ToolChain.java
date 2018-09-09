@@ -24,111 +24,95 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-public abstract class ToolChain
-{
-    private HostInfo host;
-    private Triple triple;
-    private ArrayList<String> filePaths;
-    private ArrayList<String> programPaths;
+public abstract class ToolChain {
+  private HostInfo host;
+  private Triple triple;
+  private ArrayList<String> filePaths;
+  private ArrayList<String> programPaths;
 
-    public ToolChain(HostInfo host, Triple triple)
-    {
-        this.host = host;
-        this.triple = triple;
-        filePaths = new ArrayList<>();
-        programPaths = new ArrayList<>();
+  public ToolChain(HostInfo host, Triple triple) {
+    this.host = host;
+    this.triple = triple;
+    filePaths = new ArrayList<>();
+    programPaths = new ArrayList<>();
+  }
+
+  public Driver getDriver() {
+    return host.getDriver();
+  }
+
+  public String getTripleString() {
+    return triple.getTriple();
+  }
+
+  public ArrayList<String> getFilePaths() {
+    return filePaths;
+  }
+
+  public ArrayList<String> getProgramPaths() {
+    return programPaths;
+  }
+
+  public Triple getTriple() {
+    return triple;
+  }
+
+  public HostInfo getHost() {
+    return host;
+  }
+
+  public String getArchName() {
+    return triple.getArchName();
+  }
+
+  public String getPlatform() {
+    return triple.getVendorName();
+  }
+
+  public String getOS() {
+    return triple.getOSName();
+  }
+
+  public abstract xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja);
+
+  public Triple.ArchType getArch() {
+    return triple.getArch();
+  }
+
+  public String getProgramPath(String executable) {
+    for (String path : programPaths) {
+      Path p = Paths.get(path, executable);
+      if (Files.exists(p))
+        return p.toAbsolutePath().toString();
     }
+    return null;
+  }
 
-    public Driver getDriver()
-    {
-        return host.getDriver();
+  public String getFilePath(String name) {
+    for (String path : filePaths) {
+      Path p = Paths.get(path, name);
+      if (Files.exists(p))
+        return p.toAbsolutePath().toString();
     }
+    return null;
+  }
 
-    public String getTripleString()
-    {
-        return triple.getTriple();
-    }
+  /**
+   * Get the nameof linker.
+   *
+   * @return
+   */
+  public abstract String getLinker();
 
-    public ArrayList<String> getFilePaths()
-    {
-        return filePaths;
-    }
+  public abstract String getAssembler();
 
-    public ArrayList<String> getProgramPaths()
-    {
-        return programPaths;
-    }
+  public abstract String getForcedPicModel();
 
-    public Triple getTriple()
-    {
-        return triple;
-    }
+  public abstract String getDefaultRelocationModel();
 
-    public HostInfo getHost()
-    {
-        return host;
-    }
+  public String getCompiler() {
+    return getProgramPath("jlang-cc");
+  }
 
-    public String getArchName()
-    {
-        return triple.getArchName();
-    }
-
-    public String getPlatform()
-    {
-        return triple.getVendorName();
-    }
-
-    public String getOS()
-    {
-        return triple.getOSName();
-    }
-
-    public abstract xcc.tool.Tool selectTool(Compilation c, Action.JobAction ja);
-
-    public Triple.ArchType getArch()
-    {
-        return triple.getArch();
-    }
-
-    public String getProgramPath(String executable)
-    {
-        for (String path : programPaths)
-        {
-            Path p = Paths.get(path, executable);
-            if (Files.exists(p))
-                return p.toAbsolutePath().toString();
-        }
-        return null;
-    }
-
-    public String getFilePath(String name)
-    {
-        for (String path : filePaths)
-        {
-            Path p = Paths.get(path, name);
-            if (Files.exists(p))
-                return p.toAbsolutePath().toString();
-        }
-        return null;
-    }
-
-    /**
-     * Get the nameof linker.
-     * @return
-     */
-    public abstract String getLinker();
-
-    public abstract String getAssembler();
-
-    public abstract String getForcedPicModel();
-
-    public abstract String getDefaultRelocationModel();
-
-    public String getCompiler()
-    {
-        return getProgramPath("jlang-cc");
-    }
-
-    public abstract void addSystemIncludeDir(ArrayList<String> cmdStrings);
+  public abstract void addSystemIncludeDir(ArrayList<String> cmdStrings);
 }

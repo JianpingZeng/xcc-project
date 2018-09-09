@@ -26,36 +26,33 @@ import tools.SourceMgr;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ValID
-{
-    /// ValID - Represents a reference of a definition of some sort with no type.
-    /// There are several cases where we have to parse the value but where the
-    /// type can depend on later context.  This may either be a numeric reference
-    /// or a symbolic (%var) reference.  This is just a discriminated union.
+public final class ValID {
+  /// ValID - Represents a reference of a definition of some sort with no type.
+  /// There are several cases where we have to parse the value but where the
+  /// type can depend on later context.  This may either be a numeric reference
+  /// or a symbolic (%var) reference.  This is just a discriminated union.
 
-    enum ValIDKind
-    {
-        t_LocalID, t_GlobalID,      // ID in intVal.
-        t_LocalName, t_GlobalName,  // Name in StrVal.
-        t_APSInt, t_APFloat,        // Value in APSIntVal/APFloatVal.
-        t_Null, t_Undef, t_Zero,    // No value.
-        t_EmptyArray,               // No value:  []
-        t_Constant,                 // Value in ConstantVal.
-        t_InlineAsm,                // Value in StrVal/StrVal2/intVal.
-        t_Metadata                  // Value in MetadataVal.
-    }
+  enum ValIDKind {
+    t_LocalID, t_GlobalID,      // ID in intVal.
+    t_LocalName, t_GlobalName,  // Name in StrVal.
+    t_APSInt, t_APFloat,        // Value in APSIntVal/APFloatVal.
+    t_Null, t_Undef, t_Zero,    // No value.
+    t_EmptyArray,               // No value:  []
+    t_Constant,                 // Value in ConstantVal.
+    t_InlineAsm,                // Value in StrVal/StrVal2/intVal.
+    t_Metadata                  // Value in MetadataVal.
+  }
 
-    ValIDKind kind;
-    SourceMgr.SMLoc loc;
-    int intVal;
-    String strVal, strVal2;
-    APSInt apsIntVal;
-    APFloat apFloatVal;
-    Constant constantVal;
-    MetadataBase metadataVal;
+  ValIDKind kind;
+  SourceMgr.SMLoc loc;
+  int intVal;
+  String strVal, strVal2;
+  APSInt apsIntVal;
+  APFloat apFloatVal;
+  Constant constantVal;
+  MetadataBase metadataVal;
 
-    ValID()
-    {
-        apFloatVal = new APFloat(0.0f);
-    }
+  ValID() {
+    apFloatVal = new APFloat(0.0f);
+  }
 }

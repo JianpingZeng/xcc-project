@@ -26,42 +26,40 @@ import java.util.ArrayList;
 
 /**
  * Pretty printer and dump AST.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ASTPrinter implements ASTConsumer
-{
-    private PrintStream os;
-    private boolean dump;
+public final class ASTPrinter implements ASTConsumer {
+  private PrintStream os;
+  private boolean dump;
 
-    public ASTPrinter()
-    {
-        this(null, false);
-    }
+  public ASTPrinter() {
+    this(null, false);
+  }
 
-    public ASTPrinter(PrintStream out, boolean dump)
-    {
-        os = out != null? out: System.err;
+  public ASTPrinter(PrintStream out, boolean dump) {
+    os = out != null ? out : System.err;
 
-        this.dump = dump;
-    }
+    this.dump = dump;
+  }
 
-    public static ASTPrinter createASTDumper(PrintStream out, boolean dump)
-    {
-        return new ASTPrinter(out, dump);
-    }
+  public static ASTPrinter createASTDumper(PrintStream out, boolean dump) {
+    return new ASTPrinter(out, dump);
+  }
 
-    @Override
-    public void initialize(ASTContext ctx) {}
+  @Override
+  public void initialize(ASTContext ctx) {
+  }
 
-    @Override
-    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
+  @Override
+  public void handleTopLevelDecls(ArrayList<Decl> decls) {
+  }
 
-    @Override
-    public void handleTranslationUnit(ASTContext context)
-    {
-        PrintingPolicy policy = context.printingPolicy;
-        policy.dump = dump;
-        context.getTranslateUnitDecl().print(os, policy);
-    }
+  @Override
+  public void handleTranslationUnit(ASTContext context) {
+    PrintingPolicy policy = context.printingPolicy;
+    policy.dump = dump;
+    context.getTranslateUnitDecl().print(os, policy);
+  }
 }

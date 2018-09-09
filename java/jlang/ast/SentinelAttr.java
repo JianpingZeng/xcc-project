@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class SentinelAttr extends Attr
-{
-    public SentinelAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class SentinelAttr extends Attr {
+  public SentinelAttr(AttrKind kind) {
+    super(kind);
+  }
 }

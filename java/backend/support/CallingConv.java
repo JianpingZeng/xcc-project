@@ -16,45 +16,44 @@ package backend.support;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-public enum CallingConv
-{
-    /**
-     * The default llvm calling convention, compatible with C.  This
-     * convention is the only calling convention that supports varargs calls.
-     * As with typical C calling conventions, the callee/caller have to
-     * tolerate certain amounts of prototype mismatch.
-     */
-    C,
+public enum CallingConv {
+  /**
+   * The default llvm calling convention, compatible with C.  This
+   * convention is the only calling convention that supports varargs calls.
+   * As with typical C calling conventions, the callee/caller have to
+   * tolerate certain amounts of prototype mismatch.
+   */
+  C,
 
-    /***
-     * Generic LLVM calling conventions.  None of these calling conventions
-     * support varargs calls, and all assume that the caller and callee
-     * prototype exactly match.
-     * Fast - This calling convention attempts to make calls as fast as
-     * possible (e.g. by passing things in registers).
-     */
-    Fast,
+  /***
+   * Generic LLVM calling conventions.  None of these calling conventions
+   * support varargs calls, and all assume that the caller and callee
+   * prototype exactly match.
+   * Fast - This calling convention attempts to make calls as fast as
+   * possible (e.g. by passing things in registers).
+   */
+  Fast,
 
-    /**
-     * This calling convention attempts to make code in the caller as
-     * efficient as possible under the assumption that the call is not commonly
-     * executed.  As such, these calls often preserve all registers so that the
-     * call does not break any live ranges in the caller side.
-     */
-    Cold,
+  /**
+   * This calling convention attempts to make code in the caller as
+   * efficient as possible under the assumption that the call is not commonly
+   * executed.  As such, these calls often preserve all registers so that the
+   * call does not break any live ranges in the caller side.
+   */
+  Cold,
 
-    /**
-     * stdcall is the calling conventions mostly used by the
-     * Win32 API. It is basically the same as the C convention with the
-     * difference in that the callee is responsible for popping the arguments
-     * from the stack.
-     */
-    X86_StdCall,
+  /**
+   * stdcall is the calling conventions mostly used by the
+   * Win32 API. It is basically the same as the C convention with the
+   * difference in that the callee is responsible for popping the arguments
+   * from the stack.
+   */
+  X86_StdCall,
 
-    /**
-     * 'fast' analog of X86_StdCall. Passes first two arguments
-     * in ECX:EDX registers, others - via stack. Callee is responsible for
-     * stack cleaning.
-     */
-    X86_FastCall,
+  /**
+   * 'fast' analog of X86_StdCall. Passes first two arguments
+   * in ECX:EDX registers, others - via stack. Callee is responsible for
+   * stack cleaning.
+   */
+  X86_FastCall,
 }

@@ -22,22 +22,21 @@ import jlang.type.QualType;
 /**
  * Used in MergeFunctionDecl to keep track of function parameters in
  * C.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class GNUCompatibleParamWarning
-{
-    public Decl.ParamVarDecl oldParam;
-    public Decl.ParamVarDecl newParam;
-    public QualType promotedType;
+public class GNUCompatibleParamWarning {
+  public Decl.ParamVarDecl oldParam;
+  public Decl.ParamVarDecl newParam;
+  public QualType promotedType;
 
-    public GNUCompatibleParamWarning(
-            Decl.ParamVarDecl oldParam,
-            Decl.ParamVarDecl newParam,
-            QualType promotedType)
-    {
-        this.oldParam = oldParam;
-        this.newParam = newParam;
-        this.promotedType = promotedType;
-    }
+  public GNUCompatibleParamWarning(
+      Decl.ParamVarDecl oldParam,
+      Decl.ParamVarDecl newParam,
+      QualType promotedType) {
+    this.oldParam = oldParam;
+    this.newParam = newParam;
+    this.promotedType = promotedType;
+  }
 }

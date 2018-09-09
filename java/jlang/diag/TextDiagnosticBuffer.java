@@ -26,72 +26,66 @@ import java.util.ArrayList;
 /**
  * This handler to diagnostic is used for saving all of error and warning
  * information into a buffer rather than standard output(like Terminal).
- *
+ * <p>
  * The mainly using of this class is for verifing diagnostics information
  * by "-verify" option in command line.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class TextDiagnosticBuffer implements DiagnosticClient, Cloneable
-{
-    private ArrayList<Pair<SourceLocation, String>> errors;
-    private ArrayList<Pair<SourceLocation, String>> warnings;
-    private ArrayList<Pair<SourceLocation, String>> notes;
+public class TextDiagnosticBuffer implements DiagnosticClient, Cloneable {
+  private ArrayList<Pair<SourceLocation, String>> errors;
+  private ArrayList<Pair<SourceLocation, String>> warnings;
+  private ArrayList<Pair<SourceLocation, String>> notes;
 
-    public TextDiagnosticBuffer()
-    {
-        errors = new ArrayList<>();
-        warnings = new ArrayList<>();
-        notes = new ArrayList<>();
-    }
+  public TextDiagnosticBuffer() {
+    errors = new ArrayList<>();
+    warnings = new ArrayList<>();
+    notes = new ArrayList<>();
+  }
 
-    public ArrayList<Pair<SourceLocation, String>> getErrors()
-    {
-        return errors;
-    }
+  public ArrayList<Pair<SourceLocation, String>> getErrors() {
+    return errors;
+  }
 
-    public ArrayList<Pair<SourceLocation, String>> getWarnings()
-    {
-        return warnings;
-    }
+  public ArrayList<Pair<SourceLocation, String>> getWarnings() {
+    return warnings;
+  }
 
-    public ArrayList<Pair<SourceLocation, String>> getNotes()
-    {
-        return notes;
-    }
+  public ArrayList<Pair<SourceLocation, String>> getNotes() {
+    return notes;
+  }
 
-    /**
-     * Stores the errors, warnings, and notes that are reported into a buffer.
-     * @param diagLevel
-     * @param info
-     */
-    @Override
-    public void handleDiagnostic(Diagnostic.Level diagLevel,
-            DiagnosticInfo info)
-    {
-        StringBuilder buf = new StringBuilder();
-        info.formatDiagnostic(buf);
-        switch (diagLevel)
-        {
-            default:
-                Util.shouldNotReachHere("Diagnostic not handled during diagnostic buffering");
-                break;
-            case Note:
-                notes.add(Pair.get(info.getLocation(), buf.toString()));
-                break;
-            case Warning:
-                warnings.add(Pair.get(info.getLocation(), buf.toString()));
-                break;
-            case Error:
-            case Fatal:
-                errors.add(Pair.get(info.getLocation(), buf.toString()));
-                break;
-        }
+  /**
+   * Stores the errors, warnings, and notes that are reported into a buffer.
+   *
+   * @param diagLevel
+   * @param info
+   */
+  @Override
+  public void handleDiagnostic(Diagnostic.Level diagLevel,
+                               DiagnosticInfo info) {
+    StringBuilder buf = new StringBuilder();
+    info.formatDiagnostic(buf);
+    switch (diagLevel) {
+      default:
+        Util.shouldNotReachHere("Diagnostic not handled during diagnostic buffering");
+        break;
+      case Note:
+        notes.add(Pair.get(info.getLocation(), buf.toString()));
+        break;
+      case Warning:
+        warnings.add(Pair.get(info.getLocation(), buf.toString()));
+        break;
+      case Error:
+      case Fatal:
+        errors.add(Pair.get(info.getLocation(), buf.toString()));
+        break;
     }
+  }
 
-    @Override
-    public TextDiagnosticBuffer clone()
-    {
-        return new TextDiagnosticBuffer();
-    }
+  @Override
+  public TextDiagnosticBuffer clone() {
+    return new TextDiagnosticBuffer();
+  }
 }

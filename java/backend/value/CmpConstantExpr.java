@@ -23,21 +23,21 @@ import backend.value.Instruction.CmpInst.Predicate;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CmpConstantExpr extends ConstantExpr
-{
-    Predicate predicate;
-    /**
-     * Constructs a new instruction representing the comparison constants
-     * expression.
-     * @param ty
-     * @param opcode
-     */
-    protected CmpConstantExpr(Type ty,
-            Operator opcode,
-            Constant lhs,
-            Constant rhs,
-            Predicate pred)
-    {
-        super(ty, opcode);
-    }
+public class CmpConstantExpr extends ConstantExpr {
+  Predicate predicate;
+
+  /**
+   * Constructs a new instruction representing the comparison constants
+   * expression.
+   *
+   * @param ty
+   * @param opcode
+   */
+  protected CmpConstantExpr(Type ty,
+                            Operator opcode,
+                            Constant lhs,
+                            Constant rhs,
+                            Predicate pred) {
+    super(ty, opcode);
+  }
 }

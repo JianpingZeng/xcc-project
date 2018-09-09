@@ -20,21 +20,17 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CharOpt extends Opt<Character>
-{
-    public CharOpt(ParserChar parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class CharOpt extends Opt<Character> {
+  public CharOpt(ParserChar parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    public CharOpt(Modifier... mods)
-    {
-        this(new ParserChar(), mods);
-    }
+  public CharOpt(Modifier... mods) {
+    this(new ParserChar(), mods);
+  }
 
-    public ParserChar getParser()
-    {
-        return (ParserChar) parser;
-    }
+  public ParserChar getParser() {
+    return (ParserChar) parser;
+  }
 }
 

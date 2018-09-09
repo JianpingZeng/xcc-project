@@ -17,10 +17,8 @@
 
 package jlang.ast;
 
-public class NodeDebugAttr extends Attr
-{
-    public NodeDebugAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class NodeDebugAttr extends Attr {
+  public NodeDebugAttr(AttrKind kind) {
+    super(kind);
+  }
 }

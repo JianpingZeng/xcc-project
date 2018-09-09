@@ -6,29 +6,24 @@ import backend.support.MachineFunctionPass;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class MachineCodeVerifier extends MachineFunctionPass
-{
-    public static MachineCodeVerifier createMachineVerifierPass(boolean allowDoubleDefs)
-    {
-        return new MachineCodeVerifier(allowDoubleDefs);
-    }
+public final class MachineCodeVerifier extends MachineFunctionPass {
+  public static MachineCodeVerifier createMachineVerifierPass(boolean allowDoubleDefs) {
+    return new MachineCodeVerifier(allowDoubleDefs);
+  }
 
-    private MachineCodeVerifier(boolean allowDoubleDefs)
-    {
+  private MachineCodeVerifier(boolean allowDoubleDefs) {
 
-    }
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        return false;
-    }
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    return false;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return null;
-    }
+  @Override
+  public String getPassName() {
+    return null;
+  }
 
 
 }

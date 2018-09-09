@@ -20,24 +20,21 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SubtargetFeatureKV implements Comparable<SubtargetFeatureKV>
-{
-    public String key;
-    public String desc;
-    public int value;
-    public int implies;
+public class SubtargetFeatureKV implements Comparable<SubtargetFeatureKV> {
+  public String key;
+  public String desc;
+  public int value;
+  public int implies;
 
-    @Override
-    public int compareTo(SubtargetFeatureKV o)
-    {
-        return key.compareTo(o.key);
-    }
+  @Override
+  public int compareTo(SubtargetFeatureKV o) {
+    return key.compareTo(o.key);
+  }
 
-    public SubtargetFeatureKV(String k, String d, int val, int imp)
-    {
-        key = k;
-        desc = d;
-        value = val;
-        implies = imp;
-    }
+  public SubtargetFeatureKV(String k, String d, int val, int imp) {
+    key = k;
+    desc = d;
+    value = val;
+    implies = imp;
+  }
 }

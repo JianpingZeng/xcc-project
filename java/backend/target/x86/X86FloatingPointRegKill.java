@@ -38,107 +38,93 @@ import static backend.target.x86.X86GenRegisterInfo.*;
 /**
  * This class defines a pass used for inserting FP_REG_KILL instruction before TerminatorInstr at
  * each machine basic block wherever FP register is used.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86FloatingPointRegKill extends MachineFunctionPass
-{
-    public static final IntStatistic NumFPKills =
-            new IntStatistic("NumFPKills", "Number of inserted FP kill");
+public class X86FloatingPointRegKill extends MachineFunctionPass {
+  public static final IntStatistic NumFPKills =
+      new IntStatistic("NumFPKills", "Number of inserted FP kill");
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservesCFG();
-        au.addPreserved(MachineLoop.class);
-        au.addPreserved(MachineDomTree.class);
-        super.getAnalysisUsage(au);
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservesCFG();
+    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineDomTree.class);
+    super.getAnalysisUsage(au);
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        // If no FP stack register used in the mf, fast exit!
-        MachineRegisterInfo mri = mf.getMachineRegisterInfo();
-        TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    // If no FP stack register used in the mf, fast exit!
+    MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
 
-        if (mri.getRegClassVirReg(RFP80RegisterClass).isEmpty() &&
-                mri.getRegClassVirReg(RFP64RegisterClass).isEmpty() &&
-                mri.getRegClassVirReg(RFP32RegisterClass).isEmpty())
-            return false;
+    if (mri.getRegClassVirReg(RFP80RegisterClass).isEmpty() &&
+        mri.getRegClassVirReg(RFP64RegisterClass).isEmpty() &&
+        mri.getRegClassVirReg(RFP32RegisterClass).isEmpty())
+      return false;
 
-        boolean changed = false;
+    boolean changed = false;
 
-        X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
-        for (int i = 0, e = mf.getNumBlocks(); i < e; i++)
-        {
-            MachineBasicBlock mbb = mf.getMBBAt(i);
-            // if this mbb is return mbb, ignore it. We don't want to insert an FP_REG_KILL
-            // before the return.
-            if (!mbb.isEmpty() && mbb.getLastInst().isReturn())
-            {
-                continue;
-            }
+    X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
+    for (int i = 0, e = mf.getNumBlocks(); i < e; i++) {
+      MachineBasicBlock mbb = mf.getMBBAt(i);
+      // if this mbb is return mbb, ignore it. We don't want to insert an FP_REG_KILL
+      // before the return.
+      if (!mbb.isEmpty() && mbb.getLastInst().isReturn()) {
+        continue;
+      }
 
-            boolean containsFPCode = false;
-            for (int j = 0, end = mbb.size(); j < end && !containsFPCode; j++)
-            {
-                MachineInstr mi = mbb.getInstAt(j);
-                if (mi.getNumOperands() != 0 && mi.getOperand(0).isRegister())
-                {
-                    TargetRegisterClass rc;
-                    for (int op = 0; op < mi.getNumOperands(); op++)
-                    {
-                        MachineOperand mo = mi.getOperand(op);
-                        if (mo.isRegister() && mo.isDef() && mo.getReg() != 0 &&
-                                isVirtualRegister(mo.getReg()) &&
-                                (rc = mri.getRegClass(mo.getReg())) != null &&
-                                (rc == RFP80RegisterClass ||
-                                    rc == RFP64RegisterClass ||
-                                    rc == RFP32RegisterClass))
-                            containsFPCode = true;
-                    }
-                }
-            }
-
-            if (!containsFPCode)
-            {
-                BasicBlock llvmBB = mbb.getBasicBlock();
-                for (SuccIterator itr = llvmBB.succIterator(); itr.hasNext() && !containsFPCode;)
-                {
-                    BasicBlock succBB = itr.next();
-                    PhiNode inst;
-                    for (int j = 0, sz = succBB.size(); j < sz && succBB.getInstAt(j) instanceof PhiNode; j++)
-                    {
-                        inst = (PhiNode) succBB.getInstAt(j);
-                        if (inst.getType().equals(LLVMContext.X86_FP80Ty) ||
-                                (!subtarget.hasSSE1() && inst.getType().isFloatingPoint()) ||
-                                (!subtarget.hasSSE2() && inst.getType().equals(LLVMContext.DoubleTy)))
-                        {
-                            containsFPCode = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (containsFPCode)
-            {
-                buildMI(mbb, mbb.getFirstTerminator(), tii.get(FP_REG_KILL));
-                NumFPKills.inc();
-                changed = true;
-            }
+      boolean containsFPCode = false;
+      for (int j = 0, end = mbb.size(); j < end && !containsFPCode; j++) {
+        MachineInstr mi = mbb.getInstAt(j);
+        if (mi.getNumOperands() != 0 && mi.getOperand(0).isRegister()) {
+          TargetRegisterClass rc;
+          for (int op = 0; op < mi.getNumOperands(); op++) {
+            MachineOperand mo = mi.getOperand(op);
+            if (mo.isRegister() && mo.isDef() && mo.getReg() != 0 &&
+                isVirtualRegister(mo.getReg()) &&
+                (rc = mri.getRegClass(mo.getReg())) != null &&
+                (rc == RFP80RegisterClass ||
+                    rc == RFP64RegisterClass ||
+                    rc == RFP32RegisterClass))
+              containsFPCode = true;
+          }
         }
-        return changed;
-    }
+      }
 
-    @Override
-    public String getPassName()
-    {
-        return "X86 FP_REG_KILL inserter";
+      if (!containsFPCode) {
+        BasicBlock llvmBB = mbb.getBasicBlock();
+        for (SuccIterator itr = llvmBB.succIterator(); itr.hasNext() && !containsFPCode; ) {
+          BasicBlock succBB = itr.next();
+          PhiNode inst;
+          for (int j = 0, sz = succBB.size(); j < sz && succBB.getInstAt(j) instanceof PhiNode; j++) {
+            inst = (PhiNode) succBB.getInstAt(j);
+            if (inst.getType().equals(LLVMContext.X86_FP80Ty) ||
+                (!subtarget.hasSSE1() && inst.getType().isFloatingPoint()) ||
+                (!subtarget.hasSSE2() && inst.getType().equals(LLVMContext.DoubleTy))) {
+              containsFPCode = true;
+              break;
+            }
+          }
+        }
+      }
+      if (containsFPCode) {
+        buildMI(mbb, mbb.getFirstTerminator(), tii.get(FP_REG_KILL));
+        NumFPKills.inc();
+        changed = true;
+      }
     }
+    return changed;
+  }
 
-    public static MachineFunctionPass createX86FPRegKillPass()
-    {
-        return new X86FloatingPointRegKill();
-    }
+  @Override
+  public String getPassName() {
+    return "X86 FP_REG_KILL inserter";
+  }
+
+  public static MachineFunctionPass createX86FPRegKillPass() {
+    return new X86FloatingPointRegKill();
+  }
 }

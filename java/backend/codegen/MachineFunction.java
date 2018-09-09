@@ -1,6 +1,5 @@
 package backend.codegen;
 
-import tools.Util;
 import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
@@ -8,6 +7,7 @@ import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import tools.Pair;
+import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -17,280 +17,267 @@ import java.util.List;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineFunction
-{
-	private Function fn;
-	private TargetMachine target;
-	/**
-	 * A list containing all machine basic block.
-	 */
-	private ArrayList<MachineBasicBlock> mbbNumber;
-	/**
-	 * Used to keep track of stack frame information about target.
-	 */
-	private MachineFrameInfo frameInfo;
-	/**
-	 * Keeping track of diagMapping from SSA values to registers.
-	 */
-	private MachineRegisterInfo regInfo;
-	/**
-	 * Keep track of constants to be spilled into stack slot.
-	 */
-	private MachineConstantPool constantPool;
+public class MachineFunction {
+  private Function fn;
+  private TargetMachine target;
+  /**
+   * A list containing all machine basic block.
+   */
+  private ArrayList<MachineBasicBlock> mbbNumber;
+  /**
+   * Used to keep track of stack frame information about target.
+   */
+  private MachineFrameInfo frameInfo;
+  /**
+   * Keeping track of diagMapping from SSA values to registers.
+   */
+  private MachineRegisterInfo regInfo;
+  /**
+   * Keep track of constants to be spilled into stack slot.
+   */
+  private MachineConstantPool constantPool;
 
-	/**
-	 * This array keeps track of the defined machine operand with the spceified
-	 * machine register.
-	 */
-	private MachineOperand[] phyRegDefUseList;
+  /**
+   * This array keeps track of the defined machine operand with the spceified
+   * machine register.
+   */
+  private MachineOperand[] phyRegDefUseList;
 
-	/**
-	 * Used to keep track of target-specific per-machine function information for
-	 * the target implementation.
-	 */
-	MachineFunctionInfo mfInfo;
-	private int alignment;
-	private MachineJumpTableInfo jumpTableInfo;
+  /**
+   * Used to keep track of target-specific per-machine function information for
+   * the target implementation.
+   */
+  MachineFunctionInfo mfInfo;
+  private int alignment;
+  private MachineJumpTableInfo jumpTableInfo;
 
-	public MachineFunction(Function fn, TargetMachine tm)
-	{
-		this.fn = fn;
-		target = tm;
-		mbbNumber = new ArrayList<>();
-		frameInfo = new MachineFrameInfo(tm.getFrameInfo());
-		regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
-		constantPool = new MachineConstantPool(tm.getTargetData());
-		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
+  public MachineFunction(Function fn, TargetMachine tm) {
+    this.fn = fn;
+    target = tm;
+    mbbNumber = new ArrayList<>();
+    frameInfo = new MachineFrameInfo(tm.getFrameInfo());
+    regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
+    constantPool = new MachineConstantPool(tm.getTargetData());
+    phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
-		boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
-		alignment = isPIC ? tm.getTargetData().getABITypeAlignment(
-                LLVMContext.Int32Ty): tm.getTargetData().getPointerABIAlign();
-		int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
-        jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
+    boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
+    alignment = isPIC ? tm.getTargetData().getABITypeAlignment(
+        LLVMContext.Int32Ty) : tm.getTargetData().getPointerABIAlign();
+    int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
+    jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
 
-		// associate this machine function with HIR function.
-		fn.setMachineFunc(this);
-	}
+    // associate this machine function with HIR function.
+    fn.setMachineFunc(this);
+  }
 
-	public Function getFunction() {return fn;}
+  public Function getFunction() {
+    return fn;
+  }
 
-	public TargetMachine getTarget() {return target;}
+  public TargetMachine getTarget() {
+    return target;
+  }
 
-	public MachineBasicBlock getEntryBlock() {return mbbNumber.get(0);}
+  public MachineBasicBlock getEntryBlock() {
+    return mbbNumber.get(0);
+  }
 
-	public MachineFrameInfo getFrameInfo() {return frameInfo;}
+  public MachineFrameInfo getFrameInfo() {
+    return frameInfo;
+  }
 
-	public MachineRegisterInfo getMachineRegisterInfo() {return regInfo;}
+  public MachineRegisterInfo getMachineRegisterInfo() {
+    return regInfo;
+  }
 
-	public void clearSSARegMap()
-	{
-		regInfo.clear();
-	}
+  public void clearSSARegMap() {
+    regInfo.clear();
+  }
 
-	public MachineConstantPool getConstantPool(){return constantPool;}
+  public MachineConstantPool getConstantPool() {
+    return constantPool;
+  }
 
-	public ArrayList<MachineBasicBlock> getBasicBlocks() {return mbbNumber;}
+  public ArrayList<MachineBasicBlock> getBasicBlocks() {
+    return mbbNumber;
+  }
 
-	public void setBasicBlocks(List<MachineBasicBlock> mbbs)
-	{
-		mbbNumber.clear();
-		if (mbbs == null || mbbs.isEmpty())
-			return;
-		mbbNumber.addAll(mbbs);
-		for (int i = 0, e = mbbNumber.size(); i < e; i++)
-			mbbNumber.get(i).setNumber(i);
-	}
+  public void setBasicBlocks(List<MachineBasicBlock> mbbs) {
+    mbbNumber.clear();
+    if (mbbs == null || mbbs.isEmpty())
+      return;
+    mbbNumber.addAll(mbbs);
+    for (int i = 0, e = mbbNumber.size(); i < e; i++)
+      mbbNumber.get(i).setNumber(i);
+  }
 
-	public void erase(MachineBasicBlock mbb)
-	{
-		mbbNumber.remove(mbb);
-	}
+  public void erase(MachineBasicBlock mbb) {
+    mbbNumber.remove(mbb);
+  }
 
-	/**
-	 * returns the number of allocated blocks ID.
-	 * @return
-	 */
-	public int getNumBlocks()
-	{
-		return mbbNumber.size();
-	}
+  /**
+   * returns the number of allocated blocks ID.
+   *
+   * @return
+   */
+  public int getNumBlocks() {
+    return mbbNumber.size();
+  }
 
-	public MachineBasicBlock getMBBAt(int blockNo)
-	{
-		Util.assertion( blockNo >= 0 && blockNo < mbbNumber.size());
-		return mbbNumber.get(blockNo);
-	}
+  public MachineBasicBlock getMBBAt(int blockNo) {
+    Util.assertion(blockNo >= 0 && blockNo < mbbNumber.size());
+    return mbbNumber.get(blockNo);
+  }
 
-	public MachineBasicBlock removeMBBAt(int blockNo)
-    {
-        Util.assertion( blockNo >= 0 && blockNo < mbbNumber.size());
-        return mbbNumber.remove(blockNo);
+  public MachineBasicBlock removeMBBAt(int blockNo) {
+    Util.assertion(blockNo >= 0 && blockNo < mbbNumber.size());
+    return mbbNumber.remove(blockNo);
+  }
+
+  public int getIndexOfMBB(MachineBasicBlock mbb) {
+    Util.assertion(mbb != null);
+    return mbbNumber.indexOf(mbb);
+  }
+
+  public boolean isEmpty() {
+    return mbbNumber.isEmpty();
+  }
+
+  public void addMBBNumbering(MachineBasicBlock mbb) {
+    mbbNumber.add(mbb);
+    mbb.setNumber(mbbNumber.size() - 1);
+  }
+
+  /**
+   * Performs a phase for re-numbering all of blocks in this function.
+   */
+  public void renumberBlocks() {
+    if (isEmpty()) {
+      mbbNumber.clear();
+      return;
     }
 
-    public int getIndexOfMBB(MachineBasicBlock mbb)
-    {
-    	Util.assertion( mbb != null);
-    	return mbbNumber.indexOf(mbb);
+    renumberBlocks(getEntryBlock());
+  }
+
+  private void renumberBlocks(MachineBasicBlock start) {
+    int blockNo = 0;
+    int i = mbbNumber.indexOf(start);
+    if (i != 0)
+      blockNo = mbbNumber.get(i - 1).getNumber() + 1;
+
+    for (; i < mbbNumber.size(); i++, blockNo++) {
+      mbbNumber.get(i).setNumber(blockNo);
     }
 
-	public boolean isEmpty() {return mbbNumber.isEmpty();}
+    Util.assertion(blockNo <= mbbNumber.size(), "Mismatch!");
+    mbbNumber.ensureCapacity(blockNo);
+  }
 
-	public void addMBBNumbering(MachineBasicBlock mbb)
-	{
-		mbbNumber.add(mbb);
-		mbb.setNumber(mbbNumber.size()-1);
-	}
+  public MachineFunctionInfo getInfo() {
+    if (mfInfo == null)
+      mfInfo = target.getTargetLowering().createMachineFunctionInfo(this);
+    return mfInfo;
+  }
 
-	/**
-	 * Performs a phase for re-numbering all of blocks in this function.
-	 */
-	public void renumberBlocks()
-	{
-		if (isEmpty())
-		{
-			mbbNumber.clear();
-			return;
-		}
+  public int getAlignment() {
+    return alignment;
+  }
 
-		renumberBlocks(getEntryBlock());
-	}
+  public void setAlignment(int align) {
+    alignment = align;
+  }
 
-	private void renumberBlocks(MachineBasicBlock start)
-	{
-		int blockNo = 0;
-		int i = mbbNumber.indexOf(start);
-		if (i != 0)
-			blockNo = mbbNumber.get(i-1).getNumber() + 1;
+  public int size() {
+    return getBasicBlocks().size();
+  }
 
-		for (; i < mbbNumber.size(); i++, blockNo++)
-		{
-			mbbNumber.get(i).setNumber(blockNo);
-		}
+  public MachineBasicBlock createMachineBasicBlock(BasicBlock bb) {
+    MachineBasicBlock mbb = new MachineBasicBlock(bb);
+    mbb.setParent(this);
+    return mbb;
+  }
 
-		Util.assertion(blockNo <= mbbNumber.size(), "Mismatch!");
-		mbbNumber.ensureCapacity(blockNo);
-	}
+  public void print(PrintStream os) {
+    print(os, new PrefixPrinter());
+  }
 
-	public MachineFunctionInfo getInfo()
-    {
-        if (mfInfo == null)
-        	mfInfo = target.getTargetLowering().createMachineFunctionInfo(this);
-        return mfInfo;
+  public void print(PrintStream os, PrefixPrinter prefix) {
+    os.printf("# Machine code for %s():%n", fn.getName());
+
+    //Print frame information.
+    frameInfo.print(this, os);
+
+    // Print JumpTable information.
+    jumpTableInfo.print(os);
+
+    // Print Jump table information.
+    // Print constant pool.
+    constantPool.print(os);
+
+    TargetRegisterInfo tri = target.getRegisterInfo();
+    if (regInfo != null && !regInfo.isLiveInEmpty()) {
+      os.printf("Live Ins:");
+      for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
+        if (tri != null)
+          os.printf(" %s", tri.getName(entry.first));
+        else
+          os.printf(" Reg #%d", entry.first);
+
+        if (entry.second != 0)
+          os.printf(" in VR#%d ", entry.second);
+      }
+      os.println();
     }
 
-	public int getAlignment()
-	{
-		return alignment;
-	}
-
-	public void setAlignment(int align)
-	{
-		alignment = align;
-	}
-
-	public int size()
-	{
-		return getBasicBlocks().size();
-	}
-
-	public MachineBasicBlock createMachineBasicBlock(BasicBlock bb)
-	{
-		MachineBasicBlock mbb = new MachineBasicBlock(bb);
-		mbb.setParent(this);
-		return mbb;
-	}
-
-	public void print(PrintStream os)
-    {
-        print(os, new PrefixPrinter());
+    if (regInfo != null && !regInfo.isLiveOutEmpty()) {
+      os.printf("Live Outs:");
+      for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
+        if (tri != null)
+          os.printf(" %s", tri.getName(entry.first));
+        else
+          os.printf(" Reg #%d", entry.first);
+      }
+      os.println();
     }
 
-	public void print(PrintStream os, PrefixPrinter prefix)
-	{
-		os.printf("# Machine code for %s():%n", fn.getName());
-
-		//Print frame information.
-		frameInfo.print(this, os);
-
-		// Print JumpTable information.
-		jumpTableInfo.print(os);
-
-		// Print Jump table information.
-		// Print constant pool.
-		constantPool.print(os);
-
-		TargetRegisterInfo tri = target.getRegisterInfo();
-		if (regInfo != null && !regInfo.isLiveInEmpty())
-		{
-			os.printf("Live Ins:");
-			for (Pair<Integer, Integer> entry : regInfo.getLiveIns())
-			{
-				if (tri != null)
-					os.printf(" %s", tri.getName(entry.first));
-				else
-					os.printf(" Reg #%d", entry.first);
-
-				if (entry.second != 0)
-					os.printf(" in VR#%d ", entry.second);
-			}
-			os.println();
-		}
-
-		if (regInfo != null && !regInfo.isLiveOutEmpty())
-		{
-			os.printf("Live Outs:");
-			for (Pair<Integer, Integer> entry : regInfo.getLiveIns())
-			{
-				if (tri != null)
-					os.printf(" %s", tri.getName(entry.first));
-				else
-					os.printf(" Reg #%d", entry.first);
-			}
-			os.println();
-		}
-
-		//
-		for (MachineBasicBlock mbb:mbbNumber)
-		{
-			prefix.print(os, mbb);
-			mbb.print(os, prefix);
-		}
-		os.printf("%n# End machine code for %s().%n%n", fn.getName());
-	}
-
-	/**
-	 * Add the specified physical register as a live-in values. Also create a
-	 * virtual register associated with this register.
-	 * @param locReg
-	 * @param rc
-	 * @return
-	 */
-	public int addLiveIn(int locReg, TargetRegisterClass rc)
-	{
-		Util.assertion(rc.contains(locReg), "Not the current regclass!");
-		int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
-		getMachineRegisterInfo().addLiveIn(locReg, virReg);
-		return virReg;
-	}
-
-	public void deleteMachineInstr(MachineInstr mi)
-	{
-		mi.clearMemOperands();
-	}
-
-    public void insert(int insertPos, MachineBasicBlock mbb)
-    {
-        Util.assertion( insertPos >= 0 && insertPos < mbbNumber.size());
-        mbbNumber.add(insertPos, mbb);
+    //
+    for (MachineBasicBlock mbb : mbbNumber) {
+      prefix.print(os, mbb);
+      mbb.print(os, prefix);
     }
+    os.printf("%n# End machine code for %s().%n%n", fn.getName());
+  }
 
-	public MachineJumpTableInfo getJumpTableInfo()
-	{
-		return jumpTableInfo;
-	}
+  /**
+   * Add the specified physical register as a live-in values. Also create a
+   * virtual register associated with this register.
+   *
+   * @param locReg
+   * @param rc
+   * @return
+   */
+  public int addLiveIn(int locReg, TargetRegisterClass rc) {
+    Util.assertion(rc.contains(locReg), "Not the current regclass!");
+    int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
+    getMachineRegisterInfo().addLiveIn(locReg, virReg);
+    return virReg;
+  }
 
-	public void setJumpTableInfo(MachineJumpTableInfo jti)
-	{
-		this.jumpTableInfo = jti;
-	}
+  public void deleteMachineInstr(MachineInstr mi) {
+    mi.clearMemOperands();
+  }
+
+  public void insert(int insertPos, MachineBasicBlock mbb) {
+    Util.assertion(insertPos >= 0 && insertPos < mbbNumber.size());
+    mbbNumber.add(insertPos, mbb);
+  }
+
+  public MachineJumpTableInfo getJumpTableInfo() {
+    return jumpTableInfo;
+  }
+
+  public void setJumpTableInfo(MachineJumpTableInfo jti) {
+    this.jumpTableInfo = jti;
+  }
 }

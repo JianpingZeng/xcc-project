@@ -21,31 +21,31 @@ import jlang.support.SourceLocation;
 /**
  * Information about the conditional stack (#if directives)
  * currently active.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PPConditionalInfo
-{
-    /**
-     * Location where the conditional started.
-     */
-    SourceLocation ifLoc;
+public class PPConditionalInfo {
+  /**
+   * Location where the conditional started.
+   */
+  SourceLocation ifLoc;
 
-    /**
-     * True if this was contained in a skipping directive, e.g.
-     * in a "#if 0" block.
-     */
-    boolean wasSkipping;
+  /**
+   * True if this was contained in a skipping directive, e.g.
+   * in a "#if 0" block.
+   */
+  boolean wasSkipping;
 
-    /**
-     * True if we have emitted tokens already, and now we're in
-     * an #else block or something.  Only useful in Skipping blocks.
-     */
-    boolean foundNonSkip;
+  /**
+   * True if we have emitted tokens already, and now we're in
+   * an #else block or something.  Only useful in Skipping blocks.
+   */
+  boolean foundNonSkip;
 
-    /**
-     * True if we've seen a #else in this block.  If so,
-     * #elif/#else directives are not allowed.
-     */
-    boolean foundElse;
+  /**
+   * True if we've seen a #else in this block.  If so,
+   * #elif/#else directives are not allowed.
+   */
+  boolean foundElse;
 }

@@ -23,66 +23,56 @@ import backend.support.CallSite;
 import backend.value.*;
 import tools.Util;
 
-public class BasicInliner extends Inliner
-{
-    public BasicInliner(int threshold)
-    {
-        super(threshold);
-        analyzer = new InlineCostAnalyzer();
-    }
+public class BasicInliner extends Inliner {
+  public BasicInliner(int threshold) {
+    super(threshold);
+    analyzer = new InlineCostAnalyzer();
+  }
 
-    @Override
-    public boolean doInitialization(CallGraph cg)
-    {
-        Module m = cg.getModule();
-        for (Function f : m)
-        {
-            if (f != null && !f.isDeclaration() && f.hasFnAttr(Attribute.NoInline))
-                neverInlined.add(f);
-        }
-        GlobalVariable gv = m.getGlobalVariable("llvm.noinline", true);
-        if (gv == null || !gv.hasDefinitiveInitializer())
-            return false;
-        Constant c = gv.getInitializer();
-        Util.assertion(c != null);
-        if (!(c instanceof ConstantArray))
-            return false;
-
-        ConstantArray ca = (ConstantArray) c;
-        for (int i = 0, e = ca.getNumOfOperands(); i < e; i++)
-        {
-            Constant opC = ca.operand(i);
-            if (opC instanceof ConstantExpr &&
-                    ((ConstantExpr)opC).getOpcode() == Operator.BitCast)
-                opC = ((ConstantExpr)opC).operand(0);
-            if (opC instanceof Function)
-            {
-                neverInlined.add((Function) opC);
-            }
-        }
-        return false;
+  @Override
+  public boolean doInitialization(CallGraph cg) {
+    Module m = cg.getModule();
+    for (Function f : m) {
+      if (f != null && !f.isDeclaration() && f.hasFnAttr(Attribute.NoInline))
+        neverInlined.add(f);
     }
+    GlobalVariable gv = m.getGlobalVariable("llvm.noinline", true);
+    if (gv == null || !gv.hasDefinitiveInitializer())
+      return false;
+    Constant c = gv.getInitializer();
+    Util.assertion(c != null);
+    if (!(c instanceof ConstantArray))
+      return false;
 
-    @Override
-    public InlineCost getInlineCost(CallSite cs)
-    {
-        return analyzer.getInlineCost(cs, neverInlined);
+    ConstantArray ca = (ConstantArray) c;
+    for (int i = 0, e = ca.getNumOfOperands(); i < e; i++) {
+      Constant opC = ca.operand(i);
+      if (opC instanceof ConstantExpr &&
+          ((ConstantExpr) opC).getOpcode() == Operator.BitCast)
+        opC = ((ConstantExpr) opC).operand(0);
+      if (opC instanceof Function) {
+        neverInlined.add((Function) opC);
+      }
     }
+    return false;
+  }
 
-    @Override
-    public float getInlineFudgeFactor(CallSite cs)
-    {
-        return analyzer.getInlineFudgeFactor(cs);
-    }
+  @Override
+  public InlineCost getInlineCost(CallSite cs) {
+    return analyzer.getInlineCost(cs, neverInlined);
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Basic Function Inlining/Integration";
-    }
+  @Override
+  public float getInlineFudgeFactor(CallSite cs) {
+    return analyzer.getInlineFudgeFactor(cs);
+  }
 
-    public static Pass createFunctionInlinePass(int threshold)
-    {
-        return new BasicInliner(threshold);
-    }
+  @Override
+  public String getPassName() {
+    return "Basic Function Inlining/Integration";
+  }
+
+  public static Pass createFunctionInlinePass(int threshold) {
+    return new BasicInliner(threshold);
+  }
 }

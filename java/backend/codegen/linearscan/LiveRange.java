@@ -26,110 +26,92 @@ import java.util.Objects;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LiveRange implements Comparable<LiveRange>, Cloneable
-{
-    public static final LiveRange EndMarker =
-            new LiveRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
+public class LiveRange implements Comparable<LiveRange>, Cloneable {
+  public static final LiveRange EndMarker =
+      new LiveRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
 
-    int start;
-    int end;
-    LiveRange next;
+  int start;
+  int end;
+  LiveRange next;
 
-    public LiveRange(int defIdx, int killIdx, LiveRange next)
-    {
-        start = defIdx;
-        end = killIdx;
-        this.next = next;
-    }
+  public LiveRange(int defIdx, int killIdx, LiveRange next) {
+    start = defIdx;
+    end = killIdx;
+    this.next = next;
+  }
 
-    @Override
-    public int compareTo(LiveRange o)
-    {
-        if (start == o.start && end == o.end)
-            return 0;
-        if (start < o.start || (start == o.start && end < o.end))
+  @Override
+  public int compareTo(LiveRange o) {
+    if (start == o.start && end == o.end)
+      return 0;
+    if (start < o.start || (start == o.start && end < o.end))
+      return -1;
+    return 1;
+  }
+
+  public boolean contains(int idx) {
+    return start <= idx && idx < end;
+  }
+
+  public void print(PrintStream os) {
+    os.print(toString());
+  }
+
+  public void dump() {
+    print(System.err);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("[%d, %d]", start, end);
+  }
+
+  /**
+   * Determines the first id position where this intersects with r2.
+   * If no intersection, return -1.
+   *
+   * @param r2
+   * @return
+   */
+  public int intersectsAt(LiveRange r2) {
+    LiveRange r1 = this;
+    Util.assertion(r2 != null && !r2.equals(EndMarker));
+    Util.assertion(!r1.equals(EndMarker));
+
+    while (true) {
+      if (r1.start < r2.start) {
+        if (r1.end <= r2.start) {
+          r1 = r1.next;
+          if (r1.equals(EndMarker))
             return -1;
-        return 1;
-    }
-
-    public boolean contains(int idx)
-    {
-        return start <= idx && idx < end;
-    }
-
-    public void print(PrintStream os)
-    {
-        os.print(toString());
-    }
-
-    public void dump()
-    {
-        print(System.err);
-    }
-
-    @Override
-    public String toString()
-    {
-        return String.format("[%d, %d]", start, end);
-    }
-
-    /**
-     * Determines the first id position where this intersects with r2.
-     * If no intersection, return -1.
-     * @param r2
-     * @return
-     */
-    public int intersectsAt(LiveRange r2)
-    {
-        LiveRange r1 = this;
-        Util.assertion(r2 != null && !r2.equals(EndMarker));
-        Util.assertion(!r1.equals(EndMarker));
-
-        while (true)
-        {
-            if (r1.start < r2.start)
-            {
-                if (r1.end <= r2.start)
-                {
-                    r1 = r1.next;
-                    if (r1.equals(EndMarker))
-                        return -1;
-                }
-                else
-                {
-                    return r2.start;
-                }
-            }
-            else
-            {
-                if (r1.start == r2.start)
-                    return r1.start;
-                // Otherwise, r1 > r2.start  <--> r2.start < r1.start
-                if (r2.end <= r1.start)
-                {
-                    r2 = r2.next;
-                    if (r2.equals(EndMarker))
-                        return -1;
-                }
-                else
-                    return r1.start;
-            }
+        } else {
+          return r2.start;
         }
+      } else {
+        if (r1.start == r2.start)
+          return r1.start;
+        // Otherwise, r1 > r2.start  <--> r2.start < r1.start
+        if (r2.end <= r1.start) {
+          r2 = r2.next;
+          if (r2.equals(EndMarker))
+            return -1;
+        } else
+          return r1.start;
+      }
     }
+  }
 
-    @Override
-    public LiveRange clone()
-    {
-        return new LiveRange(start, end, next != null?next.clone():null);
-    }
+  @Override
+  public LiveRange clone() {
+    return new LiveRange(start, end, next != null ? next.clone() : null);
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null) return false;
-        if (obj == this) return true;
-        if (getClass() != obj.getClass()) return false;
-        LiveRange lr = (LiveRange)obj;
-        return start == lr.start && end == lr.end && Objects.equals(next, lr.next);
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (obj == this) return true;
+    if (getClass() != obj.getClass()) return false;
+    LiveRange lr = (LiveRange) obj;
+    return start == lr.start && end == lr.end && Objects.equals(next, lr.next);
+  }
 }

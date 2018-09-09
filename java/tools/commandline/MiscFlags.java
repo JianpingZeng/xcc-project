@@ -18,27 +18,26 @@ package tools.commandline;
 
 /**
  * Miscellaneous flags to adjust argument.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum MiscFlags
-{
-    CommaSeparated(0x200),  // Should this cl::list split between commas?
-    PositionalEatsArgs(0x400),  // Should this positional cl::list eat -args?
-    Sink(0x800),  // Should this cl::list eat all unknown options?
-    MiscMask(0xE00);   // Union of the above flags.
+public enum MiscFlags {
+  CommaSeparated(0x200),  // Should this cl::list split between commas?
+  PositionalEatsArgs(0x400),  // Should this positional cl::list eat -args?
+  Sink(0x800),  // Should this cl::list eat all unknown options?
+  MiscMask(0xE00);   // Union of the above flags.
 
-    public int value;
-    MiscFlags(int val)
-    {
-        value = val;
-    }
+  public int value;
 
-    public static MiscFlags getFromValue(int val)
-    {
-        for (MiscFlags mf : values())
-            if (mf.value == val)
-                return mf;
-        return null;
-    }
+  MiscFlags(int val) {
+    value = val;
+  }
+
+  public static MiscFlags getFromValue(int val) {
+    for (MiscFlags mf : values())
+      if (mf.value == val)
+        return mf;
+    return null;
+  }
 }

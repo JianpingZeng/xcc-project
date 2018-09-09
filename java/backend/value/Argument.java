@@ -22,29 +22,24 @@ import backend.type.Type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Argument extends Value
-{
-    private Function parent;
+public class Argument extends Value {
+  private Function parent;
 
-    public Argument(Type ty)
-    {
-        this(ty, "" ,null);
-    }
+  public Argument(Type ty) {
+    this(ty, "", null);
+  }
 
-    public Argument(Type ty, String name, Function f)
-    {
-        super(ty, ValueKind.ArgumentVal);
-        this.name = name;
-        parent = f;
-    }
+  public Argument(Type ty, String name, Function f) {
+    super(ty, ValueKind.ArgumentVal);
+    this.name = name;
+    parent = f;
+  }
 
-    public Function getParent()
-    {
-        return parent;
-    }
+  public Function getParent() {
+    return parent;
+  }
 
-    public void setParent(Function bb)
-    {
-        parent = bb;
-    }
+  public void setParent(Function bb) {
+    parent = bb;
+  }
 }

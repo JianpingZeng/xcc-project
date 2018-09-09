@@ -32,29 +32,28 @@ package tools.commandline;
  * bunch together with only a single hyphen for the whole group.  This allows
  * emulation of the behavior that ls uses for example: ls -la === ls -l -a
  * </p>
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum FormattingFlags
-{
-    NormalFormatting(0x000),     // Nothing special
-    Positional(0x080),            // Is a positional argument, no '-' required
-    Prefix(0x100),                // Can this option directly prefix its value?
-    Grouping(0x180),              // Can this option group with other options?
+public enum FormattingFlags {
+  NormalFormatting(0x000),     // Nothing special
+  Positional(0x080),            // Is a positional argument, no '-' required
+  Prefix(0x100),                // Can this option directly prefix its value?
+  Grouping(0x180),              // Can this option group with other options?
 
-    FormattingMask(0x180);
+  FormattingMask(0x180);
 
-    public int value;
-    FormattingFlags(int val)
-    {
-        value = val;
-    }
+  public int value;
 
-    public static FormattingFlags getFromValue(int val)
-    {
-        for(FormattingFlags ff : values())
-            if (ff.value == val)
-                return ff;
-        return null;
-    }
+  FormattingFlags(int val) {
+    value = val;
+  }
+
+  public static FormattingFlags getFromValue(int val) {
+    for (FormattingFlags ff : values())
+      if (ff.value == val)
+        return ff;
+    return null;
+  }
 }

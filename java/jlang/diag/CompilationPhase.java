@@ -21,11 +21,10 @@ package jlang.diag;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface CompilationPhase
-{
-    int Preprocess = 0;
-    int Precompile = 1;
-    int Compile = 2;
-    int Assemble = 3;
-    int Link = 4;
+public interface CompilationPhase {
+  int Preprocess = 0;
+  int Precompile = 1;
+  int Compile = 2;
+  int Assemble = 3;
+  int Link = 4;
 }

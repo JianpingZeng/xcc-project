@@ -20,45 +20,36 @@ package jlang.sema;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DeclLink<T extends Redeclarable<T>>
-{
-    T decl;
-    private boolean isLatest;
+public class DeclLink<T extends Redeclarable<T>> {
+  T decl;
+  private boolean isLatest;
 
-    DeclLink(T d, boolean isLatest)
-    {
-        decl = d;
-        this.isLatest = isLatest;
-    }
+  DeclLink(T d, boolean isLatest) {
+    decl = d;
+    this.isLatest = isLatest;
+  }
 
-    boolean nextIsPrevious()
-    {
-        return !isLatest;
-    }
+  boolean nextIsPrevious() {
+    return !isLatest;
+  }
 
-    boolean nextIsLatest()
-    {
-        return isLatest;
-    }
+  boolean nextIsLatest() {
+    return isLatest;
+  }
 
-    T getNext()
-    {
-        return decl;
-    }
+  T getNext() {
+    return decl;
+  }
 
-    public static class PreviousDeclLink<T extends Redeclarable<T>> extends DeclLink<T>
-    {
-        PreviousDeclLink(T d)
-        {
-            super(d, false);
-        }
+  public static class PreviousDeclLink<T extends Redeclarable<T>> extends DeclLink<T> {
+    PreviousDeclLink(T d) {
+      super(d, false);
     }
+  }
 
-    public static class LatestDeclLink<T extends Redeclarable<T>> extends DeclLink<T>
-    {
-        LatestDeclLink(T d)
-        {
-            super(d, true);
-        }
+  public static class LatestDeclLink<T extends Redeclarable<T>> extends DeclLink<T> {
+    LatestDeclLink(T d) {
+      super(d, true);
     }
+  }
 }

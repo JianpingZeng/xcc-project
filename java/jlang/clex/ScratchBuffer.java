@@ -16,74 +16,70 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.SourceManager;
 import jlang.support.FileID;
 import jlang.support.MemoryBuffer;
 import jlang.support.SourceLocation;
-import jlang.basic.SourceManager;
 import tools.OutRef;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ScratchBuffer
-{
-    private SourceManager sourceMgr;
-    private char[] buffer;
-    private SourceLocation bufferStartLoc;
-    private int byteUsed;
+public class ScratchBuffer {
+  private SourceManager sourceMgr;
+  private char[] buffer;
+  private SourceLocation bufferStartLoc;
+  private int byteUsed;
 
-    static final int ScratchBufSize = 4060;
+  static final int ScratchBufSize = 4060;
 
-    public ScratchBuffer(SourceManager sgr)
-    {
-        this.sourceMgr = sgr;
-        byteUsed = ScratchBufSize;
-    }
+  public ScratchBuffer(SourceManager sgr) {
+    this.sourceMgr = sgr;
+    byteUsed = ScratchBufSize;
+  }
 
-    /**
-     * Splat the specified text into a temporary MemoryBuffer and
-     /// return a SourceLocation that refers to the token.  This is just like the
-     /// previous method, but returns a location that indicates the physloc of the
-     /// token.
-     */
-    SourceLocation getToken(char[] buf, OutRef<Integer> dest)
-    {
-        if (byteUsed + buf.length +2 > ScratchBufSize)
-            allocateScratchBuffer(buf.length + 2);
+  /**
+   * Splat the specified text into a temporary MemoryBuffer and
+   * /// return a SourceLocation that refers to the token.  This is just like the
+   * /// previous method, but returns a location that indicates the physloc of the
+   * /// token.
+   */
+  SourceLocation getToken(char[] buf, OutRef<Integer> dest) {
+    if (byteUsed + buf.length + 2 > ScratchBufSize)
+      allocateScratchBuffer(buf.length + 2);
 
-        buffer[byteUsed++] = '\n';
+    buffer[byteUsed++] = '\n';
 
-        dest.set(byteUsed);
+    dest.set(byteUsed);
 
-        // Return a pointer to the character data.
-        System.arraycopy(buf, 0, buffer, byteUsed, buf.length);
+    // Return a pointer to the character data.
+    System.arraycopy(buf, 0, buffer, byteUsed, buf.length);
 
-        byteUsed += buf.length + 1;
+    byteUsed += buf.length + 1;
 
-        // Add a NUL terminator to the token.  This keeps the tokens separated, in
-        // case they get relexed, and puts them on their own virtual lines in case a
-        // diagnostic points to one.
-        buffer[byteUsed-1] = '\0';
+    // Add a NUL terminator to the token.  This keeps the tokens separated, in
+    // case they get relexed, and puts them on their own virtual lines in case a
+    // diagnostic points to one.
+    buffer[byteUsed - 1] = '\0';
 
-        return bufferStartLoc.getFileLocWithOffset(byteUsed-buf.length-1);
-    }
+    return bufferStartLoc.getFileLocWithOffset(byteUsed - buf.length - 1);
+  }
 
-    private void allocateScratchBuffer(int requestedLen)
-    {
-        if (requestedLen < ScratchBufSize)
-            requestedLen = ScratchBufSize;
+  private void allocateScratchBuffer(int requestedLen) {
+    if (requestedLen < ScratchBufSize)
+      requestedLen = ScratchBufSize;
 
-        MemoryBuffer buf = MemoryBuffer.getNewMemBuffer(requestedLen, "<scratch space>");;
-        FileID fid = sourceMgr.createFileIDForMemBuffer(buf);
-        bufferStartLoc = sourceMgr.getLocForStartOfFile(fid);
-        buffer = buf.getBuffer();
-        byteUsed = 1;
-        buffer[0] = '\0';  // Star out with a \0 for cleanliness.
-    }
+    MemoryBuffer buf = MemoryBuffer.getNewMemBuffer(requestedLen, "<scratch space>");
+    ;
+    FileID fid = sourceMgr.createFileIDForMemBuffer(buf);
+    bufferStartLoc = sourceMgr.getLocForStartOfFile(fid);
+    buffer = buf.getBuffer();
+    byteUsed = 1;
+    buffer[0] = '\0';  // Star out with a \0 for cleanliness.
+  }
 
-    public char[] getBuffer()
-    {
-        return buffer;
-    }
+  public char[] getBuffer() {
+    return buffer;
+  }
 }

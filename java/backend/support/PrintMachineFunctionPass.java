@@ -24,49 +24,41 @@ import java.io.PrintStream;
 
 import static backend.support.BackendCmdOptions.isFunctionInPrintList;
 
-public class PrintMachineFunctionPass extends MachineFunctionPass
-{
-    private PrintStream os;
-    private String banner;
+public class PrintMachineFunctionPass extends MachineFunctionPass {
+  private PrintStream os;
+  private String banner;
 
-    private PrintMachineFunctionPass(PrintStream out, String banner)
-    {
-        os = out;
-        this.banner = banner;
-    }
+  private PrintMachineFunctionPass(PrintStream out, String banner) {
+    os = out;
+    this.banner = banner;
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        if (isFunctionInPrintList(mf.getFunction().getName()))
-        {
-            os.println(banner + ":");
-            mf.print(os);
-        }
-        return false;
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    if (isFunctionInPrintList(mf.getFunction().getName())) {
+      os.println(banner + ":");
+      mf.print(os);
     }
+    return false;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "MachineFunction Printer Pass";
-    }
+  @Override
+  public String getPassName() {
+    return "MachineFunction Printer Pass";
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-        super.getAnalysisUsage(au);
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+    super.getAnalysisUsage(au);
+  }
 
-    public static PrintMachineFunctionPass createMachineFunctionPrinterPass(
-            PrintStream os, String banner)
-    {
-        return new PrintMachineFunctionPass(os, banner);
-    }
+  public static PrintMachineFunctionPass createMachineFunctionPrinterPass(
+      PrintStream os, String banner) {
+    return new PrintMachineFunctionPass(os, banner);
+  }
 
-    public static PrintMachineFunctionPass createMachineFunctionPrinterPass(PrintStream os)
-    {
-        return createMachineFunctionPrinterPass(os, "");
-    }
+  public static PrintMachineFunctionPass createMachineFunctionPrinterPass(PrintStream os) {
+    return createMachineFunctionPrinterPass(os, "");
+  }
 }

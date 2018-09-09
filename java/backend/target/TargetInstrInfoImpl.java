@@ -29,96 +29,82 @@ import java.util.ArrayList;
  * This is the default implementation of
  * TargetInstrInfo, which just provides a couple of default implementations
  * for various methods.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class TargetInstrInfoImpl extends TargetInstrInfo
-{
-    protected TargetInstrInfoImpl(TargetInstrDesc[] desc)
-    {
-        super(desc);
+public abstract class TargetInstrInfoImpl extends TargetInstrInfo {
+  protected TargetInstrInfoImpl(TargetInstrDesc[] desc) {
+    super(desc);
+  }
+
+  @Override
+  public void reMaterialize(MachineBasicBlock mbb,
+                            int insertPos,
+                            int destReg,
+                            int subIdx,
+                            MachineInstr origin) {
+
+  }
+
+  public MachineInstr commuteInstruction(MachineInstr mi) {
+    return commuteInstruction(mi, false);
+  }
+
+  @Override
+  public MachineInstr commuteInstruction(MachineInstr mi, boolean newMI) {
+
+    return null;
+  }
+
+  @Override
+  public boolean findCommutedOpIndices(MachineInstr mi,
+                                       OutRef<Integer> srcOpIdx1,
+                                       OutRef<Integer> srcOpIdx2) {
+    return false;
+  }
+
+  @Override
+  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
+                                        TIntArrayList ops, int frameIndex) {
+    return null;
+  }
+
+  @Override
+  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
+                                        TIntArrayList ops, MachineInstr loadMI) {
+    return null;
+  }
+
+  @Override
+  public void insertNoop(MachineBasicBlock mbb, int pos) {
+
+  }
+
+  @Override
+  public boolean isUnpredicatedTerminator(MachineInstr mi) {
+    return false;
+  }
+
+  @Override
+  public boolean predicateInstruction(MachineInstr mi,
+                                      ArrayList<MachineOperand> pred) {
+    return false;
+  }
+
+  @Override
+  public boolean isDeadInstruction(MachineInstr mi) {
+    return false;
+  }
+
+  @Override
+  public int getFunctionSizeInBytes(MachineFunction mf) {
+    int totalSize = 0;
+    for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
+      for (MachineInstr mi : mbb.getInsts()) {
+        totalSize += getInstSizeInBytes(mi);
+      }
     }
-
-    @Override
-    public void reMaterialize(MachineBasicBlock mbb,
-            int insertPos,
-            int destReg,
-            int subIdx,
-            MachineInstr origin)
-    {
-
-    }
-
-    public MachineInstr commuteInstruction(MachineInstr mi)
-    {
-        return commuteInstruction(mi, false);
-    }
-
-    @Override
-    public MachineInstr commuteInstruction(MachineInstr mi, boolean newMI)
-    {
-
-        return null;
-    }
-
-    @Override
-    public boolean findCommutedOpIndices(MachineInstr mi,
-            OutRef<Integer> srcOpIdx1,
-            OutRef<Integer> srcOpIdx2)
-    {
-        return false;
-    }
-
-    @Override
-    public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
-            TIntArrayList ops, int frameIndex)
-    {
-        return null;
-    }
-
-    @Override
-    public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
-            TIntArrayList ops, MachineInstr loadMI)
-    {
-        return null;
-    }
-
-    @Override
-    public void insertNoop(MachineBasicBlock mbb, int pos)
-    {
-
-    }
-
-    @Override
-    public boolean isUnpredicatedTerminator(MachineInstr mi)
-    {
-        return false;
-    }
-
-    @Override
-    public boolean predicateInstruction(MachineInstr mi,
-            ArrayList<MachineOperand> pred)
-    {
-        return false;
-    }
-
-    @Override
-    public boolean isDeadInstruction(MachineInstr mi)
-    {
-        return false;
-    }
-
-    @Override
-    public int getFunctionSizeInBytes(MachineFunction mf)
-    {
-        int totalSize = 0;
-        for (MachineBasicBlock mbb : mf.getBasicBlocks())
-        {
-            for (MachineInstr mi : mbb.getInsts())
-            {
-                totalSize += getInstSizeInBytes(mi);
-            }
-        }
-        return totalSize;
-    }
+    return totalSize;
+  }
 }

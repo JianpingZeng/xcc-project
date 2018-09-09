@@ -16,13 +16,13 @@
  */
 
 package backend.codegen.dagisel;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum CombineLevel
-{
-    Unrestricted,
-    NoIllegalTypes,
-    NoIllegalOperations
+public enum CombineLevel {
+  Unrestricted,
+  NoIllegalTypes,
+  NoIllegalOperations
 }

@@ -19,10 +19,9 @@ package backend.analysis;
 /**
  * Information record used during immediators computation.
  */
-public class InfoRecord<T>
-{
-    int DFSNum = 0;
-    int parent = 0;
-    int semi = 0;
-    T label = null;
+public class InfoRecord<T> {
+  int DFSNum = 0;
+  int parent = 0;
+  int semi = 0;
+  T label = null;
 }

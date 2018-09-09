@@ -23,19 +23,19 @@ import jlang.sema.Decl.EnumDecl;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class EnumType extends TagType
-{
-    /**
-     * Constructor with one parameter which represents the kind of jlang.type
-     * for reason of comparison convenient.
-     *
-     * @param decl
-     */
-    public EnumType(EnumDecl decl)
-    {
-        super(Enum, decl, new QualType());
-    }
+public final class EnumType extends TagType {
+  /**
+   * Constructor with one parameter which represents the kind of jlang.type
+   * for reason of comparison convenient.
+   *
+   * @param decl
+   */
+  public EnumType(EnumDecl decl) {
+    super(Enum, decl, new QualType());
+  }
 
-    @Override
-    public EnumDecl getDecl() { return (EnumDecl) decl;}
+  @Override
+  public EnumDecl getDecl() {
+    return (EnumDecl) decl;
+  }
 }

@@ -20,20 +20,17 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SubtargetInfoKV implements Comparable<SubtargetInfoKV>
-{
-    public String key;
-    public Object value;
+public final class SubtargetInfoKV implements Comparable<SubtargetInfoKV> {
+  public String key;
+  public Object value;
 
-    public SubtargetInfoKV(String k, Object v)
-    {
-        key = k;
-        value = v;
-    }
+  public SubtargetInfoKV(String k, Object v) {
+    key = k;
+    value = v;
+  }
 
-    @Override
-    public int compareTo(SubtargetInfoKV o)
-    {
-        return key.compareTo(o.key);
-    }
+  @Override
+  public int compareTo(SubtargetInfoKV o) {
+    return key.compareTo(o.key);
+  }
 }

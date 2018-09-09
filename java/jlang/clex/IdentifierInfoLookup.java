@@ -23,15 +23,14 @@ package jlang.clex;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface IdentifierInfoLookup
-{
-    /**
-     * Return the identifier token info for the specified named identifier.
-     * Unlike the version in {@linkplain IdentifierTable}, this returns null,
-     * the indicates the name not found.
-     *
-     * @param name
-     * @return
-     */
-    IdentifierInfo get(String name);
+public interface IdentifierInfoLookup {
+  /**
+   * Return the identifier token info for the specified named identifier.
+   * Unlike the version in {@linkplain IdentifierTable}, this returns null,
+   * the indicates the name not found.
+   *
+   * @param name
+   * @return
+   */
+  IdentifierInfo get(String name);
 }

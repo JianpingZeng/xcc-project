@@ -21,16 +21,15 @@ import java.util.function.Consumer;
 /**
  * Command line option modifiers that can be used to modify the behavior of
  * command line option parsers..
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface Modifier extends Consumer<Option<?>>
-{
-    void apply(Option<?> opt);
+public interface Modifier extends Consumer<Option<?>> {
+  void apply(Option<?> opt);
 
-    @Override
-    default void accept(Option<?> option)
-    {
-        apply(option);
-    }
+  @Override
+  default void accept(Option<?> option) {
+    apply(option);
+  }
 }

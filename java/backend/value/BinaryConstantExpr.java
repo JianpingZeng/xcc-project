@@ -20,18 +20,16 @@ package backend.value;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class BinaryConstantExpr extends ConstantExpr
-{
-    /**
-     * Constructs a new instruction representing the specified constants.
-     *
-     * @param opcode
-     */
-    public BinaryConstantExpr(Operator opcode, Constant c1, Constant c2)
-    {
-        super(c1.getType(), opcode);
-        reserve(2);
-        setOperand(0, c1, this);
-        setOperand(1, c2, this);
-    }
+public class BinaryConstantExpr extends ConstantExpr {
+  /**
+   * Constructs a new instruction representing the specified constants.
+   *
+   * @param opcode
+   */
+  public BinaryConstantExpr(Operator opcode, Constant c1, Constant c2) {
+    super(c1.getType(), opcode);
+    reserve(2);
+    setOperand(0, c1, this);
+    setOperand(1, c2, this);
+  }
 }

@@ -17,7 +17,6 @@
 
 package backend.ir;
 
-import tools.Util;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
@@ -27,59 +26,50 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class AllocationInst extends Instruction.UnaryOps
-{
-    protected int align;
+public class AllocationInst extends Instruction.UnaryOps {
+  protected int align;
 
-    protected AllocationInst(
-            Type ty,
-            Operator opcode,
-            Value arraySize,
-            int align,
-            String name,
-            Instruction insertBefore)
-    {
-        super(PointerType.getUnqual(ty), opcode, arraySize, name, insertBefore);
-        setAlignment(align);
-    }
+  protected AllocationInst(
+      Type ty,
+      Operator opcode,
+      Value arraySize,
+      int align,
+      String name,
+      Instruction insertBefore) {
+    super(PointerType.getUnqual(ty), opcode, arraySize, name, insertBefore);
+    setAlignment(align);
+  }
 
-    protected AllocationInst(Type ty, Operator opcode, Value arraySize,
-            int align, String name, BasicBlock insertAtEnd)
-    {
-        super(PointerType.getUnqual(ty), opcode, arraySize, name, insertAtEnd);
-        setAlignment(align);
-    }
+  protected AllocationInst(Type ty, Operator opcode, Value arraySize,
+                           int align, String name, BasicBlock insertAtEnd) {
+    super(PointerType.getUnqual(ty), opcode, arraySize, name, insertAtEnd);
+    setAlignment(align);
+  }
 
-    public void setAlignment(int align)
-    {
-        Util.assertion((align & (align - 1)) == 0,  "Alignment is not a power of 2");
-        this.align = Util.log2(align) + 1;
-    }
+  public void setAlignment(int align) {
+    Util.assertion((align & (align - 1)) == 0, "Alignment is not a power of 2");
+    this.align = Util.log2(align) + 1;
+  }
 
-    public int getAlignment()
-    {
-        return align;
-    }
+  public int getAlignment() {
+    return align;
+  }
 
-    public boolean isArrayAllocation()
-    {
-        if (operand(0) instanceof ConstantInt)
-            return ((ConstantInt) operand(0)).getZExtValue() != 1;
-        return true;
-    }
+  public boolean isArrayAllocation() {
+    if (operand(0) instanceof ConstantInt)
+      return ((ConstantInt) operand(0)).getZExtValue() != 1;
+    return true;
+  }
 
-    public Value getArraySize()
-    {
-        return operand(0);
-    }
+  public Value getArraySize() {
+    return operand(0);
+  }
 
-    public PointerType getType()
-    {
-        return (PointerType)super.getType();
-    }
+  public PointerType getType() {
+    return (PointerType) super.getType();
+  }
 
-    public Type getAllocatedType()
-    {
-        return getType().getElementType();
-    }
+  public Type getAllocatedType() {
+    return getType().getElementType();
+  }
 }

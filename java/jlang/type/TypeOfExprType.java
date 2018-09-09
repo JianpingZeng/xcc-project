@@ -22,35 +22,32 @@ import jlang.support.PrintingPolicy;
 
 /**
  * TypeOfExprType (GCC extension).
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class TypeOfExprType extends jlang.type.Type
-{
-    private Expr toexpr;
-    public TypeOfExprType(Expr e, QualType can)
-    {
-        super(TypeOfExpr, can);
-        toexpr = e;
-    }
+public final class TypeOfExprType extends jlang.type.Type {
+  private Expr toexpr;
 
-    public TypeOfExprType(Expr e)
-    {
-        super(TypeOfExpr, new QualType());
-    }
+  public TypeOfExprType(Expr e, QualType can) {
+    super(TypeOfExpr, can);
+    toexpr = e;
+  }
 
-    @Override
-    public String getAsStringInternal(String inner, PrintingPolicy policy)
-    {
-        // Prefix the basic type, e.g. 'typeof(e) X'.
-        if (!inner.isEmpty())
-            inner = ' ' + inner;
-        String str = getUnderlyingExpr().toString();
-        return "typeof " + str + inner;
-    }
+  public TypeOfExprType(Expr e) {
+    super(TypeOfExpr, new QualType());
+  }
 
-    public Expr getUnderlyingExpr()
-    {
-        return toexpr;
-    }
+  @Override
+  public String getAsStringInternal(String inner, PrintingPolicy policy) {
+    // Prefix the basic type, e.g. 'typeof(e) X'.
+    if (!inner.isEmpty())
+      inner = ' ' + inner;
+    String str = getUnderlyingExpr().toString();
+    return "typeof " + str + inner;
+  }
+
+  public Expr getUnderlyingExpr() {
+    return toexpr;
+  }
 }

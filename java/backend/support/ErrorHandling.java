@@ -22,29 +22,25 @@ import jlang.diag.Diagnostic;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ErrorHandling
-{
-    public interface LLVMErrorHandler
-    {
-        void apply(Diagnostic diag, String msg);
-    }
+public class ErrorHandling {
+  public interface LLVMErrorHandler {
+    void apply(Diagnostic diag, String msg);
+  }
 
-    private static LLVMErrorHandler errorHandler;
-    private static Diagnostic diagEngineer;
+  private static LLVMErrorHandler errorHandler;
+  private static Diagnostic diagEngineer;
 
-    public static void llvmReportError(String msg)
-    {
-        if (errorHandler != null)
-            errorHandler.apply(diagEngineer, msg);
-        else
-            System.err.printf(msg);
-        // It should terminate program immediately when backend error occurs.
-        System.exit(-1);
-    }
+  public static void llvmReportError(String msg) {
+    if (errorHandler != null)
+      errorHandler.apply(diagEngineer, msg);
+    else
+      System.err.printf(msg);
+    // It should terminate program immediately when backend error occurs.
+    System.exit(-1);
+  }
 
-    public static void installLLVMErrorHandler(LLVMErrorHandler handler, Diagnostic diag)
-    {
-        errorHandler = handler;
-        diagEngineer = diag;
-    }
+  public static void installLLVMErrorHandler(LLVMErrorHandler handler, Diagnostic diag) {
+    errorHandler = handler;
+    diagEngineer = diag;
+  }
 }

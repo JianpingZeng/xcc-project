@@ -17,10 +17,8 @@
 
 package jlang.ast;
 
-public class NoThrowAttr extends Attr
-{
-    public NoThrowAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class NoThrowAttr extends Attr {
+  public NoThrowAttr(AttrKind kind) {
+    super(kind);
+  }
 }

@@ -1,15 +1,15 @@
 package backend.codegen;
 
-import backend.support.MachineFunctionPass;
-import backend.support.PrintMachineFunctionPass;
-import tools.Util;
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
+import backend.support.MachineFunctionPass;
+import backend.support.PrintMachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,285 +22,258 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PhiElimination extends MachineFunctionPass
-{
-	private TargetInstrInfo instInfo;
-	private MachineFunction mf;
-	private MachineRegisterInfo mri;
-	private TargetRegisterInfo regInfo;
+public final class PhiElimination extends MachineFunctionPass {
+  private TargetInstrInfo instInfo;
+  private MachineFunction mf;
+  private MachineRegisterInfo mri;
+  private TargetRegisterInfo regInfo;
 
-	/**
-	 * This method used for performing elimination operation on each PHI node.
-	 * @param mf
-	 * @return true if the internal structure of machine function has been
-	 * changed.
-	 */
-	@Override
-	public boolean runOnMachineFunction(MachineFunction mf)
-	{
-		boolean changed = false;
-		instInfo = mf.getTarget().getInstrInfo();
-		this.mf = mf;
-		mri = mf.getMachineRegisterInfo();
-		regInfo = mf.getTarget().getRegisterInfo();
+  /**
+   * This method used for performing elimination operation on each PHI node.
+   *
+   * @param mf
+   * @return true if the internal structure of machine function has been
+   * changed.
+   */
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    boolean changed = false;
+    instInfo = mf.getTarget().getInstrInfo();
+    this.mf = mf;
+    mri = mf.getMachineRegisterInfo();
+    regInfo = mf.getTarget().getRegisterInfo();
 
-		for (MachineBasicBlock mbb : mf.getBasicBlocks())
-		{
-			changed |= eliminatePHINodes(mbb);
-		}
+    for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
+      changed |= eliminatePHINodes(mbb);
+    }
 
-        if (PrintMachineCode.value)
-        {
-            PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
-                    "# *** IR dump after PHI elimination ***:\n")
-                    .runOnMachineFunction(mf);
+    if (PrintMachineCode.value) {
+      PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
+          "# *** IR dump after PHI elimination ***:\n")
+          .runOnMachineFunction(mf);
+    }
+    return changed;
+  }
+
+  /**
+   * uses the register to register copy instruction to replace the
+   * PHI instruction.
+   *
+   * @param mbb
+   * @return
+   */
+  private boolean eliminatePHINodes(MachineBasicBlock mbb) {
+    if (mbb.isEmpty() || !isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
+      return false;
+
+    // a arrays whose each element represents the uses count of the specified
+    // virtual register.
+    int[] vregPHIUsesCount = new int[mri.getLastVirReg() + 1 - FirstVirtualRegister];
+
+    // count the use for all of virtual register.
+    for (MachineBasicBlock pred : mbb.getPredecessors()) {
+      for (MachineBasicBlock succ : pred.getSuccessors()) {
+        for (int i = 0, sz = succ.size(); i < sz; i++) {
+          MachineInstr mi = succ.getInstAt(i);
+          if (!isDummyPhiInstr(mi.getOpcode()))
+            break;
+          for (int j = 1, e = mi.getNumOperands(); j < e; j += 2) {
+            MachineOperand mo = mi.getOperand(j);
+            if (mo.isRegister() && mo.getReg() != 0 &&
+                isVirtualRegister(mo.getReg()))
+              vregPHIUsesCount[mo.getReg() - FirstVirtualRegister]++;
+          }
         }
-		return changed;
-	}
+      }
+    }
 
-	/**
-	 * uses the register to register copy instruction to replace the
-	 * PHI instruction.
-	 * @param mbb
-	 * @return
-	 */
-	private boolean eliminatePHINodes(MachineBasicBlock mbb)
-	{
-		if (mbb.isEmpty() || !isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
-			return false;
+    // find the first non-phi instruction.
+    int firstInstAfterPhi = 0;
+    for (; firstInstAfterPhi < mbb.size() &&
+        isDummyPhiInstr(mbb.getInstAt(firstInstAfterPhi).getOpcode());
+         firstInstAfterPhi++)
+      ;
 
-		// a arrays whose each element represents the uses count of the specified
-		// virtual register.
-		int[] vregPHIUsesCount = new int[mri.getLastVirReg()+1-FirstVirtualRegister];
+    // Replace each PHI node with move instr in predecessor
+    while (isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
+      lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
 
-		// count the use for all of virtual register.
-		for (MachineBasicBlock pred : mbb.getPredecessors())
-		{
-			for (MachineBasicBlock succ : pred.getSuccessors())
-			{
-				for (int i = 0, sz = succ.size(); i < sz; i++)
-				{
-					MachineInstr mi = succ.getInstAt(i);
-					if (!isDummyPhiInstr(mi.getOpcode()))
-						break;
-					for (int j = 1, e = mi.getNumOperands(); j<e; j += 2)
-					{
-                        MachineOperand mo = mi.getOperand(j);
-					    if (mo.isRegister() && mo.getReg() != 0 &&
-							    isVirtualRegister(mo.getReg()))
-						    vregPHIUsesCount[mo.getReg()-FirstVirtualRegister]++;
-					}
-				}
-			}
-		}
+    return true;
+  }
 
-		// find the first non-phi instruction.
-		int firstInstAfterPhi = 0;
-		for (; firstInstAfterPhi < mbb.size() &&
-                isDummyPhiInstr(mbb.getInstAt(firstInstAfterPhi).getOpcode());
-		     firstInstAfterPhi++);
+  private static boolean isDummyPhiInstr(int opcode) {
+    return opcode == TargetInstrInfo.PHI;
+  }
 
-		// Replace each PHI node with move instr in predecessor
-		while (isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
-			lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
+  /**
+   * Loop over all operands of each PHI node, to replace it with register to
+   * register copy instruction.
+   *
+   * @param mbb
+   * @param firstInstAfterPhi
+   * @param vregPHIUsesCount
+   * @return
+   */
+  private boolean lowerPhiNode(MachineBasicBlock mbb,
+                               int firstInstAfterPhi, int[] vregPHIUsesCount) {
+    MachineInstr phiMI = mbb.getFirstInst();
+    int destReg = phiMI.getOperand(0).getReg();
 
-		return true;
-	}
+    TargetRegisterClass destRC = mri.getRegClass(destReg);
 
-	private static boolean isDummyPhiInstr(int opcode)
-	{
-		return opcode == TargetInstrInfo.PHI;
-	}
+    // update the def of this incomingReg will be performed at predecessor.
+    int incomingReg = mri.createVirtualRegister(destRC);
+    TargetRegisterClass srcRC = mri.getRegClass(incomingReg);
+    // creates a register to register copy instruction at the position where
+    // indexed by firstInstAfter.
+    instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
+    MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
 
-	/**
-	 * Loop over all operands of each PHI node, to replace it with register to
-	 * register copy instruction.
-	 * @param mbb
-	 * @param firstInstAfterPhi
-	 * @param vregPHIUsesCount
-	 * @return
-	 */
-	private boolean lowerPhiNode(MachineBasicBlock mbb,
-			int firstInstAfterPhi, int[] vregPHIUsesCount)
-	{
-		MachineInstr phiMI = mbb.getFirstInst();
-		int destReg = phiMI.getOperand(0).getReg();
+    // Delete the PHI node whose index to 0
+    phiMI.removeFromParent();
+    LiveVariables lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
+    if (lv != null) {
+      lv.addVirtualRegisterKilled(incomingReg, copyInst);
 
-		TargetRegisterClass destRC = mri.getRegClass(destReg);
+      lv.removeVirtualRegisterKilled(phiMI);
 
-		// update the def of this incomingReg will be performed at predecessor.
-		int incomingReg = mri.createVirtualRegister(destRC);
-		TargetRegisterClass srcRC = mri.getRegClass(incomingReg);
-		// creates a register to register copy instruction at the position where
-		// indexed by firstInstAfter.
-		instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
-		MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
+      // if the result is dead, update live analysis.
+      if (phiMI.registerDefIsDead(destReg, regInfo)) {
+        lv.addVirtualRegisterDead(destReg, copyInst);
+        lv.removeVirtualRegisterDead(phiMI);
+      }
 
-		// Delete the PHI node whose index to 0
-        phiMI.removeFromParent();
-		LiveVariables lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
-		if (lv != null)
-		{
-			lv.addVirtualRegisterKilled(incomingReg, copyInst);
+      // records the defined MO for destReg.
+      lv.getVarInfo(destReg).defInst = copyInst;
+    }
 
-			lv.removeVirtualRegisterKilled(phiMI);
+    HashSet<MachineBasicBlock> mbbInsertedInto = new HashSet<>();
+    for (int i = phiMI.getNumOperands() - 1; i >= 1; i -= 2) {
+      int srcReg = phiMI.getOperand(i - 1).getReg();
+      Util.assertion(mri.isVirtualReg(srcReg), "Machine PHI Operands must all be virtual registers!");
 
-			// if the result is dead, update live analysis.
-			if (phiMI.registerDefIsDead(destReg, regInfo))
-			{
-				lv.addVirtualRegisterDead(destReg, copyInst);
-				lv.removeVirtualRegisterDead(phiMI);
-			}
+      MachineBasicBlock opBB = phiMI.getOperand(i).getMBB();
 
-			// records the defined MO for destReg.
-			lv.getVarInfo(destReg).defInst = copyInst;
-		}
+      // avoids duplicate copy insertion.
+      // One insertion of each PHI for same predecessor basic block.
+      if (!mbbInsertedInto.add(opBB))
+        continue;
 
-		HashSet<MachineBasicBlock> mbbInsertedInto = new HashSet<>();
-		for (int i = phiMI.getNumOperands() - 1; i >= 1; i-=2)
-		{
-			int srcReg = phiMI.getOperand(i-1).getReg();
-			Util.assertion(mri.isVirtualReg(srcReg), "Machine PHI Operands must all be virtual registers!");
+      // Get an iterator pointing to the first terminator in the block (or end()).
+      // This is the point where we can insert a copy if we'd like to.
+      int idx = opBB.getFirstTerminator();
 
-			MachineBasicBlock opBB = phiMI.getOperand(i).getMBB();
+      instInfo.copyRegToReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
 
-			// avoids duplicate copy insertion.
-            // One insertion of each PHI for same predecessor basic block.
-			if (!mbbInsertedInto.add(opBB))
-				continue;
+      // idx++;
+      idx++; // make sure the idx always points to the first terminator inst.
+      if (lv == null) continue;
 
-			// Get an iterator pointing to the first terminator in the block (or end()).
-			// This is the point where we can insert a copy if we'd like to.
-			int idx = opBB.getFirstTerminator();
+      LiveVariables.VarInfo srcRegVarInfo = lv.getVarInfo(srcReg);
 
-			instInfo.copyRegToReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
+      boolean valueIsLive = vregPHIUsesCount[srcReg - FirstVirtualRegister] != 0;
 
-			// idx++;
-			idx++; // make sure the idx always points to the first terminator inst.
-			if (lv == null) continue;
+      // records the successor blocks which is not contained in aliveBlocks
+      // set.
+      ArrayList<MachineBasicBlock> opSuccBlocks = new ArrayList<>();
 
-			LiveVariables.VarInfo srcRegVarInfo = lv.getVarInfo(srcReg);
+      for (MachineBasicBlock succ : opBB.getSuccessors()) {
+        int succNo = succ.getNumber();
+        if (succNo < srcRegVarInfo.aliveBlocks.size()
+            && srcRegVarInfo.aliveBlocks.contains(succNo)) {
+          valueIsLive = true;
+          break;
+        }
 
-			boolean valueIsLive = vregPHIUsesCount[srcReg-FirstVirtualRegister] != 0;
+        opSuccBlocks.add(succ);
+      }
 
-			// records the successor blocks which is not contained in aliveBlocks
-			// set.
-			ArrayList<MachineBasicBlock> opSuccBlocks = new ArrayList<>();
+      // Check to see if this value is live because there is a use in a successor
+      // that kills it.
+      if (!valueIsLive) {
+        switch (opSuccBlocks.size()) {
+          case 1: {
+            MachineBasicBlock succ = opSuccBlocks.get(0);
+            for (int j = 0, e = srcRegVarInfo.kills.size(); j < e; j++) {
+              if (srcRegVarInfo.kills.get(j).getParent() == succ) {
+                valueIsLive = true;
+                break;
+              }
+            }
+            break;
+          }
+          case 2: {
+            MachineBasicBlock succ1 = opSuccBlocks.get(0);
+            MachineBasicBlock succ2 = opSuccBlocks.get(1);
+            for (int j = 0, e = srcRegVarInfo.kills.size(); j < e; j++) {
+              MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
+              if (parent == succ1 || parent == succ2) {
+                valueIsLive = true;
+                break;
+              }
+            }
+            break;
+          }
+          default: {
+            for (int j = 0, e = srcRegVarInfo.kills.size(); j < e; j++) {
+              MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
+              if (opSuccBlocks.contains(parent)) {
+                valueIsLive = true;
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
 
-			for (MachineBasicBlock succ : opBB.getSuccessors())
-			{
-				int succNo = succ.getNumber();
-				if (succNo < srcRegVarInfo.aliveBlocks.size()
-						&& srcRegVarInfo.aliveBlocks.contains(succNo))
-				{
-					valueIsLive = true;
-					break;
-				}
+      if (!valueIsLive) {
+        boolean firstTerminatorUsesValue = false;
+        if (idx != opBB.size()) {
+          firstTerminatorUsesValue = instructionUsesRegister
+              (opBB.getInstAt(idx), srcReg);
+        }
 
-				opSuccBlocks.add(succ);
-			}
+        int killInst = !firstTerminatorUsesValue ? idx - 1 : idx;
 
-			// Check to see if this value is live because there is a use in a successor
-			// that kills it.
-			if (!valueIsLive)
-			{
-				switch (opSuccBlocks.size())
-				{
-					case 1:
-					{
-						MachineBasicBlock succ = opSuccBlocks.get(0);
-						for (int j = 0, e = srcRegVarInfo.kills.size(); j<e; j++)
-						{
-							if (srcRegVarInfo.kills.get(j).getParent() == succ)
-							{
-								valueIsLive = true;
-								break;
-							}
-						}
-						break;
-					}
-					case 2:
-					{
-						MachineBasicBlock succ1 = opSuccBlocks.get(0);
-						MachineBasicBlock succ2 = opSuccBlocks.get(1);
-						for (int j = 0, e = srcRegVarInfo.kills.size(); j<e; j++)
-						{
-							MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
-							if (parent == succ1 || parent == succ2)
-							{
-								valueIsLive = true;
-								break;
-							}
-						}
-						break;
-					}
-					default:
-					{
-						for (int j = 0, e = srcRegVarInfo.kills.size(); j < e; j++)
-						{
-							MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
-							if (opSuccBlocks.contains(parent))
-							{
-								valueIsLive = true;
-								break;
-							}
-						}
-						break;
-					}
-				}
-			}
+        lv.addVirtualRegisterKilled(srcReg, opBB.getInstAt(killInst));
 
-			if (!valueIsLive)
-			{
-				boolean firstTerminatorUsesValue = false;
-				if (idx != opBB.size())
-				{
-					firstTerminatorUsesValue = instructionUsesRegister
-							(opBB.getInstAt(idx), srcReg);
-				}
+        int opBlockNum = opBB.getNumber();
+        if (opBlockNum < srcRegVarInfo.aliveBlocks.size())
+          srcRegVarInfo.aliveBlocks.add(opBlockNum);
+      }
+    }
+    return true;
+  }
 
-				int killInst = !firstTerminatorUsesValue ? idx-1 : idx;
+  /**
+   * Return true if the specified machine instr has a
+   * use of the specified register.
+   *
+   * @param mi
+   * @param reg
+   * @return
+   */
+  private boolean instructionUsesRegister(MachineInstr mi, int reg) {
+    for (int i = 0, sz = mi.getNumOperands(); i < sz; i++) {
+      MachineOperand mo = mi.getOperand(i);
+      if (mo.isRegister() && mo.getReg() != 0
+          && mo.getReg() == reg && mo.isUse())
+        return true;
+    }
+    return false;
+  }
 
-				lv.addVirtualRegisterKilled(srcReg, opBB.getInstAt(killInst));
+  @Override
+  public String getPassName() {
+    return "PHI Nodes elimination pass";
+  }
 
-				int opBlockNum = opBB.getNumber();
-				if (opBlockNum < srcRegVarInfo.aliveBlocks.size())
-					srcRegVarInfo.aliveBlocks.add(opBlockNum);
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Return true if the specified machine instr has a
-	 * use of the specified register.
-	 * @param mi
-	 * @param reg
-	 * @return
-	 */
-	private boolean instructionUsesRegister(MachineInstr mi, int reg)
-	{
-		for (int i = 0, sz = mi.getNumOperands(); i < sz; i++)
-		{
-			MachineOperand mo = mi.getOperand(i);
-			if (mo.isRegister() && mo.getReg() != 0
-					&& mo.getReg() == reg && mo.isUse())
-				return true;
-		}
-		return false;
-	}
-
-	@Override
-	public String getPassName()
-	{
-		return "PHI Nodes elimination pass";
-	}
-	@Override
-	public void getAnalysisUsage(AnalysisUsage au)
-	{
-		au.addPreserved(LiveVariables.class);
-		au.addPreserved(MachineLoop.class);
-		au.addPreserved(MachineDomTree.class);
-		super.getAnalysisUsage(au);
-	}
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addPreserved(LiveVariables.class);
+    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineDomTree.class);
+    super.getAnalysisUsage(au);
+  }
 }

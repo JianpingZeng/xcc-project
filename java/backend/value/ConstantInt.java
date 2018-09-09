@@ -16,13 +16,13 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.APIntKeyType;
-import tools.FoldingSetNodeID;
 import tools.APInt;
+import tools.FoldingSetNodeID;
+import tools.Util;
 
 /**
  * This is an abstract base class of all bool and integral constants.
@@ -30,133 +30,137 @@ import tools.APInt;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ConstantInt extends Constant
-{
-    private APInt val;
+public class ConstantInt extends Constant {
+  private APInt val;
 
-    private static ConstantInt TRUE, FALSE;
+  private static ConstantInt TRUE, FALSE;
 
-    /**
-     * Constructs a new instruction representing the specified constants.
-     *
-     * @param ty
-     */
-    ConstantInt(IntegerType ty, APInt v)
-    {
-        super(ty, ValueKind.ConstantIntVal);
-        val = v.clone();
-        Util.assertion(v.getBitWidth() == ty.getBitWidth(), "Invalid constants for type");
-    }
+  /**
+   * Constructs a new instruction representing the specified constants.
+   *
+   * @param ty
+   */
+  ConstantInt(IntegerType ty, APInt v) {
+    super(ty, ValueKind.ConstantIntVal);
+    val = v.clone();
+    Util.assertion(v.getBitWidth() == ty.getBitWidth(), "Invalid constants for type");
+  }
 
-    public static ConstantInt get(IntegerType ty, long val, boolean isSigned)
-    {
-        return get(ty, new APInt(ty.getBitWidth(), val, isSigned));
-    }
+  public static ConstantInt get(IntegerType ty, long val, boolean isSigned) {
+    return get(ty, new APInt(ty.getBitWidth(), val, isSigned));
+  }
 
-    public static ConstantInt get(IntegerType ty, long val)
-    {
-        return get(ty, new APInt(ty.getBitWidth(), val, false));
-    }
+  public static ConstantInt get(IntegerType ty, long val) {
+    return get(ty, new APInt(ty.getBitWidth(), val, false));
+  }
 
-    public static ConstantInt get(IntegerType ty, APInt val)
-    {
-        IntegerType ity = IntegerType.get(ty.getBitWidth());
-        APIntKeyType key = new APIntKeyType(val, ity);
-        return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
-    }
+  public static ConstantInt get(IntegerType ty, APInt val) {
+    IntegerType ity = IntegerType.get(ty.getBitWidth());
+    APIntKeyType key = new APIntKeyType(val, ity);
+    return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
+  }
 
-    public static ConstantInt get(Type ty, long val)
-    {
-        return get(ty, val, false);
-    }
+  public static ConstantInt get(Type ty, long val) {
+    return get(ty, val, false);
+  }
 
-    public static ConstantInt get(Type ty, long val, boolean isSigned)
-    {
-        return get((IntegerType)ty, val, isSigned);
-    }
+  public static ConstantInt get(Type ty, long val, boolean isSigned) {
+    return get((IntegerType) ty, val, isSigned);
+  }
 
-    public static ConstantInt get(APInt val)
-    {
-        IntegerType ity = IntegerType.get(val.getBitWidth());
-        APIntKeyType key = new APIntKeyType(val, ity);
-        return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
-    }
+  public static ConstantInt get(APInt val) {
+    IntegerType ity = IntegerType.get(val.getBitWidth());
+    APIntKeyType key = new APIntKeyType(val, ity);
+    return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
+  }
 
-    public static ConstantInt getTrue()
-    {
-        if (TRUE != null)
-            return TRUE;
-        TRUE = get(LLVMContext.Int1Ty, 1, false);
-        return TRUE;
-    }
+  public static ConstantInt getTrue() {
+    if (TRUE != null)
+      return TRUE;
+    TRUE = get(LLVMContext.Int1Ty, 1, false);
+    return TRUE;
+  }
 
-    public static ConstantInt getFalse()
-    {
-        if (FALSE != null)
-            return FALSE;
-        return (FALSE = get(LLVMContext.Int1Ty, 1, false));
-    }
+  public static ConstantInt getFalse() {
+    if (FALSE != null)
+      return FALSE;
+    return (FALSE = get(LLVMContext.Int1Ty, 1, false));
+  }
 
-    public boolean isMaxValue(boolean isSigned)
-    {
-        if (isSigned)
-            return val.isMaxSignedValue();
-        else
-            return val.isMaxValue();
-    }
+  public boolean isMaxValue(boolean isSigned) {
+    if (isSigned)
+      return val.isMaxSignedValue();
+    else
+      return val.isMaxValue();
+  }
 
-    public boolean isMinValue(boolean isSigned)
-    {
-        if (isSigned)
-            return val.isMinSignedValue();
-        else
-            return val.isMinValue();
-    }
+  public boolean isMinValue(boolean isSigned) {
+    if (isSigned)
+      return val.isMinSignedValue();
+    else
+      return val.isMinValue();
+  }
 
-    public int getBitsWidth() { return val.getBitWidth();}
+  public int getBitsWidth() {
+    return val.getBitWidth();
+  }
 
-    public long getZExtValue() { return val.getZExtValue();}
+  public long getZExtValue() {
+    return val.getZExtValue();
+  }
 
-    public long getSExtValue() { return val.getSExtValue();}
+  public long getSExtValue() {
+    return val.getSExtValue();
+  }
 
-    public boolean equalsInt(long v) { return val.eq(v);}
+  public boolean equalsInt(long v) {
+    return val.eq(v);
+  }
 
-    public IntegerType getType() { return (IntegerType)super.getType();}
+  public IntegerType getType() {
+    return (IntegerType) super.getType();
+  }
 
-    public boolean isZero() {return val.eq(0);}
-    public boolean isOne() {return val.eq(1);}
+  public boolean isZero() {
+    return val.eq(0);
+  }
 
-    @Override
-    public boolean isNullValue()
-    {
-        return val.eq(0);
-    }
+  public boolean isOne() {
+    return val.eq(1);
+  }
 
-    public boolean isAllOnesValue(){return val.isAllOnesValue();}
+  @Override
+  public boolean isNullValue() {
+    return val.eq(0);
+  }
 
-    public APInt getValue() {return val;}
+  public boolean isAllOnesValue() {
+    return val.isAllOnesValue();
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
-        if (getClass() != obj.getClass())
-            return false;
+  public APInt getValue() {
+    return val;
+  }
 
-        ConstantInt ci = (ConstantInt)obj;
-        return val.eq(ci.getValue());
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
+    if (getClass() != obj.getClass())
+      return false;
 
-    @Override
-    public int hashCode()
-    {
-        FoldingSetNodeID id = new FoldingSetNodeID();
-        for (long v : val.getRawData())
-            id.addInteger(v);
+    ConstantInt ci = (ConstantInt) obj;
+    return val.eq(ci.getValue());
+  }
 
-        return id.computeHash();
-    }
+  @Override
+  public int hashCode() {
+    FoldingSetNodeID id = new FoldingSetNodeID();
+    for (long v : val.getRawData())
+      id.addInteger(v);
+
+    return id.computeHash();
+  }
 }

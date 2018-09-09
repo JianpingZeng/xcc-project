@@ -24,63 +24,54 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Opt<T> extends Option<T>
-{
-    public Opt(Parser<T> parser, Modifier... mods)
-    {
-        super(parser, NumOccurrences.Optional.value);
-        for(Modifier mod : mods)
-            mod.apply(this);
+public class Opt<T> extends Option<T> {
+  public Opt(Parser<T> parser, Modifier... mods) {
+    super(parser, NumOccurrences.Optional.value);
+    for (Modifier mod : mods)
+      mod.apply(this);
 
-        done();
-    }
+    done();
+  }
 
-    @Override
-    protected boolean handleOccurrence(int pos, String optionName, String arg)
-    {
-        T val;
-        OutRef<T> x = new OutRef<>();
-        if (parser.parse(this, optionName, arg, x))
-            return true;
-        val = x.get();
-        setValue(val);
-        setPosition(pos);
-        return false;
-    }
+  @Override
+  protected boolean handleOccurrence(int pos, String optionName, String arg) {
+    T val;
+    OutRef<T> x = new OutRef<>();
+    if (parser.parse(this, optionName, arg, x))
+      return true;
+    val = x.get();
+    setValue(val);
+    setPosition(pos);
+    return false;
+  }
 
-    @Override
-    protected ValueExpected getValueExpectedDefault()
-    {
-        return parser.getValueExpectedFlagDefault();
-    }
+  @Override
+  protected ValueExpected getValueExpectedDefault() {
+    return parser.getValueExpectedFlagDefault();
+  }
 
-    @Override
-    public void getExtraOptionNames(ArrayList<String> names)
-    {
-        parser.getExtraOptionNames(names);
-    }
+  @Override
+  public void getExtraOptionNames(ArrayList<String> names) {
+    parser.getExtraOptionNames(names);
+  }
 
-    @Override
-    public int getOptionWidth()
-    {
-        return parser.getOptionWidth(this);
-    }
+  @Override
+  public int getOptionWidth() {
+    return parser.getOptionWidth(this);
+  }
 
-    @Override
-    public void printOptionInfo(int globalWidth)
-    {
-        parser.printOptionInfo(this, globalWidth);
-    }
+  @Override
+  public void printOptionInfo(int globalWidth) {
+    parser.printOptionInfo(this, globalWidth);
+  }
 
-    @Override
-    public void setInitializer(T val)
-    {
-        setValue(val);
-    }
+  @Override
+  public void setInitializer(T val) {
+    setValue(val);
+  }
 
-    private void done()
-    {
-        addArgument();
-        parser.initialize(this);
-    }
+  private void done() {
+    addArgument();
+    parser.initialize(this);
+  }
 }

@@ -17,34 +17,30 @@ package backend.target;
  */
 
 import backend.codegen.dagisel.SDep;
-import backend.codegen.dagisel.SUnit; /**
+import backend.codegen.dagisel.SUnit;
+
+/**
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class TargetSubtarget
-{
-    public int getSpecialAddressLatency()
-    {
-        return 0;
-    }
+public abstract class TargetSubtarget {
+  public int getSpecialAddressLatency() {
+    return 0;
+  }
 
-    public boolean isTargetDarwin()
-    {
-        return false;
-    }
+  public boolean isTargetDarwin() {
+    return false;
+  }
 
-    public boolean isTargetELF()
-    {
-        return false;
-    }
+  public boolean isTargetELF() {
+    return false;
+  }
 
-    public boolean isTargetCygMing()
-    {
-        return false;
-    }
+  public boolean isTargetCygMing() {
+    return false;
+  }
 
-    public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep)
-    {
+  public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {
 
-    }
+  }
 }

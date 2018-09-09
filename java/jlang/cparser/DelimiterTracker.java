@@ -24,64 +24,56 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DelimiterTracker
-{
-    private int paren, brace, square, less, lessless;
+public class DelimiterTracker {
+  private int paren, brace, square, less, lessless;
 
-    private void add(TokenKind t, int amount)
-    {
-        switch (t)
-        {
-            default:
-                Util.shouldNotReachHere("Unexpected balanced token");
-            case l_brace:
-                brace += amount;
-                break;
-            case l_paren:
-                paren += amount;
-                break;
-            case l_bracket:
-                square += amount;
-                break;
-            case less:
-                less += amount;
-                break;
-            case lessless:
-                lessless += amount;
-                break;
-        }
+  private void add(TokenKind t, int amount) {
+    switch (t) {
+      default:
+        Util.shouldNotReachHere("Unexpected balanced token");
+      case l_brace:
+        brace += amount;
+        break;
+      case l_paren:
+        paren += amount;
+        break;
+      case l_bracket:
+        square += amount;
+        break;
+      case less:
+        less += amount;
+        break;
+      case lessless:
+        lessless += amount;
+        break;
     }
+  }
 
-    public void push(TokenKind t)
-    {
-        add(t, 1);
-    }
+  public void push(TokenKind t) {
+    add(t, 1);
+  }
 
-    public void pop(TokenKind t)
-    {
-        add(t, -1);
-    }
+  public void pop(TokenKind t) {
+    add(t, -1);
+  }
 
-    public int getDepth(TokenKind t)
-    {
-        switch (t)
-        {
-            default:
-                Util.shouldNotReachHere("Unexpected balanced token");
-            case l_brace:
-                return brace;
-            case l_paren:
-                return paren;
-            case l_bracket:
-                return square;
-            case less:
-                return less;
-            case lessless:
-                return lessless;
-        }
+  public int getDepth(TokenKind t) {
+    switch (t) {
+      default:
+        Util.shouldNotReachHere("Unexpected balanced token");
+      case l_brace:
+        return brace;
+      case l_paren:
+        return paren;
+      case l_bracket:
+        return square;
+      case less:
+        return less;
+      case lessless:
+        return lessless;
     }
+  }
 
-    public DelimiterTracker()
-    {
-    }
+  public DelimiterTracker() {
+  }
 }

@@ -17,10 +17,8 @@
 
 package jlang.ast;
 
-public class AlwaysInlineAttr extends Attr
-{
-    public AlwaysInlineAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class AlwaysInlineAttr extends Attr {
+  public AlwaysInlineAttr(AttrKind kind) {
+    super(kind);
+  }
 }

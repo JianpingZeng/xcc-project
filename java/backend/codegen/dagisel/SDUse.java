@@ -29,109 +29,102 @@ import backend.codegen.EVT;
  * pointer to the SDNode using the value, and Next and Prev pointers,
  * which link together all the uses of an SDNode.
  */
-public class SDUse implements Comparable<SDUse>
-{
-    /**
-     * The value being used.
-     */
-    SDValue val;
-    /**
-     * The user of this value.
-     */
-    SDNode user;
+public class SDUse implements Comparable<SDUse> {
+  /**
+   * The value being used.
+   */
+  SDValue val;
+  /**
+   * The user of this value.
+   */
+  SDNode user;
 
-    public SDUse() {}
+  public SDUse() {
+  }
 
-    public SDValue get()
-    {
-        return val;
-    }
+  public SDValue get() {
+    return val;
+  }
 
-    public SDNode getUser()
-    {
-        return user;
-    }
+  public SDNode getUser() {
+    return user;
+  }
 
-    public SDNode getNode()
-    {
-        return val != null?val.getNode():null;
-    }
+  public SDNode getNode() {
+    return val != null ? val.getNode() : null;
+  }
 
-    public int getResNo()
-    {
-        return val.getResNo();
-    }
+  public int getResNo() {
+    return val.getResNo();
+  }
 
-    /**
-     * Determines the returned Value Type for the {@linkplain #val}.
-     * @return
-     */
-    public EVT getValueType()
-    {
-        return val.getValueType();
-    }
+  /**
+   * Determines the returned Value Type for the {@linkplain #val}.
+   *
+   * @return
+   */
+  public EVT getValueType() {
+    return val.getValueType();
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
-        if (getClass() != obj.getClass())
-            return false;
-        SDUse use = (SDUse) obj;
-        return use.val.equals(val) && use.user.equals(user);
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
+    if (getClass() != obj.getClass())
+      return false;
+    SDUse use = (SDUse) obj;
+    return use.val.equals(val) && use.user.equals(user);
+  }
 
-    @Override
-    public int compareTo(SDUse o)
-    {
-        return val.compareTo(o.val);
-    }
+  @Override
+  public int compareTo(SDUse o) {
+    return val.compareTo(o.val);
+  }
 
-    public void setUser(SDNode p)
-    {
-        user = p;
-    }
+  public void setUser(SDNode p) {
+    user = p;
+  }
 
-    /**
-     * Remove this use from its existing use list, assign it the
-     * given value, and add it to the new value's node's use list.
-     * @param v
-     */
-    public void set(SDValue v)
-    {
-        if (val != null && val.getNode() != null)
-            val.getNode().removeUse(this);
-        val = v.clone();
-        if (val != null && val.getNode() != null)
-            val.getNode().addUse(this);
-    }
+  /**
+   * Remove this use from its existing use list, assign it the
+   * given value, and add it to the new value's node's use list.
+   *
+   * @param v
+   */
+  public void set(SDValue v) {
+    if (val != null && val.getNode() != null)
+      val.getNode().removeUse(this);
+    val = v.clone();
+    if (val != null && val.getNode() != null)
+      val.getNode().addUse(this);
+  }
 
-    /**
-     * Like set, but only supports initializing a newly-allocated
-     * SDUse with a non-null value.
-     * @param v
-     */
-    public void setInitial(SDValue v)
-    {
-        val = v != null ? v.clone():null;
-        if (v != null && v.getNode() != null)
-            v.getNode().addUse(this);
-    }
+  /**
+   * Like set, but only supports initializing a newly-allocated
+   * SDUse with a non-null value.
+   *
+   * @param v
+   */
+  public void setInitial(SDValue v) {
+    val = v != null ? v.clone() : null;
+    if (v != null && v.getNode() != null)
+      v.getNode().addUse(this);
+  }
 
-    /**
-     * Like set, but only sets the Node portion of the value,
-     * leaving the ResNo portion unmodified.
-     * @param n
-     */
-    public void setNode(SDNode n)
-    {
-        if (val.getNode() != null)
-            val.getNode().removeUse(this);
-        val.setNode(n);
-        if (n != null)
-            n.addUse(this);
-    }
+  /**
+   * Like set, but only sets the Node portion of the value,
+   * leaving the ResNo portion unmodified.
+   *
+   * @param n
+   */
+  public void setNode(SDNode n) {
+    if (val.getNode() != null)
+      val.getNode().removeUse(this);
+    val.setNode(n);
+    if (n != null)
+      n.addUse(this);
+  }
 }

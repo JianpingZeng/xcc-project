@@ -24,33 +24,28 @@ import backend.support.MachineFunctionPass;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86CodeEmitter extends MachineFunctionPass
-{
-    public static X86CodeEmitter createX86CodeEmitterPass(
-            X86TargetMachine tm,
-            MachineCodeEmitter mce)
-    {
-        return new X86CodeEmitter(tm, mce);
-    }
+public class X86CodeEmitter extends MachineFunctionPass {
+  public static X86CodeEmitter createX86CodeEmitterPass(
+      X86TargetMachine tm,
+      MachineCodeEmitter mce) {
+    return new X86CodeEmitter(tm, mce);
+  }
 
-    private X86TargetMachine tm;
-    private MachineCodeEmitter mce;
+  private X86TargetMachine tm;
+  private MachineCodeEmitter mce;
 
-    public X86CodeEmitter(X86TargetMachine tm, MachineCodeEmitter mce)
-    {
-        this.tm = tm;
-        this.mce = mce;
-    }
+  public X86CodeEmitter(X86TargetMachine tm, MachineCodeEmitter mce) {
+    this.tm = tm;
+    this.mce = mce;
+  }
 
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        return false;
-    }
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    return false;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return null;
-    }
+  @Override
+  public String getPassName() {
+    return null;
+  }
 }

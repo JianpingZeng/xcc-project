@@ -19,24 +19,21 @@ package tools.commandline;
 /**
  * This class encanpasulates some useful information for the option of type
  * integer. Specialize the type of argument value, the option parser.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class IntOpt extends Opt<Integer>
-{
-    public IntOpt(ParserInt parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class IntOpt extends Opt<Integer> {
+  public IntOpt(ParserInt parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    public IntOpt(Modifier... mods)
-    {
-        this(new ParserInt(), mods);
-    }
+  public IntOpt(Modifier... mods) {
+    this(new ParserInt(), mods);
+  }
 
-    @Override
-    public ParserInt getParser()
-    {
-        return (ParserInt) parser;
-    }
+  @Override
+  public ParserInt getParser() {
+    return (ParserInt) parser;
+  }
 }

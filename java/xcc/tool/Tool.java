@@ -25,56 +25,52 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class Tool
-{
-    /**
-     * The tool name.
-     */
-    private String name;
+public abstract class Tool {
+  /**
+   * The tool name.
+   */
+  private String name;
 
-    /**
-     * The human readable name for this tool.
-     */
-    private String shortName;
+  /**
+   * The human readable name for this tool.
+   */
+  private String shortName;
 
-    private ToolChain tc;
+  private ToolChain tc;
 
-    public Tool(String name, String shortName, ToolChain tc)
-    {
-        this.name = name;
-        this.shortName = shortName;
-        this.tc = tc;
-    }
+  public Tool(String name, String shortName, ToolChain tc) {
+    this.name = name;
+    this.shortName = shortName;
+    this.tc = tc;
+  }
 
-    public String getName()
-    {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getShortName()
-    {
-        return shortName;
-    }
+  public String getShortName() {
+    return shortName;
+  }
 
-    public ToolChain getToolChain()
-    {
-        return tc;
-    }
+  public ToolChain getToolChain() {
+    return tc;
+  }
 
-    /**
-     * Constructs a Command to be performed specified action, like compile,
-     * assemble, or link with some inputs and produce an output.
-     * @param c
-     * @param ja
-     * @param output
-     * @param inputs
-     * @param args
-     * @param linkerOutput
-     * @return  Return a command.
-     */
-    public abstract Job constructJob(
-            Compilation c, Action.JobAction ja,
-            InputInfo output,
-            ArrayList<InputInfo> inputs, ArgList args,
-            String linkerOutput);
+  /**
+   * Constructs a Command to be performed specified action, like compile,
+   * assemble, or link with some inputs and produce an output.
+   *
+   * @param c
+   * @param ja
+   * @param output
+   * @param inputs
+   * @param args
+   * @param linkerOutput
+   * @return Return a command.
+   */
+  public abstract Job constructJob(
+      Compilation c, Action.JobAction ja,
+      InputInfo output,
+      ArrayList<InputInfo> inputs, ArgList args,
+      String linkerOutput);
 }

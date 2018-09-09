@@ -17,6 +17,7 @@ package backend.support;
  */
 
 import tools.Util;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,70 +25,59 @@ import java.util.List;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class AttrList
-{
-    public static final int ReturnIndex = 0;
-    public static final int FunctionIndex = ~0;
-    public static final int FirstArgIndex = 1;
+public final class AttrList {
+  public static final int ReturnIndex = 0;
+  public static final int FunctionIndex = ~0;
+  public static final int FirstArgIndex = 1;
 
-    private ArrayList<AttributeWithIndex> attrs;
+  private ArrayList<AttributeWithIndex> attrs;
 
-    public AttrList(List<AttributeWithIndex> indices)
-    {
-        attrs = new ArrayList<>();
-        if (indices != null && !indices.isEmpty())
-            attrs.addAll(indices);
+  public AttrList(List<AttributeWithIndex> indices) {
+    attrs = new ArrayList<>();
+    if (indices != null && !indices.isEmpty())
+      attrs.addAll(indices);
+  }
+
+  public boolean paramHasAttr(int index, int attr) {
+    return (getAttribute(index) & attr) != 0;
+  }
+
+  public int getParamAlignment(int index) {
+    return Attribute.getAlignmentFromAttrs(getAttribute(index));
+  }
+
+  public int getAttribute(int index) {
+    if (attrs == null || attrs.isEmpty())
+      return Attribute.None;
+
+    for (AttributeWithIndex i : attrs) {
+      if (i.index > index)
+        break;
+      if (i.index == index)
+        return i.attrs;
     }
+    return Attribute.None;
+  }
 
-    public boolean paramHasAttr(int index, int attr)
-    {
-        return (getAttribute(index) & attr) != 0;
-    }
+  public int getParamAttriute(int index) {
+    Util.assertion(index != ReturnIndex && index != FunctionIndex, "invalid parameter index!");
 
-    public int getParamAlignment(int index)
-    {
-        return Attribute.getAlignmentFromAttrs(getAttribute(index));
-    }
+    return getAttribute(index);
+  }
 
-    public int getAttribute(int index)
-    {
-        if (attrs == null || attrs.isEmpty())
-            return Attribute.None;
+  public int getRetAttribute() {
+    return getAttribute(ReturnIndex);
+  }
 
-        for (AttributeWithIndex i : attrs)
-        {
-            if (i.index > index)
-                break;
-            if (i.index == index)
-                return i.attrs;
-        }
-        return Attribute.None;
-    }
+  public int getFnAttribute() {
+    return getAttribute(FunctionIndex);
+  }
 
-    public int getParamAttriute(int index)
-    {
-        Util.assertion(index != ReturnIndex && index != FunctionIndex, "invalid parameter index!");
+  public boolean isEmpty() {
+    return attrs == null || attrs.isEmpty();
+  }
 
-        return getAttribute(index);
-    }
-
-    public int getRetAttribute()
-    {
-        return getAttribute(ReturnIndex);
-    }
-
-    public int getFnAttribute()
-    {
-        return getAttribute(FunctionIndex);
-    }
-
-    public boolean isEmpty()
-    {
-        return attrs == null ||attrs.isEmpty();
-    }
-
-    public void dump()
-    {
-        // TODO: 2017/11/27
-    }
+  public void dump() {
+    // TODO: 2017/11/27
+  }
 }

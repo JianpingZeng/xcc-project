@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class FormatArgAttr extends Attr
-{
-    public FormatArgAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class FormatArgAttr extends Attr {
+  public FormatArgAttr(AttrKind kind) {
+    super(kind);
+  }
 }

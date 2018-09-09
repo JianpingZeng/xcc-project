@@ -23,29 +23,24 @@ import static jlang.ast.AttrKind.AsmLabel;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class AsmLabelAttr extends Attr
-{
-    private String label;
+public class AsmLabelAttr extends Attr {
+  private String label;
 
-    public AsmLabelAttr(String label)
-    {
-        super(AsmLabel);
-        this.label = label;
-    }
+  public AsmLabelAttr(String label) {
+    super(AsmLabel);
+    this.label = label;
+  }
 
-    public String getLabel()
-    {
-        return label;
-    }
+  public String getLabel() {
+    return label;
+  }
 
-    public void setLabel(String label)
-    {
-        this.label = label;
-    }
+  public void setLabel(String label) {
+    this.label = label;
+  }
 
-    @Override
-    public AsmLabelAttr clone()
-    {
-        return new AsmLabelAttr(label);
-    }
+  @Override
+  public AsmLabelAttr clone() {
+    return new AsmLabelAttr(label);
+  }
 }

@@ -16,20 +16,20 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.codegen.LowerSubregInstructionPass;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.codegen.RearrangementMBB;
 import backend.passManaging.PassManagerBase;
 import backend.support.BackendCmdOptions;
+import tools.Util;
 
 import java.io.OutputStream;
 
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
-import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
+import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
@@ -38,188 +38,173 @@ import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBl
 /**
  * This class describes a target machine that is
  * implemented with the LLVM target-independent code generator.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class LLVMTargetMachine extends TargetMachine
-{
-    protected LLVMTargetMachine(Target target, String triple)
-    {
-        super(target);
-        initAsmInfo(target, triple);
+public abstract class LLVMTargetMachine extends TargetMachine {
+  protected LLVMTargetMachine(Target target, String triple) {
+    super(target);
+    initAsmInfo(target, triple);
+  }
+
+  private void initAsmInfo(Target target, String triple) {
+    asmInfo = target.createAsmInfo(triple);
+    Util.assertion(asmInfo != null, "Must initialize the TargetAsmInfo for AsmPrinter!");
+  }
+
+  private static void printAndVerify(PassManagerBase pm,
+                                     boolean allowDoubleDefs, String banner) {
+    if (PrintMachineCode.value)
+      pm.add(createMachineFunctionPrinterPass(System.err, banner));
+
+    if (VerifyMachineCode.value)
+      pm.add(createMachineVerifierPass(allowDoubleDefs));
+  }
+
+  private static void printAndVerify(
+      PassManagerBase pm,
+      boolean allowDoubleDefs) {
+    if (PrintMachineCode.value)
+      pm.add(createMachineFunctionPrinterPass(System.err));
+
+    if (VerifyMachineCode.value)
+      pm.add(createMachineVerifierPass(allowDoubleDefs));
+  }
+
+  /**
+   * Add standard LLVM codegen passes used for both emitting to assembly file
+   * or machine code output.
+   *
+   * @param pm
+   * @param level
+   * @return
+   */
+  protected boolean addCommonCodeGenPasses(PassManagerBase pm, CodeGenOpt level) {
+    // lowers switch instr into chained branch instr.
+    pm.add(createLowerSwitchPass());
+
+    if (level != CodeGenOpt.None) {
+      // todo pm.add(createLoopStrengthReducePass(getTargetLowering()));
     }
 
-    private void initAsmInfo(Target target, String triple)
-    {
-        asmInfo = target.createAsmInfo(triple);
-        Util.assertion(asmInfo != null, "Must initialize the TargetAsmInfo for AsmPrinter!");
+    pm.add(createUnreachableBlockEliminationPass());
+
+    pm.add(new MachineFunctionAnalysis(this, level));
+
+    // Ask the target for an isel.
+    if (addInstSelector(pm, level))
+      return true;
+
+    // print the machine instructions.
+    printAndVerify(pm, true,
+        "# *** IR dump after Instruction Selection ***:\n");
+    if (!DisableRearrangementMBB.value) {
+      // Before instruction selection, rearragement blocks.
+      pm.add(RearrangementMBB.createRearrangeemntPass());
+      printAndVerify(pm, true,
+          "# *** IR dump after RearragementMBB pass ***:\n");
     }
 
-    private static void printAndVerify(PassManagerBase pm,
-            boolean allowDoubleDefs, String banner)
-    {
-        if (PrintMachineCode.value)
-            pm.add(createMachineFunctionPrinterPass(System.err, banner));
+    if (addPreRegAlloc(pm, level))
+      return true;
 
-        if (VerifyMachineCode.value)
-            pm.add(createMachineVerifierPass(allowDoubleDefs));
+    printAndVerify(pm, true,
+        "# *** IR dump after Pre-Register allocation ***:\n");
+
+    // Perform register allocation to convert to a concrete x86 representation
+    pm.add(BackendCmdOptions.createRegisterAllocator());
+
+    // Print machine code after register allocation.
+    printAndVerify(pm, false,
+        "# *** IR dump after Register Allocator ***:\n");
+
+    if (addPostRegAlloc(pm, level))
+      printAndVerify(pm, false, "# *** IR dump after Post-Register allocation ***:\n");
+
+    pm.add(LowerSubregInstructionPass.createLowerSubregPass());
+    printAndVerify(pm, false,
+        "# *** IR dump after Subregister lowering ***:\n");
+
+    pm.add(createPrologEpilogEmitter());
+    printAndVerify(pm, false,
+        "# *** IR Dump After Prologue/Epilogue Insertion & Frame Finalization ***:\n");
+    return false;
+  }
+
+  @Override
+  public FileModel addPassesToEmitFile(PassManagerBase pm,
+                                       OutputStream asmOutStream, CodeGenFileType fileType,
+                                       CodeGenOpt optLevel) {
+    if (addCommonCodeGenPasses(pm, optLevel))
+      return FileModel.Error;
+
+    if (PrintMachineCode.value) {
+      pm.add(createMachineFunctionPrinterPass(System.err,
+          "# *** IR dump before emitting code ***:\n"));
     }
 
-    private static void printAndVerify(
-            PassManagerBase pm,
-            boolean allowDoubleDefs)
-    {
-        if (PrintMachineCode.value)
-            pm.add(createMachineFunctionPrinterPass(System.err));
-
-        if (VerifyMachineCode.value)
-            pm.add(createMachineVerifierPass(allowDoubleDefs));
+    if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value) {
+      pm.add(createMachineFunctionPrinterPass(System.err,
+          "# *** IR dump after emitting code ***:\n"));
+      return FileModel.Error;
     }
 
-    /**
-     * Add standard LLVM codegen passes used for both emitting to assembly file
-     * or machine code output.
-     * @param pm
-     * @param level
-     * @return
-     */
-    protected boolean addCommonCodeGenPasses(PassManagerBase pm, CodeGenOpt level)
-    {
-        // lowers switch instr into chained branch instr.
-        pm.add(createLowerSwitchPass());
-
-        if (level != CodeGenOpt.None)
-        {
-            // todo pm.add(createLoopStrengthReducePass(getTargetLowering()));
-        }
-
-        pm.add(createUnreachableBlockEliminationPass());
-
-        pm.add(new MachineFunctionAnalysis(this, level));
-
-        // Ask the target for an isel.
-        if (addInstSelector(pm, level))
-            return true;
-
-        // print the machine instructions.
-        printAndVerify(pm, true,
-                "# *** IR dump after Instruction Selection ***:\n");
-        if (!DisableRearrangementMBB.value)
-        {
-            // Before instruction selection, rearragement blocks.
-            pm.add(RearrangementMBB.createRearrangeemntPass());
-            printAndVerify(pm, true,
-                "# *** IR dump after RearragementMBB pass ***:\n");
-        }
-
-        if (addPreRegAlloc(pm, level))
-            return true;
-
-        printAndVerify(pm, true,
-                "# *** IR dump after Pre-Register allocation ***:\n");
-
-        // Perform register allocation to convert to a concrete x86 representation
-        pm.add(BackendCmdOptions.createRegisterAllocator());
-
-        // Print machine code after register allocation.
-        printAndVerify(pm, false,
-                "# *** IR dump after Register Allocator ***:\n");
-
-        if (addPostRegAlloc(pm, level))
-            printAndVerify(pm, false, "# *** IR dump after Post-Register allocation ***:\n");
-
-        pm.add(LowerSubregInstructionPass.createLowerSubregPass());
-        printAndVerify(pm, false,
-                "# *** IR dump after Subregister lowering ***:\n");
-
-        pm.add(createPrologEpilogEmitter());
-        printAndVerify(pm, false,
-                "# *** IR Dump After Prologue/Epilogue Insertion & Frame Finalization ***:\n");
-        return false;
+    switch (fileType) {
+      default:
+        return FileModel.Error;
+      case AssemblyFile:
+        if (addAssemblyEmitter(pm, optLevel, theTarget.getAsmVerbosityDefault(), asmOutStream))
+          return FileModel.Error;
+        return FileModel.AsmFile;
+      case ObjectFile:
+        return FileModel.ElfFile;
     }
+  }
 
-    @Override
-    public FileModel addPassesToEmitFile(PassManagerBase pm,
-            OutputStream asmOutStream, CodeGenFileType fileType,
-            CodeGenOpt optLevel)
-    {
-        if (addCommonCodeGenPasses(pm, optLevel))
-            return FileModel.Error;
+  @Override
+  public boolean addPassesToEmitFileFinish(PassManagerBase pm,
+                                           MachineCodeEmitter mce, CodeGenOpt opt) {
+    if (mce != null)
+      addSimpleCodeEmitter(pm, opt, mce);
+    // success!
+    return false;
+  }
 
-        if (PrintMachineCode.value)
-        {
-            pm.add(createMachineFunctionPrinterPass(System.err,
-                    "# *** IR dump before emitting code ***:\n"));
-        }
+  public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
 
-        if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value)
-        {
-            pm.add(createMachineFunctionPrinterPass(System.err,
-                    "# *** IR dump after emitting code ***:\n"));
-            return FileModel.Error;
-        }
+  public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
 
-        switch (fileType)
-        {
-            default: return FileModel.Error;
-            case AssemblyFile:
-                if (addAssemblyEmitter(pm, optLevel, theTarget.getAsmVerbosityDefault(), asmOutStream))
-                    return FileModel.Error;
-                return FileModel.AsmFile;
-            case ObjectFile:
-                return FileModel.ElfFile;
-        }
-    }
+  public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
 
-    @Override
-    public boolean addPassesToEmitFileFinish(PassManagerBase pm,
-            MachineCodeEmitter mce, CodeGenOpt opt)
-    {
-        if (mce != null)
-            addSimpleCodeEmitter(pm, opt, mce);
-        // success!
-        return false;
-    }
+  public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
 
-    public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
-    {
-        return false;
-    }
+  /**
+   * This pass should be overridden by the target to add
+   * a code emitter (without setting flags), if supported.  If this is not
+   * supported, 'true' should be returned.
+   *
+   * @param pm
+   * @param level
+   * @param mce
+   * @return
+   */
+  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+                                      MachineCodeEmitter mce) {
+    return true;
+  }
 
-    public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level)
-    {
-        return false;
-    }
-
-    public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level)
-    {
-        return false;
-    }
-
-    public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level)
-    {
-        return false;
-    }
-
-    /**
-     * This pass should be overridden by the target to add
-     * a code emitter (without setting flags), if supported.  If this is not
-     * supported, 'true' should be returned.
-     * @param pm
-     * @param level
-     * @param mce
-     * @return
-     */
-    public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
-            MachineCodeEmitter mce)
-    {
-        return true;
-    }
-
-    public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
-            boolean verbose,
-            OutputStream os)
-    {
-        return true;
-    }
+  public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
+                                    boolean verbose,
+                                    OutputStream os) {
+    return true;
+  }
 }

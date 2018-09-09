@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class GNUInlineAttr extends Attr
-{
-    public GNUInlineAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class GNUInlineAttr extends Attr {
+  public GNUInlineAttr(AttrKind kind) {
+    super(kind);
+  }
 }

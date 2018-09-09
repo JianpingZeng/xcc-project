@@ -30,65 +30,54 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PoorManAliasAnalysis extends AliasAnalysis
-{
-    @Override
-    public AliasResult alias(Value ptr1, int size1, Value ptr2, int size2)
-    {
-        return null;
-    }
+public final class PoorManAliasAnalysis extends AliasAnalysis {
+  @Override
+  public AliasResult alias(Value ptr1, int size1, Value ptr2, int size2) {
+    return null;
+  }
 
-    @Override
-    public void getMustAliases(Value ptr, ArrayList<Value> retVals)
-    {
+  @Override
+  public void getMustAliases(Value ptr, ArrayList<Value> retVals) {
 
-    }
+  }
 
-    @Override
-    public boolean pointsToConstantMemory(Value ptr)
-    {
-        return false;
-    }
+  @Override
+  public boolean pointsToConstantMemory(Value ptr) {
+    return false;
+  }
 
-    @Override
-    public ModRefResult getModRefInfo(CallSite cs1, CallSite cs2)
-    {
-        return null;
-    }
+  @Override
+  public ModRefResult getModRefInfo(CallSite cs1, CallSite cs2) {
+    return null;
+  }
 
-    @Override
-    public boolean hasNoModRefInfoForCalls()
-    {
-        return false;
-    }
+  @Override
+  public boolean hasNoModRefInfoForCalls() {
+    return false;
+  }
 
-    @Override
-    public void deleteValue(Value val)
-    {
+  @Override
+  public void deleteValue(Value val) {
 
-    }
+  }
 
-    @Override
-    public void copyValue(Value from, Value to)
-    {
+  @Override
+  public void copyValue(Value from, Value to) {
 
-    }
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Poor's man alias analysis Pass";
-    }
+  @Override
+  public String getPassName() {
+    return "Poor's man alias analysis Pass";
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return null;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return null;
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
 
-    }
+  }
 }

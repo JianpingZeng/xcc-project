@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class WeakAttr extends Attr
-{
-    public WeakAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class WeakAttr extends Attr {
+  public WeakAttr(AttrKind kind) {
+    super(kind);
+  }
 }

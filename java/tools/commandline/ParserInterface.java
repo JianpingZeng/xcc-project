@@ -27,120 +27,108 @@ import static tools.commandline.ValueExpected.ValueRequired;
 /**
  * This file defines  an interface for providing some useful methods with Command
  * line parser.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface ParserInterface<T>
-{
-    boolean parse(Option<?> opt,
-            String optName, String arg,
-            OutRef<T> val);
+public interface ParserInterface<T> {
+  boolean parse(Option<?> opt,
+                String optName, String arg,
+                OutRef<T> val);
 
-    int getNumOptions();
+  int getNumOptions();
 
-    String getOption(int index);
+  String getOption(int index);
 
-    String getDescription(int index);
+  String getDescription(int index);
 
-    default String getValueStr(Option<?> opt, String defaultMsg)
-    {
-        if (opt.value == null)
-            return defaultMsg;
-        return String.valueOf(opt.value);
+  default String getValueStr(Option<?> opt, String defaultMsg) {
+    if (opt.value == null)
+      return defaultMsg;
+    return String.valueOf(opt.value);
+  }
+
+  /**
+   * Determines the width of the option tc for printing.
+   *
+   * @param opt
+   * @return
+   */
+  default int getOptionWidth(Option<?> opt) {
+    if (opt.hasOptionName()) {
+      int size = opt.optionName.length() + 6;
+      if (opt.valueStr != null && !opt.valueStr.isEmpty())
+        size += opt.valueStr.length() + 6;
+
+      for (int i = 0, e = getNumOptions(); i != e; i++) {
+        size = Math.max(size, getOption(i).length() + 8);
+      }
+      return size;
+    } else {
+      int basesize = 0;
+      if (opt.valueStr != null && !opt.valueStr.isEmpty())
+        basesize += opt.valueStr.length() + 6;
+
+      for (int i = 0, e = getNumOptions(); i != e; i++) {
+        basesize = Math.max(basesize, getOption(i).length() + 8);
+      }
+      return basesize;
     }
-    /**
-     * Determines the width of the option tc for printing.
-     * @param opt
-     * @return
-     */
-    default int getOptionWidth(Option<?> opt)
-    {
-        if (opt.hasOptionName())
-        {
-            int size = opt.optionName.length() + 6;
-            if (opt.valueStr != null && !opt.valueStr.isEmpty())
-                size += opt.valueStr.length() + 6;
+  }
 
-            for (int i = 0, e = getNumOptions(); i != e; i++)
-            {
-                size = Math.max(size, getOption(i).length() + 8);
-            }
-            return size;
-        }
-        else
-        {
-            int basesize = 0;
-            if (opt.valueStr != null && !opt.valueStr.isEmpty())
-                basesize += opt.valueStr.length() + 6;
+  /**
+   * Print out information of the given {@code opt}.
+   *
+   * @param opt
+   * @param globalWidth
+   */
+  default void printOptionInfo(Option<?> opt, int globalWidth) {
+    if (opt.hasOptionName()) {
+      int l = opt.optionName.length();
+      out.printf("  -%s", opt.optionName);
+      int valStrLen = 0;
+      if (opt.valueStr != null && !opt.valueStr.isEmpty()) {
+        out.printf("=<%s>", opt.valueStr);
+        valStrLen = opt.valueStr.length() + 3;
+      }
 
-            for (int i = 0, e = getNumOptions(); i != e; i++)
-            {
-                basesize = Math.max(basesize, getOption(i).length() + 8);
-            }
-            return basesize;
-        }
+      out.printf("%s - %s\n",
+          Util.fixedLengthString(globalWidth - l - valStrLen - 6, ' '),
+          opt.helpStr);
+      for (int i = 0, e = getNumOptions(); i != e; i++) {
+        int numSpaces = globalWidth - getOption(i).length() - 8;
+        out.printf("    =%s%s -  %s\n", getOption(i),
+            Util.fixedLengthString(numSpaces, ' '),
+            getDescription(i));
+      }
+    } else {
+      if (opt.helpStr != null && !opt.helpStr.isEmpty())
+        out.printf("  %s\n", opt.helpStr);
+
+      for (int i = 0, e = getNumOptions(); i != e; i++) {
+        int numSpaces = globalWidth - getOption(i).length() - 8;
+        out.printf("    -%s%s - %s\n", getOption(i),
+            Util.fixedLengthString(numSpaces, ' '),
+            getDescription(i));
+      }
     }
+  }
 
-    /**
-     * Print out information of the given {@code opt}.
-     * @param opt
-     * @param globalWidth
-     */
-    default void printOptionInfo(Option<?> opt, int globalWidth)
-    {
-        if (opt.hasOptionName())
-        {
-            int l = opt.optionName.length();
-            out.printf("  -%s", opt.optionName);
-            int valStrLen = 0;
-            if (opt.valueStr != null && !opt.valueStr.isEmpty())
-            {
-                out.printf("=<%s>", opt.valueStr);
-                valStrLen = opt.valueStr.length()+3;
-            }
+  <T> void initialize(Option<T> opt);
 
-            out.printf("%s - %s\n",
-                    Util.fixedLengthString(globalWidth-l-valStrLen-6, ' '),
-                    opt.helpStr);
-            for (int i = 0, e = getNumOptions(); i != e; i++)
-            {
-                int numSpaces = globalWidth - getOption(i).length() - 8;
-                out.printf("    =%s%s -  %s\n", getOption(i),
-                        Util.fixedLengthString(numSpaces, ' '),
-                        getDescription(i));
-            }
-        }
-        else
-        {
-            if (opt.helpStr!= null && !opt.helpStr.isEmpty())
-                out.printf("  %s\n", opt.helpStr);
+  default void getExtraOptionNames(ArrayList<String> optionNames) {
+  }
 
-            for (int i = 0, e = getNumOptions(); i != e; i++)
-            {
-                int numSpaces = globalWidth - getOption(i).length() - 8;
-                out.printf("    -%s%s - %s\n", getOption(i),
-                        Util.fixedLengthString(numSpaces, ' '),
-                        getDescription(i));
-            }
-        }
-    }
+  default ValueExpected getValueExpectedFlagDefault() {
+    return ValueRequired;
+  }
 
-    <T> void initialize(Option<T> opt);
-
-    default void getExtraOptionNames(ArrayList<String> optionNames)
-    {}
-
-    default ValueExpected getValueExpectedFlagDefault()
-    {
-        return ValueRequired;
-    }
-
-    /**
-     * Overloaded in subclass to provide a better default value.
-     * @return
-     */
-    default String getValueName()
-    {
-        return "value";
-    }
+  /**
+   * Overloaded in subclass to provide a better default value.
+   *
+   * @return
+   */
+  default String getValueName() {
+    return "value";
+  }
 }

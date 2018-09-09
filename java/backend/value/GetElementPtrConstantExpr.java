@@ -26,27 +26,24 @@ import static backend.value.Operator.GetElementPtr;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class GetElementPtrConstantExpr extends ConstantExpr
-{
-    private boolean isInBounds;
+public class GetElementPtrConstantExpr extends ConstantExpr {
+  private boolean isInBounds;
 
-    /**
-     * Constructs a new instruction representing the specified constants.
-     *
-     * @param ty
-     */
-    public GetElementPtrConstantExpr(Constant c, ArrayList<Constant> idxList,
-            Type ty)
-    {
-        super(ty, GetElementPtr);
-        reserve(idxList.size() + 1);
-        setOperand(0, c, this);
-        for (int i = 0, e = idxList.size(); i != e; i++)
-            setOperand(i+1, idxList.get(i), this);
-    }
+  /**
+   * Constructs a new instruction representing the specified constants.
+   *
+   * @param ty
+   */
+  public GetElementPtrConstantExpr(Constant c, ArrayList<Constant> idxList,
+                                   Type ty) {
+    super(ty, GetElementPtr);
+    reserve(idxList.size() + 1);
+    setOperand(0, c, this);
+    for (int i = 0, e = idxList.size(); i != e; i++)
+      setOperand(i + 1, idxList.get(i), this);
+  }
 
-    public void setIsInBounds(boolean isInBounds)
-    {
-        this.isInBounds = isInBounds;
-    }
+  public void setIsInBounds(boolean isInBounds) {
+    this.isInBounds = isInBounds;
+  }
 }

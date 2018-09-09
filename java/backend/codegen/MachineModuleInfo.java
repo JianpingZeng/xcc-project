@@ -23,47 +23,40 @@ import backend.pass.ImmutablePass;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineModuleInfo implements ImmutablePass
-{
-    private AnalysisResolver resolver;
-    private int nextLabelID;
+public class MachineModuleInfo implements ImmutablePass {
+  private AnalysisResolver resolver;
+  private int nextLabelID;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    @Override
-    public String getPassName()
-    {
-        return "Machine Module Info Pass";
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public void initializePass()
-    {
+  @Override
+  public String getPassName() {
+    return "Machine Module Info Pass";
+  }
 
-    }
+  @Override
+  public void initializePass() {
 
-    public int nextLabelID()
-    {
-        return 0;
-    }
+  }
 
-    public int getNextLabelID()
-    {
-        return nextLabelID;
-    }
+  public int nextLabelID() {
+    return 0;
+  }
 
-    public void addInvoke(MachineBasicBlock landingPad, int beginLabel,
-            int endLabel)
-    {
+  public int getNextLabelID() {
+    return nextLabelID;
+  }
 
-    }
+  public void addInvoke(MachineBasicBlock landingPad, int beginLabel,
+                        int endLabel) {
+
+  }
 }

@@ -4,49 +4,41 @@ import backend.value.Instruction;
 import backend.value.Value;
 import tools.Util;
 
-public class GEPTypeIterator
-{
-    private Type curTy;
-    private Instruction.GetElementPtrInst gep;
-    private int index;
-    public GEPTypeIterator(Instruction.GetElementPtrInst gep)
-    {
-        curTy = gep.getPointerOperandType();
-        this.gep = gep;
-        index = 1;
-    }
+public class GEPTypeIterator {
+  private Type curTy;
+  private Instruction.GetElementPtrInst gep;
+  private int index;
 
-    public boolean hasNext()
-    {
-        return curTy != null;
-    }
+  public GEPTypeIterator(Instruction.GetElementPtrInst gep) {
+    curTy = gep.getPointerOperandType();
+    this.gep = gep;
+    index = 1;
+  }
 
-    public void next()
-    {
-        if (curTy instanceof CompositeType)
-        {
-            CompositeType ct = (CompositeType) curTy;
-            curTy = ct.getTypeAtIndex(getOperand());
-        }
-        else
-            curTy = null;
-        ++index;
-    }
+  public boolean hasNext() {
+    return curTy != null;
+  }
 
-    public Type getCurType()
-    {
-        return curTy;
-    }
+  public void next() {
+    if (curTy instanceof CompositeType) {
+      CompositeType ct = (CompositeType) curTy;
+      curTy = ct.getTypeAtIndex(getOperand());
+    } else
+      curTy = null;
+    ++index;
+  }
 
-    public Type getIndexedType()
-    {
-        Util.assertion(curTy instanceof CompositeType);
-        CompositeType ct = (CompositeType) curTy;
-        return ct.getTypeAtIndex(getOperand());
-    }
+  public Type getCurType() {
+    return curTy;
+  }
 
-    public Value getOperand()
-    {
-        return gep.operand(index);
-    }
+  public Type getIndexedType() {
+    Util.assertion(curTy instanceof CompositeType);
+    CompositeType ct = (CompositeType) curTy;
+    return ct.getTypeAtIndex(getOperand());
+  }
+
+  public Value getOperand() {
+    return gep.operand(index);
+  }
 }

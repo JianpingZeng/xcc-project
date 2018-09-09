@@ -22,67 +22,57 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DoubleStatistic extends StatisticBase
-{
-    private double num;
-    public DoubleStatistic(String name, String desc)
-    {
-        this(0, name, desc);
-    }
+public class DoubleStatistic extends StatisticBase {
+  private double num;
 
-    public DoubleStatistic(double val, String name, String desc)
-    {
-        super(name, desc);
-        num = val;
-    }
+  public DoubleStatistic(String name, String desc) {
+    this(0, name, desc);
+  }
 
-    @Override
-    public void printValue(PrintStream os)
-    {
-        os.print(num);
-    }
+  public DoubleStatistic(double val, String name, String desc) {
+    super(name, desc);
+    num = val;
+  }
 
-    @Override
-    public boolean hasSomeValue()
-    {
-        return num != 0;
-    }
+  @Override
+  public void printValue(PrintStream os) {
+    os.print(num);
+  }
 
-    public void add(int amount)
-    {
-        num += amount;
-    }
+  @Override
+  public boolean hasSomeValue() {
+    return num != 0;
+  }
 
-    public void sub(int amount)
-    {
-        num -= amount;
-    }
+  public void add(int amount) {
+    num += amount;
+  }
 
-    public void inc()
-    {
-        ++num;
-    }
+  public void sub(int amount) {
+    num -= amount;
+  }
 
-    public void dec()
-    {
-        --num;
-    }
+  public void inc() {
+    ++num;
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
-            return false;
-        if (this == obj)
-            return true;
-        if (getClass() != obj.getClass())
-            return false;
-        return num == ((DoubleStatistic)obj).num;
-    }
+  public void dec() {
+    --num;
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return super.hashCode() << 11 + (int)num;
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null)
+      return false;
+    if (this == obj)
+      return true;
+    if (getClass() != obj.getClass())
+      return false;
+    return num == ((DoubleStatistic) obj).num;
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode() << 11 + (int) num;
+  }
 }

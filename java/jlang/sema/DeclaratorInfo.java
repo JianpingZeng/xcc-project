@@ -22,12 +22,10 @@ import jlang.type.QualType;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DeclaratorInfo
-{
-    private QualType ty;
+public class DeclaratorInfo {
+  private QualType ty;
 
-    public DeclaratorInfo(QualType ty)
-    {
-        this.ty = ty;
-    }
+  public DeclaratorInfo(QualType ty) {
+    this.ty = ty;
+  }
 }

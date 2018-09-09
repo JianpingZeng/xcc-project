@@ -17,6 +17,7 @@ package backend.support;
  */
 
 import tools.Util;
+
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,234 +28,235 @@ import java.util.List;
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class LoopBase<BlockT, LoopT>
-{
-    /**
-     * <p>
-     * A sequence of block Id.
-     * <br>
-     * The first item must be a loop header block. Also all of block
-     * id are sorted in descending the {@linkplain #getLoopDepth()} by an
-     * instance of {@linkplain Comparator}.
-     * </p>
-     */
-    public LinkedList<BlockT> blocks;
-    /**
-     * The index of this loop.
-     */
-    protected int loopIndex;
-    /**
-     * A pointer to its outer loop loop which isDeclScope this.
-     */
-    public LoopT outerLoop;
-    /**
-     * An array of its subLoops loop contained in this.
-     */
-    public ArrayList<LoopT> subLoops;
+public abstract class LoopBase<BlockT, LoopT> {
+  /**
+   * <p>
+   * A sequence of block Id.
+   * <br>
+   * The first item must be a loop header block. Also all of block
+   * id are sorted in descending the {@linkplain #getLoopDepth()} by an
+   * instance of {@linkplain Comparator}.
+   * </p>
+   */
+  public LinkedList<BlockT> blocks;
+  /**
+   * The index of this loop.
+   */
+  protected int loopIndex;
+  /**
+   * A pointer to its outer loop loop which isDeclScope this.
+   */
+  public LoopT outerLoop;
+  /**
+   * An array of its subLoops loop contained in this.
+   */
+  public ArrayList<LoopT> subLoops;
 
-    protected LoopBase()
-    {
-        blocks = new LinkedList<BlockT>();
-        subLoops = new ArrayList<>();
-    }
-    protected LoopBase(BlockT block)
-    {
-        Util.assertion( block!= null);
-        blocks = new LinkedList<BlockT>();
-        blocks.add(block);
-        subLoops = new ArrayList<>();
-    }
+  protected LoopBase() {
+    blocks = new LinkedList<BlockT>();
+    subLoops = new ArrayList<>();
+  }
 
-    /**
-     * Retrieves the index of a basic block at the specified position where indexed by a index
-     * variable.
-     * @param index	A index that indexed into specified position where TargetData block located.
-     * @return	A basic block.
-     */
-    public BlockT getBlock(int index)
-    {
-        Util.assertion( index >= 0 && index < blocks.size());
-        return blocks.get(index);
-    }
+  protected LoopBase(BlockT block) {
+    Util.assertion(block != null);
+    blocks = new LinkedList<BlockT>();
+    blocks.add(block);
+    subLoops = new ArrayList<>();
+  }
 
-    /**
-     * Obtains the header block of this loop.
-     * @return
-     */
-    public BlockT getHeaderBlock()
-    {
-        Util.assertion(blocks != null && !blocks.isEmpty(), "There is no block in loop");
-        return blocks.get(0);
-    }
+  /**
+   * Retrieves the index of a basic block at the specified position where indexed by a index
+   * variable.
+   *
+   * @param index A index that indexed into specified position where TargetData block located.
+   * @return A basic block.
+   */
+  public BlockT getBlock(int index) {
+    Util.assertion(index >= 0 && index < blocks.size());
+    return blocks.get(index);
+  }
 
-    public int getNumOfBlocks()
-    {
-        return blocks.size();
-    }
+  /**
+   * Obtains the header block of this loop.
+   *
+   * @return
+   */
+  public BlockT getHeaderBlock() {
+    Util.assertion(blocks != null && !blocks.isEmpty(), "There is no block in loop");
+    return blocks.get(0);
+  }
 
-    /**
-     * Obtains the depth of this loop in the loop forest it attached, begins from
-     * 1.
-     * @return
-     */
-    public abstract int getLoopDepth();
+  public int getNumOfBlocks() {
+    return blocks.size();
+  }
 
-    public ArrayList<LoopT> getSubLoops()
-    {
-        return subLoops;
-    }
+  /**
+   * Obtains the depth of this loop in the loop forest it attached, begins from
+   * 1.
+   *
+   * @return
+   */
+  public abstract int getLoopDepth();
 
-    /**
-     * Obtains the depth of this loop in the loop forest it attached, begins from
-     * 1.
-     * @return
-     */
-    public List<BlockT> getBlocks()
-    {
-        return blocks;
-    }
+  public ArrayList<LoopT> getSubLoops() {
+    return subLoops;
+  }
 
-    /**
-     * Check to see if a basic block is the loop exiting block or not that
-     * if the any successor block of the given parent is outside this loop, so that
-     * this parent would be a loop exiting block..
-     * @param bb
-     * @return True if the given block is the exiting block of this loop, otherwise
-     * returned false.
-     */
-    public abstract boolean isLoopExitingBlock(BlockT bb);
+  /**
+   * Obtains the depth of this loop in the loop forest it attached, begins from
+   * 1.
+   *
+   * @return
+   */
+  public List<BlockT> getBlocks() {
+    return blocks;
+  }
 
-    /**
-     * Computes the backward edge leading to the header block in the loop.
-     * @return
-     */
-    public abstract int getNumBackEdges();
+  /**
+   * Check to see if a basic block is the loop exiting block or not that
+   * if the any successor block of the given parent is outside this loop, so that
+   * this parent would be a loop exiting block..
+   *
+   * @param bb
+   * @return True if the given block is the exiting block of this loop, otherwise
+   * returned false.
+   */
+  public abstract boolean isLoopExitingBlock(BlockT bb);
 
-    /**
-     * <p>
-     * If there is a preheader for this loop, return it.  A loop has a preheader
-     * if there is only one edge to the header of the loop from outside of the
-     * loop.  If this is the case, the block branching to the header of the loop
-     * is the preheader node.
-     * </p>
-     * <p>This method returns null if there is no preheader for the loop.</p>
-     * @return
-     */
-    public abstract BlockT getLoopPreheader();
+  /**
+   * Computes the backward edge leading to the header block in the loop.
+   *
+   * @return
+   */
+  public abstract int getNumBackEdges();
 
-    /**
-     * If given loop's header has exactly one predecessor outside of loop,
-     * return it, otherwise, return null.
-     * @return
-     */
-    protected abstract BlockT getLoopPredecessor();
+  /**
+   * <p>
+   * If there is a preheader for this loop, return it.  A loop has a preheader
+   * if there is only one edge to the header of the loop from outside of the
+   * loop.  If this is the case, the block branching to the header of the loop
+   * is the preheader node.
+   * </p>
+   * <p>This method returns null if there is no preheader for the loop.</p>
+   *
+   * @return
+   */
+  public abstract BlockT getLoopPreheader();
 
-	/**
-     * If there is a single loop latch block, return it. Otherwise, return null.
-     * <b>A latch block is a block where the control flow branch back to the
-     * loop header block.
-     * </b>
-     * @return
-     */
-    public abstract BlockT getLoopLatch();
+  /**
+   * If given loop's header has exactly one predecessor outside of loop,
+   * return it, otherwise, return null.
+   *
+   * @return
+   */
+  protected abstract BlockT getLoopPredecessor();
 
-    /**
-     * If given basic block is contained in this loop, return true,
-     * otherwise false returned.
-     * @param block
-     * @return
-     */
-    public boolean contains(BlockT block)
-    {
-        return blocks.contains(block);
-    }
+  /**
+   * If there is a single loop latch block, return it. Otherwise, return null.
+   * <b>A latch block is a block where the control flow branch back to the
+   * loop header block.
+   * </b>
+   *
+   * @return
+   */
+  public abstract BlockT getLoopLatch();
 
-    public void addFirstBlock(BlockT bb)
-    {
-        Util.assertion(bb != null,  "parent not be null");
-        Util.assertion(!contains(bb),  "duplicated block added");
+  /**
+   * If given basic block is contained in this loop, return true,
+   * otherwise false returned.
+   *
+   * @param block
+   * @return
+   */
+  public boolean contains(BlockT block) {
+    return blocks.contains(block);
+  }
 
-        blocks.addFirst(bb);
-    }
+  public void addFirstBlock(BlockT bb) {
+    Util.assertion(bb != null, "parent not be null");
+    Util.assertion(!contains(bb), "duplicated block added");
 
-    /**
-     * Returns a list of all basic block contained in the this loop, but its
-     * successor is outside of this loop.
-     * @return
-     */
-    public abstract ArrayList<BlockT> getExitingBlocks();
+    blocks.addFirst(bb);
+  }
 
-	/**
-     * Returns the unique exit blocks list of this loop.
-     * <p>
-     * The unique exit block means that if there are multiple edge from
-     * a block in loop to this exit block, we just count one.
-     * </p>
-     * @return
-     */
-    public abstract ArrayList<BlockT> getUniqueExitBlocks();
+  /**
+   * Returns a list of all basic block contained in the this loop, but its
+   * successor is outside of this loop.
+   *
+   * @return
+   */
+  public abstract ArrayList<BlockT> getExitingBlocks();
 
-	/**
-     * If there is just one unique exit block of this loop, return it. Otherwise
-     * return {@code null}.
-     * @return
-     */
-    public BlockT getUniqueExitBlock()
-    {
-        ArrayList<BlockT> list = getUniqueExitBlocks();
-        return list.size() == 1 ? list.get(0) : null;
-    }
+  /**
+   * Returns the unique exit blocks list of this loop.
+   * <p>
+   * The unique exit block means that if there are multiple edge from
+   * a block in loop to this exit block, we just count one.
+   * </p>
+   *
+   * @return
+   */
+  public abstract ArrayList<BlockT> getUniqueExitBlocks();
 
-    /**
-     * If {@linkplain #getExitingBlocks()} exactly return one block, then this
-     * method will return it, otherwise return null;
-     * @return
-     */
-    public BlockT getExitingBlock()
-    {
-        ArrayList<BlockT> res = getExitingBlocks();
-        if (res.size() == 1)
-            return res.get(0);
-        return null;
-    }
+  /**
+   * If there is just one unique exit block of this loop, return it. Otherwise
+   * return {@code null}.
+   *
+   * @return
+   */
+  public BlockT getUniqueExitBlock() {
+    ArrayList<BlockT> list = getUniqueExitBlocks();
+    return list.size() == 1 ? list.get(0) : null;
+  }
 
-    public void setParentLoop(LoopT newParent)
-    {
-        outerLoop = newParent;
-    }
+  /**
+   * If {@linkplain #getExitingBlocks()} exactly return one block, then this
+   * method will return it, otherwise return null;
+   *
+   * @return
+   */
+  public BlockT getExitingBlock() {
+    ArrayList<BlockT> res = getExitingBlocks();
+    if (res.size() == 1)
+      return res.get(0);
+    return null;
+  }
 
-    public LoopT getParentLoop()
-    {
-        return outerLoop;
-    }
+  public void setParentLoop(LoopT newParent) {
+    outerLoop = newParent;
+  }
 
-    public LoopT removeChildLoop(int index)
-    {
-        Util.assertion( index>= 0 && index < subLoops.size());
-        return subLoops.remove(index);
-    }
+  public LoopT getParentLoop() {
+    return outerLoop;
+  }
 
-    public void addBlockEntry(BlockT bb)
-    {
-        Util.assertion( bb != null);
-        blocks.add(bb);
-    }
+  public LoopT removeChildLoop(int index) {
+    Util.assertion(index >= 0 && index < subLoops.size());
+    return subLoops.remove(index);
+  }
 
-    public void removeBlockFromLoop(BlockT bb)
-    {
-        Util.assertion(bb != null,  "parent not be null");
-        Util.assertion(contains(bb),  "parent must contained in loop");
-        blocks.remove(bb);
-    }
+  public void addBlockEntry(BlockT bb) {
+    Util.assertion(bb != null);
+    blocks.add(bb);
+  }
 
-    public abstract void replaceChildLoopWith(LoopT newOne, LoopT oldOne);
-    public abstract void addChildLoop(LoopT loop);
-    public abstract void addBasicBlockIntoLoop(BlockT bb, LoopInfoBase<BlockT, LoopT> li);
-    public abstract void print(OutputStream os, int depth);
-    public abstract void dump();
+  public void removeBlockFromLoop(BlockT bb) {
+    Util.assertion(bb != null, "parent not be null");
+    Util.assertion(contains(bb), "parent must contained in loop");
+    blocks.remove(bb);
+  }
 
-    public int getNumOfSubLoop()
-    {
-        return getSubLoops().size();
-    }
+  public abstract void replaceChildLoopWith(LoopT newOne, LoopT oldOne);
+
+  public abstract void addChildLoop(LoopT loop);
+
+  public abstract void addBasicBlockIntoLoop(BlockT bb, LoopInfoBase<BlockT, LoopT> li);
+
+  public abstract void print(OutputStream os, int depth);
+
+  public abstract void dump();
+
+  public int getNumOfSubLoop() {
+    return getSubLoops().size();
+  }
 }

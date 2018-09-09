@@ -20,6 +20,5 @@ package backend.codegen;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineCodeEmitter
-{
+public class MachineCodeEmitter {
 }

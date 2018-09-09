@@ -23,18 +23,15 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PBQPSolution
-{
-    private int[] solution;
+public class PBQPSolution {
+  private int[] solution;
 
-    public PBQPSolution(int[] solution)
-    {
-        this.solution = solution;
-    }
+  public PBQPSolution(int[] solution) {
+    this.solution = solution;
+  }
 
-    public int get(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < solution.length);
-        return solution[idx];
-    }
+  public int get(int idx) {
+    Util.assertion(idx >= 0 && idx < solution.length);
+    return solution[idx];
+  }
 }

@@ -22,35 +22,29 @@ import tools.OutRef;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ParserUInt extends Parser<Integer>
-{
-    public boolean parse(Option<?> opt,
-            String optName, String arg,
-            OutRef<Integer> val)
-    {
-        try
-        {
-            val.set(Integer.parseUnsignedInt(arg));
-        }
-        catch (NumberFormatException ex)
-        {
-            return opt.error("'" + arg + "' value invalid for uint argument");
-        }
-        return false;
+public class ParserUInt extends Parser<Integer> {
+  public boolean parse(Option<?> opt,
+                       String optName, String arg,
+                       OutRef<Integer> val) {
+    try {
+      val.set(Integer.parseUnsignedInt(arg));
+    } catch (NumberFormatException ex) {
+      return opt.error("'" + arg + "' value invalid for uint argument");
     }
+    return false;
+  }
 
-    @Override
-    public String getValueName()
-    {
-        return "uint";
-    }
+  @Override
+  public String getValueName() {
+    return "uint";
+  }
 
-    @Override
-    public <T1> void initialize(Option<T1> opt){}
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+  }
 
-    @Override
-    public ValueExpected getValueExpectedFlagDefault()
-    {
-        return ValueExpected.ValueRequired;
-    }
+  @Override
+  public ValueExpected getValueExpectedFlagDefault() {
+    return ValueExpected.ValueRequired;
+  }
 }

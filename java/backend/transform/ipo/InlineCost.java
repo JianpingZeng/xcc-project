@@ -17,70 +17,61 @@ package backend.transform.ipo;
  * permissions and limitations under the License.
  */
 
-import backend.value.Value;
+public final class InlineCost {
+  public enum InlineKind {
+    /**
+     * Indicates the callee never be inlined.
+     */
+    Never,
+    /**
+     * Indicates the compiler determines whether the callee
+     * should be inlined or not inspect to the inlining cost.
+     */
+    Value,
+    /**
+     * Tells the compiler always inline those functions with
+     * always_inline attribute.
+     */
+    Always
+  }
 
-public final class InlineCost
-{
-    public enum InlineKind
-    {
-        /**
-         * Indicates the callee never be inlined.
-         */
-        Never,
-        /**
-         * Indicates the compiler determines whether the callee
-         * should be inlined or not inspect to the inlining cost.
-         */
-        Value,
-        /**
-         * Tells the compiler always inline those functions with
-         * always_inline attribute.
-         */
-        Always
-    }
-    private InlineKind kind;
-    private int cost;
+  private InlineKind kind;
+  private int cost;
 
-    private InlineCost(int cost)
-    {
-        this(cost, InlineKind.Value);
-    }
-    private InlineCost(int cost, InlineKind kind)
-    {
-        this.cost = cost;
-        this.kind = kind;
-    }
+  private InlineCost(int cost) {
+    this(cost, InlineKind.Value);
+  }
 
-    public int getCost()
-    {
-        return cost;
-    }
+  private InlineCost(int cost, InlineKind kind) {
+    this.cost = cost;
+    this.kind = kind;
+  }
 
-    public InlineKind getKind()
-    {
-        return kind;
-    }
+  public int getCost() {
+    return cost;
+  }
 
-    public static InlineCost getNever()
-    {
-        return new InlineCost(0, InlineKind.Never);
-    }
-    public static InlineCost getAlways()
-    {
-        return new InlineCost(0, InlineKind.Always);
-    }
-    public static InlineCost get(int cost)
-    {
-        return new InlineCost(cost);
-    }
+  public InlineKind getKind() {
+    return kind;
+  }
 
-    public boolean isNeverInline()
-    {
-        return kind == InlineKind.Never;
-    }
+  public static InlineCost getNever() {
+    return new InlineCost(0, InlineKind.Never);
+  }
 
-    public boolean isAlwaysInline()
-    {
-        return kind == InlineKind.Always;
-    }
+  public static InlineCost getAlways() {
+    return new InlineCost(0, InlineKind.Always);
+  }
+
+  public static InlineCost get(int cost) {
+    return new InlineCost(cost);
+  }
+
+  public boolean isNeverInline() {
+    return kind == InlineKind.Never;
+  }
+
+  public boolean isAlwaysInline() {
+    return kind == InlineKind.Always;
+  }
 }

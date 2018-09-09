@@ -20,18 +20,15 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class OptionHiddenApplicator implements Modifier
-{
-    private OptionHidden optHidden;
+public class OptionHiddenApplicator implements Modifier {
+  private OptionHidden optHidden;
 
-    public OptionHiddenApplicator(OptionHidden opt)
-    {
-        optHidden = opt;
-    }
+  public OptionHiddenApplicator(OptionHidden opt) {
+    optHidden = opt;
+  }
 
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setOptionHiddenFlag(optHidden);
-    }
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setOptionHiddenFlag(optHidden);
+  }
 }

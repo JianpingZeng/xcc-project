@@ -21,7 +21,6 @@ package backend.analysis.aa;
  * Represents the alias query result of two pointer by invoking method
  * .
  */
-public enum AliasResult
-{
-    NoAlias, MayAlias, MustAlias,
+public enum AliasResult {
+  NoAlias, MayAlias, MustAlias,
 }

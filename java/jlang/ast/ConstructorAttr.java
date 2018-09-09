@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class ConstructorAttr extends Attr
-{
-    public ConstructorAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class ConstructorAttr extends Attr {
+  public ConstructorAttr(AttrKind kind) {
+    super(kind);
+  }
 }

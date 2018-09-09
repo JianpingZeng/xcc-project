@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class DestructorAttr extends Attr
-{
-    public DestructorAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class DestructorAttr extends Attr {
+  public DestructorAttr(AttrKind kind) {
+    super(kind);
+  }
 }

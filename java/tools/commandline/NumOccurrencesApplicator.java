@@ -20,17 +20,15 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class NumOccurrencesApplicator implements Modifier
-{
-    private NumOccurrences no;
+public class NumOccurrencesApplicator implements Modifier {
+  private NumOccurrences no;
 
-    public NumOccurrencesApplicator(NumOccurrences no)
-    {
-        this.no = no;
-    }
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setNumOccurrencesFlag(no);
-    }
+  public NumOccurrencesApplicator(NumOccurrences no) {
+    this.no = no;
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setNumOccurrencesFlag(no);
+  }
 }

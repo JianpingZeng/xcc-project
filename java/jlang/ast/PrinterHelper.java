@@ -23,7 +23,6 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface PrinterHelper
-{
-    boolean handledStmt(Tree.Stmt stmt, PrintStream os);
+public interface PrinterHelper {
+  boolean handledStmt(Tree.Stmt stmt, PrintStream os);
 }

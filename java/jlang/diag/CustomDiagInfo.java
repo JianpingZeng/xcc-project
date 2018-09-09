@@ -16,9 +16,9 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -28,49 +28,45 @@ import static jlang.diag.Diagnostic.DIAG_UPPER_LIMIT;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CustomDiagInfo
-{
-    private ArrayList<Pair<Diagnostic.Level, String>> diagInfo;
-    private TObjectIntHashMap<Pair<Diagnostic.Level, String>> diagIDs;
+public class CustomDiagInfo {
+  private ArrayList<Pair<Diagnostic.Level, String>> diagInfo;
+  private TObjectIntHashMap<Pair<Diagnostic.Level, String>> diagIDs;
 
-    public CustomDiagInfo()
-    {
-        diagIDs = new TObjectIntHashMap<>();
-        diagInfo = new ArrayList<>();
-    }
+  public CustomDiagInfo() {
+    diagIDs = new TObjectIntHashMap<>();
+    diagInfo = new ArrayList<>();
+  }
 
-    /**
-     * Return the text of the specified custom diagnostic.
-     * @param diagID
-     * @return
-     */
-    public String getDescription(int diagID)
-    {
-        Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
+  /**
+   * Return the text of the specified custom diagnostic.
+   *
+   * @param diagID
+   * @return
+   */
+  public String getDescription(int diagID) {
+    Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
 
-        return diagInfo.get(diagID - DIAG_UPPER_LIMIT).second;
-    }
+    return diagInfo.get(diagID - DIAG_UPPER_LIMIT).second;
+  }
 
-    public Diagnostic.Level getLevel(int diagID)
-    {
-        Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
+  public Diagnostic.Level getLevel(int diagID) {
+    Util.assertion(diagID - DIAG_UPPER_LIMIT < diagInfo.size(), "invalid diagnostic ID");
 
-        return diagInfo.get(diagID - DIAG_UPPER_LIMIT).first;
-    }
+    return diagInfo.get(diagID - DIAG_UPPER_LIMIT).first;
+  }
 
-    public int getOrCreateDiagID(Diagnostic.Level l,
-            String message,
-            Diagnostic diagnostic)
-    {
-        Pair<Diagnostic.Level, String> diagDesc = Pair.get(l, message);
-        if (diagIDs.containsKey(diagDesc))
-            return diagIDs.get(diagDesc);
+  public int getOrCreateDiagID(Diagnostic.Level l,
+                               String message,
+                               Diagnostic diagnostic) {
+    Pair<Diagnostic.Level, String> diagDesc = Pair.get(l, message);
+    if (diagIDs.containsKey(diagDesc))
+      return diagIDs.get(diagDesc);
 
-        // If not, assign a new ID.
-        int id = diagInfo.size() + DIAG_UPPER_LIMIT;
-        diagIDs.put(diagDesc, id);
-        diagInfo.add(diagDesc);
+    // If not, assign a new ID.
+    int id = diagInfo.size() + DIAG_UPPER_LIMIT;
+    diagIDs.put(diagDesc, id);
+    diagInfo.add(diagDesc);
 
-        return id;
-    }
+    return id;
+  }
 }

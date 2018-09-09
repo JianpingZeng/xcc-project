@@ -21,37 +21,39 @@ import jlang.support.LangOptions;
 /**
  * This is an abstract interface, which should be implemented by client of
  * front-end, which formats and prints fully processed diagnostics.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface DiagnosticClient
-{
-    /**
-     * This is set by clients of diagnostics when they know the
-     * language parameters of the diagnostics that may be sent through.  Note
-     * that this can change over time if a DiagClient has multiple languages sent
-     * through it.  It may also be set to null (e.g. when processing command line
-     * options).
-     * @param langOptions
-     */
-    default void setLangOptions(LangOptions langOptions)
-    {}
+public interface DiagnosticClient {
+  /**
+   * This is set by clients of diagnostics when they know the
+   * language parameters of the diagnostics that may be sent through.  Note
+   * that this can change over time if a DiagClient has multiple languages sent
+   * through it.  It may also be set to null (e.g. when processing command line
+   * options).
+   *
+   * @param langOptions
+   */
+  default void setLangOptions(LangOptions langOptions) {
+  }
 
-    /**
-     * This method (whose default implementation returns true) indicates whether
-     * the diagnostics handled by this DiagnosticClient should be included in
-     * the number of diagnostics reported by Diagnostic.
-     * @return
-     */
-    default boolean includeInDiagnosticCounts()
-    {
-        return true;
-    }
+  /**
+   * This method (whose default implementation returns true) indicates whether
+   * the diagnostics handled by this DiagnosticClient should be included in
+   * the number of diagnostics reported by Diagnostic.
+   *
+   * @return
+   */
+  default boolean includeInDiagnosticCounts() {
+    return true;
+  }
 
-    /**
-     * Handle this diagnostic, reporting it or capturing it to a log as needed.
-     * @param diagLevel
-     * @param info
-     */
-    void handleDiagnostic(Diagnostic.Level diagLevel, DiagnosticInfo info);
+  /**
+   * Handle this diagnostic, reporting it or capturing it to a log as needed.
+   *
+   * @param diagLevel
+   * @param info
+   */
+  void handleDiagnostic(Diagnostic.Level diagLevel, DiagnosticInfo info);
 }

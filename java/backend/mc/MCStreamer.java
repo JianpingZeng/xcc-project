@@ -24,14 +24,12 @@ import tools.FormattedOutputStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MCStreamer
-{
-    public static MCStreamer createAsmStreamer(
-            MCContext context,
-            FormattedOutputStream os,
-            TargetAsmInfo tai,
-            AsmPrinter printer)
-    {
-        return new MCStreamer();
-    }
+public class MCStreamer {
+  public static MCStreamer createAsmStreamer(
+      MCContext context,
+      FormattedOutputStream os,
+      TargetAsmInfo tai,
+      AsmPrinter printer) {
+    return new MCStreamer();
+  }
 }

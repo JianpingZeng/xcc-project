@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class MallocAttr extends Attr
-{
-    public MallocAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class MallocAttr extends Attr {
+  public MallocAttr(AttrKind kind) {
+    super(kind);
+  }
 }

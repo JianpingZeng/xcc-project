@@ -38,251 +38,218 @@ import java.util.Stack;
 /**
  * This class designed to served as converting malloc&free calls
  * to corresponding instructions.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class RaiseAllocations implements ModulePass
-{
-    public final static IntStatistic NumRaised =
-            new IntStatistic("NumRaised", "The number of raised malloc/free instruction");
+public final class RaiseAllocations implements ModulePass {
+  public final static IntStatistic NumRaised =
+      new IntStatistic("NumRaised", "The number of raised malloc/free instruction");
 
-    private Function mallocFunc;
-    private Function freeFunc;
+  private Function mallocFunc;
+  private Function freeFunc;
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    public RaiseAllocations()
-    {}
+  public RaiseAllocations() {
+  }
 
-    public void doInitialization(Module m)
-    {
-        mallocFunc = m.getFunction("malloc");
-        if (mallocFunc != null)
-        {
-            FunctionType tyWeHave = mallocFunc.getFunctionType();
+  public void doInitialization(Module m) {
+    mallocFunc = m.getFunction("malloc");
+    if (mallocFunc != null) {
+      FunctionType tyWeHave = mallocFunc.getFunctionType();
 
-            // Get the expected prototype for malloc
-            ArrayList<Type> argTys = new ArrayList<>();
-            argTys.add(LLVMContext.Int64Ty);
-            FunctionType mallocType = FunctionType.get(PointerType.getUnqual(
-                    LLVMContext.Int8Ty), argTys, false);
+      // Get the expected prototype for malloc
+      ArrayList<Type> argTys = new ArrayList<>();
+      argTys.add(LLVMContext.Int64Ty);
+      FunctionType mallocType = FunctionType.get(PointerType.getUnqual(
+          LLVMContext.Int8Ty), argTys, false);
 
-            // Chck to see if we got the expected malloc
-            if (!tyWeHave.equals(mallocType))
-            {
-                // Check to see if the prototype is wrong, giving us sbyte*(uint) * malloc
-                // This handles the common declaration of: 'void *malloc(unsigned);'
-                ArrayList<Type> argTys2 = new ArrayList<>();
-                argTys2.add(LLVMContext.Int32Ty);
-                FunctionType mallocType2 = FunctionType.get(PointerType.getUnqual(
-                        LLVMContext.Int8Ty), argTys2, false);
-                if (!tyWeHave.equals(mallocType2))
-                {
-                    // Check to see if the prototype is missing, giving us
-                    // sbyte*(...) * malloc
-                    // This handles the common declaration of: 'void *malloc();'
-                    FunctionType mallocType3 = FunctionType.get(
-                            PointerType.getUnqual(LLVMContext.Int8Ty),
-                            new ArrayList<>(), true);
-                    if (!tyWeHave.equals(mallocType3))
-                    {
-                        // give up.
-                        mallocFunc = null;
-                    }
-                }
-            }
-        }
-
-        freeFunc = m.getFunction("free");
-        if (freeFunc != null)
-        {
-            // Get the expected prototype for void free(i8*)
-            FunctionType tyWeHave = freeFunc.getFunctionType();
-
-            ArrayList<Type> argTys = new ArrayList<>();
-            argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
-            FunctionType freeType1 = FunctionType.get(LLVMContext.VoidTy,
-                    argTys, false);
-            if (!tyWeHave.equals(freeType1))
-            {
-                // Check to see if the prototype was forgotten, giving us
-                // void (...) * free
-                // This handles the common forward declaration of: 'void free();'
-
-                FunctionType freeType2 = FunctionType.get(LLVMContext.VoidTy,
-                        new ArrayList<>(), true);
-                if (!tyWeHave.equals(freeType2))
-                {
-                    // One last try, check to see if we can find free as
-                    // int (...)* free.  This handles the case where NOTHING was declared.
-                    FunctionType freeType3 = FunctionType.get(LLVMContext.Int64Ty,
-                            new ArrayList<>(), true);
-                    if (!tyWeHave.equals(freeType3))
-                    {
-                        // give up.
-                        freeFunc = null;
-                    }
-                }
-            }
-        }
-
-        // Don't mess with locally defined versions of these functions.
-        if (mallocFunc != null && !mallocFunc.isDeclaration())
+      // Chck to see if we got the expected malloc
+      if (!tyWeHave.equals(mallocType)) {
+        // Check to see if the prototype is wrong, giving us sbyte*(uint) * malloc
+        // This handles the common declaration of: 'void *malloc(unsigned);'
+        ArrayList<Type> argTys2 = new ArrayList<>();
+        argTys2.add(LLVMContext.Int32Ty);
+        FunctionType mallocType2 = FunctionType.get(PointerType.getUnqual(
+            LLVMContext.Int8Ty), argTys2, false);
+        if (!tyWeHave.equals(mallocType2)) {
+          // Check to see if the prototype is missing, giving us
+          // sbyte*(...) * malloc
+          // This handles the common declaration of: 'void *malloc();'
+          FunctionType mallocType3 = FunctionType.get(
+              PointerType.getUnqual(LLVMContext.Int8Ty),
+              new ArrayList<>(), true);
+          if (!tyWeHave.equals(mallocType3)) {
+            // give up.
             mallocFunc = null;
-        if (freeFunc != null && !freeFunc.isDeclaration())
+          }
+        }
+      }
+    }
+
+    freeFunc = m.getFunction("free");
+    if (freeFunc != null) {
+      // Get the expected prototype for void free(i8*)
+      FunctionType tyWeHave = freeFunc.getFunctionType();
+
+      ArrayList<Type> argTys = new ArrayList<>();
+      argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+      FunctionType freeType1 = FunctionType.get(LLVMContext.VoidTy,
+          argTys, false);
+      if (!tyWeHave.equals(freeType1)) {
+        // Check to see if the prototype was forgotten, giving us
+        // void (...) * free
+        // This handles the common forward declaration of: 'void free();'
+
+        FunctionType freeType2 = FunctionType.get(LLVMContext.VoidTy,
+            new ArrayList<>(), true);
+        if (!tyWeHave.equals(freeType2)) {
+          // One last try, check to see if we can find free as
+          // int (...)* free.  This handles the case where NOTHING was declared.
+          FunctionType freeType3 = FunctionType.get(LLVMContext.Int64Ty,
+              new ArrayList<>(), true);
+          if (!tyWeHave.equals(freeType3)) {
+            // give up.
             freeFunc = null;
-    }
-
-    /**
-     * This method does the actual work of converting malloc&free calls
-     * to corresponding instructions.
-     * @param m
-     * @return
-     */
-    @Override
-    public boolean runOnModule(Module m)
-    {
-        // Find the malloc/free prototypes.
-        doInitialization(m);
-
-        boolean changed = false;
-        // Step#1, process all of the malloc calls.
-        if (mallocFunc != null)
-        {
-            Stack<User> users = new Stack<>();
-            mallocFunc.getUseList().forEach(u->users.push(u.getUser()));
-            HashSet<Value> eqPointers = new HashSet<>();
-            while (!users.isEmpty())
-            {
-                User u = users.pop();
-                if (u instanceof Instruction)
-                {
-                    CallInst ci = u instanceof CallInst ? (CallInst)u : null;
-                    if (ci != null && ci.getNumsOfArgs() != 0 &&
-                            (ci.getCalledFunction().equals(mallocFunc)) ||
-                            eqPointers.contains(ci.getCalledFunction()))
-                    {
-                        Value source = ci.argumentAt(0);
-
-                        // If no prototype was provided for malloc, we may need
-                        // to cast the source size.
-                        if (!source.getType().equals(LLVMContext.Int32Ty))
-                        {
-                            source = CastInst.createIntegerCast(source,
-                                    LLVMContext.Int32Ty, /*isSigned*/false, "MallocAmtCast",
-                                    ci);
-                        }
-                        MallocInst mi = new MallocInst(LLVMContext.Int8Ty, source, "", ci);
-                        mi.setName(ci.getName());
-                        ci.replaceAllUsesWith(mi);
-
-                        // Delete this CallInst from basic block.
-                        ci.eraseFromParent();
-                        changed = true;
-                        NumRaised.inc();
-                    }
-                }
-                else if (u instanceof GlobalValue)
-                {
-                    u.getUseList().forEach(uu->users.push(uu.getUser()));
-                    eqPointers.add(u);
-                }
-                else if (u instanceof ConstantExpr)
-                {
-                    ConstantExpr ce = (ConstantExpr)u;
-                    if (ce.isCast())
-                    {
-                        ce.getUseList().forEach(uu->users.push(uu.getUser()));
-                        eqPointers.add(ce);
-                    }
-                }
-            }
+          }
         }
+      }
+    }
 
-        // process free function.
-        if (freeFunc != null)
-        {
-            Stack<User> users = new Stack<>();
-            freeFunc.getUseList().forEach(u->users.push(u.getUser()));
-            HashSet<Value> eqPointers = new HashSet<>();
-            while (!users.isEmpty())
-            {
-                User u = users.pop();
-                if (u instanceof Instruction)
-                {
-                    CallInst ci = u instanceof CallInst ? (CallInst)u : null;
-                    if (ci != null && ci.getNumsOfArgs() != 0 &&
-                            (ci.getCalledFunction().equals(freeFunc)) ||
-                            eqPointers.contains(ci.getCalledFunction()))
-                    {
-                        Value source = ci.argumentAt(0);
+    // Don't mess with locally defined versions of these functions.
+    if (mallocFunc != null && !mallocFunc.isDeclaration())
+      mallocFunc = null;
+    if (freeFunc != null && !freeFunc.isDeclaration())
+      freeFunc = null;
+  }
 
-                        if (!source.getType().isPointerType())
-                        {
-                            // Perform IntToPointer cast on array size expresion.
-                            source = new IntToPtrInst(source,
-                                    PointerType.getUnqual(LLVMContext.Int8Ty),
-                                    "freePtrCast", ci);
-                        }
+  /**
+   * This method does the actual work of converting malloc&free calls
+   * to corresponding instructions.
+   *
+   * @param m
+   * @return
+   */
+  @Override
+  public boolean runOnModule(Module m) {
+    // Find the malloc/free prototypes.
+    doInitialization(m);
 
-                        new FreeInst(source, ci);
+    boolean changed = false;
+    // Step#1, process all of the malloc calls.
+    if (mallocFunc != null) {
+      Stack<User> users = new Stack<>();
+      mallocFunc.getUseList().forEach(u -> users.push(u.getUser()));
+      HashSet<Value> eqPointers = new HashSet<>();
+      while (!users.isEmpty()) {
+        User u = users.pop();
+        if (u instanceof Instruction) {
+          CallInst ci = u instanceof CallInst ? (CallInst) u : null;
+          if (ci != null && ci.getNumsOfArgs() != 0 &&
+              (ci.getCalledFunction().equals(mallocFunc)) ||
+              eqPointers.contains(ci.getCalledFunction())) {
+            Value source = ci.argumentAt(0);
 
-                        // Delete the CallInst.
-                        if (!ci.getType().equals(LLVMContext.VoidTy))
-                        {
-                            ci.replaceAllUsesWith(Value.UndefValue.get(ci.getType()));
-                        }
-
-                        // Delete this CallInst from basic block.
-                        ci.eraseFromParent();
-                        changed = true;
-                        NumRaised.inc();
-                    }
-                }
-                else if (u instanceof GlobalValue)
-                {
-                    u.getUseList().forEach(uu->users.push(uu.getUser()));
-                    eqPointers.add(u);
-                }
-                else if (u instanceof ConstantExpr)
-                {
-                    ConstantExpr ce = (ConstantExpr)u;
-                    if (ce.isCast())
-                    {
-                        ce.getUseList().forEach(uu->users.push(uu.getUser()));
-                        eqPointers.add(ce);
-                    }
-                }
+            // If no prototype was provided for malloc, we may need
+            // to cast the source size.
+            if (!source.getType().equals(LLVMContext.Int32Ty)) {
+              source = CastInst.createIntegerCast(source,
+                  LLVMContext.Int32Ty, /*isSigned*/false, "MallocAmtCast",
+                  ci);
             }
+            MallocInst mi = new MallocInst(LLVMContext.Int8Ty, source, "", ci);
+            mi.setName(ci.getName());
+            ci.replaceAllUsesWith(mi);
+
+            // Delete this CallInst from basic block.
+            ci.eraseFromParent();
+            changed = true;
+            NumRaised.inc();
+          }
+        } else if (u instanceof GlobalValue) {
+          u.getUseList().forEach(uu -> users.push(uu.getUser()));
+          eqPointers.add(u);
+        } else if (u instanceof ConstantExpr) {
+          ConstantExpr ce = (ConstantExpr) u;
+          if (ce.isCast()) {
+            ce.getUseList().forEach(uu -> users.push(uu.getUser()));
+            eqPointers.add(ce);
+          }
         }
-
-        return changed;
+      }
     }
 
-    @Override
-    public String getPassName()
-    {
-        return "Raise allocations from calls to instructions";
+    // process free function.
+    if (freeFunc != null) {
+      Stack<User> users = new Stack<>();
+      freeFunc.getUseList().forEach(u -> users.push(u.getUser()));
+      HashSet<Value> eqPointers = new HashSet<>();
+      while (!users.isEmpty()) {
+        User u = users.pop();
+        if (u instanceof Instruction) {
+          CallInst ci = u instanceof CallInst ? (CallInst) u : null;
+          if (ci != null && ci.getNumsOfArgs() != 0 &&
+              (ci.getCalledFunction().equals(freeFunc)) ||
+              eqPointers.contains(ci.getCalledFunction())) {
+            Value source = ci.argumentAt(0);
+
+            if (!source.getType().isPointerType()) {
+              // Perform IntToPointer cast on array size expresion.
+              source = new IntToPtrInst(source,
+                  PointerType.getUnqual(LLVMContext.Int8Ty),
+                  "freePtrCast", ci);
+            }
+
+            new FreeInst(source, ci);
+
+            // Delete the CallInst.
+            if (!ci.getType().equals(LLVMContext.VoidTy)) {
+              ci.replaceAllUsesWith(Value.UndefValue.get(ci.getType()));
+            }
+
+            // Delete this CallInst from basic block.
+            ci.eraseFromParent();
+            changed = true;
+            NumRaised.inc();
+          }
+        } else if (u instanceof GlobalValue) {
+          u.getUseList().forEach(uu -> users.push(uu.getUser()));
+          eqPointers.add(u);
+        } else if (u instanceof ConstantExpr) {
+          ConstantExpr ce = (ConstantExpr) u;
+          if (ce.isCast()) {
+            ce.getUseList().forEach(uu -> users.push(uu.getUser()));
+            eqPointers.add(ce);
+          }
+        }
+      }
     }
 
-    /**
-     * A factory method used for creating an instance.
-     * @return
-     */
-    public static RaiseAllocations createRaiseAllocationsPass()
-    {
-        return new RaiseAllocations();
-    }
+    return changed;
+  }
+
+  @Override
+  public String getPassName() {
+    return "Raise allocations from calls to instructions";
+  }
+
+  /**
+   * A factory method used for creating an instance.
+   *
+   * @return
+   */
+  public static RaiseAllocations createRaiseAllocationsPass() {
+    return new RaiseAllocations();
+  }
 }

@@ -15,6 +15,7 @@ package backend.support;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 import backend.analysis.CallGraphNode;
 import backend.pass.AnalysisUsage;
 import backend.pass.CallGraphSCCPass;
@@ -25,43 +26,37 @@ import java.util.ArrayList;
 
 import static backend.support.BackendCmdOptions.isFunctionInPrintList;
 
-public class PrintCallGraphPass extends CallGraphSCCPass
-{
-    private PrintStream out;
-    private String ban;
-    public PrintCallGraphPass(String banner, PrintStream os)
-    {
-        out = os;
-        ban = banner;
-    }
+public class PrintCallGraphPass extends CallGraphSCCPass {
+  private PrintStream out;
+  private String ban;
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-        super.getAnalysisUsage(au);
-    }
+  public PrintCallGraphPass(String banner, PrintStream os) {
+    out = os;
+    ban = banner;
+  }
 
-    @Override
-    public boolean runOnSCC(ArrayList<CallGraphNode> nodes)
-    {
-        out.print(ban);
-        for (CallGraphNode n : nodes)
-        {
-            Function f = n.getFunction();
-            if (f != null) {
-                if (isFunctionInPrintList(f.getName()))
-                    f.print(out);
-            }
-            else
-                out.println("\nPrint <null> Function");
-        }
-        return false;
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+    super.getAnalysisUsage(au);
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Printing Call Graph Pass";
+  @Override
+  public boolean runOnSCC(ArrayList<CallGraphNode> nodes) {
+    out.print(ban);
+    for (CallGraphNode n : nodes) {
+      Function f = n.getFunction();
+      if (f != null) {
+        if (isFunctionInPrintList(f.getName()))
+          f.print(out);
+      } else
+        out.println("\nPrint <null> Function");
     }
+    return false;
+  }
+
+  @Override
+  public String getPassName() {
+    return "Printing Call Graph Pass";
+  }
 }

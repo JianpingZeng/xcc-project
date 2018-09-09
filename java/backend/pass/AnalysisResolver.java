@@ -24,41 +24,36 @@ import java.util.HashMap;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class AnalysisResolver
-{
-    private PMDataManager pm;
-    private HashMap<PassInfo, Pass> analysisImpls;
+public final class AnalysisResolver {
+  private PMDataManager pm;
+  private HashMap<PassInfo, Pass> analysisImpls;
 
-    public AnalysisResolver(PMDataManager pmd)
-    {
-        pm = pmd;
-        analysisImpls = new HashMap<>();
-    }
+  public AnalysisResolver(PMDataManager pmd) {
+    pm = pmd;
+    analysisImpls = new HashMap<>();
+  }
 
-    public PMDataManager getPMDataManager()
-    {
-        return pm;
-    }
+  public PMDataManager getPMDataManager() {
+    return pm;
+  }
 
-    /**
-     * Return the analysis result or null if it doesn't exist.
-     * @param passInfo
-     * @return
-     */
-    public Pass getAnalysisIfAvailable(PassInfo passInfo, boolean dir)
-    {
-        return pm.findAnalysisPass(passInfo, dir);
-    }
+  /**
+   * Return the analysis result or null if it doesn't exist.
+   *
+   * @param passInfo
+   * @return
+   */
+  public Pass getAnalysisIfAvailable(PassInfo passInfo, boolean dir) {
+    return pm.findAnalysisPass(passInfo, dir);
+  }
 
-    public Pass findImplPass(PassInfo pi)
-    {
-        if (analysisImpls.containsKey(pi))
-            return analysisImpls.get(pi);
-        return null;
-    }
+  public Pass findImplPass(PassInfo pi) {
+    if (analysisImpls.containsKey(pi))
+      return analysisImpls.get(pi);
+    return null;
+  }
 
-    public void addAnalysisImplPair(PassInfo pi, Pass p)
-    {
-        analysisImpls.put(pi, p);
-    }
+  public void addAnalysisImplPair(PassInfo pi, Pass p) {
+    analysisImpls.put(pi, p);
+  }
 }

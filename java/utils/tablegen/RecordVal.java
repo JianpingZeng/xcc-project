@@ -26,90 +26,76 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class RecordVal
-{
-    private String name;
-    private RecTy ty;
-    private int prefix;
-    private Init value;
+public final class RecordVal {
+  private String name;
+  private RecTy ty;
+  private int prefix;
+  private Init value;
 
-    public RecordVal(String name, RecTy ty, int prefix)
-    {
-        this.name = name;
-        this.ty = ty;
-        this.prefix = prefix;
-        value = ty.convertValue(UnsetInit.getInstance());
-        Util.assertion(value != null, "Cannot create unset value for current type!");
+  public RecordVal(String name, RecTy ty, int prefix) {
+    this.name = name;
+    this.ty = ty;
+    this.prefix = prefix;
+    value = ty.convertValue(UnsetInit.getInstance());
+    Util.assertion(value != null, "Cannot create unset value for current type!");
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public int getPrefix() {
+    return prefix;
+  }
+
+  public RecTy getType() {
+    return ty;
+  }
+
+  public Init getValue() {
+    return value;
+  }
+
+  public boolean setValue(Init val) {
+    if (val != null) {
+      value = val.convertInitializerTo(ty);
+      return value == null;
     }
 
-    public String getName()
-    {
-        return name;
-    }
+    value = null;
+    return false;
+  }
 
-    public int getPrefix()
-    {
-        return prefix;
-    }
+  public void dump() {
+    print(System.err, true);
+  }
 
-    public RecTy getType()
-    {
-        return ty;
-    }
+  public void print(PrintStream os) {
+    print(os, true);
+  }
 
-    public Init getValue()
-    {
-        return value;
+  public void print(PrintStream os, boolean printSem) {
+    if (getPrefix() != 0) os.print("field ");
+    getType().print(os);
+    os.printf(" %s", getName());
+    if (getValue() != null) {
+      os.print(" = ");
+      getValue().print(os);
     }
+    if (printSem) os.println(";");
+  }
 
-    public boolean setValue(Init val)
-    {
-        if (val!= null)
-        {
-            value = val.convertInitializerTo(ty);
-            return value == null;
-        }
+  @Override
+  public String toString() {
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    print(new PrintStream(os));
+    return os.toString();
+  }
 
-        value = null;
-        return false;
-    }
-
-    public void dump()
-    {
-        print(System.err, true);
-    }
-
-    public void print(PrintStream os)
-    {
-        print(os, true);
-    }
-
-    public void print(PrintStream os, boolean printSem)
-    {
-        if (getPrefix() != 0) os.print("field ");
-        getType().print(os);
-        os.printf(" %s", getName());
-        if (getValue() != null)
-        {
-            os.print(" = ");
-            getValue().print(os);
-        }
-        if (printSem) os.println(";");
-    }
-
-    @Override
-    public String toString()
-    {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        print(new PrintStream(os));
-        return os.toString();
-    }
-
-    @Override
-    public RecordVal clone()
-    {
-        RecordVal rv = (RecordVal)new RecordVal(name, ty, prefix);
-        rv.value = value.clone();
-        return rv;
-    }
+  @Override
+  public RecordVal clone() {
+    RecordVal rv = (RecordVal) new RecordVal(name, ty, prefix);
+    rv.value = value.clone();
+    return rv;
+  }
 }

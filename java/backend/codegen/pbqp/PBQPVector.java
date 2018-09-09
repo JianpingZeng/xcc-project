@@ -18,115 +18,99 @@
 package backend.codegen.pbqp;
 
 import tools.Util;
+
 import java.io.PrintStream;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PBQPVector implements Cloneable
-{
-    private double[] data;
+public class PBQPVector implements Cloneable {
+  private double[] data;
 
-    public PBQPVector(int len)
-    {
-        data = new double[len];
-    }
+  public PBQPVector(int len) {
+    data = new double[len];
+  }
 
-    public PBQPVector(double[] data)
-    {
-        this.data = data;
-    }
+  public PBQPVector(double[] data) {
+    this.data = data;
+  }
 
-    public void set(int idx, double val)
-    {
-        Util.assertion( idx>=0 && idx < data.length);
-        data[idx] = val;
-    }
+  public void set(int idx, double val) {
+    Util.assertion(idx >= 0 && idx < data.length);
+    data[idx] = val;
+  }
 
-    public double get(int idx)
-    {
-        Util.assertion( idx>=0 && idx < data.length);
-        return data[idx];
-    }
+  public double get(int idx) {
+    Util.assertion(idx >= 0 && idx < data.length);
+    return data[idx];
+  }
 
-    public double[] getData()
-    {
-        return data;
-    }
+  public double[] getData() {
+    return data;
+  }
 
-    public void add(PBQPVector other)
-    {
-        Util.assertion( other!= null && other.data.length == data.length);
-        for (int i = 0; i < data.length; i++)
-            data[i] += other.data[i];
-    }
+  public void add(PBQPVector other) {
+    Util.assertion(other != null && other.data.length == data.length);
+    for (int i = 0; i < data.length; i++)
+      data[i] += other.data[i];
+  }
 
-    public void add(double[] row)
-    {
-        Util.assertion( row != null && row.length == data.length);
-        for (int i = 0; i < data.length; i++)
-            data[i] += row[i];
-    }
+  public void add(double[] row) {
+    Util.assertion(row != null && row.length == data.length);
+    for (int i = 0; i < data.length; i++)
+      data[i] += row[i];
+  }
 
-    public int getLength()
-    {
-        return data.length;
-    }
+  public int getLength() {
+    return data.length;
+  }
 
-    /**
-     * Get the index of minimal element.
-     * @return
-     */
-    public int minIndex()
-    {
-        double min = Double.MIN_VALUE;
-        int minIdx = -1;
-        for (int i = 0; i < data.length; i++)
-        {
-            if (data[i] < min)
-            {
-                minIdx = i;
-                min = data[i];
-            }
-        }
-        return minIdx;
+  /**
+   * Get the index of minimal element.
+   *
+   * @return
+   */
+  public int minIndex() {
+    double min = Double.MIN_VALUE;
+    int minIdx = -1;
+    for (int i = 0; i < data.length; i++) {
+      if (data[i] < min) {
+        minIdx = i;
+        min = data[i];
+      }
     }
+    return minIdx;
+  }
 
-    @Override
-    public PBQPVector clone()
-    {
-        double[] val = new double[data.length];
-        System.arraycopy(data, 0, val, 0, val.length);
-        return new PBQPVector(val);
-    }
+  @Override
+  public PBQPVector clone() {
+    double[] val = new double[data.length];
+    System.arraycopy(data, 0, val, 0, val.length);
+    return new PBQPVector(val);
+  }
 
-    public double min()
-    {
-        double min = Double.MIN_VALUE;
-        for (int i = 0; i < data.length; i++)
-        {
-            if (data[i] < min)
-                min = data[i];
-        }
-        return min;
+  public double min() {
+    double min = Double.MIN_VALUE;
+    for (int i = 0; i < data.length; i++) {
+      if (data[i] < min)
+        min = data[i];
     }
+    return min;
+  }
 
-    public void print(PrintStream os)
-    {
-        if (os != null)
-        {
-            os.printf("[");
-            if (data.length != 0)
-                os.printf("%f", data[0]);
-            for (int i = 1; i < data.length; i++)
-                os.printf(", %f", data[i]);
-            os.println("]");
-        }
+  public void print(PrintStream os) {
+    if (os != null) {
+      os.printf("[");
+      if (data.length != 0)
+        os.printf("%f", data[0]);
+      for (int i = 1; i < data.length; i++)
+        os.printf(", %f", data[i]);
+      os.println("]");
     }
+  }
 
-    public void dump()
-    {
-        print(System.err);
-    }
+  public void dump() {
+    print(System.err);
+  }
 }

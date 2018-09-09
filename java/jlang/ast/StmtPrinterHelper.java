@@ -27,24 +27,21 @@ import java.util.HashMap;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class StmtPrinterHelper implements PrinterHelper
-{
-    private HashMap<Tree.Stmt, Pair<Integer, Integer>> stmtMap;
-    private int currentBlock;
-    private int currentStmt;
-    private LangOptions langOpts;
+public class StmtPrinterHelper implements PrinterHelper {
+  private HashMap<Tree.Stmt, Pair<Integer, Integer>> stmtMap;
+  private int currentBlock;
+  private int currentStmt;
+  private LangOptions langOpts;
 
-    public StmtPrinterHelper(CFG cfg, LangOptions opts)
-    {
-        stmtMap = new HashMap<>();
-        currentBlock = 0;
-        currentStmt = 0;
-        langOpts = opts;
-    }
+  public StmtPrinterHelper(CFG cfg, LangOptions opts) {
+    stmtMap = new HashMap<>();
+    currentBlock = 0;
+    currentStmt = 0;
+    langOpts = opts;
+  }
 
-    @Override
-    public boolean handledStmt(Tree.Stmt stmt, PrintStream os)
-    {
-        return false;
-    }
+  @Override
+  public boolean handledStmt(Tree.Stmt stmt, PrintStream os) {
+    return false;
+  }
 }

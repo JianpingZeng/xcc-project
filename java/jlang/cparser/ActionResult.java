@@ -10,60 +10,60 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ActionResult<T>
-{
-    /**
-     * Indicates if this stmt or subExpr is invalid.
-     */
-    private boolean isInvalid;
-    /**
-     * Indicates the data of this class enclosing.
-     */
-    private T data;
+public class ActionResult<T> {
+  /**
+   * Indicates if this stmt or subExpr is invalid.
+   */
+  private boolean isInvalid;
+  /**
+   * Indicates the data of this class enclosing.
+   */
+  private T data;
 
-    public ActionResult()
-    {
-        this(false);
-    }
+  public ActionResult() {
+    this(false);
+  }
 
-    public ActionResult(boolean isInvalid)
-    {
-        this(null, isInvalid);
-    }
+  public ActionResult(boolean isInvalid) {
+    this(null, isInvalid);
+  }
 
-    public ActionResult(T data)
-    {
-        this(data, false);
-        Util.assertion(data != null,  "Bad pointer!");
-    }
+  public ActionResult(T data) {
+    this(data, false);
+    Util.assertion(data != null, "Bad pointer!");
+  }
 
-    public ActionResult(T data, boolean isInvalid)
-    {
-        this.data = data;
-        this.isInvalid = isInvalid;
-    }
+  public ActionResult(T data, boolean isInvalid) {
+    this.data = data;
+    this.isInvalid = isInvalid;
+  }
 
-    public boolean isInvalid() { return isInvalid; }
-    public T get() { return data; }
-    public void set(T newData) { this.data =newData; }
+  public boolean isInvalid() {
+    return isInvalid;
+  }
 
-    public boolean isUsable()
-    {
-        return data != null;
-    }
+  public T get() {
+    return data;
+  }
+
+  public void set(T newData) {
+    this.data = newData;
+  }
+
+  public boolean isUsable() {
+    return data != null;
+  }
 
 
-    private static ActionResult emptyInstace = null;
+  private static ActionResult emptyInstace = null;
 
-    public static <T> ActionResult empty()
-    {
-        if (emptyInstace == null)
-            emptyInstace = new ActionResult<T>();
-        return emptyInstace;
-    }
+  public static <T> ActionResult empty() {
+    if (emptyInstace == null)
+      emptyInstace = new ActionResult<T>();
+    return emptyInstace;
+  }
 
-    public void release()
-    {
-        data = null;
-    }
+  public void release() {
+    data = null;
+  }
 }

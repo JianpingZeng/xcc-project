@@ -20,21 +20,18 @@ package jlang.clex;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PragmaMarkHandler extends PragmaHandler
-{
-    public PragmaMarkHandler(IdentifierInfo ii)
-    {
-        super(ii);
-    }
+public class PragmaMarkHandler extends PragmaHandler {
+  public PragmaMarkHandler(IdentifierInfo ii) {
+    super(ii);
+  }
 
-    @Override
-    public void handlePragma(Preprocessor pp, Token firstToken)
-    {
-        pp.handlePragmaMark();
-    }
+  @Override
+  public void handlePragma(Preprocessor pp, Token firstToken) {
+    pp.handlePragmaMark();
+  }
 
-    @Override public PragmaNameSpace getIfNamespace()
-    {
-        return null;
-    }
+  @Override
+  public PragmaNameSpace getIfNamespace() {
+    return null;
+  }
 }

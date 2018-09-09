@@ -31,101 +31,87 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class TailCallElim implements FunctionPass
-{
-    public final static IntStatistic NumTailElim =
-            new IntStatistic("NumTailElim", "The number of tail call elimination");
+public final class TailCallElim implements FunctionPass {
+  public final static IntStatistic NumTailElim =
+      new IntStatistic("NumTailElim", "The number of tail call elimination");
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        boolean madeChange = false;
+  @Override
+  public boolean runOnFunction(Function f) {
+    boolean madeChange = false;
 
-        // Skip the variadic function.
-        if (f.isVarArg())
-            return false;
+    // Skip the variadic function.
+    if (f.isVarArg())
+      return false;
 
-        ArrayList<PhiNode> argumentPhis = new ArrayList<>();
-        BasicBlock oldEntry = null;
-        for (BasicBlock bb : f.getBasicBlockList())
-        {
-            TerminatorInst ti = bb.getTerminator();
-            ReturnInst ri = ti instanceof ReturnInst ? (ReturnInst)bb.getTerminator() : null;
-            if (ri != null)
-            {
-                int riIdx = ri.getIndexToBB();
-                // The return instr can not be first.
-                if (riIdx >= 1)
-                {
-                    // The proceeding instruction must be CallInst.
-                    if (bb.getInstAt(riIdx - 1) instanceof CallInst)
-                    {
-                        CallInst ci = (CallInst)bb.getInstAt(riIdx - 1);
-                        // The returned value must stem from function calling
-                        // unless there is no returned value.
-                        if (ci.getCalledFunction().equals(f) &&
-                                (ci.getNumOfOperands() == 0 || ri.getReturnValue().equals(ci)))
-                        {
-                            if (oldEntry == null)
-                            {
-                                oldEntry = f.getEntryBlock();
-                                BasicBlock newEntry = BasicBlock.createBasicBlock("tailrecur", oldEntry);
-                                newEntry.appendInst(new BranchInst(oldEntry));
+    ArrayList<PhiNode> argumentPhis = new ArrayList<>();
+    BasicBlock oldEntry = null;
+    for (BasicBlock bb : f.getBasicBlockList()) {
+      TerminatorInst ti = bb.getTerminator();
+      ReturnInst ri = ti instanceof ReturnInst ? (ReturnInst) bb.getTerminator() : null;
+      if (ri != null) {
+        int riIdx = ri.getIndexToBB();
+        // The return instr can not be first.
+        if (riIdx >= 1) {
+          // The proceeding instruction must be CallInst.
+          if (bb.getInstAt(riIdx - 1) instanceof CallInst) {
+            CallInst ci = (CallInst) bb.getInstAt(riIdx - 1);
+            // The returned value must stem from function calling
+            // unless there is no returned value.
+            if (ci.getCalledFunction().equals(f) &&
+                (ci.getNumOfOperands() == 0 || ri.getReturnValue().equals(ci))) {
+              if (oldEntry == null) {
+                oldEntry = f.getEntryBlock();
+                BasicBlock newEntry = BasicBlock.createBasicBlock("tailrecur", oldEntry);
+                newEntry.appendInst(new BranchInst(oldEntry));
 
-                                Instruction insertBefore = oldEntry.getFirstInst();
-                                for (Value arg : f.getArgumentList())
-                                {
-                                    PhiNode phi = new PhiNode(arg.getType(), arg.getName() + ".phi", insertBefore);
-                                    phi.addIncoming(arg, newEntry);
-                                    argumentPhis.add(phi);
+                Instruction insertBefore = oldEntry.getFirstInst();
+                for (Value arg : f.getArgumentList()) {
+                  PhiNode phi = new PhiNode(arg.getType(), arg.getName() + ".phi", insertBefore);
+                  phi.addIncoming(arg, newEntry);
+                  argumentPhis.add(phi);
 
-                                    arg.replaceAllUsesWith(phi);
-                                }
-                            }
-
-                            for (int i = 0, e = f.getNumOfArgs(); i != e; i++)
-                            {
-                                argumentPhis.get(i).addIncoming(ci.argumentAt(i), bb);
-                            }
-
-                            // Insert a unconditional branch to oldEntry before
-                            // the call instruction.
-                            new BranchInst(oldEntry, ci);
-                            ci.eraseFromParent();
-                            ri.eraseFromParent();
-
-                            NumTailElim.inc();
-                            madeChange = true;
-                        }
-                    }
+                  arg.replaceAllUsesWith(phi);
                 }
+              }
+
+              for (int i = 0, e = f.getNumOfArgs(); i != e; i++) {
+                argumentPhis.get(i).addIncoming(ci.argumentAt(i), bb);
+              }
+
+              // Insert a unconditional branch to oldEntry before
+              // the call instruction.
+              new BranchInst(oldEntry, ci);
+              ci.eraseFromParent();
+              ri.eraseFromParent();
+
+              NumTailElim.inc();
+              madeChange = true;
             }
+          }
         }
-        return madeChange;
+      }
     }
+    return madeChange;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Tail calling elimination pass";
-    }
+  @Override
+  public String getPassName() {
+    return "Tail calling elimination pass";
+  }
 
-    public static TailCallElim createTailCallElimination()
-    {
-        return new TailCallElim();
-    }
+  public static TailCallElim createTailCallElimination() {
+    return new TailCallElim();
+  }
 }

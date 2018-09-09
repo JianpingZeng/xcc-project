@@ -16,8 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.target.TargetRegisterInfo;
+import tools.Util;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
@@ -25,41 +25,36 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PhysRegTracker
-{
-    /**
-     * A records the uses of number for each physical register.
-     * Note that, it just cares about physical register rather
-     * than virtual register.
-     */
-    private int[] physRegUsed;
-    private TargetRegisterInfo tri;
+public class PhysRegTracker {
+  /**
+   * A records the uses of number for each physical register.
+   * Note that, it just cares about physical register rather
+   * than virtual register.
+   */
+  private int[] physRegUsed;
+  private TargetRegisterInfo tri;
 
-    public PhysRegTracker(TargetRegisterInfo tri)
-    {
-        this.tri = tri;
-        physRegUsed = new int[tri.getNumRegs()];
-    }
+  public PhysRegTracker(TargetRegisterInfo tri) {
+    this.tri = tri;
+    physRegUsed = new int[tri.getNumRegs()];
+  }
 
-    public boolean isRegAvail(int reg)
-    {
-        Util.assertion(isPhysicalRegister(reg), "should be physical register!");
-        return physRegUsed[reg] == 0;
-    }
+  public boolean isRegAvail(int reg) {
+    Util.assertion(isPhysicalRegister(reg), "should be physical register!");
+    return physRegUsed[reg] == 0;
+  }
 
-    public void addRegUse(int phyReg)
-    {
-        Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
-        physRegUsed[phyReg]++;
-        for (int alias : tri.getAliasSet(phyReg))
-            physRegUsed[alias]++;
-    }
+  public void addRegUse(int phyReg) {
+    Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
+    physRegUsed[phyReg]++;
+    for (int alias : tri.getAliasSet(phyReg))
+      physRegUsed[alias]++;
+  }
 
-    public void delRegUse(int phyReg)
-    {
-        Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
-        physRegUsed[phyReg]--;
-        for (int alias : tri.getAliasSet(phyReg))
-            physRegUsed[alias]--;
-    }
+  public void delRegUse(int phyReg) {
+    Util.assertion(isPhysicalRegister(phyReg), "should be physical register!");
+    physRegUsed[phyReg]--;
+    for (int alias : tri.getAliasSet(phyReg))
+      physRegUsed[alias]--;
+  }
 }

@@ -20,23 +20,19 @@ package jlang.clex;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PragmaOnceHandler extends PragmaHandler
-{
-    public PragmaOnceHandler(IdentifierInfo ii)
-    {
-        super(ii);
-    }
+public class PragmaOnceHandler extends PragmaHandler {
+  public PragmaOnceHandler(IdentifierInfo ii) {
+    super(ii);
+  }
 
-    @Override
-    public void handlePragma(Preprocessor pp, Token onceTok)
-    {
-        pp.checkEndOfDirective("pragma once", false);
-        pp.handlePragmaOnce(onceTok);
-    }
+  @Override
+  public void handlePragma(Preprocessor pp, Token onceTok) {
+    pp.checkEndOfDirective("pragma once", false);
+    pp.handlePragmaOnce(onceTok);
+  }
 
-    @Override
-    public PragmaNameSpace getIfNamespace()
-    {
-        return null;
-    }
+  @Override
+  public PragmaNameSpace getIfNamespace() {
+    return null;
+  }
 }

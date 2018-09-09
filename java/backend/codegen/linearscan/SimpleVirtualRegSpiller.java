@@ -30,35 +30,30 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SimpleVirtualRegSpiller
-{
-    private IntervalLocKeeper ilk;
-    private MachineRegisterInfo mri;
+public class SimpleVirtualRegSpiller {
+  private IntervalLocKeeper ilk;
+  private MachineRegisterInfo mri;
 
-    public SimpleVirtualRegSpiller(IntervalLocKeeper ilk, MachineRegisterInfo mri)
-    {
-        this.ilk = ilk;
-        this.mri = mri;
+  public SimpleVirtualRegSpiller(IntervalLocKeeper ilk, MachineRegisterInfo mri) {
+    this.ilk = ilk;
+    this.mri = mri;
+  }
+
+  public boolean runOnMachineFunction(MachineFunction mf, ArrayList<LiveInterval> handled) {
+    if (handled == null || handled.isEmpty())
+      return false;
+
+    for (LiveInterval it : handled) {
+      if (isPhysicalRegister(it.register))
+        continue;
+      Util.assertion(ilk.isAssignedPhyReg(it), "No free register?");
+      int reg = ilk.getPhyReg(it);
+      for (UsePoint up : it.getUsePoints()) {
+        MachineOperand mo = up.mo;
+        mo.setReg(reg);
+        mri.setPhysRegUsed(reg);
+      }
     }
-
-    public boolean runOnMachineFunction(MachineFunction mf, ArrayList<LiveInterval> handled)
-    {
-        if (handled == null || handled.isEmpty())
-            return false;
-
-        for (LiveInterval it : handled)
-        {
-            if (isPhysicalRegister(it.register))
-                continue;
-            Util.assertion(ilk.isAssignedPhyReg(it), "No free register?");
-            int reg = ilk.getPhyReg(it);
-            for (UsePoint up : it.getUsePoints())
-            {
-                MachineOperand mo = up.mo;
-                mo.setReg(reg);
-                mri.setPhysRegUsed(reg);
-            }
-        }
-        return true;
-    }
+    return true;
+  }
 }

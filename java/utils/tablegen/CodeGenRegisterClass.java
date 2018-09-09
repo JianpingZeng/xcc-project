@@ -16,9 +16,8 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
-import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -26,103 +25,93 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class CodeGenRegisterClass
-{
-    Record theDef;
-    ArrayList<Record> elts;
-    TIntArrayList vts;
-    long spillSize, spillAlignment;
-    String methodBodies;
-    long copyCost;
-    ArrayList<Record> subRegClasses;
+public final class CodeGenRegisterClass {
+  Record theDef;
+  ArrayList<Record> elts;
+  TIntArrayList vts;
+  long spillSize, spillAlignment;
+  String methodBodies;
+  long copyCost;
+  ArrayList<Record> subRegClasses;
 
-    public String getName()
-    {
-        return  theDef.getName();
+  public String getName() {
+    return theDef.getName();
+  }
+
+  public TIntArrayList getValueTypes() {
+    return vts;
+  }
+
+  public int getNumValueTypes() {
+    return vts.size();
+  }
+
+  public int getValueTypeAt(int idx) {
+    Util.assertion(idx >= 0 && idx < vts.size());
+    return vts.get(idx);
+  }
+
+  private static int anonCnter = 0;
+
+  public CodeGenRegisterClass(Record r) throws Exception {
+    elts = new ArrayList<>();
+    vts = new TIntArrayList();
+    subRegClasses = new ArrayList<>();
+
+    theDef = r;
+
+    // Rename the anonymous register class.
+    if (r.getName().length() > 9 && r.getName().charAt(9) == '.')
+      r.setName("AnonRegClass_" + (anonCnter++));
+
+    ArrayList<Record> typeList = r.getValueAsListOfDefs("RegTypes");
+    for (Record ty : typeList) {
+      if (!ty.isSubClassOf("ValueType"))
+        throw new Exception("RegTypes list member '" + ty.getName()
+            + "' does not derive from the ValueType class!");
+      vts.add(getValueType(ty, null));
     }
 
-    public TIntArrayList getValueTypes()
-    {
-        return vts;
+    Util.assertion(!vts.isEmpty());
+
+    ArrayList<Record> regList = r.getValueAsListOfDefs("MemberList");
+    for (Record reg : regList) {
+      if (!reg.isSubClassOf("Register"))
+        throw new Exception("Register Class member '" + reg.getName() +
+            "' does not derive from the Register class!");
+      elts.add(reg);
     }
 
-    public int getNumValueTypes()
-    {
-        return vts.size();
+    // Obtains the information about SubRegisterClassList.
+    ArrayList<Record> subRegClassList = r.getValueAsListOfDefs("SubRegClassList");
+
+    for (Record subReg : subRegClassList) {
+      if (!subReg.isSubClassOf("RegisterClass"))
+        throw new Exception("Register class member '" + subReg.getName()
+            + "' doest not derive from the RegisterClass class!");
+
+      subRegClasses.add(subReg);
     }
 
-    public int getValueTypeAt(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < vts.size());
-        return vts.get(idx);
-    }
+    // Allow targets to override the size and alignment in bits of
+    // the RegisterClass.
+    long size = r.getValueAsInt("Size");
+    spillSize = size;// != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
+    spillAlignment = r.getValueAsInt("Alignment");
+    copyCost = r.getValueAsInt("CopyCost");
+    methodBodies = r.getValueAsCode("MethodBodies");
+  }
 
-    private static int anonCnter = 0;
-
-    public CodeGenRegisterClass(Record r) throws Exception
-    {
-        elts = new ArrayList<>();
-        vts = new TIntArrayList();
-        subRegClasses = new ArrayList<>();
-
-        theDef = r;
-
-        // Rename the anonymous register class.
-        if (r.getName().length() > 9 && r.getName().charAt(9)=='.')
-            r.setName("AnonRegClass_"+(anonCnter++));
-
-        ArrayList<Record> typeList = r.getValueAsListOfDefs("RegTypes");
-        for (Record ty : typeList)
-        {
-            if (!ty.isSubClassOf("ValueType"))
-                throw new Exception("RegTypes list member '" + ty.getName()
-                        + "' does not derive from the ValueType class!");
-            vts.add(getValueType(ty, null));
-        }
-
-        Util.assertion( !vts.isEmpty());
-
-        ArrayList<Record> regList = r.getValueAsListOfDefs("MemberList");
-        for (Record reg : regList)
-        {
-            if (!reg.isSubClassOf("Register"))
-                throw new Exception("Register Class member '" + reg.getName() +
-                        "' does not derive from the Register class!");
-            elts.add(reg);
-        }
-
-        // Obtains the information about SubRegisterClassList.
-        ArrayList<Record> subRegClassList = r.getValueAsListOfDefs("SubRegClassList");
-
-        for (Record subReg : subRegClassList)
-        {
-            if (!subReg.isSubClassOf("RegisterClass"))
-                throw new Exception("Register class member '" + subReg.getName()
-                + "' doest not derive from the RegisterClass class!");
-
-            subRegClasses.add(subReg);
-        }
-
-        // Allow targets to override the size and alignment in bits of
-        // the RegisterClass.
-        long size = r.getValueAsInt("Size");
-        spillSize = size;// != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
-        spillAlignment = r.getValueAsInt("Alignment");
-        copyCost = r.getValueAsInt("CopyCost");
-        methodBodies = r.getValueAsCode("MethodBodies");
-    }
-
-    private static int getValueType(Record rec, CodeGenTarget cgt)
-            throws Exception
-    {
-        long val = rec.getValueAsInt("Value");
-        return (int)val;
-        /**
-        if (vt == MVT.SimpleValueType.isPtr)
-        {
-            Util.assertion(cgt!= null, "Use a pointer type in a place that isn't supported as yet!");;
-            vt = cgt.getPointerType();
-        }
-         */
-    }
+  private static int getValueType(Record rec, CodeGenTarget cgt)
+      throws Exception {
+    long val = rec.getValueAsInt("Value");
+    return (int) val;
+    /**
+     if (vt == MVT.SimpleValueType.isPtr)
+     {
+     Util.assertion(cgt!= null, "Use a pointer type in a place that isn't supported as yet!");;
+     vt = cgt.getPointerType();
+     }
+     */
+  }
 }

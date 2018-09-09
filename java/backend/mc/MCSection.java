@@ -20,9 +20,9 @@ package backend.mc;
  * Instances of this class represent a uniqued identifier for
  * a section in the current translation unit. The MCContext class
  * uniques and creates these.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MCSection
-{
+public class MCSection {
 }

@@ -17,6 +17,7 @@ package backend.pass;
  */
 
 import tools.Util;
+
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 
@@ -26,63 +27,66 @@ import static backend.pass.PassRegistrar.getPassInfo;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class AnalysisUsage
-{
-    private LinkedHashSet<PassInfo> required, preserved;
-    private boolean preservedAll;
-    public AnalysisUsage()
-    {
-        required = new LinkedHashSet<>();
-        preserved = new LinkedHashSet<>();
-    }
+public final class AnalysisUsage {
+  private LinkedHashSet<PassInfo> required, preserved;
+  private boolean preservedAll;
 
-    public AnalysisUsage addRequired(Class<? extends Pass> reqPass)
-    {
-        PassInfo info = getPassInfo(reqPass);
-        Util.assertion(info != null, "Pass is not registered!");
-        return addRequiredPassInfo(info);
-    }
+  public AnalysisUsage() {
+    required = new LinkedHashSet<>();
+    preserved = new LinkedHashSet<>();
+  }
 
-    public AnalysisUsage addRequiredPassInfo(PassInfo info)
-    {
-        if (!required.contains(info))
-            required.add(info);
-        return this;
-    }
+  public AnalysisUsage addRequired(Class<? extends Pass> reqPass) {
+    PassInfo info = getPassInfo(reqPass);
+    Util.assertion(info != null, "Pass is not registered!");
+    return addRequiredPassInfo(info);
+  }
 
-    public AnalysisUsage addPreserved(Class<? extends Pass> prePass)
-    {
-        PassInfo info = getPassInfo(prePass);
-        Util.assertion(info != null, "Pass is not registered");
-        return addPreservedPassInfo(info);
-    }
+  public AnalysisUsage addRequiredPassInfo(PassInfo info) {
+    if (!required.contains(info))
+      required.add(info);
+    return this;
+  }
 
-    public AnalysisUsage addPreservedPassInfo(PassInfo info)
-    {
-        if (!preserved.contains(info))
-            preserved.add(info);
-        return this;
-    }
+  public AnalysisUsage addPreserved(Class<? extends Pass> prePass) {
+    PassInfo info = getPassInfo(prePass);
+    Util.assertion(info != null, "Pass is not registered");
+    return addPreservedPassInfo(info);
+  }
 
-    public void setPreservedAll() {preservedAll = true;}
-    public boolean getPreservedAll() {return preservedAll;}
+  public AnalysisUsage addPreservedPassInfo(PassInfo info) {
+    if (!preserved.contains(info))
+      preserved.add(info);
+    return this;
+  }
 
-    public HashSet<PassInfo> getRequired() {return required;}
+  public void setPreservedAll() {
+    preservedAll = true;
+  }
 
-    public HashSet<PassInfo> getPreserved() {return preserved;}
+  public boolean getPreservedAll() {
+    return preservedAll;
+  }
 
-    /**
-     * This function should be called to by the pass, iff they do
-     * not:
-     * <ol>
-     *  <li>Add or remove basic blocks from the function</li>
-     *  <li>Modify terminator instructions in any way.</li>
-     * </ol>
-     * This function annotates the AnalysisUsage info object to say that analyses
-     * that only depend on the CFG are preserved by this pass.
-     */
-    public void setPreservesCFG()
-    {
-        // TODO: 17-11-16
-    }
+  public HashSet<PassInfo> getRequired() {
+    return required;
+  }
+
+  public HashSet<PassInfo> getPreserved() {
+    return preserved;
+  }
+
+  /**
+   * This function should be called to by the pass, iff they do
+   * not:
+   * <ol>
+   * <li>Add or remove basic blocks from the function</li>
+   * <li>Modify terminator instructions in any way.</li>
+   * </ol>
+   * This function annotates the AnalysisUsage info object to say that analyses
+   * that only depend on the CFG are preserved by this pass.
+   */
+  public void setPreservesCFG() {
+    // TODO: 17-11-16
+  }
 }

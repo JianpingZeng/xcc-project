@@ -20,19 +20,18 @@ package utils.tablegen;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class CodeGenRegister
-{
-    Record theDef;
-    String getName()
-    {
-        return theDef.getName();
-    }
+public final class CodeGenRegister {
+  Record theDef;
 
-    long declaredSpillSize, declaredSpillAlignment;
-    CodeGenRegister(Record rec) throws Exception
-    {
-        theDef = rec;
-        declaredSpillSize = rec.getValueAsInt("SpillSize");
-        declaredSpillAlignment = rec.getValueAsInt("SpillAlignment");
-    }
+  String getName() {
+    return theDef.getName();
+  }
+
+  long declaredSpillSize, declaredSpillAlignment;
+
+  CodeGenRegister(Record rec) throws Exception {
+    theDef = rec;
+    declaredSpillSize = rec.getValueAsInt("SpillSize");
+    declaredSpillAlignment = rec.getValueAsInt("SpillAlignment");
+  }
 }

@@ -22,38 +22,33 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ValueClass<T> implements Modifier
-{
-    public static class Entry<T>
-    {
-        public String enumName;
-        public T enumVal;
-        public String helpStr;
+public class ValueClass<T> implements Modifier {
+  public static class Entry<T> {
+    public String enumName;
+    public T enumVal;
+    public String helpStr;
 
-        public Entry(T enumVal,
-                String enumName,
-                String helpStr)
-        {
-            this.enumName = enumName;
-            this.enumVal = enumVal;
-            this.helpStr = helpStr;
-        }
+    public Entry(T enumVal,
+                 String enumName,
+                 String helpStr) {
+      this.enumName = enumName;
+      this.enumVal = enumVal;
+      this.helpStr = helpStr;
     }
-    private ArrayList<Entry<T>> values;
+  }
 
-    public ValueClass(Entry<T>... entries)
-    {
-        values = new ArrayList<>();
-        for (Entry<T> e : entries)
-            values.add(e);
-    }
+  private ArrayList<Entry<T>> values;
 
-    @Override
-    public void apply(Option<?> opt)
-    {
-        for (Entry<T> e : values)
-        {
-            ((Option<T>)opt).getParser().addLiteralOption(e.enumName, e.enumVal, e.helpStr);
-        }
+  public ValueClass(Entry<T>... entries) {
+    values = new ArrayList<>();
+    for (Entry<T> e : entries)
+      values.add(e);
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    for (Entry<T> e : values) {
+      ((Option<T>) opt).getParser().addLiteralOption(e.enumName, e.enumVal, e.helpStr);
     }
+  }
 }

@@ -27,54 +27,48 @@ package jlang.support;
  * instantiated from.  The main include file has an invalid IncludeLoc.
  * </p>
  * FileInfos contain a "ContentCache " reference, with the contents of the file.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FileInfo
-{
-    private int includeLoc;
+public class FileInfo {
+  private int includeLoc;
 
-    private ContentCache data;
+  private ContentCache data;
 
-    /**
-     * if this FileID has #line directives in it.
-     */
-    private boolean lineDirectives;
+  /**
+   * if this FileID has #line directives in it.
+   */
+  private boolean lineDirectives;
 
-    private CharacteristicKind characteristic;
+  private CharacteristicKind characteristic;
 
-    public static FileInfo get(SourceLocation loc, ContentCache con,
-            CharacteristicKind fileCharacter)
-    {
-        FileInfo info = new FileInfo();
-        info.includeLoc = loc.getRawEncoding();
-        info.data = con;
-        info.characteristic = fileCharacter;
-        return info;
-    }
+  public static FileInfo get(SourceLocation loc, ContentCache con,
+                             CharacteristicKind fileCharacter) {
+    FileInfo info = new FileInfo();
+    info.includeLoc = loc.getRawEncoding();
+    info.data = con;
+    info.characteristic = fileCharacter;
+    return info;
+  }
 
-    public boolean hasLineDirectives()
-    {
-        return lineDirectives;
-    }
+  public boolean hasLineDirectives() {
+    return lineDirectives;
+  }
 
-    public void setLineDirectives(boolean lineDirectives)
-    {
-        this.lineDirectives = lineDirectives;
-    }
+  public void setLineDirectives(boolean lineDirectives) {
+    this.lineDirectives = lineDirectives;
+  }
 
-    public SourceLocation getIncludeLoc()
-    {
-        return SourceLocation.getFromRawEncoding(includeLoc);
-    }
+  public SourceLocation getIncludeLoc() {
+    return SourceLocation.getFromRawEncoding(includeLoc);
+  }
 
-    public ContentCache getContentCache()
-    {
-        return data;
-    }
+  public ContentCache getContentCache() {
+    return data;
+  }
 
-    public CharacteristicKind getFileCharacteristic()
-    {
-        return characteristic;
-    }
+  public CharacteristicKind getFileCharacteristic() {
+    return characteristic;
+  }
 }

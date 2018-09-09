@@ -16,9 +16,9 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
 import tools.TypeMap;
+import tools.Util;
 
 import java.util.ArrayList;
 
@@ -26,131 +26,117 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FunctionType extends DerivedType
-{
-    static class FunctionValType
-    {
-        Type retTy;
-        ArrayList<Type> argTypes;
-        boolean isVarArg;
+public class FunctionType extends DerivedType {
+  static class FunctionValType {
+    Type retTy;
+    ArrayList<Type> argTypes;
+    boolean isVarArg;
 
-        public FunctionValType(Type resultType, ArrayList<Type> params,
-                boolean isVarArg)
-        {
-            retTy = resultType;
-            argTypes = new ArrayList<>(params.size());
-            params.forEach(x -> argTypes.add(x));
-            this.isVarArg = isVarArg;
-        }
-
-        @Override public int hashCode()
-        {
-            return retTy.hashCode() << 23 + argTypes.hashCode() << 11 + (
-                    isVarArg ?
-                            1 :
-                            0);
-        }
-
-        @Override public boolean equals(Object obj)
-        {
-            if (obj == null)
-                return false;
-            if (this == obj)
-                return true;
-            if (getClass() != obj.getClass())
-                return false;
-
-            FunctionValType fvt = (FunctionValType) obj;
-            return retTy.equals(fvt.retTy) && argTypes.equals(fvt.argTypes)
-                    && isVarArg == fvt.isVarArg;
-        }
+    public FunctionValType(Type resultType, ArrayList<Type> params,
+                           boolean isVarArg) {
+      retTy = resultType;
+      argTypes = new ArrayList<>(params.size());
+      params.forEach(x -> argTypes.add(x));
+      this.isVarArg = isVarArg;
     }
 
-    private boolean isVarArgs;
-
-    private static TypeMap<FunctionValType, FunctionType> functionTypes = new TypeMap<>();
-
-    private FunctionType(Type retType, final ArrayList<Type> argsType,
-            boolean isVarArgs)
-    {
-        super(FunctionTyID);
-        containedTys = new PATypeHandle[argsType.size() + 1];
-        containedTys[0] = new PATypeHandle(retType, this);
-        this.isVarArgs = isVarArgs;
-        isAbstract = retType.isAbstract();
-        int i = 1;
-        for (Type argTy : argsType)
-        {
-            Util.assertion(isValidArgumentType(argTy),  "Not a valid type for function argument");
-
-            containedTys[i++] = new PATypeHandle(argTy, this);
-            isAbstract |= argTy.isAbstract();
-        }
-
-        setAbstract(isAbstract);
+    @Override
+    public int hashCode() {
+      return retTy.hashCode() << 23 + argTypes.hashCode() << 11 + (
+          isVarArg ?
+              1 :
+              0);
     }
 
-    public static FunctionType get(Type result, ArrayList<Type> params,
-            boolean isVarArgs)
-    {
-        FunctionValType fvt = new FunctionValType(result, params, isVarArgs);
-        FunctionType ft = functionTypes.get(fvt);
-        if (ft != null)
-            return ft;
-        ft = new FunctionType(result, params, isVarArgs);
-        functionTypes.put(fvt, ft);
-        return ft;
-    }
-
-    public static FunctionType get(Type resultType, boolean isVarArgs)
-    {
-        return get(resultType, new ArrayList<>(), isVarArgs);
-    }
-
-    public static boolean isValidArgumentType(Type argTy)
-    {
-        return argTy.isFirstClassType() || (argTy instanceof OpaqueType)
-                || argTy == LLVMContext.VoidTy;
-    }
-
-    public static boolean isValidReturnType(Type retType)
-    {
-        if (retType.isFirstClassType())
-        {
-            return true;
-        }
-
-        if (retType == LLVMContext.VoidTy || retType instanceof OpaqueType)
-            return true;
-
-        if (!(retType instanceof StructType) || ((StructType)retType).getNumOfElements() == 0)
-            return false;
-
-        StructType st = (StructType)retType;
-        for (int i = 0, e = st.getNumOfElements(); i < e; i++)
-            if (!st.getElementType(i).isFirstClassType())
-                return false;
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null)
+        return false;
+      if (this == obj)
         return true;
+      if (getClass() != obj.getClass())
+        return false;
+
+      FunctionValType fvt = (FunctionValType) obj;
+      return retTy.equals(fvt.retTy) && argTypes.equals(fvt.argTypes)
+          && isVarArg == fvt.isVarArg;
+    }
+  }
+
+  private boolean isVarArgs;
+
+  private static TypeMap<FunctionValType, FunctionType> functionTypes = new TypeMap<>();
+
+  private FunctionType(Type retType, final ArrayList<Type> argsType,
+                       boolean isVarArgs) {
+    super(FunctionTyID);
+    containedTys = new PATypeHandle[argsType.size() + 1];
+    containedTys[0] = new PATypeHandle(retType, this);
+    this.isVarArgs = isVarArgs;
+    isAbstract = retType.isAbstract();
+    int i = 1;
+    for (Type argTy : argsType) {
+      Util.assertion(isValidArgumentType(argTy), "Not a valid type for function argument");
+
+      containedTys[i++] = new PATypeHandle(argTy, this);
+      isAbstract |= argTy.isAbstract();
     }
 
-    public boolean isVarArg()
-    {
-        return isVarArgs;
+    setAbstract(isAbstract);
+  }
+
+  public static FunctionType get(Type result, ArrayList<Type> params,
+                                 boolean isVarArgs) {
+    FunctionValType fvt = new FunctionValType(result, params, isVarArgs);
+    FunctionType ft = functionTypes.get(fvt);
+    if (ft != null)
+      return ft;
+    ft = new FunctionType(result, params, isVarArgs);
+    functionTypes.put(fvt, ft);
+    return ft;
+  }
+
+  public static FunctionType get(Type resultType, boolean isVarArgs) {
+    return get(resultType, new ArrayList<>(), isVarArgs);
+  }
+
+  public static boolean isValidArgumentType(Type argTy) {
+    return argTy.isFirstClassType() || (argTy instanceof OpaqueType)
+        || argTy == LLVMContext.VoidTy;
+  }
+
+  public static boolean isValidReturnType(Type retType) {
+    if (retType.isFirstClassType()) {
+      return true;
     }
 
-    public Type getReturnType()
-    {
-        return containedTys[0].getType();
-    }
+    if (retType == LLVMContext.VoidTy || retType instanceof OpaqueType)
+      return true;
 
-    public Type getParamType(int index)
-    {
-        Util.assertion( index >= 0 && index < getNumParams());
-        return containedTys[index+1].getType();
-    }
+    if (!(retType instanceof StructType) || ((StructType) retType).getNumOfElements() == 0)
+      return false;
 
-    public int getNumParams()
-    {
-        return containedTys.length - 1;
-    }
+    StructType st = (StructType) retType;
+    for (int i = 0, e = st.getNumOfElements(); i < e; i++)
+      if (!st.getElementType(i).isFirstClassType())
+        return false;
+    return true;
+  }
+
+  public boolean isVarArg() {
+    return isVarArgs;
+  }
+
+  public Type getReturnType() {
+    return containedTys[0].getType();
+  }
+
+  public Type getParamType(int index) {
+    Util.assertion(index >= 0 && index < getNumParams());
+    return containedTys[index + 1].getType();
+  }
+
+  public int getNumParams() {
+    return containedTys.length - 1;
+  }
 }

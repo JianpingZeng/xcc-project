@@ -17,27 +17,25 @@
 
 package backend.support;
 
-import tools.Util;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 /**
  * This class used for computing unique name for LLVM value when there is no
  * SymbolTable exists for it.
  */
-public class LLVMNameMangling
-{
-    private static final TObjectIntHashMap<String> UniqueNames
-            = new TObjectIntHashMap<>();
-    public static String computeUniqueName(String name)
-    {
-        Util.assertion( name != null);
-        if (UniqueNames.containsKey(name))
-        {
-            int nextSuffix = UniqueNames.get(name) + 1;
-            UniqueNames.put(name, nextSuffix);
-            return name + nextSuffix;
-        }
-        UniqueNames.put(name, 1);
-        return name;
+public class LLVMNameMangling {
+  private static final TObjectIntHashMap<String> UniqueNames
+      = new TObjectIntHashMap<>();
+
+  public static String computeUniqueName(String name) {
+    Util.assertion(name != null);
+    if (UniqueNames.containsKey(name)) {
+      int nextSuffix = UniqueNames.get(name) + 1;
+      UniqueNames.put(name, nextSuffix);
+      return name + nextSuffix;
     }
+    UniqueNames.put(name, 1);
+    return name;
+  }
 }

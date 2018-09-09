@@ -16,8 +16,8 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.pass.Pass;
+import tools.Util;
 
 import java.util.Iterator;
 import java.util.Stack;
@@ -26,56 +26,47 @@ import java.util.Stack;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class PMStack implements Iterable<PMDataManager>
-{
-    private Stack<PMDataManager> pms;
+public final class PMStack implements Iterable<PMDataManager> {
+  private Stack<PMDataManager> pms;
 
-    public PMStack()
-    {
-        pms = new Stack<>();
+  public PMStack() {
+    pms = new Stack<>();
+  }
+
+  public boolean isEmpty() {
+    return pms.isEmpty();
+  }
+
+  public PMDataManager peek() {
+    if (isEmpty()) return null;
+    return pms.peek();
+  }
+
+  public PMDataManager pop() {
+    if (isEmpty()) return null;
+    PMDataManager pm = pms.pop();
+    pm.initializeAnalysisInfo();
+    return pm;
+  }
+
+  public void push(PMDataManager pm) {
+    if (!pms.isEmpty()) {
+      PMTopLevelManager tpm = pms.peek().getTopLevelManager();
+      Util.assertion(tpm != null, "unable to find top level manager");
+      pm.setTopLevelManager(tpm);
     }
 
-    public boolean isEmpty()
-    {
-        return pms.isEmpty();
-    }
+    pms.push(pm);
+  }
 
-    public PMDataManager peek()
-    {
-        if(isEmpty()) return null;
-        return pms.peek();
-    }
+  @Override
+  public Iterator<PMDataManager> iterator() {
+    return pms.iterator();
+  }
 
-    public PMDataManager pop()
-    {
-        if (isEmpty()) return null;
-        PMDataManager pm = pms.pop();
-        pm.initializeAnalysisInfo();
-        return pm;
-    }
-
-    public void push(PMDataManager pm)
-    {
-        if (!pms.isEmpty())
-        {
-            PMTopLevelManager tpm = pms.peek().getTopLevelManager();
-            Util.assertion(tpm != null, "unable to find top level manager");
-            pm.setTopLevelManager(tpm);
-        }
-
-        pms.push(pm);
-    }
-
-    @Override
-    public Iterator<PMDataManager> iterator()
-    {
-        return pms.iterator();
-    }
-
-    public void dump()
-    {
-        pms.forEach(pm->System.err.printf("%s ", ((Pass)pm).getPassName()));
-        if (!isEmpty())
-            System.err.println();
-    }
+  public void dump() {
+    pms.forEach(pm -> System.err.printf("%s ", ((Pass) pm).getPassName()));
+    if (!isEmpty())
+      System.err.println();
+  }
 }

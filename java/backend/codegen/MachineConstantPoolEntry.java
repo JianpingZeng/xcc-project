@@ -16,69 +16,60 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.type.Type;
 import backend.value.Constant;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineConstantPoolEntry
-{
-    // The constant itself.
-    // It be type of Constant or MachineConstantPoolValue.
-    public Object val;
+public class MachineConstantPoolEntry {
+  // The constant itself.
+  // It be type of Constant or MachineConstantPoolValue.
+  public Object val;
 
-    int alignemnt;
+  int alignemnt;
 
-    public MachineConstantPoolEntry(Constant v, int align)
-    {
-        val = v;
-        alignemnt = align;
-    }
+  public MachineConstantPoolEntry(Constant v, int align) {
+    val = v;
+    alignemnt = align;
+  }
 
-    public MachineConstantPoolEntry(MachineConstantPoolValue v, int align)
-    {
-        val = v;
-        alignemnt = align;
-        alignemnt |= (1 << 31);
-    }
+  public MachineConstantPoolEntry(MachineConstantPoolValue v, int align) {
+    val = v;
+    alignemnt = align;
+    alignemnt |= (1 << 31);
+  }
 
-    public boolean isMachineConstantPoolEntry()
-    {
-        return alignemnt < 0;
-    }
+  public boolean isMachineConstantPoolEntry() {
+    return alignemnt < 0;
+  }
 
 
-    public Type getType()
-    {
-        if (isMachineConstantPoolEntry())
-            return getValueAsCPV().getType();
-        return getValueAsConstant().getType();
-    }
+  public Type getType() {
+    if (isMachineConstantPoolEntry())
+      return getValueAsCPV().getType();
+    return getValueAsConstant().getType();
+  }
 
-    public int getRelocationInfo()
-    {
-        if (isMachineConstantPoolEntry())
-            return getValueAsCPV().getRelocationInfo();
-        return getValueAsConstant().getRelocationInfo();
-    }
+  public int getRelocationInfo() {
+    if (isMachineConstantPoolEntry())
+      return getValueAsCPV().getRelocationInfo();
+    return getValueAsConstant().getRelocationInfo();
+  }
 
-    public int getAlignment()
-    {
-        return alignemnt;
-    }
+  public int getAlignment() {
+    return alignemnt;
+  }
 
-    public MachineConstantPoolValue getValueAsCPV()
-    {
-        Util.assertion( val instanceof MachineConstantPoolValue);
-        return (MachineConstantPoolValue)val;
-    }
+  public MachineConstantPoolValue getValueAsCPV() {
+    Util.assertion(val instanceof MachineConstantPoolValue);
+    return (MachineConstantPoolValue) val;
+  }
 
-    public Constant getValueAsConstant()
-    {
-        Util.assertion( val instanceof Constant);
-        return (Constant)val;
-    }
+  public Constant getValueAsConstant() {
+    Util.assertion(val instanceof Constant);
+    return (Constant) val;
+  }
 }

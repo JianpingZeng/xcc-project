@@ -23,41 +23,39 @@ import backend.value.Value;
  * This struct is used to return results for pointers,
  * globals, and the return value of a function.
  */
-public class PointerAccessInfo
-{
+public class PointerAccessInfo {
+  /**
+   * This may be an Argument for the function, a GlobalVariable, or null,
+   * corresponding to the return value for the function.
+   */
+  Value val;
+
+  /**
+   * Whether the pointer is loaded or stored to/from.
+   */
+  ModRefResult modRefInfo;
+
+  /**
+   * Specific fine-grained access information for the argument.
+   * If none of these classifications is general enough, the
+   * getModRefBehavior method should not return AccessesArguments.
+   * If a record is not returned for a particular argument, the argument
+   * is never dead and never dereferenced.
+   */
+  enum AccessType {
     /**
-     * This may be an Argument for the function, a GlobalVariable, or null,
-     * corresponding to the return value for the function.
+     * The pointer is dereferenced.
      */
-    Value val;
+    ScalarAccess,
 
     /**
-     * Whether the pointer is loaded or stored to/from.
+     * The pointer is indexed through as an array of elements.
      */
-    ModRefResult modRefInfo;
+    ArrayAccess,
 
     /**
-     * Specific fine-grained access information for the argument.
-     * If none of these classifications is general enough, the
-     * getModRefBehavior method should not return AccessesArguments.
-     * If a record is not returned for a particular argument, the argument
-     * is never dead and never dereferenced.
+     * Indirect calls are made through the specified function pointer.
      */
-    enum AccessType
-    {
-        /**
-         * The pointer is dereferenced.
-         */
-        ScalarAccess,
-
-        /**
-         * The pointer is indexed through as an array of elements.
-         */
-        ArrayAccess,
-
-        /**
-         * Indirect calls are made through the specified function pointer.
-         */
-        CallsThrough
-    }
+    CallsThrough
+  }
 }

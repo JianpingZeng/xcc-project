@@ -27,61 +27,54 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class IntervalLocKeeper
-{
-    private TObjectIntHashMap<LiveInterval> interval2StackSlot;
-    private TObjectIntHashMap<LiveInterval> interval2PhyReg;
-    private MachineFrameInfo mfi;
-    private TargetRegisterInfo tri;
-    public IntervalLocKeeper(MachineFunction mf)
-    {
-        mfi = mf.getFrameInfo();
-        tri = mf.getTarget().getRegisterInfo();
-        interval2PhyReg = new TObjectIntHashMap<>();
-        interval2StackSlot = new TObjectIntHashMap<>();
-    }
+public class IntervalLocKeeper {
+  private TObjectIntHashMap<LiveInterval> interval2StackSlot;
+  private TObjectIntHashMap<LiveInterval> interval2PhyReg;
+  private MachineFrameInfo mfi;
+  private TargetRegisterInfo tri;
 
-    public void assignInterval2Phys(LiveInterval it, int phyReg)
-    {
-        Util.assertion(it != null);
-        Util.assertion(!interval2StackSlot.containsKey(it),
-                "Can't assign an interval resides in stack to register");
-        Util.assertion(!interval2PhyReg.containsKey(it), "Can't assign interval twice");
-        Util.assertion(TargetRegisterInfo.isPhysicalRegister(phyReg));
-        interval2PhyReg.put(it, phyReg);
-    }
+  public IntervalLocKeeper(MachineFunction mf) {
+    mfi = mf.getFrameInfo();
+    tri = mf.getTarget().getRegisterInfo();
+    interval2PhyReg = new TObjectIntHashMap<>();
+    interval2StackSlot = new TObjectIntHashMap<>();
+  }
 
-    public int assignInterval2StackSlot(LiveInterval it)
-    {
-        Util.assertion(it != null);
-        int reg = it.register;
-        Util.assertion(TargetRegisterInfo.isVirtualRegister(reg));
-        Util.assertion(!interval2PhyReg.containsKey(it));
-        Util.assertion(!interval2StackSlot.containsKey(it));
-        int fi = mfi.createStackObject(tri.getRegClass(reg));
-        interval2StackSlot.put(it, fi);
-        return fi;
-    }
+  public void assignInterval2Phys(LiveInterval it, int phyReg) {
+    Util.assertion(it != null);
+    Util.assertion(!interval2StackSlot.containsKey(it),
+        "Can't assign an interval resides in stack to register");
+    Util.assertion(!interval2PhyReg.containsKey(it), "Can't assign interval twice");
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(phyReg));
+    interval2PhyReg.put(it, phyReg);
+  }
 
-    public boolean isAssignedPhyReg(LiveInterval it)
-    {
-        return interval2PhyReg.containsKey(it);
-    }
+  public int assignInterval2StackSlot(LiveInterval it) {
+    Util.assertion(it != null);
+    int reg = it.register;
+    Util.assertion(TargetRegisterInfo.isVirtualRegister(reg));
+    Util.assertion(!interval2PhyReg.containsKey(it));
+    Util.assertion(!interval2StackSlot.containsKey(it));
+    int fi = mfi.createStackObject(tri.getRegClass(reg));
+    interval2StackSlot.put(it, fi);
+    return fi;
+  }
 
-    public boolean isAssignedStackSlot(LiveInterval it)
-    {
-        return interval2StackSlot.containsKey(it);
-    }
+  public boolean isAssignedPhyReg(LiveInterval it) {
+    return interval2PhyReg.containsKey(it);
+  }
 
-    public int getPhyReg(LiveInterval it)
-    {
-        Util.assertion(isAssignedPhyReg(it));
-        return interval2PhyReg.get(it);
-    }
+  public boolean isAssignedStackSlot(LiveInterval it) {
+    return interval2StackSlot.containsKey(it);
+  }
 
-    public int getStackSlot(LiveInterval it)
-    {
-        Util.assertion(isAssignedStackSlot(it));
-        return interval2StackSlot.get(it);
-    }
+  public int getPhyReg(LiveInterval it) {
+    Util.assertion(isAssignedPhyReg(it));
+    return interval2PhyReg.get(it);
+  }
+
+  public int getStackSlot(LiveInterval it) {
+    Util.assertion(isAssignedStackSlot(it));
+    return interval2StackSlot.get(it);
+  }
 }

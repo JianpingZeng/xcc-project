@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class AnnotateAttr extends Attr
-{
-    public AnnotateAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class AnnotateAttr extends Attr {
+  public AnnotateAttr(AttrKind kind) {
+    super(kind);
+  }
 }

@@ -22,29 +22,26 @@ import tools.OutRef;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ParserString extends Parser<String>
-{
-    @Override
-    public boolean parse(Option<?> opt,
-            String optName, String arg,
-            OutRef<String> val)
-    {
-        val.set(arg);
-        return false;
-    }
+public class ParserString extends Parser<String> {
+  @Override
+  public boolean parse(Option<?> opt,
+                       String optName, String arg,
+                       OutRef<String> val) {
+    val.set(arg);
+    return false;
+  }
 
-    @Override
-    public String getValueName()
-    {
-        return "string";
-    }
+  @Override
+  public String getValueName() {
+    return "string";
+  }
 
-    @Override
-    public <T1> void initialize(Option<T1> opt){}
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+  }
 
-    @Override
-    public ValueExpected getValueExpectedFlagDefault()
-    {
-        return ValueExpected.ValueRequired;
-    }
+  @Override
+  public ValueExpected getValueExpectedFlagDefault() {
+    return ValueExpected.ValueRequired;
+  }
 }

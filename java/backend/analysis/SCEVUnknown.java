@@ -17,7 +17,10 @@ package backend.analysis;
  */
 
 import backend.type.Type;
-import backend.value.*;
+import backend.value.BasicBlock;
+import backend.value.ConstantInt;
+import backend.value.Loop;
+import backend.value.Value;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -26,74 +29,65 @@ import java.util.HashMap;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SCEVUnknown extends SCEV
-{
-    /**
-     * A cache for ensuring that there is only one SCEVUnknown
-     * instance for a value.
-     */
-    private static final HashMap<Value, SCEVUnknown>
-            scevUnknowns = new HashMap<>();
+public final class SCEVUnknown extends SCEV {
+  /**
+   * A cache for ensuring that there is only one SCEVUnknown
+   * instance for a value.
+   */
+  private static final HashMap<Value, SCEVUnknown>
+      scevUnknowns = new HashMap<>();
 
-    private Value val;
-    private SCEVUnknown(Value val)
-    {
-        super(SCEVType.scUnknown);
-        this.val = val;
+  private Value val;
+
+  private SCEVUnknown(Value val) {
+    super(SCEVType.scUnknown);
+    this.val = val;
+  }
+
+  public static SCEV get(Value val) {
+    if (val instanceof ConstantInt)
+      return SCEVConstant.get((ConstantInt) val);
+    SCEVUnknown res = new SCEVUnknown(val);
+    if (!scevUnknowns.containsKey(val)) {
+      scevUnknowns.put(val, res);
+      return res;
     }
+    return scevUnknowns.get(val);
+  }
 
-    public static SCEV get(Value val)
-    {
-        if (val instanceof ConstantInt)
-            return SCEVConstant.get((ConstantInt)val);
-        SCEVUnknown res = new SCEVUnknown(val);
-        if (!scevUnknowns.containsKey(val))
-        {
-            scevUnknowns.put(val, res);
-            return res;
-        }
-        return scevUnknowns.get(val);
-    }
+  public Value getValue() {
+    return val;
+  }
 
-    public Value getValue()
-    {
-        return val;
-    }
+  @Override
+  public boolean isLoopInvariant(Loop loop) {
+    return false;
+  }
 
-    @Override
-    public boolean isLoopInvariant(Loop loop)
-    {
-        return false;
-    }
+  @Override
+  public boolean hasComputableLoopEvolution(Loop loop) {
+    return false;
+  }
 
-    @Override
-    public boolean hasComputableLoopEvolution(Loop loop)
-    {
-        return false;
-    }
+  @Override
+  public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete) {
+    if (sym.equals(this)) return concrete;
+    return this;
+  }
 
-    @Override
-    public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete)
-    {
-        if(sym.equals(this)) return concrete;
-        return this;
-    }
+  @Override
+  public Type getType() {
+    return val.getType();
+  }
 
-    @Override
-    public Type getType()
-    {
-        return val.getType();
-    }
+  @Override
+  public boolean dominates(BasicBlock bb, DomTree dt) {
+    // TODO: 17-7-1
+    return false;
+  }
 
-    @Override
-    public boolean dominates(BasicBlock bb, DomTree dt)
-    {
-        // TODO: 17-7-1
-        return false;
-    }
+  @Override
+  public void print(PrintStream os) {
 
-    @Override public void print(PrintStream os)
-    {
-
-    }
+  }
 }

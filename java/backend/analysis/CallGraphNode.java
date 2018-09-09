@@ -2,7 +2,6 @@ package backend.analysis;
 
 import backend.support.CallSite;
 import backend.value.Function;
-import backend.value.Instruction;
 import backend.value.Instruction.CallInst;
 import tools.Pair;
 import tools.Util;
@@ -35,181 +34,163 @@ import java.util.Iterator;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class CallGraphNode implements Iterable<Pair<CallSite, CallGraphNode>>
-{
-    /**
-     * Represents the function related to this node.
-     */
-    private Function function;
-    /**
-     * It represents all functions called by this function.
-     */
-    private ArrayList<Pair<CallSite, CallGraphNode>> calledFunctions;
+public class CallGraphNode implements Iterable<Pair<CallSite, CallGraphNode>> {
+  /**
+   * Represents the function related to this node.
+   */
+  private Function function;
+  /**
+   * It represents all functions called by this function.
+   */
+  private ArrayList<Pair<CallSite, CallGraphNode>> calledFunctions;
 
-    public CallGraphNode(Function f)
-    {
-        calledFunctions = new ArrayList<>();
-        function = f;
-    }
+  public CallGraphNode(Function f) {
+    calledFunctions = new ArrayList<>();
+    function = f;
+  }
 
-    public void addCalledFunction(CallSite cs, CallGraphNode targetNode)
-    {
-        calledFunctions.add(Pair.get(cs, targetNode));
-    }
+  public void addCalledFunction(CallSite cs, CallGraphNode targetNode) {
+    calledFunctions.add(Pair.get(cs, targetNode));
+  }
 
-    public void addCalledFunction(CallInst ci, CallGraphNode targetNode)
-    {
-        calledFunctions.add(Pair.get(new CallSite(ci), targetNode));
-    }
-    public boolean isEmpty()
-    {
-        return calledFunctions.isEmpty();
-    }
-    public int size()
-    {
-        return calledFunctions.size();
-    }
-    public Function getFunction()
-    {
-        return function;
-    }
+  public void addCalledFunction(CallInst ci, CallGraphNode targetNode) {
+    calledFunctions.add(Pair.get(new CallSite(ci), targetNode));
+  }
 
-    @Override
-    public Iterator<Pair<CallSite, CallGraphNode>> iterator()
-    {
-        return calledFunctions.iterator();
-    }
+  public boolean isEmpty() {
+    return calledFunctions.isEmpty();
+  }
 
-    /**
-     * Get the idx'th call node in call graph.
-     * @param idx
-     * @return
-     */
-    public CallGraphNode getCallGraphNodeAt(int idx)
-    {
-        Util.assertion(idx >= 0 && idx < size());
-        return calledFunctions.get(idx).second;
-    }
-    public void dump()
-    {
-        print(System.err);
-    }
+  public int size() {
+    return calledFunctions.size();
+  }
 
-    public void print(PrintStream os)
-    {
-        Function f = getFunction();
-        if (f != null)
-            os.printf("Call Graph node for function: '%s'%n", f.getName());
-        else
-            os.printf("Call Graph node <<null function: 0x%d>>:%n", hashCode());
-        Iterator<Pair<CallSite, CallGraphNode>> itr = iterator();
-        while (itr.hasNext())
-        {
-            f = itr.next().second.getFunction();
-            if (f != null)
-                os.printf("  Calls function '%s'%n", f.getName());
-            else
-                os.println("  Calls external function");
-        }
-        os.println();
-    }
+  public Function getFunction() {
+    return function;
+  }
 
-    public void removeAllCalledFunctions()
-    {
-        calledFunctions.clear();
-    }
+  @Override
+  public Iterator<Pair<CallSite, CallGraphNode>> iterator() {
+    return calledFunctions.iterator();
+  }
 
-    /**
-     * Remove the first call in the specified call site. Note that, this function will not
-     * attempts to remove all same call site.
-     * @param cs
-     */
-    public void removeCallEdgeFor(CallSite cs)
-    {
-        for (int i = 0, e = size(); i < e; i++)
-        {
-            if (calledFunctions.get(i).first.equals(cs))
-            {
-                calledFunctions.remove(i);
-                break;
-            }
-        }
-    }
+  /**
+   * Get the idx'th call node in call graph.
+   *
+   * @param idx
+   * @return
+   */
+  public CallGraphNode getCallGraphNodeAt(int idx) {
+    Util.assertion(idx >= 0 && idx < size());
+    return calledFunctions.get(idx).second;
+  }
 
-    /**
-     * Remove all calls to the specified call graph node.
-     * @param callee
-     */
-    public void removeAnyCallEdgeTo(CallGraphNode callee)
-    {
-        for (int i = 0, e = size(); i < e; i++)
-        {
-            if (calledFunctions.get(i).second.equals(callee))
-            {
-                calledFunctions.remove(i);
-                --i;
-                --e;
-            }
-        }
-    }
+  public void dump() {
+    print(System.err);
+  }
 
-    /**
-     * remove the first one call to the specified call graph node which is abstract
-     * (in other words, it is external).
-     * @param callee
-     */
-    public void removeOneAbstractCallEdgeTo(CallGraphNode callee)
-    {
-        for (int i = 0, e = size(); i < e; i++)
-        {
-            if (calledFunctions.get(i).second.equals(callee) &&
-                    callee.getFunction() == null)
-            {
-                calledFunctions.remove(i);
-                break;
-            }
-        }
+  public void print(PrintStream os) {
+    Function f = getFunction();
+    if (f != null)
+      os.printf("Call Graph node for function: '%s'%n", f.getName());
+    else
+      os.printf("Call Graph node <<null function: 0x%d>>:%n", hashCode());
+    Iterator<Pair<CallSite, CallGraphNode>> itr = iterator();
+    while (itr.hasNext()) {
+      f = itr.next().second.getFunction();
+      if (f != null)
+        os.printf("  Calls function '%s'%n", f.getName());
+      else
+        os.println("  Calls external function");
     }
+    os.println();
+  }
 
-    /**
-     * Replace all call graph record from old with new one.
-     * @param oldCS
-     * @param newCS
-     */
-    public void replaceCallSite(CallSite oldCS, CallSite newCS)
-    {
-        Util.assertion(oldCS != null, "can not use null call site");
-        for (int i = 0, e = size(); i < e; i++)
-        {
-            if (calledFunctions.get(i).first.equals(oldCS))
-            {
-                calledFunctions.get(i).first = newCS;
-            }
-        }
-    }
+  public void removeAllCalledFunctions() {
+    calledFunctions.clear();
+  }
 
-    public boolean containsCalledFunction(CallGraphNode node)
-    {
-        for (Pair<CallSite, CallGraphNode> n : calledFunctions)
-            if (n.second.equals(node))
-                return true;
-        return false;
+  /**
+   * Remove the first call in the specified call site. Note that, this function will not
+   * attempts to remove all same call site.
+   *
+   * @param cs
+   */
+  public void removeCallEdgeFor(CallSite cs) {
+    for (int i = 0, e = size(); i < e; i++) {
+      if (calledFunctions.get(i).first.equals(cs)) {
+        calledFunctions.remove(i);
+        break;
+      }
     }
+  }
 
-    /**
-     * Removes the first call graph node when iterating on SCC.
-     * @param node
-     */
-    public void removeCalledFunction(CallGraphNode node)
-    {
-        Util.assertion(containsCalledFunction(node),
-                "must call this method when specified node contained in calledFunctions");
-        for (Iterator<Pair<CallSite, CallGraphNode>> itr = iterator(); itr.hasNext(); )
-        {
-            if (itr.next().second == node) {
-                itr.remove();
-                return;
-            }
-        }
+  /**
+   * Remove all calls to the specified call graph node.
+   *
+   * @param callee
+   */
+  public void removeAnyCallEdgeTo(CallGraphNode callee) {
+    for (int i = 0, e = size(); i < e; i++) {
+      if (calledFunctions.get(i).second.equals(callee)) {
+        calledFunctions.remove(i);
+        --i;
+        --e;
+      }
     }
+  }
+
+  /**
+   * remove the first one call to the specified call graph node which is abstract
+   * (in other words, it is external).
+   *
+   * @param callee
+   */
+  public void removeOneAbstractCallEdgeTo(CallGraphNode callee) {
+    for (int i = 0, e = size(); i < e; i++) {
+      if (calledFunctions.get(i).second.equals(callee) &&
+          callee.getFunction() == null) {
+        calledFunctions.remove(i);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Replace all call graph record from old with new one.
+   *
+   * @param oldCS
+   * @param newCS
+   */
+  public void replaceCallSite(CallSite oldCS, CallSite newCS) {
+    Util.assertion(oldCS != null, "can not use null call site");
+    for (int i = 0, e = size(); i < e; i++) {
+      if (calledFunctions.get(i).first.equals(oldCS)) {
+        calledFunctions.get(i).first = newCS;
+      }
+    }
+  }
+
+  public boolean containsCalledFunction(CallGraphNode node) {
+    for (Pair<CallSite, CallGraphNode> n : calledFunctions)
+      if (n.second.equals(node))
+        return true;
+    return false;
+  }
+
+  /**
+   * Removes the first call graph node when iterating on SCC.
+   *
+   * @param node
+   */
+  public void removeCalledFunction(CallGraphNode node) {
+    Util.assertion(containsCalledFunction(node),
+        "must call this method when specified node contained in calledFunctions");
+    for (Iterator<Pair<CallSite, CallGraphNode>> itr = iterator(); itr.hasNext(); ) {
+      if (itr.next().second == node) {
+        itr.remove();
+        return;
+      }
+    }
+  }
 }

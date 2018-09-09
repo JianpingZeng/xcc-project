@@ -18,63 +18,57 @@
 package jlang.cparser;
 
 import tools.Util;
+
 import java.util.ArrayList;
 
 /**
  * Represent a full designation, which is a sequence of
  * designators.  This class is mostly a helper for initListDesignations.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Designation
-{
-    /**
-     * The index of the initializer expression this is for.  For
-     * example, if the initializer were "{ A, .foo=B, C }" a Designation would
-     * exist with InitIndex=1, because element #1 has a designation.
-     */
-    private int initIndex;
+public class Designation {
+  /**
+   * The index of the initializer expression this is for.  For
+   * example, if the initializer were "{ A, .foo=B, C }" a Designation would
+   * exist with InitIndex=1, because element #1 has a designation.
+   */
+  private int initIndex;
 
-    /**
-     * The actual designators for this initializer.
-     */
-    private ArrayList<Designator> designators;
+  /**
+   * The actual designators for this initializer.
+   */
+  private ArrayList<Designator> designators;
 
-    public Designation()
-    {
-        this(Integer.MAX_VALUE);
-    }
+  public Designation() {
+    this(Integer.MAX_VALUE);
+  }
 
-    public Designation(int idx)
-    {
-        initIndex = idx;
-        designators = new ArrayList<>();
-    }
+  public Designation(int idx) {
+    initIndex = idx;
+    designators = new ArrayList<>();
+  }
 
-    public void addDesignator(Designator d)
-    {
-        designators.add(d);
-    }
+  public void addDesignator(Designator d) {
+    designators.add(d);
+  }
 
-    public boolean isEmpty()
-    {
-        return designators.isEmpty();
-    }
+  public boolean isEmpty() {
+    return designators.isEmpty();
+  }
 
-    public int getNumDesignators()
-    {
-        return designators.size();
-    }
+  public int getNumDesignators() {
+    return designators.size();
+  }
 
-    public Designator getDesignator(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < getNumDesignators());
-        return designators.get(idx);
-    }
+  public Designator getDesignator(int idx) {
+    Util.assertion(idx >= 0 && idx < getNumDesignators());
+    return designators.get(idx);
+  }
 
-    public void clearExprs()
-    {
-        for (Designator d : designators)
-            d.clearExprs();
-    }
+  public void clearExprs() {
+    for (Designator d : designators)
+      d.clearExprs();
+  }
 }

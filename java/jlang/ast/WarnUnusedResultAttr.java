@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class WarnUnusedResultAttr extends Attr
-{
-    public WarnUnusedResultAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class WarnUnusedResultAttr extends Attr {
+  public WarnUnusedResultAttr(AttrKind kind) {
+    super(kind);
+  }
 }

@@ -23,115 +23,98 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class InputInfo
-{
-    public enum InputInfoClass
-    {
-        Nothing,
-        Filename,
-        InputArg,
-        Pipe
-    }
+public class InputInfo {
+  public enum InputInfoClass {
+    Nothing,
+    Filename,
+    InputArg,
+    Pipe
+  }
 
-    /**
-     * The input data, could be filename, inputArg or pipe.
-     */
-    private Object data;
-    private InputInfoClass kind;
-    private int outputType;
-    private String baseInput;
+  /**
+   * The input data, could be filename, inputArg or pipe.
+   */
+  private Object data;
+  private InputInfoClass kind;
+  private int outputType;
+  private String baseInput;
 
-    public InputInfo(int outputType, String baseInput)
-    {
-        this.kind = InputInfoClass.Nothing;
-        this.outputType = outputType;
-        this.baseInput = baseInput;
-    }
+  public InputInfo(int outputType, String baseInput) {
+    this.kind = InputInfoClass.Nothing;
+    this.outputType = outputType;
+    this.baseInput = baseInput;
+  }
 
-    public InputInfo(String filename, int outputType, String baseInput)
-    {
-        data = filename;
-        this.kind = InputInfoClass.Filename;
-        this.outputType = outputType;
-        this.baseInput = baseInput;
-    }
+  public InputInfo(String filename, int outputType, String baseInput) {
+    data = filename;
+    this.kind = InputInfoClass.Filename;
+    this.outputType = outputType;
+    this.baseInput = baseInput;
+  }
 
-    public InputInfo(Arg arg, int outputType, String baseInput)
-    {
-        data = arg;
-        kind = InputInfoClass.InputArg;
-        this.outputType = outputType;
-        this.baseInput = baseInput;
-    }
+  public InputInfo(Arg arg, int outputType, String baseInput) {
+    data = arg;
+    kind = InputInfoClass.InputArg;
+    this.outputType = outputType;
+    this.baseInput = baseInput;
+  }
 
-    public InputInfo(Job.PipedJob pj, int outputType, String baseInput)
-    {
-        data = pj;
-        kind = InputInfoClass.InputArg;
-        this.outputType = outputType;
-        this.baseInput = baseInput;
-    }
+  public InputInfo(Job.PipedJob pj, int outputType, String baseInput) {
+    data = pj;
+    kind = InputInfoClass.InputArg;
+    this.outputType = outputType;
+    this.baseInput = baseInput;
+  }
 
-    public boolean isNothing()
-    {
-        return kind == InputInfoClass.Nothing;
-    }
+  public boolean isNothing() {
+    return kind == InputInfoClass.Nothing;
+  }
 
-    public boolean isFilename()
-    {
-        return kind == InputInfoClass.Filename;
-    }
+  public boolean isFilename() {
+    return kind == InputInfoClass.Filename;
+  }
 
-    public boolean isInputArg()
-    {
-        return kind == InputInfoClass.InputArg;
-    }
+  public boolean isInputArg() {
+    return kind == InputInfoClass.InputArg;
+  }
 
-    public boolean isPipe()
-    {
-        return kind == InputInfoClass.Pipe;
-    }
+  public boolean isPipe() {
+    return kind == InputInfoClass.Pipe;
+  }
 
-    public int getOutputType()
-    {
-        return outputType;
-    }
+  public int getOutputType() {
+    return outputType;
+  }
 
-    public String getBaseInput()
-    {
-        return baseInput;
-    }
+  public String getBaseInput() {
+    return baseInput;
+  }
 
-    public String getFilename()
-    {
-        Util.assertion( isFilename());
-        return (String)data;
-    }
+  public String getFilename() {
+    Util.assertion(isFilename());
+    return (String) data;
+  }
 
-    public Arg getInputArg()
-    {
-        Util.assertion( isInputArg());
-        return (Arg)data;
-    }
+  public Arg getInputArg() {
+    Util.assertion(isInputArg());
+    return (Arg) data;
+  }
 
-    public Job.PipedJob getPipe()
-    {
-        Util.assertion( isPipe());
-        return (Job.PipedJob)data;
-    }
+  public Job.PipedJob getPipe() {
+    Util.assertion(isPipe());
+    return (Job.PipedJob) data;
+  }
 
-    public String toString()
-    {
-        switch (kind)
-        {
-            case Pipe:
-                return "(pipe)";
-            case Filename:
-                return getFilename();
-            case InputArg:
-                return "(input arg)";
-            default:
-                return "(nothing)";
-        }
+  public String toString() {
+    switch (kind) {
+      case Pipe:
+        return "(pipe)";
+      case Filename:
+        return getFilename();
+      case InputArg:
+        return "(input arg)";
+      default:
+        return "(nothing)";
     }
+  }
 }

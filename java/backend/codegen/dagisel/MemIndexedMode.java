@@ -16,15 +16,15 @@
  */
 
 package backend.codegen.dagisel;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum MemIndexedMode
-{
-    UNINDEXED,
-    PRE_INC,
-    PRE_DEC,
-    POST_INC,
-    POST_DEC,
+public enum MemIndexedMode {
+  UNINDEXED,
+  PRE_INC,
+  PRE_DEC,
+  POST_INC,
+  POST_DEC,
 }

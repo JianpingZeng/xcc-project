@@ -20,11 +20,10 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum FileModel
-{
-    Error,
-    None,
-    AsmFile,
-    MachOFile,
-    ElfFile
+public enum FileModel {
+  Error,
+  None,
+  AsmFile,
+  MachOFile,
+  ElfFile
 }

@@ -18,68 +18,63 @@ package backend.target.x86;
 
 import backend.codegen.MachineFrameInfo;
 import backend.codegen.MachineFunction;
-import backend.support.MachineFunctionPass;
 import backend.codegen.MachineRegisterInfo;
 import backend.pass.AnalysisUsage;
+import backend.support.MachineFunctionPass;
 import backend.target.TargetRegisterInfo;
 
 /**
  * This machine function pass take responsibility for calculating the maximum
  * alignment for specified MachineFunction.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class MSAC extends MachineFunctionPass
-{
-    /**
-     * Set the maximum alignment for the specified machine function according to
-     * all of stack object in current stack frame and alignment of each Virtual
-     * reigster.
-     * @param mf
-     * @return  Return true if alignment of specified function is changed.
-     */
-    @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
-    {
-        int maxAlign = -1;
-        // Compute maximum alignment for each stack object.
-        MachineFrameInfo mfi = mf.getFrameInfo();
-        for (int i = mfi.getObjectIndexBegin(); i < mfi.getObjectIndexEnd(); i++)
-        {
-            int align = mfi.getObjectAlignment(i);
-            if (align > maxAlign)
-                maxAlign = align;
-        }
-        // Compute maximum alignment for each virtual register.
-        MachineRegisterInfo mri = mf.getMachineRegisterInfo();
-        int lastVR = mri.getLastVirReg();
-        for (int vr =TargetRegisterInfo.FirstVirtualRegister; vr < lastVR; vr++)
-        {
-            int align = mri.getRegClass(vr).getAlignment();
-            if (align > maxAlign)
-                maxAlign = align;
-        }
-        if (mfi.getMaxAlignment() == maxAlign)
-            return false;
-        mfi.setMaxCallFrameSize(maxAlign);
-        return true;
+public final class MSAC extends MachineFunctionPass {
+  /**
+   * Set the maximum alignment for the specified machine function according to
+   * all of stack object in current stack frame and alignment of each Virtual
+   * reigster.
+   *
+   * @param mf
+   * @return Return true if alignment of specified function is changed.
+   */
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    int maxAlign = -1;
+    // Compute maximum alignment for each stack object.
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    for (int i = mfi.getObjectIndexBegin(); i < mfi.getObjectIndexEnd(); i++) {
+      int align = mfi.getObjectAlignment(i);
+      if (align > maxAlign)
+        maxAlign = align;
     }
+    // Compute maximum alignment for each virtual register.
+    MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+    int lastVR = mri.getLastVirReg();
+    for (int vr = TargetRegisterInfo.FirstVirtualRegister; vr < lastVR; vr++) {
+      int align = mri.getRegClass(vr).getAlignment();
+      if (align > maxAlign)
+        maxAlign = align;
+    }
+    if (mfi.getMaxAlignment() == maxAlign)
+      return false;
+    mfi.setMaxCallFrameSize(maxAlign);
+    return true;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "X86 Maximal Stack Alignment Calculator";
-    }
+  @Override
+  public String getPassName() {
+    return "X86 Maximal Stack Alignment Calculator";
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservesCFG();
-        super.getAnalysisUsage(au);
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservesCFG();
+    super.getAnalysisUsage(au);
+  }
 
-    public static MSAC createMaxStackAlignmentCalculatorPass()
-    {
-        return new MSAC();
-    }
+  public static MSAC createMaxStackAlignmentCalculatorPass() {
+    return new MSAC();
+  }
 }

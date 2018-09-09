@@ -20,17 +20,16 @@ package backend.passManaging;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum PassManagerType
-{
-    PMT_Unknow,
+public enum PassManagerType {
+  PMT_Unknow,
 
-    PMT_ModulePassManager,
+  PMT_ModulePassManager,
 
-    PMT_CallGraphPassManager,
+  PMT_CallGraphPassManager,
 
-    PMT_FunctionPassManager,
+  PMT_FunctionPassManager,
 
-    PMT_LoopPassManager,
+  PMT_LoopPassManager,
 
-    PMT_BasicBlockPassManager,
+  PMT_BasicBlockPassManager,
 }

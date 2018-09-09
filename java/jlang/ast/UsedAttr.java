@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class UsedAttr extends Attr
-{
-    public UsedAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class UsedAttr extends Attr {
+  public UsedAttr(AttrKind kind) {
+    super(kind);
+  }
 }

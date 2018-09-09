@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class CleanupAttr extends Attr
-{
-    public CleanupAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class CleanupAttr extends Attr {
+  public CleanupAttr(AttrKind kind) {
+    super(kind);
+  }
 }

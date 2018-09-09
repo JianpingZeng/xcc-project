@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class RegdWorkGroupSizeAttr extends Attr
-{
-    public RegdWorkGroupSizeAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class RegdWorkGroupSizeAttr extends Attr {
+  public RegdWorkGroupSizeAttr(AttrKind kind) {
+    super(kind);
+  }
 }

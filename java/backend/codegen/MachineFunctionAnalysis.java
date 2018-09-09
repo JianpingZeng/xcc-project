@@ -16,67 +16,60 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.pass.RegisterPass;
 import backend.target.TargetMachine;
 import backend.value.Function;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineFunctionAnalysis implements FunctionPass
-{
-    static
-    {
-        new RegisterPass("machine-function-analysis",
-                "Machine Function Analysis", MachineFunctionAnalysis.class,
-                false, true);
-    }
-    private TargetMachine tm;
-    private TargetMachine.CodeGenOpt optLevel;
-    private AnalysisResolver resolver;
+public class MachineFunctionAnalysis implements FunctionPass {
+  static {
+    new RegisterPass("machine-function-analysis",
+        "Machine Function Analysis", MachineFunctionAnalysis.class,
+        false, true);
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  private TargetMachine tm;
+  private TargetMachine.CodeGenOpt optLevel;
+  private AnalysisResolver resolver;
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    public MachineFunctionAnalysis(
-            TargetMachine tm)
-    {
-        this(tm, TargetMachine.CodeGenOpt.Default);
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    public MachineFunctionAnalysis(
-            TargetMachine tm,
-            TargetMachine.CodeGenOpt level)
-    {
-        this.tm = tm;
-        optLevel = level;
-    }
+  public MachineFunctionAnalysis(
+      TargetMachine tm) {
+    this(tm, TargetMachine.CodeGenOpt.Default);
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Generates MachineFunction for each LLVM function";
-    }
+  public MachineFunctionAnalysis(
+      TargetMachine tm,
+      TargetMachine.CodeGenOpt level) {
+    this.tm = tm;
+    optLevel = level;
+  }
 
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        Util.assertion(f.getMachineFunc() == null,                 "MachineFunctionAnalysis already initialized!");
+  @Override
+  public String getPassName() {
+    return "Generates MachineFunction for each LLVM function";
+  }
 
-        new MachineFunction(f, tm);
-        return false;
-    }
+  @Override
+  public boolean runOnFunction(Function f) {
+    Util.assertion(f.getMachineFunc() == null, "MachineFunctionAnalysis already initialized!");
+
+    new MachineFunction(f, tm);
+    return false;
+  }
 }

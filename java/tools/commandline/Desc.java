@@ -20,30 +20,30 @@ package tools.commandline;
  * This class implement the interface {@linkplain Modifier} to update text
  * text of the given {@code opt} for printing out human readibility information
  * when user type "-help" from console.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Desc implements Modifier
-{
-    private String desc;
-    public Desc(String desc)
-    {
-        this.desc = desc;
-    }
-    @Override
-    public void apply(Option<?> opt)
-    {
-        opt.setHelpStr(desc);
-    }
+public class Desc implements Modifier {
+  private String desc;
 
-    /**
-     * This method is a factory used for creating an instance
-     * of {@linkplain Desc}.
-     * @param desc
-     * @return
-     */
-    public static Desc desc(String desc)
-    {
-        return new Desc(desc);
-    }
+  public Desc(String desc) {
+    this.desc = desc;
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    opt.setHelpStr(desc);
+  }
+
+  /**
+   * This method is a factory used for creating an instance
+   * of {@linkplain Desc}.
+   *
+   * @param desc
+   * @return
+   */
+  public static Desc desc(String desc) {
+    return new Desc(desc);
+  }
 }

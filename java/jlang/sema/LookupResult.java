@@ -18,244 +18,218 @@ package jlang.sema;
 
 /**
  * Represents the result of getIdentifier lookup up.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
 
-import tools.Util;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.Sema.LookupNameKind;
 import jlang.support.SourceLocation;
+import tools.Util;
 
 import java.util.ArrayList;
 
 import static jlang.sema.IdentifierNamespace.*;
-import static jlang.sema.LookupResult.LookupResultKind.Ambiguous;
-import static jlang.sema.LookupResult.LookupResultKind.Found;
-import static jlang.sema.LookupResult.LookupResultKind.NotFound;
+import static jlang.sema.LookupResult.LookupResultKind.*;
 
-public class LookupResult
-{
-    enum LookupResultKind
-    {
-        /***
-         * No entity found met the criteria.
-         */
-        NotFound,
-
-        /**
-         * Name lookup up found a single declaration that met the
-         * criteria. getFoundDecl() will return this declaration.
-         */
-        Found,
-
-        Ambiguous,
-    }
+public class LookupResult {
+  enum LookupResultKind {
+    /***
+     * No entity found met the criteria.
+     */
+    NotFound,
 
     /**
-     * A name specified to be found.
+     * Name lookup up found a single declaration that met the
+     * criteria. getFoundDecl() will return this declaration.
      */
-    private IdentifierInfo foundName;
+    Found,
 
-    /**
-     * The location of found name used here for issuing well diagnose message.
-     */
-    private SourceLocation nameLoc;
+    Ambiguous,
+  }
 
-    /**
-     * The kind of lookup result.
-     */
-    private LookupResultKind resultKind;
-    /**
-     * The sema action instance.
-     */
-    private Sema semaRef;
+  /**
+   * A name specified to be found.
+   */
+  private IdentifierInfo foundName;
 
-    /**
-     * The kind of lookup to be performed.
-     * For details, see {@linkplain LookupNameKind}.
-     */
-    private LookupNameKind lookupKind;
+  /**
+   * The location of found name used here for issuing well diagnose message.
+   */
+  private SourceLocation nameLoc;
 
-    /**
-     * All found declaration candidate with respect to the specified name.
-     */
-    private ArrayList<Decl.NamedDecl> decls;
+  /**
+   * The kind of lookup result.
+   */
+  private LookupResultKind resultKind;
+  /**
+   * The sema action instance.
+   */
+  private Sema semaRef;
 
-    /**
-     * Indicates the getIdentifier space which this getIdentifier in.
-     * There are four cases:
-     * <ol>
-     *     <li>Ordinary Identifier;</li>
-     *     <li>Tag Identifier;</li>
-     *     <li>Member Identifier;</li>
-     *     <li>Label Identifier;</li>
-     * </ol>
-     */
-    private IdentifierNamespace idns;
+  /**
+   * The kind of lookup to be performed.
+   * For details, see {@linkplain LookupNameKind}.
+   */
+  private LookupNameKind lookupKind;
 
-    public Decl.NamedDecl getFoundDecl()
-    {
-        switch (getResultKind())
-        {
-            case NotFound:
-                 break;
-            case Found:
-                return decls.get(0);
-            case Ambiguous:
-                Util.assertion(false, "Name lookup returned an ambiguity that could not be handled");
-                break;
-        }
-        return null;
+  /**
+   * All found declaration candidate with respect to the specified name.
+   */
+  private ArrayList<Decl.NamedDecl> decls;
+
+  /**
+   * Indicates the getIdentifier space which this getIdentifier in.
+   * There are four cases:
+   * <ol>
+   *     <li>Ordinary Identifier;</li>
+   *     <li>Tag Identifier;</li>
+   *     <li>Member Identifier;</li>
+   *     <li>Label Identifier;</li>
+   * </ol>
+   */
+  private IdentifierNamespace idns;
+
+  public Decl.NamedDecl getFoundDecl() {
+    switch (getResultKind()) {
+      case NotFound:
+        break;
+      case Found:
+        return decls.get(0);
+      case Ambiguous:
+        Util.assertion(false, "Name lookup returned an ambiguity that could not be handled");
+        break;
+    }
+    return null;
+  }
+
+  public boolean isEmpty() {
+    return decls.isEmpty();
+  }
+
+  /**
+   * ReturnStmt true if the found result is ambiguous.
+   *
+   * @return
+   */
+  public boolean isAmbiguous() {
+    return getResultKind() == Ambiguous;
+  }
+
+  /**
+   * ReturnStmt true if the found result is certainly deterministic.
+   *
+   * @return
+   */
+  public boolean isSingleResult() {
+    return getResultKind() == Found;
+  }
+
+  /**
+   * Obtains the found result.
+   *
+   * @return
+   */
+  public LookupResultKind getResultKind() {
+    return resultKind;
+  }
+
+  public IdentifierInfo getLookupName() {
+    return foundName;
+  }
+
+  public LookupNameKind getLookupKind() {
+    return lookupKind;
+  }
+
+  /**
+   * Returns the identifier namespace mask for this lookup.
+   * @return
+   */
+  public IdentifierNamespace getIdentifierNamespace() {
+    return idns;
+  }
+
+  public boolean isInIdentifierNamespace(IdentifierNamespace ns) {
+    return idns == ns;
+  }
+
+  public boolean hasTagIdentifierNamespace() {
+    return isTagIdentifierNamespace(idns);
+  }
+
+  public static boolean isTagIdentifierNamespace(IdentifierNamespace ns) {
+    return ns == IdentifierNamespace.IDNS_Tag;
+  }
+
+  /**
+   * Add a declaration to these results and set the lookup result as Found.
+   * @param decl
+   */
+  public void addDecl(Decl.NamedDecl decl) {
+    decls.add(decl);
+    resultKind = Found;
+  }
+
+  /**
+   * Resolve the result kind of this kind.
+   */
+  public void resolveKind() {
+    int n = decls.size();
+    if (n == 0) {
+      Util.assertion(resultKind == NotFound);
+      return;
     }
 
-    public boolean isEmpty()
-    {
-        return decls.isEmpty();
+    // Only a single one found.
+    if (n == 1) {
+      Util.assertion(resultKind == Found);
+    } else {
+      resultKind = Ambiguous;
+    }
+  }
+
+  public LookupResult
+      (Sema semaRef,
+       IdentifierInfo name,
+       SourceLocation nameLoc,
+       LookupNameKind lookupNameKind) {
+    resultKind = NotFound;
+    foundName = name;
+    this.nameLoc = nameLoc;
+    this.semaRef = semaRef;
+    lookupKind = lookupNameKind;
+    idns = null;
+
+    switch (lookupKind) {
+      case LookupOrdinaryName:
+        idns = IDNS_Ordinary;
+        break;
+      case LookupTagName:
+        idns = IDNS_Tag;
+        break;
+      case LookupMemberName:
+        idns = IDNS_Member;
+        break;
+      case LookupLabelName:
+        idns = IDNS_Label;
+        break;
     }
 
-    /**
-     * ReturnStmt true if the found result is ambiguous.
-     *
-     * @return
-     */
-    public boolean isAmbiguous()
-    {
-        return getResultKind() == Ambiguous;
-    }
+    decls = new ArrayList<>(8);
+  }
 
-    /**
-     * ReturnStmt true if the found result is certainly deterministic.
-     *
-     * @return
-     */
-    public boolean isSingleResult()
-    {
-        return getResultKind() == Found;
-    }
+  public void clear() {
+    resultKind = NotFound;
+    decls.clear();
+  }
 
-    /**
-     * Obtains the found result.
-     *
-     * @return
-     */
-    public LookupResultKind getResultKind()
-    {
-        return resultKind;
-    }
+  public SourceLocation getNameLoc() {
+    return nameLoc;
+  }
 
-    public IdentifierInfo getLookupName()
-    {
-        return foundName;
-    }
-
-    public LookupNameKind getLookupKind()
-    {
-        return lookupKind;
-    }
-
-    /**
-     * Returns the identifier namespace mask for this lookup.
-     * @return
-     */
-    public IdentifierNamespace getIdentifierNamespace()
-    {
-        return idns;
-    }
-
-    public boolean isInIdentifierNamespace(IdentifierNamespace ns)
-    {
-        return idns == ns;
-    }
-
-    public boolean hasTagIdentifierNamespace()
-    {
-        return isTagIdentifierNamespace(idns);
-    }
-
-    public static boolean isTagIdentifierNamespace(IdentifierNamespace ns)
-    {
-        return ns == IdentifierNamespace.IDNS_Tag;
-    }
-
-    /**
-     * Add a declaration to these results and set the lookup result as Found.
-     * @param decl
-     */
-    public void addDecl(Decl.NamedDecl decl)
-    {
-        decls.add(decl);
-        resultKind = Found;
-    }
-
-    /**
-     * Resolve the result kind of this kind.
-     */
-    public void resolveKind()
-    {
-        int n = decls.size();
-        if (n == 0)
-        {
-            Util.assertion( resultKind == NotFound);
-            return;
-        }
-
-        // Only a single one found.
-        if (n == 1)
-        {
-            Util.assertion( resultKind == Found);
-        }
-        else
-        {
-            resultKind = Ambiguous;
-        }
-    }
-
-    public LookupResult
-            (Sema semaRef,
-            IdentifierInfo name,
-            SourceLocation nameLoc,
-            LookupNameKind lookupNameKind)
-    {
-        resultKind = NotFound;
-        foundName = name;
-        this.nameLoc = nameLoc;
-        this.semaRef = semaRef;
-        lookupKind = lookupNameKind;
-        idns = null;
-
-        switch (lookupKind)
-        {
-            case LookupOrdinaryName:
-                idns = IDNS_Ordinary;
-                break;
-            case LookupTagName:
-                idns = IDNS_Tag;
-                break;
-            case LookupMemberName:
-                idns = IDNS_Member;
-                break;
-            case LookupLabelName:
-                idns = IDNS_Label;
-                break;
-        }
-
-        decls = new ArrayList<>(8);
-    }
-
-    public void clear()
-    {
-        resultKind = NotFound;
-        decls.clear();
-    }
-
-    public SourceLocation getNameLoc()
-    {
-        return nameLoc;
-    }
-
-    public void setLookupName(IdentifierInfo name)
-    {
-        this.foundName = name;
-    }
+  public void setLookupName(IdentifierInfo name) {
+    this.foundName = name;
+  }
 }

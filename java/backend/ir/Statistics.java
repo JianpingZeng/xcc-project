@@ -6,36 +6,35 @@ package backend.ir;
  *
  * @author Jianping Zeng
  */
-public class Statistics
-{
-	/**
-	 * The number of internal graph nodes created during this compilation.
-	 */
-	public int nodeCount;
+public class Statistics {
+  /**
+   * The number of internal graph nodes created during this compilation.
+   */
+  public int nodeCount;
 
-	/**
-	 * The number of basic blocks created during this compilation.
-	 */
-	public int blockCount;
+  /**
+   * The number of basic blocks created during this compilation.
+   */
+  public int blockCount;
 
-	/**
-	 * The number of loops in the compiled method.
-	 */
-	public int loopCount;
+  /**
+   * The number of loops in the compiled method.
+   */
+  public int loopCount;
 
-	/**
-	 * The number of functionList inlined.
-	 */
-	public int inlineCount;
+  /**
+   * The number of functionList inlined.
+   */
+  public int inlineCount;
 
-	/**
-	 * The number of functionList folded (i.e. evaluated).
-	 */
-	public int foldCount;
+  /**
+   * The number of functionList folded (i.e. evaluated).
+   */
+  public int foldCount;
 
-	/**
-	 * The number of intrinsics inlined in this compilation.
-	 */
-	public int intrinsicCount;
+  /**
+   * The number of intrinsics inlined in this compilation.
+   */
+  public int intrinsicCount;
 
 }

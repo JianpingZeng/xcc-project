@@ -17,245 +17,216 @@
 
 package jlang.cparser;
 
-import tools.Util;
 import jlang.ast.Tree;
 import jlang.clex.IdentifierInfo;
 import jlang.support.SourceLocation;
+import tools.Util;
 
-import static jlang.cparser.Designator.DesignatorKind.ArrayDesignator;
-import static jlang.cparser.Designator.DesignatorKind.ArrayRangeDesignator;
-import static jlang.cparser.Designator.DesignatorKind.FieldDesignator;
+import static jlang.cparser.Designator.DesignatorKind.*;
 
 /**
  * This class is a discriminated union which holds the various
  * different sorts of designators possible.  A Designation is an array of
  * these.  An example of a designator are things like this:
- *     [8] .field [47]        // C99 designation: 3 designators
- *     [8 ... 47]  field:     // GNU extensions: 2 designators
+ * [8] .field [47]        // C99 designation: 3 designators
+ * [8 ... 47]  field:     // GNU extensions: 2 designators
  * These occur in initializers, e.g.:
- *  int a[10] = {2, 4, [8]=9, 10};
+ * int a[10] = {2, 4, [8]=9, 10};
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Designator
-{
-    public enum DesignatorKind
-    {
-        FieldDesignator,
-        ArrayDesignator,
-        ArrayRangeDesignator
+public class Designator {
+  public enum DesignatorKind {
+    FieldDesignator,
+    ArrayDesignator,
+    ArrayRangeDesignator
+  }
+
+  private DesignatorKind kind;
+
+  public static class FieldDesignatorInfo {
+    IdentifierInfo ii;
+    SourceLocation dotLoc;
+    SourceLocation nameLoc;
+
+    public FieldDesignatorInfo(
+        IdentifierInfo ii,
+        SourceLocation dotLoc,
+        SourceLocation nameLoc) {
+      this.ii = ii;
+      this.dotLoc = dotLoc;
+      this.nameLoc = nameLoc;
     }
+  }
 
-    private DesignatorKind kind;
+  public static class ArrayDesignatorInfo {
+    ActionResult<Tree.Expr> index;
+    SourceLocation lBracketLoc;
+    SourceLocation rBracketLoc;
 
-    public static class FieldDesignatorInfo
-    {
-        IdentifierInfo ii;
-        SourceLocation dotLoc;
-        SourceLocation nameLoc;
-
-        public FieldDesignatorInfo(
-                IdentifierInfo ii,
-                SourceLocation dotLoc,
-                SourceLocation nameLoc)
-        {
-            this.ii = ii;
-            this.dotLoc = dotLoc;
-            this.nameLoc = nameLoc;
-        }
+    public ArrayDesignatorInfo(
+        ActionResult<Tree.Expr> index,
+        SourceLocation lBracketLoc,
+        SourceLocation rBracketLoc) {
+      this.index = index;
+      this.lBracketLoc = lBracketLoc;
+      this.rBracketLoc = rBracketLoc;
     }
+  }
 
-    public static class ArrayDesignatorInfo
-    {
-        ActionResult<Tree.Expr> index;
-        SourceLocation lBracketLoc;
-        SourceLocation rBracketLoc;
+  public static class ArrayRangeDesignatorInfo {
+    ActionResult<Tree.Expr> startIdx;
+    ActionResult<Tree.Expr> endIdx;
+    SourceLocation lBracketLoc;
+    SourceLocation ellipsisLoc;
+    SourceLocation rBracketLoc;
 
-        public ArrayDesignatorInfo(
-                ActionResult<Tree.Expr> index,
-                SourceLocation lBracketLoc,
-                SourceLocation rBracketLoc)
-        {
-            this.index = index;
-            this.lBracketLoc = lBracketLoc;
-            this.rBracketLoc = rBracketLoc;
-        }
+    public ArrayRangeDesignatorInfo(
+        ActionResult<Tree.Expr> startIdx,
+        ActionResult<Tree.Expr> endIdx,
+        SourceLocation lBracketLoc,
+        SourceLocation ellipsisLoc,
+        SourceLocation rBracketLoc) {
+      this.startIdx = startIdx;
+      this.endIdx = endIdx;
+      this.lBracketLoc = lBracketLoc;
+      this.ellipsisLoc = ellipsisLoc;
+      this.rBracketLoc = rBracketLoc;
     }
+  }
 
-    public static class ArrayRangeDesignatorInfo
-    {
-        ActionResult<Tree.Expr> startIdx;
-        ActionResult<Tree.Expr> endIdx;
-        SourceLocation lBracketLoc;
-        SourceLocation ellipsisLoc;
-        SourceLocation rBracketLoc;
+  /**
+   * A generic information about above three kinds.
+   */
+  private Object info;
 
-        public ArrayRangeDesignatorInfo(
-                ActionResult<Tree.Expr> startIdx,
-                ActionResult<Tree.Expr> endIdx,
-                SourceLocation lBracketLoc,
-                SourceLocation ellipsisLoc,
-                SourceLocation rBracketLoc)
-        {
-            this.startIdx = startIdx;
-            this.endIdx = endIdx;
-            this.lBracketLoc = lBracketLoc;
-            this.ellipsisLoc = ellipsisLoc;
-            this.rBracketLoc = rBracketLoc;
-        }
+  public DesignatorKind getKind() {
+    return kind;
+  }
+
+  public boolean isFieldDesignator() {
+    return kind == FieldDesignator;
+  }
+
+  public boolean isArrayDesignator() {
+    return kind == ArrayDesignator;
+  }
+
+  public boolean isArrayRangeDesignator() {
+    return kind == ArrayRangeDesignator;
+  }
+
+  public FieldDesignatorInfo getFieldInfo() {
+    Util.assertion(isFieldDesignator());
+    return (FieldDesignatorInfo) info;
+  }
+
+  public ArrayDesignatorInfo getArrayInfo() {
+    Util.assertion(isArrayDesignator());
+    return (ArrayDesignatorInfo) info;
+  }
+
+  public ArrayRangeDesignatorInfo getArrayRangeInfo() {
+    Util.assertion(isArrayRangeDesignator());
+    return (ArrayRangeDesignatorInfo) info;
+  }
+
+  public static Designator getField(
+      IdentifierInfo ii,
+      SourceLocation dotLoc,
+      SourceLocation nameLoc) {
+    Designator d = new Designator();
+    d.info = new FieldDesignatorInfo(ii, dotLoc, nameLoc);
+    d.kind = DesignatorKind.FieldDesignator;
+    return d;
+  }
+
+  public static Designator getArray(
+      ActionResult<Tree.Expr> index,
+      SourceLocation lBracketLoc,
+      SourceLocation rBracketLoc) {
+    Designator d = new Designator();
+    d.info = new ArrayDesignatorInfo(index, lBracketLoc, rBracketLoc);
+    d.kind = DesignatorKind.ArrayDesignator;
+    return d;
+  }
+
+  public static Designator getArrayRange(
+      ActionResult<Tree.Expr> startIdx,
+      ActionResult<Tree.Expr> endIdx,
+      SourceLocation lBracketLoc,
+      SourceLocation ellipsisLoc,
+      SourceLocation rBracketLoc) {
+    Designator d = new Designator();
+    d.info = new ArrayRangeDesignatorInfo(startIdx,
+        endIdx, lBracketLoc, ellipsisLoc, rBracketLoc);
+    d.kind = DesignatorKind.ArrayRangeDesignator;
+    return d;
+  }
+
+  public void clearExprs() {
+    switch (kind) {
+      case FieldDesignator:
+        return;
+      case ArrayDesignator:
+        ((ArrayDesignatorInfo) info).index = null;
+        return;
+      case ArrayRangeDesignator:
+        ((ArrayRangeDesignatorInfo) info).startIdx = null;
+        ((ArrayRangeDesignatorInfo) info).endIdx = null;
+        return;
     }
+  }
 
-    /**
-     * A generic information about above three kinds.
-     */
-    private Object info;
+  public IdentifierInfo getField() {
+    Util.assertion(isFieldDesignator(), "Invalid accessor");
+    return getFieldInfo().ii;
+  }
 
-    public DesignatorKind getKind()
-    {
-        return kind;
-    }
+  public SourceLocation getDotLoc() {
+    Util.assertion(isFieldDesignator());
+    return getFieldInfo().dotLoc;
+  }
 
-    public boolean isFieldDesignator()
-    {
-        return kind == FieldDesignator;
-    }
+  public SourceLocation getFieldLoc() {
+    Util.assertion(isFieldDesignator());
+    return getFieldInfo().nameLoc;
+  }
 
-    public boolean isArrayDesignator()
-    {
-        return kind == ArrayDesignator;
-    }
+  public ActionResult<Tree.Expr> getArrayIndex() {
+    Util.assertion(isArrayDesignator());
+    return getArrayInfo().index;
+  }
 
-    public boolean isArrayRangeDesignator()
-    {
-        return kind == ArrayRangeDesignator;
-    }
+  public ActionResult<Tree.Expr> getArrayRangeStart() {
+    Util.assertion(isArrayRangeDesignator());
+    return getArrayRangeInfo().startIdx;
+  }
 
-    public FieldDesignatorInfo getFieldInfo()
-    {
-        Util.assertion( isFieldDesignator());
-        return (FieldDesignatorInfo)info;
-    }
+  public ActionResult<Tree.Expr> getArrayRangeEnd() {
+    Util.assertion(isArrayRangeDesignator());
+    return getArrayRangeInfo().endIdx;
+  }
 
-    public ArrayDesignatorInfo getArrayInfo()
-    {
-        Util.assertion( isArrayDesignator());
-        return (ArrayDesignatorInfo)info;
-    }
+  public SourceLocation getLBracketLoc() {
+    Util.assertion(isArrayDesignator() || isArrayRangeDesignator());
+    if (isArrayDesignator())
+      return getArrayInfo().lBracketLoc;
+    else
+      return getArrayRangeInfo().lBracketLoc;
+  }
 
-    public ArrayRangeDesignatorInfo getArrayRangeInfo()
-    {
-        Util.assertion( isArrayRangeDesignator());
-        return (ArrayRangeDesignatorInfo)info;
-    }
+  public SourceLocation getRBracketLoc() {
+    Util.assertion(isArrayDesignator() || isArrayRangeDesignator());
+    if (isArrayDesignator())
+      return getArrayInfo().rBracketLoc;
+    else
+      return getArrayRangeInfo().rBracketLoc;
+  }
 
-    public static Designator getField(
-            IdentifierInfo ii,
-            SourceLocation dotLoc,
-            SourceLocation nameLoc)
-    {
-        Designator d = new Designator();
-        d.info = new FieldDesignatorInfo(ii, dotLoc, nameLoc);
-        d.kind = DesignatorKind.FieldDesignator;
-        return d;
-    }
-
-    public static Designator getArray(
-            ActionResult<Tree.Expr> index,
-            SourceLocation lBracketLoc,
-            SourceLocation rBracketLoc)
-    {
-        Designator d = new Designator();
-        d.info = new ArrayDesignatorInfo(index, lBracketLoc, rBracketLoc);
-        d.kind = DesignatorKind.ArrayDesignator;
-        return d;
-    }
-
-    public static Designator getArrayRange(
-            ActionResult<Tree.Expr> startIdx,
-            ActionResult<Tree.Expr> endIdx,
-            SourceLocation lBracketLoc,
-            SourceLocation ellipsisLoc,
-            SourceLocation rBracketLoc)
-    {
-        Designator d = new Designator();
-        d.info = new ArrayRangeDesignatorInfo(startIdx,
-                endIdx, lBracketLoc, ellipsisLoc, rBracketLoc);
-        d.kind = DesignatorKind.ArrayRangeDesignator;
-        return d;
-    }
-
-    public void clearExprs()
-    {
-        switch (kind)
-        {
-            case FieldDesignator: return;
-            case ArrayDesignator:
-                ((ArrayDesignatorInfo)info).index = null;
-                return;
-            case ArrayRangeDesignator:
-                ((ArrayRangeDesignatorInfo)info).startIdx = null;
-                ((ArrayRangeDesignatorInfo)info).endIdx = null;
-                return;
-        }
-    }
-
-    public IdentifierInfo getField()
-    {
-        Util.assertion(isFieldDesignator(), "Invalid accessor");
-        return getFieldInfo().ii;
-    }
-
-    public SourceLocation getDotLoc()
-    {
-        Util.assertion( isFieldDesignator());
-        return getFieldInfo().dotLoc;
-    }
-
-    public SourceLocation getFieldLoc()
-    {
-        Util.assertion( isFieldDesignator());
-        return getFieldInfo().nameLoc;
-    }
-
-    public ActionResult<Tree.Expr> getArrayIndex()
-    {
-        Util.assertion( isArrayDesignator());
-        return getArrayInfo().index;
-    }
-
-    public ActionResult<Tree.Expr> getArrayRangeStart()
-    {
-        Util.assertion( isArrayRangeDesignator());
-        return getArrayRangeInfo().startIdx;
-    }
-
-    public ActionResult<Tree.Expr> getArrayRangeEnd()
-    {
-        Util.assertion( isArrayRangeDesignator());
-        return getArrayRangeInfo().endIdx;
-    }
-
-    public SourceLocation getLBracketLoc()
-    {
-        Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
-        if (isArrayDesignator())
-            return getArrayInfo().lBracketLoc;
-        else
-            return getArrayRangeInfo().lBracketLoc;
-    }
-
-    public SourceLocation getRBracketLoc()
-    {
-        Util.assertion( isArrayDesignator() || isArrayRangeDesignator());
-        if (isArrayDesignator())
-            return getArrayInfo().rBracketLoc;
-        else
-            return getArrayRangeInfo().rBracketLoc;
-    }
-
-    public SourceLocation getEllipsisLoc()
-    {
-        Util.assertion( isArrayRangeDesignator());
-        return getArrayRangeInfo().ellipsisLoc;
-    }
+  public SourceLocation getEllipsisLoc() {
+    Util.assertion(isArrayRangeDesignator());
+    return getArrayRangeInfo().ellipsisLoc;
+  }
 }

@@ -23,7 +23,6 @@ import backend.value.Value;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public interface Pattern
-{
-    boolean match(Value valueToMatch);
+public interface Pattern {
+  boolean match(Value valueToMatch);
 }

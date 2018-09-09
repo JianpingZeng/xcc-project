@@ -20,21 +20,17 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class StringOpt extends Opt<String>
-{
-    public StringOpt(ParserString parser, Modifier... mods)
-    {
-        super(parser, mods);
-    }
+public class StringOpt extends Opt<String> {
+  public StringOpt(ParserString parser, Modifier... mods) {
+    super(parser, mods);
+  }
 
-    public StringOpt(Modifier... mods)
-    {
-        this(new ParserString(), mods);
-    }
+  public StringOpt(Modifier... mods) {
+    this(new ParserString(), mods);
+  }
 
-    public ParserString getParser()
-    {
-        return (ParserString) parser;
-    }
+  public ParserString getParser() {
+    return (ParserString) parser;
+  }
 }
 

@@ -20,23 +20,21 @@ package jlang.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum Visibility
-{
-	/// Objects with "hidden" visibility are not seen by the dynamic
-	/// linker.
-	HiddenVisibility,
+public enum Visibility {
+  /// Objects with "hidden" visibility are not seen by the dynamic
+  /// linker.
+  HiddenVisibility,
 
-	/// Objects with "protected" visibility are seen by the dynamic
-	/// linker but always dynamically resolve to an object within this
-	/// shared object.
-	ProtectedVisibility,
+  /// Objects with "protected" visibility are seen by the dynamic
+  /// linker but always dynamically resolve to an object within this
+  /// shared object.
+  ProtectedVisibility,
 
-	/// Objects with "default" visibility are seen by the dynamic linker
-	/// and act like normal objects.
-	DefaultVisibility;
+  /// Objects with "default" visibility are seen by the dynamic linker
+  /// and act like normal objects.
+  DefaultVisibility;
 
-	public static Visibility minVisibility(Visibility L, Visibility R)
-	{
-		return L.ordinal() < R.ordinal() ? L : R;
-	}
+  public static Visibility minVisibility(Visibility L, Visibility R) {
+    return L.ordinal() < R.ordinal() ? L : R;
+  }
 }

@@ -20,6 +20,7 @@
  * information of command line option, like option asmName, what kind of option,
  * Positional or Prefix or Normal, the value of this option, e.g. -O -o -g in
  * gcc, parsing the value of each option in the given command line etc.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */

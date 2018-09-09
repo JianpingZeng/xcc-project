@@ -22,7 +22,6 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class DAGDefaultOperand
-{
-    public ArrayList<TreePatternNode> defaultOps = new ArrayList<>();
+public final class DAGDefaultOperand {
+  public ArrayList<TreePatternNode> defaultOps = new ArrayList<>();
 }

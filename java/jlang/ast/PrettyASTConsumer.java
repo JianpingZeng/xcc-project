@@ -24,17 +24,20 @@ import java.util.ArrayList;
 
 /**
  * A empty action consumer for AST.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PrettyASTConsumer implements ASTConsumer
-{
-    @Override
-    public void initialize(ASTContext ctx) {}
+public class PrettyASTConsumer implements ASTConsumer {
+  @Override
+  public void initialize(ASTContext ctx) {
+  }
 
-    @Override
-    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
+  @Override
+  public void handleTopLevelDecls(ArrayList<Decl> decls) {
+  }
 
-    @Override
-    public void handleTranslationUnit(ASTContext context) {}
+  @Override
+  public void handleTranslationUnit(ASTContext context) {
+  }
 }

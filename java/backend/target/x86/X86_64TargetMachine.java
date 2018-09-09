@@ -22,10 +22,8 @@ import backend.target.Target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86_64TargetMachine extends X86TargetMachine
-{
-    public X86_64TargetMachine(Target t, String triple, String fs)
-    {
-        super(t, triple, fs, true);
-    }
+public class X86_64TargetMachine extends X86TargetMachine {
+  public X86_64TargetMachine(Target t, String triple, String fs) {
+    super(t, triple, fs, true);
+  }
 }

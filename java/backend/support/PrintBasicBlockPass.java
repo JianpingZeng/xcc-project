@@ -29,52 +29,44 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PrintBasicBlockPass implements BasicBlockPass
-{
-    private AnalysisResolver resolver;
-    private PrintStream os;
-    private String banner;
+public class PrintBasicBlockPass implements BasicBlockPass {
+  private AnalysisResolver resolver;
+  private PrintStream os;
+  private String banner;
 
-    public PrintBasicBlockPass(PrintStream os, String banner)
-    {
-        this.os = os;
-        this.banner = banner;
-    }
+  public PrintBasicBlockPass(PrintStream os, String banner) {
+    this.os = os;
+    this.banner = banner;
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-    @Override
-    public boolean runOnBasicBlock(BasicBlock block)
-    {
-        os.print(banner);
-        block.print(os);
-        return false;
-    }
+  @Override
+  public boolean runOnBasicBlock(BasicBlock block) {
+    os.print(banner);
+    block.print(os);
+    return false;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Print Basic Block Pass";
-    }
+  @Override
+  public String getPassName() {
+    return "Print Basic Block Pass";
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    public static Pass createPrintBasicBlockPass(PrintStream os, String banner)
-    {
-        return new PrintBasicBlockPass(os, banner);
-    }
+  public static Pass createPrintBasicBlockPass(PrintStream os, String banner) {
+    return new PrintBasicBlockPass(os, banner);
+  }
 }

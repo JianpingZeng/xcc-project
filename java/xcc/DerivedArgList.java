@@ -19,25 +19,22 @@ package xcc;
 
 import java.util.ArrayList;
 
-public class DerivedArgList extends ArgList
-{
-    private InputArgList baseArgs;
-    private ArrayList<Arg> actualArgs;
-    private boolean onlyProxy;
+public class DerivedArgList extends ArgList {
+  private InputArgList baseArgs;
+  private ArrayList<Arg> actualArgs;
+  private boolean onlyProxy;
 
-    public DerivedArgList(InputArgList args, boolean onlyProxy)
-    {
-        super(onlyProxy ? args.getArgs():null);
-        actualArgs = new ArrayList<>();
-        if (!onlyProxy)
-            setArg(actualArgs);
-        baseArgs = args;
-        this.onlyProxy = onlyProxy;
-    }
+  public DerivedArgList(InputArgList args, boolean onlyProxy) {
+    super(onlyProxy ? args.getArgs() : null);
+    actualArgs = new ArrayList<>();
+    if (!onlyProxy)
+      setArg(actualArgs);
+    baseArgs = args;
+    this.onlyProxy = onlyProxy;
+  }
 
-    @Override
-    public String getArgString(int index)
-    {
-        return null;
-    }
+  @Override
+  public String getArgString(int index) {
+    return null;
+  }
 }

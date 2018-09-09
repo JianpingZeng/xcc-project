@@ -20,59 +20,59 @@ package jlang.driver;
 /**
  * A enumerate to describe what action would to be performed of each
  * Action instance.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-enum ActionClass
-{
-    /***
-     * Read a source code (e.g. C source, or asm code).
-     */
-    InputClass("input"),
+enum ActionClass {
+  /***
+   * Read a source code (e.g. C source, or asm code).
+   */
+  InputClass("input"),
 
-    /**
-     * Make the decision about binding architecture.
-     */
-    BindArchClass("bind-arch"),
+  /**
+   * Make the decision about binding architecture.
+   */
+  BindArchClass("bind-arch"),
 
-    /**
-     * Performs processor on C source code.
-     */
-    PreprocessJobClass("preprocessor"),
-    /**
-     *
-     */
-    PrecompileJobClass("precompiler"),
+  /**
+   * Performs processor on C source code.
+   */
+  PreprocessJobClass("preprocessor"),
+  /**
+   *
+   */
+  PrecompileJobClass("precompiler"),
 
-    /**
-     * Perform static analyze on AST.
-     */
-    AnalyzeJobClass("analyzer"),
+  /**
+   * Perform static analyze on AST.
+   */
+  AnalyzeJobClass("analyzer"),
 
-    /**
-     * Performs the traditional compilation action, it can be decomposed
-     * into 4 phase, preprocessing, lexing, parsing, emit asssembly code.
-     */
-    CompileJobClass("compiler"),
+  /**
+   * Performs the traditional compilation action, it can be decomposed
+   * into 4 phase, preprocessing, lexing, parsing, emit asssembly code.
+   */
+  CompileJobClass("compiler"),
 
-    /**
-     * Invoking the native assembly to translates the output result
-     * of CompileJob into native object code.
-     */
-    AssembleJobClass("assembler"),
+  /**
+   * Invoking the native assembly to translates the output result
+   * of CompileJob into native object code.
+   */
+  AssembleJobClass("assembler"),
 
-    /**
-     * Invoking the native linker to generate finally executable file.
-     */
-    LinkJobClass("linker"),
-    LipoJobClass("lipo");
+  /**
+   * Invoking the native linker to generate finally executable file.
+   */
+  LinkJobClass("linker"),
+  LipoJobClass("lipo");
 
-    String className;
+  String className;
 
-    ActionClass(String name)
-    {
-        className = name;
-    }
-    public final static ActionClass JobClassFirst = PreprocessJobClass;
-    public final static ActionClass JobClassLast = LipoJobClass;
+  ActionClass(String name) {
+    className = name;
+  }
+
+  public final static ActionClass JobClassFirst = PreprocessJobClass;
+  public final static ActionClass JobClassLast = LipoJobClass;
 }

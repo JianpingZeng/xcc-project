@@ -23,29 +23,26 @@ import backend.codegen.MachineOperand;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class UsePoint
-{
-    int id;
-    MachineOperand mo;
-    public UsePoint(int id, MachineOperand mo)
-    {
-        this.id = id;
-        this.mo = mo;
-    }
+public class UsePoint {
+  int id;
+  MachineOperand mo;
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null) return false;
-        if (this == obj) return true;
-        if (getClass() != obj.getClass()) return false;
-        UsePoint up = (UsePoint)obj;
-        return id == up.id && mo.equals(up.mo);
-    }
+  public UsePoint(int id, MachineOperand mo) {
+    this.id = id;
+    this.mo = mo;
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return id << 13 + mo.hashCode();
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (this == obj) return true;
+    if (getClass() != obj.getClass()) return false;
+    UsePoint up = (UsePoint) obj;
+    return id == up.id && mo.equals(up.mo);
+  }
+
+  @Override
+  public int hashCode() {
+    return id << 13 + mo.hashCode();
+  }
 }

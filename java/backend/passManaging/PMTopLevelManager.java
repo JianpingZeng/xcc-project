@@ -30,49 +30,47 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface PMTopLevelManager
-{
-    enum TopLevelPassManagerType
-    {
-        TLM_Function,
-        /**
-         * For pass
-         */
-        TLM_Pass,
-    }
-
+public interface PMTopLevelManager {
+  enum TopLevelPassManagerType {
+    TLM_Function,
     /**
-     * Schedule pass p for execution. Make sure that passes required by
-     * p are run before p is run. Update analysis info maintained by
-     * the manager. Remove dead passes. This is a recursive function.
-     *
-     * @param p
+     * For pass
      */
-    void schedulePass(Pass p);
+    TLM_Pass,
+  }
 
-    PassManagerType getTopLevelPassManagerType();
+  /**
+   * Schedule pass p for execution. Make sure that passes required by
+   * p are run before p is run. Update analysis info maintained by
+   * the manager. Remove dead passes. This is a recursive function.
+   *
+   * @param p
+   */
+  void schedulePass(Pass p);
 
-    void setLastUser(ArrayList<Pass> analysisPasses, Pass p);
+  PassManagerType getTopLevelPassManagerType();
 
-    void collectLastUses(ArrayList<Pass> lastUsers, Pass p);
+  void setLastUser(ArrayList<Pass> analysisPasses, Pass p);
 
-    Pass findAnalysisPass(PassInfo pi);
+  void collectLastUses(ArrayList<Pass> lastUsers, Pass p);
 
-    AnalysisUsage findAnalysisUsage(Pass p);
+  Pass findAnalysisPass(PassInfo pi);
 
-    void addImmutablePass(ImmutablePass p);
+  AnalysisUsage findAnalysisUsage(Pass p);
 
-    ArrayList<ImmutablePass> getImmutablePasses();
+  void addImmutablePass(ImmutablePass p);
 
-    void addPassManager(PMDataManager pm);
+  ArrayList<ImmutablePass> getImmutablePasses();
 
-    void dumpPasses();
+  void addPassManager(PMDataManager pm);
 
-    void dumpArguments();
+  void dumpPasses();
 
-    void initializeAllAnalysisInfo();
+  void dumpArguments();
 
-    PMStack getActiveStack();
+  void initializeAllAnalysisInfo();
 
-    int getNumContainedManagers();
+  PMStack getActiveStack();
+
+  int getNumContainedManagers();
 }

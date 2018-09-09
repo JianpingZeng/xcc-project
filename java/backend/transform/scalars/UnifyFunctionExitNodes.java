@@ -33,108 +33,98 @@ import java.util.LinkedList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class UnifyFunctionExitNodes implements FunctionPass
-{
-    private BasicBlock returnBlock;
+public final class UnifyFunctionExitNodes implements FunctionPass {
+  private BasicBlock returnBlock;
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
+
+  public static Pass createUnifyFunctionExitNodes() {
+    return new UnifyFunctionExitNodes();
+  }
+
+  @Override
+  public String getPassName() {
+    return "Unify the function exit nodes";
+  }
+
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addPreserved(BreakCriticalEdge.class);
+    au.addPreserved(Mem2Reg.class);
+    au.addPreserved(LowerSwitch.class);
+  }
+
+  /**
+   * Unify all exit nodes of the CFG by creating a new
+   * BasicBlock, and converting all returns to unconditional branches to this
+   * new basic block.  The singular exit node is returned.
+   * <p>
+   * If there are no return stmts in the FunctionProto, a null pointer is returned.
+   *
+   * @param f
+   * @return
+   */
+  @Override
+  public boolean runOnFunction(Function f) {
+    LinkedList<BasicBlock> returnBlocks = new LinkedList<>();
+    for (BasicBlock bb : f)
+      if (bb.getTerminator() instanceof ReturnInst)
+        returnBlocks.addLast(bb);
+
+    // Handles the return basic block.
+    if (returnBlocks.isEmpty()) {
+      returnBlock = null;
+      return false;
+    } else if (returnBlocks.size() == 1) {
+      returnBlock = returnBlocks.getFirst();
+      return false;
+    }
+    // Otherwise, there are multiple basic block where return inst lives in.
+    // We need to insert PHI node in the new created unified return block
+    // for merging multiple incomging value from each return block.
+    BasicBlock unifiedBB = BasicBlock.createBasicBlock("UnifiedReturnBlock", f);
+    PhiNode pn = null;
+
+    // If the function has returned of void type.
+    if (f.getReturnType().equals(LLVMContext.VoidTy))
+      new ReturnInst(null, "UnifiedRetVal", unifiedBB);
+    else {
+      pn = new PhiNode(f.getReturnType(), returnBlocks.size(), "UnifiedRetVal");
+      unifiedBB.appendInst(pn);
+      new ReturnInst(pn, "UnifiedRetVal", unifiedBB);
     }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    public static Pass createUnifyFunctionExitNodes()
-    {
-        return new UnifyFunctionExitNodes();
-    }
+    // Fills value in the new created PHI node.
+    for (BasicBlock bb : returnBlocks) {
+      if (pn != null)
+        pn.addIncoming(bb.getTerminator().operand(0), bb);
 
-    @Override
-    public String getPassName()
-    {
-        return "Unify the function exit nodes";
+      // Replace the last return instruction in the return block with
+      // a unconditional branch to the newly created unified return block.
+      bb.getInstList().removeLast();
+      new Instruction.BranchInst(unifiedBB, bb);
     }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.addPreserved(BreakCriticalEdge.class);
-        au.addPreserved(Mem2Reg.class);
-        au.addPreserved(LowerSwitch.class);
-    }
+    returnBlock = unifiedBB;
+    return true;
+  }
 
-    /**
-     * Unify all exit nodes of the CFG by creating a new
-     * BasicBlock, and converting all returns to unconditional branches to this
-     * new basic block.  The singular exit node is returned.
-     *
-     * If there are no return stmts in the FunctionProto, a null pointer is returned.
-     * @param f
-     * @return
-     */
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        LinkedList<BasicBlock> returnBlocks = new LinkedList<>();
-        for (BasicBlock bb : f)
-            if (bb.getTerminator() instanceof ReturnInst)
-                returnBlocks.addLast(bb);
-
-        // Handles the return basic block.
-        if (returnBlocks.isEmpty())
-        {
-            returnBlock = null;
-            return false;
-        }
-        else if (returnBlocks.size() == 1)
-        {
-            returnBlock = returnBlocks.getFirst();
-            return false;
-        }
-        // Otherwise, there are multiple basic block where return inst lives in.
-        // We need to insert PHI node in the new created unified return block
-        // for merging multiple incomging value from each return block.
-        BasicBlock unifiedBB = BasicBlock.createBasicBlock( "UnifiedReturnBlock", f);
-        PhiNode pn = null;
-
-        // If the function has returned of void type.
-        if (f.getReturnType().equals(LLVMContext.VoidTy))
-            new ReturnInst(null, "UnifiedRetVal", unifiedBB);
-        else
-        {
-            pn = new PhiNode(f.getReturnType(), returnBlocks.size(), "UnifiedRetVal");
-            unifiedBB.appendInst(pn);
-            new ReturnInst(pn, "UnifiedRetVal", unifiedBB);
-        }
-
-        // Fills value in the new created PHI node.
-        for (BasicBlock bb : returnBlocks)
-        {
-            if (pn != null)
-                pn.addIncoming(bb.getTerminator().operand(0), bb);
-
-            // Replace the last return instruction in the return block with
-            // a unconditional branch to the newly created unified return block.
-            bb.getInstList().removeLast();
-            new Instruction.BranchInst(unifiedBB,  bb);
-        }
-
-        returnBlock = unifiedBB;
-        return true;
-    }
-
-    /**
-     * Returns newly created return basic block of CFG if nonexistence.
-     * @return
-     */
-    public BasicBlock getReturnBlock()
-    {
-        return returnBlock;
-    }
+  /**
+   * Returns newly created return basic block of CFG if nonexistence.
+   *
+   * @return
+   */
+  public BasicBlock getReturnBlock() {
+    return returnBlock;
+  }
 }

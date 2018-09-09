@@ -20,51 +20,43 @@ package backend.target;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class TargetOperandInfo
-{
-    public interface OperandFlags
-    {
-        int LookupPtrRegClass = 0;
-        int Predicate = 1;
-        int OptionalDef = 2;
-    }
+public class TargetOperandInfo {
+  public interface OperandFlags {
+    int LookupPtrRegClass = 0;
+    int Predicate = 1;
+    int OptionalDef = 2;
+  }
 
-    public interface OperandConstraint
-    {
-        int TIED_TO = 0;
-    }
+  public interface OperandConstraint {
+    int TIED_TO = 0;
+  }
 
-    public int regClass;
-    public int flags;
-    public int constraints;
+  public int regClass;
+  public int flags;
+  public int constraints;
 
-    public TargetOperandInfo(int rc, int flags, int constraints)
-    {
-        regClass = rc;
-        this.flags = flags;
-        this.constraints = constraints;
-    }
+  public TargetOperandInfo(int rc, int flags, int constraints) {
+    regClass = rc;
+    this.flags = flags;
+    this.constraints = constraints;
+  }
 
-    public TargetRegisterClass getRegisterClass(TargetRegisterInfo tri)
-    {
-        if (isLookupPtrRegClass())
-            return tri.getPointerRegClass(regClass);
+  public TargetRegisterClass getRegisterClass(TargetRegisterInfo tri) {
+    if (isLookupPtrRegClass())
+      return tri.getPointerRegClass(regClass);
 
-        return tri.getRegClass(regClass);
-    }
+    return tri.getRegClass(regClass);
+  }
 
-    public boolean isLookupPtrRegClass()
-    {
-        return (flags & (1 << OperandFlags.LookupPtrRegClass)) != 0;
-    }
+  public boolean isLookupPtrRegClass() {
+    return (flags & (1 << OperandFlags.LookupPtrRegClass)) != 0;
+  }
 
-    public boolean isPredicate()
-    {
-        return (flags & OperandFlags.Predicate) != 0;
-    }
+  public boolean isPredicate() {
+    return (flags & OperandFlags.Predicate) != 0;
+  }
 
-    public boolean isOptionalDef()
-    {
-        return (flags & OperandFlags.OptionalDef) != 0;
-    }
+  public boolean isOptionalDef() {
+    return (flags & OperandFlags.OptionalDef) != 0;
+  }
 }

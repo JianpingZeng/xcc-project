@@ -25,34 +25,32 @@ package backend.target;
  * have AL alias AX alias EAX. Registers that this does not apply to simply
  * should set this to null.
  */
-public final class TargetRegisterDesc
-{
-    /**
-     * Assembly language getIdentifier for the register.
-     */
-    public String asmName;
+public final class TargetRegisterDesc {
+  /**
+   * Assembly language getIdentifier for the register.
+   */
+  public String asmName;
 
-    public String name;
+  public String name;
 
-    public int[] aliasSet;
+  public int[] aliasSet;
 
-    /**
-     * Register Alias Set, described above
-     */
-    public int[] subRegs;
+  /**
+   * Register Alias Set, described above
+   */
+  public int[] subRegs;
 
-    public int[] superRegs;
+  public int[] superRegs;
 
-    public TargetRegisterDesc(String asmName,
-            String name,
-            int[] as,
-            int[] SubRegs,
-            int[] SuperRegs)
-    {
-        this.asmName = asmName;
-        this.name = name;
-        aliasSet = as;
-        subRegs = SubRegs;
-        superRegs = SuperRegs;
-    }
+  public TargetRegisterDesc(String asmName,
+                            String name,
+                            int[] as,
+                            int[] SubRegs,
+                            int[] SuperRegs) {
+    this.asmName = asmName;
+    this.name = name;
+    aliasSet = as;
+    subRegs = SubRegs;
+    superRegs = SuperRegs;
+  }
 }

@@ -24,31 +24,29 @@ import backend.target.TargetAsmInfo;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86ELFTargetAsmInfo extends TargetAsmInfo
-{
-    public X86ELFTargetAsmInfo(Triple theTriple)
-    {
-        asmTransCBE = x86_asm_table;
-        assemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
+public class X86ELFTargetAsmInfo extends TargetAsmInfo {
+  public X86ELFTargetAsmInfo(Triple theTriple) {
+    asmTransCBE = x86_asm_table;
+    assemblerDialect = BackendCmdOptions.AsmWriterFlavor.value;
 
-        privateGlobalPrefix = ".L";
-        weakRefDirective = "\t.weak\t";
-        setDirective = "\t.set\t";
-        pcSymbol = ".";
+    privateGlobalPrefix = ".L";
+    weakRefDirective = "\t.weak\t";
+    setDirective = "\t.set\t";
+    pcSymbol = ".";
 
-        // Set up DWARF directives
-        hasLEB128 = true;  // Target asm supports leb128 directives (little-endian)
+    // Set up DWARF directives
+    hasLEB128 = true;  // Target asm supports leb128 directives (little-endian)
 
-        // Debug Information
-        absoluteDebugSectionOffsets = true;
-        supportsDebugInformation = true;
+    // Debug Information
+    absoluteDebugSectionOffsets = true;
+    supportsDebugInformation = true;
 
-        // Exceptions handling
-        // ExceptionsType = ExceptionHandling::Dwarf;
-        absoluteEHSectionOffsets = false;
+    // Exceptions handling
+    // ExceptionsType = ExceptionHandling::Dwarf;
+    absoluteEHSectionOffsets = false;
 
-        // On Linux we must declare when we can use a non-executable stack.
-        if (theTriple.getOS() == Triple.OSType.Linux)
-            nonexecutableStackDirective = "\t.section\t.note.GNU-stack,\"\",@progbits";
-    }
+    // On Linux we must declare when we can use a non-executable stack.
+    if (theTriple.getOS() == Triple.OSType.Linux)
+      nonexecutableStackDirective = "\t.section\t.note.GNU-stack,\"\",@progbits";
+  }
 }

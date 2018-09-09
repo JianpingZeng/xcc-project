@@ -19,10 +19,10 @@ package backend.codegen.pbqp;
 
 /**
  * The interface to solver of PBQP problem.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface PBQPSolver
-{
-    PBQPSolution solve(PBQPGraph problem);
+public interface PBQPSolver {
+  PBQPSolution solve(PBQPGraph problem);
 }

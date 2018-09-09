@@ -16,93 +16,84 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.support.LLVMContext;
 import tools.TypeMap;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ArrayType extends SequentialType
-{
-    static class ArrayValType
-    {
-        final Type valType;
-        final int numElts;
-        ArrayValType(Type val, int numElts)
-        {
-            valType = val;
-            this.numElts = numElts;
-        }
+public final class ArrayType extends SequentialType {
+  static class ArrayValType {
+    final Type valType;
+    final int numElts;
 
-        @Override
-        public int hashCode()
-        {
-            return numElts << 23 + valType.hashCode() << 11;
-        }
-
-        @Override
-        public boolean equals(Object obj)
-        {
-            if (obj == null) return false;
-            if (this == obj) return true;
-            if (getClass() != obj.getClass())
-                return false;
-
-            ArrayValType avt = (ArrayValType)obj;
-            return avt.valType.equals(valType) && avt.numElts == numElts;
-        }
-    }
-
-    private static TypeMap<ArrayValType, ArrayType> arrayTypes;
-    static
-    {
-        arrayTypes = new TypeMap<>();
-    }
-
-    protected ArrayType(Type elemType, int numElts)
-    {
-        super(ArrayTyID, elemType);
-        this.numElts = numElts;
-        setAbstract(elemType.isAbstract());
-    }
-
-    public static ArrayType get(Type elemType, long numElements)
-    {
-        Util.assertion(elemType != null, "Can't get array of null types!");
-        ArrayValType avt = new ArrayValType(elemType, (int)numElements);
-        ArrayType at = arrayTypes.get(avt);
-        if (at != null)
-            return at;
-
-        at = new ArrayType(elemType, (int)numElements);
-
-        // Value not found.  Derive a new type!
-        arrayTypes.put(avt, at);
-        return at;
-    }
-
-    public long getNumElements()
-    {
-        return numElts;
-    }
-
-    public static boolean isValidElementType(Type eleTy)
-    {
-        return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
+    ArrayValType(Type val, int numElts) {
+      valType = val;
+      this.numElts = numElts;
     }
 
     @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj) return true;
-        if (obj == null) return false;
-
-        if (getClass() != obj.getClass())
-            return false;
-        ArrayType at = (ArrayType)obj;
-        return getNumElements() == at.getNumElements() &&
-                getElementType().equals(at.getElementType());
+    public int hashCode() {
+      return numElts << 23 + valType.hashCode() << 11;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null) return false;
+      if (this == obj) return true;
+      if (getClass() != obj.getClass())
+        return false;
+
+      ArrayValType avt = (ArrayValType) obj;
+      return avt.valType.equals(valType) && avt.numElts == numElts;
+    }
+  }
+
+  private static TypeMap<ArrayValType, ArrayType> arrayTypes;
+
+  static {
+    arrayTypes = new TypeMap<>();
+  }
+
+  protected ArrayType(Type elemType, int numElts) {
+    super(ArrayTyID, elemType);
+    this.numElts = numElts;
+    setAbstract(elemType.isAbstract());
+  }
+
+  public static ArrayType get(Type elemType, long numElements) {
+    Util.assertion(elemType != null, "Can't get array of null types!");
+    ArrayValType avt = new ArrayValType(elemType, (int) numElements);
+    ArrayType at = arrayTypes.get(avt);
+    if (at != null)
+      return at;
+
+    at = new ArrayType(elemType, (int) numElements);
+
+    // Value not found.  Derive a new type!
+    arrayTypes.put(avt, at);
+    return at;
+  }
+
+  public long getNumElements() {
+    return numElts;
+  }
+
+  public static boolean isValidElementType(Type eleTy) {
+    return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null) return false;
+
+    if (getClass() != obj.getClass())
+      return false;
+    ArrayType at = (ArrayType) obj;
+    return getNumElements() == at.getNumElements() &&
+        getElementType().equals(at.getElementType());
+  }
 }

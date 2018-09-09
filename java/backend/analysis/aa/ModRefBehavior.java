@@ -23,46 +23,45 @@ package backend.analysis.aa;
  * interface.  Also, functions may freely modify stack space local to their
  * invocation without having to report it through these interfaces.
  */
-public enum ModRefBehavior
-{
-    /**
-     * This function does not perform any non-local loads
-     * or stores to memory.
-     * </p>
-     * This property corresponds to the GCC 'const' attribute.
-     */
-    DoesNotAccessMemory,
+public enum ModRefBehavior {
+  /**
+   * This function does not perform any non-local loads
+   * or stores to memory.
+   * </p>
+   * This property corresponds to the GCC 'const' attribute.
+   */
+  DoesNotAccessMemory,
 
-    /**
-     * This function accesses function arguments in well
-     * known (possibly volatile) ways, but does not access any other memory.
-     * <p>
-     * Clients may use the Info parameter of getModRefBehavior to get specific
-     * information about how pointer arguments are used.
-     */
-    AccessArguments,
+  /**
+   * This function accesses function arguments in well
+   * known (possibly volatile) ways, but does not access any other memory.
+   * <p>
+   * Clients may use the Info parameter of getModRefBehavior to get specific
+   * information about how pointer arguments are used.
+   */
+  AccessArguments,
 
-    /**
-     * This function has accesses function
-     * arguments and global variables well known (possibly volatile) ways, but
-     * does not access any other memory.
-     * <p>
-     * Clients may use the Info parameter of getModRefBehavior to get specific
-     * information about how pointer arguments are used.
-     */
-    AccessArgumentsAndGlobals,
+  /**
+   * This function has accesses function
+   * arguments and global variables well known (possibly volatile) ways, but
+   * does not access any other memory.
+   * <p>
+   * Clients may use the Info parameter of getModRefBehavior to get specific
+   * information about how pointer arguments are used.
+   */
+  AccessArgumentsAndGlobals,
 
-    /**
-     * This function does not perform any non-local stores or
-     * volatile loads, but may read from any memory location.
-     * </p>
-     * This property corresponds to the GCC 'pure' attribute.
-     */
-    OnlyReadsMemory,
+  /**
+   * This function does not perform any non-local stores or
+   * volatile loads, but may read from any memory location.
+   * </p>
+   * This property corresponds to the GCC 'pure' attribute.
+   */
+  OnlyReadsMemory,
 
-    /**
-     * This indicates that the function could not be
-     * classified into one of the behaviors above.
-     */
-    UnknownModRefBehavior
+  /**
+   * This indicates that the function could not be
+   * classified into one of the behaviors above.
+   */
+  UnknownModRefBehavior
 }

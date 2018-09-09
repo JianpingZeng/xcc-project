@@ -20,33 +20,36 @@ package jlang.sema;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface Redeclarable<T extends Redeclarable<T>>
-{
-    /**
-     * Gets the previous declaration in the redeclaration link.
-     * This function is performed by searching link from latest to older decl.
-     * @return
-     */
-    T getPreviousDeclaration();
+public interface Redeclarable<T extends Redeclarable<T>> {
+  /**
+   * Gets the previous declaration in the redeclaration link.
+   * This function is performed by searching link from latest to older decl.
+   *
+   * @return
+   */
+  T getPreviousDeclaration();
 
-    /**
-     * Gets the first one that is the older declaration in the link.
-     * @return
-     */
-    T getFirstDeclaration();
+  /**
+   * Gets the first one that is the older declaration in the link.
+   *
+   * @return
+   */
+  T getFirstDeclaration();
 
-    /**
-     * Sets the given prevDecl as the value of previous redecl link that will
-     * linked to it.
-     * @param prevDecl
-     */
-    void setPreviousDeclaration(T prevDecl);
+  /**
+   * Sets the given prevDecl as the value of previous redecl link that will
+   * linked to it.
+   *
+   * @param prevDecl
+   */
+  void setPreviousDeclaration(T prevDecl);
 
-    /**
-     * Obtains a iterator over redeclarations.
-     * @return
-     */
-    RedeclIterator getRedeclIterator();
+  /**
+   * Obtains a iterator over redeclarations.
+   *
+   * @return
+   */
+  RedeclIterator getRedeclIterator();
 
-    DeclLink<T> getRedeclLink();
+  DeclLink<T> getRedeclLink();
 }

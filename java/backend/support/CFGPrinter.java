@@ -32,49 +32,40 @@ import static backend.support.GraphWriter.writeGraph;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class CFGPrinter implements FunctionPass
-{
-    private AnalysisResolver resolver;
+public final class CFGPrinter implements FunctionPass {
+  private AnalysisResolver resolver;
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
+
+  @Override
+  public boolean runOnFunction(Function f) {
+    String funcName = f.getName();
+    String filename = "cfg." + funcName + ".dot";
+
+    try (PrintStream out = new PrintStream(new File(filename))) {
+      System.err.printf("Writing '%s'...%n", filename);
+      writeGraph(out, DefaultDotGraphTrait.createCFGTrait(f));
+    } catch (FileNotFoundException e) {
+      System.err.println(" error opening file for writing!");
     }
+    return false;
+  }
 
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        String funcName = f.getName();
-        String filename = "cfg." + funcName + ".dot";
+  @Override
+  public String getPassName() {
+    return "Print out CFG into dot file";
+  }
 
-        try(PrintStream out = new PrintStream(new File(filename)))
-        {
-            System.err.printf("Writing '%s'...%n", filename);
-            writeGraph(out, DefaultDotGraphTrait.createCFGTrait(f));
-        }
-        catch (FileNotFoundException e)
-        {
-            System.err.println(" error opening file for writing!");
-        }
-        return false;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Print out CFG into dot file";
-    }
-
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 }

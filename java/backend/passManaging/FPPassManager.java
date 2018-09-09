@@ -16,142 +16,127 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.pass.*;
 import backend.value.Function;
 import backend.value.Module;
+import tools.Util;
 
-import static backend.passManaging.PMDataManager.PassDebuggingString.EXECUTION_MSG;
-import static backend.passManaging.PMDataManager.PassDebuggingString.MODIFICATION_MSG;
-import static backend.passManaging.PMDataManager.PassDebuggingString.ON_FUNCTION_MSG;
+import static backend.passManaging.PMDataManager.PassDebuggingString.*;
 
 /**
  * FPPassManager itself is a ModulePass, which manages BBPassManagers and FunctionPasses.
  * It batches all function passes and basic block pass managers together and
  * sequence them to process one function at a time before processing next
  * function.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class FPPassManager extends PMDataManager implements ModulePass
-{
-    private AnalysisResolver resolver;
+public final class FPPassManager extends PMDataManager implements ModulePass {
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
+
+  public FPPassManager(int depth) {
+    super(depth);
+  }
+
+  public boolean runOnFunction(Function f) {
+    if (f.isDeclaration())
+      return false;
+
+    boolean changed = false;
+
+    // Collects inherited analysis from module level pass manager.
+    populateInheritedAnalysis(topLevelManager.getActiveStack());
+
+    for (int index = 0; index < getNumContainedPasses(); ++index) {
+      FunctionPass fp = getContainedPass(index);
+      dumpPassInfo(fp, EXECUTION_MSG, ON_FUNCTION_MSG, f.getName());
+      dumpRequiredSet(fp);
+
+      initializeAnalysisImpl(fp);
+      changed |= fp.runOnFunction(f);
+
+      if (changed) {
+        dumpPassInfo(fp, MODIFICATION_MSG, ON_FUNCTION_MSG, f.getName());
+        ;
+      }
+      dumpPreservedSet(fp);
+
+      verifyPreservedAnalysis(fp);
+      removeNotPreservedAnalysis(fp);
+      recordAvailableAnalysis(fp);
+      removeDeadPasses(fp, f.getName(), ON_FUNCTION_MSG);
+
+      // if dominator information is available then verify it.
+      verifyDomInfo(fp, f);
     }
+    return changed;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+  }
 
-    public FPPassManager(int depth)
-    {
-        super(depth);
-    }
+  /**
+   * Dump passes structure managed by this FPPassManager.
+   *
+   * @param offset
+   */
+  public void dumpPassStructure(int offset) {
 
-    public boolean runOnFunction(Function f)
-    {
-        if (f.isDeclaration())
-            return false;
+  }
 
-        boolean changed = false;
+  @Override
+  public boolean runOnModule(Module m) {
+    boolean changed = doInitialization(m);
+    for (Function f : m.getFunctionList())
+      changed |= runOnFunction(f);
 
-        // Collects inherited analysis from module level pass manager.
-        populateInheritedAnalysis(topLevelManager.getActiveStack());
+    return changed | doFinalization(m);
+  }
 
-        for (int index = 0; index < getNumContainedPasses(); ++index)
-        {
-            FunctionPass fp = getContainedPass(index);
-            dumpPassInfo(fp, EXECUTION_MSG, ON_FUNCTION_MSG, f.getName());
-            dumpRequiredSet(fp);
+  @Override
+  public String getPassName() {
+    return "Function Pass Manager";
+  }
 
-            initializeAnalysisImpl(fp);
-            changed |= fp.runOnFunction(f);
+  public boolean doInitialization(Module m) {
+    boolean changed = false;
+    for (int i = 0; i < getNumContainedPasses(); ++i)
+      changed |= getContainedPass(i).doInitialization(m);
+    return changed;
+  }
 
-            if (changed)
-            {
-                dumpPassInfo(fp, MODIFICATION_MSG, ON_FUNCTION_MSG, f.getName());;
-            }
-            dumpPreservedSet(fp);
+  public boolean doFinalization(Module m) {
+    boolean changed = false;
+    for (int i = 0; i < getNumContainedPasses(); ++i)
+      changed |= getContainedPass(i).doFinalization(m);
+    return changed;
+  }
 
-            verifyPreservedAnalysis(fp);
-            removeNotPreservedAnalysis(fp);
-            recordAvailableAnalysis(fp);
-            removeDeadPasses(fp, f.getName(), ON_FUNCTION_MSG);
+  public FunctionPass getContainedPass(int index) {
+    Util.assertion(index >= 0 && index < getNumContainedPasses());
+    return (FunctionPass) passVector.get(index);
+  }
 
-            // if dominator information is available then verify it.
-            verifyDomInfo(fp, f);
-        }
-        return changed;
-    }
+  @Override
+  public PassManagerType getPassManagerType() {
+    return PassManagerType.PMT_FunctionPassManager;
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-    }
-
-    /**
-     * Dump passes structure managed by this FPPassManager.
-     * @param offset
-     */
-    public void dumpPassStructure(int offset)
-    {
-
-    }
-
-    @Override
-    public boolean runOnModule(Module m)
-    {
-        boolean changed = doInitialization(m);
-        for (Function f : m.getFunctionList())
-            changed |= runOnFunction(f);
-
-        return changed | doFinalization(m);
-    }
-
-    @Override
-    public String getPassName()
-    {
-        return "Function Pass Manager";
-    }
-
-    public boolean doInitialization(Module m)
-    {
-        boolean changed = false;
-        for (int i = 0; i < getNumContainedPasses(); ++i)
-            changed |= getContainedPass(i).doInitialization(m);
-        return changed;
-    }
-
-    public boolean doFinalization(Module m)
-    {
-        boolean changed = false;
-        for (int i = 0; i < getNumContainedPasses(); ++i)
-            changed |= getContainedPass(i).doFinalization(m);
-        return changed;
-    }
-
-    public FunctionPass getContainedPass(int index)
-    {
-        Util.assertion( index >=0 && index < getNumContainedPasses());
-        return (FunctionPass) passVector.get(index);
-    }
-
-    @Override
-    public PassManagerType getPassManagerType()
-    {
-        return PassManagerType.PMT_FunctionPassManager;
-    }
-
-    @Override
-    public Pass getAsPass()
-    {
-        return this;
-    }
+  @Override
+  public Pass getAsPass() {
+    return this;
+  }
 }

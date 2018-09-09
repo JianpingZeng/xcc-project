@@ -6,39 +6,38 @@ package backend.value;
  * <p>Also, the class {@Use} represents a edge linked from value definition to
  * its all usesList list.
  * <p>
- * @see Value
+ *
  * @author Jianping Zeng
+ * @see Value
  */
-public class Use
-{
-	/**
-	 * The value definition of this use link.
-	 */
-	private Value val;
+public class Use {
+  /**
+   * The value definition of this use link.
+   */
+  private Value val;
 
-	private User user;
+  private User user;
 
-	public Use(Value val, User user)
-	{
-		this.val = val;
-		this.user = user;
-		if (val != null)
-			val.addUse(this);
-	}
+  public Use(Value val, User user) {
+    this.val = val;
+    this.user = user;
+    if (val != null)
+      val.addUse(this);
+  }
 
-	public Value getValue(){return val;}
+  public Value getValue() {
+    return val;
+  }
 
-	public void setValue(Value v)
-	{
-		if (val != null)
-			val.killUse(this);
-		val = v;
-		if (v != null)
-			v.addUse(this);
-	}
+  public void setValue(Value v) {
+    if (val != null)
+      val.killUse(this);
+    val = v;
+    if (v != null)
+      v.addUse(this);
+  }
 
-	public User getUser()
-	{
-		return user;
-	}
+  public User getUser() {
+    return user;
+  }
 }

@@ -18,40 +18,34 @@ import backend.value.*;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-public class FNegPattern implements Pattern
-{
-    private Pattern op;
-    private FNegPattern(Pattern op)
-    {
-        this.op = op;
-    }
+public class FNegPattern implements Pattern {
+  private Pattern op;
 
-    @Override
-    public boolean match(Value valueToMatch)
-    {
-        if (valueToMatch instanceof Instruction)
-        {
-            Instruction inst = (Instruction) valueToMatch;
-            if (inst.getOpcode() == Operator.FSub)
-                return matchIfNeg(inst.operand(0), inst.operand(1));
-        }
-        if (valueToMatch instanceof ConstantExpr)
-        {
-            ConstantExpr ce = (ConstantExpr) valueToMatch;
-            if (ce.getOpcode() == Operator.FSub)
-                return matchIfNeg(ce.operand(0), ce.operand(1));
-        }
-        if (valueToMatch instanceof ConstantFP)
-        {
-            ConstantFP fp = (ConstantFP) valueToMatch;
-            return op.match(ConstantExpr.getFNeg(fp));
-        }
-        return false;
-    }
+  private FNegPattern(Pattern op) {
+    this.op = op;
+  }
 
-    private boolean matchIfNeg(Value lhs, Value rhs)
-    {
-        return lhs.equals(ConstantFP.getZeroValueForNegation(lhs.getType())) &&
-                op.match(rhs);
+  @Override
+  public boolean match(Value valueToMatch) {
+    if (valueToMatch instanceof Instruction) {
+      Instruction inst = (Instruction) valueToMatch;
+      if (inst.getOpcode() == Operator.FSub)
+        return matchIfNeg(inst.operand(0), inst.operand(1));
     }
+    if (valueToMatch instanceof ConstantExpr) {
+      ConstantExpr ce = (ConstantExpr) valueToMatch;
+      if (ce.getOpcode() == Operator.FSub)
+        return matchIfNeg(ce.operand(0), ce.operand(1));
+    }
+    if (valueToMatch instanceof ConstantFP) {
+      ConstantFP fp = (ConstantFP) valueToMatch;
+      return op.match(ConstantExpr.getFNeg(fp));
+    }
+    return false;
+  }
+
+  private boolean matchIfNeg(Value lhs, Value rhs) {
+    return lhs.equals(ConstantFP.getZeroValueForNegation(lhs.getType())) &&
+        op.match(rhs);
+  }
 }

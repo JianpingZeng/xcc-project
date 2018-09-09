@@ -22,18 +22,16 @@ import jlang.ast.Tree;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SelfReferenceChecker
-{
-    private Sema sema;
-    private Decl originDecl;
-    public SelfReferenceChecker(Sema sema, Decl originDec)
-    {
-        this.sema = sema;
-        this.originDecl = originDec;
-    }
+public class SelfReferenceChecker {
+  private Sema sema;
+  private Decl originDecl;
 
-    public void visitExpr(Tree.Expr expr)
-    {
+  public SelfReferenceChecker(Sema sema, Decl originDec) {
+    this.sema = sema;
+    this.originDecl = originDec;
+  }
 
-    }
+  public void visitExpr(Tree.Expr expr) {
+
+  }
 }

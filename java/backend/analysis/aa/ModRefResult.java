@@ -20,7 +20,6 @@ package backend.analysis.aa;
 /**
  * Represent the result of a mod/ref query.
  */
-public enum ModRefResult
-{
-    NoModRef, Ref, Mod, ModRef,
+public enum ModRefResult {
+  NoModRef, Ref, Mod, ModRef,
 }

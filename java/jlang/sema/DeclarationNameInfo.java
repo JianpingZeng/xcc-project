@@ -24,14 +24,12 @@ import jlang.support.SourceLocation;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DeclarationNameInfo
-{
-    public IdentifierInfo nameInfo;
-    public SourceLocation nameLoc;
+public class DeclarationNameInfo {
+  public IdentifierInfo nameInfo;
+  public SourceLocation nameLoc;
 
-    public DeclarationNameInfo(IdentifierInfo name, SourceLocation loc)
-    {
-        nameInfo = name;
-        nameLoc = loc;
-    }
+  public DeclarationNameInfo(IdentifierInfo name, SourceLocation loc) {
+    nameInfo = name;
+    nameLoc = loc;
+  }
 }

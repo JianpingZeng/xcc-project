@@ -25,43 +25,36 @@ import backend.target.TargetRegisterClass;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CalleeSavedInfo
-{
+public class CalleeSavedInfo {
 
-    private int reg;
-    private TargetRegisterClass regClass;
-    private int frameIdx;
+  private int reg;
+  private TargetRegisterClass regClass;
+  private int frameIdx;
 
-    public CalleeSavedInfo(int r, TargetRegisterClass rc)
-    {
-        this(r, rc, 0);
-    }
+  public CalleeSavedInfo(int r, TargetRegisterClass rc) {
+    this(r, rc, 0);
+  }
 
-    public CalleeSavedInfo(int r, TargetRegisterClass rc, int fi)
-    {
-        reg = r;
-        regClass = rc;
-        frameIdx = fi;
-    }
+  public CalleeSavedInfo(int r, TargetRegisterClass rc, int fi) {
+    reg = r;
+    regClass = rc;
+    frameIdx = fi;
+  }
 
-    // Accessors.
-    public int getReg()
-    {
-        return reg;
-    }
+  // Accessors.
+  public int getReg() {
+    return reg;
+  }
 
-    public TargetRegisterClass getRegisterClass()
-    {
-        return regClass;
-    }
+  public TargetRegisterClass getRegisterClass() {
+    return regClass;
+  }
 
-    public int getFrameIdx()
-    {
-        return frameIdx;
-    }
+  public int getFrameIdx() {
+    return frameIdx;
+  }
 
-    public void setFrameIdx(int FI)
-    {
-        frameIdx = FI;
-    }
+  public void setFrameIdx(int FI) {
+    frameIdx = FI;
+  }
 }

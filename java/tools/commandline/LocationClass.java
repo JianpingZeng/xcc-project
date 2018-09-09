@@ -21,10 +21,10 @@ package tools.commandline;
  * Allow user to specify which external variable they want to store
  * the results of the command line argument processing into, if they
  * didn't want to store it in the option ifself.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class LocationClass<T>
-{
-    public abstract void setLocation(T location);
+public abstract class LocationClass<T> {
+  public abstract void setLocation(T location);
 }

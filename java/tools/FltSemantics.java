@@ -16,45 +16,45 @@
  */
 
 package tools;
+
 /**
  * Represents floating point arithmetic semantics.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FltSemantics
-{
-    /**
-     * The largest E such that 2^E is representable; this matches the
-     * definition of IEEE 754.
-     */
-    short maxExponent;
+public class FltSemantics {
+  /**
+   * The largest E such that 2^E is representable; this matches the
+   * definition of IEEE 754.
+   */
+  short maxExponent;
 
-    /**
-     * The smallest E such that 2^E is a normalized number; this
-     * matches the definition of IEEE 754.
-     */
-    short minExponent;
+  /**
+   * The smallest E such that 2^E is a normalized number; this
+   * matches the definition of IEEE 754.
+   */
+  short minExponent;
 
-    /**
-     * Number of bits in the significand.  This includes the integer
-     * bit.
-     **/
-    int precision;
+  /**
+   * Number of bits in the significand.  This includes the integer
+   * bit.
+   **/
+  int precision;
 
-    /**
-     * True if arithmetic is supported.
-     */
-    boolean arithmeticOK;
+  /**
+   * True if arithmetic is supported.
+   */
+  boolean arithmeticOK;
 
-    public FltSemantics(
-            short maxExponent,
-            short minExponent,
-            int precision,
-            boolean arithmeticOK)
-    {
-        this.maxExponent = maxExponent;
-        this.minExponent = minExponent;
-        this.precision = precision;
-        this.arithmeticOK = arithmeticOK;
-    }
+  public FltSemantics(
+      short maxExponent,
+      short minExponent,
+      int precision,
+      boolean arithmeticOK) {
+    this.maxExponent = maxExponent;
+    this.minExponent = minExponent;
+    this.precision = precision;
+    this.arithmeticOK = arithmeticOK;
+  }
 }

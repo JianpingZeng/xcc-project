@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class PureAttr extends Attr
-{
-    public PureAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class PureAttr extends Attr {
+  public PureAttr(AttrKind kind) {
+    super(kind);
+  }
 }

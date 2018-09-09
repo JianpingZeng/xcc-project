@@ -23,31 +23,26 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ISelUpdater implements DAGUpdateListener
-{
-    private int iselPos;
-    private ArrayList<SDNode> allNodes;
+public class ISelUpdater implements DAGUpdateListener {
+  private int iselPos;
+  private ArrayList<SDNode> allNodes;
 
-    public ISelUpdater(int pos, ArrayList<SDNode> nodes)
-    {
-        iselPos = pos;
-        allNodes = nodes;
-    }
+  public ISelUpdater(int pos, ArrayList<SDNode> nodes) {
+    iselPos = pos;
+    allNodes = nodes;
+  }
 
-    @Override
-    public void nodeDeleted(SDNode node, SDNode e)
-    {
-        if (allNodes.get(iselPos) == node)
-            ++iselPos;
-    }
+  @Override
+  public void nodeDeleted(SDNode node, SDNode e) {
+    if (allNodes.get(iselPos) == node)
+      ++iselPos;
+  }
 
-    @Override
-    public void nodeUpdated(SDNode node)
-    {
-    }
+  @Override
+  public void nodeUpdated(SDNode node) {
+  }
 
-    public int getISelPos()
-    {
-        return iselPos;
-    }
+  public int getISelPos() {
+    return iselPos;
+  }
 }

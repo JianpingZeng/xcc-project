@@ -18,44 +18,41 @@ package jlang.sema;
 
 /**
  * Flags controlling the computation of linkage and visibility.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LVFlags
-{
-	public boolean considerGlobalVisibility;
-	public boolean considerVisibilityAttributes;
-	public boolean considerTemplateParameterTypes;
+public class LVFlags {
+  public boolean considerGlobalVisibility;
+  public boolean considerVisibilityAttributes;
+  public boolean considerTemplateParameterTypes;
 
-	public LVFlags()
-	{
+  public LVFlags() {
 
-		considerGlobalVisibility = true;
+    considerGlobalVisibility = true;
 
-		considerVisibilityAttributes = true;
+    considerVisibilityAttributes = true;
 
-		considerTemplateParameterTypes = true;
-	}
+    considerTemplateParameterTypes = true;
+  }
 
-	/// \brief Returns a set of flags that is only useful for computing the
-	/// linkage, not the visibility, of a declaration.
-	public static LVFlags createOnlyDeclLinkage()
-	{
-		LVFlags F = new LVFlags();
-		F.considerGlobalVisibility = false;
-		F.considerVisibilityAttributes = false;
-		F.considerTemplateParameterTypes = false;
-		return F;
-	}
+  /// \brief Returns a set of flags that is only useful for computing the
+  /// linkage, not the visibility, of a declaration.
+  public static LVFlags createOnlyDeclLinkage() {
+    LVFlags F = new LVFlags();
+    F.considerGlobalVisibility = false;
+    F.considerVisibilityAttributes = false;
+    F.considerTemplateParameterTypes = false;
+    return F;
+  }
 
-	/// Returns a set of flags, otherwise based on these, which ignores
-	/// off all sources of visibility except template arguments.
-	public LVFlags onlyTemplateVisibility()
-	{
-		LVFlags F = this;
-		F.considerGlobalVisibility = false;
-		F.considerVisibilityAttributes = false;
-		F.considerTemplateParameterTypes = false;
-		return F;
-	}
+  /// Returns a set of flags, otherwise based on these, which ignores
+  /// off all sources of visibility except template arguments.
+  public LVFlags onlyTemplateVisibility() {
+    LVFlags F = this;
+    F.considerGlobalVisibility = false;
+    F.considerVisibilityAttributes = false;
+    F.considerTemplateParameterTypes = false;
+    return F;
+  }
 }

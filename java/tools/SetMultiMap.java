@@ -16,113 +16,104 @@ package tools;
  * permissions and limitations under the License.
  */
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SetMultiMap<K, V>
-{
-    private HashMap<K, Set<V>> map;
+public final class SetMultiMap<K, V> {
+  private HashMap<K, Set<V>> map;
 
-    public SetMultiMap()
-    {
-        map = new HashMap<>();
-    }
+  public SetMultiMap() {
+    map = new HashMap<>();
+  }
 
-    /**
-     * Return the number of keys.
-     * @return
-     */
-    public int size()
-    {
-        return map.size();
-    }
+  /**
+   * Return the number of keys.
+   *
+   * @return
+   */
+  public int size() {
+    return map.size();
+  }
 
-    public boolean isEmpty()
-    {
-        return map.isEmpty();
-    }
+  public boolean isEmpty() {
+    return map.isEmpty();
+  }
 
-    public boolean containsKey(Object key)
-    {
-        return map.containsKey(key);
-    }
+  public boolean containsKey(Object key) {
+    return map.containsKey(key);
+  }
 
-    public boolean containsValue(Object value)
-    {
-        for (Set<V> vals : map.values())
-        {
-            for (V v : vals)
-                if (Objects.equals(v, value))
-                    return true;
-        }
-        return false;
+  public boolean containsValue(Object value) {
+    for (Set<V> vals : map.values()) {
+      for (V v : vals)
+        if (Objects.equals(v, value))
+          return true;
     }
+    return false;
+  }
 
-    public Set<V> get(Object key)
-    {
-        if (map.containsKey(key))
-            return map.get(key);
-        return null;
-    }
+  public Set<V> get(Object key) {
+    if (map.containsKey(key))
+      return map.get(key);
+    return null;
+  }
 
-    /**
-     * put a pair of key-value into this multimap.
-     * @param key
-     * @param value
-     * @return
-     */
-    public void put(K key, V value)
-    {
-        if (map.containsKey(key))
-        {
-            map.get(key).add(value);
-            return;
-        }
-        HashSet<V> set = new HashSet<V>();
-        set.add(value);
-        map.put(key, set);
+  /**
+   * put a pair of key-value into this multimap.
+   *
+   * @param key
+   * @param value
+   * @return
+   */
+  public void put(K key, V value) {
+    if (map.containsKey(key)) {
+      map.get(key).add(value);
+      return;
     }
+    HashSet<V> set = new HashSet<V>();
+    set.add(value);
+    map.put(key, set);
+  }
 
-    /**
-     * Remove the specified key-value pair. Also this map keeps unchanged when
-     * the specified pair is not contained in this multimap.
-     * @param key
-     * @param value
-     * @return
-     */
-    public boolean remove(K key, V value)
-    {
-        if (!containsKey(key) || !containsValue(value))
-            return false;
-        Set<V> set = get(key);
-        boolean res = set.remove(value);
-        if (set.isEmpty())
-            map.remove(key);
-        return res;
-    }
+  /**
+   * Remove the specified key-value pair. Also this map keeps unchanged when
+   * the specified pair is not contained in this multimap.
+   *
+   * @param key
+   * @param value
+   * @return
+   */
+  public boolean remove(K key, V value) {
+    if (!containsKey(key) || !containsValue(value))
+      return false;
+    Set<V> set = get(key);
+    boolean res = set.remove(value);
+    if (set.isEmpty())
+      map.remove(key);
+    return res;
+  }
 
-    public void clear()
-    {
-        map.clear();
-    }
+  public void clear() {
+    map.clear();
+  }
 
-    public Set<K> keySet()
-    {
-        return map.keySet();
-    }
+  public Set<K> keySet() {
+    return map.keySet();
+  }
 
-    @Override
-    public boolean equals(Object o)
-    {
-        return false;
-    }
+  @Override
+  public boolean equals(Object o) {
+    return false;
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return 0;
-    }
+  @Override
+  public int hashCode() {
+    return 0;
+  }
 }

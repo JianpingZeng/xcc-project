@@ -18,11 +18,11 @@ package jlang.sema;
 
 /**
  * Names for the "expression or jlang.type" traits.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum UnaryExprOrTypeTrait
-{
-    UETT_SizeOf,
-    UETT_AlignOf,
+public enum UnaryExprOrTypeTrait {
+  UETT_SizeOf,
+  UETT_AlignOf,
 }

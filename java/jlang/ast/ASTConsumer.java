@@ -28,39 +28,40 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface ASTConsumer
-{
-    /**
-     * This method is invoked for initializing this ASTConsumer.
-     */
-    void initialize(ASTContext ctx);
+public interface ASTConsumer {
+  /**
+   * This method is invoked for initializing this ASTConsumer.
+   */
+  void initialize(ASTContext ctx);
 
-    /**
-     * Handle the specified top level declaration.
-     * This method is called by {@linkplain Compiler} to process every top-level
-     * decl.
-     * <b>Note that</b> decls is a list that chained multiple Declaration, like
-     * <code>'int a, b'</code>, there are two declarator chained.
-     * @param decls
-     */
-    void handleTopLevelDecls(ArrayList<Decl> decls);
+  /**
+   * Handle the specified top level declaration.
+   * This method is called by {@linkplain Compiler} to process every top-level
+   * decl.
+   * <b>Note that</b> decls is a list that chained multiple Declaration, like
+   * <code>'int a, b'</code>, there are two declarator chained.
+   *
+   * @param decls
+   */
+  void handleTopLevelDecls(ArrayList<Decl> decls);
 
-    /**
-     * This method is called when the parsing file for entire translation unit
-     * was parsed.
-     */
-    void handleTranslationUnit(ASTContext context);
+  /**
+   * This method is called when the parsing file for entire translation unit
+   * was parsed.
+   */
+  void handleTranslationUnit(ASTContext context);
 
-	/**
-     * This callback is invoked each time a TagDecl
-     * (e.g. struct, union, enum) is completed.  This allows the client to
-     * hack on the type, which can occur at any point in the file (because these
-     * can be defined in declspecs).
-     * @param tag
-     */
-    default void handleTagDeclDefinition(Decl.TagDecl tag){}
+  /**
+   * This callback is invoked each time a TagDecl
+   * (e.g. struct, union, enum) is completed.  This allows the client to
+   * hack on the type, which can occur at any point in the file (because these
+   * can be defined in declspecs).
+   *
+   * @param tag
+   */
+  default void handleTagDeclDefinition(Decl.TagDecl tag) {
+  }
 
-    default void completeTentativeDefinition(Decl.VarDecl d)
-    {
-    }
+  default void completeTentativeDefinition(Decl.VarDecl d) {
+  }
 }

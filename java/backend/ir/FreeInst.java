@@ -17,39 +17,35 @@
 
 package backend.ir;
 
-import tools.Util;
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
 import backend.value.Operator;
 import backend.value.Value;
+import tools.Util;
 
 /**
  * An instruction to deallocate memory mallocated in Heap.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class FreeInst extends Instruction.UnaryOps
-{
-    public FreeInst(Value ptr)
-    {
-        this(ptr, (Instruction) null);
-    }
+public class FreeInst extends Instruction.UnaryOps {
+  public FreeInst(Value ptr) {
+    this(ptr, (Instruction) null);
+  }
 
-    public FreeInst(Value ptr, Instruction insertBefore)
-    {
-        super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertBefore);
-        assertOK();
-    }
+  public FreeInst(Value ptr, Instruction insertBefore) {
+    super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertBefore);
+    assertOK();
+  }
 
-    public FreeInst(Value ptr, BasicBlock insertAtEnd)
-    {
-        super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertAtEnd);
-        assertOK();
-    }
+  public FreeInst(Value ptr, BasicBlock insertAtEnd) {
+    super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertAtEnd);
+    assertOK();
+  }
 
-    private void assertOK()
-    {
-        Util.assertion(operand(0).getType().isPointerType(),  "Ptr must have pointer type");
-    }
+  private void assertOK() {
+    Util.assertion(operand(0).getType().isPointerType(), "Ptr must have pointer type");
+  }
 }

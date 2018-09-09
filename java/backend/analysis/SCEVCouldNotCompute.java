@@ -16,10 +16,10 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Loop;
+import tools.Util;
 
 import java.io.PrintStream;
 
@@ -27,58 +27,49 @@ import java.io.PrintStream;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SCEVCouldNotCompute extends SCEV
-{
-    private final static SCEVCouldNotCompute instance = new SCEVCouldNotCompute();
+public final class SCEVCouldNotCompute extends SCEV {
+  private final static SCEVCouldNotCompute instance = new SCEVCouldNotCompute();
 
-    private SCEVCouldNotCompute()
-    {
-        super(SCEVType.scCouldNotCompute);
-    }
+  private SCEVCouldNotCompute() {
+    super(SCEVType.scCouldNotCompute);
+  }
 
-    public static SCEVCouldNotCompute getInstance()
-    {
-        return instance;
-    }
+  public static SCEVCouldNotCompute getInstance() {
+    return instance;
+  }
 
 
-    @Override
-    public boolean isLoopInvariant(Loop loop)
-    {
-        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
-        return false;
-    }
+  @Override
+  public boolean isLoopInvariant(Loop loop) {
+    Util.assertion(false, "Attempt to use a SCEVCouldNotCompute object!");
+    return false;
+  }
 
-    @Override
-    public boolean hasComputableLoopEvolution(Loop loop)
-    {
-        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
-        return false;
-    }
+  @Override
+  public boolean hasComputableLoopEvolution(Loop loop) {
+    Util.assertion(false, "Attempt to use a SCEVCouldNotCompute object!");
+    return false;
+  }
 
-    @Override
-    public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete)
-    {
-        return this;
-    }
+  @Override
+  public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete) {
+    return this;
+  }
 
-    @Override
-    public Type getType()
-    {
-        Util.assertion(false,  "Attempt to use a SCEVCouldNotCompute object!");
-        return null;
-    }
+  @Override
+  public Type getType() {
+    Util.assertion(false, "Attempt to use a SCEVCouldNotCompute object!");
+    return null;
+  }
 
-    @Override
-    public boolean dominates(BasicBlock bb, DomTree dt)
-    {
-        // TODO: 17-7-1
-        return false;
-    }
+  @Override
+  public boolean dominates(BasicBlock bb, DomTree dt) {
+    // TODO: 17-7-1
+    return false;
+  }
 
-    @Override
-    public void print(PrintStream os)
-    {
-        os.print("****CouldNotCompute****");
-    }
+  @Override
+  public void print(PrintStream os) {
+    os.print("****CouldNotCompute****");
+  }
 }

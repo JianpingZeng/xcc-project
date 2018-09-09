@@ -20,7 +20,6 @@ package jlang.sema;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class ExprConstant
-{
+public final class ExprConstant {
 
 }

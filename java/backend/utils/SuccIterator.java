@@ -26,44 +26,40 @@ import java.util.NoSuchElementException;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class SuccIterator implements Iterator<BasicBlock>
-{
-    private BasicBlock curBB;
-    private int idx;
-    private TerminatorInst endInst;
+public class SuccIterator implements Iterator<BasicBlock> {
+  private BasicBlock curBB;
+  private int idx;
+  private TerminatorInst endInst;
 
-    public SuccIterator(BasicBlock BB)
-    {
-        curBB = BB;
-        idx = 0;
-        endInst = curBB.getTerminator();
-    }
+  public SuccIterator(BasicBlock BB) {
+    curBB = BB;
+    idx = 0;
+    endInst = curBB.getTerminator();
+  }
 
-    /**
-     * Returns {@code true} if the iteration has more elements.
-     * (In other words, returns {@code true} if {@link #next} would
-     * return an element rather than throwing an jlang.exception.)
-     *
-     * @return {@code true} if the iteration has more elements
-     */
-    @Override
-    public boolean hasNext()
-    {
-        return endInst != null && idx<endInst.getNumOfSuccessors();
-    }
+  /**
+   * Returns {@code true} if the iteration has more elements.
+   * (In other words, returns {@code true} if {@link #next} would
+   * return an element rather than throwing an jlang.exception.)
+   *
+   * @return {@code true} if the iteration has more elements
+   */
+  @Override
+  public boolean hasNext() {
+    return endInst != null && idx < endInst.getNumOfSuccessors();
+  }
 
-    /**
-     * Returns the next element in the iteration.
-     *
-     * @return the next element in the iteration
-     * @throws NoSuchElementException if the iteration has no more elements
-     */
-    @Override
-    public BasicBlock next()
-    {
-        if (idx>= endInst.getNumOfSuccessors())
-            throw new NoSuchElementException();
+  /**
+   * Returns the next element in the iteration.
+   *
+   * @return the next element in the iteration
+   * @throws NoSuchElementException if the iteration has no more elements
+   */
+  @Override
+  public BasicBlock next() {
+    if (idx >= endInst.getNumOfSuccessors())
+      throw new NoSuchElementException();
 
-        return endInst.getSuccessor(idx++);
-    }
+    return endInst.getSuccessor(idx++);
+  }
 }

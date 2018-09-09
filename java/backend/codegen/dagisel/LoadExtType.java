@@ -16,15 +16,15 @@
  */
 
 package backend.codegen.dagisel;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum LoadExtType
-{
-    NON_EXTLOAD,
-    EXTLOAD,
-    SEXTLOAD,
-    ZEXTLOAD,
-    LAST_LOADEXT_TYPE
+public enum LoadExtType {
+  NON_EXTLOAD,
+  EXTLOAD,
+  SEXTLOAD,
+  ZEXTLOAD,
+  LAST_LOADEXT_TYPE
 }

@@ -16,14 +16,15 @@
  */
 
 package backend.target;
+
 /**
  * Possible float ABI settings. Used with FloatABIType in TargetOptions.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum FloatABI
-{
-    Default, // Target-specific (either soft of hard depending on triple, etc).
-    Soft, // Soft float.
-    Hard  // Hard float.
+public enum FloatABI {
+  Default, // Target-specific (either soft of hard depending on triple, etc).
+  Soft, // Soft float.
+  Hard  // Hard float.
 }

@@ -22,35 +22,29 @@ import tools.OutRef;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ParseFloat extends Parser<Float>
-{
-    public boolean parse(Option<?> opt,
-            String optName, String arg,
-            OutRef<Float> val)
-    {
-        try
-        {
-            val.set(Float.parseFloat(arg));
-        }
-        catch (NumberFormatException ex)
-        {
-            return opt.error("'" + arg + "' value invalid for float argument");
-        }
-        return false;
+public class ParseFloat extends Parser<Float> {
+  public boolean parse(Option<?> opt,
+                       String optName, String arg,
+                       OutRef<Float> val) {
+    try {
+      val.set(Float.parseFloat(arg));
+    } catch (NumberFormatException ex) {
+      return opt.error("'" + arg + "' value invalid for float argument");
     }
+    return false;
+  }
 
-    @Override
-    public String getValueName()
-    {
-        return "number";
-    }
+  @Override
+  public String getValueName() {
+    return "number";
+  }
 
-    @Override
-    public <T1> void initialize(Option<T1> opt){}
+  @Override
+  public <T1> void initialize(Option<T1> opt) {
+  }
 
-    @Override
-    public ValueExpected getValueExpectedFlagDefault()
-    {
-        return ValueExpected.ValueRequired;
-    }
+  @Override
+  public ValueExpected getValueExpectedFlagDefault() {
+    return ValueExpected.ValueRequired;
+  }
 }

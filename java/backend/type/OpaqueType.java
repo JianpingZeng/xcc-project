@@ -20,16 +20,13 @@ package backend.type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class OpaqueType extends DerivedType
-{
-    private OpaqueType()
-    {
-        super(OpaqueTyID);
-        setAbstract(true);
-    }
+public class OpaqueType extends DerivedType {
+  private OpaqueType() {
+    super(OpaqueTyID);
+    setAbstract(true);
+  }
 
-    public static OpaqueType get()
-    {
-        return new OpaqueType();
-    }
+  public static OpaqueType get() {
+    return new OpaqueType();
+  }
 }

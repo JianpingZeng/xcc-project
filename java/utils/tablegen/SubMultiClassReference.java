@@ -24,26 +24,24 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class SubMultiClassReference
-{
-    public SourceMgr.SMLoc refLoc;
-    public MultiClass mc;
-    public ArrayList<Init> templateArgs;
-    public SubMultiClassReference()
-    {
-        templateArgs = new ArrayList<>();
-    }
-    public boolean isInvalid()
-    {
-        return mc == null;
-    }
+public final class SubMultiClassReference {
+  public SourceMgr.SMLoc refLoc;
+  public MultiClass mc;
+  public ArrayList<Init> templateArgs;
 
-    public void dump()
-    {
-        System.err.println("Multiclass:");
+  public SubMultiClassReference() {
+    templateArgs = new ArrayList<>();
+  }
 
-        mc.dump();
-        System.err.println("Template args:");
-        templateArgs.forEach(Init::dump);
-    }
+  public boolean isInvalid() {
+    return mc == null;
+  }
+
+  public void dump() {
+    System.err.println("Multiclass:");
+
+    mc.dump();
+    System.err.println("Template args:");
+    templateArgs.forEach(Init::dump);
+  }
 }

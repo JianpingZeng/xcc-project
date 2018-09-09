@@ -17,8 +17,8 @@
 
 package backend.target.x86;
 
-import tools.Util;
 import backend.codegen.MachineInstrBuilder;
+import tools.Util;
 
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86AddressMode.BaseType.RegBase;
@@ -27,30 +27,27 @@ import static backend.target.x86.X86AddressMode.BaseType.RegBase;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86InstrBuilder
-{
-    public static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        return addLeaAddress(mib, am).addReg(0);
-    }
+public class X86InstrBuilder {
+  public static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,
+                                                   X86AddressMode am) {
+    return addLeaAddress(mib, am).addReg(0);
+  }
 
-    public static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        Util.assertion( am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8);
+  public static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
+                                                  X86AddressMode am) {
+    Util.assertion(am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8);
 
-        if (am.baseType == RegBase)
-            mib.addReg(am.base.getBase());
-        else if (am.baseType == FrameIndexBase)
-            mib.addFrameIndex(am.base.getBase());
-        else
-            Util.assertion( false);
+    if (am.baseType == RegBase)
+      mib.addReg(am.base.getBase());
+    else if (am.baseType == FrameIndexBase)
+      mib.addFrameIndex(am.base.getBase());
+    else
+      Util.assertion(false);
 
-        mib.addImm(am.scale).addReg(am.indexReg);
-        if (am.gv != null)
-            return mib.addGlobalAddress(am.gv, am.disp, am.gvOpFlags);
-        else
-            return mib.addImm(am.disp);
-    }
+    mib.addImm(am.scale).addReg(am.indexReg);
+    if (am.gv != null)
+      return mib.addGlobalAddress(am.gv, am.disp, am.gvOpFlags);
+    else
+      return mib.addImm(am.disp);
+  }
 }

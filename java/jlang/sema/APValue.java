@@ -16,10 +16,10 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
+import jlang.ast.Tree;
 import tools.APFloat;
 import tools.APSInt;
-import jlang.ast.Tree;
+import tools.Util;
 
 import static jlang.sema.APValue.ValueKind.*;
 import static jlang.sema.APValue.ValueKind.Float;
@@ -28,200 +28,191 @@ import static jlang.sema.APValue.ValueKind.LValue;
 /**
  * This class implements a functionality of [Uninitialized], [APSInt], [APFloat]
  * , [Complex APSInt], [Complex APSFloat].
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class APValue
-{
-    public enum ValueKind
-    {
-        Uninitialized,
-        Int,
-        Float,
-        ComplexInt,
-        ComplexFloat,
-        LValue,
-    }
-    
-    private ValueKind kind = Uninitialized;
+public class APValue {
+  public enum ValueKind {
+    Uninitialized,
+    Int,
+    Float,
+    ComplexInt,
+    ComplexFloat,
+    LValue,
+  }
 
-    public static class ComplexAPSInt
-    {
-        APSInt real, imag;
-        public ComplexAPSInt()
-        {
-            real = new APSInt(1);
-            imag = new APSInt(1);
-        }
-        
-        public ComplexAPSInt(APSInt r, APSInt i)
-        {
-            real = r;
-            imag = i;
-        }
+  private ValueKind kind = Uninitialized;
+
+  public static class ComplexAPSInt {
+    APSInt real, imag;
+
+    public ComplexAPSInt() {
+      real = new APSInt(1);
+      imag = new APSInt(1);
     }
 
-    public static class ComplexAPFloat
-    {
-        public APFloat real, imag;
-        ComplexAPFloat()
-        {
-            real = new APFloat(0.0);
-            imag = new APFloat(0.0);
-        }
-        
-        public ComplexAPFloat(APFloat r, APFloat i)
-        {
-            real = r;
-            imag = i;
-        }
+    public ComplexAPSInt(APSInt r, APSInt i) {
+      real = r;
+      imag = i;
+    }
+  }
+
+  public static class ComplexAPFloat {
+    public APFloat real, imag;
+
+    ComplexAPFloat() {
+      real = new APFloat(0.0);
+      imag = new APFloat(0.0);
     }
 
-    static class LV
-    {
-        Tree.Expr base;
-        long offset;
+    public ComplexAPFloat(APFloat r, APFloat i) {
+      real = r;
+      imag = i;
     }
+  }
 
-    /**
-     * A data of jlang.type Object for storing several data of different jlang.type.
-     */
-    private Object data;
+  static class LV {
+    Tree.Expr base;
+    long offset;
+  }
 
-    public APValue()
-    {
-        kind = Uninitialized;
-    }
+  /**
+   * A data of jlang.type Object for storing several data of different jlang.type.
+   */
+  private Object data;
 
-    public APValue(APSInt i)
-    {
-        init(Int, i);
-    }
-    public APValue(APFloat f)
-    {
-        init(Float, f);
-    }
-    
-    public APValue(APSInt r, APSInt i)
-    {
-        init(ComplexInt, new ComplexAPSInt(r, i));
-    }
-    
-    public APValue(APFloat r, APFloat i)
-    {
-        init(ComplexFloat, new ComplexAPFloat(r, i));
-    }
-    
-    public APValue(Tree.Expr base, long offset)
-    {
-        LV lv = new LV();
-        lv.base = base;
-        lv.offset = offset;
-        init(LValue, lv);
-    }
+  public APValue() {
+    kind = Uninitialized;
+  }
 
-    private void init(ValueKind kind, Object x)
-    {
-        Util.assertion(isUninit(), "Bad status change");
-        this.kind = kind;
-        data = x;
-    }
-    public boolean isUninit()
-    {
-        return kind == Uninitialized;
-    }
+  public APValue(APSInt i) {
+    init(Int, i);
+  }
 
-    public ValueKind getKind() { return kind; }
-    public boolean isInt() { return kind == Int; }
-    public boolean isFloat() { return kind == Float; }
-    public boolean isComplexInt() { return kind == ComplexInt; }
-    public boolean isComplexFloat() { return kind == ComplexFloat;}
-    public boolean isLValue() { return kind == LValue; }
+  public APValue(APFloat f) {
+    init(Float, f);
+  }
 
-    public APSInt getInt()
-    {
-        Util.assertion(isInt(), "Invalid accessor.");
-        return ((APSInt) data);
-    }
+  public APValue(APSInt r, APSInt i) {
+    init(ComplexInt, new ComplexAPSInt(r, i));
+  }
 
-    public APFloat getFloat()
-    {
-        Util.assertion(isFloat(), "Invalid accessor");
-        return ((APFloat)data);
-    }
+  public APValue(APFloat r, APFloat i) {
+    init(ComplexFloat, new ComplexAPFloat(r, i));
+  }
 
-    public APSInt getComplexIntReal()
-    {
-        Util.assertion(isComplexInt(), "Invalid accessor");
-        return ((ComplexAPSInt)data).real;
-    }
+  public APValue(Tree.Expr base, long offset) {
+    LV lv = new LV();
+    lv.base = base;
+    lv.offset = offset;
+    init(LValue, lv);
+  }
 
-    public APSInt getComplexIntImag()
-    {
-        Util.assertion(isComplexInt(), "Invalid accessor");
-        return ((ComplexAPSInt)data).imag;
-    }
+  private void init(ValueKind kind, Object x) {
+    Util.assertion(isUninit(), "Bad status change");
+    this.kind = kind;
+    data = x;
+  }
 
-    public APFloat getComplexFloatReal()
-    {
-        Util.assertion(isComplexFloat(), "Invalid accessor");
-        return ((ComplexAPFloat)data).real;
-    }
+  public boolean isUninit() {
+    return kind == Uninitialized;
+  }
 
-    public APFloat getComplexFloatImag()
-    {
-        Util.assertion(isComplexFloat(), "Invalid accessor");
-        return ((ComplexAPFloat)data).imag;
-    }
+  public ValueKind getKind() {
+    return kind;
+  }
 
-    public Tree.Expr getLValueBase()
-    {
-        Util.assertion(isLValue(), "Invalid accessor");
-        return ((LV)data).base;
-    }
+  public boolean isInt() {
+    return kind == Int;
+  }
 
-    public long getLValueOffset()
-    {
-        Util.assertion(isLValue(), "Invalid accessor");
-        return ((LV)data).offset;
-    }
+  public boolean isFloat() {
+    return kind == Float;
+  }
 
-    public void setInt(APSInt i)
-    {
-        Util.assertion(isInt(), "Invalid accessor.");
-        data = i;
-    }
+  public boolean isComplexInt() {
+    return kind == ComplexInt;
+  }
 
-    public void setFloat(APFloat f)
-    {
-        Util.assertion(isFloat(), "Invalid accessor.");
-        data = f;
-    }
+  public boolean isComplexFloat() {
+    return kind == ComplexFloat;
+  }
 
-    public void setComplexInt(APSInt r, APSInt i)
-    {
-        Util.assertion(isComplexInt(), "Invalid accessor");
-        ((ComplexAPSInt)data).real = r;
-        ((ComplexAPSInt)data).imag = i;
-    }
+  public boolean isLValue() {
+    return kind == LValue;
+  }
 
-    public void setComplexFloat(APFloat r, APFloat i)
-    {
-        Util.assertion(isComplexFloat(), "Invalid accessor");
-        ((ComplexAPFloat)data).imag = i;
-        ((ComplexAPFloat)data).real = r;
-    }
+  public APSInt getInt() {
+    Util.assertion(isInt(), "Invalid accessor.");
+    return ((APSInt) data);
+  }
 
-    public void setLValue(Tree.Expr base, long offset)
-    {
-        Util.assertion(isLValue(), "Invalid accessor");
-        ((LV)data).base = base;
-        ((LV)data).offset = offset;
-    }
+  public APFloat getFloat() {
+    Util.assertion(isFloat(), "Invalid accessor");
+    return ((APFloat) data);
+  }
 
-    @Override
-    public boolean equals(Object obj)
-    {
-        return super.equals(obj);
-    }
+  public APSInt getComplexIntReal() {
+    Util.assertion(isComplexInt(), "Invalid accessor");
+    return ((ComplexAPSInt) data).real;
+  }
+
+  public APSInt getComplexIntImag() {
+    Util.assertion(isComplexInt(), "Invalid accessor");
+    return ((ComplexAPSInt) data).imag;
+  }
+
+  public APFloat getComplexFloatReal() {
+    Util.assertion(isComplexFloat(), "Invalid accessor");
+    return ((ComplexAPFloat) data).real;
+  }
+
+  public APFloat getComplexFloatImag() {
+    Util.assertion(isComplexFloat(), "Invalid accessor");
+    return ((ComplexAPFloat) data).imag;
+  }
+
+  public Tree.Expr getLValueBase() {
+    Util.assertion(isLValue(), "Invalid accessor");
+    return ((LV) data).base;
+  }
+
+  public long getLValueOffset() {
+    Util.assertion(isLValue(), "Invalid accessor");
+    return ((LV) data).offset;
+  }
+
+  public void setInt(APSInt i) {
+    Util.assertion(isInt(), "Invalid accessor.");
+    data = i;
+  }
+
+  public void setFloat(APFloat f) {
+    Util.assertion(isFloat(), "Invalid accessor.");
+    data = f;
+  }
+
+  public void setComplexInt(APSInt r, APSInt i) {
+    Util.assertion(isComplexInt(), "Invalid accessor");
+    ((ComplexAPSInt) data).real = r;
+    ((ComplexAPSInt) data).imag = i;
+  }
+
+  public void setComplexFloat(APFloat r, APFloat i) {
+    Util.assertion(isComplexFloat(), "Invalid accessor");
+    ((ComplexAPFloat) data).imag = i;
+    ((ComplexAPFloat) data).real = r;
+  }
+
+  public void setLValue(Tree.Expr base, long offset) {
+    Util.assertion(isLValue(), "Invalid accessor");
+    ((LV) data).base = base;
+    ((LV) data).offset = offset;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return super.equals(obj);
+  }
 }

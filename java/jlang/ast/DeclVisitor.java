@@ -17,89 +17,86 @@
 
 package jlang.ast;
 
-import tools.Util;
 import jlang.sema.Decl;
 import jlang.sema.Decl.*;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DeclVisitor
-{
-    public void visit(Decl decl)
-    {
-        switch (decl.getKind())
-        {
-            case TranslationUnitDecl:
-                visitTranslationUnitDecl((TranslationUnitDecl)decl);
-                return;
-            case FunctionDecl:
-                visitFunctionDecl((FunctionDecl)decl);
-                return;
-            case RecordDecl:
-                visitRecordDecl((RecordDecl)decl);
-                return;
-            case EnumDecl:
-                visitEnumDecl((EnumDecl)decl);
-                return;
-            case TypedefDecl:
-                visitTypedefDecl((TypeDefDecl)decl);
-                return;
-            case EnumConstant:
-                visitEnumConstantDecl((EnumConstantDecl)decl);
-                return;
-            case LabelDecl:
-                visitLabelDecl((LabelDecl)decl);
-                return;
-            case FieldDecl:
-                visitFieldDecl((FieldDecl)decl);
-                return;
-            case VarDecl:
-                visitVarDecl((VarDecl)decl);
-                return;
-            case ParamVarDecl:
-                visitParamVarDecl((ParamVarDecl)decl);
-                return;
-            case OriginalParamVar:
-                Util.assertion(false, "Should not reaching here!");
-                return;
-            case FileScopeAsmDecl:
-                visitFileScopeAsmDecl((FileScopeAsmDecl)decl);
-                break;
-        }
+public class DeclVisitor {
+  public void visit(Decl decl) {
+    switch (decl.getKind()) {
+      case TranslationUnitDecl:
+        visitTranslationUnitDecl((TranslationUnitDecl) decl);
+        return;
+      case FunctionDecl:
+        visitFunctionDecl((FunctionDecl) decl);
+        return;
+      case RecordDecl:
+        visitRecordDecl((RecordDecl) decl);
+        return;
+      case EnumDecl:
+        visitEnumDecl((EnumDecl) decl);
+        return;
+      case TypedefDecl:
+        visitTypedefDecl((TypeDefDecl) decl);
+        return;
+      case EnumConstant:
+        visitEnumConstantDecl((EnumConstantDecl) decl);
+        return;
+      case LabelDecl:
+        visitLabelDecl((LabelDecl) decl);
+        return;
+      case FieldDecl:
+        visitFieldDecl((FieldDecl) decl);
+        return;
+      case VarDecl:
+        visitVarDecl((VarDecl) decl);
+        return;
+      case ParamVarDecl:
+        visitParamVarDecl((ParamVarDecl) decl);
+        return;
+      case OriginalParamVar:
+        Util.assertion(false, "Should not reaching here!");
+        return;
+      case FileScopeAsmDecl:
+        visitFileScopeAsmDecl((FileScopeAsmDecl) decl);
+        break;
     }
+  }
 
-    public void visitTranslationUnitDecl(TranslationUnitDecl decl)
-    {}
+  public void visitTranslationUnitDecl(TranslationUnitDecl decl) {
+  }
 
-    public void visitTypedefDecl(TypeDefDecl decl)
-    {}
+  public void visitTypedefDecl(TypeDefDecl decl) {
+  }
 
-    public void visitEnumDecl(EnumDecl decl)
-    {}
+  public void visitEnumDecl(EnumDecl decl) {
+  }
 
-    public void visitRecordDecl(RecordDecl decl)
-    {}
+  public void visitRecordDecl(RecordDecl decl) {
+  }
 
-    public void visitEnumConstantDecl(EnumConstantDecl decl)
-    {}
+  public void visitEnumConstantDecl(EnumConstantDecl decl) {
+  }
 
-    public void visitFunctionDecl(FunctionDecl decl)
-    {}
+  public void visitFunctionDecl(FunctionDecl decl) {
+  }
 
-    public void visitFieldDecl(FieldDecl decl)
-    {}
+  public void visitFieldDecl(FieldDecl decl) {
+  }
 
-    public void visitVarDecl(VarDecl decl)
-    {}
+  public void visitVarDecl(VarDecl decl) {
+  }
 
-    public void visitParamVarDecl(ParamVarDecl decl)
-    {}
+  public void visitParamVarDecl(ParamVarDecl decl) {
+  }
 
-    public void visitLabelDecl(LabelDecl decl)
-    {}
+  public void visitLabelDecl(LabelDecl decl) {
+  }
 
-    public void visitFileScopeAsmDecl(FileScopeAsmDecl decl)
-    {}
+  public void visitFileScopeAsmDecl(FileScopeAsmDecl decl) {
+  }
 }

@@ -23,40 +23,33 @@ import jlang.type.QualType;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class TypeLoc
-{
-    protected QualType ty;
-    private Object data;
+public class TypeLoc {
+  protected QualType ty;
+  private Object data;
 
-    public TypeLoc(QualType ty, Object data)
-    {
-        this.ty = ty;
-        this.data = data;
-    }
+  public TypeLoc(QualType ty, Object data) {
+    this.ty = ty;
+    this.data = data;
+  }
 
-    public TypeLoc()
-    {
-        ty = new QualType();
-        data = null;
-    }
+  public TypeLoc() {
+    ty = new QualType();
+    data = null;
+  }
 
-    public boolean isNull()
-    {
-        return ty.isNull();
-    }
+  public boolean isNull() {
+    return ty.isNull();
+  }
 
-    public QualType getSourceType()
-    {
-        return ty;
-    }
+  public QualType getSourceType() {
+    return ty;
+  }
 
-    public TypeSpecLoc getTypeSpecLoc()
-    {
-        return null;
-    }
+  public TypeSpecLoc getTypeSpecLoc() {
+    return null;
+  }
 
-    public static class TypeSpecLoc extends TypeLoc
-    {
+  public static class TypeSpecLoc extends TypeLoc {
 
-    }
+  }
 }

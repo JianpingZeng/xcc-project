@@ -18,14 +18,14 @@ package backend.pass;
 
 /**
  * This class declares all passes registeration method.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class InitializePasses
-{
-    // TODO LiveAnalysisPass.
-    // TODO UnreachableBlockElim
-    // TODO UnreachableMachineBlockElim
-    // TODO MachineLoop
-    // TODO MachineDomTree
+public final class InitializePasses {
+  // TODO LiveAnalysisPass.
+  // TODO UnreachableBlockElim
+  // TODO UnreachableMachineBlockElim
+  // TODO MachineLoop
+  // TODO MachineDomTree
 }

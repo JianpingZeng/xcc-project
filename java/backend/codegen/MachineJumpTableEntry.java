@@ -23,13 +23,11 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachineJumpTableEntry
-{
-    public ArrayList<MachineBasicBlock> mbbs;
+public class MachineJumpTableEntry {
+  public ArrayList<MachineBasicBlock> mbbs;
 
-    public MachineJumpTableEntry(ArrayList<MachineBasicBlock> bbs)
-    {
-        mbbs = new ArrayList<>();
-        mbbs.addAll(bbs);
-    }
+  public MachineJumpTableEntry(ArrayList<MachineBasicBlock> bbs) {
+    mbbs = new ArrayList<>();
+    mbbs.addAll(bbs);
+  }
 }

@@ -20,63 +20,54 @@ package jlang.support;
  * @author Jianping Zeng
  * @version null.1
  */
-public class PresumedLoc
-{
-    private String filename;
-    private int line, lol;
-    private SourceLocation includeLoc;
+public class PresumedLoc {
+  private String filename;
+  private int line, lol;
+  private SourceLocation includeLoc;
 
-    public PresumedLoc()
-    {
-        super();
-    }
+  public PresumedLoc() {
+    super();
+  }
 
-    public PresumedLoc(String FN, int Ln, int Co, SourceLocation IL)
-    {
-        filename = FN;
-        line = Ln;
-        lol = Co;
-        includeLoc = IL;
-    }
+  public PresumedLoc(String FN, int Ln, int Co, SourceLocation IL) {
+    filename = FN;
+    line = Ln;
+    lol = Co;
+    includeLoc = IL;
+  }
 
-    /// isInvalid - Return true if this object is invalid or uninitialized. This
-    /// occurs when created with invalid source locations or when walking off
-    /// the top of a #include stack.
-    public boolean isInvalid()
-    {
-        return filename == null;
-    }
+  /// isInvalid - Return true if this object is invalid or uninitialized. This
+  /// occurs when created with invalid source locations or when walking off
+  /// the top of a #include stack.
+  public boolean isInvalid() {
+    return filename == null;
+  }
 
-    public boolean isValid()
-    {
-        return filename != null;
-    }
+  public boolean isValid() {
+    return filename != null;
+  }
 
-    /// getFilename - Return the presumed filename of this location.  This can be
-    /// affected by #line etc.
-    public String getFilename()
-    {
-        return filename;
-    }
+  /// getFilename - Return the presumed filename of this location.  This can be
+  /// affected by #line etc.
+  public String getFilename() {
+    return filename;
+  }
 
-    /// getLine - Return the presumed line number of this location.  This can be
-    /// affected by #line etc.
-    public int getLine()
-    {
-        return line;
-    }
+  /// getLine - Return the presumed line number of this location.  This can be
+  /// affected by #line etc.
+  public int getLine() {
+    return line;
+  }
 
-    /// getColumn - Return the presumed column number of this location.  This can
-    /// not be affected by #line, but is packaged here for convenience.
-    public int getColumn()
-    {
-        return lol;
-    }
+  /// getColumn - Return the presumed column number of this location.  This can
+  /// not be affected by #line, but is packaged here for convenience.
+  public int getColumn() {
+    return lol;
+  }
 
-    /// getIncludeLoc - Return the presumed include location of this location.
-    /// This can be affected by GNU linemarker directives.
-    public SourceLocation getIncludeLoc()
-    {
-        return includeLoc;
-    }
+  /// getIncludeLoc - Return the presumed include location of this location.
+  /// This can be affected by GNU linemarker directives.
+  public SourceLocation getIncludeLoc() {
+    return includeLoc;
+  }
 }

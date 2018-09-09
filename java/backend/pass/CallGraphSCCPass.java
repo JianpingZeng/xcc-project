@@ -15,6 +15,7 @@ package backend.pass;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 import backend.analysis.CallGraph;
 import backend.analysis.CallGraphNode;
 import backend.passManaging.PMDataManager;
@@ -29,84 +30,76 @@ import java.util.ArrayList;
 
 /**
  * Defines an interface for any pass operating on Strong connected component.
+ *
  * @author Jianping Zeng.
  * @version 0.4
  */
-public abstract class CallGraphSCCPass implements Pass
-{
-    private AnalysisResolver resolver;
+public abstract class CallGraphSCCPass implements Pass {
+  private AnalysisResolver resolver;
 
-    public boolean doInitialization(CallGraph cg)
-    {
-        return false;
-    }
-    public boolean doFinalization(CallGraph cg)
-    {
-        return false;
-    }
+  public boolean doInitialization(CallGraph cg) {
+    return false;
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  public boolean doFinalization(CallGraph cg) {
+    return false;
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    public abstract boolean runOnSCC(ArrayList<CallGraphNode> nodes);
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 
-    public void assignPassManager(PMStack pms)
-    {
-        assignPassManager(pms, PassManagerType.PMT_CallGraphPassManager);
-    }
+  public abstract boolean runOnSCC(ArrayList<CallGraphNode> nodes);
 
-    /**
-     * arranges a pass manager for this pass.
-     * @param pms
-     * @param pmt
-     */
-    @Override
-    public void assignPassManager(PMStack pms, PassManagerType pmt)
-    {
-        while (!pms.isEmpty() &&
-                pms.peek().getPassManagerType()
-                .compareTo(PassManagerType.PMT_CallGraphPassManager) > 0)
-        {
-            pms.pop();
-        }
+  public void assignPassManager(PMStack pms) {
+    assignPassManager(pms, PassManagerType.PMT_CallGraphPassManager);
+  }
 
-        Util.assertion(!pms.isEmpty(), "Unable to handle Call Graph Pass");
-        if (!(pms.peek() instanceof CGPassManager))
-        {
-            // create a new call graph SCC pass manager if it does not exists.
-            PMDataManager pmd = pms.peek();
-            CGPassManager cgm = new CGPassManager(pmd.getDepth());
-
-            // assigns a new top level manager to it and schedule it as
-            // an appropriate time to be started.
-            PMTopLevelManager tpm = pmd.getTopLevelManager();
-            tpm.schedulePass(cgm);
-
-            // push this call graph pass into according manager.
-            pms.push(cgm);
-        }
-
-        pms.peek().add(this);
+  /**
+   * arranges a pass manager for this pass.
+   *
+   * @param pms
+   * @param pmt
+   */
+  @Override
+  public void assignPassManager(PMStack pms, PassManagerType pmt) {
+    while (!pms.isEmpty() &&
+        pms.peek().getPassManagerType()
+            .compareTo(PassManagerType.PMT_CallGraphPassManager) > 0) {
+      pms.pop();
     }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.addRequired(CallGraph.class);
-        au.addPreserved(CallGraph.class);
+    Util.assertion(!pms.isEmpty(), "Unable to handle Call Graph Pass");
+    if (!(pms.peek() instanceof CGPassManager)) {
+      // create a new call graph SCC pass manager if it does not exists.
+      PMDataManager pmd = pms.peek();
+      CGPassManager cgm = new CGPassManager(pmd.getDepth());
+
+      // assigns a new top level manager to it and schedule it as
+      // an appropriate time to be started.
+      PMTopLevelManager tpm = pmd.getTopLevelManager();
+      tpm.schedulePass(cgm);
+
+      // push this call graph pass into according manager.
+      pms.push(cgm);
     }
 
-    public Pass createPrinterPass(PrintStream os, String banner)
-    {
-        return new PrintCallGraphPass(banner, os);
-    }
+    pms.peek().add(this);
+  }
+
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addRequired(CallGraph.class);
+    au.addPreserved(CallGraph.class);
+  }
+
+  public Pass createPrinterPass(PrintStream os, String banner) {
+    return new PrintCallGraphPass(banner, os);
+  }
 }

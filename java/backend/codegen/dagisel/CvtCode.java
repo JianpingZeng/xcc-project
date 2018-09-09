@@ -16,20 +16,20 @@
  */
 
 package backend.codegen.dagisel;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum CvtCode
-{
-    CVT_FF,     // Float from Float
-    CVT_FS,     // Float from Signed
-    CVT_FU,     // Float from Unsigned
-    CVT_SF,     // Signed from Float
-    CVT_UF,     // Unsigned from Float
-    CVT_SS,     // Signed from Signed
-    CVT_SU,     // Signed from Unsigned
-    CVT_US,     // Unsigned from Signed
-    CVT_UU,     // Unsigned from Unsigned
-    CVT_INVALID // Marker - Invalid opcode
+public enum CvtCode {
+  CVT_FF,     // Float from Float
+  CVT_FS,     // Float from Signed
+  CVT_FU,     // Float from Unsigned
+  CVT_SF,     // Signed from Float
+  CVT_UF,     // Unsigned from Float
+  CVT_SS,     // Signed from Signed
+  CVT_SU,     // Signed from Unsigned
+  CVT_US,     // Unsigned from Signed
+  CVT_UU,     // Unsigned from Unsigned
+  CVT_INVALID // Marker - Invalid opcode
 }

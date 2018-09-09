@@ -20,31 +20,31 @@ package jlang.sema;
  * The different namespaces in which declarations may appear.
  * According to C99 6.2.3, there are four namespaces, labels, tags, members and
  * ordinary identifiers.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum IdentifierNamespace
-{
-    /**
-     * Labels, declared with 'x:' and reference with 'goto x'.
-     */
-    IDNS_Label,
+public enum IdentifierNamespace {
+  /**
+   * Labels, declared with 'x:' and reference with 'goto x'.
+   */
+  IDNS_Label,
 
-    /**
-     * Tags, declared with 'struct/union/enum foo;' and reference with 'struct foo'
-     * All tags are also same jlang.type.
-     */
-    IDNS_Tag,
+  /**
+   * Tags, declared with 'struct/union/enum foo;' and reference with 'struct foo'
+   * All tags are also same jlang.type.
+   */
+  IDNS_Tag,
 
-    /**
-     * Members, all identifiers declared as members of any one struct or union.
-     * Every struct and union introduces its own name space of this kind.
-     */
-    IDNS_Member,
+  /**
+   * Members, all identifiers declared as members of any one struct or union.
+   * Every struct and union introduces its own name space of this kind.
+   */
+  IDNS_Member,
 
-    /**
-     * Ordinary names.  In C, everything that's not a label, tc,
-     * or member ends up here.
-     */
-    IDNS_Ordinary,
+  /**
+   * Ordinary names.  In C, everything that's not a label, tc,
+   * or member ends up here.
+   */
+  IDNS_Ordinary,
 }

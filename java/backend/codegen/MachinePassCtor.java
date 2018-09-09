@@ -23,7 +23,6 @@ import backend.support.MachineFunctionPass;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface MachinePassCtor
-{
-    MachineFunctionPass apply();
+public interface MachinePassCtor {
+  MachineFunctionPass apply();
 }

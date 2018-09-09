@@ -114,11 +114,11 @@ public class EnterSSA
 	}
 */
 
-	/**
-	 * An internal class for global value numbering for transforming traditional
-	 * instruction into SSA form.
-	 */
-	/*
+/**
+ * An internal class for global value numbering for transforming traditional
+ * instruction into SSA form.
+ */
+  /*
 	private class GlobalValueNumber extends InstVisitor
 	{
 		private BasicBlock currentBlock;

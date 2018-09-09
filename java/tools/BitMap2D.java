@@ -1,6 +1,5 @@
 package tools;
 
-import tools.Util;
 import java.util.BitSet;
 
 /**
@@ -8,84 +7,71 @@ import java.util.BitSet;
  * This class implements a two-dimensional bitset.
  * Created by Jianping Zeng  on 2016/3/18.
  */
-public final class BitMap2D
-{
-	private BitSet set;
-	private final int bitsPerSlot;
+public final class BitMap2D {
+  private BitSet set;
+  private final int bitsPerSlot;
 
-	private int bitIndex(int slotIndex, int bitIndex)
-	{
-		return slotIndex * bitsPerSlot + bitIndex;
-	}
+  private int bitIndex(int slotIndex, int bitIndex) {
+    return slotIndex * bitsPerSlot + bitIndex;
+  }
 
-	private boolean verifyBitWithinSlotIndex(int index)
-	{
-		return index < bitsPerSlot;
-	}
+  private boolean verifyBitWithinSlotIndex(int index) {
+    return index < bitsPerSlot;
+  }
 
-	public BitMap2D(int sizeInSlots, int bitsInSlot)
-	{
-		set = new BitSet(sizeInSlots * bitsInSlot);
-		this.bitsPerSlot = bitsInSlot;
-	}
+  public BitMap2D(int sizeInSlots, int bitsInSlot) {
+    set = new BitSet(sizeInSlots * bitsInSlot);
+    this.bitsPerSlot = bitsInSlot;
+  }
 
-	public int sizeInBits()
-	{
-		return set.size();
-	}
+  public int sizeInBits() {
+    return set.size();
+  }
 
-	public int sizeInSlots()
-	{
-		return set.size() / bitsPerSlot;
-	}
+  public int sizeInSlots() {
+    return set.size() / bitsPerSlot;
+  }
 
-	public boolean isValidIndex(int slotIndex, int bitWithinSlotIndex)
-	{
-		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
-		return bitIndex(slotIndex, bitWithinSlotIndex) < sizeInBits();
-	}
+  public boolean isValidIndex(int slotIndex, int bitWithinSlotIndex) {
+    Util.assertion(verifyBitWithinSlotIndex(bitWithinSlotIndex));
+    return bitIndex(slotIndex, bitWithinSlotIndex) < sizeInBits();
+  }
 
-	public boolean at(int slotIndex, int bitWithinSlotIndex)
-	{
-		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
-		return set.get(bitIndex(slotIndex, bitWithinSlotIndex));
-	}
+  public boolean at(int slotIndex, int bitWithinSlotIndex) {
+    Util.assertion(verifyBitWithinSlotIndex(bitWithinSlotIndex));
+    return set.get(bitIndex(slotIndex, bitWithinSlotIndex));
+  }
 
-	public void setBit(int slotIndex, int bitWithinSlotIndex)
-	{
-		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
-		set.set(bitIndex(slotIndex, bitWithinSlotIndex));
-	}
+  public void setBit(int slotIndex, int bitWithinSlotIndex) {
+    Util.assertion(verifyBitWithinSlotIndex(bitWithinSlotIndex));
+    set.set(bitIndex(slotIndex, bitWithinSlotIndex));
+  }
 
-	public void clearBit(int slotIndex, int bitWithinSlotIndex)
-	{
-		Util.assertion( verifyBitWithinSlotIndex(bitWithinSlotIndex));
-		set.clear(bitIndex(slotIndex, bitWithinSlotIndex));
-	}
+  public void clearBit(int slotIndex, int bitWithinSlotIndex) {
+    Util.assertion(verifyBitWithinSlotIndex(bitWithinSlotIndex));
+    set.clear(bitIndex(slotIndex, bitWithinSlotIndex));
+  }
 
-	public void atPutGrow(int slotIndex, int bitWithinSlotIndex, boolean value)
-	{
-		int size = sizeInSlots();
-		// resize the bitset
-		if (slotIndex > size)
-		{
-			while (size <= slotIndex)
-			{
-				size *= 2;
-			}
-			BitSet newBitMap = new BitSet(size * bitsPerSlot);
-			newBitMap.or(set);
-			set = newBitMap;
-		}
+  public void atPutGrow(int slotIndex, int bitWithinSlotIndex, boolean value) {
+    int size = sizeInSlots();
+    // resize the bitset
+    if (slotIndex > size) {
+      while (size <= slotIndex) {
+        size *= 2;
+      }
+      BitSet newBitMap = new BitSet(size * bitsPerSlot);
+      newBitMap.or(set);
+      set = newBitMap;
+    }
 
-		if (value) {
-			setBit(slotIndex, bitWithinSlotIndex);
-		} else {
-			clearBit(slotIndex, bitWithinSlotIndex);
-		}
-	}
+    if (value) {
+      setBit(slotIndex, bitWithinSlotIndex);
+    } else {
+      clearBit(slotIndex, bitWithinSlotIndex);
+    }
+  }
 
-	public void clear() {
-		set.clear();
-	}
+  public void clear() {
+    set.clear();
+  }
 }

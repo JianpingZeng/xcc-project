@@ -25,18 +25,17 @@ import backend.type.Type;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LLVMContext
-{
-    public static final Type VoidTy = new Type(LLVMTypeID.VoidTyID);
-    public static final Type LabelTy = new Type(LLVMTypeID.LabelTyID);
-    public static final Type MetadataTy = new Type(LLVMTypeID.MetadataTyID);
-    public static final IntegerType Int1Ty = IntegerType.get(1);
-    public static final IntegerType Int8Ty = IntegerType.get(8);
-    public static final IntegerType Int16Ty = IntegerType.get(16);
-    public static final IntegerType Int32Ty = IntegerType.get(32);
-    public static final IntegerType Int64Ty = IntegerType.get(64);
-    public static final Type FloatTy = new Type(LLVMTypeID.FloatTyID);
-    public static final Type DoubleTy = new Type(LLVMTypeID.DoubleTyID);
-    public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
-    public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
+public class LLVMContext {
+  public static final Type VoidTy = new Type(LLVMTypeID.VoidTyID);
+  public static final Type LabelTy = new Type(LLVMTypeID.LabelTyID);
+  public static final Type MetadataTy = new Type(LLVMTypeID.MetadataTyID);
+  public static final IntegerType Int1Ty = IntegerType.get(1);
+  public static final IntegerType Int8Ty = IntegerType.get(8);
+  public static final IntegerType Int16Ty = IntegerType.get(16);
+  public static final IntegerType Int32Ty = IntegerType.get(32);
+  public static final IntegerType Int64Ty = IntegerType.get(64);
+  public static final Type FloatTy = new Type(LLVMTypeID.FloatTyID);
+  public static final Type DoubleTy = new Type(LLVMTypeID.DoubleTyID);
+  public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
+  public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
 }

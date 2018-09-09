@@ -23,40 +23,36 @@ import jlang.type.QualType;
 
 /**
  * The default implementation for ABI specific retails.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DefaultABIInfo implements ABIInfo
-{
-    private ABIArgInfo classifyReturnType(QualType retType)
-    {
-        if (CodeGenFunction.hasAggregateLLVMType(retType))
-            return ABIArgInfo.getIndirect(0);
+public class DefaultABIInfo implements ABIInfo {
+  private ABIArgInfo classifyReturnType(QualType retType) {
+    if (CodeGenFunction.hasAggregateLLVMType(retType))
+      return ABIArgInfo.getIndirect(0);
 
-        return retType.isPromotableIntegerType() ? ABIArgInfo.getExtend()
-                : ABIArgInfo.getDirect();
-    }
+    return retType.isPromotableIntegerType() ? ABIArgInfo.getExtend()
+        : ABIArgInfo.getDirect();
+  }
 
-    private ABIArgInfo classifyArgumentType(QualType argType)
-    {
-        if (CodeGenFunction.hasAggregateLLVMType(argType))
-            return ABIArgInfo.getIndirect(0);
+  private ABIArgInfo classifyArgumentType(QualType argType) {
+    if (CodeGenFunction.hasAggregateLLVMType(argType))
+      return ABIArgInfo.getIndirect(0);
 
-        return argType.isPromotableIntegerType() ? ABIArgInfo.getExtend()
-                : ABIArgInfo.getDirect();
-    }
+    return argType.isPromotableIntegerType() ? ABIArgInfo.getExtend()
+        : ABIArgInfo.getDirect();
+  }
 
-    @Override
-    public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx)
-    {
-        fi.setReturnInfo(classifyReturnType(fi.getReturnType()));
-        for (int i = 0, e = fi.getNumOfArgs(); i < e; i++)
-            fi.setArgInfo(i, classifyArgumentType(fi.getArgInfoAt(i).type));
-    }
+  @Override
+  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx) {
+    fi.setReturnInfo(classifyReturnType(fi.getReturnType()));
+    for (int i = 0, e = fi.getNumOfArgs(); i < e; i++)
+      fi.setArgInfo(i, classifyArgumentType(fi.getArgInfoAt(i).type));
+  }
 
-    @Override
-    public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf)
-    {
-        return null;
-    }
+  @Override
+  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf) {
+    return null;
+  }
 }

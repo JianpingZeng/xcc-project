@@ -20,7 +20,6 @@ package jlang.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public enum LangKind
-{
-    langkind_unspecified, langkind_c, langkind_cpp, langkind_asm_cpp,
+public enum LangKind {
+  langkind_unspecified, langkind_c, langkind_cpp, langkind_asm_cpp,
 }

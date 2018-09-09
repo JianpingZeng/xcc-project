@@ -21,18 +21,15 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LocationClassApplicator<T> implements Modifier
-{
-    private LocationClass<T> locationClass;
+public class LocationClassApplicator<T> implements Modifier {
+  private LocationClass<T> locationClass;
 
-    public LocationClassApplicator(LocationClass<T> locClass)
-    {
-        locationClass = locClass;
-    }
+  public LocationClassApplicator(LocationClass<T> locClass) {
+    locationClass = locClass;
+  }
 
-    @Override
-    public void apply(Option<?> opt)
-    {
-        ((LocationOpt<T>)opt).setLocation(locationClass);
-    }
+  @Override
+  public void apply(Option<?> opt) {
+    ((LocationOpt<T>) opt).setLocation(locationClass);
+  }
 }

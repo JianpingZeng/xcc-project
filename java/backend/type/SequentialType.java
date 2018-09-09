@@ -25,47 +25,44 @@ import backend.value.Value;
  * represents a specifically sized array, pointer types are unsized/unknown getNumOfSubLoop
  * arrays.  SequentialType holds the common features of both, which stem from
  * the fact that both lay their components out in memory identically.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class SequentialType extends CompositeType
-{
-    protected int numElts;
-    protected SequentialType(int primitiveID, Type elemType)
-    {
-        super(primitiveID);
-        containedTys = new PATypeHandle[1];
-        containedTys[0] = new PATypeHandle(elemType, this);
-        numElts = 1;
-    }
+public abstract class SequentialType extends CompositeType {
+  protected int numElts;
 
-    public Type getElementType()
-    {
-        return containedTys[0].getType();
-    }
+  protected SequentialType(int primitiveID, Type elemType) {
+    super(primitiveID);
+    containedTys = new PATypeHandle[1];
+    containedTys[0] = new PATypeHandle(elemType, this);
+    numElts = 1;
+  }
 
-    /**
-     * Returns an element type at the specified position.
-     * There is only one subtype for sequential type.
-     * @param v
-     * @return
-     */
-    @Override
-    public Type getTypeAtIndex(Value v)
-    {
-        return getElementType();
-    }
+  public Type getElementType() {
+    return containedTys[0].getType();
+  }
 
-    @Override
-    public boolean indexValid(Value v)
-    {
-        // must be a integral index.
-        return v.getType().isIntegerType();
-    }
+  /**
+   * Returns an element type at the specified position.
+   * There is only one subtype for sequential type.
+   *
+   * @param v
+   * @return
+   */
+  @Override
+  public Type getTypeAtIndex(Value v) {
+    return getElementType();
+  }
 
-    @Override
-    public Type getIndexType()
-    {
-        return LLVMContext.Int64Ty;
-    }
+  @Override
+  public boolean indexValid(Value v) {
+    // must be a integral index.
+    return v.getType().isIntegerType();
+  }
+
+  @Override
+  public Type getIndexType() {
+    return LLVMContext.Int64Ty;
+  }
 }

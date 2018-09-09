@@ -32,80 +32,74 @@ import java.util.ArrayList;
 /**
  * This pass is a simple pass wrapper around the PromoteMemToReg function call
  * exposed by the Utils library.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class Mem2Reg implements FunctionPass
-{
-    /**
-     * Statistics the number of allocas instruction to be promoted.
-     */
-    public static int numPromoted;
+public final class Mem2Reg implements FunctionPass {
+  /**
+   * Statistics the number of allocas instruction to be promoted.
+   */
+  public static int numPromoted;
 
-    private AnalysisResolver resolver;
+  private AnalysisResolver resolver;
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
+
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
+
+  /**
+   * Provides a entry point to create an instance of this pass.
+   *
+   * @return
+   */
+  public static Mem2Reg createPromoteMemoryToRegisterPass() {
+    return new Mem2Reg();
+  }
+
+  @Override
+  public String getPassName() {
+    return "Promote memory to register pass";
+  }
+
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.addRequired(DomTree.class);
+    au.addRequired(DominanceFrontier.class);
+
+    au.addPreserved(UnifyFunctionExitNodes.class);
+    au.addPreserved(LowerSwitch.class);
+  }
+
+  @Override
+  public boolean runOnFunction(Function f) {
+    boolean changed = false;
+    ArrayList<AllocaInst> allocas = new ArrayList<>();
+
+    DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
+    DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
+    BasicBlock entryBB = f.getEntryBlock();
+
+    while (true) {
+      for (Instruction inst : entryBB) {
+        if (inst instanceof AllocaInst)
+          if (PromoteMemToReg.isAllocaPromotable((AllocaInst) inst))
+            allocas.add((AllocaInst) inst);
+      }
+
+      if (allocas.isEmpty()) break;
+
+      numPromoted += allocas.size();
+      PromoteMemToReg.promoteMemToReg(allocas, dt, df);
+      numPromoted -= allocas.size();
+      changed = true;
     }
-
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
-    /**
-     * Provides a entry point to create an instance of this pass.
-     * @return
-     */
-    public static Mem2Reg createPromoteMemoryToRegisterPass()
-    {
-        return new Mem2Reg();
-    }
-
-    @Override
-    public String getPassName()
-    {
-        return "Promote memory to register pass";
-    }
-
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.addRequired(DomTree.class);
-        au.addRequired(DominanceFrontier.class);
-
-        au.addPreserved(UnifyFunctionExitNodes.class);
-        au.addPreserved(LowerSwitch.class);
-    }
-
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        boolean changed = false;
-        ArrayList<AllocaInst> allocas = new ArrayList<>();
-
-        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
-        DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
-        BasicBlock entryBB = f.getEntryBlock();
-
-        while (true)
-        {
-            for (Instruction inst : entryBB)
-            {
-                if (inst instanceof AllocaInst)
-                    if (PromoteMemToReg.isAllocaPromotable((AllocaInst)inst))
-                        allocas.add((AllocaInst)inst);
-            }
-
-            if (allocas.isEmpty()) break;
-
-            numPromoted += allocas.size();
-            PromoteMemToReg.promoteMemToReg(allocas, dt, df);
-            numPromoted -= allocas.size();
-            changed = true;
-        }
-        return changed;
-    }
+    return changed;
+  }
 }

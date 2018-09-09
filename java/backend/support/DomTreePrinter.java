@@ -36,51 +36,42 @@ import static backend.support.GraphWriter.writeGraph;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class DomTreePrinter implements FunctionPass
-{
-    private AnalysisResolver resolver;
+public final class DomTreePrinter implements FunctionPass {
+  private AnalysisResolver resolver;
 
-    @Override
-    public boolean runOnFunction(Function f)
-    {
-        String funcName = f.getName();
-        String filename = "domtree." + funcName + ".dot";
-        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
+  @Override
+  public boolean runOnFunction(Function f) {
+    String funcName = f.getName();
+    String filename = "domtree." + funcName + ".dot";
+    DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
-        try(PrintStream out = new PrintStream(new File(filename)))
-        {
-            System.err.printf("Writing '%s'...%n", filename);
-            writeGraph(out, DefaultDotGraphTrait.createDomTreeTrait(dt, funcName));
-        }
-        catch (FileNotFoundException e)
-        {
-            System.err.println(" error opening file for writing!");
-        }
-        return false;
+    try (PrintStream out = new PrintStream(new File(filename))) {
+      System.err.printf("Writing '%s'...%n", filename);
+      writeGraph(out, DefaultDotGraphTrait.createDomTreeTrait(dt, funcName));
+    } catch (FileNotFoundException e) {
+      System.err.println(" error opening file for writing!");
     }
+    return false;
+  }
 
-    @Override
-    public void getAnalysisUsage(AnalysisUsage au)
-    {
-        au.setPreservedAll();
-        au.addRequired(DomTree.class);
-    }
+  @Override
+  public void getAnalysisUsage(AnalysisUsage au) {
+    au.setPreservedAll();
+    au.addRequired(DomTree.class);
+  }
 
-    @Override
-    public String getPassName()
-    {
-        return "Print out Dominator tree into dot file";
-    }
+  @Override
+  public String getPassName() {
+    return "Print out Dominator tree into dot file";
+  }
 
-    @Override
-    public AnalysisResolver getAnalysisResolver()
-    {
-        return resolver;
-    }
+  @Override
+  public AnalysisResolver getAnalysisResolver() {
+    return resolver;
+  }
 
-    @Override
-    public void setAnalysisResolver(AnalysisResolver resolver)
-    {
-        this.resolver = resolver;
-    }
+  @Override
+  public void setAnalysisResolver(AnalysisResolver resolver) {
+    this.resolver = resolver;
+  }
 }

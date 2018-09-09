@@ -15,44 +15,43 @@ package backend.target;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DarwinTargetAsmInfo extends TargetAsmInfo
-{
-    public DarwinTargetAsmInfo()
-    {
-        super();
-        GlobalPrefix = "_";
-        privateGlobalPrefix = "L";
-        LinkerPrivateGlobalPrefix = "l";
-        needsSet = true;
-        NeedsIndirectEncoding = true;
-        AllowQuotesInName = true;
-        HasSingleParameterDotFile = false;
-        alignIsInByte = false;
-        InlineAsmStart = " InlineAsm Start";
-        InlineAsmEnd = " InlineAsm End";
+public class DarwinTargetAsmInfo extends TargetAsmInfo {
+  public DarwinTargetAsmInfo() {
+    super();
+    GlobalPrefix = "_";
+    privateGlobalPrefix = "L";
+    LinkerPrivateGlobalPrefix = "l";
+    needsSet = true;
+    NeedsIndirectEncoding = true;
+    AllowQuotesInName = true;
+    HasSingleParameterDotFile = false;
+    alignIsInByte = false;
+    InlineAsmStart = " InlineAsm Start";
+    InlineAsmEnd = " InlineAsm End";
 
-        // In non-PIC modes, emit a special label before jump tables so that the
-        // linker can perform more accurate dead code stripping.  We do not check the
-        // relocation model here since it can be overridden later.
-        JumpTableSpecialLabelPrefix = "l";
+    // In non-PIC modes, emit a special label before jump tables so that the
+    // linker can perform more accurate dead code stripping.  We do not check the
+    // relocation model here since it can be overridden later.
+    JumpTableSpecialLabelPrefix = "l";
 
-        WeakDefDirective = "\t.weak_definition ";
-        weakRefDirective = "\t.weak_reference ";
-        HiddenDirective = "\t.private_extern ";
-        LCOMMDirective = "\t.lcomm\t";
-        zeroFillDirective = "\t.space\t";
-        zeroFillDirective = "\t.zerofill\t";
-        setDirective = "\t.set";
-        ProtectedDirective = "\t.globl\t";
-        HasDotTypeDotSizeDirective = false;
-        UsedDirective = "\t.no_dead_strip\t";
+    WeakDefDirective = "\t.weak_definition ";
+    weakRefDirective = "\t.weak_reference ";
+    HiddenDirective = "\t.private_extern ";
+    LCOMMDirective = "\t.lcomm\t";
+    zeroFillDirective = "\t.space\t";
+    zeroFillDirective = "\t.zerofill\t";
+    setDirective = "\t.set";
+    ProtectedDirective = "\t.globl\t";
+    HasDotTypeDotSizeDirective = false;
+    UsedDirective = "\t.no_dead_strip\t";
 
-        Is_EHSymbolPrivate = false;
-        GlobalEHDirective = "\t.globl\t";
-        SupportsWeakOmittedEHFrame = false;
-    }
+    Is_EHSymbolPrivate = false;
+    GlobalEHDirective = "\t.globl\t";
+    SupportsWeakOmittedEHFrame = false;
+  }
 }

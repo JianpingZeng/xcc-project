@@ -18,19 +18,19 @@
 package jlang.driver;
 
 /**
- * Represent an abstract compilation step to perform. 
- *
+ * Represent an abstract compilation step to perform.
+ * <p>
  * An action represents an edge in the compilation graph; typically
  * it is a job to transform an input using some tool.
- *
+ * <p>
  * The current driver is hard wired to expect actions which produce a
  * single primary output, at least in terms of controlling the
  * compilation. Actions can produce auxiliary files, but can only
  * produce a single output to feed into subsequent actions.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Action
-{
-    private ActionClass kind;
+public class Action {
+  private ActionClass kind;
 }

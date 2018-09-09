@@ -27,91 +27,90 @@ import jlang.ast.Tree.*;
  * If you don't want implement all visitor method by self, it is desired that
  * extends your class from {@linkplain StmtVisitor}.
  *
- * @see StmtVisitor
  * @author Jianping Zeng
  * @version 0.1
+ * @see StmtVisitor
  */
-public interface IStmtVisitor<T>
-{
+public interface IStmtVisitor<T> {
 
-    T visit(Tree expr);
+  T visit(Tree expr);
 
-    T visitStmt(Stmt s);
+  T visitStmt(Stmt s);
 
-    //=================Statement visitor method===============================//
-    T visitBreakStmt(BreakStmt stmt);
+  //=================Statement visitor method===============================//
+  T visitBreakStmt(BreakStmt stmt);
 
-    T visitCaseStmt(CaseStmt stmt);
+  T visitCaseStmt(CaseStmt stmt);
 
-    T visitCompoundStmt(CompoundStmt stmt);
+  T visitCompoundStmt(CompoundStmt stmt);
 
-    T visitContinueStmt(ContinueStmt stmt);
+  T visitContinueStmt(ContinueStmt stmt);
 
-    T visitDeclStmt(DeclStmt stmt);
+  T visitDeclStmt(DeclStmt stmt);
 
-    T visitDefaultStmt(DefaultStmt stmt);
+  T visitDefaultStmt(DefaultStmt stmt);
 
-    T visitDoStmt(DoStmt stmt);
+  T visitDoStmt(DoStmt stmt);
 
-    T visitForStmt(ForStmt stmt);
+  T visitForStmt(ForStmt stmt);
 
-    T visitGotoStmt(GotoStmt stmt);
+  T visitGotoStmt(GotoStmt stmt);
 
-    T visitIfStmt(IfStmt stmt);
+  T visitIfStmt(IfStmt stmt);
 
-    T visitLabelledStmt(LabelStmt stmt);
+  T visitLabelledStmt(LabelStmt stmt);
 
-    T visitNullStmt(NullStmt stmt);
+  T visitNullStmt(NullStmt stmt);
 
-    T visitReturnStmt(ReturnStmt stmt);
+  T visitReturnStmt(ReturnStmt stmt);
 
-    T visitSelectStmt(SelectStmt stmt);
+  T visitSelectStmt(SelectStmt stmt);
 
-    T visitSwitchStmt(SwitchStmt stmt);
+  T visitSwitchStmt(SwitchStmt stmt);
 
-    T visitWhileStmt(WhileStmt stmt);
+  T visitWhileStmt(WhileStmt stmt);
 
-    //================Expression visitor method===============================//
+  //================Expression visitor method===============================//
 
-    //================Bianry operaotr=========================================//
-    T visitBinaryExpr(BinaryExpr expr);
+  //================Bianry operaotr=========================================//
+  T visitBinaryExpr(BinaryExpr expr);
 
-    T visitCompoundAssignExpr(CompoundAssignExpr expr);
+  T visitCompoundAssignExpr(CompoundAssignExpr expr);
 
-    T visitConditionalExpr(ConditionalExpr expr);
+  T visitConditionalExpr(ConditionalExpr expr);
 
-    // Unary operator.
-    T visitUnaryExpr(UnaryExpr expr);
+  // Unary operator.
+  T visitUnaryExpr(UnaryExpr expr);
 
-    T visitSizeofAlignofExpr(SizeOfAlignOfExpr expr);
+  T visitSizeofAlignofExpr(SizeOfAlignOfExpr expr);
 
-    // postfix operator
-    T visitImplicitCastExpr(ImplicitCastExpr expr);
+  // postfix operator
+  T visitImplicitCastExpr(ImplicitCastExpr expr);
 
-    T visitExplicitCastExpr(ExplicitCastExpr expr);
+  T visitExplicitCastExpr(ExplicitCastExpr expr);
 
-    T visitParenListExpr(ParenListExpr expr);
+  T visitParenListExpr(ParenListExpr expr);
 
-    T visitArraySubscriptExpr(ArraySubscriptExpr expr);
+  T visitArraySubscriptExpr(ArraySubscriptExpr expr);
 
-    T visitMemberExpr(MemberExpr expr);
+  T visitMemberExpr(MemberExpr expr);
 
-    T visitParenExpr(ParenExpr expr);
+  T visitParenExpr(ParenExpr expr);
 
-    T visitCallExpr(CallExpr expr);
+  T visitCallExpr(CallExpr expr);
 
-    T visitInitListExpr(InitListExpr expr);
+  T visitInitListExpr(InitListExpr expr);
 
-    // Primary expression.
-    T visitDeclRefExpr(DeclRefExpr expr);
+  // Primary expression.
+  T visitDeclRefExpr(DeclRefExpr expr);
 
-    T visitCharacterLiteral(CharacterLiteral literal);
+  T visitCharacterLiteral(CharacterLiteral literal);
 
-    T visitCompoundLiteralExpr(CompoundLiteralExpr literal);
+  T visitCompoundLiteralExpr(CompoundLiteralExpr literal);
 
-    T visitFloatLiteral(FloatingLiteral literal);
+  T visitFloatLiteral(FloatingLiteral literal);
 
-    T visitStringLiteral(StringLiteral literal);
+  T visitStringLiteral(StringLiteral literal);
 
-    T visitIntegerLiteral(IntegerLiteral literal);
+  T visitIntegerLiteral(IntegerLiteral literal);
 }

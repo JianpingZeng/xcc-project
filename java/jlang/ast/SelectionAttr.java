@@ -17,10 +17,8 @@
 
 package jlang.ast;
 
-public class SelectionAttr extends Attr
-{
-    public SelectionAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class SelectionAttr extends Attr {
+  public SelectionAttr(AttrKind kind) {
+    super(kind);
+  }
 }

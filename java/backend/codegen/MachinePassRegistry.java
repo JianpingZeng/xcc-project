@@ -19,84 +19,71 @@ package backend.codegen;
 
 /**
  * Track the registration of machine passes.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachinePassRegistry<T>
-{
-    /**
-     * A list of registred machiene pass nodes
-     */
-    private MachinePassRegistryNode list;
-    /**
-     * The default constructor.
-     */
-    private T defaultCtor;
-    /**
-     * The listener for registration.
-     */
-    private MachinePassRegistryListener listener;
+public class MachinePassRegistry<T> {
+  /**
+   * A list of registred machiene pass nodes
+   */
+  private MachinePassRegistryNode list;
+  /**
+   * The default constructor.
+   */
+  private T defaultCtor;
+  /**
+   * The listener for registration.
+   */
+  private MachinePassRegistryListener listener;
 
-    public MachinePassRegistryNode getList()
-    {
-        return list;
-    }
+  public MachinePassRegistryNode getList() {
+    return list;
+  }
 
-    public T getDefault()
-    {
-        return defaultCtor;
-    }
+  public T getDefault() {
+    return defaultCtor;
+  }
 
-    public void setDefaultCtor(T defaultCtor)
-    {
-        this.defaultCtor = defaultCtor;
-    }
+  public void setDefaultCtor(T defaultCtor) {
+    this.defaultCtor = defaultCtor;
+  }
 
-    public void setList(MachinePassRegistryNode list)
-    {
-        this.list = list;
-    }
+  public void setList(MachinePassRegistryNode list) {
+    this.list = list;
+  }
 
-    public void add(MachinePassRegistryNode node)
-    {
-        node.setNext(list);
-        list = node;
-        if (listener != null)
-            listener.notifyAdd(node.getName(), node.getCtor(), node.getDescription());
-    }
+  public void add(MachinePassRegistryNode node) {
+    node.setNext(list);
+    list = node;
+    if (listener != null)
+      listener.notifyAdd(node.getName(), node.getCtor(), node.getDescription());
+  }
 
-    public void remove(MachinePassRegistryNode node)
-    {
-        MachinePassRegistryNode prev = null;
-        for (MachinePassRegistryNode ptr = list; ptr != null;)
-        {
-            if (ptr == node)
-            {
-                if (listener != null) listener.notifyRemove(node.getName());
-                if (prev == null)
-                {
-                    // the deleted node is first one
-                    list = list.getNext();
-                }
-                else
-                {
-                    prev.setNext(ptr.getNext());
-                    ptr.setNext(null);
-                }
-                break;
-            }
-            prev = ptr;
-            ptr = ptr.getNext();
+  public void remove(MachinePassRegistryNode node) {
+    MachinePassRegistryNode prev = null;
+    for (MachinePassRegistryNode ptr = list; ptr != null; ) {
+      if (ptr == node) {
+        if (listener != null) listener.notifyRemove(node.getName());
+        if (prev == null) {
+          // the deleted node is first one
+          list = list.getNext();
+        } else {
+          prev.setNext(ptr.getNext());
+          ptr.setNext(null);
         }
+        break;
+      }
+      prev = ptr;
+      ptr = ptr.getNext();
     }
+  }
 
-    public void setListener(MachinePassRegistryListener listener)
-    {
-        this.listener = listener;
-    }
+  public void setListener(MachinePassRegistryListener listener) {
+    this.listener = listener;
+  }
 
-    public MachinePassRegistryListener getListener()
-    {
-        return listener;
-    }
+  public MachinePassRegistryListener getListener() {
+    return listener;
+  }
 }

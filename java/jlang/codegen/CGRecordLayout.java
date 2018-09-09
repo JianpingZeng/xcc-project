@@ -25,29 +25,25 @@ import java.util.TreeSet;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class CGRecordLayout
-{
-    private backend.type.Type sty;
-    private TreeSet<Integer> paddingFields;
-    public CGRecordLayout(Type ty, Set<Integer> paddingFields)
-    {
-        sty = ty;
-        this.paddingFields = new TreeSet<>();
-        this.paddingFields.addAll(paddingFields);
-    }
+public class CGRecordLayout {
+  private backend.type.Type sty;
+  private TreeSet<Integer> paddingFields;
 
-    public Type getLLVMType()
-    {
-        return sty;
-    }
+  public CGRecordLayout(Type ty, Set<Integer> paddingFields) {
+    sty = ty;
+    this.paddingFields = new TreeSet<>();
+    this.paddingFields.addAll(paddingFields);
+  }
 
-    public boolean isPaddingField(int no)
-    {
-        return paddingFields.contains(no);
-    }
+  public Type getLLVMType() {
+    return sty;
+  }
 
-    public int getNumPaddingFields()
-    {
-        return paddingFields.size();
-    }
+  public boolean isPaddingField(int no) {
+    return paddingFields.contains(no);
+  }
+
+  public int getNumPaddingFields() {
+    return paddingFields.size();
+  }
 }

@@ -20,35 +20,33 @@ package jlang.support;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class LineEntry
-{
-    /// fileOffset - The offset in this file that the line entry occurs at.
-    public int fileOffset;
+public class LineEntry {
+  /// fileOffset - The offset in this file that the line entry occurs at.
+  public int fileOffset;
 
-    /// lineNo - The presumed line number of this line entry: #line 4.
-    public int lineNo;
+  /// lineNo - The presumed line number of this line entry: #line 4.
+  public int lineNo;
 
-    /// filenameID - The ID of the filename identified by this line entry:
-    /// #line 4 "foo.c".  This is -1 if not specified.
-    public int filenameID;
+  /// filenameID - The ID of the filename identified by this line entry:
+  /// #line 4 "foo.c".  This is -1 if not specified.
+  public int filenameID;
 
-    /// Flags - Set the 0 if no flags, 1 if a system header,
-    public CharacteristicKind fileKind;
+  /// Flags - Set the 0 if no flags, 1 if a system header,
+  public CharacteristicKind fileKind;
 
-    /// includeOffset - This is the offset of the virtual include stack location,
-    /// which is manipulated by GNU linemarker directives.  If this is 0 then
-    /// there is no virtual #includer.
-    public int includeOffset;
+  /// includeOffset - This is the offset of the virtual include stack location,
+  /// which is manipulated by GNU linemarker directives.  If this is 0 then
+  /// there is no virtual #includer.
+  public int includeOffset;
 
-    public static LineEntry get(int offs, int line, int filename,
-            CharacteristicKind fileKind, int includeOffset)
-    {
-        LineEntry entry = new LineEntry();
-        entry.fileOffset = offs;
-        entry.lineNo = line;
-        entry.filenameID = filename;
-        entry.fileKind = fileKind;
-        entry.includeOffset = includeOffset;
-        return entry;
-    }
+  public static LineEntry get(int offs, int line, int filename,
+                              CharacteristicKind fileKind, int includeOffset) {
+    LineEntry entry = new LineEntry();
+    entry.fileOffset = offs;
+    entry.lineNo = line;
+    entry.filenameID = filename;
+    entry.fileKind = fileKind;
+    entry.includeOffset = includeOffset;
+    return entry;
+  }
 }

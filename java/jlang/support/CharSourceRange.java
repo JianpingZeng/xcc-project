@@ -23,98 +23,87 @@ package jlang.support;
  * last token of the range (a "token range").  In the token range case, the
  * size of the last token must be measured to determine the actual end of the
  * range.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class CharSourceRange 
-{
-	private SourceRange range;
-	private boolean isTokenRange;
-	
-	public CharSourceRange()
-	{
-		super();
-	}
+public final class CharSourceRange {
+  private SourceRange range;
+  private boolean isTokenRange;
 
-	public CharSourceRange(SourceRange r)
-	{
-		this(r, true);
-	}
-	
-	public CharSourceRange(SourceRange r, boolean itr)
-	{
-		super();
-		range = r;
-		isTokenRange = itr;
-	}
+  public CharSourceRange() {
+    super();
+  }
 
-	public static CharSourceRange getTokenRange(SourceRange r)
-	{
-		CharSourceRange result = new CharSourceRange();
-		result.range = r;
-		result.isTokenRange = true;
-		return result;
-	}
+  public CharSourceRange(SourceRange r) {
+    this(r, true);
+  }
 
-	public static CharSourceRange getCharRange(SourceRange r) {
-		CharSourceRange result = new CharSourceRange();
-		result.range = r;
-		result.isTokenRange = false;
-		return result;
-	}
+  public CharSourceRange(SourceRange r, boolean itr) {
+    super();
+    range = r;
+    isTokenRange = itr;
+  }
 
-	public static CharSourceRange getTokenRange(SourceLocation begin, SourceLocation end)
-	{
-		return getTokenRange(new SourceRange(begin, end));
-	}
-	
-	public static CharSourceRange getCharRange(SourceLocation begin, SourceLocation end) {
-		return getCharRange(new SourceRange(begin, end));
-	}
+  public static CharSourceRange getTokenRange(SourceRange r) {
+    CharSourceRange result = new CharSourceRange();
+    result.range = r;
+    result.isTokenRange = true;
+    return result;
+  }
 
-	/**
-	 * Return true if the end of this range specifies the start of
-	 * the last token.  Return false if the end of this range specifies the last
-	 * character in the range.
-	 * @return
-	 */
-	public boolean isTokenRange() 
-	{
-		return isTokenRange;
-	}
+  public static CharSourceRange getCharRange(SourceRange r) {
+    CharSourceRange result = new CharSourceRange();
+    result.range = r;
+    result.isTokenRange = false;
+    return result;
+  }
 
-	public SourceLocation getBegin() 
-	{
-		return range.getBegin();
-	}
-	
-	public SourceLocation getEnd() 
-	{
-		return range.getEnd();
-	}
-	
-	public SourceRange getAsRange() 
-	{
-		return range;
-	}
+  public static CharSourceRange getTokenRange(SourceLocation begin, SourceLocation end) {
+    return getTokenRange(new SourceRange(begin, end));
+  }
 
-	public void setBegin(SourceLocation b) 
-	{ 
-		range.setBegin(b);
-	}
-	
-	public void setEnd(SourceLocation e) 
-	{
-		range.setEnd(e);
-	}
-	
-	public boolean isValid() 
-	{
-		return range.isValid();
-	}
-	public boolean isInvalid() 
-	{
-		return !isValid(); 
-	}
+  public static CharSourceRange getCharRange(SourceLocation begin, SourceLocation end) {
+    return getCharRange(new SourceRange(begin, end));
+  }
+
+  /**
+   * Return true if the end of this range specifies the start of
+   * the last token.  Return false if the end of this range specifies the last
+   * character in the range.
+   *
+   * @return
+   */
+  public boolean isTokenRange() {
+    return isTokenRange;
+  }
+
+  public SourceLocation getBegin() {
+    return range.getBegin();
+  }
+
+  public SourceLocation getEnd() {
+    return range.getEnd();
+  }
+
+  public SourceRange getAsRange() {
+    return range;
+  }
+
+  public void setBegin(SourceLocation b) {
+    range.setBegin(b);
+  }
+
+  public void setEnd(SourceLocation e) {
+    range.setEnd(e);
+  }
+
+  public boolean isValid() {
+    return range.isValid();
+  }
+
+  public boolean isInvalid() {
+    return !isValid();
+  }
 }
 

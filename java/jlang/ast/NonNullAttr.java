@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class NonNullAttr extends Attr
-{
-    public NonNullAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class NonNullAttr extends Attr {
+  public NonNullAttr(AttrKind kind) {
+    super(kind);
+  }
 }

@@ -22,23 +22,20 @@ import tools.Util;
 /**
  * The kind of a tc jlang.type.
  */
-public enum TagKind
-{
-    TTK_struct, TTK_union, TTK_enum;
+public enum TagKind {
+  TTK_struct, TTK_union, TTK_enum;
 
-    public static TagKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType)
-    {
-        switch (tagType)
-        {
-            case TST_struct:
-                return TTK_struct;
-            case TST_union:
-                return TTK_union;
-            case TST_enum:
-                return TTK_enum;
-            default:
-                Util.shouldNotReachHere("Type specifier is not a tc jlang.type kind");
-                return TTK_union;
-        }
+  public static TagKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType) {
+    switch (tagType) {
+      case TST_struct:
+        return TTK_struct;
+      case TST_union:
+        return TTK_union;
+      case TST_enum:
+        return TTK_enum;
+      default:
+        Util.shouldNotReachHere("Type specifier is not a tc jlang.type kind");
+        return TTK_union;
     }
+  }
 }

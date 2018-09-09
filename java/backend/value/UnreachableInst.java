@@ -23,40 +23,33 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class UnreachableInst extends Instruction.TerminatorInst
-{
-    public UnreachableInst(BasicBlock insertAtEnd)
-    {
-        super(Operator.Unreachable, "", insertAtEnd);
-    }
+public class UnreachableInst extends Instruction.TerminatorInst {
+  public UnreachableInst(BasicBlock insertAtEnd) {
+    super(Operator.Unreachable, "", insertAtEnd);
+  }
 
-    public UnreachableInst(Instruction insertBefore)
-    {
-        super(Operator.Unreachable, "", insertBefore);
-    }
+  public UnreachableInst(Instruction insertBefore) {
+    super(Operator.Unreachable, "", insertBefore);
+  }
 
-    public UnreachableInst()
-    {
-        this((Instruction) null);
-    }
+  public UnreachableInst() {
+    this((Instruction) null);
+  }
 
-    @Override
-    public BasicBlock getSuccessor(int index)
-    {
-        Util.assertion(false, "UnreachableInst has no successor");
-        return null;
-    }
+  @Override
+  public BasicBlock getSuccessor(int index) {
+    Util.assertion(false, "UnreachableInst has no successor");
+    return null;
+  }
 
-    @Override
-    public int getNumOfSuccessors()
-    {
-        //Util.assertion(false, "UnreachableInst has no successor");
-        return 0;
-    }
+  @Override
+  public int getNumOfSuccessors() {
+    //Util.assertion(false, "UnreachableInst has no successor");
+    return 0;
+  }
 
-    @Override
-    public void setSuccessor(int index, BasicBlock bb)
-    {
-        Util.assertion(false, "UnreachableInst has no successor");
-    }
+  @Override
+  public void setSuccessor(int index, BasicBlock bb) {
+    Util.assertion(false, "UnreachableInst has no successor");
+  }
 }

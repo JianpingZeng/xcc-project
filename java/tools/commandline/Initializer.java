@@ -20,29 +20,28 @@ package tools.commandline;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class Initializer<T> implements Modifier
-{
-    private T init;
-    public Initializer(T initVal)
-    {
-        init = initVal;
-    }
-    @Override
-    public void apply(Option<?> opt)
-    {
-        Option<T> optT = (Option<T>)opt;
-        optT.setInitializer(init);
-    }
+public class Initializer<T> implements Modifier {
+  private T init;
 
-    /**
-     * This is a static factory method served as creating an instance of {@linkplain
-     * Initializer} to specify the initial value of OptionInfo.
-     * @param val
-     * @param <T>
-     * @return
-     */
-    public static <T> Initializer<T> init(T val)
-    {
-        return new Initializer<T>(val);
-    }
+  public Initializer(T initVal) {
+    init = initVal;
+  }
+
+  @Override
+  public void apply(Option<?> opt) {
+    Option<T> optT = (Option<T>) opt;
+    optT.setInitializer(init);
+  }
+
+  /**
+   * This is a static factory method served as creating an instance of {@linkplain
+   * Initializer} to specify the initial value of OptionInfo.
+   *
+   * @param val
+   * @param <T>
+   * @return
+   */
+  public static <T> Initializer<T> init(T val) {
+    return new Initializer<T>(val);
+  }
 }

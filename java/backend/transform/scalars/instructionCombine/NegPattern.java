@@ -15,42 +15,37 @@ package backend.transform.scalars.instructionCombine;
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
 import backend.value.*;
 
-public class NegPattern implements Pattern
-{
-    private Pattern op;
-    private NegPattern(Pattern op)
-    {
-        this.op = op;
-    }
+public class NegPattern implements Pattern {
+  private Pattern op;
 
-    @Override
-    public boolean match(Value valueToMatch)
-    {
-        if (valueToMatch instanceof Instruction)
-        {
-            Instruction inst = (Instruction) valueToMatch;
-            if (inst.getOpcode() == Operator.Sub)
-                return matchIfNeg(inst.operand(0), inst.operand(1));
-        }
-        if (valueToMatch instanceof ConstantExpr)
-        {
-            ConstantExpr ce = (ConstantExpr) valueToMatch;
-            if (ce.getOpcode() == Operator.Sub)
-                return matchIfNeg(ce.operand(0), ce.operand(1));
-        }
-        if (valueToMatch instanceof ConstantInt)
-        {
-            ConstantInt ci = (ConstantInt) valueToMatch;
-            return op.match(ConstantExpr.getNeg(ci));
-        }
-        return false;
-    }
+  private NegPattern(Pattern op) {
+    this.op = op;
+  }
 
-    private boolean matchIfNeg(Value lhs, Value rhs)
-    {
-        return lhs.equals(ConstantInt.getNullValue(lhs.getType())) &&
-                op.match(rhs);
+  @Override
+  public boolean match(Value valueToMatch) {
+    if (valueToMatch instanceof Instruction) {
+      Instruction inst = (Instruction) valueToMatch;
+      if (inst.getOpcode() == Operator.Sub)
+        return matchIfNeg(inst.operand(0), inst.operand(1));
     }
+    if (valueToMatch instanceof ConstantExpr) {
+      ConstantExpr ce = (ConstantExpr) valueToMatch;
+      if (ce.getOpcode() == Operator.Sub)
+        return matchIfNeg(ce.operand(0), ce.operand(1));
+    }
+    if (valueToMatch instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) valueToMatch;
+      return op.match(ConstantExpr.getNeg(ci));
+    }
+    return false;
+  }
+
+  private boolean matchIfNeg(Value lhs, Value rhs) {
+    return lhs.equals(ConstantInt.getNullValue(lhs.getType())) &&
+        op.match(rhs);
+  }
 }

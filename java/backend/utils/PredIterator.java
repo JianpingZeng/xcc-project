@@ -26,40 +26,37 @@ import java.util.NoSuchElementException;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class PredIterator<B extends Value> implements Iterator<BasicBlock>
-{
-    private BasicBlock curBB;
-    private int idx = 0;
-    public PredIterator(BasicBlock BB)
-    {
-        curBB = BB;
-    }
+public class PredIterator<B extends Value> implements Iterator<BasicBlock> {
+  private BasicBlock curBB;
+  private int idx = 0;
 
-    /**
-     * Returns {@code true} if the iteration has more elements.
-     * (In other words, returns {@code true} if {@link #next} would
-     * return an element rather than throwing an jlang.exception.)
-     *
-     * @return {@code true} if the iteration has more elements
-     */
-    @Override
-    public boolean hasNext()
-    {
-        return idx < curBB.getNumPredecessors();
-    }
+  public PredIterator(BasicBlock BB) {
+    curBB = BB;
+  }
 
-    /**
-     * Returns the next element in the iteration.
-     *
-     * @return the next element in the iteration
-     * @throws NoSuchElementException if the iteration has no more elements
-     */
-    @Override
-    public BasicBlock next()
-    {
-        if (idx>=curBB.usesList.size())
-            throw new NoSuchElementException();
+  /**
+   * Returns {@code true} if the iteration has more elements.
+   * (In other words, returns {@code true} if {@link #next} would
+   * return an element rather than throwing an jlang.exception.)
+   *
+   * @return {@code true} if the iteration has more elements
+   */
+  @Override
+  public boolean hasNext() {
+    return idx < curBB.getNumPredecessors();
+  }
 
-        return curBB.predAt(idx++);
-    }
+  /**
+   * Returns the next element in the iteration.
+   *
+   * @return the next element in the iteration
+   * @throws NoSuchElementException if the iteration has no more elements
+   */
+  @Override
+  public BasicBlock next() {
+    if (idx >= curBB.usesList.size())
+      throw new NoSuchElementException();
+
+    return curBB.predAt(idx++);
+  }
 }

@@ -17,23 +17,22 @@ package utils.tablegen;
  */
 
 /**
- *
  * SelectionDAG node properties.
- *  SDNPMemOperand: indicates that a node touches memory and therefore must
- *                 have an associated memory operand that describes the access.
+ * SDNPMemOperand: indicates that a node touches memory and therefore must
+ * have an associated memory operand that describes the access.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface SDNP
-{
-    int SDNPCommutative = 0;
-    int SDNPAssociative = 1;
-    int SDNPHasChain = 2;
-    int SDNPOutFlag = 3;
-    int SDNPInFlag = 4;
-    int SDNPOptInFlag = 5;
-    int SDNPMayLoad = 6;
-    int SDNPMayStore = 7;
-    int SDNPSideEffect = 8;
-    int SDNPMemOperand = 9;
+public interface SDNP {
+  int SDNPCommutative = 0;
+  int SDNPAssociative = 1;
+  int SDNPHasChain = 2;
+  int SDNPOutFlag = 3;
+  int SDNPInFlag = 4;
+  int SDNPOptInFlag = 5;
+  int SDNPMayLoad = 6;
+  int SDNPMayStore = 7;
+  int SDNPSideEffect = 8;
+  int SDNPMemOperand = 9;
 }

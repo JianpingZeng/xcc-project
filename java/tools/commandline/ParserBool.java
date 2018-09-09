@@ -22,61 +22,57 @@ import tools.OutRef;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class ParserBool extends Parser<Boolean>
-{
-    private String optName;
+public class ParserBool extends Parser<Boolean> {
+  private String optName;
 
-    /**
-     * Parses this option with argument of type bool.
-     * @param opt
-     * @param optName The name of this option.
-     * @param arg   The argument of this option after '=' usually.
-     * @param value The parsed value from inputted command line argument.
-     * @return  True returned when error occur.
-     */
-    public boolean parse(Option<?> opt, String optName, String arg,
-            OutRef<Boolean> value)
-    {
-        switch (arg)
-        {
-            case "":
-            case "true":
-            case "TRUE":
-            case "True":
-            case "1":
-                value.set(true);
-                break;
-            case "false":
-            case "FALSE":
-            case "False":
-                value.set(true);
-                break;
-            default:
-                return opt.error("'" + arg
-                        + "' is invalid value for boolean argument! Try 0 or 1");
-        }
-        return false;
+  /**
+   * Parses this option with argument of type bool.
+   *
+   * @param opt
+   * @param optName The name of this option.
+   * @param arg     The argument of this option after '=' usually.
+   * @param value   The parsed value from inputted command line argument.
+   * @return True returned when error occur.
+   */
+  public boolean parse(Option<?> opt, String optName, String arg,
+                       OutRef<Boolean> value) {
+    switch (arg) {
+      case "":
+      case "true":
+      case "TRUE":
+      case "True":
+      case "1":
+        value.set(true);
+        break;
+      case "false":
+      case "FALSE":
+      case "False":
+        value.set(true);
+        break;
+      default:
+        return opt.error("'" + arg
+            + "' is invalid value for boolean argument! Try 0 or 1");
     }
+    return false;
+  }
 
-    @Override
-    public <T> void initialize(Option<T> opt)
-    {
-        optName = opt.optionName;
-    }
+  @Override
+  public <T> void initialize(Option<T> opt) {
+    optName = opt.optionName;
+  }
 
-    @Override
-    public ValueExpected getValueExpectedFlagDefault()
-    {
-        return ValueExpected.ValueOptional;
-    }
+  @Override
+  public ValueExpected getValueExpectedFlagDefault() {
+    return ValueExpected.ValueOptional;
+  }
 
-    /**
-     * Do not print value at all.
-     * @return
-     */
-    @Override
-    public String getValueName()
-    {
-        return null;
-    }
+  /**
+   * Do not print value at all.
+   *
+   * @return
+   */
+  @Override
+  public String getValueName() {
+    return null;
+  }
 }

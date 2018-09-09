@@ -23,84 +23,73 @@ import backend.value.GlobalValue;
  * The base register can be a frame index, which will eventually be replaced
  * with BP or SP and Disp being offsetted accordingly.  The displacement may
  * also include the offset of a global value.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86AddressMode
-{
-    public enum BaseType
-    {
-        RegBase,
-        FrameIndexBase
+public class X86AddressMode {
+  public enum BaseType {
+    RegBase,
+    FrameIndexBase
+  }
+
+  public static abstract class Base {
+    public abstract int getBase();
+
+    public abstract void setBase(int base);
+  }
+
+  public static class RegisterBase extends Base {
+    private int reg;
+
+    public RegisterBase(int r) {
+      reg = r;
     }
 
-    public static abstract class Base
-    {
-        public abstract int getBase();
-
-        public abstract void setBase(int base);
+    @Override
+    public int getBase() {
+      return reg;
     }
 
-    public static class RegisterBase extends Base
-    {
-        private int reg;
+    @Override
+    public void setBase(int base) {
+      reg = base;
+    }
+  }
 
-        public RegisterBase(int r)
-        {
-            reg = r;
-        }
+  public static class FrameIndexBase extends Base {
+    private int frameIndex;
 
-        @Override
-        public int getBase()
-        {
-            return reg;
-        }
-
-        @Override
-        public void setBase(int base)
-        {
-            reg = base;
-        }
+    public FrameIndexBase(int fi) {
+      frameIndex = fi;
     }
 
-    public static class FrameIndexBase extends Base
-    {
-        private int frameIndex;
-
-        public FrameIndexBase(int fi)
-        {
-            frameIndex = fi;
-        }
-
-        @Override
-        public int getBase()
-        {
-            return frameIndex;
-        }
-
-        @Override
-        public void setBase(int base)
-        {
-            frameIndex = base;
-        }
+    @Override
+    public int getBase() {
+      return frameIndex;
     }
 
-    public BaseType baseType;
-    public Base base;
-    public int scale;
-    public int indexReg;
-    public int disp;
-    public GlobalValue gv;
-    public int gvOpFlags;
-
-    public X86AddressMode()
-    {
-        baseType = BaseType.RegBase;
-        scale = 1;
-        indexReg = 0;
-        disp = 0;
-        gv = null;
-        gvOpFlags = 0;
-        base = new RegisterBase(0);
+    @Override
+    public void setBase(int base) {
+      frameIndex = base;
     }
+  }
+
+  public BaseType baseType;
+  public Base base;
+  public int scale;
+  public int indexReg;
+  public int disp;
+  public GlobalValue gv;
+  public int gvOpFlags;
+
+  public X86AddressMode() {
+    baseType = BaseType.RegBase;
+    scale = 1;
+    indexReg = 0;
+    disp = 0;
+    gv = null;
+    gvOpFlags = 0;
+    base = new RegisterBase(0);
+  }
 }

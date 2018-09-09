@@ -22,11 +22,10 @@ import tools.OutRef;
  * @author Jianping Zeng
  * @version 0.1
  */
-public interface CCCustomFn
-{
-    boolean apply(OutRef<Integer> valNo,
-                  OutRef<Integer> valVT, OutRef<EVT> locVT,
-                  OutRef<CCValAssign.LocInfo> locInfo,
-                  OutRef<ArgFlagsTy> argFlags,
-                  CCState state);
+public interface CCCustomFn {
+  boolean apply(OutRef<Integer> valNo,
+                OutRef<Integer> valVT, OutRef<EVT> locVT,
+                OutRef<CCValAssign.LocInfo> locInfo,
+                OutRef<ArgFlagsTy> argFlags,
+                CCState state);
 }

@@ -23,59 +23,59 @@ package jlang.sema;
  * done for simple assignments, as well as initialization, return from
  * function, argument passing, etc.  The query is phrased in terms of a
  * source and destination type.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-enum AssignConvertType
-{
-    /**
-     * the types are compatible according to the standard.
-     */
-    Compatible,
+enum AssignConvertType {
+  /**
+   * the types are compatible according to the standard.
+   */
+  Compatible,
 
-    /**
-     * The assignment converts a pointer to an int, which we
-     * accept as an extension.
-     */
-    PointerToInt,
+  /**
+   * The assignment converts a pointer to an int, which we
+   * accept as an extension.
+   */
+  PointerToInt,
 
-    /**
-     * The assignment converts an int to a pointer, which we
-     * accept as an extension.
-     */
-    IntToPointer,
+  /**
+   * The assignment converts an int to a pointer, which we
+   * accept as an extension.
+   */
+  IntToPointer,
 
-    /**
-     * The assignment is between a function pointer and
-     * void*, which the standard doesn't allow, but we accept as an extension.
-     */
-    FunctionVoidPointer,
+  /**
+   * The assignment is between a function pointer and
+   * void*, which the standard doesn't allow, but we accept as an extension.
+   */
+  FunctionVoidPointer,
 
-    /**
-     * The assignment is between two pointers types that
-     * are not compatible, but we accept them as an extension.
-     */
-    IncompatiblePointer,
+  /**
+   * The assignment is between two pointers types that
+   * are not compatible, but we accept them as an extension.
+   */
+  IncompatiblePointer,
 
-    /**
-     * The assignment is between two pointers types which
-     * point to integers which have a different sign, but are otherwise identical.
-     * This is a subset of the above, but broken out because it's by far the most
-     * common case of incompatible pointers.
-     */
-    IncompatiblePointerSign,
+  /**
+   * The assignment is between two pointers types which
+   * point to integers which have a different sign, but are otherwise identical.
+   * This is a subset of the above, but broken out because it's by far the most
+   * common case of incompatible pointers.
+   */
+  IncompatiblePointerSign,
 
-    IncompatibleNestedPointerQualifiers,
+  IncompatibleNestedPointerQualifiers,
 
-    /**
-     * The assignment discards
-     * c/v/r qualifiers, which we accept as an extension.
-     */
-    CompatiblePointerDiscardsQualifiers,
+  /**
+   * The assignment discards
+   * c/v/r qualifiers, which we accept as an extension.
+   */
+  CompatiblePointerDiscardsQualifiers,
 
-    /**
-     * We reject this conversion outright, it is invalid to
-     * represent it in the AST.
-     */
-    Incompatible
+  /**
+   * We reject this conversion outright, it is invalid to
+   * represent it in the AST.
+   */
+  Incompatible
 }

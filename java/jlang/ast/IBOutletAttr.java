@@ -16,10 +16,8 @@
  */
 package jlang.ast;
 
-public class IBOutletAttr extends Attr
-{
-    public IBOutletAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class IBOutletAttr extends Attr {
+  public IBOutletAttr(AttrKind kind) {
+    super(kind);
+  }
 }

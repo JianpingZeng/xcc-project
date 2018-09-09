@@ -21,43 +21,37 @@ import backend.value.BasicBlock;
 import backend.value.Instruction.BranchInst;
 import backend.value.Value;
 
-public class CondBRPattern implements Pattern
-{
-    private Pattern cond;
-    private BasicBlock trueBB;
-    private BasicBlock falseBB;
-    public CondBRPattern(Pattern cond)
-    {
-        this.cond = cond;
-    }
-    @Override
-    public boolean match(Value valueToMatch)
-    {
-        if (valueToMatch instanceof BranchInst)
-        {
-            BranchInst br = (BranchInst) valueToMatch;
-            if (br.isConditional() && cond.match(br.getCondition()))
-            {
-                trueBB = br.getSuccessor(0);
-                falseBB = br.getSuccessor(1);
-                return true;
-            }
-        }
-        return false;
-    }
+public class CondBRPattern implements Pattern {
+  private Pattern cond;
+  private BasicBlock trueBB;
+  private BasicBlock falseBB;
 
-    public BasicBlock getFalseBB()
-    {
-        return falseBB;
-    }
+  public CondBRPattern(Pattern cond) {
+    this.cond = cond;
+  }
 
-    public BasicBlock getTrueBB()
-    {
-        return trueBB;
+  @Override
+  public boolean match(Value valueToMatch) {
+    if (valueToMatch instanceof BranchInst) {
+      BranchInst br = (BranchInst) valueToMatch;
+      if (br.isConditional() && cond.match(br.getCondition())) {
+        trueBB = br.getSuccessor(0);
+        falseBB = br.getSuccessor(1);
+        return true;
+      }
     }
+    return false;
+  }
 
-    public static Pattern mBr(Pattern cond)
-    {
-        return new CondBRPattern(cond);
-    }
+  public BasicBlock getFalseBB() {
+    return falseBB;
+  }
+
+  public BasicBlock getTrueBB() {
+    return trueBB;
+  }
+
+  public static Pattern mBr(Pattern cond) {
+    return new CondBRPattern(cond);
+  }
 }

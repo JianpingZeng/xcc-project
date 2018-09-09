@@ -16,331 +16,293 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
 import jlang.support.SourceLocation;
+import tools.Util;
 
 import java.util.ArrayList;
 
 /**
  * Each identifier that is #define'd has an instance of this class
  * associated with it, used to implement macro expansion.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class MacroInfo
-{
-    /**
-     * This is the place the macro is defined.
-     */
-    private SourceLocation location;
-    /**
-     * The location of the last token in the macro.
-     */
-    private SourceLocation endLocation;
+public final class MacroInfo {
+  /**
+   * This is the place the macro is defined.
+   */
+  private SourceLocation location;
+  /**
+   * The location of the last token in the macro.
+   */
+  private SourceLocation endLocation;
 
-    /**
-     * The list of arguments for a function-like macro.  This can be
-     * empty, for, e.g. "#define X()".  In a C99-style variadic macro, this
-     * includes the __VA_ARGS__ identifier on the list.
-     *
-     * This is formal argument like the function declaration.
-     */
-    private IdentifierInfo[] argumentList;
+  /**
+   * The list of arguments for a function-like macro.  This can be
+   * empty, for, e.g. "#define X()".  In a C99-style variadic macro, this
+   * includes the __VA_ARGS__ identifier on the list.
+   * <p>
+   * This is formal argument like the function declaration.
+   */
+  private IdentifierInfo[] argumentList;
 
-    /**
-     * This is the list of tokens that the macro is defined
-     * to.
-     */
-    private ArrayList<Token> replacementTokens;
+  /**
+   * This is the list of tokens that the macro is defined
+   * to.
+   */
+  private ArrayList<Token> replacementTokens;
 
-    /**
-     * True if this macro is a function-like macro, false if it
-     /// is an object-like macro.
-     */
-    private boolean isFunctionLike;
+  /**
+   * True if this macro is a function-like macro, false if it
+   * /// is an object-like macro.
+   */
+  private boolean isFunctionLike;
 
-    /**
-     * True if this macro is of the form "#define X(...)" or
-     /// "#define X(Y,Z,...)".  The __VA_ARGS__ token should be replaced with the
-     /// contents of "..." in an invocation.
-     */
-    private boolean isC99Varargs;
+  /**
+   * True if this macro is of the form "#define X(...)" or
+   * /// "#define X(Y,Z,...)".  The __VA_ARGS__ token should be replaced with the
+   * /// contents of "..." in an invocation.
+   */
+  private boolean isC99Varargs;
 
-    /**
-     * True if this macro is of the form "#define X(a...)".  The
-     /// "a" identifier in the replacement list will be replaced with all arguments
-     /// of the macro starting with the specified one.
-     */
-    private boolean isGNUVarargs;
+  /**
+   * True if this macro is of the form "#define X(a...)".  The
+   * /// "a" identifier in the replacement list will be replaced with all arguments
+   * /// of the macro starting with the specified one.
+   */
+  private boolean isGNUVarargs;
 
-    /**
-     * True if this is a builtin macro, such as __LINE__, and if
-     /// it has not yet been redefined or undefined.
-     */
-    private boolean isBuiltinMacro;
+  /**
+   * True if this is a builtin macro, such as __LINE__, and if
+   * /// it has not yet been redefined or undefined.
+   */
+  private boolean isBuiltinMacro;
 
-    /**
-     * True if we have started an expansion of this macro already.
-     /// This disbles recursive expansion, which would be quite bad for things like
-     /// #define A A.
-     */
-    private boolean isDisabled;
-    /**
-     * True if this macro is either defined in the main file and has
-     /// been used, or if it is not defined in the main file.  This is used to
-     /// emit -Wunused-macros diagnostics.
-     */
-    private boolean isUsed;
+  /**
+   * True if we have started an expansion of this macro already.
+   * /// This disbles recursive expansion, which would be quite bad for things like
+   * /// #define A A.
+   */
+  private boolean isDisabled;
+  /**
+   * True if this macro is either defined in the main file and has
+   * /// been used, or if it is not defined in the main file.  This is used to
+   * /// emit -Wunused-macros diagnostics.
+   */
+  private boolean isUsed;
 
-    public MacroInfo(SourceLocation defloc)
-    {
-        isUsed = true;
-        replacementTokens = new ArrayList<>();
-        location = defloc;
+  public MacroInfo(SourceLocation defloc) {
+    isUsed = true;
+    replacementTokens = new ArrayList<>();
+    location = defloc;
+  }
+
+  public SourceLocation getDefinitionLoc() {
+    return location;
+  }
+
+  public void setDefinitionLoc(SourceLocation loc) {
+    this.location = loc;
+  }
+
+  public SourceLocation getDefinitionEndLoc() {
+    return endLocation;
+  }
+
+  public void setDefinitionEndLoc(SourceLocation loc) {
+    this.endLocation = loc;
+  }
+
+  /**
+   * Return true if the specified macro definition is equal to
+   * /// this macro in spelling, arguments, and whitespace.  This is used to emit
+   * /// duplicate definition warnings.  This implements the rules in C99 6.10.3.
+   *
+   * @param other
+   * @param pp
+   * @return
+   */
+  public boolean isIdenticalTo(MacroInfo other, Preprocessor pp) {
+    if ((argumentList == null && other.argumentList != null)
+        || (argumentList != null && other.argumentList == null))
+      return false;
+
+    if (argumentList != null && other.argumentList != null) {
+      if (replacementTokens.size() != other.replacementTokens.size()
+          || argumentList.length != other.argumentList.length
+          || isFunctionLike != other.isFunctionLike
+          || isC99Varargs() != other.isC99Varargs()
+          || isGNUVarargs() != other.isGNUVarargs())
+        return false;
+    } else {
+      if (replacementTokens.size() != other.replacementTokens.size()
+          || isFunctionLike != other.isFunctionLike
+          || isC99Varargs() != other.isC99Varargs()
+          || isGNUVarargs() != other.isGNUVarargs())
+        return false;
     }
 
-    public SourceLocation getDefinitionLoc()
-    {
-        return location;
+    // Check arguemnts.
+    if (argumentList != null) {
+      for (int i = 0, e = argumentList.length; i < e; ++i) {
+        if (!argumentList[i].equals(other.argumentList[i]))
+          return false;
+      }
     }
 
-    public void setDefinitionLoc(SourceLocation loc)
-    {
-        this.location = loc;
+    // Check all tokens.
+    for (int i = 0, e = replacementTokens.size(); i < e; i++) {
+      Token a = replacementTokens.get(i);
+      Token b = other.replacementTokens.get(i);
+
+      if (a.getKind() != b.getKind())
+        return false;
+
+      // If this isn't the first first token, check that the whitespace and
+      // start-of-line characteristics match.
+      if (i != 0 && (a.isAtStartOfLine() != b.isAtStartOfLine()
+          || a.hasLeadingSpace() != b.hasLeadingSpace()))
+        return false;
+
+      if (a.getIdentifierInfo() != null
+          || b.getIdentifierInfo() != null) {
+        if (!a.getIdentifierInfo().equals(b.getIdentifierInfo()))
+          return false;
+        continue;
+      }
+
+      // Otherwise, check the spelling.
+      if (pp.getSpelling(a).equals(pp.getSpelling(b)))
+        return false;
     }
+    return true;
+  }
 
-    public SourceLocation getDefinitionEndLoc()
-    {
-        return endLocation;
-    }
+  public void setIsBuiltinMacro() {
+    setBuiltinMacro(true);
+  }
 
-    public void setDefinitionEndLoc(SourceLocation loc)
-    {
-        this.endLocation = loc;
-    }
+  public void setBuiltinMacro(boolean builtinMacro) {
+    isBuiltinMacro = builtinMacro;
+  }
 
-    /**
-     * Return true if the specified macro definition is equal to
-     /// this macro in spelling, arguments, and whitespace.  This is used to emit
-     /// duplicate definition warnings.  This implements the rules in C99 6.10.3.
-     * @param other
-     * @param pp
-     * @return
-     */
-    public boolean isIdenticalTo(MacroInfo other, Preprocessor pp)
-    {
-        if ((argumentList == null && other.argumentList !=null)
-                || (argumentList != null && other.argumentList == null))
-            return false;
+  public void setIsUsed(boolean used) {
+    isUsed = used;
+  }
 
-        if (argumentList != null && other.argumentList != null)
-        {
-            if (replacementTokens.size() != other.replacementTokens.size()
-                    || argumentList.length != other.argumentList.length
-                    || isFunctionLike != other.isFunctionLike
-                    || isC99Varargs() != other.isC99Varargs()
-                    || isGNUVarargs() != other.isGNUVarargs())
-                return false;
-        }
-        else
-        {
-            if (replacementTokens.size() != other.replacementTokens.size()
-                    || isFunctionLike != other.isFunctionLike
-                    || isC99Varargs() != other.isC99Varargs()
-                    || isGNUVarargs() != other.isGNUVarargs())
-                return false;
-        }
+  public void setArgumentList(IdentifierInfo[] argumentList) {
+    Util.assertion(argumentList != null && this.argumentList == null);
+    if (argumentList.length == 0) return;
 
-        // Check arguemnts.
-        if (argumentList != null)
-        {
-            for (int i = 0, e = argumentList.length; i < e; ++i)
-            {
-                if (!argumentList[i].equals(other.argumentList[i]))
-                    return false;
-            }
-        }
+    this.argumentList = new IdentifierInfo[argumentList.length];
+    for (int i = 0, e = argumentList.length; i < e; i++)
+      this.argumentList[i] = argumentList[i];
+  }
 
-        // Check all tokens.
-        for (int i = 0, e = replacementTokens.size(); i < e; i++)
-        {
-            Token a = replacementTokens.get(i);
-            Token b = other.replacementTokens.get(i);
+  public IdentifierInfo[] getArgumentList() {
+    return argumentList;
+  }
 
-            if(a.getKind() != b.getKind())
-                return false;
+  /**
+   * Return the argument number of the specified identifier,
+   * /// or -1 if the identifier is not a formal argument identifier.
+   *
+   * @param arg
+   * @return
+   */
+  public int getArgumentNum(IdentifierInfo arg) {
+    for (int i = 0, e = argumentList.length; i < e; ++i)
+      if (arg.equals(argumentList[i]))
+        return i;
+    return -1;
+  }
 
-            // If this isn't the first first token, check that the whitespace and
-            // start-of-line characteristics match.
-            if (i != 0 && (a.isAtStartOfLine() != b.isAtStartOfLine()
-            || a.hasLeadingSpace() != b.hasLeadingSpace()))
-                return false;
+  public void setIsFunctionLike(boolean functionLike) {
+    isFunctionLike = functionLike;
+  }
 
-            if (a.getIdentifierInfo() != null
-                    || b.getIdentifierInfo() != null)
-            {
-                if (!a.getIdentifierInfo().equals(b.getIdentifierInfo()))
-                    return false;
-                continue;
-            }
+  public boolean isFunctionLike() {
+    return isFunctionLike;
+  }
 
-            // Otherwise, check the spelling.
-            if (pp.getSpelling(a).equals(pp.getSpelling(b)))
-                return false;
-        }
-        return true;
-    }
+  public boolean isObjectLike() {
+    return !isFunctionLike;
+  }
 
-    public void setIsBuiltinMacro()
-    {
-        setBuiltinMacro(true);
-    }
+  public void setIsC99Varargs() {
+    isC99Varargs = true;
+  }
 
-    public void setBuiltinMacro(boolean builtinMacro)
-    {
-        isBuiltinMacro = builtinMacro;
-    }
+  public void setIsGNUVarargs() {
+    isGNUVarargs = true;
+  }
 
-    public void setIsUsed(boolean used)
-    {
-        isUsed = used;
-    }
+  public void setGNUVarargs() {
+    isGNUVarargs = true;
+  }
 
-    public void setArgumentList(IdentifierInfo[] argumentList)
-    {
-        Util.assertion( argumentList != null && this.argumentList == null);
-        if (argumentList.length == 0) return;
+  public boolean isC99Varargs() {
+    return isC99Varargs;
+  }
 
-        this.argumentList = new IdentifierInfo[argumentList.length];
-        for (int i = 0, e = argumentList.length; i < e; i++)
-            this.argumentList[i] = argumentList[i];
-    }
+  public boolean isGNUVarargs() {
+    return isGNUVarargs;
+  }
 
-    public IdentifierInfo[] getArgumentList()
-    {
-        return argumentList;
-    }
+  public boolean isVariadic() {
+    return isC99Varargs || isGNUVarargs;
+  }
 
-    /**
-     * Return the argument number of the specified identifier,
-     /// or -1 if the identifier is not a formal argument identifier.
-     * @param arg
-     * @return
-     */
-    public int getArgumentNum(IdentifierInfo arg)
-    {
-        for (int i = 0, e = argumentList.length; i < e; ++i)
-            if (arg.equals(argumentList[i]))
-                return i;
-        return -1;
-    }
+  public boolean isBuiltinMacro() {
+    return isBuiltinMacro;
+  }
 
-    public void setIsFunctionLike(boolean functionLike)
-    {
-        isFunctionLike = functionLike;
-    }
+  public boolean isUsed() {
+    return isUsed;
+  }
 
-    public boolean isFunctionLike()
-    {
-        return isFunctionLike;
-    }
+  public int getNumTokens() {
+    return replacementTokens.size();
+  }
 
-    public boolean isObjectLike()
-    {
-        return !isFunctionLike;
-    }
+  public Token getReplacementToken(int idx) {
+    Util.assertion(idx >= 0 && idx < replacementTokens.size(), "index out of range!");
+    return replacementTokens.get(idx);
+  }
 
-    public void setIsC99Varargs()
-    {
-        isC99Varargs = true;
-    }
+  public ArrayList<Token> getReplacementTokens() {
+    return replacementTokens;
+  }
 
-    public void setIsGNUVarargs()
-    {
-        isGNUVarargs = true;
-    }
+  public void addTokenBody(Token tok) {
+    replacementTokens.add(tok);
+  }
 
-    public void setGNUVarargs()
-    {
-        isGNUVarargs = true;
-    }
+  public boolean isEnabled() {
+    return !isDisabled;
+  }
 
-    public boolean isC99Varargs()
-    {
-        return isC99Varargs;
-    }
+  public void enableMacro() {
+    Util.assertion(isDisabled, "Cannot enable an already-enabled macro!");
+    isDisabled = false;
+  }
 
-    public boolean isGNUVarargs()
-    {
-        return isGNUVarargs;
-    }
+  public void disableMacro() {
+    Util.assertion(!isDisabled, "Cannot disable an already-disabled macro!");
+    isDisabled = true;
+  }
 
-    public boolean isVariadic()
-    {
-        return isC99Varargs || isGNUVarargs;
-    }
+  public int getNumArgs() {
+    return argumentList.length;
+  }
 
-    public boolean isBuiltinMacro()
-    {
-        return isBuiltinMacro;
-    }
+  public IdentifierInfo getArgAt(int idx) {
+    Util.assertion(idx >= 0 && idx < argumentList.length);
+    return argumentList[idx];
+  }
 
-    public boolean isUsed()
-    {
-        return isUsed;
-    }
-
-    public int getNumTokens()
-    {
-        return replacementTokens.size();
-    }
-
-    public Token getReplacementToken(int idx)
-    {
-        Util.assertion(idx >= 0 && idx < replacementTokens.size(), "index out of range!");
-        return replacementTokens.get(idx);
-    }
-
-    public ArrayList<Token> getReplacementTokens()
-    {
-        return replacementTokens;
-    }
-
-    public void addTokenBody(Token tok)
-    {
-        replacementTokens.add(tok);
-    }
-
-    public boolean isEnabled()
-    {
-        return !isDisabled;
-    }
-
-    public void enableMacro()
-    {
-        Util.assertion(isDisabled,  "Cannot enable an already-enabled macro!");
-        isDisabled = false;
-    }
-
-    public void disableMacro()
-    {
-        Util.assertion(!isDisabled,  "Cannot disable an already-disabled macro!");
-        isDisabled = true;
-    }
-
-    public int getNumArgs()
-    {
-        return argumentList.length;
-    }
-
-    public IdentifierInfo getArgAt(int idx)
-    {
-        Util.assertion( idx >= 0 && idx < argumentList.length);
-        return argumentList[idx];
-    }
-
-    public void freeArgumentList()
-    {
-        argumentList = null;
-    }
+  public void freeArgumentList() {
+    argumentList = null;
+  }
 }

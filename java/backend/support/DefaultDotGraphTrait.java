@@ -30,128 +30,103 @@ import java.util.ArrayList;
  * @author Jianping Zeng
  * @version 0.1
  */
-public class DefaultDotGraphTrait<T>
-{
-    public static DefaultDotGraphTrait createDomTreeTrait(DomTree dt, String funcName)
-    {
-        return new DomTreeDotGraphTrait(dt, funcName);
-    }
+public class DefaultDotGraphTrait<T> {
+  public static DefaultDotGraphTrait createDomTreeTrait(DomTree dt, String funcName) {
+    return new DomTreeDotGraphTrait(dt, funcName);
+  }
 
-    public static DefaultDotGraphTrait createCFGTrait(Function fn)
-    {
-        return new CFGDotGraphTrait(fn);
-    }
+  public static DefaultDotGraphTrait createCFGTrait(Function fn) {
+    return new CFGDotGraphTrait(fn);
+  }
 
-    public static DefaultDotGraphTrait createSelectionDAGTrait(
-            SelectionDAG dag, boolean shortName)
-    {
-        return new SelectionDAGDotGraphTraits(dag, shortName);
-    }
+  public static DefaultDotGraphTrait createSelectionDAGTrait(
+      SelectionDAG dag, boolean shortName) {
+    return new SelectionDAGDotGraphTraits(dag, shortName);
+  }
 
-    public static DefaultDotGraphTrait createScheduleDAGTrait(
-            ScheduleDAG dag, boolean shortName)
-    {
-        return new ScheduleDAGDotTraits(dag, shortName);
-    }
+  public static DefaultDotGraphTrait createScheduleDAGTrait(
+      ScheduleDAG dag, boolean shortName) {
+    return new ScheduleDAGDotTraits(dag, shortName);
+  }
 
-    public String getGraphName()
-    {
-        return "";
-    }
+  public String getGraphName() {
+    return "";
+  }
 
-    public boolean renderGraphFromBottomUp()
-    {
-        return false;
-    }
+  public boolean renderGraphFromBottomUp() {
+    return false;
+  }
 
-    public String getGraphProperties(Object node)
-    {
-        return "";
-    }
+  public String getGraphProperties(Object node) {
+    return "";
+  }
 
-    public String getNodeLabel(T node, boolean shortName)
-    {
-        return "";
-    }
+  public String getNodeLabel(T node, boolean shortName) {
+    return "";
+  }
 
-    public boolean hasNodeAddressLabel(T node)
-    {
-        return false;
-    }
+  public boolean hasNodeAddressLabel(T node) {
+    return false;
+  }
 
-    public String getNodeAttributes(T node)
-    {
-        return "";
-    }
+  public String getNodeAttributes(T node) {
+    return "";
+  }
 
-    public String getEdgeAttributes(T from, Object to)
-    {
-        return "";
-    }
+  public String getEdgeAttributes(T from, Object to) {
+    return "";
+  }
 
-    public String getEdgeSourceLabel(T to, Object from)
-    {
-        return "";
-    }
+  public String getEdgeSourceLabel(T to, Object from) {
+    return "";
+  }
 
-    public boolean edgeTargetEdgeSource(T from, Object to)
-    {
-        return false;
-    }
+  public boolean edgeTargetEdgeSource(T from, Object to) {
+    return false;
+  }
 
-    public int getEdgeTarget(T node, Object to)
-    {
-        return 0;
-    }
+  public int getEdgeTarget(T node, Object to) {
+    return 0;
+  }
 
-    public boolean hasEdgeDestLabels()
-    {
-        return false;
-    }
+  public boolean hasEdgeDestLabels() {
+    return false;
+  }
 
-    public int getNumEdgeDestLabels(T node)
-    {
-        return 0;
-    }
+  public int getNumEdgeDestLabels(T node) {
+    return 0;
+  }
 
-    public String getEdgeDestLabel(T node, int i)
-    {
-        return "";
-    }
+  public String getEdgeDestLabel(T node, int i) {
+    return "";
+  }
 
-    public void addCustomGraphFeatures()
-    {
-    }
+  public void addCustomGraphFeatures() {
+  }
 
-    public void writeFooter(GraphWriter writer)
-    {
+  public void writeFooter(GraphWriter writer) {
 
-    }
+  }
 
-    public void writeNodes(GraphWriter writer)
-    {
+  public void writeNodes(GraphWriter writer) {
 
-    }
+  }
 
-    public Object getGraphType()
-    {
-        return null;
-    }
+  public Object getGraphType() {
+    return null;
+  }
 
-    public void emitSimpleNode(Object id, String attr, String label)
-    {
-        emitSimpleNode(id, attr, label, 0);
-    }
+  public void emitSimpleNode(Object id, String attr, String label) {
+    emitSimpleNode(id, attr, label, 0);
+  }
 
-    public void emitSimpleNode(Object id, String attr, String label,
-            int numEdgeSources)
-    {
-        emitSimpleNode(id, attr, label, numEdgeSources, null);
-    }
+  public void emitSimpleNode(Object id, String attr, String label,
+                             int numEdgeSources) {
+    emitSimpleNode(id, attr, label, numEdgeSources, null);
+  }
 
-    public void emitSimpleNode(Object id, String attr, String label,
-            int numEdgeSources, ArrayList<String> edgeSourceLabels)
-    {
+  public void emitSimpleNode(Object id, String attr, String label,
+                             int numEdgeSources, ArrayList<String> edgeSourceLabels) {
 
-    }
+  }
 }

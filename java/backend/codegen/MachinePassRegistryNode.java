@@ -19,46 +19,40 @@ package backend.codegen;
 
 /**
  * Machine pass node stored in registration list.
+ *
  * @author Jianping Zeng
  * @version 0.1
  */
-public class MachinePassRegistryNode<T>
-{
-    private MachinePassRegistryNode next;
-    private String name;    // the name of this pass to command line option.
-    private String description;
-    private T ctor;
+public class MachinePassRegistryNode<T> {
+  private MachinePassRegistryNode next;
+  private String name;    // the name of this pass to command line option.
+  private String description;
+  private T ctor;
 
-    public MachinePassRegistryNode(String name, String desc,T ctor)
-    {
-        this.next = null;
-        this.name = name;
-        this.description = desc;
-        this.ctor = ctor;
-    }
+  public MachinePassRegistryNode(String name, String desc, T ctor) {
+    this.next = null;
+    this.name = name;
+    this.description = desc;
+    this.ctor = ctor;
+  }
 
-    public MachinePassRegistryNode getNext()
-    {
-        return next;
-    }
+  public MachinePassRegistryNode getNext() {
+    return next;
+  }
 
-    public String getName()
-    {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getDescription()
-    {
-        return description;
-    }
+  public String getDescription() {
+    return description;
+  }
 
-    public T getCtor()
-    {
-        return ctor;
-    }
+  public T getCtor() {
+    return ctor;
+  }
 
-    public void setNext(MachinePassRegistryNode next)
-    {
-        this.next = next;
-    }
+  public void setNext(MachinePassRegistryNode next) {
+    this.next = next;
+  }
 }

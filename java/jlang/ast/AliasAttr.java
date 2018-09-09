@@ -17,10 +17,8 @@
 
 package jlang.ast;
 
-public class AliasAttr extends Attr
-{
-    public AliasAttr(AttrKind kind)
-    {
-        super(kind);
-    }
+public class AliasAttr extends Attr {
+  public AliasAttr(AttrKind kind) {
+    super(kind);
+  }
 }
