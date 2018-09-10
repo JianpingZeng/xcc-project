@@ -210,11 +210,11 @@ public final class Record implements Cloneable {
    * @param fieldName
    * @return
    */
-  public Init getValueInit(String fieldName) throws Exception {
+  public Init getValueInit(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field"
+            + " named '" + fieldName + "'!\n");
     return rv.getValue();
   }
 
@@ -244,15 +244,15 @@ public final class Record implements Cloneable {
    * @return
    * @throws Exception
    */
-  public BitsInit getValueAsBitsInit(String fieldName) throws Exception {
+  public BitsInit getValueAsBitsInit(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
-    if (rv.getValue() instanceof BitsInit)
-      return ((BitsInit) rv.getValue());
-    throw new Exception("Record `" + getName() + "', field `" + fieldName +
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field"
+            + " named '" + fieldName + "'!\n");
+    Util.assertion(rv.getValue() instanceof BitsInit,
+        "Record `" + getName() + "', field `" + fieldName +
         "' does not have a BitsInit initializer!");
+    return ((BitsInit) rv.getValue());
   }
 
   /**
@@ -307,15 +307,15 @@ public final class Record implements Cloneable {
    * @return
    * @throws Exception
    */
-  public Record getValueAsDef(String fieldName) throws Exception {
+  public Record getValueAsDef(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
-    if (rv.getValue() instanceof DefInit)
-      return ((DefInit) rv.getValue()).getDef();
-    throw new Exception("Record `" + getName() + "', field `" + fieldName +
-        "' does not have a DefInit initializer!");
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field" +
+            " named '" + fieldName + "'!\n");
+    Util.assertion(rv.getValue() instanceof DefInit,
+        "Record `" + getName() + "', field `" + fieldName +
+            "' does not have a DefInit initializer!");
+    return ((DefInit) rv.getValue()).getDef();
   }
 
   /**
@@ -327,15 +327,15 @@ public final class Record implements Cloneable {
    * @return
    * @throws Exception
    */
-  public boolean getValueAsBit(String fieldName) throws Exception {
+  public boolean getValueAsBit(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
-    if (rv.getValue() instanceof BitInit)
-      return ((BitInit) rv.getValue()).getValue();
-    throw new Exception("Record `" + getName() + "', field `" + fieldName +
-        "' does not have a BitInit initializer!");
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field" +
+            " named '" + fieldName + "'!\n");
+    Util.assertion (rv.getValue() instanceof BitInit,
+        "Record `" + getName() + "', field `" + fieldName +
+            "' does not have a BitInit initializer!");
+    return ((BitInit) rv.getValue()).getValue();
   }
 
   /**
@@ -367,15 +367,15 @@ public final class Record implements Cloneable {
    * @return
    * @throws Exception
    */
-  public Init.DagInit getValueAsDag(String fieldName) throws Exception {
+  public Init.DagInit getValueAsDag(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
-    if (rv.getValue() instanceof DagInit)
-      return ((DagInit) rv.getValue());
-    throw new Exception("Record `" + getName() + "', field `" + fieldName +
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field"
+            + " named '" + fieldName + "'!\n");
+    Util.assertion (rv.getValue() instanceof DagInit,
+        "Record `" + getName() + "', field `" + fieldName +
         "' does not have a DagInit initializer!");
+    return ((DagInit) rv.getValue());
   }
 
   /**
@@ -387,15 +387,29 @@ public final class Record implements Cloneable {
    * @return
    * @throws Exception
    */
-  public String getValueAsCode(String fieldName) throws Exception {
+  public String getValueAsCode(String fieldName) {
     RecordVal rv = getValue(fieldName);
-    if (rv == null || rv.getValue() == null)
-      throw new Exception("Reord '" + getName() + "' does not have a field"
-          + " named '" + fieldName + "'!\n");
-    if (rv.getValue() instanceof CodeInit)
-      return ((CodeInit) rv.getValue()).getValue();
-    throw new Exception("Record `" + getName() + "', field `" + fieldName +
+    Util.assertion(rv != null && rv.getValue() != null,
+        "Reord '" + getName() + "' does not have a field"
+            + " named '" + fieldName + "'!\n");
+    Util.assertion (rv.getValue() instanceof CodeInit,
+        "Record `" + getName() + "', field `" + fieldName +
         "' does not have a CodeInit initializer!");
+    return ((CodeInit) rv.getValue()).getValue();
+  }
+
+  public TIntArrayList getValueAsListOfInts(String fieldName) {
+    ListInit list = getValueAsListInit(fieldName);
+    Util.assertion(list != null);
+    TIntArrayList res = new TIntArrayList();
+    for (int i = 0; i < list.getSize(); i++) {
+      IntInit ii = list.getElement(i) instanceof IntInit ?
+          (IntInit) list.getElement(i) : null;
+      Util.assertion(ii != null, "Record '" + getName() + "', field '" +
+          fieldName + "' does not have a list of ints initializer!");
+      res.add((int) ii.getValue());
+    }
+    return res;
   }
 
   @Override
@@ -443,20 +457,5 @@ public final class Record implements Cloneable {
 
   public int getID() {
     return id;
-  }
-
-  public TIntArrayList getValueAsListOfInts(String fieldName) throws Exception {
-    ListInit list = getValueAsListInit(fieldName);
-    TIntArrayList res = new TIntArrayList();
-    for (int i = 0; i < list.getSize(); i++) {
-      IntInit ii = list.getElement(i) instanceof IntInit ?
-          (IntInit) list.getElement(i) : null;
-      if (ii != null)
-        res.add((int) ii.getValue());
-      else
-        throw new Exception("Record '" + getName() + "', field '" +
-            fieldName + "' does not have a list of ints initializer!");
-    }
-    return res;
   }
 }

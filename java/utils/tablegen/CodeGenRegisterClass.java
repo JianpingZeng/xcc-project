@@ -16,10 +16,14 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import gnu.trove.list.array.TIntArrayList;
+import tools.Error;
 import tools.Util;
+import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
+
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
+import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
  * @author Jianping Zeng
@@ -28,8 +32,8 @@ import java.util.ArrayList;
 public final class CodeGenRegisterClass {
   Record theDef;
   ArrayList<Record> elts;
-  TIntArrayList vts;
-  long spillSize, spillAlignment;
+  ArrayList<ValueTypeByHwMode> vts;
+  RegSizeInfoByHwMode regInfos;
   String methodBodies;
   long copyCost;
   ArrayList<Record> subRegClasses;
@@ -38,7 +42,7 @@ public final class CodeGenRegisterClass {
     return theDef.getName();
   }
 
-  public TIntArrayList getValueTypes() {
+  public ArrayList<ValueTypeByHwMode> getValueTypes() {
     return vts;
   }
 
@@ -46,18 +50,17 @@ public final class CodeGenRegisterClass {
     return vts.size();
   }
 
-  public int getValueTypeAt(int idx) {
+  public ValueTypeByHwMode getValueTypeAt(int idx) {
     Util.assertion(idx >= 0 && idx < vts.size());
     return vts.get(idx);
   }
 
   private static int anonCnter = 0;
 
-  public CodeGenRegisterClass(Record r) throws Exception {
+  public CodeGenRegisterClass(Record r, CodeGenHwModes cgh) {
     elts = new ArrayList<>();
-    vts = new TIntArrayList();
+    vts = new ArrayList<>();
     subRegClasses = new ArrayList<>();
-
     theDef = r;
 
     // Rename the anonymous register class.
@@ -67,9 +70,9 @@ public final class CodeGenRegisterClass {
     ArrayList<Record> typeList = r.getValueAsListOfDefs("RegTypes");
     for (Record ty : typeList) {
       if (!ty.isSubClassOf("ValueType"))
-        throw new Exception("RegTypes list member '" + ty.getName()
+        Error.printFatalError("RegTypes list member '" + ty.getName()
             + "' does not derive from the ValueType class!");
-      vts.add(getValueType(ty, null));
+      vts.add(getValueTypeByHwMode(ty, cgh));
     }
 
     Util.assertion(!vts.isEmpty());
@@ -77,7 +80,7 @@ public final class CodeGenRegisterClass {
     ArrayList<Record> regList = r.getValueAsListOfDefs("MemberList");
     for (Record reg : regList) {
       if (!reg.isSubClassOf("Register"))
-        throw new Exception("Register Class member '" + reg.getName() +
+        Error.printFatalError("Register Class member '" + reg.getName() +
             "' does not derive from the Register class!");
       elts.add(reg);
     }
@@ -87,7 +90,7 @@ public final class CodeGenRegisterClass {
 
     for (Record subReg : subRegClassList) {
       if (!subReg.isSubClassOf("RegisterClass"))
-        throw new Exception("Register class member '" + subReg.getName()
+        Error.printFatalError("Register class member '" + subReg.getName()
             + "' doest not derive from the RegisterClass class!");
 
       subRegClasses.add(subReg);
@@ -95,23 +98,22 @@ public final class CodeGenRegisterClass {
 
     // Allow targets to override the size and alignment in bits of
     // the RegisterClass.
+    RecordVal regInfoRec = r.getValue("RegInfos");
+    if (regInfoRec != null && regInfoRec.getValue() instanceof DefInit)
+      regInfos = new RegSizeInfoByHwMode(((DefInit)regInfoRec.getValue()).getDef(), cgh);
+
     long size = r.getValueAsInt("Size");
-    spillSize = size;// != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
-    spillAlignment = r.getValueAsInt("Alignment");
+    Util.assertion(size != 0 || regInfos.hasDefault() || vts.get(0).isSimple(),
+        "Impossible to determine the register size");
+
+    // add a register info by default mode.
+    if (!regInfos.hasDefault()) {
+      RegSizeInfo ri = new RegSizeInfo();
+      ri.regSize = ri.spillSize = size != 0 ? size : vts.get(0).getSimple().getSizeInBits();
+      ri.spillAlignment = r.getValueAsInt("Alignment");
+      regInfos.map.put(DefaultMode, ri);
+    }
     copyCost = r.getValueAsInt("CopyCost");
     methodBodies = r.getValueAsCode("MethodBodies");
-  }
-
-  private static int getValueType(Record rec, CodeGenTarget cgt)
-      throws Exception {
-    long val = rec.getValueAsInt("Value");
-    return (int) val;
-    /**
-     if (vt == MVT.SimpleValueType.isPtr)
-     {
-     Util.assertion(cgt!= null, "Use a pointer type in a place that isn't supported as yet!");;
-     vt = cgt.getPointerType();
-     }
-     */
   }
 }

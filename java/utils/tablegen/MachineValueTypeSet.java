@@ -72,6 +72,13 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     words[vt.simpleVT/WordWidth] |= 1 <<(vt.simpleVT%WordWidth);
     return v;
   }
+
+  public MachineValueTypeSet insert(MachineValueTypeSet set) {
+    for (int i = 0; i < words.length; i++)
+      words[i] |= set.words[i];
+    return this;
+  }
+
   public void erase(MVT vt) {
     words[vt.simpleVT/WordWidth] &= ~(1 <<(vt.simpleVT%WordWidth));
   }

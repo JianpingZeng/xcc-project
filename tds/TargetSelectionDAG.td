@@ -473,7 +473,7 @@ def NOOP_SDNodeXForm : SDNodeXForm<imm, [{}]>;
 // Selection DAG Pattern Fragments.
 //
 // Pattern fragments are reusable chunks of dags that match specific things.
-// They can take arguments and have C++ predicates that control whether they
+// They can take arguments and have Java predicates that control whether they
 // match.  They are intended to make the patterns for common instructions more
 // compact and readable.
 //
@@ -656,112 +656,112 @@ def zextloadi32 : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
 }]>;
 
 // store fragments.
-def unindexedstore : PatFrag<(ops node:$val, node:$ptr),
-                             (st node:$val, node:$ptr), [{
+def unindexedstore : PatFrag<(ops node:$opc, node:$ptr),
+                             (st node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getAddressingMode() == MemIndexedMode.UNINDEXED;
 }]>;
-def store : PatFrag<(ops node:$val, node:$ptr),
-                    (unindexedstore node:$val, node:$ptr), [{
+def store : PatFrag<(ops node:$opc, node:$ptr),
+                    (unindexedstore node:$opc, node:$ptr), [{
   return !((StoreSDNode)n).isTruncatingStore();
 }]>;
 
 // truncstore fragments.
-def truncstore : PatFrag<(ops node:$val, node:$ptr),
-                         (unindexedstore node:$val, node:$ptr), [{
+def truncstore : PatFrag<(ops node:$opc, node:$ptr),
+                         (unindexedstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).isTruncatingStore();
 }]>;
-def truncstorei8 : PatFrag<(ops node:$val, node:$ptr),
-                           (truncstore node:$val, node:$ptr), [{
+def truncstorei8 : PatFrag<(ops node:$opc, node:$ptr),
+                           (truncstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
-def truncstorei16 : PatFrag<(ops node:$val, node:$ptr),
-                            (truncstore node:$val, node:$ptr), [{
+def truncstorei16 : PatFrag<(ops node:$opc, node:$ptr),
+                            (truncstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
-def truncstorei32 : PatFrag<(ops node:$val, node:$ptr),
-                            (truncstore node:$val, node:$ptr), [{
+def truncstorei32 : PatFrag<(ops node:$opc, node:$ptr),
+                            (truncstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
-def truncstoref32 : PatFrag<(ops node:$val, node:$ptr),
-                            (truncstore node:$val, node:$ptr), [{
+def truncstoref32 : PatFrag<(ops node:$opc, node:$ptr),
+                            (truncstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
-def truncstoref64 : PatFrag<(ops node:$val, node:$ptr),
-                            (truncstore node:$val, node:$ptr), [{
+def truncstoref64 : PatFrag<(ops node:$opc, node:$ptr),
+                            (truncstore node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f64;
 }]>;
 
 // indexed store fragments.
-def istore : PatFrag<(ops node:$val, node:$base, node:$offset),
-                     (ist node:$val, node:$base, node:$offset), [{
+def istore : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                     (ist node:$opc, node:$base, node:$offset), [{
   return !((StoreSDNode)n).isTruncatingStore();
 }]>;
 
-def pre_store : PatFrag<(ops node:$val, node:$base, node:$offset),
-                        (istore node:$val, node:$base, node:$offset), [{
+def pre_store : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                        (istore node:$opc, node:$base, node:$offset), [{
   MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
   return am == MemIndexedMode.PRE_INC || am == MemIndexedMode.PRE_DEC;
 }]>;
 
-def itruncstore : PatFrag<(ops node:$val, node:$base, node:$offset),
-                          (ist node:$val, node:$base, node:$offset), [{
+def itruncstore : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                          (ist node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).isTruncatingStore();
 }]>;
-def pre_truncst : PatFrag<(ops node:$val, node:$base, node:$offset),
-                          (itruncstore node:$val, node:$base, node:$offset), [{
+def pre_truncst : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                          (itruncstore node:$opc, node:$base, node:$offset), [{
   MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
   return am == MemIndexedMode.PRE_INC || am == MemIndexedMode.PRE_DEC;
 }]>;
-def pre_truncsti1 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                            (pre_truncst node:$val, node:$base, node:$offset), [{
+def pre_truncsti1 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                            (pre_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
-def pre_truncsti8 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                            (pre_truncst node:$val, node:$base, node:$offset), [{
+def pre_truncsti8 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                            (pre_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
-def pre_truncsti16 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                             (pre_truncst node:$val, node:$base, node:$offset), [{
+def pre_truncsti16 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                             (pre_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
-def pre_truncsti32 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                             (pre_truncst node:$val, node:$base, node:$offset), [{
+def pre_truncsti32 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                             (pre_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
-def pre_truncstf32 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                             (pre_truncst node:$val, node:$base, node:$offset), [{
+def pre_truncstf32 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                             (pre_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 
-def post_store : PatFrag<(ops node:$val, node:$ptr, node:$offset),
-                         (istore node:$val, node:$ptr, node:$offset), [{
+def post_store : PatFrag<(ops node:$opc, node:$ptr, node:$offset),
+                         (istore node:$opc, node:$ptr, node:$offset), [{
   MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
   return am == MemIndexedMode.POST_INC || am == MemIndexedMode.POST_DEC;
 }]>;
 
-def post_truncst : PatFrag<(ops node:$val, node:$base, node:$offset),
-                           (itruncstore node:$val, node:$base, node:$offset), [{
+def post_truncst : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                           (itruncstore node:$opc, node:$base, node:$offset), [{
   MemIndexedMode am = ((StoreSDNode)n).getAddressingMode();
   return am == MemIndexedMode.POST_INC || am == MemIndexedMode.POST_DEC;
 }]>;
-def post_truncsti1 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                             (post_truncst node:$val, node:$base, node:$offset), [{
+def post_truncsti1 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                             (post_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
 }]>;
-def post_truncsti8 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                             (post_truncst node:$val, node:$base, node:$offset), [{
+def post_truncsti8 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                             (post_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
 }]>;
-def post_truncsti16 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                              (post_truncst node:$val, node:$base, node:$offset), [{
+def post_truncsti16 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                              (post_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
 }]>;
-def post_truncsti32 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                              (post_truncst node:$val, node:$base, node:$offset), [{
+def post_truncsti32 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                              (post_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
 }]>;
-def post_truncstf32 : PatFrag<(ops node:$val, node:$base, node:$offset),
-                              (post_truncst node:$val, node:$base, node:$offset), [{
+def post_truncstf32 : PatFrag<(ops node:$opc, node:$base, node:$offset),
+                              (post_truncst node:$opc, node:$base, node:$offset), [{
   return ((StoreSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.f32;
 }]>;
 
@@ -829,20 +829,20 @@ def atomic_cmp_swap_64 :
 }]>;
 
 multiclass binary_atomic_op<SDNode atomic_op> {
-  def _8 : PatFrag<(ops node:$ptr, node:$val),
-                   (atomic_op node:$ptr, node:$val), [{
+  def _8 : PatFrag<(ops node:$ptr, node:$opc),
+                   (atomic_op node:$ptr, node:$opc), [{
     return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i8;
   }]>;
-  def _16 : PatFrag<(ops node:$ptr, node:$val),
-                   (atomic_op node:$ptr, node:$val), [{
+  def _16 : PatFrag<(ops node:$ptr, node:$opc),
+                   (atomic_op node:$ptr, node:$opc), [{
     return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i16;
   }]>;
-  def _32 : PatFrag<(ops node:$ptr, node:$val),
-                   (atomic_op node:$ptr, node:$val), [{
+  def _32 : PatFrag<(ops node:$ptr, node:$opc),
+                   (atomic_op node:$ptr, node:$opc), [{
     return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i32;
   }]>;
-  def _64 : PatFrag<(ops node:$ptr, node:$val),
-                   (atomic_op node:$ptr, node:$val), [{
+  def _64 : PatFrag<(ops node:$ptr, node:$opc),
+                   (atomic_op node:$ptr, node:$opc), [{
     return ((AtomicSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i64;
   }]>;
 }
@@ -885,26 +885,26 @@ def atomic_load_64 :
 }
 
 def atomic_store_8 :
-  PatFrag<(ops node:$val, node:$ptr),
-          (atomic_store node:$val, node:$ptr)> {
+  PatFrag<(ops node:$opc, node:$ptr),
+          (atomic_store node:$opc, node:$ptr)> {
   let IsAtomic = 1;
   let MemoryVT = i8;
 }
 def atomic_store_16 :
-  PatFrag<(ops node:$val, node:$ptr),
-            (atomic_store node:$val, node:$ptr)> {
+  PatFrag<(ops node:$opc, node:$ptr),
+            (atomic_store node:$opc, node:$ptr)> {
   let IsAtomic = 1;
   let MemoryVT = i16;
 }
 def atomic_store_32 :
-  PatFrag<(ops node:$val, node:$ptr),
-            (atomic_store node:$val, node:$ptr)> {
+  PatFrag<(ops node:$opc, node:$ptr),
+            (atomic_store node:$opc, node:$ptr)> {
   let IsAtomic = 1;
   let MemoryVT = i32;
 }
 def atomic_store_64 :
-  PatFrag<(ops node:$val, node:$ptr),
-            (atomic_store node:$val, node:$ptr)> {
+  PatFrag<(ops node:$opc, node:$ptr),
+            (atomic_store node:$opc, node:$ptr)> {
   let IsAtomic = 1;
   let MemoryVT = i64;
 }
@@ -912,48 +912,48 @@ def atomic_store_64 :
 //===----------------------------------------------------------------------===//
 // Selection DAG CONVERT_RNDSAT patterns
 
-def cvtff : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtff : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FF;
     }]>;
 
-def cvtss : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtss : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SS;
     }]>;
 
-def cvtsu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtsu : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SU;
     }]>;
 
-def cvtus : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtus : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_US;
     }]>;
 
-def cvtuu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtuu : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_UU;
     }]>;
 
-def cvtsf : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtsf : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_SF;
     }]>;
 
-def cvtuf : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtuf : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_UF;
     }]>;
 
-def cvtfs : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtfs : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FS;
     }]>;
 
-def cvtfu : PatFrag<(ops node:$val, node:$dty, node:$sty, node:$rd, node:$sat),
-    (cvt node:$val, node:$dty, node:$sty, node:$rd, node:$sat), [{
+def cvtfu : PatFrag<(ops node:$opc, node:$dty, node:$sty, node:$rd, node:$sat),
+    (cvt node:$opc, node:$dty, node:$sty, node:$rd, node:$sat), [{
        return ((CvtRndSatSDNode)n).getCvtCode() == CvtCode.CVT_FU;
     }]>;
 
@@ -989,8 +989,8 @@ class CPAttribute;
 def CPAttrParentAsRoot : CPAttribute;
 
 // Complex patterns, e.g. X86 addressing mode, requires pattern matching code
-// in C++. NumOperands is the number of operands returned by the select function;
-// SelectFunc is the name of the function used to pattern match the max. pattern;
+// in Java. NumOperands is the number of operands returned by the select function;
+// SelectFunc is the name of the function used to pattern match the max pattern;
 // RootNodes are the list of possible root nodes of the sub-dags to match.
 // e.g. X86 addressing mode - def addr : ComplexPattern<4, "selectAddr", [add]>;
 //

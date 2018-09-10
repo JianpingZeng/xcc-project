@@ -22,9 +22,7 @@ import tools.Pair;
 import tools.Util;
 import utils.tablegen.CodeGenHwModes.HwModeSelect;
 
-import java.util.Iterator;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 
 import static backend.codegen.MVT.getEnumName;
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
@@ -106,7 +104,7 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
     System.err.println(toString());
   }
 
-  public ValueTypeByHwMode getValueTypeByHwMode(Record rec, CodeGenHwModes cgh) {
+  public static ValueTypeByHwMode getValueTypeByHwMode(Record rec, CodeGenHwModes cgh) {
     Util.assertion(rec.isSubClassOf("ValueType"), "Record must be derived from ValueType");
     if (rec.isSubClassOf("HwModeSelect"))
       return new ValueTypeByHwMode(rec, cgh);
@@ -114,6 +112,7 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
   }
 
   public boolean isValid() { return !map.isEmpty(); }
+
   @Override
   public boolean equals(Object obj) {
     if (obj == null) return false;

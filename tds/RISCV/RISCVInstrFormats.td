@@ -1,5 +1,5 @@
-class InstFormat<bits<5> val> {
-  bits<5> Value = val;
+class InstFormat<bits<5> opc> {
+  bits<5> Value = opc;
 }
 
 def InstFormatPseudo : InstFormat<0>;
@@ -21,8 +21,8 @@ def InstFormatCJ     : InstFormat<15>;
 def InstFormatOther  : InstFormat<16>;
 
 // Defines some opcode supported in RISCV target.
-class RISCVOpcode<bits<7> val> {
-  bits<7> Value = val;
+class RISCVOpcode<bits<7> opc> {
+  bits<7> Value = opc;
 }
 
 def OPC_LOAD      : RISCVOpcode<0b0000011>;

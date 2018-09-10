@@ -18,6 +18,7 @@ package utils.tablegen;
 
 import backend.codegen.EVT;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Error;
 import tools.Pair;
 import tools.Util;
 
@@ -121,7 +122,7 @@ public final class CodeGenIntrinsic {
 
   ArrayList<Pair<Integer, ArgAttribute>> argumentAttributes = new ArrayList<>();
 
-  public CodeGenIntrinsic(Record r) throws Exception {
+  public CodeGenIntrinsic(Record r) {
     theDef = r;
     is = new IntrinsicSignature();
     String defName = r.getName();
@@ -130,7 +131,7 @@ public final class CodeGenIntrinsic {
     isCommutative = false;
 
     if (defName.length() <= 4 || !defName.substring(0, 4).equals("int_"))
-      throw new Exception("Intrinsic '" + defName + "' does not start with 'int_'");
+      Error.printFatalError("Intrinsic '" + defName + "' does not start with 'int_'");
 
     enumName = defName.substring(4);
 
@@ -148,7 +149,7 @@ public final class CodeGenIntrinsic {
     } else {
       // Verify it starts with "llvm.".
       if (name.length() <= 5 || !name.substring(0, 5).equals("llvm."))
-        throw new Exception("Intrinsic '" + defName + "' does not start with 'llvm.'");
+        Error.printFatalError("Intrinsic '" + defName + "' does not start with 'llvm.'");
     }
 
     // If TargetPrefix is specified, make sure that Name starts with
@@ -156,7 +157,7 @@ public final class CodeGenIntrinsic {
     if (!targetPrefix.isEmpty()) {
       if (name.length() < 6 + targetPrefix.length() ||
           !name.substring(5, 6 + targetPrefix.length()).equals(targetPrefix + ".")) {
-        throw new Exception("Intrinsic '" + defName +
+        Error.printFatalError("Intrinsic '" + defName +
             "' does not start with 'llvm.'" + targetPrefix + ".!");
       }
     }
@@ -189,7 +190,7 @@ public final class CodeGenIntrinsic {
     }
 
     if (is.retVTs.isEmpty())
-      throw new Exception("Intrinsic '" + defName + "' needs at least a type for the ret value!");
+      Error.printFatalError("Intrinsic '" + defName + "' needs at least a type for the ret value!");
 
     // // Parse the list of parameter types.
     typeList = r.getValueAsListInit("ParamTypes");
@@ -255,7 +256,7 @@ public final class CodeGenIntrinsic {
     }
   }
 
-  private int getValueType(Record record) throws Exception {
+  private int getValueType(Record record) {
     return (int) record.getValueAsInt("Value");
   }
 }

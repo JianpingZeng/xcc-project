@@ -35,38 +35,47 @@ public final class MVT implements Comparable<MVT> {
   public static final int i64 = (5);   // This is a 64 bit integer value
   public static final int i128 = (6);   // This is a 128 bit integer value
 
-  public static final int f32 = (7);   // This is a 32 bit floating point value
-  public static final int f64 = (8);   // This is a 64 bit floating point value
-  public static final int f80 = (9);   // This is a 80 bit floating point value
-  public static final int f128 = (10);   // This is a 128 bit floating point value
-  public static final int ppcf128 = (11);   // This is a PPC 128-bit floating point value
-  public static final int Flag = (12);   // This is a condition code or machine flag.
+  public static final int f16 = (7);
+  public static final int f32 = (8);   // This is a 32 bit floating point value
+  public static final int f64 = (9);   // This is a 64 bit floating point value
+  public static final int f80 = (10);   // This is a 80 bit floating point value
+  public static final int f128 = (11);   // This is a 128 bit floating point value
+  public static final int ppcf128 = (12);   // This is a PPC 128-bit floating point value
 
-  public static final int isVoid = (13);   // This has no value
+  public static final int Flag = (13);   // This is a condition code or machine flag.
 
-  public static final int v2i8 = (14);   //  2 x i8
-  public static final int v4i8 = (15);   //  4 x i8
-  public static final int v8i8 = (16);   //  8 x i8
-  public static final int v16i8 = (17);   // 16 x i8
-  public static final int v32i8 = (18);   // 32 x i8
-  public static final int v2i16 = (19);   //  2 x i16
-  public static final int v4i16 = (20);   //  4 x i16
-  public static final int v8i16 = (21);   //  8 x i16
-  public static final int v16i16 = (22);   // 16 x i16
-  public static final int v2i32 = (23);   //  2 x i32
-  public static final int v4i32 = (24);   //  4 x i32
-  public static final int v8i32 = (25);   //  8 x i32
-  public static final int v1i64 = (26);   //  1 x i64
-  public static final int v2i64 = (27);   //  2 x i64
-  public static final int v4i64 = (28);   //  4 x i64
+  public static final int isVoid = (14);   // This has no value
 
-  public static final int v2f32 = (29);   //  2 x f32
-  public static final int v4f32 = (30);   //  4 x f32
-  public static final int v8f32 = (31);   //  8 x f32
-  public static final int v2f64 = (32);   //  2 x f64
-  public static final int v4f64 = (33);   //  4 x f64
+  public static final int v2i8 = (15);   //  2 x i8
+  public static final int v4i8 = (16);   //  4 x i8
+  public static final int v8i8 = (17);   //  8 x i8
+  public static final int v16i8 = (18);   // 16 x i8
+  public static final int v32i8 = (19);   // 32 x i8
+  public static final int v2i16 = (20);   //  2 x i16
+  public static final int v4i16 = (21);   //  4 x i16
+  public static final int v8i16 = (22);   //  8 x i16
+  public static final int v16i16 = (23);   // 16 x i16
+  public static final int v2i32 = (24);   //  2 x i32
+  public static final int v4i32 = (25);   //  4 x i32
+  public static final int v8i32 = (26);   //  8 x i32
+  public static final int v1i64 = (27);   //  1 x i64
+  public static final int v2i64 = (28);   //  2 x i64
+  public static final int v4i64 = (29);   //  4 x i64
 
-  public static final int LAST_VALUETYPE = (34);   // This always remains at the end of the list.
+  public static final int v2f16          =  30;   //  2 x f16
+  public static final int v4f16          =  31;   //  4 x f16
+  public static final int v8f16          =  32;   //  8 x f16
+  public static final int v1f32          =  33;   //  1 x f32
+  public static final int v2f32          =  34;   //  2 x f32
+  public static final int v4f32          =  35;   //  4 x f32
+  public static final int v8f32          =  36;   //  8 x f32
+  public static final int v16f32         =  37;   // 16 x f32
+  public static final int v1f64          =  38;   //  1 x f64
+  public static final int v2f64          =  39;   //  2 x f64
+  public static final int v4f64          =  40;   //  4 x f64
+  public static final int v8f64          =  41;   //  8 x f64
+
+  public static final int LAST_VALUETYPE = v8f64;   // This always remains at the end of the list.
 
   // This is the current maximum for LAST_VALUETYPE.
   // EVT::MAX_ALLOWED_VALUETYPE is used for asserts and to size bit vectors
@@ -108,8 +117,18 @@ public final class MVT implements Comparable<MVT> {
 
   public static final int FIRST_INTEGER_VALUETYPE = i1;
   public static final int LAST_INTEGER_VALUETYPE = i128;
+
+  public static final int FIRST_FP_VALUETYPE = f16;
+  public static final int LAST_FP_VALUETYPE = ppcf128;
+
+  public static final int FIRST_INTEGER_VECTOR_VALUETYPE = v2i8;
+  public static final int LAST__INTEGER_VECTOR_VALUETYPE = v4f64;
+
+  public static final int FIRST_FP_VECTOR_VALUETYPE = v2f16;
+  public static final int LAST_FP_VECTOR_VALUETYPE = v8f64;
+
   public static final int FIRST_VECTOR_VALUETYPE = v2i8;
-  public static final int LAST_VECTOR_VALUETYPE = v4f64;
+  public static final int LAST_VECTOR_VALUETYPE = v8f64;
 
   // LastSimpleValueType - The greatest valid int value.
   public static final int LastSimpleValueType = iPTR;
@@ -212,6 +231,14 @@ public final class MVT implements Comparable<MVT> {
         Util.assertion(false, "ILLEGAL VALUE TYPE!");
         return "";
     }
+  }
+
+  public int getScalarSizeInBits() {
+    return getScalarType().getSizeInBits();
+  }
+
+  public MVT getScalarType() {
+    return isVector() ? getVectorElementType() : this;
   }
 
   public int getSizeInBits() {
@@ -329,8 +356,8 @@ public final class MVT implements Comparable<MVT> {
   }
 
   public boolean isVector() {
-    return (simpleVT <= FIRST_VECTOR_VALUETYPE
-        && simpleVT <= LAST_VECTOR_VALUETYPE);
+    return (simpleVT <= FIRST_INTEGER_VECTOR_VALUETYPE
+        && simpleVT <= LAST__INTEGER_VECTOR_VALUETYPE);
   }
 
   public boolean isPower2VectorType() {
@@ -522,5 +549,30 @@ public final class MVT implements Comparable<MVT> {
       case 16:
         return new MVT(v16i8);
     }
+  }
+
+  public boolean isOverloaded() {
+    switch (simpleVT) {
+      case iAny:
+      case fAny:
+      case vAny:
+      case iPTRAny:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (this == obj) return true;
+    if (getClass() != obj.getClass()) return false;
+    MVT vt = (MVT) obj;
+    return simpleVT == vt.simpleVT;
+  }
+
+  public boolean isScalableVector() {
+    return false;
   }
 }

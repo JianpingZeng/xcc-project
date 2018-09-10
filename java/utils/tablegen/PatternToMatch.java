@@ -72,7 +72,7 @@ public final class PatternToMatch {
    * @return
    * @throws Exception
    */
-  public String getPredicateCheck() throws Exception {
+  public String getPredicateCheck() {
     StringBuilder predicateCheck = new StringBuilder();
     for (int i = 0, e = predicates.getSize(); i != e; ++i) {
       DefInit pred = (predicates.getElement(i) instanceof DefInit) ? (DefInit) predicates.getElement(i) : null;

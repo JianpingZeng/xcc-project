@@ -112,6 +112,12 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
     return changed;
   }
 
+  public boolean insert(TypeSetByHwMode set) {
+    Util.assertion(isEmpty(), "Only use this method on empty");
+    set.map.forEachEntry((mode, vts) -> {map.put(mode, vts); return true; });
+    return true;
+  }
+
   /**
    * Constrain the type set to be the intersection with VTS.
    * @param vts
@@ -138,6 +144,18 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
         changed = true;
       }
     }
+    return changed;
+  }
+
+  /**
+   * Removes any machine value type in this set if it is predicated on true by {@code pred}.
+   * @param pred
+   * @return
+   */
+  public boolean constrain(Predicate<MVT> pred) {
+    boolean changed = false;
+    for (TIntObjectIterator<MachineValueTypeSet> itr = iterator(); itr.hasNext(); )
+      changed |= itr.value().eraseIf(mvt -> !pred.test(mvt));
     return changed;
   }
 

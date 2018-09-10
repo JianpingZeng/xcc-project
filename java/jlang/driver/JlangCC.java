@@ -1143,7 +1143,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag {
    *
    * @param args The command line parameters.
    */
-  public int compile(String[] args) throws Exception {
+  public int compile(String[] args) {
     // Initialize Target machine
     TargetSelect ts = TargetSelect.create();
     ts.InitializeTargetInfo();

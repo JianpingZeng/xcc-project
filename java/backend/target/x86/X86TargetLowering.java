@@ -525,8 +525,8 @@ public class X86TargetLowering extends TargetLowering {
     // First set operation action for all vector types to either promote
     // (for widening) or expand (for scalarization). Then we will selectively
     // turn on ones that can be effectively codegen'd.
-    for (int VT = MVT.FIRST_VECTOR_VALUETYPE;
-         VT <= MVT.LAST_VECTOR_VALUETYPE; ++VT) {
+    for (int VT = MVT.FIRST_INTEGER_VECTOR_VALUETYPE;
+         VT <= MVT.LAST__INTEGER_VECTOR_VALUETYPE; ++VT) {
       setOperationAction(ISD.ADD, VT, Expand);
       setOperationAction(ISD.SUB, VT, Expand);
       setOperationAction(ISD.FADD, VT, Expand);

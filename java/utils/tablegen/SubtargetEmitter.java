@@ -20,6 +20,7 @@ import backend.target.InstrItinerary;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class SubtargetEmitter extends TableGenBackend {
   private boolean hasItrineraries;
 
   private void enumeration(PrintStream os, String className, boolean isBits)
-      throws Exception {
+      {
     // Get all records of class and sort
     ArrayList<Record> defList = records.getAllDerivedDefinition(className);
     defList.sort(LessRecord);
@@ -59,7 +60,7 @@ public class SubtargetEmitter extends TableGenBackend {
    *
    * @param os
    */
-  private void featureKeValues(PrintStream os) throws Exception {
+  private void featureKeValues(PrintStream os) {
     ArrayList<Record> featureList = records.getAllDerivedDefinition("SubtargetFeature");
     featureList.sort(LessRecord);
 
@@ -108,7 +109,7 @@ public class SubtargetEmitter extends TableGenBackend {
    *
    * @param os
    */
-  private void cpuKeyValues(PrintStream os) throws Exception {
+  private void cpuKeyValues(PrintStream os) {
     ArrayList<Record> processorList = records.getAllDerivedDefinition("Processor");
 
     processorList.sort(LessRecord);
@@ -155,7 +156,7 @@ public class SubtargetEmitter extends TableGenBackend {
    * @return
    */
   private int collectAllItinClasses(PrintStream os, TObjectIntHashMap<String> itinClassesMap)
-      throws Exception {
+      {
     ArrayList<Record> itinClassList = records.getAllDerivedDefinition("InstrItinClass");
 
     itinClassList.sort(LessRecord);
@@ -180,7 +181,7 @@ public class SubtargetEmitter extends TableGenBackend {
    * @return
    */
   private int formItineraryStageString(Record itinData, StringBuilder itinString)
-      throws Exception {
+      {
     ArrayList<Record> stageList = itinData.getValueAsListOfDefs("Stages");
 
     int n = stageList.size();
@@ -218,7 +219,7 @@ public class SubtargetEmitter extends TableGenBackend {
    * @return The number of operand cycles.
    */
   private int formItineraryOperandCycleString(Record itinData,
-                                              StringBuilder itinString) throws Exception {
+                                              StringBuilder itinString) {
     TIntArrayList operandCycleList = itinData.getValueAsListOfInts("OperandCycles");
 
     for (int i = 0, e = operandCycleList.size(); i != e; i++) {
@@ -231,7 +232,7 @@ public class SubtargetEmitter extends TableGenBackend {
   private void emitStageAndOperandCycleData(PrintStream os,
                                             int nItinClasses,
                                             TObjectIntHashMap<String> itinClassesMap,
-                                            ArrayList<ArrayList<InstrItinerary>> procList) throws Exception {
+                                            ArrayList<ArrayList<InstrItinerary>> procList) {
     ArrayList<Record> procItinList = records.getAllDerivedDefinition("ProcessorItineraries");
 
     if (procItinList.size() < 2) return;
@@ -335,7 +336,7 @@ public class SubtargetEmitter extends TableGenBackend {
   }
 
   private void emitProcessorData(PrintStream os, ArrayList<ArrayList<InstrItinerary>> procList)
-      throws Exception {
+      {
     ArrayList<Record> itins = records.getAllDerivedDefinition("ProcessItineraries");
 
     Iterator<ArrayList<InstrItinerary>> procListItr = procList.iterator();
@@ -378,7 +379,7 @@ public class SubtargetEmitter extends TableGenBackend {
    *
    * @param os
    */
-  private void emitProcessorLookup(PrintStream os) throws Exception {
+  private void emitProcessorLookup(PrintStream os) {
     ArrayList<Record> processorList = records.getAllDerivedDefinition("Processor");
 
     processorList.sort(LessRecord);
@@ -410,7 +411,7 @@ public class SubtargetEmitter extends TableGenBackend {
    *
    * @param os
    */
-  private void emitData(PrintStream os) throws Exception {
+  private void emitData(PrintStream os) {
     TObjectIntHashMap<String> itinClassesMap = new TObjectIntHashMap<>();
     ArrayList<ArrayList<InstrItinerary>> procList = new ArrayList<>();
 
@@ -435,7 +436,7 @@ public class SubtargetEmitter extends TableGenBackend {
    *
    * @param os
    */
-  private void parseFeaturesFunction(PrintStream os) throws Exception {
+  private void parseFeaturesFunction(PrintStream os) {
     ArrayList<Record> features = records.getAllDerivedDefinition("SubtargetFeature");
     features.sort(LessRecord);
 
@@ -485,8 +486,8 @@ public class SubtargetEmitter extends TableGenBackend {
    * @throws Exception
    */
   @Override
-  public void run(String outputFile) throws Exception {
-    target = new CodeGenTarget().getName();
+  public void run(String outputFile) throws FileNotFoundException {
+    target = new CodeGenTarget(Record.records).getName();
 
     try (PrintStream os = outputFile.equals("-") ? System.out :
         new PrintStream(new FileOutputStream(outputFile))) {

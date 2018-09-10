@@ -24,16 +24,14 @@ import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.IntInit;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 import static backend.codegen.MVT.*;
-import static utils.tablegen.CodeGenDAGPatterns.*;
+import static utils.tablegen.CodeGenDAGPatterns.convertVTs;
 import static utils.tablegen.CodeGenTarget.getValueType;
 import static utils.tablegen.EEVT.*;
 import static utils.tablegen.SDNP.SDNPCommutative;
+import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
  * @author Jianping Zeng
@@ -75,7 +73,7 @@ public final class TreePatternNode implements Cloneable {
    */
   private ArrayList<TreePatternNode> children;
 
-  public TreePatternNode(Record op, ArrayList<TreePatternNode> chs) {
+  public TreePatternNode(Record op, List<TreePatternNode> chs) {
     types = new ArrayList<>();
     predicateFns = new ArrayList<>();
     operator = op;
@@ -104,8 +102,8 @@ public final class TreePatternNode implements Cloneable {
 
   public int getNumTypes() { return types.size(); }
 
-  public ArrayList<TypeSetByHwMode> getTypes() { return types; }
-
+  public ArrayList<TypeSetByHwMode> getExtTypes() { return types; }
+  public TypeSetByHwMode getExtType(int resNo) { return types.get(resNo); }
   public void setTypes(ArrayList<TypeSetByHwMode> types) {
     this.types = types;
   }
@@ -263,23 +261,24 @@ public final class TreePatternNode implements Cloneable {
   }
 
   /**
-   * Apply all of the type constraints relevant to
-   * this node and its children in the tree.  This returns true if it makes a
-   * change, false otherwise.  If a type contradiction is found, throw an
-   * exception.
-   *
+   * Apply all of the type constraints relevant to this node and its children
+   * in the tree.  This returns true if it makes a change, false otherwise.
+   * If a type contradiction is found, issue an error.
    * @param tp
    * @param notRegisters
    * @return
    */
-  public boolean applyTypeConstraints(TreePattern tp, boolean notRegisters)
-      throws Exception {
+  public boolean applyTypeConstraints(TreePattern tp, boolean notRegisters) {
     CodeGenDAGPatterns cdp = tp.getDAGPatterns();
     if (isLeaf()) {
       DefInit di = getLeafValue() instanceof DefInit ? (DefInit) getLeafValue() : null;
       if (di != null) {
-        return updateNodeType(getImplicitType(di.getDef(), notRegisters, tp), tp);
-      } else if (getLeafValue() instanceof IntInit) {
+        boolean changed = false;
+        for (int i = 0, e = getNumTypes(); i < e; i++)
+          changed |= updateNodeType(i, getImplicitType(di.getDef(), i, notRegisters, !hasName(), tp), tp);
+        return changed;
+      }
+      else if (getLeafValue() instanceof IntInit) {
         IntInit ii = (IntInit) getLeafValue();
         boolean madeChanged = updateNodeType(isInt, tp);
 
@@ -465,6 +464,10 @@ public final class TreePatternNode implements Cloneable {
     }
   }
 
+  private boolean hasName() {
+    return name != null && !name.isEmpty();
+  }
+
   /**
    * Check to see if the specified record has an implicit
    * type which should be applied to it.  This will infer the type of register
@@ -475,52 +478,82 @@ public final class TreePatternNode implements Cloneable {
    * @param tp
    * @return
    */
-  private TIntArrayList getImplicitType(Record r, boolean notRegisters,
-                                        TreePattern tp) throws Exception {
-    TIntArrayList unknown = new TIntArrayList();
-    unknown.add(isUnknown);
-    TIntArrayList other = new TIntArrayList();
-    other.add(Other);
-
-    if (r.isSubClassOf("RegisterClass")) {
+  private TypeSetByHwMode getImplicitType(Record r,
+                                          int resNo,
+                                          boolean notRegisters,
+                                          boolean unNamed,
+                                          TreePattern tp) {
+    if (r.isSubClassOf("RegisterOperand")) {
+      Util.assertion(resNo == 0, "Registe operand ref only has one result!");
       if (notRegisters)
-        return unknown;
-      CodeGenRegisterClass rc = tp.getDAGPatterns().getTarget().getRegisterClass(r);
-      return convertVTs(rc.getValueTypes());
-    } else if (r.isSubClassOf("PatFlag")) {
-      // Pattern fragment types will be resolved when they are inlined.
-      return unknown;
-    } else if (r.isSubClassOf("Register")) {
-      if (notRegisters)
-        return unknown;
+        return new TypeSetByHwMode();
+      Record rec = r.getValueAsDef("RegClass");
       CodeGenTarget target = tp.getDAGPatterns().getTarget();
-      return target.getRegisterVTs(r);
-    } else if (r.isSubClassOf("ValueType") || r.isSubClassOf("CondCode")) {
+      return new TypeSetByHwMode(target.getRegisterClass(rec).getValueTypes());
+    }
+    if (r.isSubClassOf("RegisterClass")) {
+      Util.assertion(resNo == 0, "Register class ref only has one result!");
+      if (unNamed)
+        return new TypeSetByHwMode(MVT.i32);
+
+      // Unknown.
+      if (notRegisters)
+        return new TypeSetByHwMode();
+      CodeGenRegisterClass rc = tp.getDAGPatterns().getTarget().getRegisterClass(r);
+      return new TypeSetByHwMode(rc.getValueTypes());
+    } else if (r.isSubClassOf("PatFlag")) {
+      Util.assertion(resNo == 0, "PatFrag ref only has one result!");
+      // Pattern fragment types will be resolved when they are inlined.
+      return new TypeSetByHwMode(); // unknown
+    } else if (r.isSubClassOf("Register")) {
+      Util.assertion(resNo == 0, "Register only produce one result!");
+      if (notRegisters)
+        return new TypeSetByHwMode(); // unknown.
+
+      CodeGenTarget target = tp.getDAGPatterns().getTarget();
+      return new TypeSetByHwMode(target.getRegisterVTs(r));
+    } else if (r.isSubClassOf("ValueType")) {
+      Util.assertion(resNo == 0, "ValueType only has one result!");
       // Using a VTSDNode or CondCodeSDNode.
-      return other;
-    } else if (r.isSubClassOf("ComplexPattern")) {
-      if (notRegisters) {
-        return unknown;
-      }
-      TIntArrayList complexPat = new TIntArrayList();
-      complexPat.add(tp.getDAGPatterns().getComplexPattern(r).getValueType());
-      return complexPat;
+      if (unNamed)
+        return new TypeSetByHwMode(MVT.Other);
+      if (notRegisters)
+        return new TypeSetByHwMode(); // unknown.
+      CodeGenHwModes cgh = tp.getDAGPatterns().getTarget().getHwModes();
+      return new TypeSetByHwMode(getValueTypeByHwMode(r, cgh));
+    } else if (r.isSubClassOf("CondCode")) {
+      Util.assertion(resNo == 0, "CodeCode only has one result!");
+      if (notRegisters)
+        return new TypeSetByHwMode(MVT.Other);
+    }
+    else if (r.isSubClassOf("ComplexPattern")) {
+      Util.assertion(resNo == 0, "ComplexPattern only has one result!");
+      if (notRegisters)
+        return new TypeSetByHwMode();
+      return new TypeSetByHwMode(tp.getDAGPatterns().getComplexPattern(r).getValueType());
     } else if (r.isSubClassOf("PointerLikeRegClass")) {
-      other.set(0, iPTR);
-      return other;
+      Util.assertion(resNo == 0, "PointerLikeRegClass only has one result!");
+      TypeSetByHwMode vts = new TypeSetByHwMode(MVT.iPTR);
+      tp.getTypeInfer().expandOverloads(vts);
+      return vts;
     } else if (r.getName().equals("node") || r.getName().equals("srcvalue")
         || r.getName().equals("zero_reg")) {
-      return unknown;
+      return new TypeSetByHwMode(); // unknown.
     }
 
     tp.error("Undefined node flavour used in pattern: " + r.getName());
-    return other;
+    return new TypeSetByHwMode(MVT.Other);
   }
 
-  public boolean containsUnresolvedType() {
-    if (!hasTypeSet() && !isTypeDynamicallyResolved()) return true;
+  public boolean containsUnresolvedType(TreePattern tp) {
+
+    for (TypeSetByHwMode vts : types) {
+      if (!tp.getTypeInfer().isConcrete(vts, true))
+        return true;
+    }
+
     for (TreePatternNode node : children)
-      if (node.containsUnresolvedType())
+      if (node.containsUnresolvedType(tp))
         return true;
     return false;
   }
@@ -644,124 +677,23 @@ public final class TreePatternNode implements Cloneable {
     return true;
   }
 
-  /**
-   * Set the node type of node to VT if VT contains
-   * information.  If node already contains a conflicting type, then throw an
-   * exception.  This returns true if any information was updated.
-   *
-   * @param extTypes
-   * @param tp
-   * @return
-   */
-  public boolean updateNodeType(TIntArrayList extTypes,
-                                TreePattern tp) throws Exception {
-    Util.assertion(!extTypes.isEmpty(), "Cannot update node type with empty type vector!");
-
-    if (extTypes.get(0) == EEVT.isUnknown
-        || lhsIsSubsetOfRHS(getExtTypes(), extTypes))
-      return false;
-
-    if (isTypeCompleteUnknown() || lhsIsSubsetOfRHS(extTypes, getExtTypes())) {
-      setTypes(extTypes);
-      return true;
-    }
-    int v = getExtTypeNum(0);
-    if (v == iPTR || v == iPTRAny) {
-      if (extTypes.get(0) == iPTR || extTypes.get(0) == iPTRAny
-          || extTypes.get(0) == isInt)
-        return false;
-
-      if (EEVT.isExtIntegerInVTs(extTypes)) {
-        TIntArrayList fvts = filterEVTs(extTypes, isInteger);
-        if (!fvts.isEmpty()) {
-          setTypes(extTypes);
-          return true;
-        }
-      }
-    }
-
-    if ((extTypes.get(0) == isInt || extTypes.get(0) == iAny)
-        && EEVT.isExtIntegerInVTs(getExtTypes())) {
-      Util.assertion(hasTypeSet(), "should be handled above!");
-      TIntArrayList fvts = filterEVTs(getExtTypes(), isInteger);
-      if (getExtTypes().equals(fvts))
-        return false;
-      setTypes(fvts);
-      return true;
-    }
-
-    if ((extTypes.get(0) == iPTR || extTypes.get(0) == iPTRAny)
-        && EEVT.isExtIntegerInVTs(getExtTypes())) {
-      TIntArrayList fvts = filterEVTs(getExtTypes(), isInteger);
-      if (getExtTypes().equals(fvts))
-        return false;
-      if (!fvts.isEmpty()) {
-        setTypes(fvts);
-        return true;
-      }
-    }
-
-    if ((extTypes.get(0) == isFP || extTypes.get(0) == fAny)
-        && EEVT.isExtFloatingPointInVTs(getExtTypes())) {
-      Util.assertion(hasTypeSet(), "should be handled above!");
-      TIntArrayList fvts = filterEVTs(getExtTypes(), isFloatingPoint);
-      if (fvts.equals(getExtTypes()))
-        return false;
-
-      setTypes(fvts);
-      return true;
-    }
-
-    if ((extTypes.get(0) == isVec || extTypes.get(0) == vAny)
-        && EEVT.isExtVectorVTs(getExtTypes())) {
-      Util.assertion(hasTypeSet(), "should be handled above!");
-      TIntArrayList fvts = filterEVTs(getExtTypes(), isVector);
-      if (fvts.equals(getExtTypes()))
-        return false;
-      setTypes(fvts);
-      return true;
-    }
-
-    // If we know this is an int, FP, or vector type, and we are told it is a
-    // specific one, take the advice.
-    //
-    // Similarly, we should probably set the type here to the intersection of
-    // {isInt|isFP|isVec} and ExtVTs
-    v = getExtTypeNum(0);
-    if ((getExtTypeNum(0) == isInt || v == iAny) &&
-        EEVT.isExtIntegerInVTs(extTypes) ||
-        ((getExtTypeNum(0) == isFP || v == fAny) &&
-            EEVT.isExtFloatingPointInVTs(extTypes)) ||
-        ((getExtTypeNum(0) == isVec || v == vAny) &&
-            EEVT.isExtVectorVTs(extTypes))) {
-      setTypes(extTypes);
-      return true;
-    }
-
-    if (getExtTypeNum(0) == isInt &&
-        (extTypes.get(0) == iPTR || extTypes.get(0) == iPTRAny)) {
-      setTypes(extTypes);
-      return true;
-    }
-
-    if (isLeaf()) {
-      dump();
-      System.err.printf(" ");
-      tp.error("Type inference contradiction found in node!");
-    } else {
-      tp.error("Type inference contradiction found in node " +
-          getOperator().getName() + "!");
-    }
-
-    // Unreachable.
-    return true;
+  public boolean updateNodeType(int resNo,
+                                TypeSetByHwMode set,
+                                TreePattern tp) {
+    tp.getTypeInfer().expandOverloads(set);
+    return tp.getTypeInfer().mergeInTypeInfo(types.get(resNo), set);
   }
-
-  public boolean updateNodeType(int extVT, TreePattern pattern)
-      throws Exception {
-    TIntArrayList list = new TIntArrayList();
-    list.add(extVT);
-    return updateNodeType(list, pattern);
+  public boolean updateNodeType(int resNo,
+                                int simpleVT,
+                                TreePattern tp) {
+    TypeSetByHwMode set = new TypeSetByHwMode(simpleVT);
+    return updateNodeType(resNo, set, tp);
+  }
+  public boolean updateNodeType(int resNo,
+                                ValueTypeByHwMode vvt,
+                                TreePattern tp) {
+    TypeSetByHwMode set = new TypeSetByHwMode(vvt);
+    return updateNodeType(resNo, set, tp);
   }
 
   private boolean lhsIsSubsetOfRHS(
@@ -782,13 +714,10 @@ public final class TreePatternNode implements Cloneable {
    * @param pattern
    * @return
    */
-  public TreePatternNode inlinePatternFragments(TreePattern pattern)
-      throws Exception {
+  public TreePatternNode inlinePatternFragments(TreePattern pattern) {
     // nothing to de.
     if (isLeaf()) return this;
-
     Record op = getOperator();
-
     if (!op.isSubClassOf("PatFrag")) {
       // Just recursively inline children nodes.
       for (int i = 0, e = getNumChildren(); i != e; i++) {
@@ -813,6 +742,8 @@ public final class TreePatternNode implements Cloneable {
     }
 
     TreePatternNode fragTree = frag.getOnlyTree().clone();
+
+    // children tree node inherits predicate function from it's parent node.
     String code = op.getValueAsCode("Predicate");
     if (code != null && !code.isEmpty())
       fragTree.addPredicateFn("predicate_" + op.getName());
@@ -828,13 +759,11 @@ public final class TreePatternNode implements Cloneable {
     }
 
     fragTree.setName(getName());
-    fragTree.updateNodeType(getExtTypes(), pattern);
+    for (int i = 0, e = getNumTypes(); i < e; i++)
+      fragTree.updateNodeType(i, getExtType(i), pattern);
 
     // Transfer in the old predicateFns.
-    for (String fn : getPredicateFns())
-      fragTree.addPredicateFn(fn);
-
-    // Get a new copy of this fragment to stitch into here.
+        getPredicateFns().forEach(fragTree::addPredicateFn);
 
     // The fragment we inlined could have recursive inlining that is needed.  See
     // if there are any pattern fragments in it and inline them as needed.
@@ -847,8 +776,7 @@ public final class TreePatternNode implements Cloneable {
    *
    * @param argMap
    */
-  private void substituteFromalArguments(
-      HashMap<String, TreePatternNode> argMap) {
+  private void substituteFromalArguments(HashMap<String, TreePatternNode> argMap) {
     if (isLeaf())
       return;
 

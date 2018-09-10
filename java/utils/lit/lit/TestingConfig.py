@@ -27,11 +27,11 @@ class TestingConfig:
                      'LSAN_OPTIONS', 'ADB', 'ANDROID_SERIAL',
                      'SANITIZER_IGNORE_CVE_2016_2143']
         for var in pass_vars:
-            val = os.environ.get(var, '')
+            opc = os.environ.get(var, '')
             # Check for empty string as some variables such as LD_PRELOAD cannot be empty
             # ('') for OS's such as OpenBSD.
-            if val:
-                environment[var] = val
+            if opc:
+                environment[var] = opc
 
         if sys.platform == 'win32':
             environment.update({

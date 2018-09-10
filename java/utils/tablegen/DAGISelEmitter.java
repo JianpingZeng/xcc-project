@@ -26,6 +26,7 @@ import utils.tablegen.Init.IntInit;
 import utils.tablegen.PatternCodeEmitter.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
@@ -39,7 +40,7 @@ public class DAGISelEmitter extends TableGenBackend {
   private RecordKeeper records;
   private CodeGenDAGPatterns cgp;
 
-  public DAGISelEmitter(RecordKeeper rec) throws Exception {
+  public DAGISelEmitter(RecordKeeper rec) {
     records = rec;
     cgp = new CodeGenDAGPatterns(records);
   }
@@ -89,7 +90,7 @@ public class DAGISelEmitter extends TableGenBackend {
     }
   }
 
-  private void emitPredicates(PrintStream os) throws Exception {
+  private void emitPredicates(PrintStream os) {
     String ident = Util.fixedLengthString(2, ' ');
     TreeMap<String, Pair<Record, TreePattern>> predsByName = new TreeMap<>();
 
@@ -135,7 +136,7 @@ public class DAGISelEmitter extends TableGenBackend {
                                       TreeSet<String> generatedDecls, ArrayList<String> targetOpcodes,
                                       ArrayList<String> targetVTs,
                                       OutRef<Boolean> outputIsVariadic,
-                                      OutRef<Integer> numInputRootOps) throws Exception {
+                                      OutRef<Integer> numInputRootOps) {
     // create an instance served as emitting pattern code.
     PatternCodeEmitter emitter = new PatternCodeEmitter(
         cgp, pattern.getPredicateCheck(),
@@ -199,7 +200,7 @@ public class DAGISelEmitter extends TableGenBackend {
   private void emitPatterns(
       LinkedList<Pair<PatternToMatch, LinkedList<Pair<GeneratedCodeKind, String>>>> patterns,
       int indent,
-      PrintStream os) throws Exception {
+      PrintStream os) {
     if (patterns.isEmpty()) return;
 
     Pair<GeneratedCodeKind, String> firstCodeLine =
@@ -324,7 +325,7 @@ public class DAGISelEmitter extends TableGenBackend {
   private ArrayList<String> emitPatternsForLargePattern(
       ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> patterns,
       int indent,
-      PrintStream os) throws Exception {
+      PrintStream os) {
     if (patterns.isEmpty()) return null;
 
     ArrayList<String> smallMethods = new ArrayList<>();
@@ -393,7 +394,7 @@ public class DAGISelEmitter extends TableGenBackend {
   private void emitPatternsForRedundant(
       ArrayList<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> patterns,
       int indent,
-      PrintStream os) throws Exception {
+      PrintStream os) {
     if (patterns.isEmpty()) return;
     TIntArrayStack indentForBraces = new TIntArrayStack();
 
@@ -439,7 +440,7 @@ public class DAGISelEmitter extends TableGenBackend {
     }
   }
 
-  private void emitInstructionSelector(PrintStream os) throws Exception {
+  private void emitInstructionSelector(PrintStream os) {
     TreeMap<String, ArrayList<PatternToMatch>> patternsByOpcode =
         new TreeMap<>();
     TreeMap<String, Integer> emitFunctions = new TreeMap<>();
@@ -486,7 +487,7 @@ public class DAGISelEmitter extends TableGenBackend {
       TreeMap<Integer, ArrayList<PatternToMatch>> patternsByType = new TreeMap<>();
       for (PatternToMatch op : patternOfOps) {
         TreePatternNode srcPat = op.getSrcPattern();
-        int ty = srcPat.getTypeNum(0);
+        int ty = srcPat.getSimpleType(0);
         if (!patternsByType.containsKey(ty))
           patternsByType.put(ty, new ArrayList<>());
         patternsByType.get(ty).add(op);
@@ -788,7 +789,7 @@ public class DAGISelEmitter extends TableGenBackend {
   }
 
   @Override
-  public void run(String outputFile) throws Exception {
+  public void run(String outputFile) throws FileNotFoundException {
     Util.assertion(outputFile != null && !outputFile.isEmpty());
     try (PrintStream os = !outputFile.equals("-") ?
         new PrintStream(new FileOutputStream(outputFile)) :

@@ -17,6 +17,7 @@ package utils.tablegen;
  */
 
 import gnu.trove.list.array.TIntArrayList;
+import tools.Error;
 import tools.Pair;
 import tools.Util;
 import utils.tablegen.RecTy.BitRecTy;
@@ -437,7 +438,7 @@ public abstract class Init {
   }
 
   /**
-   * Represent an initalization by a literal integer value.
+   * Represent an initialization by a literal integer value.
    */
   public static class IntInit extends TypedInit {
     private long value;
@@ -679,13 +680,14 @@ public abstract class Init {
       os.print("]");
     }
 
-    public Record getElementAsRecord(int index) throws Exception {
+    public Record getElementAsRecord(int index) {
       Util.assertion(index >= 0 && index < getSize(), "List element index out of range!");
 
       if (values.get(index) instanceof DefInit) {
         return ((DefInit) values.get(index)).getDef();
       }
-      throw new Exception("Expected record in list!");
+      Error.printFatalError("Expected record in list!");
+      return null;
     }
 
     @Override
@@ -1304,14 +1306,20 @@ public abstract class Init {
    * argument can have a name associated with it.
    */
   public static class DagInit extends TypedInit {
-    private Init val;
+    /**
+     * The operator defined by a def.
+     */
+    private Init opc;
+    /**
+     * The name of opc.
+     */
     private String varName;
     private ArrayList<Init> args;
     private ArrayList<String> argNames;
 
-    public DagInit(Init val, String vn, ArrayList<Pair<Init, String>> args) {
+    public DagInit(Init opc, String vn, ArrayList<Pair<Init, String>> args) {
       super(new RecTy.DagRecTy());
-      this.val = val;
+      this.opc = opc;
       varName = vn;
       this.args = new ArrayList<>(args.size());
       argNames = new ArrayList<>(args.size());
@@ -1321,9 +1329,9 @@ public abstract class Init {
       });
     }
 
-    public DagInit(Init val, String vn, ArrayList<Init> args, ArrayList<String> argNames) {
+    public DagInit(Init opc, String vn, ArrayList<Init> args, ArrayList<String> argNames) {
       super(new RecTy.DagRecTy());
-      this.val = val;
+      this.opc = opc;
       varName = vn;
       this.args = args;
       this.argNames = argNames;
@@ -1335,7 +1343,7 @@ public abstract class Init {
     }
 
     public Init getOperator() {
-      return val;
+      return opc;
     }
 
     public int getNumArgs() {
@@ -1368,8 +1376,8 @@ public abstract class Init {
       for (Init i : args)
         newArgs.add(i.resolveReferences(r, rval));
 
-      Init op = val.resolveReferences(r, rval);
-      if (!args.equals(newArgs) || !op.equals(val))
+      Init op = opc.resolveReferences(r, rval);
+      if (!args.equals(newArgs) || !op.equals(opc))
         return new DagInit(op, "", newArgs, argNames);
       return this;
     }
@@ -1377,7 +1385,7 @@ public abstract class Init {
     @Override
     public void print(PrintStream os) {
       os.print("(");
-      val.print(os);
+      opc.print(os);
       if (!varName.isEmpty())
         os.printf(":%s", varName);
 
@@ -1416,7 +1424,7 @@ public abstract class Init {
       args.forEach(e -> argList.add(e.clone()));
       argNameList.addAll(argNames);
 
-      return new DagInit(val.clone(), varName, argList, argNameList);
+      return new DagInit(opc.clone(), varName, argList, argNameList);
     }
 
     @Override
@@ -1427,7 +1435,7 @@ public abstract class Init {
         return false;
       DagInit di = (DagInit) obj;
 
-      return val.equals(di.val) && varName.equals(di.varName)
+      return opc.equals(di.opc) && varName.equals(di.varName)
           && args.equals(di.args) && argNames.equals(di.argNames);
     }
 

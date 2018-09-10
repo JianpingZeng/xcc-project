@@ -42,7 +42,7 @@ def clang_ignored_m_Group : OptionGroup<"<clang ignored m group>">,
 /////////
 // Options
 
-// The internal option ID must be a valid C++ identifier and results in a
+// The internal option ID must be a valid Java identifier and results in a
 // clang::driver::options::OPT_XX enum constant for XX.
 //
 // We want to unambiguously be able to refer to options from the driver source

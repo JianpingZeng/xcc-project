@@ -274,10 +274,10 @@ def main(builtinParameters = {}):
     userParams = dict(builtinParameters)
     for entry in opts.userParameters:
         if '=' not in entry:
-            name,val = entry,''
+            name,opc = entry,''
         else:
-            name,val = entry.split('=', 1)
-        userParams[name] = val
+            name,opc = entry.split('=', 1)
+        userParams[name] = opc
 
     # Decide what the requested maximum indvidual test time should be
     if opts.maxIndividualTestTime != None:

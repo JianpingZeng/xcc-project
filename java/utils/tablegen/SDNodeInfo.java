@@ -16,18 +16,16 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.EVT;
-import gnu.trove.list.array.TIntArrayList;
+import backend.codegen.MVT;
+import gnu.trove.iterator.TIntObjectIterator;
+import tools.Error;
 import tools.Util;
+import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
 
-import static backend.codegen.MVT.Other;
-import static backend.codegen.MVT.iPTR;
-import static utils.tablegen.CodeGenDAGPatterns.*;
-import static utils.tablegen.CodeGenTarget.getValueType;
-import static utils.tablegen.EEVT.*;
 import static utils.tablegen.SDNodeInfo.SDTypeConstraint.constraintType.*;
+import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
  * @author Jianping Zeng
@@ -41,14 +39,16 @@ public final class SDNodeInfo {
   private int numResults;
   private int numOperands;
   private ArrayList<SDTypeConstraint> typeConstraints;
+  private CodeGenHwModes hwModes;
 
-  public SDNodeInfo(Record r) throws Exception {
+  public SDNodeInfo(Record r, CodeGenHwModes hwModes) {
     theDef = r;
     enumName = r.getValueAsString("Opcode");
     sdClassName = r.getValueAsString("SDClass");
     Record typeProfile = r.getValueAsDef("TypeProfile");
     numResults = (int) typeProfile.getValueAsInt("NumResults");
     numOperands = (int) typeProfile.getValueAsInt("NumOperands");
+    this.hwModes = hwModes;
 
     properties = 0;
     ArrayList<Record> propList = r.getValueAsListOfDefs("Properties");
@@ -85,7 +85,7 @@ public final class SDNodeInfo {
           properties |= 1 << SDNP.SDNPMemOperand;
           break;
         default:
-          System.err.println("Undefined SD Node property '" + prop.getName()
+          Error.printError("Undefined SD Node property '" + prop.getName()
               + "' on node '" + r.getName() + "'!");
           System.exit(1);
       }
@@ -95,7 +95,7 @@ public final class SDNodeInfo {
     typeConstraints = new ArrayList<>();
     ArrayList<Record> constrainsts = typeProfile.getValueAsListOfDefs("Constraints");
     for (Record con : constrainsts) {
-      typeConstraints.add(new SDTypeConstraint(con));
+      typeConstraints.add(new SDTypeConstraint(con, hwModes));
     }
   }
 
@@ -144,7 +144,7 @@ public final class SDNodeInfo {
    * @return
    */
   public boolean applyTypeConstraints(TreePatternNode node, TreePattern tp)
-      throws Exception {
+      {
     boolean changed = false;
     for (SDTypeConstraint con : typeConstraints) {
       changed |= con.applyTypeConstraint(node, this, tp);
@@ -153,12 +153,16 @@ public final class SDNodeInfo {
   }
 
   public static final class SDTypeConstraint {
-    public SDTypeConstraint(Record r) throws Exception {
+    public SDTypeConstraint(Record r, CodeGenHwModes hwModes) {
       operandNo = (int) r.getValueAsInt("OperandNum");
 
       if (r.isSubClassOf("SDTCisVT")) {
         constraintType = SDTCisVT;
-        x = getValueType(r.getValueAsDef("VT"));
+        vvt = getValueTypeByHwMode(r.getValueAsDef("VT"), hwModes);
+        for (TIntObjectIterator<MVT> itr = vvt.iterator(); itr.hasNext(); ) {
+          if (itr.value().simpleVT == MVT.isVoid)
+            Error.printFatalError(r.getLoc(), "Can't use 'Void' as type to SDTCisVT");
+        }
       } else if (r.isSubClassOf("SDTCisPtrTy")) {
         constraintType = SDTCisPtrTy;
       } else if (r.isSubClassOf("SDTCisInt")) {
@@ -180,16 +184,22 @@ public final class SDNodeInfo {
         constraintType = SDTCisEltOfVec;
         x = (int) r.getValueAsInt("OtherOpNum");
       } else {
-        System.err.println("Unrecognized SDTypeConstraint '" + r.getName() + "'!");
-        System.exit(1);
+        Error.printFatalError("Unrecognized SDTypeConstraint '" + r.getName() + "'!");
       }
     }
 
     public int operandNo;
 
     public enum constraintType {
-      SDTCisVT, SDTCisPtrTy, SDTCisInt, SDTCisFP, SDTCisVec, SDTCisSameAs,
-      SDTCisVTSmallerThanOp, SDTCisOpSmallerThanOp, SDTCisEltOfVec
+      SDTCisVT,
+      SDTCisPtrTy,
+      SDTCisInt,
+      SDTCisFP,
+      SDTCisVec,
+      SDTCisSameAs,
+      SDTCisVTSmallerThanOp,
+      SDTCisOpSmallerThanOp,
+      SDTCisEltOfVec
     }
 
     public constraintType constraintType;
@@ -200,145 +210,92 @@ public final class SDNodeInfo {
      * SDTCisEltOfVec_Info.
      */
     public int x;
+    /**
+     * The VT for SDTCisVT and SDTCVecEltisVT.
+     */
+    public ValueTypeByHwMode vvt;
 
     /**
-     * Given a node in a pattern, apply this type
-     * constraint to the nodes operands.  This returns true if it makes a
-     * change, false otherwise.  If a type contradiction is found, throw an
-     * exception.
+     * Given a node in a pattern, apply this type constraint to the nodes operands.
+     * This returns true if it makes a change, false otherwise.
+     * If a type contradiction is found, issue an error.
      *
      * @param node
      * @param nodeInfo
-     * @param pattern
+     * @param tp
      * @return
      */
-    public boolean applyTypeConstraint(TreePatternNode node, SDNodeInfo nodeInfo,
-                                       TreePattern pattern) throws Exception {
+    public boolean applyTypeConstraint(TreePatternNode node,
+                                       SDNodeInfo nodeInfo,
+                                       TreePattern tp) {
       int numResults = nodeInfo.getNumResults();
       Util.assertion((numResults <= 1),
           "We only work which nodes with zero or result so far!");
 
       if (nodeInfo.getNumOperands() >= 0) {
         if (node.getNumChildren() != nodeInfo.getNumOperands())
-          pattern.error(node.getOperator().getName() +
+          tp.error(node.getOperator().getName() +
               " node requires exactly "
               + nodeInfo.getNumOperands() + " operands");
       }
-      CodeGenTarget cgt = pattern.getDAGPatterns().getTarget();
-      TreePatternNode nodeToApply = getOperandNum(operandNo, node, numResults);
+
+      TypeInfer infer = tp.getTypeInfer();
+      CodeGenTarget cgt = tp.getDAGPatterns().getTarget();
+      int[] tempResNo = new int[1];
+      TreePatternNode nodeToApply = getOperandNum(operandNo, node, numResults, tempResNo);
+      int resNo = tempResNo[0]; // The result number being referenced.
+
       switch (constraintType) {
         default:
-          Util.assertion(false, "Unknown constraint yet!");
+          Util.assertion("Unknown constraint yet!");
         case SDTCisVT:
-          return nodeToApply.updateNodeType(x, pattern);
+          return nodeToApply.updateNodeType(resNo, vvt, tp);
         case SDTCisPtrTy:
           // Require it to be one of the legal FP VTs.
-          return nodeToApply.updateNodeType(iPTR, pattern);
+          return nodeToApply.updateNodeType(resNo, MVT.iPTR, tp);
         case SDTCisInt: {
           // Require it to be one of the legal integer VTs.
-          TIntArrayList intVTs = filterVTs(cgt.getLegalValueTypes(), isInteger);
-          if (intVTs.size() == 1)
-            return nodeToApply.updateNodeType(intVTs.get(0), pattern);
-          return nodeToApply.updateNodeType(isInt, pattern);
+          return infer.enforceInteger(nodeToApply.getExtType(resNo));
         }
         case SDTCisFP: {
-          TIntArrayList intVTs = filterVTs(cgt.getLegalValueTypes(), isFloatingPoint);
-
-          if (intVTs.size() == 1)
-            return nodeToApply.updateNodeType(intVTs.get(0), pattern);
-          return nodeToApply.updateNodeType(isFP, pattern);
+          // Require it to be one of the legal floating point VTs.
+          return infer.enforceFloatingPoint(nodeToApply.getExtType(resNo));
         }
         case SDTCisVec: {
-
-          TIntArrayList intVTs = filterVTs(cgt.getLegalValueTypes(), isVector);
-
-          if (intVTs.size() == 1)
-            return nodeToApply.updateNodeType(intVTs.get(0), pattern);
-          return nodeToApply.updateNodeType(EEVT.isVec, pattern);
+          // Require it to be one of the legal vector VTs.
+          return infer.enforceVector(nodeToApply.getExtType(resNo));
         }
         case SDTCisSameAs: {
-          TreePatternNode otherNode = getOperandNum(x, node, numResults);
-          return nodeToApply.updateNodeType(otherNode.getExtTypes(), pattern)
-              | otherNode.updateNodeType(nodeToApply.getExtTypes(), pattern);
+          // Require it to be one of the legal floating point VTs.
+          int[] oResNo = new int[1];
+          TreePatternNode otherNode = getOperandNum(x, node, numResults, oResNo);
+          return nodeToApply.updateNodeType(resNo, otherNode.getExtType(oResNo[0]), tp) |
+              otherNode.updateNodeType(oResNo[0], nodeToApply.getExtType(resNo), tp);
         }
         case SDTCisVTSmallerThanOp: {
-          if (!nodeToApply.isLeaf() || !(nodeToApply.getLeafValue() instanceof Init.DefInit)
-              || !((Init.DefInit) nodeToApply.getLeafValue()).getDef().isSubClassOf("ValueType")) {
-            pattern.error(node.getOperator().getName() + " expects a VT operand!");
-            ;
+          if (!nodeToApply.isLeaf() || !(nodeToApply.getLeafValue() instanceof DefInit)
+              || !((DefInit) nodeToApply.getLeafValue()).getDef().isSubClassOf("ValueType")) {
+            tp.error(node.getOperator().getName() + " expects a VT operand!");
           }
 
-          int vt = getValueType(((Init.DefInit) nodeToApply.getLeafValue()).getDef());
-          if (!isInteger.test(vt))
-            pattern.error(node.getOperator().getName() + " VT operand must be integera!");
-          ;
-
-          TreePatternNode otherNode = getOperandNum(x, node, numResults);
-
-          boolean changed = false;
-          changed |= otherNode.updateNodeType(isInt, pattern);
-
-          Util.assertion(otherNode.getExtTypes().size() == 1, "Node has too many types!");
-          if (otherNode.hasTypeSet() && otherNode.getTypeNum(0) <= vt)
-            otherNode.updateNodeType(Other, pattern);
-
-          return false;
+          DefInit di = ((DefInit) nodeToApply.getLeafValue());
+          vvt = getValueTypeByHwMode(di.getDef(), cgt.getHwModes());
+          TypeSetByHwMode set = new TypeSetByHwMode(vvt);
+          int[] oResNo = new int[1];
+          TreePatternNode otherNode = getOperandNum(x, node, numResults, oResNo);
+          return infer.enforceSmallerThan(set, otherNode.getExtType(oResNo[0]));
         }
         case SDTCisOpSmallerThanOp: {
-          TreePatternNode bigOperand = getOperandNum(x, node,
-              numResults);
-
-          boolean changed = false;
-          Util.assertion(!(EEVT.isExtIntegerInVTs(nodeToApply.getExtTypes()) && EEVT.isExtFloatingPointInVTs(nodeToApply.getExtTypes())) &&
-                  !((EEVT.isExtIntegerInVTs(bigOperand.getExtTypes()))
-                      && EEVT.isExtFloatingPointInVTs(bigOperand.getExtTypes())),
-              "SDTCisOpSmallerThanOp does not handle mixed int/fp types!");
-
-
-          if (isExtIntegerInVTs(nodeToApply.getExtTypes()))
-            changed |= bigOperand.updateNodeType(isInt, pattern);
-          else if (isExtFloatingPointInVTs(nodeToApply.getExtTypes()))
-            changed |= bigOperand.updateNodeType(isFP, pattern);
-          if (isExtIntegerInVTs(bigOperand.getExtTypes()))
-            changed |= nodeToApply.updateNodeType(isInt, pattern);
-          else if (isExtFloatingPointInVTs(bigOperand.getExtTypes()))
-            changed |= nodeToApply.updateNodeType(isFP, pattern);
-
-          TIntArrayList vts = cgt.getLegalValueTypes();
-          if (isExtIntegerInVTs(nodeToApply.getExtTypes()))
-            vts = filterVTs(vts, isInteger);
-          else if (isExtFloatingPointInVTs(nodeToApply.getExtTypes()))
-            vts = filterVTs(vts, isFloatingPoint);
-          else
-            vts.clear();
-
-          switch (vts.size()) {
-            default:
-            case 0:
-              break;
-            case 1:
-              return nodeToApply.updateNodeType(Other, pattern);
-            case 2:
-              Util.assertion(vts.get(0) < vts.get(1), "Should be sorted");
-              changed |= nodeToApply.updateNodeType(vts.get(0), pattern);
-              changed |= bigOperand.updateNodeType(vts.get(1), pattern);
-              break;
-
-          }
-          return changed;
+          int[] bResNo = new int[1];
+          TreePatternNode bigOp = getOperandNum(x, node, numResults, bResNo);
+          return infer.enforceSmallerThan(nodeToApply.getExtType(resNo),
+              bigOp.getExtType(bResNo[0]));
         }
         case SDTCisEltOfVec: {
-          TreePatternNode otherOperand = getOperandNum(x, node, numResults);
-          if (otherOperand.hasTypeSet()) {
-            if (!isVector.test(otherOperand.getTypeNum(0))) {
-              pattern.error(node.getOperator().getName() + "VT operand must be a vector!");
-              ;
-            }
-            EVT ivt = new EVT(otherOperand.getTypeNum(0));
-            ivt = ivt.getVectorElementType();
-            return nodeToApply.updateNodeType(ivt.getSimpleVT().simpleVT, pattern);
-          }
-          return false;
+          int[] vResNo = new int[1];
+          TreePatternNode bigVecOp = getOperandNum(x, node, numResults, vResNo);
+          return infer.enforceVectorSubVectorTypesIs(bigVecOp.getExtType(vResNo[0]),
+              nodeToApply.getExtType(resNo));
         }
       }
     }
@@ -352,7 +309,10 @@ public final class SDNodeInfo {
      * @return
      * @{code node}, which has {@code numResults} results.
      */
-    public TreePatternNode getOperandNum(int opNo, TreePatternNode node, int numResults) {
+    public TreePatternNode getOperandNum(int opNo,
+                                         TreePatternNode node,
+                                         int numResults,
+                                         int[] resNo) {
       Util.assertion(numResults <= 1, "We only work with nodes with zero or one result so far!");
       if (opNo >= (numResults + node.getNumChildren())) {
         System.err.printf("Invalid operand number %d ", opNo);
@@ -361,8 +321,10 @@ public final class SDNodeInfo {
         System.exit(1);
       }
 
-      if (opNo < numResults)
+      if (opNo < numResults) {
+        resNo[0] = opNo;
         return node;
+      }
       else
         return node.getChild(opNo - numResults);
     }

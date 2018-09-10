@@ -18,10 +18,12 @@ package utils.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Error;
 import tools.Pair;
 import tools.TextUtils;
 import tools.Util;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
@@ -143,7 +145,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
     CodeGenInstruction cgi;
 
-    public AsmWriterInst(CodeGenInstruction cgi, Record asmWriter) throws Exception {
+    public AsmWriterInst(CodeGenInstruction cgi, Record asmWriter) {
       operands = new ArrayList<>();
       this.cgi = cgi;
       // ~0 if we are outside a {.|.|.} region, other #.
@@ -218,7 +220,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
             } else if ("${|}\\".indexOf(asmString.charAt(dollarPos + 1)) != -1) {
               addLiteralString(String.valueOf(asmString.charAt(dollarPos + 1)));
             } else {
-              throw new Exception("Non-supported escaped character found in instruction '" +
+              Error.printFatalError("Non-supported escaped character found in instruction '" +
                   cgi.theDef.getName() + "'!");
             }
             lastEmitted = dollarPos + 2;
@@ -226,21 +228,21 @@ public final class AsmWriterEmitter extends TableGenBackend {
           }
         } else if (asmString.charAt(dollarPos) == '{') {
           if (curVariant != ~0)
-            throw new Exception("Nested variants found for instruction"
+            Error.printFatalError("Nested variants found for instruction"
                 + "'" + cgi.theDef.getName() + "'!");
           lastEmitted = dollarPos + 1;
           // We are now inside of the variant!
           curVariant = 0;
         } else if (asmString.charAt(dollarPos) == '|') {
           if (curVariant == ~0)
-            throw new Exception("'|' character founds outside of "
+            Error.printFatalError("'|' character founds outside of "
                 + "a variant in instruction '" + cgi.theDef.getName() + "'!");
 
           ++curVariant;
           ++lastEmitted;
         } else if (asmString.charAt(dollarPos) == '}') {
           if (curVariant == ~0)
-            throw new Exception("'|' character founds outside of "
+            Error.printFatalError("'|' character founds outside of "
                 + "a variant in instruction '" + cgi.theDef.getName() + "'!");
           ++lastEmitted;
           curVariant = ~0;
@@ -272,7 +274,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
           // brace.
           if (hasCurlyBraces) {
             if (varEnd >= asmString.length()) {
-              throw new Exception("Reached end of string before "
+              Error.printFatalError("Reached end of string before "
                   + "terminating curly brace in '" + cgi.theDef
                   .getName() + "'");
             }
@@ -280,8 +282,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
             if (asmString.charAt(varEnd) == ':') {
               ++varEnd;
               if (varEnd >= asmString.length()) {
-                throw new Exception(
-                    "Reached end of string before terminating curly brace in '"
+                Error.printFatalError("Reached end of string before terminating curly brace in '"
                         + cgi.theDef.getName() + "'");
               }
 
@@ -293,21 +294,19 @@ public final class AsmWriterEmitter extends TableGenBackend {
               modifier = asmString.substring(modifierStart, varEnd);
 
               if (modifier.isEmpty()) {
-                throw new Exception(
-                    "Bad operand modifier name in '" + cgi.theDef.getName() + "'");
+                Error.printFatalError("Bad operand modifier name in '" + cgi.theDef.getName() + "'");
               }
             }
 
             if (asmString.charAt(varEnd) != '}')
-              throw new Exception(
-                  "Variable name begining with '{' didn't end with '}' in "
+              Error.printFatalError("Variable name begining with '{' didn't end with '}' in "
                       + "' " + cgi.theDef.getName() + "'");
 
             ++varEnd;
           }
 
           if (varName.isEmpty() && modifier.isEmpty()) {
-            throw new Exception("Stray '$' in '" + cgi.theDef.getName()
+            Error.printFatalError("Stray '$' in '" + cgi.theDef.getName()
                 + "' asm string, maybe you want $$?");
           }
           if (varName.isEmpty())
@@ -370,7 +369,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
    * @throws Exception
    */
   @Override
-  public void run(String outputFile) throws Exception {
+  public void run(String outputFile) throws FileNotFoundException {
     numberedInstructions = new ArrayList<>();
     cgiMapToawi = new HashMap<>();
 
@@ -386,7 +385,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.println("import tools.Util;");
 
     emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
-    CodeGenTarget target = new CodeGenTarget();
+    CodeGenTarget target = new CodeGenTarget(Record.records);
     Record asmWriter = target.getAsmWriter();
 
     String className = target.getName() + "Gen" +

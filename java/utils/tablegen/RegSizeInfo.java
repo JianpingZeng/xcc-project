@@ -42,6 +42,7 @@ public class RegSizeInfo implements Comparable<RegSizeInfo> {
     spillAlignment = r.getValueAsInt("SpillAlignment");
   }
 
+  public RegSizeInfo() {}
 
   @Override
   public int compareTo(RegSizeInfo o) {

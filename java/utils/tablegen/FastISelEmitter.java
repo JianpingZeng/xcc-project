@@ -40,7 +40,7 @@ public final class FastISelEmitter extends TableGenBackend {
   private CodeGenDAGPatterns cgp;
   private String className;
 
-  public FastISelEmitter(RecordKeeper rec) throws Exception {
+  public FastISelEmitter(RecordKeeper rec) {
     records = rec;
     cgp = new CodeGenDAGPatterns(records);
   }
@@ -50,7 +50,7 @@ public final class FastISelEmitter extends TableGenBackend {
    *
    * @param outfile The output file where fast isel sources code will be written.
    */
-  public void run(String outfile) throws Exception {
+  public void run(String outfile) {
     try (PrintStream os = !outfile.equals("-") ?
         new PrintStream(new FileOutputStream(outfile)) :
         System.out) {
@@ -119,11 +119,6 @@ public final class FastISelEmitter extends TableGenBackend {
 
     @Override
     public int hashCode() {
-      // FIXME 调试的时候在collectPatterns出现的Duplicate Pattern Assert错误是
-      // 由该函数计算HashCode时的重复性带来的。
-      // 此前的计算方式为： operands.hashCode() << 11 + operands.size();
-      // operands.size() << 11 + operands.hashCode();
-      // 两者都不行。
       return operands.hashCode();
     }
 
@@ -164,8 +159,9 @@ public final class FastISelEmitter extends TableGenBackend {
           return false;
 
         // For now, all the operands must have the same type.
-        if (op.getTypeNum(0) != vt)
-          return false;
+        Util.shouldNotReachHere("FastISel has been deprecated!");
+        //if (op.getTypeNum(0) != vt)
+        //  return false;
 
         if (!op.isLeaf()) {
           if (op.getOperator().getName().equals("imm")) {
@@ -319,7 +315,7 @@ public final class FastISelEmitter extends TableGenBackend {
       simplePatterns = new TreeMap<>();
     }
 
-    public void collectPatterns(CodeGenDAGPatterns cgp) throws Exception {
+    public void collectPatterns(CodeGenDAGPatterns cgp) {
       CodeGenTarget target = cgp.getTarget();
 
       int sz = cgp.getPatternsToMatch().size();
@@ -373,10 +369,11 @@ public final class FastISelEmitter extends TableGenBackend {
 
         Record instPatOp = instPatNode.getOperator();
         String opcodeName = getOpcodeName(instPatOp, cgp);
-        int retVT = instPatNode.getTypeNum(0);
-        int vt = retVT;
+        Util.shouldNotReachHere("FastISel has been deprecated!");
+        //int retVT = instPatNode.getTypeNum(0);
+        int vt = 0;//retVT;
         if (instPatNode.getNumChildren() != 0) {
-          vt = instPatNode.getChild(0).getTypeNum(0);
+          //vt = instPatNode.getChild(0).getTypeNum(0);
         }
 
         // For now, filter out instructions which just set a register to
@@ -452,8 +449,9 @@ public final class FastISelEmitter extends TableGenBackend {
           simplePatterns.get(operands).put(opcodeName, new TreeMap<>());
         if (!simplePatterns.get(operands).get(opcodeName).containsKey(vt))
           simplePatterns.get(operands).get(opcodeName).put(vt, new TreeMap<>());
-        if (!simplePatterns.get(operands).get(opcodeName).get(vt).containsKey(retVT))
-          simplePatterns.get(operands).get(opcodeName).get(vt).put(retVT, new TreeMap<>());
+        Util.shouldNotReachHere("FastISel has been deprecated!");
+        //if (!simplePatterns.get(operands).get(opcodeName).get(vt).containsKey(retVT))
+        //  simplePatterns.get(operands).get(opcodeName).get(vt).put(retVT, new TreeMap<>());
 
                 /*
                 if (idx == 771)
@@ -489,9 +487,10 @@ public final class FastISelEmitter extends TableGenBackend {
                     System.err.println(predicateCheck);
                 }*/
 
-        //Util.assertion(!simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)                //,  "Duplicate pattern!");
+        //Util.assertion(!simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck) //,  "Duplicate pattern!");
 
-        simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).put(predicateCheck, memo);
+        Util.shouldNotReachHere("FastISel has been deprecated!");
+        //simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).put(predicateCheck, memo);
       }
     }
 

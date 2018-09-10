@@ -14,8 +14,8 @@
 // Format specifies the encoding used by the instruction.  This is part of the
 // ad-hoc solution used to emit machine instruction encodings by our machine
 // code emitter.
-class Format<bits<6> val> {
-  bits<6> Value = val;
+class Format<bits<6> opc> {
+  bits<6> Value = opc;
 }
 
 def Pseudo     : Format<0>; def RawFrm     : Format<1>;
@@ -34,8 +34,8 @@ def MRMInitReg : Format<32>;
 // ImmType - This specifies the immediate type used by an instruction. This is
 // part of the ad-hoc solution used to emit machine instruction encodings by our
 // machine code emitter.
-class ImmType<bits<3> val> {
-  bits<3> Value = val;
+class ImmType<bits<3> opc> {
+  bits<3> Value = opc;
 }
 def NoImm  : ImmType<0>;
 def Imm8   : ImmType<1>;
@@ -45,8 +45,8 @@ def Imm64  : ImmType<4>;
 
 // FPFormat - This specifies what form this FP instruction has.  This is used by
 // the Floating-Point stackifier pass.
-class FPFormat<bits<3> val> {
-  bits<3> Value = val;
+class FPFormat<bits<3> opc> {
+  bits<3> Value = opc;
 }
 def NotFP      : FPFormat<0>;
 def ZeroArgFP  : FPFormat<1>;

@@ -16,7 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import gnu.trove.list.array.TIntArrayList;
+import tools.Error;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -36,22 +36,24 @@ public final class CodeGenTarget {
   private Record targetRec;
   private ArrayList<Record> calleeSavedRegisters;
   private int pointerType;
-
-
   private TreeMap<String, CodeGenInstruction> insts;
   private ArrayList<CodeGenRegister> registers;
   private ArrayList<CodeGenRegisterClass> registerClasses;
-  private TIntArrayList legalValueTypes;
+  private ArrayList<ValueTypeByHwMode> legalValueTypes;
+  private CodeGenHwModes hwModes;
+  private RecordKeeper keeper;
 
-  public CodeGenTarget() throws Exception {
+  public CodeGenTarget(RecordKeeper keeper) {
     pointerType = Other;
-    legalValueTypes = new TIntArrayList();
+    legalValueTypes = new ArrayList<>();
+    this.keeper = keeper;
+    hwModes = new CodeGenHwModes(keeper);
 
     ArrayList<Record> targets = Record.records.getAllDerivedDefinition("Target");
     if (targets.isEmpty())
-      throw new Exception("Error: No target defined!");
+      Error.printFatalError("Error: No target defined!");
     if (targets.size() != 1)
-      throw new Exception("Error: Multiple subclasses of Target defined!");
+      Error.printFatalError("Error: Multiple subclasses of Target defined!");
 
     targetRec = targets.get(0);
 
@@ -68,10 +70,12 @@ public final class CodeGenTarget {
     // readInstructions();
   }
 
-  private void readRegisters() throws Exception {
+  public CodeGenHwModes getHwModes() { return hwModes; }
+
+  private void readRegisters() {
     ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Register");
     if (regs.isEmpty())
-      throw new Exception("No 'Register' subclasses defined!");
+      Error.printFatalError("No 'Register' subclasses defined!");
     registers = new ArrayList<>();
     regs.forEach(reg ->
     {
@@ -83,25 +87,25 @@ public final class CodeGenTarget {
     });
   }
 
-  private void readRegisterClasses() throws Exception {
+  private void readRegisterClasses() {
     ArrayList<Record> regClasses = Record.records.getAllDerivedDefinition("RegisterClass");
     if (regClasses.isEmpty())
-      throw new Exception("No 'RegisterClass subclass defined!");
+      Error.printFatalError("No 'RegisterClass subclass defined!");
     registerClasses = new ArrayList<>();
     regClasses.forEach(regKls ->
     {
       try {
-        registerClasses.add(new CodeGenRegisterClass(regKls));
+        registerClasses.add(new CodeGenRegisterClass(regKls, getHwModes()));
       } catch (Exception e) {
         e.printStackTrace();
       }
     });
   }
 
-  private void readInstructions() throws Exception {
+  private void readInstructions() {
     ArrayList<Record> instrs = Record.records.getAllDerivedDefinition("Instruction");
     if (instrs.size() <= 2)
-      throw new Exception("No 'Instruction' subclasses defined!");
+      Error.printFatalError("No 'Instruction' subclasses defined!");
 
     String instFormatName = getAsmWriter().getValueAsString("InstFormatName");
     insts = new TreeMap<>();
@@ -113,10 +117,10 @@ public final class CodeGenTarget {
 
   public static int AsmWriterNum = 0;
 
-  public Record getAsmWriter() throws Exception {
+  public Record getAsmWriter() {
     ArrayList<Record> li = targetRec.getValueAsListOfDefs("AssemblyWriters");
     if (AsmWriterNum >= li.size())
-      throw new Exception("Target does not have an AsmWriter #" + AsmWriterNum + "!");
+      Error.printFatalError("Target does not have an AsmWriter #" + AsmWriterNum + "!");
     return li.get(AsmWriterNum);
   }
 
@@ -136,7 +140,7 @@ public final class CodeGenTarget {
     return pointerType;
   }
 
-  Record getInstructionSet() throws Exception {
+  Record getInstructionSet() {
     return targetRec.getValueAsDef("InstructionSet");
   }
 
@@ -149,7 +153,7 @@ public final class CodeGenTarget {
   }
 
   public TreeMap<String, CodeGenInstruction> getInstructions()
-      throws Exception {
+      {
     if (insts == null || insts.isEmpty())
       readInstructions();
     return insts;
@@ -163,7 +167,7 @@ public final class CodeGenTarget {
    */
   public void getInstructionsByEnumValue(
       ArrayList<CodeGenInstruction> numberedInstructions)
-      throws Exception {
+      {
     String[] firstPriority = {
         "PHI",
         "INLINEASM",
@@ -180,7 +184,7 @@ public final class CodeGenTarget {
     TreeSet<String> names = new TreeSet<>();
     for (String instr : firstPriority) {
       if (!insts.containsKey(instr))
-        throw new Exception(String.format("Could not find '%s' instruction", instr));
+        Error.printFatalError(String.format("Could not find '%s' instruction", instr));
       numberedInstructions.add(insts.get(instr));
       names.add(instr);
     }
@@ -194,7 +198,7 @@ public final class CodeGenTarget {
     });
   }
 
-  public CodeGenInstruction getInstruction(String name) throws Exception {
+  public CodeGenInstruction getInstruction(String name) {
     insts = getInstructions();
     Util.assertion(insts.containsKey(name), "Not an instruction!");
     return insts.get(name);
@@ -220,7 +224,7 @@ public final class CodeGenTarget {
     }
 
     // Remove duplicates.
-    HashSet<Integer> set = new HashSet<>();
+    HashSet<ValueTypeByHwMode> set = new HashSet<>();
     for (int i = 0; i != legalValueTypes.size(); i++)
       set.add(legalValueTypes.get(i));
 
@@ -228,7 +232,7 @@ public final class CodeGenTarget {
     legalValueTypes.addAll(set);
   }
 
-  public TIntArrayList getLegalValueTypes() {
+  public ArrayList<ValueTypeByHwMode> getLegalValueTypes() {
     if (legalValueTypes.isEmpty()) readLegalValueTypes();
 
     return legalValueTypes;
@@ -308,13 +312,13 @@ public final class CodeGenTarget {
    * @param r
    * @return
    */
-  public TIntArrayList getRegisterVTs(Record r) {
-    TIntArrayList res = new TIntArrayList();
+  public ArrayList<ValueTypeByHwMode> getRegisterVTs(Record r) {
+    ArrayList<ValueTypeByHwMode> res = new ArrayList<>();
     for (CodeGenRegisterClass rc : registerClasses) {
       for (Record elt : rc.elts) {
         if (r.equals(elt)) {
-          TIntArrayList inVTs = rc.getValueTypes();
-          res.addAll(CodeGenDAGPatterns.convertVTs(inVTs));
+          ArrayList<ValueTypeByHwMode> inVTs = rc.getValueTypes();
+          res.addAll(inVTs);
         }
       }
     }

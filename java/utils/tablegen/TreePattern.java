@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Error;
 import tools.Util;
 import utils.tablegen.CodeGenIntrinsic.ModRefType;
 import utils.tablegen.Init.BitsInit;
@@ -26,14 +27,15 @@ import utils.tablegen.RecTy.IntRecTy;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Objects;
 
 import static backend.codegen.MVT.isVoid;
-import static utils.tablegen.CodeGenTarget.getValueType;
+import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TreePattern {
   private ArrayList<TreePatternNode> trees = new ArrayList<>();
@@ -45,21 +47,25 @@ public final class TreePattern {
   private CodeGenDAGPatterns cdp;
 
   private boolean isInputPattern;
+  private TypeInfer infer;
+  private boolean error;
 
   public TreePattern(Record theRec, Init.ListInit rawPat, boolean isInput,
-                     CodeGenDAGPatterns cdp) throws Exception {
+                     CodeGenDAGPatterns cdp) {
     theRecord = theRec;
     this.cdp = cdp;
     isInputPattern = isInput;
+    infer = new TypeInfer(this);
     for (int i = 0, e = rawPat.getSize(); i != e; i++)
       trees.add(parseTreePattern((DagInit) rawPat.getElement(i)));
   }
 
   public TreePattern(Record theRec, DagInit pat, boolean isInput,
-                     CodeGenDAGPatterns cdp) throws Exception {
+                     CodeGenDAGPatterns cdp) {
     theRecord = theRec;
     this.cdp = cdp;
     isInputPattern = isInput;
+    infer = new TypeInfer(this);
     trees.add(parseTreePattern(pat));
   }
 
@@ -68,7 +74,15 @@ public final class TreePattern {
     theRecord = theRec;
     this.cdp = cdp;
     isInputPattern = isInput;
+    infer = new TypeInfer(this);
     trees.add(pat);
+  }
+
+
+  public TypeInfer getTypeInfer() { return infer; }
+
+  public boolean hasError() {
+    return error;
   }
 
   public ArrayList<TreePatternNode> getTrees() {
@@ -109,7 +123,7 @@ public final class TreePattern {
     return cdp;
   }
 
-  public void inlinePatternFragments() throws Exception {
+  public void inlinePatternFragments() {
     for (int i = 0, e = trees.size(); i != e; i++)
       trees.set(i, trees.get(i).inlinePatternFragments(this));
   }
@@ -121,7 +135,7 @@ public final class TreePattern {
    * @return Return true if all types are inferred, false
    * otherwise.  Throw an exception if a type contradiction is found.
    */
-  public boolean inferAllTypes() throws Exception {
+  public boolean inferAllTypes() {
     boolean changed = true;
     while (changed) {
       changed = false;
@@ -135,9 +149,12 @@ public final class TreePattern {
     return !hasUnresolvedTypes;
   }
 
-  public void error(String msg) throws Exception {
+  public void error(String msg) {
+    if (hasError())
+      return;
     dump();
-    throw new Exception("In " + theRecord.getName() + ": " + msg);
+    Error.printError("In " + theRecord.getName() + ": " + msg);
+    error = true;
   }
 
   public void print(PrintStream os) {
@@ -168,7 +185,7 @@ public final class TreePattern {
     print(System.err);
   }
 
-  private TreePatternNode parseTreePattern(DagInit dag) throws Exception {
+  private TreePatternNode parseTreePattern(DagInit dag) {
     if (!(dag.getOperator() instanceof DefInit))
       error("Pattern has unexpected operator type!");
 
@@ -213,8 +230,9 @@ public final class TreePattern {
         error("Unknown leaf value for tree pattern!");
         return null;
       }
-
-      newNode.updateNodeType(getValueType(operator), this);
+      CodeGenHwModes hwModes = getDAGPatterns().getTarget().getHwModes();
+      Util.assertion(newNode != null);
+      newNode.updateNodeType(0, getValueTypeByHwMode(operator, hwModes), this);
       if (newNode.getNumChildren() == 0)
         newNode.setName(dag.getArgName(0));
 
@@ -237,14 +255,14 @@ public final class TreePattern {
         || operator.isSubClassOf("SDNodeXForm")))
       error("Cannot use '" + operator.getName() + "' in an input pattern!");
 
-    ArrayList<TreePatternNode> children = new ArrayList<>();
+    LinkedList<TreePatternNode> children = new LinkedList<>();
 
     for (int i = 0, e = dag.getNumArgs(); i != e; i++) {
       Init arg = dag.getArg(i);
       DagInit di = arg instanceof DagInit ? (DagInit) arg : null;
       if (di != null) {
         children.add(parseTreePattern(di));
-        TreePatternNode lastNode = children.get(children.size() - 1);
+        TreePatternNode lastNode = children.getLast();
         if (lastNode.getName().isEmpty())
           lastNode.setName(dag.getArgName(i));
       } else if (arg instanceof DefInit) {
@@ -308,7 +326,6 @@ public final class TreePattern {
 
     TreePatternNode result = new TreePatternNode(operator, children);
     result.setName(dag.getName());
-
     return result;
   }
 }

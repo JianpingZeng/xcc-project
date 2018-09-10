@@ -20,6 +20,7 @@ import backend.codegen.EVT;
 import gnu.trove.iterator.TObjectIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Error;
 import tools.Pair;
 import tools.Util;
 import utils.tablegen.CodeGenInstruction.OperandInfo;
@@ -31,7 +32,6 @@ import utils.tablegen.Init.TypedInit;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static backend.codegen.MVT.isVoid;
 import static utils.tablegen.SDNP.SDNPAssociative;
 import static utils.tablegen.SDNP.SDNPCommutative;
 import static utils.tablegen.TGParser.resolveTypes;
@@ -49,12 +49,7 @@ public final class CodeGenDAGPatterns {
   /**
    * Deterministic comparison of Record.
    */
-  private static Comparator<Record> RecordCmp = new Comparator<Record>() {
-    @Override
-    public int compare(Record o1, Record o2) {
-      return Integer.compare(o1.getID(), o2.getID());
-    }
-  };
+  private static Comparator<Record> RecordCmp = Comparator.comparingInt(Record::getID);
 
   private TreeMap<Record, SDNodeInfo> sdnodes;
   private TreeMap<Record, Pair<Record, String>> sdNodeXForms;
@@ -66,13 +61,12 @@ public final class CodeGenDAGPatterns {
   private Record intrinsicVoidSDNode;
   private Record intrinsicWChainSDNode;
   private Record intrinsicWOChainSDNode;
-
-
   private ArrayList<PatternToMatch> patternsToMatch;
+  private TypeSetByHwMode legalValueTypes;
 
-  public CodeGenDAGPatterns(RecordKeeper records) throws Exception {
+  public CodeGenDAGPatterns(RecordKeeper records) {
     this.records = records;
-    target = new CodeGenTarget();
+    target = new CodeGenTarget(records);
     defaultOperands = new TreeMap<>(RecordCmp);
     patternFragments = new TreeMap<>(RecordCmp);
     complexPatterns = new TreeMap<>(RecordCmp);
@@ -80,7 +74,7 @@ public final class CodeGenDAGPatterns {
     sdnodes = new TreeMap<>(RecordCmp);
     instructions = new TreeMap<>(RecordCmp);
     patternsToMatch = new ArrayList<>();
-
+    legalValueTypes = new TypeSetByHwMode(target.getLegalValueTypes());
     intrinsics = loadIntrinsics(records, false);
     tgtIntrinsics = loadIntrinsics(records, true);
 
@@ -102,8 +96,11 @@ public final class CodeGenDAGPatterns {
     // cases by examining an instruction's pattern.
     inferInstructionFlags();
   }
+  public TypeSetByHwMode getLegalValueTypes() {
+    return legalValueTypes;
+  }
 
-  private void inferInstructionFlags() throws Exception {
+  private void inferInstructionFlags() {
     TreeMap<String, CodeGenInstruction> instrDesc = target.getInstructions();
     for (Map.Entry<String, CodeGenInstruction> pair : instrDesc.entrySet()) {
       CodeGenInstruction instInfo = pair.getValue();
@@ -501,7 +498,7 @@ public final class CodeGenDAGPatterns {
     }
   }
 
-  private void parsePatterns() throws Exception {
+  private void parsePatterns() {
     ArrayList<Record> patterns = records.getAllDerivedDefinition("Pattern");
 
     for (int i = 0, e = patterns.size(); i != e; ++i) {
@@ -566,14 +563,18 @@ public final class CodeGenDAGPatterns {
         // can never do anything with this pattern: report it to the user.
         inferredAllResultTypes = result.inferAllTypes();
 
+        iterateInference = false;
         // Apply the type of the result to the source pattern.  This helps us
         // resolve cases where the input type is known to be a pointer type (which
         // is considered resolved), but the result knows it needs to be 32- or
         // 64-bits.  Infer the other way for good measure.
-        iterateInference = pattern.getTree(0).
-            updateNodeType(result.getTree(0).getExtTypes(), result);
-        iterateInference |= result.getTree(0).
-            updateNodeType(pattern.getTree(0).getExtTypes(), result);
+        for (int k = 0, sz = Math.min(pattern.getTree(0).getNumTypes(),
+            result.getTree(0).getNumTypes()); k < sz; k++) {
+          iterateInference = pattern.getTree(0).
+              updateNodeType(k, result.getTree(0).getExtType(k), result);
+          iterateInference |= result.getTree(0).
+              updateNodeType(k, pattern.getTree(0).getExtType(k), result);
+        }
       } while (iterateInference);
 
       if (!inferredAllPatternTypes)
@@ -642,7 +643,7 @@ public final class CodeGenDAGPatterns {
                                            TreeMap<String, TreePatternNode> instInputs,
                                            TreeMap<String, TreePatternNode> instResults,
                                            ArrayList<Record> instImpInputs, ArrayList<Record> instImpResults)
-      throws Exception {
+      {
     if (tree.isLeaf()) {
       boolean isUse = handleUse(pattern, tree, instInputs, instImpInputs);
       if (!isUse && tree.getTransformFn() != null)
@@ -663,10 +664,10 @@ public final class CodeGenDAGPatterns {
       return;
     } else if (!tree.getOperator().getName().equals("set")) {
       for (int i = 0, e = tree.getNumChildren(); i != e; i++) {
-        int vt = tree.getChild(i).getExtTypeNum(0);
-        if (vt == isVoid)
+        TreePatternNode pat = tree.getChild(i);
+        if (pat.getNumTypes() <= 0) {
           pattern.error("Cannot have void nodes inside of patterns!");
-
+        }
         findPatternInputsAndOutputs(pattern, tree.getChild(i), instInputs,
             instResults, instImpInputs, instImpResults);
       }
@@ -727,7 +728,7 @@ public final class CodeGenDAGPatterns {
   private static boolean handleUse(TreePattern pattern,
                                    TreePatternNode tree,
                                    TreeMap<String, TreePatternNode> instInputs,
-                                   ArrayList<Record> instImpInputs) throws Exception {
+                                   ArrayList<Record> instImpInputs) {
     if (tree.getName().isEmpty()) {
       if (tree.isLeaf()) {
         DefInit di = (tree.getLeafValue() instanceof DefInit) ? (DefInit) tree.getLeafValue() : null;
@@ -777,7 +778,7 @@ public final class CodeGenDAGPatterns {
    * any fragments involved.  This populates the Instructions list with fully
    * resolved instructions.
    */
-  private void parseInstructions() throws Exception {
+  private void parseInstructions() {
     ArrayList<Record> instrs = records.getAllDerivedDefinition("Instruction");
     // DONE !!! FIXME the number of instrs is correct.
 
@@ -870,10 +871,16 @@ public final class CodeGenDAGPatterns {
       // FIXME  [(set VR128:$dst, (v4f32 (shufp:$src3 VR128:$src1, VR128:$src2)))]
       for (int j = 0, e = i.getNumTrees(); j != e; ++j) {
         TreePatternNode pat = i.getTree(j);
-        int vt = pat.getExtTypeNum(0);
-        if (vt != isVoid)
+        StringBuilder buf = new StringBuilder();
+        if (pat.getNumTypes() > 0) {
+          for (int k = 0, sz = pat.getNumTypes(); k < sz; k++) {
+            if (k > 0)
+              buf.append(',');
+            buf.append(pat.getExtType(k).toString());
+          }
           i.error("Top-level forms in instruction pattern should have" +
-              " void types");
+              " void types, has types " + buf.toString());
+        }
 
         // Find inputs and outputs, and verify the structure of the uses/defs.
         findPatternInputsAndOutputs(i, pat, instInputs, instResults, instImpInputs, instImpResults);
@@ -1038,7 +1045,7 @@ public final class CodeGenDAGPatterns {
     //System.err.println("The number of Patterns to match after parseInstruction:" + patternsToMatch.size());
   }
 
-  private void parseDefaultOperands() throws Exception {
+  private void parseDefaultOperands() {
     ArrayList<Record>[] defaultOps = new ArrayList[2];
 
     defaultOps[0] = records.getAllDerivedDefinition("PredicateOperand");
@@ -1070,12 +1077,12 @@ public final class CodeGenDAGPatterns {
           // Resolve all types.
           while (node.applyTypeConstraints(pattern, false)) ;
 
-          if (node.containsUnresolvedType()) {
+          if (node.containsUnresolvedType(pattern)) {
             if (itr == 0) {
-              throw new Exception("Value #" + i + " of PredicateOperand '"
+              Error.printFatalError("Value #" + i + " of PredicateOperand '"
                   + defaultOps[itr].get(i).getName() + "' doesn't have concrete type!");
             } else {
-              throw new Exception("Value #" + i + " of OptionalDefOperand '"
+              Error.printFatalError("Value #" + i + " of OptionalDefOperand '"
                   + defaultOps[itr].get(i).getName() + "' doesn't have concrete type!");
             }
           }
@@ -1086,28 +1093,28 @@ public final class CodeGenDAGPatterns {
     }
   }
 
-  private void parsePatternFragments() throws Exception {
+  private void parsePatternFragments() {
     ArrayList<Record> fragments = records.getAllDerivedDefinition("PatFrag");
 
     // Step#1. parse all of the fragments.
     for (int i = 0, e = fragments.size(); i != e; i++) {
-      Record fragment = fragments.get(i);
-      DagInit tree = fragment.getValueAsDag("Fragment");
-      TreePattern pattern = new TreePattern(fragment, tree, true, this);
-      patternFragments.put(fragment, pattern);
+      Record patFrag = fragments.get(i);
+      DagInit tree = patFrag.getValueAsDag("Fragment");
+      TreePattern tp = new TreePattern(patFrag, tree, true, this);
+      patternFragments.put(patFrag, tp);
 
-      ArrayList<String> args = pattern.getArgList();
+      ArrayList<String> args = tp.getArgList();
       HashSet<String> operandsSet = new HashSet<>(args);
 
       if (operandsSet.contains(""))
-        pattern.error("Cannot have unnamed 'node' values in pattern fragment!");
+        tp.error("Cannot have unnamed 'node' values in pattern fragment!");
 
-      DagInit opsList = fragment.getValueAsDag("Operands");
+      DagInit opsList = patFrag.getValueAsDag("Operands");
       DefInit opsOp = opsList.getOperator() instanceof DefInit ?
           (DefInit) opsList.getOperator() : null;
       if (opsOp == null || (!opsOp.getDef().getName().equals("ops")
           && !opsOp.getDef().getName().equals("outs") && !opsOp.getDef().getName().equals("ins"))) {
-        pattern.error("Operands list should start with '(ops ...'!");
+        tp.error("Operands list should start with '(ops ...'!");
       }
 
       // Copy over the arguments.
@@ -1116,13 +1123,13 @@ public final class CodeGenDAGPatterns {
       for (int j = 0, sz = opsList.getNumArgs(); j != sz; ++j) {
         if (!(opsList.getArg(j) instanceof DefInit)
             || !((DefInit) opsList.getArg(j)).getDef().getName().equals("node")) {
-          pattern.error("Operands list should all be 'node' values.");
+          tp.error("Operands list should all be 'node' values.");
         }
 
         if (opsList.getArgName(j).isEmpty())
-          pattern.error("Operands list should have names for each operand!");
+          tp.error("Operands list should have names for each operand!");
         if (!operandsSet.contains(opsList.getArgName(j))) {
-          pattern.error("'" + opsList.getArgName(j)
+          tp.error("'" + opsList.getArgName(j)
               + "' does not occur in pattern or was multiply specified!");
         }
         operandsSet.remove(opsList.getArgName(j));
@@ -1130,20 +1137,20 @@ public final class CodeGenDAGPatterns {
       }
 
       if (!operandsSet.isEmpty()) {
-        pattern.error("Operands list nodes not contain an entry for operand '"
+        tp.error("Operands list nodes not contain an entry for operand '"
             + operandsSet.iterator().next() + "'!");
       }
 
       // If there is a code init for this fragment, keep track of the fact that
       // this fragment uses it.
-      String code = fragment.getValueAsCode("Predicate");
+      String code = patFrag.getValueAsCode("Predicate");
       if (!code.isEmpty()) {
-        pattern.getOnlyTree().addPredicateFn("predicate_" + fragment.getName());
+        tp.getOnlyTree().addPredicateFn("predicate_" + patFrag.getName());
       }
 
-      Record transform = fragment.getValueAsDef("OperandTransform");
+      Record transform = patFrag.getValueAsDef("OperandTransform");
       if (!getSDNodeTransform(transform).second.isEmpty())
-        pattern.getOnlyTree().setTransformFn(transform);
+        tp.getOnlyTree().setTransformFn(transform);
     }
 
     // Now that we've parsed all of the tree fragments, do a closure on them so
@@ -1165,14 +1172,14 @@ public final class CodeGenDAGPatterns {
     }
   }
 
-  private void parseComplexPatterns() throws Exception {
+  private void parseComplexPatterns() {
     ArrayList<Record> ams = records.getAllDerivedDefinition("ComplexPattern");
     for (Record r : ams) {
       complexPatterns.put(r, new ComplexPattern(r));
     }
   }
 
-  private void parseNodeTransforms() throws Exception {
+  private void parseNodeTransforms() {
     ArrayList<Record> xforms = records.getAllDerivedDefinition("SDNodeXForm");
     for (Record r : xforms) {
       Record sdNode = r.getValueAsDef("Opcode");
@@ -1184,10 +1191,10 @@ public final class CodeGenDAGPatterns {
   /**
    * Parse all of the SDNode definitions for the target, populating SDNodes.
    */
-  private void parseNodeInfo() throws Exception {
+  private void parseNodeInfo() {
     ArrayList<Record> nodes = records.getAllDerivedDefinition("SDNode");
     for (Record node : nodes) {
-      sdnodes.put(node, new SDNodeInfo(node));
+      sdnodes.put(node, new SDNodeInfo(node, target.getHwModes()));
     }
 
     intrinsicVoidSDNode = getSDNodeNamed("intrinsic_void");

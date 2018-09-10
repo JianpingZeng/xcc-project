@@ -18,9 +18,11 @@ package utils.tablegen;
 
 import backend.codegen.MVT;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Error;
 import tools.Util;
 import utils.tablegen.Init.ListInit;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -61,7 +63,7 @@ public class CallingConvEmitter extends TableGenBackend {
    * @throws Exception
    */
   @Override
-  public void run(String outputFile) throws Exception {
+  public void run(String outputFile) throws FileNotFoundException {
     try (PrintStream os = outputFile.equals("-") ?
         System.out :
         new PrintStream(new FileOutputStream(outputFile))) {
@@ -74,7 +76,7 @@ public class CallingConvEmitter extends TableGenBackend {
       emitSourceFileHeaderComment("Calling convetion Implementation Fragment", os);
 
       ArrayList<Record> ccs = records.getAllDerivedDefinition("CallingConv");
-      CodeGenTarget target = new CodeGenTarget();
+      CodeGenTarget target = new CodeGenTarget(Record.records);
       String className = target.getName() + "GenCallingConv";
       os.printf("public class %s {\n", className);
 
@@ -113,7 +115,7 @@ public class CallingConvEmitter extends TableGenBackend {
     return cnt - 1;
   }
 
-  private void createTopGraph(Record cc, Record action) throws Exception {
+  private void createTopGraph(Record cc, Record action) {
     TopSortNode node = getOrCreate(cc.getName());
     if (action.isSubClassOf("CCPredicateAction")) {
       createTopGraph(cc, action.getValueAsDef("SubAction"));
@@ -134,7 +136,7 @@ public class CallingConvEmitter extends TableGenBackend {
   }
 
   private ArrayList<String> topologicalSortOfAction(ArrayList<Record> ccs)
-      throws Exception {
+      {
     for (Record cc : ccs) {
       ListInit ccActions = cc.getValueAsListInit("Actions");
       for (int i = 0, e = ccActions.getSize(); i != e; i++) {
@@ -187,7 +189,7 @@ public class CallingConvEmitter extends TableGenBackend {
     return null;
   }
 
-  private void emitCallingConv(Record cc, PrintStream os) throws Exception {
+  private void emitCallingConv(Record cc, PrintStream os) {
     ListInit ccActions = cc.getValueAsListInit("Actions");
     counter = 0;
     os.printf("\n\tpublic static CCAssignFn %s = (valNo, valVT, locVT, "
@@ -204,7 +206,7 @@ public class CallingConvEmitter extends TableGenBackend {
   }
 
   private void emitAction(Record action, int indent, PrintStream os)
-      throws Exception {
+      {
     String indentStr = Util.fixedLengthString(indent, ' ');
     if (action.isSubClassOf("CCPredicateAction")) {
       os.printf("%sif (", indentStr);
@@ -220,7 +222,7 @@ public class CallingConvEmitter extends TableGenBackend {
         os.printf(action.getValueAsString("Predicate"));
       else {
         action.dump();
-        throw new Exception("Unknown CCPredicateAction!");
+        Error.printFatalError("Unknown CCPredicateAction!");
       }
 
       os.printf(") {\n");
@@ -259,7 +261,7 @@ public class CallingConvEmitter extends TableGenBackend {
         ListInit regList = action.getValueAsListInit("RegList");
         ListInit shadowRegList = action.getValueAsListInit("ShadowRegList");
         if (shadowRegList.getSize() > 0 && shadowRegList.getSize() != regList.getSize()) {
-          throw new Exception("Invalid length of list of shadowed registers");
+          Error.printFatalError("Invalid length of list of shadowed registers");
         }
 
         if (regList.getSize() == 1) {
@@ -353,7 +355,7 @@ public class CallingConvEmitter extends TableGenBackend {
         os.printf("%s%sreturn false;\n", indentStr, indentStr);
       } else {
         action.dump();
-        throw new Exception("Undefined CCAction!");
+        Error.printFatalError("Undefined CCAction!");
       }
     }
   }

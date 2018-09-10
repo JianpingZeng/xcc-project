@@ -188,7 +188,7 @@ include "./TargetSchedule.td"
 class Predicate; // Forward def
 
 //===----------------------------------------------------------------------===//
-// Instruction set description - These classes correspond to the C++ classes in
+// Instruction set description - These classes correspond to the Java classes in
 // the Target/TargetInstrInfo.h file.
 //
 class Instruction {

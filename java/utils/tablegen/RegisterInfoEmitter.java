@@ -19,10 +19,12 @@ package utils.tablegen;
 import backend.codegen.MVT;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
+import tools.Error;
 import tools.Pair;
 import tools.SetMultiMap;
 import tools.Util;
 
+import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.*;
 
@@ -35,10 +37,10 @@ public final class RegisterInfoEmitter extends TableGenBackend {
   private String targetName;
   private CodeGenTarget target;
 
-  public RegisterInfoEmitter(RecordKeeper records) throws Exception {
+  public RegisterInfoEmitter(RecordKeeper records) {
     this.records = records;
     Util.assertion(records != null);
-    target = new CodeGenTarget();
+    target = new CodeGenTarget(records);
     targetName = target.getName();
   }
 
@@ -48,15 +50,14 @@ public final class RegisterInfoEmitter extends TableGenBackend {
    * different with {@linkplain #run(String)}. This method just make
    * register name enumeration set.
    */
-  public void runEnums(String outputFile) throws Exception {
+  public void runEnums(String outputFile) throws FileNotFoundException {
     // The file path where all enum values would be written.
     String className = targetName + "GenRegisterNames";
     try (PrintStream os = outputFile.equals("-") ?
         System.out : new PrintStream(outputFile)) {
       ArrayList<Record> registers = records.getAllDerivedDefinition("Register");
       if (registers == null || registers.isEmpty())
-        throw new Exception(
-            "No 'Register' subclasses defined in td file!");
+        Error.printFatalError("No 'Register' subclasses defined in td file!");
 
       os.println("package backend.target.x86;\n");
       emitSourceFileHeaderComment("Target Register Enum Values", os);
@@ -79,7 +80,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
   }
 
   @Override
-  public void run(String outputFile) throws Exception {
+  public void run(String outputFile) throws FileNotFoundException {
     // The file path where all enum values would be written.
     String className = targetName + "GenRegisterInfo";
 
@@ -144,7 +145,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\n\t// %s Register Class Value Type...\n", name);
       os.printf("\tpublic static final EVT[] %s = {\n\t\t", name);
       for (int i = 0; i < rc.vts.size(); i++)
-        os.printf("new EVT(new MVT(%s)), ", MVT.getEnumName((rc.vts.get(i))));
+        os.printf("new EVT(new MVT(%s)), ",(rc.vts.get(i)).toString());
 
       os.print("new EVT(new MVT(MVT.Other))\n\t};\n\n");
     }
@@ -153,29 +154,15 @@ public final class RegisterInfoEmitter extends TableGenBackend {
   /**
    * Sorting predicate to sort record by name.
    */
-  public static Comparator<Record> LessRecord = new Comparator<Record>() {
-    @Override
-    public int compare(Record o1, Record o2) {
-      return o1.getName().compareTo(o2.getName());
-    }
-  };
+  public static final Comparator<Record> LessRecord = (o1, o2) -> o1.getName().compareTo(o2.getName());
 
   /**
    * Sorting predicate to sort the record by theire name field.
    */
-  private static class LessRecordFieldName implements Comparator<Record> {
-    @Override
-    public int compare(Record o1, Record o2) {
-      try {
-        return o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
-      } catch (Exception e) {
-        e.printStackTrace();
-        return 0;
-      }
-    }
-  }
+  private static final Comparator<Record> LessRecordFieldName = (Record o1, Record o2) ->
+        o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
 
-  private void generateRegisterClasses(PrintStream os) throws Exception {
+  private void generateRegisterClasses(PrintStream os) {
     ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
 
     // Output the register class ID.
@@ -274,7 +261,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           }
         }
         if (i == e2) {
-          throw new Exception("Register Class member '" + subReg.getName() +
+          Error.printFatalError("Register Class member '" + subReg.getName() +
               "' is not a valid RegisterClass!");
         }
       }

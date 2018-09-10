@@ -17,6 +17,7 @@ package utils.tablegen;
  */
 
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Error;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -32,7 +33,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
   private CodeGenDAGPatterns cdp;
   private TObjectIntHashMap<String> itinClassMap;
 
-  public InstrInfoEmitter(RecordKeeper records) throws Exception {
+  public InstrInfoEmitter(RecordKeeper records) {
     this.records = records;
     cdp = new CodeGenDAGPatterns(records);
     itinClassMap = new TObjectIntHashMap<>();
@@ -150,7 +151,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
                           TObjectIntHashMap<ArrayList<Record>> emittedLists,
                           TObjectIntHashMap<Record> barriersMap,
                           HashMap<ArrayList<String>, Integer> opInfo,
-                          PrintStream os) throws Exception {
+                          PrintStream os) {
     int minOperands = 0;
     if (!inst.operandList.isEmpty()) {
       int sz = inst.operandList.size();
@@ -196,7 +197,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
     Init.ListInit li = instrInfo.getValueAsListInit("TSFlagsFields");
     Init.ListInit shift = instrInfo.getValueAsListInit("TSFlagsShifts");
     if (li.getSize() != shift.getSize())
-      throw new Exception("Lengths of " + instrInfo.getName()
+      Error.printFatalError("Lengths of " + instrInfo.getName()
           + ":(TargetInfoFields, TargetInfoPositions) must be equal!");
 
     for (int i = 0, e = li.getSize(); i != e; i++) {
@@ -235,9 +236,9 @@ public final class InstrInfoEmitter extends TableGenBackend {
   }
 
   private void emitShiftedValue(Record r, Init.StringInit val,
-                                Init.IntInit shiftedInt, PrintStream os) throws Exception {
+                                Init.IntInit shiftedInt, PrintStream os) {
     if (val == null || shiftedInt == null)
-      throw new Exception("Illegal value or shift amount in TargetInfo*!");
+      Error.printFatalError("Illegal value or shift amount in TargetInfo*!");
 
     RecordVal rv = r.getValue(val.getValue());
     int shift = (int) shiftedInt.getValue();
@@ -257,7 +258,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         case "COPY_TO_REGCLASS":
           return;
         default:
-          throw new Exception(r.getName() + " doesn't have a field named '"
+          Error.printFatalError(r.getName() + " doesn't have a field named '"
               + val.getValue() + "'!");
       }
     }
@@ -295,16 +296,16 @@ public final class InstrInfoEmitter extends TableGenBackend {
     }
 
     System.err.println("Unhandled initializer: " + val.toString());
-    throw new Exception("In record '" + r.getName() + "' for TSFlag emission.");
+    Error.printFatalError("In record '" + r.getName() + "' for TSFlag emission.");
   }
 
-  private int getItinClassNumber(Record record) throws Exception {
+  private int getItinClassNumber(Record record) {
     return itinClassMap.get(record.getValueAsDef("Itinerary"));
   }
 
   private void emitOperandInfo(PrintStream os,
                                HashMap<ArrayList<String>, Integer> operandInfoIDs)
-      throws Exception {
+      {
     int operandListNum = 0;
     operandInfoIDs.put(new ArrayList<>(), ++operandListNum);
 
@@ -331,7 +332,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
   }
 
   private ArrayList<String> getOperandInfo(CodeGenInstruction instr)
-      throws Exception {
+      {
     ArrayList<String> result = new ArrayList<>();
 
     for (int i = 0, e = instr.operandList.size(); i != e; i++) {

@@ -1395,17 +1395,17 @@ def LCMPXCHG64 : RI<0xB1, MRMDestMem, (outs), (ins i64mem:$ptr, GR64:$swap),
                [(X86cas addr:$ptr, GR64:$swap, 8)]>, TB, LOCK;
 }
 
-let Constraints = "$val = $dst" in {
+let Constraints = "$opc = $dst" in {
 let Defs = [EFLAGS] in
-def LXADD64 : RI<0xC1, MRMSrcMem, (outs GR64:$dst), (ins i64mem:$ptr,GR64:$val),
+def LXADD64 : RI<0xC1, MRMSrcMem, (outs GR64:$dst), (ins i64mem:$ptr,GR64:$opc),
                "lock\n\t"
-               "xadd\t$val, $ptr",
-               [(set GR64:$dst, (atomic_load_add_64 addr:$ptr, GR64:$val))]>,
+               "xadd\t$opc, $ptr",
+               [(set GR64:$dst, (atomic_load_add_64 addr:$ptr, GR64:$opc))]>,
                 TB, LOCK;
 
-def XCHG64rm : RI<0x87, MRMSrcMem, (outs GR64:$dst), (ins i64mem:$ptr,GR64:$val),
-                  "xchg\t$val, $ptr", 
-                  [(set GR64:$dst, (atomic_swap_64 addr:$ptr, GR64:$val))]>;
+def XCHG64rm : RI<0x87, MRMSrcMem, (outs GR64:$dst), (ins i64mem:$ptr,GR64:$opc),
+                  "xchg\t$opc, $ptr",
+                  [(set GR64:$dst, (atomic_swap_64 addr:$ptr, GR64:$opc))]>;
 }
 
 // Optimized codegen when the non-memory output is not used.
@@ -1440,32 +1440,32 @@ def LOCK_DEC64m : RI<0xFF, MRM1m, (outs), (ins i64mem:$dst),
                       "dec{q}\t$dst", []>, LOCK;
 
 // Atomic exchange, and, or, xor
-let Constraints = "$val = $dst", Defs = [EFLAGS],
+let Constraints = "$opc = $dst", Defs = [EFLAGS],
                   usesCustomDAGSchedInserter = 1 in {
-def ATOMAND64 : I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+def ATOMAND64 : I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMAND64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_and_64 addr:$ptr, GR64:$val))]>;
-def ATOMOR64 : I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_and_64 addr:$ptr, GR64:$opc))]>;
+def ATOMOR64 : I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMOR64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_or_64 addr:$ptr, GR64:$val))]>;
-def ATOMXOR64 : I<0, Pseudo,(outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_or_64 addr:$ptr, GR64:$opc))]>;
+def ATOMXOR64 : I<0, Pseudo,(outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMXOR64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_xor_64 addr:$ptr, GR64:$val))]>;
-def ATOMNAND64 : I<0, Pseudo,(outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_xor_64 addr:$ptr, GR64:$opc))]>;
+def ATOMNAND64 : I<0, Pseudo,(outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMNAND64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_nand_64 addr:$ptr, GR64:$val))]>;
-def ATOMMIN64: I<0, Pseudo, (outs GR64:$dst), (ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_nand_64 addr:$ptr, GR64:$opc))]>;
+def ATOMMIN64: I<0, Pseudo, (outs GR64:$dst), (ins i64mem:$ptr, GR64:$opc),
                "#ATOMMIN64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_min_64 addr:$ptr, GR64:$val))]>;
-def ATOMMAX64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_min_64 addr:$ptr, GR64:$opc))]>;
+def ATOMMAX64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMMAX64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_max_64 addr:$ptr, GR64:$val))]>;
-def ATOMUMIN64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_max_64 addr:$ptr, GR64:$opc))]>;
+def ATOMUMIN64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMUMIN64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_umin_64 addr:$ptr, GR64:$val))]>;
-def ATOMUMAX64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$val),
+               [(set GR64:$dst, (atomic_load_umin_64 addr:$ptr, GR64:$opc))]>;
+def ATOMUMAX64: I<0, Pseudo, (outs GR64:$dst),(ins i64mem:$ptr, GR64:$opc),
                "#ATOMUMAX64 PSEUDO!", 
-               [(set GR64:$dst, (atomic_load_umax_64 addr:$ptr, GR64:$val))]>;
+               [(set GR64:$dst, (atomic_load_umax_64 addr:$ptr, GR64:$opc))]>;
 }
 
 //===----------------------------------------------------------------------===//

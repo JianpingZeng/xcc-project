@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Error;
 import tools.Pair;
 import tools.Util;
 import utils.tablegen.Init.DagInit;
@@ -121,7 +122,7 @@ public final class CodeGenInstruction {
   boolean isAsCheapAsAMove;
   boolean noResults;
 
-  CodeGenInstruction(Record r, String asmStr) throws Exception {
+  CodeGenInstruction(Record r, String asmStr) {
     theDef = r;
     asmString = asmStr;
     operandList = new ArrayList<>();
@@ -153,7 +154,7 @@ public final class CodeGenInstruction {
     isVariadic = false;
 
     if ((mayHaveSideEffects ? 1 : 0) + (neverHasSideEffects ? 1 : 0) + (hasSideEffects ? 1 : 0) > 1)
-      throw new Exception(r.getName() + ": multiple conflicting side effect flags-set!");
+      Error.printFatalError(r.getName() + ": multiple conflicting side effect flags-set!");
 
     DagInit di = null;
     try {
@@ -180,7 +181,7 @@ public final class CodeGenInstruction {
     HashSet<String> OperandNames = new HashSet<>();
     for (int i = 0, e = di.getNumArgs(); i != e; ++i) {
       if (!(di.getArg(i) instanceof DefInit))
-        throw new Exception("Illegal operand for the '" + r.getName()
+        Error.printFatalError("Illegal operand for the '" + r.getName()
             + "' instruction!");
 
       DefInit Arg = (DefInit) (di.getArg(i));
@@ -196,7 +197,7 @@ public final class CodeGenInstruction {
 
         if (!(miOpInfo.getOperator() instanceof DefInit) ||
             !((DefInit) miOpInfo.getOperator()).getDef().getName().equals("ops")) {
-          throw new Exception("Bad value for MIOperandInfo in operand '" +
+          Error.printFatalError("Bad value for MIOperandInfo in operand '" +
               rec.getName() + "'\n");
         }
 
@@ -214,17 +215,17 @@ public final class CodeGenInstruction {
       } else if (!rec.isSubClassOf("RegisterClass") &&
           !rec.getName().equals("ptr_rc") &&
           !rec.getName().equals("unknown"))
-        throw new Exception("Unknown operand class '" + rec.getName()
+        Error.printFatalError("Unknown operand class '" + rec.getName()
             + "' in instruction '" + r.getName()
             + "' instruction!");
 
       // Check that the operand has a name and that it's unique.
       if (di.getArgName(i).isEmpty())
-        throw new Exception(
+        Error.printFatalError(
             "In instruction '" + r.getName() + "', operand #" + i
                 + " has no name!");
       if (!OperandNames.add(di.getArgName(i)))
-        throw new Exception(
+        Error.printFatalError(
             "In instruction '" + r.getName() + "', operand #" + i
                 + " has the same name as a previous operand!");
 
@@ -238,7 +239,7 @@ public final class CodeGenInstruction {
 
     if (isTwoAddress) {
       if (!operandList.get(1).constraints.get(0).isEmpty())
-        throw new Exception(r.getName() + ": cannot use isTwoAddress property: instruction " +
+        Error.printFatalError(r.getName() + ": cannot use isTwoAddress property: instruction " +
             " already has constraint set!");
       operandList.get(1).constraints.set(0, "((0 << 16) | (1 << TIED_TO))");
     }
@@ -292,14 +293,13 @@ public final class CodeGenInstruction {
 
 
   private Pair<Integer, Integer> parseOperandName(String opName)
-      throws Exception {
+      {
     return parseOperandName(opName, true);
   }
 
-  private Pair<Integer, Integer> parseOperandName(String op, boolean allowWholeOp)
-      throws Exception {
+  private Pair<Integer, Integer> parseOperandName(String op, boolean allowWholeOp) {
     if (op.isEmpty() || op.charAt(0) != '$')
-      throw new Exception(theDef.getName() + ": Illegal operand name: '"
+      Error.printFatalError(theDef.getName() + ": Illegal operand name: '"
           + op + "'");
 
     String opName = op.substring(1);
@@ -309,7 +309,7 @@ public final class CodeGenInstruction {
     if (dotIdx != -1) {
       subOpName = opName.substring(dotIdx + 1);
       if (subOpName.isEmpty())
-        throw new Exception(theDef.getName() + ": illegal empty suboperand name in '" +
+        Error.printFatalError(theDef.getName() + ": illegal empty suboperand name in '" +
             op + "'");
       opName = opName.substring(0, dotIdx);
     }
@@ -318,7 +318,7 @@ public final class CodeGenInstruction {
 
     if (subOpName.isEmpty()) {
       if (operandList.get(opIdx).miNumOperands > 1 && !allowWholeOp && subOpName.isEmpty())
-        throw new Exception(theDef.getName() + ": Illegal to refer to " +
+        Error.printFatalError(theDef.getName() + ": Illegal to refer to " +
             " whole operand part of complex operand '" + op + "'");
 
       return Pair.get(opIdx, 0);
@@ -326,15 +326,16 @@ public final class CodeGenInstruction {
 
     DagInit miOpInfo = operandList.get(opIdx).miOperandInfo;
     if (miOpInfo == null) {
-      throw new Exception(theDef.getName() + ": unknown suboperand name in '" + op + "'");
+      Error.printFatalError(theDef.getName() + ": unknown suboperand name in '" + op + "'");
     }
 
     for (int i = 0, e = miOpInfo.getNumArgs(); i != e; i++)
       if (miOpInfo.getArgName(i).equals(subOpName))
         return Pair.get(opIdx, i);
 
-    throw new Exception(theDef.getName() + ": unknown suboperand name in '" +
+    Error.printFatalError(theDef.getName() + ": unknown suboperand name in '" +
         op + "'");
+    return null;
   }
 
   /**
@@ -346,13 +347,13 @@ public final class CodeGenInstruction {
    * @return
    * @throws Exception
    */
-  int getOperandNamed(String name) throws Exception {
+  int getOperandNamed(String name) {
     Util.assertion(!name.isEmpty(), "Cannot search for operand with no name!");
     for (int i = 0, e = operandList.size(); i != e; ++i)
       if (operandList.get(i).name.equals(name))
         return i;
-    throw new Exception("Instruction '" + theDef.getName()
+    Error.printFatalError("Instruction '" + theDef.getName()
         + "' does not have an operand named '$" + name + "'!");
+    return -1;
   }
-
 }

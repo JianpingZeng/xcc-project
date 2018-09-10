@@ -16,6 +16,8 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Error;
+
 import java.util.ArrayList;
 
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
@@ -53,7 +55,7 @@ public final class ComplexPattern {
     super();
   }
 
-  public ComplexPattern(Record r) throws Exception {
+  public ComplexPattern(Record r) {
     ty = CodeGenTarget.getValueType(r.getValueAsDef("Ty"));
     numOperands = (int) r.getValueAsInt("NumOperands");
     selectFunc = r.getValueAsString("SelectFunc");
@@ -79,10 +81,9 @@ public final class ComplexPattern {
           properties |= 1 << SDNPMemOperand;
           break;
         default: {
-          System.err.printf("Unsupported SD Node property '%s' "
-                  + "on ComplexPattern '%s'!\n", prop.getName(),
-              r.getName());
-          System.exit(1);
+          Error.printFatalError(r.getLoc(),
+              String.format("Unsupported SD Node property '%s' " +
+                      "on ComplexPattern '%s'!\n", prop.getName(), r.getName()));
         }
       }
     }
@@ -94,10 +95,8 @@ public final class ComplexPattern {
       if (attr.getName().equals("CPAttrParentAsRoot"))
         attributes |= 1 << CPAttrParentAsRoot;
       else {
-        System.err.printf("Unsupported pattern attribute '%s' "
-                + "on ComplexPattern '%s'!\n",
-            attr.getName(), r.getName());
-        System.exit(1);
+        Error.printFatalError(String.format("Unsupported pattern attribute '%s' " +
+                "on ComplexPattern '%s'!\n", attr.getName(), r.getName()));
       }
     }
   }

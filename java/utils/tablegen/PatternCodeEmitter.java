@@ -451,8 +451,8 @@ public class PatternCodeEmitter {
     if (!pat.getExtTypes().equals(other.getExtTypes())) {
       pat.setTypes(other.getExtTypes());
       if (!isRoot)
-        emitCheck(prefix + ".getNode().getValueType(0).getSimpleVT().simpleVT == "
-            + getName(pat.getTypeNum(0)));
+        emitCheck(prefix + ".getNode().getValueType(0).getSimpleVT().simpleVT == " +
+            pat.getExtType(0).toString());
       return true;
     }
     int opNo = nodeHasProperty(pat, SDNPHasChain, cgp) ? 1 : 0;
@@ -635,7 +635,7 @@ public class PatternCodeEmitter {
     return size;
   }
 
-  static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) throws Exception {
+  static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) {
     if (inst.isLeaf()) return 0;
 
     int cost = 0;
@@ -651,7 +651,7 @@ public class PatternCodeEmitter {
     return cost;
   }
 
-  static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) throws Exception {
+  static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) {
     if (node.isLeaf()) return 0;
 
     int size = 0;
@@ -698,7 +698,7 @@ public class PatternCodeEmitter {
   public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
                                           boolean inFlagDecled, boolean resNodeDecled,
                                           boolean likeLeaf, boolean isRoot)
-      throws Exception {
+      {
     ArrayList<String> nodeOps = new ArrayList<>();
     if (node.getName() != null && !node.getName().isEmpty()) {
       String varName = node.getName();

@@ -2,7 +2,10 @@ package tools;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 
 /**
@@ -750,5 +753,53 @@ public class Util {
     unique.addAll(list);
     list.clear();
     list.addAll(unique);
+  }
+
+  public static <T> boolean anyOf(Iterator<T> iterator, Predicate<T> pred) {
+    while (iterator.hasNext()) {
+      if (pred.test(iterator.next()))
+        return true;
+    }
+    return false;
+  }
+
+  public static <T> boolean noneOf(Iterator<T> iterator, Predicate<T> pred) {
+    while (iterator.hasNext()) {
+      if (pred.test(iterator.next()))
+        return false;
+    }
+    return true;
+  }
+
+  public static <T> T minIf(Iterator<T> itr,
+                              Predicate<T> pred,
+                              BiPredicate<T, T> less) {
+    if (!itr.hasNext()) return null;
+    T min = null;
+    while (itr.hasNext()) {
+      T val = itr.next();
+      if (!pred.test(val)) continue;
+      if (min == null)
+        min = val;
+      else if (val == min || less.test(val, min))
+        min = val;
+    }
+    return min;
+  }
+
+  public static <T> T maxIf(Iterator<T> itr,
+                            Predicate<T> pred,
+                            BiPredicate<T, T> greater) {
+    if (!itr.hasNext()) return null;
+    T max = null;
+    while (itr.hasNext()) {
+      T val = itr.next();
+      if (!pred.test(val)) continue;
+      if (max == null)
+        max = val;
+      else if (val == max || greater.test(max, val))
+        max = val;
+    }
+    return max;
   }
 }

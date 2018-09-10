@@ -29,7 +29,7 @@ public final class CodeGenRegister {
 
   long declaredSpillSize, declaredSpillAlignment;
 
-  CodeGenRegister(Record rec) throws Exception {
+  CodeGenRegister(Record rec) {
     theDef = rec;
     declaredSpillSize = rec.getValueAsInt("SpillSize");
     declaredSpillAlignment = rec.getValueAsInt("SpillAlignment");

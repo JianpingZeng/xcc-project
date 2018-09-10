@@ -19,6 +19,7 @@ package tools.commandline;
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
 import config.Config;
+import tools.Error;
 import tools.OutRef;
 import tools.Pair;
 import tools.Util;
@@ -75,7 +76,7 @@ public final class CL {
    * @param args
    * @throws Exception
    */
-  public static void parseCommandLineOptions(String[] args) throws Exception {
+  public static void parseCommandLineOptions(String[] args) {
     parseCommandLineOptions(args, "");
   }
 
@@ -87,7 +88,7 @@ public final class CL {
    * @param args
    * @throws Exception
    */
-  public static void parseCommandLineOptions(String[] args, String overview) throws Exception {
+  public static void parseCommandLineOptions(String[] args, String overview) {
     ArrayList<Option> positionalOpts = new ArrayList<>();
     ArrayList<Option> sinkOpts = new ArrayList<>();
     HashMap<String, Option> optionsMap = new HashMap<>();
@@ -378,8 +379,7 @@ public final class CL {
               ValNo++;
               break;
             default:
-              throw new Exception(
-                  "Internal error, unexpected NumOccurrences flag in " +
+              Error.printFatalError("Internal error, unexpected NumOccurrences flag in " +
                       "positional argument processing!");
           }
         }

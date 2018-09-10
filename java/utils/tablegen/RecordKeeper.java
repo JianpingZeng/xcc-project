@@ -87,9 +87,7 @@ public final class RecordKeeper {
    * @param className
    * @return
    */
-  public ArrayList<Record> getAllDerivedDefinition(String className)
-
-  {
+  public ArrayList<Record> getAllDerivedDefinition(String className) {
     Record klass = getClass(className);
     Util.assertion(klass != null,
         "UNKNOWN: Couldn't find the `" + className + "' class!\n");

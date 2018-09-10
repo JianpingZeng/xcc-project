@@ -106,8 +106,8 @@ def loadv4i32    : PatFrag<(ops node:$ptr), (v4i32 (load node:$ptr))>;
 def loadv2i64    : PatFrag<(ops node:$ptr), (v2i64 (load node:$ptr))>;
 
 // Like 'store', but always requires vector alignment.
-def alignedstore : PatFrag<(ops node:$val, node:$ptr),
-                           (store node:$val, node:$ptr), [{
+def alignedstore : PatFrag<(ops node:$opc, node:$ptr),
+                           (store node:$opc, node:$ptr), [{
   return ((StoreSDNode)n).getAlignment() >= 16;
 }]>;
 

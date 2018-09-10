@@ -207,11 +207,11 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
             arg_idx = 1
             for arg_idx, arg in enumerate(j.args[1:]):
                 # Partition the string into KEY=VALUE.
-                key, eq, val = arg.partition('=')
+                key, eq, opc = arg.partition('=')
                 # Stop if there was no equals.
                 if eq == '':
                     break
-                cmd_shenv.env[key] = val
+                cmd_shenv.env[key] = opc
             j.args = j.args[arg_idx+1:]
 
         # Apply the redirections, we use (N,) as a sentinel to indicate stdin,

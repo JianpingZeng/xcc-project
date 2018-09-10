@@ -68,7 +68,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
     }
   };
 
-  private static String getOptionName(Record option) throws Exception {
+  private static String getOptionName(Record option) {
     Init init = option.getValueInit("EnumName");
     if (init instanceof Init.UnsetInit)
       return option.getValueAsString("Name");
@@ -169,7 +169,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
    * @param os
    */
   private void emitOptionIDs(ArrayList<Record> options, PrintStream os)
-      throws Exception {
+      {
     emitSourceFileHeaderComment("OptionInfo ID definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");
@@ -194,7 +194,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
   }
 
   private void emitOptionKind(ArrayList<Record> options, PrintStream os)
-      throws Exception {
+      {
     emitSourceFileHeaderComment("OptionInfo Kinds definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");
@@ -213,7 +213,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
     os.println("}\n\n");
   }
 
-  private void emitGroupID(ArrayList<Record> groups, PrintStream os) throws Exception {
+  private void emitGroupID(ArrayList<Record> groups, PrintStream os) {
     os.printf("public interface GroupID%n\t{%n");
     os.println("\tint GRP_INVALID = -1;");
     int i = 0;
@@ -227,7 +227,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
     os.println("}");
   }
 
-  private void emitGroup(ArrayList<Record> groups, PrintStream os) throws Exception {
+  private void emitGroup(ArrayList<Record> groups, PrintStream os) {
     emitSourceFileHeaderComment("Group ID definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");
@@ -235,7 +235,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
     emitGroupID(groups, os);
   }
 
-  private void emitGroup2(ArrayList<Record> groups, PrintStream os) throws Exception {
+  private void emitGroup2(ArrayList<Record> groups, PrintStream os) {
     emitSourceFileHeaderComment("Group definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");
@@ -306,13 +306,13 @@ public class JlangOptionsEmitter extends TableGenBackend {
     return path.substring(lastBlash, lastDot);
   }
 
-  private String computeOptionName(Record option) throws Exception {
+  private String computeOptionName(Record option) {
     String name = "OPTION_" + manglingValidID(option.getValueAsString("Name"));
     return name + option.getValueAsDef("Kind").getValueAsString("Name");
   }
 
   @Override
-  public void run(String outputFile) throws Exception {
+  public void run(String outputFile) {
     Util.assertion(outputFile != null && !outputFile.isEmpty(), "Invalid path to output file");
 
 
