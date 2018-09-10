@@ -59,7 +59,7 @@ public abstract class TargetInstrInfo {
   /// public  registers have been created for all the instructions, and it's
   /// only needed in cases where the register classes implied by the
   /// instructions are insufficient. The actual MachineInstrs to perform
-  /// the copy are emitted with the TargetInstrInfo::copyRegToReg hook.
+  /// the copy are emitted with the RISCVGenInstrInfo::copyRegToReg hook.
   public static final int COPY_TO_REGCLASS = 10;
 
   /**
@@ -213,12 +213,12 @@ public abstract class TargetInstrInfo {
   /// 3. If this block ends with an conditional branch and it falls through to
   ///    a successor block, it sets tb to be the branch destination block and
   ///    a list of operands that evaluate the condition. These
-  ///    operands can be passed to other TargetInstrInfo methods to create new
+  ///    operands can be passed to other RISCVGenInstrInfo methods to create new
   ///    branches.
   /// 4. If this block ends with a conditional branch followed by an
   ///    unconditional branch, it returns the 'true' destination in tb, the
   ///    'false' destination in fbb, and a list of operands that evaluate the
-  ///    condition.  These operands can be passed to other TargetInstrInfo
+  ///    condition.  These operands can be passed to other RISCVGenInstrInfo
   ///    methods to create new branches.
   ///
   /// Note that RemoveBranch and InsertBranch must be implemented to support
@@ -240,7 +240,7 @@ public abstract class TargetInstrInfo {
   /// This is only invoked in cases where AnalyzeBranch returns success. It
   /// returns the number of instructions that were removed.
   public int removeBranch(MachineBasicBlock mbb) {
-    Util.assertion(false, "Target didn't implement TargetInstrInfo::RemoveBranch!");
+    Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::RemoveBranch!");
     return 0;
   }
 
@@ -258,7 +258,7 @@ public abstract class TargetInstrInfo {
                           MachineBasicBlock tbb,
                           MachineBasicBlock fbb,
                           ArrayList<MachineOperand> cond) {
-    Util.assertion(false, "Target didn't implement TargetInstrInfo::InsertBranch!");
+    Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::InsertBranch!");
     return 0;
   }
 
@@ -286,7 +286,7 @@ public abstract class TargetInstrInfo {
                                   boolean isKill,
                                   int frameIndex,
                                   TargetRegisterClass rc) {
-    Util.assertion(false, "Target didn't implement TargetInstrInfo::storeRegToStackSlot!");
+    Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::storeRegToStackSlot!");
   }
 
   /// loadRegFromStackSlot - Load the specified register of the given register
@@ -298,7 +298,7 @@ public abstract class TargetInstrInfo {
                                    int destReg,
                                    int frameIndex,
                                    TargetRegisterClass rc) {
-    Util.assertion(false, "Target didn't implement TargetInstrInfo::loadRegFromStackSlot!");
+    Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::loadRegFromStackSlot!");
   }
 
   /// spillCalleeSavedRegisters - Issues instruction(s) to spill all callee
@@ -487,7 +487,7 @@ public abstract class TargetInstrInfo {
   /// GetInstSize - Returns the size of the specified Instruction.
   ///
   public int getInstSizeInBytes(MachineInstr mi) {
-    Util.assertion(false, "Target didn't implement TargetInstrInfo::GetInstSize!");
+    Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::GetInstSize!");
     return 0;
   }
 

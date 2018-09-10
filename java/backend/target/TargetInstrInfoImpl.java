@@ -27,7 +27,7 @@ import java.util.ArrayList;
 
 /**
  * This is the default implementation of
- * TargetInstrInfo, which just provides a couple of default implementations
+ * RISCVGenInstrInfo, which just provides a couple of default implementations
  * for various methods.
  *
  * @author Jianping Zeng

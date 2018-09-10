@@ -63,6 +63,9 @@ public abstract class TargetRegisterInfo {
   int superregHashSize;
   int aliasHashSize;
 
+  private RegClassInfo regClassInfo;
+  private int hwMode;
+
   protected TargetRegisterInfo(
       TargetRegisterDesc[] desc,
       TargetRegisterClass[] regClasses,
@@ -70,40 +73,14 @@ public abstract class TargetRegisterInfo {
       int callFrameDestroyOpCode,
       int[] subregs, int subregHashSize,
       int[] superregs, int superregHashSize,
-      int[] aliases, int aliasHashSize) {
+      int[] aliases, int aliasHashSize,
+      RegClassInfo rcInfo,
+      int mode) {
     this.desc = desc;
     this.regClasses = regClasses;
 
     // loop over all register classes, handle each register class
     // and keep track of diagMapping from register to it's register class.
-    /**
-     * FIXME, a physical register may occurs in multiple reg class, So comment it!
-     phyRegClasses = new TargetRegisterClass[desc.length];
-     for (int i = 0, e = regClasses.length; i < e; i++)
-     {
-     for (int j = 0, ee = regClasses[i].getRegSize(); j < ee; j++)
-     {
-     int reg = regClasses[i].getRegister(j);
-     if (phyRegClasses[reg] != null)
-     {
-     System.err.print(regClasses[i].getName());
-     System.err.print(": [");
-     for (int r : regClasses[i].getRegs())
-     System.err.print(getName(r)+",");
-     System.err.print("]\n");
-
-     System.err.print("Before: " + phyRegClasses[reg].getName());
-     System.err.print(": [");
-     for (int r : phyRegClasses[reg].getRegs())
-     System.err.print(getName(r)+",");
-     System.err.print("]\n");
-     }
-     Util.assertion(phyRegClasses[reg]						== null,  "register in more than one class!");
-
-     phyRegClasses[reg] = regClasses[i];
-     }
-     }
-     */
     this.callFrameSetupOpcode = callFrameSetupOpCode;
     this.callFrameDestroyOpcode = callFrameDestroyOpCode;
     subregHash = subregs;
@@ -112,18 +89,21 @@ public abstract class TargetRegisterInfo {
     this.superregHashSize = superregHashSize;
     aliasesHash = aliases;
     this.aliasHashSize = aliasHashSize;
+    this.regClassInfo = rcInfo;
+    this.hwMode = mode;
   }
 
   protected TargetRegisterInfo(TargetRegisterDesc[] desc,
-                               TargetRegisterClass[] phyRegClasses) {
-    this(desc, phyRegClasses, -1, -1);
-  }
-
-  protected TargetRegisterInfo(TargetRegisterDesc[] desc,
-                               TargetRegisterClass[] regClasses, int callFrameSetupOpCode,
-                               int callFrameDestroyOpCode) {
+                               TargetRegisterClass[] regClasses,
+                               int callFrameSetupOpCode,
+                               int callFrameDestroyOpCode,
+                               int[] subregs, int subregHashSize,
+                               int[] superregs, int superregHashSize,
+                               int[] aliases, int aliasHashSize,
+                               RegClassInfo rcInfo) {
     this(desc, regClasses, callFrameSetupOpCode, callFrameDestroyOpCode,
-        null, 0, null, 0, null, 0);
+        subregs, subregHashSize, superregs, superregHashSize,
+        aliases, aliasHashSize, rcInfo, 0);
   }
 
   public static boolean isPhysicalRegister(int reg) {

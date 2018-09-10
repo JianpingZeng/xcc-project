@@ -40,7 +40,6 @@ public abstract class TargetSubtarget {
     return false;
   }
 
-  public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {
-
-  }
+  public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {}
+  public int getHwMode() {return 0;}
 }

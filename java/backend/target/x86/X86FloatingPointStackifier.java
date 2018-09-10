@@ -892,7 +892,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         break;
       }
             /*
-            case TargetInstrInfo.COPY:
+            case RISCVGenInstrInfo.COPY:
             {
                 MachineOperand mo1 = mi.getOperand(1);
                 MachineOperand mo0 = mi.getOperand(0);

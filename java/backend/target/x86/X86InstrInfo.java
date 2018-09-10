@@ -419,7 +419,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   /**
-   * TargetInstrInfo is a superset of MRegister info.  As such, whenever
+   * RISCVGenInstrInfo is a superset of MRegister info.  As such, whenever
    * a client has an instance of instruction info, it should always be able
    * to get register info as well (through this method).
    */

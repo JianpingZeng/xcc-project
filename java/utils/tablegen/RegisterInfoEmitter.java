@@ -88,7 +88,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         System.out : new PrintStream(outputFile)) {
       os.println("package backend.target.x86;\n");
 
-      emitSourceFileHeaderComment("Register Information Source Fgrament",
+      emitSourceFileHeaderComment("Register Information Source Fragment",
           os);
 
       os.println("import backend.codegen.MVT;\n"
@@ -360,9 +360,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\n\t};\n\n");
     }
 
-    SetMultiMap<Record, CodeGenRegisterClass> regClassesBelongedTo = new SetMultiMap<>();
-
-
     // Output RegisterClass array.
     os.println("\tpublic final static TargetRegisterClass[] registerClasses = {");
     regClasses.forEach(rc ->
@@ -380,48 +377,45 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     ArrayList<CodeGenRegister> regs = target.getRegisters();
     regs.sort((r1, r2) -> r1.getName().compareTo(r2.getName()));
 
-    try {
-      for (CodeGenRegister cgr : regs) {
-        Record r = cgr.theDef;
-        ArrayList<Record> li = r.getValueAsListOfDefs("Aliases");
-        for (int i = 0, e = li.size(); i < e; i++) {
-          Record reg = li.get(i);
-          if (!registerAlias.containsKey(r))
-            registerAlias.put(r, new TreeSet<>(LessRecord));
+    for (CodeGenRegister cgr : regs) {
+      Record r = cgr.theDef;
+      ArrayList<Record> li = r.getValueAsListOfDefs("Aliases");
+      for (int i = 0, e = li.size(); i < e; i++) {
+        Record reg = li.get(i);
+        if (!registerAlias.containsKey(r))
+          registerAlias.put(r, new TreeSet<>(LessRecord));
 
-          if (registerAlias.get(r).contains(reg)) {
-            System.err.println("Warning: register alias between "
-                + r.getName() + " and " + reg.getName()
-                + " specified multiple times!\n");
-          }
-          registerAlias.get(r).add(reg);
-          if (registerAlias.get(reg).contains(r)) {
-            System.err.println("Warning: register alias between "
-                + r.getName() + " and " + reg.getName()
-                + " specified multiple times!\n");
-          }
-          registerAlias.get(reg).add(r);
+        if (registerAlias.get(r).contains(reg)) {
+          System.err.println("Warning: register alias between "
+              + r.getName() + " and " + reg.getName()
+              + " specified multiple times!\n");
         }
-      }
-
-      // Process sub-register sets.
-      for (CodeGenRegister cgr : regs) {
-        Record r = cgr.theDef;
-        ArrayList<Record> list = r.getValueAsListOfDefs("SubRegs");
-        if (!registerSubRegs.containsKey(r))
-          registerSubRegs.put(r, new TreeSet<>(LessRecord));
-
-        for (Record subreg : list) {
-          if (registerSubRegs.get(r).contains(subreg)) {
-            System.err.printf("Warning: register %s specified as a sub-register of %s"
-                + " multiple times!", subreg.getName(), subreg.getName());
-          }
-          addSubSuperReg(r, subreg, registerSubRegs, registerSuperRegs, registerAlias);
+        registerAlias.get(r).add(reg);
+        if (registerAlias.get(reg).contains(r)) {
+          System.err.println("Warning: register alias between "
+              + r.getName() + " and " + reg.getName()
+              + " specified multiple times!\n");
         }
+        registerAlias.get(reg).add(r);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
+
+    // Process sub-register sets.
+    for (CodeGenRegister cgr : regs) {
+      Record r = cgr.theDef;
+      ArrayList<Record> list = r.getValueAsListOfDefs("SubRegs");
+      if (!registerSubRegs.containsKey(r))
+        registerSubRegs.put(r, new TreeSet<>(LessRecord));
+
+      for (Record subreg : list) {
+        if (registerSubRegs.get(r).contains(subreg)) {
+          System.err.printf("Warning: register %s specified as a sub-register of %s"
+              + " multiple times!", subreg.getName(), subreg.getName());
+        }
+        addSubSuperReg(r, subreg, registerSubRegs, registerSuperRegs, registerAlias);
+      }
+    }
+
 
     // Print the SubregHashTable, a simple quadratically probed
     // hash table for determining if a register is a subregister

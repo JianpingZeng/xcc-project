@@ -804,7 +804,7 @@ public class DAGISelEmitter extends TableGenBackend {
       os.println("import backend.codegen.dagisel.SelectionDAGISel.*;");
       os.println("import backend.codegen.dagisel.SDNode.*;");
       os.println("import backend.codegen.dagisel.ISD;");
-      os.println("import backend.target.TargetInstrInfo;");
+      os.println("import backend.target.RISCVGenInstrInfo;");
       os.println("import backend.target.TargetMachine;");
       os.println("import backend.type.PointerType;");
       os.println("import backend.value.Value;");
