@@ -480,6 +480,7 @@ public final class CodeGenDAGPatterns {
    */
   private void findDepVars(TreePatternNode node, HashSet<String> depVars) {
     TObjectIntHashMap<String> depCounts = new TObjectIntHashMap<>();
+    findDepVarsOf(node, depCounts);
     for (TObjectIntIterator<String> itr = depCounts.iterator(); itr.hasNext(); ) {
       if (itr.value() > 1)
         depVars.add(itr.key());
@@ -780,11 +781,8 @@ public final class CodeGenDAGPatterns {
    */
   private void parseInstructions() {
     ArrayList<Record> instrs = records.getAllDerivedDefinition("Instruction");
-    // DONE !!! FIXME the number of instrs is correct.
-
     for (int idx = 0; idx < instrs.size(); idx++) {
       Record instr = instrs.get(idx);
-      //System.out.println(idx);
       ListInit li = null;
 
       if (instr.getValueInit("Pattern") instanceof ListInit)
@@ -828,28 +826,6 @@ public final class CodeGenDAGPatterns {
 
       // Inline pattern fragments into it.
       i.inlinePatternFragments();
-
-            /*
-            if (idx == 748)
-            {
-                System.err.println("After inline pattern fragment: ");
-                i.getOnlyTree().dump();
-                System.err.println();
-            }
-            */
-
-      /**
-       idx = 748, llvm-tblegen 中i=2020.
-       该程序:
-       V_SETALLONES:	(set VR128:v16i8:$dst, immAllOnesV:v4i32)
-       ~~~~~~~~~~
-       ^
-       此处和llvm-tblgen中的结果不同
-       In V_SETALLONES: Undefined node flavour used in pattern: immAllOnesV
-
-       llvm-tblgen
-       V_SETALLONES: 	(set VR128:$dst, (build_vector:v4i32)<<P:predicate_immAllOnesV>>)
-       */
       // Infer as many types as possible.  If we cannot infer all of them, we can
       // never do anything with this instruction pattern: report it to the user.
       if (!i.inferAllTypes())
@@ -1013,15 +989,11 @@ public final class CodeGenDAGPatterns {
         i.dump();
     }
 
-    //System.err.println("The number of Record:" + instructions.size());
-    //System.err.println("The number of Patterns to match before parseInstruction:" + patternsToMatch.size());
     for (Map.Entry<Record, DAGInstruction> pair : instructions.entrySet()) {
       DAGInstruction theInst = pair.getValue();
       TreePattern pat = theInst.getPattern();
       if (pat == null) {
         // FIXME (DONE!!!) to many pattern be skipped. 2017.7.21
-        //  Skip 965.  actucally, the number should be 344
-        //System.err.println(pair.getKey().getName());
         continue;
       }
       TreePatternNode pattern = pat.getTree(0);
@@ -1041,8 +1013,6 @@ public final class CodeGenDAGPatterns {
           srcPattern, dstPattern, theInst.getImpResults(),
           (int) instr.getValueAsInt("AddedComplexity")));
     }
-
-    //System.err.println("The number of Patterns to match after parseInstruction:" + patternsToMatch.size());
   }
 
   private void parseDefaultOperands() {
