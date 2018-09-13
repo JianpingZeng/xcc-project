@@ -47,9 +47,16 @@ import static utils.tablegen.CodeGenHwModes.getModeName;
 public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
 
   public TypeSetByHwMode() {super();}
-  public TypeSetByHwMode(int vt) {}
-  public TypeSetByHwMode(ValueTypeByHwMode vt){}
-  public TypeSetByHwMode(ArrayList<ValueTypeByHwMode> vts) {}
+  public TypeSetByHwMode(int vt)  {
+    this(new ValueTypeByHwMode(new MVT(vt)));
+  }
+  public TypeSetByHwMode(ValueTypeByHwMode vt) {
+    insert(vt);
+  }
+
+  public TypeSetByHwMode(ArrayList<ValueTypeByHwMode> vts) {
+    vts.forEach(this::insert);
+  }
 
   public MachineValueTypeSet getOrCreate(int mode) {
     if (hasMode(mode))

@@ -17,7 +17,6 @@ package backend.target;
  */
 
 import backend.codegen.EVT;
-import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Util;
@@ -36,7 +35,6 @@ public abstract class TargetRegisterClass {
    */
   private String name;
   private TIntHashSet regSet;
-  private EVT[] vts;
   private TargetRegisterClass[] subClasses;
   private TargetRegisterClass[] superClasses;
   private TargetRegisterClass[] subRegClasses;
@@ -44,33 +42,24 @@ public abstract class TargetRegisterClass {
   private int copyCost;
 
   /**
-   * The register size and alignment in Bytes.
-   */
-  private int regSize, regAlign;
-  /**
    * The register list contained in this {@linkplain TargetRegisterClass}.
    */
   private int[] regs;
 
   protected TargetRegisterClass(int id,
                                 String name,
-                                EVT[] vts,
                                 TargetRegisterClass[] subcs,
                                 TargetRegisterClass[] supercs,
                                 TargetRegisterClass[] subregcs,
                                 TargetRegisterClass[] superregcs,
-                                int regsz, int regAlign,
                                 int copyCost,
                                 int[] regs) {
     this.id = id;
     this.name = name;
-    this.vts = vts;
     subClasses = subcs;
     superClasses = supercs;
     subRegClasses = subregcs;
     superRegClasses = superregcs;
-    regSize = regsz;
-    this.regAlign = regAlign;
     this.regs = regs;
     this.copyCost = copyCost;
     regSet = new TIntHashSet();
@@ -122,30 +111,6 @@ public abstract class TargetRegisterClass {
   }
 
   /**
-   * Return the number of the register in bytes, which is also the number
-   * of a stack slot allocated to hold a spilled copy of this register.
-   *
-   * @return
-   */
-  public int getRegSize() {
-    return regSize;
-  }
-
-  /**
-   * Return the minimum required alignment for a register of
-   * this class.
-   *
-   * @return
-   */
-  public int getAlignment() {
-    return regAlign;
-  }
-
-  public EVT[] getVTs() {
-    return vts;
-  }
-
-  /**
    * Obtains the allocatable registers of type array.
    * Default, returned array is as same as registers array contained in this
    * TargetRegisterClass. But it is may be altered for concrete sub class. e.g.
@@ -166,14 +131,6 @@ public abstract class TargetRegisterClass {
    */
   public boolean contains(int reg) {
     return regSet.contains(reg);
-  }
-
-  public boolean hasType(EVT vt) {
-    for (int i = 0; vts[i].getSimpleVT().simpleVT != MVT.Other; ++i) {
-      if (vts[i].equals(vt))
-        return true;
-    }
-    return false;
   }
 
   public boolean hasSuperClass(TargetRegisterClass rc) {
@@ -211,13 +168,15 @@ public abstract class TargetRegisterClass {
   }
 
   public TargetRegisterClass getSuperRegisterRegClass(
+      TargetRegisterInfo tri,
       TargetRegisterClass rc,
       int subIdx, EVT vt) {
     for (TargetRegisterClass itr : superRegClasses) {
-      if (itr.hasType(vt) && itr.getSubRegisterRegClass(subIdx).equals(rc))
+      if (tri.isLegalTypeForRegClass(this, vt.getSimpleVT()) &&
+          itr.getSubRegisterRegClass(subIdx).equals(rc))
         return itr;
     }
-    Util.assertion(false, "Couldn't find the register class!");
+    Util.assertion("Couldn't find the register class!");
     return null;
   }
 

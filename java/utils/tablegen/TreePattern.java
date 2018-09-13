@@ -144,7 +144,7 @@ public final class TreePattern {
     }
     boolean hasUnresolvedTypes = false;
     for (TreePatternNode node : trees)
-      hasUnresolvedTypes |= node.containsUnresolvedType();
+      hasUnresolvedTypes |= node.containsUnresolvedType(this);
 
     return !hasUnresolvedTypes;
   }

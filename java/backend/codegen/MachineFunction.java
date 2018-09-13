@@ -55,7 +55,7 @@ public class MachineFunction {
     this.fn = fn;
     target = tm;
     mbbNumber = new ArrayList<>();
-    frameInfo = new MachineFrameInfo(tm.getFrameInfo());
+    frameInfo = new MachineFrameInfo(tm.getFrameInfo(), tm.getRegisterInfo());
     regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
     constantPool = new MachineConstantPool(tm.getTargetData());
     phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];

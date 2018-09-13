@@ -39,6 +39,7 @@ import java.io.PrintStream;
 public final class LiveStackSlot extends MachineFunctionPass {
   private TIntObjectHashMap<LiveInterval> slot2LI;
   private TIntObjectHashMap<TargetRegisterClass> slot2RC;
+  private TargetRegisterInfo tri;
 
   public LiveStackSlot() {
     slot2LI = new TIntObjectHashMap<>();
@@ -48,6 +49,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     // This method should not called from FunctionPassManager.
+    tri = mf.getTarget().getRegisterInfo();
     return false;
   }
 
@@ -67,7 +69,8 @@ public final class LiveStackSlot extends MachineFunctionPass {
       Util.assertion(slot2RC.containsKey(slot));
       TargetRegisterClass oldRC = slot2RC.get(slot);
       Util.assertion(oldRC != null);
-      slot2RC.put(slot, TargetRegisterInfo.getCommonSubClass(oldRC, rc));
+
+      slot2RC.put(slot, tri.getCommonSubClass(oldRC, rc));
       return slot2LI.get(slot);
     }
   }

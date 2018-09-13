@@ -16,12 +16,10 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MVT;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Error;
 import tools.Pair;
-import tools.SetMultiMap;
 import tools.Util;
 
 import java.io.FileNotFoundException;
@@ -86,19 +84,20 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     try (PrintStream os = outputFile.equals("-") ?
         System.out : new PrintStream(outputFile)) {
-      os.println("package backend.target.x86;\n");
+      os.printf("package backend.target.%s;\n\n", className.toLowerCase());
 
       emitSourceFileHeaderComment("Register Information Source Fragment",
           os);
 
-      os.println("import backend.codegen.MVT;\n"
+      os.printf("import backend.codegen.MVT;\n"
           + "import backend.codegen.MachineFunction;\n"
           + "import backend.target.TargetMachine;\n"
           + "import backend.target.TargetRegisterClass;\n"
           + "import backend.target.TargetRegisterDesc;\n"
           + "import backend.target.TargetRegisterInfo;\n"
           + "import backend.codegen.EVT;\n\n"
-          + "import static backend.target.x86.X86GenRegisterNames.*;\n");
+          + "import static backend.target.%s.X86GenRegisterNames.*;\n",
+          className.toLowerCase());
 
 
       os.printf("public abstract class %s extends TargetRegisterInfo \n{\t",
@@ -111,13 +110,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       generateValueTypeForRegClass(os);
 
       generateRegisterClasses(os);
-
-      // generates fields and nested classes.
     }
-  }
-
-  private void generateRegInfoCtr(PrintStream os) {
-
   }
 
   private void generateRegClassesArray(PrintStream os) {
@@ -128,7 +121,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
       os.printf("\n\t//%s Register Class...\n", name);
       os.printf("\tpublic static final int[] %s = {\n\t\t", name);
-      for (Record r : rc.elts) {
+      for (CodeGenRegister r : rc.members) {
         os.printf("%s, ", r.getName());
       }
       os.printf("\n\t};\n\n");
@@ -163,8 +156,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
 
   private void generateRegisterClasses(PrintStream os) {
-    ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
 
+    ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
     // Output the register class ID.
     int idx = 0;
     os.println("\n\t// Defines the Register Class ID.");
@@ -213,13 +206,11 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\n\t\tprivate %sClass()\n\t\t{\n\t\t\t "
               + "super(%sRegClassID, \"%s\", %sVTs, %sSubclasses, \n"
               + "\t\t\t%sSuperclasses, %sSubRegClasses, %sSuperRegClasses, \n"
-              + "\t\t\t%d, %d, %d, %s); \n\t\t}\n",
+              + "\t\t\t%d, %s); \n\t\t}\n",
           name, name, name, name, name,
           name,
           name,
           name,
-          rc.spillSize / 8,
-          rc.spillAlignment / 8,
           rc.copyCost,
           rc.getName());
 
@@ -267,7 +258,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       }
 
       os.print(empty ? "" : ", ");
-      //os.print("null");
       os.print("\n\t};\n");
     }
 
@@ -300,41 +290,15 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
       String name = rc.theDef.getName();
 
-      HashSet<Record> regSets = new HashSet<>();
-      regSets.addAll(rc.elts);
-
       os.printf("\t// %s Register Class sub-classes...\n", name);
       os.printf("\tpublic static final TargetRegisterClass[] %sSubclasses = {\n\t\t", name);
 
       boolean empty = true;
-      for (int j = 0, e2 = regClasses.size(); j != e2; ++j) {
-        CodeGenRegisterClass rc2 = regClasses.get(j);
-
-        // RC2 is a sub-class of RC if it is a valid replacement for any
-        // instruction operand where an RC register is required. It must satisfy
-        // these conditions:
-        //
-        // 1. All RC2 registers are also in RC.
-        // 2. The RC2 spill size must not be smaller that the RC spill size.
-        // 3. RC2 spill alignment must be compatible with RC.
-        //
-        // Sub-classes are used to determine if a virtual register can be used
-        // as an instruction operand, or if it must be copied first.
-        if (rc.equals(rc2) || rc2.elts.size() > rc.elts.size()
-            || (rc.spillAlignment != 0 && rc2.spillAlignment % rc.spillAlignment != 0)
-            || rc.spillSize > rc2.spillSize || !isSubRegisterClass(rc2, regSets))
-          continue;
-
+      for (CodeGenRegisterClass subClass : rc.subClasses) {
         if (!empty) os.print(", ");
-        os.printf("%sRegisterClass", rc2.theDef.getName());
+        os.printf("%sRegisterClass", subClass.getName());
         empty = false;
-
-        if (!superClassMap.containsKey(j)) {
-          superClassMap.put(j, new TIntHashSet());
-        }
-        superClassMap.get(j).add(i);
       }
-
       os.printf("%s", empty ? "" : ", ");
       os.printf("\n\t};\n\t");
     }
@@ -347,13 +311,10 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\tpublic static final TargetRegisterClass[] %sSuperclasses = {\n\t\t", name);
 
       boolean empty = true;
-      if (superClassMap.containsKey(i)) {
-        for (int val : superClassMap.get(i).toArray()) {
-          CodeGenRegisterClass rc2 = regClasses.get(val);
-          if (!empty) os.printf(", ");
-          os.printf("%sRegisterClass", rc2.getName());
-          empty = false;
-        }
+      for (CodeGenRegisterClass supClass : rc.superClasses) {
+        if (!empty) os.print(", ");
+        os.printf("%sRegisterClass", supClass.getName());
+        empty = false;
       }
 
       os.printf("%s", empty ? "" : ", ");
@@ -464,7 +425,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.printf("\t\t");
 
         if (SubregHashTable[2 * i] != ~0) {
-          os.printf("%s, %s, \n", regs.get(SubregHashTable[2 * i]).theDef.getName(), regs.get(SubregHashTable[2 * i + 1]).theDef.getName());
+          os.printf("%s, %s, \n", regs.get(SubregHashTable[2 * i]).theDef.getName(),
+              regs.get(SubregHashTable[2 * i + 1]).theDef.getName());
         } else {
           os.printf("NoRegister, NoRegister, \n");
         }
@@ -739,39 +701,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
     os.println("\t};\n"); // The end of register descriptor.
 
-    // emit the getCalleeSavedRegs method.
-        /*
-        os.println("private final int[] calleeSavedRegs = {\n\t");
-        ArrayList<Record> csrs = target.getCalleeSavedRegisters();
-        csrs.forEach(csr->os.print(csr.getName()+", "));
-        os.print("\t};\n");
-
-        os.println("public int[] getCalleeSavedRegs() { return calleeSavedRegs; }");
-        os.println();
-
-        // emit information about the callee saved register classes.
-        os.println("private final TargetRegisterClass[] calleeSavedRegClasses = {\n\t");
-
-        csrs.forEach(csr->
-        {
-            Set<CodeGenRegisterClass> rcs = regClassesBelongedTo.get(csr);
-            Util.assertion( rcs != null);
-            CodeGenRegisterClass rc = null;
-            for (CodeGenRegisterClass tmp : rcs)
-            {
-                if (rc == null || tmp.spillSize < rc.spillSize)
-                    rc = tmp;
-            }
-            for (Record reg : rc.elts)
-            {
-                os.print(reg.getName() + ", ");
-
-                // Keep track of which regclasses this register is in.
-                regClassesBelongedTo.put(reg, rc);
-            }
-        });
-        */
-
     String className = targetName + "GenRegisterInfo";
 
     ArrayList<Record> subRegs = records.getAllDerivedDefinition("SubRegSet");
@@ -812,7 +741,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\t\t\t}\n\t\t\t\n");
     }
     os.printf("\t\t}\n");
-    //os.printf("\treturn 0;\n");
     os.printf("\t}\n\n");
 
     // emit the fields and constructors for X86GenRegisterInfo.
@@ -892,16 +820,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         addSuperReg(r, ss, subRegs, superRegs, aliases);
       });
     }
-  }
-
-  private static boolean isSubRegisterClass(CodeGenRegisterClass rc,
-                                            HashSet<Record> regSets) {
-    for (Record r : rc.elts) {
-      if (!regSets.contains(r))
-        return false;
-    }
-
-    return true;
   }
 
   private static class RegisterSorter implements Comparator<Record> {

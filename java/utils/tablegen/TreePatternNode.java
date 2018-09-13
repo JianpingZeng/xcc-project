@@ -16,8 +16,8 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.EVT;
 import backend.codegen.MVT;
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 import utils.tablegen.Init.DefInit;
@@ -27,9 +27,9 @@ import java.io.PrintStream;
 import java.util.*;
 
 import static backend.codegen.MVT.*;
-import static utils.tablegen.CodeGenDAGPatterns.convertVTs;
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.CodeGenTarget.getValueType;
-import static utils.tablegen.EEVT.*;
+import static utils.tablegen.EEVT.isUnknown;
 import static utils.tablegen.SDNP.SDNPCommutative;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
@@ -204,38 +204,10 @@ public final class TreePatternNode implements Cloneable {
       getLeafValue().print(os);
     else
       os.printf("(%s", getOperator().getName());
-
-    int val = getExtTypeNum(0);
-    switch (val) {
-      case Other:
-        os.print(":Other");
-        break;
-      case isInt:
-        os.print(":isInt");
-        break;
-      case isFP:
-        os.print(":isFP");
-        break;
-      case isVec:
-        os.print(":isVec");
-        break;
-      case isUnknown:
-        //os.print(":?");
-        break;
-      case iPTR:
-        os.print(":iPTR");
-        break;
-      case iPTRAny:
-        os.print(":iPTRAny");
-        break;
-      default: {
-        String vtName = MVT.getName(val);
-        if (vtName.substring(0, 4).equals("MVT."))
-          vtName = vtName.substring(4);
-        os.printf(":%s", vtName);
-      }
+    for (TypeSetByHwMode ts : types) {
+      os.print(":");
+      os.print(ts.toString());
     }
-
     if (!isLeaf()) {
       if (getNumChildren() != 0) {
         os.print(" ");
@@ -275,36 +247,33 @@ public final class TreePatternNode implements Cloneable {
       if (di != null) {
         boolean changed = false;
         for (int i = 0, e = getNumTypes(); i < e; i++)
-          changed |= updateNodeType(i, getImplicitType(di.getDef(), i, notRegisters, !hasName(), tp), tp);
+          changed |= updateNodeType(i, getImplicitType(di.getDef(), i,
+              notRegisters, !hasName(), tp), tp);
         return changed;
       }
       else if (getLeafValue() instanceof IntInit) {
         IntInit ii = (IntInit) getLeafValue();
-        boolean madeChanged = updateNodeType(isInt, tp);
+        // int inits are always integers.
+        boolean madeChanged = tp.getTypeInfer().enforceInteger(types.get(0));
+        if (!tp.getTypeInfer().isConcrete(types.get(0), false))
+          return madeChanged;
 
-        if (hasTypeSet()) {
-          Util.assertion(getExtTypes().size() >= 1, "TreePattern doesn't have a type!");
-          int svt = getTypeNum(0);
-          for (int i = 1, e = getExtTypes().size(); i != e; i++)
-            Util.assertion(getTypeNum(i) == svt, "TreePattern has too many types!");
+        ValueTypeByHwMode vvt = tp.getTypeInfer().getConcrete(types.get(0), false);
+        for (TIntObjectIterator<MVT> itr = vvt.iterator(); itr.hasNext();) {
+          int vt = itr.value().simpleVT;
+          if (vt == MVT.iPTR || vt == MVT.iPTRAny)
+            continue;
+          int size = itr.value().getSizeInBits();
+          if (size >= 32)
+            continue;
 
-          svt = getTypeNum(0);
-          if (svt != iPTR && svt != iPTRAny) {
-            int size = new EVT(svt).getSizeInBits();
-            if (size < 32) {
-              int val = (int) ((ii.getValue() << (32 - size)) >> (32 - size));
-              if (val != ii.getValue()) {
-                int valueMask, unsignedVal;
-                valueMask = (~0) >> (32 - size);
-                unsignedVal = (int) ii.getValue();
-                if ((valueMask & unsignedVal) != unsignedVal) {
-                  tp.error("Integer value '" + ii.getValue() +
-                      "' is out of range of type '" +
-                      MVT.getEnumName(getTypeNum(0)) + "'!");
-                }
-              }
-            }
-          }
+          long signBitAndAbove = ii.getValue() >> (size-1);
+          if (signBitAndAbove == -1 || signBitAndAbove == 0 ||
+              signBitAndAbove == 1)
+            continue;
+          tp.error(String.format("Integer value '%s' is out of range for type '%s'!",
+              ii.getValue(), getEnumName(vt)));
+          break;
         }
         return madeChanged;
       }
@@ -315,29 +284,32 @@ public final class TreePatternNode implements Cloneable {
     if (getOperator().getName().equals("set")) {
       Util.assertion(getNumChildren() >= 2, "Missing RHS of a set?");
       int nc = getNumChildren();
-      boolean madeChanged = false;
-      for (int i = 0; i < nc - 1; i++) {
-        madeChanged = getChild(i).applyTypeConstraints(tp, notRegisters);
-        madeChanged |= getChild(nc - 1).applyTypeConstraints(tp, notRegisters);
 
-        madeChanged |= getChild(i).updateNodeType(getChild(nc - 1).getExtTypes(), tp);
-        madeChanged |= getChild(nc - 1).updateNodeType(getChild(i).getExtTypes(), tp);
-        madeChanged |= updateNodeType(isVoid, tp);
+      TreePatternNode setVal = getChild(nc-1);
+      boolean madeChanged = setVal.applyTypeConstraints(tp, notRegisters);
+
+      for (int i = 0; i < nc - 1; i++) {
+        TreePatternNode child = getChild(i);
+        madeChanged |= child.applyTypeConstraints(tp, notRegisters);
+        madeChanged |= child.updateNodeType(0, setVal.getExtType(i), tp);
+        // Types of operands must match.
+        madeChanged |= setVal.updateNodeType(i, child.getExtType(0), tp);
       }
       return madeChanged;
     } else if (getOperator().getName().equals("implicit") ||
         getOperator().getName().equals("parallel")) {
+      Util.assertion(getNumTypes() == 0, "Node doesn't produce a value");
+
       boolean madeChanged = false;
       for (int i = 0; i < getNumChildren(); i++) {
         madeChanged = getChild(i).applyTypeConstraints(tp, notRegisters);
       }
-      madeChanged |= updateNodeType(isVoid, tp);
       return madeChanged;
     } else if (getOperator().getName().equals("COPY_TO_REGCLASS")) {
       boolean madeChanged = false;
       madeChanged |= getChild(0).applyTypeConstraints(tp, notRegisters);
       madeChanged |= getChild(1).applyTypeConstraints(tp, notRegisters);
-      madeChanged |= updateNodeType(getChild(1).getTypeNum(0), tp);
+      madeChanged |= updateNodeType(0, getChild(1).getExtType(0), tp);
       return madeChanged;
     } else if ((intrinsic = getIntrinsicInfo(cdp)) != null) {
       boolean madeChange = false;
@@ -346,7 +318,7 @@ public final class TreePatternNode implements Cloneable {
       int numParamVTs = intrinsic.is.paramVTs.size();
 
       for (int i = 0; i != numRetVTs; i++)
-        madeChange |= updateNodeType(intrinsic.is.retVTs.get(i), tp);
+        madeChange |= updateNodeType(i, intrinsic.is.retVTs.get(i), tp);
 
       if (getNumChildren() != numParamVTs + numRetVTs) {
         tp.error("Intrinsic '" + intrinsic.name + "' expects " + (
@@ -354,11 +326,11 @@ public final class TreePatternNode implements Cloneable {
             getNumChildren() - 1) + " operands!");
       }
 
-      madeChange |= getChild(0).updateNodeType(iPTR, tp);
+      madeChange |= getChild(0).updateNodeType(0, iPTR, tp);
 
       for (int i = numRetVTs, e = getNumChildren(); i != e; i++) {
         int opVT = intrinsic.is.paramVTs.get(i - numRetVTs);
-        madeChange |= getChild(i).updateNodeType(opVT, tp);
+        madeChange |= getChild(i).updateNodeType(0, opVT, tp);
         madeChange |= getChild(i).applyTypeConstraints(tp, notRegisters);
       }
 
@@ -372,7 +344,7 @@ public final class TreePatternNode implements Cloneable {
       }
       madeChanged = ni.applyTypeConstraints(this, tp);
       if (ni.getNumResults() == 0) {
-        madeChanged |= updateNodeType(isVoid, tp);
+        madeChanged |= updateNodeType(0, isVoid, tp);
       }
       return madeChanged;
     } else if (getOperator().isSubClassOf("Instruction")) {
@@ -383,24 +355,20 @@ public final class TreePatternNode implements Cloneable {
       Util.assertion(numResults <= 1, "Only supports zero or one result instrs!");
       CodeGenInstruction instInfo = cdp.getTarget().getInstruction(getOperator().getName());
       if (numResults == 0 || instInfo.numDefs == 0) {
-        madeChanged = updateNodeType(isVoid, tp);
+        madeChanged = updateNodeType(0, isVoid, tp);
       } else {
         Record resultNode = instr.getResult(0);
-
+        ValueTypeByHwMode vvt = new ValueTypeByHwMode();
         if (resultNode.isSubClassOf("PointerLikeRegClass")) {
-          TIntArrayList vts = new TIntArrayList();
-          vts.add(iPTR);
-          madeChanged = updateNodeType(vts, tp);
+          vvt.getOrCreateTypeForMode(DefaultMode, new MVT(MVT.iPTR));
+          madeChanged = updateNodeType(0, vvt, tp);
         } else if (resultNode.getName().equals("unknown")) {
-          TIntArrayList vts = new TIntArrayList();
-          vts.add(isUnknown);
-          madeChanged = updateNodeType(vts, tp);
+          vvt.getOrCreateTypeForMode(DefaultMode, new MVT(isUnknown));
+          madeChanged = updateNodeType(0, vvt, tp);
         } else {
           Util.assertion(resultNode.isSubClassOf("RegisterClass"), "Operands should be register class");
-
-
           CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(resultNode);
-          madeChanged = updateNodeType(convertVTs(rc.getValueTypes()), tp);
+          madeChanged = updateNodeType(0, new TypeSetByHwMode(rc.getValueTypes()), tp);
         }
       }
 
@@ -426,16 +394,16 @@ public final class TreePatternNode implements Cloneable {
         TreePatternNode child = getChild(childNo++);
         if (operandNode.isSubClassOf("RegisterClass")) {
           CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(operandNode);
-          madeChanged |= child.updateNodeType(convertVTs(rc.getValueTypes()), tp);
+          madeChanged |= child.updateNodeType(0, new TypeSetByHwMode(rc.getValueTypes()), tp);
         } else if (operandNode.isSubClassOf("Operand")) {
           vt = getValueType(operandNode.getValueAsDef("Type"));
-          madeChanged |= child.updateNodeType(vt, tp);
+          madeChanged |= child.updateNodeType(0, vt, tp);
         } else if (operandNode.isSubClassOf("PointerLikeRegClass")) {
-          madeChanged |= child.updateNodeType(iPTR, tp);
+          madeChanged |= child.updateNodeType(0, iPTR, tp);
         } else if (operandNode.getName().equals("unknown")) {
-          madeChanged |= child.updateNodeType(isUnknown, tp);
+          madeChanged |= child.updateNodeType(0, isUnknown, tp);
         } else {
-          Util.assertion(false, "Undefined operand type!");
+          Util.assertion("Undefined operand type!");
           System.exit(0);
         }
         madeChanged |= child.applyTypeConstraints(tp, notRegisters);
@@ -446,8 +414,8 @@ public final class TreePatternNode implements Cloneable {
             "' was provided too many operands!");
 
       return madeChanged;
-    } else {
-      //System.out.println(getOperator());
+    }
+    else {
       Util.assertion(getOperator().isSubClassOf("SDNodeXForm"), "Undefined node type!");
 
       if (getNumChildren() != 1) {
@@ -455,12 +423,8 @@ public final class TreePatternNode implements Cloneable {
             "' requires one operand!");
       }
 
-      if (!hasTypeSet() || !getChild(0).hasTypeSet()) {
-        boolean madeChanged = updateNodeType(getChild(0).getExtTypes(), tp);
-        madeChanged |= getChild(0).updateNodeType(getExtTypes(), tp);
-        return madeChanged;
-      }
-      return false;
+      boolean madeChanged = getChild(0).applyTypeConstraints(tp, notRegisters);
+      return madeChanged;
     }
   }
 
@@ -815,5 +779,14 @@ public final class TreePatternNode implements Cloneable {
         Objects.equals(predicateFns, node.predicateFns) &&
         Objects.equals(transformFn, node.transformFn) &&
         Objects.equals(children, node.children);
+  }
+
+  /**
+   * Reset as unknown type.
+   */
+  public void removeTypes() {
+    int size = getNumTypes();
+    for (int i = 0; i < size; i++)
+      types.set(i, new TypeSetByHwMode());
   }
 }

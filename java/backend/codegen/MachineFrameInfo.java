@@ -3,6 +3,7 @@ package backend.codegen;
 import backend.target.TargetData;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetRegisterClass;
+import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import tools.Util;
 
@@ -106,10 +107,13 @@ public class MachineFrameInfo {
   private boolean csIValid;
 
   private TargetFrameInfo tfi;
+  private TargetRegisterInfo tri;
 
-  public MachineFrameInfo(TargetFrameInfo tfi) {
+  public MachineFrameInfo(TargetFrameInfo tfi,
+                          TargetRegisterInfo tri) {
     csInfo = new ArrayList<>();
     this.tfi = tfi;
+    this.tri = tri;
     objects = new ArrayList<>();
     numFixedObjects = 0;
     stackSize = 0;
@@ -305,8 +309,8 @@ public class MachineFrameInfo {
         td.getTypeAlign(type));
   }
 
-  public int createStackObject(TargetRegisterClass RC) {
-    return createStackObject(RC.getRegSize(), RC.getAlignment());
+  public int createStackObject(TargetRegisterClass rc) {
+    return createStackObject(tri.getRegSize(rc), tri.getSpillAlignment(rc));
   }
 
   /**

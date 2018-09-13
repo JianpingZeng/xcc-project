@@ -82,6 +82,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
   private boolean hasFastExitPath;
   private MachineFunction mf;
+  private TargetRegisterInfo tri;
 
   public PrologEpilogInserter() {
     minCSFrameIndex = 0;
@@ -122,6 +123,8 @@ public class PrologEpilogInserter extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     this.mf = mf;
+    tri = mf.getTarget().getRegisterInfo();
+
     Function f = mf.getFunction();
     TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
     rs = tri.requireRegisterScavenging(mf) ? new RegScavenger() : null;
@@ -1249,18 +1252,18 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       }
 
       if (fixedSpillSlots == null || fixedSlot == fixedSpillSlots.length) {
-        int align = rc.getAlignment();
+        int align = tri.getSpillAlignment(rc);
         int stackAlign = tfi.getStackAlignment();
 
         align = Math.min(align, stackAlign);
-        frameIdx = mfi.createStackObject(rc.getRegSize(), align);
+        frameIdx = mfi.createStackObject(tri.getRegSize(rc), align);
         if (frameIdx < minCSFrameIndex)
           minCSFrameIndex = frameIdx;
         if (frameIdx > maxCSFrameIndex)
           maxCSFrameIndex = frameIdx;
       } else {
         // Spill it to the stack where we must.
-        frameIdx = mfi.createFixedObject(rc.getRegSize(), fixedSpillSlots[fixedSlot].second);
+        frameIdx = mfi.createFixedObject(tri.getRegSize(rc), fixedSpillSlots[fixedSlot].second);
       }
       info.setFrameIdx(frameIdx);
     }

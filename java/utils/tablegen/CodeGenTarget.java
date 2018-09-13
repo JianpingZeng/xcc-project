@@ -87,19 +87,55 @@ public final class CodeGenTarget {
     });
   }
 
+  /**
+   * rc1 is a sub-class of rc2 if it is a valid replacement for any
+   * instruction operand where an rc2 register is required. It must satisfy
+   * these conditions:
+   * 1. All RC2 registers are also in RC.
+   * 2. The RC2 spill size must not be smaller that the RC spill size.
+   * 3.RC2 spill alignment must be compatible with RC.
+   *
+   * Sub-classes are used to determine if a virtual register can be used
+   * as an instruction operand, or if it must be copied first.
+   * @param rc1
+   * @param rc2
+   * @return
+   */
+  private boolean isSubRegClass(CodeGenRegisterClass rc1, CodeGenRegisterClass rc2) {
+    return rc1.regInfos.isSubClassOf(rc2.regInfos) &&
+        rc2.members.containsAll(rc1.members);
+  }
+
+  /**
+   * For each register class, computing sub class for it.
+   */
+  private void computeSubClasses() {
+    for (int i = 0, e = registerClasses.size(); i < e; i++) {
+      CodeGenRegisterClass rc = registerClasses.get(i);
+      // every reg class is the sub class of itself.
+      rc.subClasses.add(rc);
+      for (int j = i+1; j < e; j++) {
+        CodeGenRegisterClass rc2 = registerClasses.get(j);
+        if (rc.subClasses.contains(rc2))
+          continue;
+        if (isSubRegClass(rc2, rc))
+          rc.subClasses.add(rc2);
+      }
+    }
+    for (CodeGenRegisterClass rc : registerClasses) {
+      for (CodeGenRegisterClass subClass : rc.subClasses)
+        subClass.superClasses.add(rc);
+    }
+  }
+
   private void readRegisterClasses() {
     ArrayList<Record> regClasses = Record.records.getAllDerivedDefinition("RegisterClass");
     if (regClasses.isEmpty())
       Error.printFatalError("No 'RegisterClass subclass defined!");
     registerClasses = new ArrayList<>();
     regClasses.forEach(regKls ->
-    {
-      try {
-        registerClasses.add(new CodeGenRegisterClass(regKls, getHwModes()));
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
+        registerClasses.add(new CodeGenRegisterClass(regKls, getHwModes())));
+    computeSubClasses();
   }
 
   private void readInstructions() {
@@ -262,40 +298,28 @@ public final class CodeGenTarget {
     CodeGenRegisterClass foundRC = null;
     for (int i = 0, e = rcs.size(); i != e; ++i) {
       CodeGenRegisterClass rc = registerClasses.get(i);
-      for (int ei = 0, ee = rc.elts.size(); ei != ee; ++ei) {
-        if (r != rc.elts.get(ei))
+      for (int ei = 0, ee = rc.members.size(); ei != ee; ++ei) {
+        if (!rc.contains(r))
           continue;
 
-        // If a register's classes have different types, return null.
-        if (foundRC != null && !rc.getValueTypes().equals(foundRC.getValueTypes()))
-          return null;
-
-        // If this is the first class that contains the register,
-        // make a note of it and go on to the next class.
         if (foundRC == null) {
           foundRC = rc;
-          break;
+          continue;
         }
-
-        ArrayList<Record> elements = new ArrayList<>();
-        elements.addAll(rc.elts);
-
-        ArrayList<Record> foundElements = new ArrayList<>();
-        foundElements.addAll(foundRC.elts);
+        // If a register's classes have different types, return null.
+        if (!rc.getValueTypes().equals(foundRC.getValueTypes()))
+          return null;
 
         // Check to see if the previously found class that contains
         // the register is a subclass of the current class. If so,
         // prefer the superclass.
-        if (elements.containsAll(foundElements)) {
+        if (rc.hasSubClass(foundRC)) {
           foundRC = rc;
-          break;
+          continue;
         }
 
-        // Check to see if the previously found class that contains
-        // the register is a superclass of the current class. If so,
-        // prefer the superclass.
-        if (foundElements.containsAll(elements))
-          break;
+        if (foundRC.hasSupClass(rc))
+          continue;
 
         // Multiple classes, and neither is a superclass of the other.
         // Return null.
@@ -315,11 +339,9 @@ public final class CodeGenTarget {
   public ArrayList<ValueTypeByHwMode> getRegisterVTs(Record r) {
     ArrayList<ValueTypeByHwMode> res = new ArrayList<>();
     for (CodeGenRegisterClass rc : registerClasses) {
-      for (Record elt : rc.elts) {
-        if (r.equals(elt)) {
-          ArrayList<ValueTypeByHwMode> inVTs = rc.getValueTypes();
-          res.addAll(inVTs);
-        }
+      if (rc.contains(r)) {
+        ArrayList<ValueTypeByHwMode> inVTs = rc.getValueTypes();
+        res.addAll(inVTs);
       }
     }
     return res;

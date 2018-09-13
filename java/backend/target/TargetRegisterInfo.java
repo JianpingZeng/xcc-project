@@ -16,9 +16,6 @@ import java.util.ArrayList;
  * @version 0.1
  */
 public abstract class TargetRegisterInfo {
-  //=================================================================//
-  // The member of class TargetRegisterInfo.
-
   /**
    * This is used as the destination register for instructions that do not
    * produce a value.
@@ -34,11 +31,6 @@ public abstract class TargetRegisterInfo {
   public static final int FirstVirtualRegister = 1024;
 
   private TargetRegisterDesc[] desc;
-  /**
-   * Mapping the machine register number to its register class.
-   * Fixme, this is not needed.
-   */
-  // private TargetRegisterClass[] phyRegClasses;
 
   /**
    * Register classes of target machine.
@@ -62,8 +54,11 @@ public abstract class TargetRegisterInfo {
   int subregHashSize;
   int superregHashSize;
   int aliasHashSize;
-
-  private RegClassInfo regClassInfo;
+  /**
+   * The register class information, such as register size, spill size
+   * and spilling alignment, by hardware mode.
+   */
+  private RegClassInfo[] regClassInfo;
   private int hwMode;
 
   protected TargetRegisterInfo(
@@ -74,7 +69,7 @@ public abstract class TargetRegisterInfo {
       int[] subregs, int subregHashSize,
       int[] superregs, int superregHashSize,
       int[] aliases, int aliasHashSize,
-      RegClassInfo rcInfo,
+      RegClassInfo[] rcInfo,
       int mode) {
     this.desc = desc;
     this.regClasses = regClasses;
@@ -100,7 +95,7 @@ public abstract class TargetRegisterInfo {
                                int[] subregs, int subregHashSize,
                                int[] superregs, int superregHashSize,
                                int[] aliases, int aliasHashSize,
-                               RegClassInfo rcInfo) {
+                               RegClassInfo[] rcInfo/*, with default mode = 0*/) {
     this(desc, regClasses, callFrameSetupOpCode, callFrameDestroyOpCode,
         subregs, subregHashSize, superregs, superregHashSize,
         aliases, aliasHashSize, rcInfo, 0);
@@ -125,7 +120,7 @@ public abstract class TargetRegisterInfo {
 
     TargetRegisterClass bestRC = null;
     for (TargetRegisterClass rc : regClasses) {
-      if ((vt.equals(new EVT(MVT.Other)) || rc.hasType(vt)) &&
+      if ((vt.equals(new EVT(MVT.Other)) || isLegalTypeForRegClass(rc, vt.getSimpleVT())) &&
           rc.contains(reg) && (bestRC == null || bestRC.hasSuperClass(rc))) {
         bestRC = rc;
       }
@@ -560,7 +555,39 @@ public abstract class TargetRegisterInfo {
     return false;
   }
 
-  public static TargetRegisterClass getCommonSubClass(
+  public RegClassInfo getRegClassInfo(TargetRegisterClass rc) {
+    return regClassInfo[hwMode*getNumRegClasses()*rc.getID()];
+  }
+
+  public int getSpillSize(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).spillSize;
+  }
+
+  public int getRegSizeInBit(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).regSize/8;
+  }
+
+  public int getRegSize(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).regSize;
+  }
+
+  public int getSpillAlignmentInBit(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).spillAlignment/8;
+  }
+
+  public int getSpillAlignment(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).spillAlignment;
+  }
+
+  public boolean isLegalTypeForRegClass(TargetRegisterClass rc, MVT vt) {
+    for (int v : getRegClassInfo(rc).vts) {
+      if (v == vt.simpleVT)
+        return true;
+    }
+    return false;
+  }
+
+  public TargetRegisterClass getCommonSubClass(
       TargetRegisterClass rc1,
       TargetRegisterClass rc2) {
     if (rc1 == rc2) return rc1;
@@ -583,7 +610,7 @@ public abstract class TargetRegisterInfo {
         continue;
       int nb = bestRC.getNumRegs();
       int ni = rc.getNumRegs();
-      if (ni > nb || (ni == nb && rc.getRegSize() < bestRC.getRegSize()))
+      if (ni > nb || (ni == nb && getRegSizeInBit(rc) < getRegSizeInBit(bestRC)))
         bestRC = rc;
     }
     return bestRC;

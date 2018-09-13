@@ -376,7 +376,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       int subIdx = (int) ((ConstantSDNode) n2.getNode()).getZExtValue();
       TargetRegisterClass destRC = mri.getRegClass(subReg);
       TargetRegisterClass srcRC = destRC
-          .getSuperRegisterRegClass(destRC, subIdx, node.getValueType(0));
+          .getSuperRegisterRegClass(tri, destRC, subIdx, node.getValueType(0));
 
       if (vrBase == 0 || !srcRC.equals(mri.getRegClass(vrBase))) {
         vrBase = mri.createVirtualRegister(srcRC);
@@ -599,7 +599,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
               if (useRC == null)
                 useRC = rc;
               else if (rc != null) {
-                TargetRegisterClass comRC = getCommonSubClass(useRC, rc);
+                TargetRegisterClass comRC = tri.getCommonSubClass(useRC, rc);
                 if (comRC != null)
                   useRC = comRC;
               }

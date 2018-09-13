@@ -17,10 +17,6 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
-import gnu.trove.list.array.TIntArrayList;
-import tools.Util;
-
-import static utils.tablegen.CodeGenDAGPatterns.*;
 
 /**
  * @author Jianping Zeng
@@ -32,6 +28,7 @@ public interface EEVT {
   int isVec = isInt + 1;
   int isUnknown = isVec + 1;
 
+  /*
   static boolean isExtIntegerInVTs(TIntArrayList evts) {
     Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
     return evts.get(0) == isInt || !(filterEVTs(evts, isInteger)).isEmpty();
@@ -46,4 +43,5 @@ public interface EEVT {
     Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
     return evts.get(0) == isVec || !(filterEVTs(evts, isVector)).isEmpty();
   }
+  */
 }

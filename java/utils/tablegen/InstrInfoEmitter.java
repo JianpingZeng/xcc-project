@@ -388,13 +388,13 @@ public final class InstrInfoEmitter extends TableGenBackend {
     int numDefs = defs.size();
 
     for (CodeGenRegisterClass rc : rcs) {
-      int numRegs = rc.elts.size();
+      int numRegs = rc.members.size();
       if (numRegs > numDefs)
         continue;
 
       boolean clobber = true;
-      for (Record reg : rc.elts) {
-        if (!defSet.contains(reg)) {
+      for (CodeGenRegister reg : rc.members) {
+        if (!defSet.contains(reg.theDef)) {
           clobber = false;
           break;
         }

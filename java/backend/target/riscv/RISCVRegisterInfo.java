@@ -43,8 +43,19 @@ import tools.BitMap;
  */
 public class RISCVRegisterInfo extends TargetRegisterInfo {
 
-  protected RISCVRegisterInfo(int mode) {
-    super();
+  protected RISCVRegisterInfo(TargetRegisterDesc[] desc,
+                              TargetRegisterClass[] regClasses,
+                              int callFrameSetupOpCode,
+                              int callFrameDestroyOpCode,
+                              int[] subregs, int subregHashSize,
+                              int[] superregs, int superregHashSize,
+                              int[] aliases, int aliasHashSize,
+                              RegClassInfo[] rcInfo,
+                              int mode) {
+    super(desc, regClasses, callFrameSetupOpCode,
+        callFrameDestroyOpCode, subregs, subregHashSize,
+        superregs, superregHashSize, aliases, aliasHashSize,
+        rcInfo, mode);
   }
 
   @Override

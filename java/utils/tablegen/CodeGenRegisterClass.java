@@ -21,6 +21,7 @@ import tools.Util;
 import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
@@ -31,12 +32,15 @@ import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
  */
 public final class CodeGenRegisterClass {
   Record theDef;
-  ArrayList<Record> elts;
+  ArrayList<CodeGenRegister> members;
   ArrayList<ValueTypeByHwMode> vts;
   RegSizeInfoByHwMode regInfos;
   String methodBodies;
   long copyCost;
   ArrayList<Record> subRegClasses;
+
+  HashSet<CodeGenRegisterClass> subClasses;
+  HashSet<CodeGenRegisterClass> superClasses;
 
   public String getName() {
     return theDef.getName();
@@ -58,10 +62,12 @@ public final class CodeGenRegisterClass {
   private static int anonCnter = 0;
 
   public CodeGenRegisterClass(Record r, CodeGenHwModes cgh) {
-    elts = new ArrayList<>();
+    members = new ArrayList<>();
     vts = new ArrayList<>();
     subRegClasses = new ArrayList<>();
     theDef = r;
+    subClasses = new HashSet<>();
+    superClasses = new HashSet<>();
 
     // Rename the anonymous register class.
     if (r.getName().length() > 9 && r.getName().charAt(9) == '.')
@@ -82,7 +88,7 @@ public final class CodeGenRegisterClass {
       if (!reg.isSubClassOf("Register"))
         Error.printFatalError("Register Class member '" + reg.getName() +
             "' does not derive from the Register class!");
-      elts.add(reg);
+      members.add(new CodeGenRegister(reg));
     }
 
     // Obtains the information about SubRegisterClassList.
@@ -115,5 +121,17 @@ public final class CodeGenRegisterClass {
     }
     copyCost = r.getValueAsInt("CopyCost");
     methodBodies = r.getValueAsCode("MethodBodies");
+  }
+
+  public boolean contains(Record r) {
+    return members.contains(new CodeGenRegister(r));
+  }
+
+  public boolean hasSubClass(CodeGenRegisterClass rc) {
+    return subClasses.contains(rc);
+  }
+
+  public boolean hasSupClass(CodeGenRegisterClass rc) {
+    return superClasses.contains(rc);
   }
 }

@@ -28,9 +28,8 @@ import java.util.*;
 
 import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.getName;
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
-import static utils.tablegen.EEVT.isExtFloatingPointInVTs;
-import static utils.tablegen.EEVT.isExtIntegerInVTs;
 import static utils.tablegen.SDNP.*;
 
 /**
@@ -489,8 +488,8 @@ public class PatternCodeEmitter {
 
           Record rec = di.getDef();
           if (rec.isSubClassOf("Register")) {
-            int vt = getRegisterValueType(rec, target);
-            int rvt = getRegisterValueType(rec, target);
+            int vt = getRegisterValueType(rec, target).getSimple().simpleVT;
+            int rvt = getRegisterValueType(rec, target).getSimple().simpleVT;
             if (rvt == MVT.Flag) {
               if (!inFlagDecled.get()) {
                 emitCode("SDValue inFlag = " + rootName + opNo + ";");
@@ -581,19 +580,21 @@ public class PatternCodeEmitter {
     }
   }
 
-  static int getRegisterValueType(Record r, CodeGenTarget target) {
+  static ValueTypeByHwMode getRegisterValueType(Record r, CodeGenTarget target) {
     boolean foundRC = false;
-    int vt = MVT.Other;
+    ValueTypeByHwMode vt = new ValueTypeByHwMode();
+    vt.getOrCreateTypeForMode(DefaultMode, new MVT(MVT.Other));
     ArrayList<CodeGenRegisterClass> rcs = target.getRegisterClasses();
     for (CodeGenRegisterClass regClass : rcs) {
-      if (regClass.elts.contains(r)) {
+      if (regClass.contains(r)) {
         if (!foundRC) {
           foundRC = true;
+          regClass.getValueTypeAt(0);
           vt = regClass.getValueTypeAt(0);
         } else {
           // Multiple RCs
           if (vt != regClass.getValueTypeAt(0))
-            return MVT.Other;
+            return vt;
         }
       }
     }
@@ -601,13 +602,6 @@ public class PatternCodeEmitter {
   }
 
   static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {
-    int extVT = pat.getExtTypeNum(0);
-    Util.assertion(isExtIntegerInVTs(pat.getExtTypes()) || isExtFloatingPointInVTs(pat.getExtTypes()) ||
-        extVT == MVT.isVoid ||
-        extVT == MVT.Flag ||
-        extVT == MVT.iPTR ||
-        extVT == MVT.iPTRAny, "Not a valid pattern node to size");
-
     int size = 3;
     if (pat.isLeaf() && pat.getLeafValue() instanceof IntInit)
       size += 2;
@@ -621,7 +615,8 @@ public class PatternCodeEmitter {
 
     for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
       TreePatternNode child = pat.getChild(i);
-      if (!child.isLeaf() && child.getExtTypeNum(0) != MVT.Other)
+      TypeSetByHwMode c0 = child.getExtType(0);
+      if (!child.isLeaf() && c0.getMachineValueType().simpleVT != MVT.Other)
         size += getPatternSize(child, cgp);
       else if (child.isLeaf()) {
         if (child.getLeafValue() instanceof IntInit)
@@ -663,7 +658,8 @@ public class PatternCodeEmitter {
     return size;
   }
 
-  static class PatternSortingPredicate implements Comparator<Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>>> {
+  static class PatternSortingPredicate implements Comparator<Pair<PatternToMatch,
+      ArrayList<Pair<GeneratedCodeKind, String>>>> {
     private CodeGenDAGPatterns cgp;
 
     PatternSortingPredicate(CodeGenDAGPatterns cgp) {
@@ -671,7 +667,8 @@ public class PatternCodeEmitter {
     }
 
     @Override
-    public int compare(Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o1, Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o2) {
+    public int compare(Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o1,
+                       Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o2) {
       try {
         PatternToMatch lhs = o1.first, rhs = o2.first;
         int lhsSize = getPatternSize(lhs.getSrcPattern(), cgp);
@@ -697,8 +694,8 @@ public class PatternCodeEmitter {
 
   public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
                                           boolean inFlagDecled, boolean resNodeDecled,
-                                          boolean likeLeaf, boolean isRoot)
-      {
+                                          boolean likeLeaf, boolean isRoot) {
+    TypeSetByHwMode res0T = node.getExtType(0);
     ArrayList<String> nodeOps = new ArrayList<>();
     if (node.getName() != null && !node.getName().isEmpty()) {
       String varName = node.getName();
@@ -719,10 +716,10 @@ public class PatternCodeEmitter {
       if (!node.isLeaf() && node.getOperator().getName().equals("imm")) {
         Util.assertion(node.getExtTypes().size() == 1, "Multiple types not handled!");
         String castType = null, tmpVar = "tmp" + resNo;
-        switch (node.getTypeNum(0)) {
+        switch (res0T.getMachineValueType().simpleVT) {
           default:
             System.err.printf("Can't handle %s type as an immediate constant, Aborting!%n",
-                getEnumName(node.getTypeNum(0)));
+                getEnumName(res0T.getMachineValueType().simpleVT));
             System.exit(-1);
             break;
           case MVT.i1:
@@ -744,7 +741,7 @@ public class PatternCodeEmitter {
         String temp = castType.equals("boolean") ? "((ConstantSDNode)" + val + ".getNode()).getZExtValue() != 0" :
             "((" + castType + ")" + "((ConstantSDNode)" + val + ".getNode()).getZExtValue())";
         emitCode(String.format("SDValue %s = curDAG.getTargetConstant(%s, new EVT(%s));", tmpVar, temp,
-            getEnumName(node.getTypeNum(0))));
+            getEnumName(res0T.getMachineValueType().simpleVT)));
         val = tmpVar;
         modifiedVal = true;
         nodeOps.add(val);
@@ -763,7 +760,7 @@ public class PatternCodeEmitter {
           String tmpVar = "tmp" + resNo;
           emitCode(String.format("SDValue %s = curDAG.getTargetExternalSymbol"
                   + "(((ExternalSymbolSDNode)%s).getSymbol(), %s);", tmpVar, val,
-              getEnumName(node.getTypeNum(0))));
+              getEnumName(res0T.getMachineValueType().simpleVT)));
           val = tmpVar;
           modifiedVal = true;
         }
@@ -776,7 +773,7 @@ public class PatternCodeEmitter {
           String tmpVar = "tmp" + resNo;
           emitCode(String.format("SDValue %s = curDAG.getTargetGlobalAddress"
                   + "(((GlobalAddressSDNode)%s).getGlobal(), %s);", tmpVar, val,
-              getEnumName(node.getTypeNum(0))));
+              getEnumName(res0T.getMachineValueType().simpleVT)));
           val = tmpVar;
           modifiedVal = true;
         }
@@ -811,12 +808,12 @@ public class PatternCodeEmitter {
           String targetRegInfoClassName = cgp.getTarget().getName() + "GenRegisterNames";
           emitCode(String.format("SDValue tmp%d = curDAG.getRegister(%s.%s, %s);",
               resNo, targetRegInfoClassName, di.getDef().getName(),
-              getEnumName(node.getTypeNum(0))));
+              getEnumName(res0T.getMachineValueType().simpleVT)));
           nodeOps.add("tmp" + resNo);
           return nodeOps;
         } else if (di.getDef().getName().equals("zero_reg")) {
           emitCode(String.format("SDValue tmp%d = curDAG.getRegister(0, %s);", resNo,
-              getEnumName(node.getTypeNum(0))));
+              getEnumName(res0T.getMachineValueType().simpleVT)));
           nodeOps.add("tmp" + resNo);
           return nodeOps;
         } else if (di.getDef().isSubClassOf("RegisterClass")) {
@@ -832,7 +829,7 @@ public class PatternCodeEmitter {
         int resNo = tmpNo++;
         Util.assertion(node.getExtTypes().size() == 1, "Multiple types are not handled yet!");
         emitCode(String.format("SDValue tmp%d = curDAG.getTargetConstant(%dL, new EVT(%s));",
-            resNo, ii.getValue(), getEnumName(node.getTypeNum(0))));
+            resNo, ii.getValue(), getEnumName(res0T.getMachineValueType().simpleVT)));
         nodeOps.add("tmp" + resNo);
         return nodeOps;
       }
@@ -887,7 +884,7 @@ public class PatternCodeEmitter {
 
       int numPatResults = 0;
       for (int i = 0, e = pattern.getExtTypes().size(); i < e; i++) {
-        int vt = pattern.getTypeNum(i);
+        int vt = pattern.getExtType(0).getMachineValueType().simpleVT;
         if (vt != MVT.isVoid && vt != MVT.Flag)
           ++numPatResults;
       }
@@ -972,16 +969,16 @@ public class PatternCodeEmitter {
       Util.assertion(!cgInst.theDef.getName().isEmpty());
       emitOpcode(cgp.getTarget().getName() + "GenInstrNames." + cgInst.theDef.getName());
 
-      if (numResults > 0 && node.getTypeNum(0) != MVT.isVoid) {
+      if (numResults > 0 && node.getExtType(0).getMachineValueType().simpleVT != MVT.isVoid) {
         code.append(", vt").append(vtNo);
-        emitVT("new EVT(" + getEnumName(node.getTypeNum(0)) + ")");
+        emitVT("new EVT(" + getEnumName(res0T.getMachineValueType().simpleVT) + ")");
       }
 
       for (int i = 0; i < numDestRegs; i++) {
         Record rec = destRegs.get(i);
         if (rec.isSubClassOf("Register")) {
-          int rvt = getRegisterValueType(rec, cgt);
-          code.append(", new EVT(").append(getEnumName(rvt)).append(")");
+          ValueTypeByHwMode rvt = getRegisterValueType(rec, cgt);
+          code.append(", new EVT(").append(getEnumName(rvt.getSimple().simpleVT)).append(")");
         }
       }
 
@@ -1189,12 +1186,14 @@ public class PatternCodeEmitter {
   }
 
   public boolean insertOneTypeCheck(TreePatternNode pat,
-                                    TreePatternNode other, String prefix, boolean isRoot) {
+                                    TreePatternNode other,
+                                    String prefix,
+                                    boolean isRoot) {
     if (!pat.getExtTypes().equals(other.getExtTypes())) {
       pat.setTypes(other.getExtTypes());
       if (!isRoot)
         emitCheck(prefix + ".getNode().getValueType(0) == " +
-            getName(pat.getTypeNum(0)));
+            getName(pat.getExtType(0).getMachineValueType().simpleVT));
       return true;
     }
     int opNo = nodeHasProperty(pat, SDNPHasChain, cgp) ? 1 : 0;
