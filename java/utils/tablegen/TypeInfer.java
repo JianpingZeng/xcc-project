@@ -28,13 +28,13 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
-import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Util;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
@@ -95,12 +95,12 @@ public class TypeInfer {
   public boolean forceArbitrary(TypeSetByHwMode out){
     if (tp.hasError()) return false;
     boolean changed = false;
-    for (TIntObjectIterator<MachineValueTypeSet> itr = out.iterator(); itr.hasNext(); ) {
-      if (itr.value().size() <= 1)
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : out.map.entrySet()) {
+      if (itr.getValue().size() <= 1)
         continue;
-      MVT vt = itr.value().iterator().next();
-      itr.value().clear();
-      itr.value().insert(vt);
+      MVT vt = itr.getValue().iterator().next();
+      itr.getValue().clear();
+      itr.getValue().insert(vt);
       changed = true;
     }
     return changed;
@@ -148,8 +148,8 @@ public class TypeInfer {
                                       InfoByHwMode<T> setB) {
     TIntArrayList res = new TIntArrayList();
     TIntHashSet unique = new TIntHashSet();
-    setA.map.forEachKey(unique::add);
-    setB.map.forEachKey(unique::add);
+    unique.addAll(setA.map.keySet());
+    unique.addAll(setB.map.keySet());
 
     boolean hasDefault = unique.contains(DefaultMode);
     unique.forEach(m-> {
@@ -401,9 +401,9 @@ public class TypeInfer {
     TypeSetByHwMode legalSet = getLegalType();
     boolean hasDefaultDef = legalSet.hasDefault();
 
-    for (TIntObjectIterator<MachineValueTypeSet> itr = vts.iterator(); itr.hasNext(); ) {
-      int m = itr.key();
-      MachineValueTypeSet vt = itr.value();
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : vts.map.entrySet()) {
+      int m = itr.getKey();
+      MachineValueTypeSet vt = itr.getValue();
       if (!legalSet.hasMode(m) && !hasDefaultDef) {
         tp.error("Invalid mode " + m);
         return;
@@ -467,7 +467,7 @@ public class TypeInfer {
   private TypeSetByHwMode getLegalType() {
     if (!isLegalTypeCached) {
       TypeSetByHwMode set = tp.getDAGPatterns().getLegalValueTypes();
-      set.map.forEachValue(mvt-> {legalCache.insert(mvt); return true;} );
+      set.map.keySet().forEach(vt -> legalCache.insert(new MVT(vt)));
       isLegalTypeCached = true;
     }
     TypeSetByHwMode set = new TypeSetByHwMode();

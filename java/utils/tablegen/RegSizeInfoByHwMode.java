@@ -58,22 +58,22 @@ public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
     if (this == obj) return true;
     if (getClass() != obj.getClass()) return false;
     RegSizeInfoByHwMode info = (RegSizeInfoByHwMode) obj;
-    int m0 = map.iterator().key();
+    int m0 = map.firstKey();
     return get(m0).equals(info.get(m0));
   }
 
   @Override
   public int compareTo(RegSizeInfoByHwMode info) {
-    int m0 = map.iterator().key();
+    int m0 = map.firstKey();
     return get(m0).compareTo(info.get(m0));
   }
 
   public boolean isSubClassOf(RegSizeInfoByHwMode info) {
-    int m0 = map.iterator().key();
+    int m0 = map.firstKey();
     return get(m0).isSubClassOf(info.get(m0));
   }
   public boolean hasStricterSpillThan(RegSizeInfoByHwMode info) {
-    int m0 = map.iterator().key();
+    int m0 = map.firstKey();
     RegSizeInfo info0 = get(m0), info1 = info.get(m0);
     return info0.compareTo(info1) > 0;
   }
@@ -87,9 +87,8 @@ public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
           if (o1.first > o2.first) return 1;
           return o1.second.compareTo(o2.second);
         });
-    map.forEachEntry((mode, info) -> {
+    map.forEach((mode, info) -> {
       pairs.add(Pair.get(mode, info));
-      return true;
     });
     StringBuilder buf = new StringBuilder("{");
     int i = 0, e = pairs.size();

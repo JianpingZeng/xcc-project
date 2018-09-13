@@ -17,12 +17,12 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
-import gnu.trove.iterator.TIntObjectIterator;
 import tools.Error;
 import tools.Util;
 import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import static utils.tablegen.SDNodeInfo.SDTypeConstraint.constraintType.*;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
@@ -159,8 +159,8 @@ public final class SDNodeInfo {
       if (r.isSubClassOf("SDTCisVT")) {
         constraintType = SDTCisVT;
         vvt = getValueTypeByHwMode(r.getValueAsDef("VT"), hwModes);
-        for (TIntObjectIterator<MVT> itr = vvt.iterator(); itr.hasNext(); ) {
-          if (itr.value().simpleVT == MVT.isVoid)
+        for (Map.Entry<Integer, MVT> itr : vvt.map.entrySet()) {
+          if (itr.getValue().simpleVT == MVT.isVoid)
             Error.printFatalError(r.getLoc(), "Can't use 'Void' as type to SDTCisVT");
         }
       } else if (r.isSubClassOf("SDTCisPtrTy")) {

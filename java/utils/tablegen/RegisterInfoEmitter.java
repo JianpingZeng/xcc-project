@@ -57,7 +57,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       if (registers == null || registers.isEmpty())
         Error.printFatalError("No 'Register' subclasses defined in td file!");
 
-      os.println("package backend.target.x86;\n");
+      os.printf("package backend.target.%s;\n", targetName.toLowerCase());
       emitSourceFileHeaderComment("Target Register Enum Values", os);
 
       int initValue = 0;
@@ -84,7 +84,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     try (PrintStream os = outputFile.equals("-") ?
         System.out : new PrintStream(outputFile)) {
-      os.printf("package backend.target.%s;\n\n", className.toLowerCase());
+      os.printf("package backend.target.%s;\n\n", targetName.toLowerCase());
 
       emitSourceFileHeaderComment("Register Information Source Fragment",
           os);
@@ -96,8 +96,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           + "import backend.target.TargetRegisterDesc;\n"
           + "import backend.target.TargetRegisterInfo;\n"
           + "import backend.codegen.EVT;\n\n"
-          + "import static backend.target.%s.X86GenRegisterNames.*;\n",
-          className.toLowerCase());
+          + "import static backend.target.%s.%sGenRegisterNames.*;\n",
+          targetName.toLowerCase(), targetName);
 
 
       os.printf("public abstract class %s extends TargetRegisterInfo \n{\t",

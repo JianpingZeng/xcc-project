@@ -83,10 +83,7 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
           return 1;
         }
     );
-    map.forEachEntry((mode, vt) -> {
-      pairs.add(Pair.get(mode, vt));
-      return true;
-    });
+    map.forEach((m, vt) -> pairs.add(Pair.get(m, vt)));
     StringBuilder buf = new StringBuilder("{");
     int i = 0, e = pairs.size();
     for (Pair<Integer, MVT> itr : pairs)

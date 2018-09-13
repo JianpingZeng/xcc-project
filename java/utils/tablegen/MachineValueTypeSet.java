@@ -40,7 +40,7 @@ import java.util.function.Predicate;
  * @version 0.4
  */
 public class MachineValueTypeSet implements Iterable<MVT> {
-  private final static int Capability = Integer.MAX_VALUE;
+  private final static int Capability = 1024;
   // sizeof(char) * sizeof(long) = 64.
   private final static int WordWidth = 64;
   private final static int NumWords = Capability/WordWidth;

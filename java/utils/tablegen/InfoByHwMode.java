@@ -16,9 +16,11 @@
  */
 package utils.tablegen;
 
-import gnu.trove.iterator.TIntObjectIterator;
-import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.Util;
+
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 
@@ -27,13 +29,13 @@ import static utils.tablegen.CodeGenHwModes.DefaultMode;
  * @author Jianping Zeng.
  */
 public class InfoByHwMode<T> {
-  protected TIntObjectHashMap<T> map;
+  protected TreeMap<Integer, T> map;
 
   public InfoByHwMode() {
-    map = new TIntObjectHashMap<>();
+    map = new TreeMap<>();
   }
-  public TIntObjectIterator<T> iterator() {
-    return map.iterator();
+  public Iterator<Map.Entry<Integer,T>> iterator() {
+    return map.entrySet().iterator();
   }
 
   public int size() {return map.size(); }
@@ -60,16 +62,12 @@ public class InfoByHwMode<T> {
 
   public boolean isSimple() {
     if (map.size() != 1) return false;
-    TIntObjectIterator<T> itr = map.iterator();
-      Util.assertion(itr.hasNext());
-      if (itr.key() == DefaultMode)
-        return true;
-    return false;
+    return map.firstKey() == DefaultMode;
   }
 
   public T getSimple() {
     Util.assertion(isSimple());
-    return map.iterator().value();
+    return map.get(map.firstKey());
   }
 
   public void makeSimple(int mode) {

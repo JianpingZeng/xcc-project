@@ -118,7 +118,8 @@ public final class CodeGenRegisterClass {
     // add a register info by default mode.
     if (!regInfos.hasDefault()) {
       RegSizeInfo ri = new RegSizeInfo();
-      ri.regSize = ri.spillSize = size != 0 ? size : vts.get(0).getSimple().getSizeInBits();
+      ri.regSize = ri.spillSize = size != 0 ? size :
+              vts.get(0).getSimple().getSizeInBits();
       ri.spillAlignment = r.getValueAsInt("Alignment");
       regInfos.map.put(DefaultMode, ri);
     }

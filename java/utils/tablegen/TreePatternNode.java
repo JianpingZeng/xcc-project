@@ -17,7 +17,6 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
-import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 import utils.tablegen.Init.DefInit;
@@ -259,11 +258,11 @@ public final class TreePatternNode implements Cloneable {
           return madeChanged;
 
         ValueTypeByHwMode vvt = tp.getTypeInfer().getConcrete(types.get(0), false);
-        for (TIntObjectIterator<MVT> itr = vvt.iterator(); itr.hasNext();) {
-          int vt = itr.value().simpleVT;
+        for (Map.Entry<Integer, MVT> itr : vvt.map.entrySet()) {
+          int vt = itr.getValue().simpleVT;
           if (vt == MVT.iPTR || vt == MVT.iPTRAny)
             continue;
-          int size = itr.value().getSizeInBits();
+          int size = itr.getValue().getSizeInBits();
           if (size >= 32)
             continue;
 

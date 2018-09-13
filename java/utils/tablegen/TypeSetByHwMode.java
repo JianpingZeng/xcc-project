@@ -28,13 +28,9 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
-import gnu.trove.iterator.TIntObjectIterator;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.function.Predicate;
 
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
@@ -65,38 +61,39 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   }
 
   public boolean isValueTypeByHwMode(boolean allowEmpty) {
-    for (TIntObjectIterator<MachineValueTypeSet> itr = iterator(); itr.hasNext(); ) {
-      if (itr.value().size() > 1)
+    for (Iterator<Map.Entry<Integer, MachineValueTypeSet>> itr = iterator();
+         itr.hasNext(); ) {
+      Map.Entry<Integer, MachineValueTypeSet> item = itr.next();
+      if (item.getValue().size() > 1)
         return false;
-      if (!allowEmpty && itr.value().isEmpty())
+      if (!allowEmpty && item.getValue().isEmpty())
         return false;
     }
     return true;
   }
   public ValueTypeByHwMode getValueTypeByHwMode() {
     ValueTypeByHwMode res = new ValueTypeByHwMode();
-    map.forEachEntry((mode, info) -> {
+    map.forEach((mode, info) -> {
       MVT vt = info.isEmpty() ? new MVT(MVT.Other) : info.iterator().next();
       res.getOrCreateTypeForMode(mode, vt);
-      return true;
     });
     return res;
   }
 
   public boolean isMachineValueType() {
-    return isDefaultOnly() && iterator().value().size() == 1;
+    return isDefaultOnly() && map.firstEntry().getValue().size() == 1;
   }
 
   public boolean isDefaultOnly() {
-    return size() == 1 && iterator().key() == DefaultMode;
+    return size() == 1 && map.firstKey() == DefaultMode;
   }
   public MVT getMachineValueType() {
     Util.assertion(isMachineValueType());
-    return map.iterator().value().iterator().next();
+    return map.firstEntry().getValue().iterator().next();
   }
   public boolean isPossible() {
-    for (TIntObjectIterator<MachineValueTypeSet> itr = iterator(); itr.hasNext(); ) {
-      if (!itr.value().isEmpty())
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+      if (!itr.getValue().isEmpty())
         return true;
     }
     return false;
@@ -104,16 +101,16 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public boolean insert(ValueTypeByHwMode vvt) {
     boolean changed = false;
     TreeSet<Integer> modes = new TreeSet<>();
-    for (TIntObjectIterator<MVT> itr = vvt.iterator(); itr.hasNext(); ) {
-      int mode = itr.key();
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+      int mode = itr.getKey();
       modes.add(mode);
-      changed |= getOrCreate(mode).insert(itr.value());
+      changed |= getOrCreate(mode).insert(itr.getValue()) != itr.getValue();
     }
     if (modes.contains(DefaultMode)) {
       MVT vt = vvt.getType(DefaultMode);
-      for (TIntObjectIterator<MachineValueTypeSet> itr = iterator(); itr.hasNext(); ) {
-        if (!modes.contains(itr.key()))
-          changed |= itr.value().insert(vt);
+      for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+        if (!modes.contains(itr.getKey()))
+          changed |= itr.getValue().insert(vt);
       }
     }
     return changed;
@@ -121,7 +118,7 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
 
   public boolean insert(TypeSetByHwMode set) {
     Util.assertion(isEmpty(), "Only use this method on empty");
-    set.map.forEachEntry((mode, vts) -> {map.put(mode, vts); return true; });
+    set.map.forEach((mode, vts) -> {map.put(mode, vts); });
     return true;
   }
 
@@ -133,17 +130,17 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public boolean constrain(TypeSetByHwMode vts) {
     boolean changed = false;
     if (hasDefault()) {
-      for (TIntObjectIterator<MachineValueTypeSet> itr = vts.iterator(); itr.hasNext();){
-        if (itr.key() == DefaultMode || hasMode(itr.key()))
+        for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+        if (itr.getKey() == DefaultMode || hasMode(itr.getKey()))
           continue;
-        map.put(itr.key(), map.get(DefaultMode));
+        map.put(itr.getKey(), map.get(DefaultMode));
         changed = true;
       }
     }
 
-    for (TIntObjectIterator<MachineValueTypeSet> itr =iterator(); itr.hasNext();){
-      int m = itr.key();
-      MachineValueTypeSet set = itr.value();
+      for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+      int m = itr.getKey();
+      MachineValueTypeSet set = itr.getValue();
       if (vts.hasMode(m) || vts.hasDefault())
         changed |= intersect(set, vts.get(m));
       else if (!set.isEmpty()) {
@@ -161,8 +158,9 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
    */
   public boolean constrain(Predicate<MVT> pred) {
     boolean changed = false;
-    for (TIntObjectIterator<MachineValueTypeSet> itr = iterator(); itr.hasNext(); )
-      changed |= itr.value().eraseIf(mvt -> !pred.test(mvt));
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+      changed |= itr.getValue().eraseIf(mvt -> !pred.test(mvt));
+    }
     return changed;
   }
 
@@ -173,9 +171,9 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
    * @return  Return true if the result map is not empty.
    */
   public boolean assignIf(TypeSetByHwMode vts, Predicate<MVT> pred) {
-    for (TIntObjectIterator<MachineValueTypeSet> itr = map.iterator(); itr.hasNext(); ) {
-      MachineValueTypeSet set = getOrCreate(itr.key());
-      for (Iterator<MVT> vt = itr.value().iterator(); vt.hasNext(); ) {
+  for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+      MachineValueTypeSet set = getOrCreate(itr.getKey());
+      for (Iterator<MVT> vt = itr.getValue().iterator(); vt.hasNext(); ) {
         MVT v = vt.next();
         if (pred.test(v))
           set.insert(v);
@@ -188,7 +186,7 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public String toString() {
     StringBuilder buf = new StringBuilder();
     ArrayList<Integer> modes = new ArrayList<>();
-    map.forEach(modes::add);
+    modes.addAll(map.keySet());
     if (modes.isEmpty()) {
       buf.append("{}");
       return buf.toString();
@@ -217,14 +215,14 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
 
     if (isEmpty()) {
       if (set.isSimple())
-        return iterator().key() == set.iterator().key() &&
-            iterator().value().equals(set.iterator().value());
+        return this.map.firstKey() == set.map.firstKey() &&
+                this.map.firstEntry().getValue().equals(set.map.firstEntry().getValue());
       return false;
     }
 
     TreeSet<Integer> modes = new TreeSet<>();
-    map.forEach(modes::add);
-    set.map.forEach(modes::add);
+    modes.addAll(map.keySet());
+    modes.addAll(set.map.keySet());
 
     if (hasDefault) {
       for (int m : modes) {

@@ -167,6 +167,8 @@ public final class MVT implements Comparable<MVT> {
         return "MVT.fAny";
       case vAny:
         return "MVT.vAny";
+      case f16:
+        return "MVT.f16";
       case f32:
         return "MVT.f32";
       case f64:
@@ -211,16 +213,30 @@ public final class MVT implements Comparable<MVT> {
         return "MVT.v2i64";
       case v4i64:
         return "MVT.v4i64";
+      case v2f16:
+        return "MVT.v2f16";
+      case v4f16:
+        return "MVT.v4f16";
+      case v8f16:
+        return "MVT.v8f16";
+      case v1f32:
+        return "MVT.v1f32";
       case v2f32:
         return "MVT.v2f32";
       case v4f32:
         return "MVT.v4f32";
       case v8f32:
         return "MVT.v8f32";
+      case v16f32:
+        return "MVT.v16f32";
+      case v1f64:
+        return "MVT.v1f64";
       case v2f64:
         return "MVT.v2f64";
       case v4f64:
         return "MVT.v4f64";
+      case v8f64:
+        return "MVT.v8f64";
       case Metadata:
         return "MVT.Metadata";
       case iPTR:
@@ -244,27 +260,30 @@ public final class MVT implements Comparable<MVT> {
   public int getSizeInBits() {
     switch (simpleVT) {
       case iPTR:
-        Util.assertion(false, "Value type is target-dependent. Ask for TLI.");
+        Util.assertion("Value type is target-dependent. Ask for TLI.");
         return 0;
       case iPTRAny:
       case iAny:
       case fAny:
-        Util.assertion(false, "Value type is overloaded.");
+        Util.assertion("Value type is overloaded.");
         return 0;
       default:
-        Util.assertion(false, "getSizeInBits called on extended MVT.");
+        Util.assertion("getSizeInBits called on extended MVT.");
         return 0;
       case i1:
         return 1;
       case i8:
         return 8;
       case i16:
+      case f16:
       case v2i8:
         return 16;
       case i32:
       case f32:
       case v4i8:
       case v2i16:
+      case v2f16:
+      case v1f32:
         return 32;
       case i64:
       case f64:
@@ -273,6 +292,8 @@ public final class MVT implements Comparable<MVT> {
       case v2i32:
       case v1i64:
       case v2f32:
+      case v4f16:
+      case v1f64:
         return 64;
       case f80:
         return 80;
@@ -283,6 +304,8 @@ public final class MVT implements Comparable<MVT> {
       case v4i32:
       case v4f32:
       case v2i64:
+      case v2f64:
+      case v8f16:
         return 128;
       case v32i8:
       case v16i16:
@@ -291,6 +314,8 @@ public final class MVT implements Comparable<MVT> {
       case v8f32:
       case v4f64:
         return 256;
+      case v16f32:
+        return 512;
     }
   }
 
