@@ -19,6 +19,7 @@ package utils.tablegen;
 
 import tools.Util;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -312,7 +313,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
   }
 
   @Override
-  public void run(String outputFile) {
+  public void run(String outputFile) throws FileNotFoundException {
     Util.assertion(outputFile != null && !outputFile.isEmpty(), "Invalid path to output file");
 
 

@@ -40,14 +40,12 @@ set(OUT_INCLUDE_DIR "${XCC_BINARY_DIR}/include")
 set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
-set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/x86")
 set(GEN_OPTIONS_SRCS "${GEN_SOURCES_DIR}/xcc")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
-set(EXCLUDE_TARGET "${SRC_DIR}/backend/target/x86")
 set(EXCLUDE_JLANG_DRIVER "${SRC_DIR}/xcc")
 
 # Find the executable for displaying dot file.
@@ -102,11 +100,18 @@ message(STATUS "JDK_HOME: ${JDK_HOME}")
 message(STATUS "JDK_LIBS: ${JDK_LIBS}")
 message(STATUS "JDK_INCLUDES: ${JDK_INCLUDES}")
 
-set(XCC_TARGETS_TO_BUILD
-    X86)
-set(XCC_TARGET_ARCH "host"
-  CACHE STRING "Set target to use for LLVM JIT or use \"host\" for automatic detection.")
+set(XCC_ALL_TARGETS
+    X86
+    RISCV
+)
 
+# Enable all targets by default.
+if ((XCC_TARGETS_TO_BUILD_STREQUAL "") OR (XCC_TARGETS_TO_BUILD STREQUAL "all"))
+    set(XCC_TARGETS_TO_BUILD ${XCC_ALL_TARGETS})
+endif()
+
+set(XCC_TARGET_ARCH "host"
+  CACHE STRING "Set target to use for XCC or use \"host\" for automatic detection.")
 
 # Add path for custom modules
 set(CMAKE_MODULE_PATH
@@ -126,7 +131,7 @@ set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Produce ${GEN_SOURCES_DIR}/config/Config.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
 
-add_custom_target(xcc_config
+add_custom_target(XccConfig
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
     DEPENDS ${CONFIG_SRC}
     COMMENT "Compiling XCC configuration file...")
@@ -177,16 +182,23 @@ set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
 # Generate tools_CPUInfoUtility.h header file.
 add_custom_target(GenCpuInfoHeader
     COMMAND javah -cp ${XCC_BINARY_DIR}/classes -d ${XCC_BINARY_DIR}/include tools.CPUInfoUtility
-    DEPENDS xcc_config
+    DEPENDS XccConfig
     COMMENT "Generating header file for GetCpuIDAndInfo...")
 
 # Add sources file to be compiled.
 file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
-file(GLOB TARGET_SRCS
-    ${SRC_DIR}/backend/target/x86/*.java)
 
-# The jlang driver relatied sources
+# The jlang driver related sources
 file(GLOB_RECURSE JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
+
+# Collects targets to be excluded.
+foreach(t ${XCC_TARGETS_TO_BUILD})
+    string(TOLOWER ${t} LOWER_TARGET)
+    set(EXCLUDE_TARGET "${EXCLUDE_TARGET}|${LOWER_TARGET}")
+endforeach()
+
+set(TMP_TARGET "${EXCLUDE_TARGET}")
+string(REGEX REPLACE "^\\|" "" EXCLUDE_TARGET ${TMP_TARGET})
 
 # Remove target-specific or jlang driver related source files.
 foreach (file ${SRCS_NO_TARGET})
@@ -232,32 +244,39 @@ file(MAKE_DIRECTORY ${CLASSES_DIR})
 
 # Custom target for compiling jlang/backend source files except for
 # target-specific codes.
-add_custom_target(classes_no_target
+add_custom_target(CommonBackend
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
-    DEPENDS xcc_config
+    DEPENDS XccConfig
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
 # A macro definition for generating target-specific AsmPrinter, registerInfo
 # information etc.
-file(MAKE_DIRECTORY ${GEN_TBLGEN_SRCS})
 macro(tablegen ofn)
   set(local_tds "${CMAKE_CURRENT_SOURCE_DIR}/tds ${CMAKE_CURRENT_SOURCE_DIR}/tds/X86")
   add_custom_command(OUTPUT ${GEN_TBLGEN_SRCS}/${ofn}
     COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen ${ARGN} -I ${local_tds}
     ${CMAKE_CURRENT_SOURCE_DIR}/tds/X86/X86.td -o ${GEN_TBLGEN_SRCS}/${ofn}
-    DEPENDS classes_no_target
+    DEPENDS CommonBackend
     COMMENT "Building ${ofn}...")
     set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_TBLGEN_SRCS}/${ofn})
 endmacro(tablegen)
 
-tablegen(X86GenATTAsmPrinter.java -gen-asm-printer)
-tablegen(X86GenRegisterInfo.java -gen-register-info)
-tablegen(X86GenRegisterNames.java -gen-register-names)
-tablegen(X86GenInstrInfo.java -gen-instr-info)
-tablegen(X86GenInstrNames.java -gen-instr-names)
-tablegen(X86GenSubtarget.java -gen-subtarget)
-tablegen(X86GenCallingConv.java -gen-callingconv)
-TableGen(X86GenDAGToDAGISel.java -gen-dag-isel)
+# Generates TableGen files for each target.
+foreach(t ${XCC_TARGETS_TO_BUILD})
+    message(STATUS "Targeting ${t}")
+    string(TOLOWER ${t} LOWER_TARGET)
+    set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/${LOWER_TARGET}")
+    #message(STATUS "${GEN_TBLGEN_SRCS}")
+    file(MAKE_DIRECTORY "${GEN_TBLGEN_SRCS}")
+    tablegen(${t}GenATTAsmPrinter.java -gen-asm-printer)
+    tablegen(${t}GenRegisterInfo.java -gen-register-info)
+    tablegen(${t}GenRegisterNames.java -gen-register-names)
+    tablegen(${t}GenInstrInfo.java -gen-instr-info)
+    tablegen(${t}GenInstrNames.java -gen-instr-names)
+    tablegen(${t}GenSubtarget.java -gen-subtarget)
+    tablegen(${t}GenCallingConv.java -gen-callingconv)
+    TableGen(${t}GenDAGToDAGISel.java -gen-dag-isel)
+endforeach()
 
 # Generates jlang options for jlang driver.
 file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})
@@ -266,7 +285,7 @@ macro(JlangTableGen ofn)
   add_custom_command(OUTPUT ${GEN_OPTIONS_SRCS}/${ofn}
   COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
   -o ${GEN_OPTIONS_SRCS}/${ofn} ${ARGN} -I ${local_tds} ${local_tds}/Options.td
-  DEPENDS classes_no_target
+  DEPENDS CommonBackend
   COMMENT "Building ${ofn}...")
   set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
   ${GEN_OPTIONS_SRCS}/${ofn}
