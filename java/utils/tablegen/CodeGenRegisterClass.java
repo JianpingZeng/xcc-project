@@ -105,11 +105,14 @@ public final class CodeGenRegisterClass {
     // Allow targets to override the size and alignment in bits of
     // the RegisterClass.
     RecordVal regInfoRec = r.getValue("RegInfos");
+    regInfos = new RegSizeInfoByHwMode();
+
     if (regInfoRec != null && regInfoRec.getValue() instanceof DefInit)
       regInfos = new RegSizeInfoByHwMode(((DefInit)regInfoRec.getValue()).getDef(), cgh);
 
     long size = r.getValueAsInt("Size");
-    Util.assertion(size != 0 || regInfos.hasDefault() || vts.get(0).isSimple(),
+    Util.assertion(size != 0 || (regInfos != null &&
+            regInfos.hasDefault()) || vts.get(0).isSimple(),
         "Impossible to determine the register size");
 
     // add a register info by default mode.

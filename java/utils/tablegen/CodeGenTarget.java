@@ -65,9 +65,6 @@ public final class CodeGenTarget {
 
     // Read register classes description information from records.
     readRegisterClasses();
-
-    // Read the instruction description information from records.
-    // readInstructions();
   }
 
   public CodeGenHwModes getHwModes() { return hwModes; }
@@ -188,8 +185,7 @@ public final class CodeGenTarget {
     return registers;
   }
 
-  public TreeMap<String, CodeGenInstruction> getInstructions()
-      {
+  public TreeMap<String, CodeGenInstruction> getInstructions() {
     if (insts == null || insts.isEmpty())
       readInstructions();
     return insts;

@@ -59,8 +59,12 @@ public class InfoByHwMode<T> {
   }
 
   public boolean isSimple() {
-    return map.size() == 1 && map.iterator().key() ==
-        DefaultMode;
+    if (map.size() != 1) return false;
+    TIntObjectIterator<T> itr = map.iterator();
+      Util.assertion(itr.hasNext());
+      if (itr.key() == DefaultMode)
+        return true;
+    return false;
   }
 
   public T getSimple() {

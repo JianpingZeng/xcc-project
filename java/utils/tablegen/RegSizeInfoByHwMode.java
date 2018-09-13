@@ -41,6 +41,10 @@ import static utils.tablegen.CodeGenHwModes.getModeName;
 public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
     implements Comparable<RegSizeInfoByHwMode> {
 
+  public RegSizeInfoByHwMode() {
+    super();
+  }
+
   public RegSizeInfoByHwMode(Record r, CodeGenHwModes cgh) {
     HwModeSelect ms = cgh.getHwModeSelect(r);
     for (Pair<Integer, Record> itr : ms.items) {

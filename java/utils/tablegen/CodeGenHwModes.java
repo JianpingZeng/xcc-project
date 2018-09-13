@@ -84,6 +84,10 @@ public class CodeGenHwModes {
   private HashMap<Record, HwModeSelect> modeSelects;
 
   public CodeGenHwModes(RecordKeeper keeper) {
+    nodeIds = new TObjectIntHashMap<>();
+    modes = new ArrayList<>();
+    modeSelects = new HashMap<>();
+
     ArrayList<Record> ms = keeper.getAllDerivedDefinition("HwMode");
     // remove default HwMode.
     for (Iterator<Record> itr = ms.iterator(); itr.hasNext(); ) {
@@ -91,8 +95,8 @@ public class CodeGenHwModes {
       if (!m.getName().equals(DefaultModeName))
         continue;
       itr.remove();
-      break;
     }
+
     for (Record r : ms) {
       modes.add(new HwMode(r));
       int newId = modes.size();
@@ -103,6 +107,8 @@ public class CodeGenHwModes {
   }
 
   public int getHwMode(String name) {
+    if (name.equals(DefaultModeName))
+      return DefaultMode;
     Util.assertion(nodeIds.containsKey(name));
     return nodeIds.get(name);
   }

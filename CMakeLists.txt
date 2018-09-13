@@ -47,6 +47,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(EXCLUDE_JLANG_DRIVER "${SRC_DIR}/xcc")
+set(TARGET_DIRECTORY "${SRC_DIR}/backend/target")
 
 # Find the executable for displaying dot file.
 set(XDOT "xdot")
@@ -192,7 +193,7 @@ file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
 file(GLOB_RECURSE JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
 
 # Collects targets to be excluded.
-foreach(t ${XCC_TARGETS_TO_BUILD})
+foreach(t ${XCC_ALL_TARGETS})
     string(TOLOWER ${t} LOWER_TARGET)
     set(EXCLUDE_TARGET "${EXCLUDE_TARGET}|${LOWER_TARGET}")
 endforeach()
@@ -212,7 +213,6 @@ foreach (file ${SRCS_NO_TARGET})
 
 endforeach()
 
-#message(STATUS "${SRCS_NO_TARGET}")
 #file(GLOB_RECURSE TROVE_SRCS "${XCC_SOURCE_DIR}/external/trove/*.java")
 file(GLOB TROVE_SRCS
     external/trove/gnu/trove/*.java
@@ -252,10 +252,10 @@ add_custom_target(CommonBackend
 # A macro definition for generating target-specific AsmPrinter, registerInfo
 # information etc.
 macro(tablegen ofn)
-  set(local_tds "${CMAKE_CURRENT_SOURCE_DIR}/tds ${CMAKE_CURRENT_SOURCE_DIR}/tds/X86")
+  set(local_tds "${CMAKE_CURRENT_SOURCE_DIR}/tds ${CMAKE_CURRENT_SOURCE_DIR}/tds/${t}")
   add_custom_command(OUTPUT ${GEN_TBLGEN_SRCS}/${ofn}
     COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen ${ARGN} -I ${local_tds}
-    ${CMAKE_CURRENT_SOURCE_DIR}/tds/X86/X86.td -o ${GEN_TBLGEN_SRCS}/${ofn}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tds/${t}/${t}.td -o ${GEN_TBLGEN_SRCS}/${ofn}
     DEPENDS CommonBackend
     COMMENT "Building ${ofn}...")
     set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_TBLGEN_SRCS}/${ofn})
@@ -263,10 +263,10 @@ endmacro(tablegen)
 
 # Generates TableGen files for each target.
 foreach(t ${XCC_TARGETS_TO_BUILD})
-    message(STATUS "Targeting ${t}")
     string(TOLOWER ${t} LOWER_TARGET)
     set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/${LOWER_TARGET}")
-    #message(STATUS "${GEN_TBLGEN_SRCS}")
+    file(GLOB_RECURSE TARGET_SRCS "${TARGET_DIRECTORY}/${LOWER_TARGET}/*.java")
+
     file(MAKE_DIRECTORY "${GEN_TBLGEN_SRCS}")
     tablegen(${t}GenATTAsmPrinter.java -gen-asm-printer)
     tablegen(${t}GenRegisterInfo.java -gen-register-info)
@@ -312,7 +312,7 @@ macro(add_gen_tblgen target_name)
 endmacro(add_gen_tblgen)
 
 #message(STATUS "TABLEGEN_OUTPUT: ${TABLEGEN_OUTPUT}")
-add_gen_tblgen(CompileTableGen)
+add_gen_tblgen(BuildTargetSpecific)
 
 # A macro for creating jar package from class files.
 macro (add_gen_jar)
@@ -321,7 +321,7 @@ macro (add_gen_jar)
     endif()
     add_custom_target(jar ALL
         COMMAND ${JAVA_ARCHIVE} -cf "${OUT_LIB_DIR}/${XCC_JAR}" -C ${CLASSES_DIR} .
-        DEPENDS CompileTableGen
+        DEPENDS BuildTargetSpecific
         WORKING_DIRECTORY ${CLASSES_DIR}
         COMMENT "Building jar")
 endmacro(add_gen_jar)
