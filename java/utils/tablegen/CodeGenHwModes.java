@@ -119,7 +119,12 @@ public class CodeGenHwModes {
   }
 
   public int getNumNodeIds() {
-    return nodeIds.size();
+    return nodeIds.size() + 1;
+  }
+
+  public HwMode getMode(int idx) {
+    Util.assertion(idx > 0, "0 index reserved for default mode");
+    return modes.get(idx-1);
   }
 
   public void dump() {

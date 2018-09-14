@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Error;
@@ -25,6 +26,8 @@ import tools.Util;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.*;
+
+import static backend.codegen.MVT.getEnumName;
 
 /**
  * @author Jianping Zeng
@@ -95,6 +98,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           + "import backend.target.TargetRegisterClass;\n"
           + "import backend.target.TargetRegisterDesc;\n"
           + "import backend.target.TargetRegisterInfo;\n"
+          + "import backend.target.RegClassInfo;\n"
           + "import backend.codegen.EVT;\n\n"
           + "import static backend.target.%s.%sGenRegisterNames.*;\n",
           targetName.toLowerCase(), targetName);
@@ -107,10 +111,40 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       generateRegClassesArray(os);
 
       // Generates the value type for each register class.
-      generateValueTypeForRegClass(os);
+      HashMap<TIntArrayList, String> vtForRC = new HashMap<>();
+      generateValueTypeForRegClass(os, vtForRC);
 
+      generateRegClassInfo(os, vtForRC);
       generateRegisterClasses(os);
     }
+  }
+
+  private void generateRegClassInfo(PrintStream os,
+                                    HashMap<TIntArrayList, String> vtForRC) {
+    os.println("\n\t// Register Class information");
+    os.println("\tpublic static final RegClassInfo[] RegClassInfos = {");
+    CodeGenHwModes cgh = target.getHwModes();
+    int numModes = cgh.getNumNodeIds();
+
+    for (int m = 0; m < numModes; m++) {
+      String modeName = m == 0 ? "Default" : cgh.getMode(m).name;
+      os.printf("\t\t//%d(%s)%n", m, modeName);
+      for (CodeGenRegisterClass rc : target.getRegisterClasses()) {
+        ArrayList<ValueTypeByHwMode> vvts = rc.getValueTypes();
+        TIntArrayList simpleVTs = new TIntArrayList();
+        for (ValueTypeByHwMode v : vvts)
+          simpleVTs.add(v.get(m).simpleVT);
+
+        Util.assertion(vtForRC.containsKey(simpleVTs));
+        String vtsName = vtForRC.get(simpleVTs);
+        long regSize = rc.regInfos.get(m).regSize;
+        long spillSize = rc.regInfos.get(m).spillSize;
+        long alignment = rc.regInfos.get(m).spillAlignment;
+        os.printf("\t\tnew RegClassInfo(%d, %d, %d, %s),\n",
+            regSize, spillSize, alignment, vtsName);
+      }
+    }
+    os.println("\t};\n");
   }
 
   private void generateRegClassesArray(PrintStream os) {
@@ -120,28 +154,50 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       String name = rc.theDef.getName();
 
       os.printf("\n\t//%s Register Class...\n", name);
+      int i = 0;
       os.printf("\tpublic static final int[] %s = {\n\t\t", name);
       for (CodeGenRegister r : rc.members) {
         os.printf("%s, ", r.getName());
+        if (i != 0 && i %10 == 0)
+          os.print("\n\t\t");
+        ++i;
       }
-      os.printf("\n\t};\n\n");
+      os.printf("\n\t};\n");
     }
   }
 
-  private void generateValueTypeForRegClass(PrintStream os) {
+  private void generateValueTypeForRegClass(PrintStream os,
+                                            HashMap<TIntArrayList, String> vtForRC) {
     ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
 
-    for (CodeGenRegisterClass rc : regClasses) {
-      // Given the value type a legal Java name if it is anonymous.
-      String name = rc.theDef.getName() + "VTs";
+    int numModes = target.getHwModes().getNumNodeIds();
+    for (int m = 0; m < numModes; m++) {
+      // compute vts for each mode.
+      for (CodeGenRegisterClass rc : regClasses) {
+        ArrayList<ValueTypeByHwMode> vvts = rc.getValueTypes();
+        TIntArrayList simpleVTs = new TIntArrayList();
+        for (ValueTypeByHwMode v : vvts)
+          simpleVTs.add(v.get(m).simpleVT);
 
-      os.printf("\n\t// %s Register Class Value Type...\n", name);
-      os.printf("\tpublic static final EVT[] %s = {\n\t\t", name);
-      for (int i = 0; i < rc.vts.size(); i++)
-        os.printf("new EVT(new MVT(%s)), ",(rc.vts.get(i)).toString());
-
-      os.print("new EVT(new MVT(MVT.Other))\n\t};\n\n");
+        // Given the value type a legal Java name if it is anonymous.
+        String name = m == 0 ? "Default" : target.getHwModes().getMode(m).name;
+        name += rc.theDef.getName() + "VTs";
+        vtForRC.put(simpleVTs, name);
+      }
     }
+
+    vtForRC.forEach((vts, name) -> {
+      os.printf("\tpublic static final int[] %s = {\n\t\t", name);
+      for (int i = 0, e = vts.size(); i < e; i++) {
+        int vt = vts.get(i);
+        os.printf("%s, ", getEnumName(vt));
+
+        if (i !=0 && i % 10 == 0)
+          os.printf("\n\t\t");
+      }
+      os.printf("\n\t};\n");
+    });
+
   }
 
   /**
@@ -196,18 +252,18 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     for (CodeGenRegisterClass rc : regClasses) {
       String name = rc.getName();
       // output the register class definition.
-      os.printf("\n\tpublic final static class %sClass extends TargetRegisterClass\n\t{",
+      os.printf("\n\tpublic final static class %sClass extends TargetRegisterClass \t{",
           name);
 
       os.println("\n\t\t// Only allow one instance for this class.");
-      os.printf("\n\t\tprivate static %sClass instance = new %sClass();\n", name, name);
-      os.printf("\n\t\tpublic static %sClass getInstance() { return instance;}\n", name);
+      os.printf("\t\tprivate static %sClass instance = new %sClass();\n", name, name);
+      os.printf("\t\tpublic static %sClass getInstance() { return instance;}\n", name);
 
       os.printf("\n\t\tprivate %sClass()\n\t\t{\n\t\t\t "
-              + "super(%sRegClassID, \"%s\", %sVTs, %sSubclasses, \n"
+              + "super(%sRegClassID, \"%s\", %sSubclasses, \n"
               + "\t\t\t%sSuperclasses, %sSubRegClasses, %sSuperRegClasses, \n"
-              + "\t\t\t%d, %s); \n\t\t}\n",
-          name, name, name, name, name,
+              + "\t\t\t%d, %s); \n\t\t}",
+          name, name, name, name,
           name,
           name,
           name,
@@ -215,7 +271,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           rc.getName());
 
       os.println(rc.methodBodies);
-      os.println("\n\t}");
+      os.println("\t}");
     }
 
     // Emit the sub-register classes for each RegisterClass.
@@ -727,7 +783,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     // Emit the subregister + index mapping function based on the information
     // calculated above.
     os.printf("\tpublic int getSubReg(int regNo, int index)\n\t{\n\t");
-    os.printf("switch(regNo)\n\t\t{\n\t\t\t");
+    os.printf("\tswitch(regNo)\n\t\t{\n\t\t\t");
     os.printf("default: return 0;\n");
 
     for (Map.Entry<Record, ArrayList<Pair<Integer, Record>>> pair : subRegList.entrySet()) {
@@ -745,12 +801,13 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     // emit the fields and constructors for X86GenRegisterInfo.
     os.printf("\tpublic %s(int callFrameSetupOpCode, "
-        + "int callFrameDestroyOpCode)\n\t{\n\t\t", className);
+        + "int callFrameDestroyOpCode, int mode)\n\t{\n\t\t", className);
     os.println("super(registerDescriptors, registerClasses,"
         + "\n\t\t\t\tcallFrameSetupOpCode, callFrameDestroyOpCode,"
         + "\n\t\t\t\tSubregHashTable, SubregHashTableSize,"
         + "\n\t\t\t\tSuperregHashTable, SuperregHashTableSize,"
-        + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize);");
+        + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize, "
+        + "\n\t\t\t\tRegClassInfos, mode);");
 
     os.println("\t}");
     os.println("}");
