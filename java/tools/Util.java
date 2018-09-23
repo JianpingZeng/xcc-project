@@ -802,4 +802,21 @@ public class Util {
     }
     return max;
   }
+
+  public static String getLegalJavaName(String opName) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0, e = opName.length(); i < e; i++) {
+      if (opName.charAt(i) == '.')
+        sb.append("_");
+      else if (opName.charAt(i) == ':') {
+        if (i < e - 1 && opName.charAt(i + 1) == ':') {
+          sb.append("_");
+          i += 1;
+        } else
+          sb.append("_");
+      } else
+        sb.append(opName.charAt(i));
+    }
+    return sb.toString();
+  }
 }

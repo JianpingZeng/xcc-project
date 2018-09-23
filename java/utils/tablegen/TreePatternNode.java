@@ -25,8 +25,8 @@ import utils.tablegen.Init.IntInit;
 import java.io.PrintStream;
 import java.util.*;
 
-import static backend.codegen.MVT.*;
-import static utils.tablegen.CodeGenHwModes.DefaultMode;
+import static backend.codegen.MVT.getEnumName;
+import static backend.codegen.MVT.iPTR;
 import static utils.tablegen.CodeGenTarget.getValueType;
 import static utils.tablegen.EEVT.isUnknown;
 import static utils.tablegen.SDNP.SDNPCommutative;
@@ -243,6 +243,43 @@ public final class TreePatternNode implements Cloneable {
     print(System.err);
   }
 
+  private boolean updateNodeTypeFromInst(int resNo,
+                                         Record operand,
+                                         TreePattern tp) {
+    // The 'unknown' operand indicates that types should be inferred from the
+    // context.
+    if (operand.isSubClassOf("unknown_class"))
+      return false;
+
+    // The Operand class specifies a type directly.
+    CodeGenTarget target = tp.getDAGPatterns().getTarget();
+    if (operand.isSubClassOf("Operand")) {
+      Record r = operand.getValueAsDef("Type");
+      return updateNodeType(resNo, getValueTypeByHwMode(r, target.getHwModes()), tp);
+    }
+    // PointerLikeRegClass has a type that is determined at runtime.
+    if (operand.isSubClassOf("PointerLikeRegClass"))
+      return updateNodeType(resNo, MVT.iPTR, tp);
+
+    Record rc = null;
+    if (operand.isSubClassOf("RegisterClass"))
+      rc = operand;
+    else if (operand.isSubClassOf("RegisterOperand"))
+      rc = operand.getValueAsDef("RegClass");
+
+    Util.assertion(rc != null, "unknown operand type");
+    return updateNodeType(resNo,
+        new TypeSetByHwMode(target.getRegisterClass(rc).getValueTypes()), tp);
+  }
+
+  private boolean isOperandClass(TreePatternNode node, String klass) {
+    if (!node.isLeaf())
+      return node.getOperator().isSubClassOf(klass);
+
+    DefInit di = node.getLeafValue() instanceof DefInit ?
+        (DefInit)node.getLeafValue():null;
+    return di != null && di.getDef().isSubClassOf(klass);
+  }
   /**
    * Apply all of the type constraints relevant to this node and its children
    * in the tree.  This returns true if it makes a change, false otherwise.
@@ -370,6 +407,52 @@ public final class TreePatternNode implements Cloneable {
 
       Util.assertion(numResults <= 1, "Only supports zero or one result instrs!");
       CodeGenInstruction instInfo = cdp.getTarget().getInstruction(getOperator().getName());
+
+      // Apply the result types to the node, these come from the things in the
+      // (outs) list of the intruction.
+      int numResultsToAdd = Math.min(instInfo.numDefs, instr.getNumResults());
+      for (int resNo = 0; resNo < numResultsToAdd; resNo++)
+        madeChanged |= updateNodeTypeFromInst(resNo, instr.getResult(resNo), tp);
+
+      // if the instruction has implicit defs, we apply the first one as a result.
+      if (!instInfo.implicitDefs.isEmpty()) {
+        int resNo = numResultsToAdd;
+        int vt = instInfo.hasOneImplicitDefWithKnownVT(cdp.getTarget());
+        if (vt != MVT.Other)
+          madeChanged |= updateNodeType(resNo, vt, tp);
+      }
+
+      if (getOperator().getName().equals("INSERT_SUBREG")) {
+        Util.assertion(getChild(0).getNumTypes() ==1, "FIXME: Unhandled");
+        madeChanged |= updateNodeType(0, getChild(0).getExtType(0), tp);
+        madeChanged |= getChild(0).updateNodeType(0, getExtType(0), tp);
+      }
+      else if (getOperator().getName().equals("REG_SEQUENCE")) {
+        // We need to do extra, custom typechecking for REG_SEQUENCE since it is
+        // variadic.
+        int numChild = getNumChildren();
+        if (numChild < 3) {
+          tp.error("REG_SEQUENCE requires at least 3 operands!");
+          return false;
+        }
+
+        if (numChild %2 == 0) {
+          tp.error("REG_SEQUENCE requires an odd number of operands!");
+          return false;
+        }
+        if (!isOperandClass(getChild(0), "RegisterClass")) {
+          tp.error("REG_SEQUENCE requires a RegisterClass for first operands!");
+          return false;
+        }
+        for (int i = 1; i < numChild; i++) {
+          TreePatternNode node = getChild(i+1);
+          if (!isOperandClass(node, "SubRegIndex")) {
+            tp.error(String.format("REG_SEQUENCE requires a SubRegIndex for operand #%d!", i+1));
+            return false;
+          }
+        }
+      }
+      /*
       if (numResults == 0 || instInfo.numDefs == 0) {
         madeChanged = updateNodeType(0, isVoid, tp);
       } else {
@@ -386,7 +469,7 @@ public final class TreePatternNode implements Cloneable {
           CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(resultNode);
           madeChanged = updateNodeType(0, new TypeSetByHwMode(rc.getValueTypes()), tp);
         }
-      }
+      }*/
 
       int childNo = 0;
       for (int i = 0, e = instr.getNumOperands(); i != e; i++) {
@@ -698,7 +781,8 @@ public final class TreePatternNode implements Cloneable {
     if (isLeaf()) return this;
     Record op = getOperator();
     if (!op.isSubClassOf("PatFrag")) {
-      // Just recursively inline children nodes.
+      // We the operator is not a subclass of PatFrag which means current
+      // operator is a def.
       for (int i = 0, e = getNumChildren(); i != e; i++) {
         TreePatternNode child = getChild(i);
         TreePatternNode newChild = child.inlinePatternFragments(pattern);
@@ -712,6 +796,14 @@ public final class TreePatternNode implements Cloneable {
 
     // Otherwise, we found a reference to a fragment. First, look up to the
     // TreePattern record.
+
+    // Replace all references to the formal argument in definition of PatFrag
+    // with corresponding TreePatternNode object in use of PatFrag.
+    // Uses following example as illustration:
+    //
+    // def sextloadi1  : PatFrag<(ops node:$ptr), (sextload node:$ptr)>
+    // we will replace all reference to the first argument in sextload with
+    // TreePatternNode corresponding to 'node'.
     TreePattern frag = pattern.getDAGPatterns().getPatternFragment(op);
 
     // Verify that we are passing the right number of operands.
@@ -720,6 +812,10 @@ public final class TreePatternNode implements Cloneable {
           frag.getNumArgs() + " operands!");
     }
 
+    // Clone is needed caused we will modify it and doesn't affect the other node.
+    //
+    // def sextload  : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)>
+    // fragTree is TreePatternNode corresponding to unindexedload
     TreePatternNode fragTree = frag.getOnlyTree().clone();
 
     // children tree node inherits predicate function from it's parent node.
@@ -742,7 +838,7 @@ public final class TreePatternNode implements Cloneable {
       fragTree.updateNodeType(i, getExtType(i), pattern);
 
     // Transfer in the old predicateFns.
-        getPredicateFns().forEach(fragTree::addPredicateFn);
+    getPredicateFns().forEach(fragTree::addPredicateFn);
 
     // The fragment we inlined could have recursive inlining that is needed.  See
     // if there are any pattern fragments in it and inline them as needed.

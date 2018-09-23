@@ -178,11 +178,12 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    */
   private void calculateCallsInformation(MachineFunction mf) {
     TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
+    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
     long maxCallFrameSize = 0;
     boolean hasCalls = false;
 
-    int frameSetupOpcode = tri.getCallFrameSetupOpcode();
-    int frameDestroyOpcode = tri.getCallFrameDestroyOpcode();
+    int frameSetupOpcode = tii.getCallFrameSetupOpcode();
+    int frameDestroyOpcode = tii.getCallFrameDestroyOpcode();
 
     if (frameSetupOpcode == -1 && frameDestroyOpcode == -1)
       return;
@@ -214,7 +215,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       // slots off sp), leave the psedo ops alone. we'll eliminate them
       // later.
       if (tri.hasReservedCallFrame(mf) || tri.hasFP(mf))
-        tri.eliminateCallFramePseudoInstr(mf, mi);
+        tii.eliminateCallFramePseudoInstr(mf, mi);
     }
   }
 
@@ -1188,13 +1189,14 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    */
   private void calculateCalleeSavedRegisters(MachineFunction mf) {
     TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
+    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
     TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
 
     int[] calleeSavedRegs = regInfo.getCalleeSavedRegs(mf);
-    int frameSetupOpcode = regInfo.getCallFrameSetupOpcode();
-    int frameDestroyOpcode = regInfo.getCallFrameDestroyOpcode();
+    int frameSetupOpcode = tii.getCallFrameSetupOpcode();
+    int frameDestroyOpcode = tii.getCallFrameDestroyOpcode();
 
     minCSFrameIndex = Integer.MAX_VALUE;
     maxCSFrameIndex = 0;

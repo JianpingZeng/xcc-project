@@ -27,81 +27,38 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.codegen.MachineBasicBlock;
+import backend.codegen.AsmPrinter;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineInstr;
-import backend.codegen.RegScavenger;
-import backend.target.RegClassInfo;
-import backend.target.TargetRegisterClass;
-import backend.target.TargetRegisterDesc;
-import backend.target.TargetRegisterInfo;
-import tools.BitMap;
+import backend.target.TargetAsmInfo;
+import backend.target.TargetMachine;
+
+import java.io.OutputStream;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVRegisterInfo extends TargetRegisterInfo {
-
-  protected RISCVRegisterInfo(TargetRegisterDesc[] desc,
-                              TargetRegisterClass[] regClasses,
-                              int[] subregs, int subregHashSize,
-                              int[] superregs, int superregHashSize,
-                              int[] aliases, int aliasHashSize,
-                              RegClassInfo[] rcInfo,
-                              int mode) {
-    super(desc, regClasses, subregs, subregHashSize,
-        superregs, superregHashSize, aliases, aliasHashSize,
-        rcInfo, mode);
+public abstract class RISCVAsmPrinter extends AsmPrinter {
+  protected RISCVAsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v) {
+    super(os, tm, tai, v);
   }
-
+  public abstract boolean printInstruction(MachineInstr mi);
   @Override
-  public int[] getCalleeSavedRegs(MachineFunction mf) {
-    return new int[0];
-  }
-
-  @Override
-  public TargetRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
-    return new TargetRegisterClass[0];
-  }
-
-  @Override
-  public BitMap getReservedRegs(MachineFunction mf) {
-    return null;
-  }
-
-  @Override
-  public int getSubReg(int regNo, int index) {
-    return 0;
-  }
-
-  @Override
-  public boolean hasFP(MachineFunction mf) {
+  public boolean runOnMachineFunction(MachineFunction mf) {
     return false;
   }
 
   @Override
-  public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs) {
+  public String getPassName() {
+    return null;
+  }
+
+  protected void printOperand(MachineInstr mi, int opIdx) {
 
   }
 
-  @Override
-  public void emitPrologue(MachineFunction MF) {
+  protected void printFenceArg(MachineInstr mi, int opIdx) {
 
-  }
-
-  @Override
-  public void emitEpilogue(MachineFunction MF, MachineBasicBlock mbb) {
-
-  }
-
-  @Override
-  public int getFrameRegister(MachineFunction mf) {
-    return 0;
-  }
-
-  @Override
-  public int getRARegister() {
-    return 0;
   }
 }

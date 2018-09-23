@@ -27,81 +27,39 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineInstr;
-import backend.codegen.RegScavenger;
-import backend.target.RegClassInfo;
-import backend.target.TargetRegisterClass;
-import backend.target.TargetRegisterDesc;
-import backend.target.TargetRegisterInfo;
-import tools.BitMap;
+import backend.target.*;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVRegisterInfo extends TargetRegisterInfo {
-
-  protected RISCVRegisterInfo(TargetRegisterDesc[] desc,
-                              TargetRegisterClass[] regClasses,
-                              int[] subregs, int subregHashSize,
-                              int[] superregs, int superregHashSize,
-                              int[] aliases, int aliasHashSize,
-                              RegClassInfo[] rcInfo,
-                              int mode) {
-    super(desc, regClasses, subregs, subregHashSize,
-        superregs, superregHashSize, aliases, aliasHashSize,
-        rcInfo, mode);
+public class RISCVTargetMachine extends TargetMachine {
+  /**
+   * Can only called by subclass.
+   *
+   * @param target
+   */
+  protected RISCVTargetMachine(Target target) {
+    super(target);
   }
 
   @Override
-  public int[] getCalleeSavedRegs(MachineFunction mf) {
-    return new int[0];
-  }
-
-  @Override
-  public TargetRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
-    return new TargetRegisterClass[0];
-  }
-
-  @Override
-  public BitMap getReservedRegs(MachineFunction mf) {
+  public TargetInstrInfo getInstrInfo() {
     return null;
   }
 
   @Override
-  public int getSubReg(int regNo, int index) {
-    return 0;
+  public TargetRegisterInfo getRegisterInfo() {
+    return null;
   }
 
   @Override
-  public boolean hasFP(MachineFunction mf) {
-    return false;
+  public TargetFrameInfo getFrameInfo() {
+    return null;
   }
 
   @Override
-  public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs) {
-
-  }
-
-  @Override
-  public void emitPrologue(MachineFunction MF) {
-
-  }
-
-  @Override
-  public void emitEpilogue(MachineFunction MF, MachineBasicBlock mbb) {
-
-  }
-
-  @Override
-  public int getFrameRegister(MachineFunction mf) {
-    return 0;
-  }
-
-  @Override
-  public int getRARegister() {
-    return 0;
+  public TargetLowering getTargetLowering() {
+    return null;
   }
 }

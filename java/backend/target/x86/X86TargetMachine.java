@@ -122,12 +122,12 @@ public class X86TargetMachine extends LLVMTargetMachine {
 
   @Override
   public TargetInstrInfo getInstrInfo() {
-    return instrInfo;
+    return subtarget.getInstrInfo();
   }
 
   @Override
   public TargetRegisterInfo getRegisterInfo() {
-    return instrInfo.getRegisterInfo();
+    return subtarget.getRegisterInfo();
   }
 
   @Override

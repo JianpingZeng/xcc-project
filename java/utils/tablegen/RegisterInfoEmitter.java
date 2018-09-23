@@ -104,8 +104,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           targetName.toLowerCase(), targetName);
 
 
-      os.printf("public abstract class %s extends TargetRegisterInfo \n{\t",
-          className);
+      os.printf("public class %s extends %sRegisterInfo \n{\t",
+          className, targetName);
 
       // generates static array for register classes.
       generateRegClassesArray(os);
@@ -799,11 +799,9 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     os.printf("\t\t}\n");
     os.printf("\t}\n\n");
 
-    // emit the fields and constructors for X86GenRegisterInfo.
-    os.printf("\tpublic %s(int callFrameSetupOpCode, "
-        + "int callFrameDestroyOpCode, int mode)\n\t{\n\t\t", className);
+    // emit the fields and constructors for *Target* GenRegisterInfo.
+    os.printf("\tpublic %s(int mode)\n\t{\n\t\t", className);
     os.println("super(registerDescriptors, registerClasses,"
-        + "\n\t\t\t\tcallFrameSetupOpCode, callFrameDestroyOpCode,"
         + "\n\t\t\t\tSubregHashTable, SubregHashTableSize,"
         + "\n\t\t\t\tSuperregHashTable, SuperregHashTableSize,"
         + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize, "

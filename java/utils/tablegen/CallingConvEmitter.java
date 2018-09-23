@@ -67,17 +67,22 @@ public class CallingConvEmitter extends TableGenBackend {
     try (PrintStream os = outputFile.equals("-") ?
         System.out :
         new PrintStream(new FileOutputStream(outputFile))) {
-      os.println("package backend.target.x86;\n");
-      os.println("import backend.codegen.*;\n"
+
+      CodeGenTarget target = new CodeGenTarget(Record.records);
+      String targetName = target.getName();
+      String className = target.getName() + "GenCallingConv";
+
+      os.printf("package backend.target.%s;\n\n", targetName.toLowerCase());
+      os.printf("import backend.codegen.*;\n"
           + "import backend.codegen.CCValAssign.LocInfo;\n"
           + "import backend.support.CallingConv;\n" + "\n"
-          + "import static backend.target.x86.X86GenRegisterNames.*;\n");
+          + "import static backend.target.%s.%sGenRegisterNames.*;\n",
+          targetName.toLowerCase(), targetName);
 
       emitSourceFileHeaderComment("Calling convetion Implementation Fragment", os);
 
       ArrayList<Record> ccs = records.getAllDerivedDefinition("CallingConv");
-      CodeGenTarget target = new CodeGenTarget(Record.records);
-      String className = target.getName() + "GenCallingConv";
+
       os.printf("public class %s {\n", className);
 
       HashMap<String, Record> recNameToRec = new HashMap<>();

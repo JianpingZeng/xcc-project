@@ -59,8 +59,8 @@ public class DAGISelEmitter extends TableGenBackend {
     String ident = Util.fixedLengthString(4, ' ');
     os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel%n{%n", targetName, targetName);
 
-    os.printf("%spublic X86GenDAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel)%n" +
-        "%s{%n%s%ssuper(tm, optLevel);%n%s", ident, ident, ident, ident, ident);
+    os.printf("%spublic %sGenDAGToDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel)%n" +
+        "%s{%n%s%ssuper(tm, optLevel);%n%s", targetName, targetName, ident, ident, ident, ident, ident);
     os.println("}");
   }
 
@@ -297,23 +297,6 @@ public class DAGISelEmitter extends TableGenBackend {
     emitPatterns(patterns, indent, os);
     if (isPredicate)
       os.printf("%s}%n", Util.fixedLengthString(indent + 4, ' '));
-  }
-
-  private static String getLegalJavaName(String opName) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0, e = opName.length(); i < e; i++) {
-      if (opName.charAt(i) == '.')
-        sb.append("_");
-      else if (opName.charAt(i) == ':') {
-        if (i < e - 1 && opName.charAt(i + 1) == ':') {
-          sb.append("_");
-          i += 1;
-        } else
-          sb.append("_");
-      } else
-        sb.append(opName.charAt(i));
-    }
-    return sb.toString();
   }
 
   /**
@@ -647,8 +630,8 @@ public class DAGISelEmitter extends TableGenBackend {
         Collections.reverse(codeForPatterns);
 
         os.printf("SDNode select_%s",
-            getLegalJavaName(opName));
-        String name = getLegalJavaName(opVTStr);
+            Util.getLegalJavaName(opName));
+        String name = Util.getLegalJavaName(opVTStr);
         if (!name.isEmpty())
           os.printf("_%s", name);
         os.printf("(SDValue n) {%n");
@@ -735,7 +718,7 @@ public class DAGISelEmitter extends TableGenBackend {
       ArrayList<String> opVTs = opcodeVTMap.get(opName);
       os.println("  case " + opName + ": {");
       if (opVTs.size() == 1 && opVTs.get(0).isEmpty()) {
-        os.println("   return select_" + getLegalJavaName(opName) + "(n);");
+        os.println("   return select_" + Util.getLegalJavaName(opName) + "(n);");
         os.println("  }");
         continue;
       }
@@ -756,18 +739,18 @@ public class DAGISelEmitter extends TableGenBackend {
         }
         os.println("    case " + vtStr
             + ":\n" +
-            "    return select_" + getLegalJavaName(opName)
+            "    return select_" + Util.getLegalJavaName(opName)
             + "_"
-            + getLegalJavaName(vtStr) + "(n);");
+            + Util.getLegalJavaName(vtStr) + "(n);");
       }
       os.println("    default:");
 
       if (hasPtrPattern) {
         os.println("    if (tli.getPointerTy() == nvt)");
-        os.println("    return select_" + getLegalJavaName(opName) + "_iPTR(n);");
+        os.println("    return select_" + Util.getLegalJavaName(opName) + "_iPTR(n);");
       }
       if (hasDefaultPattern) {
-        os.println("    return select_" + getLegalJavaName(opName) + "(n);");
+        os.println("    return select_" + Util.getLegalJavaName(opName) + "(n);");
       }
       os.println("    break;");
       os.println("  }");
@@ -819,7 +802,7 @@ public class DAGISelEmitter extends TableGenBackend {
       os.println("import java.io.ByteArrayOutputStream;");
       os.println("import java.io.PrintStream;");
       os.println("import java.util.ArrayList;");
-      os.println("import backend.target.x86.X86GenRegisterNames;");
+      os.printf("import backend.target.%s.%sGenRegisterNames;%n", targetName.toLowerCase(), targetName);
       os.println("import static backend.support.ErrorHandling.llvmReportError;");
       emitHeader(os, targetName);
 

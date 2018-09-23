@@ -73,10 +73,71 @@ public abstract class TargetInstrInfo {
    */
   private TargetInstrDesc[] descs;
 
-  public TargetInstrInfo(TargetInstrDesc[] desc) {
+  /**
+   * The opcode of setting up stack frame for function being compiled.
+   * If the target machine does not support it, this field will be -1.
+   */
+  protected int callFrameSetupOpcode;
+  /**
+   * The opcode of destroying stack frame for function being compiled.
+   * If the target machine does not support it, this field will be -1.
+   */
+  protected int callFrameDestroyOpcode;
+
+  public TargetInstrInfo(TargetInstrDesc[] desc,
+                         int frameSetupOp, int frameDestroyOp) {
     descs = desc;
     Util.assertion(targetInstrDescs == null && desc != null);
     targetInstrDescs = desc;
+    callFrameSetupOpcode = frameSetupOp;
+    callFrameDestroyOpcode = frameDestroyOp;
+  }
+
+  /**
+   * This method return the opcode of the frame setup instructions if
+   * they exist (-1 otherwise).  Some targets use pseudo instructions in order
+   * to abstract away the difference between operating with a frame pointer
+   * and operating without, through the use of these two instructions.
+   *
+   * @return
+   */
+  public int getCallFrameSetupOpcode() {
+    return callFrameSetupOpcode;
+  }
+
+  /**
+   * This method return the opcode of the frame destroy instructions if
+   * they exist (-1 otherwise).  Some targets use pseudo instructions in order
+   * to abstract away the difference between operating with a frame pointer
+   * and operating without, through the use of these two instructions.
+   *
+   * @return
+   */
+  public int getCallFrameDestroyOpcode() {
+    return callFrameDestroyOpcode;
+  }
+
+  //===--------------------------------------------------------------------===//
+  // Interfaces used by the register allocator and stack frame manipulation
+  // passes to move data around between registers, immediates and memory.
+  //
+
+  /**
+   * This method is called during prolog/epilog code insertion to eliminate
+   * call frame setup and destroy pseudo instructions (but only if the
+   * Target is using them).  It is responsible for eliminating these
+   * instructions, replacing them with concrete instructions.  This method
+   * need only be implemented if using call frame setup/destroy pseudo
+   * instructions.
+   */
+  public void eliminateCallFramePseudoInstr(
+      MachineFunction mf,
+      MachineInstr old) {
+    Util.assertion((getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1),
+        "eliminateCallFramePseudoInstr must be implemented if using"
+            + " call frame setup/destroy pseudo instructions!");
+
+    Util.assertion("Call Frame Pseudo Instructions do not exist on this target!");
   }
 
   public int getNumTotalOpCodes() {

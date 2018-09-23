@@ -57,7 +57,7 @@ public final class TreePattern {
       trees.add(parseTreePattern(rawPat.getElement(i), ""));
   }
 
-  public TreePattern(Record theRec, DagInit pat, boolean isInput,
+  public TreePattern(Record theRec, Init pat, boolean isInput,
                      CodeGenDAGPatterns cdp) {
     theRecord = theRec;
     this.cdp = cdp;
@@ -182,13 +182,26 @@ public final class TreePattern {
     print(System.err);
   }
 
+  /**
+   * Parse the given PatFrag initialized by {@code theInit}, and recursively parse it's children
+   * node as needed. The {@code theInit} looks like this:
+   * <pre>
+   *   def zextloadi1  : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
+   *     return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
+   *   }]>;
+   * (zextload node:$ptr) is a DAGInit to this PatFrag, and it's operator is also a PatFrag def.
+   * </pre>
+   * @param theInit The initial PatFrag for this TreePattern.
+   * @param opName The name of this argument.
+   * @return
+   */
   private TreePatternNode parseTreePattern(Init theInit, String opName) {
 
     if (theInit instanceof DefInit) {
       DefInit di = (DefInit) theInit;
       Record r = di.getDef();
       if (r.isSubClassOf("SDNode") || r.isSubClassOf("PatFrag"))
-        return parseTreePattern(new DagInit(di, "",
+        return parseTreePattern(new DagInit(di, null,
             new ArrayList<>()), opName);
       TreePatternNode res = new TreePatternNode(di, 1);
       if (r.getName().equals("node") && !opName.isEmpty())
@@ -221,7 +234,7 @@ public final class TreePattern {
     }
 
     if (!(theInit instanceof DagInit))
-      error("Pattern has unexpected init kind");
+      Error.printFatalError("Pattern has unexpected init kind");
 
     DagInit dag = (DagInit) theInit;
 
@@ -297,7 +310,7 @@ public final class TreePattern {
 
   public static int getNumNodeResults(Record operator, CodeGenDAGPatterns cdp) {
     if (operator.getName().equals("set") ||
-        operator.getName().equals("implict"))
+        operator.getName().equals("implicit"))
       return 0;
 
     if (operator.isSubClassOf("Intrinsic"))

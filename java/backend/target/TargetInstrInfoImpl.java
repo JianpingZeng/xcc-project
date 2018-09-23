@@ -27,7 +27,7 @@ import java.util.ArrayList;
 
 /**
  * This is the default implementation of
- * RISCVGenInstrInfo, which just provides a couple of default implementations
+ * TargetInstrInfo, which just provides a couple of default implementations
  * for various methods.
  *
  * @author Jianping Zeng
@@ -35,7 +35,7 @@ import java.util.ArrayList;
  */
 public abstract class TargetInstrInfoImpl extends TargetInstrInfo {
   protected TargetInstrInfoImpl(TargetInstrDesc[] desc) {
-    super(desc);
+    super(desc, -1, -1);
   }
 
   @Override

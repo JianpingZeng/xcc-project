@@ -58,7 +58,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       new OptionHiddenApplicator(Hidden));
 
   private X86TargetMachine tm;
-  private X86RegisterInfo registerInfo;
 
   /**
    * RegOp2MemOpTable2Addr, RegOp2MemOpTable0, RegOp2MemOpTable1,
@@ -416,15 +415,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     // Remove ambiguous entries.
     Util.assertion(ambEntries.isEmpty(), "Duplicated entries in unfolded map?");
-  }
-
-  /**
-   * RISCVGenInstrInfo is a superset of MRegister info.  As such, whenever
-   * a client has an instance of instruction info, it should always be able
-   * to get register info as well (through this method).
-   */
-  public TargetRegisterInfo getRegisterInfo() {
-    return registerInfo;
   }
 
   @Override

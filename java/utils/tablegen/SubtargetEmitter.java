@@ -19,6 +19,7 @@ package utils.tablegen;
 import backend.target.InstrItinerary;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -34,11 +35,11 @@ import static utils.tablegen.RegisterInfoEmitter.LessRecord;
  */
 public class SubtargetEmitter extends TableGenBackend {
   private RecordKeeper records;
-  private String target;
+  private String targetName;
   private boolean hasItrineraries;
+  private CodeGenTarget target;
 
-  private void enumeration(PrintStream os, String className, boolean isBits)
-      {
+  private void enumeration(PrintStream os, String className, boolean isBits) {
     // Get all records of class and sort
     ArrayList<Record> defList = records.getAllDerivedDefinition(className);
     defList.sort(LessRecord);
@@ -51,6 +52,7 @@ public class SubtargetEmitter extends TableGenBackend {
       else os.printf(" = %d", i);
 
       os.println(";");
+      ++i;
     }
   }
 
@@ -477,6 +479,23 @@ public class SubtargetEmitter extends TableGenBackend {
   public SubtargetEmitter(RecordKeeper r) {
     records = r;
     hasItrineraries = false;
+    target = new CodeGenTarget(records);
+  }
+
+  private void emitHwModeCheck(PrintStream os) {
+    CodeGenHwModes cgh = target.getHwModes();
+    Util.assertion(cgh.getNumNodeIds() > 0);
+    if (cgh.getNumNodeIds() == 1)
+      return;
+
+    os.print("\t@Override");
+    os.print("\tpublic int getHwMode() {\n");
+    for (int m = 1, num = cgh.getNumNodeIds(); m < num; ++m) {
+      CodeGenHwModes.HwMode hm = cgh.getMode(m);
+      os.printf("\t\tif (checkFeatures(\"%s\")) return %d;\n", hm.features, m);
+    }
+    os.print("\t\treturn super.getHwMode();");
+    os.print("\t}\n");
   }
 
   /**
@@ -487,21 +506,21 @@ public class SubtargetEmitter extends TableGenBackend {
    */
   @Override
   public void run(String outputFile) throws FileNotFoundException {
-    target = new CodeGenTarget(Record.records).getName();
+    targetName = new CodeGenTarget(Record.records).getName();
 
     try (PrintStream os = outputFile.equals("-") ? System.out :
         new PrintStream(new FileOutputStream(outputFile))) {
-      os.println("package backend.target.x86;\n");
+      os.printf("package backend.target.%s;\n", targetName.toLowerCase());
 
       emitSourceFileHeaderComment("Subtarget Enumeration Source Fragment", os);
-      String className = target + "GenSubtarget";
+      String className = targetName + "GenSubtarget";
 
       os.printf("import backend.target.SubtargetFeatureKV;\n"
-          + "import backend.target.SubtargetFeatures;\n" + "\n"
-          + "import static backend.target.x86.X86Subtarget.X863DNowEnum.*;\n"
-          + "import static backend.target.x86.X86Subtarget.X86SSEEnum.*;\n\n");
+          + "import backend.target.SubtargetFeatures;\n\n"
+          + "import static backend.target.%s.%sSubtarget.*;\n",
+          targetName.toLowerCase(), targetName, targetName.toLowerCase(), targetName);
 
-      String superClass = target + "Subtarget";
+      String superClass = targetName + "Subtarget";
       os.printf("public final class %s extends %s {\n", className, superClass);
 
       enumeration(os, "FuncUnit", true);
@@ -517,9 +536,13 @@ public class SubtargetEmitter extends TableGenBackend {
       os.println();
       parseFeaturesFunction(os);
 
+      emitHwModeCheck(os);
+
       // Emit constructor method.
-      os.printf("\tpublic %s(String tt, String fs, boolean is64Bit)\n", className);
-      os.printf("\t{\n\t\tsuper(tt, fs, is64Bit);\n\t}\n");
+      os.printf("\tpublic %s(String tt, String fs) {\n", className);
+      os.printf("\t\tsuper(tt, fs, subTypeKV, featureKV);\n");
+      os.print("\t\t");
+      os.print("\t}\n");
       os.print("}");
     }
   }

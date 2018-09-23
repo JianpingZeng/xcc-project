@@ -377,20 +377,23 @@ public final class AsmWriterEmitter extends TableGenBackend {
       os = System.out;
     else
       os = new PrintStream(new FileOutputStream(outputFile));
+    CodeGenTarget target = new CodeGenTarget(Record.records);
+    String targetName = target.getName();
+    String lowerTargetName = targetName.toLowerCase();
 
-    os.println("package backend.target.x86;\n\n" + "\n"
+    os.printf("package backend.target.%s;\n\n\n"
         + "import backend.codegen.MachineInstr;\n"
         + "import backend.target.TargetAsmInfo;\n\n"
-        + "import java.io.OutputStream;");
+        + "import java.io.OutputStream;", lowerTargetName);
     os.println("import tools.Util;");
 
     emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
-    CodeGenTarget target = new CodeGenTarget(Record.records);
+
     Record asmWriter = target.getAsmWriter();
 
     String className = target.getName() + "Gen" +
         asmWriter.getValueAsString("AsmWriterClassName");
-    String superName = target.getName() + asmWriter.getValueAsString("AsmWriterClassName");
+    String superName = asmWriter.getValueAsString("AsmWriterClassName");
 
     long variant = asmWriter.getValueAsInt("Variant");
 
@@ -553,7 +556,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
       if (aggregateString.charAt(i) == '\\') {
         Util.assertion(i + 1 < aggregateString.length(), "Incomplete escape sequence!");
         if (Character.isDigit(aggregateString.charAt(i + 1))) {
-          Util.assertion(Character.isDigit(aggregateString.charAt(i + 2)) && Character.isDigit(aggregateString.charAt(i + 3)), "Expected 3 digit octal escape!");
+          Util.assertion(Character.isDigit(aggregateString.charAt(i + 2)) &&
+              Character.isDigit(aggregateString.charAt(i + 3)), "Expected 3 digit octal escape!");
 
           os.print(aggregateString.charAt(++i));
           os.print(aggregateString.charAt(++i));
@@ -695,12 +699,12 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.print("\t}\n");
 
     // Emit constructor.
-    os.println("\n\tpublic X86GenATTAsmPrinter(OutputStream os, \n"
-        + "\t\t\tX86TargetMachine tm,\n"
+    os.printf("\n\tpublic %s(OutputStream os, \n"
+        + "\t\t\t%sTargetMachine tm,\n"
         + "\t\t\tTargetAsmInfo tai, \n"
         + "\t\t\tboolean verbose)\n"
         + "\t{\n"
-        + "\t\tsuper(os, tm, tai, verbose);\n\t}");
+        + "\t\tsuper(os, tm, tai, verbose);\n\t}", className, targetName);
 
     os.println("}");
 

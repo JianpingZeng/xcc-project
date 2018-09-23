@@ -37,17 +37,6 @@ public abstract class TargetRegisterInfo {
    */
   private TargetRegisterClass[] regClasses;
 
-  /**
-   * The opcode of setting up stack frame for function being compiled.
-   * If the target machine does not support it, this field will be -1.
-   */
-  private int callFrameSetupOpcode;
-  /**
-   * The opcode of destroying stack frame for function being compiled.
-   * If the target machine does not support it, this field will be -1.
-   */
-  private int callFrameDestroyOpcode;
-
   protected int[] subregHash;
   protected int[] superregHash;
   protected int[] aliasesHash;
@@ -64,8 +53,6 @@ public abstract class TargetRegisterInfo {
   protected TargetRegisterInfo(
       TargetRegisterDesc[] desc,
       TargetRegisterClass[] regClasses,
-      int callFrameSetupOpCode,
-      int callFrameDestroyOpCode,
       int[] subregs, int subregHashSize,
       int[] superregs, int superregHashSize,
       int[] aliases, int aliasHashSize,
@@ -73,11 +60,6 @@ public abstract class TargetRegisterInfo {
       int mode) {
     this.desc = desc;
     this.regClasses = regClasses;
-
-    // loop over all register classes, handle each register class
-    // and keep track of diagMapping from register to it's register class.
-    this.callFrameSetupOpcode = callFrameSetupOpCode;
-    this.callFrameDestroyOpcode = callFrameDestroyOpCode;
     subregHash = subregs;
     this.subregHashSize = subregHashSize;
     superregHash = superregs;
@@ -90,15 +72,14 @@ public abstract class TargetRegisterInfo {
 
   protected TargetRegisterInfo(TargetRegisterDesc[] desc,
                                TargetRegisterClass[] regClasses,
-                               int callFrameSetupOpCode,
-                               int callFrameDestroyOpCode,
                                int[] subregs, int subregHashSize,
                                int[] superregs, int superregHashSize,
                                int[] aliases, int aliasHashSize,
                                RegClassInfo[] rcInfo/*, with default mode = 0*/) {
-    this(desc, regClasses, callFrameSetupOpCode, callFrameDestroyOpCode,
-        subregs, subregHashSize, superregs, superregHashSize,
-        aliases, aliasHashSize, rcInfo, 0);
+    this(desc, regClasses, subregs,
+        subregHashSize, superregs,
+        superregHashSize, aliases,
+        aliasHashSize, rcInfo, 0);
   }
 
   public static boolean isPhysicalRegister(int reg) {
@@ -411,53 +392,6 @@ public abstract class TargetRegisterInfo {
 
   public boolean needsStackRealignment(MachineFunction mf) {
     return false;
-  }
-
-  /**
-   * This method return the opcode of the frame setup instructions if
-   * they exist (-1 otherwise).  Some targets use pseudo instructions in order
-   * to abstract away the difference between operating with a frame pointer
-   * and operating without, through the use of these two instructions.
-   *
-   * @return
-   */
-  public int getCallFrameSetupOpcode() {
-    return callFrameSetupOpcode;
-  }
-
-  /**
-   * This method return the opcode of the frame destroy instructions if
-   * they exist (-1 otherwise).  Some targets use pseudo instructions in order
-   * to abstract away the difference between operating with a frame pointer
-   * and operating without, through the use of these two instructions.
-   *
-   * @return
-   */
-  public int getCallFrameDestroyOpcode() {
-    return callFrameDestroyOpcode;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Interfaces used by the register allocator and stack frame manipulation
-  // passes to move data around between registers, immediates and memory.
-  //
-
-  /**
-   * This method is called during prolog/epilog code insertion to eliminate
-   * call frame setup and destroy pseudo instructions (but only if the
-   * Target is using them).  It is responsible for eliminating these
-   * instructions, replacing them with concrete instructions.  This method
-   * need only be implemented if using call frame setup/destroy pseudo
-   * instructions.
-   */
-  public void eliminateCallFramePseudoInstr(
-      MachineFunction mf,
-      MachineInstr old) {
-    Util.assertion((getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1),
-        "eliminateCallFramePseudoInstr must be implemented if using"
-            + " call frame setup/destroy pseudo instructions!");
-
-    Util.assertion(false, "Call Frame Pseudo Instructions do not exist on this target!");
   }
 
   public void processFunctionBeforeCalleeSavedScan(MachineFunction mf) {

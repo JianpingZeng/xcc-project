@@ -17,7 +17,6 @@ package utils.tablegen;
  */
 
 import backend.codegen.EVT;
-import gnu.trove.iterator.TObjectIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Error;
@@ -482,10 +481,11 @@ public final class CodeGenDAGPatterns {
   private void findDepVars(TreePatternNode node, HashSet<String> depVars) {
     TObjectIntHashMap<String> depCounts = new TObjectIntHashMap<>();
     findDepVarsOf(node, depCounts);
-    for (TObjectIntIterator<String> itr = depCounts.iterator(); itr.hasNext(); ) {
-      if (itr.value() > 1)
-        depVars.add(itr.key());
-    }
+    depCounts.forEachEntry((o, i) -> {
+      if (i > 1)
+        depVars.add(o);
+      return true;
+    });
   }
 
   private static void dumpDepVars(Set<String> depVars) {
@@ -644,8 +644,8 @@ public final class CodeGenDAGPatterns {
                                            TreePatternNode tree,
                                            TreeMap<String, TreePatternNode> instInputs,
                                            TreeMap<String, TreePatternNode> instResults,
-                                           ArrayList<Record> instImpInputs, ArrayList<Record> instImpResults)
-      {
+                                           ArrayList<Record> instImpInputs,
+                                           ArrayList<Record> instImpResults) {
     if (tree.isLeaf()) {
       boolean isUse = handleUse(pattern, tree, instInputs, instImpInputs);
       if (!isUse && tree.getTransformFn() != null)
@@ -703,7 +703,7 @@ public final class CodeGenDAGPatterns {
         if (dest.getName().isEmpty())
           pattern.error("set destination must have a name!");
         if (instResults.containsKey(dest.getName()))
-          pattern.error("cannot set '" + dest.getName() + "' multiple times");
+          pattern.error("can not set '" + dest.getName() + "' multiple times");
         instResults.put(dest.getName(), dest);
       } else if (val.getDef().isSubClassOf("Register")) {
         instImpResults.add(val.getDef());
@@ -762,7 +762,7 @@ public final class CodeGenDAGPatterns {
       if (slot.isLeaf())
         slotRec = (slot.getLeafValue() instanceof DefInit) ? ((DefInit) slot.getLeafValue()).getDef() : null;
       else {
-        Util.assertion(slot.getNumChildren() == 0, "cann't be a use with children!");
+        Util.assertion(slot.getNumChildren() == 0, "can't be a use with children!");
         slotRec = slot.getOperator();
       }
 
@@ -982,6 +982,7 @@ public final class CodeGenDAGPatterns {
       // constructed result is correct.  This depends on the instruction already
       // being inserted into the Instructions map.
       TreePattern temp = new TreePattern(tp.getRecord(), resultPattern, false, this);
+
       temp.inferAllTypes();
 
       DAGInstruction theInsertedInst = instructions.get(tp.getRecord());
@@ -1127,6 +1128,15 @@ public final class CodeGenDAGPatterns {
 
     // Now that we've parsed all of the tree fragments, do a closure on them so
     // that there are not references to PatFrags left inside of them.
+
+    // For example, when we encounter following PatFrag, a TreePattern object will be
+    // constructed with operator zextload and one child node, predicate function.
+    // def zextloadi1  : PatFrag<(ops node:$ptr), (zextload node:$ptr), [{
+    //   return ((LoadSDNode)n).getMemoryVT().getSimpleVT().simpleVT == MVT.i1;
+    // }]>;
+    //
+    // Note that, there is a reference to other PatFrag (zextload) in this TreePattern
+    //, so we need following code snip to accomplish this function.
     for (int i = 0, e = fragments.size(); i != e; i++) {
       TreePattern pat = patternFragments.get(fragments.get(i));
       pat.inlinePatternFragments();

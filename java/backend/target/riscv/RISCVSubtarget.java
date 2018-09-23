@@ -27,17 +27,50 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.target.SubtargetFeatureKV;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVSubtarget extends TargetSubtarget {
-  private RISCVInstrInfo instrInfo;
-  private RISCVRegisterInfo regInfo;
+public abstract class RISCVSubtarget extends TargetSubtarget {
 
-  public RISCVSubtarget() {
+  protected boolean hasRV64;
+  protected boolean hasStdExtA;
+  protected boolean hasStdExtC;
+  protected boolean hasStdExtD;
+  protected boolean hasStdExtF;
+  protected boolean hasStdExtM;
+
+  protected RISCVSubtarget(String tt, String fs,
+                           SubtargetFeatureKV[] subTypeKV,
+                           SubtargetFeatureKV[] featureKV) {
     regInfo = new RISCVGenRegisterInfo(getHwMode());
+    instrInfo = new RISCVGenInstrInfo();
+  }
+
+  /**
+   * Create a X86Subtarget instance with specified target triple, features string,
+   * and predicate.
+   *
+   * @param tt      Target triple
+   * @param fs      Features string
+   * @return
+   */
+  public static RISCVSubtarget createRISCVSubtarget(String tt, String fs) {
+    return new RISCVGenSubtarget(tt, fs);
+  }
+
+  @Override
+  public TargetRegisterInfo getRegisterInfo() {
+    return regInfo;
+  }
+
+  @Override
+  public TargetInstrInfo getInstrInfo() {
+    return instrInfo;
   }
 }

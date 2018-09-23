@@ -18,6 +18,7 @@ package utils.tablegen;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Error;
+import tools.Util;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -45,10 +46,12 @@ public final class InstrInfoEmitter extends TableGenBackend {
 
     try (PrintStream os = outputFile.equals("-") ? System.out
         : new PrintStream(new FileOutputStream(outputFile))) {
-      os.println("package backend.target.x86;");
+      CodeGenTarget target = cdp.getTarget();
+      String lowertargetName = target.getName().toLowerCase();
+      os.printf("package backend.target.%s;%n", lowertargetName);
 
       emitSourceFileHeaderComment("Target Instruction Descriptors", os);
-      CodeGenTarget target = cdp.getTarget();
+
       Record instrInfo = target.getInstructionSet();
       ArrayList<CodeGenRegisterClass> rc = target.getRegisterClasses();
 
@@ -61,13 +64,14 @@ public final class InstrInfoEmitter extends TableGenBackend {
       int barriersNumber = 0;
       TObjectIntHashMap<Record> barriersMap = new TObjectIntHashMap<>();
 
-      os.println("\nimport backend.target.*;\n" + "\n"
+      os.printf("\nimport backend.target.*;\n\n"
           + "import static backend.target.TargetOperandInfo.OperandConstraint.*;\n"
           + "import static backend.target.TargetOperandInfo.OperandFlags.*;\n"
-          + "import static backend.target.x86.X86GenRegisterInfo.*;\n"
-          + "import static backend.target.x86.X86GenRegisterNames.*;\n");
+          + "import static backend.target.%s.%sGenRegisterInfo.*;\n"
+          + "import static backend.target.%s.%sGenRegisterNames.*;\n\n",
+          lowertargetName, targetName, lowertargetName, targetName);
 
-      os.printf("public class %s\n{\n", className);
+      os.printf("public class %s extends %sInstrInfo {\n\n", className, targetName);
 
       // Emit all of the instruction's implicit uses and defs.
       for (Map.Entry<String, CodeGenInstruction> pair : target.getInstructions().entrySet()) {
@@ -109,33 +113,40 @@ public final class InstrInfoEmitter extends TableGenBackend {
       target.getInstructionsByEnumValue(numberedInstrs);
 
       // Emit all of the TargetInstrDesc records in there ENUM order.
-      os.println("\n\t// // Since the java code limit to 65535, the initializer of X86Insts must be divided.");
-      os.printf("\tpublic final static TargetInstrDesc[] X86Insts = new TargetInstrDesc[%d];\n", numberedInstrs.size());
+      os.printf("\n\t// // Since the java code limit to 65535, the initializer of %sInsts must be divided.\n",
+          targetName);
+      os.printf("\tpublic final static TargetInstrDesc[] %sInsts = new TargetInstrDesc[%d];\n",
+          targetName, numberedInstrs.size());
       final int NUM = 500;
       int bucketNum = numberedInstrs.size() / NUM * NUM;
       int num = 0;
       int x = 0;
       for (; num < bucketNum; num += NUM) {
-        os.printf("\tstatic void initX86Insts%d()\n\t{\n", x++);
+        os.printf("\tstatic void init%sInsts%d()\n\t{\n", targetName, x++);
         for (int i = num, e = num + NUM; i != e; ++i) {
-          emitRecord(numberedInstrs.get(i), i, instrInfo, emittedLists, barriersMap, operandInfoIDs, os);
+          emitRecord(targetName, numberedInstrs.get(i), i, instrInfo,
+              emittedLists, barriersMap, operandInfoIDs, os);
         }
         os.printf("\t}\n");
       }
 
       int remainded = numberedInstrs.size() % NUM;
       if (remainded != 0) {
-        os.printf("\tstatic void initX86Insts%d()\n\t{\n", x);
+        os.printf("\tstatic void init%sInsts%d()\n\t{\n", targetName, x);
         for (int i = num; i < num + remainded; i++) {
-          emitRecord(numberedInstrs.get(i), i, instrInfo, emittedLists, barriersMap, operandInfoIDs, os);
+          emitRecord(targetName, numberedInstrs.get(i), i, instrInfo,
+              emittedLists, barriersMap, operandInfoIDs, os);
         }
         os.printf("\t}\n");
       }
 
       os.printf("\tstatic \n\t{\n");
       for (int i = 0; i <= x; i++)
-        os.printf("\t\tinitX86Insts%d();\n", i);
+        os.printf("\t\tinit%sInsts%d();\n", targetName, i);
       os.printf("\t}\n");
+
+      os.printf("public %sGenInstrInfo() {\n" +
+          "\t\tsuper(%sInsts);\n\t}", targetName, targetName);
 
       os.printf("}\n");
     } catch (FileNotFoundException e) {
@@ -146,7 +157,8 @@ public final class InstrInfoEmitter extends TableGenBackend {
     }
   }
 
-  private void emitRecord(CodeGenInstruction inst,
+  private void emitRecord(String targetName,
+                          CodeGenInstruction inst,
                           int num, Record instrInfo,
                           TObjectIntHashMap<ArrayList<Record>> emittedLists,
                           TObjectIntHashMap<Record> barriersMap,
@@ -159,7 +171,8 @@ public final class InstrInfoEmitter extends TableGenBackend {
           + (int) inst.operandList.get(sz - 1).miNumOperands;
     }
 
-    os.printf("\t\tX86Insts[%d] = new TargetInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+    os.printf("\t\t%sInsts[%d] = new TargetInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+        targetName,
         num,
         num, minOperands, inst.numDefs,
         getItinClassNumber(inst.theDef),
@@ -454,26 +467,23 @@ public final class InstrInfoEmitter extends TableGenBackend {
     try (PrintStream os = outputFile.equals("-") ? System.out :
         new PrintStream(new FileOutputStream(outputFile))) {
       emitSourceFileHeaderComment("Target Instruction Enum Values", os);
-      ;
 
       CodeGenTarget target = cdp.getTarget();
 
       ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
       target.getInstructionsByEnumValue(numberedInstrs);
-      ;
       String className = target.getName() + "GenInstrNames";
 
-      os.println("package backend.target.x86;\n");
-      os.printf("public interface %s\n{\n", className);
+      os.printf("package backend.target.%s;%n%n", target.getName().toLowerCase());
+      os.printf("public interface %s {\n", className);
 
       for (int i = 0, e = numberedInstrs.size(); i != e; i++) {
-        os.printf("\tint %s = %d;\n",
-            numberedInstrs.get(i).theDef.getName(), i);
+        os.printf("\tint %s = %d;%n", Util.getLegalJavaName(numberedInstrs.get(i).theDef.getName()), i);
       }
 
       os.printf("\tint INSTRUCTION_LIST_END = %d;\n", numberedInstrs.size());
 
-      os.printf("\n}");
+      os.printf("}");
     } catch (FileNotFoundException e) {
       System.err.printf("File %s dose not exist", outputFile);
       System.exit(1);

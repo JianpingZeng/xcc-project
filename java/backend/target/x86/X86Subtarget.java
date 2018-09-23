@@ -17,7 +17,9 @@ package backend.target.x86;
  */
 
 import backend.support.CallingConv;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
 import tools.CPUInfoUtility;
@@ -241,6 +243,14 @@ public class X86Subtarget extends TargetSubtarget {
     return new X86GenSubtarget(tt, fs, is64bit);
   }
 
+  public X86RegisterInfo getRegisterInfo() {
+    return null;
+  }
+
+  public X86InstrInfo getInstrInfo() {
+    return null;
+  }
+
   public int getStackAlignemnt() {
     return stackAlignemnt;
   }
@@ -249,6 +259,7 @@ public class X86Subtarget extends TargetSubtarget {
     return maxInlineSizeThreshold;
   }
 
+  @Override
   public String parseSubtargetFeatures(String fs, String cpu) {
     return "";
   }

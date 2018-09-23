@@ -43,8 +43,9 @@ import java.util.ArrayList;
  * @version 0.4
  */
 public class RISCVInstrInfo extends TargetInstrInfo {
+
   public RISCVInstrInfo(TargetInstrDesc[] desc) {
-    super(desc);
+    super(desc, RISCVGenInstrNames.ADJCALLSTACKDOWN, RISCVGenInstrNames.ADJCALLSTACKUP);
   }
 
   @Override
