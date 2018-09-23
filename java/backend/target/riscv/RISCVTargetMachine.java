@@ -27,39 +27,94 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.MachineCodeEmitter;
+import backend.passManaging.PassManagerBase;
 import backend.target.*;
+
+import java.io.OutputStream;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVTargetMachine extends TargetMachine {
+public class RISCVTargetMachine extends LLVMTargetMachine {
+
   /**
-   * Can only called by subclass.
-   *
-   * @param target
+   * All x86 instruction information can be accessed by this.
    */
-  protected RISCVTargetMachine(Target target) {
-    super(target);
+  private RISCVInstrInfo instrInfo;
+  /**
+   * A stack frame info class used for organizing data layout of frame when
+   * function calling.
+   */
+  private TargetFrameInfo frameInfo;
+  private RISCVSubtarget subtarget;
+  private TargetData dataLayout;
+  private RISCVTargetLowering tli;
+  private RelocModel defRelocModel;
+
+  protected RISCVTargetMachine(Target t, String triple,
+                               String fs) {
+    super(t, triple);
+    subtarget = new RISCVGenSubtarget(triple, fs);
+    dataLayout = new TargetData(triple);
+    tli = new RISCVTargetLowering(this);
+    defRelocModel = getRelocationModel();
   }
 
   @Override
   public TargetInstrInfo getInstrInfo() {
-    return null;
+    return subtarget.getInstrInfo();
   }
 
   @Override
   public TargetRegisterInfo getRegisterInfo() {
-    return null;
+    return subtarget.getRegisterInfo();
   }
 
   @Override
   public TargetFrameInfo getFrameInfo() {
-    return null;
+    return frameInfo;
   }
 
   @Override
   public TargetLowering getTargetLowering() {
-    return null;
+    return tli;
+  }
+
+  public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
+
+  public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
+
+  public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
+
+  public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
+    return false;
+  }
+  /**
+   * This pass should be overridden by the target to add
+   * a code emitter (without setting flags), if supported.  If this is not
+   * supported, 'true' should be returned.
+   *
+   * @param pm
+   * @param level
+   * @param mce
+   * @return
+   */
+  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+                                      MachineCodeEmitter mce) {
+    return true;
+  }
+
+  public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
+                                    boolean verbose,
+                                    OutputStream os) {
+    return true;
   }
 }

@@ -1015,15 +1015,26 @@ public abstract class TargetLowering {
     return null;
   }
 
-  public abstract SDValue lowerFormalArguments(SDValue root, CallingConv callingConv,
-                                               boolean varArg, ArrayList<InputArg> ins, SelectionDAG dag, ArrayList<SDValue> inVals);
+  public abstract SDValue lowerFormalArguments(SDValue root,
+                                               CallingConv callingConv,
+                                               boolean varArg,
+                                               ArrayList<InputArg> ins,
+                                               SelectionDAG dag,
+                                               ArrayList<SDValue> inVals);
 
-  public abstract SDValue lowerMemArgument(SDValue chain, CallingConv cc,
-                                           ArrayList<InputArg> argInfo, SelectionDAG dag, CCValAssign va,
-                                           MachineFrameInfo mfi, int i);
+  public abstract SDValue lowerMemArgument(SDValue chain,
+                                           CallingConv cc,
+                                           ArrayList<InputArg> argInfo,
+                                           SelectionDAG dag,
+                                           CCValAssign va,
+                                           MachineFrameInfo mfi,
+                                           int i);
 
-  public void computeMaskedBitsForTargetNode(SDValue op, APInt mask,
-                                             APInt[] knownVals, SelectionDAG selectionDAG, int depth) {
+  public void computeMaskedBitsForTargetNode(SDValue op,
+                                             APInt mask,
+                                             APInt[] knownVals,
+                                             SelectionDAG selectionDAG,
+                                             int depth) {
     int opc = op.getOpcode();
     Util.assertion(opc >= ISD.BUILTIN_OP_END ||
         opc == ISD.INTRINSIC_VOID ||
@@ -1033,14 +1044,25 @@ public abstract class TargetLowering {
     knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
   }
 
-  public abstract SDValue lowerReturn(SDValue chain, CallingConv cc,
-                                      boolean isVarArg, ArrayList<OutputArg> outs, SelectionDAG dag);
+  public abstract SDValue lowerReturn(SDValue chain,
+                                      CallingConv cc,
+                                      boolean isVarArg,
+                                      ArrayList<OutputArg> outs,
+                                      SelectionDAG dag);
 
-  public Pair<SDValue, SDValue> lowerCallTo(SDValue chain, Type retTy,
-                                            boolean retSExt, boolean retZExt, boolean varArg, boolean isInReg,
-                                            int numFixedArgs, CallingConv cc, boolean isTailCall,
-                                            boolean isReturnValueUsed, SDValue callee,
-                                            ArrayList<ArgListEntry> args, SelectionDAG dag) {
+  public Pair<SDValue, SDValue> lowerCallTo(SDValue chain,
+                                            Type retTy,
+                                            boolean retSExt,
+                                            boolean retZExt,
+                                            boolean varArg,
+                                            boolean isInReg,
+                                            int numFixedArgs,
+                                            CallingConv cc,
+                                            boolean isTailCall,
+                                            boolean isReturnValueUsed,
+                                            SDValue callee,
+                                            ArrayList<ArgListEntry> args,
+                                            SelectionDAG dag) {
     Util.assertion(!isTailCall || EnablePerformTailCallOpt.value);
     ArrayList<OutputArg> outs = new ArrayList<>(32);
     for (int i = 0, e = args.size(); i < e; i++) {

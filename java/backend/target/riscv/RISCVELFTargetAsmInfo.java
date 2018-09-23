@@ -27,43 +27,11 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.target.SubtargetFeatureKV;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterInfo;
-import backend.target.TargetSubtarget;
+import backend.target.TargetAsmInfo;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public abstract class RISCVSubtarget extends TargetSubtarget {
-
-  protected boolean hasRV64;
-  protected boolean hasStdExtA;
-  protected boolean hasStdExtC;
-  protected boolean hasStdExtD;
-  protected boolean hasStdExtF;
-  protected boolean hasStdExtM;
-
-  protected RISCVSubtarget(String tt, String fs,
-                           SubtargetFeatureKV[] subTypeKV,
-                           SubtargetFeatureKV[] featureKV) {
-    regInfo = new RISCVGenRegisterInfo(getHwMode());
-    instrInfo = new RISCVGenInstrInfo();
-  }
-
-
-  @Override
-  public TargetRegisterInfo getRegisterInfo() {
-    return regInfo;
-  }
-
-  @Override
-  public TargetInstrInfo getInstrInfo() {
-    return instrInfo;
-  }
-
-  public boolean is64Bit() {
-    return hasRV64;
-  }
+public class RISCVELFTargetAsmInfo extends TargetAsmInfo {
 }
