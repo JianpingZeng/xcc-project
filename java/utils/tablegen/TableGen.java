@@ -154,7 +154,6 @@ public final class TableGen {
       }
     } catch (Exception ex) {
       ex.printStackTrace();
-
       System.exit(-1);
     }
   }

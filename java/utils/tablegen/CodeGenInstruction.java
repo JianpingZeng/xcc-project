@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MVT;
 import tools.Error;
 import tools.Pair;
 import tools.Util;
@@ -94,6 +95,11 @@ public final class CodeGenInstruction {
   int numDefs;
 
   ArrayList<OperandInfo> operandList;
+  /**
+   * The register implicit defined and used by this instruction
+   */
+  ArrayList<Record> implicitDefs;
+  ArrayList<Record> implicitUses;
 
   // Various boolean values we track for the instruction.
   boolean isReturn;
@@ -153,28 +159,15 @@ public final class CodeGenInstruction {
     //noResults = r.getValueAsBit("noResults");
     isVariadic = false;
 
+    implicitDefs = r.getValueAsListOfDefs("Defs");
+    implicitUses = r.getValueAsListOfDefs("Uses");
+
     if ((mayHaveSideEffects ? 1 : 0) + (neverHasSideEffects ? 1 : 0) + (hasSideEffects ? 1 : 0) > 1)
       Error.printFatalError(r.getName() + ": multiple conflicting side effect flags-set!");
 
-    DagInit di = null;
-    try {
-      di = r.getValueAsDag("OutOperandList");
-    } catch (Exception e) {
-      asmString = null;
-      operandList.clear();
-      return;
-    }
-
+    DagInit di = r.getValueAsDag("OutOperandList");
     numDefs = di.getNumArgs();
-    DagInit idi = null;
-    try {
-      idi = r.getValueAsDag("InOperandList");
-    } catch (Exception e) {
-      asmString = null;
-      operandList.clear();
-      return;
-    }
-
+    DagInit idi = r.getValueAsDag("InOperandList");
     di = (DagInit) ((new Init.BinOpInit(CONCAT, di, idi, new DagRecTy())).fold(r, null));
 
     int MIOperandNo = 0;
@@ -291,9 +284,7 @@ public final class CodeGenInstruction {
     }
   }
 
-
-  private Pair<Integer, Integer> parseOperandName(String opName)
-      {
+  private Pair<Integer, Integer> parseOperandName(String opName) {
     return parseOperandName(opName, true);
   }
 
@@ -355,5 +346,17 @@ public final class CodeGenInstruction {
     Error.printFatalError("Instruction '" + theDef.getName()
         + "' does not have an operand named '$" + name + "'!");
     return -1;
+  }
+
+  public int hasOneImplicitDefWithKnownVT(CodeGenTarget target) {
+    if (implicitDefs.isEmpty()) return MVT.Other;
+
+    Record firstImplicitDef = implicitDefs.get(0);
+    Util.assertion(firstImplicitDef.isSubClassOf("Register"));
+    ArrayList<ValueTypeByHwMode> vts = target.getRegisterVTs(firstImplicitDef);
+    if (vts.size() == 1 && vts.get(0).isSimple())
+      return vts.get(0).getSimple().simpleVT;
+
+    return MVT.Other;
   }
 }

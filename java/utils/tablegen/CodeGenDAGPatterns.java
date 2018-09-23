@@ -35,6 +35,7 @@ import java.util.function.Predicate;
 import static utils.tablegen.SDNP.SDNPAssociative;
 import static utils.tablegen.SDNP.SDNPCommutative;
 import static utils.tablegen.TGParser.resolveTypes;
+import static utils.tablegen.TreePattern.getNumNodeResults;
 
 /**
  * @author Jianping Zeng
@@ -398,7 +399,7 @@ public final class CodeGenDAGPatterns {
       for (int i = 0, e = childVariants.size(); i != e; i++)
         newChildren.add(childVariants.get(i).get(idxs.get(i)));
 
-      TreePatternNode r = new TreePatternNode(orig.getOperator(), newChildren);
+      TreePatternNode r = new TreePatternNode(orig.getOperator(), newChildren, orig.getNumTypes());
 
       r.setName(orig.getName());
       r.setPredicateFns(orig.getPredicateFns());
@@ -602,7 +603,7 @@ public final class CodeGenDAGPatterns {
           opNode.setTransformFn(null);
           ArrayList<TreePatternNode> children = new ArrayList<>();
           children.add(opNode);
-          opNode = new TreePatternNode(xform, children);
+          opNode = new TreePatternNode(xform, children, opNode.getNumTypes());
         }
         resultNodeOperands.add(opNode);
       }
@@ -610,7 +611,7 @@ public final class CodeGenDAGPatterns {
       dstPattern = result.getOnlyTree();
       if (!dstPattern.isLeaf())
         dstPattern = new TreePatternNode(dstPattern.getOperator(),
-            resultNodeOperands);
+            resultNodeOperands, dstPattern.getNumTypes());
       dstPattern.setTypes(result.getOnlyTree().getExtTypes());
       TreePattern temp = new TreePattern(result.getRecord(), dstPattern, false, this);
       temp.inferAllTypes();
@@ -822,14 +823,14 @@ public final class CodeGenDAGPatterns {
 
       // Parse the instruction.
       // FIXME 2017.7.11 (Done!!!!) This constructor causes the child node of 'i' is not be initialized properly.
-      TreePattern i = new TreePattern(instr, li, true, this);
+      TreePattern tp = new TreePattern(instr, li, true, this);
 
       // Inline pattern fragments into it.
-      i.inlinePatternFragments();
+      tp.inlinePatternFragments();
       // Infer as many types as possible.  If we cannot infer all of them, we can
       // never do anything with this instruction pattern: report it to the user.
-      if (!i.inferAllTypes())
-        i.error("Could not infer all type in pattern");
+      if (!tp.inferAllTypes())
+        tp.error("Could not infer all type in pattern");
 
       // InstInputs - Keep track of all of the inputs of the instruction, along
       // with the record they are declared as.
@@ -845,8 +846,8 @@ public final class CodeGenDAGPatterns {
       // Verify that the top-level forms in the instruction are of void type, and
       // fill in the InstResults map.
       // FIXME  [(set VR128:$dst, (v4f32 (shufp:$src3 VR128:$src1, VR128:$src2)))]
-      for (int j = 0, e = i.getNumTrees(); j != e; ++j) {
-        TreePatternNode pat = i.getTree(j);
+      for (int j = 0, e = tp.getNumTrees(); j != e; ++j) {
+        TreePatternNode pat = tp.getTree(j);
         StringBuilder buf = new StringBuilder();
         if (pat.getNumTypes() > 0) {
           for (int k = 0, sz = pat.getNumTypes(); k < sz; k++) {
@@ -854,12 +855,12 @@ public final class CodeGenDAGPatterns {
               buf.append(',');
             buf.append(pat.getExtType(k).toString());
           }
-          i.error("Top-level forms in instruction pattern should have" +
+          tp.error("Top-level forms in instruction pattern should have" +
               " void types, has types " + buf.toString());
         }
 
         // Find inputs and outputs, and verify the structure of the uses/defs.
-        findPatternInputsAndOutputs(i, pat, instInputs, instResults, instImpInputs, instImpResults);
+        findPatternInputsAndOutputs(tp, pat, instInputs, instResults, instImpInputs, instImpResults);
       }
 
       // Now that we have inputs and outputs of the pattern, inspect the operands
@@ -868,7 +869,7 @@ public final class CodeGenDAGPatterns {
       int numResults = instResults.size();
 
       // Parse the operands list from the (ops) list, validating it.
-      Util.assertion(i.getArgList().isEmpty(), "Args list should still be empty here!");
+      Util.assertion(tp.getArgList().isEmpty(), "Args list should still be empty here!");
       CodeGenInstruction cgi = target.getInstruction(instr.getName());
 
       // Check that all of the results occur first in the list.
@@ -876,25 +877,25 @@ public final class CodeGenDAGPatterns {
       TreePatternNode res0Node = null;
       for (int j = 0; j != numResults; j++) {
         if (j == cgi.operandList.size())
-          i.error("'" + instResults.entrySet().iterator().next().getKey()
+          tp.error("'" + instResults.entrySet().iterator().next().getKey()
               + "' set but does not appear in operand list!");
 
         String opName = cgi.operandList.get(j).name;
 
         // Check that it exists in InstResults.
         if (!instResults.containsKey(opName))
-          i.error("Operand $" + opName + " does not exist in operand list!");
+          tp.error("Operand $" + opName + " does not exist in operand list!");
         TreePatternNode rnode = instResults.get(opName);
 
         if (j == 0)
           res0Node = rnode;
         Record r = rnode.getLeafValue() instanceof DefInit ? ((DefInit) rnode.getLeafValue()).getDef() : null;
         if (r == null)
-          i.error("Operand $" + opName + " should be a set destination: all "
+          tp.error("Operand $" + opName + " should be a set destination: all "
               + "outputs must occur before inputs in operand list!");
 
         if (cgi.operandList.get(j).rec != r) {
-          i.error("Operand $" + opName + " class mismatch!");
+          tp.error("Operand $" + opName + " class mismatch!");
         }
 
         // Remember the return type.
@@ -914,7 +915,7 @@ public final class CodeGenDAGPatterns {
         OperandInfo op = cgi.operandList.get(j);
         String opName = op.name;
         if (opName.isEmpty())
-          i.error("Operand #" + j + " in operands list has no name!");
+          tp.error("Operand #" + j + " in operands list has no name!");
 
         if (!instInputsCheck.containsKey(opName)) {
           // If this is an predicate operand or optional def operand with an
@@ -927,7 +928,7 @@ public final class CodeGenDAGPatterns {
             if (!getDefaultOperand(op.rec).defaultOps.isEmpty())
               continue;
           }
-          i.error("Operand $" + opName +
+          tp.error("Operand $" + opName +
               " does not appear in the instruction pattern");
         }
 
@@ -937,7 +938,7 @@ public final class CodeGenDAGPatterns {
         if (inVal.isLeaf() && inVal.getLeafValue() instanceof DefInit) {
           Record inRec = ((DefInit) inVal.getLeafValue()).getDef();
           if (op.rec != inRec && !inRec.isSubClassOf("ComplexPattern"))
-            i.error("Operand $" + opName + "'s register class disagrees" +
+            tp.error("Operand $" + opName + "'s register class disagrees" +
                 " between the operand and pattern");
         }
         operands.add(op.rec);
@@ -954,16 +955,17 @@ public final class CodeGenDAGPatterns {
           opNode.setTransformFn(null);
           ArrayList<TreePatternNode> childs = new ArrayList<>();
           childs.add(opNode);
-          opNode = new TreePatternNode(xform, childs);
+          opNode = new TreePatternNode(xform, childs, opNode.getNumTypes());
         }
         resultNodeOperands.add(opNode);
       }
 
       if (!instInputsCheck.isEmpty())
-        i.error("Input operand $" + instInputsCheck.entrySet().iterator().next().getKey() +
+        tp.error("Input operand $" + instInputsCheck.entrySet().iterator().next().getKey() +
             " occurs in pattern but not in operands list!");
 
-      TreePatternNode resultPattern = new TreePatternNode(i.getRecord(), resultNodeOperands);
+      TreePatternNode resultPattern = new TreePatternNode(tp.getRecord(), resultNodeOperands,
+          getNumNodeResults(tp.getRecord(), this));
 
       // Copy fully inferred output node type to instruction result pattern.
       if (numResults > 0) {
@@ -973,20 +975,20 @@ public final class CodeGenDAGPatterns {
       // Create and insert the instruction.
       // FIXME: InstImpResults and InstImpInputs should not be part of
       // DAGInstruction.
-      DAGInstruction theInst = new DAGInstruction(i, results, operands, instImpResults, instImpInputs);
-      instructions.put(i.getRecord(), theInst);
+      DAGInstruction theInst = new DAGInstruction(tp, results, operands, instImpResults, instImpInputs);
+      instructions.put(tp.getRecord(), theInst);
 
       // Use a temporary tree pattern to infer all types and make sure that the
       // constructed result is correct.  This depends on the instruction already
       // being inserted into the Instructions map.
-      TreePattern temp = new TreePattern(i.getRecord(), resultPattern, false, this);
+      TreePattern temp = new TreePattern(tp.getRecord(), resultPattern, false, this);
       temp.inferAllTypes();
 
-      DAGInstruction theInsertedInst = instructions.get(i.getRecord());
+      DAGInstruction theInsertedInst = instructions.get(tp.getRecord());
       theInsertedInst.setResultPattern(temp.getOnlyTree());
 
       if (TableGen.DEBUG)
-        i.dump();
+        tp.dump();
     }
 
     for (Map.Entry<Record, DAGInstruction> pair : instructions.entrySet()) {
@@ -1131,6 +1133,7 @@ public final class CodeGenDAGPatterns {
 
       // Infer as many types as possible.  Don't worry about it if we don't infer
       // all of them, some may depend on the inputs of the pattern.
+
       pat.inferAllTypes();
 
       // If debugging, print out the pattern fragment result.
@@ -1275,6 +1278,12 @@ public final class CodeGenDAGPatterns {
   public TreePattern getPatternFragment(Record r) {
     Util.assertion(patternFragments.containsKey(r), "Invalid pattern fragment request!");
     return patternFragments.get(r);
+  }
+
+  public TreePattern getPatternFragmentIfExisting(Record r) {
+    if (patternFragments.containsKey(r))
+      return patternFragments.get(r);
+    return null;
   }
 
   public TreeMap<Record, TreePattern> getPatternFragments() {

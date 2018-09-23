@@ -16,13 +16,11 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MVT;
 import tools.Error;
 import tools.Util;
 import utils.tablegen.CodeGenIntrinsic.ModRefType;
-import utils.tablegen.Init.BitsInit;
-import utils.tablegen.Init.DagInit;
-import utils.tablegen.Init.DefInit;
-import utils.tablegen.Init.IntInit;
+import utils.tablegen.Init.*;
 import utils.tablegen.RecTy.IntRecTy;
 
 import java.io.PrintStream;
@@ -30,8 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Objects;
 
-import static backend.codegen.MVT.isVoid;
-import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
+import static utils.tablegen.CodeGenTarget.getValueType;
 
 /**
  * @author Jianping Zeng
@@ -50,14 +47,14 @@ public final class TreePattern {
   private TypeInfer infer;
   private boolean error;
 
-  public TreePattern(Record theRec, Init.ListInit rawPat, boolean isInput,
+  public TreePattern(Record theRec, ListInit rawPat, boolean isInput,
                      CodeGenDAGPatterns cdp) {
     theRecord = theRec;
     this.cdp = cdp;
     isInputPattern = isInput;
     infer = new TypeInfer(this);
     for (int i = 0, e = rawPat.getSize(); i != e; i++)
-      trees.add(parseTreePattern((DagInit) rawPat.getElement(i)));
+      trees.add(parseTreePattern(rawPat.getElement(i), ""));
   }
 
   public TreePattern(Record theRec, DagInit pat, boolean isInput,
@@ -66,7 +63,7 @@ public final class TreePattern {
     this.cdp = cdp;
     isInputPattern = isInput;
     infer = new TypeInfer(this);
-    trees.add(parseTreePattern(pat));
+    trees.add(parseTreePattern(pat, ""));
   }
 
   public TreePattern(Record theRec, TreePatternNode pat, boolean isInput,
@@ -185,58 +182,68 @@ public final class TreePattern {
     print(System.err);
   }
 
-  private TreePatternNode parseTreePattern(DagInit dag) {
+  private TreePatternNode parseTreePattern(Init theInit, String opName) {
+
+    if (theInit instanceof DefInit) {
+      DefInit di = (DefInit) theInit;
+      Record r = di.getDef();
+      if (r.isSubClassOf("SDNode") || r.isSubClassOf("PatFrag"))
+        return parseTreePattern(new DagInit(di, "",
+            new ArrayList<>()), opName);
+      TreePatternNode res = new TreePatternNode(di, 1);
+      if (r.getName().equals("node") && !opName.isEmpty())
+        args.add(opName);
+
+      res.setName(opName);
+      return res;
+    }
+    if (theInit instanceof Init.UnsetInit) {
+      if (opName.isEmpty())
+        error("'?' argument requires a name to match with operand list");
+      TreePatternNode res = new TreePatternNode(theInit, 1);
+      args.add(opName);
+      res.setName(opName);
+      return res;
+    }
+    if (theInit instanceof IntInit) {
+      IntInit ii = (IntInit) theInit;
+      if (!opName.isEmpty())
+        error("Constant int argument should not have a name!");
+      return new TreePatternNode(ii, 1);
+    }
+
+    if (theInit instanceof BitsInit) {
+      BitsInit bi = (BitsInit) theInit;
+      Init ii = bi.convertInitializerTo(new IntRecTy());
+      if (ii == null || !(ii instanceof IntInit))
+        error("Bits value must be constant!");
+      return parseTreePattern(ii, opName);
+    }
+
+    if (!(theInit instanceof DagInit))
+      error("Pattern has unexpected init kind");
+
+    DagInit dag = (DagInit) theInit;
+
     if (!(dag.getOperator() instanceof DefInit))
       error("Pattern has unexpected operator type!");
 
     DefInit opDef = (DefInit) dag.getOperator();
-
     Record operator = opDef.getDef();
+
     if (operator.isSubClassOf("ValueType")) {
       // If the operator is a ValueType, then this must be "type cast" of a leaf
       // node.
       if (dag.getNumArgs() != 1)
         error("Type cast only takes one operand!");
 
-      Init arg = dag.getArg(0);
-      TreePatternNode newNode;
-      DefInit di = arg instanceof DefInit ? (DefInit) arg : null;
-      if (di != null) {
-        Record r = di.getDef();
-        if (r.isSubClassOf("SDNode") || r.isSubClassOf("PatFrag")) {
-          dag.setArg(0, new DagInit(di, "", new ArrayList<>()));
-          return parseTreePattern(dag);
-        }
-        newNode = new TreePatternNode(di);
-      } else if (arg instanceof DagInit) {
-        DagInit dagI = (DagInit) arg;
-        newNode = parseTreePattern(dagI);
-      } else if (arg instanceof IntInit) {
-        IntInit ii = (IntInit) arg;
-        newNode = new TreePatternNode(ii);
-        if (!dag.getArgName(0).isEmpty())
-          error("Constant int argument should not have a name!");
-      } else if (arg instanceof BitsInit) {
-        BitsInit bi = (BitsInit) arg;
-        Init ii = bi.convertInitializerTo(new IntRecTy());
-        if (ii == null || !(ii instanceof IntInit))
-          error("Bits value must be constants!");
+      TreePatternNode newRes = parseTreePattern(dag.getArg(0), dag.getArgName(0));
 
-        newNode = new TreePatternNode(ii);
-        if (!dag.getArgName(0).isEmpty())
-          error("Constant int argument should not have a name!");
-      } else {
-        arg.dump();
-        error("Unknown leaf value for tree pattern!");
-        return null;
-      }
-      CodeGenHwModes hwModes = getDAGPatterns().getTarget().getHwModes();
-      Util.assertion(newNode != null);
-      newNode.updateNodeType(0, getValueTypeByHwMode(operator, hwModes), this);
-      if (newNode.getNumChildren() == 0)
-        newNode.setName(dag.getArgName(0));
-
-      return newNode;
+      Util.assertion(newRes.getNumTypes() ==1, "FIXME: Unhandled!");
+      newRes.updateNodeType(0, getValueType(operator), this);
+      if (!opName.isEmpty())
+        error("ValueType cast should not have a name!");
+      return newRes;
     }
 
     // Verify that this is something that makes sense for an operator.
@@ -259,73 +266,74 @@ public final class TreePattern {
 
     for (int i = 0, e = dag.getNumArgs(); i != e; i++) {
       Init arg = dag.getArg(i);
-      DagInit di = arg instanceof DagInit ? (DagInit) arg : null;
-      if (di != null) {
-        children.add(parseTreePattern(di));
-        TreePatternNode lastNode = children.getLast();
-        if (lastNode.getName().isEmpty())
-          lastNode.setName(dag.getArgName(i));
-      } else if (arg instanceof DefInit) {
-        DefInit def = (DefInit) arg;
-        Record r = def.getDef();
-
-        if (r.isSubClassOf("SDNode") || r.isSubClassOf("PatFrag")) {
-          dag.setArg(i, new DagInit(def, "", new ArrayList<>()));
-          --i;
-        } else {
-          TreePatternNode node = new TreePatternNode(def);
-          node.setName(dag.getArgName(i));
-          children.add(node);
-
-          if (r.getName().equals("node")) {
-            if (dag.getArgName(i).isEmpty())
-              error("'node' argument requires a name to match with operand list");
-            args.add(dag.getArgName(i));
-          }
-        }
-      } else if (arg instanceof IntInit) {
-        IntInit ii = (IntInit) arg;
-        TreePatternNode node = new TreePatternNode(ii);
-        if (!dag.getArgName(i).isEmpty())
-          error("Constant int argument should not have a name!");
-
-        children.add(node);
-      } else if (arg instanceof BitsInit) {
-        BitsInit bi = (BitsInit) arg;
-        Init ii = bi.convertInitializerTo(new IntRecTy());
-        if (ii == null || !(ii instanceof IntInit))
-          error("Bits value must be constants!");
-
-        TreePatternNode node = new TreePatternNode(ii);
-        if (!dag.getArgName(i).isEmpty())
-          error("Constant int argument should not have a name!");
-        children.add(node);
-      } else {
-        System.err.print('"');
-        arg.dump();
-        System.err.print("\": ");
-        error("Undefined leaf value for tree pattern!");
-      }
+      String argName = dag.getArgName(i);
+      children.add(parseTreePattern(arg, argName));
     }
-
     if (operator.isSubClassOf("Intrinsic")) {
-      CodeGenIntrinsic instrincis = getDAGPatterns().getIntrinsic(operator);
-      int iid = getDAGPatterns().getIntrinsicID(operator) + 1;
+      CodeGenIntrinsic cgi = getDAGPatterns().getIntrinsic(operator);
+      int iid = getDAGPatterns().getIntrinsicID(operator)+1;
 
-      if (instrincis.is.retVTs.get(0) == isVoid)
+      if (cgi.is.retVTs.isEmpty())
         operator = getDAGPatterns().getIntrinsicVoidSDNode();
-      else if (instrincis.modRef != ModRefType.NoMem)
+      else if (cgi.modRef != ModRefType.NoMem)
         operator = getDAGPatterns().getIntrinsicWChainSDNode();
-      else {
-        // Otherwise, no chain.
+      else
         operator = getDAGPatterns().getIntrinsicWOChainSDNode();
-      }
-      TreePatternNode iidNode = new TreePatternNode(new IntInit(iid));
-      children.add(0, iidNode);
+
+      TreePatternNode iidNode = new TreePatternNode(new IntInit(iid), 1);
+      children.addFirst(iidNode);
     }
 
-    TreePatternNode result = new TreePatternNode(operator, children);
-    result.setName(dag.getName());
+    int numResults = getNumNodeResults(operator, getDAGPatterns());
+    TreePatternNode result = new TreePatternNode(operator, children, numResults);
+    result.setName(opName);
+    if (dag.getName() != null) {
+      Util.assertion(result.getName().isEmpty());
+      result.setName(dag.getName());
+    }
+
     return result;
+  }
+
+  public static int getNumNodeResults(Record operator, CodeGenDAGPatterns cdp) {
+    if (operator.getName().equals("set") ||
+        operator.getName().equals("implict"))
+      return 0;
+
+    if (operator.isSubClassOf("Intrinsic"))
+      return cdp.getIntrinsic(operator).is.retVTs.size();
+
+    if (operator.isSubClassOf("SDNode"))
+      return cdp.getSDNodeInfo(operator).getNumResults();
+    if (operator.isSubClassOf("PatFrag")) {
+      TreePattern tp = cdp.getPatternFragmentIfExisting(operator);
+      if (tp != null)
+        return tp.getOnlyTree().getNumTypes();
+
+      DagInit tree = operator.getValueAsDag("Fragment");
+      Record op = null;
+      if (tree != null && tree.getOperator() instanceof DefInit)
+        op = ((DefInit)tree.getOperator()).getDef();
+      Util.assertion(op != null, "Invalid Fragment");
+      return getNumNodeResults(op, cdp);
+    }
+
+    if (operator.isSubClassOf("Instruction")) {
+      CodeGenInstruction cgi = cdp.getTarget().getInstruction(operator.getName());
+      int numDefsToAdd = cgi.numDefs != 0 ? 1 : 0;
+
+      // Add on one implicit def if it has a resolvable type.
+      if (cgi.hasOneImplicitDefWithKnownVT(cdp.getTarget()) != MVT.Other)
+        ++numDefsToAdd;
+
+      return numDefsToAdd;
+    }
+
+    if (operator.isSubClassOf("SDNodeXForm"))
+      return 1;
+    operator.dump();
+    System.err.println("Unhandled node in getNumNodeResults");
+    System.exit(-1);
+    return -1;
   }
 }

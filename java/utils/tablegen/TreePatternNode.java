@@ -72,12 +72,23 @@ public final class TreePatternNode implements Cloneable {
    */
   private ArrayList<TreePatternNode> children;
 
-  public TreePatternNode(Record op, List<TreePatternNode> chs) {
+  public TreePatternNode(Record op, List<TreePatternNode> chs, int numResults) {
     types = new ArrayList<>();
     predicateFns = new ArrayList<>();
     operator = op;
     children = new ArrayList<>();
     children.addAll(chs);
+    for (; numResults > 0; --numResults)
+      types.add(new TypeSetByHwMode());
+  }
+
+  public TreePatternNode(Init op, int numResults) {
+    types = new ArrayList<>();
+    predicateFns = new ArrayList<>();
+    val = op;
+    children = new ArrayList<>();
+    for (; numResults > 0; --numResults)
+      types.add(new TypeSetByHwMode());
   }
 
   public TreePatternNode(Init leaf) {
@@ -85,6 +96,7 @@ public final class TreePatternNode implements Cloneable {
     predicateFns = new ArrayList<>();
     val = leaf;
     children = new ArrayList<>();
+    types.add(new TypeSetByHwMode());
   }
 
   public String getName() {
@@ -337,14 +349,19 @@ public final class TreePatternNode implements Cloneable {
     } else if (getOperator().isSubClassOf("SDNode")) {
       SDNodeInfo ni = cdp.getSDNodeInfo(getOperator());
 
+      if (ni.getNumOperands() >= 0 &&
+          getNumChildren() != ni.getNumOperands()) {
+        tp.error(String.format("%s node requires exactly %d operands",
+            getOperator().getName(), ni.getNumOperands()));
+        return false;
+      }
+
       boolean madeChanged = false;
+
       for (int i = 0, e = getNumChildren(); i != e; ++i) {
         madeChanged |= getChild(i).applyTypeConstraints(tp, notRegisters);
       }
-      madeChanged = ni.applyTypeConstraints(this, tp);
-      if (ni.getNumResults() == 0) {
-        madeChanged |= updateNodeType(0, isVoid, tp);
-      }
+      madeChanged |= ni.applyTypeConstraints(this, tp);
       return madeChanged;
     } else if (getOperator().isSubClassOf("Instruction")) {
       DAGInstruction instr = cdp.getInstruction(getOperator());
@@ -447,7 +464,7 @@ public final class TreePatternNode implements Cloneable {
                                           boolean unNamed,
                                           TreePattern tp) {
     if (r.isSubClassOf("RegisterOperand")) {
-      Util.assertion(resNo == 0, "Registe operand ref only has one result!");
+      Util.assertion(resNo == 0, "Register operand ref only has one result!");
       if (notRegisters)
         return new TypeSetByHwMode();
       Record rec = r.getValueAsDef("RegClass");
@@ -486,8 +503,7 @@ public final class TreePatternNode implements Cloneable {
       return new TypeSetByHwMode(getValueTypeByHwMode(r, cgh));
     } else if (r.isSubClassOf("CondCode")) {
       Util.assertion(resNo == 0, "CodeCode only has one result!");
-      if (notRegisters)
-        return new TypeSetByHwMode(MVT.Other);
+      return new TypeSetByHwMode(MVT.Other);
     }
     else if (r.isSubClassOf("ComplexPattern")) {
       Util.assertion(resNo == 0, "ComplexPattern only has one result!");
@@ -501,7 +517,7 @@ public final class TreePatternNode implements Cloneable {
       return vts;
     } else if (r.getName().equals("node") || r.getName().equals("srcvalue")
         || r.getName().equals("zero_reg")) {
-      return new TypeSetByHwMode(); // unknown.
+      return new TypeSetByHwMode(MVT.Other); // unknown.
     }
 
     tp.error("Undefined node flavour used in pattern: " + r.getName());
@@ -529,7 +545,7 @@ public final class TreePatternNode implements Cloneable {
     else {
       ArrayList<TreePatternNode> childs = new ArrayList<>();
       children.forEach(ch -> childs.add(ch.clone()));
-      res = new TreePatternNode(getOperator(), childs);
+      res = new TreePatternNode(getOperator(), childs, getNumTypes());
     }
     res.setName(getName());
     res.setTypes(getExtTypes());
