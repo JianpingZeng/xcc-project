@@ -28,6 +28,7 @@ import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.ListInit;
 import utils.tablegen.Init.TypedInit;
 
+import javax.swing.tree.TreeNode;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -537,53 +538,15 @@ public final class CodeGenDAGPatterns {
         pattern = new TreePattern(patterns.get(i), li, true, this);
       }
 
-      // Inline pattern fragments into it.
-      pattern.inlinePatternFragments();
-
       ListInit li = patterns.get(i).getValueAsListInit("ResultInstrs");
       if (li.getSize() == 0) continue;
 
       // Parse the instruction.
       TreePattern result = new TreePattern(patterns.get(i), li, false, this);
-
-      // Inline pattern fragments into it.
-      result.inlinePatternFragments();
-
       if (result.getNumTrees() != 1) {
         result.error("Cannot handle instructions producing instructions " +
             "with temporaries yet!");
       }
-
-      boolean iterateInference;
-      boolean inferredAllPatternTypes, inferredAllResultTypes;
-      do {
-        // Infer as many types as possible.  If we cannot infer all of them, we
-        // can never do anything with this pattern: report it to the user.
-        inferredAllPatternTypes = pattern.inferAllTypes();
-
-        // Infer as many types as possible.  If we cannot infer all of them, we
-        // can never do anything with this pattern: report it to the user.
-        inferredAllResultTypes = result.inferAllTypes();
-
-        iterateInference = false;
-        // Apply the type of the result to the source pattern.  This helps us
-        // resolve cases where the input type is known to be a pointer type (which
-        // is considered resolved), but the result knows it needs to be 32- or
-        // 64-bits.  Infer the other way for good measure.
-        for (int k = 0, sz = Math.min(pattern.getTree(0).getNumTypes(),
-            result.getTree(0).getNumTypes()); k < sz; k++) {
-          iterateInference = pattern.getTree(0).
-              updateNodeType(k, result.getTree(0).getExtType(k), result);
-          iterateInference |= result.getTree(0).
-              updateNodeType(k, pattern.getTree(0).getExtType(k), result);
-        }
-      } while (iterateInference);
-
-      if (!inferredAllPatternTypes)
-        pattern.error("Could not infer all types in pattern!");
-      if (!inferredAllResultTypes)
-        pattern.error("Could not infer all types in pattern result!");
-
       TreeMap<String, TreePatternNode> instInputs = new TreeMap<>();
       TreeMap<String, TreePatternNode> instResults = new TreeMap<>();
       ArrayList<Record> instImpInputs = new ArrayList<>();
@@ -593,39 +556,86 @@ public final class CodeGenDAGPatterns {
             instImpInputs, instImpResults);
       }
 
-      // Promote the xform function to be an explicit node if set.
-      TreePatternNode dstPattern = result.getOnlyTree();
-      ArrayList<TreePatternNode> resultNodeOperands = new ArrayList<>();
-      for (int ii = 0, ee = dstPattern.getNumChildren(); ii != ee; ++ii) {
-        TreePatternNode opNode = dstPattern.getChild(ii);
-        Record xform = opNode.getTransformFn();
-        if (xform != null) {
-          opNode.setTransformFn(null);
-          ArrayList<TreePatternNode> children = new ArrayList<>();
-          children.add(opNode);
-          opNode = new TreePatternNode(xform, children, opNode.getNumTypes());
-        }
-        resultNodeOperands.add(opNode);
-      }
-
-      dstPattern = result.getOnlyTree();
-      if (!dstPattern.isLeaf())
-        dstPattern = new TreePatternNode(dstPattern.getOperator(),
-            resultNodeOperands, dstPattern.getNumTypes());
-      dstPattern.setTypes(result.getOnlyTree().getExtTypes());
-      TreePattern temp = new TreePattern(result.getRecord(), dstPattern, false, this);
-      temp.inferAllTypes();
-
-      StringBuilder reason = new StringBuilder();
-      if (!pattern.getTree(0).canPatternMatch(reason, this))
-        pattern.error("Pattern can never match: " + reason.toString());
-
-      addPatternsToMatch(new PatternToMatch(
-          patterns.get(i).getValueAsListInit("Predicates"),
-          pattern.getTree(0),
-          temp.getOnlyTree(), instImpResults,
-          (int) patterns.get(i).getValueAsInt("AddedComplexity")));
+      parseOnePattern(patterns.get(i), pattern, result, instImpResults);
     }
+  }
+
+  private void parseOnePattern(Record theDef, TreePattern pattern, TreePattern result,
+                               ArrayList<Record> instImpResults) {
+
+    // Inline pattern fragments into it.
+    pattern.inlinePatternFragments();
+    // Inline pattern fragments into it.
+    result.inlinePatternFragments();
+
+    if (result.getNumTrees() != 1) {
+      result.error("Cannot handle instructions producing instructions " +
+          "with temporaries yet!");
+    }
+
+    boolean iterateInference;
+    boolean inferredAllPatternTypes, inferredAllResultTypes;
+    do {
+      // Infer as many types as possible.  If we cannot infer all of them, we
+      // can never do anything with this pattern: report it to the user.
+      inferredAllPatternTypes = pattern.inferAllTypes(pattern.getNamedNodes());
+
+      // Infer as many types as possible.  If we cannot infer all of them, we
+      // can never do anything with this pattern: report it to the user.
+      inferredAllResultTypes = result.inferAllTypes(pattern.getNamedNodes());
+
+      iterateInference = false;
+      // Apply the type of the result to the source pattern.  This helps us
+      // resolve cases where the input type is known to be a pointer type (which
+      // is considered resolved), but the result knows it needs to be 32- or
+      // 64-bits.  Infer the other way for good measure.
+      for (int k = 0, sz = Math.min(pattern.getTree(0).getNumTypes(),
+          result.getTree(0).getNumTypes()); k < sz; k++) {
+        iterateInference = pattern.getTree(0).
+            updateNodeType(k, result.getTree(0).getExtType(k), result);
+        iterateInference |= result.getTree(0).
+            updateNodeType(k, pattern.getTree(0).getExtType(k), result);
+      }
+    } while (iterateInference);
+
+    if (!inferredAllPatternTypes)
+      pattern.error("Could not infer all types in pattern!");
+    if (!inferredAllResultTypes)
+      pattern.error("Could not infer all types in pattern result!");
+
+    // Promote the xform function to be an explicit node if set.
+    TreePatternNode dstPattern = result.getOnlyTree();
+    ArrayList<TreePatternNode> resultNodeOperands = new ArrayList<>();
+    for (int ii = 0, ee = dstPattern.getNumChildren(); ii != ee; ++ii) {
+      TreePatternNode opNode = dstPattern.getChild(ii);
+      Record xform = opNode.getTransformFn();
+      if (xform != null) {
+        opNode.setTransformFn(null);
+        ArrayList<TreePatternNode> children = new ArrayList<>();
+        children.add(opNode);
+        opNode = new TreePatternNode(xform, children, opNode.getNumTypes());
+      }
+      resultNodeOperands.add(opNode);
+    }
+
+    dstPattern = result.getOnlyTree();
+    if (!dstPattern.isLeaf())
+      dstPattern = new TreePatternNode(dstPattern.getOperator(),
+          resultNodeOperands, dstPattern.getNumTypes());
+
+    dstPattern.setTypes(result.getOnlyTree().getExtTypes());
+    TreePattern temp = new TreePattern(result.getRecord(), dstPattern, false, this);
+    temp.inferAllTypes();
+
+    StringBuilder reason = new StringBuilder();
+    if (!pattern.getTree(0).canPatternMatch(reason, this))
+      pattern.error("Pattern can never match: " + reason.toString());
+
+    addPatternsToMatch(new PatternToMatch(
+        theDef.getValueAsListInit("Predicates"),
+        pattern.getTree(0),
+        temp.getOnlyTree(), instImpResults,
+        (int) theDef.getValueAsInt("AddedComplexity")));
   }
 
   /**
@@ -1012,9 +1022,11 @@ public final class CodeGenDAGPatterns {
 
       Record instr = pair.getKey();
       TreePatternNode dstPattern = theInst.getResultPattern();
-      addPatternsToMatch(new PatternToMatch(instr.getValueAsListInit("Predicates"),
-          srcPattern, dstPattern, theInst.getImpResults(),
-          (int) instr.getValueAsInt("AddedComplexity")));
+      if (srcPattern != null && dstPattern != null) {
+        TreePattern src = new TreePattern(instr, srcPattern, true, this);
+        TreePattern result = new TreePattern(instr, dstPattern, true, this);
+        parseOnePattern(instr, src, result, theInst.getImpResults());
+      }
     }
   }
 

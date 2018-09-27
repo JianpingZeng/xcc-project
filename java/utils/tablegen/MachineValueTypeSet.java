@@ -70,6 +70,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   public boolean insert(MVT vt) {
     boolean v = count(vt);
     words[vt.simpleVT/WordWidth] |= 1 <<(vt.simpleVT%WordWidth);
+    toString();
     return v;
   }
 
@@ -123,6 +124,10 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     return res;
   }
 
+  /***
+   * FIXME, iterator is needed to be tested !!!!
+   * @return
+   */
   @Override
   public Iterator<MVT> iterator() {
     return new MVTIterator(this);
@@ -136,42 +141,51 @@ public class MachineValueTypeSet implements Iterable<MVT> {
 
   private static class MVTIterator implements Iterator<MVT> {
     private int pos;
-    private MachineValueTypeSet typeSet;
-    private int size;
+    private final MachineValueTypeSet typeSet;
+    private final int size;
+    private MVT cache;
 
     MVTIterator(MachineValueTypeSet typeSet) {
       pos = 0;
       this.typeSet = typeSet;
       size = typeSet.size();
+      next();
     }
     @Override
     public boolean hasNext() {
-      if (pos >= size) return false;
-      return !typeSet.isEmpty();
+      return cache != null;
     }
 
     @Override
     public MVT next() {
-      Util.assertion(hasNext());
+      MVT res = cache;
+
       for (; pos < size; ++pos) {
         if ((typeSet.words[pos/MachineValueTypeSet.WordWidth] &
-            (1 << pos % MachineValueTypeSet.WordWidth)) != 0)
-          return new MVT(pos);
+            (1 << (pos % MachineValueTypeSet.WordWidth))) != 0) {
+          cache = new MVT(pos);
+          break;
+        }
       }
-      return null;
+      return res;
     }
   }
 
   @Override
   public String toString() {
     StringBuilder buf = new StringBuilder("[");
-    int i  = 0, e = size();
-    for (Iterator<MVT> itr = iterator(); itr.hasNext(); ){
-      buf.append(ValueTypeByHwMode.getMVTName(itr.next()));
-      if (i < e - 1)
-        buf.append(", ");
+    int pos  = 0, e = NumWords;
+    boolean firstOne = true;
+
+    for (; pos < e; ++pos) {
+      if ((words[pos/MachineValueTypeSet.WordWidth] &
+          (1 << (pos % MachineValueTypeSet.WordWidth))) != 0) {
+        if (firstOne) firstOne = false;
+        else buf.append(", ");
+        buf.append(ValueTypeByHwMode.getMVTName(new MVT(pos)));
+      }
     }
-    buf.append('}');
+    buf.append(']');
     return buf.toString();
   }
 }

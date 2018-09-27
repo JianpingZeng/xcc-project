@@ -24,9 +24,7 @@ import utils.tablegen.Init.*;
 import utils.tablegen.RecTy.IntRecTy;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Objects;
+import java.util.*;
 
 import static utils.tablegen.CodeGenTarget.getValueType;
 
@@ -47,12 +45,19 @@ public final class TreePattern {
   private TypeInfer infer;
   private boolean error;
 
+  /**
+   * This is a collection comprosiing of named tree node in this pattern tree.
+   */
+  private HashMap<String, ArrayList<TreePatternNode>> namedNodes;
+
   public TreePattern(Record theRec, ListInit rawPat, boolean isInput,
                      CodeGenDAGPatterns cdp) {
     theRecord = theRec;
     this.cdp = cdp;
     isInputPattern = isInput;
     infer = new TypeInfer(this);
+    namedNodes = new HashMap<>();
+
     for (int i = 0, e = rawPat.getSize(); i != e; i++)
       trees.add(parseTreePattern(rawPat.getElement(i), ""));
   }
@@ -64,6 +69,7 @@ public final class TreePattern {
     isInputPattern = isInput;
     infer = new TypeInfer(this);
     trees.add(parseTreePattern(pat, ""));
+    namedNodes = new HashMap<>();
   }
 
   public TreePattern(Record theRec, TreePatternNode pat, boolean isInput,
@@ -73,8 +79,15 @@ public final class TreePattern {
     isInputPattern = isInput;
     infer = new TypeInfer(this);
     trees.add(pat);
+    namedNodes = new HashMap<>();
   }
 
+  public HashMap<String, ArrayList<TreePatternNode>> getNamedNodes() {
+    if (namedNodes.isEmpty())
+      computeNamedNodes();
+
+    return namedNodes;
+  }
 
   public TypeInfer getTypeInfer() { return infer; }
 
@@ -125,20 +138,113 @@ public final class TreePattern {
       trees.set(i, trees.get(i).inlinePatternFragments(this));
   }
 
+  private void computeNamedNodes(TreePatternNode root) {
+    if (root.getName() != null && !root.getName().isEmpty()) {
+      String name = root.getName();
+      if (!namedNodes.containsKey(name))
+        namedNodes.put(name, new ArrayList<>());
+
+      namedNodes.get(name).add(root);
+    }
+
+    for (int i = 0, e = root.getNumChildren(); i < e; i++)
+      computeNamedNodes(root.getChild(i));
+  }
+
+  private void computeNamedNodes() {
+    trees.forEach(n -> computeNamedNodes(n));
+  }
+  /**
+   * This the version of {@linkplain #inferAllTypes(HashMap)} with an
+   * argument default to null.
+   * @return
+   */
+  public boolean inferAllTypes() {
+    return inferAllTypes(null);
+  }
+
+  static boolean simplifyTree(TreePatternNode n) {
+    if (n.isLeaf()) return false;
+
+    if (n.getOperator().getName().equals("bitconvert") &&
+    n.getExtType(0).isValueTypeByHwMode(false) &&
+    n.getExtType(0) == n.getChild(0).getExtType(0) &&
+    n.getName().isEmpty()) {
+      n = n.getChild(0);
+      simplifyTree(n);
+      return true;
+    }
+
+    boolean madeChanged = false;
+    for (int i = 0,e = n.getNumChildren();i < e; i++) {
+      TreePatternNode child = n.getChild(i);
+      madeChanged |= simplifyTree(child);
+      n.setChild(i, child);
+    }
+    return madeChanged;
+  }
+
   /**
    * Infer/propagate as many types throughout the expression
    * patterns as possible.
    *
+   * @param inNamedTypes
    * @return Return true if all types are inferred, false
    * otherwise.  Throw an exception if a type contradiction is found.
    */
-  public boolean inferAllTypes() {
+  public boolean inferAllTypes(HashMap<String, ArrayList<TreePatternNode>> inNamedTypes) {
+    if (namedNodes.isEmpty())
+      computeNamedNodes();
+
     boolean changed = true;
     while (changed) {
       changed = false;
-      for (TreePatternNode node : trees)
+
+      for (TreePatternNode node : trees) {
         changed |= node.applyTypeConstraints(this, false);
+        this.dump();
+
+        //changed |= simplifyTree(node);
+      }
+
+      for (Map.Entry<String, ArrayList<TreePatternNode>> pair : namedNodes.entrySet()) {
+        ArrayList<TreePatternNode> nodes = pair.getValue();
+
+        if (inNamedTypes != null) {
+          if (!inNamedTypes.containsKey(pair.getKey())) {
+            error(String.format("Node '%s' in output pattern but not input pattern",
+                pair.getKey()));
+            return true;
+          }
+
+          ArrayList<TreePatternNode> inNodes = inNamedTypes.get(pair.getKey());
+          for (TreePatternNode node : inNodes) {
+            if (node  == trees.get(0) && node.isLeaf()) {
+              DefInit di = node.getLeafValue() instanceof DefInit ?
+                  (DefInit)node.getLeafValue() : null;
+              if (di != null && (di.getDef().isSubClassOf("RegisterClass") ||
+                  di.getDef().isSubClassOf("RegisterOperand")))
+                continue;
+            }
+
+            Util.assertion(node.getNumTypes() == 1 &&
+                inNodes.get(0).getNumTypes() == 1, "FIXME: can't name multiple ressult nodes yet");
+            changed |= node.updateNodeType(0, inNodes.get(0).getExtType(0), this);
+          }
+        }
+
+        if (nodes.size() > 1) {
+          for (int i = 0, e = nodes.size() -1; i < e; i++) {
+            TreePatternNode n1 = nodes.get(i), n2 = nodes.get(i+1);
+            Util.assertion(n1.getNumTypes() == 1 && n2.getNumTypes() == 1,
+                "FIXME: can't name multiple result nodes as yet");
+            changed |= n1.updateNodeType(0, n2.getExtType(0), this);
+            changed |= n2.updateNodeType(0, n1.getExtType(0), this);
+          }
+        }
+      }
     }
+
     boolean hasUnresolvedTypes = false;
     for (TreePatternNode node : trees)
       hasUnresolvedTypes |= node.containsUnresolvedType(this);

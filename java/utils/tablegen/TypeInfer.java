@@ -53,11 +53,18 @@ public class TypeInfer {
    * Set during code generation phase.
    */
   private boolean codeGen;
+
+  private boolean isLegalTypeCached;
+  private TypeSetByHwMode legalCache;
+
   public TypeInfer(TreePattern tp) {
     this.tp = tp;
     forceMode = 0;
     codeGen = false;
+    isLegalTypeCached = false;
+    legalCache = new TypeSetByHwMode();
   }
+
   public boolean isConcrete(TypeSetByHwMode vts,
                             boolean allowEmpty) {
     return vts.isValueTypeByHwMode(allowEmpty);
@@ -467,14 +474,12 @@ public class TypeInfer {
   private TypeSetByHwMode getLegalType() {
     if (!isLegalTypeCached) {
       TypeSetByHwMode set = tp.getDAGPatterns().getLegalValueTypes();
-      set.map.keySet().forEach(vt -> legalCache.insert(new MVT(vt)));
+      MachineValueTypeSet vts = legalCache.getOrCreate(DefaultMode);
+
+      set.map.keySet().forEach(vt -> vts.insert(vts));
       isLegalTypeCached = true;
     }
-    TypeSetByHwMode set = new TypeSetByHwMode();
-    set.map.put(DefaultMode, legalCache);
-    return set;
+    Util.assertion(legalCache.isDefaultOnly(), "Default-only allowed!");
+    return legalCache;
   }
-
-  private boolean isLegalTypeCached = false;
-  private MachineValueTypeSet legalCache = new MachineValueTypeSet();
 }

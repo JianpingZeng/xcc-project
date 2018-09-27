@@ -57,7 +57,10 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public MachineValueTypeSet getOrCreate(int mode) {
     if (hasMode(mode))
       return get(mode);
-    return map.put(mode, new MachineValueTypeSet());
+    else {
+      map.put(mode, new MachineValueTypeSet());
+      return map.get(mode);
+    }
   }
 
   public boolean isValueTypeByHwMode(boolean allowEmpty) {
@@ -101,16 +104,26 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public boolean insert(ValueTypeByHwMode vvt) {
     boolean changed = false;
     TreeSet<Integer> modes = new TreeSet<>();
-    for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+    // A cache for type when default mode is selected.
+    MVT dt = new MVT(MVT.Other);
+    boolean containsDefaultMode = false;
+
+    for (Map.Entry<Integer, MVT> itr : vvt.map.entrySet()) {
       int mode = itr.getKey();
       modes.add(mode);
-      changed |= getOrCreate(mode).insert(itr.getValue()) != itr.getValue();
+      MachineValueTypeSet vts = getOrCreate(mode);
+      Util.assertion(vts != null);
+      changed |= getOrCreate(mode).insert(itr.getValue());
+      if (mode == DefaultMode) {
+        dt = itr.getValue();
+        containsDefaultMode = true;
+      }
     }
-    if (modes.contains(DefaultMode)) {
-      MVT vt = vvt.getType(DefaultMode);
+
+    if (containsDefaultMode) {
       for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
         if (!modes.contains(itr.getKey()))
-          changed |= itr.getValue().insert(vt);
+          changed |= itr.getValue().insert(dt);
       }
     }
     return changed;
