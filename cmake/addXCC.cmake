@@ -124,3 +124,27 @@ endfunction()
 
 set(EXEEXT ${CMAKE_EXECUTABLE_SUFFIX})
 set(LTDL_SHLIB_EXT ${CMAKE_SHARED_LIBRARY_SUFFIX})
+
+# A macro definition for generating target-specific AsmPrinter, registerInfo
+# information etc.
+macro(tablegen ofn)
+  set(local_tds "${XCC_SOURCE_DIR}/tds ${XCC_SOURCE_DIR}/tds/${t}")
+  #message(STATUS "${local_tds} ${XCC_SOURCE_DIR}/tds/${t}/${t}.td")
+
+  add_custom_command(OUTPUT ${GEN_TBLGEN_SRCS}/${ofn}
+    COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen ${ARGN} -I ${local_tds}
+    ${XCC_SOURCE_DIR}/tds/${t}/${t}.td -o ${GEN_TBLGEN_SRCS}/${ofn}
+    DEPENDS CommonBackend
+    COMMENT "Building ${ofn}...")
+    set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_TBLGEN_SRCS}/${ofn})
+endmacro(tablegen)
+
+function(add_public_tablegen_target target)
+  # Creates a target for publicly exporting tablegen dependencies.
+  if( TABLEGEN_OUTPUT )
+    add_custom_target(${target}
+      DEPENDS ${TABLEGEN_OUTPUT})
+    add_dependencies(${target} ${XCC_COMMON_DEPENDS})
+    set_target_properties(${target} PROPERTIES FOLDER "Tablegenning")
+  endif( TABLEGEN_OUTPUT )
+endfunction()

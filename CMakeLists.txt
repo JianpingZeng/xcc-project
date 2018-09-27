@@ -249,34 +249,24 @@ add_custom_target(CommonBackend
     DEPENDS XccConfig
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
-# A macro definition for generating target-specific AsmPrinter, registerInfo
-# information etc.
-macro(tablegen ofn)
-  set(local_tds "${CMAKE_CURRENT_SOURCE_DIR}/tds ${CMAKE_CURRENT_SOURCE_DIR}/tds/${t}")
-  add_custom_command(OUTPUT ${GEN_TBLGEN_SRCS}/${ofn}
-    COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen ${ARGN} -I ${local_tds}
-    ${CMAKE_CURRENT_SOURCE_DIR}/tds/${t}/${t}.td -o ${GEN_TBLGEN_SRCS}/${ofn}
-    DEPENDS CommonBackend
-    COMMENT "Building ${ofn}...")
-    set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_TBLGEN_SRCS}/${ofn})
-endmacro(tablegen)
+# Set the root node of make target dependency graph
+set(XCC_COMMON_DEPENDS CommonBackend)
 
-# Generates TableGen files for each target.
-foreach(t ${XCC_TARGETS_TO_BUILD})
-    string(TOLOWER ${t} LOWER_TARGET)
-    set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/${LOWER_TARGET}")
-    file(GLOB_RECURSE TARGET_SRCS "${TARGET_DIRECTORY}/${LOWER_TARGET}/*.java")
-
-    file(MAKE_DIRECTORY "${GEN_TBLGEN_SRCS}")
-    tablegen(${t}GenATTAsmPrinter.java -gen-asm-printer)
-    tablegen(${t}GenRegisterInfo.java -gen-register-info)
-    tablegen(${t}GenRegisterNames.java -gen-register-names)
-    tablegen(${t}GenInstrInfo.java -gen-instr-info)
-    tablegen(${t}GenInstrNames.java -gen-instr-names)
-    tablegen(${t}GenSubtarget.java -gen-subtarget)
-    tablegen(${t}GenCallingConv.java -gen-callingconv)
-    TableGen(${t}GenDAGToDAGISel.java -gen-dag-isel)
+# Checks whether there is a target unsupported
+foreach(c ${XCC_TARGETS_TO_BUILD})
+  list(FIND XCC_ALL_TARGETS ${c} idx)
+  if (idx LESS 0)
+    message(FATAL_ERROR "The target '${c}' does not exist.
+    It should be one of \n${XCC_ALL_TARGETS}")
+  endif()
 endforeach()
+
+# Enter the corresponding target directory
+# Generates TableGen files for each target
+add_subdirectory(java/backend/target)
+
+#message(STATUS "${TARGET_SRCS}")
+#message(STATUS "${TABLEGEN_OUTPUT}")
 
 # Generates jlang options for jlang driver.
 file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})
@@ -287,12 +277,12 @@ macro(JlangTableGen ofn)
   -o ${GEN_OPTIONS_SRCS}/${ofn} ${ARGN} -I ${local_tds} ${local_tds}/Options.td
   DEPENDS CommonBackend
   COMMENT "Building ${ofn}...")
-  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
-  ${GEN_OPTIONS_SRCS}/${ofn}
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_OPTIONS_SRCS}/${ofn}
   )
 endmacro(JlangTableGen)
 
 JlangTableGen(OptionInfo.java -gen-jlang-options)
+add_public_tablegen_target(JlangOptionsTableGen)
 
 # Compiling collection of generated java source code by TableGen tool.
 macro(add_gen_tblgen target_name)
@@ -304,10 +294,10 @@ macro(add_gen_tblgen target_name)
             ${GEN_OPTIONS_SRCS}/OptionKind.java
             ${GEN_OPTIONS_SRCS}/Group.java
             ${GEN_OPTIONS_SRCS}/GroupID.java
-        DEPENDS ${TABLEGEN_OUTPUT}
+        DEPENDS ${BACKEND_TARGET}
         COMMENT "Compiling taraget-specific source files")
     else()
-        message(FATAL "Generates target-specific code failed according to td file")
+        message(FATAL "failed to generate code via llvm-tblgen according to td file")
     endif(TABLEGEN_OUTPUT)
 endmacro(add_gen_tblgen)
 
