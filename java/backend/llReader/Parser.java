@@ -38,7 +38,7 @@ public final class Parser {
     if (f == null) {
       diag.set(srcMgr.getMessage(new SMLoc(),
           StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
-          "fatal error"));
+          SourceMgr.DiagKind.DK_Error));
       return null;
     }
 

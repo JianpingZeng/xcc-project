@@ -29,7 +29,7 @@ public final class Error {
   public static SourceMgr sgr;
 
   public static void printMessage(SMLoc loc, String msg, DiagKind kind) {
-    sgr.printMessage(loc, msg, "");
+    sgr.getMessage(loc, msg, kind).print("llvm-tblgen", System.err);
   }
 
   public static void printMessage(MemoryBuffer loc, String msg, DiagKind kind) {
@@ -37,32 +37,45 @@ public final class Error {
   }
 
   public static void printNote(SMLoc loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Note);
   }
 
   public static void printNote(MemoryBuffer loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Note);
   }
 
   public static void printWarning(SMLoc loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Warning);
   }
 
   public static void printWarning(MemoryBuffer loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Warning);
   }
 
   public static void printError(SMLoc loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Error);
   }
 
   public static void printError(MemoryBuffer loc, String msg) {
+    printMessage(loc, msg, DiagKind.DK_Error);
   }
 
   public static void printError(String msg) {
+    System.err.printf("error: %s\n", msg);
   }
 
   public static void printFatalError(String msg) {
+    printError(msg);
+    System.exit(-1);
   }
 
   public static void printFatalError(SMLoc loc, String msg) {
+    printError(loc, msg);
+    System.exit(-1);
   }
 
   public static void printFatalError(MemoryBuffer loc, String msg) {
+    printError(loc, msg);
+    System.exit(-1);
   }
 }

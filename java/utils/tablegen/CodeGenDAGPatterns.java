@@ -835,6 +835,8 @@ public final class CodeGenDAGPatterns {
 
       // Inline pattern fragments into it.
       tp.inlinePatternFragments();
+      instr.dump();
+
       // Infer as many types as possible.  If we cannot infer all of them, we can
       // never do anything with this instruction pattern: report it to the user.
       if (!tp.inferAllTypes())

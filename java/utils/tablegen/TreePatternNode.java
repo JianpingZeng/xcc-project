@@ -354,8 +354,8 @@ public final class TreePatternNode implements Cloneable {
       }
       return madeChanged;
     } else if (getOperator().getName().equals("COPY_TO_REGCLASS")) {
-      boolean madeChanged = false;
-      madeChanged |= getChild(0).applyTypeConstraints(tp, notRegisters);
+      boolean madeChanged;
+      madeChanged = getChild(0).applyTypeConstraints(tp, notRegisters);
       madeChanged |= getChild(1).applyTypeConstraints(tp, notRegisters);
       madeChanged |= updateNodeType(0, getChild(1).getExtType(0), tp);
       return madeChanged;

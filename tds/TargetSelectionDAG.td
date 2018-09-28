@@ -573,22 +573,27 @@ def immAllOnes : PatLeaf<(imm), [{ return n.isAllOnesValue(); }]>;
 def immAllOnesV: PatLeaf<(build_vector), [{
   return ISD.isBuildVectorAllOnes(n);
 }]>;
+
+/*
 def immAllOnesV_bc: PatLeaf<(bitconvert), [{
   return ISD.isBuildVectorAllOnes(n);
 }]>;
+*/
 def immAllZerosV: PatLeaf<(build_vector), [{
   return ISD.isBuildVectorAllZeros(n);
 }]>;
+/*
 def immAllZerosV_bc: PatLeaf<(bitconvert), [{
   return ISD.isBuildVectorAllZeros(n);
 }]>;
+*/
 
 
 
 // Other helper fragments.
-def not  : PatFrag<(ops node:$in), (xor node:$in, immAllOnes)>;
+def not  : PatFrag<(ops node:$in), (xor node:$in, -1)>;
 def vnot : PatFrag<(ops node:$in), (xor node:$in, immAllOnesV)>;
-def vnot_conv : PatFrag<(ops node:$in), (xor node:$in, immAllOnesV_bc)>;
+//def vnot_conv : PatFrag<(ops node:$in), (xor node:$in, immAllOnesV_bc)>;
 def ineg : PatFrag<(ops node:$in), (sub 0, node:$in)>;
 
 // load fragments.

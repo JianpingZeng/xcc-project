@@ -200,7 +200,7 @@ public final class TreePattern {
 
       for (TreePatternNode node : trees) {
         changed |= node.applyTypeConstraints(this, false);
-//        changed |= simplifyTree(node);
+        changed |= simplifyTree(node);
       }
 
       for (Map.Entry<String, ArrayList<TreePatternNode>> pair : namedNodes.entrySet()) {

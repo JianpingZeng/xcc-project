@@ -302,7 +302,7 @@ public final class LLLexer {
   }
 
   public boolean error(SourceMgr.SMLoc loc, String msg) {
-    errorInfo.set(smg.getMessage(loc, msg, "error"));
+    errorInfo.set(smg.getMessage(loc, msg, SourceMgr.DiagKind.DK_Error));
     return true;
   }
 

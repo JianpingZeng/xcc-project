@@ -248,11 +248,11 @@ public final class SourceMgr {
    *
    * @param loc
    * @param msg
-   * @param type If not null, it specified the kind of message to be emitted (e.g. "error")
+   * @param kind If not null, it specified the kind of message to be emitted (e.g. "error")
    *             which is prefixed to the message.
    * @return
    */
-  public SMDiagnostic getMessage(SMLoc loc, String msg, String type) {
+  public SMDiagnostic getMessage(SMLoc loc, String msg, DiagKind kind) {
     int curBuf = findBufferContainingLoc(loc);
     Util.assertion(curBuf != -1, "Invalid or unspecified location!");
 
@@ -271,13 +271,21 @@ public final class SourceMgr {
       ++columnEnd;
 
     String printedMsg = "";
-    if (type != null) {
-      printedMsg = type;
-      printedMsg += ": ";
+    switch (kind) {
+      case DK_Error:
+        printedMsg = "error: ";
+        break;
+      case DK_Remark:
+        printedMsg = "remark: ";
+        break;
+      case DK_Note:
+        printedMsg = "note: ";
+        break;
+      case DK_Warning:
+        printedMsg = "warning: ";
+        break;
     }
-
     printedMsg += msg;
-
     return new SMDiagnostic(curMB.getBufferName(), findLineNumber(loc, curBuf),
         curMB.getBufferStart() - columnStart, printedMsg,
         curMB.getSubString(columnStart, columnEnd));
