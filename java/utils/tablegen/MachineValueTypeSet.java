@@ -69,7 +69,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
    */
   public boolean insert(MVT vt) {
     boolean v = count(vt);
-    words[vt.simpleVT/WordWidth] |= 1 <<(vt.simpleVT%WordWidth);
+    words[vt.simpleVT/WordWidth] |= 1L <<(vt.simpleVT%WordWidth);
     toString();
     return v;
   }
@@ -81,7 +81,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public void erase(MVT vt) {
-    words[vt.simpleVT/WordWidth] &= ~(1 <<(vt.simpleVT%WordWidth));
+    words[vt.simpleVT/WordWidth] &= ~(1L <<(vt.simpleVT%WordWidth));
   }
 
   public int size() {
@@ -124,6 +124,11 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     return res;
   }
 
+  public boolean getBit(int index) {
+    Util.assertion(index >= 0 && index < size());
+    return (words[index / WordWidth] & (1L << (index % WordWidth))) != 0;
+  }
+
   /***
    * FIXME, iterator is needed to be tested !!!!
    * @return
@@ -133,59 +138,85 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     return new MVTIterator(this);
   }
 
-  @Override
   public void forEach(Consumer<? super MVT> action) {
-    for (Iterator<MVT> itr = iterator(); itr.hasNext(); )
-      action.accept(itr.next());
+    for (int idx = nextSetBit(0); idx != -1; idx = nextSetBit(idx+1)) {
+      MVT vt = new MVT(idx);
+      action.accept(vt);
+    }
+  }
+
+  public int nextSetBit(int startIndex) {
+    if (startIndex < 0)
+      return -1;
+
+    for (int i = startIndex, e = size(); i < e; ) {
+      if (words[i/WordWidth] == 0)
+      {
+        i += ((i/WordWidth)+1)*WordWidth;
+        continue;
+      }
+      if (getBit(i)) return i;
+      ++i;
+    }
+    return -1;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder buf = new StringBuilder("[");
+    boolean firstOne = true;
+
+    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx+1)) {
+      if (firstOne) firstOne = false;
+      else buf.append(", ");
+      buf.append(ValueTypeByHwMode.getMVTName(new MVT(idx)));
+    }
+    buf.append(']');
+    return buf.toString();
+  }
+
+  @Override
+  public int hashCode() {
+    int res = 0;
+    for (long n : words)
+      res += n;
+    return res;
+  }
+
+  public MVT getFirstSetBit() {
+    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx+1))
+      return new MVT(idx);
+    return null;
   }
 
   private static class MVTIterator implements Iterator<MVT> {
     private int pos;
     private final MachineValueTypeSet typeSet;
     private final int size;
-    private MVT cache;
 
     MVTIterator(MachineValueTypeSet typeSet) {
       pos = 0;
       this.typeSet = typeSet;
       size = typeSet.size();
-      next();
+      pos = -1;
+      for (pos = typeSet.nextSetBit(0); pos != -1; pos = typeSet.nextSetBit(pos+1))
+        if (typeSet.getBit(pos))
+          break;
     }
     @Override
     public boolean hasNext() {
-      return cache != null;
+      return pos != -1;
     }
 
     @Override
     public MVT next() {
-      MVT res = cache;
-
-      for (; pos < size; ++pos) {
-        if ((typeSet.words[pos/MachineValueTypeSet.WordWidth] &
-            (1 << (pos % MachineValueTypeSet.WordWidth))) != 0) {
-          cache = new MVT(pos);
+      MVT res = new MVT(pos);
+      ++pos;
+      for (pos = typeSet.nextSetBit(pos); pos != -1; pos = typeSet.nextSetBit(pos+1))
+        if (typeSet.getBit(pos))
           break;
-        }
-      }
+
       return res;
     }
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder buf = new StringBuilder("[");
-    int pos  = 0, e = NumWords;
-    boolean firstOne = true;
-
-    for (; pos < e; ++pos) {
-      if ((words[pos/MachineValueTypeSet.WordWidth] &
-          (1 << (pos % MachineValueTypeSet.WordWidth))) != 0) {
-        if (firstOne) firstOne = false;
-        else buf.append(", ");
-        buf.append(ValueTypeByHwMode.getMVTName(new MVT(pos)));
-      }
-    }
-    buf.append(']');
-    return buf.toString();
   }
 }

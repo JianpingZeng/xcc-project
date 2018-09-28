@@ -28,7 +28,6 @@ import utils.tablegen.Init.DefInit;
 import utils.tablegen.Init.ListInit;
 import utils.tablegen.Init.TypedInit;
 
-import javax.swing.tree.TreeNode;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -182,7 +181,7 @@ public final class CodeGenDAGPatterns {
       }
       generateVariantsOf(match.getSrcPattern(), variants, this, depVars);
 
-      Util.assertion(!variants.isEmpty(), "Must create at least orignal variant!");
+      Util.assertion(!variants.isEmpty(), "Must create at least original variant!");
       variants.remove(0);
 
       if (variants.isEmpty())
@@ -193,7 +192,6 @@ public final class CodeGenDAGPatterns {
         match.getSrcPattern().dump();
         System.out.println();
       }
-
 
       for (int j = 0, sz = variants.size(); j != sz; j++) {
         TreePatternNode var = variants.get(j);
@@ -1155,7 +1153,6 @@ public final class CodeGenDAGPatterns {
 
       // Infer as many types as possible.  Don't worry about it if we don't infer
       // all of them, some may depend on the inputs of the pattern.
-
       pat.inferAllTypes();
 
       // If debugging, print out the pattern fragment result.

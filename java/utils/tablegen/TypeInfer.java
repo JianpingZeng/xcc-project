@@ -105,7 +105,8 @@ public class TypeInfer {
     for (Map.Entry<Integer, MachineValueTypeSet> itr : out.map.entrySet()) {
       if (itr.getValue().size() <= 1)
         continue;
-      MVT vt = itr.getValue().iterator().next();
+      MVT vt = itr.getValue().getFirstSetBit();
+      Util.assertion(vt != null);
       itr.getValue().clear();
       itr.getValue().insert(vt);
       changed = true;
@@ -416,7 +417,7 @@ public class TypeInfer {
         return;
       }
       expandOverloads(vt, legalSet.get(m));
-    };
+    }
   }
   public void expandOverloads(MachineValueTypeSet out,
                               MachineValueTypeSet legal) {
@@ -476,7 +477,9 @@ public class TypeInfer {
       TypeSetByHwMode set = tp.getDAGPatterns().getLegalValueTypes();
       MachineValueTypeSet vts = legalCache.getOrCreate(DefaultMode);
 
-      set.map.keySet().forEach(vt -> vts.insert(vts));
+      for (Map.Entry<Integer, MachineValueTypeSet> pair : set.map.entrySet()) {
+        vts.insert(pair.getValue());
+      }
       isLegalTypeCached = true;
     }
     Util.assertion(legalCache.isDefaultOnly(), "Default-only allowed!");

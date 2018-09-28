@@ -600,4 +600,9 @@ public final class MVT implements Comparable<MVT> {
   public boolean isScalableVector() {
     return false;
   }
+
+  @Override
+  public int hashCode() {
+    return simpleVT;
+  }
 }

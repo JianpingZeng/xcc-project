@@ -26,8 +26,6 @@ import utils.tablegen.RecTy.IntRecTy;
 import java.io.PrintStream;
 import java.util.*;
 
-import static utils.tablegen.CodeGenTarget.getValueType;
-
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -202,9 +200,7 @@ public final class TreePattern {
 
       for (TreePatternNode node : trees) {
         changed |= node.applyTypeConstraints(this, false);
-        this.dump();
-
-        //changed |= simplifyTree(node);
+//        changed |= simplifyTree(node);
       }
 
       for (Map.Entry<String, ArrayList<TreePatternNode>> pair : namedNodes.entrySet()) {
@@ -359,7 +355,8 @@ public final class TreePattern {
       TreePatternNode newRes = parseTreePattern(dag.getArg(0), dag.getArgName(0));
 
       Util.assertion(newRes.getNumTypes() ==1, "FIXME: Unhandled!");
-      newRes.updateNodeType(0, getValueType(operator), this);
+      CodeGenHwModes mode = cdp.getTarget().getHwModes();
+      newRes.updateNodeType(0, ValueTypeByHwMode.getValueTypeByHwMode(operator, mode), this);
       if (!opName.isEmpty())
         error("ValueType cast should not have a name!");
       return newRes;

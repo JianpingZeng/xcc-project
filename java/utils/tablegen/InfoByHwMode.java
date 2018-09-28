@@ -76,4 +76,9 @@ public class InfoByHwMode<T> {
     map.clear();
     map.put(DefaultMode, res);
   }
+
+  @Override
+  public int hashCode() {
+    return map.hashCode();
+  }
 }

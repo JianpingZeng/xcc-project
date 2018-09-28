@@ -56,16 +56,16 @@ public class DAGISelEmitter extends TableGenBackend {
 
   private void emitHeader(PrintStream os, String targetName) {
     emitSourceFileHeaderComment("Instruction Selection based on DAG Covering for " + targetName + ".", os);
-    String ident = Util.fixedLengthString(4, ' ');
-    os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel%n{%n", targetName, targetName);
+    String ident = Util.fixedLengthString(2, ' ');
+    os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel {%n", targetName, targetName);
 
-    os.printf("%spublic %sGenDAGToDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel)%n" +
-        "%s{%n%s%ssuper(tm, optLevel);%n%s", targetName, targetName, ident, ident, ident, ident, ident);
+    os.printf("%spublic %sGenDAGToDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) " +
+        "{%n%s%ssuper(tm, optLevel);%n%s", ident, targetName, targetName, ident, ident, ident);
     os.println("}");
   }
 
   private void emitNodeTransform(PrintStream os) {
-    // Sort the NodeTransform by name in  alphabetic order.
+    // Sort the NodeTransform by name in alphabetic order.
     TreeMap<String, Pair<Record, String>> nodesByName = new TreeMap<>();
     for (Map.Entry<Record, Pair<Record, String>> itr : cgp.getSdNodeXForms().entrySet()) {
       nodesByName.put(itr.getKey().getName(), itr.getValue());
@@ -79,14 +79,14 @@ public class DAGISelEmitter extends TableGenBackend {
 
       String className = cgp.getSDNodeInfo(node).getSDClassName();
       String var = className.equals("SDNode") ? "n" : "inN";
-      os.printf("public SDValue transform_%s(SDNode %s){%n", itr.getKey(), var);
+      os.printf("\tpublic SDValue transform_%s(SDNode %s) {%n", itr.getKey(), var);
       if (!className.equals("SDNode")) {
-        os.printf("%s Util.assertion( %s instanceof %s);%n", ident, var, className);
-        os.printf("%s%s n = (%s)%s;%n", ident, className, className, var);
+        os.printf("%s\tUtil.assertion(%s instanceof %s);%n", ident, var, className);
+        os.printf("\t%s%s n = (%s)%s;%n", ident, className, className, var);
       }
       code = stripOutNewLineInEnding(code);
       if (code.isEmpty()) code = "  return null;";
-      os.printf("%s%n}%n", code);
+      os.printf("\t%s%n\t}%n", code);
     }
   }
 
@@ -437,7 +437,6 @@ public class DAGISelEmitter extends TableGenBackend {
       } else {
         ComplexPattern cp;
         if (node.getLeafValue() instanceof IntInit) {
-          IntInit ii = (IntInit) node.getLeafValue();
           String opName = getOpcodeName(cgp.getSDNodeNamed("imm"), cgp);
           if (!patternsByOpcode.containsKey(opName))
             patternsByOpcode.put(opName, new ArrayList<>());

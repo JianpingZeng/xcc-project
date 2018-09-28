@@ -600,7 +600,7 @@ public final class TreePatternNode implements Cloneable {
       return vts;
     } else if (r.getName().equals("node") || r.getName().equals("srcvalue")
         || r.getName().equals("zero_reg")) {
-      return new TypeSetByHwMode(MVT.Other); // unknown.
+      return new TypeSetByHwMode(); // unknown.
     }
 
     tp.error("Undefined node flavour used in pattern: " + r.getName());
