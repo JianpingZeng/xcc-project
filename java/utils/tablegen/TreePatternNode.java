@@ -401,6 +401,9 @@ public final class TreePatternNode implements Cloneable {
       madeChanged |= ni.applyTypeConstraints(this, tp);
       return madeChanged;
     } else if (getOperator().isSubClassOf("Instruction")) {
+      // FIXME, 9/28/2018, PseudoCall should be following::
+      // PseudoCALL (texternalsym:{ *:[i32] m1:[i32] m2:[i64] }):$func)$52 = void
+      // BUt is is "(PseudoCALL (texternalsym:{}):$func)42 zextloadi16"
       DAGInstruction instr = cdp.getInstruction(getOperator());
       boolean madeChanged = false;
       int numResults = instr.getNumResults();
@@ -416,10 +419,9 @@ public final class TreePatternNode implements Cloneable {
 
       // if the instruction has implicit defs, we apply the first one as a result.
       if (!instInfo.implicitDefs.isEmpty()) {
-        int resNo = numResultsToAdd;
         int vt = instInfo.hasOneImplicitDefWithKnownVT(cdp.getTarget());
         if (vt != MVT.Other)
-          madeChanged |= updateNodeType(resNo, vt, tp);
+          madeChanged |= updateNodeType(numResultsToAdd, vt, tp);
       }
 
       if (getOperator().getName().equals("INSERT_SUBREG")) {
@@ -631,7 +633,11 @@ public final class TreePatternNode implements Cloneable {
       res = new TreePatternNode(getOperator(), childs, getNumTypes());
     }
     res.setName(getName());
-    res.setTypes(getExtTypes());
+    /// FIXME, use deep copy instead of reference assignment. 9/28/2018
+    res.types = new ArrayList<>();
+    for (TypeSetByHwMode ts : types)
+      res.types.add(ts.clone());
+
     res.setPredicateFns(getPredicateFns());
     res.setTransformFn(getTransformFn());
     return res;

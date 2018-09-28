@@ -25,27 +25,29 @@ import java.util.ArrayList;
  * @version 0.1
  */
 public final class DAGInstruction {
-  private TreePattern pattern;
+  private TreePatternNode sourcePattern;
   private ArrayList<Record> results;
   private ArrayList<Record> operands;
   private ArrayList<Record> impResults;
   private ArrayList<Record> impOperands;
   private TreePatternNode resultPattern;
 
-  public DAGInstruction(TreePattern tp,
-                        ArrayList<Record> results,
+  public DAGInstruction(ArrayList<Record> results,
                         ArrayList<Record> operands,
                         ArrayList<Record> impResults,
-                        ArrayList<Record> impOperands) {
-    pattern = tp;
+                        ArrayList<Record> impOperands,
+                        TreePatternNode srcPattern,
+                        TreePatternNode dstPattern) {
     this.results = results;
     this.operands = operands;
     this.impResults = impResults;
     this.impOperands = impOperands;
+    sourcePattern = srcPattern;
+    resultPattern = dstPattern;
   }
 
-  public TreePattern getPattern() {
-    return pattern;
+  public TreePatternNode getSrcPattern() {
+    return sourcePattern;
   }
 
   public int getNumResults() {

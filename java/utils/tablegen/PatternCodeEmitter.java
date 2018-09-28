@@ -844,7 +844,7 @@ public class PatternCodeEmitter {
       CodeGenTarget cgt = cgp.getTarget();
       CodeGenInstruction cgInst = cgt.getInstruction(op.getName());
       DAGInstruction inst = cgp.getInstruction(op);
-      TreePattern pat = inst.getPattern();
+      TreePattern pat = inst.getSrcPattern();
 
       TreePatternNode patNode = isRoot ?
           (pat != null ? pat.getTree(0) : pattern) :

@@ -50,7 +50,7 @@ public final class InstAnalyzer {
    * @return Return true if have pattern, otherwise return false.
    */
   public boolean analyze(Record instDef) {
-    TreePattern pattern = cdp.getInstruction(instDef).getPattern();
+    TreePattern pattern = cdp.getInstruction(instDef).getSrcPattern();
     if (pattern == null) {
       // No pattern, just terminate early.
       hasSideEffect = true;       // conservative consideration.

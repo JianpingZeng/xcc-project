@@ -40,7 +40,7 @@ import static utils.tablegen.CodeGenHwModes.getModeName;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
+public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> implements Cloneable {
 
   public TypeSetByHwMode() {super();}
   public TypeSetByHwMode(int vt)  {
@@ -143,15 +143,15 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
   public boolean constrain(TypeSetByHwMode vts) {
     boolean changed = false;
     if (hasDefault()) {
-        for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+        for (Map.Entry<Integer, MachineValueTypeSet> itr : vts.map.entrySet()) {
         if (itr.getKey() == DefaultMode || hasMode(itr.getKey()))
           continue;
-        map.put(itr.getKey(), map.get(DefaultMode));
+        map.put(itr.getKey(), map.get(DefaultMode).clone());
         changed = true;
       }
     }
 
-      for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+    for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
       int m = itr.getKey();
       MachineValueTypeSet set = itr.getValue();
       if (vts.hasMode(m) || vts.hasDefault())
@@ -184,7 +184,7 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
    * @return  Return true if the result map is not empty.
    */
   public boolean assignIf(TypeSetByHwMode vts, Predicate<MVT> pred) {
-  for (Map.Entry<Integer, MachineValueTypeSet> itr : map.entrySet()) {
+  for (Map.Entry<Integer, MachineValueTypeSet> itr : vts.map.entrySet()) {
       MachineValueTypeSet set = getOrCreate(itr.getKey());
       for (Iterator<MVT> vt = itr.getValue().iterator(); vt.hasNext(); ) {
         MVT v = vt.next();
@@ -267,8 +267,9 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
    */
   private boolean intersect(MachineValueTypeSet out, MachineValueTypeSet in) {
     boolean outP = out.count(new MVT(MVT.iPTR)), inP = in.count(new MVT(MVT.iPTR));
+    Predicate<MVT> NotContainedInIn = vt-> !in.count(vt);
     if (outP == inP)
-      return out.eraseIf(vt-> !in.count(vt));
+      return out.eraseIf(NotContainedInIn);
 
     // Compute the intersection of scalars separately to account for only
     // one set containing iPTR.
@@ -290,22 +291,33 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> {
       out.eraseIf(diff::count);
     }
     else {
+      diff.insert(in);
       diff.eraseIf(out::count);
       out.erase(new MVT(MVT.iPTR));
     }
 
-    boolean changed = out.eraseIf(vt->!in.count(vt));
+    boolean changed = out.eraseIf(NotContainedInIn);
     int numO = diff.size();
     if (numO == 0) return changed;
 
     if (numO == 1) {
-      out.insert(diff.iterator().next());
+      out.insert(diff.getFirstSetBit());
       changed |= outP;
     }
     else {
       out.insert(new MVT(MVT.iPTR));
-      changed |= outP;
+      changed |= !outP;
     }
     return changed;
+  }
+
+  @Override
+  public TypeSetByHwMode clone() {
+    TypeSetByHwMode res = new TypeSetByHwMode();
+    for (Map.Entry<Integer, MachineValueTypeSet> pair : map.entrySet()) {
+      MachineValueTypeSet vts = res.getOrCreate(pair.getKey());
+      vts.insert(pair.getValue().clone());
+    }
+    return res;
   }
 }

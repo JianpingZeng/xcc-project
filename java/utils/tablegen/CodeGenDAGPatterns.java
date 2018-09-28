@@ -95,6 +95,17 @@ public final class CodeGenDAGPatterns {
     // For example, we can detect loads, stores, and side effects in many
     // cases by examining an instruction's pattern.
     inferInstructionFlags();
+
+    // when i == 69, no type list in source pattern and result pattern.
+    int i = 0;
+    for (PatternToMatch pt : patternsToMatch) {
+      System.err.println((i++) + ": ");
+      System.err.print("Pattern: ");
+      pt.getSrcPattern().dump();
+      System.err.print("\nResult: ");
+      pt.getDstPattern().dump();
+      System.err.println();
+    }
   }
   public TypeSetByHwMode getLegalValueTypes() {
     return legalValueTypes;
@@ -506,6 +517,8 @@ public final class CodeGenDAGPatterns {
       DagInit tree = patterns.get(i).getValueAsDag("PatternToMatch");
       DefInit opDef = (DefInit) tree.getOperator();
       Record operator = opDef.getDef();
+
+      System.err.printf("%d %s\n", i, operator.getName());
       TreePattern pattern;
       if (!operator.getName().equals("parallel"))
         pattern = new TreePattern(patterns.get(i), tree, true, this);
@@ -517,15 +530,15 @@ public final class CodeGenDAGPatterns {
           TypedInit targ = tree.getArg(j) instanceof TypedInit ? (TypedInit) tree.getArg(j) : null;
           if (targ == null) {
             System.err.printf("In dag: %s", tree.toString());
-            System.err.printf(" -- Untyped argument in pattern\n");
-            Util.assertion(false, "Untyped argument in pattern");
+            System.err.print(" -- Untyped argument in pattern\n");
+            Util.assertion("Untyped argument in pattern");
           }
           if (listTy != null) {
             listTy = resolveTypes(listTy, targ.getType());
             if (listTy == null) {
               System.err.printf("In dag: %s", tree.toString());
-              System.err.printf(" -- Incompatible types in pattern argument\n");
-              Util.assertion(false, "Incompatible types in pattern arguments");
+              System.err.print(" -- Incompatible types in pattern argument\n");
+              Util.assertion("Incompatible types in pattern arguments");
             }
           } else {
             listTy = targ.getType();
@@ -537,7 +550,7 @@ public final class CodeGenDAGPatterns {
       }
 
       ListInit li = patterns.get(i).getValueAsListInit("ResultInstrs");
-      if (li.getSize() == 0) continue;
+      if (li == null || li.getSize() == 0) continue;
 
       // Parse the instruction.
       TreePattern result = new TreePattern(patterns.get(i), li, false, this);
@@ -641,87 +654,96 @@ public final class CodeGenDAGPatterns {
    * part of "I", the instruction), computing the set of inputs and outputs of
    * the pattern.  Report errors if we see anything naughty.
    *
-   * @param pattern
-   * @param tree
+   * @param inst
+   * @param pat
    * @param instInputs
    * @param instResults
    * @param instImpInputs
    * @param instImpResults
    */
-  private void findPatternInputsAndOutputs(TreePattern pattern,
-                                           TreePatternNode tree,
+  private void findPatternInputsAndOutputs(TreePattern inst,
+                                           TreePatternNode pat,
                                            TreeMap<String, TreePatternNode> instInputs,
                                            TreeMap<String, TreePatternNode> instResults,
                                            ArrayList<Record> instImpInputs,
                                            ArrayList<Record> instImpResults) {
-    if (tree.isLeaf()) {
-      boolean isUse = handleUse(pattern, tree, instInputs, instImpInputs);
-      if (!isUse && tree.getTransformFn() != null)
-        pattern.error("Cannot specify a transform function for a non-input value!");
+    // If the instruction pattern still has unresolved fragments. For "named"
+    // nodes we must resolve those here.
+    if (!pat.getName().isEmpty()) {
+      TreePattern srcPat = new TreePattern(inst.getRecord(), pat, true, this);
+      srcPat.inlinePatternFragments();
+      srcPat.inferAllTypes();
+      pat = srcPat.getOnlyTree();
+    }
+
+    if (pat.isLeaf()) {
+      boolean isUse = handleUse(inst, pat, instInputs, instImpInputs);
+      if (!isUse && pat.getTransformFn() != null)
+        inst.error("Cannot specify a transform function for a non-input value!");
       return;
-    } else if (tree.getOperator().getName().equals("implicit")) {
-      for (int i = 0, e = tree.getNumChildren(); i != e; i++) {
-        TreePatternNode dest = tree.getChild(i);
+    } else if (pat.getOperator().getName().equals("implicit")) {
+      for (int i = 0, e = pat.getNumChildren(); i != e; i++) {
+        TreePatternNode dest = pat.getChild(i);
         if (!dest.isLeaf())
-          pattern.error("implicitly defined value should be a register!");
+          inst.error("implicitly defined value should be a register!");
 
         DefInit val = dest.getLeafValue() instanceof DefInit ? (DefInit) dest.getLeafValue() : null;
         if (val == null || !val.getDef().isSubClassOf("Register"))
-          pattern.error("implicitly defined value should be a register!");
+          inst.error("implicitly defined value should be a register!");
 
         instImpResults.add(val.getDef());
       }
       return;
-    } else if (!tree.getOperator().getName().equals("set")) {
-      for (int i = 0, e = tree.getNumChildren(); i != e; i++) {
-        TreePatternNode pat = tree.getChild(i);
-        if (pat.getNumTypes() <= 0) {
-          pattern.error("Cannot have void nodes inside of patterns!");
+    } else if (!pat.getOperator().getName().equals("set")) {
+      for (int i = 0, e = pat.getNumChildren(); i != e; i++) {
+        TreePatternNode child = pat.getChild(i);
+        if (child.getNumTypes() <= 0) {
+          inst.error("Cannot have void nodes inside of patterns!");
         }
-        findPatternInputsAndOutputs(pattern, tree.getChild(i), instInputs,
+        findPatternInputsAndOutputs(inst, child, instInputs,
             instResults, instImpInputs, instImpResults);
       }
 
-      boolean isUse = handleUse(pattern, tree, instInputs, instImpInputs);
+      boolean isUse = handleUse(inst, pat, instInputs, instImpInputs);
 
-      if (!isUse && tree.getTransformFn() != null)
-        pattern.error("Cannot specify a transform function for a non-input value!");
+      if (!isUse && pat.getTransformFn() != null)
+        inst.error("Cannot specify a transform function for a non-input value!");
       return;
     }
 
     // Otherwise, this is a set, validate and collect instruction results.
-    if (tree.getNumChildren() == 0)
-      pattern.error("set requires operands!");
+    if (pat.getNumChildren() == 0)
+      inst.error("set requires operands!");
 
-    if (tree.getTransformFn() != null)
-      pattern.error("Cannot specify a transform function on a set node!");
+    if (pat.getTransformFn() != null)
+      inst.error("Cannot specify a transform function on a set node!");
 
-    int numDests = tree.getNumChildren() - 1;
+    int numDests = pat.getNumChildren() - 1;
     for (int i = 0; i != numDests; ++i) {
-      TreePatternNode dest = tree.getChild(i);
+      TreePatternNode dest = pat.getChild(i);
       if (!dest.isLeaf())
-        pattern.error("set destination should be a register!");
+        inst.error("set destination should be a register!");
 
       DefInit val = dest.getLeafValue() instanceof DefInit ? (DefInit) dest.getLeafValue() : null;
       if (val == null)
-        pattern.error("set destination should be a register!");
+        inst.error("set destination should be a register!");
 
       if (val.getDef().isSubClassOf("RegisterClass") ||
           val.getDef().isSubClassOf("PointerLikeRegClass")) {
         if (dest.getName().isEmpty())
-          pattern.error("set destination must have a name!");
+          inst.error("set destination must have a name!");
         if (instResults.containsKey(dest.getName()))
-          pattern.error("can not set '" + dest.getName() + "' multiple times");
+          inst.error("can not set '" + dest.getName() + "' multiple times");
         instResults.put(dest.getName(), dest);
       } else if (val.getDef().isSubClassOf("Register")) {
         instImpResults.add(val.getDef());
       } else {
-        pattern.error("set destination should be a register!");
+        inst.error("set destination should be a register!");
       }
     }
 
     // Verify and collect info from the computation.
-    findPatternInputsAndOutputs(pattern, tree.getChild(numDests),
+    findPatternInputsAndOutputs(inst, pat.getChild(numDests),
         instInputs, instResults, instImpInputs, instImpResults);
   }
 
@@ -792,6 +814,11 @@ public final class CodeGenDAGPatterns {
     ArrayList<Record> instrs = records.getAllDerivedDefinition("Instruction");
     for (int idx = 0; idx < instrs.size(); idx++) {
       Record instr = instrs.get(idx);
+      if (idx == 135) {
+        System.err.println(idx);
+        System.err.println(instr.getName());
+      }
+
       ListInit li = null;
 
       if (instr.getValueInit("Pattern") instanceof ListInit)
@@ -829,6 +856,10 @@ public final class CodeGenDAGPatterns {
         continue;   // no pattern.
       }
 
+      CodeGenInstruction cgi = target.getInstruction(instr.getName());
+      parseInstructionPattern(cgi, li, instructions);
+
+      /*
       // Parse the instruction.
       // FIXME 2017.7.11 (Done!!!!) This constructor causes the child node of 'i' is not be initialized properly.
       TreePattern tp = new TreePattern(instr, li, true, this);
@@ -998,12 +1029,12 @@ public final class CodeGenDAGPatterns {
       theInsertedInst.setResultPattern(temp.getOnlyTree());
 
       if (TableGen.DEBUG)
-        tp.dump();
+        tp.dump();*/
     }
 
     for (Map.Entry<Record, DAGInstruction> pair : instructions.entrySet()) {
-      DAGInstruction theInst = pair.getValue();
-      TreePattern pat = theInst.getPattern();
+      /*
+      TreePattern pat = theInst.getSrcPattern();
       if (pat == null) {
         // FIXME (DONE!!!) to many pattern be skipped. 2017.7.21
         continue;
@@ -1017,9 +1048,11 @@ public final class CodeGenDAGPatterns {
 
       StringBuilder reason = new StringBuilder();
       if (!srcPattern.canPatternMatch(reason, this))
-        pat.error("Instruction can never match: " + reason.toString());
+        pat.error("Instruction can never match: " + reason.toString());*/
 
       Record instr = pair.getKey();
+      DAGInstruction theInst = pair.getValue();
+      TreePatternNode srcPattern = theInst.getSrcPattern();
       TreePatternNode dstPattern = theInst.getResultPattern();
       if (srcPattern != null && dstPattern != null) {
         TreePattern src = new TreePattern(instr, srcPattern, true, this);
@@ -1027,6 +1060,168 @@ public final class CodeGenDAGPatterns {
         parseOnePattern(instr, src, result, theInst.getImpResults());
       }
     }
+  }
+
+  /**
+   * Parse the pattern for each instruction and store the result into {@code dagInstrs}.
+   * @param cgi
+   * @param pat
+   * @param dagInstrs
+   */
+  private void parseInstructionPattern(CodeGenInstruction cgi, ListInit pat,
+                                       TreeMap<Record, DAGInstruction> dagInstrs) {
+    Util.assertion(!dagInstrs.containsKey(cgi.theDef), "Instruction has been parsed");
+    TreePattern tp = new TreePattern(cgi.theDef, pat, true, this);
+    TreeMap<String, TreePatternNode> instInputs = new TreeMap<>();
+    TreeMap<String, TreePatternNode> instResults = new TreeMap<>();
+    ArrayList<Record> instImpResults = new ArrayList<>();
+    ArrayList<Record> instImpInputs = new ArrayList<>();
+
+    // Verify that the top-level forms in the instruction are of void type, and
+    // fill in the InstResults map.
+    // FIXME  [(set VR128:$dst, (v4f32 (shufp:$src3 VR128:$src1, VR128:$src2)))]
+    for (int j = 0, e = tp.getNumTrees(); j != e; ++j) {
+      TreePatternNode child = tp.getTree(j);
+      StringBuilder buf = new StringBuilder();
+      if (child.getNumTypes() > 0) {
+        for (int k = 0, sz = child.getNumTypes(); k < sz; k++) {
+          if (k > 0)
+            buf.append(',');
+          buf.append(child.getExtType(k).toString());
+        }
+        tp.error("Top-level forms in instruction pattern should have" +
+            " void types, has types " + buf.toString());
+      }
+
+      // Find inputs and outputs, and verify the structure of the uses/defs.
+      findPatternInputsAndOutputs(tp, child, instInputs, instResults,
+          instImpInputs, instImpResults);
+    }
+
+    // Now that we have inputs and outputs of the pattern, inspect the operands
+    // list for the instruction.  This determines the order that operands are
+    // added to the machine instruction the node corresponds to.
+    int numResults = instResults.size();
+
+    // Parse the operands list from the (ops) list, validating it.
+    Util.assertion(tp.getArgList().isEmpty(), "Args list should still be empty here!");
+
+    // Check that all of the results occur first in the list.
+    ArrayList<Record> results = new ArrayList<>();
+    ArrayList<TreePatternNode> resNodes = new ArrayList<>();
+    for (int j = 0; j != numResults; j++) {
+      if (j == cgi.operandList.size())
+        tp.error("'" + instResults.entrySet().iterator().next().getKey()
+            + "' set but does not appear in operand list!");
+
+      String opName = cgi.operandList.get(j).name;
+
+      // Check that it exists in InstResults.
+      if (!instResults.containsKey(opName))
+        tp.error("Operand $" + opName + " does not exist in operand list!");
+      TreePatternNode rnode = instResults.get(opName);
+
+      resNodes.add(rnode);
+      Record r = rnode.getLeafValue() instanceof DefInit ? ((DefInit) rnode.getLeafValue()).getDef() : null;
+      if (r == null)
+        tp.error("Operand $" + opName + " should be a set destination: all "
+            + "outputs must occur before inputs in operand list!");
+
+      if (cgi.operandList.get(j).rec != r) {
+        tp.error("Operand $" + opName + " class mismatch!");
+      }
+
+      // Remember the return type.
+      results.add(cgi.operandList.get(j).rec);
+
+      // Okay, this one checks out.
+      instResults.remove(opName);
+    }
+
+    // Loop over the inputs next.  Make a copy of InstInputs so we can destroy
+    // the copy while we're checking the inputs.
+    TreeMap<String, TreePatternNode> instInputsCheck = new TreeMap<>(instInputs);
+
+    ArrayList<TreePatternNode> resultNodeOperands = new ArrayList<>();
+    ArrayList<Record> operands = new ArrayList<>();
+    for (int j = numResults, e = cgi.operandList.size(); j != e; j++) {
+      OperandInfo op = cgi.operandList.get(j);
+      String opName = op.name;
+      if (opName.isEmpty())
+        tp.error("Operand #" + j + " in operands list has no name!");
+
+      if (!instInputsCheck.containsKey(opName)) {
+        // If this is an predicate operand or optional def operand with an
+        // DefaultOps set filled in, we can ignore this.  When we codegen it,
+        // we will do so as always executed.
+        if (op.rec.isSubClassOf("PredicateOperand")
+            || op.rec.isSubClassOf("OptionalDefOperand")) {
+          // Does it have a non-empty DefaultOps field?  If so, ignore this
+          // operand.
+          if (!getDefaultOperand(op.rec).defaultOps.isEmpty())
+            continue;
+        }
+        tp.error("Operand $" + opName +
+            " does not appear in the instruction pattern");
+      }
+
+      TreePatternNode inVal = instInputsCheck.get(opName);
+      instInputsCheck.remove(opName);
+
+      if (inVal.isLeaf() && inVal.getLeafValue() instanceof DefInit) {
+        Record inRec = ((DefInit) inVal.getLeafValue()).getDef();
+        if (op.rec != inRec && !inRec.isSubClassOf("ComplexPattern"))
+          tp.error("Operand $" + opName + "'s register class disagrees" +
+              " between the operand and pattern");
+      }
+      operands.add(op.rec);
+
+      // Construct the result for the dest-pattern operand list.
+      TreePatternNode opNode = inVal.clone();
+
+      // No predicate is useful on the result.
+      opNode.clearPredicateFns();
+
+      // Promote the xform function to be an explicit node if set.
+      Record xform = opNode.getTransformFn();
+      if (xform != null) {
+        opNode.setTransformFn(null);
+        ArrayList<TreePatternNode> childs = new ArrayList<>();
+        childs.add(opNode);
+        opNode = new TreePatternNode(xform, childs, opNode.getNumTypes());
+      }
+      resultNodeOperands.add(opNode);
+    }
+
+    if (!instInputsCheck.isEmpty())
+      tp.error("Input operand $" + instInputsCheck.entrySet().iterator().next().getKey() +
+          " occurs in pattern but not in operands list!");
+
+    TreePatternNode resultPattern = new TreePatternNode(tp.getRecord(), resultNodeOperands,
+        getNumNodeResults(tp.getRecord(), this));
+
+    // Copy fully inferred output node type to instruction result pattern.
+    for (int i = 0; i < numResults; i++) {
+      Util.assertion(resNodes.get(i).getNumTypes() == 1, "FIXME: Unhandled!");
+      resultPattern.setType(i, resNodes.get(i).getExtType(0));
+    }
+
+    TreePatternNode pattern = tp.getTree(0);
+    TreePatternNode srcPattern;
+    if (pattern.getOperator().getName().equals("set"))
+      srcPattern = pattern.getChild(pattern.getNumChildren()-1).clone();
+    else
+      srcPattern = pattern;
+
+    // Create and insert the instruction.
+    // FIXME: InstImpResults and InstImpInputs should not be part of
+    // DAGInstruction.
+    Record r = tp.getRecord();
+    DAGInstruction theInst = new DAGInstruction(tp, results, operands, instImpResults, instImpInputs);
+    dagInstrs.put(r, theInst);
+
+    if (TableGen.DEBUG)
+      tp.dump();
   }
 
   private void parseDefaultOperands() {
