@@ -85,7 +85,16 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public int size() {
-    return Capability;
+    /// FIXME computing the number of seted bits
+    int num = 0;
+    for (long n : words) {
+      if (n == 0) continue;
+      while (n != 0) {
+        ++num;
+        n = n & (n - 1);
+      }
+    }
+    return num;
   }
 
   @Override
@@ -125,7 +134,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public boolean getBit(int index) {
-    Util.assertion(index >= 0 && index < size());
+    Util.assertion(index >= 0 && index < Capability);
     return (words[index / WordWidth] & (1L << (index % WordWidth))) != 0;
   }
 
@@ -149,7 +158,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     if (startIndex < 0)
       return -1;
 
-    for (int i = startIndex, e = size(); i < e; ) {
+    for (int i = startIndex, e = Capability; i < e; ) {
       if (words[i/WordWidth] == 0)
       {
         i += ((i/WordWidth)+1)*WordWidth;
@@ -197,7 +206,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     MVTIterator(MachineValueTypeSet typeSet) {
       pos = 0;
       this.typeSet = typeSet;
-      size = typeSet.size();
+      size = Capability;
       pos = -1;
       for (pos = typeSet.nextSetBit(0); pos != -1; pos = typeSet.nextSetBit(pos+1))
         if (typeSet.getBit(pos))

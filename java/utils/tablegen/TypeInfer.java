@@ -408,15 +408,12 @@ public class TypeInfer {
   public void expandOverloads(TypeSetByHwMode vts) {
     TypeSetByHwMode legalSet = getLegalType();
     boolean hasDefaultDef = legalSet.hasDefault();
+    Util.assertion(legalSet.isDefaultOnly());
+    MachineValueTypeSet legalTypes = legalSet.get(DefaultMode);
 
     for (Map.Entry<Integer, MachineValueTypeSet> itr : vts.map.entrySet()) {
-      int m = itr.getKey();
       MachineValueTypeSet vt = itr.getValue();
-      if (!legalSet.hasMode(m) && !hasDefaultDef) {
-        tp.error("Invalid mode " + m);
-        return;
-      }
-      expandOverloads(vt, legalSet.get(m));
+      expandOverloads(vt, legalTypes);
     }
   }
   public void expandOverloads(MachineValueTypeSet out,

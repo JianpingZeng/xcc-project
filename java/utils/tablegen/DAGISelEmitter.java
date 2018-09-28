@@ -469,6 +469,8 @@ public class DAGISelEmitter extends TableGenBackend {
       TreeMap<Integer, ArrayList<PatternToMatch>> patternsByType = new TreeMap<>();
       for (PatternToMatch op : patternOfOps) {
         TreePatternNode srcPat = op.getSrcPattern();
+        op.dump();
+        
         int ty = srcPat.getSimpleType(0);
         if (!patternsByType.containsKey(ty))
           patternsByType.put(ty, new ArrayList<>());
