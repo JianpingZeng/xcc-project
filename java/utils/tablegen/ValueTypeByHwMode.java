@@ -123,4 +123,12 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
       return getSimple().simpleVT == mode.getSimple().simpleVT;
     return map.equals(mode.map);
   }
+
+  public MVT get(int mode) {
+    if (!hasMode(mode)) {
+      Util.assertion(hasDefault());
+      map.put(mode, map.get(DefaultMode).clone());
+    }
+    return map.get(mode);
+  }
 }

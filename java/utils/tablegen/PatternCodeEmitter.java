@@ -30,6 +30,7 @@ import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.getName;
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
+import static utils.tablegen.DAGISelEmitter.getOpTypeHwModeForPattern;
 import static utils.tablegen.SDNP.*;
 
 /**
@@ -394,11 +395,11 @@ public class PatternCodeEmitter {
           if (cp.hasProperty(SDNPHasChain))
             numOps += 2;
 
-          for (int i = 0; i < numOps; i++) {
-            emitDecl("cpTmp" + rootName + i);
-          }
+          //for (int i = 0; i < numOps; i++) {
+            emitDecl("cpTmp" + rootName + 0); // + i);
+          //}
 
-          emitCode(String.format("SDValue[] cpTmp%s = new SDValue[%d];", rootName, numOps));
+          emitCode(String.format("SDValue[] cpTmp%s0 = new SDValue[%d];", rootName, numOps));
 
           StringBuilder code = new StringBuilder(fn);
           code.append("(");
@@ -412,7 +413,7 @@ public class PatternCodeEmitter {
           }
 
           code.append(rootName);
-          code.append(", cpTmp").append(rootName);
+          code.append(", cpTmp").append(rootName).append('0');
           emitCheck(code.append(")").toString());
         } else if (leafRec.getName().equals("srcvalue")) {
           // place holder for SRCVALEU nodes.
@@ -421,7 +422,7 @@ public class PatternCodeEmitter {
           emitCheck(String.format("((VTSDNode)%s.getNode()).getVT().getSimpleVT().simpleVT == MVT.%s",
               rootName, leafRec.getName()));
         } else if (leafRec.isSubClassOf("CondCode")) {
-          emitCheck(String.format("((CondCodeSDNode)%s).getCondition() == dagisel.CondCode.%s",
+          emitCheck(String.format("((CondCodeSDNode)%s.getNode()).getCondition() == CondCode.%s",
               rootName, leafRec.getName()));
         } else
           Util.assertion(false, "Unknown leaf value!");
@@ -615,9 +616,11 @@ public class PatternCodeEmitter {
 
     for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
       TreePatternNode child = pat.getChild(i);
-      TypeSetByHwMode c0 = child.getExtType(0);
-      if (!child.isLeaf() && c0.getMachineValueType().simpleVT != MVT.Other)
-        size += getPatternSize(child, cgp);
+      if (!child.isLeaf() && child.getNumTypes() > 0) {
+        TypeSetByHwMode vt = child.getExtType(0);
+        if (vt.getMachineValueType().simpleVT != MVT.Other)
+          size += getPatternSize(child, cgp);
+      }
       else if (child.isLeaf()) {
         if (child.getLeafValue() instanceof IntInit)
           size += 5;
@@ -695,7 +698,7 @@ public class PatternCodeEmitter {
   public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
                                           boolean inFlagDecled, boolean resNodeDecled,
                                           boolean likeLeaf, boolean isRoot) {
-    TypeSetByHwMode res0T = node.getExtType(0);
+    TypeSetByHwMode res0T = getOpTypeHwModeForPattern(node);
     ArrayList<String> nodeOps = new ArrayList<>();
     if (node.getName() != null && !node.getName().isEmpty()) {
       String varName = node.getName();
@@ -844,11 +847,11 @@ public class PatternCodeEmitter {
       CodeGenTarget cgt = cgp.getTarget();
       CodeGenInstruction cgInst = cgt.getInstruction(op.getName());
       DAGInstruction inst = cgp.getInstruction(op);
-      TreePattern pat = inst.getSrcPattern();
+      TreePatternNode pat = inst.getSrcPattern();
 
       TreePatternNode patNode = isRoot ?
-          (pat != null ? pat.getTree(0) : pattern) :
-          (pat != null ? pat.getTree(0) : null);
+          (pat != null ? pat : pattern) :
+          (pat != null ? pat : null);
       if (patNode != null && !patNode.isLeaf() && patNode.getOperator().getName().equals("set")) {
         patNode = patNode.getChild(patNode.getNumChildren() - 1);
       }

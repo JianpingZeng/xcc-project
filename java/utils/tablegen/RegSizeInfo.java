@@ -31,7 +31,7 @@ package utils.tablegen;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RegSizeInfo implements Comparable<RegSizeInfo> {
+public class RegSizeInfo implements Comparable<RegSizeInfo>, Cloneable {
   public long regSize;
   public long spillSize;
   public long spillAlignment;
@@ -80,5 +80,14 @@ public class RegSizeInfo implements Comparable<RegSizeInfo> {
     return regSize <= info.regSize &&
         spillAlignment != 0 && info.spillAlignment % spillAlignment == 0 &&
         spillSize <= info.spillSize;
+  }
+
+  @Override
+  public RegSizeInfo clone() {
+    RegSizeInfo res = new RegSizeInfo();
+    res.regSize = regSize;
+    res.spillSize = spillSize;
+    res.spillAlignment = spillAlignment;
+    return res;
   }
 }

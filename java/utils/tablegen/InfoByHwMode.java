@@ -28,7 +28,7 @@ import static utils.tablegen.CodeGenHwModes.DefaultMode;
  * @param <T>
  * @author Jianping Zeng.
  */
-public class InfoByHwMode<T> {
+public abstract class InfoByHwMode<T> {
   protected TreeMap<Integer, T> map;
 
   public InfoByHwMode() {
@@ -52,13 +52,7 @@ public class InfoByHwMode<T> {
     return hasMode(DefaultMode);
   }
 
-  public T get(int mode) {
-    if (!hasMode(mode)) {
-      Util.assertion(hasDefault());
-      map.put(mode, map.get(DefaultMode));
-    }
-    return map.get(mode);
-  }
+  public abstract T get(int mode);
 
   public boolean isSimple() {
     if (map.size() != 1) return false;

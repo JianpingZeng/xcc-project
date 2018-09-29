@@ -16,28 +16,33 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.Util;
-import utils.tablegen.Init.DefInit;
-
 import java.util.ArrayList;
+import java.util.TreeSet;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
 public final class PatternToMatch {
-  public Init.ListInit predicates;
+  /**
+   * Top level predicate condition to match.
+   */
+  public ArrayList<Predicate> preds;
+  public Record srcRecord;
   public TreePatternNode srcPattern;
   public TreePatternNode dstPattern;
   public ArrayList<Record> dstRegs;
   public int addedComplexity;
 
-  public PatternToMatch(Init.ListInit preds,
+  public PatternToMatch(Record r,
+                        ArrayList<Predicate> preds,
                         TreePatternNode src,
                         TreePatternNode dst,
                         ArrayList<Record> dstRegs,
                         int complexity) {
-    predicates = preds.clone();
+    srcRecord = r;
+    this.preds = new ArrayList<>();
+    this.preds.addAll(preds);
     srcPattern = src.clone();
     dstPattern = dst.clone();
     this.dstRegs = new ArrayList<>();
@@ -45,8 +50,12 @@ public final class PatternToMatch {
     addedComplexity = complexity;
   }
 
-  public Init.ListInit getPredicates() {
-    return predicates;
+  public Record getSrcRecord() {
+    return srcRecord;
+  }
+
+  public ArrayList<Predicate> getPredicates() {
+    return preds;
   }
 
   public TreePatternNode getSrcPattern() {
@@ -74,38 +83,26 @@ public final class PatternToMatch {
    */
   public String getPredicateCheck() {
     StringBuilder predicateCheck = new StringBuilder();
-    for (int i = 0, e = predicates.getSize(); i != e; ++i) {
-      DefInit pred = (predicates.getElement(i) instanceof DefInit) ? (DefInit) predicates.getElement(i) : null;
-      if (pred != null) {
-        Record def = pred.getDef();
+    TreeSet<Predicate> predLists = new TreeSet<>();
+    predLists.addAll(preds);
 
-        if (!def.isSubClassOf("Predicate")) {
-          if (TableGen.DEBUG)
-            def.dump();
-          Util.assertion(false, "Undefined predicate type!");
-        }
-
-        if (predicateCheck.length() != 0)
-          predicateCheck.append(" && ");
-        predicateCheck.append("(").append(def.getValueAsString("CondString")).append(")");
-      }
+    StringBuilder sb = new StringBuilder();
+    int i = 0;
+    for (Predicate p : predLists) {
+      if (i != 0)
+        sb.append(" && ");
+      sb.append("(").append(p.getCondString()).append(")");
+      ++i;
     }
-    return predicateCheck.toString();
+    return sb.toString();
   }
 
   public void dump() {
-    System.err.println("=============================");
-    System.err.println("Predicate:");
-    for (int i = 0, e = predicates.getSize(); i < e; i++)
-      predicates.getElement(i).dump();
-
-    System.err.println("\nsrcPattern:");
+    System.err.print("Pattern: ");
     srcPattern.dump();
-    System.err.println("\ndstPattern:");
+    System.err.print("\nResult:");
     dstPattern.dump();
-    System.err.println("\ndstRegs:");
-    dstRegs.forEach(System.err::println);
-    System.err.println("\naddComplexity: " + addedComplexity);
+    System.err.println();
   }
 
   @Override
@@ -115,7 +112,7 @@ public final class PatternToMatch {
     if (obj.getClass() != getClass())
       return false;
     PatternToMatch pat = (PatternToMatch) obj;
-    return predicates.equals(pat.predicates) &&
+    return preds.equals(pat.preds) &&
         srcPattern.equals(pat.srcPattern) && dstPattern.equals(pat.dstPattern)
         && dstRegs.equals(pat.dstRegs) && addedComplexity == pat.addedComplexity;
   }

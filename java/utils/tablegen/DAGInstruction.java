@@ -35,6 +35,12 @@ public final class DAGInstruction {
   public DAGInstruction(ArrayList<Record> results,
                         ArrayList<Record> operands,
                         ArrayList<Record> impResults,
+                        ArrayList<Record> impOperands) {
+    this(results, operands, impResults, impOperands, null, null);
+  }
+  public DAGInstruction(ArrayList<Record> results,
+                        ArrayList<Record> operands,
+                        ArrayList<Record> impResults,
                         ArrayList<Record> impOperands,
                         TreePatternNode srcPattern,
                         TreePatternNode dstPattern) {

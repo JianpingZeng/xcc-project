@@ -110,7 +110,9 @@ public final class CodeGenInstruction {
   boolean canFoldAsLoad;
   boolean isPredicable;
   boolean mayLoad;
+  boolean mayLoadUnset;
   boolean mayStore;
+  boolean mayStoreUnset;
   boolean isTwoAddress;
   boolean isConvertibleToThreeAddress;
   boolean isCommutable;
@@ -124,6 +126,7 @@ public final class CodeGenInstruction {
   boolean hasOptionalDef;
   boolean hasSideEffects;
   boolean mayHaveSideEffects;
+  boolean haveSideEffectsUnset;
   boolean neverHasSideEffects;
   boolean isAsCheapAsAMove;
   boolean noResults;

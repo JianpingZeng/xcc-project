@@ -27,7 +27,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import static utils.tablegen.RegisterInfoEmitter.LessRecord;
+import static utils.tablegen.Record.LessRecord;
 
 /**
  * @author Jianping Zeng

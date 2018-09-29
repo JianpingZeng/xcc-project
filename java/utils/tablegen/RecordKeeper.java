@@ -30,10 +30,12 @@ import java.util.stream.Collectors;
  */
 public final class RecordKeeper {
   private HashMap<String, Record> classes, defs;
+  private ArrayList<Record> orderedDefs;
 
   public RecordKeeper() {
     classes = new HashMap<>();
     defs = new HashMap<>();
+    orderedDefs = new ArrayList<>();
   }
 
   public HashMap<String, Record> getClasses() {
@@ -64,6 +66,7 @@ public final class RecordKeeper {
   public void addDef(Record r) {
     Util.assertion(getDef(r.getName()) == null, "Def already exist!");
     defs.put(r.getName(), r);
+    orderedDefs.add(r);
   }
 
   public void removeClass(String name) {
@@ -73,6 +76,7 @@ public final class RecordKeeper {
 
   public void removeDef(String name) {
     Util.assertion(defs.containsKey(name), "Def does not exist!");
+    orderedDefs.remove(defs.get(name));
     defs.remove(name);
   }
 
@@ -92,7 +96,8 @@ public final class RecordKeeper {
     Util.assertion(klass != null,
         "UNKNOWN: Couldn't find the `" + className + "' class!\n");
     ArrayList<Record> defs = new ArrayList<>();
-    List<Record> res = getDefs().values().stream().filter(val ->
+
+    List<Record> res = orderedDefs.stream().filter(val ->
         val.isSubClassOf(klass)
     ).collect(Collectors.toList());
 

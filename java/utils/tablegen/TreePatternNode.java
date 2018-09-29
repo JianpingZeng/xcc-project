@@ -27,9 +27,10 @@ import java.util.*;
 
 import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.iPTR;
-import static utils.tablegen.CodeGenTarget.getValueType;
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.EEVT.isUnknown;
 import static utils.tablegen.SDNP.SDNPCommutative;
+import static utils.tablegen.SDNP.SDNPHasChain;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
@@ -116,7 +117,8 @@ public final class TreePatternNode implements Cloneable {
   public ArrayList<TypeSetByHwMode> getExtTypes() { return types; }
   public TypeSetByHwMode getExtType(int resNo) { return types.get(resNo); }
   public void setTypes(ArrayList<TypeSetByHwMode> types) {
-    this.types = types;
+    this.types.clear();
+    types.forEach(ty -> this.types.add(ty.clone()));
   }
 
   public ValueTypeByHwMode getType(int resNo) {
@@ -491,14 +493,13 @@ public final class TreePatternNode implements Cloneable {
               "' expects more operands than were provided.");
         }
 
-        int vt;
         TreePatternNode child = getChild(childNo++);
         if (operandNode.isSubClassOf("RegisterClass")) {
           CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(operandNode);
           madeChanged |= child.updateNodeType(0, new TypeSetByHwMode(rc.getValueTypes()), tp);
         } else if (operandNode.isSubClassOf("Operand")) {
-          vt = getValueType(operandNode.getValueAsDef("Type"));
-          madeChanged |= child.updateNodeType(0, vt, tp);
+          ValueTypeByHwMode vts = getValueTypeByHwMode(operandNode.getValueAsDef("Type"), cdp.getTarget().getHwModes());
+          madeChanged |= child.updateNodeType(0, vts, tp);
         } else if (operandNode.isSubClassOf("PointerLikeRegClass")) {
           madeChanged |= child.updateNodeType(0, iPTR, tp);
         } else if (operandNode.getName().equals("unknown")) {
@@ -507,25 +508,30 @@ public final class TreePatternNode implements Cloneable {
           Util.assertion("Undefined operand type!");
           System.exit(0);
         }
-        madeChanged |= child.applyTypeConstraints(tp, notRegisters);
       }
 
-      if (childNo != getNumChildren())
+      if (!instInfo.isVariadic && childNo != getNumChildren())
         tp.error("Instruction '" + getOperator().getName() +
             "' was provided too many operands!");
 
+      for (int i = 0, e = getNumChildren(); i < e; i++)
+        madeChanged |= getChild(i).applyTypeConstraints(tp, notRegisters);
       return madeChanged;
+    }
+    else if (getOperator().isSubClassOf("ComplexPattern")) {
+      boolean madeChange = false;
+      for (int i = 0, e = getNumChildren(); i < e; i++)
+        madeChange |= getChild(i).applyTypeConstraints(tp, notRegisters);
+      return madeChange;
     }
     else {
       Util.assertion(getOperator().isSubClassOf("SDNodeXForm"), "Undefined node type!");
-
       if (getNumChildren() != 1) {
         tp.error("Node transform '" + getOperator().getName() +
             "' requires one operand!");
+        return false;
       }
-
-      boolean madeChanged = getChild(0).applyTypeConstraints(tp, notRegisters);
-      return madeChanged;
+      return getChild(0).applyTypeConstraints(tp, notRegisters);
     }
   }
 
@@ -566,7 +572,7 @@ public final class TreePatternNode implements Cloneable {
         return new TypeSetByHwMode();
       CodeGenRegisterClass rc = tp.getDAGPatterns().getTarget().getRegisterClass(r);
       return new TypeSetByHwMode(rc.getValueTypes());
-    } else if (r.isSubClassOf("PatFlag")) {
+    } else if (r.isSubClassOf("PatFlags")) {
       Util.assertion(resNo == 0, "PatFrag ref only has one result!");
       // Pattern fragment types will be resolved when they are inlined.
       return new TypeSetByHwMode(); // unknown
@@ -605,6 +611,11 @@ public final class TreePatternNode implements Cloneable {
       return new TypeSetByHwMode(); // unknown.
     }
 
+    if (r.isSubClassOf("Operand")) {
+      CodeGenHwModes cgh = tp.getDAGPatterns().getTarget().getHwModes();
+      Record t = r.getValueAsDef("Type");
+      return new TypeSetByHwMode(getValueTypeByHwMode(t, cgh));
+    }
     tp.error("Undefined node flavour used in pattern: " + r.getName());
     return new TypeSetByHwMode(MVT.Other);
   }
@@ -905,5 +916,64 @@ public final class TreePatternNode implements Cloneable {
     int size = getNumTypes();
     for (int i = 0; i < size; i++)
       types.set(i, new TypeSetByHwMode());
+  }
+
+  public boolean hasProperTypeByHwMode() {
+    for (TypeSetByHwMode ty : types)
+      if (!ty.isDefaultOnly())
+        return true;
+
+    for (TreePatternNode child : children)
+      if (child.hasProperTypeByHwMode())
+        return true;
+    return false;
+  }
+
+  public boolean setDefaultMode(Integer mode) {
+    for (TypeSetByHwMode vt : types) {
+      vt.makeSimple(mode);
+      if (vt.get(DefaultMode).isEmpty())
+        return false;
+    }
+
+    for (TreePatternNode child : children)
+      if (!child.setDefaultMode(mode))
+        return false;
+    return true;
+  }
+
+  public boolean hasProperty(int prop, CodeGenDAGPatterns cdp) {
+    if (isLeaf()) {
+      ComplexPattern cp = getComplexPatternInfo(cdp);
+      if (cp != null)
+        return cp.hasProperty(prop);
+      return false;
+    }
+
+    if (prop != SDNPHasChain) {
+      CodeGenIntrinsic cgi = getIntrinsicInfo(cdp);
+      if (cgi != null)
+        return cgi.hasProperty(prop);
+    }
+    if (!operator.isSubClassOf("SDPatternOperator"))
+      return false;
+    return cdp.getSDNodeInfo(operator).hasProperty(prop);
+  }
+
+  public ComplexPattern getComplexPatternInfo(CodeGenDAGPatterns cdp) {
+    Record r;
+    if (isLeaf()) {
+      DefInit di = getLeafValue() instanceof DefInit ?
+          (DefInit)getLeafValue() : null;
+      if (di == null )
+        return null;
+      r = di.getDef();
+    }
+    else
+      r = getOperator();
+
+    if (!r.isSubClassOf("ComplexPattern"))
+      return null;
+    return cdp.getComplexPattern(r);
   }
 }

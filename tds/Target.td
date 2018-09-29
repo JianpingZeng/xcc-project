@@ -363,7 +363,7 @@ class AsmOperandClass {
   /// target specific operand to an MCInst. If not set, this will default to
   /// "addFooOperands", where Foo is the AsmOperandClass name. The method
   /// signature should be:
-  ///   void addFooOperands(MCInst &Inst, unsigned N) const;
+  ///   void addFooOperands(MCInst &Inst, unsigned n) const;
   string RenderMethod = ?;
 
   string DiagnosticType = ?;

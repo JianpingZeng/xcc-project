@@ -259,4 +259,10 @@ public final class CodeGenIntrinsic {
   private int getValueType(Record record) {
     return (int) record.getValueAsInt("Value");
   }
+
+  public boolean hasProperty(int prop) {
+    // TODO: 18-9-29
+    Util.shouldNotReachHere();
+    return false;
+  }
 }

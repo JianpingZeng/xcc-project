@@ -214,7 +214,7 @@ public final class TreePattern {
           }
 
           ArrayList<TreePatternNode> inNodes = inNamedTypes.get(pair.getKey());
-          for (TreePatternNode node : inNodes) {
+          for (TreePatternNode node : nodes) {
             if (node  == trees.get(0) && node.isLeaf()) {
               DefInit di = node.getLeafValue() instanceof DefInit ?
                   (DefInit)node.getLeafValue() : null;

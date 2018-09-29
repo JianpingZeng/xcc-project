@@ -29,8 +29,10 @@ import utils.tablegen.Init.ListInit;
 import utils.tablegen.Init.TypedInit;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.SDNP.SDNPAssociative;
 import static utils.tablegen.SDNP.SDNPCommutative;
 import static utils.tablegen.TGParser.resolveTypes;
@@ -87,6 +89,25 @@ public final class CodeGenDAGPatterns {
     // FIXME (Already fixed 2017.7.23) LLVM-tblgen has 1715 instructions after parseInstructions.
     parsePatterns();
 
+/*    patternsToMatch.forEach(tp ->
+    {
+      tp.dump();
+      System.err.println();
+    });*/
+
+    // Break patterns with parameterized types into a series of patterns,
+    // where each one has a fixed type and is predicated on the conditions
+    // of the associated HW mode.
+    expandHwModeBasedTypes();
+
+/*    patternsToMatch.forEach(tp ->
+    {
+      tp.dump();
+      System.err.println();
+    });*/
+
+    verifyInstrTypes();
+
     // For example, commutative patterns can match multiple ways.Add them
     // to patternToMatch as well.
     generateVariants();
@@ -95,72 +116,194 @@ public final class CodeGenDAGPatterns {
     // For example, we can detect loads, stores, and side effects in many
     // cases by examining an instruction's pattern.
     inferInstructionFlags();
-
-    // when i == 69, no type list in source pattern and result pattern.
-    int i = 0;
-    for (PatternToMatch pt : patternsToMatch) {
-      System.err.println((i++) + ": ");
-      System.err.print("Pattern: ");
-      pt.getSrcPattern().dump();
-      System.err.print("\nResult: ");
-      pt.getDstPattern().dump();
-      System.err.println();
-    }
   }
+
+  /**
+   * Return true if verification is correct.
+   * @param node
+   * @return
+   */
+  private boolean verifyPatternNodeType(TreePatternNode node, boolean isRoot) {
+    if (!isRoot && (node.getNumTypes() <= 0 || !node.getExtType(0).isMachineValueType())) {
+      return false;
+    }
+    boolean res = true;
+    for (int i = 0, e = node.getNumChildren(); i < e; i++)
+      res &= verifyPatternNodeType(node.getChild(i), false);
+    return res;
+  }
+
+  private void verifyInstrTypes() {
+    patternsToMatch.forEach(p -> {
+      boolean succ = true;
+      succ &= verifyPatternNodeType(p.getSrcPattern(), true);
+      succ &= verifyPatternNodeType(p.getDstPattern(), true);
+      if (!succ) {
+        p.dump();
+        System.err.println();
+        Util.assertion("There must is only one type remained");
+      }
+    });
+  }
+
   public TypeSetByHwMode getLegalValueTypes() {
     return legalValueTypes;
   }
 
-  private void inferInstructionFlags() {
-    TreeMap<String, CodeGenInstruction> instrDesc = target.getInstructions();
-    for (Map.Entry<String, CodeGenInstruction> pair : instrDesc.entrySet()) {
-      CodeGenInstruction instInfo = pair.getValue();
+  private void getInstructionInTree(TreePatternNode node, ArrayList<Record> instrs) {
+    if (node.isLeaf())
+      return;
+    if (node.getOperator().isSubClassOf("Instruction"))
+      instrs.add(node.getOperator());
+    for (int i = 0, e = node.getNumChildren(); i < e; i++)
+      getInstructionInTree(node.getChild(i), instrs);
+  }
 
-      boolean[] res = inferFromPattern(instInfo, this);
-      Util.assertion(res.length == 3);
-      instInfo.mayStore = res[0];
-      instInfo.mayLoad = res[1];
-      instInfo.hasSideEffects = res[2];
+  private void inferInstructionFlags() {
+    boolean error = false;
+    for (PatternToMatch tp : patternsToMatch) {
+
+      ArrayList<Record> patInstrs = new ArrayList<>();
+      getInstructionInTree(tp.getDstPattern(), patInstrs);
+      if (patInstrs.size() != 1)
+        continue;
+
+      CodeGenInstruction instInfo = target.getInstruction(patInstrs.get(0).getName());
+      error |= inferFromPattern(instInfo, tp, this);
+    }
+
+    if (error)
+      Error.printFatalError("Pattern conflicts");
+  }
+
+  private void collectModes(TreeSet<Integer> modes, TreePatternNode node) {
+    for (TypeSetByHwMode vt : node.getExtTypes())
+      modes.addAll(vt.map.keySet());
+
+    for (int i = 0,e = node.getNumChildren(); i < e; i++)
+      collectModes(modes, node.getChild(i));
+  }
+
+  private void expandHwModeBasedTypes() {
+    CodeGenHwModes cgh = getTarget().getHwModes();
+    TreeMap<Integer, ArrayList<utils.tablegen.Predicate>> modeChecks = new TreeMap<>();
+    ArrayList<PatternToMatch> copy = new ArrayList<>();
+    // FIXME, if it is failed to copy reference, replacing it with deeply copy.
+    copy.addAll(patternsToMatch);
+    patternsToMatch.clear();
+
+    BiFunction<PatternToMatch, Integer, Void> appendPattern =
+        (tp, mode) ->
+    {
+      TreePatternNode newSrc = tp.srcPattern.clone();
+      TreePatternNode newDst = tp.dstPattern.clone();
+      if (!newSrc.setDefaultMode(mode) || !newDst.setDefaultMode(mode))
+        return null;
+
+      ArrayList<utils.tablegen.Predicate> preds =new ArrayList<>(tp.preds);
+      if (!modeChecks.containsKey(mode))
+        modeChecks.put(mode, new ArrayList<>());
+      preds.addAll(modeChecks.get(mode));
+      patternsToMatch.add(new PatternToMatch(tp.getSrcRecord(), preds,
+          newSrc, newDst, tp.getDstRegs(), tp.getAddedComplexity()));
+      return null;
+    };
+
+    for (PatternToMatch tp : copy) {
+      TreePatternNode src = null, dst = null;
+      if (tp.srcPattern.hasProperTypeByHwMode())
+        src = tp.srcPattern;
+      if (tp.dstPattern.hasProperTypeByHwMode())
+        dst = tp.dstPattern;
+
+      if (src == null && dst == null) {
+        patternsToMatch.add(tp);
+        continue;
+      }
+
+      TreeSet<Integer> modes = new TreeSet<>();
+      if (src != null)
+        collectModes(modes, src);
+      if (dst != null)
+        collectModes(modes, dst);
+
+      // The predicate for the default mode needs to be constructed for each
+      // pattern separately.
+      // Since not all modes must be present in each pattern, if a mode m is
+      // absent, then there is no point in constructing a check for m. If such
+      // a check was created, it would be equivalent to checking the default
+      // mode, except not all modes' predicates would be a part of the checking
+      // code. The subsequently generated check for the default mode would then
+      // have the exact same patterns, but a different predicate code. To avoid
+      // duplicated patterns with different predicate checks, construct the
+      // default check as a negation of all predicates that are actually present
+      // in the source/destination patterns.
+      ArrayList<utils.tablegen.Predicate> defaultPred = new ArrayList<>();
+      for (int m : modes) {
+        if (m == DefaultMode)
+          continue;
+        if (modeChecks.containsKey(m))
+          continue;
+
+        // Fill the map entry for this mode.
+        CodeGenHwModes.HwMode hm = cgh.getMode(m);
+        ArrayList<utils.tablegen.Predicate> list = new ArrayList<>();
+        list.add(new utils.tablegen.Predicate(hm.features, true));
+        modeChecks.put(m, list);
+
+        // Add negations of the HM's predicates to the default predicate.
+        defaultPred.add(new utils.tablegen.Predicate(hm.features, false));
+      }
+
+      for (int m : modes) {
+        if (m == DefaultMode)
+          continue;
+        appendPattern.apply(tp, m);
+      }
+
+      if (modes.contains(DefaultMode))
+        appendPattern.apply(tp, DefaultMode);
     }
   }
 
-  private static boolean[] inferFromPattern(CodeGenInstruction instInfo, CodeGenDAGPatterns cdp) {
+  private static boolean inferFromPattern(CodeGenInstruction instInfo,
+                                            PatternToMatch pat,
+                                            CodeGenDAGPatterns cdp) {
     boolean mayStore, mayLoad, hasSideEffect;
     InstAnalyzer analyzer = new InstAnalyzer(cdp, false, false, false);
-    boolean hadPattern = analyzer.analyze(instInfo.theDef);
+    analyzer.analyze(pat.getSrcPattern());
     mayStore = analyzer.mayStore;
     mayLoad = analyzer.mayLoad;
     hasSideEffect = analyzer.hasSideEffect;
 
-    if (instInfo.mayStore) {
-      if (mayStore)
-        System.err.printf("Warning: mayStore flag explicitly set on instruction '%s'"
-                + " but flag already inferred from pattern.\n",
-            instInfo.theDef.getName());
-      mayStore = true;
+    boolean error = false;
+    if (instInfo.mayStore != mayStore) {
+      Error.printError(instInfo.theDef.getLoc(),
+          String.format("Pattern doesn't match mayStore = %b",
+          instInfo.mayStore));
+      error = true;
     }
 
-    if (instInfo.mayLoad) {
-      if (mayLoad)
-        System.err.printf("Warning: mayLoad flag explicitly set on instruction '%s'" +
-            " but flag already inferred from pattern.\n", instInfo.theDef.getName());
-      mayLoad = true;
+    if (instInfo.mayLoad != mayLoad) {
+      Error.printError(instInfo.theDef.getLoc(),
+          String.format("Pattern doesn't match mayLoad = %b",
+              instInfo.mayLoad));
+      error = true;
     }
 
-    if (instInfo.neverHasSideEffects) {
-      if (hadPattern)
-        System.err.printf("Warning: neverHasSideEffects set on instruction '%s' " +
-            "which already has a pattern\n", instInfo.theDef.getName());
-      hasSideEffect = false;
-    }
+    /*
+    // TODO 9/29/2018
+    if (instInfo.hasSideEffects != hasSideEffect) {
+      Error.printError(instInfo.theDef.getLoc(),
+          String.format("Pattern doesn't match hasSideEffects = %b",
+          instInfo.hasSideEffects));
+      error = true;
+    }*/
 
-    if (instInfo.hasSideEffects) {
-      if (hasSideEffect)
-        System.err.printf("Warning: hasSideEffects set on instruction '%s' " +
-            "which already inferred this.\n", instInfo.theDef.getName());
-      hasSideEffect = true;
-    }
-    return new boolean[]{mayStore, mayLoad, hasSideEffect};
+    instInfo.hasSideEffects |= hasSideEffect;
+    instInfo.mayStore |= mayStore;
+    instInfo.mayLoad |= mayLoad;
+    return error;
   }
 
   /**
@@ -228,8 +371,9 @@ public final class CodeGenDAGPatterns {
 
         if (alreadyExists) continue;
 
-        addPatternsToMatch(new PatternToMatch(match.getPredicates(),
-            var, match.getDstPattern(), match.getDstRegs(),
+        addPatternsToMatch(new PatternToMatch(match.getSrcRecord(),
+            match.getPredicates(), var,
+            match.getDstPattern(), match.getDstRegs(),
             match.getAddedComplexity()));
       }
       if (TableGen.DEBUG)
@@ -518,7 +662,6 @@ public final class CodeGenDAGPatterns {
       DefInit opDef = (DefInit) tree.getOperator();
       Record operator = opDef.getDef();
 
-      System.err.printf("%d %s\n", i, operator.getName());
       TreePattern pattern;
       if (!operator.getName().equals("parallel"))
         pattern = new TreePattern(patterns.get(i), tree, true, this);
@@ -569,6 +712,19 @@ public final class CodeGenDAGPatterns {
 
       parseOnePattern(patterns.get(i), pattern, result, instImpResults);
     }
+  }
+
+  private ArrayList<utils.tablegen.Predicate> makePredList(ListInit l) {
+    ArrayList<utils.tablegen.Predicate> res = new ArrayList<>();
+    for (int i = 0, e = l.getSize(); i < e; i++) {
+      Init ii = l.getElement(i);
+      if (ii instanceof DefInit)
+        res.add(new utils.tablegen.Predicate(((DefInit)ii).getDef(), true));
+      else
+        Util.shouldNotReachHere("Non-def on the list!");
+    }
+    Collections.sort(res);
+    return res;
   }
 
   private void parseOnePattern(Record theDef, TreePattern pattern, TreePattern result,
@@ -643,7 +799,8 @@ public final class CodeGenDAGPatterns {
       pattern.error("Pattern can never match: " + reason.toString());
 
     addPatternsToMatch(new PatternToMatch(
-        theDef.getValueAsListInit("Predicates"),
+        theDef,
+        makePredList(theDef.getValueAsListInit("Predicates")),
         pattern.getTree(0),
         temp.getOnlyTree(), instImpResults,
         (int) theDef.getValueAsInt("AddedComplexity")));
@@ -814,11 +971,6 @@ public final class CodeGenDAGPatterns {
     ArrayList<Record> instrs = records.getAllDerivedDefinition("Instruction");
     for (int idx = 0; idx < instrs.size(); idx++) {
       Record instr = instrs.get(idx);
-      if (idx == 135) {
-        System.err.println(idx);
-        System.err.println(instr.getName());
-      }
-
       ListInit li = null;
 
       if (instr.getValueInit("Pattern") instanceof ListInit)
@@ -850,9 +1002,7 @@ public final class CodeGenDAGPatterns {
         // Create and insert the instruction.
         ArrayList<Record> impResults = new ArrayList<>();
         ArrayList<Record> impOperands = new ArrayList<>();
-        instructions.put(instr, new DAGInstruction(null, results, operands,
-            impResults, impOperands));
-
+        instructions.put(instr, new DAGInstruction(results, operands,impResults, impOperands));
         continue;   // no pattern.
       }
 
@@ -1122,7 +1272,8 @@ public final class CodeGenDAGPatterns {
       TreePatternNode rnode = instResults.get(opName);
 
       resNodes.add(rnode);
-      Record r = rnode.getLeafValue() instanceof DefInit ? ((DefInit) rnode.getLeafValue()).getDef() : null;
+      Record r = rnode.getLeafValue() instanceof DefInit ?
+          ((DefInit) rnode.getLeafValue()).getDef() : null;
       if (r == null)
         tp.error("Operand $" + opName + " should be a set destination: all "
             + "outputs must occur before inputs in operand list!");
@@ -1217,7 +1368,8 @@ public final class CodeGenDAGPatterns {
     // FIXME: InstImpResults and InstImpInputs should not be part of
     // DAGInstruction.
     Record r = tp.getRecord();
-    DAGInstruction theInst = new DAGInstruction(tp, results, operands, instImpResults, instImpInputs);
+    DAGInstruction theInst = new DAGInstruction(results, operands,
+        instImpResults, instImpInputs, srcPattern, resultPattern);
     dagInstrs.put(r, theInst);
 
     if (TableGen.DEBUG)

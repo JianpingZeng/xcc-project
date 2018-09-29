@@ -147,8 +147,8 @@ public class DAGISelEmitter extends TableGenBackend {
 
     emitter.emitMatchCode(pattern.getSrcPattern(), null, "n", "", false);
 
+    /* FIXME, if we should newer tablegen, inference type has been done before. 9/29/2018
     TreePattern tp = cgp.getPatternFragments().firstEntry().getValue();
-
     TreePatternNode pat = pattern.getSrcPattern().clone();
     removeAllTypes(pat);
 
@@ -163,7 +163,7 @@ public class DAGISelEmitter extends TableGenBackend {
         System.exit(-1);
       }
 
-    } while (emitter.insertOneTypeCheck(pat, pattern.getSrcPattern(), "n", true));
+    } while (emitter.insertOneTypeCheck(pat, pattern.getSrcPattern(), "n", true));*/
 
     emitter.emitResultCode(pattern.getDstPattern(), pattern.getDstRegs(),
         false, false, false, true);
@@ -299,6 +299,8 @@ public class DAGISelEmitter extends TableGenBackend {
       os.printf("%s}%n", Util.fixedLengthString(indent + 4, ' '));
   }
 
+  private static int uniqueSuffixLargePattern = 1;
+
   /**
    * Emit patterns for STORE instruction.
    * <br></br>
@@ -312,7 +314,6 @@ public class DAGISelEmitter extends TableGenBackend {
     if (patterns.isEmpty()) return null;
 
     ArrayList<String> smallMethods = new ArrayList<>();
-    int suffix = 1;
     os.printf("%sSDNode res = null;%n", Util.fixedLengthString(indent, ' '));
     TIntArrayStack indentForBraces = new TIntArrayStack();
 
@@ -321,7 +322,7 @@ public class DAGISelEmitter extends TableGenBackend {
       PatternToMatch pat = itr.first;
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       PrintStream os2 = new PrintStream(baos);
-      os2.printf("SDNode select_ISD_STORE_%d(SDValue n) {", suffix);
+      os2.printf("SDNode select_ISD_STORE_%d(SDValue n) {", uniqueSuffixLargePattern);
       os2.printf("%n%s// Pattern: ", Util.fixedLengthString(indent, ' '));
       pat.getSrcPattern().print(os2);
 
@@ -367,9 +368,10 @@ public class DAGISelEmitter extends TableGenBackend {
       os2.close();
       smallMethods.add(baos.toString());
 
-      os.printf("%sres = select_ISD_STORE_%d(n);%n", Util.fixedLengthString(indent, ' '), suffix);
+      os.printf("%sres = select_ISD_STORE_%d(n);%n", Util.fixedLengthString(indent, ' '),
+          uniqueSuffixLargePattern);
       os.printf("%sif (res != null) return res;%n", Util.fixedLengthString(indent, ' '));
-      ++suffix;
+      ++uniqueSuffixLargePattern;
     }
     return smallMethods;
   }
@@ -423,12 +425,48 @@ public class DAGISelEmitter extends TableGenBackend {
     }
   }
 
+  public static TypeSetByHwMode getOpTypeHwModeForPattern(TreePatternNode pat) {
+    // When there is no types in current node, look at it's children nodes.
+    TypeSetByHwMode resVT = null;
+    if (pat.getNumTypes() <= 0) {
+      for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
+        TypeSetByHwMode localVT = getOpTypeHwModeForPattern(pat.getChild(i));
+        if (localVT == null) continue;
+        else if (resVT == null)
+          resVT = localVT;
+        else if (!localVT.equals(resVT))
+          resVT = null;
+      }
+      return resVT;
+    }
+    return pat.getExtType(0);
+  }
+
+
+  public static int getOpcodeTypeForPattern(TreePatternNode pat) {
+    // When there is no types in current node, look at it's children nodes.
+    int resVT = 0;
+    if (pat.getNumTypes() <= 0) {
+      for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
+        int localVT = getOpcodeTypeForPattern(pat.getChild(i));
+        if (localVT == 0) continue;
+        else if (resVT == 0)
+          resVT = localVT;
+        else if (localVT != resVT)
+          resVT = 0;
+      }
+      return resVT;
+    }
+    return pat.getSimpleType(0);
+  }
+
   private void emitInstructionSelector(PrintStream os) {
     TreeMap<String, ArrayList<PatternToMatch>> patternsByOpcode =
         new TreeMap<>();
     TreeMap<String, Integer> emitFunctions = new TreeMap<>();
     for (PatternToMatch pattern : cgp.getPatternsToMatch()) {
       TreePatternNode node = pattern.getSrcPattern();
+
       if (!node.isLeaf()) {
         String opName = getOpcodeName(node.getOperator(), cgp);
         if (!patternsByOpcode.containsKey(opName))
@@ -467,11 +505,10 @@ public class DAGISelEmitter extends TableGenBackend {
 
       // split the patterns into groups by type.
       TreeMap<Integer, ArrayList<PatternToMatch>> patternsByType = new TreeMap<>();
+
       for (PatternToMatch op : patternOfOps) {
         TreePatternNode srcPat = op.getSrcPattern();
-        op.dump();
-        
-        int ty = srcPat.getSimpleType(0);
+        int ty = getOpcodeTypeForPattern(srcPat);
         if (!patternsByType.containsKey(ty))
           patternsByType.put(ty, new ArrayList<>());
         patternsByType.get(ty).add(op);
@@ -506,7 +543,6 @@ public class DAGISelEmitter extends TableGenBackend {
           outputIsVariadicFlags.add(outputIsVariadic.get());
           numInputRootOpsCounts.add(numInputRootOps.get());
         }
-
 
         for (int i = 0, e = codeForPatterns.size(); i < e; i++) {
           ArrayList<Pair<GeneratedCodeKind, String>> generatedCode = codeForPatterns.get(i).second;
@@ -643,6 +679,8 @@ public class DAGISelEmitter extends TableGenBackend {
         if (opName.equals("ISD.STORE")) {
           PatternSortingPredicate cmp = new PatternCodeEmitter.PatternSortingPredicate(cgp);
           codeForPatterns.sort(cmp);
+          // TODO, 9/29/2018, We need use a sophisticated method to compute the code size of given pattern
+          // So that we can determine whether should I enable pattern merging or not.
           smallMethods = emitPatternsForLargePattern(codeForPatterns, 2, os);
         } else if (((opName.equals("ISD.FDIV") || opName.equals("ISD.FSUB")) && opVT == MVT.f32)) {
           PatternSortingPredicate cmp = new PatternCodeEmitter.PatternSortingPredicate(cgp);
@@ -788,7 +826,7 @@ public class DAGISelEmitter extends TableGenBackend {
       os.println("import backend.codegen.dagisel.SelectionDAGISel.*;");
       os.println("import backend.codegen.dagisel.SDNode.*;");
       os.println("import backend.codegen.dagisel.ISD;");
-      os.println("import backend.target.RISCVGenInstrInfo;");
+      os.printf("import backend.target.%s.RISCVGenInstrInfo;%n", targetName.toLowerCase());
       os.println("import backend.target.TargetMachine;");
       os.println("import backend.type.PointerType;");
       os.println("import backend.value.Value;");

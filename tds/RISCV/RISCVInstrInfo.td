@@ -16,7 +16,8 @@ def SDT_RISCVSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
                                                  SDTCisSameAs<4, 5>]>;
 
 def Call         : SDNode<"RISCVISD.CALL", SDT_RISCVCall,
-                          [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+                          [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
+                          SDNPVariadic]>;
 def CallSeqStart : SDNode<"ISD.CALLSEQ_START", SDT_RISCVCallSeqStart,
                           [SDNPHasChain, SDNPOutFlag]>;
 def CallSeqEnd   : SDNode<"ISD.CALLSEQ_END", SDT_RISCVCallSeqEnd,
@@ -77,17 +78,17 @@ def UImmLog2XLenAsmOperand : AsmOperandClass {
 
 def uimmlog2xlen : Operand<XLenVT>, ImmLeaf<XLenVT, [{
   if (subtarget.is64Bit())
-    return isUInt(Imm, 6);
-  return isUInt(Imm, 5);
+    return isUInt(n, 6);
+  return isUInt(n, 5);
 }]> {
   let ParserMatchClass = UImmLog2XLenAsmOperand;
 }
 
-def uimm5 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt(Imm, 5);}]> {
+def uimm5 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt(n, 5);}]> {
   let ParserMatchClass = UImmAsmOperand<5>;
 }
 
-def simm12 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt(Imm, 12);}]> {
+def simm12 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt(n, 12);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
 }
 
@@ -126,8 +127,8 @@ def ixlenimm : Operand<XLenVT> {
 }
 
 // Standalone (codegen-only) immleaf patterns.
-def simm32     : ImmLeaf<XLenVT, [{return isInt32(Imm);}]>;
-def simm32hi20 : ImmLeaf<XLenVT, [{return isShiftedInt(Imm, 20, 12);}]>;
+def simm32     : ImmLeaf<XLenVT, [{return isInt32(n);}]>;
+def simm32hi20 : ImmLeaf<XLenVT, [{return isShiftedInt(n, 20, 12);}]>;
 
 // Addressing modes.
 // Necessary because a frameindex can't be matched directly in a pattern.
@@ -548,7 +549,7 @@ class PatGprUimmLog2XLen<SDPatternOperator OpNode, RVInstIShift Inst>
 /// Predicates
 
 def IsOrAdd: PatFrag<(ops node:$A, node:$B), (or node:$A, node:$B), [{
-  return isOrEquivalentToAdd(N);
+  return isOrEquivalentToAdd(n);
 }]>;
 
 /// Immediates

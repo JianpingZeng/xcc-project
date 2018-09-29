@@ -722,6 +722,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
         new EVT(MVT.Other), tmp, chain);
   }
 
+  public SDNode select_DECLARE(SDValue n) {
+    // TODO: 18-9-29
+    return null;
+  }
+
   public void cannotYetSelect(SDValue n) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream os = new PrintStream(baos);

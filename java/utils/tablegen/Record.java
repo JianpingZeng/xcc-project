@@ -24,6 +24,7 @@ import utils.tablegen.Init.*;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 
 /**
@@ -36,6 +37,15 @@ public final class Record implements Cloneable {
    * class or def name to its def.
    */
   public static final RecordKeeper records = new RecordKeeper();
+  /**
+   * Sorting predicate to sort record by name.
+   */
+  public static final Comparator<Record> LessRecord = (o1, o2) -> o1.getName().compareTo(o2.getName());
+  /**
+   * Sorting predicate to sort the record by theire name field.
+   */
+  private static final Comparator<Record> LessRecordFieldName = (Record o1, Record o2) ->
+        o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
 
   private String name;
   private ArrayList<String> templateArgs;

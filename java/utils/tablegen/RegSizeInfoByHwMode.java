@@ -28,10 +28,12 @@ package utils.tablegen;
  */
 
 import tools.Pair;
+import tools.Util;
 import utils.tablegen.CodeGenHwModes.HwModeSelect;
 
 import java.util.TreeSet;
 
+import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.CodeGenHwModes.getModeName;
 
 /**
@@ -101,5 +103,14 @@ public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
     }
     buf.append('}');
     return buf.toString();
+  }
+
+  @Override
+  public RegSizeInfo get(int mode) {
+    if (!hasMode(mode)) {
+      Util.assertion(hasDefault());
+      map.put(mode, map.get(DefaultMode).clone());
+    }
+    return map.get(mode);
   }
 }

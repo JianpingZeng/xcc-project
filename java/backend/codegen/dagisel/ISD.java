@@ -527,28 +527,42 @@ public class ISD {
   // this corresponds to the atomic.lcs intrinsic.
   // cmp is compared to *ptr, and if equal, swap is stored in *ptr.
   // the return is always the original value in *ptr
-  public static final int ATOMIC_CMP_SWAP = 162;
+  /// OUTCHAIN = ATOMIC_FENCE(INCHAIN, ordering, scope)
+  /// This corresponds to the fence instruction. It takes an input chain, and
+  /// two integer constants: an AtomicOrdering and a SynchronizationScope.
+  public static final int ATOMIC_FENCE = 161;
+
+  /// Val, OUTCHAIN = ATOMIC_LOAD(INCHAIN, ptr)
+  /// This corresponds to "load atomic" instruction.
+  public static final int ATOMIC_LOAD = 162;
+
+  /// OUTCHAIN = ATOMIC_STORE(INCHAIN, ptr, val)
+  /// This corresponds to "store atomic" instruction.
+  public static final int  ATOMIC_STORE = 163;
+
+  public static final int ATOMIC_CMP_SWAP = 164;
   // Val, OUTCHAIN = ATOMIC_SWAP(INCHAIN, ptr, amt)
   // this corresponds to the atomic.swap intrinsic.
   // amt is stored to *ptr atomically.
   // the return is always the original value in *ptr
-  public static final int ATOMIC_SWAP = 163;
+  public static final int ATOMIC_SWAP = 165;
   // Val, OUTCHAIN = ATOMIC_LOAD_[OpName](INCHAIN, ptr, amt)
   // this corresponds to the atomic.load.[OpName] intrinsic.
   // op(*ptr, amt) is stored to *ptr atomically.
   // the return is always the original value in *ptr
-  public static final int ATOMIC_LOAD_ADD = 164;
-  public static final int ATOMIC_LOAD_SUB = 165;
-  public static final int ATOMIC_LOAD_AND = 166;
-  public static final int ATOMIC_LOAD_OR = 167;
-  public static final int ATOMIC_LOAD_XOR = 168;
-  public static final int ATOMIC_LOAD_NAND = 169;
-  public static final int ATOMIC_LOAD_MIN = 170;
-  public static final int ATOMIC_LOAD_MAX = 171;
-  public static final int ATOMIC_LOAD_UMIN = 172;
-  public static final int ATOMIC_LOAD_UMAX = 173;
+  public static final int ATOMIC_LOAD_ADD = 166;
+  public static final int ATOMIC_LOAD_SUB = 167;
+  public static final int ATOMIC_LOAD_AND = 168;
+  public static final int ATOMIC_LOAD_OR = 169;
+  public static final int ATOMIC_LOAD_XOR = 170;
+  public static final int ATOMIC_LOAD_NAND = 171;
+  public static final int ATOMIC_LOAD_MIN = 172;
+  public static final int ATOMIC_LOAD_MAX = 173;
+  public static final int ATOMIC_LOAD_UMIN = 174;
+  public static final int ATOMIC_LOAD_UMAX = 175;
+
   // BUILTIN_OP_END - This must be the last enum value in this list.
-  public static final int BUILTIN_OP_END = 174;
+  public static final int BUILTIN_OP_END = 176;
 
   public static CondCode getSetCCInverse(CondCode cc, boolean isInteger) {
     int operator = cc.ordinal();

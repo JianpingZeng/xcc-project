@@ -24,7 +24,7 @@ import tools.Util;
  * @author Jianping Zeng
  * @version 0.1
  */
-public final class MVT implements Comparable<MVT> {
+public final class MVT implements Comparable<MVT>, Cloneable {
   // If you change this numbering, you must change the values in
   // ValueTypes.td as well!
   public static final int Other = 0;                 // This is a non-standard value
@@ -604,5 +604,10 @@ public final class MVT implements Comparable<MVT> {
   @Override
   public int hashCode() {
     return simpleVT;
+  }
+
+  @Override
+  public MVT clone() {
+    return new MVT(simpleVT);
   }
 }

@@ -45,23 +45,11 @@ public final class InstAnalyzer {
    * Analyze the specified instruction, returning true if the instruction
    * had a pattern.
    *
-   * @param instDef The instruction definition that we would infer flags
+   * @param node The instruction definition that we would infer flags
    *                for.
    * @return Return true if have pattern, otherwise return false.
    */
-  public boolean analyze(Record instDef) {
-    TreePattern pattern = cdp.getInstruction(instDef).getSrcPattern();
-    if (pattern == null) {
-      // No pattern, just terminate early.
-      hasSideEffect = true;       // conservative consideration.
-      return false;
-    }
-
-    analyzeNode(pattern.getTree(0));
-    return true;
-  }
-
-  private void analyzeNode(TreePatternNode node) {
+  public void analyze(TreePatternNode node) {
     if (node.isLeaf()) {
       DefInit def = node.getLeafValue() instanceof DefInit ?
           (DefInit) node.getLeafValue() : null;
@@ -83,21 +71,17 @@ public final class InstAnalyzer {
 
     // Analyze childen.
     for (int i = 0, e = node.getNumChildren(); i < e; i++) {
-      analyzeNode(node.getChild(i));
+      analyze(node.getChild(i));
     }
 
     // Ignore set nodes which are not SDNodes.
-    if (node.getOperator().getName().equals("set")) {
+    if (node.getOperator().getName().equals("set"))
       return;
-    }
-
-    // get information about the SDNode for the operator.
-    SDNodeInfo opInfo = cdp.getSDNodeInfo(node.getOperator());
 
     // Notice of properties of the node.
-    if (opInfo.hasProperty(SDNPMayStore)) mayStore = true;
-    if (opInfo.hasProperty(SDNPMayLoad)) mayLoad = true;
-    if (opInfo.hasProperty(SDNPSideEffect)) hasSideEffect = true;
+    if (node.hasProperty(SDNPMayStore, cdp)) mayStore = true;
+    if (node.hasProperty(SDNPMayLoad, cdp)) mayLoad = true;
+    if (node.hasProperty(SDNPSideEffect, cdp)) hasSideEffect = true;
 
     CodeGenIntrinsic intrisic = node.getIntrinsicInfo(cdp);
     if (intrisic != null) {

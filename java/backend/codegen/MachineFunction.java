@@ -4,6 +4,7 @@ import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import tools.Pair;
@@ -279,5 +280,9 @@ public class MachineFunction {
 
   public void setJumpTableInfo(MachineJumpTableInfo jti) {
     this.jumpTableInfo = jti;
+  }
+
+  public TargetSubtarget getSubtarget() {
+    return getTarget().getSubtarget();
   }
 }

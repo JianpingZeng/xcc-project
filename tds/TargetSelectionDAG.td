@@ -209,7 +209,7 @@ def SDTConvertOp : SDTypeProfile<1, 5, [ //cvtss, su, us, uu, ff, fs, fu, sf, su
 ]>;
 
 class SDCallSeqStart<list<SDTypeConstraint> constraints> :
-        SDTypeProfile<0, 1, constraints>;
+        SDTypeProfile<0, 2, constraints>;
 class SDCallSeqEnd<list<SDTypeConstraint> constraints> :
         SDTypeProfile<0, 2, constraints>;
 
@@ -229,7 +229,7 @@ def SDNPMayStore    : SDNodeProperty;   // May write to memory, sets 'mayStore'.
 def SDNPMayLoad     : SDNodeProperty;   // May read memory, sets 'mayLoad'.
 def SDNPSideEffect  : SDNodeProperty;   // Sets 'HasUnmodelledSideEffects'.
 def SDNPMemOperand  : SDNodeProperty;   // Touches memory, has assoc MemOperand
-
+def SDNPVariadic    : SDNodeProperty;   // Node has variable arguments.
 
 //===----------------------------------------------------------------------===//
 // Selection DAG Pattern operations.
@@ -495,46 +495,46 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
   // Is the desired pre-packaged predicate for an atomic?
   bit IsAtomic = ?;
 
-  // cast<LoadSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
-  // cast<StoreSDNode>(N)->getAddressingMode() == ISD::UNINDEXED;
+  // cast<LoadSDNode>(n)->getAddressingMode() == ISD::UNINDEXED;
+  // cast<StoreSDNode>(n)->getAddressingMode() == ISD::UNINDEXED;
   bit IsUnindexed = ?;
 
-  // cast<LoadSDNode>(N)->getExtensionType() != ISD::NON_EXTLOAD
+  // cast<LoadSDNode>(n)->getExtensionType() != ISD::NON_EXTLOAD
   bit IsNonExtLoad = ?;
-  // cast<LoadSDNode>(N)->getExtensionType() == ISD::EXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD::EXTLOAD;
   bit IsAnyExtLoad = ?;
-  // cast<LoadSDNode>(N)->getExtensionType() == ISD::SEXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD::SEXTLOAD;
   bit IsSignExtLoad = ?;
-  // cast<LoadSDNode>(N)->getExtensionType() == ISD::ZEXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD::ZEXTLOAD;
   bit IsZeroExtLoad = ?;
-  // !cast<StoreSDNode>(N)->isTruncatingStore();
-  // cast<StoreSDNode>(N)->isTruncatingStore();
+  // !cast<StoreSDNode>(n)->isTruncatingStore();
+  // cast<StoreSDNode>(n)->isTruncatingStore();
   bit IsTruncStore = ?;
 
-  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Monotonic
+  // cast<AtomicSDNode>(n)->getOrdering() == AtomicOrdering::Monotonic
   bit IsAtomicOrderingMonotonic = ?;
-  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Acquire
+  // cast<AtomicSDNode>(n)->getOrdering() == AtomicOrdering::Acquire
   bit IsAtomicOrderingAcquire = ?;
-  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::Release
+  // cast<AtomicSDNode>(n)->getOrdering() == AtomicOrdering::Release
   bit IsAtomicOrderingRelease = ?;
-  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::AcquireRelease
+  // cast<AtomicSDNode>(n)->getOrdering() == AtomicOrdering::AcquireRelease
   bit IsAtomicOrderingAcquireRelease = ?;
-  // cast<AtomicSDNode>(N)->getOrdering() == AtomicOrdering::SequentiallyConsistent
+  // cast<AtomicSDNode>(n)->getOrdering() == AtomicOrdering::SequentiallyConsistent
   bit IsAtomicOrderingSequentiallyConsistent = ?;
 
-  // isAcquireOrStronger(cast<AtomicSDNode>(N)->getOrdering())
-  // !isAcquireOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  // isAcquireOrStronger(cast<AtomicSDNode>(n)->getOrdering())
+  // !isAcquireOrStronger(cast<AtomicSDNode>(n)->getOrdering())
   bit IsAtomicOrderingAcquireOrStronger = ?;
 
-  // isReleaseOrStronger(cast<AtomicSDNode>(N)->getOrdering())
-  // !isReleaseOrStronger(cast<AtomicSDNode>(N)->getOrdering())
+  // isReleaseOrStronger(cast<AtomicSDNode>(n)->getOrdering())
+  // !isReleaseOrStronger(cast<AtomicSDNode>(n)->getOrdering())
   bit IsAtomicOrderingReleaseOrStronger = ?;
 
-  // cast<LoadSDNode>(N)->getMemoryVT() == MVT::<VT>;
-  // cast<StoreSDNode>(N)->getMemoryVT() == MVT::<VT>;
+  // cast<LoadSDNode>(n)->getMemoryVT() == MVT::<VT>;
+  // cast<StoreSDNode>(n)->getMemoryVT() == MVT::<VT>;
   ValueType MemoryVT = ?;
-  // cast<LoadSDNode>(N)->getMemoryVT().getScalarType() == MVT::<VT>;
-  // cast<StoreSDNode>(N)->getMemoryVT().getScalarType() == MVT::<VT>;
+  // cast<LoadSDNode>(n)->getMemoryVT().getScalarType() == MVT::<VT>;
+  // cast<StoreSDNode>(n)->getMemoryVT().getScalarType() == MVT::<VT>;
   ValueType ScalarMemoryVT = ?;
 }
 
@@ -547,7 +547,7 @@ class PatLeaf<dag frag, code pred = [{}], SDNodeXForm xform = NOOP_SDNodeXForm>
 // constraint is a function that is run on the immediate (always with the value
 // sign extended out to an int64) as Imm.  For example:
 //
-//  def immSExt8 : ImmLeaf<i16, [{ return (short)Imm == Imm; }]>;
+//  def immSExt8 : ImmLeaf<i16, [{ return (short)n == n; }]>;
 //
 // this is a more convenient form to match 'imm' nodes in than PatLeaf and also
 // is preferred over using PatLeaf because it allows the code generator to

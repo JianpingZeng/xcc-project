@@ -435,65 +435,6 @@ public class Util {
     return -1;
   }
 
-  /**
-   * Checks if specified val, a signed integer, has number of bits.
-   *
-   * @param val
-   * @param bits
-   * @return
-   */
-  public static boolean isInt(long val, int bits) {
-    assertion(bits >= 1);
-    return bits >= 64 || (-(1 << (bits - 1)) <= val &&
-        val <= (1 << (bits - 1)));
-  }
-
-  public static boolean isInt8(long val) {
-    return isInt(val, 8);
-  }
-
-  public static boolean isInt16(long val) {
-    return isInt(val, 16);
-  }
-
-  public static boolean isInt32(long val) {
-    return isInt(val, 32);
-  }
-
-  public static boolean isUInt(long val, int bits) {
-    assertion(bits >= 1);
-    return Long.compareUnsigned(val, 0) >= 0 &&
-        Long.compareUnsigned(val, (1 << bits) - 1) <= 0;
-  }
-
-  public static boolean isUInt8(long val) {
-    return isUInt(val, 8);
-  }
-
-  public static boolean isUInt16(long val) {
-    return isUInt(val, 16);
-  }
-
-  public static boolean isUInt32(long val) {
-    return isUInt(val, 32);
-  }
-
-  public static boolean isShiftedInt(long val, int n, int s) {
-    assertion(n > 0, "isShiftedInt with s = 0 doesn't make sense");
-    assertion(s + n <= 64 && s >= 0 && n >= 0);
-    return isInt(val, n + s) && (val % (1 << s)) == 0;
-  }
-
-  public static long signExtend64(long val, int n) {
-    assertion(n >= 0 && n <= 64);
-    return (n << (64 - n)) >> (64 - n);
-  }
-
-  public static int signExtend32(int val, int n) {
-    assertion(n >= 0 && n <= 64);
-    return (n << (32 - n)) >> (32 - n);
-  }
-
   /***
    * Computes the edit distance between two string. The edit distance is defined
    * as follows.

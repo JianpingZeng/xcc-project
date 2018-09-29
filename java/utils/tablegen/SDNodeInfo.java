@@ -84,6 +84,9 @@ public final class SDNodeInfo {
         case "SDNPMemOperand":
           properties |= 1 << SDNP.SDNPMemOperand;
           break;
+        case "SDNPVariadic":
+          properties |= 1 << SDNP.SDNPVariadic;
+          break;
         default:
           Error.printError("Undefined SD Node property '" + prop.getName()
               + "' on node '" + r.getName() + "'!");
@@ -143,8 +146,7 @@ public final class SDNodeInfo {
    * @param tp
    * @return
    */
-  public boolean applyTypeConstraints(TreePatternNode node, TreePattern tp)
-      {
+  public boolean applyTypeConstraints(TreePatternNode node, TreePattern tp) {
     boolean changed = false;
     for (SDTypeConstraint con : typeConstraints) {
       changed |= con.applyTypeConstraint(node, this, tp);

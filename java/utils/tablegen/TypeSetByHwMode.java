@@ -131,7 +131,7 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> implement
 
   public boolean insert(TypeSetByHwMode set) {
     Util.assertion(isEmpty(), "Only use this method on empty");
-    set.map.forEach((mode, vts) -> {map.put(mode, vts); });
+    set.map.forEach((mode, vts) -> {map.put(mode, vts.clone()); });
     return true;
   }
 
@@ -237,22 +237,13 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> implement
     modes.addAll(map.keySet());
     modes.addAll(set.map.keySet());
 
-    if (hasDefault) {
-      for (int m : modes) {
-        if (!get(m).equals(set.get(m)))
-          return false;
-      }
-    }
-    else {
-      for (int m : modes) {
-        boolean noModeThis = !hasMode(m) || get(m).isEmpty();
-        boolean noModeVTs = !set.hasMode(m) || set.get(m).isEmpty();
-        if (noModeThis != noModeVTs)
-          return false;
-        if (!noModeThis)
-          if (!get(m).equals(set.get(m)))
-            return false;
-      }
+    for (int m : modes) {
+      if (map.containsKey(m) != set.map.containsKey(m))
+        return false;
+      Util.assertion(map.containsKey(m));
+
+      if (!get(m).equals(set.get(m)))
+        return false;
     }
     return true;
   }
@@ -319,5 +310,13 @@ public class TypeSetByHwMode extends InfoByHwMode<MachineValueTypeSet> implement
       vts.insert(pair.getValue().clone());
     }
     return res;
+  }
+
+  public MachineValueTypeSet get(int mode) {
+    if (!hasMode(mode)) {
+      Util.assertion(hasDefault());
+      map.put(mode, map.get(DefaultMode).clone());
+    }
+    return map.get(mode);
   }
 }

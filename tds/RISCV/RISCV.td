@@ -26,9 +26,8 @@ def HasStdExtC : Predicate<"subtarget.hasStdExtC()">;
 def IsRV64 : Predicate<"subtarget.is64Bit()">;
 def IsRV32 : Predicate<"!subtarget.is64Bit()">;
 
-
-def RV64           : HwMode<"+64bit">;
 def RV32           : HwMode<"-64bit">;
+def RV64           : HwMode<"+64bit">;
 
 //===----------------------------------------------------------------------===//
 // Defines sub-cpu types for RISCV target.

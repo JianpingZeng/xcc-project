@@ -294,7 +294,7 @@ macro(add_gen_tblgen target_name)
             ${GEN_OPTIONS_SRCS}/OptionKind.java
             ${GEN_OPTIONS_SRCS}/Group.java
             ${GEN_OPTIONS_SRCS}/GroupID.java
-        DEPENDS ${BACKEND_TARGET}
+        DEPENDS ${BACKEND_TARGET} JlangOptionsTableGen
         COMMENT "Compiling taraget-specific source files")
     else()
         message(FATAL "failed to generate code via llvm-tblgen according to td file")

@@ -2062,7 +2062,9 @@ public class SelectionDAG {
       addModifiedNodeToCSEMaps(user, listener);
     }
   }
-
+  public SDValue getRegister(int reg, int ty) {
+    return getRegister(reg, new EVT(ty));
+  }
   public SDValue getRegister(int reg, EVT ty) {
     FoldingSetNodeID calc = new FoldingSetNodeID();
     addNodeToIDNode(calc, ISD.Register, getVTList(ty), null, 0);

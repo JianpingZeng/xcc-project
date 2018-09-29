@@ -63,6 +63,11 @@ public class RISCVTargetMachine extends LLVMTargetMachine {
   }
 
   @Override
+  public RISCVSubtarget getSubtarget() {
+    return subtarget;
+  }
+
+  @Override
   public TargetInstrInfo getInstrInfo() {
     return subtarget.getInstrInfo();
   }

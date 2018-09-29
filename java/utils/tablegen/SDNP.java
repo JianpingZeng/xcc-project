@@ -35,4 +35,5 @@ public interface SDNP {
   int SDNPMayStore = 7;
   int SDNPSideEffect = 8;
   int SDNPMemOperand = 9;
+  int SDNPVariadic = 10;
 }
