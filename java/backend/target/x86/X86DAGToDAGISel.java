@@ -42,8 +42,6 @@ import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
 public abstract class X86DAGToDAGISel extends SelectionDAGISel {
   protected X86TargetLowering tli;
   protected X86Subtarget subtarget;
-  protected int iselPosition;
-  protected boolean optForSize;
 
   public X86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
@@ -51,72 +49,16 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel {
     tli = tm.getTargetLowering();
   }
 
+  /**
+   * This hook allows targets to hack on the graph before
+   * instruction selection starts.
+   */
   @Override
-  public void instructionSelect() {
+  public void preprocessISelDAG() {
     Function f = mf.getFunction();
     optForSize = f.hasFnAttr(Attribute.OptimizeForSize);
     if (optLevel != TargetMachine.CodeGenOpt.None)
       preprocessForFPConvert();
-
-    selectRoot();
-    curDAG.removeDeadNodes();
-  }
-
-  private void selectRoot() {
-    selectRootInit();
-
-    HandleSDNode dummy = new HandleSDNode(curDAG.getRoot());
-    iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
-    Util.assertion(iselPosition != -1, "Specified root node not exists in allNodes!");
-    iselPosition++;
-    while (iselPosition != 0) {
-      SDNode node = curDAG.allNodes.get(--iselPosition);
-      if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE ||
-          node.isMachineOpecode())
-        continue;
-
-      SDNode resNode = select(new SDValue(node, 0));
-      if (Objects.equals(resNode, node))
-        continue;
-      if (resNode != null)
-        replaceUses(node, resNode);
-
-      if (node.isUseEmpty()) {
-        ISelUpdater updater = new ISelUpdater(iselPosition, curDAG.allNodes);
-        curDAG.removeDeadNode(node, updater);
-        iselPosition = updater.getISelPos();
-      }
-    }
-    curDAG.setRoot(dummy.getValue());
-    dummy.dropOperands();
-    curDAG.removeDeadNodes();
-  }
-
-  private void selectRootInit() {
-    dagSize = curDAG.assignTopologicalOrder();
-  }
-
-  /**
-   * Replace the old node with new one.
-   *
-   * @param oldNode
-   * @param newNode
-   */
-  public void replaceUses(SDNode oldNode, SDNode newNode) {
-    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
-    curDAG.replaceAllUsesWith(oldNode, newNode, isu);
-    iselPosition = isu.getISelPos();
-  }
-
-  public void replaceUses(SDValue oldVal, SDValue newVal) {
-    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
-    curDAG.replaceAllUsesOfValueWith(oldVal, newVal, isu);
-    iselPosition = isu.getISelPos();
-  }
-
-  public void replaceUses(SDValue[] f, SDValue[] t) {
-    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
-    curDAG.replaceAllUsesOfValuesWith(f, t, isu);
   }
 
   public static X86DAGToDAGISel createX86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level) {
@@ -188,18 +130,6 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel {
     }
     // Call the super's method to cope with the generic situation.
     return super.isLegalAndProfitableToFold(node, use, root);
-  }
-
-  /**
-   * This method should be overrided by tablegen class.
-   *
-   * @param node
-   * @return
-   */
-  public abstract SDNode selectCode(SDValue node);
-
-  protected SDNode select(SDValue val) {
-    return selectCode(val);
   }
 
   protected SDNode selectAtomic64(SDNode node, int opc) {

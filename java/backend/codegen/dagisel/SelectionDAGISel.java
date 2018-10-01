@@ -81,6 +81,18 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
   protected MachineBasicBlock mbb;
   protected TargetMachine tm;
   protected AliasAnalysis aa;
+  protected int iselPosition;
+  protected boolean optForSize;
+
+  /**
+   * A table encoded as a state machine for recgonzing the
+   * input target-undependent DAG and transforming it into
+   * target-specific DAG.
+   *
+   * This variable should be statically initialized in class [*]GenDAGToDAGISel,
+   * like {@code RISCVGenDAGToDAGISel}.
+   */
+  protected byte[] matchTable;
 
   public SelectionDAGISel(TargetMachine tm, CodeGenOpt optLevel) {
     this.tm = tm;
@@ -302,7 +314,79 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     mbb = scheduler.emitSchedule();
   }
 
-  public abstract void instructionSelect();
+  public void instructionSelect() {
+    Util.assertion(matchTable != null, "MatchTable should be initialized before calling instructionSelect");
+    selectRootInit();
+
+    SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(curDAG.getRoot());
+    iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
+    Util.assertion(iselPosition != -1, "Specified root node not exists in allNodes!");
+    iselPosition++;
+    while (iselPosition != 0) {
+      SDNode node = curDAG.allNodes.get(--iselPosition);
+      if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE ||
+          node.isMachineOpecode())
+        continue;
+
+      SDNode resNode = select(node);
+      if (Objects.equals(resNode, node))
+        continue;
+      if (resNode != null)
+        replaceUses(node, resNode);
+
+      if (node.isUseEmpty()) {
+        ISelUpdater updater = new ISelUpdater(iselPosition, curDAG.allNodes);
+        curDAG.removeDeadNode(node, updater);
+        iselPosition = updater.getISelPos();
+      }
+    }
+    curDAG.setRoot(dummy.getValue());
+    dummy.dropOperands();
+    curDAG.removeDeadNodes();
+  }
+
+  public SDNode select(SDNode val) {
+    // TODO: 18-9-30
+    return null;
+  }
+
+  /**
+   * This hook allows targets to hack on the graph before
+   * instruction selection starts.
+   */
+  public void preprocessISelDAG() { }
+
+  /**
+   * This hook allows the target to hack on the graph
+   * right after selection.
+   */
+  public void postprocessISelDAG() {}
+
+  private void selectRootInit() {
+    dagSize = curDAG.assignTopologicalOrder();
+  }
+  /**
+   * Replace the old node with new one.
+   *
+   * @param oldNode
+   * @param newNode
+   */
+  public void replaceUses(SDNode oldNode, SDNode newNode) {
+    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+    curDAG.replaceAllUsesWith(oldNode, newNode, isu);
+    iselPosition = isu.getISelPos();
+  }
+
+  public void replaceUses(SDValue oldVal, SDValue newVal) {
+    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+    curDAG.replaceAllUsesOfValueWith(oldVal, newVal, isu);
+    iselPosition = isu.getISelPos();
+  }
+
+  public void replaceUses(SDValue[] f, SDValue[] t) {
+    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+    curDAG.replaceAllUsesOfValuesWith(f, t, isu);
+  }
 
   private boolean lowerArguments(BasicBlock llvmBB) {
     Function fn = llvmBB.getParent();
@@ -363,12 +447,12 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     SDValue newRoot = targetLowering.lowerFormalArguments(dag.getRoot(),
         fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals);
 
-    Util.assertion(newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other)), "lowerFormalArguments din't return a valid chain!");
-
-    Util.assertion(inVals.size() == ins.size(), "lowerFormalArguments didn't emit the correct number of values");
+    Util.assertion(newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other)),
+        "lowerFormalArguments din't return a valid chain!");
+    Util.assertion(inVals.size() == ins.size(),
+        "lowerFormalArguments didn't emit the correct number of values");
 
     dag.setRoot(newRoot);
-
     // set up the incoming arguments.
     int i = 0;
     idx = 1;

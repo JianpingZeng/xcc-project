@@ -47,12 +47,6 @@ public class RISCVDAGToDAGISel extends SelectionDAGISel {
     subtarget = tm.getSubtarget();
   }
 
-  @Override
-  public void instructionSelect() {
-
-  }
-  public SDNode selectCode(SDValue n) {return null;}
-
   public boolean isOrEquivalentToAdd(SDNode n) { return false; }
 
   /**
@@ -119,11 +113,5 @@ public class RISCVDAGToDAGISel extends SelectionDAGISel {
 
   protected boolean selectAddrFI(SDValue root, SDValue op0, SDValue[] res) {
     return false;
-  }
-  public void replaceUses(SDValue[] froms, SDValue[] tos) {
-
-  }
-  public void replaceUses(SDValue from, SDValue to) {
-
   }
 }
