@@ -39,10 +39,10 @@ import static tools.Util.assertion;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVDAGToDAGISel extends SelectionDAGISel {
+public class RISCVDAGISel extends SelectionDAGISel {
   protected RISCVSubtarget subtarget;
 
-  public RISCVDAGToDAGISel(RISCVTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
+  public RISCVDAGISel(RISCVTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
     subtarget = tm.getSubtarget();
   }

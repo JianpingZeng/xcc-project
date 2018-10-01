@@ -95,9 +95,9 @@ public final class PassRegisterationUtility {
     // Register X86 dag isel by reflect mechanism.
     try {
       new RegisterPass("Instruction Selector based on DAG covering", "dag-isel",
-          Class.forName("backend.target.x86.X86GenDAGToDAGISel").asSubclass(Pass.class));
+          Class.forName("backend.target.x86.X86GenDAGISel").asSubclass(Pass.class));
     } catch (ClassNotFoundException e) {
-      ErrorHandling.llvmReportError("Fail to register X86GenDAGToDAGISel pass");
+      ErrorHandling.llvmReportError("Fail to register X86GenDAGISel pass");
     }
 
     new RegisterRegAlloc("linearscan", "Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);

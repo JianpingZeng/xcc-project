@@ -57,9 +57,9 @@ public class DAGISelEmitter extends TableGenBackend {
   private void emitHeader(PrintStream os, String targetName) {
     emitSourceFileHeaderComment("Instruction Selection based on DAG Covering for " + targetName + ".", os);
     String ident = Util.fixedLengthString(2, ' ');
-    os.printf("public final class %sGenDAGToDAGISel extends %sDAGToDAGISel {%n", targetName, targetName);
+    os.printf("public final class %sGenDAGISel extends %sDAGISel {%n", targetName, targetName);
 
-    os.printf("%spublic %sGenDAGToDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) " +
+    os.printf("%spublic %sGenDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) " +
         "{%n%s%ssuper(tm, optLevel);%n%s", ident, targetName, targetName, ident, ident, ident);
     os.println("}");
   }

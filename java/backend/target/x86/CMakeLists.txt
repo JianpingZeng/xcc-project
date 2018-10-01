@@ -10,7 +10,7 @@ tablegen(X86GenInstrInfo.java -gen-instr-info)
 tablegen(X86GenInstrNames.java -gen-instr-names)
 tablegen(X86GenSubtarget.java -gen-subtarget)
 tablegen(X86GenCallingConv.java -gen-callingconv)
-TableGen(X86GenDAGToDAGISel.java -gen-dag-isel)
+TableGen(X86GenDAGISel.java -gen-dag-isel)
 
 add_public_tablegen_target(X86CommonTableGen)
 

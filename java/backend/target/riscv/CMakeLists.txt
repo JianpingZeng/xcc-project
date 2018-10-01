@@ -10,7 +10,7 @@ tablegen(RISCVGenInstrInfo.java -gen-instr-info)
 tablegen(RISCVGenInstrNames.java -gen-instr-names)
 tablegen(RISCVGenSubtarget.java -gen-subtarget)
 tablegen(RISCVGenCallingConv.java -gen-callingconv)
-TableGen(RISCVGenDAGToDAGISel.java -gen-dag-isel)
+TableGen(RISCVGenDAGISel.java -gen-dag-isel)
 
 add_public_tablegen_target(RISCVCommonTableGen)
 

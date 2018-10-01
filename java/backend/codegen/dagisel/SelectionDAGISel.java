@@ -45,6 +45,7 @@ import java.util.*;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
+import static backend.codegen.dagisel.SelectionDAGISel.ChainResult.CR_InducesCycle;
 import static backend.support.BackendCmdOptions.createScheduler;
 import static backend.support.ErrorHandling.llvmReportError;
 import static backend.target.TargetOptions.*;
@@ -91,8 +92,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * input target-undependent DAG and transforming it into
    * target-specific DAG.
    *
-   * This variable should be statically initialized in class [*]GenDAGToDAGISel,
-   * like {@code RISCVGenDAGToDAGISel}.
+   * This variable should be statically initialized in class [*]GenDAGISel,
+   * like {@code RISCVGenDAGISel}.
    */
   protected byte[] matcherTable;
 
@@ -581,6 +582,245 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       hasChainNodesMatched = false;
       hasFlagResultNodesMatched = false;
     }
+  }
+
+  public enum ChainResult {
+    CR_Simple,
+    CR_InducesCycle,
+    CR_LeadsToInteriorNode
+  }
+
+  ChainResult walkChainUsers(SDNode chainNode,
+                             ArrayList<SDNode> chainedNodesInPattern,
+                             ArrayList<SDNode> interiorChainedNodes) {
+    ChainResult result = ChainResult.CR_Simple;
+
+    for (SDUse u : chainNode.useList){
+      // Make sure the use is of the chain, not some other value we produce.
+      if (u.getValueType().getSimpleVT().simpleVT != MVT.Other)
+        continue;
+
+      SDNode user = u.getUser();
+      // If we see an already-selected machine node, then we've gone beyond the
+      // pattern that we're selecting down into the already selected chunk of the
+      // DAG.
+      int userOpc = user.getOpcode();
+      if (user.isMachineOpecode() || userOpc == ISD.HANDLENODE)
+        // Root of the graph
+        continue;
+
+      if (userOpc == ISD.CopyToReg ||
+          userOpc == ISD.CopyFromReg ||
+          userOpc == ISD.INLINEASM) {
+        // If their node ID got reset to -1 then they've already been selected.
+        // Treat them like a MachineOpcode.
+        if (user.getNodeID() == -1)
+          continue;
+      }
+
+      // If we have a TokenFactor, we handle it specially.
+      if (userOpc != ISD.TokenFactor) {
+        // If the node isn't a token factor and isn't part of our pattern, then it
+        // must be a random chained node in between two nodes we're selecting.
+        // This happens when we have something like:
+        //   x = load ptr
+        //   call
+        //   y = x+4
+        //   store y -> ptr
+        // Because we structurally match the load/store as a read/modify/write,
+        // but the call is chained between them.  We cannot fold in this case
+        // because it would induce a cycle in the graph.
+        if (!chainedNodesInPattern.contains(user))
+          return CR_InducesCycle;
+
+        // Otherwise we found a node that is part of our pattern.  For example in:
+        //   x = load ptr
+        //   y = x+4
+        //   store y -> ptr
+        // This would happen when we're scanning down from the load and see the
+        // store as a user.  Record that there is a use of ChainedNode that is
+        // part of the pattern and keep scanning uses.
+        result = ChainResult.CR_LeadsToInteriorNode;
+        interiorChainedNodes.add(user);
+        continue;
+      }
+
+      // If we found a TokenFactor, there are two cases to consider: first if the
+      // TokenFactor is just hanging "below" the pattern we're matching (i.e. no
+      // uses of the TF are in our pattern) we just want to ignore it.  Second,
+      // the TokenFactor can be sandwiched in between two chained nodes, like so:
+      //     [Load chain]
+      //         ^
+      //         |
+      //       [Load]
+      //       ^    ^
+      //       |    \                    DAG's like cheese
+      //      /       \                       do you?
+      //     /         |
+      // [TokenFactor] [Op]
+      //     ^          ^
+      //     |          |
+      //      \        /
+      //       \      /
+      //       [Store]
+      //
+      // In this case, the TokenFactor becomes part of our match and we rewrite it
+      // as a new TokenFactor.
+      //
+      // To distinguish these two cases, do a recursive walk down the uses.
+      switch (walkChainUsers(user, chainedNodesInPattern, interiorChainedNodes)) {
+        case CR_Simple:
+          // If the uses of the TokenFactor are just already-selected nodes, ignore
+          // it, it is "below" our pattern.
+          continue;
+        case CR_InducesCycle:
+          // If the uses of the TokenFactor lead to nodes that are not part of our
+          // pattern that are not selected, folding would turn this into a cycle,
+          // bail out now.
+          return CR_InducesCycle;
+        case CR_LeadsToInteriorNode:
+          break; // Otherwise, keep going
+      }
+
+      // Okay, we know we're in the interesting interior case.  The TokenFactor
+      // is now going to be considered part of the pattern so that we rewrite its
+      // uses (it may have uses that are not part of the pattern) with the
+      // ultimate chain result of the generated code.  We will also add its chain
+      // inputs as inputs to the ultimate TokenFactor we create.
+      result = ChainResult.CR_LeadsToInteriorNode;
+      chainedNodesInPattern.add(user);
+      interiorChainedNodes.add(user);
+    }
+    return result;
+  }
+
+  /**
+   * This implements the OPC_EmitMergeInputChains operation for it when
+   * the pattern at least one node with a chains. The input list contains
+   * a list of all of the chained nodes that we match. We must determine
+   * if this is a valid thing to cover (i.e. matching it won't induce cycles
+   * in in the DAG) and if so, creating a TokenFactor node. that will be used
+   * as the input node chain for the generated ndoes.
+   * @param chainNodesMatched
+   * @param curDAG
+   * @return
+   */
+  private SDValue handleMergeInputChains(ArrayList<SDNode> chainNodesMatched,
+                                         SelectionDAG curDAG) {
+    ArrayList<SDNode> interiorChainedNodes = new ArrayList<>();
+    for (SDNode n : chainNodesMatched) {
+      if (walkChainUsers(n, chainNodesMatched, interiorChainedNodes) == CR_InducesCycle)
+        // will introduce a cycle
+        return new SDValue();
+    }
+
+    // Okay, we have walked all the matched nodes and collected TokenFactor nodes
+    // that we are interested in.  Form our input TokenFactor node.
+    ArrayList<SDValue> inputChains = new ArrayList<>();
+    for (int i = 0, e = chainNodesMatched.size(); i < e; i++) {
+      SDNode n = chainNodesMatched.get(i);
+      // Add the input chain of this node to the InputChains list (which will be
+      // the operands of the generated TokenFactor) if it's not an interior node.
+      if (n.getOpcode() != ISD.TokenFactor) {
+        if (interiorChainedNodes.contains(n))
+          continue;
+
+        // add the chain.
+        SDValue inChain = chainNodesMatched.get(i).getOperand(0);
+        Util.assertion(inChain.getValueType().equals(new EVT(MVT.Other)), "not a chain");
+        inputChains.add(inChain);
+        continue;
+      }
+
+      // If we have a token factor, we want to add all inputs of the token factor
+      // that are not part of the pattern we're matching.
+      for (int op = 0, size = n.getNumOperands(); op < size; op++) {
+        if (!chainNodesMatched.contains(n.getOperand(op).getNode()))
+          inputChains.add(n.getOperand(op));
+      }
+    }
+    if (inputChains.size() == 1)
+      return inputChains.get(0);
+    return curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other), inputChains);
+  }
+
+  /**
+   * Transform an EmitNode flags word into the number of fixed arty values
+   * that shold be skipped when copying from the root.
+   * @param flags
+   * @return
+   */
+  private static int getNumFixedFromVariadicInfo(int flags) {
+    return ((flags & OPFL_VariadicInfo) >> 4)-1;
+  }
+
+  /**
+   * When a match is complete, this method updates uses of interior flag
+   * and chain results to use the new flag and chain results.
+   * @param nodeToMatch
+   * @param inputChain
+   * @param chainNodesMatched
+   * @param inputFlag
+   * @param flagResultNodesMatched
+   * @param isMorphNodeTo
+   */
+  private void updateChainsAndFlags(SDNode nodeToMatch,
+                                    SDValue inputChain,
+                                    ArrayList<SDNode> chainNodesMatched,
+                                    SDValue inputFlag,
+                                    ArrayList<SDNode> flagResultNodesMatched,
+                                    boolean isMorphNodeTo) {
+    ArrayList<SDNode> deadNodes = new ArrayList<>();
+
+    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
+    // Now that all the normal results are replaced, we replace the chain and
+    // flag results if present.
+    if (!chainNodesMatched.isEmpty()) {
+      Util.assertion(inputChain.getNode() != null,
+          "Matched input chain but didn't produce a chain!");
+
+      for (SDNode chainNode : chainNodesMatched) {
+        // If this node was already deleted, don't look at it.
+        if (chainNode.getOpcode() == ISD.DELETED_NODE)
+          continue;
+
+        // Don't replace the results of the root node if we're doing a
+        // MorphNodeTo.
+        if (chainNode.equals(nodeToMatch) && isMorphNodeTo)
+          continue;
+
+        SDValue chainVal = new SDValue(chainNode, chainNode.getNumValues()-1);
+        if (chainVal.getValueType().equals(new EVT(MVT.Flag)))
+          chainVal = chainVal.getValue(chainVal.getNode().getNumValues()-2);
+        Util.assertion(chainVal.getValueType().equals(new EVT(MVT.Other)), "not a chain!");
+        curDAG.replaceAllUsesOfValueWith(chainVal, inputChain, isu);
+
+        // If the node became dead, delete it.
+        if (chainNode.isUseEmpty())
+          deadNodes.add(chainNode);
+      }
+    }
+
+    // If the result produces a flag, update any flag results in the matched
+    // pattern with the flag result.
+    if (inputFlag.getNode() != null) {
+      for (SDNode flagNode : flagResultNodesMatched) {
+        if (flagNode.getOpcode() == ISD.DELETED_NODE)
+          continue;
+
+        Util.assertion(flagNode.getValueType(flagNode.getNumValues()-1).equals(new EVT(MVT.Flag)),
+            "Doesn't have a flag result");
+        curDAG.replaceAllUsesOfValueWith(new SDValue(flagNode, flagNode.getNumValues()-1),
+            inputFlag, isu);
+
+        // if this flagNode becomes dead, add it into deadNodes list.
+        if (flagNode.isUseEmpty())
+          deadNodes.add(flagNode);
+      }
+    }
+
+    if (!deadNodes.isEmpty())
+      curDAG.removeDeadNodes(deadNodes, isu);
   }
 
   /**
