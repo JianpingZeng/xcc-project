@@ -1778,4 +1778,21 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       return val;
     }
   }
+
+  /**
+   * An SDNode that represents everything that will be needed
+   * to construct a MachineInstr. These nodes are created during the
+   * instruction selection proper phase.
+   */
+  public static class MachineSDNode extends SDNode {
+    private MachineMemOperand[] memRefs;
+
+    public MachineSDNode(int opc, SDVTList vts) {
+      super(opc, vts);
+    }
+
+    public void setMemRefs(MachineMemOperand[] memRefs) {
+      this.memRefs = memRefs;
+    }
+  }
 }

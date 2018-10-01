@@ -19,7 +19,10 @@ package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
+import backend.codegen.dagisel.SDNode.CondCodeSDNode;
+import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
+import backend.codegen.dagisel.SDNode.MachineSDNode;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
 import backend.support.MachineFunctionPass;
@@ -32,14 +35,13 @@ import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
 import tools.APInt;
+import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
@@ -70,9 +72,9 @@ import static backend.target.TargetOptions.*;
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class SelectionDAGISel extends MachineFunctionPass {
+public abstract class SelectionDAGISel extends MachineFunctionPass implements BuiltinOpcodes, NodeFlag {
   protected SelectionDAG curDAG;
-  protected TargetLowering targetLowering;
+  protected TargetLowering tli;
   protected FunctionLoweringInfo funcInfo;
   protected SelectionDAGLowering sdl;
   protected int dagSize;
@@ -92,14 +94,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
    * This variable should be statically initialized in class [*]GenDAGToDAGISel,
    * like {@code RISCVGenDAGToDAGISel}.
    */
-  protected byte[] matchTable;
+  protected byte[] matcherTable;
 
   public SelectionDAGISel(TargetMachine tm, CodeGenOpt optLevel) {
     this.tm = tm;
-    targetLowering = tm.getTargetLowering();
-    funcInfo = new FunctionLoweringInfo(targetLowering);
-    curDAG = new SelectionDAG(targetLowering, funcInfo);
-    sdl = new SelectionDAGLowering(curDAG, targetLowering, funcInfo, optLevel);
+    tli = tm.getTargetLowering();
+    funcInfo = new FunctionLoweringInfo(tli);
+    curDAG = new SelectionDAG(tli, funcInfo);
+    sdl = new SelectionDAGLowering(curDAG, tli, funcInfo, optLevel);
     dagSize = 0;
     this.optLevel = optLevel;
   }
@@ -239,9 +241,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
         }
 
         ArrayList<EVT> vts = new ArrayList<>();
-        computeValueVTs(targetLowering, pn.getType(), vts);
+        computeValueVTs(tli, pn.getType(), vts);
         for (EVT vt : vts) {
-          int numberRegs = targetLowering.getNumRegisters(vt);
+          int numberRegs = tli.getNumRegisters(vt);
           for (int k = 0; k < numberRegs; k++) {
             sdl.phiNodesToUpdate.add(Pair.get(succMBB.getInstAt(instItr++), reg + k));
           }
@@ -315,8 +317,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
   }
 
   public void instructionSelect() {
-    Util.assertion(matchTable != null, "MatchTable should be initialized before calling instructionSelect");
-    selectRootInit();
+    Util.assertion(matcherTable != null, "MatchTable should be initialized before calling instructionSelect");
+    dagSize = curDAG.assignTopologicalOrder();
 
     SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(curDAG.getRoot());
     iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
@@ -345,9 +347,898 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     curDAG.removeDeadNodes();
   }
 
-  public SDNode select(SDNode val) {
-    // TODO: 18-9-30
+  long getVBR(long val, OutRef<Integer> idx) {
+    Util.assertion(val >= 128, "Not a VBR");
+    val &= 127;
+    int shift = 7;
+    long nextBits;
+    do {
+      nextBits = matcherTable[idx.get()];
+      val |= (nextBits &127) << shift;
+      shift += 7;
+    }while ((nextBits & 128) != 0);
+    return val;
+  }
+
+  boolean checkSame(byte[] matcherTable,
+                           OutRef<Integer> matcherIndex,
+                           SDValue n,
+                           ArrayList<SDValue> recordedNodes) {
+    int recNo = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+    return n.equals(recordedNodes.get(recNo));
+  }
+
+  boolean checkOpcode(byte[] matcherTable,
+                      OutRef<Integer> matcherIndex,
+                      SDNode n) {
+    int opc = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    return n.getOpcode() == opc;
+  }
+
+  boolean checkType(byte[] matcherTable,
+                    OutRef<Integer> matcherIndex,
+                    SDValue n) {
+    int vt = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    if (n.getValueType().getSimpleVT().simpleVT == vt)
+      return true;
+
+    return vt == MVT.iPTR && n.getValueType().equals(tli.getPointerTy());
+  }
+
+  boolean checkChildType(byte[] matcherTable,
+                         OutRef<Integer> matcherIndex,
+                         SDValue n,
+                         int childNo) {
+    if (childNo >= n.getNumOperands())
+      return false;
+    return checkType(matcherTable, matcherIndex, n.getOperand(childNo));
+  }
+
+  boolean checkCondCode(byte[] matcherTable,
+                        OutRef<Integer> matcherIndex,
+                        SDValue n) {
+    int cc = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    return ((CondCodeSDNode)n.getNode()).getCondition() ==
+        CondCode.values()[cc];
+  }
+
+  boolean checkValueType(byte[] matcherTable,
+                         OutRef<Integer> matcherIndex,
+                         SDValue n) {
+    int vt = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    EVT actualVT = ((SDNode.VTSDNode)n.getNode()).getVT();
+    if (actualVT.getSimpleVT().simpleVT == vt)
+      return true;
+
+    return vt == MVT.iPTR && actualVT.equals(tli.getPointerTy());
+  }
+
+  boolean checkInteger(byte[] matcherTable,
+                       OutRef<Integer> matcherIndex,
+                       SDValue n) {
+    long val = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    if ((val & 128) != 0)
+      val = getVBR(val, matcherIndex);
+
+    if (!(n.getNode() instanceof ConstantSDNode))
+      return false;
+    ConstantSDNode c = (ConstantSDNode)n.getNode();
+    return c.getSExtValue() == val;
+  }
+
+  boolean checkAndImm(byte[] matcherTable,
+                      OutRef<Integer> matcherIndex,
+                      SDValue n) {
+    if (n.getOpcode() != ISD.AND) return false;
+
+    long val = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    if ((val & 128) != 0)
+      val = getVBR(val, matcherIndex);
+
+    if (!(n.getOperand(1).getNode() instanceof ConstantSDNode))
+      return false;
+    ConstantSDNode c = (ConstantSDNode)n.getOperand(1).getNode();
+    return checkAndMask(n.getOperand(0), c, val);
+  }
+
+  boolean checkOrImm(byte[] matcherTable,
+                     OutRef<Integer> matcherIndex,
+                     SDValue n) {
+    if (n.getOpcode() != ISD.OR) return false;
+
+    long val = matcherTable[matcherIndex.get()];
+    matcherIndex.set(matcherIndex.get()+1);
+    if ((val & 128) != 0)
+      val = getVBR(val, matcherIndex);
+
+    if (!(n.getOperand(1).getNode() instanceof ConstantSDNode))
+      return false;
+    ConstantSDNode c = (ConstantSDNode)n.getOperand(1).getNode();
+    return checkAndMask(n.getOperand(0), c, val);
+  }
+
+
+  public boolean checkPatternPredicate(byte[] matcherTable,
+                                OutRef<Integer> matcherIndex) {
+    Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
+    return false;
+  }
+
+  public boolean checkNodePredicate(byte[] matcherTable,
+                             OutRef<Integer> matcherIndex,
+                             SDNode n) {
+    Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
+    return false;
+  }
+
+  public boolean checkComplexPattern(SDNode root, SDValue n,
+                              int patternNo,
+                              ArrayList<SDValue> result) {
+    Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
+    return false;
+  }
+
+  public SDValue runSDNodeXForm(SDValue v, int xformNo) {
+    Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return null;
+  }
+
+  private int isPredicateKnownToFail(int index, SDValue n,
+                                     OutRef<Boolean> result,
+                                     ArrayList<SDValue> recordedNodes) {
+    OutRef<Integer> tmpIdx = new OutRef<>(0);
+    switch (matcherTable[index++]) {
+      default:
+        result.set(false);
+        return index-1;
+      case OPC_CheckSame:
+        tmpIdx.set(index);
+        result.set(!checkSame(matcherTable, tmpIdx, n, recordedNodes));
+        return tmpIdx.get();
+      case OPC_CheckPatternPredicate:
+        tmpIdx.set(index);
+        result.set(!checkPatternPredicate(matcherTable, tmpIdx));
+        return tmpIdx.get();
+      case OPC_CheckPredicate:
+        tmpIdx.set(index);
+        result.set(!checkNodePredicate(matcherTable, tmpIdx, n.getNode()));
+        return tmpIdx.get();
+      case OPC_CheckType:
+        tmpIdx.set(index);
+        result.set(!checkType(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+      case OPC_CheckChild0Type:
+      case OPC_CheckChild1Type:
+      case OPC_CheckChild2Type:
+      case OPC_CheckChild3Type:
+      case OPC_CheckChild4Type:
+      case OPC_CheckChild5Type:
+      case OPC_CheckChild6Type:
+      case OPC_CheckChild7Type:
+        tmpIdx.set(index);
+        result.set(!checkChildType(matcherTable, tmpIdx, n,
+            matcherTable[index-1] - OPC_CheckChild0Type));
+        return tmpIdx.get();
+      case OPC_CheckCondCode:
+        tmpIdx.set(index);
+        result.set(!checkCondCode(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+      case OPC_CheckValueType:
+        tmpIdx.set(index);
+        result.set(!checkType(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+      case OPC_CheckInteger:
+        tmpIdx.set(index);
+        result.set(!checkType(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+      case OPC_CheckAndImm:
+        tmpIdx.set(index);
+        result.set(!checkAndImm(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+      case OPC_CheckOrImm:
+        tmpIdx.set(index);
+        result.set(!checkOrImm(matcherTable, tmpIdx, n));
+        return tmpIdx.get();
+    }
+  }
+
+  static class MatchScope {
+    /// failIndex - If this match fails, this is the index to continue with.
+    int failIndex;
+
+    /// nodeStack - The node stack when the scope was formed.
+    Stack<SDValue> nodeStack;
+
+    /**
+     * The number of recorded nodes when the scope was formed.
+     */
+    int numRecordedNodes;
+
+    /// The number of matched memref entries.
+    int numMatchedMemRefs;
+
+    /// The current chain/flag
+    SDValue inputChain, inputFlag;
+
+    /// HasChainNodesMatched - True if the ChainNodesMatched list is non-empty.
+    boolean hasChainNodesMatched, hasFlagResultNodesMatched;
+
+    MatchScope() {
+      failIndex = -1;
+      nodeStack = new Stack<>();
+      numRecordedNodes = -1;
+      numMatchedMemRefs = -1;
+      inputChain = new SDValue();
+      inputFlag = new SDValue();
+      hasChainNodesMatched = false;
+      hasFlagResultNodesMatched = false;
+    }
+  }
+
+  /**
+   * This is a cache used to dispatch efficiently into isel state machine
+   * that start with a OPC_SwitchOpcode node.
+   */
+  private int[] opcodeOffest = new int[256];
+
+  /**
+   * The entry to morphy the given SDNode and return a target-specific SDNode.
+   * If match failure, return null.
+   * @param nodeToMatch
+   * @return
+   */
+  public SDNode select(SDNode nodeToMatch) {
+    switch (nodeToMatch.getOpcode()) {
+      default:break;
+      case ISD.EntryToken:
+      case ISD.BasicBlock:
+      case ISD.Register:
+      case ISD.HANDLENODE:
+      case ISD.TargetConstant:
+      case ISD.TargetConstantFP:
+      case ISD.TargetConstantPool:
+      case ISD.TargetFrameIndex:
+      case ISD.TargetExternalSymbol:
+      case ISD.TargetJumpTable:
+      case ISD.TargetGlobalAddress:
+      case ISD.TargetGlobalTLSAddress:
+      case ISD.TokenFactor:
+      case ISD.CopyFromReg:
+      case ISD.CopyToReg:
+        // mark it as selected.
+        nodeToMatch.setNodeID(-1);
+        return null;
+      case ISD.AssertSext:
+      case ISD.AssertZext:
+        curDAG.replaceAllUsesOfValueWith(new SDValue(nodeToMatch, 0),
+            nodeToMatch.getOperand(0));
+        return null;
+      case ISD.INLINEASM:
+        return select_INLINEASM(new SDValue(nodeToMatch, 0));
+      case ISD.EH_LABEL:
+        return select_EH_LABEL(new SDValue(nodeToMatch, 0));
+      case ISD.UNDEF:
+        return select_UNDEF(new SDValue(nodeToMatch, 0));
+    }
+    Util.assertion(!nodeToMatch.isMachineOpecode(), "Node already selected");
+
+    // Set up the node stack with nodeToMatch as the only node on the stack.
+    Stack<SDValue> nodeStack = new Stack<>();
+    SDValue n = new SDValue(nodeToMatch, 0);
+    nodeStack.push(n);
+
+    // Scopes used when matching, if a match failure happens, this indicates
+    // where to continue checking.
+    LinkedList<MatchScope> matchScopes = new LinkedList<>();
+
+    // This is the set of nodes that have been recorded by the state machine.
+    ArrayList<SDValue> recordedNodes = new ArrayList<>();
+
+    // This is the set of MemRef's we're seen in the input patterns.
+    ArrayList<MachineMemOperand> matchedMemRefs = new ArrayList<>();
+
+    // These are the current input chain and flag for use when
+    // generating ndoes. Various emit operations change these.
+    // For example, emitting a copytoreg uses and update these.
+    SDValue inputChain = new SDValue(), inputFlag = new SDValue();
+
+    // If a patterns nodes that have input/output chains, the
+    // OPC_EmitMergeInputChains operation is emitted witch indicates
+    // which ones they are. The result is captured into this list
+    // so that we can update the chain results when the pattern is
+    // complete.
+    ArrayList<SDNode> chainNodesMatched = new ArrayList<>();
+    ArrayList<SDNode> flagResultNodesMatched = new ArrayList<>();
+    OutRef<Integer> idx = new OutRef<>(0);
+
+    int matcherIndex = 0;
+    if (n.getOpcode() < opcodeOffest.length) {
+        matcherIndex = opcodeOffest[n.getOpcode()];
+    }
+    else if (matcherTable[0] == OPC_SwitchOpcode) {
+      // Otherwise, the table isn't computed, but the state machine does start
+      // with an OPC_SwitchOpcode instruction.  Populate the table now, since this
+      // is the first time we're selecting an instruction.
+      idx.set(1);
+      while (true) {
+        long caseSize = matcherTable[idx.get()];
+        idx.set(idx.get()+1);
+        if ((caseSize & 128) != 0)
+          caseSize = getVBR(caseSize, idx);
+        if (caseSize == 0) break;
+        int opc = matcherTable[idx.get()];
+        idx.set(idx.get()+1);
+        if (opc >= opcodeOffest.length) {
+          int[] temp = new int[(opc+1)*2];
+          System.arraycopy(opcodeOffest, 0, temp, 0, opcodeOffest.length);
+          opcodeOffest = temp;
+        }
+        opcodeOffest[opc] = idx.get();
+        idx.set((int) (idx.get() + caseSize));
+      }
+
+      // Okay, do the lookup for the first opcode.
+      if (n.getOpcode() < opcodeOffest.length)
+        matcherIndex = opcodeOffest[n.getOpcode()];
+    }
+
+    while (true) {
+      Util.assertion(matcherIndex < matcherTable.length, "Invalid index!");
+      int opcode = matcherTable[matcherIndex++];
+      switch (opcode) {
+        case OPC_Scope: {
+          // Okay, the semantics of this operation are that we should push a scope
+          // then evaluate the first child.  However, pushing a scope only to have
+          // the first check fail (which then pops it) is inefficient.  If we can
+          // determine immediately that the first check (or first several) will
+          // immediately fail, don't even bother pushing a scope for them.
+          int failIndex = 0;
+          while (true) {
+            long numToSkip = matcherTable[matcherIndex++];
+            if ((numToSkip & 128) != 0) {
+              idx.set(matcherIndex);
+              numToSkip = getVBR(numToSkip, idx);
+              matcherIndex = idx.get();
+            }
+            if (numToSkip == 0) {
+              failIndex = 0;
+              break;
+            }
+
+            failIndex = (int) (matcherIndex + numToSkip);
+            // If we can't evaluate this predicate without pushing a scope (e.g. if
+            // it is a 'MoveParent') or if the predicate succeeds on this node, we
+            // push the scope and evaluate the full predicate chain.
+            OutRef<Boolean> result = new OutRef<>(false);
+            matcherIndex = isPredicateKnownToFail(matcherIndex,
+                n, result, recordedNodes);
+            if (!result.get())
+              break;
+
+            System.err.printf("  Skipped scope entry at index %d continuing at %d\n",
+                matcherIndex, failIndex);
+
+            // Otherwise, we know that this case of the Scope is guaranteed to fail,
+            // move to the next case.
+            matcherIndex = failIndex;
+          }
+
+          // If the whole scope failed to match, bail.
+          if (failIndex == 0) break;
+
+          // Push a MatchScope which indicates where to go if the first child fails
+          // to match.
+          MatchScope newEntry = new MatchScope();
+          newEntry.failIndex = failIndex;
+          newEntry.nodeStack.addAll(nodeStack);
+          newEntry.numRecordedNodes = recordedNodes.size();
+          newEntry.numMatchedMemRefs = matchedMemRefs.size();
+          newEntry.inputFlag = inputFlag;
+          newEntry.inputChain = inputChain;
+          newEntry.hasFlagResultNodesMatched = !flagResultNodesMatched.isEmpty();
+          newEntry.hasChainNodesMatched = !chainNodesMatched.isEmpty();
+          matchScopes.add(newEntry);
+          continue;
+        }
+        case OPC_RecordNode:
+          // remember this node, it may end up being on an operand in the pattern.
+          recordedNodes.add(n);
+          continue;
+
+        case OPC_RecordChild0:
+        case OPC_RecordChild1:
+        case OPC_RecordChild2:
+        case OPC_RecordChild3:
+        case OPC_RecordChild4:
+        case OPC_RecordChild5:
+        case OPC_RecordChild6:
+        case OPC_RecordChild7: {
+          int childNo = opcode - OPC_RecordChild0;
+          if (childNo >= n.getNumOperands())
+            break;  // match fails if out of range child number
+          recordedNodes.add(n.getOperand(childNo));
+          continue;
+        }
+        case OPC_RecordMemRef:
+          matchedMemRefs.add(((SDNode.MemSDNode) n.getNode()).getMemOperand());
+          continue;
+        case OPC_CaptureFlagInput:
+          if (n.getNumOperands() > 0 &&
+              n.getOperand(n.getNumOperands() - 1).getValueType().equals(new EVT(MVT.Flag)))
+            inputFlag = n.getOperand(n.getNumOperands() - 1);
+          continue;
+        case OPC_MoveChild: {
+          int childNo = matcherTable[matcherIndex++];
+          if (childNo >= n.getNumOperands())
+            break;  // match fails if out of range child number
+          n = n.getOperand(childNo);
+          nodeStack.push(n);
+          continue;
+        }
+
+        case OPC_MoveParent:
+          nodeStack.pop();
+          Util.assertion(!nodeStack.isEmpty(), "Node stack imbalance");
+          n = nodeStack.peek();
+          continue;
+        case OPC_CheckSame: {
+          idx.set(matcherIndex);
+          boolean res = !checkSame(matcherTable, idx, n, recordedNodes);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckPatternPredicate: {
+          idx.set(matcherIndex);
+          boolean res = !checkPatternPredicate(matcherTable, idx);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckPredicate: {
+          idx.set(matcherIndex);
+          boolean res = !checkNodePredicate(matcherTable, idx, n.getNode());
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckComplexPat: {
+          int cpNum = matcherTable[matcherIndex++];
+          int recNo = matcherTable[matcherIndex++];
+          if (!checkComplexPattern(nodeToMatch, recordedNodes.get(recNo),
+              cpNum, recordedNodes)) break;
+          continue;
+        }
+        case OPC_CheckOpcode: {
+          idx.set(matcherIndex);
+          boolean res = !checkOpcode(matcherTable, idx, n.getNode());
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckType: {
+          idx.set(matcherIndex);
+          boolean res = !checkType(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_SwitchOpcode: {
+          int curNodeOpcode = n.getOpcode();
+          //int switchStart = matcherIndex-1;
+          long caseSize;
+          while (true) {
+            caseSize = matcherTable[matcherIndex++];
+            if ((caseSize & 128) != 0) {
+              idx.set(matcherIndex);
+              caseSize = getVBR(caseSize, idx);
+              matcherIndex = idx.get();
+            }
+            if (caseSize == 0) break;
+            // If the opcode matches, then we will execute this case.
+            if (curNodeOpcode == matcherTable[matcherIndex++])
+              break;
+
+            // Otherwise, skip over this case.
+            matcherIndex += caseSize;
+          }
+
+          // if no cases matched, bail out.
+          if (caseSize == 0) break;
+          continue;
+        }
+        case OPC_SwitchType: {
+          int curNodeType = n.getValueType().getSimpleVT().simpleVT;
+          long caseSize;
+          while (true) {
+            caseSize = matcherTable[matcherIndex++];
+            if ((caseSize & 128) != 0) {
+              idx.set(matcherIndex);
+              caseSize = getVBR(caseSize, idx);
+              matcherIndex = idx.get();
+            }
+            if (caseSize == 0) break;
+
+            int caseVT = matcherTable[matcherIndex++];
+            if (caseVT == MVT.iPTR)
+              caseVT = tli.getPointerTy().simpleVT;
+
+            // If the VT matches, then we will execute this case.
+            if (curNodeType == caseVT)
+              break;
+
+            // Otherwise, skip over this case.
+            matcherIndex += caseSize;
+          }
+        }
+        case OPC_CheckChild0Type: case OPC_CheckChild1Type:
+        case OPC_CheckChild2Type: case OPC_CheckChild3Type:
+        case OPC_CheckChild4Type: case OPC_CheckChild5Type:
+        case OPC_CheckChild6Type: case OPC_CheckChild7Type: {
+          int childNo = opcode - OPC_CheckChild0Type;
+          idx.set(matcherIndex);
+          boolean res = !checkChildType(matcherTable, idx, n, childNo);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckCondCode: {
+          idx.set(matcherIndex);
+          boolean res = !checkCondCode(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckValueType: {
+          idx.set(matcherIndex);
+          boolean res = !checkValueType(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckInteger: {
+          idx.set(matcherIndex);
+          boolean res = !checkInteger(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckAndImm: {
+          idx.set(matcherIndex);
+          boolean res = !checkAndImm(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckOrImm: {
+          idx.set(matcherIndex);
+          boolean res = !checkOrImm(matcherTable, idx, n);
+          matcherIndex = idx.get();
+          if (res) break;
+          continue;
+        }
+        case OPC_CheckFoldableChainNode: {
+          Util.assertion(nodeStack.size() == 1, "No parent node");
+          // Verify that all intermediate nodes between the root and this one have
+          // a single use.
+          boolean hasMultipleUses = false;
+          for (int i = 1, e = nodeStack.size()-1; i < e; i++)
+            if (!nodeStack.get(i).hasOneUse()) {
+              hasMultipleUses = true;
+              break;
+            }
+          if (hasMultipleUses) break;
+
+          // Check to see that the target thinks this is profitable to fold and that
+          // we can fold it without inducing cycles in the graph.
+          if (!isLegalAndProfitableToFold(n.getNode(),
+              nodeStack.get(nodeStack.size()-1).getNode(), nodeToMatch))
+              break;
+          continue;
+        }
+        case OPC_EmitInteger: {
+          int vt = matcherTable[matcherIndex++];
+          long val = matcherTable[matcherIndex++];
+          if ((val & 128) != 0) {
+            idx.set(matcherIndex);
+            val = getVBR(val, idx);
+            matcherIndex = idx.get();
+          }
+          recordedNodes.add(curDAG.getTargetConstant(val, new EVT(vt)));
+          continue;
+        }
+        case OPC_EmitRegister: {
+          int vt = matcherTable[matcherIndex++];
+          int regNo = matcherTable[matcherIndex++];
+          recordedNodes.add(curDAG.getRegister(regNo, new EVT(vt)));
+          continue;
+        }
+        case OPC_EmitConvertToTarget: {
+          // Convert from IMM/FPIMM to target version.
+          int recNo = matcherTable[matcherIndex++];
+          Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+          SDValue imm = recordedNodes.get(recNo);
+
+          if (imm.getOpcode() == ISD.Constant) {
+            long val = ((ConstantSDNode)imm.getNode()).getZExtValue();
+            imm = curDAG.getTargetConstant(val, imm.getValueType());
+          }
+          else if (imm.getOpcode() == ISD.ConstantFP) {
+            ConstantFP fp = ((SDNode.ConstantFPSDNode)imm.getNode()).getConstantFPValue();
+            imm = curDAG.getTargetConstantFP(fp, imm.getValueType());
+          }
+          recordedNodes.add(imm);
+          continue;
+        }
+        case OPC_EmitMergeInputChains: {
+          Util.assertion(inputChain.getNode() == null,
+              "emitMergeInputChains should be the first chain producing ndoe");
+
+          int numChains = matcherTable[matcherIndex++];
+          Util.assertion(numChains != 0, "Can't FP zero chains");
+          Util.assertion(chainNodesMatched.isEmpty(), "Should only have one emitMergeInputChains per match");
+
+          // Read all of the chained nodes.
+          for (int i = 0; i < numChains; i++) {
+            int recNo = matcherTable[matcherIndex++];
+            Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+            SDNode tmpNode = recordedNodes.get(recNo).getNode();
+            if (!tmpNode.equals(nodeToMatch) &&
+                !recordedNodes.get(recNo).hasOneUse()) {
+              chainNodesMatched.clear();
+              break;
+            }
+            chainNodesMatched.add(tmpNode);
+          }
+
+          // If the inner loop broke out, the match fails.
+          if (chainNodesMatched.isEmpty())
+            break;
+
+          // Merge the input chains if they are not intra-pattern references.
+          inputChain = handleMergeInputChains(chainNodesMatched, curDAG);
+          if (inputChain.getNode() == null)
+            break;
+          continue;
+        }
+
+        case OPC_EmitCopyToReg: {
+          int recNo = matcherTable[matcherIndex++];
+          Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+          int dstPhysReg = matcherTable[matcherIndex++];
+          if (inputChain.getNode() == null)
+            inputChain = curDAG.getEntryNode();
+
+          inputChain = curDAG.getCopyToReg(inputChain, dstPhysReg,
+              recordedNodes.get(recNo), inputFlag);
+          inputFlag = inputChain.getValue(1);
+          continue;
+        }
+        case OPC_EmitNodeXForm: {
+          int xFormNo = matcherTable[matcherIndex++];
+          int recNo = matcherTable[matcherIndex++];
+          Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+          recordedNodes.add(runSDNodeXForm(recordedNodes.get(recNo), xFormNo));
+          continue;
+        }
+        case OPC_EmitNode:
+        case OPC_MorphNodeTo: {
+          int targetOpc = matcherTable[matcherIndex++];
+          targetOpc |= ((int)matcherTable[matcherIndex++]) << 8;
+          int emitNodeInfo = matcherTable[matcherIndex++];
+
+          // get the result vt list.
+          int numVTs = matcherTable[matcherIndex++];
+          ArrayList<EVT> vts = new ArrayList<>();
+          for (int i = 0; i < numVTs; i++) {
+            int vt = matcherTable[matcherIndex++];
+            if (vt == MVT.iPTR) vt = tli.getPointerTy().simpleVT;
+            vts.add(new EVT(vt));
+          }
+
+          if ((emitNodeInfo & OPFL_Chain) != 0)
+            vts.add(new EVT(MVT.Other));
+          if ((emitNodeInfo & OPFL_FlagOutput) != 0)
+            vts.add(new EVT(MVT.Flag));
+
+          SDNode.SDVTList vtlist = curDAG.getVTList(vts);
+
+          int numOps = matcherTable[matcherIndex++];
+          ArrayList<SDValue> ops = new ArrayList<>();
+          for (int i = 0; i < numOps; i++) {
+            long recNo = matcherTable[matcherIndex++];
+            if ((recNo & 128) != 0) {
+              idx.set(matcherIndex);
+              recNo = getVBR(recNo, idx);
+              matcherIndex = idx.get();
+            }
+
+            Util.assertion(recNo < Integer.MAX_VALUE, "too large index in Java");
+            Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+            ops.add(recordedNodes.get((int) recNo));
+          }
+
+          // If there are variadic operands to add, handle them now.
+          if ((emitNodeInfo & OPFL_VariadicInfo) != 0) {
+            // Determine the start index to copy from.
+            int firstToCopy = getNumFixedFromVariadicInfo(emitNodeInfo);
+            firstToCopy += (emitNodeInfo & OPFL_Chain) != 0 ? 1: 0;
+            Util.assertion(nodeToMatch.getNumOperands() > firstToCopy,
+                "invalid variadic node");
+            for (int i = firstToCopy, e = nodeToMatch.getNumOperands(); i < e; i++) {
+              SDValue v = nodeToMatch.getOperand(i);
+              if (v.getValueType().equals(new EVT(MVT.Flag))) break;
+              ops.add(v);
+            }
+          }
+
+          // If this has chain/flag inputs, add them.
+          if ((emitNodeInfo & OPFL_Chain) != 0)
+            ops.add(inputChain);
+          if ((emitNodeInfo & OPFL_FlagInput) != 0 && inputFlag.getNode() != null)
+            ops.add(inputFlag);
+
+          SDNode res = null;
+          if (opcode != OPC_MorphNodeTo) {
+            // If this is a normal EmitNode command, just create the new node and
+            // add the results to the RecordedNodes list.
+            res = curDAG.getNode(~targetOpc, vtlist, ops).getNode();
+            // Add all the non-flag/non-chain results to the RecordedNodes list.
+            for (int i = 0, e = vts.size(); i < e; i++) {
+              if (vts.get(i).equals(new EVT(MVT.Other)) ||
+                  vts.get(i).equals(new EVT(MVT.Flag)))
+                break;
+              recordedNodes.add(new SDValue(res, i));
+            }
+          }
+          else {
+            res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops, emitNodeInfo);
+          }
+
+          if ((emitNodeInfo & OPFL_FlagOutput) != 0) {
+            inputFlag = new SDValue(res, vts.size()-1);
+            if ((emitNodeInfo & OPFL_Chain) != 0)
+              inputChain = new SDValue(res, vts.size()-1);
+          }
+          else if ((emitNodeInfo & OPFL_Chain) != 0)
+            inputChain = new SDValue(res, vts.size()-1);
+
+          // If the OPFL_MemRefs flag is set on this node, slap all of the
+          // accumulated memrefs onto it.
+          if ((emitNodeInfo & OPFL_MemRefs) != 0) {
+            MachineMemOperand[] refs = new MachineMemOperand[matchedMemRefs.size()];
+            matchedMemRefs.toArray(refs);
+            ((MachineSDNode)res).setMemRefs(refs);
+          }
+
+          // If this was a MorphNodeTo then we're completely done!
+          if (opcode == OPC_MorphNodeTo) {
+            // Update chain and flag uses.
+            updateChainsAndFlags(nodeToMatch, inputChain, chainNodesMatched,
+                inputFlag, flagResultNodesMatched, true);
+            return res;
+          }
+          continue;
+        }
+        case OPC_MarkFlagResults: {
+          int numNodes = matcherTable[matcherIndex++];
+          // Read and remember all the flag-result nodes.
+          for (int i = 0; i < numNodes; i++) {
+            long recNo = matcherTable[matcherIndex++];
+            if ((recNo & 128) != 0) {
+              idx.set(matcherIndex);
+              recNo = getVBR(recNo, idx);
+              matcherIndex = idx.get();
+            }
+            Util.assertion(recNo < Integer.MAX_VALUE,"integer too large");
+            Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
+            flagResultNodesMatched.add(recordedNodes.get((int) recNo).getNode());
+          }
+          continue;
+        }
+        case OPC_CompleteMatch: {
+          // The match has been completed, and any new nodes (if any) have been
+          // created.  Patch up references to the matched dag to use the newly
+          // created nodes.
+          int numResults = matcherTable[matcherIndex++];
+          for (int i = 0; i < numResults; i++) {
+            long resSlot = matcherTable[matcherIndex++];
+            if ((resSlot & 128) != 0) {
+              idx.set(matcherIndex);
+              resSlot = getVBR(resSlot, idx);
+              matcherIndex = idx.get();
+            }
+
+            Util.assertion(resSlot < Integer.MAX_VALUE,"integer too large");
+            Util.assertion(resSlot < recordedNodes.size(), "invalid checkSame");
+
+            SDValue res = recordedNodes.get((int) resSlot);
+
+            // FIXME2: Eliminate this horrible hack by fixing the 'Gen' program
+            // after (parallel) on input patterns are removed.  This would also
+            // allow us to stop encoding #results in OPC_CompleteMatch's table
+            // entry.
+            if (nodeToMatch.getNumValues() <= i ||
+                nodeToMatch.getValueType(i).equals(new EVT(MVT.Other)) ||
+                nodeToMatch.getValueType(i).equals(new EVT(MVT.Flag)))
+              break;
+            Util.assertion(nodeToMatch.getValueType(i).equals(res.getValueType()) ||
+                  nodeToMatch.getValueType(i).equals(new EVT(MVT.iPTR)) ||
+                  res.getValueType().equals(new EVT(MVT.iPTR)) ||
+                  nodeToMatch.getValueType(i).getSizeInBits() ==
+                  res.getValueType().getSizeInBits(), "invalid replacement");
+            curDAG.replaceAllUsesOfValueWith(new SDValue(nodeToMatch, i), res);
+          }
+
+          // If the root node defines a flag, add it to the flag nodes to update
+          // list.
+          if (nodeToMatch.getValueType(nodeToMatch.getNumValues()-1).getSimpleVT().simpleVT == MVT.Flag)
+            flagResultNodesMatched.add(nodeToMatch);
+
+          // Update chain and flag uses.
+          updateChainsAndFlags(nodeToMatch, inputChain, chainNodesMatched,
+              inputFlag, flagResultNodesMatched, false);
+          Util.assertion(nodeToMatch.isUseEmpty(), "Didn't replace all uses of the node?");
+          return null;
+        }
+      }
+
+      // If the code reached this point, then the match failed.  See if there is
+      // another child to try in the current 'Scope', otherwise pop it until we
+      // find a case to check.
+      while (true) {
+        if (matchScopes.isEmpty()) {
+          cannotYetSelect(nodeToMatch);
+          return null;
+        }
+
+        // Restore the interpreter state back to the point where the scope was
+        // formed.
+        MatchScope lastScope = matchScopes.getLast();
+        recordedNodes.ensureCapacity(lastScope.numRecordedNodes);
+        nodeStack.clear();
+        nodeStack.addAll(lastScope.nodeStack);
+        n = nodeStack.peek();
+
+        if (lastScope.numMatchedMemRefs != matchedMemRefs.size())
+          matchedMemRefs.ensureCapacity(lastScope.numMatchedMemRefs);
+        matcherIndex = lastScope.failIndex;
+
+        inputChain = lastScope.inputChain;
+        inputFlag = lastScope.inputFlag;
+        if (!lastScope.hasChainNodesMatched)
+          chainNodesMatched.clear();
+        if (!lastScope.hasFlagResultNodesMatched)
+          flagResultNodesMatched.clear();
+
+        // Check to see what the offset is at the new MatcherIndex.  If it is zero
+        // we have reached the end of this scope, otherwise we have another child
+        // in the current scope to try.
+        long numToSkips = matcherTable[matcherIndex++];
+        if ((numToSkips & 128) != 0) {
+          idx.set(matcherIndex);
+          numToSkips = getVBR(numToSkips, idx);
+          matcherIndex = idx.get();
+        }
+
+        if (numToSkips != 0) {
+          lastScope.failIndex = (int) (matcherIndex+numToSkips);
+          break;
+        }
+
+        // End of this scope, pop it and try the next child in the containing
+        // scope.
+        matchScopes.pop();
+      }
+    }
   }
 
   /**
@@ -362,9 +1253,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
    */
   public void postprocessISelDAG() {}
 
-  private void selectRootInit() {
-    dagSize = curDAG.assignTopologicalOrder();
-  }
   /**
    * Replace the old node with new one.
    *
@@ -392,14 +1280,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     Function fn = llvmBB.getParent();
     SelectionDAG dag = sdl.dag;
     SDValue oldRoot = sdl.getRoot();
-    TargetData td = targetLowering.getTargetData();
+    TargetData td = tli.getTargetData();
 
     ArrayList<InputArg> ins = new ArrayList<>();
     int idx = 1;
     for (Argument arg : fn.getArgumentList()) {
       boolean isArgUseEmpty = arg.isUseEmpty();
       ArrayList<EVT> vts = new ArrayList<>();
-      computeValueVTs(targetLowering, arg.getType(), vts);
+      computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
         Type argTy = vt.getTypeForEVT();
         ArgFlagsTy flags = new ArgFlagsTy();
@@ -429,8 +1317,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
           flags.setNest();
         flags.setOrigAlign(originalAlign);
 
-        EVT registerVT = targetLowering.getRegisterType(vt);
-        int numRegs = targetLowering.getNumRegisters(registerVT);
+        EVT registerVT = tli.getRegisterType(vt);
+        int numRegs = tli.getNumRegisters(registerVT);
         for (int i = 0; i < numRegs; i++) {
           InputArg myArgs = new InputArg(flags, registerVT, isArgUseEmpty);
           if (numRegs > 1 && i == 0) {
@@ -444,7 +1332,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     }
 
     ArrayList<SDValue> inVals = new ArrayList<>();
-    SDValue newRoot = targetLowering.lowerFormalArguments(dag.getRoot(),
+    SDValue newRoot = tli.lowerFormalArguments(dag.getRoot(),
         fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals);
 
     Util.assertion(newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other)),
@@ -459,10 +1347,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     for (Argument arg : fn.getArgumentList()) {
       ArrayList<SDValue> argValues = new ArrayList<>();
       ArrayList<EVT> vts = new ArrayList<>();
-      computeValueVTs(targetLowering, arg.getType(), vts);
+      computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
-        EVT partVT = targetLowering.getRegisterType(vt);
-        int numParts = targetLowering.getNumRegisters(partVT);
+        EVT partVT = tli.getRegisterType(vt);
+        int numParts = tli.getNumRegisters(partVT);
         if (!arg.isUseEmpty()) {
           int op = ISD.DELETED_NODE;
           if (fn.paramHasAttr(idx, Attribute.SExt))
@@ -717,7 +1605,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     return "Instruction Selector based on DAG covering";
   }
 
-  protected boolean checkAndMask(SDValue lhs, SDNode.ConstantSDNode rhs,
+  protected boolean checkAndMask(SDValue lhs, ConstantSDNode rhs,
                                  long desiredMaskS) {
     APInt actualMask = rhs.getAPIntValue();
     APInt desiredMask = new APInt(lhs.getValueSizeInBits(), desiredMaskS);
@@ -734,7 +1622,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     return false;
   }
 
-  protected boolean checkOrMask(SDValue lhs, SDNode.ConstantSDNode rhs,
+  protected boolean checkOrMask(SDValue lhs, ConstantSDNode rhs,
                                 long desiredMaskS) {
     APInt actualMask = rhs.getAPIntValue();
     APInt desiredMask = new APInt(lhs.getValueSizeInBits(), desiredMaskS);
@@ -811,16 +1699,16 @@ public abstract class SelectionDAGISel extends MachineFunctionPass {
     return null;
   }
 
-  public void cannotYetSelect(SDValue n) {
+  public void cannotYetSelect(SDNode n) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream os = new PrintStream(baos);
     os.print("Cannot yet select: ");
-    n.getNode().print(os, curDAG);
+    n.print(os, curDAG);
     os.close();
     llvmReportError(baos.toString());
   }
 
-  public void cannotYetSelectIntrinsic(SDValue n) {
+  public void cannotYetSelectIntrinsic(SDNode n) {
     System.err.println("Cannot yet select intrinsic function.");
   }
 }

@@ -1278,6 +1278,16 @@ public class SelectionDAG {
   }
 
   /**
+   * This method is similar to {@linkplain #replaceAllUsesOfValueWith(SDValue, SDValue)}
+   * other than DAGUpdateListener is null by default.
+   * @param oldNode
+   * @param newNode
+   */
+  public void replaceAllUsesOfValueWith(SDValue oldNode, SDValue newNode) {
+    replaceAllUsesOfValueWith(oldNode, newNode, null);
+  }
+
+  /**
    * Replace any uses of {@code oldNode} with {@code newNode}, leaving uses
    * of other values produced by {@code oldNode.getNode()} alone.
    *
@@ -2248,6 +2258,16 @@ public class SelectionDAG {
   public SDNode selectNodeTo(SDNode n, int targetOpc, SDVTList vts,
                              SDValue[] ops, int numOps) {
     return morphNodeTo(n, ~targetOpc, vts, ops, numOps);
+  }
+
+  public SDNode morphNodeTo(SDNode n,
+                            int opc,
+                            SDVTList vts,
+                            ArrayList<SDValue> ops,
+                            int numOps) {
+    SDValue[] tmp = new SDValue[ops.size()];
+    ops.toArray(tmp);
+    return morphNodeTo(n, opc, vts, tmp, numOps);
   }
 
   public SDNode morphNodeTo(SDNode n, int opc, SDVTList vts, SDValue[] ops,
