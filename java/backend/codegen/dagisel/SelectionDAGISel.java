@@ -955,7 +955,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
             failIndex = (int) (matcherIndex + numToSkip);
             // If we can't evaluate this predicate without pushing a scope (e.g. if
-            // it is a 'MoveParent') or if the predicate succeeds on this node, we
+            // it is a 'MoveParentMatcher') or if the predicate succeeds on this node, we
             // push the scope and evaluate the full predicate chain.
             OutRef<Boolean> result = new OutRef<>(false);
             matcherIndex = isPredicateKnownToFail(matcherIndex,

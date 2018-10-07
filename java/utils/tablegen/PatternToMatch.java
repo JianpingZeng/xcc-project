@@ -36,6 +36,7 @@ public final class PatternToMatch {
   public TreePatternNode dstPattern;
   public ArrayList<Record> dstRegs;
   public int addedComplexity;
+  public boolean forceMode;
 
   public PatternToMatch(Record r,
                         ArrayList<Predicate> preds,
@@ -51,6 +52,7 @@ public final class PatternToMatch {
     this.dstRegs = new ArrayList<>();
     this.dstRegs.addAll(dstRegs);
     addedComplexity = complexity;
+    forceMode = false;
   }
 
   static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {

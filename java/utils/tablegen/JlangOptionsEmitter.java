@@ -274,12 +274,12 @@ public class JlangOptionsEmitter extends TableGenBackend {
     }
 
     os.println();
-    os.println("\tpublic String name;");
+    os.println("\tpublic String namespace;");
     os.println("\tpublic int id;");
     os.println("\tpublic int group;");
     os.println("\tpublic String helpText;");
-    os.println("\tGroup(String name, int id, int group, String helpText)\n\t{");
-    os.println("\t\tthis.name = name;");
+    os.println("\tGroup(String namespace, int id, int group, String helpText)\n\t{");
+    os.println("\t\tthis.namespace = namespace;");
     os.println("\t\tthis.id = id;");
     os.println("\t\tthis.group = group;");
     os.println("\t\tthis.helpText = helpText;");
@@ -437,8 +437,8 @@ public class JlangOptionsEmitter extends TableGenBackend {
 
       // Emission for constructor.
       os.println("\t// Constructor");
-      os.printf("\tOptionInfo(String name, int optID, int kindID, %n\t\t\tint groupID, int aliasID, int flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
-      os.println("\t\t\toptionName = name;");
+      os.printf("\tOptionInfo(String namespace, int optID, int kindID, %n\t\t\tint groupID, int aliasID, int flags, int param, %n\t\t\tString helpMsg, String metaVarName)%n\t{");
+      os.println("\t\t\toptionName = namespace;");
       os.println("\t\t\tid = optID;");
       os.println("\t\t\tkind = kindID;");
       os.println("\t\t\tgroup = groupID;");

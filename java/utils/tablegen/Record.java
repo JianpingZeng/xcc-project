@@ -34,15 +34,15 @@ import java.util.Iterator;
 public final class Record implements Cloneable {
   /**
    * This is a global, static, and final object for keeping the map from
-   * class or def name to its def.
+   * class or def namespace to its def.
    */
   public static final RecordKeeper records = new RecordKeeper();
   /**
-   * Sorting predicate to sort record by name.
+   * Sorting predicate to sort record by namespace.
    */
   public static final Comparator<Record> LessRecord = (o1, o2) -> o1.getName().compareTo(o2.getName());
   /**
-   * Sorting predicate to sort the record by theire name field.
+   * Sorting predicate to sort the record by theire namespace field.
    */
   private static final Comparator<Record> LessRecordFieldName = (Record o1, Record o2) ->
         o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
@@ -214,7 +214,7 @@ public final class Record implements Cloneable {
   //
 
   /**
-   * Return the initializer for a value with the specified name,
+   * Return the initializer for a value with the specified namespace,
    * or throw an exception if the field does not exist.
    *
    * @param fieldName

@@ -28,7 +28,6 @@ import java.util.*;
 
 import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.getName;
-import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
 import static utils.tablegen.DAGISelEmitterOld.getOpTypeHwModeForPattern;
 import static utils.tablegen.SDNP.*;
@@ -489,8 +488,8 @@ public class PatternCodeEmitter {
 
           Record rec = di.getDef();
           if (rec.isSubClassOf("Register")) {
-            int vt = getRegisterValueType(rec, target).getSimple().simpleVT;
-            int rvt = getRegisterValueType(rec, target).getSimple().simpleVT;
+            int vt = DAGISelMatcherGen.getRegisterValueType(rec, target).getSimple().simpleVT;
+            int rvt = DAGISelMatcherGen.getRegisterValueType(rec, target).getSimple().simpleVT;
             if (rvt == MVT.Flag) {
               if (!inFlagDecled.get()) {
                 emitCode("SDValue inFlag = " + rootName + opNo + ";");
@@ -579,27 +578,6 @@ public class PatternCodeEmitter {
       for (int i = 0, e = node.getNumChildren(); i < e; i++)
         removeAllTypes(node.getChild(i));
     }
-  }
-
-  static ValueTypeByHwMode getRegisterValueType(Record r, CodeGenTarget target) {
-    boolean foundRC = false;
-    ValueTypeByHwMode vt = new ValueTypeByHwMode();
-    vt.getOrCreateTypeForMode(DefaultMode, new MVT(MVT.Other));
-    ArrayList<CodeGenRegisterClass> rcs = target.getRegisterClasses();
-    for (CodeGenRegisterClass regClass : rcs) {
-      if (regClass.contains(r)) {
-        if (!foundRC) {
-          foundRC = true;
-          regClass.getValueTypeAt(0);
-          vt = regClass.getValueTypeAt(0);
-        } else {
-          // Multiple RCs
-          if (vt != regClass.getValueTypeAt(0))
-            return vt;
-        }
-      }
-    }
-    return vt;
   }
 
   public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
@@ -887,7 +865,7 @@ public class PatternCodeEmitter {
       for (int i = 0; i < numDestRegs; i++) {
         Record rec = destRegs.get(i);
         if (rec.isSubClassOf("Register")) {
-          ValueTypeByHwMode rvt = getRegisterValueType(rec, cgt);
+          ValueTypeByHwMode rvt = DAGISelMatcherGen.getRegisterValueType(rec, cgt);
           code.append(", new EVT(").append(getEnumName(rvt.getSimple().simpleVT)).append(")");
         }
       }

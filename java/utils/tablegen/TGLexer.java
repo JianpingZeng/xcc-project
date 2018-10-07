@@ -471,7 +471,7 @@ public final class TGLexer {
     if (!Character.isLetter(ch) && ch != '_') {
       MemoryBuffer mb2 = curBuf.clone();
       mb2.setBufferStart(tokStart);
-      return returnError(mb2, "Invalid variable name");
+      return returnError(mb2, "Invalid variable namespace");
     }
 
     int varnameStart = curPtr++;

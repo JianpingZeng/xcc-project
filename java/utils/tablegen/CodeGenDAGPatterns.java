@@ -888,7 +888,7 @@ public final class CodeGenDAGPatterns {
       if (val.getDef().isSubClassOf("RegisterClass") ||
           val.getDef().isSubClassOf("PointerLikeRegClass")) {
         if (dest.getName().isEmpty())
-          inst.error("set destination must have a name!");
+          inst.error("set destination must have a namespace!");
         if (instResults.containsKey(dest.getName()))
           inst.error("can not set '" + dest.getName() + "' multiple times");
         instResults.put(dest.getName(), dest);
@@ -1070,7 +1070,7 @@ public final class CodeGenDAGPatterns {
           tp.error("'" + instResults.entrySet().iterator().next().getKey()
               + "' set but does not appear in operand list!");
 
-        String opName = cgi.operandList.get(j).name;
+        String opName = cgi.operandList.get(j).namespace;
 
         // Check that it exists in InstResults.
         if (!instResults.containsKey(opName))
@@ -1103,9 +1103,9 @@ public final class CodeGenDAGPatterns {
       ArrayList<Record> operands = new ArrayList<>();
       for (int j = numResults, e = cgi.operandList.size(); j != e; j++) {
         OperandInfo op = cgi.operandList.get(j);
-        String opName = op.name;
+        String opName = op.namespace;
         if (opName.isEmpty())
-          tp.error("Operand #" + j + " in operands list has no name!");
+          tp.error("Operand #" + j + " in operands list has no namespace!");
 
         if (!instInputsCheck.containsKey(opName)) {
           // If this is an predicate operand or optional def operand with an
@@ -1299,7 +1299,7 @@ public final class CodeGenDAGPatterns {
       OperandInfo op = cgi.operandList.get(j);
       String opName = op.name;
       if (opName.isEmpty())
-        tp.error("Operand #" + j + " in operands list has no name!");
+        tp.error("Operand #" + j + " in operands list has no namespace!");
 
       if (!instInputsCheck.containsKey(opName)) {
         // If this is an predicate operand or optional def operand with an

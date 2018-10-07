@@ -85,7 +85,7 @@ public final class RecordKeeper {
 
   /**
    * This method returns all concrete definitions that derive from the
-   * specified class name.  If a class with the specified name does not
+   * specified class namespace.  If a class with the specified namespace does not
    * exist, an exception is thrown.
    *
    * @param className

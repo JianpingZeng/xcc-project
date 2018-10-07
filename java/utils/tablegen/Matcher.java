@@ -11,7 +11,7 @@ package utils.tablegen;
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of the <organization> nor the
+    * Neither the namespace of the <organization> nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -296,7 +296,7 @@ public abstract class Matcher {
   /**
    * Save a numbered child of the current node, or fail the match
    * if it doesn't exist. This is logically equivalent to:
-   * // MoveChild N + RecordNode + MoveParent.
+   * // MoveChild N + RecordNode + MoveParentMatcher.
    */
   public static class RecordChildMatcher extends Matcher {
     private int childNo;
@@ -457,9 +457,9 @@ public abstract class Matcher {
   /**
    * This tells interpreter to move to the parent node of current node.
    */
-  public static class MoveParent extends Matcher {
+  public static class MoveParentMatcher extends Matcher {
 
-    public MoveParent() {
+    public MoveParentMatcher() {
       super(MatcherKind.MoveParent);
     }
 
@@ -487,7 +487,7 @@ public abstract class Matcher {
   /**
    * This checks to see if this node is exactly the same node as
    * the specified match taht is recorded with 'Record'. This is
-   * used when patterns have the same name in them, like '(mul GPR:$in, GPR:$in)'.
+   * used when patterns have the same namespace in them, like '(mul GPR:$in, GPR:$in)'.
    */
   public static class CheckSameMatcher extends Matcher {
     private int matchNumber;
@@ -1107,6 +1107,36 @@ public abstract class Matcher {
   }
 
   /**
+   * This checks to see if the current node(which defines a chain operand) is
+   * safe to fold into a large pattern.
+   */
+  public static class CheckFoldableChainNodeMatcher extends Matcher {
+
+    public CheckFoldableChainNodeMatcher() {
+      super(MatcherKind.CheckFoldableChainNode);
+    }
+
+    @Override
+    public boolean isSafeToRecorderWithPatternPredicate() {
+      return true;
+    }
+
+    @Override
+    protected void printImpl(PrintStream os, int indent) {
+      os.printf("%sCheckFoldableChainNode%n", Util.fixedLengthString(indent, ' '));
+    }
+
+    @Override
+    protected boolean isEqualImpl(Matcher m) {
+      return m instanceof CheckFoldableChainNodeMatcher;
+    }
+
+    @Override
+    protected int getHashImpl() {
+      return 0;
+    }
+  }
+  /**
    * This creates a new TargetConstant.
    */
   public static class EmitIntegerMatcher extends Matcher {
@@ -1143,6 +1173,47 @@ public abstract class Matcher {
     }
   }
 
+  /**
+   * A target constant whose value is represented as a string.
+   */
+  public static class EmitStringIntegerMatcher extends Matcher {
+
+    private String value;
+    private int vt;
+
+    public EmitStringIntegerMatcher(String val, int vt) {
+      super(MatcherKind.EmitStringInteger);
+      value = val;
+      this.vt = vt;
+    }
+
+    public int getVT() {
+      return vt;
+    }
+
+    public String getValue() {
+      return value;
+    }
+
+    @Override
+    protected void printImpl(PrintStream os, int indent) {
+      os.printf("%sEmitStringInteger %s VT=%d%n",
+          Util.fixedLengthString(indent, ' '), value, vt);
+    }
+
+    @Override
+    protected boolean isEqualImpl(Matcher m) {
+      if (!(m instanceof EmitStringIntegerMatcher))
+        return false;
+      EmitStringIntegerMatcher emit = (EmitStringIntegerMatcher) m;
+      return emit.value.equals(value) && emit.vt == vt;
+    }
+
+    @Override
+    protected int getHashImpl() {
+      return value.hashCode() ^ vt;
+    }
+  }
   /**
    * This creates a new TargetConstant.
    */

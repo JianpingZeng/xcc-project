@@ -11,7 +11,7 @@ package utils.tablegen;
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of the <organization> nor the
+    * Neither the namespace of the <organization> nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -48,18 +48,18 @@ import static utils.tablegen.CodeGenHwModes.DefaultMode;
  */
 public class TypeInfer {
   private TreePattern tp;
-  private int forceMode;
+  public boolean forceMode;
   /**
    * Set during code generation phase.
    */
-  private boolean codeGen;
+  public boolean codeGen;
 
-  private boolean isLegalTypeCached;
+  public boolean isLegalTypeCached;
   private TypeSetByHwMode legalCache;
 
   public TypeInfer(TreePattern tp) {
     this.tp = tp;
-    forceMode = 0;
+    forceMode = false;
     codeGen = false;
     isLegalTypeCached = false;
     legalCache = new TypeSetByHwMode();

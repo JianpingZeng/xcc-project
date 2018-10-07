@@ -273,7 +273,7 @@ public final class TGParser {
   /**
    * This is the entry point to parsing a single file.
    *
-   * @filename The input file name.
+   * @filename The input file namespace.
    * @debug The flag to indicating whether enable debug.
    */
   static boolean parseFile(String filename, List<String> includeDirs,
@@ -634,7 +634,7 @@ public final class TGParser {
             return null;
           }
           result = new Init.FieldInit(result, lexer.getCurStrVal());
-          lexer.lex();    // Eat the field name.
+          lexer.lex();    // Eat the field namespace.
           break;
         }
         case paste: {
@@ -766,7 +766,7 @@ public final class TGParser {
         // body.
         Record klass = records.getClass(name);
         if (klass == null) {
-          error(nameLoc, "Expected a class name, got '" + name + "'");
+          error(nameLoc, "Expected a class namespace, got '" + name + "'");
           return null;
         }
 
@@ -966,7 +966,7 @@ public final class TGParser {
         String operatorName = "";
         if (lexer.getCode() == TGLexer.TokKind.colon) {
           if (lexer.lex() != TGLexer.TokKind.VarName) {
-            tokError("expected variable name in dag operator");
+            tokError("expected variable namespace in dag operator");
             return null;
           }
           operatorName = lexer.getCurStrVal();
@@ -1035,7 +1035,7 @@ public final class TGParser {
       String varName = "";
       if (lexer.getCode() == TGLexer.TokKind.colon) {
         if (lexer.lex() != TGLexer.TokKind.VarName) {
-          tokError("expected variable name in dag literal");
+          tokError("expected variable namespace in dag literal");
           return new ArrayList<>();
         }
         varName = lexer.getCurStrVal();
@@ -1415,7 +1415,7 @@ public final class TGParser {
     RecTy type = null;
 
     if (lexer.getCode() != TGLexer.TokKind.less) {
-      tokError("expected type name for operator");
+      tokError("expected type namespace for operator");
       return null;
     }
 
@@ -1423,12 +1423,12 @@ public final class TGParser {
 
     type = parseType();
     if (type == null) {
-      tokError("expected type name for operator");
+      tokError("expected type namespace for operator");
       return null;
     }
 
     if (lexer.getCode() != TGLexer.TokKind.greater) {
-      tokError("expected type name for operator");
+      tokError("expected type namespace for operator");
       return null;
     }
 
@@ -1565,7 +1565,7 @@ public final class TGParser {
    */
   private Record parseClassID() {
     if (lexer.getCode() != TGLexer.TokKind.Id) {
-      tokError("expected name for ClassID");
+      tokError("expected namespace for ClassID");
       return null;
     }
 
@@ -1718,8 +1718,8 @@ public final class TGParser {
   }
 
   /**
-   * If an object name is specified, return it.  Otherwise,
-   * return an anonymous name.
+   * If an object namespace is specified, return it.  Otherwise,
+   * return an anonymous namespace.
    * ObjectName ::= ID
    * ObjectName ::=
    *
@@ -1851,7 +1851,7 @@ public final class TGParser {
     lexer.lex();
 
     if (lexer.getCode() != TGLexer.TokKind.Id) {
-      return tokError("expected class name after 'class'");
+      return tokError("expected class namespace after 'class'");
     }
 
     Record curRec = records.getClass(lexer.getCurStrVal());
@@ -1865,7 +1865,7 @@ public final class TGParser {
       records.addClass(curRec);
     }
 
-    // eat the name.
+    // eat the namespace.
     lexer.lex();
 
     if (lexer.getCode() == TGLexer.TokKind.less)
@@ -1987,7 +1987,7 @@ public final class TGParser {
 
   private Record parseDefmID() {
     if (lexer.getCode() != TGLexer.TokKind.Id) {
-      tokError("expected multiclass name");
+      tokError("expected multiclass namespace");
       return null;
     }
 
@@ -2224,7 +2224,7 @@ public final class TGParser {
         "Unexpected token");
     lexer.lex();
     if (lexer.getCode() != TGLexer.TokKind.Id)
-      return tokError("expected identifier after multiclass for name");
+      return tokError("expected identifier after multiclass for namespace");
 
     String name = lexer.getCurStrVal();
     if (multiClasses.containsKey(name))
@@ -2481,7 +2481,7 @@ public final class TGParser {
    */
   private MultiClass parseMultiClassID() {
     if (lexer.getCode() != TGLexer.TokKind.Id) {
-      tokError("expected name for ClassID");
+      tokError("expected namespace for ClassID");
       return null;
     }
 

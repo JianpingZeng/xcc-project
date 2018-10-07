@@ -40,11 +40,11 @@ public final class CodeGenIntrinsic {
    */
   Record theDef;
   /**
-   * The name of the LLVM function "llvm.bswap.i32"
+   * The namespace of the LLVM function "llvm.bswap.i32"
    */
   String name;
   /**
-   * The name of the enum "bswap_i32".
+   * The namespace of the enum "bswap_i32".
    */
   String enumName;
 

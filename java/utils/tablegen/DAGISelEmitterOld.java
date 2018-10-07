@@ -65,7 +65,7 @@ public class DAGISelEmitterOld extends TableGenBackend {
   }
 
   private void emitNodeTransform(PrintStream os) {
-    // Sort the NodeTransform by name in alphabetic order.
+    // Sort the NodeTransform by namespace in alphabetic order.
     TreeMap<String, Pair<Record, String>> nodesByName = new TreeMap<>();
     for (Map.Entry<Record, Pair<Record, String>> itr : cgp.getSdNodeXForms().entrySet()) {
       nodesByName.put(itr.getKey().getName(), itr.getValue());

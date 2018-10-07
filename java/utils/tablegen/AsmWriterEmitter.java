@@ -252,7 +252,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
             addLiteralString("$");
           lastEmitted = dollarPos + 2;
         } else {
-          // Get the name of the variable.
+          // Get the namespace of the variable.
           int varEnd = dollarPos + 1;
           boolean hasCurlyBraces = false;
           if (varEnd < asmString.length() && asmString.charAt(varEnd) == '{') {
@@ -294,12 +294,12 @@ public final class AsmWriterEmitter extends TableGenBackend {
               modifier = asmString.substring(modifierStart, varEnd);
 
               if (modifier.isEmpty()) {
-                Error.printFatalError("Bad operand modifier name in '" + cgi.theDef.getName() + "'");
+                Error.printFatalError("Bad operand modifier namespace in '" + cgi.theDef.getName() + "'");
               }
             }
 
             if (asmString.charAt(varEnd) != '}')
-              Error.printFatalError("Variable name begining with '{' didn't end with '}' in "
+              Error.printFatalError("Variable namespace begining with '{' didn't end with '}' in "
                       + "' " + cgi.theDef.getName() + "'");
 
             ++varEnd;
@@ -586,7 +586,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
         + "\t\tlong bits = opInfo[mi.getOpcode()][0];\n"
         + "\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n\n");
     int asmStrBitsMask = (1 << asmStrBits) - 1;
-    os.printf("\t\t// Starting index of asm name encoded into %d bit%n", asmStrBits);
+    os.printf("\t\t// Starting index of asm namespace encoded into %d bit%n", asmStrBits);
 
     os.printf("\t\tint asmStrIdx = (int)bits&0x%x, len = (int)opInfo[mi.getOpcode()][1];\n",
         asmStrBitsMask);
@@ -867,7 +867,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     for (int i = 0, e = instrsForCase.size(); i != e; i++) {
       String insts = instrsForCase.get(i);
       if (insts.length() > 60) {
-        // Truncate the string sequence consists of name of asm instructions
+        // Truncate the string sequence consists of namespace of asm instructions
         // to 60 when its length exceed 80.
         insts = insts.substring(0, 60);
         insts += "...";

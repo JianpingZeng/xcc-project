@@ -40,9 +40,9 @@ public final class CodeGenInstruction {
    */
   Record theDef;
   /**
-   * Contents of the 'name' field.
+   * Contents of the 'namespace' field.
    */
-  String name;
+  String namespace;
   /**
    * The format string used to emit a .s file for the
    * instruction.
@@ -133,6 +133,7 @@ public final class CodeGenInstruction {
 
   CodeGenInstruction(Record r, String asmStr) {
     theDef = r;
+    namespace = r.getValueAsString("Namespace");
     asmString = asmStr;
     operandList = new ArrayList<>();
 
@@ -215,15 +216,15 @@ public final class CodeGenInstruction {
             + "' in instruction '" + r.getName()
             + "' instruction!");
 
-      // Check that the operand has a name and that it's unique.
+      // Check that the operand has a namespace and that it's unique.
       if (di.getArgName(i).isEmpty())
         Error.printFatalError(
             "In instruction '" + r.getName() + "', operand #" + i
-                + " has no name!");
+                + " has no namespace!");
       if (!OperandNames.add(di.getArgName(i)))
         Error.printFatalError(
             "In instruction '" + r.getName() + "', operand #" + i
-                + " has the same name as a previous operand!");
+                + " has the same namespace as a previous operand!");
 
       operandList.add(new OperandInfo(rec, di.getArgName(i), PrintMethod,
           MIOperandNo, numOps, miOpInfo));
@@ -293,7 +294,7 @@ public final class CodeGenInstruction {
 
   private Pair<Integer, Integer> parseOperandName(String op, boolean allowWholeOp) {
     if (op.isEmpty() || op.charAt(0) != '$')
-      Error.printFatalError(theDef.getName() + ": Illegal operand name: '"
+      Error.printFatalError(theDef.getName() + ": Illegal operand namespace: '"
           + op + "'");
 
     String opName = op.substring(1);
@@ -303,7 +304,7 @@ public final class CodeGenInstruction {
     if (dotIdx != -1) {
       subOpName = opName.substring(dotIdx + 1);
       if (subOpName.isEmpty())
-        Error.printFatalError(theDef.getName() + ": illegal empty suboperand name in '" +
+        Error.printFatalError(theDef.getName() + ": illegal empty suboperand namespace in '" +
             op + "'");
       opName = opName.substring(0, dotIdx);
     }
@@ -320,29 +321,29 @@ public final class CodeGenInstruction {
 
     DagInit miOpInfo = operandList.get(opIdx).miOperandInfo;
     if (miOpInfo == null) {
-      Error.printFatalError(theDef.getName() + ": unknown suboperand name in '" + op + "'");
+      Error.printFatalError(theDef.getName() + ": unknown suboperand namespace in '" + op + "'");
     }
 
     for (int i = 0, e = miOpInfo.getNumArgs(); i != e; i++)
       if (miOpInfo.getArgName(i).equals(subOpName))
         return Pair.get(opIdx, i);
 
-    Error.printFatalError(theDef.getName() + ": unknown suboperand name in '" +
+    Error.printFatalError(theDef.getName() + ": unknown suboperand namespace in '" +
         op + "'");
     return null;
   }
 
   /**
    * Return the index of the operand with the specified
-   * non-empty name.  If the instruction does not have an operand with the
-   * specified name, throw an exception.
+   * non-empty namespace.  If the instruction does not have an operand with the
+   * specified namespace, throw an exception.
    *
    * @param name
    * @return
    * @throws Exception
    */
   int getOperandNamed(String name) {
-    Util.assertion(!name.isEmpty(), "Cannot search for operand with no name!");
+    Util.assertion(!name.isEmpty(), "Cannot search for operand with no namespace!");
     for (int i = 0, e = operandList.size(); i != e; ++i)
       if (operandList.get(i).name.equals(name))
         return i;

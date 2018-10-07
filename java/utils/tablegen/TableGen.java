@@ -84,7 +84,7 @@ public final class TableGen {
   private static StringOpt outputFileName = new StringOpt(
       new OptionNameApplicator("o"),
       init("-"),
-      desc("Specify the output file name"),
+      desc("Specify the output file namespace"),
       valueDesc("filename"));
 
   private static ListOpt<String> includeDirs = new ListOpt<>(
@@ -137,7 +137,7 @@ public final class TableGen {
           new AsmWriterEmitter().run(outputFile);
           break;
         case GenDAGISel:
-          new DAGISelEmitterOld(records).run(outputFile);
+          new DAGISelEmitter(records).run(outputFile);
           break;
         case GenFastISel:
           new FastISelEmitter(records).run(outputFile);

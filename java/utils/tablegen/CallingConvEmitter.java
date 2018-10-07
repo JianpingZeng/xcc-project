@@ -93,7 +93,7 @@ public class CallingConvEmitter extends TableGenBackend {
 
       // Emit each calling convention description in full.
       for (String dept : dependency) {
-        Util.assertion(recNameToRec.containsKey(dept), "No cc action have name " + dept);
+        Util.assertion(recNameToRec.containsKey(dept), "No cc action have namespace " + dept);
         emitCallingConv(recNameToRec.get(dept), os);
       }
       os.println("}");

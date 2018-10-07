@@ -377,7 +377,7 @@ public class SubtargetEmitter extends TableGenBackend {
   }
 
   /**
-   * generate cpu name to itinerary lookup table.
+   * generate cpu namespace to itinerary lookup table.
    *
    * @param os
    */

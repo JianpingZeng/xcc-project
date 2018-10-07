@@ -224,7 +224,7 @@ public final class TreePattern {
             }
 
             Util.assertion(node.getNumTypes() == 1 &&
-                inNodes.get(0).getNumTypes() == 1, "FIXME: can't name multiple ressult nodes yet");
+                inNodes.get(0).getNumTypes() == 1, "FIXME: can't namespace multiple ressult nodes yet");
             changed |= node.updateNodeType(0, inNodes.get(0).getExtType(0), this);
           }
         }
@@ -233,7 +233,7 @@ public final class TreePattern {
           for (int i = 0, e = nodes.size() -1; i < e; i++) {
             TreePatternNode n1 = nodes.get(i), n2 = nodes.get(i+1);
             Util.assertion(n1.getNumTypes() == 1 && n2.getNumTypes() == 1,
-                "FIXME: can't name multiple result nodes as yet");
+                "FIXME: can't namespace multiple result nodes as yet");
             changed |= n1.updateNodeType(0, n2.getExtType(0), this);
             changed |= n2.updateNodeType(0, n1.getExtType(0), this);
           }
@@ -294,7 +294,7 @@ public final class TreePattern {
    * (zextload node:$ptr) is a DAGInit to this PatFrag, and it's operator is also a PatFrag def.
    * </pre>
    * @param theInit The initial PatFrag for this TreePattern.
-   * @param opName The name of this argument.
+   * @param opName The namespace of this argument.
    * @return
    */
   private TreePatternNode parseTreePattern(Init theInit, String opName) {
@@ -314,7 +314,7 @@ public final class TreePattern {
     }
     if (theInit instanceof Init.UnsetInit) {
       if (opName.isEmpty())
-        error("'?' argument requires a name to match with operand list");
+        error("'?' argument requires a namespace to match with operand list");
       TreePatternNode res = new TreePatternNode(theInit, 1);
       args.add(opName);
       res.setName(opName);
@@ -323,7 +323,7 @@ public final class TreePattern {
     if (theInit instanceof IntInit) {
       IntInit ii = (IntInit) theInit;
       if (!opName.isEmpty())
-        error("Constant int argument should not have a name!");
+        error("Constant int argument should not have a namespace!");
       return new TreePatternNode(ii, 1);
     }
 
@@ -358,7 +358,7 @@ public final class TreePattern {
       CodeGenHwModes mode = cdp.getTarget().getHwModes();
       newRes.updateNodeType(0, ValueTypeByHwMode.getValueTypeByHwMode(operator, mode), this);
       if (!opName.isEmpty())
-        error("ValueType cast should not have a name!");
+        error("ValueType cast should not have a namespace!");
       return newRes;
     }
 
