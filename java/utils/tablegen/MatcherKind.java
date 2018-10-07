@@ -37,7 +37,7 @@ enum MatcherKind {
   RecordNode,           // Record the current node.
   RecordChild,          // Record a child of the current node.
   RecordMemRef,         // Record the memref in the current node.
-  CaptureGlueInput,     // If the current node has an input glue, save it.
+  CaptureFlagInput,     // If the current node has an input glue, save it.
   MoveChild,            // Move current node to specified child.
   MoveParent,           // Move current node to parent.
 

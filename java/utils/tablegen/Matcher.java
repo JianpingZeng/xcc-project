@@ -41,23 +41,6 @@ import java.util.Arrays;
  */
 public abstract class Matcher {
 
-  public static Matcher convertPatternToMatcher(PatternToMatch tp,
-                                                int variant,
-                                                CodeGenDAGPatterns cdp) {
-    // TODO: 18-10-6
-    return null;
-  }
-
-  public static void optimizeMatcher() {
-    // TODO: 18-10-6
-  }
-
-  public static void emitMatcherTable(Matcher matcher,
-                                      CodeGenDAGPatterns cdp,
-                                      PrintStream os) {
-    // TODO: 18-10-6
-  }
-
   private Matcher next;
   private MatcherKind kind;
 
@@ -393,7 +376,7 @@ public abstract class Matcher {
   public static class CaptureFlagInputMatcher extends Matcher {
 
     public CaptureFlagInputMatcher() {
-      super(MatcherKind.CaptureGlueInput);
+      super(MatcherKind.CaptureFlagInput);
     }
 
     @Override
@@ -573,6 +556,10 @@ public abstract class Matcher {
     public CheckPredicateMatcher(String pred) {
       super(MatcherKind.CheckPredicate);
       predName = pred;
+    }
+
+    public String getPredicateName() {
+      return predName;
     }
 
     @Override
@@ -1025,6 +1012,10 @@ public abstract class Matcher {
     @Override
     protected int getHashImpl() {
       return compPat.hashCode() ^ matchNumber;
+    }
+
+    public int getFirstResult() {
+      return firstResult;
     }
   }
 

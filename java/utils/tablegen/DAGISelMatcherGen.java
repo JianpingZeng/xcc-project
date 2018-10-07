@@ -63,6 +63,11 @@ public class DAGISelMatcherGen {
     nextRecordedOperandNo = 0;
     theMatcher = null;
     curPredicate = null;
+    variableMap = new TObjectIntHashMap<>();
+    matchedChainNodes = new TIntArrayList();
+    matchedFlagResultNodes = new TIntArrayList();
+    matchedComplexPatterns = new ArrayList<>();
+    physRegInputs = new ArrayList<>();
 
     patWithNoTypes = pattern.getSrcPattern().clone();
     patWithNoTypes.removeTypes();
@@ -86,6 +91,18 @@ public class DAGISelMatcherGen {
       }
     }
     return vt;
+  }
+
+  public static Matcher convertPatternToMatcher(PatternToMatch tp,
+                                                int variant,
+                                                CodeGenDAGPatterns cdp) {
+    DAGISelMatcherGen gen = new DAGISelMatcherGen(tp, cdp);
+    // generate the code for the matcher.
+    if (gen.emitMatcherCode(variant))
+      return null;
+
+    gen.emitResultCode();
+    return gen.getMatcher();
   }
 
   private void inferPossibleTypes() {

@@ -488,14 +488,14 @@ public class SubtargetEmitter extends TableGenBackend {
     if (cgh.getNumNodeIds() == 1)
       return;
 
-    os.print("\t@Override");
+    os.println("\t@Override");
     os.print("\tpublic int getHwMode() {\n");
     for (int m = 1, num = cgh.getNumNodeIds(); m < num; ++m) {
       CodeGenHwModes.HwMode hm = cgh.getMode(m);
       os.printf("\t\tif (checkFeatures(\"%s\")) return %d;\n", hm.features, m);
     }
-    os.print("\t\treturn super.getHwMode();");
-    os.print("\t}\n");
+    os.println("\t\treturn super.getHwMode();");
+    os.println("\t}");
   }
 
   /**
@@ -541,7 +541,6 @@ public class SubtargetEmitter extends TableGenBackend {
       // Emit constructor method.
       os.printf("\tpublic %s(String tt, String fs) {\n", className);
       os.printf("\t\tsuper(tt, fs, subTypeKV, featureKV);\n");
-      os.print("\t\t");
       os.print("\t}\n");
       os.print("}");
     }

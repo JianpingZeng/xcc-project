@@ -36,7 +36,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.TreeSet;
 
-import static utils.tablegen.Matcher.convertPatternToMatcher;
+import static utils.tablegen.DAGISelMatcherEmitter.emitMatcherTable;
+import static utils.tablegen.DAGISelMatcherGen.convertPatternToMatcher;
 
 /**
  * This is class definition used to generate a DFA-based instruction selector
@@ -82,7 +83,8 @@ public final class DAGISelEmitter extends TableGenBackend {
         }
       }
 
-
+      Matcher theMatcher = new Matcher.ScopeMatcher(patternMatchers);
+      emitMatcherTable(theMatcher, cgp, os);
     }
   }
 }

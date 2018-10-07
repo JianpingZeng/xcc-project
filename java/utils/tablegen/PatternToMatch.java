@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.TreeSet;
 
+import static utils.tablegen.SDNP.SDNPHasChain;
+
 /**
  * @author Jianping Zeng
  * @version 0.1
@@ -60,7 +62,7 @@ public final class PatternToMatch {
     if (pat.isLeaf() && pat.getLeafValue() instanceof Init.IntInit)
       size += 2;
 
-    ComplexPattern cp = PatternCodeEmitter.nodeGetComplexPattern(pat, cgp);
+    ComplexPattern cp = nodeGetComplexPattern(pat, cgp);
     if (cp != null)
       size += cp.getNumOperands() * 3;
 
@@ -77,7 +79,7 @@ public final class PatternToMatch {
       else if (child.isLeaf()) {
         if (child.getLeafValue() instanceof Init.IntInit)
           size += 5;
-        else if (PatternCodeEmitter.nodeIsComplexPattern(child))
+        else if (nodeIsComplexPattern(child))
           size += getPatternSize(child, cgp);
         else if (!child.getPredicateFns().isEmpty())
           size++;
@@ -112,6 +114,68 @@ public final class PatternToMatch {
     for (int i = 0, e = node.getNumChildren(); i < e; i++)
       size += getResultPatternSize(node.getChild(i), cgp);
     return size;
+  }
+
+  static boolean nodeIsComplexPattern(TreePatternNode node) {
+    return (node.isLeaf() && (node.getLeafValue() instanceof Init.DefInit)
+        && ((Init.DefInit) node.getLeafValue()).getDef().isSubClassOf("ComplexPattern"));
+  }
+
+  static boolean disableComplexPatternForNotOpt(TreePatternNode node, CodeGenDAGPatterns cgp) {
+    boolean isStore = !node.isLeaf() && getOpcodeName(node.getOperator(), cgp).equals("ISD.STORE");
+    if (!isStore && nodeHasProperty(node, SDNPHasChain, cgp))
+      return false;
+
+    for (int i = 0, e = node.getNumChildren(); i < e; i++) {
+      if (patternHasProperty(node.getChild(i), SDNPHasChain, cgp))
+        return true;
+    }
+    return false;
+  }
+
+  protected static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
+                                                        CodeGenDAGPatterns cgp) {
+    if (node.isLeaf() && (node.getLeafValue() instanceof Init.DefInit)
+        && ((Init.DefInit) node.getLeafValue()).getDef().isSubClassOf("ComplexPattern")) {
+      return cgp.getComplexPattern(((Init.DefInit) node.getLeafValue()).getDef());
+    }
+    return null;
+  }
+
+  static boolean patternHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
+    if (nodeHasProperty(node, prop, cgp))
+      return true;
+
+    for (int i = 0, e = node.getNumChildren(); i < e; i++) {
+      TreePatternNode child = node.getChild(i);
+      if (patternHasProperty(child, prop, cgp))
+        return true;
+    }
+    return false;
+  }
+
+  static boolean nodeHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
+    if (node.isLeaf()) {
+      ComplexPattern cp = nodeGetComplexPattern(node, cgp);
+      if (cp != null)
+        return cp.hasProperty(prop);
+      return false;
+    }
+    Record rec = node.getOperator();
+    if (!rec.isSubClassOf("SDNode")) return false;
+    return cgp.getSDNodeInfo(rec).hasProperty(prop);
+  }
+
+  static String getOpcodeName(Record opc, CodeGenDAGPatterns cgp) {
+    return cgp.getSDNodeInfo(opc).getEnumName();
+  }
+
+  static void removeAllTypes(TreePatternNode node) {
+    node.removeTypes();
+    if (!node.isLeaf()) {
+      for (int i = 0, e = node.getNumChildren(); i < e; i++)
+        removeAllTypes(node.getChild(i));
+    }
   }
 
   public Record getSrcRecord() {
