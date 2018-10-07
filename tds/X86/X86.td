@@ -155,7 +155,7 @@ def X86InstrInfo : InstrInfo {
 // Calling Conventions
 //===----------------------------------------------------------------------===//
 
-// Commented by Xlous zeng on 2017.6.19
+// Commented by Jianping Zeng on 2017.6.19
 include "X86CallingConv.td"
 
 

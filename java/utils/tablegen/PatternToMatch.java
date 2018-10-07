@@ -16,7 +16,10 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MVT;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.TreeSet;
 
 /**
@@ -48,6 +51,65 @@ public final class PatternToMatch {
     this.dstRegs = new ArrayList<>();
     this.dstRegs.addAll(dstRegs);
     addedComplexity = complexity;
+  }
+
+  static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {
+    int size = 3;
+    if (pat.isLeaf() && pat.getLeafValue() instanceof Init.IntInit)
+      size += 2;
+
+    ComplexPattern cp = PatternCodeEmitter.nodeGetComplexPattern(pat, cgp);
+    if (cp != null)
+      size += cp.getNumOperands() * 3;
+
+    if (!pat.getPredicateFns().isEmpty())
+      ++size;
+
+    for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
+      TreePatternNode child = pat.getChild(i);
+      if (!child.isLeaf() && child.getNumTypes() > 0) {
+        TypeSetByHwMode vt = child.getExtType(0);
+        if (vt.getMachineValueType().simpleVT != MVT.Other)
+          size += getPatternSize(child, cgp);
+      }
+      else if (child.isLeaf()) {
+        if (child.getLeafValue() instanceof Init.IntInit)
+          size += 5;
+        else if (PatternCodeEmitter.nodeIsComplexPattern(child))
+          size += getPatternSize(child, cgp);
+        else if (!child.getPredicateFns().isEmpty())
+          size++;
+      }
+    }
+    return size;
+  }
+
+  static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) {
+    if (inst.isLeaf()) return 0;
+
+    int cost = 0;
+    Record opc = inst.getOperator();
+    if (opc.isSubClassOf("Instruction")) {
+      ++cost;
+      CodeGenInstruction cgInst = cgp.getTarget().getInstruction(opc.getName());
+      if (cgInst.usesCustomDAGSchedInserter)
+        cost += 10;
+    }
+    for (int i = 0, e = inst.getNumChildren(); i < e; i++)
+      cost += getResultPatternCost(inst.getChild(i), cgp);
+    return cost;
+  }
+
+  static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) {
+    if (node.isLeaf()) return 0;
+
+    int size = 0;
+    Record opc = node.getOperator();
+    if (opc.isSubClassOf("Instruction"))
+      size += opc.getValueAsInt("CodeSize");
+    for (int i = 0, e = node.getNumChildren(); i < e; i++)
+      size += getResultPatternSize(node.getChild(i), cgp);
+    return size;
   }
 
   public Record getSrcRecord() {
@@ -115,5 +177,37 @@ public final class PatternToMatch {
     return preds.equals(pat.preds) &&
         srcPattern.equals(pat.srcPattern) && dstPattern.equals(pat.dstPattern)
         && dstRegs.equals(pat.dstRegs) && addedComplexity == pat.addedComplexity;
+  }
+
+  static class PatternSortingPredicate implements Comparator<PatternToMatch> {
+    private CodeGenDAGPatterns cgp;
+
+    PatternSortingPredicate(CodeGenDAGPatterns cgp) {
+      this.cgp = cgp;
+    }
+
+    @Override
+    public int compare(PatternToMatch lhs,
+                       PatternToMatch rhs) {
+      try {
+        int lhsSize = getPatternSize(lhs.getSrcPattern(), cgp);
+        int rhsSize = getPatternSize(rhs.getSrcPattern(), cgp);
+        lhsSize += lhs.getAddedComplexity();
+        rhsSize += rhs.getAddedComplexity();
+        if (lhsSize > rhsSize) return -1;
+        if (lhsSize < rhsSize) return 1;
+
+        int lhsCost = getResultPatternCost(lhs.getDstPattern(), cgp);
+        int rhsCost = getResultPatternCost(rhs.getDstPattern(), cgp);
+        if (lhsCost > rhsCost) return -1;
+        if (lhsCost < rhsCost) return 1;
+
+        return getResultPatternSize(rhs.getDstPattern(), cgp) -
+            getResultPatternSize(lhs.getDstPattern(), cgp);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return 0;
+    }
   }
 }

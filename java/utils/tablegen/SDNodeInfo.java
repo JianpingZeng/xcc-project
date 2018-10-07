@@ -154,6 +154,27 @@ public final class SDNodeInfo {
     return changed;
   }
 
+  public int getKnownType(int resNo) {
+    int numResults = getNumResults();
+    Util.assertion(numResults <= 1, "we only work with nodes with at most one result so far!");
+    Util.assertion(resNo == 0, "only handles single result node as yet!");
+
+    for (SDTypeConstraint cst : typeConstraints) {
+      if (cst.operandNo >= numResults)
+        continue;
+      switch (cst.constraintType) {
+        default: break;
+        case SDTCisVT:
+          if (cst.vvt.isSimple())
+            return cst.vvt.getSimple().simpleVT;
+          break;
+        case SDTCisPtrTy:
+          return MVT.iPTR;
+      }
+    }
+    return MVT.Other;
+  }
+
   public static final class SDTypeConstraint {
     public SDTypeConstraint(Record r, CodeGenHwModes hwModes) {
       operandNo = (int) r.getValueAsInt("OperandNum");

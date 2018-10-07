@@ -1,7 +1,7 @@
 package utils.tablegen;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous
+ * Copyright (c) 2015-2018, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import static utils.tablegen.TableGen.ActionType.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TableGen {
   /**
@@ -137,7 +137,7 @@ public final class TableGen {
           new AsmWriterEmitter().run(outputFile);
           break;
         case GenDAGISel:
-          new DAGISelEmitter(records).run(outputFile);
+          new DAGISelEmitterOld(records).run(outputFile);
           break;
         case GenFastISel:
           new FastISelEmitter(records).run(outputFile);

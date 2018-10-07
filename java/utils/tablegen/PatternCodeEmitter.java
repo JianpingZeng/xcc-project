@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2018, Xlous
+ * Copyright (c) 2015-2018, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.getName;
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
-import static utils.tablegen.DAGISelEmitter.getOpTypeHwModeForPattern;
+import static utils.tablegen.DAGISelEmitterOld.getOpTypeHwModeForPattern;
 import static utils.tablegen.SDNP.*;
 
 /**
@@ -600,99 +600,6 @@ public class PatternCodeEmitter {
       }
     }
     return vt;
-  }
-
-  static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {
-    int size = 3;
-    if (pat.isLeaf() && pat.getLeafValue() instanceof IntInit)
-      size += 2;
-
-    ComplexPattern cp = nodeGetComplexPattern(pat, cgp);
-    if (cp != null)
-      size += cp.getNumOperands() * 3;
-
-    if (!pat.getPredicateFns().isEmpty())
-      ++size;
-
-    for (int i = 0, e = pat.getNumChildren(); i < e; i++) {
-      TreePatternNode child = pat.getChild(i);
-      if (!child.isLeaf() && child.getNumTypes() > 0) {
-        TypeSetByHwMode vt = child.getExtType(0);
-        if (vt.getMachineValueType().simpleVT != MVT.Other)
-          size += getPatternSize(child, cgp);
-      }
-      else if (child.isLeaf()) {
-        if (child.getLeafValue() instanceof IntInit)
-          size += 5;
-        else if (nodeIsComplexPattern(child))
-          size += getPatternSize(child, cgp);
-        else if (!child.getPredicateFns().isEmpty())
-          size++;
-      }
-    }
-    return size;
-  }
-
-  static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) {
-    if (inst.isLeaf()) return 0;
-
-    int cost = 0;
-    Record opc = inst.getOperator();
-    if (opc.isSubClassOf("Instruction")) {
-      ++cost;
-      CodeGenInstruction cgInst = cgp.getTarget().getInstruction(opc.getName());
-      if (cgInst.usesCustomDAGSchedInserter)
-        cost += 10;
-    }
-    for (int i = 0, e = inst.getNumChildren(); i < e; i++)
-      cost += getResultPatternCost(inst.getChild(i), cgp);
-    return cost;
-  }
-
-  static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) {
-    if (node.isLeaf()) return 0;
-
-    int size = 0;
-    Record opc = node.getOperator();
-    if (opc.isSubClassOf("Instruction"))
-      size += opc.getValueAsInt("CodeSize");
-    for (int i = 0, e = node.getNumChildren(); i < e; i++)
-      size += getResultPatternSize(node.getChild(i), cgp);
-    return size;
-  }
-
-  static class PatternSortingPredicate implements Comparator<Pair<PatternToMatch,
-      ArrayList<Pair<GeneratedCodeKind, String>>>> {
-    private CodeGenDAGPatterns cgp;
-
-    PatternSortingPredicate(CodeGenDAGPatterns cgp) {
-      this.cgp = cgp;
-    }
-
-    @Override
-    public int compare(Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o1,
-                       Pair<PatternToMatch, ArrayList<Pair<GeneratedCodeKind, String>>> o2) {
-      try {
-        PatternToMatch lhs = o1.first, rhs = o2.first;
-        int lhsSize = getPatternSize(lhs.getSrcPattern(), cgp);
-        int rhsSize = getPatternSize(rhs.getSrcPattern(), cgp);
-        lhsSize += lhs.getAddedComplexity();
-        rhsSize += rhs.getAddedComplexity();
-        if (lhsSize > rhsSize) return -1;
-        if (lhsSize < rhsSize) return 1;
-
-        int lhsCost = getResultPatternCost(lhs.getDstPattern(), cgp);
-        int rhsCost = getResultPatternCost(rhs.getDstPattern(), cgp);
-        if (lhsCost > rhsCost) return -1;
-        if (lhsCost < rhsCost) return 1;
-
-        return getResultPatternSize(rhs.getDstPattern(), cgp) -
-            getResultPatternSize(lhs.getDstPattern(), cgp);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return 0;
-    }
   }
 
   public ArrayList<String> emitResultCode(TreePatternNode node, ArrayList<Record> destRegs,
