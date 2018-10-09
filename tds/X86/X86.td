@@ -4,29 +4,29 @@ include "../Target.td"
 // X86 Subtarget features.
 //===----------------------------------------------------------------------===//
 
-def FeatureMMX     : SubtargetFeature<"mmx","x86SSELevel", "MMX",
+def FeatureMMX     : SubtargetFeature<"mmx","x86SSELevel", "X86SSEEnum.MMX",
                                       "Enable MMX instructions">;
-def FeatureSSE1    : SubtargetFeature<"sse", "x86SSELevel", "SSE1",
+def FeatureSSE1    : SubtargetFeature<"sse", "x86SSELevel", "X86SSEEnum.SSE1",
                                       "Enable SSE instructions",
                                       [FeatureMMX]>;
-def FeatureSSE2    : SubtargetFeature<"sse2", "x86SSELevel", "SSE2",
+def FeatureSSE2    : SubtargetFeature<"sse2", "x86SSELevel", "X86SSEEnum.SSE2",
                                       "Enable SSE2 instructions",
                                       [FeatureSSE1]>;
-def FeatureSSE3    : SubtargetFeature<"sse3", "x86SSELevel", "SSE3",
+def FeatureSSE3    : SubtargetFeature<"sse3", "x86SSELevel", "X86SSEEnum.SSE3",
                                       "Enable SSE3 instructions",
                                       [FeatureSSE2]>;
-def FeatureSSSE3   : SubtargetFeature<"ssse3", "x86SSELevel", "SSE3",
+def FeatureSSSE3   : SubtargetFeature<"ssse3", "x86SSELevel", "X86SSEEnum.SSE3",
                                       "Enable SSE3 instructions",
                                       [FeatureSSE3]>;
-def FeatureSSE41   : SubtargetFeature<"sse41", "x86SSELevel", "SSE41",
+def FeatureSSE41   : SubtargetFeature<"sse41", "x86SSELevel", "X86SSEEnum.SSE41",
                                       "Enable SSE 4.1 instructions",
                                       [FeatureSSSE3]>;
-def FeatureSSE42   : SubtargetFeature<"sse42", "x86SSELevel", "SSE42",
+def FeatureSSE42   : SubtargetFeature<"sse42", "x86SSELevel", "X86SSEEnum.SSE42",
                                       "Enable SSE 4.2 instructions",
                                       [FeatureSSE41]>;
-def Feature3DNow   : SubtargetFeature<"3dnow", "x863DNowLevel", "ThreeDNow",
+def Feature3DNow   : SubtargetFeature<"3dnow", "x863DNowLevel", "X863DNowEnum.ThreeDNow",
                                       "Enable 3DNow! instructions">;
-def Feature3DNowA  : SubtargetFeature<"3dnowa", "x863DNowLevel", "ThreeDNowA",
+def Feature3DNowA  : SubtargetFeature<"3dnowa", "x863DNowLevel", "X863DNowEnum.ThreeDNowA",
                                       "Enable 3DNow! Athlon instructions",
                                       [Feature3DNow]>;
 // All x86-64 hardware has SSE2, but we don't mark SSE2 as an implied

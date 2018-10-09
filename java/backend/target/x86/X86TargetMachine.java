@@ -42,7 +42,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
   public X86TargetMachine(Target t, String triple,
                           String fs, boolean is64Bit) {
     super(t, triple);
-    subtarget = X86Subtarget.createX86Subtarget(triple, fs, is64Bit);
+    subtarget = X86Subtarget.createX86Subtarget(triple, fs, this);
     dataLayout = new TargetData(subtarget.getDataLayout());
     frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
         (subtarget.isTargetWin64() ? -40 :
@@ -148,7 +148,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
         Util.shouldNotReachHere("MacroExpandISel is experimental, should not be used!");
         break;
       case DAGISel:
-        pm.add(X86DAGToDAGISel.createX86DAGToDAGISel(this, level));
+        pm.add(X86DAGISel.createX86DAGISel(this, level));
         break;
       default:
         Util.shouldNotReachHere("Unknown Instruction Selector");

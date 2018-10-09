@@ -539,8 +539,8 @@ public class SubtargetEmitter extends TableGenBackend {
       emitHwModeCheck(os);
 
       // Emit constructor method.
-      os.printf("\tpublic %s(String tt, String fs) {\n", className);
-      os.printf("\t\tsuper(tt, fs, subTypeKV, featureKV);\n");
+      os.printf("\tpublic %s(String tt, String fs, %sTargetMachine tm) {\n", className, targetName);
+      os.printf("\t\tsuper(tt, fs, tm, subTypeKV, featureKV);\n");
       os.print("\t}\n");
       os.print("}");
     }

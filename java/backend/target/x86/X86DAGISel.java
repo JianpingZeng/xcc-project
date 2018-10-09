@@ -39,11 +39,11 @@ import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
 
-public abstract class X86DAGToDAGISel extends SelectionDAGISel {
+public abstract class X86DAGISel extends SelectionDAGISel {
   protected X86TargetLowering tli;
   protected X86Subtarget subtarget;
 
-  public X86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
+  public X86DAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
     subtarget = tm.getSubtarget();
     tli = tm.getTargetLowering();
@@ -61,8 +61,8 @@ public abstract class X86DAGToDAGISel extends SelectionDAGISel {
       preprocessForFPConvert();
   }
 
-  public static X86DAGToDAGISel createX86DAGToDAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level) {
-    return new X86GenDAGToDAGISel(tm, level);
+  public static X86DAGISel createX86DAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level) {
+    return new X86GenDAGISel(tm, level);
   }
 
   @Override

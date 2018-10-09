@@ -122,7 +122,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int LAST_FP_VALUETYPE = ppcf128;
 
   public static final int FIRST_INTEGER_VECTOR_VALUETYPE = v2i8;
-  public static final int LAST__INTEGER_VECTOR_VALUETYPE = v4f64;
+  public static final int LAST_INTEGER_VECTOR_VALUETYPE = v4f64;
 
   public static final int FIRST_FP_VECTOR_VALUETYPE = v2f16;
   public static final int LAST_FP_VECTOR_VALUETYPE = v8f64;
@@ -381,8 +381,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   }
 
   public boolean isVector() {
-    return (simpleVT <= FIRST_INTEGER_VECTOR_VALUETYPE
-        && simpleVT <= LAST__INTEGER_VECTOR_VALUETYPE);
+    return (simpleVT >= FIRST_INTEGER_VECTOR_VALUETYPE
+        && simpleVT <= LAST_INTEGER_VECTOR_VALUETYPE);
   }
 
   public boolean isPower2VectorType() {
@@ -609,5 +609,10 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   @Override
   public MVT clone() {
     return new MVT(simpleVT);
+  }
+
+  @Override
+  public String toString() {
+    return getEnumName(simpleVT);
   }
 }

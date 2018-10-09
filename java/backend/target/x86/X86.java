@@ -313,7 +313,8 @@ public interface X86 {
   }
 
   static boolean isOffsetSuitableForCodeModel(long offset,
-                                              TargetMachine.CodeModel model, boolean hasSymbolicDisplacement) {
+                                              TargetMachine.CodeModel model,
+                                              boolean hasSymbolicDisplacement) {
     if (!isInt32(offset))
       return false;
 

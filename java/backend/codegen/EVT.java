@@ -130,7 +130,7 @@ public class EVT implements Comparable<EVT> {
 
   public boolean isVector() {
     return isSimple() ? (v.simpleVT >= FIRST_INTEGER_VECTOR_VALUETYPE
-        && v.simpleVT <= LAST__INTEGER_VECTOR_VALUETYPE) : isExtendedVector();
+        && v.simpleVT <= LAST_INTEGER_VECTOR_VALUETYPE) : isExtendedVector();
   }
 
   public boolean is64BitVector() {

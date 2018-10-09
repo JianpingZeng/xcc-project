@@ -760,4 +760,8 @@ public class Util {
     }
     return sb.toString();
   }
+
+  public static boolean isInt32(long val) {
+    return val >= Integer.MIN_VALUE && val <= Integer.MAX_VALUE;
+  }
 }

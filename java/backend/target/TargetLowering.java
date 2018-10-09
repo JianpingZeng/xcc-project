@@ -953,7 +953,7 @@ public abstract class TargetLowering {
     }
 
     // Loop over all of the vector value types to see which need transformations.
-    for (int i = MVT.FIRST_INTEGER_VECTOR_VALUETYPE; i <= MVT.LAST__INTEGER_VECTOR_VALUETYPE; i++) {
+    for (int i = MVT.FIRST_INTEGER_VECTOR_VALUETYPE; i <= MVT.LAST_INTEGER_VECTOR_VALUETYPE; i++) {
       MVT vt = new MVT(i);
       if (!isTypeLegal(new EVT(vt))) {
         OutRef<MVT> intermediateVT = new OutRef<>(new MVT());
@@ -968,7 +968,7 @@ public abstract class TargetLowering {
         boolean isLegalWiderType = false;
         EVT elTvt = new EVT(vt.getVectorElementType());
         int numElts = vt.getVectorNumElements();
-        for (int nvt = i + 1; nvt <= MVT.LAST__INTEGER_VECTOR_VALUETYPE; ++nvt) {
+        for (int nvt = i + 1; nvt <= MVT.LAST_INTEGER_VECTOR_VALUETYPE; ++nvt) {
           EVT svt = new EVT(new MVT(nvt));
           if (isTypeLegal(svt) && svt.getVectorElementType().equals(elTvt)
               && svt.getVectorNumElements() > numElts) {

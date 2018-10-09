@@ -3,10 +3,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
 import backend.support.Attribute;
-import backend.target.TargetData;
-import backend.target.TargetFrameInfo;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.*;
 import backend.type.Type;
 import backend.value.Function;
 import tools.BitMap;
@@ -21,13 +18,14 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetOptions.DisableFramePointerElim;
 import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.x86.X86GenInstrNames.*;
+import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 
 /**
  * @author Jianping Zeng
  * @version 0.1
  */
-public class X86RegisterInfo extends X86GenRegisterInfo {
+public abstract class X86RegisterInfo extends TargetRegisterInfo {
   /**
    * Native X86 register numbers
    */
@@ -84,12 +82,16 @@ public class X86RegisterInfo extends X86GenRegisterInfo {
    */
   private int framePtr;
 
-  public X86RegisterInfo(X86TargetMachine tm, TargetInstrInfo tii) {
-    super(tm.getSubtarget().is64Bit() ?
-        ADJCALLSTACKDOWN64 :
-        ADJCALLSTACKDOWN32, tm.getSubtarget().is64Bit() ?
-        ADJCALLSTACKUP64 :
-        ADJCALLSTACKUP32);
+  public X86RegisterInfo(TargetRegisterDesc[] desc,
+                         TargetRegisterClass[] regClasses,
+                         int[] subregs, int subregHashSize,
+                         int[] superregs, int superregHashSize,
+                         int[] aliases, int aliasHashSize,
+                         RegClassInfo[] rcInfo,
+                         int mode) {
+    super(desc, regClasses, subregs, subregHashSize,
+        superregs, superregHashSize, aliases, aliasHashSize,
+        rcInfo, mode);
     this.tm = tm;
     this.tii = tii;
     X86Subtarget subtarget = tm.getSubtarget();

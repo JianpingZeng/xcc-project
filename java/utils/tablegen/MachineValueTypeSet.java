@@ -70,7 +70,6 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   public boolean insert(MVT vt) {
     boolean v = count(vt);
     words[vt.simpleVT/WordWidth] |= 1L <<(vt.simpleVT%WordWidth);
-    toString();
     return v;
   }
 
@@ -119,8 +118,9 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     boolean erased = false;
     for (Iterator<MVT> itr = iterator(); itr.hasNext(); ) {
       MVT vt = itr.next();
-      if (!pred.test(vt))
-        continue;
+      boolean res = !pred.test(vt);
+      if (res)  continue;
+
       erased = true;
       erase(vt);
     }

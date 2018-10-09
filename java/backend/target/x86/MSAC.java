@@ -42,6 +42,7 @@ public final class MSAC extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     int maxAlign = -1;
+    TargetRegisterInfo tri = mf.getTarget().getSubtarget().getRegisterInfo();
     // Compute maximum alignment for each stack object.
     MachineFrameInfo mfi = mf.getFrameInfo();
     for (int i = mfi.getObjectIndexBegin(); i < mfi.getObjectIndexEnd(); i++) {
@@ -53,7 +54,7 @@ public final class MSAC extends MachineFunctionPass {
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
     int lastVR = mri.getLastVirReg();
     for (int vr = TargetRegisterInfo.FirstVirtualRegister; vr < lastVR; vr++) {
-      int align = mri.getRegClass(vr).getAlignment();
+      int align = tri.getSpillAlignment(mri.getRegClass(vr));
       if (align > maxAlign)
         maxAlign = align;
     }

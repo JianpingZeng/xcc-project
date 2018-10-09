@@ -134,16 +134,16 @@ public final class CodeGenDAGPatterns {
   }
 
   private void verifyInstrTypes() {
-    patternsToMatch.forEach(p -> {
+    for (PatternToMatch tp : patternsToMatch) {
       boolean succ = true;
-      succ &= verifyPatternNodeType(p.getSrcPattern(), true);
-      succ &= verifyPatternNodeType(p.getDstPattern(), true);
+      succ &= verifyPatternNodeType(tp.getSrcPattern(), true);
+      succ &= verifyPatternNodeType(tp.getDstPattern(), true);
       if (!succ) {
-        p.dump();
+        tp.dump();
         System.err.println();
         Util.assertion("There must is only one type remained");
       }
-    });
+    }
   }
 
   public TypeSetByHwMode getLegalValueTypes() {

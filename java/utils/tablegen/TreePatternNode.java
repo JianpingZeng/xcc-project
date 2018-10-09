@@ -97,7 +97,6 @@ public final class TreePatternNode implements Cloneable {
     predicateFns = new ArrayList<>();
     val = leaf;
     children = new ArrayList<>();
-    types.add(new TypeSetByHwMode());
   }
 
   public String getName() {
@@ -268,8 +267,11 @@ public final class TreePatternNode implements Cloneable {
       rc = operand;
     else if (operand.isSubClassOf("RegisterOperand"))
       rc = operand.getValueAsDef("RegClass");
-
-    Util.assertion(rc != null, "unknown operand type");
+    else {
+      operand.dump();
+      tp.dump();
+      Util.assertion("unknown operand type");
+    }
     return updateNodeType(resNo,
         new TypeSetByHwMode(target.getRegisterClass(rc).getValueTypes()), tp);
   }

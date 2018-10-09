@@ -118,7 +118,7 @@ public class TypeInfer {
     vt.isInteger() || vt.simpleVT == MVT.iPTR;
 
   public static final Predicate<MVT> IsFloatingPoint = MVT::isFloatingPoint;
-  public static final Predicate<MVT> IsVector = MVT::isInteger;
+  public static final Predicate<MVT> IsVector = MVT::isVector;
   public static final Predicate<MVT> IsScalar = vt -> !vt.isVector();
 
   private boolean enforceByPredicate(TypeSetByHwMode out, Predicate<MVT> pred) {
@@ -232,8 +232,9 @@ public class TypeInfer {
       if (a.isVector() != b.isVector())
         return false;
 
-      return a.getScalarSizeInBits() <= b.getScalarSizeInBits() ||
+      boolean res = a.getScalarSizeInBits() <= b.getScalarSizeInBits() ||
               a.getSizeInBits() < b.getSizeInBits();
+      return res;
     };
 
     for (int i = 0,  e= modes.size(); i < e; i++) {
@@ -244,22 +245,22 @@ public class TypeInfer {
       // Remove any element less or equal than minS in set b.
       MVT minS = Util.minIf(s.iterator(), IsScalar, lt);
       if (minS != null)
-        changed |= b.eraseIf((vt) -> { le.test(vt, minS); return true; });
+        changed |= b.eraseIf((vt) -> { return le.test(vt, minS); });
 
       // Remove any element great or equal than maxS in set s.
       MVT maxS = Util.maxIf(b.iterator(), IsScalar, lt);
       if (maxS != null)
-        changed |= s.eraseIf((vt) -> { le.test(maxS, vt); return true; });
+        changed |= s.eraseIf((vt) -> { return le.test(maxS, vt); });
 
       // MinV = min vector in Small, remove all vectors from Big that are
       // smaller-or-equal than MinV.
       MVT minV = Util.minIf(s.iterator(), IsVector, lt);
       if (minV != null)
-        changed |= b.eraseIf(vt -> { le.test(vt, minV); return true; });
+        changed |= b.eraseIf(vt -> { return le.test(vt, minV); });
 
       MVT maxV = Util.maxIf(b.iterator(), IsVector, lt);
       if (maxV != null)
-        changed |= s.eraseIf(vt -> {le.test(maxV, vt); return true; });
+        changed |= s.eraseIf(vt -> { return le.test(maxV, vt); });
     }
     return changed;
   }
@@ -439,7 +440,7 @@ public class TypeInfer {
               out.insert(new MVT(i));
           }
           for (int i = MVT.FIRST_INTEGER_VECTOR_VALUETYPE;
-               i < MVT.LAST__INTEGER_VECTOR_VALUETYPE; i++) {
+               i < MVT.LAST_INTEGER_VECTOR_VALUETYPE; i++) {
             if (legal.count(new MVT(i)))
               out.insert(new MVT(i));
           }

@@ -132,7 +132,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   public X86InstrInfo(X86TargetMachine tm) {
     super(X86GenInstrInfo.X86Insts);
     this.tm = tm;
-    registerInfo = new X86RegisterInfo(tm, this);
     TIntArrayList ambEntries = new TIntArrayList();
     regOp2MemOpTable2Addr = new TIntObjectHashMap<>();
     regOp2MemOpTable0 = new TIntObjectHashMap<>();
