@@ -265,6 +265,15 @@ public class TypeInfer {
     return changed;
   }
 
+  /**
+   * 1. Ensure that for each type T in vec, T is a vector type, and that
+   *    for each type U in elt, U is a scalar type.
+   * 2. Ensure that for each scalar type U in elt, there exits a vector
+   *    type T in vec, such that U is the element type of T.
+   * @param vec
+   * @param elt
+   * @return
+   */
   public boolean enforceVectorEltTypeIs(TypeSetByHwMode vec,
                                         TypeSetByHwMode elt) {
     if (tp.hasError())
@@ -273,10 +282,7 @@ public class TypeInfer {
     if (vec.isEmpty())
       changed |= enforceVector(vec);
     if (elt.isEmpty())
-      changed |= enforceVector(elt);
-
-    BiPredicate<TIntHashSet, MVT> NoLength = (lengths, vt) ->
-        !lengths.contains(vt.isVector() ? vt.getVectorNumElements() : 0);
+      changed |= enforceScalar(elt);
 
     TIntArrayList list = unionMode(vec, elt);
     for (int i = 0, sz = list.size(); i < sz; i++) {
@@ -286,10 +292,9 @@ public class TypeInfer {
       changed |= es.eraseIf(IsVector);
       Util.assertion(!vs.isEmpty() && !es.isEmpty());
 
-
       HashSet<MVT> an = new HashSet<>(), bn = new HashSet<>();
       vs.forEach(vt -> an.add(vt.getVectorElementType()));
-      es.forEach(vt -> an.add(vt.getVectorElementType()));
+      es.forEach(vt -> bn.add(vt));
 
       changed |= vs.eraseIf(vt-> !bn.contains(vt.getVectorElementType()));
       changed |= es.eraseIf(vt -> !an.contains(vt));

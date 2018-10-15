@@ -28,7 +28,6 @@ import java.util.*;
 import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.iPTR;
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
-import static utils.tablegen.EEVT.isUnknown;
 import static utils.tablegen.SDNP.SDNPCommutative;
 import static utils.tablegen.SDNP.SDNPHasChain;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
@@ -498,16 +497,23 @@ public final class TreePatternNode implements Cloneable {
         }
 
         TreePatternNode child = getChild(childNo++);
-        if (operandNode.isSubClassOf("RegisterClass")) {
-          CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(operandNode);
+        if (operandNode.isSubClassOf("unknown_class"))
+          continue;
+
+        if (operandNode.isSubClassOf("RegisterClass") ||
+            operandNode.isSubClassOf("RegisterOperand")) {
+          Record op;
+          if (operandNode.isSubClassOf("RegisterClass"))
+             op = operandNode;
+          else
+            op = operandNode.getValueAsDef("RegClass");
+          CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(op);
           madeChanged |= child.updateNodeType(0, new TypeSetByHwMode(rc.getValueTypes()), tp);
         } else if (operandNode.isSubClassOf("Operand")) {
           ValueTypeByHwMode vts = getValueTypeByHwMode(operandNode.getValueAsDef("Type"), cdp.getTarget().getHwModes());
           madeChanged |= child.updateNodeType(0, vts, tp);
         } else if (operandNode.isSubClassOf("PointerLikeRegClass")) {
           madeChanged |= child.updateNodeType(0, iPTR, tp);
-        } else if (operandNode.getName().equals("unknown")) {
-          madeChanged |= child.updateNodeType(0, isUnknown, tp);
         } else {
           Util.assertion("Undefined operand type!");
           System.exit(0);

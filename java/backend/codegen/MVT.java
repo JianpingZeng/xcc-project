@@ -75,6 +75,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int v4f64          =  40;   //  4 x f64
   public static final int v8f64          =  41;   //  8 x f64
 
+  public static final int x86mmx         = 109;  // 64
+
   public static final int LAST_VALUETYPE = v8f64;   // This always remains at the end of the list.
 
   // This is the current maximum for LAST_VALUETYPE.
@@ -122,7 +124,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int LAST_FP_VALUETYPE = ppcf128;
 
   public static final int FIRST_INTEGER_VECTOR_VALUETYPE = v2i8;
-  public static final int LAST_INTEGER_VECTOR_VALUETYPE = v4f64;
+  public static final int LAST_INTEGER_VECTOR_VALUETYPE = v4i64;
 
   public static final int FIRST_FP_VECTOR_VALUETYPE = v2f16;
   public static final int LAST_FP_VECTOR_VALUETYPE = v8f64;
@@ -237,6 +239,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
         return "MVT.v4f64";
       case v8f64:
         return "MVT.v8f64";
+      case x86mmx:
+        return "MVT.x86mmx";
       case Metadata:
         return "MVT.Metadata";
       case iPTR:
@@ -294,6 +298,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case v2f32:
       case v4f16:
       case v1f64:
+      case x86mmx:
         return 64;
       case f80:
         return 80;
@@ -367,22 +372,22 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   }
 
   public boolean isFloatingPoint() {
-    return (simpleVT >= f32
-        && simpleVT < ppcf128) || (
-        simpleVT >= v2f32
-            && simpleVT <= v4f64);
+    return (simpleVT >= FIRST_FP_VALUETYPE &&
+        simpleVT <= LAST_FP_VALUETYPE) ||
+        (simpleVT >= FIRST_FP_VECTOR_VALUETYPE &&
+            simpleVT <= LAST_FP_VECTOR_VALUETYPE);
   }
 
   public boolean isInteger() {
     return (simpleVT >= FIRST_INTEGER_VALUETYPE
         && simpleVT <= LAST_INTEGER_VALUETYPE)
-        || (simpleVT >= v2i8
-        && simpleVT <= v4f64);
+        || (simpleVT >= FIRST_INTEGER_VECTOR_VALUETYPE
+        && simpleVT <= LAST_INTEGER_VECTOR_VALUETYPE);
   }
 
   public boolean isVector() {
-    return (simpleVT >= FIRST_INTEGER_VECTOR_VALUETYPE
-        && simpleVT <= LAST_INTEGER_VECTOR_VALUETYPE);
+    return (simpleVT >= FIRST_VECTOR_VALUETYPE
+        && simpleVT <= LAST_VECTOR_VALUETYPE);
   }
 
   public boolean isPower2VectorType() {

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import static utils.tablegen.SDNodeInfo.SDTypeConstraint.constraintType.*;
+import static utils.tablegen.SDNodeProperties.parseSDPatternOperatorProperties;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
@@ -49,50 +50,7 @@ public final class SDNodeInfo {
     numResults = (int) typeProfile.getValueAsInt("NumResults");
     numOperands = (int) typeProfile.getValueAsInt("NumOperands");
     this.hwModes = hwModes;
-
-    properties = 0;
-    ArrayList<Record> propList = r.getValueAsListOfDefs("Properties");
-    for (Record prop : propList) {
-      switch (prop.getName()) {
-        case "SDNPCommutative":
-          properties |= 1 << SDNP.SDNPCommutative;
-          break;
-        case "SDNPAssociative":
-          properties |= 1 << SDNP.SDNPAssociative;
-          break;
-        case "SDNPHasChain":
-          properties |= 1 << SDNP.SDNPHasChain;
-          break;
-        case "SDNPOutFlag":
-          properties |= 1 << SDNP.SDNPOutFlag;
-          break;
-        case "SDNPInFlag":
-          properties |= 1 << SDNP.SDNPInFlag;
-          break;
-        case "SDNPOptInFlag":
-          properties |= 1 << SDNP.SDNPOptInFlag;
-          break;
-        case "SDNPMayStore":
-          properties |= 1 << SDNP.SDNPMayStore;
-          break;
-        case "SDNPMayLoad":
-          properties |= 1 << SDNP.SDNPMayLoad;
-          break;
-        case "SDNPSideEffect":
-          properties |= 1 << SDNP.SDNPSideEffect;
-          break;
-        case "SDNPMemOperand":
-          properties |= 1 << SDNP.SDNPMemOperand;
-          break;
-        case "SDNPVariadic":
-          properties |= 1 << SDNP.SDNPVariadic;
-          break;
-        default:
-          Error.printError("Undefined SD Node property '" + prop.getName()
-              + "' on node '" + r.getName() + "'!");
-          System.exit(1);
-      }
-    }
+    properties = parseSDPatternOperatorProperties(r);
 
     // Parse the type constraints.
     typeConstraints = new ArrayList<>();
@@ -317,7 +275,7 @@ public final class SDNodeInfo {
         case SDTCisEltOfVec: {
           int[] vResNo = new int[1];
           TreePatternNode bigVecOp = getOperandNum(x, node, numResults, vResNo);
-          return infer.enforceVectorSubVectorTypesIs(bigVecOp.getExtType(vResNo[0]),
+          return infer.enforceVectorEltTypeIs(bigVecOp.getExtType(vResNo[0]),
               nodeToApply.getExtType(resNo));
         }
       }

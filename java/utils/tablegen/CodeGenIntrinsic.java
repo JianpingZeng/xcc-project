@@ -123,6 +123,11 @@ public final class CodeGenIntrinsic {
 
   ArrayList<Pair<Integer, ArgAttribute>> argumentAttributes = new ArrayList<>();
 
+  /**
+   * A bitwise of all properties.
+   */
+  private int properties;
+
   public CodeGenIntrinsic(Record r) {
     theDef = r;
     is = new IntrinsicSignature();
@@ -232,13 +237,11 @@ public final class CodeGenIntrinsic {
     }
 
     // Parse the intrinsic properties.
-    Init.ListInit propList = r.getValueAsListInit("Properties");
-    Util.assertion(propList!= null, "Intrinsic should have the member named Propertiess");
+    Init.ListInit propList = r.getValueAsListInit("IntrProperties");
+    Util.assertion(propList!= null, "Intrinsic should have the member named Properties");
     for (int i = 0, e = propList.getSize(); i != e; i++) {
       Record property = propList.getElementAsRecord(i);
-      Util.assertion(property.isSubClassOf("IntrinsicProperty"), "Expected a property!");
-
-
+//      Util.assertion(property.isSubClassOf("IntrinsicProperty"), "Expected a property!");
       switch (property.getName()) {
         case "IntrNoMem":
           modRef = ModRefType.NoMem;
@@ -268,6 +271,8 @@ public final class CodeGenIntrinsic {
         }
       }
     }
+    // Record the SDPatternOperator properties.
+    properties = SDNodeProperties.parseSDPatternOperatorProperties(r);
   }
 
   private int getValueType(Record record) {
@@ -275,8 +280,6 @@ public final class CodeGenIntrinsic {
   }
 
   public boolean hasProperty(int prop) {
-    // TODO: 18-9-29
-    Util.shouldNotReachHere();
-    return false;
+    return (properties & (1 << prop)) != 0;
   }
 }

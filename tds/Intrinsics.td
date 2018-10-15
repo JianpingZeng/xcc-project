@@ -138,14 +138,15 @@ def llvm_vararg_ty     : LLVMType<isVoid>;   // this means vararg here
 //
 class Intrinsic<list<LLVMType> ret_types,
                 list<LLVMType> param_types = [],
-                list<IntrinsicProperty> properties = [],
-                string name = ""> {
+                list<IntrinsicProperty> intr_properties = [],
+                string name = "",
+                list<SDNodeProperty> sd_properties = []> : SDPatternOperator{
   string LLVMName = name;
   string TargetPrefix = "";   // Set to a prefix for target-specific intrinsics.
   list<LLVMType> RetTypes = ret_types;
   list<LLVMType> ParamTypes = param_types;
-  list<IntrinsicProperty> Properties = properties;
-
+  list<IntrinsicProperty> IntrProperties = intr_properties;
+  let Properties = sd_properties;
   bit isTarget = 0;
 }
 
@@ -167,6 +168,7 @@ def int_vaend   : Intrinsic<[], [llvm_ptr_ty], [], "llvm.va_end">;
 
 //===------------------- Garbage Collection Intrinsics --------------------===//
 //
+/*
 def int_gcroot  : Intrinsic<[],
                             [llvm_ptrptr_ty, llvm_ptr_ty]>;
 def int_gcread  : Intrinsic<[llvm_ptr_ty],
@@ -175,7 +177,7 @@ def int_gcread  : Intrinsic<[llvm_ptr_ty],
 def int_gcwrite : Intrinsic<[],
                             [llvm_ptr_ty, llvm_ptr_ty, llvm_ptrptr_ty],
                             [IntrWriteArgMem, NoCapture<1>, NoCapture<2>]>;
-
+*/
 //===--------------------- Code Generator Intrinsics ----------------------===//
 //
 def int_returnaddress : Intrinsic<[llvm_ptr_ty], [llvm_i32_ty], [IntrNoMem]>;
@@ -223,7 +225,7 @@ def int_memset  : Intrinsic<[],
 // These functions do not actually read memory, but they are sensitive to the
 // rounding mode.  This needs to be modelled separately; in the meantime
 // declaring them as reading memory is conservatively correct.
-let Properties = [IntrReadMem] in {
+let IntrProperties = [IntrReadMem] in {
   def int_sqrt : Intrinsic<[llvm_anyfloat_ty], [LLVMMatchType<0>]>;
   def int_powi : Intrinsic<[llvm_anyfloat_ty], [LLVMMatchType<0>, llvm_i32_ty]>;
   def int_sin  : Intrinsic<[llvm_anyfloat_ty], [LLVMMatchType<0>]>;
@@ -247,7 +249,7 @@ def int_siglongjmp : Intrinsic<[], [llvm_ptr_ty, llvm_i32_ty]>;
 //
 
 // None of these intrinsics accesses memory at all.
-let Properties = [IntrNoMem] in {
+let IntrProperties = [IntrNoMem] in {
   def int_bswap: Intrinsic<[llvm_anyint_ty], [LLVMMatchType<0>]>;
   def int_ctpop: Intrinsic<[llvm_anyint_ty], [LLVMMatchType<0>]>;
   def int_ctlz : Intrinsic<[llvm_anyint_ty], [LLVMMatchType<0>]>;
@@ -260,7 +262,7 @@ let Properties = [IntrNoMem] in {
 // None of these intrinsics accesses memory at all...but that doesn't mean the
 // optimizers can change them aggressively.  Special handling needed in a few
 // places.
-let Properties = [IntrNoMem] in {
+let IntrProperties = [IntrNoMem] in {
   def int_dbg_stoppoint    : Intrinsic<[],
                                        [llvm_i32_ty, llvm_i32_ty,
                                         llvm_descriptor_ty]>;
@@ -290,7 +292,7 @@ def int_eh_unwind_init: Intrinsic<[]>,
 
 def int_eh_dwarf_cfa  : Intrinsic<[llvm_ptr_ty], [llvm_i32_ty]>;
 
-let Properties = [IntrNoMem] in {
+let IntrProperties = [IntrNoMem] in {
   def int_eh_sjlj_setjmp  : Intrinsic<[llvm_i32_ty],  [llvm_ptr_ty]>;
   def int_eh_sjlj_longjmp : Intrinsic<[], [llvm_ptr_ty]>;
   def int_eh_sjlj_lsda    : Intrinsic<[llvm_ptr_ty]>;

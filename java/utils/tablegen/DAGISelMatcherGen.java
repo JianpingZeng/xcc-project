@@ -503,35 +503,32 @@ public class DAGISelMatcherGen {
     int numFixedOperands = ii.operandList.size();
     TIntArrayList instOps = new TIntArrayList();
 
+    // Loop over all of the operands of the instruction pattern, emitting code
+    // to fill them all in.  The node 'N' usually has number children equal to
+    // the number of input operands of the instruction.  However, in cases
+    // where there are predicate operands for an instruction, we need to fill
+    // in the 'execute always' values.  Match up the node operands to the
+    // instruction operands to do this.
     int childNo = 0;
-    for (int instOp = numResults, e = numFixedOperands; instOp != e; ++instOp) {
-      Record operandNode = ii.operandList.get(instOp).rec;
-      if (operandNode.isSubClassOf("OperandWithDefaultOps") &&
+    for (int instOpNo = numResults, e = ii.operandList.size();
+        instOpNo < e; ++instOpNo) {
+      Record operandNode = ii.operandList.get(instOpNo).rec;
+
+      // This is a predicate or optional def operand; emit the
+      // 'default ops' operands.
+      if ((operandNode.isSubClassOf("PredicateOperand") ||
+          operandNode.isSubClassOf("OptionalDefOperand")) &&
           !cgp.getDefaultOperand(operandNode).defaultOps.isEmpty()) {
-        DAGDefaultOperand defaultOp = cgp.getDefaultOperand(operandNode);
+        DAGDefaultOperand defaultOp =
+            cgp.getDefaultOperand(ii.operandList.get(instOpNo).rec);
         for (int i = 0, sz = defaultOp.defaultOps.size(); i < sz; i++)
           emitResultOperand(defaultOp.defaultOps.get(i), instOps);
         continue;
       }
-      int numSubOps = 1;
-      if (operandNode.isSubClassOf("Operand")) {
-        Init.DagInit di = operandNode.getValueAsDag("MIOperandInfo");
-        int numArgs = di.getNumArgs();
-        if (numArgs != 0) numSubOps = numArgs;
-      }
 
-      int finalNumOps = instOps.size() + numSubOps;
-      while (instOps.size() < finalNumOps) {
-        TreePatternNode child = n.getChild(childNo);
-        int beforeAddingNumOps = instOps.size();
-        emitResultOperand(child, instOps);
-
-        Util.assertion(instOps.size() > beforeAddingNumOps);
-        if (!child.isLeaf() && child.getOperator().isSubClassOf("Instruction"))
-          instOps.ensureCapacity(beforeAddingNumOps+1);
-
-        ++childNo;
-      }
+      // Otherwise this is a normal operand or a predicate operand without
+      // 'execute always'; emit it.
+      emitResultOperand(n.getChild(childNo++), instOps);
     }
 
     if (ii.isVariadic) {

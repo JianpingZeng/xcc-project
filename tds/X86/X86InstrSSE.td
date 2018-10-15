@@ -2873,13 +2873,13 @@ let Predicates = [HasSSE2] in {
 let AddedComplexity = 15 in {
 // Zeroing a VR128 then do a MOVS{S|D} to the lower bits.
 def : Pat<(v2f64 (X86vzmovl (v2f64 (scalar_to_vector FR64:$src)))),
-          (MOVLSD2PDrr (V_SET0), FR64:$src)>, Requires<[HasSSE2]>;
+          (MOVLSD2PDrr (v2f64 (V_SET0)), FR64:$src)>, Requires<[HasSSE2]>;
 def : Pat<(v4f32 (X86vzmovl (v4f32 (scalar_to_vector FR32:$src)))),
-          (MOVLSS2PSrr (V_SET0), FR32:$src)>, Requires<[HasSSE1]>;
+          (MOVLSS2PSrr (v4f32 (V_SET0)), FR32:$src)>, Requires<[HasSSE1]>;
 def : Pat<(v4f32 (X86vzmovl (v4f32 VR128:$src))),
-          (MOVLPSrr (V_SET0), VR128:$src)>, Requires<[HasSSE1]>;
+          (MOVLPSrr (v4f32 (V_SET0)), VR128:$src)>, Requires<[HasSSE1]>;
 def : Pat<(v4i32 (X86vzmovl (v4i32 VR128:$src))),
-          (MOVLPSrr (V_SET0), VR128:$src)>, Requires<[HasSSE1]>;
+          (MOVLPSrr (v4i32 (V_SET0)), VR128:$src)>, Requires<[HasSSE1]>;
 }
 
 // Splat v2f64 / v2i64
@@ -3294,24 +3294,26 @@ let Constraints = "$src1 = $dst" in {
                                                    VR128:$src2))]>, OpSize {
       let isCommutable = Commutable;
     }
-    def rr_int : SS48I<opc, MRMSrcReg, (outs VR128:$dst),
+
+    /*def rr_int : SS48I<opc, MRMSrcReg, (outs VR128:$dst),
                       (ins VR128:$src1, VR128:$src2),
                       !strconcat(OpcodeStr, "\t{$src2, $dst|$dst, $src2}"),
                       [(set VR128:$dst, (IntId128 VR128:$src1, VR128:$src2))]>,
                       OpSize {
       let isCommutable = Commutable;
-    }
+    }*/
     def rm : SS48I<opc, MRMSrcMem, (outs VR128:$dst),
                    (ins VR128:$src1, i128mem:$src2),
                    !strconcat(OpcodeStr, "\t{$src2, $dst|$dst, $src2}"),
                    [(set VR128:$dst,
-                     (OpNode VR128:$src1, (memop addr:$src2)))]>, OpSize;
-    def rm_int : SS48I<opc, MRMSrcMem, (outs VR128:$dst),
+                     (OpVT (OpNode VR128:$src1, (bitconvert (memopv2i64 addr:$src2)))))]>, OpSize;
+
+    /*def rm_int : SS48I<opc, MRMSrcMem, (outs VR128:$dst),
                        (ins VR128:$src1, i128mem:$src2),
                        !strconcat(OpcodeStr, "\t{$src2, $dst|$dst, $src2}"),
                        [(set VR128:$dst,
-                        (IntId128 VR128:$src1, (memop addr:$src2)))]>,
-                       OpSize;
+                        (OpVT (IntId128 VR128:$src1, (bitconvert( (memopv2i64 addr:$src2)))))]>,
+                       OpSize;*/
   }
 }
 defm PMULLD       : SS41I_binop_patint<0x40, "pmulld", v4i32, mul,

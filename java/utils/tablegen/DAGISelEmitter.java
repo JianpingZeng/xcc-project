@@ -34,7 +34,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.TreeSet;
 
 import static utils.tablegen.DAGISelMatcherEmitter.emitMatcherTable;
 import static utils.tablegen.DAGISelMatcherGen.convertPatternToMatcher;
@@ -65,11 +64,20 @@ public final class DAGISelEmitter extends TableGenBackend {
           "Covering for " + targetName + ".", os);
 
       // Add all the patterns to a temporary list so we can sort them.
-      TreeSet<PatternToMatch> patterns = new TreeSet<>(new PatternSortingPredicate(cgp));
+      ArrayList<PatternToMatch>patterns = new ArrayList<>();
+      patterns.addAll(cgp.getPatternsToMatch());
 
       // We want to process the matches in order of minimal cost.  Sort the patterns
       // so the least cost one is at the start.
-      patterns.addAll(cgp.getPatternsToMatch());
+      patterns.sort(new PatternSortingPredicate(cgp));
+
+      if (Util.DEBUG) {
+        patterns.forEach(tp ->
+        {
+          tp.dump();
+          System.err.println();
+        });
+      }
 
       // Convert the each variant of each pattern into a Matcher.
       ArrayList<Matcher> patternMatchers = new ArrayList<>();

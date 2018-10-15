@@ -49,6 +49,8 @@ def v2f64  : ValueType<128, 39>;   // 2 x f64 vector value
 def v4f64  : ValueType<256, 40>;   // 4 x f64 vector value
 def v8f64  : ValueType<512, 41>;   // 8 x f64 vector type
 
+def x86mmx : ValueType<64, 109>;   // X86 MMX value
+
 def MetadataVT: ValueType<0, 250>; // Metadata
 
 // Pseudo valuetype mapped to the current pointer size to any address space.

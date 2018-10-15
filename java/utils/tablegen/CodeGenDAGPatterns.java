@@ -89,22 +89,10 @@ public final class CodeGenDAGPatterns {
     // FIXME (Already fixed 2017.7.23) LLVM-tblgen has 1715 instructions after parseInstructions.
     parsePatterns();
 
-/*    patternsToMatch.forEach(tp ->
-    {
-      tp.dump();
-      System.err.println();
-    });*/
-
     // Break patterns with parameterized types into a series of patterns,
     // where each one has a fixed type and is predicated on the conditions
     // of the associated HW mode.
     expandHwModeBasedTypes();
-
-/*    patternsToMatch.forEach(tp ->
-    {
-      tp.dump();
-      System.err.println();
-    });*/
 
     verifyInstrTypes();
 
@@ -276,7 +264,9 @@ public final class CodeGenDAGPatterns {
     mayLoad = analyzer.mayLoad;
     hasSideEffect = analyzer.hasSideEffect;
 
+    // TODO 9/29/2018
     boolean error = false;
+    /*
     if (instInfo.mayStore != mayStore) {
       Error.printError(instInfo.theDef.getLoc(),
           String.format("Pattern doesn't match mayStore = %b",
@@ -291,8 +281,6 @@ public final class CodeGenDAGPatterns {
       error = true;
     }
 
-    /*
-    // TODO 9/29/2018
     if (instInfo.hasSideEffects != hasSideEffect) {
       Error.printError(instInfo.theDef.getLoc(),
           String.format("Pattern doesn't match hasSideEffects = %b",

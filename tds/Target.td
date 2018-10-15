@@ -1,3 +1,4 @@
+include "SDNodeProperties.td"
 include "ValueType.td"
 include "Intrinsics.td"
 
