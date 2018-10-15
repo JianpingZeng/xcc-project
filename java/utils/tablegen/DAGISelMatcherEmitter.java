@@ -50,6 +50,7 @@ import static utils.tablegen.SDNP.SDNPHasChain;
  * @version 0.4
  */
 public class DAGISelMatcherEmitter {
+  private static final int MAX_SIZE = 10900;
 
   private ArrayList<String> initializedMtds;
   private ArrayList<String> patternPredicates;
@@ -765,27 +766,11 @@ public class DAGISelMatcherEmitter {
     }
   }
 
-  private static final int MAX_SIZE = 10900;
-
   private void printMatcherTable(char[] table, long totalSize, PrintStream os) {
-    long NUM_PORTIONS = (totalSize / MAX_SIZE) + 1;
-    long SIZE_OF_PORTION = table.length/NUM_PORTIONS;
-    long LAST_REMAINED = table.length%SIZE_OF_PORTION;
-
-    for (int i = 0, j = 0; i < NUM_PORTIONS; i++) {
-      initializedMtds.add("init"+i);
-      os.printf("  private void init%d() {\n", i);
-      long e = i < NUM_PORTIONS-1 || LAST_REMAINED == 0 ? SIZE_OF_PORTION : LAST_REMAINED;
-      e += j;
-      int dstIdx = j;
-      os.print("    final int[] table = {\n");
-      for (; j<e; j++) {
-        os.printf("%c", table[j]);
-      }
-      os.printf("\n    };\n");
-      os.printf("    System.arraycopy(table, 0, matcherTable, %d, table.length);\n", dstIdx);
-      os.printf("  }\n");
-    }
+    os.println(" static final int[] table = {");
+    os.print(table);
+    os.println("};");
+    os.printf("  // Matcher Table size is %d bytes\n", totalSize);
   }
 
   public static void emitMatcherTable(Matcher matcher,
@@ -819,13 +804,14 @@ public class DAGISelMatcherEmitter {
     os.printf("  public %sGenDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {%n",
         targetName, targetName);
     os.println("    super(tm, optLevel);");
-    if (!emitter.initializedMtds.isEmpty()) {
+    os.println("    matcherTable = table;");
+/*    if (!emitter.initializedMtds.isEmpty()) {
       os.printf("    // Matcher Table size is %d bytes\n", totalSize);
       os.println("    // Calling to initializer method to initialize part");
       for (String mtd : emitter.initializedMtds) {
         os.printf("    %s();%n", mtd);
       }
-    }
+    }*/
     os.println("  }");
     os.println("}");
   }

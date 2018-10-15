@@ -71,5 +71,5 @@ enum MatcherKind {
   EmitNodeXForm,        // Run a SDNodeXForm
   MarkFlagResults,      // Indicate which interior nodes have flag results.
   CompleteMatch,        // Finish a match and update the results.
-  MorphNodeTo           // Build a node, finish a match and update results.
+  MorphNodeTo,           // Build a node, finish a match and update results.
 }
