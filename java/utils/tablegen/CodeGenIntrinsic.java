@@ -17,6 +17,7 @@ package utils.tablegen;
  */
 
 import backend.codegen.EVT;
+import backend.codegen.MVT;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Error;
 import tools.Pair;
@@ -165,6 +166,7 @@ public final class CodeGenIntrinsic {
     // Parse the list of return types.
     TIntArrayList overloadedVTs = new TIntArrayList();
     Init.ListInit typeList = r.getValueAsListInit("RetTypes");
+    Util.assertion(typeList!= null, "Intrinsic should have the member named RetTypes");
     for (int i = 0, e = typeList.getSize(); i != e; i++) {
       Record tyElt = typeList.getElementAsRecord(i);
       Util.assertion(tyElt.isSubClassOf("LLVMType"), "Expected a type!");
@@ -181,6 +183,10 @@ public final class CodeGenIntrinsic {
       } else {
         vt = getValueType(tyElt.getValueAsDef("VT"));
       }
+
+      if (vt == MVT.isVoid)
+        Error.printFatalError("Intrinsic '" + defName + " has void in result type list!");
+
       if (new EVT(vt).isOverloaded()) {
         overloadedVTs.add(vt);
         isOverloaded |= true;
@@ -189,11 +195,13 @@ public final class CodeGenIntrinsic {
       is.retTypeDefs.add(tyElt);
     }
 
-    if (is.retVTs.isEmpty())
-      Error.printFatalError("Intrinsic '" + defName + "' needs at least a type for the ret value!");
+    // Comment this for compatible with ValueTypeByHwMode in latest LLVM version.
+    // if (is.retVTs.isEmpty())
+    // Error.printFatalError("Intrinsic '" + defName + "' needs at least a type for the ret value!");
 
     // // Parse the list of parameter types.
     typeList = r.getValueAsListInit("ParamTypes");
+    Util.assertion(typeList!= null, "Intrinsic should have the member named ParamTypes");
     for (int i = 0, e = typeList.getSize(); i != e; i++) {
       Record tyElt = typeList.getElementAsRecord(i);
       Util.assertion(tyElt.isSubClassOf("LLVMType"), "Expected a type!");
@@ -210,6 +218,11 @@ public final class CodeGenIntrinsic {
       } else {
         vt = getValueType(tyElt.getValueAsDef("VT"));
       }
+
+      // Reject invalid types.
+      if (vt == MVT.isVoid && i != e-1 /*void at end means varargs*/)
+        Error.printFatalError("Intrinsic '" + defName + " has void in result type list!");
+
       if (new EVT(vt).isOverloaded()) {
         overloadedVTs.add(vt);
         isOverloaded |= true;
@@ -220,6 +233,7 @@ public final class CodeGenIntrinsic {
 
     // Parse the intrinsic properties.
     Init.ListInit propList = r.getValueAsListInit("Properties");
+    Util.assertion(propList!= null, "Intrinsic should have the member named Propertiess");
     for (int i = 0, e = propList.getSize(); i != e; i++) {
       Record property = propList.getElementAsRecord(i);
       Util.assertion(property.isSubClassOf("IntrinsicProperty"), "Expected a property!");

@@ -380,15 +380,15 @@ public final class TreePattern {
 
     LinkedList<TreePatternNode> children = new LinkedList<>();
 
-    for (int i = 0, e = dag.getNumArgs(); i != e; i++) {
-      Init arg = dag.getArg(i);
-      String argName = dag.getArgName(i);
-      children.add(parseTreePattern(arg, argName));
-    }
+    for (int i = 0, e = dag.getNumArgs(); i != e; i++)
+      children.add(parseTreePattern(dag.getArg(i), dag.getArgName(i)));
+
+    int numResults = getNumNodeResults(operator, getDAGPatterns());
     if (operator.isSubClassOf("Intrinsic")) {
       CodeGenIntrinsic cgi = getDAGPatterns().getIntrinsic(operator);
       int iid = getDAGPatterns().getIntrinsicID(operator)+1;
 
+      Util.assertion(cgi != null);
       if (cgi.is.retVTs.isEmpty())
         operator = getDAGPatterns().getIntrinsicVoidSDNode();
       else if (cgi.modRef != ModRefType.NoMem)
@@ -400,7 +400,6 @@ public final class TreePattern {
       children.addFirst(iidNode);
     }
 
-    int numResults = getNumNodeResults(operator, getDAGPatterns());
     TreePatternNode result = new TreePatternNode(operator, children, numResults);
     result.setName(opName);
     if (dag.getName() != null) {

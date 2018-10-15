@@ -372,20 +372,22 @@ public final class TreePatternNode implements Cloneable {
       for (int i = 0; i != numRetVTs; i++)
         madeChange |= updateNodeType(i, intrinsic.is.retVTs.get(i), tp);
 
-      if (getNumChildren() != numParamVTs + numRetVTs) {
+      if (getNumChildren() != numParamVTs + 1) {
         tp.error("Intrinsic '" + intrinsic.name + "' expects " + (
             numParamVTs + numRetVTs - 1) + " operands, not " + (
             getNumChildren() - 1) + " operands!");
+        return false;
       }
 
       madeChange |= getChild(0).updateNodeType(0, iPTR, tp);
 
-      for (int i = numRetVTs, e = getNumChildren(); i != e; i++) {
-        int opVT = intrinsic.is.paramVTs.get(i - numRetVTs);
-        madeChange |= getChild(i).updateNodeType(0, opVT, tp);
+      for (int i = 1, e = getNumChildren(); i != e; i++) {
         madeChange |= getChild(i).applyTypeConstraints(tp, notRegisters);
-      }
 
+        int opVT = intrinsic.is.paramVTs.get(i-1);
+        Util.assertion(getChild(i).getNumTypes() == 1, "Unhandled case");
+        madeChange |= getChild(i).updateNodeType(0, opVT, tp);
+      }
       return madeChange;
     } else if (getOperator().isSubClassOf("SDNode")) {
       SDNodeInfo ni = cdp.getSDNodeInfo(getOperator());
