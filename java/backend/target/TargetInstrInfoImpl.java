@@ -34,8 +34,10 @@ import java.util.ArrayList;
  * @version 0.1
  */
 public abstract class TargetInstrInfoImpl extends TargetInstrInfo {
-  protected TargetInstrInfoImpl(TargetInstrDesc[] desc) {
-    super(desc, -1, -1);
+  protected TargetInstrInfoImpl(TargetInstrDesc[] desc,
+                                int frameSetupOp,
+                                int frameDestroyOp) {
+    super(desc, frameSetupOp, frameDestroyOp);
   }
 
   @Override

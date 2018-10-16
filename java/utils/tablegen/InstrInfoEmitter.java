@@ -113,7 +113,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
       target.getInstructionsByEnumValue(numberedInstrs);
 
       // Emit all of the TargetInstrDesc records in there ENUM order.
-      os.printf("\n\t// // Since the java code limit to 65535, the initializer of %sInsts must be divided.\n",
+      os.printf("\n\t// Since the java code limit to 65535, the initializer of %sInsts must be divided.\n",
           targetName);
       os.printf("\tpublic final static TargetInstrDesc[] %sInsts = new TargetInstrDesc[%d];\n",
           targetName, numberedInstrs.size());
@@ -145,10 +145,10 @@ public final class InstrInfoEmitter extends TableGenBackend {
         os.printf("\t\tinit%sInsts%d();\n", targetName, i);
       os.printf("\t}\n");
 
-      os.printf("public %sGenInstrInfo() {\n" +
-          "\t\tsuper(%sInsts);\n\t}", targetName, targetName);
-
-      os.printf("}\n");
+      os.printf("  public %sGenInstrInfo(%sTargetMachine tm) {%n", targetName, targetName);
+      os.printf("    super(tm, %sInsts);%n", targetName);
+      os.println("  }\n");
+      os.println("}");
     } catch (FileNotFoundException e) {
       System.err.printf("File %s does not exist\n", outputFile);
       System.exit(1);

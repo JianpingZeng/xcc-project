@@ -73,4 +73,8 @@ public abstract class TargetSubtarget {
   }
 
   public abstract String parseSubtargetFeatures(String fs, String cpu);
+
+  public boolean is64Bit() {
+    return false;
+  }
 }

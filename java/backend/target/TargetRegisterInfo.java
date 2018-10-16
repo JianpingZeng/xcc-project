@@ -513,6 +513,10 @@ public abstract class TargetRegisterInfo {
     return getRegClassInfo(rc).spillAlignment;
   }
 
+  public int[] getRegisterClassVTs(TargetRegisterClass rc) {
+    return getRegClassInfo(rc).vts;
+  }
+
   public boolean isLegalTypeForRegClass(TargetRegisterClass rc, MVT vt) {
     for (int v : getRegClassInfo(rc).vts) {
       if (v == vt.simpleVT)

@@ -274,8 +274,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       case 1:
         // 8-bit
         if (b == GR8RegisterClass) {
-          if (a.getRegSize() == 2 || a.getRegSize() == 4
-              || a.getRegSize() == 8)
+          if (getRegSize(a) == 2 || getRegSize(a) == 4
+              || getRegSize(a) == 8)
             return a;
         } else if (b == GR8_ABCD_LRegisterClass || b == GR8_ABCD_HRegisterClass) {
           if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
@@ -323,7 +323,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       case 3:
         // 16-bit
         if (b == GR16RegisterClass) {
-          if (a.getRegSize() == 4 || a.getRegSize() == 8)
+          if (getRegSize(a) == 4 || getRegSize(a) == 8)
             return a;
         } else if (b == GR16_ABCDRegisterClass) {
           if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
@@ -349,7 +349,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       case 4:
         // 32-bit
         if (b == GR32RegisterClass || b == GR32_NOSPRegisterClass) {
-          if (a.getRegSize() == 8)
+          if (getRegSize(a) == 8)
             return a;
         } else if (b == GR32_ABCDRegisterClass) {
           if (a == GR64RegisterClass || a == GR64_ABCDRegisterClass
@@ -695,78 +695,6 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     }
 
     return opc;
-  }
-
-  /**
-   * This method is called during prolog/epilog code insertion to eliminate
-   * call frame setup and destroy pseudo instructions (but only if the
-   * Target is using them).  It is responsible for eliminating these
-   * instructions, replacing them with concrete instructions.  This method
-   * need only be implemented if using call frame setup/destroy pseudo
-   * instructions.
-   */
-  @Override
-  public void eliminateCallFramePseudoInstr(MachineFunction mf,
-                                            MachineInstr old) {
-    MachineInstr newOne = null;
-    MachineBasicBlock mbb = old.getParent();
-    if (!hasReservedCallFrame(mf)) {
-      // If we have a frame pointer, turn the adjcallstackup instruction into a
-      // 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
-      // <amt>'
-      long amount = old.getOperand(0).getImm();
-      if (amount != 0) {
-        int align = mf.getTarget().getFrameInfo().getStackAlignment();
-        amount = Util.roundUp(amount, align);
-
-        // stack setup pseudo instrcution.
-        if (old.getOpcode() == getCallFrameSetupOpcode()) {
-          newOne = buildMI(tii.get(is64Bit ? SUB64ri32 : SUB32ri),
-              stackPtr).
-              addReg(stackPtr).
-              addImm(amount).getMInstr();
-        } else {
-          Util.assertion(old.getOpcode() == getCallFrameDestroyOpcode());
-
-          long calleeAmt = old.getOperand(1).getImm();
-          amount -= calleeAmt;
-          if (amount != 0) {
-            int opc = amount < 128 ?
-                (is64Bit ? ADD64ri8 : ADD32ri8) :
-                (is64Bit ? ADD64ri32 : ADD32ri);
-            // stack destroy pseudo instruction.
-            newOne = buildMI(tii.get(opc), stackPtr).
-                addReg(stackPtr).
-                addImm(amount).getMInstr();
-          }
-        }
-        if (newOne != null) {
-          // The EFLAGS implicit def is dead.
-          newOne.getOperand(3).setIsDead(true);
-
-          // Replace the pseudo instruction with a new instruction.
-          mbb.insert(old, newOne);
-        }
-      }
-    } else if (old.getOpcode() == getCallFrameDestroyOpcode()) {
-      // If we are performing frame pointer elimination and if the callee pops
-      // something off the stack pointer, add it back.  We do this until we have
-      // more advanced stack pointer tracking ability.
-      long calleeAmt = old.getOperand(1).getImm();
-      if (calleeAmt != 0) {
-        int opc = (calleeAmt < 128) ?
-            (is64Bit ? SUB64ri8 : SUB32ri8) :
-            (is64Bit ? SUB64ri32 : SUB32ri);
-        newOne = buildMI(tii.get(opc), stackPtr).
-            addReg(stackPtr).addImm(calleeAmt).
-            getMInstr();
-
-        // The EFLAGS implicit def is dead.
-        newOne.getOperand(3).setIsDead(true);
-        mbb.insert(old, newOne);
-      }
-    }
-    old.removeFromParent();
   }
 
   /**

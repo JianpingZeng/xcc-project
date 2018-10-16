@@ -155,7 +155,7 @@ public class X86Subtarget extends TargetSubtarget {
     targetTriple = new Triple(tt);
     this.tm = tm;
     regInfo = new X86GenRegisterInfo(getHwMode());
-    instrInfo = new X86InstrInfo(tm);
+    instrInfo = new X86GenInstrInfo(tm);
     subTypeKeyValue = subTypeKV;
     this.featureKV = featureKV;
     picStyle = PICStyle.None;

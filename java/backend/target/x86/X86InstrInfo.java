@@ -58,6 +58,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       new OptionHiddenApplicator(Hidden));
 
   private X86TargetMachine tm;
+  private X86RegisterInfo registerInfo;
 
   /**
    * RegOp2MemOpTable2Addr, RegOp2MemOpTable0, RegOp2MemOpTable1,
@@ -129,9 +130,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       {XOR64ri8, XOR64mi8}, {XOR64rr, XOR64mr}, {XOR8ri, XOR8mi},
       {XOR8rr, XOR8mr}};
 
-  public X86InstrInfo(X86TargetMachine tm) {
-    super(X86GenInstrInfo.X86Insts);
+  public X86InstrInfo(X86TargetMachine tm, TargetInstrDesc[] desc) {
+    super(desc, tm.getSubtarget().is64Bit() ?
+            X86GenInstrNames.ADJCALLSTACKDOWN64 :
+            X86GenInstrNames.ADJCALLSTACKDOWN32,
+        tm.getSubtarget().is64Bit() ?
+            X86GenInstrNames.ADJCALLSTACKUP64:
+            X86GenInstrNames.ADJCALLSTACKUP32);
     this.tm = tm;
+    registerInfo = tm.getSubtarget().getRegisterInfo();
     TIntArrayList ambEntries = new TIntArrayList();
     regOp2MemOpTable2Addr = new TIntObjectHashMap<>();
     regOp2MemOpTable0 = new TIntObjectHashMap<>();
@@ -370,7 +377,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {PMAXUBrr, PMAXUBrm, 16}, {PMINSWrr, PMINSWrm, 16},
         {PMINUBrr, PMINUBrm, 16}, {PMULDQrr, PMULDQrm, 16},
         {PMULHUWrr, PMULHUWrm, 16}, {PMULHWrr, PMULHWrm, 16},
-        {PMULLDrr, PMULLDrm, 16}, {PMULLDrr_int, PMULLDrm_int, 16},
+        {PMULLDrr, PMULLDrm, 16}, //{PMULLDrr_int, PMULLDrm_int, 16},
         {PMULLWrr, PMULLWrm, 16}, {PMULUDQrr, PMULUDQrm, 16},
         {PORrr, PORrm, 16}, {PSADBWrr, PSADBWrm, 16},
         {PSLLDrr, PSLLDrm, 16}, {PSLLQrr, PSLLQrm, 16},
@@ -699,8 +706,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg,
-                            int subIdx, MachineInstr origin) {
+  public void reMaterialize(MachineBasicBlock mbb,
+                            int insertPos,
+                            int destReg,
+                            int subIdx,
+                            MachineInstr origin) {
     if (subIdx != 0 && TargetRegisterInfo.isPhysicalRegister(destReg)) {
       destReg = registerInfo.getSubReg(destReg, subIdx);
       subIdx = 0;
@@ -1875,8 +1885,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return opc;
   }
 
-  public void storeRegToStackSlot(MachineBasicBlock mbb, int index,
-                                  int srcReg, boolean isKill, int frameIndex, TargetRegisterClass rc) {
+  public void storeRegToStackSlot(MachineBasicBlock mbb,
+                                  int index,
+                                  int srcReg,
+                                  boolean isKill,
+                                  int frameIndex,
+                                  TargetRegisterClass rc) {
     MachineFunction MF = mbb.getParent();
     boolean isAligned =
         (registerInfo.getStackAlignment() >= 16) || registerInfo
@@ -2512,7 +2526,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     SDNode load = null;
     MachineFunction mf = dag.getMachineFunction();
     if (foldedLoad) {
-      EVT vt = rc.getVTs()[0];
+      EVT vt = new EVT(registerInfo.getRegisterClassVTs(rc)[0]);
       boolean isAligned = registerInfo.getStackAlignment() >= 16 ||
           registerInfo.needsStackRealignment(mf);
       SDValue[] ops = new SDValue[addrOps.size()];
@@ -2527,7 +2541,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     TargetRegisterClass destRC = null;
     if (tid.numDefs > 0) {
       destRC = tid.opInfo[0].getRegisterClass(registerInfo);
-      vts.add(destRC.getVTs()[0]);
+      vts.add(new EVT(registerInfo.getRegisterClassVTs(destRC)[0]));
     }
 
     for (int i = 0, e = node.getNumValues(); i < e; i++) {
@@ -3357,5 +3371,82 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       default:
         return false;
     }
+  }
+
+  /**
+   * This method is called during prolog/epilog code insertion to eliminate
+   * call frame setup and destroy pseudo instructions (but only if the
+   * Target is using them).  It is responsible for eliminating these
+   * instructions, replacing them with concrete instructions.  This method
+   * need only be implemented if using call frame setup/destroy pseudo
+   * instructions.
+   */
+  @Override
+  public void eliminateCallFramePseudoInstr(MachineFunction mf,
+                                            MachineInstr old) {
+    MachineInstr newOne = null;
+    MachineBasicBlock mbb = old.getParent();
+    TargetSubtarget subtarget = mf.getSubtarget();
+    TargetRegisterInfo tri = subtarget.getRegisterInfo();
+    boolean is64Bit = subtarget.is64Bit();
+    int stackPtr = tri.getFrameRegister(mf);
+
+    if (!tri.hasReservedCallFrame(mf)) {
+      // If we have a frame pointer, turn the adjcallstackup instruction into a
+      // 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
+      // <amt>'
+      long amount = old.getOperand(0).getImm();
+      if (amount != 0) {
+        int align = mf.getTarget().getFrameInfo().getStackAlignment();
+        amount = Util.roundUp(amount, align);
+
+        // stack setup pseudo instrcution.
+        if (old.getOpcode() == getCallFrameSetupOpcode()) {
+          newOne = buildMI(get(is64Bit ? SUB64ri32 : SUB32ri),
+              stackPtr).
+              addReg(stackPtr).
+              addImm(amount).getMInstr();
+        } else {
+          Util.assertion(old.getOpcode() == getCallFrameDestroyOpcode());
+
+          long calleeAmt = old.getOperand(1).getImm();
+          amount -= calleeAmt;
+          if (amount != 0) {
+            int opc = amount < 128 ?
+                (is64Bit ? ADD64ri8 : ADD32ri8) :
+                (is64Bit ? ADD64ri32 : ADD32ri);
+            // stack destroy pseudo instruction.
+            newOne = buildMI(get(opc), stackPtr).
+                addReg(stackPtr).
+                addImm(amount).getMInstr();
+          }
+        }
+        if (newOne != null) {
+          // The EFLAGS implicit def is dead.
+          newOne.getOperand(3).setIsDead(true);
+
+          // Replace the pseudo instruction with a new instruction.
+          mbb.insert(old, newOne);
+        }
+      }
+    } else if (old.getOpcode() == getCallFrameDestroyOpcode()) {
+      // If we are performing frame pointer elimination and if the callee pops
+      // something off the stack pointer, add it back.  We do this until we have
+      // more advanced stack pointer tracking ability.
+      long calleeAmt = old.getOperand(1).getImm();
+      if (calleeAmt != 0) {
+        int opc = (calleeAmt < 128) ?
+            (is64Bit ? SUB64ri8 : SUB32ri8) :
+            (is64Bit ? SUB64ri32 : SUB32ri);
+        newOne = buildMI(get(opc), stackPtr).
+            addReg(stackPtr).addImm(calleeAmt).
+            getMInstr();
+
+        // The EFLAGS implicit def is dead.
+        newOne.getOperand(3).setIsDead(true);
+        mbb.insert(old, newOne);
+      }
+    }
+    old.removeFromParent();
   }
 }

@@ -71,7 +71,7 @@ public abstract class TargetInstrInfo {
   /**
    * an array of target instruction.
    */
-  private TargetInstrDesc[] descs;
+  protected TargetInstrDesc[] descs;
 
   /**
    * The opcode of setting up stack frame for function being compiled.

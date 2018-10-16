@@ -26,10 +26,6 @@ import static backend.target.x86.X86Subtarget.PICStyle.*;
  */
 public class X86TargetMachine extends LLVMTargetMachine {
   /**
-   * All x86 instruction information can be accessed by this.
-   */
-  private X86InstrInfo instrInfo;
-  /**
    * A stack frame info class used for organizing data layout of frame when
    * function calling.
    */
@@ -42,12 +38,11 @@ public class X86TargetMachine extends LLVMTargetMachine {
   public X86TargetMachine(Target t, String triple,
                           String fs, boolean is64Bit) {
     super(t, triple);
-    subtarget = X86Subtarget.createX86Subtarget(triple, fs, this);
+    subtarget = new X86GenSubtarget(triple, fs, this);
     dataLayout = new TargetData(subtarget.getDataLayout());
     frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
         (subtarget.isTargetWin64() ? -40 :
             (subtarget.is64Bit() ? -8 : -4)));
-    instrInfo = new X86InstrInfo(this);
     tli = new X86TargetLowering(this);
 
     defRelocModel = getRelocationModel();

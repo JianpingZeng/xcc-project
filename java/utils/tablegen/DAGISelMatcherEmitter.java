@@ -243,7 +243,7 @@ public class DAGISelMatcherEmitter {
         os.printf("OPC_CheckPatternPredicate, %d,", getPatternPredicate(pred));
         if (!OmitComments.value) {
           os.padToColumn(CommentIndent);
-          os.printf("// %s", pred);
+          os.printf("// %s\n", pred);
         }
         return 2;
       }
@@ -397,7 +397,7 @@ public class DAGISelMatcherEmitter {
       case EmitStringInteger: {
         EmitStringIntegerMatcher esm = (EmitStringIntegerMatcher) m;
         String val = esm.getValue();
-        os.printf("OPC_EmitStringInteger, %s, %sGenInstrInfo.%s,\n",
+        os.printf("OPC_EmitStringInteger, %s, %sGenRegisterInfo.%s,\n",
             MVT.getEnumName(esm.getVT()), targetName, val);
         return 3;
       }
