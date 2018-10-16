@@ -95,7 +95,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * This variable should be statically initialized in class [*]GenDAGISel,
    * like {@code RISCVGenDAGISel}.
    */
-  protected byte[] matcherTable;
+  protected int[] matcherTable;
 
   public SelectionDAGISel(TargetMachine tm, CodeGenOpt optLevel) {
     this.tm = tm;
@@ -361,7 +361,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return val;
   }
 
-  boolean checkSame(byte[] matcherTable,
+  boolean checkSame(int[] matcherTable,
                            OutRef<Integer> matcherIndex,
                            SDValue n,
                            ArrayList<SDValue> recordedNodes) {
@@ -371,7 +371,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return n.equals(recordedNodes.get(recNo));
   }
 
-  boolean checkOpcode(byte[] matcherTable,
+  boolean checkOpcode(int[] matcherTable,
                       OutRef<Integer> matcherIndex,
                       SDNode n) {
     int opc = matcherTable[matcherIndex.get()];
@@ -379,7 +379,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return n.getOpcode() == opc;
   }
 
-  boolean checkType(byte[] matcherTable,
+  boolean checkType(int[] matcherTable,
                     OutRef<Integer> matcherIndex,
                     SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
@@ -390,7 +390,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return vt == MVT.iPTR && n.getValueType().equals(tli.getPointerTy());
   }
 
-  boolean checkChildType(byte[] matcherTable,
+  boolean checkChildType(int[] matcherTable,
                          OutRef<Integer> matcherIndex,
                          SDValue n,
                          int childNo) {
@@ -399,7 +399,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return checkType(matcherTable, matcherIndex, n.getOperand(childNo));
   }
 
-  boolean checkCondCode(byte[] matcherTable,
+  boolean checkCondCode(int[] matcherTable,
                         OutRef<Integer> matcherIndex,
                         SDValue n) {
     int cc = matcherTable[matcherIndex.get()];
@@ -408,7 +408,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         CondCode.values()[cc];
   }
 
-  boolean checkValueType(byte[] matcherTable,
+  boolean checkValueType(int[] matcherTable,
                          OutRef<Integer> matcherIndex,
                          SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
@@ -420,7 +420,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return vt == MVT.iPTR && actualVT.equals(tli.getPointerTy());
   }
 
-  boolean checkInteger(byte[] matcherTable,
+  boolean checkInteger(int[] matcherTable,
                        OutRef<Integer> matcherIndex,
                        SDValue n) {
     long val = matcherTable[matcherIndex.get()];
@@ -434,7 +434,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return c.getSExtValue() == val;
   }
 
-  boolean checkAndImm(byte[] matcherTable,
+  boolean checkAndImm(int[] matcherTable,
                       OutRef<Integer> matcherIndex,
                       SDValue n) {
     if (n.getOpcode() != ISD.AND) return false;
@@ -450,7 +450,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return checkAndMask(n.getOperand(0), c, val);
   }
 
-  boolean checkOrImm(byte[] matcherTable,
+  boolean checkOrImm(int[] matcherTable,
                      OutRef<Integer> matcherIndex,
                      SDValue n) {
     if (n.getOpcode() != ISD.OR) return false;
@@ -467,13 +467,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
 
-  public boolean checkPatternPredicate(byte[] matcherTable,
+  public boolean checkPatternPredicate(int[] matcherTable,
                                 OutRef<Integer> matcherIndex) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
 
-  public boolean checkNodePredicate(byte[] matcherTable,
+  public boolean checkNodePredicate(int[] matcherTable,
                              OutRef<Integer> matcherIndex,
                              SDNode n) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");

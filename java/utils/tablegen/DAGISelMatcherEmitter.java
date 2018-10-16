@@ -135,6 +135,10 @@ public class DAGISelMatcherEmitter {
     return res;
   }
 
+  private String getFullRegisterName(String reg) {
+    return targetName +"GenRegisterNames." + reg;
+  }
+
   private long emitMatcher(Matcher m,
                            int indent,
                            int currentIdx,
@@ -393,8 +397,8 @@ public class DAGISelMatcherEmitter {
       case EmitStringInteger: {
         EmitStringIntegerMatcher esm = (EmitStringIntegerMatcher) m;
         String val = esm.getValue();
-        os.printf("OPC_EmitStringInteger, %s, %s,\n",
-            MVT.getEnumName(esm.getVT()), val);
+        os.printf("OPC_EmitStringInteger, %s, %sGenInstrInfo.%s,\n",
+            MVT.getEnumName(esm.getVT()), targetName, val);
         return 3;
       }
       case EmitRegister: {
@@ -426,7 +430,7 @@ public class DAGISelMatcherEmitter {
       case EmitCopyToReg: {
         EmitCopyToRegMatcher ecm = (EmitCopyToRegMatcher) m;
         os.printf("OPC_EmitCopyToReg, %d, %s,\n",
-            ecm.getSrcSlot(), ecm.getDstPhysReg().getName());
+            ecm.getSrcSlot(), getFullRegisterName(ecm.getDstPhysReg().getName()));
         return 3;
       }
       case EmitNodeXForm: {
@@ -550,7 +554,9 @@ public class DAGISelMatcherEmitter {
   }
 
   private void emitTargetOpcode(String opc, FormattedOutputStream os) {
-    opc = targetName+"GenInstrNames" + opc.substring(targetName.length());
+    if (opc.startsWith(targetName))
+      opc = targetName+"GenInstrNames" + opc.substring(targetName.length());
+
     os.printf("(byte)%s&255, (byte)%s>>8", opc, opc);
   }
 
@@ -784,7 +790,10 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.MVT;");
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");
-    os.println("import static backend.codegen.dagisel.CondCode.*;");
+	os.println("import backend.target.TargetInstrInfo;");
+    os.printf("import backend.target.%s.%sInstrInfo;%n", 
+			targetName.toLowerCase(), targetName);
+	os.println("import static backend.codegen.dagisel.CondCode.*;");
     os.println();
 
     os.printf("public final class %sGenDAGISel extends %sDAGISel {%n",

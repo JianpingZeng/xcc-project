@@ -289,13 +289,13 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     }
   }
 
-  public abstract boolean predicate_i16immSExt8(SDNode n);
+  public boolean predicate_i16immSExt8(SDNode n) { return false; }
 
-  public abstract boolean predicate_i32immSExt8(SDNode n);
+  public boolean predicate_i32immSExt8(SDNode n) { return false; }
 
-  public abstract boolean predicate_i64immSExt8(SDNode n);
+  public boolean predicate_i64immSExt8(SDNode n) { return false; }
 
-  public abstract boolean predicate_i64immSExt32(SDNode n);
+  public boolean predicate_i64immSExt32(SDNode n) { return false; }
 
   protected boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am) {
     Util.assertion(val.getOpcode() == X86ISD.SegmentBaseAddress);
@@ -1194,7 +1194,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     SDValue n2 = n.getOperand(2);
     if (!(n1.getNode() instanceof FrameIndexSDNode)
         || !(n2.getNode() instanceof GlobalAddressSDNode)) {
-      cannotYetSelect(n);
+      cannotYetSelect(n.getNode());
     }
     EVT pty = new EVT(tli.getPointerTy());
     int fi = ((FrameIndexSDNode) n1.getNode()).getFrameIndex();

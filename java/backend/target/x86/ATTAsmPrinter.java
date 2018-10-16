@@ -42,7 +42,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdC
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class X86ATTAsmPrinter extends AsmPrinter {
+public abstract class ATTAsmPrinter extends AsmPrinter {
   /**
    * A statistic for indicating the numbeer of emitted machine
    * instruction by this asm printer.
@@ -58,8 +58,8 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter {
   private TreeMap<String, String> hiddenGVStubs;
   private TreeMap<String, String> fnStubs;
 
-  public X86ATTAsmPrinter(OutputStream os, X86TargetMachine tm,
-                          TargetAsmInfo tai, boolean v) {
+  public ATTAsmPrinter(OutputStream os, X86TargetMachine tm,
+                       TargetAsmInfo tai, boolean v) {
     super(os, tm, tai, v);
     mbbNumber = new TObjectIntHashMap<>();
     subtarget = tm.getSubtarget();
@@ -1248,7 +1248,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter {
 
   protected abstract boolean printInstruction(MachineInstr mi);
 
-  public static X86ATTAsmPrinter createX86AsmCodeEmitter(
+  public static ATTAsmPrinter createX86AsmCodeEmitter(
       OutputStream os,
       X86TargetMachine tm,
       TargetAsmInfo tai,
