@@ -80,7 +80,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
   }
 
   @Override
-  public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root) {
+  public boolean isLegalAndProfitableToFold(SDValue node, SDNode use, SDNode root) {
     if (optLevel == TargetMachine.CodeGenOpt.None) return false;
 
     if (Objects.equals(use, root)) {
@@ -138,7 +138,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     SDValue in2 = node.getOperand(2);
     SDValue in3 = node.getOperand(3);
     SDValue[] temp = new SDValue[5];
-    if (!selectAddr(in1, in2, temp))
+    if (!selectAddr(in1.getNode(), in2, temp))
       return null;
 
     SDValue lsi = node.getOperand(4);
@@ -160,7 +160,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     SDValue ptr = node.getOperand(1);
     SDValue val = node.getOperand(2);
     SDValue[] temp = new SDValue[5];
-    if (!selectAddr(ptr, ptr, temp))
+    if (!selectAddr(ptr.getNode(), ptr, temp))
       return null;
 
     boolean isInc = false, isDec = false, isSub = false, isCN = false;
@@ -760,7 +760,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
    * @param comp
    * @return
    */
-  protected boolean selectAddr(SDValue op, SDValue n, SDValue[] comp) {
+  protected boolean selectAddr(SDNode op, SDValue n, SDValue[] comp) {
     X86ISelAddressMode am = new X86ISelAddressMode();
     boolean done = false;
     if (!n.hasOneUse()) {
@@ -791,7 +791,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectLEAAddr(SDValue op, SDValue val, SDValue[] comp) {
+  protected boolean selectLEAAddr(SDNode op, SDValue val, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     X86ISelAddressMode am = new X86ISelAddressMode();
     SDValue copy = am.segment;
@@ -839,7 +839,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectTLSADDRAddr(SDValue op, SDValue val, SDValue[] comp) {
+  protected boolean selectTLSADDRAddr(SDNode op, SDValue val, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     Util.assertion(val.getOpcode() == ISD.TargetGlobalTLSAddress);
     GlobalAddressSDNode ga = (GlobalAddressSDNode) val.getNode();
@@ -861,7 +861,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectScalarSSELoad(SDValue op, SDValue pred, SDValue node, SDValue[] comp) {
+  protected boolean selectScalarSSELoad(SDNode root, SDValue n, SDValue[] comp) {
     // comp[0]  -- base
     // comp[1]  -- scale
     // comp[2]  -- index
@@ -871,28 +871,27 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     // comp[6]  -- outChain
 
     Util.assertion(comp.length == 7);
-    if (node.getOpcode() == ISD.SCALAR_TO_VECTOR) {
-      comp[5] = node.getOperand(0).getValue(1);
+    if (n.getOpcode() == ISD.SCALAR_TO_VECTOR) {
+      comp[5] = n.getOperand(0).getValue(1);
       if (comp[5].getNode().isNONExtLoad() &&
           comp[5].getValue(0).hasOneUse() &&
-          node.hasOneUse() &&
-          isLegalAndProfitableToFold(node.getNode(), pred.getNode(),
-              op.getNode())) {
+          n.hasOneUse() &&
+          isLegalAndProfitableToFold(n.getOperand(0), n.getNode(), root)) {
         LoadSDNode ld = (LoadSDNode) comp[5].getNode();
-        if (!selectAddr(op, ld.getBasePtr(), comp))
+        if (!selectAddr(root, ld.getBasePtr(), comp))
           return false;
         comp[6] = ld.getChain();
         return true;
       }
     }
 
-    if (node.getOpcode() == X86ISD.VZEXT_MOVL && node.getNode().hasOneUse() &&
-        node.getOperand(0).getOpcode() == ISD.SCALAR_TO_VECTOR &&
-        node.getOperand(0).getNode().hasOneUse() &&
-        node.getOperand(0).getOperand(0).getNode().isNONExtLoad() &&
-        node.getOperand(0).getOperand(0).hasOneUse()) {
-      LoadSDNode ld = (LoadSDNode) node.getOperand(0).getOperand(0).getNode();
-      if (!selectAddr(op, ld.getBasePtr(), comp))
+    if (n.getOpcode() == X86ISD.VZEXT_MOVL && n.getNode().hasOneUse() &&
+        n.getOperand(0).getOpcode() == ISD.SCALAR_TO_VECTOR &&
+        n.getOperand(0).getNode().hasOneUse() &&
+        n.getOperand(0).getOperand(0).getNode().isNONExtLoad() &&
+        n.getOperand(0).getOperand(0).hasOneUse()) {
+      LoadSDNode ld = (LoadSDNode) n.getOperand(0).getOperand(0).getNode();
+      if (!selectAddr(root, ld.getBasePtr(), comp))
         return false;
       comp[6] = ld.getChain();
       comp[5] = new SDValue(ld, 1);
@@ -901,11 +900,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
-  protected boolean tryFoldLoad(SDValue pred, SDValue node, SDValue[] comp) {
+  protected boolean tryFoldLoad(SDNode pred, SDValue node, SDValue[] comp) {
     Util.assertion(comp.length == 5);
     if (node.getNode().isNONExtLoad() &&
         node.getNode().hasOneUse() &&
-        isLegalAndProfitableToFold(node.getNode(), pred.getNode(), pred.getNode()))
+        isLegalAndProfitableToFold(node, pred, pred))
       return selectAddr(pred, node.getOperand(1), comp);
 
     return false;

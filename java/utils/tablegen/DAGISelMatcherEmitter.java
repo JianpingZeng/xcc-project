@@ -794,11 +794,8 @@ public class DAGISelMatcherEmitter {
 
         os.printf("      case %d: {%n", i);
         os.printf("        SDValue[] tmp = new SDValue[%d];%n", numOps);
-        os.printf("        return %s(root, n", cp.getSelectFunc());
-        for (int j = 0; j < numOps; j++)
-          os.printf(", tmp[%d]", j);
-        os.println(");");
-        os.println("      }");
+        os.printf("        return %s(root, n, tmp);\n", cp.getSelectFunc());
+        os.println("     }");
       }
       os.println("    }");
       os.println("  }");
@@ -881,10 +878,20 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");
     os.println("import backend.target.TargetInstrInfo;");
-    os.printf("import backend.target.%s.%sInstrInfo;%n",
-        targetName.toLowerCase(), targetName);
-    os.println("import static backend.codegen.dagisel.CondCode.*;");
+    /*os.printf("import backend.target.%s.%sInstrInfo;%n",
+        targetName.toLowerCase(), targetName);*/
+    os.println("import backend.codegen.dagisel.SDNode;");
+    os.println("import backend.target.TargetMachine.CodeModel;");
+    os.println("import backend.target.TargetMachine.RelocModel;");
+    os.println("import backend.type.PointerType;");
+    os.println("import backend.value.Value;");
+    os.println("import tools.Util;");
+    os.println();
+    os.println("import static backend.codegen.dagisel.BuiltinOpcodes.*;");
+    os.println("import static backend.codegen.dagisel.SDNode.*;");
+    os.println();
     os.println("import java.lang.reflect.Method;");
+    os.println("import java.util.ArrayList;");
     os.println();
 
     String className = targetName + "GenDAGISel";
@@ -897,25 +904,28 @@ public class DAGISelMatcherEmitter {
     int totalSize = emitter.emitMatcherList(matcher, 5, 0, fos);
     printMatcherTable(baos.toString(), totalSize, os);
 
+    fos = new FormattedOutputStream(os);
     emitter.emitHistogram(matcher, fos);
     emitter.emitPredicateFunctions(cdp, fos);
 
     // emit constructor function.
-    os.printf("  public %sGenDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {%n",
+    os.printf("\n  public %sGenDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {%n",
         targetName, targetName);
     os.println("    super(tm, optLevel);");
-    os.printf("     try {\n" +
-        "            Class dagisel = Class.forName(\"%s\");\n" +
-        "            int index = 0;\n" +
-        "            for (int i = 0; i < %d; i++) {\n" +
-        "              Method m = dagisel.getDeclaredMethod(\"initTable\"+i);\n" +
-        "              int[] table = (int[])m.invoke(null, (Object[]) null);\n" +
-        "              System.arraycopy(table, 0, matcherTable, index, table.length);\n" +
-        "              index += table.length;\n" +
-        "            }\n" +
-        "          } catch (Exception e) {\n" +
-        "            e.printStackTrace();\n" +
-        "          }\n", className, index);
+    os.printf("    matcherTable = new int[%d];\n", totalSize);
+    os.printf("    try {\n" +
+        "      Class dagisel = Class.forName(\"%s\");\n" +
+        "      int index = 0;\n" +
+        "      for (int i = 0; i < %d; i++) {\n" +
+        "        Method m = dagisel.getDeclaredMethod(\"initTable\"+i);\n" +
+        "        int[] table = (int[])m.invoke(null, (Object[]) null);\n" +
+        "        System.arraycopy(table, 0, matcherTable, index, table.length);\n" +
+        "        index += table.length;\n" +
+        "      }\n" +
+        "      Util.assertion(index == %d, \"Inconsistency number of items in matcher table\");\n" +
+        "    } catch (Exception e) {\n" +
+        "      e.printStackTrace();\n" +
+        "    }\n", className, index, totalSize);
     os.println("  }");
     os.println("}");
   }

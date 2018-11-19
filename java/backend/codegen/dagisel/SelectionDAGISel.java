@@ -1187,8 +1187,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
           // Check to see that the target thinks this is profitable to fold and that
           // we can fold it without inducing cycles in the graph.
-          if (!isLegalAndProfitableToFold(n.getNode(),
-              nodeStack.get(nodeStack.size() - 1).getNode(), nodeToMatch))
+          if (!isLegalAndProfitableToFold(n, nodeStack.get(nodeStack.size() - 1).getNode(), nodeToMatch))
             break;
           continue;
         }
@@ -1798,7 +1797,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     sdl.phiNodesToUpdate.clear();
   }
 
-  public boolean isLegalAndProfitableToFold(SDNode node, SDNode use, SDNode root) {
+  public boolean isLegalAndProfitableToFold(SDValue node, SDNode use, SDNode root) {
     if (optLevel == CodeGenOpt.None) return false;
 
     EVT vt = root.getValueType(root.getNumValues() - 1);
@@ -1809,7 +1808,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       root = fu;
       vt = root.getValueType(root.getNumValues() - 1);
     }
-    return !isNonImmUse(root, node, use);
+    return !isNonImmUse(root, node.getNode(), use);
   }
 
   static SDNode findFlagUse(SDNode node) {
