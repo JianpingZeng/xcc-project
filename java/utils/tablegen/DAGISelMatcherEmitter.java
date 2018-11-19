@@ -339,7 +339,7 @@ public class DAGISelMatcherEmitter {
         os.print("OPC_CheckInteger, ");
         long bytes = emitVBRValue(((CheckIntegerMatcher) m).getValue(), os);
         os.println();
-        return bytes;
+        return bytes + 1;
       }
       case CheckCondCode:
         os.printf("OPC_CheckCondCode, CondCode.%s.ordinal(),\n",
@@ -539,7 +539,7 @@ public class DAGISelMatcherEmitter {
           baos = new ByteArrayOutputStream();
           tmpOS = new PrintStream(baos);
           cmm.getPattern().getDstPattern().print(tmpOS);
-          os.print(baos.toString());
+          os.println(baos.toString());
         }
         return 2 + numResultBytes;
       }
@@ -564,7 +564,7 @@ public class DAGISelMatcherEmitter {
     long inVal = val;
     int numBytes = 0;
     while (val >= 128) {
-      os.printf("%d|128", (byte) val & 127);
+      os.printf("%d|128,", (byte) val & 127);
       val >>= 7;
       ++numBytes;
     }
@@ -849,6 +849,21 @@ public class DAGISelMatcherEmitter {
           ++i;
         }
 
+        // If we can't see any OPC_CompleteMatch in the successive part, we have to
+        // include this part into current function instead of separating it into other function
+        boolean shouldSplit = false;
+        for (int j = i; j < size - endMarker.length(); j++) {
+          if (table.substring(j, j + endMarker.length()).equals(endMarker)) {
+            shouldSplit = true;
+            break;
+          }
+        }
+
+        if (!shouldSplit) {
+          for (;i < size; i++)
+            os.print(table.charAt(i));
+        }
+
         // Create a new initializing sub-routines.
         os.println("    };");
         os.println("    return table;");
@@ -917,7 +932,7 @@ public class DAGISelMatcherEmitter {
     os.println("    super(tm, optLevel);");
     os.printf("    matcherTable = new int[%d];\n", totalSize);
     os.printf("    try {\n" +
-        "      Class dagisel = Class.forName(\"%s\");\n" +
+        "      Class dagisel = this.getClass();\n" +
         "      int index = 0;\n" +
         "      for (int i = 0; i < %d; i++) {\n" +
         "        Method m = dagisel.getDeclaredMethod(\"initTable\"+i);\n" +
@@ -928,7 +943,7 @@ public class DAGISelMatcherEmitter {
         "      Util.assertion(index == %d, \"Inconsistency number of items in matcher table\");\n" +
         "    } catch (Exception e) {\n" +
         "      e.printStackTrace();\n" +
-        "    }\n", className, index, totalSize);
+        "    }\n", index, totalSize);
     os.println("  }");
     os.println("}");
   }

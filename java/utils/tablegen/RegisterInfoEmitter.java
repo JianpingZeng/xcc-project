@@ -789,14 +789,13 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     os.printf("\t}\n\n");
 
     // emit the fields and constructors for *Target* GenRegisterInfo.
-    os.printf("\tpublic %s(int mode)\n\t{\n\t\t", className);
-    os.println("super(registerDescriptors, registerClasses,"
-        + "\n\t\t\t\tSubregHashTable, SubregHashTableSize,"
-        + "\n\t\t\t\tSuperregHashTable, SuperregHashTableSize,"
-        + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize, "
-        + "\n\t\t\t\tRegClassInfos, mode);");
-
-    os.println("\t}");
+    os.printf("  public %s(%sTargetMachine tm, int mode) {\n", className, targetName);
+    os.println("    super(tm, registerDescriptors, registerClasses,\n"
+        + "      SubregHashTable, SubregHashTableSize,\n"
+        + "      SuperregHashTable, SuperregHashTableSize,\n"
+        + "      AliasesHashTable, AliasesHashTableSize,\n"
+        + "      RegClassInfos, mode);");
+    os.println("  }");
     os.println("}");
   }
 
