@@ -317,7 +317,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     mbb = scheduler.emitSchedule();
   }
 
-  public void instructionSelect() {
+  private void instructionSelect() {
     Util.assertion(matcherTable != null, "MatchTable should be initialized before calling instructionSelect");
     dagSize = curDAG.assignTopologicalOrder();
 
@@ -348,7 +348,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     curDAG.removeDeadNodes();
   }
 
-  long getVBR(long val, OutRef<Integer> idx) {
+  private long getVBR(long val, OutRef<Integer> idx) {
     Util.assertion(val >= 128, "Not a VBR");
     val &= 127;
     int shift = 7;
@@ -361,68 +361,68 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return val;
   }
 
-  boolean checkSame(int[] matcherTable,
-                    OutRef<Integer> matcherIndex,
-                    SDValue n,
-                    ArrayList<SDValue> recordedNodes) {
+  private boolean checkSame(int[] matcherTable,
+                            OutRef<Integer> matcherIndex,
+                            SDValue n,
+                            ArrayList<SDValue> recordedNodes) {
     int recNo = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
     return n.equals(recordedNodes.get(recNo));
   }
 
-  boolean checkOpcode(int[] matcherTable,
-                      OutRef<Integer> matcherIndex,
-                      SDNode n) {
+  private boolean checkOpcode(int[] matcherTable,
+                              OutRef<Integer> matcherIndex,
+                              SDNode n) {
     int opc = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     return n.getOpcode() == opc;
   }
 
-  boolean checkType(int[] matcherTable,
-                    OutRef<Integer> matcherIndex,
-                    SDValue n) {
+  private boolean checkType(int[] matcherTable,
+                            OutRef<Integer> matcherIndex,
+                            SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     if (n.getValueType().getSimpleVT().simpleVT == vt)
       return true;
 
-    return vt == MVT.iPTR && n.getValueType().equals(tli.getPointerTy());
+    return vt == MVT.iPTR && n.getValueType().equals(new EVT(tli.getPointerTy()));
   }
 
-  boolean checkChildType(int[] matcherTable,
-                         OutRef<Integer> matcherIndex,
-                         SDValue n,
-                         int childNo) {
+  private boolean checkChildType(int[] matcherTable,
+                                 OutRef<Integer> matcherIndex,
+                                 SDValue n,
+                                 int childNo) {
     if (childNo >= n.getNumOperands())
       return false;
     return checkType(matcherTable, matcherIndex, n.getOperand(childNo));
   }
 
-  boolean checkCondCode(int[] matcherTable,
-                        OutRef<Integer> matcherIndex,
-                        SDValue n) {
+  private boolean checkCondCode(int[] matcherTable,
+                                OutRef<Integer> matcherIndex,
+                                SDValue n) {
     int cc = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     return ((CondCodeSDNode) n.getNode()).getCondition() ==
         CondCode.values()[cc];
   }
 
-  boolean checkValueType(int[] matcherTable,
-                         OutRef<Integer> matcherIndex,
-                         SDValue n) {
+  private boolean checkValueType(int[] matcherTable,
+                                 OutRef<Integer> matcherIndex,
+                                 SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     EVT actualVT = ((SDNode.VTSDNode) n.getNode()).getVT();
     if (actualVT.getSimpleVT().simpleVT == vt)
       return true;
 
-    return vt == MVT.iPTR && actualVT.equals(tli.getPointerTy());
+    return vt == MVT.iPTR && actualVT.equals(new EVT(tli.getPointerTy()));
   }
 
-  boolean checkInteger(int[] matcherTable,
-                       OutRef<Integer> matcherIndex,
-                       SDValue n) {
+  private boolean checkInteger(int[] matcherTable,
+                               OutRef<Integer> matcherIndex,
+                               SDValue n) {
     long val = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     if ((val & 128) != 0)
@@ -434,9 +434,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return c.getSExtValue() == val;
   }
 
-  boolean checkAndImm(int[] matcherTable,
-                      OutRef<Integer> matcherIndex,
-                      SDValue n) {
+  private boolean checkAndImm(int[] matcherTable,
+                              OutRef<Integer> matcherIndex,
+                              SDValue n) {
     if (n.getOpcode() != ISD.AND) return false;
 
     long val = matcherTable[matcherIndex.get()];
@@ -450,9 +450,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return checkAndMask(n.getOperand(0), c, val);
   }
 
-  boolean checkOrImm(int[] matcherTable,
-                     OutRef<Integer> matcherIndex,
-                     SDValue n) {
+  private boolean checkOrImm(int[] matcherTable,
+                             OutRef<Integer> matcherIndex,
+                             SDValue n) {
     if (n.getOpcode() != ISD.OR) return false;
 
     long val = matcherTable[matcherIndex.get()];
@@ -469,6 +469,12 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
   public boolean checkPatternPredicate(int[] matcherTable,
                                        OutRef<Integer> matcherIndex) {
+    boolean res = checkPatternPredicate(matcherTable[matcherIndex.get()]);
+    matcherIndex.set(matcherIndex.get()+1);
+    return res;
+  }
+
+  public boolean checkPatternPredicate(int predNo) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
@@ -476,6 +482,12 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   public boolean checkNodePredicate(int[] matcherTable,
                                     OutRef<Integer> matcherIndex,
                                     SDNode n) {
+    boolean res = checkNodePredicate(n, matcherTable[matcherIndex.get()]);
+    matcherIndex.set(matcherIndex.get() + 1);
+    return res;
+  }
+
+  public boolean checkNodePredicate(SDNode node, int predNo) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
@@ -835,11 +847,17 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   /**
    * The entry to morphy the given SDNode and return a target-specific SDNode.
    * If match failure, return null.
-   *
    * @param nodeToMatch
    * @return
    */
-  public SDNode select(SDNode nodeToMatch) {
+  public abstract SDNode select(SDNode nodeToMatch);
+
+  /**
+   * The entry to common instruction selection among different targets.
+   * @param nodeToMatch
+   * @return
+   */
+  public SDNode selectCommonCode(SDNode nodeToMatch) {
     switch (nodeToMatch.getOpcode()) {
       default:
         break;
@@ -1489,15 +1507,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * This hook allows targets to hack on the graph before
    * instruction selection starts.
    */
-  public void preprocessISelDAG() {
-  }
+  public void preprocessISelDAG() { }
 
   /**
    * This hook allows the target to hack on the graph
    * right after selection.
    */
-  public void postprocessISelDAG() {
-  }
+  public void postprocessISelDAG() { }
 
   /**
    * Replace the old node with new one.
@@ -1901,16 +1917,30 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return true;
   }
 
-  public void selectInlineAsmMemoryOperands(ArrayList<SDValue> ops) {
-    // TODO: 18-4-21
-    Util.shouldNotReachHere("Inline assembly not supported!");
+  /**
+   * Select the specified address as a target
+   * addressing mode, according to the specified constraint code.  If this does
+   * not match or is not implemented, return true.  The resultant operands
+   * (which will appear in the machine instruction) should be added to the
+   * outOps vector.
+   * @param outOps
+   * @return
+   */
+  public boolean selectInlineAsmMemoryOperands(SDValue op,
+                                               char constraintCode,
+                                               ArrayList<SDValue> outOps) {
+    return true;
+  }
+
+  public void selectInlineAsmMemoryOperand(ArrayList<SDValue> ops) {
+    Util.shouldNotReachHere("InlineAsm not supported!");
   }
 
   public SDNode select_INLINEASM(SDValue n) {
     ArrayList<SDValue> ops = new ArrayList<>();
     for (int i = 0, e = n.getNumOperands(); i < e; i++)
       ops.add(n.getOperand(i));
-    selectInlineAsmMemoryOperands(ops);
+    selectInlineAsmMemoryOperand(ops);
 
     ArrayList<EVT> vts = new ArrayList<>();
     vts.add(new EVT(MVT.Other));
@@ -1941,20 +1971,20 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
   public SDNode select_DECLARE(SDValue n) {
-    // TODO: 18-9-29
+    Util.shouldNotReachHere("This method should be overrided by concrete target!");
     return null;
   }
 
   public void cannotYetSelect(SDNode n) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream os = new PrintStream(baos);
-    os.print("Cannot yet select: ");
+    os.print("Cannot yet selectCommonCode: ");
     n.print(os, curDAG);
     os.close();
     llvmReportError(baos.toString());
   }
 
   public void cannotYetSelectIntrinsic(SDNode n) {
-    System.err.println("Cannot yet select intrinsic function.");
+    llvmReportError("Cannot yet selectCommonCode intrinsic function.");
   }
 }

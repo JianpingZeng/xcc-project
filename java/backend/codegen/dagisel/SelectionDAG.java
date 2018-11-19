@@ -24,6 +24,7 @@ import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
@@ -120,6 +121,70 @@ public class SelectionDAG {
 
   public TargetMachine getTarget() {
     return target;
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      EVT vt1,
+                                      SDValue... ops) {
+    SDVTList vts = getVTList(vt1);
+    return getMachineNode(opcode, vts, ops);
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      EVT vt1,
+                                      EVT vt2,
+                                      SDValue... ops) {
+    SDVTList vts = getVTList(vt1, vt2);
+    return getMachineNode(opcode, vts, ops);
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      EVT vt1,
+                                      EVT vt2) {
+    return getMachineNode(opcode, vt1, vt2, (SDValue[]) null);
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      EVT vt1,
+                                      EVT vt2,
+                                      EVT vt3,
+                                      SDValue[] ops) {
+    SDVTList vts = getVTList(vt1, vt2, vt3);
+    return getMachineNode(opcode, vts, ops);
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      EVT vt1,
+                                      EVT vt2,
+                                      EVT vt3,
+                                      EVT vt4,
+                                      SDValue[] ops) {
+    SDVTList vts = getVTList(vt1, vt2, vt3, vt4);
+    return getMachineNode(opcode, vts, ops);
+  }
+
+  public MachineSDNode getMachineNode(int opcode,
+                                      SDVTList vts,
+                                      SDValue[] ops) {
+    boolean doCSE = !vts.vts[vts.numVTs-1].equals(new EVT(MVT.Flag));
+    MachineSDNode n = null;
+    int hash = 0;
+    if (doCSE) {
+      FoldingSetNodeID id = new FoldingSetNodeID();
+      addNodeToIDNode(id, ~opcode, vts, ops, ops.length);
+      hash = id.hashCode();
+      if (cseMap.containsKey(hash)) {
+        return (MachineSDNode) cseMap.get(hash);
+      }
+    }
+
+    n = new MachineSDNode(~opcode, vts);
+    n.initOperands(ops);
+    if (doCSE)
+      cseMap.put(hash, n);
+
+    allNodes.add(n);
+    return n;
   }
 
   public SDValue getNode(int opc, SDVTList vtlist, ArrayList<SDValue> ops) {
@@ -1123,7 +1188,15 @@ public class SelectionDAG {
     }
   }
 
-  private static void addNodeToIDNode(FoldingSetNodeID id, int opc,
+  private static void addNodeToIDNode(FoldingSetNodeID id,
+                                      int opc,
+                                      SDVTList vtList,
+                                      SDValue... ops) {
+    addNodeToIDNode(id, opc, vtList, ops, ops.length);
+  }
+
+  private static void addNodeToIDNode(FoldingSetNodeID id,
+                                      int opc,
                                       SDVTList vtList,
                                       ArrayList<SDValue> ops) {
     SDValue[] temp = new SDValue[ops.size()];
@@ -1131,13 +1204,11 @@ public class SelectionDAG {
     addNodeToIDNode(id, opc, vtList, temp, temp.length);
   }
 
-  private static void addNodeToIDNode(FoldingSetNodeID id, int opc,
-                                      SDVTList vtList, SDValue... ops) {
-    addNodeToIDNode(id, opc, vtList, ops, ops.length);
-  }
-
-  private static void addNodeToIDNode(FoldingSetNodeID id, int opc, SDVTList vtList,
-                                      SDValue[] ops, int numOps) {
+  private static void addNodeToIDNode(FoldingSetNodeID id,
+                                      int opc,
+                                      SDVTList vtList,
+                                      SDValue[] ops,
+                                      int numOps) {
     id.addInteger(opc);
     id.addInteger(vtList.vts.length);
     for (int i = 0, e = vtList.vts.length; i < e; i++)
@@ -1877,6 +1948,34 @@ public class SelectionDAG {
       return false;
     int bitwidth = n.getValueSizeInBits();
     return maskedValueIsZero(n, APInt.getSignBit(bitwidth), depth);
+  }
+
+  /**
+   * A convenience function for creating TargetInstrInfo.EXTRACT_SUBREG nodes.
+   * @param srIdx
+   * @param vt
+   * @param operand
+   * @return
+   */
+  public SDValue getTargetExtractSubreg(int srIdx, EVT vt, SDValue operand) {
+    SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
+    SDNode subreg = getMachineNode(TargetInstrInfo.EXTRACT_SUBREG, vt, operand, srIdxVal);
+    return new SDValue(subreg, 0);
+  }
+
+  /**
+   * A convenience function for creating TargetInstrInfo.INSERT_SUBREG nodes.
+   * @param srIdx
+   * @param vt
+   * @param operand
+   * @return
+   */
+  public SDValue getTargetInsertSubreg(int srIdx, EVT vt,
+                                       SDValue operand, SDValue subreg) {
+    SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
+    SDNode result = getMachineNode(TargetInstrInfo.INSERT_SUBREG, vt,
+        operand, subreg, srIdxVal);
+    return new SDValue(result, 0);
   }
 
   static class UseMemo {

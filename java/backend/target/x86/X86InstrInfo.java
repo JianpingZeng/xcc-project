@@ -138,7 +138,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
             X86GenInstrNames.ADJCALLSTACKUP64 :
             X86GenInstrNames.ADJCALLSTACKUP32);
     this.tm = tm;
-    registerInfo = tm.getSubtarget().getRegisterInfo();
     TIntArrayList ambEntries = new TIntArrayList();
     regOp2MemOpTable2Addr = new TIntObjectHashMap<>();
     regOp2MemOpTable0 = new TIntObjectHashMap<>();
@@ -151,7 +150,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       int memOp = opTbl2Addr[i][1];
 
       if (regOp2MemOpTable2Addr.put(regOp, Pair.get(memOp, 0)) != null)
-        Util.assertion(false, "Dupliate entries?");
+        Util.assertion(false, "Duplicate entries?");
 
       int auxInfo = 0 | (1 << 4) | (1 << 5);
       if (memOp2RegOpTable.put(memOp, Pair.get(memOp, auxInfo)) != null)
@@ -421,6 +420,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     // Remove ambiguous entries.
     Util.assertion(ambEntries.isEmpty(), "Duplicated entries in unfolded map?");
+  }
+
+  private X86RegisterInfo getRegisterInfo() {
+    if (registerInfo == null)
+      registerInfo = tm.getSubtarget().getRegisterInfo();
+    return registerInfo;
   }
 
   @Override
@@ -712,7 +717,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                             int subIdx,
                             MachineInstr origin) {
     if (subIdx != 0 && TargetRegisterInfo.isPhysicalRegister(destReg)) {
-      destReg = registerInfo.getSubReg(destReg, subIdx);
+      destReg = getRegisterInfo().getSubReg(destReg, subIdx);
       subIdx = 0;
     }
 
@@ -1893,7 +1898,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                                   TargetRegisterClass rc) {
     MachineFunction MF = mbb.getParent();
     boolean isAligned =
-        (registerInfo.getStackAlignment() >= 16) || registerInfo
+        (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(MF);
     int opc = getStoreRegOpcode(srcReg, rc, isAligned, tm);
     //DebugLoc DL = DebugLoc::getUnknownLoc();
@@ -1906,7 +1911,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                       ArrayList<MachineOperand> addr, TargetRegisterClass rc,
                       ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
-        (registerInfo.getStackAlignment() >= 16) || registerInfo
+        (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
     int opc = getStoreRegOpcode(SrcReg, rc, isAligned, tm);
     //DebugLoc DL = DebugLoc::getUnknownLoc();
@@ -1981,7 +1986,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                                    int destReg, int frameIndex, TargetRegisterClass rc) {
     MachineFunction mf = mbb.getParent();
     boolean isAligned =
-        (registerInfo.getStackAlignment() >= 16) || registerInfo
+        (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
     int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
     //DebugLoc DL = DebugLoc::getUnknownLoc();
@@ -1993,7 +1998,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                               ArrayList<MachineOperand> addr, TargetRegisterClass rc,
                               ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
-        (registerInfo.getStackAlignment() >= 16) || registerInfo
+        (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
     int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
     // DebugLoc DL = DebugLoc::getUnknownLoc();
@@ -2018,7 +2023,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     int slotSize = is64Bit ? 8 : 4;
 
     MachineFunction mf = mbb.getParent();
-    int fpReg = registerInfo.getFrameRegister(mf);
+    int fpReg = getRegisterInfo().getFrameRegister(mf);
     X86MachineFunctionInfo X86FI = (X86MachineFunctionInfo) mf.getInfo();
     int calleeFrameSize = 0;
 
@@ -2054,7 +2059,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     //if (mi != mbb.end()) DL = mi.getDebugLoc();
 
     MachineFunction MF = mbb.getParent();
-    int FPReg = registerInfo.getFrameRegister(MF);
+    int FPReg = getRegisterInfo().getFrameRegister(MF);
     boolean is64Bit = ((X86Subtarget) tm.getSubtarget()).is64Bit();
     boolean isWin64 = ((X86Subtarget) tm.getSubtarget()).isTargetWin64();
     int opc = is64Bit ? POP64r : POP32r;
@@ -2394,7 +2399,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     TargetInstrDesc TID = get(opc);
     TargetOperandInfo TOI = TID.opInfo[index];
-    TargetRegisterClass rc = TOI.getRegisterClass(registerInfo);
+    TargetRegisterClass rc = TOI.getRegisterClass(getRegisterInfo());
     ArrayList<MachineOperand> AddrOps = new ArrayList<>();
     ArrayList<MachineOperand> BeforeOps = new ArrayList<>();
     ArrayList<MachineOperand> AfterOps = new ArrayList<>();
@@ -2481,7 +2486,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     // Emit the store instruction.
     if (unfoldStore) {
       TargetRegisterClass DstRC = TID.opInfo[0]
-          .getRegisterClass(registerInfo);
+          .getRegisterClass(getRegisterInfo());
       storeRegToAddr(mf, reg, true, AddrOps, DstRC, newMIs);
     }
 
@@ -2504,7 +2509,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean foldedLoad = (pair.second & (1 << 4)) != 0;
     boolean foldedStore = (pair.second & (1 << 5)) != 0;
     TargetInstrDesc tid = get(opc);
-    TargetRegisterClass rc = tid.opInfo[index].getRegisterClass(registerInfo);
+    TargetRegisterClass rc = tid.opInfo[index].getRegisterClass(getRegisterInfo());
     int numDefs = tid.numDefs;
     ArrayList<SDValue> addrOps = new ArrayList<>();
     ArrayList<SDValue> beforeOps = new ArrayList<>();
@@ -2526,9 +2531,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     SDNode load = null;
     MachineFunction mf = dag.getMachineFunction();
     if (foldedLoad) {
-      EVT vt = new EVT(registerInfo.getRegisterClassVTs(rc)[0]);
-      boolean isAligned = registerInfo.getStackAlignment() >= 16 ||
-          registerInfo.needsStackRealignment(mf);
+      EVT vt = new EVT(getRegisterInfo().getRegisterClassVTs(rc)[0]);
+      boolean isAligned = getRegisterInfo().getStackAlignment() >= 16 ||
+          getRegisterInfo().needsStackRealignment(mf);
       SDValue[] ops = new SDValue[addrOps.size()];
       addrOps.toArray(ops);
       load = dag.getTargetNode(getLoadRegOpcode(0, rc, isAligned,
@@ -2540,8 +2545,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     ArrayList<EVT> vts = new ArrayList<>();
     TargetRegisterClass destRC = null;
     if (tid.numDefs > 0) {
-      destRC = tid.opInfo[0].getRegisterClass(registerInfo);
-      vts.add(new EVT(registerInfo.getRegisterClassVTs(destRC)[0]));
+      destRC = tid.opInfo[0].getRegisterClass(getRegisterInfo());
+      vts.add(new EVT(getRegisterInfo().getRegisterClassVTs(destRC)[0]));
     }
 
     for (int i = 0, e = node.getNumValues(); i < e; i++) {
@@ -2562,8 +2567,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       addrOps.remove(addrOps.size() - 1);
       addrOps.add(new SDValue(newNode, 0));
       addrOps.add(chain);
-      boolean isAligned = registerInfo.getStackAlignment() >= 16 ||
-          registerInfo.needsStackRealignment(mf);
+      boolean isAligned = getRegisterInfo().getStackAlignment() >= 16 ||
+          getRegisterInfo().needsStackRealignment(mf);
       SDNode store = dag.getTargetNode(getStoreRegOpcode(0, destRC,
           isAligned, tm), new EVT(MVT.Other), addrOps);
 

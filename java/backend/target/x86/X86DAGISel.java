@@ -24,12 +24,14 @@ import backend.support.Attribute;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
+import backend.target.TargetRegisterClass;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
@@ -132,6 +134,517 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return super.isLegalAndProfitableToFold(node, use, root);
   }
 
+  private static boolean hasNoSignedComparisonUses(SDNode n) {
+    // Examine each user of the node.
+    for (SDUse su : n.getUseList()) {
+      SDNode u = su.getUser();
+      if (u.getOpcode() != ISD.CopyToReg)
+        return false;
+
+      // Only examine CopyToReg uses that copy to EFLAGS.
+      if (((RegisterSDNode) u.getOperand(1).getNode()).getReg() != X86GenRegisterNames.EFLAGS)
+        return false;
+
+      // Examine each user of the CopyToReg use.
+      for (SDUse flagUI : u.getUseList()) {
+        // Only examine the Flag result.
+        if (flagUI.getResNo() != 1) continue;
+
+        if (!flagUI.getUser().isMachineOpecode()) return false;
+        switch (flagUI.getUser().getMachineOpcode()) {
+          // These comparisons don't treat the most significant bit specially.
+          case X86GenInstrNames.SETAr:
+          case X86GenInstrNames.SETAEr:
+          case X86GenInstrNames.SETBr:
+          case X86GenInstrNames.SETBEr:
+          case X86GenInstrNames.SETEr:
+          case X86GenInstrNames.SETNEr:
+          case X86GenInstrNames.SETPr:
+          case X86GenInstrNames.SETNPr:
+          case X86GenInstrNames.SETAm:
+          case X86GenInstrNames.SETAEm:
+          case X86GenInstrNames.SETBm:
+          case X86GenInstrNames.SETBEm:
+          case X86GenInstrNames.SETEm:
+          case X86GenInstrNames.SETNEm:
+          case X86GenInstrNames.SETPm:
+          case X86GenInstrNames.SETNPm:
+          /*case X86GenInstrNames.JA_4:
+          case X86GenInstrNames.JAE_4:
+          case X86GenInstrNames.JB_4:
+          case X86GenInstrNames.JBE_4:
+          case X86GenInstrNames.JE_4:
+          case X86GenInstrNames.JNE_4:
+          case X86GenInstrNames.JP_4:
+          case X86GenInstrNames.JNP_4:*/
+          case X86GenInstrNames.CMOVA16rr:
+          case X86GenInstrNames.CMOVA16rm:
+          case X86GenInstrNames.CMOVA32rr:
+          case X86GenInstrNames.CMOVA32rm:
+          case X86GenInstrNames.CMOVA64rr:
+          case X86GenInstrNames.CMOVA64rm:
+          case X86GenInstrNames.CMOVAE16rr:
+          case X86GenInstrNames.CMOVAE16rm:
+          case X86GenInstrNames.CMOVAE32rr:
+          case X86GenInstrNames.CMOVAE32rm:
+          case X86GenInstrNames.CMOVAE64rr:
+          case X86GenInstrNames.CMOVAE64rm:
+          case X86GenInstrNames.CMOVB16rr:
+          case X86GenInstrNames.CMOVB16rm:
+          case X86GenInstrNames.CMOVB32rr:
+          case X86GenInstrNames.CMOVB32rm:
+          case X86GenInstrNames.CMOVB64rr:
+          case X86GenInstrNames.CMOVB64rm:
+          case X86GenInstrNames.CMOVBE16rr:
+          case X86GenInstrNames.CMOVBE16rm:
+          case X86GenInstrNames.CMOVBE32rr:
+          case X86GenInstrNames.CMOVBE32rm:
+          case X86GenInstrNames.CMOVBE64rr:
+          case X86GenInstrNames.CMOVBE64rm:
+          case X86GenInstrNames.CMOVE16rr:
+          case X86GenInstrNames.CMOVE16rm:
+          case X86GenInstrNames.CMOVE32rr:
+          case X86GenInstrNames.CMOVE32rm:
+          case X86GenInstrNames.CMOVE64rr:
+          case X86GenInstrNames.CMOVE64rm:
+          case X86GenInstrNames.CMOVNE16rr:
+          case X86GenInstrNames.CMOVNE16rm:
+          case X86GenInstrNames.CMOVNE32rr:
+          case X86GenInstrNames.CMOVNE32rm:
+          case X86GenInstrNames.CMOVNE64rr:
+          case X86GenInstrNames.CMOVNE64rm:
+          case X86GenInstrNames.CMOVNP16rr:
+          case X86GenInstrNames.CMOVNP16rm:
+          case X86GenInstrNames.CMOVNP32rr:
+          case X86GenInstrNames.CMOVNP32rm:
+          case X86GenInstrNames.CMOVNP64rr:
+          case X86GenInstrNames.CMOVNP64rm:
+          case X86GenInstrNames.CMOVP16rr:
+          case X86GenInstrNames.CMOVP16rm:
+          case X86GenInstrNames.CMOVP32rr:
+          case X86GenInstrNames.CMOVP32rm:
+          case X86GenInstrNames.CMOVP64rr:
+          case X86GenInstrNames.CMOVP64rm:
+            continue;
+            // Anything else: assume conservatively.
+          default:
+            return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public SDNode select(SDNode node) {
+    // TODO 11/19/2018
+    EVT nvt = node.getValueType(0);
+    int opc, mopc;
+    int opcode = node.getOpcode();
+
+    if (Util.DEBUG) {
+      System.err.print("Selecting: ");
+      node.dump(curDAG);
+      System.err.println();
+    }
+    if (node.isMachineOpecode()) {
+      // Already been selected.
+      return null;
+    }
+
+    switch (opcode) {
+      default:
+        break;
+      case X86ISD.GlobalBaseReg:
+        return getGlobalBaseReg();
+      case X86ISD.ATOMOR64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMOR6432);
+      case X86ISD.ATOMXOR64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMXOR6432);
+      case X86ISD.ATOMADD64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMADD6432);
+      case X86ISD.ATOMSUB64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMSUB6432);
+      case X86ISD.ATOMAND64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMAND6432);
+      case X86ISD.ATOMNAND64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMNAND6432);
+      case X86ISD.ATOMSWAP64_DAG:
+        return selectAtomic64(node, X86GenInstrNames.ATOMSWAP6432);
+
+      case ISD.ATOMIC_LOAD_ADD: {
+        SDNode retVal = selectAtomicLoadAdd(node, nvt);
+        if (retVal != null)
+          return retVal;
+        break;
+      }
+
+      case ISD.SMUL_LOHI:
+      case ISD.UMUL_LOHI: {
+        SDValue n0 = node.getOperand(0);
+        SDValue n1 = node.getOperand(1);
+
+        boolean isSigned = opcode == ISD.SMUL_LOHI;
+        int[][] OpcTable = {
+            {X86GenInstrNames.MUL8r, X86GenInstrNames.MUL16r, X86GenInstrNames.MUL32r, X86GenInstrNames.MUL64r},
+            {X86GenInstrNames.IMUL8r, X86GenInstrNames.IMUL16r, X86GenInstrNames.IMUL32r, X86GenInstrNames.IMUL64r}
+        };
+        int[][] MOpcTable = {
+            {X86GenInstrNames.MUL8m, X86GenInstrNames.MUL16m, X86GenInstrNames.MUL32m, X86GenInstrNames.MUL64m},
+            {X86GenInstrNames.IMUL8m, X86GenInstrNames.IMUL16m, X86GenInstrNames.IMUL32m, X86GenInstrNames.IMUL64m}
+        };
+        int vt = nvt.getSimpleVT().simpleVT;
+        Util.assertion(vt >= MVT.i8 && vt <= MVT.i64, "Unsupported VT!");
+        opc = OpcTable[isSigned ? 1 : 0][vt - MVT.i8];
+        mopc = MOpcTable[isSigned ? 1 : 0][vt - MVT.i8];
+
+        int[][] Regs = {{X86GenRegisterNames.AL, X86GenRegisterNames.AH},
+            {X86GenRegisterNames.AX, X86GenRegisterNames.DX},
+            {X86GenRegisterNames.EAX, X86GenRegisterNames.EDX},
+            {X86GenRegisterNames.RAX, X86GenRegisterNames.RDX},
+        };
+        int loReg = Regs[vt - MVT.i8][0];
+        int hiReg = Regs[vt - MVT.i8][1];
+
+        SDValue[] tmps = new SDValue[5];
+        boolean foldedLoad = tryFoldLoad(node, n1, tmps);
+        // multiply is commutative
+        if (!foldedLoad) {
+          foldedLoad = tryFoldLoad(node, n0, tmps);
+          if (foldedLoad) {
+            SDValue t = n0;
+            n0 = n1;
+            n1 = t;
+          }
+        }
+
+        SDValue inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(),
+            loReg, n0, new SDValue()).getValue(1);
+        if (foldedLoad) {
+          SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
+              inFlag};
+          SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
+              new EVT(MVT.Flag), ops);
+          inFlag = new SDValue(chainedNode, 1);
+          replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
+        } else {
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+              n1, inFlag), 0);
+        }
+
+        // Copy the low half of the result, if it is needed.
+        if (!new SDValue(node, 0).isUseEmpty()) {
+          SDValue result = curDAG.getCopyFromReg(curDAG.getEntryNode(), loReg, nvt,
+              inFlag);
+          inFlag = result.getValue(2);
+          replaceUses(new SDValue(node, 0), result);
+          if (Util.DEBUG) {
+            System.err.print("=> ");
+            result.getNode().dump(curDAG);
+            System.err.println();
+          }
+        }
+
+        // Copy the high half of the result, if it is needed.
+        if (!new SDValue(node, 1).isUseEmpty()) {
+          SDValue result = new SDValue();
+          if (hiReg == X86GenRegisterNames.AH & subtarget.is64Bit()) {
+            // Prevent use of AH in a REX instruction by referencing AX instead.
+            // Shift it down 8 bits.
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
+                X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
+            inFlag = result.getValue(2);
+            result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16r1,
+                new EVT(MVT.i16), result, curDAG.getTargetConstant(8,
+                    new EVT(MVT.i8))), 0);
+            // Then truncate it down to i8.
+            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+                new EVT(MVT.i8), result);
+          } else {
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
+            inFlag = result.getValue(2);
+          }
+          replaceUses(new SDValue(node, 1), result);
+          if (Util.DEBUG) {
+            System.err.print("=> ");
+            result.getNode().dump(curDAG);
+            System.err.println();
+          }
+        }
+        return null;
+      }
+      case ISD.SDIVREM:
+      case ISD.UDIVREM: {
+        SDValue n0 = node.getOperand(0), n1 = node.getOperand(1);
+        boolean isSigned = opcode == ISD.SDIVREM;
+        int[][][] OpcodeTable = {
+            {
+                {X86GenInstrNames.DIV8r, X86GenInstrNames.DIV8m},
+                {X86GenInstrNames.DIV16r, X86GenInstrNames.DIV16m},
+                {X86GenInstrNames.DIV32r, X86GenInstrNames.DIV32m},
+                {X86GenInstrNames.DIV64r, X86GenInstrNames.DIV64m}
+            },
+            {
+                {X86GenInstrNames.IDIV8r, X86GenInstrNames.IDIV8m},
+                {X86GenInstrNames.IDIV16r, X86GenInstrNames.IDIV16m},
+                {X86GenInstrNames.IDIV32r, X86GenInstrNames.IDIV32m},
+                {X86GenInstrNames.IDIV64r, X86GenInstrNames.IDIV64m}
+            }
+        };
+        int vt = nvt.getSimpleVT().simpleVT;
+        Util.assertion(vt >= MVT.i8 && vt <= MVT.i64, "Unsupported VT!");
+        opc = OpcodeTable[isSigned ? 1 : 0][vt - MVT.i8][0];
+        mopc = OpcodeTable[isSigned ? 1 : 0][vt - MVT.i8][1];
+        int[][] RegAndExtOpc = {
+            {
+                X86GenRegisterNames.AL,
+                X86GenRegisterNames.AH,
+                X86GenRegisterNames.AH,
+                0,
+                X86GenInstrNames.CBW
+            },
+            {
+                X86GenRegisterNames.AX,
+                X86GenRegisterNames.DX,
+                X86GenInstrNames.MOV16r0,
+                X86GenRegisterNames.DX,
+                X86GenInstrNames.CWD},
+            {
+                X86GenRegisterNames.EAX,
+                X86GenRegisterNames.EDX,
+                X86GenRegisterNames.EDX,
+                X86GenInstrNames.MOV32r0,
+                X86GenInstrNames.CDQ
+            },
+            {
+                X86GenRegisterNames.RAX,
+                X86GenRegisterNames.RDX,
+                X86GenRegisterNames.RDX,
+                X86GenInstrNames.MOV64r0,
+                X86GenInstrNames.CQO
+            }
+        };
+        int loReg, hiReg, clrReg, clrOpcode, sextOpcode;
+        loReg = RegAndExtOpc[vt - MVT.i8][0];
+        hiReg = RegAndExtOpc[vt - MVT.i8][1];
+        clrReg = RegAndExtOpc[vt - MVT.i8][2];
+        clrOpcode = RegAndExtOpc[vt - MVT.i8][3];
+        sextOpcode = RegAndExtOpc[vt - MVT.i8][4];
+
+        SDValue[] tmps = new SDValue[5];
+        boolean foldedLoad = tryFoldLoad(node, n1, tmps);
+        boolean signBitIsZero = curDAG.signBitIsZero(n0, 0);
+
+        SDValue inFlag;
+        if (vt == MVT.i8 && (!isSigned || signBitIsZero)) {
+          // Special case for div8, just use a move with zero extension to AX to
+          // clear the upper 8 bits (AH).
+          SDValue[] temp = new SDValue[5];
+          SDValue move, chain;
+          if (tryFoldLoad(node, n0, temp)) {
+            SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], n0.getOperand(0)};
+            move = new SDValue(curDAG.getMachineNode(X86GenInstrNames.MOVZX16rm8,
+                new EVT(MVT.i16),
+                new EVT(MVT.Other),
+                ops), 0);
+            chain = move.getValue(1);
+            replaceUses(n0.getValue(1), chain);
+          } else {
+            move = new SDValue(curDAG.getMachineNode(X86GenInstrNames.MOVZX16rr8,
+                new EVT(MVT.i16), n0), 0);
+            chain = curDAG.getEntryNode();
+          }
+          chain = curDAG.getCopyToReg(chain, X86GenRegisterNames.AX,
+              move, new SDValue());
+          inFlag = chain.getValue(1);
+        } else {
+          inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), loReg, n0, new SDValue()).getValue(1);
+          if (isSigned && !signBitIsZero) {
+            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Flag), inFlag), 0);
+          } else {
+            SDValue clrNode = new SDValue(curDAG.getMachineNode(clrOpcode, nvt), 0);
+            inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), clrReg, clrNode,
+                inFlag).getValue(1);
+          }
+        }
+
+        if (foldedLoad) {
+          SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
+              inFlag};
+          SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
+              new EVT(MVT.Flag), ops);
+          inFlag = new SDValue(chainedNode, 1);
+          replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
+        } else {
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+              n1, inFlag), 0);
+        }
+
+        // Copy the division (low) result, if it is needed.
+        if (!new SDValue(node, 0).isUseEmpty()) {
+          SDValue result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
+              loReg, nvt, inFlag);
+          inFlag = result.getValue(2);
+          replaceUses(new SDValue(node, 0), result);
+          if (Util.DEBUG) {
+            System.err.print("=> ");
+            result.getNode().dump(curDAG);
+            System.err.println();
+          }
+        }
+        // Copy the remainder(high) result if it is needed.
+        if (!new SDValue(node, 1).isUseEmpty()) {
+          SDValue result;
+          if (hiReg == X86GenRegisterNames.AH && subtarget.is64Bit()) {
+            // Prevent use of AH in a REX instruction by referencing AX instead.
+            // Shift it down 8 bits.
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
+                X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
+            inFlag = result.getValue(2);
+            result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16ri,
+                new EVT(MVT.i16), result, curDAG.getTargetConstant(8, new EVT(MVT.i8))), 0);
+            // then truncate it down to i8
+            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+                new EVT(MVT.i8), result);
+          } else {
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
+            inFlag = result.getValue(2);
+          }
+          replaceUses(new SDValue(node, 1), result);
+          if (Util.DEBUG) {
+            System.err.print("=> ");
+            result.getNode().dump(curDAG);
+            System.err.println();
+          }
+        }
+        return null;
+      }
+
+      case X86ISD.CMP: {
+        SDValue n0 = node.getOperand(0), n1 = node.getOperand(1);
+
+        // Look for (X86cmp (and $op, $imm), 0) and see if we can convert it to
+        // use a smaller encoding.
+        if (n0.getNode().getOpcode() == ISD.AND && n0.getNode().hasOneUse() &&
+            !n0.getValueType().equals(new EVT(MVT.i8))) {
+          if (!(n0.getOperand(1).getNode() instanceof ConstantSDNode))
+            break;
+
+          ConstantSDNode c = (ConstantSDNode) n0.getOperand(1).getNode();
+          // For example, convert "testl %eax, $8" to "testb %al, $8"
+          if ((c.getZExtValue() & ~0xffL) == 0 &&
+              ((c.getZExtValue() & 0x80) == 0 || hasNoSignedComparisonUses(node))) {
+            SDValue imm = curDAG.getTargetConstant(c.getZExtValue(), new EVT(MVT.i8));
+            SDValue reg = n0.getNode().getOperand(0);
+
+            // On x86-32, only the ABCD registers have 8-bit subregisters.
+            if (!subtarget.is64Bit()) {
+              TargetRegisterClass trc = null;
+              switch (n0.getValueType().getSimpleVT().simpleVT) {
+                case MVT.i32:
+                  trc = X86GenRegisterInfo.GR32_ABCDClass.getInstance();
+                  break;
+                case MVT.i16:
+                  trc = X86GenRegisterInfo.GR16_ABCDClass.getInstance();
+                  break;
+                default:
+                  Util.shouldNotReachHere("Unsupported TEST operand type!");
+              }
+              SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
+              reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+                  reg.getValueType(), reg, rc), 0);
+            }
+
+            // Extract the l-register
+            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
+                new EVT(MVT.i8), reg);
+            // emit a testb
+            return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, new EVT(MVT.i32), subreg, imm);
+          }
+
+          // For example, "testl %eax, $2048" to "testb %ah, $8".
+          if ((c.getZExtValue() & ~0xff00L) == 0 &&
+              ((c.getZExtValue() & 0x8000) == 0 ||
+                  hasNoSignedComparisonUses(node))) {
+            // Shift the immediate right by 8 bits.
+            SDValue shiftedImm = curDAG.getTargetConstant(c.getZExtValue() >> 8, new EVT(MVT.i8));
+
+            SDValue reg = n0.getNode().getOperand(0);
+            TargetRegisterClass trc = null;
+            switch (n0.getValueType().getSimpleVT().simpleVT) {
+              case MVT.i16:
+                trc = X86GenRegisterInfo.GR16_ABCDClass.getInstance();
+                break;
+              case MVT.i32:
+                trc = X86GenRegisterInfo.GR32_ABCDClass.getInstance();
+                break;
+              case MVT.i64:
+                trc = X86GenRegisterInfo.GR64_ABCDClass.getInstance();
+                break;
+              default:
+                Util.shouldNotReachHere("Unsupported TEST operand type!");
+            }
+            SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
+            reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+                reg.getValueType(), reg, rc), 0);
+
+            // Extract the h-register.
+            SDValue subreg = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+                new EVT(MVT.i8), reg);
+
+            // Emit a testb. No special NOREX tricks are needed since there's
+            // only one GPR operand!
+            return curDAG.getMachineNode(X86GenInstrNames.TEST8ri,
+                new EVT(MVT.i32), subreg, shiftedImm);
+          }
+
+          // For example, "testl %eax, $32776" to "testw %ax, $32776".
+          if ((c.getZExtValue() & ~0xffffL) == 0 &&
+              !n0.getValueType().equals(new EVT(MVT.i16)) &&
+              ((c.getZExtValue() & 0x8000) == 0 || hasNoSignedComparisonUses(node))) {
+            SDValue imm = curDAG.getTargetConstant(c.getZExtValue(), new EVT(MVT.i16));
+            SDValue reg = n0.getNode().getOperand(0);
+
+            // Extract the 16-bit subregister.
+            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
+                new EVT(MVT.i16), reg);
+
+            // Emit a testw.
+            return curDAG.getMachineNode(X86GenInstrNames.TEST16ri, new EVT(MVT.i32), subreg, imm);
+          }
+
+          // For example, "testq %rax, $268468232" to "testl %eax, $268468232".
+          if ((c.getZExtValue() & ~0xffffffffL) == 0 &&
+              n0.getValueType().equals(new EVT(MVT.i64)) &&
+              ((c.getZExtValue() & 0x80000000) == 0 ||
+                  hasNoSignedComparisonUses(node))) {
+            SDValue imm = curDAG.getTargetConstant(c.getZExtValue(), new EVT(MVT.i32));
+            SDValue reg = n0.getNode().getOperand(0);
+
+            // Extract the 32-bit subregister.
+            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.SUBREG_TO_REG,
+                new EVT(MVT.i32), reg);
+
+            // Emit a testl
+            return curDAG.getMachineNode(X86GenInstrNames.TEST32ri, new EVT(MVT.i32), subreg, imm);
+          }
+        }
+        break;
+      }
+    }
+
+    SDNode resNode = selectCommonCode(node);
+    if (Util.DEBUG) {
+      System.err.print("=> ");
+      if (resNode == null || resNode.equals(node))
+        node.dump(curDAG);
+      else
+        resNode.dump(curDAG);
+      System.err.println();
+    }
+    return resNode;
+  }
+
   protected SDNode selectAtomic64(SDNode node, int opc) {
     SDValue chain = node.getOperand(0);
     SDValue in1 = node.getOperand(1);
@@ -152,7 +665,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return curDAG.getTargetNode(opc, vts, ops);
   }
 
-  protected SDNode selectAtomicLoadAdd(SDNode node, EVT vt) {
+  private SDNode selectAtomicLoadAdd(SDNode node, EVT vt) {
     if (node.hasAnyUseOfValue(0))
       return null;
 
@@ -1211,5 +1724,24 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return curDAG.selectNodeTo(n.getNode(),
         X86GenInstrNames.DECLARE,
         new EVT(MVT.Other), tmp1, tmp2, chain);
+  }
+
+  @Override
+  public boolean selectInlineAsmMemoryOperands(SDValue op,
+                                               char constraintCode,
+                                               ArrayList<SDValue> outOps) {
+    SDValue[] comm = new SDValue[5];
+    switch (constraintCode) {
+      case 'm':   // memory
+        if (!selectAddr(op.getNode(), op, comm))
+          return true;
+        break;
+      case 'o':   // offsettable
+      case 'v':   // not offsettable
+      default:
+        return true;
+    }
+    outOps.addAll(Arrays.asList(comm));
+    return false;
   }
 }

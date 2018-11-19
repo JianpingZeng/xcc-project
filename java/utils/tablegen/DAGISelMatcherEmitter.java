@@ -794,7 +794,9 @@ public class DAGISelMatcherEmitter {
 
         os.printf("      case %d: {%n", i);
         os.printf("        SDValue[] tmp = new SDValue[%d];%n", numOps);
-        os.printf("        return %s(root, n, tmp);\n", cp.getSelectFunc());
+        os.printf("        boolean res = %s(root, n, tmp);\n", cp.getSelectFunc());
+        os.println("        result.addAll(Arrays.asList(tmp));");
+        os.println("        return res;");
         os.println("     }");
       }
       os.println("    }");
@@ -892,6 +894,7 @@ public class DAGISelMatcherEmitter {
     os.println();
     os.println("import java.lang.reflect.Method;");
     os.println("import java.util.ArrayList;");
+    os.println("import java.util.Arrays;");
     os.println();
 
     String className = targetName + "GenDAGISel";

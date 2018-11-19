@@ -87,7 +87,7 @@ public abstract class TargetInstrInfo {
   public TargetInstrInfo(TargetInstrDesc[] desc,
                          int frameSetupOp, int frameDestroyOp) {
     descs = desc;
-    Util.assertion(targetInstrDescs == null && desc != null);
+    Util.assertion(desc != null);
     targetInstrDescs = desc;
     callFrameSetupOpcode = frameSetupOp;
     callFrameDestroyOpcode = frameDestroyOp;

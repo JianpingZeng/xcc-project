@@ -154,8 +154,6 @@ public class X86Subtarget extends TargetSubtarget {
                          SubtargetFeatureKV[] featureKV) {
     targetTriple = new Triple(tt);
     this.tm = tm;
-    regInfo = new X86GenRegisterInfo(getHwMode());
-    instrInfo = new X86GenInstrInfo(tm);
     subTypeKeyValue = subTypeKV;
     this.featureKV = featureKV;
     picStyle = PICStyle.None;
@@ -255,11 +253,15 @@ public class X86Subtarget extends TargetSubtarget {
   }
 
   public X86RegisterInfo getRegisterInfo() {
-    return null;
+    if (regInfo == null)
+      regInfo = new X86GenRegisterInfo(tm, getHwMode());
+    return (X86RegisterInfo) regInfo;
   }
 
   public X86InstrInfo getInstrInfo() {
-    return null;
+    if (instrInfo == null)
+      instrInfo = new X86GenInstrInfo(tm);
+    return (X86InstrInfo) instrInfo;
   }
 
   public int getStackAlignemnt() {

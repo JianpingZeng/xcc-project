@@ -82,7 +82,10 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
    */
   private int framePtr;
 
-  public X86RegisterInfo(TargetRegisterDesc[] desc,
+  private X86Subtarget subtarget;
+
+  public X86RegisterInfo(X86TargetMachine tm,
+                         TargetRegisterDesc[] desc,
                          TargetRegisterClass[] regClasses,
                          int[] subregs, int subregHashSize,
                          int[] superregs, int superregHashSize,
@@ -93,8 +96,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         superregs, superregHashSize, aliases, aliasHashSize,
         rcInfo, mode);
     this.tm = tm;
-    this.tii = tii;
-    X86Subtarget subtarget = tm.getSubtarget();
+    subtarget = tm.getSubtarget();
     is64Bit = subtarget.is64Bit();
     isWin64 = subtarget.isTargetWin64();
     stackAlign = tm.getFrameInfo().getStackAlignment();
@@ -249,6 +251,12 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     }
   }
 
+  public TargetInstrInfo getInstrInfo() {
+    if(tii == null)
+      tii = subtarget.getInstrInfo();
+    return tii;
+  }
+
   public int getStackAlignment() {
     return stackAlign;
   }
@@ -262,7 +270,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
    * @return
    */
   public int getDwarfRegNum(int regNum, boolean isEH) {
-    Util.assertion(false, "Shoult not reaching here!");
+    Util.shouldNotReachHere();
     return 0;
   }
 
@@ -831,7 +839,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     }
 
     if (tailCallReturnAddrDelta < 0) {
-      mi = buildMI(mbb, mbbi, tii.get(is64Bit ? SUB64ri32 : SUB32ri),
+      mi = buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? SUB64ri32 : SUB32ri),
           stackPtr).addReg(stackPtr).addImm(-tailCallReturnAddrDelta).getMInstr();
       mi.getOperand(3).setIsDead(true);   // The EFLAGS implicit def is dead.
     }
@@ -853,9 +861,9 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       numBytes = frameSize - x86FI.getCalleeSavedFrameSize();
       mfi.setOffsetAdjustment(-numBytes);
 
-      buildMI(mbb, mbbi, tii.get(is64Bit ? PUSH64r : PUSH32r))
+      buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? PUSH64r : PUSH32r))
           .addReg(framePtr, RegState.Kill);
-      buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rr : MOV32rr), framePtr).addReg(stackPtr);
+      buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? MOV64rr : MOV32rr), framePtr).addReg(stackPtr);
 
       // mark the frameptr as live-in in every block excepts the entry.
       for (int i = 1, e = mf.getNumBlocks(); i < e; i++) {
@@ -864,7 +872,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         // realign stack.
         if (needsStackRealignment(mf)) {
           mi = buildMI(mbb, mbbi,
-              tii.get(is64Bit ? AND64ri32 : AND32ri), stackPtr)
+              getInstrInfo().get(is64Bit ? AND64ri32 : AND32ri), stackPtr)
               .addReg(stackPtr).addImm(-maxAlign).getMInstr();
           mi.getOperand(3).setIsDead(true);
         }
@@ -887,17 +895,17 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         isEAXLive = reg == EAX || reg == AX || reg == AH || reg == AL;
       }
       if (!isEAXLive) {
-        buildMI(mbb, mbbi, tii.get(MOV32ri), EAX).addImm(numBytes);
-        buildMI(mbb, mbbi, tii.get(CALLpcrel32))
+        buildMI(mbb, mbbi, getInstrInfo().get(MOV32ri), EAX).addImm(numBytes);
+        buildMI(mbb, mbbi, getInstrInfo().get(CALLpcrel32))
             .addExternalSymbol("_alloca", 0, 0);
       } else {
-        buildMI(mbb, mbbi, tii.get(PUSH32r)).addReg(EAX, RegState.Kill);
+        buildMI(mbb, mbbi, getInstrInfo().get(PUSH32r)).addReg(EAX, RegState.Kill);
 
-        buildMI(mbb, mbbi, tii.get(MOV32ri), EAX).addImm(numBytes - 4);
-        buildMI(mbb, mbbi, tii.get(CALLpcrel32))
+        buildMI(mbb, mbbi, getInstrInfo().get(MOV32ri), EAX).addImm(numBytes - 4);
+        buildMI(mbb, mbbi, getInstrInfo().get(CALLpcrel32))
             .addExternalSymbol("_alloca", 0, 0);
 
-        mi = addRegOffset(buildMI(tii.get(MOV32rm), EAX), stackPtr,
+        mi = addRegOffset(buildMI(getInstrInfo().get(MOV32rm), EAX), stackPtr,
             false, numBytes - 4).getMInstr();
         mbb.insert(mbbi, mi);
       }
@@ -910,7 +918,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       numBytes = x.get();
 
       if (numBytes != 0)
-        emitSPUpdate(mbb, mbbi, stackPtr, -numBytes, is64Bit, tii);
+        emitSPUpdate(mbb, mbbi, stackPtr, -numBytes, is64Bit, getInstrInfo());
     }
   }
 
@@ -998,12 +1006,12 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       // which is guaranteed to be the last slot by processFunctionBeforeFrameFinalized().
       int ebpOffset = mfi.getObjectOffset(mfi.getObjectIndexEnd() - 1) + 4;
       // mov %ebp, %esp.
-      mi = buildMI(mbb, mbbi++, tii.get(is64Bit ? MOV64rr : MOV32rr), stackPtr).
+      mi = buildMI(mbb, mbbi++, getInstrInfo().get(is64Bit ? MOV64rr : MOV32rr), stackPtr).
           addReg(EBP, RegState.Kill).getMInstr();
       mi.getOperand(3).setIsDead(true);
 
       // mov offset(%esp), %ebp.
-      mi = buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rm : MOV32rm), framePtr).
+      mi = buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? MOV64rm : MOV32rm), framePtr).
           addReg(stackPtr).addImm(ebpOffset).getMInstr();
     } else {
       // get the number of bytes allocated from the frameInfo.
@@ -1013,7 +1021,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         int opc = numBytes < 128 ?
             is64Bit ? ADD64ri8 : ADD32ri8 :
             is64Bit ? AND64ri32 : ADD32ri;
-        mi = buildMI(mbb, mbbi, tii.get(opc), stackPtr).
+        mi = buildMI(mbb, mbbi, getInstrInfo().get(opc), stackPtr).
             addReg(stackPtr, RegState.Kill).
             addImm(numBytes).getMInstr();
         mi.getOperand(3).setIsDead(true);
