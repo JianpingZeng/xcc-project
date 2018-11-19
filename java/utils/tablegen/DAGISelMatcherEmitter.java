@@ -93,7 +93,7 @@ public class DAGISelMatcherEmitter {
       val >>= 7;
       ++numBytes;
     }
-    return numBytes+1;
+    return numBytes + 1;
   }
 
   private int getPatternPredicate(String pred) {
@@ -136,14 +136,14 @@ public class DAGISelMatcherEmitter {
   }
 
   private String getFullRegisterName(String reg) {
-    return targetName +"GenRegisterNames." + reg;
+    return targetName + "GenRegisterNames." + reg;
   }
 
   private long emitMatcher(Matcher m,
                            int indent,
                            int currentIdx,
                            FormattedOutputStream os) {
-    os.padToColumn(indent*2);
+    os.padToColumn(indent * 2);
 
     switch (m.getKind()) {
       case Scope: {
@@ -155,15 +155,13 @@ public class DAGISelMatcherEmitter {
           if (i == 0) {
             os.print("OPC_Scope, ");
             ++currentIdx;
-          }
-          else {
+          } else {
             if (!OmitComments.value) {
               os.printf("/*%d*/", currentIdx);
-              os.padToColumn(indent*2);
+              os.padToColumn(indent * 2);
               os.print("/*Scope*/");
-            }
-            else
-              os.padToColumn(indent*2);
+            } else
+              os.padToColumn(indent * 2);
           }
 
           int childSize = 0;
@@ -173,15 +171,15 @@ public class DAGISelMatcherEmitter {
             vbrSize = getVBRSize(childSize);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             FormattedOutputStream fos = new FormattedOutputStream(baos);
-            childSize = emitMatcherList(sm.getChild(i), indent+1,
-                currentIdx+vbrSize, fos);
+            childSize = emitMatcherList(sm.getChild(i), indent + 1,
+                currentIdx + vbrSize, fos);
             tempBuf = baos.toString();
-          }while (getVBRSize(childSize) != vbrSize);
+          } while (getVBRSize(childSize) != vbrSize);
 
           Util.assertion(childSize != 0);
           currentIdx += emitVBRValue(childSize, os);
           if (!OmitComments.value) {
-            os.printf("/*->%d*/", currentIdx+childSize);
+            os.printf("/*->%d*/", currentIdx + childSize);
 
             if (i == 0) {
               os.padToColumn(CommentIndent);
@@ -196,7 +194,7 @@ public class DAGISelMatcherEmitter {
 
         if (!OmitComments.value)
           os.printf("/*%d*/", currentIdx);
-        os.padToColumn(indent*2);
+        os.padToColumn(indent * 2);
         os.printf("0, ");
         if (!OmitComments.value)
           os.print("/*End of Scope*/");
@@ -228,7 +226,7 @@ public class DAGISelMatcherEmitter {
         os.println("OPC_CaptureFlagInput,");
         return 1;
       case MoveChild:
-        os.printf("OPC_MoveChild, %d,\n", ((MoveChildMatcher)m).getChildNo());
+        os.printf("OPC_MoveChild, %d,\n", ((MoveChildMatcher) m).getChildNo());
         return 2;
       case MoveParent:
         os.println("OPC_MoveParent,");
@@ -248,7 +246,7 @@ public class DAGISelMatcherEmitter {
         return 2;
       }
       case CheckPredicate: {
-        String pred = ((CheckPredicateMatcher)m).getPredicateName();
+        String pred = ((CheckPredicateMatcher) m).getPredicateName();
         os.printf("OPC_CheckPredicate, %d,", getNodePredicate(pred));
         if (!OmitComments.value) {
           os.padToColumn(CommentIndent);
@@ -259,7 +257,7 @@ public class DAGISelMatcherEmitter {
       }
       case CheckOpcode:
         os.printf("OPC_CheckOpcode, %s, %n",
-            ((CheckOpcodeMatcher)m).getOpcode().getEnumName());
+            ((CheckOpcodeMatcher) m).getOpcode().getEnumName());
         return 2;
       case SwitchOpcode:
       case SwitchType: {
@@ -268,12 +266,11 @@ public class DAGISelMatcherEmitter {
         boolean isSwitchOpcode = false;
         if (m instanceof SwitchOpcodeMatcher) {
           os.printf("OPC_SwitchOpcode ");
-          numCases = ((SwitchOpcodeMatcher)m).getNumCases();
+          numCases = ((SwitchOpcodeMatcher) m).getNumCases();
           isSwitchOpcode = true;
-        }
-        else {
+        } else {
           os.print("OPC_SwitchType ");
-          numCases = ((SwitchTypeMatcher)m).getNumCases();
+          numCases = ((SwitchTypeMatcher) m).getNumCases();
         }
 
         if (!OmitComments.value)
@@ -282,8 +279,8 @@ public class DAGISelMatcherEmitter {
         ++currentIdx;
         for (int i = 0; i < numCases; i++) {
           Matcher child;
-          child = isSwitchOpcode ? ((SwitchOpcodeMatcher)m).getCaseMatcher(i) :
-              ((SwitchTypeMatcher)m).getCaseMatcher(i);
+          child = isSwitchOpcode ? ((SwitchOpcodeMatcher) m).getCaseMatcher(i) :
+              ((SwitchTypeMatcher) m).getCaseMatcher(i);
 
           int childSize = 0;
           int vbrSize = 0;
@@ -292,46 +289,45 @@ public class DAGISelMatcherEmitter {
             vbrSize = getVBRSize(childSize);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             FormattedOutputStream fos = new FormattedOutputStream(baos);
-            childSize = emitMatcherList(child, indent+1,
-                currentIdx+vbrSize, fos);
+            childSize = emitMatcherList(child, indent + 1,
+                currentIdx + vbrSize, fos);
             tempBuf = baos.toString();
-          }while (getVBRSize(childSize) != vbrSize);
+          } while (getVBRSize(childSize) != vbrSize);
 
           Util.assertion(childSize != 0);
           currentIdx += emitVBRValue(childSize, os);
 
-            if (i != 0) {
-              os.padToColumn(indent*2);
-              if (!OmitComments.value)
-                os.printf(isSwitchOpcode?"/*SwitchOpcode*/":"/*SwitchType*/");
-            }
+          if (i != 0) {
+            os.padToColumn(indent * 2);
+            if (!OmitComments.value)
+              os.printf(isSwitchOpcode ? "/*SwitchOpcode*/" : "/*SwitchType*/");
+          }
 
           os.print(' ');
           if (isSwitchOpcode) {
-            os.print(((SwitchOpcodeMatcher)m).getCaseOpcode(i).getEnumName());
-          }
-          else
-            os.print(MVT.getEnumName(((SwitchTypeMatcher)m).getCaseType(i)));
+            os.print(((SwitchOpcodeMatcher) m).getCaseOpcode(i).getEnumName());
+          } else
+            os.print(MVT.getEnumName(((SwitchTypeMatcher) m).getCaseType(i)));
           os.print(',');
           if (!OmitComments.value)
-            os.printf("// ->%d", currentIdx+childSize+1);
+            os.printf("// ->%d", currentIdx + childSize + 1);
           os.println();
           ++currentIdx;
           os.print(tempBuf);
           currentIdx += childSize;
         }
 
-        os.padToColumn(indent*2);
+        os.padToColumn(indent * 2);
         os.print("0, ");
         if (!OmitComments.value)
-          os.print(isSwitchOpcode?"// EndSwitchOpcode":"// EndSwitchType");
+          os.print(isSwitchOpcode ? "// EndSwitchOpcode" : "// EndSwitchType");
         os.println();
         ++currentIdx;
         return currentIdx - startIdx;
       }
       case CheckType:
         os.printf("OPC_CheckType, %s,\n",
-            MVT.getEnumName(((CheckTypeMatcher)m).getType()));
+            MVT.getEnumName(((CheckTypeMatcher) m).getType()));
         return 2;
 
       case CheckChildType:
@@ -347,11 +343,11 @@ public class DAGISelMatcherEmitter {
       }
       case CheckCondCode:
         os.printf("OPC_CheckCondCode, CondCode.%s.ordinal(),\n",
-            ((CheckCondCodeMatcher)m).getCondcodeName());
+            ((CheckCondCodeMatcher) m).getCondcodeName());
         return 2;
       case CheckValueType:
         os.printf("OPC_CheckValueType, MVT.%s,\n",
-            ((CheckValueTypeMatcher)m).getTypeName());
+            ((CheckValueTypeMatcher) m).getTypeName());
         return 2;
       case CheckComplexPat: {
         CheckComplexPatMatcher cpm = (CheckComplexPatMatcher) m;
@@ -373,13 +369,13 @@ public class DAGISelMatcherEmitter {
       }
       case CheckAndImm: {
         os.print("OPC_CheckAndImm,");
-        long bytes = 1 + emitVBRValue(((CheckAndImmMatcher)m).getValue(), os);
+        long bytes = 1 + emitVBRValue(((CheckAndImmMatcher) m).getValue(), os);
         os.println();
         return bytes;
       }
       case CheckOrImm: {
         os.print("OPC_CheckOrImm,");
-        long bytes = 1 + emitVBRValue(((CheckOrImmMatcher)m).getValue(), os);
+        long bytes = 1 + emitVBRValue(((CheckOrImmMatcher) m).getValue(), os);
         os.println();
         return bytes;
       }
@@ -417,7 +413,7 @@ public class DAGISelMatcherEmitter {
       }
       case EmitConvertToTarget:
         os.printf("OPC_EmitConvertToTarget, %d,\n",
-            ((EmitConvertToTargetMatcher)m).getSlot());
+            ((EmitConvertToTargetMatcher) m).getSlot());
         return 2;
       case EmitMergeInputChains: {
         EmitMergeInputChainsMatcher emm = (EmitMergeInputChainsMatcher) m;
@@ -447,7 +443,7 @@ public class DAGISelMatcherEmitter {
       case EmitNode:
       case MorphNodeTo: {
         EmitNodeMatcherCommon emc = (EmitNodeMatcherCommon) m;
-        os.printf(emc instanceof EmitNodeMatcher ? "OPC_EmitNode":"OPC_MorphNodeTo");
+        os.printf(emc instanceof EmitNodeMatcher ? "OPC_EmitNode" : "OPC_MorphNodeTo");
         os.printf(", ");
         emitTargetOpcode(emc.getOpcodeName(), os);
         os.print(", 0");
@@ -460,7 +456,7 @@ public class DAGISelMatcherEmitter {
           os.printf("|OPFL_Variadic%d", emc.getNumFixedArityOperands());
         os.println(",");
 
-        os.padToColumn(indent*2+4);
+        os.padToColumn(indent * 2 + 4);
         os.print(emc.getNumVTs());
         if (!OmitComments.value)
           os.print("/*#VTs*/");
@@ -486,13 +482,13 @@ public class DAGISelMatcherEmitter {
               os.printf("// Results = ");
               int first = enm.getFirstResultSlot();
               for (int i = 0; i < numResults; i++)
-                os.printf("#%d ", first+i);
+                os.printf("#%d ", first + i);
             }
           }
           os.println();
           if (emc instanceof MorphNodeToMatcher) {
             MorphNodeToMatcher mnm = (MorphNodeToMatcher) emc;
-            os.padToColumn(indent*2);
+            os.padToColumn(indent * 2);
             os.print("// Src: ");
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -500,15 +496,14 @@ public class DAGISelMatcherEmitter {
             mnm.getPattern().getSrcPattern().print(tmpOS);
             os.println(baos.toString());
 
-            os.padToColumn(indent*2);
+            os.padToColumn(indent * 2);
             os.print("// Dst: ");
             baos = new ByteArrayOutputStream();
             tmpOS = new PrintStream(baos);
             mnm.getPattern().getDstPattern().print(tmpOS);
             os.print(baos.toString());
           }
-        }
-        else
+        } else
           os.println();
 
         return 6 + emc.getNumVTs() + numOperandBytes;
@@ -521,7 +516,7 @@ public class DAGISelMatcherEmitter {
           numOperandBytes += emitVBRValue(mrm.getNode(i), os);
 
         os.println();
-        return 2+numOperandBytes;
+        return 2 + numOperandBytes;
       }
       case CompleteMatch: {
         CompleteMatchMatcher cmm = (CompleteMatchMatcher) m;
@@ -531,7 +526,7 @@ public class DAGISelMatcherEmitter {
           numResultBytes += emitVBRValue(cmm.getResult(i), os);
         os.println();
         if (!OmitComments.value) {
-          os.padToColumn(indent*2);
+          os.padToColumn(indent * 2);
           os.print("// Src: ");
 
           ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -539,7 +534,7 @@ public class DAGISelMatcherEmitter {
           cmm.getPattern().getSrcPattern().print(tmpOS);
           os.println(baos.toString());
 
-          os.padToColumn(indent*2);
+          os.padToColumn(indent * 2);
           os.print("// Dst: ");
           baos = new ByteArrayOutputStream();
           tmpOS = new PrintStream(baos);
@@ -555,7 +550,7 @@ public class DAGISelMatcherEmitter {
 
   private void emitTargetOpcode(String opc, FormattedOutputStream os) {
     if (opc.startsWith(targetName))
-      opc = targetName+"GenInstrNames" + opc.substring(targetName.length());
+      opc = targetName + "GenInstrNames" + opc.substring(targetName.length());
 
     os.printf("(byte)%s&255, (byte)%s>>8", opc, opc);
   }
@@ -569,7 +564,7 @@ public class DAGISelMatcherEmitter {
     long inVal = val;
     int numBytes = 0;
     while (val >= 128) {
-      os.printf("%d|128", (byte)val&127);
+      os.printf("%d|128", (byte) val & 127);
       val >>= 7;
       ++numBytes;
     }
@@ -577,7 +572,7 @@ public class DAGISelMatcherEmitter {
     if (!OmitComments.value)
       os.printf("/*%d*/", inVal);
     os.print(", ");
-    return numBytes+1;
+    return numBytes + 1;
   }
 
   private int emitMatcherList(Matcher theMatcher,
@@ -607,13 +602,11 @@ public class DAGISelMatcherEmitter {
         Matcher.ScopeMatcher sm = (Matcher.ScopeMatcher) theMatcher;
         for (int i = 0, e = sm.getNumChildren(); i < e; i++)
           buildHistogram(sm.getChild(i), opcodeFreq);
-      }
-      else if (theMatcher instanceof SwitchOpcodeMatcher) {
+      } else if (theMatcher instanceof SwitchOpcodeMatcher) {
         SwitchOpcodeMatcher som = (SwitchOpcodeMatcher) theMatcher;
         for (int i = 0, e = som.getNumCases(); i < e; i++)
           buildHistogram(som.getCaseMatcher(i), opcodeFreq);
-      }
-      else if (theMatcher instanceof SwitchTypeMatcher) {
+      } else if (theMatcher instanceof SwitchTypeMatcher) {
         SwitchTypeMatcher stm = (SwitchTypeMatcher) theMatcher;
         for (int i = 0, e = stm.getNumCases(); i < e; i++)
           buildHistogram(stm.getCaseMatcher(i), opcodeFreq);
@@ -633,41 +626,105 @@ public class DAGISelMatcherEmitter {
     for (int opc = 0; opc < opcodeFreg.length; ++opc) {
       os.print("  // #");
       switch (MatcherKind.values()[opc]) {
-        case Scope: os.print("OPC_Scope"); break;
-        case RecordNode: os.print("OPC_RecordNode"); break;
-        case RecordChild: os.print("OPC_RecordChild"); break;
-        case RecordMemRef: os.print("OPC_RecordMemRef"); break;
-        case CaptureFlagInput: os.print("OPC_CaptureFlagInput"); break;
-        case MoveChild: os.print("OPC_MoveChild"); break;
-        case MoveParent: os.print("OPC_MoveParent"); break;
-        case CheckSame: os.print("OPC_CheckSame"); break;
+        case Scope:
+          os.print("OPC_Scope");
+          break;
+        case RecordNode:
+          os.print("OPC_RecordNode");
+          break;
+        case RecordChild:
+          os.print("OPC_RecordChild");
+          break;
+        case RecordMemRef:
+          os.print("OPC_RecordMemRef");
+          break;
+        case CaptureFlagInput:
+          os.print("OPC_CaptureFlagInput");
+          break;
+        case MoveChild:
+          os.print("OPC_MoveChild");
+          break;
+        case MoveParent:
+          os.print("OPC_MoveParent");
+          break;
+        case CheckSame:
+          os.print("OPC_CheckSame");
+          break;
         case CheckPatternPredicate:
-          os.print("OPC_CheckPatternPredicate"); break;
-        case CheckPredicate: os.print("OPC_CheckPredicate"); break;
-        case CheckOpcode: os.print("OPC_CheckOpcode"); break;
-        case SwitchOpcode: os.print("OPC_SwitchOpcode"); break;
-        case CheckType: os.print("OPC_CheckType"); break;
-        case SwitchType: os.print("OPC_SwitchType"); break;
-        case CheckChildType: os.print("OPC_CheckChildType"); break;
-        case CheckInteger: os.print("OPC_CheckInteger"); break;
-        case CheckCondCode: os.print("OPC_CheckCondCode"); break;
-        case CheckValueType: os.print("OPC_CheckValueType"); break;
-        case CheckComplexPat: os.print("OPC_CheckComplexPat"); break;
-        case CheckAndImm: os.print("OPC_CheckAndImm"); break;
-        case CheckOrImm: os.print("OPC_CheckOrImm"); break;
+          os.print("OPC_CheckPatternPredicate");
+          break;
+        case CheckPredicate:
+          os.print("OPC_CheckPredicate");
+          break;
+        case CheckOpcode:
+          os.print("OPC_CheckOpcode");
+          break;
+        case SwitchOpcode:
+          os.print("OPC_SwitchOpcode");
+          break;
+        case CheckType:
+          os.print("OPC_CheckType");
+          break;
+        case SwitchType:
+          os.print("OPC_SwitchType");
+          break;
+        case CheckChildType:
+          os.print("OPC_CheckChildType");
+          break;
+        case CheckInteger:
+          os.print("OPC_CheckInteger");
+          break;
+        case CheckCondCode:
+          os.print("OPC_CheckCondCode");
+          break;
+        case CheckValueType:
+          os.print("OPC_CheckValueType");
+          break;
+        case CheckComplexPat:
+          os.print("OPC_CheckComplexPat");
+          break;
+        case CheckAndImm:
+          os.print("OPC_CheckAndImm");
+          break;
+        case CheckOrImm:
+          os.print("OPC_CheckOrImm");
+          break;
         case CheckFoldableChainNode:
-          os.print("OPC_CheckFoldableChainNode"); break;
-        case EmitInteger: os.print("OPC_EmitInteger"); break;
-        case EmitStringInteger: os.print("OPC_EmitStringInteger"); break;
-        case EmitRegister: os.print("OPC_EmitRegister"); break;
-        case EmitConvertToTarget: os.print("OPC_EmitConvertToTarget"); break;
-        case EmitMergeInputChains: os.print("OPC_EmitMergeInputChains"); break;
-        case EmitCopyToReg: os.print("OPC_EmitCopyToReg"); break;
-        case EmitNode: os.print("OPC_EmitNode"); break;
-        case MorphNodeTo: os.print("OPC_MorphNodeTo"); break;
-        case EmitNodeXForm: os.print("OPC_EmitNodeXForm"); break;
-        case MarkFlagResults: os.print("OPC_MarkFlagResults"); break;
-        case CompleteMatch: os.print("OPC_CompleteMatch"); break;
+          os.print("OPC_CheckFoldableChainNode");
+          break;
+        case EmitInteger:
+          os.print("OPC_EmitInteger");
+          break;
+        case EmitStringInteger:
+          os.print("OPC_EmitStringInteger");
+          break;
+        case EmitRegister:
+          os.print("OPC_EmitRegister");
+          break;
+        case EmitConvertToTarget:
+          os.print("OPC_EmitConvertToTarget");
+          break;
+        case EmitMergeInputChains:
+          os.print("OPC_EmitMergeInputChains");
+          break;
+        case EmitCopyToReg:
+          os.print("OPC_EmitCopyToReg");
+          break;
+        case EmitNode:
+          os.print("OPC_EmitNode");
+          break;
+        case MorphNodeTo:
+          os.print("OPC_MorphNodeTo");
+          break;
+        case EmitNodeXForm:
+          os.print("OPC_EmitNodeXForm");
+          break;
+        case MarkFlagResults:
+          os.print("OPC_MarkFlagResults");
+          break;
+        case CompleteMatch:
+          os.print("OPC_CompleteMatch");
+          break;
       }
       os.padToColumn(40);
       os.printf(" = %d%n", opcodeFreg[opc]);
@@ -700,7 +757,7 @@ public class DAGISelMatcherEmitter {
       os.println("      default: Util.assertion(\"Invalid predicate in table\");");
       for (int i = 0, e = nodePredicates.size(); i < e; i++) {
         TreePattern tp = patByName.get(nodePredicates.get(i).substring("Predicate_".length()));
-        Util.assertion(tp!= null);
+        Util.assertion(tp != null);
         String code = tp.getRecord().getValueAsCode("Predicate");
         Util.assertion(!code.isEmpty(), "No code in this predicate");
         os.printf("      case %d: { // %s%n", i, nodePredicates.get(i));
@@ -739,7 +796,7 @@ public class DAGISelMatcherEmitter {
         os.printf("        SDValue[] tmp = new SDValue[%d];%n", numOps);
         os.printf("        return %s(root, n", cp.getSelectFunc());
         for (int j = 0; j < numOps; j++)
-          os.printf(", tmp[%d]",j);
+          os.printf(", tmp[%d]", j);
         os.println(");");
         os.println("      }");
       }
@@ -752,7 +809,7 @@ public class DAGISelMatcherEmitter {
       os.println("    switch(xformNo) {");
       os.println("      default: Util.assertion(\"Invalid xform # in table?\");");
       for (int i = 0, e = nodeXForms.size(); i < e; i++) {
-        Pair<Record, String>itr = cgp.getSDNodeTransform(nodeXForms.get(i));
+        Pair<Record, String> itr = cgp.getSDNodeTransform(nodeXForms.get(i));
         Record sdnode = itr.first;
         String code = itr.second;
 
@@ -772,10 +829,43 @@ public class DAGISelMatcherEmitter {
     }
   }
 
-  private void printMatcherTable(char[] table, long totalSize, PrintStream os) {
-    os.println(" static final int[] table = {");
-    os.print(table);
-    os.println("};");
+  private static int index = 0;
+
+  private static void printMatcherTable(String table, long totalSize, PrintStream os) {
+    os.printf("  private static int[] initTable%d() {\n", index++);
+    os.println("    final int[] table = {");
+
+    for (int i = 0, size = table.length(); i < size; ) {
+      String endMarker = "OPC_CompleteMatch";
+      int end = i + endMarker.length();
+      if (end < size && table.substring(i, end).equals(endMarker)) {
+        // separate the matcher for each complete match code piece.
+        os.print(endMarker);
+        i = end;
+        int numNewLines = 0;
+        while (i < size && numNewLines < 3) {
+          os.print(table.charAt(i));
+          if (table.charAt(i) == '\n')
+            ++numNewLines;
+          ++i;
+        }
+
+        // Create a new initializing sub-routines.
+        os.println("    };");
+        os.println("    return table;");
+        os.println("  }");
+
+        // Checks if it is needed to create a new initializing functions.
+        if (i < size) {
+          os.printf("  private static int[] initTable%d() {\n", index++);
+          os.println("    final int[] table = {");
+        }
+      } else {
+        os.print(table.charAt(i));
+        ++i;
+      }
+    }
+
     os.printf("  // Matcher Table size is %d bytes\n", totalSize);
   }
 
@@ -790,21 +880,22 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.MVT;");
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");
-	os.println("import backend.target.TargetInstrInfo;");
-    os.printf("import backend.target.%s.%sInstrInfo;%n", 
-			targetName.toLowerCase(), targetName);
-	os.println("import static backend.codegen.dagisel.CondCode.*;");
+    os.println("import backend.target.TargetInstrInfo;");
+    os.printf("import backend.target.%s.%sInstrInfo;%n",
+        targetName.toLowerCase(), targetName);
+    os.println("import static backend.codegen.dagisel.CondCode.*;");
+    os.println("import java.lang.reflect.Method;");
     os.println();
 
-    os.printf("public final class %sGenDAGISel extends %sDAGISel {%n",
-        targetName, targetName);
+    String className = targetName + "GenDAGISel";
+    os.printf("public final class %s extends %sDAGISel {%n",
+        className, targetName);
 
     DAGISelMatcherEmitter emitter = new DAGISelMatcherEmitter(cdp.getTarget().getName());
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     FormattedOutputStream fos = new FormattedOutputStream(baos);
     int totalSize = emitter.emitMatcherList(matcher, 5, 0, fos);
-    emitter.printMatcherTable(baos.toString().toCharArray(), totalSize, os);
-    os.printf("  // Matcher Table size is %d bytes\n", totalSize);
+    printMatcherTable(baos.toString(), totalSize, os);
 
     emitter.emitHistogram(matcher, fos);
     emitter.emitPredicateFunctions(cdp, fos);
@@ -813,14 +904,18 @@ public class DAGISelMatcherEmitter {
     os.printf("  public %sGenDAGISel(%sTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {%n",
         targetName, targetName);
     os.println("    super(tm, optLevel);");
-    os.println("    matcherTable = table;");
-/*    if (!emitter.initializedMtds.isEmpty()) {
-      os.printf("    // Matcher Table size is %d bytes\n", totalSize);
-      os.println("    // Calling to initializer method to initialize part");
-      for (String mtd : emitter.initializedMtds) {
-        os.printf("    %s();%n", mtd);
-      }
-    }*/
+    os.printf("     try {\n" +
+        "            Class dagisel = Class.forName(\"%s\");\n" +
+        "            int index = 0;\n" +
+        "            for (int i = 0; i < %d; i++) {\n" +
+        "              Method m = dagisel.getDeclaredMethod(\"initTable\"+i);\n" +
+        "              int[] table = (int[])m.invoke(null, (Object[]) null);\n" +
+        "              System.arraycopy(table, 0, matcherTable, index, table.length);\n" +
+        "              index += table.length;\n" +
+        "            }\n" +
+        "          } catch (Exception e) {\n" +
+        "            e.printStackTrace();\n" +
+        "          }\n", className, index);
     os.println("  }");
     os.println("}");
   }

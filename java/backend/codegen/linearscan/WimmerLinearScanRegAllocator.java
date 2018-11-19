@@ -443,13 +443,13 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
     // as 0.
     for (LiveInterval it : active) {
       int reg = isPhysicalRegister(it.register) ?
-          freeUntilPos[it.register] = 0 : ilk.getPhyReg(it);
+          it.register : ilk.getPhyReg(it);
       freeUntilPos[reg] = 0;
     }
     for (LiveInterval it : inactive) {
       if (it.intersect(cur)) {
         int reg = isPhysicalRegister(it.register) ?
-            freeUntilPos[it.register] = 0 : ilk.getPhyReg(it);
+            it.register : ilk.getPhyReg(it);
         freeUntilPos[reg] = it.intersectAt(cur);
       }
     }

@@ -89,7 +89,7 @@ public class OptTable {
       }
     }
     Util.assertion(grp != null, "Unknown group id!");
-    groups[groupID] = new OptionGroup(groupID, grp.name, getOptionGroup(grp.group));
+    groups[groupID] = new OptionGroup(groupID, grp.name(), getOptionGroup(grp.group));
     return groups[groupID];
   }
 
