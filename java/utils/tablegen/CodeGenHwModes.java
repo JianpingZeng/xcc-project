@@ -124,7 +124,7 @@ public class CodeGenHwModes {
 
   public HwMode getMode(int idx) {
     Util.assertion(idx > 0, "0 index reserved for default mode");
-    return modes.get(idx-1);
+    return modes.get(idx - 1);
   }
 
   public void dump() {
@@ -151,8 +151,7 @@ public class CodeGenHwModes {
   }
 
 
-  public static String getModeName(int mode)
-  {
+  public static String getModeName(int mode) {
     if (mode == DefaultMode)
       return "*";
     return "m" + mode;

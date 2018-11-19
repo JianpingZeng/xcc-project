@@ -43,33 +43,38 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   private final static int Capability = 1024;
   // sizeof(char) * sizeof(long) = 64.
   private final static int WordWidth = 64;
-  private final static int NumWords = Capability/WordWidth;
+  private final static int NumWords = Capability / WordWidth;
 
   private long[] words;
+
   public MachineValueTypeSet() {
     words = new long[NumWords];
   }
+
   public void clear() {
     Arrays.fill(words, 0);
   }
+
   public boolean isEmpty() {
     for (long w : words) {
       if (w != 0) return false;
     }
     return true;
   }
+
   public boolean count(MVT vt) {
-    return ((words[vt.simpleVT/WordWidth] >>> (vt.simpleVT%WordWidth)) & 0x1) != 0;
+    return ((words[vt.simpleVT / WordWidth] >>> (vt.simpleVT % WordWidth)) & 0x1) != 0;
   }
 
   /**
    * Set the element in the given index as true.
+   *
    * @param vt
-   * @return  Return true if the given position has been setted as true.
+   * @return Return true if the given position has been setted as true.
    */
   public boolean insert(MVT vt) {
     boolean v = count(vt);
-    words[vt.simpleVT/WordWidth] |= 1L <<(vt.simpleVT%WordWidth);
+    words[vt.simpleVT / WordWidth] |= 1L << (vt.simpleVT % WordWidth);
     return v;
   }
 
@@ -80,7 +85,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public void erase(MVT vt) {
-    words[vt.simpleVT/WordWidth] &= ~(1L <<(vt.simpleVT%WordWidth));
+    words[vt.simpleVT / WordWidth] &= ~(1L << (vt.simpleVT % WordWidth));
   }
 
   public int size() {
@@ -103,7 +108,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     if (getClass() != obj.getClass()) return false;
     MachineValueTypeSet vt = (MachineValueTypeSet) obj;
     if (size() != vt.size()) return false;
-    for (int i = 0,e = words.length; i < e; i++)
+    for (int i = 0, e = words.length; i < e; i++)
       if (words[i] != vt.words[i])
         return false;
     return true;
@@ -111,15 +116,16 @@ public class MachineValueTypeSet implements Iterable<MVT> {
 
   /**
    * Erases all MVT in this set if given predicate is satisfied.
+   *
    * @param pred
-   * @return  Return true if there are MVT has been erased.
+   * @return Return true if there are MVT has been erased.
    */
   public boolean eraseIf(Predicate<MVT> pred) {
     boolean erased = false;
     for (Iterator<MVT> itr = iterator(); itr.hasNext(); ) {
       MVT vt = itr.next();
       boolean res = !pred.test(vt);
-      if (res)  continue;
+      if (res) continue;
 
       erased = true;
       erase(vt);
@@ -148,7 +154,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public void forEach(Consumer<? super MVT> action) {
-    for (int idx = nextSetBit(0); idx != -1; idx = nextSetBit(idx+1)) {
+    for (int idx = nextSetBit(0); idx != -1; idx = nextSetBit(idx + 1)) {
       MVT vt = new MVT(idx);
       action.accept(vt);
     }
@@ -159,9 +165,8 @@ public class MachineValueTypeSet implements Iterable<MVT> {
       return -1;
 
     for (int i = startIndex, e = Capability; i < e; ) {
-      if (words[i/WordWidth] == 0)
-      {
-        i += ((i/WordWidth)+1)*WordWidth;
+      if (words[i / WordWidth] == 0) {
+        i += ((i / WordWidth) + 1) * WordWidth;
         continue;
       }
       if (getBit(i)) return i;
@@ -175,7 +180,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     StringBuilder buf = new StringBuilder("[");
     boolean firstOne = true;
 
-    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx+1)) {
+    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx + 1)) {
       if (firstOne) firstOne = false;
       else buf.append(", ");
       buf.append(ValueTypeByHwMode.getMVTName(new MVT(idx)));
@@ -193,7 +198,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
   }
 
   public MVT getFirstSetBit() {
-    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx+1))
+    for (int idx = nextSetBit(0); idx >= 0; idx = nextSetBit(idx + 1))
       return new MVT(idx);
     return null;
   }
@@ -208,10 +213,11 @@ public class MachineValueTypeSet implements Iterable<MVT> {
       this.typeSet = typeSet;
       size = Capability;
       pos = -1;
-      for (pos = typeSet.nextSetBit(0); pos != -1; pos = typeSet.nextSetBit(pos+1))
+      for (pos = typeSet.nextSetBit(0); pos != -1; pos = typeSet.nextSetBit(pos + 1))
         if (typeSet.getBit(pos))
           break;
     }
+
     @Override
     public boolean hasNext() {
       return pos != -1;
@@ -221,7 +227,7 @@ public class MachineValueTypeSet implements Iterable<MVT> {
     public MVT next() {
       MVT res = new MVT(pos);
       ++pos;
-      for (pos = typeSet.nextSetBit(pos); pos != -1; pos = typeSet.nextSetBit(pos+1))
+      for (pos = typeSet.nextSetBit(pos); pos != -1; pos = typeSet.nextSetBit(pos + 1))
         if (typeSet.getBit(pos))
           break;
 

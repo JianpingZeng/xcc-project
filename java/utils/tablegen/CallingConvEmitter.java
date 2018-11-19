@@ -74,9 +74,9 @@ public class CallingConvEmitter extends TableGenBackend {
 
       os.printf("package backend.target.%s;\n\n", targetName.toLowerCase());
       os.printf("import backend.codegen.*;\n"
-          + "import backend.codegen.CCValAssign.LocInfo;\n"
-          + "import backend.support.CallingConv;\n" + "\n"
-          + "import static backend.target.%s.%sGenRegisterNames.*;\n",
+              + "import backend.codegen.CCValAssign.LocInfo;\n"
+              + "import backend.support.CallingConv;\n" + "\n"
+              + "import static backend.target.%s.%sGenRegisterNames.*;\n",
           targetName.toLowerCase(), targetName);
 
       emitSourceFileHeaderComment("Calling convetion Implementation Fragment", os);
@@ -140,8 +140,7 @@ public class CallingConvEmitter extends TableGenBackend {
     }
   }
 
-  private ArrayList<String> topologicalSortOfAction(ArrayList<Record> ccs)
-      {
+  private ArrayList<String> topologicalSortOfAction(ArrayList<Record> ccs) {
     for (Record cc : ccs) {
       ListInit ccActions = cc.getValueAsListInit("Actions");
       for (int i = 0, e = ccActions.getSize(); i != e; i++) {
@@ -210,8 +209,7 @@ public class CallingConvEmitter extends TableGenBackend {
     os.println("\t};\n");
   }
 
-  private void emitAction(Record action, int indent, PrintStream os)
-      {
+  private void emitAction(Record action, int indent, PrintStream os) {
     String indentStr = Util.fixedLengthString(indent, ' ');
     if (action.isSubClassOf("CCPredicateAction")) {
       os.printf("%sif (", indentStr);

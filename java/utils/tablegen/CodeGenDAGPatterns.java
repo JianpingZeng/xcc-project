@@ -108,6 +108,7 @@ public final class CodeGenDAGPatterns {
 
   /**
    * Return true if verification is correct.
+   *
    * @param node
    * @return
    */
@@ -168,7 +169,7 @@ public final class CodeGenDAGPatterns {
     for (TypeSetByHwMode vt : node.getExtTypes())
       modes.addAll(vt.map.keySet());
 
-    for (int i = 0,e = node.getNumChildren(); i < e; i++)
+    for (int i = 0, e = node.getNumChildren(); i < e; i++)
       collectModes(modes, node.getChild(i));
   }
 
@@ -182,20 +183,20 @@ public final class CodeGenDAGPatterns {
 
     BiFunction<PatternToMatch, Integer, Void> appendPattern =
         (tp, mode) ->
-    {
-      TreePatternNode newSrc = tp.srcPattern.clone();
-      TreePatternNode newDst = tp.dstPattern.clone();
-      if (!newSrc.setDefaultMode(mode) || !newDst.setDefaultMode(mode))
-        return null;
+        {
+          TreePatternNode newSrc = tp.srcPattern.clone();
+          TreePatternNode newDst = tp.dstPattern.clone();
+          if (!newSrc.setDefaultMode(mode) || !newDst.setDefaultMode(mode))
+            return null;
 
-      ArrayList<utils.tablegen.Predicate> preds =new ArrayList<>(tp.preds);
-      if (!modeChecks.containsKey(mode))
-        modeChecks.put(mode, new ArrayList<>());
-      preds.addAll(modeChecks.get(mode));
-      patternsToMatch.add(new PatternToMatch(tp.getSrcRecord(), preds,
-          newSrc, newDst, tp.getDstRegs(), tp.getAddedComplexity()));
-      return null;
-    };
+          ArrayList<utils.tablegen.Predicate> preds = new ArrayList<>(tp.preds);
+          if (!modeChecks.containsKey(mode))
+            modeChecks.put(mode, new ArrayList<>());
+          preds.addAll(modeChecks.get(mode));
+          patternsToMatch.add(new PatternToMatch(tp.getSrcRecord(), preds,
+              newSrc, newDst, tp.getDstRegs(), tp.getAddedComplexity()));
+          return null;
+        };
 
     for (PatternToMatch tp : copy) {
       TreePatternNode src = null, dst = null;
@@ -255,8 +256,8 @@ public final class CodeGenDAGPatterns {
   }
 
   private static boolean inferFromPattern(CodeGenInstruction instInfo,
-                                            PatternToMatch pat,
-                                            CodeGenDAGPatterns cdp) {
+                                          PatternToMatch pat,
+                                          CodeGenDAGPatterns cdp) {
     boolean mayStore, mayLoad, hasSideEffect;
     InstAnalyzer analyzer = new InstAnalyzer(cdp, false, false, false);
     analyzer.analyze(pat.getSrcPattern());
@@ -707,7 +708,7 @@ public final class CodeGenDAGPatterns {
     for (int i = 0, e = l.getSize(); i < e; i++) {
       Init ii = l.getElement(i);
       if (ii instanceof DefInit)
-        res.add(new utils.tablegen.Predicate(((DefInit)ii).getDef(), true));
+        res.add(new utils.tablegen.Predicate(((DefInit) ii).getDef(), true));
       else
         Util.shouldNotReachHere("Non-def on the list!");
     }
@@ -990,7 +991,7 @@ public final class CodeGenDAGPatterns {
         // Create and insert the instruction.
         ArrayList<Record> impResults = new ArrayList<>();
         ArrayList<Record> impOperands = new ArrayList<>();
-        instructions.put(instr, new DAGInstruction(results, operands,impResults, impOperands));
+        instructions.put(instr, new DAGInstruction(results, operands, impResults, impOperands));
         continue;   // no pattern.
       }
 
@@ -1013,6 +1014,7 @@ public final class CodeGenDAGPatterns {
 
   /**
    * Parse the pattern for each instruction and store the result into {@code dagInstrs}.
+   *
    * @param cgi
    * @param pat
    * @param dagInstrs
@@ -1159,7 +1161,7 @@ public final class CodeGenDAGPatterns {
     TreePatternNode pattern = tp.getTree(0);
     TreePatternNode srcPattern;
     if (pattern.getOperator().getName().equals("set"))
-      srcPattern = pattern.getChild(pattern.getNumChildren()-1).clone();
+      srcPattern = pattern.getChild(pattern.getNumChildren() - 1).clone();
     else
       srcPattern = pattern;
 

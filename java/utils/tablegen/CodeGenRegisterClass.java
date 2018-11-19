@@ -108,7 +108,7 @@ public final class CodeGenRegisterClass {
     regInfos = new RegSizeInfoByHwMode();
 
     if (regInfoRec != null && regInfoRec.getValue() instanceof DefInit)
-      regInfos = new RegSizeInfoByHwMode(((DefInit)regInfoRec.getValue()).getDef(), cgh);
+      regInfos = new RegSizeInfoByHwMode(((DefInit) regInfoRec.getValue()).getDef(), cgh);
 
     long size = r.getValueAsInt("Size");
     Util.assertion(size != 0 || (regInfos != null &&
@@ -119,7 +119,7 @@ public final class CodeGenRegisterClass {
     if (!regInfos.hasDefault()) {
       RegSizeInfo ri = new RegSizeInfo();
       ri.regSize = ri.spillSize = size != 0 ? size :
-              vts.get(0).getSimple().getSizeInBits();
+          vts.get(0).getSimple().getSizeInBits();
       ri.spillAlignment = r.getValueAsInt("Alignment");
       regInfos.map.put(DefaultMode, ri);
     }

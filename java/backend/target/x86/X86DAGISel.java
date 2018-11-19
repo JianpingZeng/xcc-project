@@ -289,13 +289,21 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     }
   }
 
-  public boolean predicate_i16immSExt8(SDNode n) { return false; }
+  public boolean predicate_i16immSExt8(SDNode n) {
+    return false;
+  }
 
-  public boolean predicate_i32immSExt8(SDNode n) { return false; }
+  public boolean predicate_i32immSExt8(SDNode n) {
+    return false;
+  }
 
-  public boolean predicate_i64immSExt8(SDNode n) { return false; }
+  public boolean predicate_i64immSExt8(SDNode n) {
+    return false;
+  }
 
-  public boolean predicate_i64immSExt32(SDNode n) { return false; }
+  public boolean predicate_i64immSExt32(SDNode n) {
+    return false;
+  }
 
   protected boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am) {
     Util.assertion(val.getOpcode() == X86ISD.SegmentBaseAddress);

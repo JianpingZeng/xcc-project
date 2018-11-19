@@ -1218,7 +1218,7 @@ public final class ScalarEvolution implements FunctionPass {
   }
 
   /*
- * Test whether the condition described by Pred,
+   * Test whether the condition described by Pred,
    * LHS, and RHS is true whenever the condition desribed by Pred, FoundLHS,
    * and FoundRHS is true.
    */

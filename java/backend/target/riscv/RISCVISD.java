@@ -31,6 +31,7 @@ import backend.codegen.dagisel.ISD;
 
 /**
  * The enumeration value for target-specific operations supported by RISCV target.
+ *
  * @author Jianping Zeng.
  * @version 0.4
  */

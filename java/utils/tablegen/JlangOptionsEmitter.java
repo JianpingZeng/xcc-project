@@ -169,8 +169,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
    * @param options
    * @param os
    */
-  private void emitOptionIDs(ArrayList<Record> options, PrintStream os)
-      {
+  private void emitOptionIDs(ArrayList<Record> options, PrintStream os) {
     emitSourceFileHeaderComment("OptionInfo ID definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");
@@ -194,8 +193,7 @@ public class JlangOptionsEmitter extends TableGenBackend {
     os.println("}\n\n");
   }
 
-  private void emitOptionKind(ArrayList<Record> options, PrintStream os)
-      {
+  private void emitOptionKind(ArrayList<Record> options, PrintStream os) {
     emitSourceFileHeaderComment("OptionInfo Kinds definitions for JlangTool driver", os);
 
     os.printf("package xcc;%n%n");

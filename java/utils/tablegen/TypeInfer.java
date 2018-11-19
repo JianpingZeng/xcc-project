@@ -87,19 +87,22 @@ public class TypeInfer {
       tp.error("Type inference contradiction");
     return changed;
   }
+
   public boolean mergeInTypeInfo(TypeSetByHwMode out, int simpleVT) {
     return mergeInTypeInfo(out, new TypeSetByHwMode(simpleVT));
   }
+
   public boolean mergeInTypeInfo(TypeSetByHwMode out, ValueTypeByHwMode in) {
     return mergeInTypeInfo(out, new TypeSetByHwMode(in));
   }
 
   /**
    * To reduce the set {@code out} has at most one VT for each mode.
+   *
    * @param out
-   * @return  Return true if the {@code out} has been changed.
+   * @return Return true if the {@code out} has been changed.
    */
-  public boolean forceArbitrary(TypeSetByHwMode out){
+  public boolean forceArbitrary(TypeSetByHwMode out) {
     if (tp.hasError()) return false;
     boolean changed = false;
     for (Map.Entry<Integer, MachineValueTypeSet> itr : out.map.entrySet()) {
@@ -115,7 +118,7 @@ public class TypeInfer {
   }
 
   public static final Predicate<MVT> IsIntegerOrPtr = vt ->
-    vt.isInteger() || vt.simpleVT == MVT.iPTR;
+      vt.isInteger() || vt.simpleVT == MVT.iPTR;
 
   public static final Predicate<MVT> IsFloatingPoint = MVT::isFloatingPoint;
   public static final Predicate<MVT> IsVector = MVT::isVector;
@@ -129,23 +132,29 @@ public class TypeInfer {
       return out.constrain(pred);
     return out.assignIf(getLegalType(), pred);
   }
+
   /**
    * Remove any non-integer type in this set.
+   *
    * @param out
    * @return
    */
   public boolean enforceInteger(TypeSetByHwMode out) {
     return enforceByPredicate(out, IsIntegerOrPtr);
   }
-  public boolean enforceFloatingPoint(TypeSetByHwMode out){
+
+  public boolean enforceFloatingPoint(TypeSetByHwMode out) {
     return enforceByPredicate(out, IsFloatingPoint);
   }
+
   public boolean enforceScalar(TypeSetByHwMode out) {
     return enforceByPredicate(out, IsScalar);
   }
+
   public boolean enforceVector(TypeSetByHwMode out) {
     return enforceByPredicate(out, IsVector);
   }
+
   public boolean enforceAny(TypeSetByHwMode out) {
     if (tp.hasError() || !out.isEmpty())
       return false;
@@ -160,7 +169,7 @@ public class TypeInfer {
     unique.addAll(setB.map.keySet());
 
     boolean hasDefault = unique.contains(DefaultMode);
-    unique.forEach(m-> {
+    unique.forEach(m -> {
       if (m != DefaultMode)
         res.add(m);
       return true;
@@ -173,9 +182,10 @@ public class TypeInfer {
   /**
    * Make sure that for each type in {@code small} set, there exists a larger type in
    * {@code big} set.
+   *
    * @param small
    * @param big
-   * @return  Return true if given set has changed.
+   * @return Return true if given set has changed.
    */
   public boolean enforceSmallerThan(TypeSetByHwMode small, TypeSetByHwMode big) {
     if (tp.hasError()) return false;
@@ -198,18 +208,15 @@ public class TypeInfer {
           anyOf(s.iterator(), IsIntegerOrPtr)) {
         Predicate<MVT> NotInt = vt -> !IsIntegerOrPtr.test(vt);
         changed |= s.eraseIf(NotInt) | b.eraseIf(NotInt);
-      }
-      else if (anyOf(s.iterator(), IsFloatingPoint) &&
+      } else if (anyOf(s.iterator(), IsFloatingPoint) &&
           anyOf(b.iterator(), IsFloatingPoint)) {
-        Predicate<MVT> NotFP = vt-> !IsFloatingPoint.test(vt);
+        Predicate<MVT> NotFP = vt -> !IsFloatingPoint.test(vt);
         changed |= s.eraseIf(NotFP) | b.eraseIf(NotFP);
-      }
-      else if (s.isEmpty() || b.isEmpty()) {
+      } else if (s.isEmpty() || b.isEmpty()) {
         changed = !s.isEmpty() || !b.isEmpty();
         s.clear();
         b.clear();
-      }
-      else {
+      } else {
         tp.error("Incompatible types");
         return changed;
       }
@@ -223,7 +230,7 @@ public class TypeInfer {
     BiPredicate<MVT, MVT> lt = (a, b) -> {
       return a.getScalarSizeInBits() < b.getScalarSizeInBits() ||
           (a.getScalarSizeInBits() == b.getScalarSizeInBits() &&
-          a.getSizeInBits() < b.getSizeInBits());
+              a.getSizeInBits() < b.getSizeInBits());
     };
 
     BiPredicate<MVT, MVT> le = (a, b) -> {
@@ -233,11 +240,11 @@ public class TypeInfer {
         return false;
 
       boolean res = a.getScalarSizeInBits() <= b.getScalarSizeInBits() ||
-              a.getSizeInBits() < b.getSizeInBits();
+          a.getSizeInBits() < b.getSizeInBits();
       return res;
     };
 
-    for (int i = 0,  e= modes.size(); i < e; i++) {
+    for (int i = 0, e = modes.size(); i < e; i++) {
       int m = modes.get(i);
       MachineValueTypeSet s = small.get(m);
       MachineValueTypeSet b = big.get(m);
@@ -245,31 +252,40 @@ public class TypeInfer {
       // Remove any element less or equal than minS in set b.
       MVT minS = Util.minIf(s.iterator(), IsScalar, lt);
       if (minS != null)
-        changed |= b.eraseIf((vt) -> { return le.test(vt, minS); });
+        changed |= b.eraseIf((vt) -> {
+          return le.test(vt, minS);
+        });
 
       // Remove any element great or equal than maxS in set s.
       MVT maxS = Util.maxIf(b.iterator(), IsScalar, lt);
       if (maxS != null)
-        changed |= s.eraseIf((vt) -> { return le.test(maxS, vt); });
+        changed |= s.eraseIf((vt) -> {
+          return le.test(maxS, vt);
+        });
 
       // MinV = min vector in Small, remove all vectors from Big that are
       // smaller-or-equal than MinV.
       MVT minV = Util.minIf(s.iterator(), IsVector, lt);
       if (minV != null)
-        changed |= b.eraseIf(vt -> { return le.test(vt, minV); });
+        changed |= b.eraseIf(vt -> {
+          return le.test(vt, minV);
+        });
 
       MVT maxV = Util.maxIf(b.iterator(), IsVector, lt);
       if (maxV != null)
-        changed |= s.eraseIf(vt -> { return le.test(maxV, vt); });
+        changed |= s.eraseIf(vt -> {
+          return le.test(maxV, vt);
+        });
     }
     return changed;
   }
 
   /**
    * 1. Ensure that for each type T in vec, T is a vector type, and that
-   *    for each type U in elt, U is a scalar type.
+   * for each type U in elt, U is a scalar type.
    * 2. Ensure that for each scalar type U in elt, there exits a vector
-   *    type T in vec, such that U is the element type of T.
+   * type T in vec, such that U is the element type of T.
+   *
    * @param vec
    * @param elt
    * @return
@@ -296,7 +312,7 @@ public class TypeInfer {
       vs.forEach(vt -> an.add(vt.getVectorElementType()));
       es.forEach(vt -> bn.add(vt));
 
-      changed |= vs.eraseIf(vt-> !bn.contains(vt.getVectorElementType()));
+      changed |= vs.eraseIf(vt -> !bn.contains(vt.getVectorElementType()));
       changed |= es.eraseIf(vt -> !an.contains(vt));
     }
     return changed;
@@ -313,7 +329,7 @@ public class TypeInfer {
     if (tp.hasError())
       return false;
 
-    BiPredicate<MVT, MVT> IsSubVec = (b, p) ->{
+    BiPredicate<MVT, MVT> IsSubVec = (b, p) -> {
       if (!b.isVector() || !p.isVector())
         return false;
 
@@ -324,14 +340,14 @@ public class TypeInfer {
       return b.getVectorNumElements() < p.getVectorNumElements();
     };
 
-    BiPredicate<MachineValueTypeSet, MVT> NoSubV = (s, t) ->{
+    BiPredicate<MachineValueTypeSet, MVT> NoSubV = (s, t) -> {
       for (Iterator<MVT> itr = s.iterator(); itr.hasNext(); )
         if (IsSubVec.test(t, itr.next()))
           return false;
       return true;
     };
 
-    BiPredicate<MachineValueTypeSet, MVT> NoSupV = (s, t) ->{
+    BiPredicate<MachineValueTypeSet, MVT> NoSupV = (s, t) -> {
       for (Iterator<MVT> itr = s.iterator(); itr.hasNext(); )
         if (IsSubVec.test(itr.next(), t))
           return false;
@@ -357,7 +373,7 @@ public class TypeInfer {
   }
 
   public boolean enforceSameNumElts(TypeSetByHwMode v,
-                                    TypeSetByHwMode w){
+                                    TypeSetByHwMode w) {
     if (tp.hasError())
       return false;
     boolean changed = false;
@@ -367,7 +383,7 @@ public class TypeInfer {
       changed |= enforceAny(w);
 
     BiPredicate<TIntHashSet, MVT> NoLength = (lengths, vt) ->
-      !lengths.contains(vt.isVector() ? vt.getVectorNumElements() : 0);
+        !lengths.contains(vt.isVector() ? vt.getVectorNumElements() : 0);
 
     TIntArrayList list = unionMode(v, w);
     for (int i = 0, e = list.size(); i < e; i++) {
@@ -378,7 +394,7 @@ public class TypeInfer {
       vs.forEach(vt -> an.add(vt.isVector() ? vt.getVectorNumElements() : 0));
       ws.forEach(vt -> an.add(vt.isVector() ? vt.getVectorNumElements() : 0));
 
-      changed |= vs.eraseIf(vt-> NoLength.test(bn, vt));
+      changed |= vs.eraseIf(vt -> NoLength.test(bn, vt));
       changed |= ws.eraseIf(vt -> NoLength.test(an, vt));
     }
     return changed;
@@ -393,7 +409,7 @@ public class TypeInfer {
     if (b.isEmpty())
       changed |= enforceAny(b);
 
-    BiPredicate<TIntHashSet, MVT> NoSize = (size, vt) ->{
+    BiPredicate<TIntHashSet, MVT> NoSize = (size, vt) -> {
       return !size.contains(vt.getSizeInBits());
     };
     TIntArrayList list = unionMode(a, b);
@@ -405,7 +421,7 @@ public class TypeInfer {
       as.forEach(vt -> an.add(vt.getSizeInBits()));
       bs.forEach(vt -> an.add(vt.getSizeInBits()));
 
-      changed |= as.eraseIf(vt-> NoSize.test(bn, vt));
+      changed |= as.eraseIf(vt -> NoSize.test(bn, vt));
       changed |= bs.eraseIf(vt -> NoSize.test(an, vt));
     }
     return changed;
@@ -422,6 +438,7 @@ public class TypeInfer {
       expandOverloads(vt, legalTypes);
     }
   }
+
   public void expandOverloads(MachineValueTypeSet out,
                               MachineValueTypeSet legal) {
     HashSet<MVT> ovs = new HashSet<>();
@@ -464,7 +481,7 @@ public class TypeInfer {
           return;
         case MVT.vAny:
           for (int i = MVT.FIRST_VECTOR_VALUETYPE;
-              i < MVT.LAST_VECTOR_VALUETYPE; i++) {
+               i < MVT.LAST_VECTOR_VALUETYPE; i++) {
             if (legal.count(new MVT(i)))
               out.insert(new MVT(i));
           }

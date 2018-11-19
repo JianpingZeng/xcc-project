@@ -2509,13 +2509,13 @@ public class APInt implements Cloneable {
    */
   private static final byte[] results =
       {
-            /*    0 */0,
-            /*  1-2 */1, 1,
-            /*  3-6 */2, 2, 2, 2,
-            /* 7-12 */3, 3, 3, 3, 3, 3,
-            /* 13-2 */4, 4, 4, 4, 4, 4, 4, 4,
-            /*21-30 */5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            /*    31*/6
+          /*    0 */0,
+          /*  1-2 */1, 1,
+          /*  3-6 */2, 2, 2, 2,
+          /* 7-12 */3, 3, 3, 3, 3, 3,
+          /* 13-2 */4, 4, 4, 4, 4, 4, 4, 4,
+          /*21-30 */5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+          /*    31*/6
       };
 
   /**
@@ -2981,7 +2981,7 @@ public class APInt implements Cloneable {
     int i, n;
     Util.assertion(dstParts <= srcParts + 1);
 
-        /* N loops; minimum of dstParts and srcParts.  */
+    /* N loops; minimum of dstParts and srcParts.  */
     n = dstParts < srcParts ? dstParts : srcParts;
 
     for (i = 0; i < n; i++) {
@@ -3009,7 +3009,7 @@ public class APInt implements Cloneable {
           high++;
         low += mid;
 
-                /* Now add carry.  */
+        /* Now add carry.  */
         if (Long.compareUnsigned(low + carry, low) < 0)
           high++;
         low += carry;
@@ -3067,7 +3067,7 @@ public class APInt implements Cloneable {
        result.  */
   public static int tcFullMultiply(long[] dst, long[] lhs, long[] rhs,
                                    int lhsParts, int rhsParts) {
-  /* Put the narrower number on the LHS for less loops below.  */
+    /* Put the narrower number on the LHS for less loops below.  */
     if (lhsParts > rhsParts) {
       return tcFullMultiply(dst, rhs, lhs, rhsParts, lhsParts);
     } else {
@@ -3153,10 +3153,10 @@ public class APInt implements Cloneable {
 
       while (parts > jump) {
         parts--;
-                /* dst[i] comes from the two parts src[i - jump] and,
-                 * if we have
-                 * an intra-part shift, src[i - jump - 1].
-                 */
+        /* dst[i] comes from the two parts src[i - jump] and,
+         * if we have
+         * an intra-part shift, src[i - jump - 1].
+         */
         long part = dst[parts - jump];
 
         if (shift != 0) {

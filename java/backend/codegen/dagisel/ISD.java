@@ -538,7 +538,7 @@ public class ISD {
 
   /// OUTCHAIN = ATOMIC_STORE(INCHAIN, ptr, val)
   /// This corresponds to "store atomic" instruction.
-  public static final int  ATOMIC_STORE = 163;
+  public static final int ATOMIC_STORE = 163;
 
   public static final int ATOMIC_CMP_SWAP = 164;
   // Val, OUTCHAIN = ATOMIC_SWAP(INCHAIN, ptr, amt)

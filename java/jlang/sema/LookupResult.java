@@ -83,10 +83,10 @@ public class LookupResult {
    * Indicates the getIdentifier space which this getIdentifier in.
    * There are four cases:
    * <ol>
-   *     <li>Ordinary Identifier;</li>
-   *     <li>Tag Identifier;</li>
-   *     <li>Member Identifier;</li>
-   *     <li>Label Identifier;</li>
+   * <li>Ordinary Identifier;</li>
+   * <li>Tag Identifier;</li>
+   * <li>Member Identifier;</li>
+   * <li>Label Identifier;</li>
    * </ol>
    */
   private IdentifierNamespace idns;
@@ -145,6 +145,7 @@ public class LookupResult {
 
   /**
    * Returns the identifier namespace mask for this lookup.
+   *
    * @return
    */
   public IdentifierNamespace getIdentifierNamespace() {
@@ -165,6 +166,7 @@ public class LookupResult {
 
   /**
    * Add a declaration to these results and set the lookup result as Found.
+   *
    * @param decl
    */
   public void addDecl(Decl.NamedDecl decl) {

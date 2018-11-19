@@ -123,6 +123,7 @@ public class DAGISelMatcherGen {
    * Generate the code that matches the predicate of this pattern for
    * the specified variant. If the variant is invalid this returns
    * true and does not generate code. if ti is valid, it returns false.
+   *
    * @param variant
    * @return
    */
@@ -138,8 +139,7 @@ public class DAGISelMatcherGen {
       if (variant >= opNodes.size()) return true;
 
       addMatcher(new CheckOpcodeMatcher(cgp.getSDNodeInfo(opNodes.get(variant))));
-    }
-    else if (variant != 0) return true;
+    } else if (variant != 0) return true;
 
     // emit the matcher for the pattern structure and types.
     emitMatchCode(pattern.getSrcPattern(), patWithNoTypes, pattern.forceMode);
@@ -162,7 +162,7 @@ public class DAGISelMatcherGen {
       Util.assertion(recNodeEntry != 0, "Complex Pattern should have a namespace and slot");
       --recNodeEntry;
 
-      cp = cgp.getComplexPattern(((Init.DefInit)n.getLeafValue()).getDef());
+      cp = cgp.getComplexPattern(((Init.DefInit) n.getLeafValue()).getDef());
       addMatcher(new CheckComplexPatMatcher(cp, recNodeEntry, n.getName(),
           nextRecordedOperandNo));
 
@@ -171,7 +171,7 @@ public class DAGISelMatcherGen {
         ++nextRecordedOperandNo;
         Util.assertion(nextRecordedOperandNo > 1,
             "Should have recorded input/result chains at least!");
-        matchedChainNodes.add(nextRecordedOperandNo-1);
+        matchedChainNodes.add(nextRecordedOperandNo - 1);
       }
     }
     return false;
@@ -196,9 +196,13 @@ public class DAGISelMatcherGen {
     addMatcher(new CompleteMatchMatcher(ops.toArray(), pattern));
   }
 
-  public Matcher getMatcher() { return theMatcher; }
+  public Matcher getMatcher() {
+    return theMatcher;
+  }
 
-  public Matcher getCurPredicate() { return curPredicate; }
+  public Matcher getCurPredicate() {
+    return curPredicate;
+  }
 
   private void addMatcher(Matcher newMode) {
     if (curPredicate != null)
@@ -221,11 +225,10 @@ public class DAGISelMatcherGen {
 
     if (!n.getName().isEmpty()) {
       if (!variableMap.containsKey(n.getName())) {
-        addMatcher(new RecordMatcher("$"+n.getName(), nextRecordedOperandNo));
+        addMatcher(new RecordMatcher("$" + n.getName(), nextRecordedOperandNo));
         variableMap.put(n.getName(), ++nextRecordedOperandNo);
-      }
-      else {
-        addMatcher(new CheckSameMatcher(variableMap.get(n.getName())-1));
+      } else {
+        addMatcher(new CheckSameMatcher(variableMap.get(n.getName()) - 1));
         return;
       }
     }
@@ -233,10 +236,10 @@ public class DAGISelMatcherGen {
     if (n.isLeaf())
       emitLeafMatchNode(n);
     else
-      emitOperatorMatchNode(n, nodeNoTypes,forceMode);
+      emitOperatorMatchNode(n, nodeNoTypes, forceMode);
 
     // If there are node predicates for this node, generate their checks.
-    n.getPredicateFns().forEach(pred-> addMatcher(new CheckPredicateMatcher(pred)));
+    n.getPredicateFns().forEach(pred -> addMatcher(new CheckPredicateMatcher(pred)));
     resultsToTypeCheck.forEach(vt -> {
       addMatcher(new CheckTypeMatcher(n.getSimpleType(vt), vt));
       return true;
@@ -349,14 +352,14 @@ public class DAGISelMatcherGen {
 
     int opNo = 0;
     if (n.hasProperty(SDNPHasChain, cgp)) {
-      addMatcher(new RecordMatcher("'" + n.getOperator().getName()+"' chained node",
+      addMatcher(new RecordMatcher("'" + n.getOperator().getName() + "' chained node",
           nextRecordedOperandNo));
       matchedChainNodes.add(nextRecordedOperandNo++);
 
       opNo = 1;
 
       TreePatternNode root = pattern.getSrcPattern();
-      if (n!= root) {
+      if (n != root) {
         boolean needCheck = !root.hasChild(n);
 
         if (!needCheck) {
@@ -432,7 +435,7 @@ public class DAGISelMatcherGen {
       }
       Util.assertion(slotNo != 0, "didn't get a slot number assigned");
       for (int i = 0, e = cp.getNumOperands(); i < e; i++)
-        resultOps.add(slotNo+i);
+        resultOps.add(slotNo + i);
       return;
     }
 
@@ -511,7 +514,7 @@ public class DAGISelMatcherGen {
     // instruction operands to do this.
     int childNo = 0;
     for (int instOpNo = numResults, e = ii.operandList.size();
-        instOpNo < e; ++instOpNo) {
+         instOpNo < e; ++instOpNo) {
       Record operandNode = ii.operandList.get(instOpNo).rec;
 
       // This is a predicate or optional def operand; emit the
@@ -532,7 +535,7 @@ public class DAGISelMatcherGen {
     }
 
     if (ii.isVariadic) {
-      for (int i = childNo,e = n.getNumChildren(); i < e; i++)
+      for (int i = childNo, e = n.getNumChildren(); i < e; i++)
         emitResultOperand(n.getChild(i), instOps);
     }
 
@@ -573,7 +576,7 @@ public class DAGISelMatcherGen {
           ii.hasSideEffects)
         nodeHasChain = true;
     }
-    addMatcher(new EmitNodeMatcher(ii.namespace + "."+ii.theDef.getName(),
+    addMatcher(new EmitNodeMatcher(ii.namespace + "." + ii.theDef.getName(),
         resultVTs.toArray(), instOps.toArray(),
         nodeHasChain, treeHasInFlag,
         treeHasOutFlag,
@@ -584,7 +587,7 @@ public class DAGISelMatcherGen {
     for (int i = 0, e = resultVTs.size(); i < e; i++) {
       int vt = resultVTs.get(i);
       if (vt == MVT.Other || vt == MVT.Flag) break;
-        resultOps.add(nextRecordedOperandNo++);
+      resultOps.add(nextRecordedOperandNo++);
     }
   }
 

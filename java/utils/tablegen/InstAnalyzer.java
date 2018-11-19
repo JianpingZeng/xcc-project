@@ -46,7 +46,7 @@ public final class InstAnalyzer {
    * had a pattern.
    *
    * @param node The instruction definition that we would infer flags
-   *                for.
+   *             for.
    * @return Return true if have pattern, otherwise return false.
    */
   public void analyze(TreePatternNode node) {

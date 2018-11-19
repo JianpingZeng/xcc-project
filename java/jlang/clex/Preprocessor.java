@@ -519,10 +519,10 @@ public final class Preprocessor {
   }
 
   /*
-    * Add the specified pragma handler to the preprocessor.
-    * If 'Namespace' is non-null, then it is a token required to exist on the
-    * pragma line before the pragma string starts, e.g. "STDC" or "GCC".
-    */
+   * Add the specified pragma handler to the preprocessor.
+   * If 'Namespace' is non-null, then it is a token required to exist on the
+   * pragma line before the pragma string starts, e.g. "STDC" or "GCC".
+   */
   public void addPragmaHandler(String namespace, PragmaHandler handler) {
     PragmaNameSpace insertNS = pragmaHandlers;
     if (namespace != null) {
@@ -3006,7 +3006,7 @@ public final class Preprocessor {
       } else if (mi.isVariadic() &&
           (numActuals + 1 == minArgsExpected     // A(x, ...) -> A(X)
               || (numActuals == 0 && minArgsExpected == 2))  // A(x,...) -> A()
-          ) {
+      ) {
         // Varargs where the named vararg parameter is missing: ok as extension.
         // #define A(x, ...)
         // A("blah")

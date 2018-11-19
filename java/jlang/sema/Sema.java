@@ -2476,7 +2476,7 @@ public final class Sema implements DiagnosticParseTag,
     //   if the prior declaration specifies no linkage, then the
     //   identifier has external linkage.
     if (newOne.hasExternalStorage() && Old.hasLinkage())
-            /* Okay */ ;
+      /* Okay */ ;
     else if (newOne.getStorageClass() != StorageClass.SC_static &&
         Old.getStorageClass() == StorageClass.SC_static) {
       diag(newOne.getLocation(), err_non_static_static).
@@ -5662,16 +5662,16 @@ public final class Sema implements DiagnosticParseTag,
     // other operand to complex.
     if (lhsComplexFloat) {
       QualType res = handleOtherComplexFloatConversion(lhs, rhs, lhsType, rhsType,
-                    /*convertComplexExpr*/!isCompAssign,
-                    /*convertOtherExpr*/ true);
+          /*convertComplexExpr*/!isCompAssign,
+          /*convertOtherExpr*/ true);
       return res;
     }
 
     Util.assertion(rhsComplexFloat);
 
     QualType res = handleOtherComplexFloatConversion(rhs, lhs, rhsType, lhsType,
-                /*convertComplexExpr*/true,
-                /*convertOtherExpr*/ !isCompAssign);
+        /*convertComplexExpr*/true,
+        /*convertOtherExpr*/ !isCompAssign);
     return res;
   }
 
@@ -5714,12 +5714,12 @@ public final class Sema implements DiagnosticParseTag,
 
     if (LHSFloat)
       return handleIntToFloatConversion(lhs, rhs, LHSType, RHSType,
-                                      /*convertFloat=*/!IsCompAssign,
-                                      /*convertInt=*/ true);
+          /*convertFloat=*/!IsCompAssign,
+          /*convertInt=*/ true);
     Util.assertion((RHSFloat));
     return handleIntToFloatConversion(rhs, lhs, RHSType, LHSType,
-                                    /*convertInt=*/ true,
-                                    /*convertFloat=*/!IsCompAssign);
+        /*convertInt=*/ true,
+        /*convertFloat=*/!IsCompAssign);
   }
 
   /**
@@ -6282,9 +6282,7 @@ public final class Sema implements DiagnosticParseTag,
       OutRef<ActionResult<Expr>> lhs,
       OutRef<ActionResult<Expr>> rhs,
       SourceLocation opLoc,
-      BinaryOperatorKind opc)
-
-  {
+      BinaryOperatorKind opc) {
     return checkShiftOperands(lhs, rhs, opLoc, opc, false);
   }
 

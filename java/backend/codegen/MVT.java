@@ -62,20 +62,20 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int v2i64 = (28);   //  2 x i64
   public static final int v4i64 = (29);   //  4 x i64
 
-  public static final int v2f16          =  30;   //  2 x f16
-  public static final int v4f16          =  31;   //  4 x f16
-  public static final int v8f16          =  32;   //  8 x f16
-  public static final int v1f32          =  33;   //  1 x f32
-  public static final int v2f32          =  34;   //  2 x f32
-  public static final int v4f32          =  35;   //  4 x f32
-  public static final int v8f32          =  36;   //  8 x f32
-  public static final int v16f32         =  37;   // 16 x f32
-  public static final int v1f64          =  38;   //  1 x f64
-  public static final int v2f64          =  39;   //  2 x f64
-  public static final int v4f64          =  40;   //  4 x f64
-  public static final int v8f64          =  41;   //  8 x f64
+  public static final int v2f16 = 30;   //  2 x f16
+  public static final int v4f16 = 31;   //  4 x f16
+  public static final int v8f16 = 32;   //  8 x f16
+  public static final int v1f32 = 33;   //  1 x f32
+  public static final int v2f32 = 34;   //  2 x f32
+  public static final int v4f32 = 35;   //  4 x f32
+  public static final int v8f32 = 36;   //  8 x f32
+  public static final int v16f32 = 37;   // 16 x f32
+  public static final int v1f64 = 38;   //  1 x f64
+  public static final int v2f64 = 39;   //  2 x f64
+  public static final int v4f64 = 40;   //  4 x f64
+  public static final int v8f64 = 41;   //  8 x f64
 
-  public static final int x86mmx         = 109;  // 64
+  public static final int x86mmx = 109;  // 64
 
   public static final int LAST_VALUETYPE = v8f64;   // This always remains at the end of the list.
 

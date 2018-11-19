@@ -337,26 +337,26 @@ public final class LiveInterval {
     }
     Util.assertion(cur != LiveRange.EndMarker, "SplitPos after endNumber()!");
 
-        /*
-         *     splitPos
-         *       |
-         * |----------------|
-         * ^                ^
-         * cur.from      cur.to
-         */
+    /*
+     *     splitPos
+     *       |
+     * |----------------|
+     * ^                ^
+     * cur.from      cur.to
+     */
     if (cur.start < splitPos) {
       child.first = new LiveRange(splitPos, cur.end, cur.next);
       cur.end = splitPos;
       cur.next = LiveRange.EndMarker;
     } else {
-            /*
-             * splitPos
-             * |
-             * |----------------|
-             * ^                ^
-             * cur.from      cur.to
-             * where, splitPos <= cur.from
-             */
+      /*
+       * splitPos
+       * |
+       * |----------------|
+       * ^                ^
+       * cur.from      cur.to
+       * where, splitPos <= cur.from
+       */
       child.first = cur;
       Util.assertion(prev != null, "SplitPos before beginNumber()!");
       prev.next = LiveRange.EndMarker;

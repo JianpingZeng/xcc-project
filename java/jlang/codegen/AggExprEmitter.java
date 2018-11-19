@@ -217,7 +217,7 @@ public class AggExprEmitter extends StmtVisitor<Void> {
     cgf.emitAnyExpr(expr.getLHS());
     cgf.emitAnyExpr(expr.getRHS(), destPtr,
         volatileDest,
-                /*ignore result*/false,
+        /*ignore result*/false,
         isInitializer);
     return null;
   }

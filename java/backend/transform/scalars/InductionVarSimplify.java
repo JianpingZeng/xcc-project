@@ -118,7 +118,7 @@ public final class InductionVarSimplify implements LoopPass {
       /* 1#	found all of induction variables */
       findInductionVariable(loop);
 
-			/* 2#	perform strength reduction */
+      /* 2#	perform strength reduction */
       strengthReduction(loop);
       loop = loop.getParentLoop();
     } while (loop != null);
@@ -266,25 +266,25 @@ public final class InductionVarSimplify implements LoopPass {
    * @return
    */
   private boolean isMulIV(Instruction.BinaryOps inst, Value op1, Value op2, Loop loop) {
-		/* 
-		 * Only when inst is a multiple operation and whose first operand
-		 * is a loop constant, then continue.
-		 * 
-		 * Take j = e*i expression for instance, op1 stands for e, op2 likes i,
-		 * 
-		 * 1#:we try to check if op2(called i) is a basic induction variable.	
-		 */
+    /*
+     * Only when inst is a multiple operation and whose first operand
+     * is a loop constant, then continue.
+     *
+     * Take j = e*i expression for instance, op1 stands for e, op2 likes i,
+     *
+     * 1#:we try to check if op2(called i) is a basic induction variable.
+     */
     if (isLoopConstant(op1) && inst.getOpcode().isMul()) {
       IVRecord iv = findBaseIVByValue(op2);
       if (iv != null) {
         inductionVars.add(new IVRecord(inst, iv.biv,
             op1.asConstant(), Constant.getNullValue(iv.biv.getType())));
       }
-			/* 
-			 * 2#: attempting to inspect op2(called i) is a derived induction variable.
-			 * At this point, we must make sure about there no other definition of i
-			 * outside of loop which reaches the j.
-			 */
+      /*
+       * 2#: attempting to inspect op2(called i) is a derived induction variable.
+       * At this point, we must make sure about there no other definition of i
+       * outside of loop which reaches the j.
+       */
       else if ((iv = findDependentIVByValue(op2)) != null
           && !reachDefsOut(loop, (Instruction) op2)) {
         Operator opcode = op1.getType().isFloatingPointType() ? Operator.FAdd : Operator.Add;
@@ -318,15 +318,15 @@ public final class InductionVarSimplify implements LoopPass {
    */
   private boolean isAddIV(Instruction.BinaryOps inst, Value op1, Value op2, Loop loop) {
     Util.assertion(inst.getOpcode().isAdd() || inst.getOpcode().isSub());
-		
-		/* 
-		 * Only when inst is a add operation and whose first operand
-		 * is a loop constant, then continue.
-		 * 
-		 * Take j = e+i expression for instance, op1 stands for e, op2 likes i,
-		 * 
-		 * 1#:we try to check if op2(called i) is a basic induction variable.	
-		 */
+
+    /*
+     * Only when inst is a add operation and whose first operand
+     * is a loop constant, then continue.
+     *
+     * Take j = e+i expression for instance, op1 stands for e, op2 likes i,
+     *
+     * 1#:we try to check if op2(called i) is a basic induction variable.
+     */
     if (isLoopConstant(op1)) {
       IVRecord iv = findBaseIVByValue(op2);
       if (iv != null) {
@@ -341,11 +341,11 @@ public final class InductionVarSimplify implements LoopPass {
               op1.asConstant()));
         }
       }
-			/* 
-			 * 2#: attempting to inspect op2(called i) is a derived induction variable.
-			 * At this point, we must make sure about there no other definition of i
-			 * outside of loop which reaches the j.
-			 */
+      /*
+       * 2#: attempting to inspect op2(called i) is a derived induction variable.
+       * At this point, we must make sure about there no other definition of i
+       * outside of loop which reaches the j.
+       */
       else if ((iv = findDependentIVByValue(op2)) != null
           && !reachDefsOut(loop, (Instruction) op2)) {
         Operator opcode = op1.getType().isFloatingPointType() ? Operator.FAdd : Operator.Add;
@@ -409,11 +409,11 @@ public final class InductionVarSimplify implements LoopPass {
 
             int i = ((Instruction) r2.div).getParent().getID();
             int j = ((Instruction) r2.div).id;
-        				
-        				/*
-        				 * split their computation between preheader and this use,
-        				 * replacing operations by less expensive ones. 
-        				 */
+
+            /*
+             * split their computation between preheader and this use,
+             * replacing operations by less expensive ones.
+             */
             SRdone[i][j] = true;
             /** db = d*b; */
             Operator opcode = db.getType().isFloatingPointType() ? Operator.FMul : Operator.Mul;

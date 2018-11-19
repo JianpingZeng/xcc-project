@@ -41,7 +41,7 @@ import java.util.ArrayList;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVTargetLowering  extends TargetLowering {
+public class RISCVTargetLowering extends TargetLowering {
 
   public RISCVTargetLowering(TargetMachine tm) {
     super(tm);

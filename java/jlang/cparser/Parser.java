@@ -322,10 +322,10 @@ public class Parser implements Tag,
        */
       default: {
         // We can't tell whether this is a function-definition or declaration yet.
-                /* A declaration or a function definition.  We can only tell
-                 * which after parsing the declaration specifiers, if any, and
-                 * the first declarator.
-                 */
+        /* A declaration or a function definition.  We can only tell
+         * which after parsing the declaration specifiers, if any, and
+         * the first declarator.
+         */
         return parseDeclarationOrFunctionDefinition();
       }
     }
@@ -1346,9 +1346,9 @@ public class Parser implements Tag,
 
         // Parse the cast-expression that follows it next.
         result = parseCastExpression(
-                        /*isUnaryExpression*/false,
-                        /*isAddressOfOperands*/false,
-                        /*(parseAsExprList)*/true);
+            /*isUnaryExpression*/false,
+            /*isAddressOfOperands*/false,
+            /*(parseAsExprList)*/true);
         if (!result.isInvalid()) {
           result = action.actOnCastExpr(getCurScope(), lParenLoc,
               castTy.get(), rParenLoc.get(), result.get());
@@ -2089,7 +2089,7 @@ public class Parser implements Tag,
         action.actOnInitializerError(thisDecl);
       } else {
         action.addInitializerToDecl(thisDecl, init.get(),
-                /*DirectInit=*/false);
+            /*DirectInit=*/false);
       }
     } else {
       action.actOnUninitializedDecl(thisDecl);

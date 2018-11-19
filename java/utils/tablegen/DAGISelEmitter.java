@@ -43,11 +43,13 @@ import static utils.tablegen.DAGISelMatcherGen.convertPatternToMatcher;
  * which takes responsible for matching the given target-independent DAG node
  * with specified target-specific DAG node according to some metrics, like
  * matching cost, code size and enabled optimization level.
+ *
  * @author Jianping Zeng.
  * @version 0.4
  */
 public final class DAGISelEmitter extends TableGenBackend {
   private CodeGenDAGPatterns cgp;
+
   public DAGISelEmitter(RecordKeeper keeper) {
     cgp = new CodeGenDAGPatterns(keeper);
   }
@@ -64,7 +66,7 @@ public final class DAGISelEmitter extends TableGenBackend {
           "Covering for " + targetName + ".", os);
 
       // Add all the patterns to a temporary list so we can sort them.
-      ArrayList<PatternToMatch>patterns = new ArrayList<>();
+      ArrayList<PatternToMatch> patterns = new ArrayList<>();
       patterns.addAll(cgp.getPatternsToMatch());
 
       // We want to process the matches in order of minimal cost.  Sort the patterns

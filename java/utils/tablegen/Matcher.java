@@ -70,11 +70,13 @@ public abstract class Matcher {
    * Return true if this is a simple predicate that
    * operates on the node or its children without potential side effects or a
    * change of the current node.
+   *
    * @return
    */
   public boolean isSimplePredicateNode() {
     switch (getKind()) {
-      default: return false;
+      default:
+        return false;
       case CheckSame:
       case CheckChildSame:
       case CheckPatternPredicate:
@@ -106,8 +108,7 @@ public abstract class Matcher {
     }
 
     Matcher cur = this;
-    for (; cur != null & cur.getNext() != other; cur = cur.getNext())
-    {  /*empty*/}
+    for (; cur != null & cur.getNext() != other; cur = cur.getNext()) {  /*empty*/}
 
     if (cur == null) return null;
     setNext(other.getNext());
@@ -116,8 +117,8 @@ public abstract class Matcher {
   }
 
   public boolean canMoveBefore(Matcher other) {
-    for (;; other = other.getNext()) {
-      Util.assertion(other!= null, "other didn't come before 'this'");
+    for (; ; other = other.getNext()) {
+      Util.assertion(other != null, "other didn't come before 'this'");
       if (this == other) return true;
 
       if (!canMoveBeforeNode(other))
@@ -153,9 +154,14 @@ public abstract class Matcher {
   }
 
   protected abstract void printImpl(PrintStream os, int indent);
+
   protected abstract boolean isEqualImpl(Matcher m);
+
   protected abstract int getHashImpl();
-  protected boolean isContradictoryImpl(Matcher m) { return false; }
+
+  protected boolean isContradictoryImpl(Matcher m) {
+    return false;
+  }
 
   /**
    * This attempts to match each of its children to find the first
@@ -165,6 +171,7 @@ public abstract class Matcher {
   public static class ScopeMatcher extends Matcher {
 
     private ArrayList<Matcher> children;
+
     public ScopeMatcher(ArrayList<Matcher> children) {
       super(MatcherKind.Scope);
       this.children = new ArrayList<>();
@@ -177,7 +184,9 @@ public abstract class Matcher {
       this.children.addAll(Arrays.asList(children));
     }
 
-    public int getNumChildren() { return children.size(); }
+    public int getNumChildren() {
+      return children.size();
+    }
 
     public Matcher getChild(int idx) {
       return children.get(idx);
@@ -200,7 +209,7 @@ public abstract class Matcher {
           --e;
         }
       }
-      for (int i = 0; i < nc-getNumChildren(); i++)
+      for (int i = 0; i < nc - getNumChildren(); i++)
         children.add(null);
     }
 
@@ -210,9 +219,9 @@ public abstract class Matcher {
       os.println("Scope");
       for (Matcher m : children) {
         if (m == null)
-          os.printf("%sNULL POINTER%n", Util.fixedLengthString(indent+1, ' '));
+          os.printf("%sNULL POINTER%n", Util.fixedLengthString(indent + 1, ' '));
         else
-          m.print(os, indent+2);
+          m.print(os, indent + 2);
       }
     }
 
@@ -242,6 +251,7 @@ public abstract class Matcher {
      * be just printed as a comment.
      */
     private int resultNo;
+
     public RecordMatcher(String whatFor, int resultNo) {
       super(MatcherKind.RecordNode);
       this.whatFor = whatFor;
@@ -330,7 +340,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof RecordChildMatcher &&
-          ((RecordChildMatcher)m).getChildNo() == getChildNo();
+          ((RecordChildMatcher) m).getChildNo() == getChildNo();
     }
 
     @Override
@@ -405,6 +415,7 @@ public abstract class Matcher {
    */
   public static class MoveChildMatcher extends Matcher {
     private int childNo;
+
     public MoveChildMatcher(int childNo) {
       super(MatcherKind.MoveChild);
       this.childNo = childNo;
@@ -428,7 +439,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof MoveChildMatcher &&
-          ((MoveChildMatcher)m).getChildNo() == getChildNo();
+          ((MoveChildMatcher) m).getChildNo() == getChildNo();
     }
 
     @Override
@@ -498,7 +509,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckSameMatcher &&
-          ((CheckSameMatcher)m).getMatchNumber() == getMatchNumber();
+          ((CheckSameMatcher) m).getMatchNumber() == getMatchNumber();
     }
 
     @Override
@@ -515,6 +526,7 @@ public abstract class Matcher {
   public static class CheckPatternPredicateMatcher extends Matcher {
 
     private String predicate;
+
     public CheckPatternPredicateMatcher(String pred) {
       super(MatcherKind.CheckPatternPredicate);
       predicate = pred;
@@ -538,7 +550,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckPatternPredicateMatcher &&
-          ((CheckPatternPredicateMatcher)m).predicate.equals(predicate);
+          ((CheckPatternPredicateMatcher) m).predicate.equals(predicate);
     }
 
     @Override
@@ -553,6 +565,7 @@ public abstract class Matcher {
    */
   public static class CheckPredicateMatcher extends Matcher {
     private String predName;
+
     public CheckPredicateMatcher(String pred) {
       super(MatcherKind.CheckPredicate);
       predName = pred;
@@ -571,7 +584,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckPredicateMatcher &&
-          ((CheckPredicateMatcher)m).predName.equals(predName);
+          ((CheckPredicateMatcher) m).predName.equals(predName);
     }
 
     @Override
@@ -657,24 +670,34 @@ public abstract class Matcher {
   public static class SwitchOpcodeMatcher extends Matcher {
 
     private ArrayList<Pair<SDNodeInfo, Matcher>> cases;
+
     public SwitchOpcodeMatcher(ArrayList<Pair<SDNodeInfo, Matcher>> cases) {
       super(MatcherKind.SwitchOpcode);
       this.cases = new ArrayList<>();
       this.cases.addAll(cases);
     }
-    public int getNumCases() { return cases.size(); }
-    public SDNodeInfo getCaseOpcode(int idx) { return cases.get(idx).first; }
-    public Matcher getCaseMatcher(int idx) { return cases.get(idx).second; }
+
+    public int getNumCases() {
+      return cases.size();
+    }
+
+    public SDNodeInfo getCaseOpcode(int idx) {
+      return cases.get(idx).first;
+    }
+
+    public Matcher getCaseMatcher(int idx) {
+      return cases.get(idx).second;
+    }
 
     @Override
     protected void printImpl(PrintStream os, int indent) {
-        os.printf("%sSwitchOpcode: {%n", Util.fixedLengthString(indent, ' '));
-        for (Pair<SDNodeInfo, Matcher> itr : cases) {
-          os.printf("%scase %s:%n", Util.fixedLengthString(indent, ' '),
-              itr.first.getEnumName());
-          itr.second.print(os, indent+2);
-        }
-        os.printf("%s}%n", Util.fixedLengthString(indent, ' '));
+      os.printf("%sSwitchOpcode: {%n", Util.fixedLengthString(indent, ' '));
+      for (Pair<SDNodeInfo, Matcher> itr : cases) {
+        os.printf("%scase %s:%n", Util.fixedLengthString(indent, ' '),
+            itr.first.getEnumName());
+        itr.second.print(os, indent + 2);
+      }
+      os.printf("%s}%n", Util.fixedLengthString(indent, ' '));
     }
 
     @Override
@@ -695,6 +718,7 @@ public abstract class Matcher {
   public static class CheckTypeMatcher extends Matcher {
     private int type;
     private int resNo;
+
     public CheckTypeMatcher(int ty, int resNo) {
       super(MatcherKind.CheckType);
       this.type = ty;
@@ -718,7 +742,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckTypeMatcher &&
-          ((CheckTypeMatcher)m).getType() == type;
+          ((CheckTypeMatcher) m).getType() == type;
     }
 
     @Override
@@ -752,9 +776,17 @@ public abstract class Matcher {
       this.cases.addAll(cases);
     }
 
-    public int getNumCases() { return cases.size(); }
-    public int getCaseType(int idx) { return cases.get(idx).first; }
-    public Matcher getCaseMatcher(int idx) { return cases.get(idx).second; }
+    public int getNumCases() {
+      return cases.size();
+    }
+
+    public int getCaseType(int idx) {
+      return cases.get(idx).first;
+    }
+
+    public Matcher getCaseMatcher(int idx) {
+      return cases.get(idx).second;
+    }
 
     @Override
     protected void printImpl(PrintStream os, int indent) {
@@ -762,7 +794,7 @@ public abstract class Matcher {
       for (Pair<Integer, Matcher> itr : cases) {
         os.printf("%scase %s:%n", Util.fixedLengthString(indent, ' '),
             MVT.getEnumName(itr.first));
-        itr.second.print(os, indent+2);
+        itr.second.print(os, indent + 2);
       }
       os.printf("%s}%n", Util.fixedLengthString(indent, ' '));
     }
@@ -842,6 +874,7 @@ public abstract class Matcher {
   public static class CheckIntegerMatcher extends Matcher {
 
     private long value;
+
     public CheckIntegerMatcher(long value) {
       super(MatcherKind.CheckInteger);
       this.value = value;
@@ -864,18 +897,18 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckIntegerMatcher &&
-          ((CheckIntegerMatcher)m).value == value;
+          ((CheckIntegerMatcher) m).value == value;
     }
 
     @Override
     protected int getHashImpl() {
-      return (int)(value >> 32) | (int)value;
+      return (int) (value >> 32) | (int) value;
     }
 
     @Override
     protected boolean isContradictoryImpl(Matcher m) {
       if (m instanceof CheckIntegerMatcher)
-        return ((CheckIntegerMatcher)m).value == value;
+        return ((CheckIntegerMatcher) m).value == value;
       return false;
     }
   }
@@ -887,6 +920,7 @@ public abstract class Matcher {
   public static class CheckCondCodeMatcher extends Matcher {
 
     private String condcodeName;
+
     public CheckCondCodeMatcher(String condcode) {
       super(MatcherKind.CheckCondCode);
       condcodeName = condcode;
@@ -910,7 +944,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       if (m instanceof CheckCondCodeMatcher)
-        return ((CheckCondCodeMatcher)m).condcodeName.equals(condcodeName);
+        return ((CheckCondCodeMatcher) m).condcodeName.equals(condcodeName);
       return false;
     }
 
@@ -927,6 +961,7 @@ public abstract class Matcher {
   public static class CheckValueTypeMatcher extends Matcher {
 
     private String typeName;
+
     public CheckValueTypeMatcher(String type) {
       super(MatcherKind.CheckValueType);
       typeName = type;
@@ -950,7 +985,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckValueTypeMatcher &&
-          ((CheckValueTypeMatcher)m).typeName.equals(typeName);
+          ((CheckValueTypeMatcher) m).typeName.equals(typeName);
     }
 
     @Override
@@ -980,7 +1015,9 @@ public abstract class Matcher {
       this.firstResult = firstResult;
     }
 
-    public ComplexPattern getPatern() { return compPat; }
+    public ComplexPattern getPatern() {
+      return compPat;
+    }
 
     public int getMatchNumber() {
       return matchNumber;
@@ -1026,6 +1063,7 @@ public abstract class Matcher {
   public static class CheckAndImmMatcher extends Matcher {
 
     private long value;
+
     public CheckAndImmMatcher(long val) {
       super(MatcherKind.CheckAndImm);
       value = val;
@@ -1049,12 +1087,12 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckAndImmMatcher &&
-          ((CheckAndImmMatcher)m).value == value;
+          ((CheckAndImmMatcher) m).value == value;
     }
 
     @Override
     protected int getHashImpl() {
-      return (int)(value >> 32) | (int)value;
+      return (int) (value >> 32) | (int) value;
     }
   }
 
@@ -1065,6 +1103,7 @@ public abstract class Matcher {
   public static class CheckOrImmMatcher extends Matcher {
 
     private long value;
+
     public CheckOrImmMatcher(long val) {
       super(MatcherKind.CheckOrImm);
       value = val;
@@ -1088,12 +1127,12 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckOrImmMatcher &&
-          ((CheckOrImmMatcher)m).value == value;
+          ((CheckOrImmMatcher) m).value == value;
     }
 
     @Override
     protected int getHashImpl() {
-      return (int)(value >> 32) | (int)value;
+      return (int) (value >> 32) | (int) value;
     }
   }
 
@@ -1127,6 +1166,7 @@ public abstract class Matcher {
       return 0;
     }
   }
+
   /**
    * This creates a new TargetConstant.
    */
@@ -1134,14 +1174,20 @@ public abstract class Matcher {
 
     private long val;
     private int ty;
+
     public EmitIntegerMatcher(long value, int type) {
       super(MatcherKind.EmitInteger);
       val = value;
       ty = type;
     }
 
-    public long getValue() {return val; }
-    public int getVT() { return ty; }
+    public long getValue() {
+      return val;
+    }
+
+    public int getVT() {
+      return ty;
+    }
 
     @Override
     protected void printImpl(PrintStream os, int indent) {
@@ -1205,6 +1251,7 @@ public abstract class Matcher {
       return value.hashCode() ^ vt;
     }
   }
+
   /**
    * This creates a new TargetConstant.
    */
@@ -1212,6 +1259,7 @@ public abstract class Matcher {
 
     private Record register;
     private int vt;
+
     public EmitRegisterMatcher(Record reg, int vt) {
       super(MatcherKind.EmitRegister);
       register = reg;
@@ -1258,6 +1306,7 @@ public abstract class Matcher {
   public static class EmitConvertToTargetMatcher extends Matcher {
 
     private int slot;
+
     public EmitConvertToTargetMatcher(int slot) {
       super(MatcherKind.EmitConvertToTarget);
       this.slot = slot;
@@ -1276,7 +1325,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof EmitConvertToTargetMatcher &&
-          ((EmitConvertToTargetMatcher)m).slot == slot;
+          ((EmitConvertToTargetMatcher) m).slot == slot;
     }
 
     @Override
@@ -1297,13 +1346,16 @@ public abstract class Matcher {
      * The index of chained node in recordedNodes list.
      */
     private int[] chainNodes;
+
     public EmitMergeInputChainsMatcher(int[] chainNodes) {
       super(MatcherKind.EmitMergeInputChains);
       this.chainNodes = new int[chainNodes.length];
       System.arraycopy(chainNodes, 0, this.chainNodes, 0, chainNodes.length);
     }
 
-    public int getNumNodes() { return chainNodes.length; }
+    public int getNumNodes() {
+      return chainNodes.length;
+    }
 
     public int getNode(int idx) {
       return chainNodes[idx];
@@ -1318,7 +1370,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof EmitMergeInputChainsMatcher &&
-          ((EmitMergeInputChainsMatcher)m).chainNodes == chainNodes;
+          ((EmitMergeInputChainsMatcher) m).chainNodes == chainNodes;
     }
 
     @Override
@@ -1380,6 +1432,7 @@ public abstract class Matcher {
 
     private int slot;
     private Record nodeXForm;
+
     public EmitNodeXFromMatcher(int slot, Record nodeXForm) {
       super(MatcherKind.EmitNodeXForm);
       this.slot = slot;
@@ -1454,13 +1507,21 @@ public abstract class Matcher {
       return opcodeName;
     }
 
-    public int getNumVTs() { return vts.length; }
+    public int getNumVTs() {
+      return vts.length;
+    }
 
-    public int getVT(int idx) { return vts[idx]; }
+    public int getVT(int idx) {
+      return vts[idx];
+    }
 
-    public int getNumOperands() { return operands.length; }
+    public int getNumOperands() {
+      return operands.length;
+    }
 
-    public int getOperand(int idx) { return operands[idx]; }
+    public int getOperand(int idx) {
+      return operands[idx];
+    }
 
     public int[] getVtList() {
       return vts;
@@ -1495,8 +1556,8 @@ public abstract class Matcher {
     protected void printImpl(PrintStream os, int indent) {
       String indentStr = Util.fixedLengthString(indent, ' ');
       os.print(indentStr);
-      os.printf("%s%s: <todo flags>", this instanceof MorphNodeToMatcher?
-      "MorphNodeTo: " : "EmitNode: ", opcodeName);
+      os.printf("%s%s: <todo flags>", this instanceof MorphNodeToMatcher ?
+          "MorphNodeTo: " : "EmitNode: ", opcodeName);
 
       for (int vt : vts)
         os.printf(" %s", MVT.getEnumName(vt));
@@ -1532,6 +1593,7 @@ public abstract class Matcher {
    */
   public static class EmitNodeMatcher extends EmitNodeMatcherCommon {
     private int firstResultSlot;
+
     public EmitNodeMatcher(String opcodeName,
                            int[] vts,
                            int[] operands,
@@ -1552,18 +1614,19 @@ public abstract class Matcher {
     }
   }
 
-  public static class MorphNodeToMatcher extends  EmitNodeMatcherCommon {
+  public static class MorphNodeToMatcher extends EmitNodeMatcherCommon {
 
     private PatternToMatch pattern;
+
     public MorphNodeToMatcher(String opcodeName,
-                                int[] vts,
-                                int[] operands,
-                                boolean hasChain,
-                                boolean hasInFlag,
-                                boolean hasOutFlag,
-                                boolean hasMemRefs,
-                                int numFixedArityOperands,
-                                PatternToMatch pattern) {
+                              int[] vts,
+                              int[] operands,
+                              boolean hasChain,
+                              boolean hasInFlag,
+                              boolean hasOutFlag,
+                              boolean hasMemRefs,
+                              int numFixedArityOperands,
+                              PatternToMatch pattern) {
       super(opcodeName, vts, operands, hasChain,
           hasInFlag, hasOutFlag, hasMemRefs,
           numFixedArityOperands, false);
@@ -1589,9 +1652,13 @@ public abstract class Matcher {
       System.arraycopy(nodes, 0, flagResultNodes, 0, nodes.length);
     }
 
-    public int getNode(int idx) { return flagResultNodes[idx]; }
+    public int getNode(int idx) {
+      return flagResultNodes[idx];
+    }
 
-    public int getNumNodes() { return flagResultNodes.length; }
+    public int getNumNodes() {
+      return flagResultNodes.length;
+    }
 
     @Override
     protected void printImpl(PrintStream os, int indent) {
@@ -1601,7 +1668,7 @@ public abstract class Matcher {
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof MarkFlagResultsMatcher &&
-          ((MarkFlagResultsMatcher)m).flagResultNodes.equals(flagResultNodes);
+          ((MarkFlagResultsMatcher) m).flagResultNodes.equals(flagResultNodes);
     }
 
     @Override
@@ -1630,8 +1697,13 @@ public abstract class Matcher {
       pattern = pat;
     }
 
-    public int getNumResults() { return results.length; }
-    public int getResult(int idx) { return results[idx]; }
+    public int getNumResults() {
+      return results.length;
+    }
+
+    public int getResult(int idx) {
+      return results[idx];
+    }
 
     public PatternToMatch getPattern() {
       return pattern;

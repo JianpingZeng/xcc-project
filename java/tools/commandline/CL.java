@@ -380,7 +380,7 @@ public final class CL {
               break;
             default:
               Error.printFatalError("Internal error, unexpected NumOccurrences flag in " +
-                      "positional argument processing!");
+                  "positional argument processing!");
           }
         }
       }

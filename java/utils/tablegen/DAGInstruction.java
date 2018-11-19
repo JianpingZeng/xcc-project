@@ -38,6 +38,7 @@ public final class DAGInstruction {
                         ArrayList<Record> impOperands) {
     this(results, operands, impResults, impOperands, null, null);
   }
+
   public DAGInstruction(ArrayList<Record> results,
                         ArrayList<Record> operands,
                         ArrayList<Record> impResults,

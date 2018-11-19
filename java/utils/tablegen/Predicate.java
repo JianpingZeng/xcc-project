@@ -38,10 +38,11 @@ import java.util.Objects;
  * conditions associated with HW modes. Both types will eventually become
  * strings containing Java code to be executed, the difference is in how
  * these strings are generated.
+ *
  * @author Jianping Zeng.
  * @version 0.4
  */
-class Predicate implements Comparable<Predicate>{
+class Predicate implements Comparable<Predicate> {
   /**
    * Predicate definition from .td file, null for HW modes.
    */
@@ -65,7 +66,7 @@ class Predicate implements Comparable<Predicate>{
     isHwMode = false;
     Util.assertion(r.isSubClassOf("Predicate"),
         "Predicate objects should only be created for records derived" +
-        "from Predicate class");
+            "from Predicate class");
   }
 
   public Predicate(String fs, boolean c) {
@@ -109,11 +110,12 @@ class Predicate implements Comparable<Predicate>{
 
   /**
    * Returns Java code fragment for checking on condition.
+   *
    * @return
    */
   public String getCondString() {
     String res = isHwMode ? "mf.getSubtarget().checkFeatures(\"" +
         features + "\")" : def.getValueAsString("CondString");
-    return ifCond ? res :"!("+res+")";
+    return ifCond ? res : "!(" + res + ")";
   }
 }

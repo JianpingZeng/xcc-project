@@ -283,7 +283,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
               ++varEnd;
               if (varEnd >= asmString.length()) {
                 Error.printFatalError("Reached end of string before terminating curly brace in '"
-                        + cgi.theDef.getName() + "'");
+                    + cgi.theDef.getName() + "'");
               }
 
               int modifierStart = varEnd;
@@ -300,7 +300,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
             if (asmString.charAt(varEnd) != '}')
               Error.printFatalError("Variable namespace begining with '{' didn't end with '}' in "
-                      + "' " + cgi.theDef.getName() + "'");
+                  + "' " + cgi.theDef.getName() + "'");
 
             ++varEnd;
           }

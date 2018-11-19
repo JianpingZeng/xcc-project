@@ -39,7 +39,7 @@ public final class CodeGenRegister {
   public boolean equals(Object obj) {
     if (obj == null) return false;
     if (this == obj) return true;
-    if (getClass()!= obj.getClass()) return false;
+    if (getClass() != obj.getClass()) return false;
     CodeGenRegister r = (CodeGenRegister) obj;
     return getName().equals(r.getName());
   }

@@ -93,14 +93,14 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           os);
 
       os.printf("import backend.codegen.MVT;\n"
-          + "import backend.codegen.MachineFunction;\n"
-          + "import backend.target.TargetMachine;\n"
-          + "import backend.target.TargetRegisterClass;\n"
-          + "import backend.target.TargetRegisterDesc;\n"
-          + "import backend.target.TargetRegisterInfo;\n"
-          + "import backend.target.RegClassInfo;\n"
-          + "import backend.codegen.EVT;\n\n"
-          + "import static backend.target.%s.%sGenRegisterNames.*;\n",
+              + "import backend.codegen.MachineFunction;\n"
+              + "import backend.target.TargetMachine;\n"
+              + "import backend.target.TargetRegisterClass;\n"
+              + "import backend.target.TargetRegisterDesc;\n"
+              + "import backend.target.TargetRegisterInfo;\n"
+              + "import backend.target.RegClassInfo;\n"
+              + "import backend.codegen.EVT;\n\n"
+              + "import static backend.target.%s.%sGenRegisterNames.*;\n",
           targetName.toLowerCase(), targetName);
 
 
@@ -158,7 +158,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\tpublic static final int[] %s = {\n\t\t", name);
       for (CodeGenRegister r : rc.members) {
         os.printf("%s, ", r.getName());
-        if (i != 0 && i %10 == 0)
+        if (i != 0 && i % 10 == 0)
           os.print("\n\t\t");
         ++i;
       }
@@ -192,7 +192,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         int vt = vts.get(i);
         os.printf("%s, ", getEnumName(vt));
 
-        if (i !=0 && i % 10 == 0)
+        if (i != 0 && i % 10 == 0)
           os.printf("\n\t\t");
       }
       os.printf("\n\t};\n");

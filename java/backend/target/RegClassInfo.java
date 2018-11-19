@@ -36,6 +36,7 @@ public class RegClassInfo {
   public int spillSize;
   public int spillAlignment;
   public int[] vts;
+
   public RegClassInfo(int rs, int ss, int sa, int[] vts) {
     regSize = rs;
     spillSize = ss;

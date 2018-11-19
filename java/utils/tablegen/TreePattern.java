@@ -87,7 +87,9 @@ public final class TreePattern {
     return namedNodes;
   }
 
-  public TypeInfer getTypeInfer() { return infer; }
+  public TypeInfer getTypeInfer() {
+    return infer;
+  }
 
   public boolean hasError() {
     return error;
@@ -152,9 +154,11 @@ public final class TreePattern {
   private void computeNamedNodes() {
     trees.forEach(n -> computeNamedNodes(n));
   }
+
   /**
    * This the version of {@linkplain #inferAllTypes(HashMap)} with an
    * argument default to null.
+   *
    * @return
    */
   public boolean inferAllTypes() {
@@ -165,16 +169,16 @@ public final class TreePattern {
     if (n.isLeaf()) return false;
 
     if (n.getOperator().getName().equals("bitconvert") &&
-    n.getExtType(0).isValueTypeByHwMode(false) &&
-    n.getExtType(0) == n.getChild(0).getExtType(0) &&
-    n.getName().isEmpty()) {
+        n.getExtType(0).isValueTypeByHwMode(false) &&
+        n.getExtType(0) == n.getChild(0).getExtType(0) &&
+        n.getName().isEmpty()) {
       n = n.getChild(0);
       simplifyTree(n);
       return true;
     }
 
     boolean madeChanged = false;
-    for (int i = 0,e = n.getNumChildren();i < e; i++) {
+    for (int i = 0, e = n.getNumChildren(); i < e; i++) {
       TreePatternNode child = n.getChild(i);
       madeChanged |= simplifyTree(child);
       n.setChild(i, child);
@@ -215,9 +219,9 @@ public final class TreePattern {
 
           ArrayList<TreePatternNode> inNodes = inNamedTypes.get(pair.getKey());
           for (TreePatternNode node : nodes) {
-            if (node  == trees.get(0) && node.isLeaf()) {
+            if (node == trees.get(0) && node.isLeaf()) {
               DefInit di = node.getLeafValue() instanceof DefInit ?
-                  (DefInit)node.getLeafValue() : null;
+                  (DefInit) node.getLeafValue() : null;
               if (di != null && (di.getDef().isSubClassOf("RegisterClass") ||
                   di.getDef().isSubClassOf("RegisterOperand")))
                 continue;
@@ -230,8 +234,8 @@ public final class TreePattern {
         }
 
         if (nodes.size() > 1) {
-          for (int i = 0, e = nodes.size() -1; i < e; i++) {
-            TreePatternNode n1 = nodes.get(i), n2 = nodes.get(i+1);
+          for (int i = 0, e = nodes.size() - 1; i < e; i++) {
+            TreePatternNode n1 = nodes.get(i), n2 = nodes.get(i + 1);
             Util.assertion(n1.getNumTypes() == 1 && n2.getNumTypes() == 1,
                 "FIXME: can't namespace multiple result nodes as yet");
             changed |= n1.updateNodeType(0, n2.getExtType(0), this);
@@ -294,8 +298,9 @@ public final class TreePattern {
    *   }]>;
    * (zextload node:$ptr) is a DAGInit to this PatFrag, and it's operator is also a PatFrag def.
    * </pre>
+   *
    * @param theInit The initial PatFrag for this TreePattern.
-   * @param opName The namespace of this argument.
+   * @param opName  The namespace of this argument.
    * @return
    */
   private TreePatternNode parseTreePattern(Init theInit, String opName) {
@@ -355,7 +360,7 @@ public final class TreePattern {
 
       TreePatternNode newRes = parseTreePattern(dag.getArg(0), dag.getArgName(0));
 
-      Util.assertion(newRes.getNumTypes() ==1, "FIXME: Unhandled!");
+      Util.assertion(newRes.getNumTypes() == 1, "FIXME: Unhandled!");
       CodeGenHwModes mode = cdp.getTarget().getHwModes();
       newRes.updateNodeType(0, ValueTypeByHwMode.getValueTypeByHwMode(operator, mode), this);
       if (!opName.isEmpty())
@@ -388,7 +393,7 @@ public final class TreePattern {
     }
     if (operator.isSubClassOf("Intrinsic")) {
       CodeGenIntrinsic cgi = getDAGPatterns().getIntrinsic(operator);
-      int iid = getDAGPatterns().getIntrinsicID(operator)+1;
+      int iid = getDAGPatterns().getIntrinsicID(operator) + 1;
 
       if (cgi.is.retVTs.isEmpty())
         operator = getDAGPatterns().getIntrinsicVoidSDNode();
@@ -430,7 +435,7 @@ public final class TreePattern {
       DagInit tree = operator.getValueAsDag("Fragment");
       Record op = null;
       if (tree != null && tree.getOperator() instanceof DefInit)
-        op = ((DefInit)tree.getOperator()).getDef();
+        op = ((DefInit) tree.getOperator()).getDef();
       Util.assertion(op != null, "Invalid Fragment");
       return getNumNodeResults(op, cdp);
     }

@@ -91,7 +91,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * A table encoded as a state machine for recgonzing the
    * input target-undependent DAG and transforming it into
    * target-specific DAG.
-   *
+   * <p>
    * This variable should be statically initialized in class [*]GenDAGISel,
    * like {@code RISCVGenDAGISel}.
    */
@@ -355,18 +355,18 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     long nextBits;
     do {
       nextBits = matcherTable[idx.get()];
-      val |= (nextBits &127) << shift;
+      val |= (nextBits & 127) << shift;
       shift += 7;
-    }while ((nextBits & 128) != 0);
+    } while ((nextBits & 128) != 0);
     return val;
   }
 
   boolean checkSame(int[] matcherTable,
-                           OutRef<Integer> matcherIndex,
-                           SDValue n,
-                           ArrayList<SDValue> recordedNodes) {
+                    OutRef<Integer> matcherIndex,
+                    SDValue n,
+                    ArrayList<SDValue> recordedNodes) {
     int recNo = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
     return n.equals(recordedNodes.get(recNo));
   }
@@ -375,7 +375,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                       OutRef<Integer> matcherIndex,
                       SDNode n) {
     int opc = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     return n.getOpcode() == opc;
   }
 
@@ -383,7 +383,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                     OutRef<Integer> matcherIndex,
                     SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     if (n.getValueType().getSimpleVT().simpleVT == vt)
       return true;
 
@@ -403,8 +403,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                         OutRef<Integer> matcherIndex,
                         SDValue n) {
     int cc = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
-    return ((CondCodeSDNode)n.getNode()).getCondition() ==
+    matcherIndex.set(matcherIndex.get() + 1);
+    return ((CondCodeSDNode) n.getNode()).getCondition() ==
         CondCode.values()[cc];
   }
 
@@ -412,8 +412,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                          OutRef<Integer> matcherIndex,
                          SDValue n) {
     int vt = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
-    EVT actualVT = ((SDNode.VTSDNode)n.getNode()).getVT();
+    matcherIndex.set(matcherIndex.get() + 1);
+    EVT actualVT = ((SDNode.VTSDNode) n.getNode()).getVT();
     if (actualVT.getSimpleVT().simpleVT == vt)
       return true;
 
@@ -424,13 +424,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                        OutRef<Integer> matcherIndex,
                        SDValue n) {
     long val = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     if ((val & 128) != 0)
       val = getVBR(val, matcherIndex);
 
     if (!(n.getNode() instanceof ConstantSDNode))
       return false;
-    ConstantSDNode c = (ConstantSDNode)n.getNode();
+    ConstantSDNode c = (ConstantSDNode) n.getNode();
     return c.getSExtValue() == val;
   }
 
@@ -440,13 +440,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     if (n.getOpcode() != ISD.AND) return false;
 
     long val = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     if ((val & 128) != 0)
       val = getVBR(val, matcherIndex);
 
     if (!(n.getOperand(1).getNode() instanceof ConstantSDNode))
       return false;
-    ConstantSDNode c = (ConstantSDNode)n.getOperand(1).getNode();
+    ConstantSDNode c = (ConstantSDNode) n.getOperand(1).getNode();
     return checkAndMask(n.getOperand(0), c, val);
   }
 
@@ -456,33 +456,33 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     if (n.getOpcode() != ISD.OR) return false;
 
     long val = matcherTable[matcherIndex.get()];
-    matcherIndex.set(matcherIndex.get()+1);
+    matcherIndex.set(matcherIndex.get() + 1);
     if ((val & 128) != 0)
       val = getVBR(val, matcherIndex);
 
     if (!(n.getOperand(1).getNode() instanceof ConstantSDNode))
       return false;
-    ConstantSDNode c = (ConstantSDNode)n.getOperand(1).getNode();
+    ConstantSDNode c = (ConstantSDNode) n.getOperand(1).getNode();
     return checkAndMask(n.getOperand(0), c, val);
   }
 
 
   public boolean checkPatternPredicate(int[] matcherTable,
-                                OutRef<Integer> matcherIndex) {
+                                       OutRef<Integer> matcherIndex) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
 
   public boolean checkNodePredicate(int[] matcherTable,
-                             OutRef<Integer> matcherIndex,
-                             SDNode n) {
+                                    OutRef<Integer> matcherIndex,
+                                    SDNode n) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
 
   public boolean checkComplexPattern(SDNode root, SDValue n,
-                              int patternNo,
-                              ArrayList<SDValue> result) {
+                                     int patternNo,
+                                     ArrayList<SDValue> result) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
@@ -499,7 +499,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     switch (matcherTable[index++]) {
       default:
         result.set(false);
-        return index-1;
+        return index - 1;
       case OPC_CheckSame:
         tmpIdx.set(index);
         result.set(!checkSame(matcherTable, tmpIdx, n, recordedNodes));
@@ -526,7 +526,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       case OPC_CheckChild7Type:
         tmpIdx.set(index);
         result.set(!checkChildType(matcherTable, tmpIdx, n,
-            matcherTable[index-1] - OPC_CheckChild0Type));
+            matcherTable[index - 1] - OPC_CheckChild0Type));
         return tmpIdx.get();
       case OPC_CheckCondCode:
         tmpIdx.set(index);
@@ -595,7 +595,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                              ArrayList<SDNode> interiorChainedNodes) {
     ChainResult result = ChainResult.CR_Simple;
 
-    for (SDUse u : chainNode.useList){
+    for (SDUse u : chainNode.useList) {
       // Make sure the use is of the chain, not some other value we produce.
       if (u.getValueType().getSimpleVT().simpleVT != MVT.Other)
         continue;
@@ -701,6 +701,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * if this is a valid thing to cover (i.e. matching it won't induce cycles
    * in in the DAG) and if so, creating a TokenFactor node. that will be used
    * as the input node chain for the generated ndoes.
+   *
    * @param chainNodesMatched
    * @param curDAG
    * @return
@@ -747,16 +748,18 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   /**
    * Transform an EmitNode flags word into the number of fixed arty values
    * that shold be skipped when copying from the root.
+   *
    * @param flags
    * @return
    */
   private static int getNumFixedFromVariadicInfo(int flags) {
-    return ((flags & OPFL_VariadicInfo) >> 4)-1;
+    return ((flags & OPFL_VariadicInfo) >> 4) - 1;
   }
 
   /**
    * When a match is complete, this method updates uses of interior flag
    * and chain results to use the new flag and chain results.
+   *
    * @param nodeToMatch
    * @param inputChain
    * @param chainNodesMatched
@@ -789,9 +792,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         if (chainNode.equals(nodeToMatch) && isMorphNodeTo)
           continue;
 
-        SDValue chainVal = new SDValue(chainNode, chainNode.getNumValues()-1);
+        SDValue chainVal = new SDValue(chainNode, chainNode.getNumValues() - 1);
         if (chainVal.getValueType().equals(new EVT(MVT.Flag)))
-          chainVal = chainVal.getValue(chainVal.getNode().getNumValues()-2);
+          chainVal = chainVal.getValue(chainVal.getNode().getNumValues() - 2);
         Util.assertion(chainVal.getValueType().equals(new EVT(MVT.Other)), "not a chain!");
         curDAG.replaceAllUsesOfValueWith(chainVal, inputChain, isu);
 
@@ -808,9 +811,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         if (flagNode.getOpcode() == ISD.DELETED_NODE)
           continue;
 
-        Util.assertion(flagNode.getValueType(flagNode.getNumValues()-1).equals(new EVT(MVT.Flag)),
+        Util.assertion(flagNode.getValueType(flagNode.getNumValues() - 1).equals(new EVT(MVT.Flag)),
             "Doesn't have a flag result");
-        curDAG.replaceAllUsesOfValueWith(new SDValue(flagNode, flagNode.getNumValues()-1),
+        curDAG.replaceAllUsesOfValueWith(new SDValue(flagNode, flagNode.getNumValues() - 1),
             inputFlag, isu);
 
         // if this flagNode becomes dead, add it into deadNodes list.
@@ -832,12 +835,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   /**
    * The entry to morphy the given SDNode and return a target-specific SDNode.
    * If match failure, return null.
+   *
    * @param nodeToMatch
    * @return
    */
   public SDNode select(SDNode nodeToMatch) {
     switch (nodeToMatch.getOpcode()) {
-      default:break;
+      default:
+        break;
       case ISD.EntryToken:
       case ISD.BasicBlock:
       case ISD.Register:
@@ -901,23 +906,22 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     int matcherIndex = 0;
     if (n.getOpcode() < opcodeOffest.length) {
-        matcherIndex = opcodeOffest[n.getOpcode()];
-    }
-    else if (matcherTable[0] == OPC_SwitchOpcode) {
+      matcherIndex = opcodeOffest[n.getOpcode()];
+    } else if (matcherTable[0] == OPC_SwitchOpcode) {
       // Otherwise, the table isn't computed, but the state machine does start
       // with an OPC_SwitchOpcode instruction.  Populate the table now, since this
       // is the first time we're selecting an instruction.
       idx.set(1);
       while (true) {
         long caseSize = matcherTable[idx.get()];
-        idx.set(idx.get()+1);
+        idx.set(idx.get() + 1);
         if ((caseSize & 128) != 0)
           caseSize = getVBR(caseSize, idx);
         if (caseSize == 0) break;
         int opc = matcherTable[idx.get()];
-        idx.set(idx.get()+1);
+        idx.set(idx.get() + 1);
         if (opc >= opcodeOffest.length) {
-          int[] temp = new int[(opc+1)*2];
+          int[] temp = new int[(opc + 1) * 2];
           System.arraycopy(opcodeOffest, 0, temp, 0, opcodeOffest.length);
           opcodeOffest = temp;
         }
@@ -1119,10 +1123,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             matcherIndex += caseSize;
           }
         }
-        case OPC_CheckChild0Type: case OPC_CheckChild1Type:
-        case OPC_CheckChild2Type: case OPC_CheckChild3Type:
-        case OPC_CheckChild4Type: case OPC_CheckChild5Type:
-        case OPC_CheckChild6Type: case OPC_CheckChild7Type: {
+        case OPC_CheckChild0Type:
+        case OPC_CheckChild1Type:
+        case OPC_CheckChild2Type:
+        case OPC_CheckChild3Type:
+        case OPC_CheckChild4Type:
+        case OPC_CheckChild5Type:
+        case OPC_CheckChild6Type:
+        case OPC_CheckChild7Type: {
           int childNo = opcode - OPC_CheckChild0Type;
           idx.set(matcherIndex);
           boolean res = !checkChildType(matcherTable, idx, n, childNo);
@@ -1170,7 +1178,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           // Verify that all intermediate nodes between the root and this one have
           // a single use.
           boolean hasMultipleUses = false;
-          for (int i = 1, e = nodeStack.size()-1; i < e; i++)
+          for (int i = 1, e = nodeStack.size() - 1; i < e; i++)
             if (!nodeStack.get(i).hasOneUse()) {
               hasMultipleUses = true;
               break;
@@ -1180,8 +1188,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           // Check to see that the target thinks this is profitable to fold and that
           // we can fold it without inducing cycles in the graph.
           if (!isLegalAndProfitableToFold(n.getNode(),
-              nodeStack.get(nodeStack.size()-1).getNode(), nodeToMatch))
-              break;
+              nodeStack.get(nodeStack.size() - 1).getNode(), nodeToMatch))
+            break;
           continue;
         }
         case OPC_EmitInteger: {
@@ -1208,11 +1216,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           SDValue imm = recordedNodes.get(recNo);
 
           if (imm.getOpcode() == ISD.Constant) {
-            long val = ((ConstantSDNode)imm.getNode()).getZExtValue();
+            long val = ((ConstantSDNode) imm.getNode()).getZExtValue();
             imm = curDAG.getTargetConstant(val, imm.getValueType());
-          }
-          else if (imm.getOpcode() == ISD.ConstantFP) {
-            ConstantFP fp = ((SDNode.ConstantFPSDNode)imm.getNode()).getConstantFPValue();
+          } else if (imm.getOpcode() == ISD.ConstantFP) {
+            ConstantFP fp = ((SDNode.ConstantFPSDNode) imm.getNode()).getConstantFPValue();
             imm = curDAG.getTargetConstantFP(fp, imm.getValueType());
           }
           recordedNodes.add(imm);
@@ -1272,7 +1279,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         case OPC_EmitNode:
         case OPC_MorphNodeTo: {
           int targetOpc = matcherTable[matcherIndex++];
-          targetOpc |= ((int)matcherTable[matcherIndex++]) << 8;
+          targetOpc |= ((int) matcherTable[matcherIndex++]) << 8;
           int emitNodeInfo = matcherTable[matcherIndex++];
 
           // get the result vt list.
@@ -1310,7 +1317,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if ((emitNodeInfo & OPFL_VariadicInfo) != 0) {
             // Determine the start index to copy from.
             int firstToCopy = getNumFixedFromVariadicInfo(emitNodeInfo);
-            firstToCopy += (emitNodeInfo & OPFL_Chain) != 0 ? 1: 0;
+            firstToCopy += (emitNodeInfo & OPFL_Chain) != 0 ? 1 : 0;
             Util.assertion(nodeToMatch.getNumOperands() > firstToCopy,
                 "invalid variadic node");
             for (int i = firstToCopy, e = nodeToMatch.getNumOperands(); i < e; i++) {
@@ -1338,25 +1345,23 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                 break;
               recordedNodes.add(new SDValue(res, i));
             }
-          }
-          else {
+          } else {
             res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops, emitNodeInfo);
           }
 
           if ((emitNodeInfo & OPFL_FlagOutput) != 0) {
-            inputFlag = new SDValue(res, vts.size()-1);
+            inputFlag = new SDValue(res, vts.size() - 1);
             if ((emitNodeInfo & OPFL_Chain) != 0)
-              inputChain = new SDValue(res, vts.size()-1);
-          }
-          else if ((emitNodeInfo & OPFL_Chain) != 0)
-            inputChain = new SDValue(res, vts.size()-1);
+              inputChain = new SDValue(res, vts.size() - 1);
+          } else if ((emitNodeInfo & OPFL_Chain) != 0)
+            inputChain = new SDValue(res, vts.size() - 1);
 
           // If the OPFL_MemRefs flag is set on this node, slap all of the
           // accumulated memrefs onto it.
           if ((emitNodeInfo & OPFL_MemRefs) != 0) {
             MachineMemOperand[] refs = new MachineMemOperand[matchedMemRefs.size()];
             matchedMemRefs.toArray(refs);
-            ((MachineSDNode)res).setMemRefs(refs);
+            ((MachineSDNode) res).setMemRefs(refs);
           }
 
           // If this was a MorphNodeTo then we're completely done!
@@ -1378,7 +1383,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
               recNo = getVBR(recNo, idx);
               matcherIndex = idx.get();
             }
-            Util.assertion(recNo < Integer.MAX_VALUE,"integer too large");
+            Util.assertion(recNo < Integer.MAX_VALUE, "integer too large");
             Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
             flagResultNodesMatched.add(recordedNodes.get((int) recNo).getNode());
           }
@@ -1397,7 +1402,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
               matcherIndex = idx.get();
             }
 
-            Util.assertion(resSlot < Integer.MAX_VALUE,"integer too large");
+            Util.assertion(resSlot < Integer.MAX_VALUE, "integer too large");
             Util.assertion(resSlot < recordedNodes.size(), "invalid checkSame");
 
             SDValue res = recordedNodes.get((int) resSlot);
@@ -1411,16 +1416,16 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                 nodeToMatch.getValueType(i).equals(new EVT(MVT.Flag)))
               break;
             Util.assertion(nodeToMatch.getValueType(i).equals(res.getValueType()) ||
-                  nodeToMatch.getValueType(i).equals(new EVT(MVT.iPTR)) ||
-                  res.getValueType().equals(new EVT(MVT.iPTR)) ||
-                  nodeToMatch.getValueType(i).getSizeInBits() ==
-                  res.getValueType().getSizeInBits(), "invalid replacement");
+                nodeToMatch.getValueType(i).equals(new EVT(MVT.iPTR)) ||
+                res.getValueType().equals(new EVT(MVT.iPTR)) ||
+                nodeToMatch.getValueType(i).getSizeInBits() ==
+                    res.getValueType().getSizeInBits(), "invalid replacement");
             curDAG.replaceAllUsesOfValueWith(new SDValue(nodeToMatch, i), res);
           }
 
           // If the root node defines a flag, add it to the flag nodes to update
           // list.
-          if (nodeToMatch.getValueType(nodeToMatch.getNumValues()-1).getSimpleVT().simpleVT == MVT.Flag)
+          if (nodeToMatch.getValueType(nodeToMatch.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Flag)
             flagResultNodesMatched.add(nodeToMatch);
 
           // Update chain and flag uses.
@@ -1470,7 +1475,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         }
 
         if (numToSkips != 0) {
-          lastScope.failIndex = (int) (matcherIndex+numToSkips);
+          lastScope.failIndex = (int) (matcherIndex + numToSkips);
           break;
         }
 
@@ -1485,13 +1490,15 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
    * This hook allows targets to hack on the graph before
    * instruction selection starts.
    */
-  public void preprocessISelDAG() { }
+  public void preprocessISelDAG() {
+  }
 
   /**
    * This hook allows the target to hack on the graph
    * right after selection.
    */
-  public void postprocessISelDAG() {}
+  public void postprocessISelDAG() {
+  }
 
   /**
    * Replace the old node with new one.

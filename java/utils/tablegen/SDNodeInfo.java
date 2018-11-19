@@ -121,7 +121,8 @@ public final class SDNodeInfo {
       if (cst.operandNo >= numResults)
         continue;
       switch (cst.constraintType) {
-        default: break;
+        default:
+          break;
         case SDTCisVT:
           if (cst.vvt.isSimple())
             return cst.vvt.getSimple().simpleVT;
@@ -305,8 +306,7 @@ public final class SDNodeInfo {
       if (opNo < numResults) {
         resNo[0] = opNo;
         return node;
-      }
-      else
+      } else
         return node.getChild(opNo - numResults);
     }
   }

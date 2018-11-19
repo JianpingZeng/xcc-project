@@ -713,8 +713,8 @@ public class Util {
   }
 
   public static <T> T minIf(Iterator<T> itr,
-                              Predicate<T> pred,
-                              BiPredicate<T, T> less) {
+                            Predicate<T> pred,
+                            BiPredicate<T, T> less) {
     if (!itr.hasNext()) return null;
     T min = null;
     while (itr.hasNext()) {

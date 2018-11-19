@@ -157,8 +157,7 @@ public class SubtargetEmitter extends TableGenBackend {
    * @param itinClassesMap
    * @return
    */
-  private int collectAllItinClasses(PrintStream os, TObjectIntHashMap<String> itinClassesMap)
-      {
+  private int collectAllItinClasses(PrintStream os, TObjectIntHashMap<String> itinClassesMap) {
     ArrayList<Record> itinClassList = records.getAllDerivedDefinition("InstrItinClass");
 
     itinClassList.sort(LessRecord);
@@ -182,8 +181,7 @@ public class SubtargetEmitter extends TableGenBackend {
    * @param itinString
    * @return
    */
-  private int formItineraryStageString(Record itinData, StringBuilder itinString)
-      {
+  private int formItineraryStageString(Record itinData, StringBuilder itinString) {
     ArrayList<Record> stageList = itinData.getValueAsListOfDefs("Stages");
 
     int n = stageList.size();
@@ -337,8 +335,7 @@ public class SubtargetEmitter extends TableGenBackend {
     os.print(operandCycleTable);
   }
 
-  private void emitProcessorData(PrintStream os, ArrayList<ArrayList<InstrItinerary>> procList)
-      {
+  private void emitProcessorData(PrintStream os, ArrayList<ArrayList<InstrItinerary>> procList) {
     ArrayList<Record> itins = records.getAllDerivedDefinition("ProcessItineraries");
 
     Iterator<ArrayList<InstrItinerary>> procListItr = procList.iterator();
@@ -516,8 +513,8 @@ public class SubtargetEmitter extends TableGenBackend {
       String className = targetName + "GenSubtarget";
 
       os.printf("import backend.target.SubtargetFeatureKV;\n"
-          + "import backend.target.SubtargetFeatures;\n\n"
-          + "import static backend.target.%s.%sSubtarget.*;\n",
+              + "import backend.target.SubtargetFeatures;\n\n"
+              + "import static backend.target.%s.%sSubtarget.*;\n",
           targetName.toLowerCase(), targetName, targetName.toLowerCase(), targetName);
 
       String superClass = targetName + "Subtarget";

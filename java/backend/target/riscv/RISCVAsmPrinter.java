@@ -43,7 +43,9 @@ public abstract class RISCVAsmPrinter extends AsmPrinter {
   protected RISCVAsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v) {
     super(os, tm, tai, v);
   }
+
   public abstract boolean printInstruction(MachineInstr mi);
+
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     return false;

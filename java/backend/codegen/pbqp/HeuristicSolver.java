@@ -51,7 +51,7 @@ public class HeuristicSolver implements PBQPSolver {
   @Override
   public PBQPSolution solve(PBQPGraph problem) {
     Util.assertion(problem != null);
-        /* check vector & matrix dimensions */
+    /* check vector & matrix dimensions */
     checkPBQP(problem);
 
     graph = problem;

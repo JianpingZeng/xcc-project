@@ -67,7 +67,9 @@ public final class CodeGenTarget {
     readRegisterClasses();
   }
 
-  public CodeGenHwModes getHwModes() { return hwModes; }
+  public CodeGenHwModes getHwModes() {
+    return hwModes;
+  }
 
   private void readRegisters() {
     ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Register");
@@ -91,9 +93,10 @@ public final class CodeGenTarget {
    * 1. All RC2 registers are also in RC.
    * 2. The RC2 spill size must not be smaller that the RC spill size.
    * 3.RC2 spill alignment must be compatible with RC.
-   *
+   * <p>
    * Sub-classes are used to determine if a virtual register can be used
    * as an instruction operand, or if it must be copied first.
+   *
    * @param rc1
    * @param rc2
    * @return
@@ -111,7 +114,7 @@ public final class CodeGenTarget {
       CodeGenRegisterClass rc = registerClasses.get(i);
       // every reg class is the sub class of itself.
       rc.subClasses.add(rc);
-      for (int j = i+1; j < e; j++) {
+      for (int j = i + 1; j < e; j++) {
         CodeGenRegisterClass rc2 = registerClasses.get(j);
         if (rc.subClasses.contains(rc2))
           continue;
@@ -198,8 +201,7 @@ public final class CodeGenTarget {
    * @param numberedInstructions
    */
   public void getInstructionsByEnumValue(
-      ArrayList<CodeGenInstruction> numberedInstructions)
-      {
+      ArrayList<CodeGenInstruction> numberedInstructions) {
     String[] firstPriority = {
         "PHI",
         "INLINEASM",

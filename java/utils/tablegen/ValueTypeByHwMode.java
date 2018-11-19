@@ -49,9 +49,14 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
     map.put(DefaultMode, vt);
   }
 
-  public ValueTypeByHwMode() {super();}
+  public ValueTypeByHwMode() {
+    super();
+  }
 
-  public MVT getType(int mode) { return get(mode); }
+  public MVT getType(int mode) {
+    return get(mode);
+  }
+
   public MVT getOrCreateTypeForMode(int mode, MVT type) {
     if (map.containsKey(mode))
       return map.get(mode);
@@ -86,11 +91,10 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
     map.forEach((m, vt) -> pairs.add(Pair.get(m, vt)));
     StringBuilder buf = new StringBuilder("{");
     int i = 0, e = pairs.size();
-    for (Pair<Integer, MVT> itr : pairs)
-    {
+    for (Pair<Integer, MVT> itr : pairs) {
       buf.append("(").append(getModeName(itr.first)).append(":")
           .append(getMVTName(itr.second)).append(")");
-      if (i != e-1)
+      if (i != e - 1)
         buf.append(",");
     }
     buf.append("}");
@@ -108,7 +112,9 @@ public class ValueTypeByHwMode extends InfoByHwMode<MVT> {
     return new ValueTypeByHwMode(new MVT(getValueType(rec)));
   }
 
-  public boolean isValid() { return !map.isEmpty(); }
+  public boolean isValid() {
+    return !map.isEmpty();
+  }
 
   @Override
   public boolean equals(Object obj) {

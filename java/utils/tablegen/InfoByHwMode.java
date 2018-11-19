@@ -34,11 +34,14 @@ public abstract class InfoByHwMode<T> {
   public InfoByHwMode() {
     map = new TreeMap<>();
   }
-  public Iterator<Map.Entry<Integer,T>> iterator() {
+
+  public Iterator<Map.Entry<Integer, T>> iterator() {
     return map.entrySet().iterator();
   }
 
-  public int size() {return map.size(); }
+  public int size() {
+    return map.size();
+  }
 
   public boolean isEmpty() {
     return map.isEmpty();

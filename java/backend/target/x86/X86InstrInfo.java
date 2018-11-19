@@ -135,7 +135,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
             X86GenInstrNames.ADJCALLSTACKDOWN64 :
             X86GenInstrNames.ADJCALLSTACKDOWN32,
         tm.getSubtarget().is64Bit() ?
-            X86GenInstrNames.ADJCALLSTACKUP64:
+            X86GenInstrNames.ADJCALLSTACKUP64 :
             X86GenInstrNames.ADJCALLSTACKUP32);
     this.tm = tm;
     registerInfo = tm.getSubtarget().getRegisterInfo();
@@ -1671,7 +1671,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     // Determine if DstRC and srcRC have a common superclass in common.
     TargetRegisterClass commonRC = destRC;
     if (destRC.equals(srcRC)) {
-            /* Source and destination have the same register class. */
+      /* Source and destination have the same register class. */
     } else if (commonRC.hasSuperClass(srcRC))
       commonRC = srcRC;
     else if (!destRC.hasSubClass(srcRC)) {

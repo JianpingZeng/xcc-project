@@ -1280,6 +1280,7 @@ public class SelectionDAG {
   /**
    * This method is similar to {@linkplain #replaceAllUsesOfValueWith(SDValue, SDValue)}
    * other than DAGUpdateListener is null by default.
+   *
    * @param oldNode
    * @param newNode
    */
@@ -2072,9 +2073,11 @@ public class SelectionDAG {
       addModifiedNodeToCSEMaps(user, listener);
     }
   }
+
   public SDValue getRegister(int reg, int ty) {
     return getRegister(reg, new EVT(ty));
   }
+
   public SDValue getRegister(int reg, EVT ty) {
     FoldingSetNodeID calc = new FoldingSetNodeID();
     addNodeToIDNode(calc, ISD.Register, getVTList(ty), null, 0);

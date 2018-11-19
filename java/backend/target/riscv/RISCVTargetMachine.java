@@ -102,6 +102,7 @@ public class RISCVTargetMachine extends LLVMTargetMachine {
   public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
     return false;
   }
+
   /**
    * This pass should be overridden by the target to add
    * a code emitter (without setting flags), if supported.  If this is not

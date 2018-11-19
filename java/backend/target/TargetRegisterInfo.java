@@ -490,7 +490,7 @@ public abstract class TargetRegisterInfo {
   }
 
   public RegClassInfo getRegClassInfo(TargetRegisterClass rc) {
-    return regClassInfo[hwMode*getNumRegClasses()*rc.getID()];
+    return regClassInfo[hwMode * getNumRegClasses() * rc.getID()];
   }
 
   public int getSpillSize(TargetRegisterClass rc) {
@@ -498,7 +498,7 @@ public abstract class TargetRegisterInfo {
   }
 
   public int getRegSizeInBit(TargetRegisterClass rc) {
-    return getRegClassInfo(rc).regSize/8;
+    return getRegClassInfo(rc).regSize / 8;
   }
 
   public int getRegSize(TargetRegisterClass rc) {
@@ -506,7 +506,7 @@ public abstract class TargetRegisterInfo {
   }
 
   public int getSpillAlignmentInBit(TargetRegisterClass rc) {
-    return getRegClassInfo(rc).spillAlignment/8;
+    return getRegClassInfo(rc).spillAlignment / 8;
   }
 
   public int getSpillAlignment(TargetRegisterClass rc) {

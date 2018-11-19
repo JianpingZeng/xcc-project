@@ -178,11 +178,11 @@ public final class AliasSetTracker {
     return false;
   }
 
-    /*
-    * remove methods - These methods are used to remove all entries that might
-    * be aliased by the specified instruction.  These methods return true if any
-    * alias sets were eliminated.
-    */
+  /*
+   * remove methods - These methods are used to remove all entries that might
+   * be aliased by the specified instruction.  These methods return true if any
+   * alias sets were eliminated.
+   */
 
   /**
    * Remove the specified (potentially non-empty) alias set from the

@@ -47,7 +47,9 @@ public class RISCVDAGISel extends SelectionDAGISel {
     subtarget = tm.getSubtarget();
   }
 
-  public boolean isOrEquivalentToAdd(SDNode n) { return false; }
+  public boolean isOrEquivalentToAdd(SDNode n) {
+    return false;
+  }
 
   /**
    * Checks if specified val, a signed integer, has number of bits.

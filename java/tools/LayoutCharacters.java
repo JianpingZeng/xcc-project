@@ -8,7 +8,7 @@ package tools;
 
 /**
  * An interface containing layout character constants used in Java
- *  programs.
+ * programs.
  */
 public interface LayoutCharacters {
 
@@ -39,8 +39,8 @@ public interface LayoutCharacters {
 
   /**
    * End of input character.  Used as a sentinel to denote the
-   *  character one beyond the last defined character in a
-   *  source file.
+   * character one beyond the last defined character in a
+   * source file.
    */
   byte EOI = 26;
 }

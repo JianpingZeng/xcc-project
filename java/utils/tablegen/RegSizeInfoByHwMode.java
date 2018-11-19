@@ -74,6 +74,7 @@ public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
     int m0 = map.firstKey();
     return get(m0).isSubClassOf(info.get(m0));
   }
+
   public boolean hasStricterSpillThan(RegSizeInfoByHwMode info) {
     int m0 = map.firstKey();
     RegSizeInfo info0 = get(m0), info1 = info.get(m0);
@@ -98,7 +99,7 @@ public class RegSizeInfoByHwMode extends InfoByHwMode<RegSizeInfo>
       buf.append("(").append(getModeName(itr.first))
           .append(":").append(itr.second.toString())
           .append(")");
-      if (i != e-1)
+      if (i != e - 1)
         buf.append(",");
     }
     buf.append('}');

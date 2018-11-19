@@ -110,10 +110,18 @@ public final class TreePatternNode implements Cloneable {
     return val != null;
   }
 
-  public int getNumTypes() { return types.size(); }
+  public int getNumTypes() {
+    return types.size();
+  }
 
-  public ArrayList<TypeSetByHwMode> getExtTypes() { return types; }
-  public TypeSetByHwMode getExtType(int resNo) { return types.get(resNo); }
+  public ArrayList<TypeSetByHwMode> getExtTypes() {
+    return types;
+  }
+
+  public TypeSetByHwMode getExtType(int resNo) {
+    return types.get(resNo);
+  }
+
   public void setTypes(ArrayList<TypeSetByHwMode> types) {
     this.types.clear();
     types.forEach(ty -> this.types.add(ty.clone()));
@@ -122,6 +130,7 @@ public final class TreePatternNode implements Cloneable {
   public ValueTypeByHwMode getType(int resNo) {
     return types.get(resNo).getValueTypeByHwMode();
   }
+
   public void setType(int resNo, TypeSetByHwMode info) {
     types.set(resNo, info);
   }
@@ -280,13 +289,15 @@ public final class TreePatternNode implements Cloneable {
       return node.getOperator().isSubClassOf(klass);
 
     DefInit di = node.getLeafValue() instanceof DefInit ?
-        (DefInit)node.getLeafValue():null;
+        (DefInit) node.getLeafValue() : null;
     return di != null && di.getDef().isSubClassOf(klass);
   }
+
   /**
    * Apply all of the type constraints relevant to this node and its children
    * in the tree.  This returns true if it makes a change, false otherwise.
    * If a type contradiction is found, issue an error.
+   *
    * @param tp
    * @param notRegisters
    * @return
@@ -301,8 +312,7 @@ public final class TreePatternNode implements Cloneable {
           changed |= updateNodeType(i, getImplicitType(di.getDef(), i,
               notRegisters, !hasName(), tp), tp);
         return changed;
-      }
-      else if (getLeafValue() instanceof IntInit) {
+      } else if (getLeafValue() instanceof IntInit) {
         IntInit ii = (IntInit) getLeafValue();
         // int inits are always integers.
         boolean madeChanged = tp.getTypeInfer().enforceInteger(types.get(0));
@@ -318,7 +328,7 @@ public final class TreePatternNode implements Cloneable {
           if (size >= 32)
             continue;
 
-          long signBitAndAbove = ii.getValue() >> (size-1);
+          long signBitAndAbove = ii.getValue() >> (size - 1);
           if (signBitAndAbove == -1 || signBitAndAbove == 0 ||
               signBitAndAbove == 1)
             continue;
@@ -336,7 +346,7 @@ public final class TreePatternNode implements Cloneable {
       Util.assertion(getNumChildren() >= 2, "Missing RHS of a set?");
       int nc = getNumChildren();
 
-      TreePatternNode setVal = getChild(nc-1);
+      TreePatternNode setVal = getChild(nc - 1);
       boolean madeChanged = setVal.applyTypeConstraints(tp, notRegisters);
 
       for (int i = 0; i < nc - 1; i++) {
@@ -383,7 +393,7 @@ public final class TreePatternNode implements Cloneable {
       for (int i = 1, e = getNumChildren(); i != e; i++) {
         madeChange |= getChild(i).applyTypeConstraints(tp, notRegisters);
 
-        int opVT = intrinsic.is.paramVTs.get(i-1);
+        int opVT = intrinsic.is.paramVTs.get(i - 1);
         Util.assertion(getChild(i).getNumTypes() == 1, "Unhandled case");
         madeChange |= getChild(i).updateNodeType(0, opVT, tp);
       }
@@ -430,11 +440,10 @@ public final class TreePatternNode implements Cloneable {
       }
 
       if (getOperator().getName().equals("INSERT_SUBREG")) {
-        Util.assertion(getChild(0).getNumTypes() ==1, "FIXME: Unhandled");
+        Util.assertion(getChild(0).getNumTypes() == 1, "FIXME: Unhandled");
         madeChanged |= updateNodeType(0, getChild(0).getExtType(0), tp);
         madeChanged |= getChild(0).updateNodeType(0, getExtType(0), tp);
-      }
-      else if (getOperator().getName().equals("REG_SEQUENCE")) {
+      } else if (getOperator().getName().equals("REG_SEQUENCE")) {
         // We need to do extra, custom typechecking for REG_SEQUENCE since it is
         // variadic.
         int numChild = getNumChildren();
@@ -443,7 +452,7 @@ public final class TreePatternNode implements Cloneable {
           return false;
         }
 
-        if (numChild %2 == 0) {
+        if (numChild % 2 == 0) {
           tp.error("REG_SEQUENCE requires an odd number of operands!");
           return false;
         }
@@ -452,9 +461,9 @@ public final class TreePatternNode implements Cloneable {
           return false;
         }
         for (int i = 1; i < numChild; i++) {
-          TreePatternNode node = getChild(i+1);
+          TreePatternNode node = getChild(i + 1);
           if (!isOperandClass(node, "SubRegIndex")) {
-            tp.error(String.format("REG_SEQUENCE requires a SubRegIndex for operand #%d!", i+1));
+            tp.error(String.format("REG_SEQUENCE requires a SubRegIndex for operand #%d!", i + 1));
             return false;
           }
         }
@@ -504,7 +513,7 @@ public final class TreePatternNode implements Cloneable {
             operandNode.isSubClassOf("RegisterOperand")) {
           Record op;
           if (operandNode.isSubClassOf("RegisterClass"))
-             op = operandNode;
+            op = operandNode;
           else
             op = operandNode.getValueAsDef("RegClass");
           CodeGenRegisterClass rc = cdp.getTarget().getRegisterClass(op);
@@ -527,14 +536,12 @@ public final class TreePatternNode implements Cloneable {
       for (int i = 0, e = getNumChildren(); i < e; i++)
         madeChanged |= getChild(i).applyTypeConstraints(tp, notRegisters);
       return madeChanged;
-    }
-    else if (getOperator().isSubClassOf("ComplexPattern")) {
+    } else if (getOperator().isSubClassOf("ComplexPattern")) {
       boolean madeChange = false;
       for (int i = 0, e = getNumChildren(); i < e; i++)
         madeChange |= getChild(i).applyTypeConstraints(tp, notRegisters);
       return madeChange;
-    }
-    else {
+    } else {
       Util.assertion(getOperator().isSubClassOf("SDNodeXForm"), "Undefined node type!");
       if (getNumChildren() != 1) {
         tp.error("Node transform '" + getOperator().getName() +
@@ -605,8 +612,7 @@ public final class TreePatternNode implements Cloneable {
     } else if (r.isSubClassOf("CondCode")) {
       Util.assertion(resNo == 0, "CodeCode only has one result!");
       return new TypeSetByHwMode(MVT.Other);
-    }
-    else if (r.isSubClassOf("ComplexPattern")) {
+    } else if (r.isSubClassOf("ComplexPattern")) {
       Util.assertion(resNo == 0, "ComplexPattern only has one result!");
       if (notRegisters)
         return new TypeSetByHwMode();
@@ -772,12 +778,14 @@ public final class TreePatternNode implements Cloneable {
     tp.getTypeInfer().expandOverloads(set);
     return tp.getTypeInfer().mergeInTypeInfo(types.get(resNo), set);
   }
+
   public boolean updateNodeType(int resNo,
                                 int simpleVT,
                                 TreePattern tp) {
     TypeSetByHwMode set = new TypeSetByHwMode(simpleVT);
     return updateNodeType(resNo, set, tp);
   }
+
   public boolean updateNodeType(int resNo,
                                 ValueTypeByHwMode vvt,
                                 TreePattern tp) {
@@ -974,12 +982,11 @@ public final class TreePatternNode implements Cloneable {
     Record r;
     if (isLeaf()) {
       DefInit di = getLeafValue() instanceof DefInit ?
-          (DefInit)getLeafValue() : null;
-      if (di == null )
+          (DefInit) getLeafValue() : null;
+      if (di == null)
         return null;
       r = di.getDef();
-    }
-    else
+    } else
       r = getOperator();
 
     if (!r.isSubClassOf("ComplexPattern"))

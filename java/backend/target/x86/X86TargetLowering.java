@@ -3190,9 +3190,7 @@ public class X86TargetLowering extends TargetLowering {
         boolean lastIsNonZero = (nonZeros & (1 << (i - 1))) != 0;
         if (lastIsNonZero)
           lastElt = dag.getNode(ISD.ZERO_EXTEND, new EVT(MVT.i16), op.getOperand(i - 1));
-        if (thisIsNonZero)
-
-        {
+        if (thisIsNonZero) {
           thisElt = dag.getNode(ISD.ZERO_EXTEND, new EVT(MVT.i16), op.getOperand(i));
           thisElt = dag.getNode(ISD.SHL, new EVT(MVT.i16), thisElt,
               dag.getConstant(8, new EVT(MVT.i8), false));

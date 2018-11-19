@@ -273,7 +273,7 @@ public final class FileCheck {
               ptr);
           if (numNewlines == 0) {
             Error.printError(str.loc, CheckPrefix.value
-                    + "-NEXT: is on the same line as previous match");
+                + "-NEXT: is on the same line as previous match");
             Error.printNote(SourceMgr.SMLoc.get(buffer, ptr),
                 "'next' amtch was here");
             Error.printNote(SourceMgr.SMLoc.get(buffer, lastMatch),
@@ -283,7 +283,7 @@ public final class FileCheck {
 
           if (numNewlines != 1) {
             Error.printError(str.loc, CheckPrefix.value
-                    + "-NEXT: is not on the line after previous match");
+                + "-NEXT: is not on the line after previous match");
             Error.printNote(SourceMgr.SMLoc.get(buffer, ptr),
                 "'next' amtch was here");
             Error.printNote(SourceMgr.SMLoc.get(buffer, lastMatch),

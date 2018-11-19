@@ -1094,11 +1094,11 @@ public final class PromoteMemToReg {
     void analyzeAlloca(AllocaInst alloca) {
       clear();
 
-			/*
+      /*
        * scaning the usesList of the alloca instruction, and keeping track of
-			 * stores, and decide whether all of loads and stores to the alloca
-			 * are within a same basic block.
-			 */
+       * stores, and decide whether all of loads and stores to the alloca
+       * are within a same basic block.
+       */
       for (Use u : alloca.usesList) {
         Instruction inst = (Instruction) u.getUser();
         if (inst instanceof StoreInst) {

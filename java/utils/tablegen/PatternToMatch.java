@@ -75,8 +75,7 @@ public final class PatternToMatch {
         TypeSetByHwMode vt = child.getExtType(0);
         if (vt.getMachineValueType().simpleVT != MVT.Other)
           size += getPatternSize(child, cgp);
-      }
-      else if (child.isLeaf()) {
+      } else if (child.isLeaf()) {
         if (child.getLeafValue() instanceof Init.IntInit)
           size += 5;
         else if (nodeIsComplexPattern(child))

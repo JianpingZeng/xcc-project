@@ -2339,7 +2339,7 @@ public final class CodeGenFunction {
       aggLoc = createTempAlloca(convertType(expr.getType()));
     }
     return emitAnyExpr(expr, aggLoc, isAggLocVolatile,
-              /*ignore result*/false, isInitializer);
+        /*ignore result*/false, isInitializer);
   }
 
   public void errorUnsupported(Stmt s, String msg) {

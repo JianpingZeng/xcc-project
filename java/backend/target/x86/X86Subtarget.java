@@ -237,13 +237,16 @@ public class X86Subtarget extends TargetSubtarget {
       stackAlignemnt = 16;
   }
 
-  public X86TargetMachine getTargetMachine() { return tm; }
+  public X86TargetMachine getTargetMachine() {
+    return tm;
+  }
+
   /**
    * Create a X86Subtarget instance with specified target triple, features string,
    * and predicate.
    *
-   * @param tt      Target triple
-   * @param fs      Features string
+   * @param tt Target triple
+   * @param fs Features string
    * @return
    */
   public static X86Subtarget createX86Subtarget(String tt, String fs,

@@ -83,7 +83,7 @@ public final class ComplexPattern {
         default: {
           Error.printFatalError(r.getLoc(),
               String.format("Unsupported SD Node property '%s' " +
-                      "on ComplexPattern '%s'!\n", prop.getName(), r.getName()));
+                  "on ComplexPattern '%s'!\n", prop.getName(), r.getName()));
         }
       }
     }
@@ -96,7 +96,7 @@ public final class ComplexPattern {
         attributes |= 1 << CPAttrParentAsRoot;
       else {
         Error.printFatalError(String.format("Unsupported pattern attribute '%s' " +
-                "on ComplexPattern '%s'!\n", attr.getName(), r.getName()));
+            "on ComplexPattern '%s'!\n", attr.getName(), r.getName()));
       }
     }
   }

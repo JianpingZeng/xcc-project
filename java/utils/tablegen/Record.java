@@ -45,7 +45,7 @@ public final class Record implements Cloneable {
    * Sorting predicate to sort the record by theire namespace field.
    */
   private static final Comparator<Record> LessRecordFieldName = (Record o1, Record o2) ->
-        o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
+      o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
 
   private String name;
   private ArrayList<String> templateArgs;
@@ -261,7 +261,7 @@ public final class Record implements Cloneable {
             + " named '" + fieldName + "'!\n");
     Util.assertion(rv.getValue() instanceof BitsInit,
         "Record `" + getName() + "', field `" + fieldName +
-        "' does not have a BitsInit initializer!");
+            "' does not have a BitsInit initializer!");
     return ((BitsInit) rv.getValue());
   }
 
@@ -342,7 +342,7 @@ public final class Record implements Cloneable {
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field" +
             " named '" + fieldName + "'!\n");
-    Util.assertion (rv.getValue() instanceof BitInit,
+    Util.assertion(rv.getValue() instanceof BitInit,
         "Record `" + getName() + "', field `" + fieldName +
             "' does not have a BitInit initializer!");
     return ((BitInit) rv.getValue()).getValue();
@@ -382,9 +382,9 @@ public final class Record implements Cloneable {
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
             + " named '" + fieldName + "'!\n");
-    Util.assertion (rv.getValue() instanceof DagInit,
+    Util.assertion(rv.getValue() instanceof DagInit,
         "Record `" + getName() + "', field `" + fieldName +
-        "' does not have a DagInit initializer!");
+            "' does not have a DagInit initializer!");
     return ((DagInit) rv.getValue());
   }
 
@@ -402,9 +402,9 @@ public final class Record implements Cloneable {
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
             + " named '" + fieldName + "'!\n");
-    Util.assertion (rv.getValue() instanceof CodeInit,
+    Util.assertion(rv.getValue() instanceof CodeInit,
         "Record `" + getName() + "', field `" + fieldName +
-        "' does not have a CodeInit initializer!");
+            "' does not have a CodeInit initializer!");
     return ((CodeInit) rv.getValue()).getValue();
   }
 

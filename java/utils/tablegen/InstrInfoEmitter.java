@@ -65,10 +65,10 @@ public final class InstrInfoEmitter extends TableGenBackend {
       TObjectIntHashMap<Record> barriersMap = new TObjectIntHashMap<>();
 
       os.printf("\nimport backend.target.*;\n\n"
-          + "import static backend.target.TargetOperandInfo.OperandConstraint.*;\n"
-          + "import static backend.target.TargetOperandInfo.OperandFlags.*;\n"
-          + "import static backend.target.%s.%sGenRegisterInfo.*;\n"
-          + "import static backend.target.%s.%sGenRegisterNames.*;\n\n",
+              + "import static backend.target.TargetOperandInfo.OperandConstraint.*;\n"
+              + "import static backend.target.TargetOperandInfo.OperandFlags.*;\n"
+              + "import static backend.target.%s.%sGenRegisterInfo.*;\n"
+              + "import static backend.target.%s.%sGenRegisterNames.*;\n\n",
           lowertargetName, targetName, lowertargetName, targetName);
 
       os.printf("public class %s extends %sInstrInfo {\n\n", className, targetName);
@@ -317,8 +317,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
   }
 
   private void emitOperandInfo(PrintStream os,
-                               HashMap<ArrayList<String>, Integer> operandInfoIDs)
-      {
+                               HashMap<ArrayList<String>, Integer> operandInfoIDs) {
     int operandListNum = 0;
     operandInfoIDs.put(new ArrayList<>(), ++operandListNum);
 
@@ -344,8 +343,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
     }
   }
 
-  private ArrayList<String> getOperandInfo(CodeGenInstruction instr)
-      {
+  private ArrayList<String> getOperandInfo(CodeGenInstruction instr) {
     ArrayList<String> result = new ArrayList<>();
 
     for (int i = 0, e = instr.operandList.size(); i != e; i++) {

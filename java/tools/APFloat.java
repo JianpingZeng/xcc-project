@@ -1000,7 +1000,7 @@ public class APFloat implements Cloneable {
         exponent -= extendedPrecision - omsb;
       }
 
-            /* Create new semantics.  */
+      /* Create new semantics.  */
       extendedSemantics = semantics;
       extendedSemantics.precision = extendedPrecision;
 
@@ -1013,7 +1013,7 @@ public class APFloat implements Cloneable {
       Util.assertion(status == opOK);
       LostFraction = addOrSubtractSignificand(extendedAddend, false);
 
-            /* Restore our state.  */
+      /* Restore our state.  */
       // FIXME
       if (newPartCount == 1)
         fullSignificand[0] = parts[0];
@@ -1132,7 +1132,7 @@ public class APFloat implements Cloneable {
   private void incrementSignificand() {
     long carry = APInt.tcIncrement(significandParts(), partCount());
 
-        /* Our callers should never cause us to overflow.  */
+    /* Our callers should never cause us to overflow.  */
     Util.assertion(carry == 0);
   }
 
@@ -1181,7 +1181,7 @@ public class APFloat implements Cloneable {
    * Note that a zero result is NOT normalized to fcZero.
    */
   private LostFraction shiftSignificandRight(int bits) {
-        /* Our exponent should not overflow.  */
+    /* Our exponent should not overflow.  */
     Util.assertion(exponent + bits >= exponent);
     exponent += bits;
 
@@ -2005,9 +2005,9 @@ public class APFloat implements Cloneable {
         dot = p;
     }
 
-        /* If number is all zeroes accept any exponent.  */
+    /* If number is all zeroes accept any exponent.  */
     if (p != d.firstSigDigit) {
-              /* Drop insignificant trailing zeroes.  */
+      /* Drop insignificant trailing zeroes.  */
       if (p != begin) {
         do {
           do {
@@ -2029,7 +2029,7 @@ public class APFloat implements Cloneable {
     decimalInfo D;
     int fs;
 
-        /* Scan the text.  */
+    /* Scan the text.  */
     int p = 0;
     D = interpretDecimal(str, p, str.length());
 
@@ -2054,12 +2054,12 @@ public class APFloat implements Cloneable {
       fs = opOK;
     } else if ((D.normalizedExponent + 1) * 28738 <= 8651 * (
         semantics.minExponent - (int) semantics.precision)) {
-            /* Underflow to zero and round.  */
+      /* Underflow to zero and round.  */
       zeroSignificand();
       fs = normalize(rm, LostFraction.lfLessThanHalf);
     } else if ((D.normalizedExponent - 1) * 42039
         >= 12655 * semantics.maxExponent) {
-            /* Overflow and round.  */
+      /* Overflow and round.  */
       fs = handleOverflow(rm);
     } else {
       long[] decSignificand;
@@ -2100,7 +2100,7 @@ public class APFloat implements Cloneable {
         } while (p <= D.lastSigDigit
             && Long.compareUnsigned(multiplier, (~(long) 0 - 9) / 10) <= 0);
 
-                /* Multiply out the current part.  */
+        /* Multiply out the current part.  */
         APInt.tcMultiplyPart(decSignificand, 0, decSignificand,
             multiplier, val, partCount, partCount + 1, false);
 
@@ -2178,7 +2178,7 @@ public class APFloat implements Cloneable {
     for (int n = 0; power != 0; power >>>= 1, n++) {
       int pc = partsCount[n];
 
-            /* Calculate pow(5,pow(2,n+3)) if we haven't yet.  */
+      /* Calculate pow(5,pow(2,n+3)) if we haven't yet.  */
       if (pc == 0) {
         pc = partsCount[n - 1];
         long[] lhs = Arrays.copyOfRange(pow5s, pow5Idx - pc, pow5Idx);
@@ -2269,7 +2269,7 @@ public class APFloat implements Cloneable {
     while (outputDigits != 0 && count != 0) {
       long part;
 
-            /* Put the most significant 64 bits in "part".  */
+      /* Put the most significant 64 bits in "part".  */
       if (--count == partsCount)
         part = 0;  /* An imaginary higher zero part.  */
       else
@@ -2278,7 +2278,7 @@ public class APFloat implements Cloneable {
       if (count != 0 && shift != 0)
         part |= significand[count - 1] >> (64 - shift);
 
-            /* Convert as much of "part" to hexdigits as we can.  */
+      /* Convert as much of "part" to hexdigits as we can.  */
       int curDigits = 64 / 4;
 
       if (curDigits > outputDigits)
@@ -2290,14 +2290,14 @@ public class APFloat implements Cloneable {
     if (roundUp) {
       int q = i;
 
-            /* Note that hexDigitChars has a trailing '0'.  */
+      /* Note that hexDigitChars has a trailing '0'.  */
       do {
         q--;
         dest[q] = hexDigitChars.charAt(hexDigitValue(dest[q]) + 1);
       } while (dest[q] == '0');
       Util.assertion((q >= p));
     } else {
-            /* Add trailing zeroes.  */
+      /* Add trailing zeroes.  */
       Arrays.fill(dest, 0, outputDigits, '0');
       i += outputDigits;
     }
@@ -2311,7 +2311,7 @@ public class APFloat implements Cloneable {
     else
       dest[p] = '.';
 
-        /* Finally output the exponent.  */
+    /* Finally output the exponent.  */
     dest[i++] = upperCase ? 'P' : 'p';
 
     return writeSignedDecimal(dest, exponent);
@@ -2322,7 +2322,6 @@ public class APFloat implements Cloneable {
    * floating point numbers, which differ from the value they
    * approximate by at most HUE1 and HUE2 half-ulps, is strictly less
    * than the returned value.
-
    * See "How to Read Floating Point Numbers Accurately" by William D
    * Clinger.
    */
@@ -2390,7 +2389,7 @@ public class APFloat implements Cloneable {
 
     parts = partCountForBits(semantics.precision + 11);
 
-        /* Calculate pow(5, abs(exp)).  */
+    /* Calculate pow(5, abs(exp)).  */
     pow5PartCount = powerOf5(pow5Parts, exp >= 0 ? exp : -exp);
 
     for (; ; parts *= 2) {
@@ -2409,7 +2408,7 @@ public class APFloat implements Cloneable {
               rmNearestTiesToEven);
       powStatus = pow5.convertFromUnsignedParts(pow5Parts, pow5PartCount,
           rmNearestTiesToEven);
-            /* Add exp, as 10^n = 5^n * 2^n.  */
+      /* Add exp, as 10^n = 5^n * 2^n.  */
       decSig.exponent += exp;
 
       LostFraction calcLostFraction;
@@ -2417,12 +2416,12 @@ public class APFloat implements Cloneable {
       int powHUerr;
 
       if (exp >= 0) {
-                /* multiplySignificand leaves the precision-th bit set to 1.  */
+        /* multiplySignificand leaves the precision-th bit set to 1.  */
         calcLostFraction = decSig.multiplySignificand(pow5, null);
         powHUerr = powStatus != opOK ? 1 : 0;
       } else {
         calcLostFraction = decSig.divideSignificand(pow5);
-                /* Denormal numbers have less precision.  */
+        /* Denormal numbers have less precision.  */
         if (decSig.exponent < semantics.minExponent) {
           excessPrecision += (semantics.minExponent
               - decSig.exponent);
@@ -2430,7 +2429,7 @@ public class APFloat implements Cloneable {
           if (excessPrecision > calcSemantics.precision)
             excessPrecision = calcSemantics.precision;
         }
-                /* Extra half-ulp lost in reciprocal of exponent.  */
+        /* Extra half-ulp lost in reciprocal of exponent.  */
         powHUerr = (powStatus == opOK
             && calcLostFraction == LostFraction.lfExactlyZero) ? 0 : 2;
       }
@@ -2445,7 +2444,7 @@ public class APFloat implements Cloneable {
       HUdistance = 2 * ulpsFromBoundary(decSig.significandParts(),
           excessPrecision, isNearest);
 
-            /* Are we guaranteed to round correctly if we truncate?  */
+      /* Are we guaranteed to round correctly if we truncate?  */
       if (Long.compareUnsigned(HUdistance, HUerr) >= 0) {
         APInt.tcExtract(significandParts(), partCount(),
             decSig.significandParts(),

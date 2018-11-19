@@ -46,20 +46,24 @@ public abstract class TargetSubtarget {
     return false;
   }
 
-  public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {}
+  public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {
+  }
 
-  public int getHwMode() {return 0;}
+  public int getHwMode() {
+    return 0;
+  }
 
   /**
    * Checks if the specified feature is enabled or not in current
    * hardware mode.
-   * @param fs  Features.
+   *
+   * @param fs Features.
    * @return
    */
   public boolean checkFeatures(String fs) {
     SubtargetFeatures testFS = new SubtargetFeatures(fs);
     SubtargetFeatures features = new SubtargetFeatures(fs);
-    int featuresbits = features.getBits(subTypeKV,featureKV);
+    int featuresbits = features.getBits(subTypeKV, featureKV);
     int testBits = testFS.getBits(subTypeKV, featureKV);
     return (featuresbits & testBits) == featuresbits;
   }

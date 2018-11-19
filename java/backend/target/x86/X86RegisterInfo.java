@@ -937,9 +937,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         mbbi.set(next);
     } else if ((opc == SUB64ri32 || opc == SUB64ri8 ||
         opc == SUB32ri || opc == SUB32ri8) && mbb.getInstAt(prev).getOperand(0)
-        .getReg() == stackPtr)
-
-    {
+        .getReg() == stackPtr) {
       offset -= mbb.getInstAt(prev).getOperand(2).getImm();
       mbb.remove(prev);
       if (!doMergeWithPrevious)

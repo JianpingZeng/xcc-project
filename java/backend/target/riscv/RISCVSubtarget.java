@@ -70,15 +70,19 @@ public abstract class RISCVSubtarget extends TargetSubtarget {
   public boolean hasStdExtA() {
     return hasStdExtA;
   }
+
   public boolean hasStdExtC() {
     return hasStdExtC;
   }
+
   public boolean hasStdExtD() {
     return hasStdExtD;
   }
+
   public boolean hasStdExtF() {
     return hasStdExtF;
   }
+
   public boolean hasStdExtM() {
     return hasStdExtM;
   }

@@ -33,18 +33,18 @@ package backend.codegen.dagisel;
  */
 public interface NodeFlag {
 
-    int OPFL_None       = 0;     // Node has no chain or flag input and isn't variadic.
-    int OPFL_Chain      = 1;     // Node has a chain input.
-    int OPFL_FlagInput  = 2;     // Node has a flag input.
-    int OPFL_FlagOutput = 4;     // Node has a flag output.
-    int OPFL_MemRefs    = 8;     // Node gets accumulated MemRefs.
-    int OPFL_Variadic0  = 1<<4;  // Node is variadic, root has 0 fixed inputs.
-    int OPFL_Variadic1  = 2<<4;  // Node is variadic, root has 1 fixed inputs.
-    int OPFL_Variadic2  = 3<<4;  // Node is variadic, root has 2 fixed inputs.
-    int OPFL_Variadic3  = 4<<4;  // Node is variadic, root has 3 fixed inputs.
-    int OPFL_Variadic4  = 5<<4;  // Node is variadic, root has 4 fixed inputs.
-    int OPFL_Variadic5  = 6<<4;  // Node is variadic, root has 5 fixed inputs.
-    int OPFL_Variadic6  = 7<<4;  // Node is variadic, root has 6 fixed inputs.
+  int OPFL_None = 0;     // Node has no chain or flag input and isn't variadic.
+  int OPFL_Chain = 1;     // Node has a chain input.
+  int OPFL_FlagInput = 2;     // Node has a flag input.
+  int OPFL_FlagOutput = 4;     // Node has a flag output.
+  int OPFL_MemRefs = 8;     // Node gets accumulated MemRefs.
+  int OPFL_Variadic0 = 1 << 4;  // Node is variadic, root has 0 fixed inputs.
+  int OPFL_Variadic1 = 2 << 4;  // Node is variadic, root has 1 fixed inputs.
+  int OPFL_Variadic2 = 3 << 4;  // Node is variadic, root has 2 fixed inputs.
+  int OPFL_Variadic3 = 4 << 4;  // Node is variadic, root has 3 fixed inputs.
+  int OPFL_Variadic4 = 5 << 4;  // Node is variadic, root has 4 fixed inputs.
+  int OPFL_Variadic5 = 6 << 4;  // Node is variadic, root has 5 fixed inputs.
+  int OPFL_Variadic6 = 7 << 4;  // Node is variadic, root has 6 fixed inputs.
 
-    int OPFL_VariadicInfo = OPFL_Variadic6;
+  int OPFL_VariadicInfo = OPFL_Variadic6;
 }

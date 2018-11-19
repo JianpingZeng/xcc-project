@@ -22,8 +22,8 @@ package jlang.ast;
  */
 public interface StmtClass {
   /*
- * TopLevel nodes, of type TopLevel, representing entire source files.
- */
+   * TopLevel nodes, of type TopLevel, representing entire source files.
+   */
   int TopLevelClass = 1;
 
   int SelectExprClass = TopLevelClass + 1;
