@@ -1286,8 +1286,8 @@ public class SelectionDAG {
 
       if (listener != null)
         listener.nodeDeleted(node, null);
+
       // Erase the specified SDNode and replace all uses of it with null.
-      allNodes.remove(node);
       removeNodeFromCSEMaps(node);
       if (node.operandList != null && node.operandList.length > 0) {
         for (SDUse use : node.operandList) {

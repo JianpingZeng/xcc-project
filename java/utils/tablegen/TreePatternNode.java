@@ -934,6 +934,7 @@ public final class TreePatternNode implements Cloneable {
     int size = getNumTypes();
     for (int i = 0; i < size; i++)
       types.set(i, new TypeSetByHwMode());
+    children.forEach(TreePatternNode::removeTypes);
   }
 
   public boolean hasProperTypeByHwMode() {

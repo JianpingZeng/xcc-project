@@ -562,7 +562,7 @@ public class DAGISelMatcherGen {
       }
     }
 
-    int numFixedArityOperands = 1;
+    int numFixedArityOperands = -1;
     if (isRoot && pattern.getSrcPattern().hasProperty(SDNPVariadic, cgp))
       numFixedArityOperands = pattern.getSrcPattern().getNumChildren();
 

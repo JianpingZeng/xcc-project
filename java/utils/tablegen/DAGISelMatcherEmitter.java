@@ -552,25 +552,26 @@ public class DAGISelMatcherEmitter {
     if (opc.startsWith(targetName))
       opc = targetName + "GenInstrNames" + opc.substring(targetName.length());
 
-    os.printf("(byte)%s&255, (byte)%s>>8", opc, opc);
+    os.printf("(byte)(%s&255), (byte)(%s>>>8)", opc, opc);
   }
 
   private long emitVBRValue(long val, FormattedOutputStream os) {
-    if (val <= 127) {
+
+    if (Long.compareUnsigned(val, 127) <= 0) {
       os.printf("%d, ", val);
       return 1;
     }
 
     long inVal = val;
     int numBytes = 0;
-    while (val >= 128) {
-      os.printf("%d|128,", (byte) val & 127);
-      val >>= 7;
+    while (Long.compareUnsigned(val, 128) >= 0) {
+      os.printf("%d|128,", (byte) (val & 127));
+      val >>>= 7;
       ++numBytes;
     }
     os.print(val);
     if (!OmitComments.value)
-      os.printf("/*%d*/", inVal);
+      os.printf("/*%s*/", Long.toUnsignedString(inVal));
     os.print(", ");
     return numBytes + 1;
   }
@@ -586,7 +587,6 @@ public class DAGISelMatcherEmitter {
       long matcherSize = emitMatcher(theMatcher, indent, currentIdx, os);
       size += matcherSize;
       currentIdx += matcherSize;
-
       theMatcher = theMatcher.getNext();
     }
     return size;
