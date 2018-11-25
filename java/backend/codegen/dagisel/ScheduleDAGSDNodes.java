@@ -25,8 +25,7 @@ import backend.value.ConstantFP;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
-import java.util.LinkedList;
-import java.util.Objects;
+import java.util.*;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SDep.Kind.Data;
@@ -690,23 +689,33 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   }
 
   private void buildSchedUnits() {
-    int numNodes = 0;
-    for (SDNode node : dag.allNodes) {
+    for (SDNode node : dag.allNodes)
       node.setNodeID(-1);
-      ++numNodes;
-    }
 
     boolean unitLatencies = forceUnitLatencies();
+    // Walk through the DAG in the order of depth-first, so that we can avoid traverse
+    // those "dead" nodes (pruned from DAG by instruction selector).
+    Stack<SDNode> worklist = new Stack<>();
+    worklist.push(dag.getRoot().getNode());
+    HashSet<SDNode> visited = new HashSet<>();
+    visited.add(dag.getRoot().getNode());
 
-    for (SDNode node : dag.allNodes) {
-      if (isPassiveNode(node))
+    while (!worklist.isEmpty()) {
+      SDNode curNode = worklist.pop();
+      // Add all operands to the worklist unless they've already been added.
+      for (int i = 0, e = curNode.getNumOperands(); i < e; i++) {
+        SDNode child = curNode.getOperand(i).getNode();
+        if (!visited.contains(child)) {
+          visited.add(child);
+          worklist.push(child);
+        }
+      }
+
+      if (isPassiveNode(curNode) || curNode.getNodeID() != -1)
         continue;
 
-      if (node.getNodeID() != -1)
-        continue;
-      SUnit nodeSUnit = newSUnit(node);
-
-      SDNode n = node;
+      SUnit nodeSUnit = newSUnit(curNode);
+      SDNode n = curNode;
       while (n.getNumOperands() != 0 &&
           n.getOperand(n.getNumOperands() - 1).getValueType().getSimpleVT()
               .simpleVT == MVT.Flag) {
@@ -715,7 +724,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         n.setNodeID(nodeSUnit.nodeNum);
       }
 
-      n = node;
+      n = curNode;
       while (n.getValueType(n.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Flag) {
         SDValue flagVal = new SDValue(n, n.getNumValues() - 1);
         boolean hasFlagUse = false;
@@ -804,8 +813,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     }
   }
 
-  static int[] checkForPhysRegDependency(SDNode def, SDNode user,
-                                         int op, TargetRegisterInfo tri, TargetInstrInfo tii) {
+  private static int[] checkForPhysRegDependency(SDNode def,
+                                                 SDNode user,
+                                                 int op,
+                                                 TargetRegisterInfo tri,
+                                                 TargetInstrInfo tii) {
     // returned array layouts as follows.
     // 0 -- phyReg
     // 1 -- cost.

@@ -34,7 +34,7 @@ public class ISelUpdater implements DAGUpdateListener {
 
   @Override
   public void nodeDeleted(SDNode node, SDNode e) {
-    if (allNodes.get(iselPos) == node)
+    if (allNodes.get(iselPos-1) == node)
       ++iselPos;
   }
 

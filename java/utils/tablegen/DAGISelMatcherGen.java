@@ -496,14 +496,15 @@ public class DAGISelMatcherGen {
     boolean treeHasInFlag = false, treeHasOutFlag = false;
     if (isRoot) {
       TreePatternNode srcPat = pattern.getSrcPattern();
-      treeHasOutFlag = srcPat.hasProperty(SDNPOptInFlag, cgp) ||
+      treeHasInFlag = srcPat.hasProperty(SDNPOptInFlag, cgp) ||
           srcPat.hasProperty(SDNPInFlag, cgp);
 
       treeHasOutFlag = srcPat.hasProperty(SDNPOutFlag, cgp);
     }
 
+    // NumResults - This is the number of results produced by the instruction in
+    // the "outs" list.
     int numResults = inst.getNumResults();
-    int numFixedOperands = ii.operandList.size();
     TIntArrayList instOps = new TIntArrayList();
 
     // Loop over all of the operands of the instruction pattern, emitting code
@@ -551,6 +552,11 @@ public class DAGISelMatcherGen {
     for (int i = 0, e = n.getNumTypes(); i < e; i++)
       resultVTs.add(n.getSimpleType(i));
 
+    // If this is the root instruction of a pattern that has physical registers in
+    // its result pattern, add output VTs for them.  For example, X86 has:
+    //   (set AL, (mul ...))
+    // This also handles implicit results like:
+    //   (implicit EFLAGS)
     if (isRoot && !pattern.getDstRegs().isEmpty()) {
       Record handledReg = null;
       if (ii.hasOneImplicitDefWithKnownVT(cgt) != MVT.Other)
@@ -566,6 +572,19 @@ public class DAGISelMatcherGen {
     if (isRoot && pattern.getSrcPattern().hasProperty(SDNPVariadic, cgp))
       numFixedArityOperands = pattern.getSrcPattern().getNumChildren();
 
+    // If this is the root node and any of the nodes matched nodes in the input
+    // pattern have MemRefs in them, have the interpreter collect them and plop
+    // them onto this node.
+    //
+    // FIXME3: This is actively incorrect for result patterns where the root of
+    // the pattern is not the memory reference and is also incorrect when the
+    // result pattern has multiple memory-referencing instructions.  For example,
+    // in the X86 backend, this pattern causes the memrefs to get attached to the
+    // CVTSS2SDrr instead of the MOVSSrm:
+    //
+    //  def : Pat<(extloadf32 addr:$src),
+    //            (CVTSS2SDrr (MOVSSrm addr:$src))>;
+    //
     boolean nodeHasMemRefs = isRoot && pattern.getSrcPattern().hasProperty(SDNPMemOperand, cgp);
 
     boolean nodeHasChain = false;

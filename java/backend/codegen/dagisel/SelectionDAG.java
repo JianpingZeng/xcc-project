@@ -1276,6 +1276,11 @@ public class SelectionDAG {
     removeDeadNodes(nodes, listener);
   }
 
+  private void deallocateNode(SDNode n) {
+    entryNode.setNodeID(ISD.DELETED_NODE);
+    allNodes.remove(n);
+  }
+
   public void removeDeadNodes(ArrayList<SDNode> deadNodes, DAGUpdateListener listener) {
     for (int i = 0, e = deadNodes.size(); i < e; i++) {
       SDNode node = deadNodes.get(0);
@@ -1300,7 +1305,8 @@ public class SelectionDAG {
           }
         }
       }
-      node.setNodeID(ISD.DELETED_NODE);
+
+      deallocateNode(node);;
     }
   }
 
