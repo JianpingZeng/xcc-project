@@ -116,7 +116,7 @@ public class LLC {
       init(false));
 
   public static StringOpt TargetTriple = new StringOpt(
-      new OptionNameApplicator("triple"),
+      new OptionNameApplicator("mtriple"),
       desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"),
       init(""));
 

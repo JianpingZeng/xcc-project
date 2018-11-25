@@ -1147,8 +1147,8 @@ public class X86TargetLowering extends TargetLowering {
     boolean is64Bit = subtarget.is64Bit();
     boolean isWin64 = subtarget.isTargetWin64();
 
-    Util.assertion(!(varArg && callingConv == CallingConv.Fast), "VarArg is not supported in Fast Calling convention");
-
+    Util.assertion(!(varArg && callingConv == CallingConv.Fast),
+        "VarArg is not supported in Fast Calling convention");
 
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
     CCState ccInfo = new CCState(callingConv, varArg, getTargetMachine(),

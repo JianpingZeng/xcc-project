@@ -20,7 +20,6 @@ import backend.codegen.CCValAssign.LocInfo;
 import backend.support.CallingConv;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -41,7 +40,7 @@ public class CCState {
   private ArrayList<CCValAssign> locs;
 
   private int stackOffset;
-  private TIntArrayList usedRegs;
+  private int[] usedRegs;
 
   public CCState(backend.support.CallingConv cc,
                  boolean isVarArg,
@@ -53,10 +52,7 @@ public class CCState {
     tri = tm.getRegisterInfo();
     this.locs = locs;
     stackOffset = 0;
-    usedRegs = new TIntArrayList();
-    for (int capacity = (tri.getNumRegs() + 31) / 32;
-         capacity != 0; --capacity)
-      usedRegs.add(0);
+    usedRegs = new int[(tri.getNumRegs() + 31) / 32];
   }
 
   public void addLoc(CCValAssign V) {
@@ -82,7 +78,7 @@ public class CCState {
   /// isAllocated - Return true if the specified register (or an alias) is
   /// allocated.
   public boolean isAllocated(int reg) {
-    return (usedRegs.get(reg / 32) & (1 << (reg & 31))) != 0;
+    return (usedRegs[reg / 32] & (1 << (reg % 32))) != 0;
   }
 
   /// analyzeFormalArguments - Analyze an array of argument values,
@@ -220,7 +216,9 @@ public class CCState {
   /// allocateStack - Allocate a chunk of stack space with the specified size
   /// and alignment.
   public int allocateStack(int size, int align) {
-    Util.assertion((align != 0 && ((align - 1) & align) == 0)); // align is power of 2.        stackOffset = ((stackOffset + align - 1) & ~(align - 1));
+    // align is power of 2.
+    // stackOffset = ((stackOffset + align - 1) & ~(align - 1));
+    Util.assertion((align != 0 && ((align - 1) & align) == 0));
 
     int Result = stackOffset;
     stackOffset += size;
@@ -255,11 +253,11 @@ public class CCState {
 
   /// markAllocated - Mark a register and all of its aliases as allocated.
   private void markAllocated(int reg) {
-    usedRegs.set(reg / 32, usedRegs.get(reg / 32) | (1 << reg & 31));
+    usedRegs[reg / 32] = usedRegs[reg / 32] | (1 << (reg % 32));
     int[] aliases = tri.getAliasSet(reg);
     if (aliases != null) {
       for (int alias : aliases)
-        usedRegs.set(alias / 32, usedRegs.get(alias / 32) | (1 << alias & 31));
+        usedRegs[alias / 32] = usedRegs[alias / 32] | (1 << (alias % 32));
     }
   }
 }

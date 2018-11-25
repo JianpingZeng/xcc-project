@@ -116,7 +116,7 @@ def X86AtomSwap64 : SDNode<"X86ISD.ATOMSWAP64_DAG", SDTX86atomicBinary,
                         [SDNPHasChain, SDNPMayStore, 
                          SDNPMayLoad, SDNPMemOperand]>;
 def X86retflag : SDNode<"X86ISD.RET_FLAG", SDTX86Ret,
-                        [SDNPHasChain, SDNPOptInFlag]>;
+                        [SDNPHasChain, SDNPOptInFlag, SDNPVariadic]>;
 
 def X86vastart_save_xmm_regs :
                  SDNode<"X86ISD.VASTART_SAVE_XMM_REGS",
