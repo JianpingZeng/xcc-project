@@ -18,20 +18,19 @@
 package utils.llc;
 
 import backend.codegen.MachineCodeEmitter;
-import backend.codegen.RegAllocLinearScan;
 import backend.codegen.RegAllocLocal;
+import backend.codegen.RegAllocSimple;
 import backend.codegen.RegisterRegAlloc;
-import backend.pass.Pass;
-import backend.pass.PassCreator;
+import backend.codegen.dagisel.RegisterScheduler;
+import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.pass.PassRegisterationUtility;
 import backend.passManaging.FunctionPassManager;
-import backend.passManaging.PassManager;
 import backend.support.BackendCmdOptions;
-import backend.support.ErrorHandling;
+import backend.support.Triple;
 import backend.target.*;
+import backend.value.Function;
 import backend.value.Module;
 import jlang.basic.TargetInfo;
-import jlang.driver.JlangCC;
 import jlang.system.Process;
 import tools.OutRef;
 import tools.SMDiagnostic;
@@ -44,10 +43,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
-import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
-import static backend.target.TargetMachine.CodeGenFileType.ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
 import static jlang.driver.JlangCC.MacOSVersionMin;
 import static tools.commandline.Desc.desc;
@@ -66,14 +64,6 @@ import static tools.commandline.ValueDesc.valueDesc;
  * @version 0.1
  */
 public class LLC {
-  /**
-   * The generated file type
-   */
-  enum FileType {
-    Asm,
-    Obj
-  }
-
   private static final StringOpt InputFilename =
       new StringOpt(new FormattingFlagsApplicator(Positional),
           desc("<input LLVM IR file>"),
@@ -81,16 +71,16 @@ public class LLC {
           valueDesc("filename"));
   private static final StringOpt OutputFilename =
       new StringOpt(optionName("o"), desc("Override output filename"),
-          valueDesc("filename"));
+          valueDesc("filename"),
+          init(""));
 
-  private static final Opt<FileType> OutFiletype =
-      new Opt<FileType>(
+  private static final Opt<TargetMachine.CodeGenFileType> Filetype =
+      new Opt<TargetMachine.CodeGenFileType>(
           new Parser<>(),
           optionName("filetype"),
           desc("Specify the type of generaed file"),
-          new ValueClass<>(new ValueClass.Entry<>(FileType.Asm, "asm", "Generate assembly code"),
-              new ValueClass.Entry<>(FileType.Obj, "obj", "Genrate object code")),
-          init(FileType.Asm));
+          new ValueClass<>(new ValueClass.Entry<>(TargetMachine.CodeGenFileType.AssemblyFile, "asm", "Generate assembly code"),
+              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.ObjectFile, "obj", "Genrate object code")));
 
   public static class OptLevelParser extends ParserUInt {
     public boolean parse(Option<?> O, String ArgName,
@@ -103,22 +93,17 @@ public class LLC {
     }
   }
 
-  public static UIntOpt OptLevel = new UIntOpt(
-      new JlangCC.OptLevelParser(),
+  public static CharOpt OptLevel = new CharOpt(
       new OptionNameApplicator("O"),
+      desc("Optimization level. [-O0, -O1, -O2, or -O3] (default = '-O2')"),
       new FormattingFlagsApplicator(FormattingFlags.Prefix),
-      desc("Optimization level"),
-      init(0));
+      new NumOccurrencesApplicator(NumOccurrences.ZeroOrMore),
+      init(' '));
 
   public static BooleanOpt OptSize = new BooleanOpt(
       new OptionNameApplicator("Os"),
       desc("Optimize for size"),
       init(false));
-
-  public static StringOpt TargetTriple = new StringOpt(
-      new OptionNameApplicator("mtriple"),
-      desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"),
-      init(""));
 
   private static final BooleanOpt PrintEachModule =
       new BooleanOpt(optionName("p"),
@@ -137,16 +122,25 @@ public class LLC {
           desc("Verify after each transform"),
           init(false));
 
+  public static StringOpt TargetTriple = new StringOpt(
+      new OptionNameApplicator("mtriple"),
+      desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"),
+      init(""));
 
-  public static final StringOpt TargetCPU = new StringOpt(
+  private static StringOpt MArch = new StringOpt(
+      new OptionNameApplicator("march"),
+      desc("Architecture to generate code for (see --version)"),
+      init(""));
+
+  public static final StringOpt MCPU = new StringOpt(
       new OptionNameApplicator("mcpu"),
       desc("Target a specific cpu type (-mcpu=help for details)"),
       init(""));
 
-  public static final ListOpt<String> TargetFeatures = new ListOpt<String>(
+  public static final ListOpt<String> MAttrs = new ListOpt<String>(
       new ParserString(),
       new MiscFlagsApplicator(CommaSeparated),
-      new OptionNameApplicator("target-feature"),
+      new OptionNameApplicator("mattr"),
       desc("Target specific attributes"),
       valueDesc("+a1,+a2,-a3,..."));
 
@@ -166,229 +160,205 @@ public class LLC {
   }
 
   private static Module theModule;
-  private static FunctionPassManager perFunctionPasses;
-  private static PassManager perModulePasses;
-  private static FunctionPassManager perCodeGenPasses;
 
   public static void main(String[] args) {
-    try {
-      // Initialize Target machine
-      TargetSelect ts = TargetSelect.create();
-      ts.InitializeTargetInfo();
-      ts.LLVMInitializeTarget();
+    // Initialize Target machine
+    TargetSelect ts = TargetSelect.create();
+    ts.InitializeTargetInfo();
+    ts.LLVMInitializeTarget();
 
-      // Before parse command line options, register passes.
-      PassRegisterationUtility.registerPasses();
+    // Before parse command line options, register passes.
+    PassRegisterationUtility.registerPasses();
 
-      CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
+    CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
 
-      Util.DEBUG = DebugMode.value;
+    Util.DEBUG = DebugMode.value;
 
-      OutRef<SMDiagnostic> diag = new OutRef<>();
-      theModule = backend.llReader.Parser
-          .parseAssemblyFile(InputFilename.value, diag);
-      if (theModule == null)
-        diag.get().print("llc", System.err);
+    OutRef<SMDiagnostic> diag = new OutRef<>();
+    theModule = backend.llReader.Parser
+        .parseAssemblyFile(InputFilename.value, diag);
+    if (theModule == null)
+      diag.get().print("llc", System.err);
 
-      emitAssembly();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
+    Triple theTriple = new Triple(theModule.getTargetTriple());
+    if (theTriple.getTriple().isEmpty())
+      theTriple.setTriple(Process.getHostTriple());
 
-  /**
-   * Handle to interactive with backend to generate actual machine code
-   * or assembly code.
-   */
-  private static void emitAssembly() {
-    // Silently ignore generating code, if backend.target data or module is null.
-    if (theModule == null) return;
-
-    // creates some necessary pass for code generation and optimization.
-    createPass();
-    OutRef<String> error = new OutRef<>("");
-    if (!addEmitPasses(error)) {
-      ErrorHandling.llvmReportError("UNKNOWN: " + error.get());
-    }
-
-    // Run passes. For now we do all passes at once.
-    if (perFunctionPasses != null) {
-      for (backend.value.Function f : theModule.getFunctionList())
-        if (!f.isDeclaration())
-          perFunctionPasses.run(f);
-    }
-
-    if (perModulePasses != null) {
-      perModulePasses.run(theModule);
-    }
-
-    // performing a serial of code gen procedures, like instruction selection,
-    // register allocation, and instruction scheduling etc.
-    if (perCodeGenPasses != null) {
-      // Performs initialization works before operating on Function.
-      perCodeGenPasses.doInitialization();
-      for (backend.value.Function f : theModule.getFunctionList())
-        if (!f.isDeclaration())
-          perCodeGenPasses.run(f);
-
-      // Finalize!
-      perCodeGenPasses.doFinalization();
-    }
-  }
-
-  private static FunctionPassManager getPerFunctionPasses() {
-    if (perFunctionPasses == null) {
-      perFunctionPasses = new FunctionPassManager(theModule);
-      perFunctionPasses.add(new TargetData(theModule));
-    }
-    return perFunctionPasses;
-  }
-
-  private static PassManager getPerModulePasses() {
-    if (perModulePasses == null) {
-      perModulePasses = new PassManager();
-      perModulePasses.add(new TargetData(theModule));
-      ;
-    }
-    return perModulePasses;
-  }
-
-  private static FunctionPassManager getCodeGenPasses() {
-    if (perCodeGenPasses == null) {
-      perCodeGenPasses = new FunctionPassManager(theModule);
-      perCodeGenPasses.add(new TargetData(theModule));
-    }
-    return perCodeGenPasses;
-  }
-
-  private static void createPass() {
-    // The optimization is not needed if optimization level is -O0.
-    if (OptLevel.value > 0)
-      PassCreator.createStandardFunctionPasses(getPerFunctionPasses(), OptLevel.value);
-
-    // todo:add inline pass to function pass manager.
-
-    Pass inliningPass = null;
-    if (OptLevel.value > 0) {
-      // inline small function.
-      int threshold = (OptSize.value || OptLevel.value < 3) ? 50 : 200;
-      inliningPass = PassCreator.createFunctionInliningPass(threshold);
-    }
-
-    // creates a module pass manager.
-    PassManager pm = getPerModulePasses();
-    PassCreator.createStandardModulePasses(pm,
-        OptLevel.value,
-        OptSize.value,
-        false,
-        inliningPass);
-  }
-
-  private static boolean addEmitPasses(OutRef<String> error) {
-    switch (OutFiletype.value) {
-      case Asm:
-      case Obj:
-        boolean fast = OptLevel.value < 1;
-        FunctionPassManager pm = getCodeGenPasses();
-
-        TargetMachine.CodeGenOpt optLevel = Default;
-        switch (OptLevel.value) {
-          default:
-            break;
-          case 0:
-            optLevel = None;
-            break;
-          case 3:
-            optLevel = Aggressive;
-            break;
+    // Allocate target machine.  First, check whether the user has explicitly
+    // specified an architecture to compile for. If so we have to look it up by
+    // name, because it might be a backend that has no mapping to a target triple.
+    Target theTarget = null;
+    if (!MArch.value.isEmpty()) {
+      for (Iterator<Target> itr = Target.TargetRegistry.iterator(); itr.hasNext(); ) {
+        Target t = itr.next();
+        if (t.getName().equals(MArch.value)) {
+          theTarget = t;
+          break;
         }
+      }
+      if (theTarget == null) {
+        System.err.printf("llc:error: invalid target'%s'.\n", MArch.value);
+        System.exit(1);
+      }
 
-        String triple = theModule.getTargetTriple();
-        Target theTarget = Target.TargetRegistry.lookupTarget(triple, error);
-        if (theTarget == null) {
-          error.set("Unable to get target machine: " + error.get());
-          return false;
-        }
+      // Adjust the triple to match (if known), otherwise stick with the
+      // module/host triple.
+      Triple.ArchType type = Triple.getArchTypeForLLVMName(MArch.value);
+      if (type != Triple.ArchType.UnknownArch)
+        theTriple.setArch(type);
+    }
+    else {
+      OutRef<String> error = new OutRef<>("");
+      theTarget = Target.TargetRegistry.lookupTarget(theTriple.getTriple(), error);
+      if (theTarget == null) {
+        System.err.printf("llc:error: auto-selecting target for module '%s'." +
+            " Please use the -march option to explicitly pick a target.\n", error.get());
+        System.exit(1);
+      }
+    }
+    // Package up features to be passed to target/subtarget
+    String featureStr = "";
+    if (!MCPU.value.isEmpty() || !MAttrs.isEmpty()) {
+      SubtargetFeatures features = new SubtargetFeatures();
+      features.setCPU(MCPU.value);
+      for (int i = 0, e = MAttrs.size(); i < e; i++) {
+        features.addFeature(MAttrs.get(i));
+      }
+      featureStr = features.getString();
+    }
 
-        String featureStr = "";
-        ArrayList<String> featuresMap = computeCPUFeatures();
-        if (!TargetCPU.value.isEmpty() || !featuresMap.isEmpty()) {
-          SubtargetFeatures features = new SubtargetFeatures();
-          features.setCPU(TargetCPU.value);
-          for (String str : featuresMap) {
-            features.addFeature(str);
-          }
-          featureStr = features.getString();
-        }
+    TargetMachine tm = theTarget.createTargetMachine(theTriple.getTriple(), featureStr);
+    Util.assertion(tm != null, "could not allocate a target machine");
 
-        TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
-        theTarget.setAsmVerbosityDefault(true);
+    // Figure out where we should write the result file
 
-        RegisterRegAlloc.setDefault(fast ?
-            RegAllocLocal::createLocalRegAllocator :
-            RegAllocLinearScan::createLinearScanRegAllocator);
+    PrintStream os = computeOutFile(theTarget.getName());
+    if (os == null) System.exit(1);
 
-        MachineCodeEmitter mce = null;
-        TargetMachine.CodeGenFileType cft = OutFiletype.value == FileType.Asm
-            ? AssemblyFile : ObjectFile;
-        String ext = OutFiletype.value == FileType.Asm ? ".s" : ".o";
-        PrintStream asmOutStream = computeOutFile(InputFilename.value, ext);
-        switch (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel)) {
-          case AsmFile:
-            break;
-          case ElfFile:
-            mce = tm.addELFWriter(pm, asmOutStream);
-            break;
-          default:
-          case Error:
-            error.set("Unable to interface with target machine!\n");
-            return false;
-        }
-        if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), mce, optLevel)) {
-          error.set("Unable to interface with target machine!\n");
-          return false;
-        }
-        return true;
+    TargetMachine.CodeGenOpt oLvl = TargetMachine.CodeGenOpt.Default;
+    switch (OptLevel.value) {
       default:
-        Util.assertion(false, "Unknown output file type");
-        return false;
+        System.err.println("llc: invalid optimization level.");
+        System.exit(1);
+        break;
+      case ' ': break;
+      case '0': oLvl = None; break;
+      case '1': oLvl = Less; break;
+      case '2': oLvl = Default; break;
+      case '3': oLvl = Aggressive; break;
     }
+    FunctionPassManager passes = new FunctionPassManager(theModule);
+
+    // Add the target data from the target machine, if it exists, or the module.
+    TargetData td = tm.getTargetData();
+    if (td != null)
+      passes.add(new TargetData(td));
+    else
+      passes.add(new TargetData(theModule));
+
+    // Override default to generate verbose assembly.
+    tm.setAsmVerbosityDefault(true);
+
+    // Set the default register allocator.
+    RegisterRegAlloc.setDefault(oLvl == None ?
+        RegAllocSimple::createSimpleRegAllocator : RegAllocLocal::createLocalRegAllocator);
+    // Set the default instruction scheduler.
+    RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
+
+    MachineCodeEmitter mce = null;
+    switch (tm.addPassesToEmitFile(passes, os, Filetype.value, oLvl)) {
+      case AsmFile:
+        break;
+      case ElfFile:
+        mce = tm.addELFWriter(passes, os);
+        break;
+      default:
+      case Error:
+        System.err.println("Unable to interface with target machine!");
+        System.exit(1);
+    }
+
+    if (tm.addPassesToEmitFileFinish(passes, mce, oLvl)) {
+      System.err.println("Unable to interface with target machine!");
+      System.exit(1);
+    }
+
+    passes.doInitialization();
+    // Run our queue of passes all at once now, efficiently.
+    for (Function fn : theModule.getFunctionList()) {
+      if (!fn.isDeclaration()) {
+        passes.run(fn);
+      }
+    }
+    passes.doFinalization();
   }
 
-  private static PrintStream computeOutFile(String infile, String extension) {
-    boolean usestdout = false;
-    String outfile = OutputFilename.value;
-    PrintStream os = null;
-    String outputFile = "";
-    if (outfile != null) {
-      if (outfile.equals("-"))
-        usestdout = true;
-      else
-        outputFile = outfile;
-    } else {
-      int dotPos = infile.lastIndexOf(".");
-      if (dotPos >= 0)
-        infile = infile.substring(0, dotPos);
-      outputFile = infile + extension;
-    }
+  private static PrintStream computeOutFile(String targetName) {
+    if (!OutputFilename.value.isEmpty()) {
+      if (OutputFilename.value.equals("-"))
+        return System.out;
 
-    if (usestdout) {
-      os = java.lang.System.out;
-    } else {
       try {
-        File f = new File(outputFile);
+        File f = new File(OutputFilename.value);
         if (f.exists())
           f.delete();
 
         f.createNewFile();
-        //outPath.append(f.getAbsolutePath());
-        os = new PrintStream(new FileOutputStream(f));
+        return new PrintStream(new FileOutputStream(f));
       } catch (IOException e) {
         System.err.println(e.getMessage());
         java.lang.System.exit(-1);
       }
     }
-    return os;
+
+    if (InputFilename.value.equals("-")) {
+      OutputFilename.value = "-";
+      return System.out;
+    }
+
+    OutputFilename.value = getFileNameRoot(InputFilename.value);
+    switch (Filetype.value) {
+      case AssemblyFile: {
+        switch (targetName) {
+          case "c":
+            OutputFilename.value += ".cbe.c";
+            break;
+          case "cpp":
+            OutputFilename.value += ".cpp";
+          default:
+            OutputFilename.value += ".s";
+            break;
+        }
+        break;
+      }
+      case ObjectFile:
+        OutputFilename.value += ".o";
+        break;
+    }
+
+    try {
+      File f = new File(OutputFilename.value);
+      if (f.exists())
+        f.delete();
+
+      f.createNewFile();
+      //outPath.append(f.getAbsolutePath());
+      return new PrintStream(new FileOutputStream(f));
+    } catch (IOException e) {
+      System.err.println(e.getMessage());
+      java.lang.System.exit(-1);
+    }
+    return null;
+  }
+
+  private static String getFileNameRoot(String file) {
+    File f = new File(file);
+    if (!f.exists()) {
+      System.err.println("input file doesn't exists!");
+      System.exit(1);
+    }
+    String suffix = f.getName().substring(0, f.getName().lastIndexOf('.'));
+    return f.getAbsoluteFile().getParent() + "/" + suffix;
   }
 
   /**
@@ -402,14 +372,14 @@ public class LLC {
     Util.assertion(features.isEmpty(), "Invalid map");
 
     // Initialze the feature map based on the target.
-    String targetCPU = TargetCPU.value;
+    String targetCPU = MCPU.value;
     target.getDefaultFeatures(targetCPU, features);
 
-    if (TargetFeatures.isEmpty())
+    if (MAttrs.isEmpty())
       return;
 
-    for (int i = 0, e = TargetFeatures.size(); i != e; i++) {
-      String name = TargetFeatures.get(i);
+    for (int i = 0, e = MAttrs.size(); i != e; i++) {
+      String name = MAttrs.get(i);
       char firstCh = name.charAt(0);
       if (firstCh != '-' && firstCh != '+') {
         java.lang.System.err.printf("error: xcc: invalid target features string: %s\n", name);

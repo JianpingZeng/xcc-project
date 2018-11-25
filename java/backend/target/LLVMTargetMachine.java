@@ -154,7 +154,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
       default:
         return FileModel.Error;
       case AssemblyFile:
-        if (addAssemblyEmitter(pm, optLevel, theTarget.getAsmVerbosityDefault(), asmOutStream))
+        if (addAssemblyEmitter(pm, optLevel, getAsmVerbosityDefault(), asmOutStream))
           return FileModel.Error;
         return FileModel.AsmFile;
       case ObjectFile:

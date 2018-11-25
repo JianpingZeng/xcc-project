@@ -143,12 +143,12 @@ public class Triple {
   }
 
   public Triple(String tripleStr) {
-    data = tripleStr;
+    data = tripleStr != null ? tripleStr : "";
     arch = InvalidArch;
   }
 
   public Triple(String archStr, String vendorStr, String osStr) {
-    data = archStr;
+    data = archStr != null ? archStr : "";
     arch = InvalidArch;
     data += '-';
     data += vendorStr;

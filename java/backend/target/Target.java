@@ -41,8 +41,6 @@ import java.util.Iterator;
  * @version 0.1
  */
 public class Target {
-  private boolean asmVerbosityDefault;
-
   public interface AsmInfoCtor {
     TargetAsmInfo create(Target t, String triple);
   }
@@ -138,14 +136,6 @@ public class Target {
 
   public String getShortDescription() {
     return shortDesc;
-  }
-
-  public void setAsmVerbosityDefault(boolean val) {
-    asmVerbosityDefault = val;
-  }
-
-  public boolean getAsmVerbosityDefault() {
-    return asmVerbosityDefault;
   }
 
   /**

@@ -22,6 +22,7 @@ public abstract class TargetMachine {
    */
   public enum CodeGenOpt {
     None,
+    Less,
     Default,
     Aggressive
   }
@@ -56,6 +57,8 @@ public abstract class TargetMachine {
   protected Target theTarget;
 
   protected TargetAsmInfo asmInfo;
+
+  protected boolean asmVerbosityDefault;
 
   /**
    * Can only called by subclass.
@@ -92,6 +95,14 @@ public abstract class TargetMachine {
 
   public void setRelocationModel(RelocModel model) {
     relocModel = model;
+  }
+
+  public void setAsmVerbosityDefault(boolean val) {
+    asmVerbosityDefault = val;
+  }
+
+  public boolean getAsmVerbosityDefault() {
+    return asmVerbosityDefault;
   }
 
   // Interface to the major aspects of target machine information:

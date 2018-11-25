@@ -316,7 +316,7 @@ public class BackendConsumer implements ASTConsumer {
         }
 
         TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
-        theTarget.setAsmVerbosityDefault(true);
+        tm.setAsmVerbosityDefault(true);
 
         // Set the default Register Allocator.
         RegisterRegAlloc.setDefault(WimmerLinearScanRegAllocator::createWimmerLinearScanRegAlloc);
