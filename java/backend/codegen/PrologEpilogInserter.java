@@ -1050,11 +1050,10 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       return;
 
     TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-    int idx = 0;
-    MachineBasicBlock mbb = null;
+    int idx;
+    MachineBasicBlock mbb;
     if (!shrinkWrapThisFunction) {
       idx = 0;
-      mbb = entryBlock;
       if (!tii.spillCalleeSavedRegisters(entryBlock, idx, csi)) {
         for (CalleeSavedInfo info : csi) {
           // Add the callee-saved register as live-in.

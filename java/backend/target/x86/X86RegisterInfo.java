@@ -422,14 +422,15 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     final int[] calleeSavedRegsWin64 = {RBX, RBP, RDI, RSI, R12, R13, R14,
         R15, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14,
         XMM15};
+    boolean callsEHReturn = false;
 
     if (is64Bit) {
       if (isWin64)
         return calleeSavedRegsWin64;
       else
-        return calleeSavedRegs32Bit;
+        return callsEHReturn ? calleeSavedRegs64EHRet : calleeSavedRegs64Bit;
     } else
-      return calleeSavedRegs32Bit;
+      return callsEHReturn ? calleeSavedRegs32EHRet : calleeSavedRegs32Bit;
   }
 
   @Override
