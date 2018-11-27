@@ -17,6 +17,7 @@ package backend.target;
  */
 
 import backend.codegen.AsmPrinter;
+import backend.mc.MCAsmInfo;
 import backend.support.Triple;
 import backend.support.Triple.ArchType;
 import tools.OutRef;
@@ -42,7 +43,7 @@ import java.util.Iterator;
  */
 public class Target {
   public interface AsmInfoCtor {
-    TargetAsmInfo create(Target t, String triple);
+    MCAsmInfo create(Target t, String triple);
   }
 
   public interface TargetMachineCtor {
@@ -52,7 +53,7 @@ public class Target {
   public interface AsmPrinterCtor {
     AsmPrinter create(OutputStream os,
                       TargetMachine tm,
-                      TargetAsmInfo asmInfo,
+                      MCAsmInfo asmInfo,
                       boolean verbose);
   }
 
@@ -81,7 +82,7 @@ public class Target {
   private AsmPrinterCtor asmPrinterCtor;
 
   /**
-   * Create a TargetAsmInfo implementation for the specified
+   * create a MCAsmInfo implementation for the specified
    * target triple.
    *
    * @param triple This argument is used to determine the target machine
@@ -90,14 +91,14 @@ public class Target {
    *               host if that does not exist.
    * @return
    */
-  public TargetAsmInfo createAsmInfo(String triple) {
+  public MCAsmInfo createAsmInfo(String triple) {
     if (asmInfoCtor == null)
       return null;
     return asmInfoCtor.create(this, triple);
   }
 
   /**
-   * Create a target specific machine implementation for the specified {@code triple}
+   * create a target specific machine implementation for the specified {@code triple}
    *
    * @param triple   This argument is used to determine the target machine
    *                 feature set; it should always be provided. Generally this should be
@@ -113,7 +114,7 @@ public class Target {
   }
 
   /**
-   * Create a target specific assembly printer pass.
+   * create a target specific assembly printer pass.
    *
    * @param os
    * @param tm
@@ -123,7 +124,7 @@ public class Target {
    */
   public AsmPrinter createAsmPrinter(OutputStream os,
                                      TargetMachine tm,
-                                     TargetAsmInfo asmInfo,
+                                     MCAsmInfo asmInfo,
                                      boolean verbose) {
     if (asmPrinterCtor == null)
       return null;

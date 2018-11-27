@@ -124,7 +124,7 @@ public final class ConstantFolder {
         }
 
         if (theOnlyDest != null) {
-          // Create a new branch instruction inserted after switchInst.
+          // create a new branch instruction inserted after switchInst.
           new BranchInst(theOnlyDest, si);
           BasicBlock curBB = si.getParent();
 

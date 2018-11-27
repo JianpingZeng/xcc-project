@@ -135,7 +135,7 @@ public final class IndVarSimplify implements LoopPass {
     BasicBlock exitingBlock = loop.getExitingBlock(); // may be null.
     SCEV iterationCount = se.getIterationCount(loop);
 
-    // Create a rewriter object that we will use to transform the code with.
+    // create a rewriter object that we will use to transform the code with.
     SCEVExpander rewriter = new SCEVExpander(se);
 
     // Checks to see if this loop has a computable loop-invariant exit expression.

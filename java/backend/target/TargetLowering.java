@@ -20,6 +20,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.intrinsic.Intrinsic;
+import backend.mc.MCAsmInfo;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -312,7 +313,7 @@ public abstract class TargetLowering {
     initCmpLibcallCCs();
     initLibcallCallingConvs();
 
-    TargetAsmInfo asmInfo = tm.getTargetAsmInfo();
+    MCAsmInfo asmInfo = tm.getTargetAsmInfo();
     if (asmInfo == null || !asmInfo.hasDotLocAndDotFile())
       setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
   }
@@ -637,7 +638,7 @@ public abstract class TargetLowering {
   }
 
   /**
-   * Create a detail info about machine function.
+   * create a detail info about machine function.
    *
    * @param mf
    * @return

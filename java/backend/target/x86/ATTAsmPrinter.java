@@ -17,6 +17,7 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
+import backend.mc.MCAsmInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
@@ -59,7 +60,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
   private TreeMap<String, String> fnStubs;
 
   public ATTAsmPrinter(OutputStream os, X86TargetMachine tm,
-                       TargetAsmInfo tai, boolean v) {
+                       MCAsmInfo tai, boolean v) {
     super(os, tm, tai, v);
     mbbNumber = new TObjectIntHashMap<>();
     subtarget = tm.getSubtarget();
@@ -687,7 +688,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
   }
 
   private static String getPICLabelString(int fnNumber,
-                                          TargetAsmInfo tai,
+                                          MCAsmInfo tai,
                                           X86Subtarget subtarget) {
     StringBuilder label = new StringBuilder();
     if (subtarget.isTargetDarwin())
@@ -1251,7 +1252,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
   public static ATTAsmPrinter createX86AsmCodeEmitter(
       OutputStream os,
       X86TargetMachine tm,
-      TargetAsmInfo tai,
+      MCAsmInfo tai,
       boolean verbose) {
     return new X86GenATTAsmPrinter(os, tm, tai, verbose);
   }

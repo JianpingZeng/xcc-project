@@ -18,6 +18,7 @@ package backend.codegen;
 
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
+import backend.mc.MCAsmInfo;
 import backend.mc.MCContext;
 import backend.mc.MCStreamer;
 import backend.pass.AnalysisUsage;
@@ -79,7 +80,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   protected TargetMachine tm;
 
-  protected TargetAsmInfo tai;
+  protected MCAsmInfo tai;
 
   protected TargetRegisterInfo tri;
 
@@ -106,7 +107,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     BOU_FALSE
   }
 
-  protected AsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v) {
+  protected AsmPrinter(OutputStream os, TargetMachine tm, MCAsmInfo tai, boolean v) {
     functionNumber = 0;
     this.os = new FormattedOutputStream(os);
     this.tm = tm;
@@ -687,7 +688,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     Util.shouldNotReachHere("Target can not support");
   }
 
-  private boolean shouldOmitSectionDirective(String name, TargetAsmInfo tai) {
+  private boolean shouldOmitSectionDirective(String name, MCAsmInfo tai) {
     switch (name) {
       case ".text":
       case ".data":
@@ -911,7 +912,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   private static void printChildLoopComment(
       FormattedOutputStream os,
       MachineLoopInfo loop,
-      TargetAsmInfo tai,
+      MCAsmInfo tai,
       int functionNumber) {
     // Add child loop information.
     for (MachineLoopInfo childLoop : loop.getSubLoops()) {

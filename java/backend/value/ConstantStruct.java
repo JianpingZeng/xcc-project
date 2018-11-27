@@ -60,7 +60,7 @@ public class ConstantStruct extends Constant {
   }
 
   public static Constant get(StructType type, List<Constant> elts) {
-    // Create a ConstantAggregateZero value if all elements are zeros
+    // create a ConstantAggregateZero value if all elements are zeros
     for (Constant elt : elts) {
       if (!elt.isNullValue()) {
         ConstantStructKey key = new ConstantStructKey(type, elts);

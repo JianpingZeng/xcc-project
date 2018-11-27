@@ -21,4 +21,7 @@ package backend.mc;
  * @version 0.1
  */
 public class MCContext {
+  public MCSymbol getOrCreateSymbol(String name) {
+    return null;
+  }
 }

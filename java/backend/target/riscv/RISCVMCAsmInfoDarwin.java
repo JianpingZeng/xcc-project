@@ -27,11 +27,11 @@ package backend.target.riscv;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.target.TargetAsmInfo;
+import backend.mc.MCAsmInfoDarwin;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class RISCVELFTargetAsmInfo extends TargetAsmInfo {
+public class RISCVMCAsmInfoDarwin extends MCAsmInfoDarwin {
 }

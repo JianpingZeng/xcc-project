@@ -1,6 +1,7 @@
 package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
+import backend.mc.MCAsmInfo;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 
@@ -56,7 +57,7 @@ public abstract class TargetMachine {
 
   protected Target theTarget;
 
-  protected TargetAsmInfo asmInfo;
+  protected MCAsmInfo asmInfo;
 
   protected boolean asmVerbosityDefault;
 
@@ -77,7 +78,7 @@ public abstract class TargetMachine {
     return null;
   }
 
-  public TargetAsmInfo getTargetAsmInfo() {
+  public MCAsmInfo getTargetAsmInfo() {
     return asmInfo;
   }
 

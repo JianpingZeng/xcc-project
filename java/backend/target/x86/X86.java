@@ -53,6 +53,18 @@ public interface X86 {
    */
   int AddrNumOperands = 5;
 
+  String[] x86_asm_table = {
+      "{si}", "S",
+      "{di}", "D",
+      "{ax}", "a",
+      "{cx}", "c",
+      "{memory}", "memory",
+      "{flags}", "",
+      "{dirflag}", "",
+      "{fpsr}", "",
+      "{cc}", "cc",
+  };
+
   /**
    * Return true if the specified VECTOR_SHUFFLE operand specifies a shuffle
    * of elements that is suitable for input to PSHUFD.

@@ -127,7 +127,7 @@ public class Lexer extends PreprocessorLexer {
   }
 
   /**
-   * Create a new raw lexer object.  This object is only
+   * create a new raw lexer object.  This object is only
    * /// suitable for calls to 'LexRawToken'.  This lexer assumes that the text
    * /// range will outlive it, so it doesn't take ownership of it.
    *

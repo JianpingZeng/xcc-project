@@ -2081,7 +2081,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   static MachineInstr FuseTwoAddrInst(MachineFunction mf, int opcode,
                                       ArrayList<MachineOperand> mos, MachineInstr mi, TargetInstrInfo tii) {
-    // Create the base instruction with the memory operand as the first part.
+    // create the base instruction with the memory operand as the first part.
     MachineInstrBuilder mib = buildMI(tii.get(opcode));
 
     int numAddrOps = mos.size();
@@ -2277,7 +2277,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     ArrayList<MachineOperand> mos = new ArrayList<>();
     if (loadMI.getOpcode() == V_SET0 || loadMI.getOpcode() == V_SETALLONES) {
       // Folding a V_SET0 or V_SETALLONES as a load, to ease register pressure.
-      // Create a ant-pool entry and operands to load from it.
+      // create a ant-pool entry and operands to load from it.
 
       // x86-32 PIC requires a PIC base register for ant pools.
       int PICBase = 0;
@@ -2294,7 +2294,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
       Util.shouldNotReachHere("vector type is not supported!");
         /*
-        // Create a v4i32 ant-pool entry.
+        // create a v4i32 ant-pool entry.
         MachineConstantPool MCP = MF.getConstants();
      VectorType Ty =
                 VectorType::get(Type::getInt32Ty(MF.getFunction().getContext()), 4);
@@ -2303,7 +2303,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         Constant::getAllOnesValue(Ty);
         int CPI = MCP.getConstantPoolIndex(C, 16);
 
-        // Create operands to load from the ant pool entry.
+        // create operands to load from the ant pool entry.
         mos.add(MachineOperand::CreateReg(PICBase, false));
         mos.add(MachineOperand::CreateImm(1));
         mos.add(MachineOperand::CreateReg(0, false));

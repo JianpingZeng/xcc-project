@@ -217,7 +217,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
   }
 
   /**
-   * Create new internal basic block.
+   * create new internal basic block.
    */
   public static BasicBlock createBasicBlock(
       String bbName,

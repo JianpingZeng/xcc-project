@@ -563,5 +563,5 @@ public abstract class TargetInstrInfo {
 
   /// Measure the specified inline asm to determine an approximation of its
   /// length.
-  // public abstract int getInlineAsmLength(String Str, TargetAsmInfo TAI);
+  // public abstract int getInlineAsmLength(String Str, MCAsmInfo TAI);
 }

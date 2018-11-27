@@ -273,7 +273,7 @@ public class MachineFrameInfo {
   }
 
   /**
-   * createFixedObject - Create a new object at a fixed location on the stack.
+   * createFixedObject - create a new object at a fixed location on the stack.
    * All fixed objects should be created before other objects are created for
    * efficiency.  This returns an index with a negative value.
    * <p>
@@ -291,7 +291,7 @@ public class MachineFrameInfo {
   }
 
   /**
-   * createStackObject - Create a new statically sized stack object, returning
+   * createStackObject - create a new statically sized stack object, returning
    * a positive integer to represent it.
    */
   public int createStackObject(long size, int Alignment) {

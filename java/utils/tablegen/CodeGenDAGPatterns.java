@@ -988,7 +988,7 @@ public final class CodeGenDAGPatterns {
           }
         }
 
-        // Create and insert the instruction.
+        // create and insert the instruction.
         ArrayList<Record> impResults = new ArrayList<>();
         ArrayList<Record> impOperands = new ArrayList<>();
         instructions.put(instr, new DAGInstruction(results, operands, impResults, impOperands));

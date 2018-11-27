@@ -50,7 +50,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
   private void initAsmInfo(Target target, String triple) {
     asmInfo = target.createAsmInfo(triple);
-    Util.assertion(asmInfo != null, "Must initialize the TargetAsmInfo for AsmPrinter!");
+    Util.assertion(asmInfo != null, "Must initialize the MCAsmInfo for AsmPrinter!");
   }
 
   private static void printAndVerify(PassManagerBase pm,

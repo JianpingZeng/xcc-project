@@ -151,7 +151,7 @@ public class FunctionLoweringInfo {
     this.mf = mf;
     mri = mf.getMachineRegisterInfo();
 
-    // Create virtual register for each argument that is not dead and is used
+    // create virtual register for each argument that is not dead and is used
     // outside of the entry block.
     for (Argument arg : fn.getArgumentList()) {
       if (!isOnlyUsedInEntryBlock(arg))
@@ -175,7 +175,7 @@ public class FunctionLoweringInfo {
           tySize *= size.getZExtValue();
           if (tySize == 0)
             tySize = 1;
-          // Create a stack object for static sized array.
+          // create a stack object for static sized array.
           staticAllocaMap.put(ai, mf.getFrameInfo().createStackObject(tySize, align));
         }
       }
@@ -191,7 +191,7 @@ public class FunctionLoweringInfo {
       }
     }
 
-    // Create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
+    // create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
     // also creates the initial PHI MachineInstrs, though none of the input
     // operands are populated.
     TargetInstrInfo tii = tli.getTargetMachine().getInstrInfo();

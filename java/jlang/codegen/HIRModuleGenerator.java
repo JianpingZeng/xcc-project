@@ -374,7 +374,7 @@ public class HIRModuleGenerator {
   }
 
   /**
-   * Create and return an backend FunctionProto with the specified type. If there
+   * create and return an backend FunctionProto with the specified type. If there
    * is something in the module with the specified getIdentifier, return it potentially
    * bitcasted to the right type.
    * <p>
@@ -860,7 +860,7 @@ public class HIRModuleGenerator {
   }
 
   /**
-   * Create a storage for string literal.
+   * create a storage for string literal.
    *
    * @param str
    * @param constant

@@ -383,7 +383,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
     os.printf("package backend.target.%s;\n\n\n"
         + "import backend.codegen.MachineInstr;\n"
-        + "import backend.target.TargetAsmInfo;\n\n"
+        + "import backend.mc.MCAsmInfo;\n\n"
         + "import java.io.OutputStream;", lowerTargetName);
     os.println("import tools.Util;");
 
@@ -701,7 +701,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     // Emit constructor.
     os.printf("\n\tpublic %s(OutputStream os, \n"
         + "\t\t\t%sTargetMachine tm,\n"
-        + "\t\t\tTargetAsmInfo tai, \n"
+        + "\t\t\tMCAsmInfo tai, \n"
         + "\t\t\tboolean verbose)\n"
         + "\t{\n"
         + "\t\tsuper(os, tm, tai, verbose);\n\t}", className, targetName);

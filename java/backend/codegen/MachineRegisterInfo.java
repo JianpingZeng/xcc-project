@@ -119,7 +119,7 @@ public final class MachineRegisterInfo {
     regClass2VRegMap = new ArrayList<>();
     regAllocHints = new ArrayList<>();
 
-    // Create physical register def/use chain.
+    // create physical register def/use chain.
     physRegUseDefLists = new MachineOperand[tri.getNumRegs()];
 
     usedPhysRegs = new BitMap();

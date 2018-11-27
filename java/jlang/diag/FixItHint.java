@@ -35,7 +35,7 @@ public class FixItHint {
   }
 
   /**
-   * Create a code modification hint that inserts the given
+   * create a code modification hint that inserts the given
    * code string at a specific location.
    *
    * @param loc
@@ -65,7 +65,7 @@ public class FixItHint {
   }
 
   /**
-   * Create a code modification hint that replaces the given
+   * create a code modification hint that replaces the given
    * source range with the given code string.
    *
    * @param removeRange
@@ -83,7 +83,7 @@ public class FixItHint {
   }
 
   /**
-   * Create a code modification hint that replaces the given
+   * create a code modification hint that replaces the given
    * source range with the given code string.
    *
    * @param removeRange

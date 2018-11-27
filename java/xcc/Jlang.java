@@ -111,7 +111,7 @@ public class Jlang {
     String[] temp = new String[args.length - startOfArgs];
     System.arraycopy(args, startOfArgs, temp, 0, temp.length);
     args = temp;
-    // Create a driver to run a sort of pipelines of compilation.
+    // create a driver to run a sort of pipelines of compilation.
     Driver driver = new Driver(executableBasename, executableDirname,
         getHostTriple(), "a.out", diags, cccPrintPhases);
 

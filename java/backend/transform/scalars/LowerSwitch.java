@@ -222,7 +222,7 @@ public final class LowerSwitch implements FunctionPass {
     BasicBlock lBranch = switchConvert(lhs, val, origin, defaultBB);
     BasicBlock rBranch = switchConvert(rhs, val, origin, defaultBB);
 
-    // Create a new node that checks if the value is < pivot. Go to the
+    // create a new node that checks if the value is < pivot. Go to the
     // left branch if it is and right branch if not.
     Function f = origin.getParent();
     BasicBlock newNode = BasicBlock.createBasicBlock("NodeBlock", f, null);

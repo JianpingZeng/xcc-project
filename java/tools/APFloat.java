@@ -1000,7 +1000,7 @@ public class APFloat implements Cloneable {
         exponent -= extendedPrecision - omsb;
       }
 
-      /* Create new semantics.  */
+      /* create new semantics.  */
       extendedSemantics = semantics;
       extendedSemantics.precision = extendedPrecision;
 

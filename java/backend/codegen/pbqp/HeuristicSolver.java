@@ -68,9 +68,9 @@ public class HeuristicSolver implements PBQPSolver {
     }
     eliminateIndependentEdges();
 
-    // Create bucket list for graph parsing.
+    // create bucket list for graph parsing.
     if (Util.DEBUG)
-      System.err.println("Step#3: Create bucket list for graph parsing");
+      System.err.println("Step#3: create bucket list for graph parsing");
     createBucketlist();
 
     // reduce phase

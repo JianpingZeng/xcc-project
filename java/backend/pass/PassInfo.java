@@ -30,7 +30,7 @@ public final class PassInfo implements Printable {
   private boolean isCFGOnlyPass;
 
   /**
-   * Create a PassInfo instance that encanpsulates some information about how
+   * create a PassInfo instance that encanpsulates some information about how
    * to instance a pass, what name of Pass, and what is command line argument
    * corresponding to Pass.
    *

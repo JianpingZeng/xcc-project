@@ -55,9 +55,9 @@ public class X86TargetInfo {
     Triple theTriple = new Triple(triple);
     switch (theTriple.getOS()) {
       case Darwin:
-        return new X86DarwinTargetAsmInfo(theTriple);
+        return new X86MCAsmInfoDarwin(theTriple);
       default:
-        return new X86ELFTargetAsmInfo(theTriple);
+        return new X86ELFMCAsmInfo(theTriple);
     }
   };
 

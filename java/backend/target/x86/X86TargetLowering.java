@@ -2716,7 +2716,7 @@ public class X86TargetLowering extends TargetLowering {
     // easier on the hardware branch predictor, and stores aren't all that
     // expensive anyway.
 
-    // Create the new basic blocks. One block contains all the XMM stores,
+    // create the new basic blocks. One block contains all the XMM stores,
     // and one block is the final destination regardless of whether any
     // stores were performed.
 

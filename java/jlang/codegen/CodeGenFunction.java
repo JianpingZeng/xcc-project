@@ -216,7 +216,7 @@ public final class CodeGenFunction {
 
     BasicBlock entryBB = createBasicBlock("entry", curFn);
 
-    // Create a marker to make it easy to insert allocas into the entryblock
+    // create a marker to make it easy to insert allocas into the entryblock
     // later.  Don't create this with the builder, because we don't want it
     // folded.
     Value undef = Value.UndefValue.get(LLVMContext.Int32Ty);
@@ -305,7 +305,7 @@ public final class CodeGenFunction {
         case Extend: {
           Value v = fn.argAt(ai);
           if (hasAggregateLLVMType(ty)) {
-            // Create a temporary alloca to hold the argument; the rest of
+            // create a temporary alloca to hold the argument; the rest of
             // codegen expects to access aggregates & complex values by
             // reference.
             v = createTempAlloca(convertTypeForMem(ty));
@@ -365,7 +365,7 @@ public final class CodeGenFunction {
   }
 
   /**
-   * Create a store to {@code destPtr} from {@code src}, where the source
+   * create a store to {@code destPtr} from {@code src}, where the source
    * and destination may have different type.
    * <p>
    * This saftly handle the case when src type is larger than the type of

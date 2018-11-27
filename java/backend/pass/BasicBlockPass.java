@@ -60,7 +60,7 @@ public interface BasicBlockPass extends Pass {
     BBPassManager bpm;
     if (!(pms.peek() instanceof FPPassManager)) {
       PMDataManager pmd = pms.peek();
-      // Step#1 Create new Function Pass Manager
+      // Step#1 create new Function Pass Manager
       bpm = new BBPassManager(pmd.getDepth() + 1);
       bpm.populateInheritedAnalysis(pms);
 

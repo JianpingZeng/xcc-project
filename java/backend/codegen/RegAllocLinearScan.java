@@ -104,7 +104,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
   }
 
   /**
-   * Create a live Interval for a stack slot if the specified live interval has
+   * create a live Interval for a stack slot if the specified live interval has
    * been spilled.
    *
    * @param cur

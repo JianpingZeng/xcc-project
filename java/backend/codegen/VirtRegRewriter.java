@@ -64,7 +64,7 @@ public abstract class VirtRegRewriter {
   public abstract boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm);
 
   /**
-   * Create an return a spiller object, as specified on the command line.
+   * create an return a spiller object, as specified on the command line.
    *
    * @return
    */

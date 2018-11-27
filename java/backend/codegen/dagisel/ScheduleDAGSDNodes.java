@@ -172,7 +172,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       boolean hasPhysRegOuts = numResults > tid.getNumDefs() &&
           tid.getImplicitDefs() != null &&
           tid.getImplicitDefs().length > 0;
-      // Create a machine instruction.
+      // create a machine instruction.
       MachineInstr mi = buildMI(tid).getMInstr();
 
       if (numResults > 0) {

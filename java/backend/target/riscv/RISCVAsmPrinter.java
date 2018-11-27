@@ -30,7 +30,7 @@ package backend.target.riscv;
 import backend.codegen.AsmPrinter;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineInstr;
-import backend.target.TargetAsmInfo;
+import backend.mc.MCAsmInfo;
 import backend.target.TargetMachine;
 
 import java.io.OutputStream;
@@ -40,7 +40,7 @@ import java.io.OutputStream;
  * @version 0.4
  */
 public abstract class RISCVAsmPrinter extends AsmPrinter {
-  protected RISCVAsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v) {
+  protected RISCVAsmPrinter(OutputStream os, TargetMachine tm, MCAsmInfo tai, boolean v) {
     super(os, tm, tai, v);
   }
 

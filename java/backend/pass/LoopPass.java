@@ -65,7 +65,7 @@ public interface LoopPass extends Pass {
     LPPassManager lpm;
     if (!(pms.peek() instanceof FPPassManager)) {
       PMDataManager pmd = pms.peek();
-      // Step#1 Create new Function Pass Manager
+      // Step#1 create new Function Pass Manager
       lpm = new LPPassManager(pmd.getDepth() + 1);
       lpm.populateInheritedAnalysis(pms);
 
