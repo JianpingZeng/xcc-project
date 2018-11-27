@@ -10,6 +10,7 @@ package backend.mc;
 
 import tools.Util;
 import java.io.PrintStream;
+import java.util.TreeMap;
 
 /**
  * Instances of this class represent a symbol name in the MC file,
@@ -108,5 +109,54 @@ public class MCSymbol {
   }
   public void dump() {
     print(System.err);
+  }
+
+  /**
+   * @author Jianping Zeng
+   * @version 0.1
+   */
+  public static class MCContext {
+    private TreeMap<String, MCSection> sections;
+    private TreeMap<String, MCSymbol> symbols;
+
+    public MCContext() {
+      sections = new TreeMap<>();
+      symbols = new TreeMap<>();
+    }
+
+    public MCSymbol createSymbol(String name) {
+      Util.assertion(name != null && !name.isEmpty(), "nonamed symbol?");
+      Util.assertion(!symbols.containsKey(name), "Duplicate symbol?");
+      MCSymbol sym = new MCSymbol(name, false);
+      symbols.put(name, sym);
+      return sym;
+    }
+
+    public MCSymbol getOrCreateSymbol(String name) {
+      Util.assertion(name != null && !name.isEmpty(), "nonamed symbol?");
+      if (symbols.containsKey(name))
+        return symbols.get(name);
+      MCSymbol sym = new MCSymbol(name, false);
+      symbols.put(name, sym);
+      return sym;
+    }
+    public MCSymbol createTemporarySymbol() {
+      return createTemporarySymbol("");
+    }
+    public MCSymbol createTemporarySymbol(String name) {
+      // If unnamed, just create a symbol.
+      if (name.isEmpty())
+        return new MCSymbol(name, true);
+
+      Util.assertion(!symbols.containsKey(name), "Duplicate symbol?");
+      MCSymbol sym = new MCSymbol(name, true);
+      symbols.put(name, sym);
+      return sym;
+    }
+
+    public MCSymbol lookupSymbol(String name) {
+      Util.assertion(name != null && !name.isEmpty(), "nonamed symbol?");
+      return symbols.get(name);
+    }
   }
 }

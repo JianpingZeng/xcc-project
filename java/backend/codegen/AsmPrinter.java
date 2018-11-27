@@ -19,8 +19,8 @@ package backend.codegen;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.mc.MCAsmInfo;
-import backend.mc.MCContext;
 import backend.mc.MCStreamer;
+import backend.mc.MCSymbol;
 import backend.pass.AnalysisUsage;
 import backend.support.BackendCmdOptions;
 import backend.support.LLVMContext;
@@ -96,7 +96,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   protected String curFnName;
 
-  protected MCContext outContext;
+  protected MCSymbol.MCContext outContext;
 
   protected MCStreamer outStreamer;
   private TargetSubtarget subtarget;
@@ -115,8 +115,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     this.tri = tm.getRegisterInfo();
     subtarget = tm.getSubtarget();
 
-    outContext = new MCContext();
-    outStreamer = createAsmStreamer(outContext, this.os, tai, this);
+    outContext = new MCSymbol.MCContext();
+    //outStreamer = createAsmStreamer(outContext, this.os, tai, this);
     switch (BackendCmdOptions.AsmVerbose.value) {
       case BOU_UNSET:
         verboseAsm = v;
@@ -625,10 +625,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       Util.assertion(false, "Unknown constant expression!");
   }
 
-  private static char toOctal(int x) {
-    return (char) (x & 0x7 + '0');
-  }
-
   /**
    * Print the specified array as a C compatible string, only if
    * the predicate isString is true.
@@ -668,9 +664,9 @@ public abstract class AsmPrinter extends MachineFunctionPass {
             break;
           default:
             os.print('\\');
-            os.print(toOctal(c >> 6));
-            os.print(toOctal(c >> 3));
-            os.print(toOctal(c));
+            os.print(Util.toOctal(c >> 6));
+            os.print(Util.toOctal(c >> 3));
+            os.print(Util.toOctal(c));
             break;
         }
       }

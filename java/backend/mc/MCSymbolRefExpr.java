@@ -23,11 +23,11 @@ public class MCSymbolRefExpr extends MCExpr {
     return symbol;
   }
 
-  public static MCSymbolRefExpr create(MCSymbol symbol, MCContext ctx) {
+  public static MCSymbolRefExpr create(MCSymbol symbol, MCSymbol.MCContext ctx) {
     return new MCSymbolRefExpr(symbol);
   }
 
-  public static MCSymbolRefExpr create(String name, MCContext ctx) {
+  public static MCSymbolRefExpr create(String name, MCSymbol.MCContext ctx) {
     return create(ctx.getOrCreateSymbol(name), ctx);
   }
 

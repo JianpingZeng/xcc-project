@@ -23,7 +23,7 @@ public class MCConstantExpr extends MCExpr {
     return value;
   }
 
-  public static MCConstantExpr create(long val, MCContext ctx) {
+  public static MCConstantExpr create(long val, MCSymbol.MCContext ctx) {
     return new MCConstantExpr(val);
   }
   @Override
