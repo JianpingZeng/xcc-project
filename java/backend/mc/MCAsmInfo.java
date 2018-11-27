@@ -415,7 +415,7 @@ public class MCAsmInfo {
   /// getNonexecutableStackSection - Targets can implement this method to
   /// specify a section to switch to if the translation unit doesn't have any
   /// trampolines that require an executable stack.
-  public MCSection getNonexecutableStackSection(MCContext Ctx) {
+  public MCSection getNonexecutableStackSection(MCSymbol.MCContext Ctx) {
     return null;
   }
 

@@ -32,6 +32,6 @@ public class MCSection {
   public SectionKind getKind() {
     return kind;
   }
-  public void PrintSwitchToSection(MCAsmInfo mai,
-                                            PrintStream os) {}
+  public void printSwitchToSection(MCAsmInfo mai,
+                                   PrintStream os) {}
 }

@@ -764,4 +764,8 @@ public class Util {
   public static boolean isInt32(long val) {
     return val >= Integer.MIN_VALUE && val <= Integer.MAX_VALUE;
   }
+
+  public static char toOctal(int x) {
+    return (char) (x & 0x7 + '0');
+  }
 }

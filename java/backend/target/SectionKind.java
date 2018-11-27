@@ -127,11 +127,11 @@ public class SectionKind {
     ReadOnlyWithRelLocal
   }
 
-  Kind K;
-  boolean isMetadata()  { return K == Metadata; }
-  boolean isText()  { return K == Text; }
+  private Kind K;
+  public boolean isMetadata()  { return K == Metadata; }
+  public boolean isText()  { return K == Text; }
 
-  boolean isReadOnly()  {
+  public boolean isReadOnly()  {
     return K == ReadOnly || isMergeableCString() ||
         isMergeableConst();
   }

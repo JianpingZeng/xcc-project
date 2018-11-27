@@ -16,8 +16,8 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.mc.MCContext;
 import backend.mc.MCSectionELF;
+import backend.mc.MCSymbol;
 import backend.support.BackendCmdOptions;
 import backend.support.Triple;
 import backend.mc.MCAsmInfo;
@@ -57,7 +57,7 @@ public class X86ELFMCAsmInfo extends MCAsmInfo {
   }
 
   @Override
-  public MCSectionELF getNonexecutableStackSection(MCContext Ctx) {
+  public MCSectionELF getNonexecutableStackSection(MCSymbol.MCContext Ctx) {
     return MCSectionELF.create(".note.GNU-stack", MCSectionELF.SHT_PROGBITS,
         0, SectionKind.getMetadata(), false, Ctx);
   }

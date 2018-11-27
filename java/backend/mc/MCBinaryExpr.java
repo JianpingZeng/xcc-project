@@ -173,79 +173,79 @@ public class MCBinaryExpr extends MCExpr {
   }
 
   public static MCBinaryExpr create(Opcode op,  MCExpr lhs,
-                                     MCExpr rhs, MCContext ctx) {
+                                     MCExpr rhs, MCSymbol.MCContext ctx) {
     return new MCBinaryExpr(op, lhs, rhs);
   }
   public static MCBinaryExpr createAdd( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Add, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createAnd( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(And, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createDiv( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Div, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createEQ( MCExpr lhs,  MCExpr rhs,
-                                      MCContext ctx) {
+                                      MCSymbol.MCContext ctx) {
     return create(EQ, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createGT( MCExpr lhs,  MCExpr rhs,
-                                      MCContext ctx) {
+                                      MCSymbol.MCContext ctx) {
     return create(GT, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createGTE( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(GTE, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createLAnd( MCExpr lhs,  MCExpr rhs,
-                                        MCContext ctx) {
+                                        MCSymbol.MCContext ctx) {
     return create(LAnd, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createLOr( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(LOr, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createLT( MCExpr lhs,  MCExpr rhs,
-                                      MCContext ctx) {
+                                      MCSymbol.MCContext ctx) {
     return create(LT, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createLTE( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(LTE, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createMod( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Mod, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createMul( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Mul, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createNE( MCExpr lhs,  MCExpr rhs,
-                                      MCContext ctx) {
+                                      MCSymbol.MCContext ctx) {
     return create(NE, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createOr( MCExpr lhs,  MCExpr rhs,
-                                      MCContext ctx) {
+                                      MCSymbol.MCContext ctx) {
     return create(Or, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createShl( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Shl, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createShr( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Shr, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createSub( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Sub, lhs, rhs, ctx);
   }
   public static MCBinaryExpr createXor( MCExpr lhs,  MCExpr rhs,
-                                       MCContext ctx) {
+                                       MCSymbol.MCContext ctx) {
     return create(Xor, lhs, rhs, ctx);
   }
 }

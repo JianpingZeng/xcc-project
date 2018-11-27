@@ -87,19 +87,19 @@ public class MCUnaryExpr extends MCExpr {
   }
 
   public static MCUnaryExpr Create(Opcode op,  MCExpr expr,
-                                   MCContext ctx) {
+                                   MCSymbol.MCContext ctx) {
     return new MCUnaryExpr(op, expr);
   }
-  public static MCUnaryExpr CreateLNot( MCExpr expr, MCContext ctx) {
+  public static MCUnaryExpr CreateLNot( MCExpr expr, MCSymbol.MCContext ctx) {
     return Create(LNot, expr, ctx);
   }
-  public static MCUnaryExpr CreateMinus( MCExpr expr, MCContext ctx) {
+  public static MCUnaryExpr CreateMinus( MCExpr expr, MCSymbol.MCContext ctx) {
     return Create(Minus, expr, ctx);
   }
-  public static MCUnaryExpr CreateNot( MCExpr expr, MCContext ctx) {
+  public static MCUnaryExpr CreateNot( MCExpr expr, MCSymbol.MCContext ctx) {
     return Create(Not, expr, ctx);
   }
-  public static MCUnaryExpr CreatePlus( MCExpr expr, MCContext ctx) {
+  public static MCUnaryExpr CreatePlus( MCExpr expr, MCSymbol.MCContext ctx) {
     return Create(Plus, expr, ctx);
   }
 }

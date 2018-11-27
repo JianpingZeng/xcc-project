@@ -142,7 +142,7 @@ public class MCSectionELF extends MCSection {
   public static MCSectionELF create(String name, int type,
                                     int flags, SectionKind kind,
                                     boolean isExplicit,
-                                    MCContext ctx) {
+                                    MCSymbol.MCContext ctx) {
     return new MCSectionELF(name, type, flags, kind, isExplicit);
   }
 
@@ -175,7 +175,7 @@ public class MCSectionELF extends MCSection {
   }
   
   @Override
-  public void PrintSwitchToSection(MCAsmInfo mai, PrintStream os) {
+  public void printSwitchToSection(MCAsmInfo mai, PrintStream os) {
     if (ShouldOmitSectionDirective(sectionName, mai)) {
       os.printf("\t%s\n", getSectionName());
       return;
