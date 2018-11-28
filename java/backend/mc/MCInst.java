@@ -42,4 +42,12 @@ public class MCInst {
   public void dump() {
     print(System.err, null);
   }
+
+  public int getNumOperands() {
+    return operands.size();
+  }
+
+  public MCOperand getOperand(int idx) {
+    return operands.get(idx);
+  }
 }

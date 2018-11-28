@@ -23,7 +23,7 @@ public class MCAsmInfo {
     None, Dwarf, SjLj
   }
 
-  enum MCSymbolAttr {
+  public enum MCSymbolAttr {
     MCSA_Invalid,    ///< Not a valid directive.
 
     // Various directives in alphabetical order.

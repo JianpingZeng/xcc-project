@@ -14,7 +14,7 @@ import static backend.support.BackendCmdOptions.InstructionSelector;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
-import static backend.target.x86.ATTAsmPrinter.createX86AsmCodeEmitter;
+import static backend.target.x86.X86AsmPrinter.createX86AsmCodeEmitter;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86FloatingPointRegKill.createX86FPRegKillPass;
 import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;

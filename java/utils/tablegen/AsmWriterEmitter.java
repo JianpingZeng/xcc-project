@@ -701,10 +701,10 @@ public final class AsmWriterEmitter extends TableGenBackend {
     // Emit constructor.
     os.printf("\n\tpublic %s(OutputStream os, \n"
         + "\t\t\t%sTargetMachine tm,\n"
-        + "\t\t\tMCAsmInfo tai, \n"
+        + "\t\t\tMCAsmInfo mai, \n"
         + "\t\t\tboolean verbose)\n"
         + "\t{\n"
-        + "\t\tsuper(os, tm, tai, verbose);\n\t}", className, targetName);
+        + "\t\tsuper(os, tm, mai, verbose);\n\t}", className, targetName);
 
     os.println("}");
 

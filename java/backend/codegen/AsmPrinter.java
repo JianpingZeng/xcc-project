@@ -19,10 +19,10 @@ package backend.codegen;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCAsmInfo.MCSymbolAttr;
 import backend.mc.MCStreamer;
 import backend.mc.MCSymbol;
 import backend.pass.AnalysisUsage;
-import backend.support.BackendCmdOptions;
 import backend.support.LLVMContext;
 import backend.support.MachineFunctionPass;
 import backend.support.NameMangler;
@@ -80,7 +80,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   protected TargetMachine tm;
 
-  protected MCAsmInfo tai;
+  protected MCAsmInfo mai;
 
   protected TargetRegisterInfo tri;
 
@@ -94,40 +94,27 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   /**
    * The asmName of current being processed machine function.
    */
-  protected String curFnName;
+  protected MCSymbol curFuncSym;
 
   protected MCSymbol.MCContext outContext;
 
   protected MCStreamer outStreamer;
   private TargetSubtarget subtarget;
+  protected MachineFunction mf;
 
-  public enum BoolOrDefault {
-    BOU_UNSET,
-    BOU_TRUE,
-    BOU_FALSE
-  }
-
-  protected AsmPrinter(OutputStream os, TargetMachine tm, MCAsmInfo tai, boolean v) {
+  protected AsmPrinter(OutputStream os, TargetMachine tm,
+                       MCSymbol.MCContext ctx,
+                       MCStreamer streamer, MCAsmInfo mai) {
     functionNumber = 0;
     this.os = new FormattedOutputStream(os);
     this.tm = tm;
-    this.tai = tai;
+    this.mai = mai;
     this.tri = tm.getRegisterInfo();
     subtarget = tm.getSubtarget();
 
-    outContext = new MCSymbol.MCContext();
-    //outStreamer = createAsmStreamer(outContext, this.os, tai, this);
-    switch (BackendCmdOptions.AsmVerbose.value) {
-      case BOU_UNSET:
-        verboseAsm = v;
-        break;
-      case BOU_TRUE:
-        verboseAsm = true;
-        break;
-      case BOU_FALSE:
-        verboseAsm = false;
-        break;
-    }
+    outContext = ctx;
+    outStreamer = streamer;
+    verboseAsm = streamer.isVerboseAsm();
   }
 
   @Override
@@ -137,16 +124,20 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     super.getAnalysisUsage(au);
   }
 
+  public void emitStartOfAsmFile(Module module) {}
+
+  public void emitEndOfAsmFile(Module module) {}
+
   @Override
   public boolean doInitialization(Module m) {
-    mangler = new NameMangler(m, tai.getGlobalPrefix(),
-        tai.getPrivateGlobalPrefix(),
-        tai.getLinkerPrivateGlobalPrefix());
+    mangler = new NameMangler(m, mai.getGlobalPrefix(),
+        mai.getPrivateGlobalPrefix(),
+        mai.getLinkerPrivateGlobalPrefix());
 
-    if (tai.doesAllowQuotesInName())
-      mangler.setUseQuotes(true);
-    if (tai.hasSingleParameterDotFile()) {
-      os.printf("\t.file\t\"%s\"%n", m.getModuleIdentifier());
+    emitStartOfAsmFile(m);
+    if (mai.hasSingleParameterDotFile()) {
+      // .file "foo.c"
+      outStreamer.emitFileDirective(m.getModuleIdentifier());
     }
     return false;
   }
@@ -155,31 +146,37 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   public boolean doFinalization(Module m) {
     // Emit global variables.
     for (GlobalVariable gv : m.getGlobalVariableList()) {
-      printGlobalVariable(gv);
+      emitGlobalVariable(gv);
     }
+
     // TODO Emit debug information
 
     // If the target wants to know about weak references, print them all.
-    if (tai.getWeakDefDirective() != null) {
+    if (mai.getWeakDefDirective() != null) {
       // Print out module-level global variables here.
       for (GlobalVariable gv : m.getGlobalVariableList()) {
         if (gv.hasExternalLinkage())
-          os.printf("%s%s\n", tai.getWeakDefDirective(),
-              mangler.getMangledName(gv));
+          outStreamer.emitSymbolAttribute(getGlobalValueSymbol(gv),
+              MCSymbolAttr.MCSA_WeakReference);
       }
+
       for (Function fn : m.getFunctionList()) {
         if (fn.hasExternalWeakLinkage())
-          os.printf("%s%s\n", tai.getWeakDefDirective(),
-              mangler.getMangledName(fn));
+          outStreamer.emitSymbolAttribute(getGlobalValueSymbol(fn),
+              MCSymbolAttr.MCSA_WeakReference);
       }
     }
-    if (tai.getSetDirective() != null)
-      os.println();
+    if (mai.hasSetDirective()) {
+      outStreamer.addBlankLine();
+      // TODO, handle alias
+    }
 
+    emitEndOfAsmFile(m);
+    outStreamer.finish();
     return false;
   }
 
-  public void printGlobalVariable(GlobalVariable gv) {
+  public void emitGlobalVariable(GlobalVariable gv) {
     TargetData td = tm.getTargetData();
 
     // External global require no code
@@ -207,11 +204,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     if (subtarget.isTargetELF())
       os.printf("\t.type\t%s,@object\n", name);
 
-    switchSection(tai.getSectionForGlobal(gv));
+    switchSection(mai.getSectionForGlobal(gv));
 
     if (c.isNullValue() && !gv.hasSection()) {
       if (gv.hasExternalLinkage()) {
-        String directive = tai.getZeroFillDirective();
+        String directive = mai.getZeroFillDirective();
         if (directive != null) {
           os.printf("\t.globl %s\n", name);
           os.printf("%s__DATA, __common, %s, %d, %d\n", directive,
@@ -224,15 +221,15 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         if (size == 0)
           size = 1;
 
-        if (tai.getLCOMMDirective() != null) {
+        if (mai.getLCOMMDirective() != null) {
           if (gv.hasLocalLinkage()) {
-            os.printf("%s%s,%d", tai.getLCOMMDirective(), name, size);
+            os.printf("%s%s,%d", mai.getLCOMMDirective(), name, size);
             if (subtarget.isTargetDarwin())
               os.printf(",%d", align);
           } else {
-            os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
-            if (tai.getCOMMDirectiveTakesAlignment())
-              os.printf(",%d", tai.getAlignmentIsInBytes() ?
+            os.printf("%s%s,%d", mai.getCOMMDirective(), name, size);
+            if (mai.getCOMMDirectiveTakesAlignment())
+              os.printf(",%d", mai.getAlignmentIsInBytes() ?
                   (1 << align) :
                   align);
           }
@@ -242,15 +239,15 @@ public abstract class AsmPrinter extends MachineFunctionPass {
               os.printf("\t.local\t%s\n", name);
           }
 
-          os.printf("%s%s,%d", tai.getCOMMDirective(), name, size);
-          if (tai.getCOMMDirectiveTakesAlignment())
-            os.printf(",%d", tai.getAlignmentIsInBytes() ?
+          os.printf("%s%s,%d", mai.getCOMMDirective(), name, size);
+          if (mai.getCOMMDirectiveTakesAlignment())
+            os.printf(",%d", mai.getAlignmentIsInBytes() ?
                 (1 << align) :
                 align);
         }
         if (verboseAsm) {
-          os.padToColumn(tai.getCommentColumn());
-          os.printf("%s ", tai.getCommentString());
+          os.padToColumn(mai.getCommentColumn());
+          os.printf("%s ", mai.getCommentString());
         }
         os.println();
         return;
@@ -270,14 +267,14 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     emitAlignment((int) align, gv);
     os.printf("%s:", name);
     if (verboseAsm) {
-      os.padToColumn(tai.getCommentColumn());
-      os.printf("%s ", tai.getCommentString());
+      os.padToColumn(mai.getCommentColumn());
+      os.printf("%s ", mai.getCommentString());
       writeAsOperand(os, gv, false, gv.getParent());
     }
     os.println();
     emitGlobalConstant(c);
 
-    if (tai.hasDotTypeDotSizeDirective())
+    if (mai.hasDotTypeDotSizeDirective())
       os.printf("\t.size\t%s, %d\n", name, size);
   }
 
@@ -306,13 +303,33 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         || mi.getOperand(opNo + 3).isConstantPoolIndex());
   }
 
+  @Override
+  public boolean runOnMachineFunction(MachineFunction mf) {
+    setupMachineFunction(mf);
+    emitFunctionHeader();
+    emitFunctionBody();
+    return false;
+  }
+
+
+  public void emitFunctionHeader() {
+    emitConstantPool();
+  }
+
+  public void emitFunctionBody() {}
+
+  protected MCSymbol getGlobalValueSymbol(GlobalValue gv) {
+    String name = mangler.getMangledName(gv);
+    return outContext.getOrCreateSymbol(name);
+  }
+
   /**
    * This should be called when a new machine function is being processed when
    * running method runOnMachineFunction();
    */
   protected void setupMachineFunction(MachineFunction mf) {
-    curFnName = mangler.getMangledName(mf.getFunction());
-    incrementFnNumeber();
+    this.mf = mf;
+    curFuncSym = getGlobalValueSymbol(mf.getFunction());
 
     if (verboseAsm)
       li = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
@@ -331,15 +348,30 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * representations of the constants in the constant pool MCP. This is
    * used to print out constants which have been "spilled to memory" by
    * the code generator.
-   *
-   * @param mcp
    */
-  protected void emitConstantPool(MachineConstantPool mcp) {
+  protected void emitConstantPool() {
+    MachineConstantPool mcp = mf.getConstantPool();
     ArrayList<MachineConstantPoolEntry> consts = mcp.getConstants();
     if (consts.isEmpty()) return;
 
+    Function f = mf.getFunction();
+    outStreamer.switchSection(getObjFileLowering().sectionForGlobal(f, mangler, tm));
+    emitvisibility(curFuncSym, f.getVisibility());
+    emitLinkage(f.getLinkage(), curFuncSym);
+    emitAlignment(mf.getAlignment(), f);
+    if (mai.hasDotTypeDotSizeDirective())
+      outStreamer.emitSymbolAttribute(curFuncSym, MCSymbolAttr.MCSA_ELF_TypeFunction);
+
+    if (verboseAsm) {
+      writeAsOperand(outStreamer.getCommentOS(), f, false, f.getParent());
+      outStreamer.getCommentOS().println();
+    }
+
+
+    emitFunctionEntryLabel();
+
     TargetData td = tm.getTargetData();
-    switchSection(tai.getConstantPoolSectionDirective(), null);
+    switchSection(mai.getConstantPoolSectionDirective(), null);
     int align = mcp.getContantPoolAlignment();
     emitAlignment(align, null);
     long offset = 0;
@@ -353,11 +385,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       offset = newOffset + entSize;
 
       os.printf("%sCPI%d_%d:",
-          tai.getPrivateGlobalPrefix(),
+          mai.getPrivateGlobalPrefix(),
           getFunctionNumber(), i);
       if (verboseAsm) {
-        os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
-        os.printf("%s constant ", tai.getCommentString());
+        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
+        os.printf("%s constant ", mai.getCommentString());
         writeTypeSymbol(os, consts.get(i).getType(), null);
       }
       os.println();
@@ -399,9 +431,9 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       numBits = Util.log2(gv.getAlignment());
     if (numBits == 0) return;
 
-    boolean alignIsInByte = tai.isAlignIsInByte();
+    boolean alignIsInByte = mai.isAlignIsInByte();
     if (alignIsInByte) numBits = 1 << numBits;
-    os.println(tai.getAlignDirective() + (1 << numBits));
+    os.println(mai.getAlignDirective() + (1 << numBits));
   }
 
   /**
@@ -411,11 +443,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   protected void emitZero(long numZeros) {
     if (numZeros != 0) {
-      String zeroDirective = tai.getZeroDirective();
+      String zeroDirective = mai.getZeroDirective();
       if (zeroDirective != null)
         os.println(zeroDirective + numZeros);
       else {
-        String data8BitDirective = tai.getData8bitsDirective();
+        String data8BitDirective = mai.getData8bitsDirective();
         for (; numZeros != 0; numZeros--)
           os.print(data8BitDirective + "0\n");
       }
@@ -429,11 +461,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   protected void emitGlobalConstant(Constant c) {
     TargetData td = tm.getTargetData();
-    String data64BitDirective = tai.getData64bitsDirective();
-    String data32BitDirective = tai.getData32bitsDirective();
-    String data8BitDirective = tai.getData8bitsDirective();
-    String data16BitDirective = tai.getData16bitsDirective();
-    String commentString = tai.getCommentString();
+    String data64BitDirective = mai.getData64bitsDirective();
+    String data32BitDirective = mai.getData32bitsDirective();
+    String data8BitDirective = mai.getData8bitsDirective();
+    String data16BitDirective = mai.getData16bitsDirective();
+    String commentString = mai.getCommentString();
 
     if (c.isNullValue() || c instanceof UndefValue) {
       emitZero(td.getTypeSize(c.getType()));
@@ -442,13 +474,13 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       ConstantArray ca = (ConstantArray) c;
       if (ca.isString()) {
         int numElts = ca.getNumOfOperands();
-        String ascizDirective = tai.getAscizDirective();
+        String ascizDirective = mai.getAscizDirective();
         if (ascizDirective != null && numElts != 0
             && ((ConstantInt) ca.operand(numElts - 1)).getZExtValue() == 0) {
           os.print(ascizDirective);
           printAsCString(os, ca, numElts - 1);
         } else {
-          os.print(tai.getAsciiDirective());
+          os.print(mai.getAsciiDirective());
           printAsCString(os, ca, numElts);
         }
         os.println();
@@ -590,13 +622,13 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     } else if (c instanceof GlobalValue) {
       GlobalValue gv = (GlobalValue) c;
       if (gv instanceof Function) {
-        String functionAddrPrefix = tai.getFunctionAddrPrefix();
-        String functionAddrSuffix = tai.getFunctionAddrSuffix();
+        String functionAddrPrefix = mai.getFunctionAddrPrefix();
+        String functionAddrSuffix = mai.getFunctionAddrSuffix();
         os.print(functionAddrPrefix + mangler.getMangledName(gv));
         os.print(functionAddrSuffix);
       } else {
-        String globalVarAddrPrefix = tai.getGlobalVarAddrPrefix();
-        String globalVarAddrSuffix = tai.getGlobalVarAddrSuffix();
+        String globalVarAddrPrefix = mai.getGlobalVarAddrPrefix();
+        String globalVarAddrSuffix = mai.getGlobalVarAddrSuffix();
         os.print(globalVarAddrPrefix + mangler.getMangledName(gv));
         os.print(globalVarAddrSuffix);
       }
@@ -701,32 +733,32 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     if (currentSection.equals(newSection))
       return;
 
-    if (tai.getSectionEndDirectiveSuffix() != null && !currentSection.isEmpty()) {
-      os.printf("%s%s\n", currentSection, tai.getSectionEndDirectiveSuffix());
+    if (mai.getSectionEndDirectiveSuffix() != null && !currentSection.isEmpty()) {
+      os.printf("%s%s\n", currentSection, mai.getSectionEndDirectiveSuffix());
     }
 
     currentSection = newSection;
     currentSection_ = ns;
 
-    if (shouldOmitSectionDirective(newSection, tai)) {
+    if (shouldOmitSectionDirective(newSection, mai)) {
       os.printf("\t%s%n", currentSection);
       return;
     }
 
     if (!currentSection.isEmpty()) {
-      os.printf("%s%s%s", tai.getSwitchToSectionDirective(),
+      os.printf("%s%s%s", mai.getSwitchToSectionDirective(),
           currentSection,
-          tai.getSectionFlags(ns.getFlags()));
+          mai.getSectionFlags(ns.getFlags()));
     } else
       os.print(currentSection);
-    os.println(tai.getDataSectionStartSuffix());
+    os.println(mai.getDataSectionStartSuffix());
 
     isInTextSection = (ns.getFlags() & SectionFlags.Code) != 0;
   }
 
   public void switchSection(String newSection, GlobalValue gv) {
     String ns;
-    String switchToSectionDirective = tai.getSwitchToSectionDirective();
+    String switchToSectionDirective = mai.getSwitchToSectionDirective();
     if (gv != null && gv.hasSection())
       ns = switchToSectionDirective + gv.getSection();
     else
@@ -761,11 +793,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   protected void printVisibility(String name,
                                  GlobalValue.VisibilityTypes visibility) {
     if (visibility == HiddenVisibility) {
-      String directive = tai.getHiddenDirective();
+      String directive = mai.getHiddenDirective();
       if (directive != null)
         os.printf("%s%s\n", directive, name);
     } else if (visibility == ProtectedVisibility) {
-      String directive = tai.getProtectedDirective();
+      String directive = mai.getProtectedDirective();
       if (directive != null)
         os.printf("%s%s\n", directive, name);
     }
@@ -808,7 +840,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         emitAlignment(Util.log2(align));
     }
 
-    os.printf("%sBB%d_%d", tai.getPrivateGlobalPrefix(),
+    os.printf("%sBB%d_%d", mai.getPrivateGlobalPrefix(),
         getFunctionNumber(), mbb.getNumber());
     if (printColon)
       os.print(":");
@@ -817,8 +849,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       BasicBlock bb = mbb.getBasicBlock();
       if (bb != null) {
         if (bb.hasName()) {
-          os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
-          os.printf("%s ", tai.getCommentString());
+          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
+          os.printf("%s ", mai.getCommentString());
           writeAsOperand(os, bb, false, null);
         }
 
@@ -833,30 +865,30 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       MachineLoopInfo loop = li.getLoopFor(mbb);
       if (loop != null) {
         os.println();
-        os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
-        os.printf("%s Loop Depth %d\n", tai.getCommentString(),
+        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
+        os.printf("%s Loop Depth %d\n", mai.getCommentString(),
             loop.getLoopDepth());
 
-        os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
+        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
 
         MachineBasicBlock header = loop.getHeaderBlock();
         Util.assertion(header != null, "No header for loop");
 
         if (header.equals(mbb)) {
-          os.printf("%s Loop Header", tai.getCommentString());
-          printChildLoopComment(os, loop, tai, getFunctionNumber());
+          os.printf("%s Loop Header", mai.getCommentString());
+          printChildLoopComment(os, loop, mai, getFunctionNumber());
         } else {
           os.printf("%s Loop Header is BB%d_%d",
-              tai.getCommentString(),
+              mai.getCommentString(),
               getFunctionNumber(),
               loop.getHeaderBlock().getNumber());
-          printChildLoopComment(os, loop, tai, getFunctionNumber());
+          printChildLoopComment(os, loop, mai, getFunctionNumber());
         }
 
         if (loop.isEmpty()) {
           os.println();
-          os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
-          os.printf("%s Inner Loop", tai.getCommentString());
+          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
+          os.printf("%s Inner Loop", mai.getCommentString());
         }
 
         // Add parent loop information.
@@ -867,8 +899,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           Util.assertion(hBB != null, "No header for loop");
 
           os.println();
-          os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
-          os.printf(tai.getCommentString());
+          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
+          os.printf(mai.getCommentString());
           indent(os, curLoop.getLoopDepth() - 1)
               .printf(" Inside Loop BB%d_%d Depth %d",
                   getFunctionNumber(),
@@ -931,7 +963,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   public boolean emitSpecialLLVMGlobal(GlobalVariable gv) {
     if (gv.getName().equals("llvm.used")) {
-      if (tai.getUsedDirective() != null)
+      if (mai.getUsedDirective() != null)
         emitLLVMUsedList(gv.getInitializer());
       return true;
     }
@@ -953,7 +985,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param id
    */
   public void printLabel(long id) {
-    os.printf("%slabel%d:%n", tai.getPrivateGlobalPrefix(), id);
+    os.printf("%slabel%d:%n", mai.getPrivateGlobalPrefix(), id);
 
   }
 
@@ -994,8 +1026,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   public void printImplicitDef(MachineInstr mi) {
     if (verboseAsm) {
-      os.padToColumn(tai.getCommentColumn());
-      os.printf("%s implicit-def: %s%n", tai.getCommentString(),
+      os.padToColumn(mai.getCommentColumn());
+      os.printf("%s implicit-def: %s%n", mai.getCommentString(),
           tri.getAsmName(mi.getOperand(0).getReg()));
     }
   }

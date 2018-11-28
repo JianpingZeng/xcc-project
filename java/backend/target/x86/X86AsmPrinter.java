@@ -18,6 +18,8 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCStreamer;
+import backend.mc.MCSymbol;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
@@ -43,7 +45,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdC
  * @author Jianping Zeng
  * @version 0.1
  */
-public abstract class ATTAsmPrinter extends AsmPrinter {
+public class X86AsmPrinter extends AsmPrinter {
   /**
    * A statistic for indicating the numbeer of emitted machine
    * instruction by this asm printer.
@@ -59,9 +61,12 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
   private TreeMap<String, String> hiddenGVStubs;
   private TreeMap<String, String> fnStubs;
 
-  public ATTAsmPrinter(OutputStream os, X86TargetMachine tm,
-                       MCAsmInfo tai, boolean v) {
-    super(os, tm, tai, v);
+  public X86AsmPrinter(OutputStream os,
+                       X86TargetMachine tm,
+                       MCSymbol.MCContext ctx,
+                       MCStreamer streamer,
+                       MCAsmInfo mai) {
+    super(os, tm, ctx, streamer, mai);
     mbbNumber = new TObjectIntHashMap<>();
     subtarget = tm.getSubtarget();
     functionInfoMap = new HashMap<>();
@@ -169,11 +174,11 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
       default:
         Util.shouldNotReachHere("Unknown symbol type!");
       case MO_JumpTableIndex:
-        os.printf("%sJIT%d_%d", tai.getPrivateGlobalPrefix(),
+        os.printf("%sJIT%d_%d", mai.getPrivateGlobalPrefix(),
             getFunctionNumber(), mo.getIndex());
         break;
       case MO_ConstantPoolIndex:
-        os.printf("%sCPI%d_%d", tai.getPrivateGlobalPrefix(),
+        os.printf("%sCPI%d_%d", mai.getPrivateGlobalPrefix(),
             getFunctionNumber(), mo.getIndex());
         break;
       case MO_GlobalAddress:
@@ -320,35 +325,35 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
       case ExternalLinkage:
         switchSection(".text", f);
         emitAlignment(fnAlign, f);
-        os.println("\t.globl\t" + curFnName);
+        os.println("\t.globl\t" + curFuncSym);
         break;
       case LinkerPrivateLinkage:
         switchSection(".text", f);
         emitAlignment(fnAlign, f);
         if (subtarget.isTargetDarwin()) {
-          os.printf("\t.globl\t %s%n" + curFnName);
-          os.printf("%s%s%n", tai.getWeakDefDirective(),
-              curFnName);
+          os.printf("\t.globl\t %s%n" + curFuncSym);
+          os.printf("%s%s%n", mai.getWeakDefDirective(),
+              curFuncSym);
         } else if (subtarget.isTargetCygMing()) {
-          os.printf("\t.globl\t %s%n\t.linkonce discard%n" + curFnName);
+          os.printf("\t.globl\t %s%n\t.linkonce discard%n" + curFuncSym);
         } else
-          os.printf("\t.weak\t%s%n", curFnName);
+          os.printf("\t.weak\t%s%n", curFuncSym);
       default:
         Util.assertion(false, "Undefined linkage type!");
         break;
     }
 
-    printVisibility(curFnName, f.getVisibility());
+    printVisibility(curFuncSym, f.getVisibility());
     if (subtarget.isTargetELF()) {
-      os.printf("\t.type\t%s,@function\n", curFnName);
+      os.printf("\t.type\t%s,@function\n", curFuncSym);
     } else if (subtarget.isTargetCygMing()) {
       // TODO: 17-7-31  Handle targeting to cygwin and mingw.
     }
 
-    os.printf("%s:", curFnName);
+    os.printf("%s:", curFuncSym);
     if (verboseAsm) {
-      os.padToColumn(tai.getCommentColumn());
-      os.printf("%s ", tai.getCommentString());
+      os.padToColumn(mai.getCommentColumn());
+      os.printf("%s ", mai.getCommentString());
       writeAsOperand(os, f, false, f.getParent());
     }
 
@@ -411,8 +416,8 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
       os.printf("\tnop\n");
     }
 
-    if (tai.hasDotTypeDotSizeDirective())
-      os.println("\t.size " + curFnName + ", .-" + curFnName);
+    if (mai.hasDotTypeDotSizeDirective())
+      os.println("\t.size " + curFuncSym + ", .-" + curFuncSym);
 
     // todo emitJumpTableInfo(mf.);
 
@@ -464,7 +469,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
       }
       case MO_MachineBasicBlock: {
         MachineBasicBlock mbb = mo.getMBB();
-        os.print(tai.getPrivateGlobalPrefix());
+        os.print(mai.getPrivateGlobalPrefix());
         os.print("BB");
         os.print(mangler.getMangledName(mbb.getBasicBlock().getParent()));
         os.print("_");
@@ -529,7 +534,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
       case MO_ExternalSymbol: {
         boolean isCallOp = modifier != null && modifier.equals("call");
         boolean needCloseParen = false;
-        String name = tai.getGlobalPrefix();
+        String name = mai.getGlobalPrefix();
         name += mo.getSymbolName();
 
         if (!isCallOp)
@@ -542,7 +547,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
         }
         os.print(name);
         if (shouldPrintPLT(tm, subtarget)) {
-          String gotName = tai.getGlobalPrefix();
+          String gotName = mai.getGlobalPrefix();
           gotName += "_GLOBAL_OFFSET_TABLE_";
           if (gotName.equals(name)) {
             // HACK! Emit extra offset to PC during printing GOT offset to
@@ -553,7 +558,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
             //   popl %some_register
             //   addl $_GLOBAL_ADDRESS_TABLE_ + [.-piclabel], %some_register
             os.printf(" + [.-%s]",
-                getPICLabelString(getFunctionNumber(), tai,
+                getPICLabelString(getFunctionNumber(), mai,
                     subtarget));
           }
         }
@@ -568,12 +573,12 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
         boolean isMemOp = modifier != null && modifier.equals("mem");
         if (!isMemOp)
           os.print("$");
-        os.printf("%sJTI%d_%d", tai.getPrivateGlobalPrefix(),
+        os.printf("%sJTI%d_%d", mai.getPrivateGlobalPrefix(),
             getFunctionNumber(), mo.getIndex());
 
         if (tm.getRelocationModel() == PIC_) {
           if (subtarget.isPICStyleStubPIC()) {
-            os.printf("-\"%s%d$pb\"", tai.getPrivateGlobalPrefix(),
+            os.printf("-\"%s%d$pb\"", mai.getPrivateGlobalPrefix(),
                 getFunctionNumber());
           } else if (subtarget.isPICStyleGOT())
             os.printf("@GOTOFF");
@@ -587,12 +592,12 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
         boolean isMemOp = modifier != null && modifier.equals("mem");
         if (!isMemOp)
           os.print("$");
-        os.printf("%sCPI%d_%d", tai.getPrivateGlobalPrefix(),
+        os.printf("%sCPI%d_%d", mai.getPrivateGlobalPrefix(),
             getFunctionNumber(), mo.getIndex());
 
         if (tm.getRelocationModel() == PIC_) {
           if (subtarget.isPICStyleStubPIC()) {
-            os.printf("-\"%s%d$pb\"", tai.getPrivateGlobalPrefix(),
+            os.printf("-\"%s%d$pb\"", mai.getPrivateGlobalPrefix(),
                 getFunctionNumber());
           } else if (subtarget.isPICStyleGOT())
             os.printf("@GOTOFF");
@@ -1249,7 +1254,7 @@ public abstract class ATTAsmPrinter extends AsmPrinter {
 
   protected abstract boolean printInstruction(MachineInstr mi);
 
-  public static ATTAsmPrinter createX86AsmCodeEmitter(
+  public static X86AsmPrinter createX86AsmCodeEmitter(
       OutputStream os,
       X86TargetMachine tm,
       MCAsmInfo tai,

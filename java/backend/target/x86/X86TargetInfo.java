@@ -68,7 +68,7 @@ public class X86TargetInfo {
         if (tm.getTargetAsmInfo().getAssemblerDialect() == 1)
             return new X86IntelAsmPrinter(os, tm, asmInfo, verbose);
         */
-    return ATTAsmPrinter.createX86AsmCodeEmitter(os, (X86TargetMachine) tm, asmInfo, verbose);
+    return X86AsmPrinter.createX86AsmCodeEmitter(os, (X86TargetMachine) tm, asmInfo, verbose);
   };
 
   public static void LLVMInitiliazeX86Target() {
