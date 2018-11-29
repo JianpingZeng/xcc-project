@@ -78,7 +78,7 @@ public abstract class TargetMachine {
     return null;
   }
 
-  public MCAsmInfo getTargetAsmInfo() {
+  public MCAsmInfo getMCAsmInfo() {
     return asmInfo;
   }
 

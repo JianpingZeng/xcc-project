@@ -17,9 +17,7 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.mc.MCAsmInfo;
-import backend.mc.MCStreamer;
-import backend.mc.MCSymbol;
+import backend.mc.*;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
@@ -38,6 +36,7 @@ import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetMachine.RelocModel.Static;
 import static backend.target.x86.X86GenRegisterNames.*;
+import static backend.target.x86.X86II.MO_GOT_ABSOLUTE_ADDRESS;
 import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.FastCall;
 import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdCall;
 
@@ -75,6 +74,10 @@ public class X86AsmPrinter extends AsmPrinter {
     fnStubs = new TreeMap<>();
   }
 
+  public X86Subtarget getSubtarget() {
+    return subtarget;
+  }
+
   @Override
   public String getPassName() {
     return "X86 AT&T style assembly printer";
@@ -92,17 +95,82 @@ public class X86AsmPrinter extends AsmPrinter {
   }
 
   @Override
-  public boolean doFinalization(Module m) {
-    // Print out module-level global variables here.
-    if (subtarget.isTargetDarwin()) {
-      // All darwin targets use mach-o.
-      // TODO: 2018/7/13
+  public void emitEndOfAsmFile(Module module) {
+    super.emitEndOfAsmFile(module);
+  }
+
+  @Override
+  protected void emitInstruction(MachineInstr mi) {
+    X86MCInstLower InstLowering = new X86MCInstLower(outContext, mangler, this);
+    switch (mi.getOpcode()) {
+      case TargetInstrInfo.DBG_LABEL: {
+        if (!verboseAsm)
+          return;
+
+        os.printf("\t%sDEBUG_VALUE: ", mai.getCommentString());
+        int nOps = mi.getNumOperands();
+        // TODO debug information
+      }
+      case X86GenInstrNames.MOVPC32r: {
+        MCInst inst = new MCInst();
+        // This is a pseudo op for a two instruction sequence with a label, which
+        // looks like:
+        //     call "L1$pb"
+        // "L1$pb":
+        //     popl %esi
+        MCSymbol picBase = InstLowering.getPICBaseSymbol();
+        inst.setOpcode(X86GenInstrNames.CALLpcrel32);
+        inst.addOperand(MCOperand.createExpr(MCSymbolRefExpr.create(picBase, outContext)));
+        ;
+
+        outStreamer.emitInstruction(inst);
+        outStreamer.emitLabel(picBase);
+        inst.setOpcode(X86GenInstrNames.POP32r);
+        inst.setOperand(0, MCOperand.createReg(mi.getOperand(0).getReg()));
+        ;
+        outStreamer.emitInstruction(inst);
+        return;
+      }
+      case X86GenInstrNames.ADD32ri: {
+        // Lower the MO_GOT_ABSOLUTE_ADDRESS form of ADD32ri.
+        if (mi.getOperand(2).getTargetFlags() != MO_GOT_ABSOLUTE_ADDRESS)
+          break;
+
+        // Okay, we have something like:
+        //  EAX = ADD32ri EAX, MO_GOT_ABSOLUTE_ADDRESS(@MYGLOBAL)
+
+        // For this, we want to print something like:
+        //   MYGLOBAL + (. - PICBASE)
+        // However, we can't generate a ".", so just emit a new label here and refer
+        // to it.  We know that this operand flag occurs at most once per function.
+        String prefix = mai.getPrivateGlobalPrefix();
+        MCSymbol dotSym = outContext.getOrCreateSymbol(prefix + "picbaseref" + getFunctionNumber());
+        outStreamer.emitLabel(dotSym);
+
+        // Now that we have emitted the label, lower the complex operand expression.
+        MCSymbol opSym = InstLowering.getSymbolFromOperand(mi.getOperand(2));
+        MCExpr dotExpr = MCSymbolRefExpr.create(dotSym, outContext);
+        MCExpr picBase = MCSymbolRefExpr.create(InstLowering.getPICBaseSymbol(), outContext);
+        dotExpr = MCBinaryExpr.createSub(dotExpr, picBase, outContext);
+        dotExpr = MCBinaryExpr.createAdd(MCSymbolRefExpr.create(opSym, outContext),
+            dotExpr, outContext);
+
+        MCInst inst = new MCInst();
+        inst.setOpcode(X86GenInstrNames.ADD32ri);
+        ;
+        inst.addOperand(MCOperand.createReg(mi.getOperand(0).getReg()));
+        ;
+        inst.addOperand(MCOperand.createReg(mi.getOperand(1).getReg()));
+        ;
+        inst.addOperand(MCOperand.createExpr(dotExpr));
+        ;
+        outStreamer.emitInstruction(inst);
+        return;
+      }
     }
-    if (subtarget.isTargetCygMing()) {
-      Util.assertion(false, "Currently, Cygwin, MinGW not supported");
-    }
-    super.doFinalization(m);
-    return false;
+    MCInst inst = new MCInst();
+    InstLowering.lower(mi, inst);
+    outStreamer.emitInstruction(inst);
   }
 
   public void printi8mem(MachineInstr mi, int opNo) {
@@ -138,31 +206,6 @@ public class X86AsmPrinter extends AsmPrinter {
   }
 
   /**
-   * This method used to print an immediate value that ends up being encoded
-   * as a pc-relative value.
-   *
-   * @param mi
-   * @param opNo
-   */
-  public void print_pcrel_imm(MachineInstr mi, int opNo) {
-    MachineOperand mo = mi.getOperand(opNo);
-    switch (mo.getType()) {
-      default:
-        Util.shouldNotReachHere("Unknown pcrel immediate operand");
-      case MO_Immediate:
-        os.print(mo.getImm());
-        return;
-      case MO_MachineBasicBlock:
-        printBasicBlockLabel(mo.getMBB(), false, false, false);
-        return;
-      case MO_GlobalAddress:
-      case MO_ExternalSymbol:
-        printSymbolOperand(mo);
-        return;
-    }
-  }
-
-  /**
    * Print a raw symbol reference operand. THis handles jump tables, constant
    * pools, global address and external symbols, all of which part to a label
    * with various suffixes for relocation types etc.
@@ -174,60 +217,69 @@ public class X86AsmPrinter extends AsmPrinter {
       default:
         Util.shouldNotReachHere("Unknown symbol type!");
       case MO_JumpTableIndex:
-        os.printf("%sJIT%d_%d", mai.getPrivateGlobalPrefix(),
-            getFunctionNumber(), mo.getIndex());
+        getJTISymbol(mo.getIndex(), false).print(os);
         break;
       case MO_ConstantPoolIndex:
-        os.printf("%sCPI%d_%d", mai.getPrivateGlobalPrefix(),
-            getFunctionNumber(), mo.getIndex());
+        getCPISymbol(mo.getIndex()).print(os);
+        printOffset(mo.getOffset());
         break;
       case MO_GlobalAddress:
         GlobalValue gv = mo.getGlobal();
-        StringBuilder suffix = new StringBuilder();
         int ts = mo.getTargetFlags();
-        if (ts == X86II.MO_DARWIN_STUB) suffix.append("$stub");
+        MCSymbol gvSym = null;
+        if (ts == X86II.MO_DARWIN_STUB)
+          gvSym = getSymbolWithGlobalValueBase(gv, "$stub", true);
         else if (ts == X86II.MO_DARWIN_NONLAZY ||
             ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE ||
             ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
             ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE) {
-          suffix.append("$non_lazy_ptr");
-        }
-
-        String name = mangler.getMangledName(gv) + suffix.toString();
-        if (subtarget.isTargetCygMing())
-          name = decorateName(name, gv);
+          gvSym = getSymbolWithGlobalValueBase(gv, "$non_lazy_ptr", true);
+        } else
+          gvSym = getGlobalValueSymbol(gv);
 
         // handle DLLImport linkage
         if (ts == X86II.MO_DLLIMPORT)
-          name = "__imp_" + name;
-        if (ts == X86II.MO_DARWIN_NONLAZY || ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE)
-          gvStubs.put(name, mangler.getMangledName(gv));
-        else if (ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
-            ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE)
-          hiddenGVStubs.put(name, mangler.getMangledName(gv));
-        else if (ts == X86II.MO_DARWIN_STUB)
-          fnStubs.put(name, mangler.getMangledName(gv));
+          gvSym = outContext.getOrCreateSymbol("__imp__" + gvSym.getName());
+
+        if (ts == X86II.MO_DARWIN_NONLAZY || ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE) {
+          MCSymbol sym = getSymbolWithGlobalValueBase(gv,
+              "non_lazy_ptr", true);
+          Util.shouldNotReachHere("Darwin not supported!");
+        } else if (ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
+            ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE) {
+          Util.shouldNotReachHere("Darwin not supported!");
+        } else if (ts == X86II.MO_DARWIN_STUB)
+          Util.shouldNotReachHere("Darwin not supported!");
 
         // If the name begins with a dollar-sign, enclose it in parens.  We do this
         // to avoid having it look like an integer immediate to the assembler.
-        if (name.startsWith("$"))
-          os.printf("(%s)", name);
-        else
-          os.print(name);
+        if (!gvSym.getName().startsWith("$"))
+          gvSym.print(os);
+        else {
+          os.print('(');
+          gvSym.print(os);
+          os.print(')');
+        }
 
         printOffset(mo.getOffset());
         break;
       case MO_ExternalSymbol:
-        name = mangler.makeNameProperly(mo.getSymbolName());
+        MCSymbol symToPrint = null;
         if (mo.getTargetFlags() == X86II.MO_DARWIN_STUB) {
-          fnStubs.put(name + "$stub", name);
-          name += "$stub";
-        }
+          String name = mo.getSymbolName() + "$stub";
+          Util.shouldNotReachHere("Darwin not supported!");
+        } else
+          symToPrint = getExternalSymbolSymbol(mo.getSymbolName());
 
-        if (name.startsWith("$"))
-          os.printf("(%s)", name);
-        else
-          os.print(name);
+        // If the name begins with a dollar-sign, enclose it in parens.  We do this
+        // to avoid having it look like an integer immediate to the assembler.
+        if (!symToPrint.getName().startsWith("$"))
+          symToPrint.print(os);
+        else {
+          os.print('(');
+          symToPrint.print(os);
+          os.print(')');
+        }
         break;
     }
 
@@ -242,7 +294,7 @@ public class X86AsmPrinter extends AsmPrinter {
       case X86II.MO_DARWIN_STUB:
         // there affect the name of symbol, not any suffix.
         break;
-      case X86II.MO_GOT_ABSOLUTE_ADDRESS:
+      case MO_GOT_ABSOLUTE_ADDRESS:
         os.printf(" + [.-");
         printPICBaseSymbol();
         os.printf("]");
@@ -284,12 +336,8 @@ public class X86AsmPrinter extends AsmPrinter {
   }
 
   private void printPICBaseSymbol() {
-    if (subtarget.isTargetDarwin())
-      os.printf("\"L%d$pb\"", getFunctionNumber());
-    else {
-      Util.assertion(subtarget.isTargetELF(), "Don't know how to print PIC label!");
-      os.printf(".LXCC$%d.$piclabel", getFunctionNumber());
-    }
+    X86TargetLowering tli = (X86TargetLowering) tm.getTargetLowering();
+    tli.getPICBaseSymbol(mf, outContext).print(os);
   }
 
   public void printi128mem(MachineInstr mi, int opNo) {
@@ -312,52 +360,18 @@ public class X86AsmPrinter extends AsmPrinter {
     printMemReference(mi, opNo);
   }
 
-  private void emitFunctionHeader(MachineFunction mf) {
-    int fnAlign = mf.getAlignment();
-    Function f = mf.getFunction();
+  @Override
+  protected void printAsmMemoryOperand(MachineInstr mi, int opNo, int asmVariant, String extra) {
+    super.printAsmMemoryOperand(mi, opNo, asmVariant, extra);
+  }
 
-    // todo if (subtarget.isTargetCygMing())
-    switch (f.getLinkage()) {
-      case InternalLinkage:
-        switchSection(".text", f);
-        emitAlignment(fnAlign, f);
-        break;
-      case ExternalLinkage:
-        switchSection(".text", f);
-        emitAlignment(fnAlign, f);
-        os.println("\t.globl\t" + curFuncSym);
-        break;
-      case LinkerPrivateLinkage:
-        switchSection(".text", f);
-        emitAlignment(fnAlign, f);
-        if (subtarget.isTargetDarwin()) {
-          os.printf("\t.globl\t %s%n" + curFuncSym);
-          os.printf("%s%s%n", mai.getWeakDefDirective(),
-              curFuncSym);
-        } else if (subtarget.isTargetCygMing()) {
-          os.printf("\t.globl\t %s%n\t.linkonce discard%n" + curFuncSym);
-        } else
-          os.printf("\t.weak\t%s%n", curFuncSym);
-      default:
-        Util.assertion(false, "Undefined linkage type!");
-        break;
-    }
+  @Override
+  protected void printAsmOperand(MachineInstr mi, int opNo, int asmVariant, String extra) {
+    super.printAsmOperand(mi, opNo, asmVariant, extra);
+  }
 
-    printVisibility(curFuncSym, f.getVisibility());
-    if (subtarget.isTargetELF()) {
-      os.printf("\t.type\t%s,@function\n", curFuncSym);
-    } else if (subtarget.isTargetCygMing()) {
-      // TODO: 17-7-31  Handle targeting to cygwin and mingw.
-    }
+  private void printAsmMRegister(MachineOperand mo, char mode) {
 
-    os.printf("%s:", curFuncSym);
-    if (verboseAsm) {
-      os.padToColumn(mai.getCommentColumn());
-      os.printf("%s ", mai.getCommentString());
-      writeAsOperand(os, f, false, f.getParent());
-    }
-
-    os.println();
   }
 
   /**
@@ -370,58 +384,16 @@ public class X86AsmPrinter extends AsmPrinter {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     setupMachineFunction(mf);
-    os.print("\n\n");
 
-    // print out labels for the function.
-    Function f = mf.getFunction();
-    CallingConv cc = f.getCallingConv();
-
-    // Populate function information map.  Actually, We don't want to populate
-    // non-stdcall or non-fastcall functions' information right now.
-    if (cc == CallingConv.X86_StdCall || cc == CallingConv.X86_FastCall)
-      functionInfoMap.put(f, (X86MachineFunctionInfo) mf.getInfo());
-
-    // Print out constants referenced by the function.
-    emitConstantPool(mf.getConstantPool());
-
-    // print the 'header' of function.
-    emitFunctionHeader(mf);
-
-    int number = 0;
-    for (MachineBasicBlock mbb : mf.getBasicBlocks())
-      mbbNumber.put(mbb, number++);
-
-    boolean hasAnyRealCode = false;
-    // print out the code for each by walking through all basic block.
-    for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
-      // Print a label for the basic block.
-      if (!verboseAsm && (mbb.predIsEmpty() || mbb.isOnlyReachableByFallThrough())) {
-        // This is an entry block or a block that's only reachable via a
-        // fallthrough edge. In non-VerboseAsm mode, don't print the label.
-      } else {
-        // print the label for the basic block.
-        printBasicBlockLabel(mbb, true, true, verboseAsm);
-        os.println();
-      }
-
-      for (MachineInstr mi : mbb.getInsts()) {
-        // Print the assembly for the instruction.
-        if (!mi.isLabel())
-          hasAnyRealCode = true;
-        printMachineInstruction(mi);
-      }
+    if (subtarget.isTargetCOFF()) {
+      Function f = mf.getFunction();
+      os.print("\t.def\t");
+      curFuncSym.print(os);
+      os.print(";\t.scl\t");
+      Util.shouldNotReachHere("COFF is not supported");
     }
-
-    if (subtarget.isTargetDarwin() && !hasAnyRealCode) {
-      os.printf("\tnop\n");
-    }
-
-    if (mai.hasDotTypeDotSizeDirective())
-      os.println("\t.size " + curFuncSym + ", .-" + curFuncSym);
-
-    // todo emitJumpTableInfo(mf.);
-
-    // we didn't change anything.
+    emitFunctionHeader();
+    emitFunctionBody();
     return false;
   }
 
@@ -445,7 +417,8 @@ public class X86AsmPrinter extends AsmPrinter {
     TargetRegisterInfo regInfo = tm.getRegisterInfo();
     switch (mo.getType()) {
       case MO_Register: {
-        Util.assertion(TargetRegisterInfo.isPhysicalRegister(mo.getReg()), "Virtual register should not make it this far!");
+        Util.assertion(TargetRegisterInfo.isPhysicalRegister(mo.getReg()),
+            "Virtual register should not make it this far!");
 
         os.print("%");
         int reg = mo.getReg();
@@ -467,147 +440,13 @@ public class X86AsmPrinter extends AsmPrinter {
         os.print(mo.getImm());
         return;
       }
-      case MO_MachineBasicBlock: {
-        MachineBasicBlock mbb = mo.getMBB();
-        os.print(mai.getPrivateGlobalPrefix());
-        os.print("BB");
-        os.print(mangler.getMangledName(mbb.getBasicBlock().getParent()));
-        os.print("_");
-        os.print(mbbNumber.get(mbb));
-        os.print("\t#");
-        os.print(mbb.getBasicBlock().getName());
-        return;
-      }
-      case MO_GlobalAddress: {
-        boolean isCallOp = modifier != null && modifier.equals("call");
-        boolean isMemOp = modifier != null && modifier.equals("mem");
-        boolean needCloseParen = false;
-
-        GlobalValue gv = mo.getGlobal();
-        GlobalVariable gvar = gv instanceof GlobalVariable ?
-            (GlobalVariable) gv :
-            null;
-
-        boolean isThreadLocal = gvar != null && gvar.isThreadLocal();
-        String name = mangler.getMangledName(gv);
-        if (subtarget.isTargetCygMing())
-          name = decorateName(name, gv);
-
-        if (!isCallOp && !isMemOp)
-          os.print("$");
-        else if (name.charAt(0) == '$') {
-          os.print("(");
-          needCloseParen = true;
-        } else
-          os.print(name);
-
-        printOffset(mo.getOffset());
-
-        if (isThreadLocal) {
-          if (tm.getRelocationModel() == PIC_ || subtarget.is64Bit())
-            os.printf("@TLSGD");
-          else {
-            if (gv.isDeclaration())
-              os.printf("@INDNTPOFF");
-            else
-              os.printf("@NTPOFF");
-          }
-        } else if (isMemOp) {
-          if (shouldPrintGOT(tm, subtarget)) {
-            os.printf("@GOTOFF");
-          } else if (subtarget.isPICStyleRIPRel() && !notRIPRel &&
-              tm.getRelocationModel() != Static) {
-            if (needCloseParen) {
-              needCloseParen = false;
-              os.print(")");
-            }
-
-            os.print("(%rip)");
-          }
-        }
-
-        if (needCloseParen)
-          os.print(")");
-
-        return;
-      }
-      case MO_ExternalSymbol: {
-        boolean isCallOp = modifier != null && modifier.equals("call");
-        boolean needCloseParen = false;
-        String name = mai.getGlobalPrefix();
-        name += mo.getSymbolName();
-
-        if (!isCallOp)
-          os.print("$");
-        else if (name.charAt(0) == '$') {
-          // The name begins with a dollar-sign. In order to avoid having it look
-          // like an integer immediate to the assembler, enclose it in parens.
-          os.print("(");
-          needCloseParen = true;
-        }
-        os.print(name);
-        if (shouldPrintPLT(tm, subtarget)) {
-          String gotName = mai.getGlobalPrefix();
-          gotName += "_GLOBAL_OFFSET_TABLE_";
-          if (gotName.equals(name)) {
-            // HACK! Emit extra offset to PC during printing GOT offset to
-            // compensate for the size of popl instruction. The resulting code
-            // should look like:
-            //   call .piclabel
-            // piclabel:
-            //   popl %some_register
-            //   addl $_GLOBAL_ADDRESS_TABLE_ + [.-piclabel], %some_register
-            os.printf(" + [.-%s]",
-                getPICLabelString(getFunctionNumber(), mai,
-                    subtarget));
-          }
-        }
-        if (needCloseParen)
-          os.print(")");
-        if (!isCallOp && subtarget.isPICStyleRIPRel())
-          os.print("(%rip)");
-
-        return;
-      }
-      case MO_JumpTableIndex: {
-        boolean isMemOp = modifier != null && modifier.equals("mem");
-        if (!isMemOp)
-          os.print("$");
-        os.printf("%sJTI%d_%d", mai.getPrivateGlobalPrefix(),
-            getFunctionNumber(), mo.getIndex());
-
-        if (tm.getRelocationModel() == PIC_) {
-          if (subtarget.isPICStyleStubPIC()) {
-            os.printf("-\"%s%d$pb\"", mai.getPrivateGlobalPrefix(),
-                getFunctionNumber());
-          } else if (subtarget.isPICStyleGOT())
-            os.printf("@GOTOFF");
-        }
-
-        if (isMemOp && subtarget.isPICStyleRIPRel() && !notRIPRel)
-          os.print("(%rip)");
-        return;
-      }
-      case MO_ConstantPoolIndex: {
-        boolean isMemOp = modifier != null && modifier.equals("mem");
-        if (!isMemOp)
-          os.print("$");
-        os.printf("%sCPI%d_%d", mai.getPrivateGlobalPrefix(),
-            getFunctionNumber(), mo.getIndex());
-
-        if (tm.getRelocationModel() == PIC_) {
-          if (subtarget.isPICStyleStubPIC()) {
-            os.printf("-\"%s%d$pb\"", mai.getPrivateGlobalPrefix(),
-                getFunctionNumber());
-          } else if (subtarget.isPICStyleGOT())
-            os.printf("@GOTOFF");
-        }
-
-        printOffset(mo.getOffset());
-        if (isMemOp && subtarget.isPICStyleRIPRel() && !notRIPRel)
-          os.print("(%rip)");
-        return;
-      }
+      case MO_JumpTableIndex:
+      case MO_ConstantPoolIndex:
+      case MO_GlobalAddress:
+      case MO_ExternalSymbol:
+        os.print('$');
+        printSymbolOperand(mo);
+        break;
       default:
         os.print("<unknown operand type>");
     }
@@ -1130,135 +969,67 @@ public class X86AsmPrinter extends AsmPrinter {
   private void printMemReference(MachineInstr mi, int opNo, String modifier) {
     Util.assertion(isMem(mi, opNo), "Invalid memory reference!");
 
+    MachineOperand segment = mi.getOperand(opNo + 4);
+    if (segment.getReg() != 0) {
+      printOperand(mi, opNo + 4, modifier);
+      os.print(':');
+    }
+    printLeaMemReference(mi, opNo, modifier);
+  }
+
+  private void printLeaMemReference(MachineInstr mi,
+                                    int opNo,
+                                    String modifier) {
     MachineOperand baseReg = mi.getOperand(opNo);
-    int scaleVal = (int) mi.getOperand(opNo + 1).getImm();
     MachineOperand indexReg = mi.getOperand(opNo + 2);
     MachineOperand disp = mi.getOperand(opNo + 3);
 
-    boolean notRIPRel = indexReg.getReg() != 0 || baseReg.getReg() != 0;
-    if (disp.isGlobalAddress() ||
-        disp.isConstantPoolIndex() ||
-        disp.isJumpTableIndex()) {
-      printOperand(mi, opNo + 3, "mem", notRIPRel);
-    } else {
-      long dispVal = disp.getImm();
-      if (dispVal != 0 || (indexReg.getReg() == 0 && baseReg.getReg() == 0))
-        os.print(dispVal);
+    // If we really don't want to print out (rip), don't.
+    boolean hasBaseReg = baseReg.getReg() != 0;
+    if (hasBaseReg && modifier != null && modifier.equals("no-rip") &&
+        baseReg.getReg() == X86GenRegisterNames.RIP) {
+      hasBaseReg = false;
     }
 
-    if (indexReg.getReg() != 0 || baseReg.getReg() != 0) {
-      int baseRegOperand = 0, indexRegOperand = 2;
-      if (indexReg.getReg() == ESP || indexReg.getReg() == RSP) {
-        Util.assertion(scaleVal == 1, "Scale not supported for stack pointer!");
-        MachineOperand o = baseReg;
-        baseReg = indexReg;
-        indexReg = o;
+    // HasParenPart - True if we will print out the () part of the mem ref.
+    boolean hasParenPart = indexReg.getReg() != 0 || hasBaseReg;
 
-        // swap baseRegOperand and indexRegOperand.
-        baseRegOperand = baseRegOperand ^ indexRegOperand;
-        indexRegOperand = baseRegOperand ^ indexRegOperand;
-        baseRegOperand = baseRegOperand ^ indexRegOperand;
-      }
+    if (disp.isImm()) {
+      long dispVal = disp.getImm();
+      if (dispVal != 0 || !hasParenPart)
+        os.print(dispVal);
+    } else {
+      Util.assertion(disp.isGlobalAddress() ||
+          disp.isConstantPoolIndex() ||
+          disp.isJumpTableIndex() ||
+          disp.isExternalSymbol());
+      printSymbolOperand(mi.getOperand(opNo + 3));
+    }
 
-      os.print("(");
-      if (baseReg.getReg() != 0)
-        // Must add a offset(opNo) on baseRegOperand
-        printOperand(mi, baseRegOperand + opNo, modifier);
+    if (hasParenPart) {
+      Util.assertion(indexReg.getReg() != X86GenRegisterNames.ESP,
+          "X86 doesn't allow scaling by ESP");
+      os.print('(');
+      if (hasBaseReg)
+        printOperand(mi, opNo, modifier);
+
       if (indexReg.getReg() != 0) {
-        os.printf(",");
-        printOperand(mi, indexRegOperand + opNo, modifier);
+        os.print(',');
+        printOperand(mi, opNo + 2, modifier);
+        long scaleVal = mi.getOperand(opNo + 2).getImm();
         if (scaleVal != 1)
           os.printf(",%d", scaleVal);
       }
-      os.print(")");
+      os.print(')');
     }
   }
-
-  public void printSSECC(MachineInstr mi, int op) {
-    int value = (int) mi.getOperand(op).getImm();
-    Util.assertion(value <= 7, "Invalid ssecc argument!");
-    switch (value) {
-      case 0:
-        os.print("eq");
-        break;
-      case 1:
-        os.print("lt");
-        break;
-      case 2:
-        os.print("le");
-        break;
-      case 3:
-        os.print("unord");
-        break;
-      case 4:
-        os.print("neq");
-        break;
-      case 5:
-        os.print("nlt");
-        break;
-      case 6:
-        os.print("nle");
-        break;
-      case 7:
-        os.print("ord");
-        break;
-    }
-  }
-
-  /**
-   * Prints each machine instruction in AT&T syntax to the current output
-   * stream.
-   *
-   * @param mi
-   */
-  private void printMachineInstruction(MachineInstr mi) {
-    EmittedInsts.inc();
-    os.print('\t');
-    switch (mi.getOpcode()) {
-      case TargetInstrInfo.PHI:
-        Util.shouldNotReachHere("PHI should be eliminated");
-        return;
-      case TargetInstrInfo.DBG_LABEL:
-      case TargetInstrInfo.EH_LABEL:
-      case TargetInstrInfo.GC_LABEL:
-        printLabel(mi);
-        return;
-      case TargetInstrInfo.INLINEASM:
-        os.print('\t');
-        printInlineAsm(mi);
-        return;
-      case TargetInstrInfo.DECLARE:
-        printDeclare(mi);
-        return;
-      case TargetInstrInfo.EXTRACT_SUBREG:
-        Util.shouldNotReachHere("EXTRACT_SUBREG should be eliminated");
-        return;
-      case TargetInstrInfo.INSERT_SUBREG:
-        Util.shouldNotReachHere("INSERT_SUBREG should be eliminated");
-        return;
-      case TargetInstrInfo.IMPLICIT_DEF:
-        printImplicitDef(mi);
-        return;
-      case TargetInstrInfo.SUBREG_TO_REG:
-        Util.shouldNotReachHere("SUBREG_TO_REG should be eliminated");
-        return;
-      default:
-        printInstruction(mi);
-    }
-    //if (!BackendCmdOptions.NewAsmPrinter.value)
-    {
-      // Call the autogenerated instruction printer routines.
-
-    }
-  }
-
-  protected abstract boolean printInstruction(MachineInstr mi);
 
   public static X86AsmPrinter createX86AsmCodeEmitter(
       OutputStream os,
       X86TargetMachine tm,
-      MCAsmInfo tai,
-      boolean verbose) {
-    return new X86GenATTAsmPrinter(os, tm, tai, verbose);
+      MCSymbol.MCContext ctx,
+      MCStreamer streamer,
+      MCAsmInfo mai) {
+    return new X86AsmPrinter(os, tm, ctx, streamer, mai);
   }
 }

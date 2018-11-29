@@ -46,6 +46,14 @@ public abstract class TargetSubtarget {
     return false;
   }
 
+  public boolean isTargetWindows() {
+    return false;
+  }
+
+  public boolean isTargetCOFF() {
+    return isTargetCygMing() || isTargetWindows();
+  }
+
   public void adjustSchedDependency(SUnit opSU, SUnit su, SDep dep) {
   }
 

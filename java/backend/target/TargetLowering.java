@@ -242,6 +242,7 @@ public abstract class TargetLowering {
   protected boolean benefitFromCodePlacementOpt;
 
   protected ArrayList<APFloat> legalFPImmediates;
+  private TargetLoweringObjectFile tlof;
 
   public TargetLowering(TargetMachine tm) {
     this.tm = tm;
@@ -313,9 +314,13 @@ public abstract class TargetLowering {
     initCmpLibcallCCs();
     initLibcallCallingConvs();
 
-    MCAsmInfo asmInfo = tm.getTargetAsmInfo();
+    MCAsmInfo asmInfo = tm.getMCAsmInfo();
     if (asmInfo == null || !asmInfo.hasDotLocAndDotFile())
       setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
+  }
+
+  public TargetLoweringObjectFile getObjFileLowering() {
+    return tlof;
   }
 
   public boolean isIntDivCheap() {

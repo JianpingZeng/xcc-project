@@ -50,4 +50,12 @@ public class MCInst {
   public MCOperand getOperand(int idx) {
     return operands.get(idx);
   }
+
+  public void setOpcode(int opc) {
+    opcode = opc;
+  }
+
+  public void setOperand(int idx, MCOperand op) {
+    operands.set(idx, op);
+  }
 }

@@ -19,6 +19,8 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCSymbol;
 import backend.support.AttrList;
 import backend.support.Attribute;
 import backend.support.CallingConv;
@@ -5717,5 +5719,18 @@ public class X86TargetLowering extends TargetLowering {
   @Override
   public boolean isNarrowingProfitable(EVT vt1, EVT vt2) {
     return !(vt1.equals(new EVT(MVT.i32)) && vt2.equals(new EVT(MVT.i16)));
+  }
+
+  /**
+   * Return the X86-32 PIC base.
+   * @param mf
+   * @param ctx
+   * @return
+   */
+  public MCSymbol getPICBaseSymbol(MachineFunction mf, MCSymbol.MCContext ctx) {
+    MCAsmInfo mai = getTargetMachine().getMCAsmInfo();
+    return ctx.getOrCreateSymbol(
+        mai.getPrivateGlobalPrefix() +
+            mf.getFunctionNumber() + "$pb");
   }
 }

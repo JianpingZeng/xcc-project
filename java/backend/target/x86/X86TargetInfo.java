@@ -65,7 +65,7 @@ public class X86TargetInfo {
   {
         /*
         FIXME currently only supporting ATT syntax assembler.
-        if (tm.getTargetAsmInfo().getAssemblerDialect() == 1)
+        if (tm.getMCAsmInfo().getAssemblerDialect() == 1)
             return new X86IntelAsmPrinter(os, tm, asmInfo, verbose);
         */
     return X86AsmPrinter.createX86AsmCodeEmitter(os, (X86TargetMachine) tm, asmInfo, verbose);

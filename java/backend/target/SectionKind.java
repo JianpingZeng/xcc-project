@@ -168,7 +168,7 @@ public class SectionKind {
   }
 
   public boolean isBSS()  { return K == BSS || K == BSSLocal || K == BSSExtern; }
-  boolean isBSSLocal()  { return K == BSSLocal; }
+  public boolean isBSSLocal()  { return K == BSSLocal; }
   public boolean isBSSExtern()  { return K == BSSExtern; }
 
   public boolean isCommon()  { return K == Common; }

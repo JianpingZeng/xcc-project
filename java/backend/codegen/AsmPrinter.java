@@ -18,10 +18,8 @@ package backend.codegen;
 
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
-import backend.mc.MCAsmInfo;
+import backend.mc.*;
 import backend.mc.MCAsmInfo.MCSymbolAttr;
-import backend.mc.MCStreamer;
-import backend.mc.MCSymbol;
 import backend.pass.AnalysisUsage;
 import backend.support.LLVMContext;
 import backend.support.MachineFunctionPass;
@@ -30,21 +28,16 @@ import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
-import tools.FormattedOutputStream;
+import gnu.trove.list.array.TIntArrayList;
+
 import tools.TextUtils;
 import tools.Util;
 
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Objects;
-
-import static backend.mc.MCStreamer.createAsmStreamer;
 import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.Static;
-import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;
-import static backend.value.GlobalValue.VisibilityTypes.ProtectedVisibility;
-import static tools.Util.doubleToBits;
-import static tools.Util.floatToBits;
 
 /**
  * This is a common base class be used for target-specific asmwriters. This
@@ -74,7 +67,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   /**
    * The output stream on which the assembly code will be emitted.
    */
-  protected FormattedOutputStream os;
+  protected PrintStream os;
   /**
    * The target machine text.
    */
@@ -106,7 +99,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
                        MCSymbol.MCContext ctx,
                        MCStreamer streamer, MCAsmInfo mai) {
     functionNumber = 0;
-    this.os = new FormattedOutputStream(os);
+    this.os = new PrintStream(os);
     this.tm = tm;
     this.mai = mai;
     this.tri = tm.getRegisterInfo();
@@ -184,98 +177,86 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       return;
 
     // Check to see if this is a special global used by LLVM, if so, emit it.
-    if (emitSpecialLLVMGlobal(gv)) {
-      if (subtarget.isTargetDarwin() && tm.getRelocationModel() == Static) {
-        if (gv.getName().equals("llvm.global_ctors"))
-          os.printf(".reference .constructors_used\n");
-        else if (gv.getName().equals("llvm.global_dtors"))
-          os.printf(".reference .destructors_used\n");
+    if (emitSpecialLLVMGlobal(gv))
+      return;
+    MCSymbol gsym = getGlobalValueSymbol(gv);
+    emitVisibility(gsym, gv.getVisibility());
+
+    if (mai.hasDotTypeDotSizeDirective())
+      outStreamer.emitSymbolAttribute(gsym, MCSymbolAttr.MCSA_ELF_TypeObject);;
+
+    SectionKind kind = TargetLoweringObjectFile.getKindForGlobal(gv, tm);
+    long size = td.getTypeAllocSize(gv.getType());
+    int alignLog = Util.log2(td.getPrefTypeAlignment(gv.getType()));
+
+    // Handle common and BSS local symbols (.lcomm).
+    if (kind.isCommon() || kind.isBSSLocal()) {
+      if (size == 0) size = 1;
+
+      if (verboseAsm) {
+        writeAsOperand(outStreamer.getCommentOS(),
+            gv, false, gv.getParent());
+        outStreamer.getCommentOS().println();
       }
+
+      // Handle common symbols.
+      if (kind.isCommon()) {
+        // .comm _foo, 42, 4
+        outStreamer.emitCommonSymbol(curFuncSym, size, 1 << alignLog);;
+        return;
+      }
+
+      // Handle local BSS symbols.
+      if (mai.hasMachoZeroFillDirective()) {
+        MCSection theSection =
+            getObjFileLowering().sectionForGlobal(gv, kind, mangler, tm);
+        // .zerofill __DATA, __bss, _foo, 400, 5
+        outStreamer.emitZeroFill(theSection, gsym, (int) size, 1 << alignLog);;
+        return;
+      }
+
+      if (mai.hasLCOMMDirective()) {
+        // .lcomm _foo, 42
+        outStreamer.emitLocalCommonSymbol(gsym, size);
+        return;
+      }
+
+      // .local _foo
+      outStreamer.emitSymbolAttribute(gsym, MCSymbolAttr.MCSA_Local);;
+      // .comm _foo, 42, 4
+      outStreamer.emitCommonSymbol(gsym, size, 1 << alignLog);;
       return;
     }
 
-    String name = mangler.getMangledName(gv);
-    Constant c = gv.getInitializer();
-    Type ty = c.getType();
-    long size = td.getTypePaddedSize(ty);
-    long align = td.getPrefTypeAlignment(ty);
+    MCSection theSection = getObjFileLowering().sectionForGlobal(gv, kind, mangler, tm);
 
-    printVisibility(name, gv.getVisibility());
-    if (subtarget.isTargetELF())
-      os.printf("\t.type\t%s,@object\n", name);
-
-    switchSection(mai.getSectionForGlobal(gv));
-
-    if (c.isNullValue() && !gv.hasSection()) {
-      if (gv.hasExternalLinkage()) {
-        String directive = mai.getZeroFillDirective();
-        if (directive != null) {
-          os.printf("\t.globl %s\n", name);
-          os.printf("%s__DATA, __common, %s, %d, %d\n", directive,
-              name, size, align);
-          return;
-        }
-      }
-
-      if (!gv.isThreadLocal() && (gv.hasLocalLinkage())) {
-        if (size == 0)
-          size = 1;
-
-        if (mai.getLCOMMDirective() != null) {
-          if (gv.hasLocalLinkage()) {
-            os.printf("%s%s,%d", mai.getLCOMMDirective(), name, size);
-            if (subtarget.isTargetDarwin())
-              os.printf(",%d", align);
-          } else {
-            os.printf("%s%s,%d", mai.getCOMMDirective(), name, size);
-            if (mai.getCOMMDirectiveTakesAlignment())
-              os.printf(",%d", mai.getAlignmentIsInBytes() ?
-                  (1 << align) :
-                  align);
-          }
-        } else {
-          if (!subtarget.isTargetCygMing()) {
-            if (gv.hasLocalLinkage())
-              os.printf("\t.local\t%s\n", name);
-          }
-
-          os.printf("%s%s,%d", mai.getCOMMDirective(), name, size);
-          if (mai.getCOMMDirectiveTakesAlignment())
-            os.printf(",%d", mai.getAlignmentIsInBytes() ?
-                (1 << align) :
-                align);
-        }
-        if (verboseAsm) {
-          os.padToColumn(mai.getCommentColumn());
-          os.printf("%s ", mai.getCommentString());
-        }
-        os.println();
-        return;
-      }
+    // Handle the zerofill directive on darwin, which is a special form of BSS
+    // emission.
+    if (kind.isBSSExtern() && mai.hasMachoZeroFillDirective()) {
+      // .globl _foo
+      outStreamer.emitSymbolAttribute(gsym, MCSymbolAttr.MCSA_Global);;
+      // .zerofill __DATA, __common, _foo, 400, 5
+      outStreamer.emitZeroFill(theSection, gsym, (int) size, 1<<alignLog);;
+      return;
     }
 
-    switch (gv.getLinkage()) {
-      case ExternalLinkage:
-        os.printf("\t.globl %s\n", name);
-      case PrivateLinkage:
-      case InternalLinkage:
-        break;
-      default:
-        Util.assertion(false, "Unknown linkage type!");
-    }
+    outStreamer.switchSection(theSection);
+    emitLinkage(gv.getLinkage(), gsym);
+    emitAlignment(alignLog, gv);
 
-    emitAlignment((int) align, gv);
-    os.printf("%s:", name);
     if (verboseAsm) {
-      os.padToColumn(mai.getCommentColumn());
-      os.printf("%s ", mai.getCommentString());
-      writeAsOperand(os, gv, false, gv.getParent());
+      writeAsOperand(outStreamer.getCommentOS(),
+          gv, false, gv.getParent());
+      outStreamer.getCommentOS().println();
     }
-    os.println();
-    emitGlobalConstant(c);
 
-    if (mai.hasDotTypeDotSizeDirective())
-      os.printf("\t.size\t%s, %d\n", name, size);
+    outStreamer.emitLabel(gsym);
+    emitGlobalConstant(gv.getInitializer(), 0);
+    if (mai.hasDotTypeDotSizeDirective()) {
+      // .size foo, 42
+      outStreamer.emitELFSize(gsym, MCConstantExpr.create(size, outContext));;
+    }
+    outStreamer.addBlankLine();
   }
 
   public static boolean isScale(MachineOperand mo) {
@@ -311,17 +292,179 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return false;
   }
 
-
+  /**
+   * this method emits the header of current function, such as
+   * constant pool etc.
+   */
   public void emitFunctionHeader() {
     emitConstantPool();
+
+    // print the header of function.
+    Function f = mf.getFunction();
+    outStreamer.switchSection(getObjFileLowering().sectionForGlobal(f, mangler, tm));;
+    emitVisibility(curFuncSym, f.getVisibility());
+    emitLinkage(f.getLinkage(), curFuncSym);
+    emitAlignment(mf.getAlignment(), f);
+
+    if (mai.hasDotTypeDotSizeDirective())
+      outStreamer.emitSymbolAttribute(curFuncSym, MCSymbolAttr.MCSA_ELF_TypeFunction);;
+
+    if (verboseAsm) {
+      writeAsOperand(outStreamer.getCommentOS(),
+          f, false, f.getParent());
+      outStreamer.getCommentOS().println();
+    }
+
+    // Emit the CurrentFnSym.  This is a virtual function to allow targets to
+    // do their wild and crazy things as required.
+    emitFunctionEntryLabel();
+
+    // TODO add some workaround for linkonce linkage on Cygwin/Mingw.
+    // TODO emit pre-function debug eh information.
   }
 
-  public void emitFunctionBody() {}
-
-  protected MCSymbol getGlobalValueSymbol(GlobalValue gv) {
-    String name = mangler.getMangledName(gv);
-    return outContext.getOrCreateSymbol(name);
+  /**
+   * Emit the label that is the entrypoint for the
+   * function. This can be overrided by targets as
+   * required to do other stuff.
+   */
+  protected void emitFunctionEntryLabel() {
+    outStreamer.emitLabel(curFuncSym);
   }
+
+  protected void emitVisibility(MCSymbol sym, GlobalValue.VisibilityTypes visibility) {
+    MCSymbolAttr attr = MCSymbolAttr.MCSA_Invalid;
+
+    switch (visibility) {
+      default: break;
+      case HiddenVisibility:
+        attr = mai.getHiddenVisibilityAttr();
+        break;
+      case ProtectedVisibility:
+        attr = mai.getProtectedVisibilityAttr();
+        break;
+    }
+
+    if (attr != MCSymbolAttr.MCSA_Invalid)
+      outStreamer.emitSymbolAttribute(sym, attr);
+  }
+
+  protected void emitLinkage(GlobalValue.LinkageType linkage,
+                             MCSymbol sym) {
+    switch (linkage) {
+      case CommonLinkage:
+      case LinkerPrivateLinkage:
+        if (mai.getWeakDefDirective() != null) {
+          // .globl _foo
+          outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);;
+          // .weak_definition _foo
+          outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_WeakDefinition);;
+        }
+        else if (mai.getLinkOnceDirective() != null) {
+          String linkOnce = mai.getLinkOnceDirective();
+          // .globl _foo
+          outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);;
+          os.print(linkOnce);
+        }
+        else {
+          // .weak _foo
+          outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Weak);;
+        }
+        break;
+      case ExternalLinkage:
+        // if the external or appending declare as a global symbol,.
+        // .globl _foo
+        outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);;
+        break;
+      case PrivateLinkage:
+      case InternalLinkage:
+        break;
+      default:
+        Util.shouldNotReachHere("Unknown linkage type!");
+    }
+  }
+
+  /**
+   * This method emits the body and trailer for a
+   * function.
+   */
+  public void emitFunctionBody() {
+    // Emit target-specific gunk before the function body.
+    emitFunctionBodyStart();
+
+    // Print out code for the function.
+    boolean hasAnyRealCode = false;
+    for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
+      // print a label for the machine block.
+      emitBasicBlockStart(mbb);
+      for (MachineInstr mi : mbb.getInsts()) {
+        // print the assembly code for the machine instr.
+        if (!mi.isLabel())
+          hasAnyRealCode = true;
+
+        // TODO processDebugLoc();
+        if (verboseAsm)
+          emitComments(mi, outStreamer.getCommentOS());;
+
+          switch (mi.getOpcode()) {
+            case TargetInstrInfo.DBG_LABEL:
+            case TargetInstrInfo.EH_LABEL:
+            case TargetInstrInfo.GC_LABEL:
+              printLabel(mi);
+              break;
+            case TargetInstrInfo.INLINEASM:
+              printInlineAsm(mi);
+              break;
+            case TargetInstrInfo.IMPLICIT_DEF:
+              printImplicitDef(mi);
+              break;
+            case TargetInstrInfo.DECLARE:
+              printDeclare(mi);
+              break;
+            default:
+              emitInstruction(mi);
+              break;
+          }
+
+          // TODO print debug information.
+      }
+    }
+
+    // If the function is empty and the object file uses .subsections_via_symbols,
+    // then we need to emit *something* to the function body to prevent the
+    // labels from collapsing together.  Just emit a 0 byte
+    if (mai.hasSubsectionsViaSymbols() && !hasAnyRealCode)
+      outStreamer.emitIntValue(0, 1, 0);
+
+    // Emit target-specific gunk after the function body.
+    emitFunctionBodyEnd();
+
+    if (mai.hasDotTypeDotSizeDirective()) {
+      os.printf("\t.size\t");
+      curFuncSym.print(os);
+      os.print(", .-");
+      curFuncSym.print(os);
+      os.println();
+    }
+
+    // Emit post-function debug information.
+    // TODO if (mai.doesSupportDebugInformation() || mai.doesSupportExceptionHandling())
+
+    // Print out jump tables referenced by the function.
+    emitJumpTableInfo();
+    outStreamer.addBlankLine();
+  }
+
+  protected abstract void emitInstruction(MachineInstr mi);
+
+  private void emitJumpTableInfo() {
+    Util.shouldNotReachHere();
+  }
+
+  private void emitFunctionBodyEnd() { }
+  private void emitBasicBlockStart(MachineBasicBlock mbb) { }
+
+  protected void emitFunctionBodyStart() {}
 
   /**
    * This should be called when a new machine function is being processed when
@@ -335,12 +478,19 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       li = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
   }
 
-  protected int getFunctionNumber() {
-    return functionNumber;
+  private class SectionCPs {
+    MCSection sec;
+    int alignment;
+    TIntArrayList cpes;
+    SectionCPs(MCSection s, int align) {
+      sec = s;
+      alignment = align;
+      cpes = new TIntArrayList();
+    }
   }
 
-  protected void incrementFnNumeber() {
-    functionNumber++;
+  protected int getFunctionNumber() {
+    return mf.getFunctionNumber();
   }
 
   /**
@@ -354,59 +504,87 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     ArrayList<MachineConstantPoolEntry> consts = mcp.getConstants();
     if (consts.isEmpty()) return;
 
-    Function f = mf.getFunction();
-    outStreamer.switchSection(getObjFileLowering().sectionForGlobal(f, mangler, tm));
-    emitvisibility(curFuncSym, f.getVisibility());
-    emitLinkage(f.getLinkage(), curFuncSym);
-    emitAlignment(mf.getAlignment(), f);
-    if (mai.hasDotTypeDotSizeDirective())
-      outStreamer.emitSymbolAttribute(curFuncSym, MCSymbolAttr.MCSA_ELF_TypeFunction);
-
-    if (verboseAsm) {
-      writeAsOperand(outStreamer.getCommentOS(), f, false, f.getParent());
-      outStreamer.getCommentOS().println();
-    }
-
-
-    emitFunctionEntryLabel();
-
-    TargetData td = tm.getTargetData();
-    switchSection(mai.getConstantPoolSectionDirective(), null);
-    int align = mcp.getContantPoolAlignment();
-    emitAlignment(align, null);
-    long offset = 0;
+    ArrayList<SectionCPs> cpSections = new ArrayList<>();
     for (int i = 0, e = consts.size(); i < e; i++) {
-      // Emit inter-object padding for alignment.
-      int alignMask = align - 1;
-      long newOffset = (offset + alignMask) & ~(alignMask);
-      emitZero(newOffset - offset);
+      MachineConstantPoolEntry entry = consts.get(i);
+      int align = entry.getAlignment();
 
-      long entSize = td.getTypeSize(consts.get(i).getType());
-      offset = newOffset + entSize;
-
-      os.printf("%sCPI%d_%d:",
-          mai.getPrivateGlobalPrefix(),
-          getFunctionNumber(), i);
-      if (verboseAsm) {
-        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-        os.printf("%s constant ", mai.getCommentString());
-        writeTypeSymbol(os, consts.get(i).getType(), null);
+      SectionKind kind = null;
+      switch (entry.getRelocationInfo()) {
+        default:
+          Util.shouldNotReachHere("Unknown section kind");
+          break;
+        case 2: kind = SectionKind.getReadOnlyWithRel(); break;
+        case 1: kind = SectionKind.getReadOnlyWithRelLocal(); break;
+        case 0: {
+          switch ((int)tm.getTargetData().getTypeAllocSize(entry.getType())) {
+            case 4:
+              kind = SectionKind.getMergeableConst4(); break;
+            case 8:
+              kind = SectionKind.getMergeableConst8(); break;
+            case 16:
+              kind = SectionKind.getMergeableConst16(); break;
+            default:
+              kind = SectionKind.getMergeableConst(); break;
+          }
+        }
       }
-      os.println();
-      if (consts.get(i).isMachineConstantPoolEntry()) {
-        emitMachineConstantPoolValue(consts.get(i).getValueAsCPV());
-      } else {
-        Constant c = consts.get(i).getValueAsConstant();
-        emitGlobalConstant(c);
+
+      MCSection s = getObjFileLowering().getSectionForConstant(kind);
+
+      int secIdx = cpSections.size();
+      cpSections.add(new SectionCPs(s, align));
+      if (align > cpSections.get(secIdx).alignment)
+        cpSections.get(secIdx).alignment = align;
+
+      cpSections.get(secIdx).cpes.add(i);
+    }
+
+    // Now print stuff into the calculated sections.
+    for (int i = 0, e = cpSections.size(); i < e; i++) {
+      outStreamer.switchSection(cpSections.get(i).sec);
+      emitAlignment(Util.log2(cpSections.get(i).alignment));
+
+      int offset = 0;
+      for (int j = 0, ee = cpSections.get(i).cpes.size(); j < ee; j++) {
+        int cpi = cpSections.get(i).cpes.get(j);
+        MachineConstantPoolEntry cpe = consts.get(cpi);
+
+        // Emit inter-object padding for alignment.
+        int alignMask = cpe.getAlignment();
+        int newOffset = (offset + alignMask) & ~alignMask;
+        outStreamer.emitFill(newOffset - offset, 0, 0);;
+
+        Type ty = cpe.getType();
+        offset = (int) (newOffset + tm.getTargetData().getTypeAllocSize(ty));
+
+        // Emit the label with a comment on it.
+        if (verboseAsm) {
+          outStreamer.getCommentOS().print("constant pool ");
+          writeTypeSymbolic(outStreamer.getCommentOS(),
+              cpe.getType(), mf.getFunction().getParent());
+          outStreamer.getCommentOS().println();
+        }
+
+        outStreamer.emitLabel(getCPISymbol(cpi));
+
+        if (cpe.isMachineConstantPoolEntry())
+          emitMachineConstantPoolValue(cpe.getValueAsCPV());
+        else
+          emitGlobalConstant(cpe.getValueAsConstant(), 0);
       }
     }
+  }
+
+  private TargetLoweringObjectFile getObjFileLowering() {
+    return tm.getTargetLowering().getObjFileLowering();
   }
 
   private void emitMachineConstantPoolValue(MachineConstantPoolValue cpv) {
     Util.shouldNotReachHere("Target does not support EmitMachineConstantPoolValue");
   }
 
-  public static FormattedOutputStream writeTypeSymbol(FormattedOutputStream os, Type ty, Module m) {
+  public static PrintStream writeTypeSymbolic(PrintStream os, Type ty, Module m) {
     os.print(" ");
     if (m != null) {
       return os;
@@ -429,11 +607,17 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   protected void emitAlignment(int numBits, GlobalValue gv) {
     if (gv != null && gv.getAlignment() != 0)
       numBits = Util.log2(gv.getAlignment());
+    numBits = Math.max(numBits, 0);
     if (numBits == 0) return;
 
-    boolean alignIsInByte = mai.isAlignIsInByte();
-    if (alignIsInByte) numBits = 1 << numBits;
-    os.println(mai.getAlignDirective() + (1 << numBits));
+    if (getCurrentSection().getKind().isText())
+      outStreamer.emitCodeAlignment(1<<numBits, 0);
+    else
+      outStreamer.emitValueToAlignment(1<<numBits, 0, 1, 0);
+  }
+
+  private MCSection getCurrentSection() {
+    return outStreamer.getCurrentSection();
   }
 
   /**
@@ -459,202 +643,84 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    *
    * @param c
    */
-  protected void emitGlobalConstant(Constant c) {
+  protected void emitGlobalConstant(Constant c, int addrSpace) {
     TargetData td = tm.getTargetData();
-    String data64BitDirective = mai.getData64bitsDirective();
-    String data32BitDirective = mai.getData32bitsDirective();
-    String data8BitDirective = mai.getData8bitsDirective();
-    String data16BitDirective = mai.getData16bitsDirective();
-    String commentString = mai.getCommentString();
-
-    if (c.isNullValue() || c instanceof UndefValue) {
-      emitZero(td.getTypeSize(c.getType()));
+    if (c instanceof ConstantAggregateZero || c instanceof UndefValue) {
+      long size = td.getTypeAllocSize(c.getType());
+      if (size == 0) size = 1;
+      outStreamer.emitZeros(size, addrSpace);
       return;
-    } else if (c instanceof ConstantArray) {
-      ConstantArray ca = (ConstantArray) c;
-      if (ca.isString()) {
-        int numElts = ca.getNumOfOperands();
-        String ascizDirective = mai.getAscizDirective();
-        if (ascizDirective != null && numElts != 0
-            && ((ConstantInt) ca.operand(numElts - 1)).getZExtValue() == 0) {
-          os.print(ascizDirective);
-          printAsCString(os, ca, numElts - 1);
-        } else {
-          os.print(mai.getAsciiDirective());
-          printAsCString(os, ca, numElts);
-        }
-        os.println();
-      } else {
-        // Not a string.
-        for (int i = 0, e = ca.getNumOfOperands(); i < e; i++) {
-          emitGlobalConstant(ca.operand(i));
-        }
+    }
+    else if (c instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) c;
+      int size = (int) td.getTypeAllocSize(ci.getType());
+      switch (size) {
+        case 1:
+        case 2:
+        case 4:
+        case 8:
+          if (verboseAsm)
+            outStreamer.getCommentOS().printf("0x%%%x\n", ci.getZExtValue());
+          outStreamer.emitIntValue(ci.getZExtValue(), size, addrSpace);;
+          return;
+        default:
+          emitGlobalConstantLargeInt(ci, addrSpace, this);
+          return;
       }
+    }
+    else if (c instanceof ConstantArray) {
+      ConstantArray ca = (ConstantArray) c;
+      emitGlobalConstantArray(ca, addrSpace, this);
       return;
     } else if (c instanceof ConstantStruct) {
       ConstantStruct cas = (ConstantStruct) c;
-      TargetData.StructLayout layout = td.getStructLayout(cas.getType());
-      int sizeSoFar = 0;
-      for (int i = 0, e = cas.getNumOfOperands(); i < e; i++) {
-        Constant field = cas.operand(i);
-
-        //Checking if padding is needed and insert one or more zeros.
-        long fieldSize = td.getTypeSize(field.getType());
-        long padSize = (i == e - 1 ? layout.structSize
-            : layout.memberOffsets.get(i + 1) -
-            layout.memberOffsets.get(i)) - fieldSize;
-        sizeSoFar += fieldSize + padSize;
-
-        emitGlobalConstant(field);
-        emitZero(padSize);
-      }
-      Util.assertion(sizeSoFar == layout.structSize, "layout of constant struct may be incorrect!");
-
+      emitGlobalConstantStruct(cas, addrSpace, this);
       return;
     } else if (c instanceof ConstantFP) {
       // FP Constants are printed as integer constants to avoid losing
       // precision.
       ConstantFP fp = (ConstantFP) c;
-      if (fp.getType() == LLVMContext.DoubleTy) {
-        double val = fp.getValueAPF().convertToDouble();
-        if (data64BitDirective != null) {
-          os.println(data64BitDirective + doubleToBits(val)
-              + "\t" + commentString + "double value: " + val);
-        } else if (td.isLittleEndian()) {
-          os.print(data32BitDirective + (int) (doubleToBits(val)));
-          os.print("\t" + commentString + "double least significant word");
-          os.println(val);
-
-          os.print(data32BitDirective + (int) (doubleToBits(val) >> 32));
-          os.print("\t" + commentString + "double most significant word");
-          os.println(val);
-        } else {
-          // big endian.
-          os.print(data32BitDirective + (int) (doubleToBits(val) >> 32));
-          os.print("\t" + commentString + "double most significant word");
-          os.println(val);
-
-          os.print(data32BitDirective + (int) doubleToBits(val));
-          os.print("\t" + commentString + "double least significant word");
-          os.println(val);
-
-        }
-        return;
-      } else {
-        float val = fp.getValueAPF().convertToFloat();
-        os.print(data32BitDirective + floatToBits((float) val));
-        os.println("\t" + commentString + " float " + val);
-        return;
-      }
-    } else if (c.getType() == LLVMContext.Int64Ty) {
-      if (c instanceof ConstantInt) {
-        ConstantInt ci = (ConstantInt) c;
-        long val = ci.getZExtValue();
-
-        if (data64BitDirective != null)
-          os.println(data64BitDirective + val);
-        else if (td.isLittleEndian()) {
-          os.print(data32BitDirective + (int) val);
-          os.println("\t" + commentString + "Double-word least significant word" + val);
-
-          os.print(data32BitDirective + (int) (val >> 32));
-          os.println("\t" + commentString + "Double-world most significant word" + val);
-        } else {
-          os.print(data32BitDirective + (int) (val >> 32));
-          os.println("\t" + commentString + "Double-world most significant word" + val);
-
-          os.print(data32BitDirective + (int) val);
-          os.println("\t" + commentString + "Double-word least significant word" + val);
-        }
-        return;
-      }
+      emitGlobalConstantFP(fp, addrSpace, this);
+      return;
     }
-
-    Type type = c.getType();
-    switch (type.getTypeID()) {
-      case Type.IntegerTyID:
-        int sz = (int) td.getTypeSizeInBits(type);
-        switch (sz) {
-          case 8:
-            os.print(data8BitDirective);
-            break;
-          case 16:
-            os.print(data16BitDirective);
-            break;
-          case 32:
-            os.print(data32BitDirective);
-            break;
-          case 64:
-            Util.assertion(data64BitDirective != null, "Target cannot handle 64-bit constant!");
-            os.print(data64BitDirective);
-            break;
-          default:
-            Util.assertion(false, "Undefined integral type");
-        }
-        break;
-      case Type.PointerTyID:
-        if (td.getPointerMemSize() == 8) {
-          os.print(data64BitDirective);
-          break;
-        }
-        break;
-      case Type.FloatTyID:
-      case Type.DoubleTyID:
-        Util.assertion(false, "Should have already been handled above!");
-        break;
+    else if (c instanceof ConstantVector) {
+      emitGlobalConstantVector((ConstantVector)c, addrSpace, this);
+      return;
     }
-    emitConstantValueOnly(c);
-    os.println();
+    else if (c instanceof ConstantPointerNull) {
+      int size = (int) td.getTypeAllocSize(c.getType());
+      outStreamer.emitIntValue(0, size, addrSpace);
+      return;
+    }
+    // Otherwise, it must be a ConstantExpr.  Lower it to an MCExpr, then emit it
+    // thread the streamer with EmitValue.
+    outStreamer.emitValue(lowerConstant(c, this),
+        (int) td.getTypeStoreSize(c.getType()),
+        addrSpace);
   }
 
-  /**
-   * Print out the specified constant, without a storage class.  Only the
-   * constants valid in constant expressions can occur here.
-   *
-   * @param c
-   */
-  private void emitConstantValueOnly(Constant c) {
-    if (c.isNullValue() || c instanceof UndefValue)
-      os.print('0');
-    else if (c instanceof ConstantInt) {
-      ConstantInt ci = (ConstantInt) c;
-      os.print(ci.getZExtValue());
-    } else if (c instanceof GlobalValue) {
-      GlobalValue gv = (GlobalValue) c;
-      if (gv instanceof Function) {
-        String functionAddrPrefix = mai.getFunctionAddrPrefix();
-        String functionAddrSuffix = mai.getFunctionAddrSuffix();
-        os.print(functionAddrPrefix + mangler.getMangledName(gv));
-        os.print(functionAddrSuffix);
-      } else {
-        String globalVarAddrPrefix = mai.getGlobalVarAddrPrefix();
-        String globalVarAddrSuffix = mai.getGlobalVarAddrSuffix();
-        os.print(globalVarAddrPrefix + mangler.getMangledName(gv));
-        os.print(globalVarAddrSuffix);
-      }
-    } else if (c instanceof ConstantExpr) {
-      ConstantExpr ce = (ConstantExpr) c;
-      TargetData td = tm.getTargetData();
-      switch (ce.getOpcode()) {
-        case GetElementPtr: {
-          // generate a symbolic expression for the byte address
-          Constant basePtr = ce.operand(0);
+  private MCExpr lowerConstant(Constant c, AsmPrinter asmPrinter) {
+    return null;
+  }
 
-        }
-        case Add:
-        case FAdd: {
-          os.print("(");
-          emitConstantValueOnly(ce.operand(0));
-          os.print(") + (");
-          emitConstantValueOnly(ce.operand(1));
-          os.print(")");
-          break;
-        }
-        default:
-          Util.assertion(false, "Unsupported operator!");
-      }
-    } else
-      Util.assertion(false, "Unknown constant expression!");
+  private void emitGlobalConstantVector(ConstantVector c, int addrSpace, AsmPrinter asmPrinter) {
+
+  }
+
+  private void emitGlobalConstantFP(ConstantFP fp, int addrSpace, AsmPrinter asmPrinter) {
+
+  }
+
+  private void emitGlobalConstantStruct(ConstantStruct cas, int addrSpace, AsmPrinter asmPrinter) {
+
+  }
+
+  private void emitGlobalConstantArray(ConstantArray ca, int addrSpace, AsmPrinter asmPrinter) {
+
+  }
+
+  private void emitGlobalConstantLargeInt(ConstantInt ci, int addrSpace, AsmPrinter asmPrinter) {
+
   }
 
   /**
@@ -665,7 +731,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param ca
    * @param lastIndex
    */
-  private void printAsCString(FormattedOutputStream os, ConstantArray ca, int lastIndex) {
+  private void printAsCString(PrintStream os, ConstantArray ca, int lastIndex) {
     Util.assertion(ca.isString(), "Array is not string!");
 
     os.print("\"");
@@ -727,50 +793,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return false;
   }
 
-  public void switchSection(Section ns) {
-    String newSection = ns.getName();
-
-    if (currentSection.equals(newSection))
-      return;
-
-    if (mai.getSectionEndDirectiveSuffix() != null && !currentSection.isEmpty()) {
-      os.printf("%s%s\n", currentSection, mai.getSectionEndDirectiveSuffix());
-    }
-
-    currentSection = newSection;
-    currentSection_ = ns;
-
-    if (shouldOmitSectionDirective(newSection, mai)) {
-      os.printf("\t%s%n", currentSection);
-      return;
-    }
-
-    if (!currentSection.isEmpty()) {
-      os.printf("%s%s%s", mai.getSwitchToSectionDirective(),
-          currentSection,
-          mai.getSectionFlags(ns.getFlags()));
-    } else
-      os.print(currentSection);
-    os.println(mai.getDataSectionStartSuffix());
-
-    isInTextSection = (ns.getFlags() & SectionFlags.Code) != 0;
-  }
-
-  public void switchSection(String newSection, GlobalValue gv) {
-    String ns;
-    String switchToSectionDirective = mai.getSwitchToSectionDirective();
-    if (gv != null && gv.hasSection())
-      ns = switchToSectionDirective + gv.getSection();
-    else
-      ns = "\t" + newSection;
-
-    if (!Objects.equals(currentSection, ns)) {
-      currentSection = ns;
-      if (currentSection != null && !currentSection.isEmpty())
-        os.println(currentSection);
-    }
-  }
-
   public int getPreferredAlignLog(GlobalVariable gv) {
     int align = tm.getTargetData().getTypeAlign(gv.getType());
     if (gv.getAlignment() > (1 << align))
@@ -788,20 +810,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       }
     }
     return align;
-  }
-
-  protected void printVisibility(String name,
-                                 GlobalValue.VisibilityTypes visibility) {
-    if (visibility == HiddenVisibility) {
-      String directive = mai.getHiddenDirective();
-      if (directive != null)
-        os.printf("%s%s\n", directive, name);
-    } else if (visibility == ProtectedVisibility) {
-      String directive = mai.getProtectedDirective();
-      if (directive != null)
-        os.printf("%s%s\n", directive, name);
-    }
-
   }
 
   private Module getModuleFromVal(Value v) {
@@ -829,106 +837,23 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return null;
   }
 
-  protected void printBasicBlockLabel(
-      MachineBasicBlock mbb,
-      boolean printAlign,
-      boolean printColon,
-      boolean printComment) {
-    if (printAlign) {
-      int align = mbb.getAlignment();
-      if (align != 0)
-        emitAlignment(Util.log2(align));
-    }
-
-    os.printf("%sBB%d_%d", mai.getPrivateGlobalPrefix(),
-        getFunctionNumber(), mbb.getNumber());
-    if (printColon)
-      os.print(":");
-
-    if (printComment) {
-      BasicBlock bb = mbb.getBasicBlock();
-      if (bb != null) {
-        if (bb.hasName()) {
-          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-          os.printf("%s ", mai.getCommentString());
-          writeAsOperand(os, bb, false, null);
-        }
-
-        if (printColon)
-          emitComments(mbb);
-      }
-    }
-  }
-
-  public void emitComments(MachineBasicBlock mbb) {
-    if (verboseAsm) {
-      MachineLoopInfo loop = li.getLoopFor(mbb);
-      if (loop != null) {
-        os.println();
-        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-        os.printf("%s Loop Depth %d\n", mai.getCommentString(),
-            loop.getLoopDepth());
-
-        os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-
-        MachineBasicBlock header = loop.getHeaderBlock();
-        Util.assertion(header != null, "No header for loop");
-
-        if (header.equals(mbb)) {
-          os.printf("%s Loop Header", mai.getCommentString());
-          printChildLoopComment(os, loop, mai, getFunctionNumber());
-        } else {
-          os.printf("%s Loop Header is BB%d_%d",
-              mai.getCommentString(),
-              getFunctionNumber(),
-              loop.getHeaderBlock().getNumber());
-          printChildLoopComment(os, loop, mai, getFunctionNumber());
-        }
-
-        if (loop.isEmpty()) {
-          os.println();
-          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-          os.printf("%s Inner Loop", mai.getCommentString());
-        }
-
-        // Add parent loop information.
-        for (MachineLoopInfo curLoop = loop.getParentLoop();
-             curLoop != null;
-             curLoop = curLoop.getParentLoop()) {
-          MachineBasicBlock hBB = curLoop.getHeaderBlock();
-          Util.assertion(hBB != null, "No header for loop");
-
-          os.println();
-          os.print(Util.fixedLengthString(mai.getCommentColumn(), ' '));
-          os.printf(mai.getCommentString());
-          indent(os, curLoop.getLoopDepth() - 1)
-              .printf(" Inside Loop BB%d_%d Depth %d",
-                  getFunctionNumber(),
-                  hBB.getNumber(),
-                  curLoop.getLoopDepth());
-
-        }
-      }
-    }
-  }
-
   /**
    * Pretty-print comments for instructions
-   *
    * @param mi
    */
-  public void emitComments(MachineInstr mi) {
-    // TODO: 17-7-31  emit debug information for each MachineInstr.
+  public void emitComments(MachineInstr mi,
+                           PrintStream cos) {
+    // TODO debug information.
   }
 
-  private static FormattedOutputStream indent(
-      FormattedOutputStream os,
+  private static PrintStream indent(
+      PrintStream os,
       int level) {
     return indent(os, level, 2);
   }
 
-  private static FormattedOutputStream indent(
-      FormattedOutputStream os,
+  private static PrintStream indent(
+      PrintStream os,
       int level,
       int scale) {
     for (int i = level * scale; i != 0; --i)
@@ -938,7 +863,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   }
 
   private static void printChildLoopComment(
-      FormattedOutputStream os,
+      PrintStream os,
       MachineLoopInfo loop,
       MCAsmInfo tai,
       int functionNumber) {
@@ -963,7 +888,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   public boolean emitSpecialLLVMGlobal(GlobalVariable gv) {
     if (gv.getName().equals("llvm.used")) {
-      if (mai.getUsedDirective() != null)
+      if (mai.hasNoDeadStrip())
         emitLLVMUsedList(gv.getInitializer());
       return true;
     }
@@ -971,6 +896,34 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     if (gv.getSection().equals("llvm.metadata"))
       return true;
 
+    Util.assertion(gv.hasInitializer());
+    TargetData td = tm.getTargetData();
+    int align = Util.log2(td.getPointerPrefAlign());
+    if (gv.getName().equals("llvm.global_ctors")) {
+      outStreamer.switchSection(getObjFileLowering().getStaticCtorSection());
+      emitAlignment(align, null);
+      // TODO EmitXXStructorList(GV->getInitializer());
+      if (tm.getRelocationModel() == Static &&
+          mai.hasStaticCtorDtorReferenceInStaticMode()) {
+        String sym = ".constructors_used";
+        outStreamer.emitSymbolAttribute(outContext.getOrCreateSymbol(sym),
+            MCSymbolAttr.MCSA_Reference);
+      }
+      return true;
+    }
+
+    if (gv.getName().equals("llvm.global_dtors")) {
+      outStreamer.switchSection(getObjFileLowering().getStaticDtorSection());
+      emitAlignment(align, null);
+      // TODO EmitXXStructorList(GV->getInitializer());
+      if (tm.getRelocationModel() == Static &&
+          mai.hasStaticCtorDtorReferenceInStaticMode()) {
+        String sym = ".destructors_used";
+        outStreamer.emitSymbolAttribute(outContext.getOrCreateSymbol(sym),
+            MCSymbolAttr.MCSA_Reference);
+      }
+      return true;
+    }
     return false;
   }
 
@@ -985,8 +938,10 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param id
    */
   public void printLabel(long id) {
-    os.printf("%slabel%d:%n", mai.getPrivateGlobalPrefix(), id);
-
+    os.printf(mai.getPrivateGlobalPrefix());
+    os.print("label");
+    os.print(id);
+    os.print(':');
   }
 
   /**
@@ -1026,9 +981,62 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    */
   public void printImplicitDef(MachineInstr mi) {
     if (verboseAsm) {
-      os.padToColumn(mai.getCommentColumn());
-      os.printf("%s implicit-def: %s%n", mai.getCommentString(),
+      outStreamer.getCommentOS().print(mai.getCommentColumn());
+      outStreamer.getCommentOS().printf("%s implicit-def: %s%n",
+          mai.getCommentString(),
           tri.getAsmName(mi.getOperand(0).getReg()));
     }
   }
+
+  protected MCSymbol getJTISymbol(int jtiId, boolean isLinkerPrivate) {
+    return mf.getJTISymbol(jtiId, outContext, isLinkerPrivate);
+  }
+
+  protected MCSymbol getBlockAddressSymbol(Function f,
+                                           BasicBlock bb) {
+    Util.assertion(bb.hasName(), "address of anonymous basic blokck not supoorted");
+    String fnName = mangler.getMangledNameWithPrefix(f, false);
+    String name = mangler.getMangledNameWithPrefix(
+        "BA" + fnName.length() + '_' + fnName
+        + "_" + bb.getName(),
+        NameMangler.ManglerPrefixTy.Private);
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  /**
+   * Return a symbol for the specified constant pool entry.
+   * @param cpiId
+   * @return
+   */
+  protected MCSymbol getCPISymbol(int cpiId) {
+    String name = mai.getPrivateGlobalPrefix() +
+        getFunctionNumber() + "_" + cpiId;
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  protected MCSymbol getJTSetSymbol(int id, int mbbID) {
+    String name = mai.getPrivateGlobalPrefix() +
+        getFunctionNumber() + "_" + id + "_set_" +
+        mbbID;
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  protected MCSymbol getGlobalValueSymbol(GlobalValue gv) {
+    String name = mangler.getMangledNameWithPrefix(gv, false);
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  protected MCSymbol getSymbolWithGlobalValueBase(GlobalValue gv,
+                                                  String suffix,
+                                                  boolean forcePrivate) {
+    String name = mangler.getMangledNameWithPrefix(gv, forcePrivate);
+    name += suffix;
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  protected MCSymbol getExternalSymbolSymbol(String sym) {
+    String name = mangler.getMangledNameWithPrefix(sym);
+    return outContext.getOrCreateSymbol(name);
+  }
+
 }

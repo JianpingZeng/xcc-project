@@ -134,7 +134,7 @@ public class NameMangler {
     return e;
   }
 
-  enum ManglerPrefixTy {
+  public enum ManglerPrefixTy {
     /**
      * Emit default string before each symbol.
      */
@@ -167,6 +167,20 @@ public class NameMangler {
   public String getMangledName(GlobalValue gv) {
     return getMangledName(gv, "", false);
   }
+
+  public String getMangledNameWithPrefix(String name) {
+    return getMangledNameWithPrefix(name, ManglerPrefixTy.Default);
+  }
+  public String getMangledNameWithPrefix(String name,
+                                         ManglerPrefixTy prefixTy) {
+    return makeNameProper(name, prefixTy);
+  }
+
+  public String getMangledNameWithPrefix(GlobalValue gv,
+                                  boolean isImplicitlyPrivate) {
+    return getMangledName(gv, "", isImplicitlyPrivate);
+  }
+
 
   private static char hexDigit(int v) {
     return v < 10 ? Character.forDigit(v, 10) : (char) (v - 10 + (int) 'A');

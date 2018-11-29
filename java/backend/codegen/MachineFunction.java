@@ -1,5 +1,7 @@
 package backend.codegen;
 
+import backend.mc.MCAsmInfo;
+import backend.mc.MCSymbol;
 import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
@@ -51,6 +53,7 @@ public class MachineFunction {
   MachineFunctionInfo mfInfo;
   private int alignment;
   private MachineJumpTableInfo jumpTableInfo;
+  private int functionNumber;
 
   public MachineFunction(Function fn, TargetMachine tm) {
     this.fn = fn;
@@ -284,5 +287,20 @@ public class MachineFunction {
 
   public TargetSubtarget getSubtarget() {
     return getTarget().getSubtarget();
+  }
+
+  public int getFunctionNumber() {
+    return functionNumber;
+  }
+
+  public MCSymbol getJTISymbol(int jtiId, MCSymbol.MCContext outContext, boolean isLinkerPrivate) {
+    Util.assertion(jumpTableInfo != null, "no jump tables");
+    Util.assertion(jtiId < jumpTableInfo.getJumpTables().size());
+    MCAsmInfo mai = getTarget().getMCAsmInfo();
+    String prefix = isLinkerPrivate ?
+        mai.getLinkerPrivateGlobalPrefix() :
+        mai.getPrivateGlobalPrefix();
+    String name = prefix + "JTI" + getFunctionNumber() + "_" + jtiId;
+    return outContext.getOrCreateSymbol(name);
   }
 }

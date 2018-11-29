@@ -171,7 +171,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
   @Override
   public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
                                     boolean verbose, OutputStream os) {
-    pm.add(createX86AsmCodeEmitter(os, this, getTargetAsmInfo(), verbose));
+    pm.add(createX86AsmCodeEmitter(os, this, getMCAsmInfo(), verbose));
     return false;
   }
 
