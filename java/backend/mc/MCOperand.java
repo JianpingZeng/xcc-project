@@ -93,7 +93,7 @@ public class MCOperand {
       os.printf("Imm:%d", getImm());
     else if (isExpr()) {
       os.print("Expr:(");
-      getExpr().print(os, mai);
+      getExpr().print(os);
       os.print(")");
     }
     else

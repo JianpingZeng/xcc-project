@@ -166,7 +166,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
         // Set the AsmPrinter's "O" to the output file.
         legacyOutput = new PrintStream(os);
         MCInstPrinter instPrinter =
-            getTarget().createMCInstPrinter(mai.getAssemblerDialect(), mai, legacyOutput);
+            getTarget().createMCInstPrinter(mai.getAssemblerDialect(), legacyOutput, mai);
         streamer = MCAsmStreamer.createAsmStreamer(ctx, legacyOutput,
             mai, getTargetData().isLittleEndian(), instPrinter,
             null, false);

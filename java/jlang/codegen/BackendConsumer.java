@@ -49,6 +49,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
+import static backend.support.ErrorHandling.llvmReportError;
 import static backend.target.TargetMachine.CodeGenFileType.CGFT_AssemblyFile;
 import static backend.target.TargetMachine.CodeGenFileType.CGFT_ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
@@ -191,7 +192,7 @@ public class BackendConsumer implements ASTConsumer {
     createPass();
     OutRef<String> error = new OutRef<>("");
     if (!addEmitPasses(error)) {
-      ErrorHandling.llvmReportError("UNKNOWN: " + error.get());
+      llvmReportError("UNKNOWN: " + error.get());
     }
 
     // Run passes. For now we do all passes at once.
@@ -326,20 +327,8 @@ public class BackendConsumer implements ASTConsumer {
 
         MachineCodeEmitter mce = null;
         CodeGenFileType cft = action == Backend_EmitAssembly ? CGFT_AssemblyFile : CGFT_ObjectFile;
-        switch (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel)) {
-          case AsmFile:
-            break;
-          case ElfFile:
-            mce = tm.addELFWriter(pm, asmOutStream);
-            break;
-          default:
-          case Error:
-            error.set("Unable to interface with target machine!\n");
-            return false;
-        }
-        if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), mce, optLevel)) {
-          error.set("Unable to interface with target machine!\n");
-          return false;
+        if (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel)) {
+          llvmReportError("Unsupport to generate this kind of file!");
         }
         return true;
       }

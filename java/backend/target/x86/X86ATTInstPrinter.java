@@ -26,7 +26,7 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
 
   public static X86ATTInstPrinter createX86ATTInstPrinter(PrintStream os,
                                                           MCAsmInfo mai) {
-    return X86GenATTInstPrinter(os, mai);
+    return new X86GenATTInstPrinter(os, mai);
   }
 
   public abstract String getRegisterName(int regNo);
@@ -40,7 +40,7 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
     else if (op.isImm()) {
       os.printf("$%d", op.getImm());
       if (commentStream != null && (op.getImm() > 255 || op.getImm() < -256))
-        commentStream.printf("imm = 0x%%%llx\n", op.getImm());
+        commentStream.printf("imm = 0x%%%x\n", op.getImm());
     } else {
       Util.assertion(op.isExpr(), "unknown operand kindd in printOperand");
       os.print("$");

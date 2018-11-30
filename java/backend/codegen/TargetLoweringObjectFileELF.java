@@ -98,17 +98,19 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   /// getSectionForConstant - Given a constant with the SectionKind, return a
   /// section that it should be placed in.
   public MCSection getSectionForConstant(SectionKind Kind) {
-
+    return null;
   }
 
 
   public MCSection
   getExplicitSectionGlobal(GlobalValue gv, SectionKind Kind,
                            NameMangler Mang, TargetMachine TM) {
+    return null;
   }
 
   public MCSection selectSectionForGlobal(GlobalValue gv, SectionKind Kind,
                                           NameMangler Mang, TargetMachine TM) {
+    return null;
   }
 
   /// getSymbolForDwarfGlobalReference - Return an MCExpr to use for a reference
@@ -116,5 +118,6 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   ///
   public MCExpr getSymbolForDwarfGlobalReference(GlobalValue gv, NameMangler Mang,
                                                  MachineModuleInfo MMI, int Encoding) {
+    return null;
   }
 }
