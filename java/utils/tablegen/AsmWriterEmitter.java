@@ -401,11 +401,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
     emitGetInstructionName(os, target);
 
     // Emit constructor.
-    os.printf("\n\tpublic %s(PrintStream os, \n"
-        + "\t\t\tMCAsmInfo mai)\n"
-        + "\t{\n"
-        + "\t\tsuper(os, mai);\n\t}", className, targetName);
-    os.println();
+    os.printf("\n  public %s(PrintStream os, MCAsmInfo mai) {\n"
+        + "    super(os, mai);\n  }\n", className);
     os.println("}");
 
     // Close the print stream.
@@ -717,11 +714,10 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
   private void emitGetRegisterName(PrintStream os, CodeGenTarget target) {
     Record asmWriter = target.getAsmWriter();
-    String className = asmWriter.getValueAsString("AsmWriterClassName");
     ArrayList<CodeGenRegister> registers = target.getRegisters();
 
     os.println();
-    os.print("private final static String[] RegNameStrs = {");
+    os.print("  private final static String[] RegNameStrs = {");
     for (int i = 0, e = registers.size(); i < e; i++) {
       CodeGenRegister reg = registers.get(i);
       String asmName = reg.theDef.getValueAsString("AsmName");
@@ -744,10 +740,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
   private void emitGetInstructionName(PrintStream os, CodeGenTarget target) {
     Record asmWriter = target.getAsmWriter();
-    String className = asmWriter.getValueAsString("AsmWriterClassName");
-
     os.println();
-    os.print("private final static String[] InstNameStrs = {");
+    os.print("  private final static String[] InstNameStrs = {");
     for (int i = 0, e = numberedInstructions.size(); i < e; i++) {
       CodeGenInstruction cgi = numberedInstructions.get(i);
       String asmName = cgi.theDef.getName();
@@ -759,11 +753,11 @@ public final class AsmWriterEmitter extends TableGenBackend {
     }
     os.println("};\n");
 
-    os.println("public String getInstructionName(int opc) {");
-    os.printf("Util.assertion(opc < %d, \"Invalid instruction opcode\");\n",
+    os.println("  public String getInstructionName(int opc) {");
+    os.printf("    Util.assertion(opc < %d, \"Invalid instruction opcode\");\n",
         numberedInstructions.size());
-    os.println("  return InstNameStrs[opc];");
-    os.println("}");
+    os.println("    return InstNameStrs[opc];");
+    os.println("  }");
   }
 
   /**
