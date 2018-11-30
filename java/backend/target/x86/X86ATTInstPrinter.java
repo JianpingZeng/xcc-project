@@ -24,6 +24,11 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
     super(os, mai);
   }
 
+  public static X86ATTInstPrinter createX86ATTInstPrinter(PrintStream os,
+                                                          MCAsmInfo mai) {
+    return X86GenATTInstPrinter(os, mai);
+  }
+
   public abstract String getRegisterName(int regNo);
 
   public abstract String getInstructionName(int opc);

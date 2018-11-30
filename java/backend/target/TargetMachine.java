@@ -33,7 +33,7 @@ public abstract class TargetMachine {
    * addPassesToEmitFile to indicate what type of file to emit.
    */
   public enum CodeGenFileType {
-    AssemblyFile, ObjectFile, DynamicLibrary
+    CGFT_AssemblyFile, CGFT_ObjectFile, CGFT_Null,
   }
 
   public enum CodeModel {
@@ -139,37 +139,20 @@ public abstract class TargetMachine {
    * </p>
    * <p>
    * Note that: this method would be overriden by concrete subclass for
-   * different backend.target, like IA32, Sparc.
+   * different backend.target, like IA32, Sparc. Return false on successful.
    * </p>
    *
    * @param pm
-   * @param asmOutStream
-   * @param genFileType
+   * @param os
+   * @param fileType
    * @param optLevel
    * @return
    */
-  public FileModel addPassesToEmitFile(
+  public boolean addPassesToEmitFile(
       PassManagerBase pm,
-      OutputStream asmOutStream,
-      CodeGenFileType genFileType,
+      OutputStream os,
+      CodeGenFileType fileType,
       CodeGenOpt optLevel) {
-    return FileModel.None;
-  }
-
-  /**
-   * if the passes to emit the specified file had to be split up (e.g., to add
-   * an object writer pass), this method can be used to finish up adding passes
-   * to emit the file, if necessary.
-   *
-   * @param pm
-   * @param mce
-   * @param opt
-   * @return
-   */
-  public boolean addPassesToEmitFileFinish(
-      PassManagerBase pm,
-      MachineCodeEmitter mce,
-      CodeGenOpt opt) {
     return true;
   }
 

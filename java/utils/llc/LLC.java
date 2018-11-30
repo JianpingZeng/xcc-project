@@ -41,6 +41,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -79,8 +81,8 @@ public class LLC {
           new Parser<>(),
           optionName("filetype"),
           desc("Specify the type of generaed file"),
-          new ValueClass<>(new ValueClass.Entry<>(TargetMachine.CodeGenFileType.AssemblyFile, "asm", "Generate assembly code"),
-              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.ObjectFile, "obj", "Genrate object code")));
+          new ValueClass<>(new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_AssemblyFile, "asm", "Generate assembly code"),
+              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_ObjectFile, "obj", "Genrate object code")));
 
   public static class OptLevelParser extends ParserUInt {
     public boolean parse(Option<?> O, String ArgName,
@@ -161,7 +163,7 @@ public class LLC {
 
   private static Module theModule;
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     // Initialize Target machine
     TargetSelect ts = TargetSelect.create();
     ts.InitializeTargetInfo();
@@ -265,22 +267,11 @@ public class LLC {
     // Set the default instruction scheduler.
     RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
 
-    MachineCodeEmitter mce = null;
-    switch (tm.addPassesToEmitFile(passes, os, Filetype.value, oLvl)) {
-      case AsmFile:
-        break;
-      case ElfFile:
-        mce = tm.addELFWriter(passes, os);
-        break;
-      default:
-      case Error:
-        System.err.println("Unable to interface with target machine!");
+    if (tm.addPassesToEmitFile(passes, os, Filetype.value, oLvl)) {
+        System.err.println("llc: Unable to generate this kind of file in this target!");
+        if (os != System.out && os != System.err)
+          Files.delete(Paths.get(OutputFilename.value));
         System.exit(1);
-    }
-
-    if (tm.addPassesToEmitFileFinish(passes, mce, oLvl)) {
-      System.err.println("Unable to interface with target machine!");
-      System.exit(1);
     }
 
     passes.doInitialization();
@@ -318,7 +309,7 @@ public class LLC {
 
     OutputFilename.value = getFileNameRoot(InputFilename.value);
     switch (Filetype.value) {
-      case AssemblyFile: {
+      case CGFT_AssemblyFile: {
         switch (targetName) {
           case "c":
             OutputFilename.value += ".cbe.c";
@@ -331,7 +322,7 @@ public class LLC {
         }
         break;
       }
-      case ObjectFile:
+      case CGFT_ObjectFile:
         OutputFilename.value += ".o";
         break;
     }

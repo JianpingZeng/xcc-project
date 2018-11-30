@@ -17,13 +17,18 @@ package backend.target;
  */
 
 import backend.codegen.AsmPrinter;
+import backend.codegen.AsmWriterFlavorTy;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCInstPrinter;
+import backend.mc.MCStreamer;
+import backend.mc.MCSymbol;
 import backend.support.Triple;
 import backend.support.Triple.ArchType;
 import tools.OutRef;
 import tools.Util;
 
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Iterator;
 
 /**
@@ -51,10 +56,17 @@ public class Target {
   }
 
   public interface AsmPrinterCtor {
-    AsmPrinter create(OutputStream os,
+    AsmPrinter create(PrintStream os,
                       TargetMachine tm,
-                      MCAsmInfo asmInfo,
-                      boolean verbose);
+                      MCSymbol.MCContext ctx,
+                      MCStreamer streamer,
+                      MCAsmInfo mai);
+  }
+
+  public interface MCInstPrinterCtor {
+    MCInstPrinter create(AsmWriterFlavorTy asmflavor,
+                         PrintStream os,
+                         MCAsmInfo mai);
   }
 
   private Target next;
@@ -81,6 +93,7 @@ public class Target {
    */
   private AsmPrinterCtor asmPrinterCtor;
 
+  private MCInstPrinterCtor mcInstPrinterCtor;
   /**
    * create a MCAsmInfo implementation for the specified
    * target triple.
@@ -118,17 +131,25 @@ public class Target {
    *
    * @param os
    * @param tm
-   * @param asmInfo
-   * @param verbose
+   * @param mai
    * @return
    */
-  public AsmPrinter createAsmPrinter(OutputStream os,
+  public AsmPrinter createAsmPrinter(PrintStream os,
                                      TargetMachine tm,
-                                     MCAsmInfo asmInfo,
-                                     boolean verbose) {
+                                     MCSymbol.MCContext ctx,
+                                     MCStreamer streamer,
+                                     MCAsmInfo mai) {
     if (asmPrinterCtor == null)
       return null;
-    return asmPrinterCtor.create(os, tm, asmInfo, verbose);
+    return asmPrinterCtor.create(os, tm, ctx, streamer, mai);
+  }
+
+  public MCInstPrinter createMCInstPrinter(AsmWriterFlavorTy asmflavor,
+                                           PrintStream os,
+                                           MCAsmInfo mai) {
+    if (mcInstPrinterCtor == null)
+      return null;
+    return mcInstPrinterCtor.create(asmflavor, os, mai);
   }
 
   public String getName() {
@@ -176,6 +197,12 @@ public class Target {
       if (target.asmPrinterCtor != null)
         return;
       target.asmPrinterCtor = ctor;
+    }
+
+    public static void registerMCInstPrinter(Target target, MCInstPrinterCtor ctor) {
+      if (target.mcInstPrinterCtor != null)
+        return;
+      target.mcInstPrinterCtor = ctor;
     }
 
     private static void registerTarget(Target t,

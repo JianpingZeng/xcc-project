@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.mc.MCSymbol;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;
@@ -421,5 +422,12 @@ public class MachineBasicBlock {
     fromMBB.getSuccessors().forEach(this::addSuccessor);
     if (!fromMBB.getSuccessors().isEmpty())
       fromMBB.getSuccessors().clear();
+  }
+
+  public MCSymbol getSymbol(MCSymbol.MCContext ctx) {
+    MachineFunction mf = getParent();
+    String name = mf.getTarget().getMCAsmInfo().getPrivateGlobalPrefix() +
+        mf.getFunctionNumber() + "_" + getNumber();
+    return ctx.getOrCreateSymbol(name);
   }
 }

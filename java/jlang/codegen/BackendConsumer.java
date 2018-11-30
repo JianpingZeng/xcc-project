@@ -49,8 +49,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
-import static backend.target.TargetMachine.CodeGenFileType.ObjectFile;
+import static backend.target.TargetMachine.CodeGenFileType.CGFT_AssemblyFile;
+import static backend.target.TargetMachine.CodeGenFileType.CGFT_ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
 import static jlang.support.BackendAction.Backend_EmitAssembly;
 import static jlang.support.BackendAction.Backend_EmitNothing;
@@ -325,7 +325,7 @@ public class BackendConsumer implements ASTConsumer {
         RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
 
         MachineCodeEmitter mce = null;
-        CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;
+        CodeGenFileType cft = action == Backend_EmitAssembly ? CGFT_AssemblyFile : CGFT_ObjectFile;
         switch (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel)) {
           case AsmFile:
             break;

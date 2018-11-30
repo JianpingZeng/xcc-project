@@ -71,9 +71,9 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   /**
    * The target machine text.
    */
-  protected TargetMachine tm;
+  public TargetMachine tm;
 
-  protected MCAsmInfo mai;
+  public MCAsmInfo mai;
 
   protected TargetRegisterInfo tri;
 
@@ -93,7 +93,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   protected MCStreamer outStreamer;
   private TargetSubtarget subtarget;
-  protected MachineFunction mf;
+  public MachineFunction mf;
 
   protected AsmPrinter(OutputStream os, TargetMachine tm,
                        MCSymbol.MCContext ctx,
@@ -988,11 +988,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     }
   }
 
-  protected MCSymbol getJTISymbol(int jtiId, boolean isLinkerPrivate) {
+  public MCSymbol getJTISymbol(int jtiId, boolean isLinkerPrivate) {
     return mf.getJTISymbol(jtiId, outContext, isLinkerPrivate);
   }
 
-  protected MCSymbol getBlockAddressSymbol(Function f,
+  public MCSymbol getBlockAddressSymbol(Function f,
                                            BasicBlock bb) {
     Util.assertion(bb.hasName(), "address of anonymous basic blokck not supoorted");
     String fnName = mangler.getMangledNameWithPrefix(f, false);
@@ -1008,13 +1008,13 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param cpiId
    * @return
    */
-  protected MCSymbol getCPISymbol(int cpiId) {
+  public MCSymbol getCPISymbol(int cpiId) {
     String name = mai.getPrivateGlobalPrefix() +
         getFunctionNumber() + "_" + cpiId;
     return outContext.getOrCreateSymbol(name);
   }
 
-  protected MCSymbol getJTSetSymbol(int id, int mbbID) {
+  public MCSymbol getJTSetSymbol(int id, int mbbID) {
     String name = mai.getPrivateGlobalPrefix() +
         getFunctionNumber() + "_" + id + "_set_" +
         mbbID;

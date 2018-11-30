@@ -69,6 +69,8 @@ public class MachineOperand {
     MO_JumpTableIndex,
     MO_ExternalSymbol,          // Name of external global symbol
     MO_GlobalAddress,           // Address of a global value
+    MO_BlockAddress,            // Address of a basic block
+    MO_Metadata                 // Metadata reference (for debug)
   }
 
   // Bit fields of the flags variable used for different operand properties

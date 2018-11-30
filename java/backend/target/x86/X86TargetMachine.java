@@ -106,6 +106,13 @@ public class X86TargetMachine extends LLVMTargetMachine {
   }
 
   @Override
+  public void setCodeModelForStatic() {
+    if (getCodeModel() != CodeModel.Default) return;
+    // For static codegen, if we're not already set, use Small codegen.
+    super.setCodeModelForStatic();
+  }
+
+  @Override
   public X86Subtarget getSubtarget() {
     return subtarget;
   }
@@ -165,13 +172,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
     // converts virtual register in X86 FP inst into floating point stack slot.
     pm.add(createX86FPStackifierPass());
-    return false;
-  }
-
-  @Override
-  public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
-                                    boolean verbose, OutputStream os) {
-    pm.add(createX86AsmCodeEmitter(os, this, getMCAsmInfo(), verbose));
     return false;
   }
 
