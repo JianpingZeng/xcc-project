@@ -8,7 +8,9 @@
 
 package backend.mc;
 
+import backend.target.SectionKind;
 import tools.Util;
+
 import java.io.PrintStream;
 import java.util.TreeMap;
 
@@ -118,6 +120,8 @@ public class MCSymbol {
   public static class MCContext {
     private TreeMap<String, MCSection> sections;
     private TreeMap<String, MCSymbol> symbols;
+    private TreeMap<String, MCSectionELF> ELFUniqueMap;
+    private TreeMap<String, MCSectionCOFF> COFFUniqueMap;
 
     public MCContext() {
       sections = new TreeMap<>();
@@ -157,6 +161,35 @@ public class MCSymbol {
     public MCSymbol lookupSymbol(String name) {
       Util.assertion(name != null && !name.isEmpty(), "nonamed symbol?");
       return symbols.get(name);
+    }
+
+    public MCSection getELFSection(String sectionName,
+                                   int type, int flags,
+                                   SectionKind kind) {
+      return getELFSection(sectionName, type, flags, kind, false);
+    }
+
+    public MCSection getELFSection(String sectionName,
+                                   int type, int flags,
+                                   SectionKind kind,
+                                   boolean isExplicit) {
+      return getELFSection(sectionName, type, flags, kind, isExplicit, 0);
+    }
+
+    public MCSection getELFSection(String sectionName,
+                                   int type, int flags,
+                                   SectionKind kind,
+                                   boolean isExplicit,
+                                   int entrySize) {
+      if (ELFUniqueMap == null)
+        ELFUniqueMap = new TreeMap<>();
+      // do the lookup if we have a hit, return it.
+      if (ELFUniqueMap.containsKey(sectionName))
+        return ELFUniqueMap.get(sectionName);
+
+      MCSectionELF result = new MCSectionELF(sectionName, type, flags, kind, isExplicit, entrySize);
+      ELFUniqueMap.put(sectionName, result);
+      return result;
     }
   }
 }

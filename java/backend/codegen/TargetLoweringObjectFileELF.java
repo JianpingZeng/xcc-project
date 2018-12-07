@@ -1,9 +1,10 @@
 /*
- * Extremely C language Compiler
- *   Copyright (c) 2015-2018, Jianping Zeng.
+ * BSD 3-Clause License
  *
- * Licensed under the BSD License version 3. Please refer LICENSE
- * for details.
+ * Copyright (c) 2015-2018, Jianping Zeng.
+ * All rights reserved.
+ *
+ * Please refer the LICENSE for detail.
  */
 
 package backend.codegen;
@@ -17,7 +18,10 @@ import backend.support.NameMangler;
 import backend.target.SectionKind;
 import backend.target.TargetLoweringObjectFile;
 import backend.target.TargetMachine;
+import backend.target.TargetOptions;
 import backend.value.GlobalValue;
+import backend.value.GlobalVariable;
+import tools.Util;
 
 import java.util.TreeMap;
 
@@ -68,25 +72,25 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
       uniqueMap.clear();
 
     super.initialize(Ctx, TM);
-    bssSection = getELFSection(".bss", MCSectionELF.SHT_NOBITS,
-        MCSectionELF.SHF_WRITE|MCSectionELF.SHF_ALLOC,
+    BSSSection = getELFSection(".bss", MCSectionELF.SHT_NOBITS,
+        MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
         SectionKind.getBSS());
-    textSection = getELFSection(".text",
+    TextSection = getELFSection(".text",
         MCSectionELF.SHT_PROGBITS,
         MCSectionELF.SHF_EXECINSTR | MCSectionELF.SHF_ALLOC,
         SectionKind.getText());
-    dataSection = getELFSection(".data",
+    DataSection = getELFSection(".data",
         MCSectionELF.SHT_PROGBITS,
         MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
         SectionKind.getDataRel());
 
-    readOnlySection = getELFSection(".rodata",
+    ReadOnlySection = getELFSection(".rodata",
         MCSectionELF.SHT_PROGBITS,
         MCSectionELF.SHF_TLS | MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
         SectionKind.getBSS());
     tlsDataSection = getELFSection(".tbss",
         MCSectionELF.SHT_NOBITS,
-        MCSectionELF.SHF_TLS | MCSectionELF.SHF_WRITE|MCSectionELF.SHF_ALLOC,
+        MCSectionELF.SHF_TLS | MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
         SectionKind.getBSS());
 
   }
@@ -95,29 +99,241 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
     return DataRelSection;
   }
 
-  /// getSectionForConstant - Given a constant with the SectionKind, return a
-  /// section that it should be placed in.
-  public MCSection getSectionForConstant(SectionKind Kind) {
-    return null;
+  /**
+   * Given a constant with the SectionKind, return a section that it should be placed in.
+   *
+   * @param kind
+   * @return
+   */
+  public MCSection getSectionForConstant(SectionKind kind) {
+    if (kind.isMergeableConst4() && MergeableConst4Section != null)
+      return MergeableConst4Section;
+    if (kind.isMergeableConst8() && MergeableConst8Section != null)
+      return MergeableConst8Section;
+    if (kind.isMergeableConst16() && MergeableConst16Section != null)
+      return MergeableConst16Section;
+    if (kind.isReadOnly())
+      return ReadOnlySection;
+    if (kind.isReadOnlyWithRelLocal()) return DataRelROLocalSection;
+    Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
+    return DataRelROSection;
   }
 
+  static int getELFSectionType(String name, SectionKind k) {
+    switch (name) {
+      case ".init_array":
+        return MCSectionELF.SHT_INIT_ARRAY;
+      case ".fini_array":
+        return MCSectionELF.SHT_FINI_ARRAY;
+      case ".preinit_array":
+        return MCSectionELF.SHT_PREINIT_ARRAY;
+      default:
+        break;
+    }
+    if (k.isBSS() || k.isThreadBSS())
+      return MCSectionELF.SHT_NOBITS;
+    return MCSectionELF.SHT_PROGBITS;
+  }
+
+  static int getELFSectionFlags(SectionKind k) {
+    int flags = 0;
+    if (!k.isMetadata())
+      flags |= MCSectionELF.SHF_ALLOC;
+    if (k.isText())
+      flags |= MCSectionELF.SHF_EXECINSTR;
+    if (k.isWriteable())
+      flags |= MCSectionELF.SHF_WRITE;
+    if (k.isThreadLocal())
+      flags |= MCSectionELF.SHF_TLS;
+
+    if (k.isMergeableCString() || k.isMergeableConst4() ||
+        k.isMergeableConst8() || k.isMergeableConst16())
+      flags |= MCSectionELF.SHF_MERGE;
+
+    if (k.isMergeableCString())
+      flags |= MCSectionELF.SHF_STRINGS;
+    return flags;
+  }
+
+  static SectionKind getELFKindForNamedSection(String name, SectionKind k) {
+    if (name == null || name.isEmpty() || name.charAt(0) == '.')
+      return k;
+
+    // Some lame default implementation based on some magic section names.
+    if (name.equals(".bss") ||
+        name.startsWith(".bss.") ||
+        name.startsWith(".gnu.linkonce.b.") ||
+        name.startsWith(".llvm.linkonce.b.") ||
+        name.equals(".sbss") ||
+        name.startsWith(".sbss.") ||
+        name.startsWith(".gnu.linkonce.sb.") ||
+        name.startsWith(".llvm.linkonce.sb."))
+      return SectionKind.getBSS();
+
+    if (name.equals(".tdata") ||
+        name.startsWith(".tdata.") ||
+        name.startsWith(".gnu.linkonce.td.") ||
+        name.startsWith(".llvm.linkonce.td."))
+      return SectionKind.getThreadData();
+
+    if (name.equals(".tbss") ||
+        name.startsWith(".tbss.") ||
+        name.startsWith(".gnu.linkonce.tb.") ||
+        name.startsWith(".llvm.linkonce.tb."))
+      return SectionKind.getThreadBSS();
+
+    return k;
+  }
 
   public MCSection
-  getExplicitSectionGlobal(GlobalValue gv, SectionKind Kind,
-                           NameMangler Mang, TargetMachine TM) {
-    return null;
+  getExplicitSectionGlobal(GlobalValue gv, SectionKind kind,
+                           NameMangler mang, TargetMachine tm) {
+    String sectionName = gv.getSection();
+    // Infer section flags from the section name if we can.
+    kind = getELFKindForNamedSection(sectionName, kind);
+
+    return getContext().getELFSection(sectionName,
+        getELFSectionType(sectionName, kind),
+        getELFSectionFlags(kind), kind, true);
   }
 
-  public MCSection selectSectionForGlobal(GlobalValue gv, SectionKind Kind,
-                                          NameMangler Mang, TargetMachine TM) {
-    return null;
+  /**
+   * If we have -ffunction-section or -fdata-section then we should emit the
+   * global value to a uniqued section specifically for it.
+   * @param gv
+   * @param kind
+   * @param mang
+   * @param tm
+   * @return
+   */
+  public MCSection selectSectionForGlobal(GlobalValue gv, SectionKind kind,
+                                          NameMangler mang, TargetMachine tm) {
+    boolean emitUniquedSection = kind.isText() ?
+        TargetOptions.FunctionSections.value : TargetOptions.DataSections.value;
+
+    // If this global is linkonce/weak and the target handles this by emitting it
+    // into a 'uniqued' section name, create and return the section now.
+    if ((gv.isWeakForLinker() || emitUniquedSection) &&
+        !kind.isCommon() && !kind.isBSS()) {
+      String prefix;
+      if (gv.isWeakForLinker())
+        prefix = getSectionPrefixUniqueGlobal(kind);
+      else {
+        Util.assertion(emitUniquedSection);
+        prefix = getSectionPrefixForGlobal(kind);
+      }
+      String name = mang.getMangledNameWithPrefix(gv, false);
+      MCSymbol sym = getContext().createSymbol(name);
+      name = prefix + name;
+      return getContext().getELFSection(name, getELFSectionType(name, kind),
+          getELFSectionFlags(kind), kind);
+    }
+
+    if (kind.isText()) return TextSection;
+    if (kind.isMergeable1ByteCString() ||
+        kind.isMergeable2ByteCString() ||
+        kind.isMergeable4ByteCString()) {
+
+      // We also need alignment here.
+      // FIXME: this is getting the alignment of the character, not the
+      // alignment of the global!
+      int align = tm.getTargetData().getPreferredAlignment((GlobalVariable)gv);
+      String sizeSpec = ".rodata.str1.";
+      if (kind.isMergeable2ByteCString())
+        sizeSpec = ".rodata.str2.";
+      else if (kind.isMergeable4ByteCString())
+        sizeSpec = ".rodata.str4.";
+      else
+        Util.assertion(kind.isMergeable1ByteCString(), "unknown string width");
+
+      String name = sizeSpec + align;
+      return getContext().getELFSection(name, MCSectionELF.SHT_PROGBITS,
+              MCSectionELF.SHF_ALLOC |
+              MCSectionELF.SHF_MERGE |
+              MCSectionELF.SHF_STRINGS,
+          kind);
+    }
+
+    if (kind.isMergeableConst()) {
+      if (kind.isMergeableConst4() && MergeableConst4Section != null)
+        return MergeableConst4Section;
+      if (kind.isMergeableConst8() && MergeableConst8Section != null)
+        return MergeableConst8Section;
+      if (kind.isMergeableConst16() && MergeableConst16Section != null)
+        return MergeableConst16Section;
+      return ReadOnlySection;  // .const
+    }
+
+    if (kind.isReadOnly())             return ReadOnlySection;
+
+    if (kind.isThreadData())           return TLSDataSection;
+    if (kind.isThreadBSS())            return TLSBSSSection;
+
+    // Note: we claim that common symbols are put in BSSSection, but they are
+    // really emitted with the magic .comm directive, which creates a symbol table
+    // entry but not a section.
+    if (kind.isBSS() || kind.isCommon()) return BSSSection;
+
+    if (kind.isDataNoRel())            return DataSection;
+    if (kind.isDataRelLocal())         return DataRelLocalSection;
+    if (kind.isDataRel())              return DataRelSection;
+    if (kind.isReadOnlyWithRelLocal()) return DataRelROLocalSection;
+
+    Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
+    return DataRelROSection;
   }
 
-  /// getSymbolForDwarfGlobalReference - Return an MCExpr to use for a reference
-  /// to the specified global variable from exception handling information.
-  ///
-  public MCExpr getSymbolForDwarfGlobalReference(GlobalValue gv, NameMangler Mang,
-                                                 MachineModuleInfo MMI, int Encoding) {
+  private static String getSectionPrefixUniqueGlobal(SectionKind kind) {
+    if (kind.isText())                 return ".gnu.linkonce.t.";
+    if (kind.isReadOnly())             return ".gnu.linkonce.r.";
+
+    if (kind.isThreadData())           return ".gnu.linkonce.td.";
+    if (kind.isThreadBSS())            return ".gnu.linkonce.tb.";
+
+    if (kind.isDataNoRel())            return ".gnu.linkonce.d.";
+    if (kind.isDataRelLocal())         return ".gnu.linkonce.d.rel.local.";
+    if (kind.isDataRel())              return ".gnu.linkonce.d.rel.";
+    if (kind.isReadOnlyWithRelLocal()) return ".gnu.linkonce.d.rel.ro.local.";
+
+    Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
+    return ".gnu.linkonce.d.rel.ro.";
+  }
+
+  /**
+   * Return the section prefix name used by options FunctionsSections and DataSections.
+   * @param kind
+   * @return
+   */
+  private static String getSectionPrefixForGlobal(SectionKind kind) {
+    if (kind.isText())                 return ".text.";
+    if (kind.isReadOnly())             return ".rodata.";
+
+    if (kind.isThreadData())           return ".tdata.";
+    if (kind.isThreadBSS())            return ".tbss.";
+
+    if (kind.isDataNoRel())            return ".data.";
+    if (kind.isDataRelLocal())         return ".data.rel.local.";
+    if (kind.isDataRel())              return ".data.rel.";
+    if (kind.isReadOnlyWithRelLocal()) return ".data.rel.ro.local.";
+
+    Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
+    return ".data.rel.ro.";
+  }
+
+  /**
+   * Return an MCExpr to use for a reference to the specified global
+   * variable from exception handling information.
+   * @param gv
+   * @param mang
+   * @param mmi
+   * @param encoding
+   * @return
+   */
+  public MCExpr getSymbolForDwarfGlobalReference(GlobalValue gv,
+                                                 NameMangler mang,
+                                                 MachineModuleInfo mmi,
+                                                 int encoding) {
+    Util.shouldNotReachHere();
     return null;
   }
 }

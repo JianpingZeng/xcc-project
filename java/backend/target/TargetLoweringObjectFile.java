@@ -12,16 +12,11 @@ import backend.codegen.MachineModuleInfo;
 import backend.mc.MCExpr;
 import backend.mc.MCSection;
 import backend.mc.MCSymbol;
-import backend.mc.MCSymbolRefExpr;
 import backend.support.NameMangler;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
-import backend.value.Constant;
-import backend.value.GlobalValue;
-import backend.value.GlobalVariable;
+import backend.value.*;
 import tools.Util;
-
-import static backend.support.ErrorHandling.llvmReportError;
 
 /**
  * This class used for target specific format of object file.
@@ -29,10 +24,10 @@ import static backend.support.ErrorHandling.llvmReportError;
 public abstract class TargetLoweringObjectFile {
   private MCSymbol.MCContext ctx;
   protected TargetLoweringObjectFile() {}
-  protected MCSection textSection;
-  protected MCSection dataSection;
-  protected MCSection bssSection;
-  protected MCSection readOnlySection;
+  protected MCSection TextSection;
+  protected MCSection DataSection;
+  protected MCSection BSSSection;
+  protected MCSection ReadOnlySection;
   protected MCSection staticCtorSection;
   protected MCSection staticDtorSection;
   /**
@@ -76,9 +71,9 @@ public abstract class TargetLoweringObjectFile {
     this.ctx = ctx;
   }
 
-  public MCSection getTextSection() { return textSection; }
-  public MCSection getDataSection() { return dataSection; }
-  public MCSection getBSSSection() { return bssSection; }
+  public MCSection getTextSection() { return TextSection; }
+  public MCSection getDataSection() { return DataSection; }
+  public MCSection getBSSSection() { return BSSSection; }
   public MCSection getStaticCtorSection() { return staticCtorSection; }
   public MCSection getStaticDtorSection() { return staticDtorSection; }
   public MCSection getLSDASection() { return lsdaSection; }
@@ -107,9 +102,9 @@ public abstract class TargetLoweringObjectFile {
    */
   public MCSection getSectionForConstant(SectionKind kind) {
     Util.assertion(kind != null);
-    if (kind.isReadOnly() && readOnlySection != null)
-      return readOnlySection;
-    return dataSection;
+    if (kind.isReadOnly() && ReadOnlySection != null)
+      return ReadOnlySection;
+    return DataSection;
   }
 
   /**
@@ -228,10 +223,54 @@ public abstract class TargetLoweringObjectFile {
   }
 
   private static boolean isSuitableForBSS(GlobalVariable gvar) {
+    Constant c = gvar.getInitializer();
+    // must have zero initializer
+    if (!c.isNullValue())
+      return false;
+
+    // leave constant  zeros in readonly constant section.
+    if (gvar.isConstant())
+      return false;
+
+    // if the global has an explicit section specified, don't put it in BSS.
+    if (!gvar.getSection().isEmpty())
+      return false;
+    // otherwise, put it in BSS!
     return false;
   }
 
+  /**
+   * Return true if the specified constant (which is known to have a type that
+   * is an array of 1/2/4 byte elements) ends with a null value and constants
+   * no other nulls in it.
+   * @param c
+   * @return
+   */
   private static boolean isNullTerminatedString(Constant c) {
+    ArrayType aty = (ArrayType) c.getType();
+    if (c instanceof ConstantArray) {
+      ConstantArray ca = (ConstantArray) c;
+      if (aty.getNumElements() == 0) return false;
+
+      ConstantInt nullptr = ca.getOperand((int) (aty.getNumElements()-1)).getValue() instanceof ConstantInt ?
+          (ConstantInt)ca.getOperand((int) (aty.getNumElements()-1)).getValue() : null;
+      if (nullptr == null || !nullptr.isZero())
+        return false;
+
+      // Verify that the null doesn't occur anywhere else in the string.
+      for (int i = 0, e = (int)aty.getNumElements()-1; i !=e; i++) {
+        // Reject constantexpr elements etc.
+        if (!(ca.getOperand(i).getValue() instanceof ConstantInt) ||
+        ca.getOperand(i).getValue() == nullptr)
+          return false;
+      }
+      return true;
+    }
+
+    // Another possibility: [1 x i8] zeroinitializer
+    if (c instanceof ConstantAggregateZero)
+      return aty.getNumElements() == 1;
+
     return false;
   }
 
@@ -262,11 +301,11 @@ public abstract class TargetLoweringObjectFile {
     if (kind.isText())
       return getTextSection();
 
-    if (kind.isBSS() && bssSection != null)
-      return bssSection;
+    if (kind.isBSS() && BSSSection != null)
+      return BSSSection;
 
-    if (kind.isReadOnly() && readOnlySection != null)
-      return readOnlySection;
+    if (kind.isReadOnly() && ReadOnlySection != null)
+      return ReadOnlySection;
 
     return getDataSection();
   }

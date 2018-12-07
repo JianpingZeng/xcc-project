@@ -158,6 +158,16 @@ public class TargetOptions {
           new OptionHiddenApplicator(Hidden),
           init(false));
 
+  public static final BooleanOpt DataSections =
+      new BooleanOpt(optionName("fdata-sections"),
+          desc("Emit data into separate section"),
+          init(false));
+
+  public static final BooleanOpt FunctionSections =
+      new BooleanOpt(optionName("ffunction-sections"),
+          desc("Emit function into seperate sections"),
+          init(false));
+
   public static void registerTargetOptions() {
   }
 }

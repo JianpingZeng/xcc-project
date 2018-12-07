@@ -136,7 +136,7 @@ public class SectionKind {
         isMergeableConst();
   }
 
-  boolean isMergeableCString()  {
+  public boolean isMergeableCString()  {
     return K == Mergeable1ByteCString || K == Mergeable2ByteCString ||
         K == Mergeable4ByteCString;
   }

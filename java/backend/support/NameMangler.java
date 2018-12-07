@@ -64,10 +64,6 @@ public class NameMangler {
   private int acceptableChars[];
   private static int globalID = 0;
 
-  public NameMangler(Module m) {
-    this(m, "", "", "");
-  }
-
   public NameMangler(Module m, String globalPrefix,
                      String privateGlobalPrefix,
                      String linkerPrivateGlobalPrefix) {

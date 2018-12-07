@@ -100,31 +100,44 @@ public class MCSectionELF extends MCSection {
   // This section holds Thread-Local Storage.
   public static final int SHF_TLS = 0x400;
 
-  /// FIRST_TARGET_DEP_FLAG - This is the first flag that subclasses are
-  /// allowed to specify.
-  public static final int FIRST_TARGET_DEP_FLAG = 0x800;
+  // Start of target-specific flags.
 
-  /// TARGET_INDEP_SHF - This is the bitmask for all the target independent
-  /// section flags.  Targets can define their own target flags above these.
-  /// If they do that, they should implement their own MCSectionELF subclasses
-  /// and implement the virtual method hooks below to handle printing needs.
-  public static final int TARGET_INDEP_SHF = FIRST_TARGET_DEP_FLAG - 1;
+  /// XCORE_SHF_CP_SECTION - All sections with the "c" flag are grouped
+  /// together by the linker to form the constant pool and the cp register is
+  /// set to the start of the constant pool by the boot code.
+  public static final int XCORE_SHF_CP_SECTION = 0x800;
+
+  /// XCORE_SHF_DP_SECTION - All sections with the "d" flag are grouped
+  /// together by the linker to form the data section and the dp register is
+  /// set to the start of the section by the boot code.
+  public static final int XCORE_SHF_DP_SECTION = 0x1000;
 
   private String sectionName;
   private int type;
   private int flags;
   private boolean isExplicit;
+  private int entrySize;
 
   public MCSectionELF(String sectionName,
                       int type,
                       int flags,
                       SectionKind kind,
                       boolean isExplicit) {
+    this(sectionName, type, flags, kind, isExplicit, 0);
+  }
+
+  public MCSectionELF(String sectionName,
+                      int type,
+                      int flags,
+                      SectionKind kind,
+                      boolean isExplicit,
+                      int entrySize) {
     super(kind);
     this.sectionName = sectionName;
     this.type = type;
     this.flags = flags;
     this.isExplicit = isExplicit;
+    this.entrySize = entrySize;
   }
 
   public String getSectionName() {
@@ -211,8 +224,10 @@ public class MCSectionELF extends MCSection {
         os.print('T');
 
       // If there are target-specific flags, print them.
-      if ((flags & ~TARGET_INDEP_SHF) != 0)
-        PrintTargetSpecificSectionFlags(mai, os);
+      if ((flags & XCORE_SHF_CP_SECTION) != 0)
+        os.print('c');
+      if ((flags & XCORE_SHF_DP_SECTION) != 0)
+        os.print('d');
 
       os.print("\"");
 
@@ -254,14 +269,4 @@ public class MCSectionELF extends MCSection {
     }
     os.println();
   }
-
-  /**
-   * Targets that define their own
-   * MCSectionELF subclasses with target specific section flags should
-   * implement this method if they end up adding letters to the attributes
-   * list.
-   * @param mai
-   * @param os
-   */
-  public void PrintTargetSpecificSectionFlags( MCAsmInfo mai, PrintStream os)  { }
 }

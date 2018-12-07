@@ -6,6 +6,7 @@ import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
 import backend.type.Type;
+import backend.value.GlobalVariable;
 import backend.value.Module;
 import tools.Util;
 
@@ -626,6 +627,23 @@ public class TargetData implements ImmutablePass {
 
   public int getPrefTypeAlignment(Type type) {
     return getAlignment(type, false);
+  }
+
+  public int getPreferredAlignment(GlobalVariable gv) {
+    Type eleType = gv.getType().getElementType();
+    int alignment = getPrefTypeAlignment(eleType);
+    if (gv.getAlignment() > alignment)
+      alignment = gv.getAlignment();
+
+    if (gv.hasInitializer()) {
+      if (alignment < 16) {
+        // If the global is not external, see if it is large.  If so, give it a
+        // larger alignment.
+        if (getTypeSizeInBits(eleType) > 128)
+          alignment = 16; // 16 byte alignment
+      }
+    }
+    return alignment;
   }
 
   public long getTypePaddedSize(Type ty) {
