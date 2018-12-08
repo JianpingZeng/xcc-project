@@ -21,10 +21,16 @@ import backend.mc.*;
 import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
-import backend.target.*;
+import backend.target.TargetData;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import backend.type.FunctionType;
 import backend.type.Type;
-import backend.value.*;
+import backend.value.Function;
+import backend.value.GlobalValue;
+import backend.value.Module;
+import backend.value.Value;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
@@ -32,7 +38,6 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.TreeMap;
 
-import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetMachine.RelocModel.Static;
 import static backend.target.x86.X86GenRegisterNames.*;
@@ -121,13 +126,11 @@ public class X86AsmPrinter extends AsmPrinter {
         MCSymbol picBase = InstLowering.getPICBaseSymbol();
         inst.setOpcode(X86GenInstrNames.CALLpcrel32);
         inst.addOperand(MCOperand.createExpr(MCSymbolRefExpr.create(picBase, outContext)));
-        ;
 
         outStreamer.emitInstruction(inst);
         outStreamer.emitLabel(picBase);
         inst.setOpcode(X86GenInstrNames.POP32r);
         inst.setOperand(0, MCOperand.createReg(mi.getOperand(0).getReg()));
-        ;
         outStreamer.emitInstruction(inst);
         return;
       }
@@ -157,13 +160,9 @@ public class X86AsmPrinter extends AsmPrinter {
 
         MCInst inst = new MCInst();
         inst.setOpcode(X86GenInstrNames.ADD32ri);
-        ;
         inst.addOperand(MCOperand.createReg(mi.getOperand(0).getReg()));
-        ;
         inst.addOperand(MCOperand.createReg(mi.getOperand(1).getReg()));
-        ;
         inst.addOperand(MCOperand.createExpr(dotExpr));
-        ;
         outStreamer.emitInstruction(inst);
         return;
       }

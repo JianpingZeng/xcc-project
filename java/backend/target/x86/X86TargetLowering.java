@@ -77,8 +77,21 @@ public class X86TargetLowering extends TargetLowering {
   private X86RegisterInfo regInfo;
   private final static int X86AddrNumOperands = 5;
 
+  private static TargetLoweringObjectFile createTLOF(X86TargetMachine tm) {
+    X86Subtarget subtarget = tm.getSubtarget();
+    boolean is64Bit = subtarget.is64Bit();
+    Util.assertion(subtarget.isTargetELF(), "only ELF supported current");
+    /*if (subtarget.isTargetDarwin()) {
+      if (is64Bit) return X86_64MachoTargetObjectFile();
+      return new TargetLoweringObjectFileMachO();
+    }
+    */
+    return is64Bit ? new X86_64ELFTargetObjectFile(tm) :
+        new X86_32ELFTargetObjectFile(tm);
+  }
+
   public X86TargetLowering(X86TargetMachine tm) {
-    super(tm);
+    super(tm, createTLOF(tm));
     subtarget = tm.getSubtarget();
     x86ScalarSSEf64 = subtarget.hasSSE2();
     x86ScalarSSEf32 = subtarget.hasSSE1();

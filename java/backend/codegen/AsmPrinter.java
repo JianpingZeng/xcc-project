@@ -127,7 +127,13 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         mai.getPrivateGlobalPrefix(),
         mai.getLinkerPrivateGlobalPrefix());
 
+    // Initialize TargetLoweringObjectFile.
+    getObjFileLowering().initialize(outContext, tm);
+
+    // Allow the target to emit any magic that it wants at the start of the file.
     emitStartOfAsmFile(m);
+    // Very minimal debug info. It is ignored if we emit actual debug info. If we
+    // don't, this at least helps the user find where a global came from.
     if (mai.hasSingleParameterDotFile()) {
       // .file "foo.c"
       outStreamer.emitFileDirective(m.getModuleIdentifier());
@@ -458,7 +464,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   protected abstract void emitInstruction(MachineInstr mi);
 
   private void emitJumpTableInfo() {
-    Util.shouldNotReachHere();
+    // TODO Jianping Zeng 12/8/2018, emit Jump table info
   }
 
   private void emitFunctionBodyEnd() { }
@@ -599,15 +605,40 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   }
 
   /**
+   * Return the alignment to use for the specified global value in log2 form.
+   * @param gv
+   * @param td
+   * @param inBits
+   * @return
+   */
+  private static int getGVAlignmentLog2(GlobalValue gv,
+                                        TargetData td,
+                                        int inBits) {
+    int numBits = 0;
+    if (gv instanceof GlobalVariable)
+      numBits = td.getPreferredAlignment((GlobalVariable)gv);
+
+    // If InBits is specified, round it to it.
+    if (inBits > numBits)
+      numBits = inBits;
+    if (gv.getAlignment() == 0)
+      return numBits;
+
+    int gvAlign = Util.log2(gv.getAlignment());
+    if (gvAlign > numBits || gv.hasSection())
+      numBits = gvAlign;
+    return numBits;
+  }
+  /**
    * Emits a alignment directive to the specified power of two.
    *
    * @param numBits
    * @param gv
    */
   protected void emitAlignment(int numBits, GlobalValue gv) {
-    if (gv != null && gv.getAlignment() != 0)
-      numBits = Util.log2(gv.getAlignment());
-    numBits = Math.max(numBits, 0);
+    if (gv != null)
+      numBits = getGVAlignmentLog2(gv, tm.getTargetData(), numBits);
+
     if (numBits == 0) return;
 
     if (getCurrentSection().getKind().isText())

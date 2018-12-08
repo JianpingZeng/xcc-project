@@ -2,7 +2,6 @@ package backend.codegen;
 
 import backend.mc.MCAsmInfo;
 import backend.mc.MCSymbol;
-import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -65,8 +64,7 @@ public class MachineFunction {
     phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
     boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
-    alignment = isPIC ? tm.getTargetData().getABITypeAlignment(
-        LLVMContext.Int32Ty) : tm.getTargetData().getPointerABIAlign();
+    alignment = tm.getTargetLowering().getFunctionAlignment(fn);
     int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
     jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
 
@@ -188,6 +186,10 @@ public class MachineFunction {
     return alignment;
   }
 
+  /**
+   * Set the alignment (log2, not bytes) of the function.
+   * @param align
+   */
   public void setAlignment(int align) {
     alignment = align;
   }

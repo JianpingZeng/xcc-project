@@ -210,6 +210,8 @@ public class MCAsmStreamer extends MCStreamer {
       // .weak_reference
       case MCSA_WeakReference:  fos.print(mai.getWeakRefDirective()); break;
     }
+    sym.print(os);
+    emitEOL();
   }
 
   @Override
@@ -410,46 +412,44 @@ public class MCAsmStreamer extends MCStreamer {
   @Override
   public void emitValueToAlignment(int byteAlignment, long value, int valueSize, int maxBytesToEmit) {
     if (Util.isPowerOf2(byteAlignment)) {
-      if (Util.isPowerOf2(byteAlignment)) {
-        switch (valueSize) {
-          default:
-            Util.shouldNotReachHere("Invalid size for machine code value!");
-            break;
-          case 1: fos.print(mai.getAlignDirective());break;
-          case 2: fos.print(".p2alignw"); break;
-          case 4: fos.print(".p2alignl"); break;
-          case 8: Util.shouldNotReachHere("Unsupported alignment size!");
-        }
-
-        if (mai.getAlignmentIsInBytes())
-          fos.print(byteAlignment);
-        else
-          fos.print(Util.log2(byteAlignment));
-
-        if (value != 0 || maxBytesToEmit != 0) {
-          fos.print(", 0x");
-          fos.printf("0x%x", truncateToSize(value, valueSize));
-          if (maxBytesToEmit != 0)
-            fos.printf(", %d", maxBytesToEmit);
-        }
-        emitEOL();
-        return;
-      }
-
       switch (valueSize) {
-        default:Util.shouldNotReachHere("Invalid size for machine code value");
-        case 1: fos.print(".balign"); break;
-        case 2: fos.print(".balignw"); break;
-        case 4: fos.print(".balignl"); break;
+        default:
+          Util.shouldNotReachHere("Invalid size for machine code value!");
+          break;
+        case 1: fos.print(mai.getAlignDirective());break;
+        case 2: fos.print(".p2alignw"); break;
+        case 4: fos.print(".p2alignl"); break;
         case 8: Util.shouldNotReachHere("Unsupported alignment size!");
       }
 
-      fos.printf(" %d", byteAlignment);
-      fos.printf(", %d", truncateToSize(value, valueSize));
-      if (maxBytesToEmit !=0 )
-        fos.printf(", %d", maxBytesToEmit);
+      if (mai.getAlignmentIsInBytes())
+        fos.print(byteAlignment);
+      else
+        fos.print(Util.log2(byteAlignment));
+
+      if (value != 0 || maxBytesToEmit != 0) {
+        fos.print(", 0x");
+        fos.printf("%x", truncateToSize(value, valueSize));
+        if (maxBytesToEmit != 0)
+          fos.printf(", %d", maxBytesToEmit);
+      }
       emitEOL();
+      return;
     }
+
+    switch (valueSize) {
+      default:Util.shouldNotReachHere("Invalid size for machine code value");
+      case 1: fos.print(".balign"); break;
+      case 2: fos.print(".balignw"); break;
+      case 4: fos.print(".balignl"); break;
+      case 8: Util.shouldNotReachHere("Unsupported alignment size!");
+    }
+
+    fos.printf(" %d", byteAlignment);
+    fos.printf(", %d", truncateToSize(value, valueSize));
+    if (maxBytesToEmit !=0 )
+      fos.printf(", %d", maxBytesToEmit);
+    emitEOL();
   }
 
   @Override

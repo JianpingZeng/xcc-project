@@ -244,7 +244,8 @@ public abstract class TargetLowering {
   protected ArrayList<APFloat> legalFPImmediates;
   private TargetLoweringObjectFile tlof;
 
-  public TargetLowering(TargetMachine tm) {
+  public TargetLowering(TargetMachine tm,
+                        TargetLoweringObjectFile tlof) {
     this.tm = tm;
     td = tm.getTargetData();
     valueTypeAction = new ValueTypeAction();
@@ -265,7 +266,7 @@ public abstract class TargetLowering {
     targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END + 7) / 8];
     promoteType = new TObjectIntHashMap<Pair<Integer, Integer>>();
     legalFPImmediates = new ArrayList<>();
-
+    this.tlof = tlof;
     stackPointerRegisterToSaveRestore = 0;
 
     for (int vt = 0; vt < MVT.LAST_VALUETYPE; vt++) {

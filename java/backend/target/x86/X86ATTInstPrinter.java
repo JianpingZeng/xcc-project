@@ -42,7 +42,7 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
       if (commentStream != null && (op.getImm() > 255 || op.getImm() < -256))
         commentStream.printf("imm = 0x%%%x\n", op.getImm());
     } else {
-      Util.assertion(op.isExpr(), "unknown operand kindd in printOperand");
+      Util.assertion(op.isExpr(), "unknown operand kind in printOperand");
       os.print("$");
       op.getExpr().print(os);
     }

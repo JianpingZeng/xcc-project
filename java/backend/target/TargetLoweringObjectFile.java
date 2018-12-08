@@ -28,33 +28,33 @@ public abstract class TargetLoweringObjectFile {
   protected MCSection DataSection;
   protected MCSection BSSSection;
   protected MCSection ReadOnlySection;
-  protected MCSection staticCtorSection;
-  protected MCSection staticDtorSection;
+  protected MCSection StaticCtorSection;
+  protected MCSection StaticDtorSection;
   /**
    * If exception handling is supported by the target, this is
    * the section the Language Specific Data Area information is emitted to.
    */
-  protected MCSection lsdaSection;
+  protected MCSection LSDASection;
   /**
    * If exception handling is supported by the target, this is
    * the section the EH Frame is emitted to.
    */
-  protected MCSection ehFrameSection;
+  protected MCSection EHFrameSection;
 
   // Dwarf sections for debug info.  If a target supports debug info, these must
   // be set.
-  protected MCSection dwarfAbbrevSection;
-  protected MCSection dwarfInfoSection;
-  protected MCSection dwarfLineSection;
-  protected MCSection dwarfFrameSection;
-  protected MCSection dwarfPubNamesSection;
-  protected MCSection dwarfPubTypesSection;
-  protected MCSection dwarfDebugInlineSection;
-  protected MCSection dwarfStrSection;
-  protected MCSection dwarfLocSection;
-  protected MCSection dwarfARangesSection;
-  protected MCSection dwarfRangesSection;
-  protected MCSection dwarfMacroInfoSection;
+  protected MCSection DwarfAbbrevSection;
+  protected MCSection DwarfInfoSection;
+  protected MCSection DwarfLineSection;
+  protected MCSection DwarfFrameSection;
+  protected MCSection DwarfPubNamesSection;
+  protected MCSection DwarfPubTypesSection;
+  protected MCSection DwarfDebugInlineSection;
+  protected MCSection DwarfStrSection;
+  protected MCSection DwarfLocSection;
+  protected MCSection DwarfARangesSection;
+  protected MCSection DwarfRangesSection;
+  protected MCSection DwarfMacroInfoSection;
 
   public MCSymbol.MCContext getContext() {
     return ctx;
@@ -74,24 +74,24 @@ public abstract class TargetLoweringObjectFile {
   public MCSection getTextSection() { return TextSection; }
   public MCSection getDataSection() { return DataSection; }
   public MCSection getBSSSection() { return BSSSection; }
-  public MCSection getStaticCtorSection() { return staticCtorSection; }
-  public MCSection getStaticDtorSection() { return staticDtorSection; }
-  public MCSection getLSDASection() { return lsdaSection; }
-  public MCSection getEHFrameSection() { return ehFrameSection; }
-  public MCSection getDwarfAbbrevSection() { return dwarfAbbrevSection; }
-  public MCSection getDwarfInfoSection() { return dwarfInfoSection; }
-  public MCSection getDwarfLineSection() { return dwarfLineSection; }
-  public MCSection getDwarfFrameSection() { return dwarfFrameSection; }
-  public MCSection getDwarfPubNamesSection() {return dwarfPubNamesSection;}
-  public MCSection getDwarfPubTypesSection() {return dwarfPubTypesSection;}
+  public MCSection getStaticCtorSection() { return StaticCtorSection; }
+  public MCSection getStaticDtorSection() { return StaticDtorSection; }
+  public MCSection getLSDASection() { return LSDASection; }
+  public MCSection getEHFrameSection() { return EHFrameSection; }
+  public MCSection getDwarfAbbrevSection() { return DwarfAbbrevSection; }
+  public MCSection getDwarfInfoSection() { return DwarfInfoSection; }
+  public MCSection getDwarfLineSection() { return DwarfLineSection; }
+  public MCSection getDwarfFrameSection() { return DwarfFrameSection; }
+  public MCSection getDwarfPubNamesSection() {return DwarfPubNamesSection;}
+  public MCSection getDwarfPubTypesSection() {return DwarfPubTypesSection;}
   public MCSection getDwarfDebugInlineSection() {
-    return dwarfDebugInlineSection;
+    return DwarfDebugInlineSection;
   }
-  public MCSection getDwarfStrSection() { return dwarfStrSection; }
-  public MCSection getDwarfLocSection() { return dwarfLocSection; }
-  public MCSection getDwarfARangesSection() { return dwarfARangesSection;}
-  public MCSection getDwarfRangesSection() { return dwarfRangesSection; }
-  public MCSection getDwarfMacroInfoSection() { return dwarfMacroInfoSection; }
+  public MCSection getDwarfStrSection() { return DwarfStrSection; }
+  public MCSection getDwarfLocSection() { return DwarfLocSection; }
+  public MCSection getDwarfARangesSection() { return DwarfARangesSection;}
+  public MCSection getDwarfRangesSection() { return DwarfRangesSection; }
+  public MCSection getDwarfMacroInfoSection() { return DwarfMacroInfoSection; }
 
   /**
    * Given a mergableant with the

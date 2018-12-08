@@ -16,7 +16,6 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import backend.type.ArrayType;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Error;
@@ -324,7 +323,6 @@ public final class AsmWriterEmitter extends TableGenBackend {
           lastEmitted = varEnd;
         }
       }
-      addLiteralString("\\n");
     }
 
     /**
@@ -713,7 +711,6 @@ public final class AsmWriterEmitter extends TableGenBackend {
   }
 
   private void emitGetRegisterName(PrintStream os, CodeGenTarget target) {
-    Record asmWriter = target.getAsmWriter();
     ArrayList<CodeGenRegister> registers = target.getRegisters();
 
     os.println();
@@ -732,9 +729,9 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.println("};\n");
 
     os.println("  public String getRegisterName(int regNo) {");
-    os.printf("    Util.assertion(regNo != 0 && regNo < %d, \"Invalid register number!\");\n",
+    os.printf("    Util.assertion(regNo > 0 && regNo < %d, \"Invalid register number!\");\n",
         registers.size()-1);
-    os.println("    return RegNameStrs[regNo];");
+    os.println("    return RegNameStrs[regNo-1];");
     os.println("  }");
   }
 

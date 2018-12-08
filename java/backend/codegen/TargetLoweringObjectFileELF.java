@@ -49,6 +49,138 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   protected MCSection MergeableConst8Section;
   protected MCSection MergeableConst16Section;
 
+  @Override
+  public void initialize(MCContext ctx, TargetMachine tm) {
+    super.initialize(ctx, tm);
+    BSSSection =
+        getContext().getELFSection(".bss", MCSectionELF.SHT_NOBITS,
+            MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
+            SectionKind.getBSS());
+
+    TextSection =
+        getContext().getELFSection(".text", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_EXECINSTR |
+                MCSectionELF.SHF_ALLOC,
+            SectionKind.getText());
+
+    DataSection =
+        getContext().getELFSection(".data", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
+            SectionKind.getDataRel());
+
+    ReadOnlySection =
+        getContext().getELFSection(".rodata", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC,
+            SectionKind.getReadOnly());
+
+    TLSDataSection =
+        getContext().getELFSection(".tdata", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_TLS |
+                MCSectionELF.SHF_WRITE,
+            SectionKind.getThreadData());
+
+    TLSBSSSection =
+        getContext().getELFSection(".tbss", MCSectionELF.SHT_NOBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_TLS |
+                MCSectionELF.SHF_WRITE,
+            SectionKind.getThreadBSS());
+
+    DataRelSection =
+        getContext().getELFSection(".data.rel", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getDataRel());
+
+    DataRelLocalSection =
+        getContext().getELFSection(".data.rel.local", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getDataRelLocal());
+
+    DataRelROSection =
+        getContext().getELFSection(".data.rel.ro", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getReadOnlyWithRel());
+
+    DataRelROLocalSection =
+        getContext().getELFSection(".data.rel.ro.local", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getReadOnlyWithRelLocal());
+
+    MergeableConst4Section =
+        getContext().getELFSection(".rodata.cst4", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_MERGE,
+            SectionKind.getMergeableConst4());
+
+    MergeableConst8Section =
+        getContext().getELFSection(".rodata.cst8", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_MERGE,
+            SectionKind.getMergeableConst8());
+
+    MergeableConst16Section =
+        getContext().getELFSection(".rodata.cst16", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_MERGE,
+            SectionKind.getMergeableConst16());
+
+    StaticCtorSection =
+        getContext().getELFSection(".ctors", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getDataRel());
+
+    StaticDtorSection =
+        getContext().getELFSection(".dtors", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getDataRel());
+
+    // Exception Handling Sections.
+
+    // FIXME: We're emitting LSDA info into a readonly section on ELF, even though
+    // it contains relocatable pointers.  In PIC mode, this is probably a big
+    // runtime hit for C++ apps.  Either the contents of the LSDA need to be
+    // adjusted or this should be a data section.
+    LSDASection =
+        getContext().getELFSection(".gcc_except_table", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC,
+            SectionKind.getReadOnly());
+    EHFrameSection =
+        getContext().getELFSection(".eh_frame", MCSectionELF.SHT_PROGBITS,
+            MCSectionELF.SHF_ALLOC | MCSectionELF.SHF_WRITE,
+            SectionKind.getDataRel());
+
+    // Debug Info Sections.
+    DwarfAbbrevSection =
+        getContext().getELFSection(".debug_abbrev", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfInfoSection =
+        getContext().getELFSection(".debug_info", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfLineSection =
+        getContext().getELFSection(".debug_line", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfFrameSection =
+        getContext().getELFSection(".debug_frame", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfPubNamesSection =
+        getContext().getELFSection(".debug_pubnames", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfPubTypesSection =
+        getContext().getELFSection(".debug_pubtypes", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfStrSection =
+        getContext().getELFSection(".debug_str", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfLocSection =
+        getContext().getELFSection(".debug_loc", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfARangesSection =
+        getContext().getELFSection(".debug_aranges", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfRangesSection =
+        getContext().getELFSection(".debug_ranges", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+    DwarfMacroInfoSection =
+        getContext().getELFSection(".debug_macinfo", MCSectionELF.SHT_PROGBITS, 0,
+            SectionKind.getMetadata());
+  }
+
   protected MCSection getELFSection(String Section, int Type,
                                     int Flags, SectionKind Kind) {
     return getELFSection(Section, Type, Flags, Kind, false);
@@ -200,6 +332,7 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   /**
    * If we have -ffunction-section or -fdata-section then we should emit the
    * global value to a uniqued section specifically for it.
+   *
    * @param gv
    * @param kind
    * @param mang
@@ -237,7 +370,7 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
       // We also need alignment here.
       // FIXME: this is getting the alignment of the character, not the
       // alignment of the global!
-      int align = tm.getTargetData().getPreferredAlignment((GlobalVariable)gv);
+      int align = tm.getTargetData().getPreferredAlignment((GlobalVariable) gv);
       String sizeSpec = ".rodata.str1.";
       if (kind.isMergeable2ByteCString())
         sizeSpec = ".rodata.str2.";
@@ -248,7 +381,7 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
 
       String name = sizeSpec + align;
       return getContext().getELFSection(name, MCSectionELF.SHT_PROGBITS,
-              MCSectionELF.SHF_ALLOC |
+          MCSectionELF.SHF_ALLOC |
               MCSectionELF.SHF_MERGE |
               MCSectionELF.SHF_STRINGS,
           kind);
@@ -264,19 +397,19 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
       return ReadOnlySection;  // .const
     }
 
-    if (kind.isReadOnly())             return ReadOnlySection;
+    if (kind.isReadOnly()) return ReadOnlySection;
 
-    if (kind.isThreadData())           return TLSDataSection;
-    if (kind.isThreadBSS())            return TLSBSSSection;
+    if (kind.isThreadData()) return TLSDataSection;
+    if (kind.isThreadBSS()) return TLSBSSSection;
 
     // Note: we claim that common symbols are put in BSSSection, but they are
     // really emitted with the magic .comm directive, which creates a symbol table
     // entry but not a section.
     if (kind.isBSS() || kind.isCommon()) return BSSSection;
 
-    if (kind.isDataNoRel())            return DataSection;
-    if (kind.isDataRelLocal())         return DataRelLocalSection;
-    if (kind.isDataRel())              return DataRelSection;
+    if (kind.isDataNoRel()) return DataSection;
+    if (kind.isDataRelLocal()) return DataRelLocalSection;
+    if (kind.isDataRel()) return DataRelSection;
     if (kind.isReadOnlyWithRelLocal()) return DataRelROLocalSection;
 
     Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
@@ -284,15 +417,15 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   }
 
   private static String getSectionPrefixUniqueGlobal(SectionKind kind) {
-    if (kind.isText())                 return ".gnu.linkonce.t.";
-    if (kind.isReadOnly())             return ".gnu.linkonce.r.";
+    if (kind.isText()) return ".gnu.linkonce.t.";
+    if (kind.isReadOnly()) return ".gnu.linkonce.r.";
 
-    if (kind.isThreadData())           return ".gnu.linkonce.td.";
-    if (kind.isThreadBSS())            return ".gnu.linkonce.tb.";
+    if (kind.isThreadData()) return ".gnu.linkonce.td.";
+    if (kind.isThreadBSS()) return ".gnu.linkonce.tb.";
 
-    if (kind.isDataNoRel())            return ".gnu.linkonce.d.";
-    if (kind.isDataRelLocal())         return ".gnu.linkonce.d.rel.local.";
-    if (kind.isDataRel())              return ".gnu.linkonce.d.rel.";
+    if (kind.isDataNoRel()) return ".gnu.linkonce.d.";
+    if (kind.isDataRelLocal()) return ".gnu.linkonce.d.rel.local.";
+    if (kind.isDataRel()) return ".gnu.linkonce.d.rel.";
     if (kind.isReadOnlyWithRelLocal()) return ".gnu.linkonce.d.rel.ro.local.";
 
     Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
@@ -301,19 +434,20 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
 
   /**
    * Return the section prefix name used by options FunctionsSections and DataSections.
+   *
    * @param kind
    * @return
    */
   private static String getSectionPrefixForGlobal(SectionKind kind) {
-    if (kind.isText())                 return ".text.";
-    if (kind.isReadOnly())             return ".rodata.";
+    if (kind.isText()) return ".text.";
+    if (kind.isReadOnly()) return ".rodata.";
 
-    if (kind.isThreadData())           return ".tdata.";
-    if (kind.isThreadBSS())            return ".tbss.";
+    if (kind.isThreadData()) return ".tdata.";
+    if (kind.isThreadBSS()) return ".tbss.";
 
-    if (kind.isDataNoRel())            return ".data.";
-    if (kind.isDataRelLocal())         return ".data.rel.local.";
-    if (kind.isDataRel())              return ".data.rel.";
+    if (kind.isDataNoRel()) return ".data.";
+    if (kind.isDataRelLocal()) return ".data.rel.local.";
+    if (kind.isDataRel()) return ".data.rel.";
     if (kind.isReadOnlyWithRelLocal()) return ".data.rel.ro.local.";
 
     Util.assertion(kind.isReadOnlyWithRel(), "Unknown section kind");
@@ -323,6 +457,7 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
   /**
    * Return an MCExpr to use for a reference to the specified global
    * variable from exception handling information.
+   *
    * @param gv
    * @param mang
    * @param mmi

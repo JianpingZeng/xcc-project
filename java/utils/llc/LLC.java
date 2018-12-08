@@ -17,7 +17,6 @@
 
 package utils.llc;
 
-import backend.codegen.MachineCodeEmitter;
 import backend.codegen.RegAllocLocal;
 import backend.codegen.RegAllocSimple;
 import backend.codegen.RegisterRegAlloc;
@@ -80,9 +79,9 @@ public class LLC {
       new Opt<TargetMachine.CodeGenFileType>(
           new Parser<>(),
           optionName("filetype"),
-          desc("Specify the type of generaed file"),
+          desc("Specify the type of generated file, default to 'asm'"),
           new ValueClass<>(new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_AssemblyFile, "asm", "Generate assembly code"),
-              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_ObjectFile, "obj", "Genrate object code")));
+              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_ObjectFile, "obj(experimental)", "Generate object code")));
 
   public static class OptLevelParser extends ParserUInt {
     public boolean parse(Option<?> O, String ArgName,

@@ -15,6 +15,7 @@ import static backend.target.TargetMachine.RelocModel.PIC_;
 
 public class X86_32ELFTargetObjectFile extends TargetLoweringObjectFileELF {
   private X86TargetMachine tm;
+
   public X86_32ELFTargetObjectFile(X86TargetMachine tm) {
     this.tm = tm;
   }
