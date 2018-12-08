@@ -1265,32 +1265,39 @@ public class SelectionDAG {
       if (node.isUseEmpty())
         deadNodes.add(node);
     }
-    removeDeadNodes(deadNodes, null);
+    collectDeadNodes(deadNodes);
+    deallocateAllNodes();
     setRoot(dummy.getValue());
     dummy.dropOperands();
   }
 
-  public void removeDeadNode(SDNode node, DAGUpdateListener listener) {
+  public void collectDeadNode(SDNode node) {
     ArrayList<SDNode> nodes = new ArrayList<>();
     nodes.add(node);
-    removeDeadNodes(nodes, listener);
+    collectDeadNodes(nodes);
   }
 
-  private void deallocateNode(SDNode n) {
-    entryNode.setNodeID(ISD.DELETED_NODE);
-    allNodes.remove(n);
+  private void deallocateAllNodes() {
+    for (int i = allNodes.size() -1 ; i >= 0; i--) {
+      if (allNodes.get(i).isDeleted()) {
+        allNodes.remove(i);
+      }
+    }
   }
 
-  public void removeDeadNodes(ArrayList<SDNode> deadNodes, DAGUpdateListener listener) {
+
+  /**
+   * Remove dead nodes and use variable {@code deallocate} to indicate if we should erase those dead
+   * nodes from allNodes list
+   * @param deadNodes
+   */
+  public void collectDeadNodes(ArrayList<SDNode> deadNodes) {
     for (int i = 0, e = deadNodes.size(); i < e; i++) {
       SDNode node = deadNodes.get(0);
       deadNodes.remove(i);
       --e;
       --i;
       if (node == null) continue;
-
-      if (listener != null)
-        listener.nodeDeleted(node, null);
 
       // Erase the specified SDNode and replace all uses of it with null.
       removeNodeFromCSEMaps(node);
@@ -1306,7 +1313,9 @@ public class SelectionDAG {
         }
       }
 
-      deallocateNode(node);;
+      // we don't delete it from allNodes list, instead mark it  as DELETED_NODE, so we can
+      // ignore it when iterating on it.
+      node.markDeleted();
     }
   }
 
@@ -1403,6 +1412,8 @@ public class SelectionDAG {
         }
         ++i;
         u.set(newNode);
+        // we need to decrement index i caused by removing use by u.set(newNode)
+        --i;
         e = useList.size();
       } while (i < e && useList.get(i).user.equals(user));
 
@@ -1933,13 +1944,10 @@ public class SelectionDAG {
 
       n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
           srcVal, offset, align, vol, readMem, writeMem);
-      ;
-      ;
       cseMap.put(id, n);
     } else {
       n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
           srcVal, offset, align, vol, readMem, writeMem);
-      ;
     }
     allNodes.add(n);
     return new SDValue(n, 0);
@@ -2420,7 +2428,7 @@ public class SelectionDAG {
         deadNodes.add(node);
     }
 
-    removeDeadNodes(deadNodes, null);
+    collectDeadNodes(deadNodes);
     if (id != 0)
       cseMap.put(id, n);
     return n;

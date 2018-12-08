@@ -268,18 +268,33 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     // combine
     curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
+    if (Util.DEBUG) {
+      for (SDNode n : curDAG.allNodes) {
+        Util.assertion(!n.isDeleted());
+      }
+    }
 
     if (false) {
       curDAG.viewGraph("dag-before-legalize for " + blockName);
     }
 
     boolean changed = curDAG.legalizeTypes();
+    if (changed && Util.DEBUG) {
+      for (SDNode n : curDAG.allNodes) {
+        Util.assertion(!n.isDeleted());
+      }
+    }
     if (false) {
       curDAG.viewGraph("dag-after-first-legalize-types for " + blockName);
     }
 
     if (changed) {
       curDAG.combine(CombineLevel.NoIllegalTypes, aa, optLevel);
+      if (Util.DEBUG) {
+        for (SDNode n : curDAG.allNodes) {
+          Util.assertion(!n.isDeleted());
+        }
+      }
       if (false) {
         curDAG.viewGraph("dag-after-second-combines for " + blockName);
       }
@@ -287,19 +302,40 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       //changed = curDAG.legalizeVectors();
       if (changed) {
         changed = curDAG.legalizeTypes();
+        if (changed && Util.DEBUG) {
+          for (SDNode n : curDAG.allNodes) {
+            Util.assertion(!n.isDeleted());
+          }
+        }
       }
-      if (changed)
+      if (changed) {
         curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
+        if (Util.DEBUG) {
+          for (SDNode n : curDAG.allNodes) {
+            Util.assertion(!n.isDeleted());
+          }
+        }
+      }
     }
     if (false) {
       curDAG.viewGraph("dag-after-combine2 for " + blockName);
     }
 
     curDAG.legalize(false, optLevel);
+    if (Util.DEBUG) {
+      for (SDNode n : curDAG.allNodes) {
+        Util.assertion(!n.isDeleted());
+      }
+    }
     if (false) {
       curDAG.viewGraph("dag-after-legalizations for " + blockName);
     }
     curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
+    if (Util.DEBUG) {
+      for (SDNode n : curDAG.allNodes) {
+        Util.assertion(!n.isDeleted());
+      }
+    }
     if (ViewDAGBeforeISel.value) {
       curDAG.viewGraph("dag-before-isel for " + blockName);
     }
@@ -327,8 +363,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     iselPosition++;
     while (iselPosition != 0) {
       SDNode node = curDAG.allNodes.get(--iselPosition);
-      if (node.isUseEmpty() || node.getNodeID() == ISD.DELETED_NODE ||
-          node.isMachineOpecode())
+      if (node.isUseEmpty() || node.isDeleted() || node.isMachineOpecode())
         continue;
 
       SDNode resNode = select(node);
@@ -337,11 +372,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       if (resNode != null)
         replaceUses(node, resNode);
 
-      if (node.isUseEmpty()) {
-        ISelUpdater updater = new ISelUpdater(iselPosition, curDAG.allNodes);
-        curDAG.removeDeadNode(node, updater);
-        iselPosition = updater.getISelPos();
-      }
+      if (node.isUseEmpty())
+        // we just mark node and all SDNode which can be reached from node as
+        // DELETED_NODE instead of erasing it from allNodes.
+        curDAG.collectDeadNode(node);
     }
     curDAG.setRoot(dummy.getValue());
     dummy.dropOperands();
@@ -788,7 +822,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                                     boolean isMorphNodeTo) {
     ArrayList<SDNode> deadNodes = new ArrayList<>();
 
-    ISelUpdater isu = new ISelUpdater(iselPosition, curDAG.allNodes);
     // Now that all the normal results are replaced, we replace the chain and
     // flag results if present.
     if (!chainNodesMatched.isEmpty()) {
@@ -809,7 +842,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         if (chainVal.getValueType().equals(new EVT(MVT.Flag)))
           chainVal = chainVal.getValue(chainVal.getNode().getNumValues() - 2);
         Util.assertion(chainVal.getValueType().equals(new EVT(MVT.Other)), "not a chain!");
-        curDAG.replaceAllUsesOfValueWith(chainVal, inputChain, isu);
+        curDAG.replaceAllUsesOfValueWith(chainVal, inputChain, null);
 
         // If the node became dead, delete it.
         if (chainNode.isUseEmpty())
@@ -827,7 +860,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         Util.assertion(flagNode.getValueType(flagNode.getNumValues() - 1).equals(new EVT(MVT.Flag)),
             "Doesn't have a flag result");
         curDAG.replaceAllUsesOfValueWith(new SDValue(flagNode, flagNode.getNumValues() - 1),
-            inputFlag, isu);
+            inputFlag, null);
 
         // if this flagNode becomes dead, add it into deadNodes list.
         if (flagNode.isUseEmpty())
@@ -836,10 +869,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     }
 
     if (!deadNodes.isEmpty())
-      curDAG.removeDeadNodes(deadNodes, isu);
-
-    // Update the isel position
-    iselPosition = isu.getISelPos();
+      curDAG.collectDeadNodes(deadNodes);
   }
 
   /**

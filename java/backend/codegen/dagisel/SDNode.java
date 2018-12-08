@@ -41,6 +41,10 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  */
 public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   protected int opcode;
+  /**
+   * This field used for keeping track of old opcode after marking this SDNode as DELETED_NODE.
+   */
+  protected int oldOpcode;
   protected int sublassData;
   protected int nodeID;
   protected SDUse[] operandList;
@@ -761,7 +765,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public void printTypes(PrintStream os, SelectionDAG dag) {
     os.printf("0x%x: ", this.hashCode());
     for (int i = 0, e = getNumValues(); i < e; i++) {
-      if (i != 0) os.printf(",");
+      if (i != 0) os.print(",");
       if (getValueType(i).equals(new EVT(MVT.Other)))
         os.print("ch");
       else
@@ -879,7 +883,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       if (srcValue != null)
         os.printf("0x%x", srcValue.hashCode());
       else
-        os.printf("null");
+        os.print("null");
       os.printf(":%d>", srcOffset);
 
       boolean doExt = true;
@@ -888,13 +892,13 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
           doExt = false;
           break;
         case EXTLOAD:
-          os.printf(" <anyext ");
+          os.print(" <anyext ");
           break;
         case SEXTLOAD:
-          os.printf(" <sext ");
+          os.print(" <sext ");
           break;
         case ZEXTLOAD:
-          os.printf(" <zext ");
+          os.print(" <zext ");
           break;
       }
       if (doExt)
@@ -903,7 +907,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       String am = getIndexedModeName(ld.getAddressingMode());
       os.printf(" %s", am);
       if (ld.isVolatile())
-        os.printf(" <volatile>");
+        os.print(" <volatile>");
       os.printf(" alignment=%d", ld.getAlignment());
     } else if (this instanceof StoreSDNode) {
       StoreSDNode st = (StoreSDNode) this;
@@ -913,7 +917,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       if (srcValue != null)
         os.printf("0x%x", srcValue.hashCode());
       else
-        os.printf("null");
+        os.print("null");
       os.printf(":%d>", srcOffset);
 
       if (st.isTruncatingStore())
@@ -922,7 +926,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       String am = getIndexedModeName(st.getAddressingMode());
       os.printf(" %s", am);
       if (st.isVolatile())
-        os.printf(" <volatile>");
+        os.print(" <volatile>");
       os.printf(" alignment=%d", st.getAlignment());
     } else if (this instanceof AtomicSDNode) {
       AtomicSDNode at = (AtomicSDNode) this;
@@ -932,11 +936,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       if (srcValue != null)
         os.printf("0x%x", srcValue.hashCode());
       else
-        os.printf("null");
+        os.print("null");
       os.printf(":%d>", srcOffset);
 
       if (at.isVolatile())
-        os.printf(" <volatile>");
+        os.print(" <volatile>");
       os.printf(" alignment=%d", at.getAlignment());
     }
   }
@@ -951,7 +955,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     for (int i = 0, e = getNumOperands(); i < e; i++) {
       if (i != 0) os.print(", ");
       if (getOperand(i).getNode() == null)
-        os.printf("0x0");
+        os.print("0x0");
       else
         os.printf("0x%x", getOperand(i).getNode().hashCode());
       int resNo = getOperand(i).getResNo();
@@ -998,6 +1002,15 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   @Override
   public void profile(FoldingSetNodeID id) {
     SelectionDAG.addNodeToID(id, this);
+  }
+
+  public boolean isDeleted() {
+    return getOpcode() == ISD.DELETED_NODE;
+  }
+
+  public void markDeleted() {
+    oldOpcode = opcode;
+    setOpcode(ISD.DELETED_NODE);
   }
 
   public static class SDVTList {
