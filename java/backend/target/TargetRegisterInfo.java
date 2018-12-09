@@ -158,7 +158,7 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
 
   /**
    * This method is called immediately before the specified functions frame
-   * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
+   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
    * MO_FrameIndex operands are replaced with direct ants.  This method is
    * optional.
    */
@@ -186,7 +186,7 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
   public abstract int getFrameRegister(MachineFunction mf);
 
   public int getFrameIndexOffset(MachineFunction mf, int fi) {
-    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     MachineFrameInfo mfi = mf.getFrameInfo();
     return (int) (mfi.getObjectOffset(fi) + mfi.getStackSize() -
         tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment());

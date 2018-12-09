@@ -61,9 +61,14 @@ public class TargetOptions {
   /**
    * Disable frame pointer elimination optimization.
    */
-  public static final BooleanOpt DisableFramePointerElim =
+  public static final BooleanOpt DisableFPElim =
       new BooleanOpt(optionName("disable-fp-elim"),
           desc("Disable frame pointer elimination optimization"),
+          init(false));
+
+  public static final BooleanOpt DisableFPEliMLeaf =
+      new BooleanOpt(optionName("disable-non-leaf-fp-elim"),
+          desc("Disable frame pointer elimination optimization for non-leaf funcs"),
           init(false));
 
   public static final BooleanOpt EnableRealignStack =

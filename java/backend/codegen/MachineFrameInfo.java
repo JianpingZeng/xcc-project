@@ -342,7 +342,7 @@ public class MachineFrameInfo {
   }
 
   public void print(MachineFunction mf, PrintStream os) {
-    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     int valueOffset = tfi != null ? tfi.getLocalAreaOffset() : 0;
 
     for (int i = 0, e = objects.size(); i < e; i++) {

@@ -537,8 +537,8 @@ public class SubtargetEmitter extends TableGenBackend {
 
       // Emit constructor method.
       os.printf("public %s(%sTargetMachine tm, String tt,String cpu,\n" +
-          "                         String fs, int stackAlignOverride, boolean is64Bit) {\n" +
-          "\t\tsuper(tm, tt, cpu, fs, stackAlignOverride, is64Bit);\n" +
+          "                         String fs, int stackAlignOverride, boolean isIn64BitMode) {\n" +
+          "\t\tsuper(tm, tt, cpu, fs, stackAlignOverride, isIn64BitMode);\n" +
           "\t\tinitMCSubtargetInfo(tt, cpu, fs, featureKV, subTypeKV, null, null, null, null);\n" +
           "\t}", className, targetName);
 

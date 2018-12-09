@@ -215,7 +215,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       // and there is no dynamic allocation(therefore referencing frame
       // slots off sp), leave the psedo ops alone. we'll eliminate them
       // later.
-      TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+      TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
       if (tfl.hasReservedCallFrame(mf) || tfl.hasFP(mf))
         tii.eliminateCallFramePseudoInstr(mf, mi);
     }
@@ -1191,7 +1191,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
   private void calculateCalleeSavedRegisters(MachineFunction mf) {
     TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
     TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
 
@@ -1280,7 +1280,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    * @param mf
    */
   private void calculateFrameObjectOffsets(MachineFunction mf) {
-    TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
     boolean stackGrowDown = tfl.getStackGrowDirection() == StackGrowDown;
 
     MachineFrameInfo mfi = mf.getFrameInfo();
@@ -1424,7 +1424,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    * @param mf
    */
   private void insertPrologEpilogCode(MachineFunction mf) {
-    TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
     tfl.emitPrologue(mf);
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {

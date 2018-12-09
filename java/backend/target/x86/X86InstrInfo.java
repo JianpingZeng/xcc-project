@@ -958,7 +958,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         if (hasLiveCondCodeDef(mi))
           return null;
 
-        boolean is64Bit = tm.getSubtarget().is64Bit;
+        boolean is64Bit = tm.getSubtarget().isIn64BitMode;
         switch (miOpc) {
           case INC64r:
           case INC32r:
@@ -3399,13 +3399,13 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean is64Bit = subtarget.is64Bit();
     int stackPtr = tri.getFrameRegister(mf);
 
-    if (!tm.getFrameInfo().hasReservedCallFrame(mf)) {
+    if (!tm.getFrameLowering().hasReservedCallFrame(mf)) {
       // If we have a frame pointer, turn the adjcallstackup instruction into a
       // 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
       // <amt>'
       long amount = old.getOperand(0).getImm();
       if (amount != 0) {
-        int align = mf.getTarget().getFrameInfo().getStackAlignment();
+        int align = mf.getTarget().getFrameLowering().getStackAlignment();
         amount = Util.roundUp(amount, align);
 
         // stack setup pseudo instrcution.

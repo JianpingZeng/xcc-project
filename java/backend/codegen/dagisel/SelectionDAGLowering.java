@@ -1865,7 +1865,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     else if (intPtr.bitsGT(allocaSize.getValueType()))
       allocaSize = dag.getNode(ISD.ZERO_EXTEND, intPtr, allocaSize);
 
-    int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+    int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
     if (align <= stackAlign)
       align = 0;
 

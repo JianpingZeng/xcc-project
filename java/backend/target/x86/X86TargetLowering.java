@@ -83,7 +83,7 @@ public class X86TargetLowering extends TargetLowering {
     boolean is64Bit = subtarget.is64Bit();
     Util.assertion(subtarget.isTargetELF(), "only ELF supported current");
     /*if (subtarget.isTargetDarwin()) {
-      if (is64Bit) return X86_64MachoTargetObjectFile();
+      if (isIn64BitMode) return X86_64MachoTargetObjectFile();
       return new TargetLoweringObjectFileMachO();
     }
     */
@@ -1366,7 +1366,7 @@ public class X86TargetLowering extends TargetLowering {
   private int getAlignedArgumentStackSize(int stackSize, SelectionDAG dag) {
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameLowering tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameLowering();
     int stackAlign = tfi.getStackAlignment();
     int alignMask = stackAlign - 1;
     int offset = stackSize;
@@ -4940,7 +4940,7 @@ public class X86TargetLowering extends TargetLowering {
         */
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameLowering tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameLowering();
     int stackAlignment = tfi.getStackAlignment();
     EVT vt = op.getValueType();
     int ssfi = mf.getFrameInfo().createStackObject(2, stackAlignment);

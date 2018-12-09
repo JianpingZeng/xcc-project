@@ -17,6 +17,7 @@ package backend.target.x86;
  */
 
 import backend.support.CallingConv;
+import backend.support.Triple;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
@@ -131,17 +132,16 @@ public abstract class X86Subtarget extends TargetSubtarget {
    * True if the processor supports 64-bit instructions and
    * pointer size is 64 bit.
    */
-  protected boolean is64Bit;
+  protected boolean isIn64BitMode;
 
   public enum TargetType {
     isELF, isCygwin, isDarwin, isWindows, isMingw
   }
 
   public TargetType targetType;
-
   private boolean isLittleEndian;
-
   private X86TargetMachine tm;
+  private Triple targetTriple;
 
   protected X86Subtarget(X86TargetMachine tm,
                          String tt,String cpu,
@@ -162,13 +162,12 @@ public abstract class X86Subtarget extends TargetSubtarget {
     isLinux = false;
     // This is known good to Yonah, but I don't known about other.
     maxInlineSizeThreshold = 128;
-    this.is64Bit = is64Bit;
-
+    this.isIn64BitMode = is64Bit;
     // Default to ELF unless user explicitly specify.
     targetType = isELF;
-
     this.isLittleEndian = true;
-
+    stackAlignemnt = 8;
+    targetTriple = new Triple(tt);
     // default to hard float ABI.
 
     // determine default and user specified characteristics.
@@ -246,7 +245,8 @@ public abstract class X86Subtarget extends TargetSubtarget {
     // 32 and 64 bit) and for all 64-bit targets.
     if (stackAlignOverride != 0)
       stackAlignemnt = stackAlignOverride;
-    else if (targetType == isDarwin || is64Bit)
+    else if (isTargetDarwin() || isTargetLinux() ||
+        isTargetFreeBSD() || isTargetSolaris() || is64Bit)
       stackAlignemnt = 16;
   }
 
@@ -360,7 +360,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
   }
 
   public boolean is64Bit() {
-    return is64Bit;
+    return isIn64BitMode;
   }
 
   public PICStyle getPICStyle() {
@@ -423,6 +423,18 @@ public abstract class X86Subtarget extends TargetSubtarget {
     return isBTMemSlow;
   }
 
+  public boolean isTargetLinux() {
+    return targetTriple.getOS() == Triple.OSType.Linux;
+  }
+
+  public boolean isTargetSolaris() {
+    return targetTriple.getOS() == Triple.OSType.Solaris;
+  }
+
+  public boolean isTargetFreeBSD() {
+    return targetTriple.getOS() == Triple.OSType.FreeBSD;
+  }
+
   public boolean isTargetDarwin() {
     return targetType == isDarwin;
   }
@@ -448,7 +460,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
   }
 
   public boolean isTargetWin64() {
-    return is64Bit && (targetType == isMingw || targetType == isWindows);
+    return isIn64BitMode && (targetType == isMingw || targetType == isWindows);
   }
 
   public void setIsLittleEndian(boolean isLittleEndian) {

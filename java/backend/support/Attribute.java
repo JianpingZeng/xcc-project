@@ -68,6 +68,9 @@ public final class Attribute {
   /// instructions.
   public static final int Naked = 1 << 24; ///< Naked function
 
+  public static final int InlineHint = 1 << 25;
+  public static final int StackAlignment = 7 << 26;
+
   /// @brief Attributes that only apply to function parameters.
   public static final int ParameterOnly =
       ByVal | Nest | StructRet | NoCapture;

@@ -119,18 +119,27 @@ public class X86TargetMachine extends LLVMTargetMachine {
     return dataLayout;
   }
 
+  /**
+   * You should directly call argetSubtarget::getInstrInfo().
+   * @return
+   */
+  @Deprecated
   @Override
   public TargetInstrInfo getInstrInfo() {
     return subtarget.getInstrInfo();
   }
 
+  /**
+   * You should directly call argetSubtarget::getRegisterInfo().
+   * @return
+   */
+  @Deprecated
   @Override
   public TargetRegisterInfo getRegisterInfo() {
     return subtarget.getRegisterInfo();
   }
 
-  @Override
-  public TargetFrameLowering getFrameInfo() {
+  public TargetFrameLowering getFrameLowering() {
     return frameInfo;
   }
 

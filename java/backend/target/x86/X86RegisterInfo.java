@@ -2,13 +2,18 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.mc.MCRegisterClass;
+import backend.support.Attribute;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
+import backend.value.Function;
 import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
+import tools.commandline.BooleanOpt;
+import tools.commandline.OptionHidden;
+import tools.commandline.OptionHiddenApplicator;
 
 import java.util.ArrayList;
 
@@ -16,12 +21,21 @@ import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
+import static tools.commandline.Desc.desc;
+import static tools.commandline.Initializer.init;
+import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
 public abstract class X86RegisterInfo extends TargetRegisterInfo {
+  public static final BooleanOpt ForceStackAlign =
+      new BooleanOpt(optionName("force-align-stack"),
+          desc("Force align the stack to the minimum alignment need for the function."),
+          new OptionHiddenApplicator(OptionHidden.Hidden),
+          init(false));
+
   /**
    * Native X86 register numbers
    */
@@ -85,7 +99,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     subtarget = tm.getSubtarget();
     is64Bit = subtarget.is64Bit();
     isWin64 = subtarget.isTargetWin64();
-    stackAlign = tm.getFrameInfo().getStackAlignment();
+    stackAlign = tm.getFrameLowering().getStackAlignment();
 
     if (is64Bit) {
       slotSize = 8;
@@ -245,6 +259,19 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
   public int getStackAlignment() {
     return stackAlign;
+  }
+
+  public int getSlotSize() {
+    return slotSize;
+  }
+
+  public int getStackRegister() {
+    return stackPtr;
+  }
+
+  public int getFrameRegister(MachineFunction mf) {
+    TargetFrameLowering tfl = tm.getFrameLowering();
+    return tfl.hasFP(mf) ? framePtr : stackPtr;
   }
 
   /**
@@ -450,17 +477,28 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       return calleeSavedRegClasses32Bit;
   }
 
+  private boolean canRealignStack(MachineFunction mf) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    return EnableRealignStack.value && !mfi.hasVarSizedObjects();
+  }
+
   @Override
   public boolean needsStackRealignment(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-    return EnableRealignStack.value && mfi.getMaxAlignment() > stackAlign
-        && !mfi.hasVarSizedObjects();
+    Function f = mf.getFunction();
+    int stackAlign = tm.getFrameLowering().getStackAlignment();
+    boolean requiresRealignment = mfi.getMaxAlignment() > stackAlign ||
+        f.hasFnAttr(Attribute.StackAlignment);
+
+    if (ForceStackAlign.value)
+      return canRealignStack(mf);
+    return requiresRealignment && canRealignStack(mf);
   }
 
   @Override
   public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
                                       OutRef<Integer> frameIdx) {
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tli = mf.getTarget().getFrameLowering();
     if (reg == framePtr && tli.hasFP(mf)) {
       frameIdx.set(mf.getFrameInfo().getObjectIndexBegin());
       return true;
@@ -496,10 +534,10 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         .max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
 
     mfi.setMaxAlignment(maxAlign);
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tli = mf.getTarget().getFrameLowering();
 
     if (tli.hasFP(mf)) {
-      TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
+      TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
       int frameIndex = mfi.createFixedObject(slotSize,
           -slotSize + tfi.getLocalAreaOffset());
       Util.assertion(frameIndex == mfi.getObjectIndexBegin(), "Slot for EBP register must be last in order to be found!");
@@ -519,14 +557,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   }
 
   @Override
-  public int getFrameRegister(MachineFunction mf) {
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
-    return tli.hasFP(mf) ? framePtr : stackPtr;
-  }
-
-  @Override
   public int getFrameIndexOffset(MachineFunction mf, int fi) {
-    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     MachineFrameInfo mfi = mf.getFrameInfo();
     int offset = mfi.getObjectOffset(fi) - tfi.getLocalAreaOffset();
     int stackSize = mfi.getStackSize();
@@ -541,7 +573,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         return offset + stackSize;
       }
     } else {
-      TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+      TargetFrameLowering tli = mf.getTarget().getFrameLowering();
       if (!tli.hasFP(mf))
         return offset + stackSize;
 
@@ -692,14 +724,14 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
   /**
    * This method is called immediately before the specified functions frame
-   * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
+   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
    * MO_FrameIndex operands are replaced with direct ants.  This method is
    * optional.
    */
   @Override
   public void processFunctionBeforeFrameFinalized(
       MachineFunction mf) {
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tli = mf.getTarget().getFrameLowering();
     if (tli.hasFP(mf)) {
       // creates a stack object for saving EBP.
       int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
@@ -718,7 +750,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
     }
 
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tli = mf.getTarget().getFrameLowering();
     int frameIndex = mi.getOperand(i).getIndex();
     int basePtr;
     if (needsStackRealignment(mf))
@@ -749,7 +781,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     reserved.set(SPL);
 
     // Set the frame-pointer register and its aliases as reserved if needed.
-    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tli = mf.getTarget().getFrameLowering();
     if (tli.hasFP(mf)) {
       reserved.set(RBP);
       reserved.set(EBP);

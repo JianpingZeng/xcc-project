@@ -566,7 +566,7 @@ public class DAGCombiner {
       MachineFrameInfo mfi = dag.getMachineFunction().getFrameInfo();
       if (mfi.isFixedObjectIndex(frameIndex)) {
         long objectOffset = mfi.getObjectOffset(frameIndex) + frameOffset;
-        int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+        int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
         int align = Util.minAlign(stackAlign, (int) objectOffset);
         int fiInfoAlign = Util.minAlign(mfi.getObjectAlignment(frameIndex), (int) frameOffset);
         return Math.max(align, fiInfoAlign);

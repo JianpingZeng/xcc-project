@@ -1280,7 +1280,7 @@ public class SelectionDAGLegalizer {
     SDValue sp = dag.getCopyFromReg(chain, spreg, vt);
     chain = sp.getValue(1);
     long align = ((ConstantSDNode) temp3.getNode()).getZExtValue();
-    int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+    int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
     if (align > stackAlign)
       sp = dag.getNode(ISD.AND, vt, sp, dag.getConstant(-align, vt, false));
     temp1 = dag.getNode(ISD.SUB, vt, sp, size);

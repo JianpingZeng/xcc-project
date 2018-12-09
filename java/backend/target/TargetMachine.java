@@ -117,7 +117,7 @@ public abstract class TargetMachine {
 
   public abstract TargetRegisterInfo getRegisterInfo();
 
-  public abstract TargetFrameLowering getFrameInfo();
+  public abstract TargetFrameLowering getFrameLowering();
 
   public abstract TargetLowering getTargetLowering();
 
