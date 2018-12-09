@@ -26,7 +26,7 @@ import static jlang.support.Visibility.minVisibility;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LinkageInfo {
   private Linkage linkage;

@@ -32,7 +32,7 @@ import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegsForValue {
   TargetLowering tli;

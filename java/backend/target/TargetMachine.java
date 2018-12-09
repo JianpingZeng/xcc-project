@@ -14,7 +14,7 @@ import java.io.PrintStream;
  * this interface.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @see TargetData
  */
 public abstract class TargetMachine {
@@ -117,7 +117,7 @@ public abstract class TargetMachine {
 
   public abstract TargetRegisterInfo getRegisterInfo();
 
-  public abstract TargetFrameInfo getFrameInfo();
+  public abstract TargetFrameLowering getFrameInfo();
 
   public abstract TargetLowering getTargetLowering();
 

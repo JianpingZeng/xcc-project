@@ -21,10 +21,11 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.support.Attribute;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetOpcodes;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import tools.OutRef;
@@ -539,7 +540,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
             // On x86-32, only the ABCD registers have 8-bit subregisters.
             if (!subtarget.is64Bit()) {
-              TargetRegisterClass trc = null;
+              MCRegisterClass trc = null;
               switch (n0.getValueType().getSimpleVT().simpleVT) {
                 case MVT.i32:
                   trc = X86GenRegisterInfo.GR32_ABCDClass.getInstance();
@@ -551,12 +552,12 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                   Util.shouldNotReachHere("Unsupported TEST operand type!");
               }
               SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-              reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+              reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
                   reg.getValueType(), reg, rc), 0);
             }
 
             // Extract the l-register
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.EXTRACT_SUBREG,
                 new EVT(MVT.i8), reg);
             // emit a testb
             return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, new EVT(MVT.i32), subreg, imm);
@@ -570,7 +571,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue shiftedImm = curDAG.getTargetConstant(c.getZExtValue() >> 8, new EVT(MVT.i8));
 
             SDValue reg = n0.getNode().getOperand(0);
-            TargetRegisterClass trc = null;
+            MCRegisterClass trc = null;
             switch (n0.getValueType().getSimpleVT().simpleVT) {
               case MVT.i16:
                 trc = X86GenRegisterInfo.GR16_ABCDClass.getInstance();
@@ -585,7 +586,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 Util.shouldNotReachHere("Unsupported TEST operand type!");
             }
             SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-            reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+            reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
                 reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
@@ -606,7 +607,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 16-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.EXTRACT_SUBREG,
                 new EVT(MVT.i16), reg);
 
             // Emit a testw.
@@ -622,7 +623,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 32-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.SUBREG_TO_REG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.SUBREG_TO_REG,
                 new EVT(MVT.i32), reg);
 
             // Emit a testl
@@ -787,7 +788,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           }
         }
     }
-    SDValue undef = new SDValue(curDAG.getTargetNode(TargetInstrInfo.IMPLICIT_DEF, vt), 0);
+    SDValue undef = new SDValue(curDAG.getTargetNode(TargetOpcodes.IMPLICIT_DEF, vt), 0);
     SDValue memOp = curDAG.getMemOperand(((MemSDNode) node).getMemOperand());
     if (isInc || isDec) {
       SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], memOp, chain};

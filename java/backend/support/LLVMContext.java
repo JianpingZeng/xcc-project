@@ -23,7 +23,7 @@ import backend.type.Type;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LLVMContext {
   public static final Type VoidTy = new Type(LLVMTypeID.VoidTyID);

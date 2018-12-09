@@ -7,7 +7,7 @@ import java.io.File;
  * jlang.type, such as .c, assembly, object and executable file.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SourceFile {
   public enum FileType {

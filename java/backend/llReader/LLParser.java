@@ -50,7 +50,7 @@ import static backend.llReader.LLTokenKind.*;
  * parses a valid Module where function and global value resides.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LLParser {
   public static class UpRefRecord {

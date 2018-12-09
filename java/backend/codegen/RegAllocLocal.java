@@ -1,10 +1,14 @@
 package backend.codegen;
 
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
-import backend.target.*;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
@@ -20,7 +24,7 @@ import static backend.target.TargetRegisterInfo.*;
  * Basic Block.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegAllocLocal extends MachineFunctionPass {
   private MachineFunction mf;
@@ -67,7 +71,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     virToPhyRegMap = new HashMap<>();
   }
 
-  private int getStackSlotForVirReg(int virReg, TargetRegisterClass rc) {
+  private int getStackSlotForVirReg(int virReg, MCRegisterClass rc) {
     // Find the location virReg would belong.
     if (stackSlotForVirReg.containsKey(virReg)) {
       return stackSlotForVirReg.get(virReg);
@@ -96,7 +100,7 @@ public class RegAllocLocal extends MachineFunctionPass {
   }
 
   private int getReg(MachineBasicBlock mbb, int insertPos, int virReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     // first check to see if we have a free register.
     int phyReg = getFreeReg(rc);
 
@@ -163,7 +167,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     return true;
   }
 
-  private int getFreeReg(TargetRegisterClass rc) {
+  private int getFreeReg(MCRegisterClass rc) {
     for (int phyReg : rc.getAllocableRegs(mf)) {
       if (isPhyRegAvailable(phyReg)) {
         Util.assertion(phyReg != 0, "Can not use register!");
@@ -192,7 +196,7 @@ public class RegAllocLocal extends MachineFunctionPass {
 
     int phyReg = getReg(mbb, insertPos, virReg);
 
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int frameIdx = getStackSlotForVirReg(virReg, rc);
 
     // note that this reg is just reloaded.
@@ -255,7 +259,7 @@ public class RegAllocLocal extends MachineFunctionPass {
 
     // We just spill those modified virtual register into memory cell.
     if (isVirRegModified(virReg)) {
-      TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+      MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
       int frameIdx = getStackSlotForVirReg(virReg, rc);
       boolean isKilled = !(insertPos < mbb.size() &&
           mbb.getInstAt(insertPos).readsRegister(phyReg, regInfo));
@@ -555,7 +559,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     for (int i = 0; i < mbb.size(); i++) {
       MachineInstr mi = mbb.getInstAt(i);
       int opcode = mi.getOpcode();
-      TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
+      MCInstrDesc desc = tm.getInstrInfo().get(opcode);
 
       if (Util.DEBUG) {
         System.err.printf("\nStarting RegAlloc of:");

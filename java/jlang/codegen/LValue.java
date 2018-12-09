@@ -25,7 +25,7 @@ import tools.Util;
  * this is not a simple HIR pointer, it may be a pointer plus a bitrange.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LValue {
   private enum Kind {

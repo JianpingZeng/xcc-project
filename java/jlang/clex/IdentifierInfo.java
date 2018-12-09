@@ -27,7 +27,7 @@ import tools.Pair;
  * set, and all tok::identifier tokens have a pointer to one of these.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class IdentifierInfo implements Cloneable {
   private TokenKind tokenID;

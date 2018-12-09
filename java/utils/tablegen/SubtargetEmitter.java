@@ -31,7 +31,7 @@ import static utils.tablegen.Record.LessRecord;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SubtargetEmitter extends TableGenBackend {
   private RecordKeeper records;
@@ -445,7 +445,7 @@ public class SubtargetEmitter extends TableGenBackend {
     os.println("\tpublic String parseSubtargetFeatures(String fs, String cpu) {");
     os.println("\t\tSubtargetFeatures features = new SubtargetFeatures(fs);");
     os.println("\t\tfeatures.setCPUIfNone(cpu);");
-    os.println("\t\tint bits = features.getBits(subTypeKV,featureKV);");
+    os.println("\t\tlong bits = features.getBits(subTypeKV,featureKV);");
 
     for (int i = 0; i < features.size(); i++) {
       Record r = features.get(i);
@@ -515,7 +515,7 @@ public class SubtargetEmitter extends TableGenBackend {
       os.printf("import backend.target.SubtargetFeatureKV;\n"
               + "import backend.target.SubtargetFeatures;\n\n"
               + "import static backend.target.%s.%sSubtarget.*;\n",
-          targetName.toLowerCase(), targetName, targetName.toLowerCase(), targetName);
+          targetName.toLowerCase(), targetName);
 
       String superClass = targetName + "Subtarget";
       os.printf("public final class %s extends %s {\n", className, superClass);
@@ -536,9 +536,12 @@ public class SubtargetEmitter extends TableGenBackend {
       emitHwModeCheck(os);
 
       // Emit constructor method.
-      os.printf("\tpublic %s(String tt, String fs, %sTargetMachine tm) {\n", className, targetName);
-      os.printf("\t\tsuper(tt, fs, tm, subTypeKV, featureKV);\n");
-      os.print("\t}\n");
+      os.printf("public %s(%sTargetMachine tm, String tt,String cpu,\n" +
+          "                         String fs, int stackAlignOverride, boolean is64Bit) {\n" +
+          "\t\tsuper(tm, tt, cpu, fs, stackAlignOverride, is64Bit);\n" +
+          "\t\tinitMCSubtargetInfo(tt, cpu, fs, featureKV, subTypeKV, null, null, null, null);\n" +
+          "\t}", className, targetName);
+
       os.print("}");
     }
   }

@@ -63,7 +63,7 @@ import static backend.analysis.aa.ModRefResult.*;
  * which supply functionality for the entire suite of client APIs.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AliasAnalysis implements ModulePass {
   private AliasAnalysis aa;

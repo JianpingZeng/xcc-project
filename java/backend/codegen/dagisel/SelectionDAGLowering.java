@@ -44,7 +44,7 @@ import static backend.value.Operator.Or;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SelectionDAGLowering implements InstVisitor<Void> {
   MachineBasicBlock curMBB;

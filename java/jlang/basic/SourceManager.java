@@ -47,7 +47,7 @@ import static jlang.support.CharacteristicKind.C_User;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SourceManager {
   private HashMap<Path, ContentCache> fileInfo;

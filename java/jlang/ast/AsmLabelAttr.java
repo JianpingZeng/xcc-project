@@ -21,7 +21,7 @@ import static jlang.ast.AttrKind.AsmLabel;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AsmLabelAttr extends Attr {
   private String label;

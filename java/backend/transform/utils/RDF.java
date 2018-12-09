@@ -16,7 +16,7 @@ import java.util.PriorityQueue;
  * This file defines a helpful method for obtains the reverse dominator frontier
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RDF {
   private static TObjectIntHashMap<DomTreeNodeBase<BasicBlock>> domLevels

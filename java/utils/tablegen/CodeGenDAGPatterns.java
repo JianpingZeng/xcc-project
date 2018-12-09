@@ -40,7 +40,7 @@ import static utils.tablegen.TreePattern.getNumNodeResults;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CodeGenDAGPatterns {
   private RecordKeeper records;

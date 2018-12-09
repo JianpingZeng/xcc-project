@@ -28,7 +28,7 @@ import java.util.HashSet;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Loop extends LoopBase<BasicBlock, Loop> {
   public Loop(BasicBlock block) {

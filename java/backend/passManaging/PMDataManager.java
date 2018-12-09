@@ -33,7 +33,7 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.FREEING_MSG
  * and {@linkplain BBPassManager}.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class PMDataManager {
   public enum PassDebugLevel {

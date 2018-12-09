@@ -41,7 +41,7 @@ import static backend.transform.utils.ConstantFolder.constantFoldCall;
  * can't do much the SCEV objects directly, they must query this class for services.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ScalarEvolution implements FunctionPass {
   public static int maxBruteForceIteration = 100;

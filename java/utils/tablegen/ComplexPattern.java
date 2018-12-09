@@ -28,7 +28,7 @@ import static utils.tablegen.SDNP.*;
  * tablegen class in TargetSelectionDAG.td
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ComplexPattern {
   /**

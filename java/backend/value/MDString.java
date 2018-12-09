@@ -24,7 +24,7 @@ import static backend.value.ValueKind.MDStringVal;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MDString extends MetadataBase {
   private String name;

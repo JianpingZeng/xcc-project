@@ -21,7 +21,7 @@ import static backend.value.Instruction.CmpInst.Predicate.FCMP_FALSE;
  * integer, float, struct, array etc.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class UniqueConstantValueImpl {
   public final static HashMap<ExprMapKeyType, ConstantExpr> ExprConstantMaps

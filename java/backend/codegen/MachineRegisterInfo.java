@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import tools.BitMap;
@@ -32,7 +32,7 @@ import static backend.target.TargetRegisterInfo.NoRegister;
  * Maps register number to register classes which used to assist register allocation.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MachineRegisterInfo {
   public static class DefUseChainIterator {
@@ -89,7 +89,7 @@ public final class MachineRegisterInfo {
    * Mapping from virtual register number to its attached register class and
    * define machine operand.
    */
-  private ArrayList<Pair<TargetRegisterClass, MachineOperand>> vregInfo;
+  private ArrayList<Pair<MCRegisterClass, MachineOperand>> vregInfo;
 
   private ArrayList<TIntArrayList> regClass2VRegMap;
 
@@ -137,7 +137,7 @@ public final class MachineRegisterInfo {
    * @param reg
    * @return
    */
-  public TargetRegisterClass getRegClass(int reg) {
+  public MCRegisterClass getRegClass(int reg) {
     int actualReg = rescale(reg);
     Util.assertion(actualReg < vregInfo.size(), "Register out of bound!");
     return vregInfo.get(actualReg).first;
@@ -150,7 +150,7 @@ public final class MachineRegisterInfo {
    * @param regClass
    * @return
    */
-  public int createVirtualRegister(TargetRegisterClass regClass) {
+  public int createVirtualRegister(MCRegisterClass regClass) {
     vregInfo.add(new Pair<>(regClass, null));
     return vregInfo.size() - 1 + FirstVirtualRegister;
   }
@@ -407,7 +407,7 @@ public final class MachineRegisterInfo {
    * @param rc
    * @return
    */
-  public TIntArrayList getRegClassVirReg(TargetRegisterClass rc) {
+  public TIntArrayList getRegClassVirReg(MCRegisterClass rc) {
     if (rc == null || !regClass2VRegMap.contains(rc.getID()))
       return new TIntArrayList();
 

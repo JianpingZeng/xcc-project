@@ -19,7 +19,7 @@ package backend.llReader;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum LLTokenKind {
   // Markers

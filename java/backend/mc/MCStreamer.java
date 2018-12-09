@@ -22,7 +22,7 @@ import java.io.PrintStream;
  * There are multiple implementations of this interface: one for writing out
  * a .s file, and implementations that write out .o files of various formats.
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class MCStreamer {
   private MCSymbol.MCContext context;

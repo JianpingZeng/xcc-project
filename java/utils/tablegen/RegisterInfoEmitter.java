@@ -31,7 +31,7 @@ import static backend.codegen.MVT.getEnumName;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RegisterInfoEmitter extends TableGenBackend {
   private RecordKeeper records;
@@ -92,15 +92,16 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       emitSourceFileHeaderComment("Register Information Source Fragment",
           os);
 
-      os.printf("import backend.codegen.MVT;\n"
-              + "import backend.codegen.MachineFunction;\n"
-              + "import backend.target.TargetMachine;\n"
-              + "import backend.target.TargetRegisterClass;\n"
-              + "import backend.target.TargetRegisterDesc;\n"
-              + "import backend.target.TargetRegisterInfo;\n"
-              + "import backend.target.RegClassInfo;\n"
-              + "import backend.codegen.EVT;\n\n"
-              + "import static backend.target.%s.%sGenRegisterNames.*;\n",
+      os.println("import backend.codegen.MVT;");
+      os.println("import backend.codegen.MachineFunction;");
+      os.println("import backend.mc.MCRegisterClass;");
+      os.println("import backend.mc.MCRegisterDesc;");
+      os.println("import backend.target.TargetRegisterInfo;");
+      os.println("import backend.target.RegClassInfo;");
+      os.println("import backend.target.TargetMachine;");
+      os.println("import backend.target.TargetFrameLowering;");
+      os.println("import backend.codegen.EVT;");
+      os.printf("import static backend.target.%s.%sGenRegisterNames.*;\n",
           targetName.toLowerCase(), targetName);
 
 
@@ -241,7 +242,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     for (CodeGenRegisterClass rc : regClasses) {
       String name = rc.getName();
       // output the register class definition.
-      os.printf("\n\tpublic final static class %sClass extends TargetRegisterClass \t{",
+      os.printf("\n\tpublic final static class %sClass extends MCRegisterClass \t{",
           name);
 
       os.println("\n\t\t// Only allow one instance for this class.");
@@ -273,7 +274,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       String name = rc.theDef.getName();
 
       os.printf("\n\t// %s Sub-register Classes...\n", name);
-      os.printf("\tpublic static final TargetRegisterClass[] %sSubRegClasses = {\n\t\t", name);
+      os.printf("\tpublic static final MCRegisterClass[] %sSubRegClasses = {\n\t\t", name);
 
       boolean empty = true;
 
@@ -312,7 +313,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
       String name = rc.theDef.getName();
       os.printf("\n\t// %s Super-register Classes...\n", name);
-      os.printf("\tpublic static final TargetRegisterClass[] %sSuperRegClasses = {\n\t\t", name);
+      os.printf("\tpublic static final MCRegisterClass[] %sSuperRegClasses = {\n\t\t", name);
 
       boolean empty = true;
       if (superRegClassMap.containsKey(i)) {
@@ -336,7 +337,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       String name = rc.theDef.getName();
 
       os.printf("\t// %s Register Class sub-classes...\n", name);
-      os.printf("\tpublic static final TargetRegisterClass[] %sSubclasses = {\n\t\t", name);
+      os.printf("\tpublic static final MCRegisterClass[] %sSubclasses = {\n\t\t", name);
 
       boolean empty = true;
       for (CodeGenRegisterClass subClass : rc.subClasses) {
@@ -353,7 +354,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
       String name = rc.theDef.getName();
       os.printf("\t// %s Register Class super-classes...\n", name);
-      os.printf("\tpublic static final TargetRegisterClass[] %sSuperclasses = {\n\t\t", name);
+      os.printf("\tpublic static final MCRegisterClass[] %sSuperclasses = {\n\t\t", name);
 
       boolean empty = true;
       for (CodeGenRegisterClass supClass : rc.superClasses) {
@@ -367,7 +368,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
 
     // Output RegisterClass array.
-    os.println("\tpublic final static TargetRegisterClass[] registerClasses = {");
+    os.println("\tpublic final static MCRegisterClass[] registerClasses = {");
     regClasses.forEach(rc ->
     {
       os.println("\t\t" + rc.theDef.getName() + "RegisterClass,");
@@ -708,13 +709,13 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     // Now that register alias and sub-registers sets have been emitted, emit the
     // register descriptors now.
 
-    os.printf("\n\tpublic static final TargetRegisterDesc[] registerDescriptors = {// Descriptor\n");
-    os.printf("\t\tnew TargetRegisterDesc(\"NOREG\", \"NOREG\", null, null, null),\n");
+    os.printf("\n\tpublic static final MCRegisterDesc[] registerDescriptors = {// Descriptor\n");
+    os.printf("\t\tnew MCRegisterDesc(\"NOREG\", \"NOREG\", null, null, null),\n");
 
     // Now that register alias sets have been emitted, emit the register
     // descriptors now.
     for (CodeGenRegister reg : regs) {
-      os.print("\t\tnew TargetRegisterDesc(\"");
+      os.print("\t\tnew MCRegisterDesc(\"");
       try {
         String asmName = reg.theDef.getValueAsString("AsmName");
         if (!asmName.isEmpty())
@@ -789,13 +790,14 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     os.printf("\t}\n\n");
 
     // emit the fields and constructors for *Target* GenRegisterInfo.
-    os.printf("  public %s(%sTargetMachine tm, int mode) {\n", className, targetName);
-    os.println("    super(tm, registerDescriptors, registerClasses,\n"
-        + "      SubregHashTable, SubregHashTableSize,\n"
-        + "      SuperregHashTable, SuperregHashTableSize,\n"
-        + "      AliasesHashTable, AliasesHashTableSize,\n"
-        + "      RegClassInfos, mode);");
-    os.println("  }");
+    os.printf("public %s(%sTargetMachine tm, int mode) {\n" +
+        "    super(tm);\n" +
+        "    initMCRegisterInfo(registerDescriptors, registerClasses,\n" +
+        "\t\t\t\tSubregHashTable, SubregHashTableSize,\n" +
+        "\t\t\t\tSuperregHashTable, SuperregHashTableSize,\n" +
+        "\t\t\t\tAliasesHashTable, AliasesHashTableSize,\n" +
+        "\t\t\t\tRegClassInfos, mode);\n" +
+        "  }", className, targetName);
     os.println("}");
   }
 

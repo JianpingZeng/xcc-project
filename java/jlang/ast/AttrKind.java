@@ -21,7 +21,7 @@ package jlang.ast;
  * This represents the kind of attr.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum AttrKind {
   Alias,

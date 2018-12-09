@@ -26,7 +26,7 @@ import static jlang.diag.Diagnostic.DIAG_UPPER_LIMIT;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CustomDiagInfo {
   private ArrayList<Pair<Diagnostic.Level, String>> diagInfo;

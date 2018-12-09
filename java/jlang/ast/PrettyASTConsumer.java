@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * A empty action consumer for AST.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PrettyASTConsumer implements ASTConsumer {
   @Override

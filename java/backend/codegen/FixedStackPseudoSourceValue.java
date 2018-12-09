@@ -7,7 +7,7 @@ import tools.FormattedOutputStream;
  * include a frame index.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FixedStackPseudoSourceValue extends PseudoSourceValue {
   private int frameIndex;

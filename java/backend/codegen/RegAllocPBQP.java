@@ -21,8 +21,8 @@ import backend.analysis.MachineLoop;
 import backend.codegen.pbqp.*;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
@@ -57,7 +57,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RegAllocPBQP extends MachineFunctionPass {
   public static RegAllocPBQP createPBQPRegisterAllocator() {
@@ -203,10 +203,10 @@ public final class RegAllocPBQP extends MachineFunctionPass {
         if (isSrcPhyReg && isDestPhyReg)
           continue;
 
-        TargetRegisterClass srcRC = isSrcPhyReg ?
+        MCRegisterClass srcRC = isSrcPhyReg ?
             tri.getPhysicalRegisterRegClass(srcRegister) :
             mri.getRegClass(srcRegister);
-        TargetRegisterClass destRC = isDestPhyReg ?
+        MCRegisterClass destRC = isDestPhyReg ?
             tri.getPhysicalRegisterRegClass(destRegister) :
             mri.getRegClass(destRegister);
         if (srcRC != destRC)
@@ -413,7 +413,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     if (!vrm.hasStackSlot(cur.register))
       return;
     int ss = vrm.getStackSlot(cur.register);
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     LiveInterval slotInterval = ls.getOrCreateInterval(ss, rc);
     int valNumber;
     if (slotInterval.hasAtLeastOneValue())

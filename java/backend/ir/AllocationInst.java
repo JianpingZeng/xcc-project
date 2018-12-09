@@ -24,7 +24,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AllocationInst extends Instruction.UnaryOps {
   protected int align;

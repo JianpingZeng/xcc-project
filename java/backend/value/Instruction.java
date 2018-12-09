@@ -1839,7 +1839,7 @@ public abstract class Instruction extends User {
    * a basic block.  Thus, these are all the flow control jlang.type of operations.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static abstract class TerminatorInst extends Instruction {
     TerminatorInst(

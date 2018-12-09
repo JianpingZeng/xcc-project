@@ -25,7 +25,7 @@ import jlang.type.QualType;
  * returned from functions.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface ABIInfo {
   void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx);

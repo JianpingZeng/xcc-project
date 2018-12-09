@@ -36,7 +36,7 @@ import static backend.support.BackendCmdOptions.shouldPrintBeforePass;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FunctionPassManagerImpl extends PMDataManager implements
     Pass,

@@ -22,8 +22,8 @@ import backend.pass.AnalysisUsage;
 import backend.support.CallingConv;
 import backend.support.IntStatistic;
 import backend.target.TargetData;
-import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetOpcodes;
 import backend.target.TargetRegisterInfo;
 import backend.type.FunctionType;
 import backend.type.Type;
@@ -47,7 +47,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdC
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86AsmPrinter extends AsmPrinter {
   /**
@@ -108,7 +108,7 @@ public class X86AsmPrinter extends AsmPrinter {
   protected void emitInstruction(MachineInstr mi) {
     X86MCInstLower InstLowering = new X86MCInstLower(outContext, mangler, this);
     switch (mi.getOpcode()) {
-      case TargetInstrInfo.DBG_LABEL: {
+      case TargetOpcodes.DBG_LABEL: {
         if (!verboseAsm)
           return;
 

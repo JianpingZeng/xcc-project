@@ -28,7 +28,7 @@ import java.util.Arrays;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class GCCInstallationDetector {
   private boolean isValid;

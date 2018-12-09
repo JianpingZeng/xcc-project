@@ -44,7 +44,7 @@ import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBl
  * implemented with the LLVM target-independent code generator.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class LLVMTargetMachine extends TargetMachine {
   protected LLVMTargetMachine(Target target, String triple) {

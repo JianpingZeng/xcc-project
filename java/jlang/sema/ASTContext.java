@@ -73,7 +73,7 @@ import static jlang.type.TypeClass.Void;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ASTContext {
   private ArrayList<Type> types = new ArrayList<>();

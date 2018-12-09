@@ -25,6 +25,7 @@ import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
+import backend.target.TargetOpcodes;
 import backend.type.ArrayType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -46,7 +47,7 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
  * lowering a region of the function.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FunctionLoweringInfo {
   public static class LiveOutInfo {
@@ -212,7 +213,7 @@ public class FunctionLoweringInfo {
         for (EVT vt : vts) {
           int num = tli.getNumRegisters(vt);
           for (int i = 0; i < num; i++)
-            buildMI(mbb, tii.get(TargetInstrInfo.PHI), vreg + i);
+            buildMI(mbb, tii.get(TargetOpcodes.PHI), vreg + i);
           vreg += num;
         }
       }

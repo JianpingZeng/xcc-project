@@ -20,7 +20,7 @@ import backend.codegen.MVT;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface EEVT {
   int isFP = MVT.LAST_VALUETYPE;

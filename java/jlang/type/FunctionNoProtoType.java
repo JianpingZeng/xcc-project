@@ -25,7 +25,7 @@ import tools.FoldingSetNodeID;
  * no information available about its arguments.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class FunctionNoProtoType extends FunctionType implements
     FoldingSetNode {

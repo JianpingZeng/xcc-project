@@ -29,7 +29,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TailCallElim implements FunctionPass {
   public final static IntStatistic NumTailElim =

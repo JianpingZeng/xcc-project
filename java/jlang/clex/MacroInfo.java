@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * associated with it, used to implement macro expansion.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MacroInfo {
   /**

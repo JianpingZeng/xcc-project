@@ -6,6 +6,9 @@ import backend.codegen.MachineOperand.RegState;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCOperandInfo;
+import backend.mc.MCRegisterClass;
 import backend.target.*;
 import backend.value.GlobalVariable;
 import gnu.trove.list.array.TIntArrayList;
@@ -24,9 +27,9 @@ import java.util.ArrayList;
 import static backend.codegen.MachineInstrBuilder.*;
 import static backend.codegen.MachineOperand.RegState.Define;
 import static backend.codegen.MachineOperand.RegState.Kill;
+import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
 import static backend.support.ErrorHandling.llvmReportError;
 import static backend.target.TargetMachine.RelocModel.PIC_;
-import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
 import static backend.target.x86.CondCode.*;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
@@ -39,7 +42,7 @@ import static tools.commandline.OptionHidden.Hidden;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86InstrInfo extends TargetInstrInfoImpl {
   public static BooleanOpt NoFusing = new BooleanOpt(
@@ -130,8 +133,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       {XOR64ri8, XOR64mi8}, {XOR64rr, XOR64mr}, {XOR8ri, XOR8mi},
       {XOR8rr, XOR8mr}};
 
-  public X86InstrInfo(X86TargetMachine tm, TargetInstrDesc[] desc) {
-    super(desc, tm.getSubtarget().is64Bit() ?
+  public X86InstrInfo(X86TargetMachine tm) {
+    super(tm.getSubtarget().is64Bit() ?
             X86GenInstrNames.ADJCALLSTACKDOWN64 :
             X86GenInstrNames.ADJCALLSTACKDOWN32,
         tm.getSubtarget().is64Bit() ?
@@ -1478,7 +1481,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   public boolean isUnpredicatedTerminator(MachineInstr mi) {
-    TargetInstrDesc tid = mi.getDesc();
+    MCInstrDesc tid = mi.getDesc();
     if (!tid.isTerminator())
       return false;
 
@@ -1668,13 +1671,13 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                               int index,
                               int destReg,
                               int srcReg,
-                              TargetRegisterClass destRC,
-                              TargetRegisterClass srcRC) {
+                              MCRegisterClass destRC,
+                              MCRegisterClass srcRC) {
     // DebugLoc DL = DebugLoc::getUnknownLoc();
     //if (mi != mbb.end()) DL = mi.getDebugLoc();
 
     // Determine if DstRC and srcRC have a common superclass in common.
-    TargetRegisterClass commonRC = destRC;
+    MCRegisterClass commonRC = destRC;
     if (destRC.equals(srcRC)) {
       /* Source and destination have the same register class. */
     } else if (commonRC.hasSuperClass(srcRC))
@@ -1830,7 +1833,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return false;
   }
 
-  static int getStoreRegOpcode(int SrcReg, TargetRegisterClass rc,
+  static int getStoreRegOpcode(int SrcReg, MCRegisterClass rc,
                                boolean isStackAligned, TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
@@ -1895,7 +1898,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                                   int srcReg,
                                   boolean isKill,
                                   int frameIndex,
-                                  TargetRegisterClass rc) {
+                                  MCRegisterClass rc) {
     MachineFunction MF = mbb.getParent();
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
@@ -1908,7 +1911,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   void storeRegToAddr(MachineFunction mf, int SrcReg, boolean isKill,
-                      ArrayList<MachineOperand> addr, TargetRegisterClass rc,
+                      ArrayList<MachineOperand> addr, MCRegisterClass rc,
                       ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
@@ -1922,7 +1925,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     newMIs.add(mib.getMInstr());
   }
 
-  static int getLoadRegOpcode(int destReg, TargetRegisterClass rc,
+  static int getLoadRegOpcode(int destReg, MCRegisterClass rc,
                               boolean isStackAligned, TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
@@ -1983,7 +1986,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   public void loadRegFromStackSlot(MachineBasicBlock mbb, int index,
-                                   int destReg, int frameIndex, TargetRegisterClass rc) {
+                                   int destReg, int frameIndex, MCRegisterClass rc) {
     MachineFunction mf = mbb.getParent();
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
@@ -1995,7 +1998,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   public void loadRegFromAddr(MachineFunction mf, int destReg,
-                              ArrayList<MachineOperand> addr, TargetRegisterClass rc,
+                              ArrayList<MachineOperand> addr, MCRegisterClass rc,
                               ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
@@ -2030,7 +2033,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     int opc = is64Bit ? PUSH64r : PUSH32r;
     for (int i = csi.size(); i != 0; --i) {
       int Reg = csi.get(i - 1).getReg();
-      TargetRegisterClass RegisterClass = csi.get(i - 1)
+      MCRegisterClass RegisterClass = csi.get(i - 1)
           .getRegisterClass();
       // Add the callee-saved register as live-in. It's killed at the spill.
       mbb.addLiveIn(Reg);
@@ -2068,7 +2071,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       if (Reg == FPReg)
         // X86RegisterInfo::emitEpilogue will handle restoring of frame register.
         continue;
-      TargetRegisterClass RegisterClass = csi.get(i).getRegisterClass();
+      MCRegisterClass RegisterClass = csi.get(i).getRegisterClass();
       if (RegisterClass != VR128RegisterClass && !isWin64) {
         buildMI(mbb, index, get(opc), Reg);
       } else {
@@ -2397,9 +2400,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       return false;
     unfoldStore &= foldedStore;
 
-    TargetInstrDesc TID = get(opc);
-    TargetOperandInfo TOI = TID.opInfo[index];
-    TargetRegisterClass rc = TOI.getRegisterClass(getRegisterInfo());
+    MCInstrDesc TID = get(opc);
+    MCOperandInfo TOI = TID.opInfo[index];
+    MCRegisterClass rc = TOI.getRegisterClass(getRegisterInfo());
     ArrayList<MachineOperand> AddrOps = new ArrayList<>();
     ArrayList<MachineOperand> BeforeOps = new ArrayList<>();
     ArrayList<MachineOperand> AfterOps = new ArrayList<>();
@@ -2485,7 +2488,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     // Emit the store instruction.
     if (unfoldStore) {
-      TargetRegisterClass DstRC = TID.opInfo[0]
+      MCRegisterClass DstRC = TID.opInfo[0]
           .getRegisterClass(getRegisterInfo());
       storeRegToAddr(mf, reg, true, AddrOps, DstRC, newMIs);
     }
@@ -2508,8 +2511,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     int index = pair.second & 0xf;
     boolean foldedLoad = (pair.second & (1 << 4)) != 0;
     boolean foldedStore = (pair.second & (1 << 5)) != 0;
-    TargetInstrDesc tid = get(opc);
-    TargetRegisterClass rc = tid.opInfo[index].getRegisterClass(getRegisterInfo());
+    MCInstrDesc tid = get(opc);
+    MCRegisterClass rc = tid.opInfo[index].getRegisterClass(getRegisterInfo());
     int numDefs = tid.numDefs;
     ArrayList<SDValue> addrOps = new ArrayList<>();
     ArrayList<SDValue> beforeOps = new ArrayList<>();
@@ -2543,7 +2546,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     }
 
     ArrayList<EVT> vts = new ArrayList<>();
-    TargetRegisterClass destRC = null;
+    MCRegisterClass destRC = null;
     if (tid.numDefs > 0) {
       destRC = tid.opInfo[0].getRegisterClass(getRegisterInfo());
       vts.add(new EVT(getRegisterInfo().getRegisterClassVTs(destRC)[0]));
@@ -2628,14 +2631,14 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return false;
   }
 
-  public boolean isSafeToMoveRegisterClassDefs(TargetRegisterClass rc) {
+  public boolean isSafeToMoveRegisterClassDefs(MCRegisterClass rc) {
     // FIXME: Return false for x87 stack register classes for now. We can't
     // allow any loads of these registers before FpGet_ST0_80.
     return !(rc == CCRRegisterClass || rc == RFP32RegisterClass
         || rc == RFP64RegisterClass || rc == RFP80RegisterClass);
   }
 
-  public static int sizeOfImm(TargetInstrDesc desc) {
+  public static int sizeOfImm(MCInstrDesc desc) {
     switch (desc.tSFlags & X86II.ImmMask) {
       case X86II.Imm8:
         return 1;
@@ -2713,7 +2716,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   /// size, and 3) use of X86-64 extended registers.
   public static int determineREX(MachineInstr mi) {
     int REX = 0;
-    TargetInstrDesc desc = mi.getDesc();
+    MCInstrDesc desc = mi.getDesc();
 
     // Pseudo instructions do not need REX prefix byte.
     if ((desc.tSFlags & X86II.FormMask) == X86II.Pseudo)
@@ -2952,7 +2955,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return FinalSize;
   }
 
-  static int getInstSizeWithDesc(MachineInstr mi, TargetInstrDesc desc,
+  static int getInstSizeWithDesc(MachineInstr mi, MCInstrDesc desc,
                                  boolean isPIC, boolean is64BitMode) {
 
     int opcode = desc.getOpcode();
@@ -3280,7 +3283,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   @Override
   public int getInstSizeInBytes(MachineInstr mi) {
-    TargetInstrDesc desc = mi.getDesc();
+    MCInstrDesc desc = mi.getDesc();
     boolean IsPIC = tm.getRelocationModel() == PIC_;
     boolean Is64BitMode = tm.getSubtarget().is64Bit();
     int Size = getInstSizeWithDesc(mi, desc, IsPIC, Is64BitMode);
@@ -3335,7 +3338,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return GlobalBaseReg;
   }
 
-  public int getBaseOpcodeFor(TargetInstrDesc tid) {
+  public int getBaseOpcodeFor(MCInstrDesc tid) {
     return tid.tSFlags >> X86II.OpcodeShift;
   }
 
@@ -3396,7 +3399,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean is64Bit = subtarget.is64Bit();
     int stackPtr = tri.getFrameRegister(mf);
 
-    if (!tri.hasReservedCallFrame(mf)) {
+    if (!tm.getFrameInfo().hasReservedCallFrame(mf)) {
       // If we have a frame pointer, turn the adjcallstackup instruction into a
       // 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
       // <amt>'

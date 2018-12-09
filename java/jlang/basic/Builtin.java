@@ -78,7 +78,7 @@ import static jlang.basic.BuiltID.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Builtin {
   enum BUILTIN {

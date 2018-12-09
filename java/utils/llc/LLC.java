@@ -62,7 +62,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  * object code.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LLC {
   private static final StringOpt InputFilename =
@@ -228,7 +228,7 @@ public class LLC {
       featureStr = features.getString();
     }
 
-    TargetMachine tm = theTarget.createTargetMachine(theTriple.getTriple(), featureStr);
+    TargetMachine tm = theTarget.createTargetMachine(theTriple.getTriple(), MCPU.value, featureStr);
     Util.assertion(tm != null, "could not allocate a target machine");
 
     // Figure out where we should write the result file

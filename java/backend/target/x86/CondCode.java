@@ -18,7 +18,7 @@ package backend.target.x86;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface CondCode {
   int COND_A = 0;

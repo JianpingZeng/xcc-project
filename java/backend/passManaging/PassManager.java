@@ -24,7 +24,7 @@ import backend.value.Module;
  * This provides simple interface methods with client.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PassManager implements PassManagerBase {
   private PassManagerImpl pm;

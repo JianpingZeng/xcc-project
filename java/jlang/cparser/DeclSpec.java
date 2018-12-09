@@ -30,7 +30,7 @@ import static jlang.cparser.DeclSpec.TSW.*;
  * jlang.type-qualifiers, and function-specifiers.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag {
   public static class DeclaratorChunk<T> {

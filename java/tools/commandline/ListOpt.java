@@ -24,7 +24,7 @@ import java.util.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ListOpt<T> extends Option<T> implements List<T> {
   private TIntArrayList positions;

@@ -38,7 +38,7 @@ package backend.type;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface AbstractTypeUser {
   /**

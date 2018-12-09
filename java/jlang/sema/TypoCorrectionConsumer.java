@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TypoCorrectionConsumer {
   private class Record implements Comparable<Record> {

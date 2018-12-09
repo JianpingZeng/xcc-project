@@ -2,8 +2,8 @@ package backend.codegen;
 
 import backend.mc.MCAsmInfo;
 import backend.mc.MCSymbol;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
 import backend.value.BasicBlock;
@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineFunction {
   private Function fn;
@@ -263,7 +263,7 @@ public class MachineFunction {
    * @param rc
    * @return
    */
-  public int addLiveIn(int locReg, TargetRegisterClass rc) {
+  public int addLiveIn(int locReg, MCRegisterClass rc) {
     Util.assertion(rc.contains(locReg), "Not the current regclass!");
     int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
     getMachineRegisterInfo().addLiveIn(locReg, virReg);

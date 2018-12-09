@@ -28,7 +28,7 @@ import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SCEVTruncateExpr extends SCEV {
   private static HashMap<Pair<SCEV, Type>, SCEVTruncateExpr>

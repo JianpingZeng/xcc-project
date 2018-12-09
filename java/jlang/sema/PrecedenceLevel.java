@@ -23,7 +23,7 @@ package jlang.sema;
  * more weakly than high numbers.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PrecedenceLevel {
   public static final int Unkonw = 0;   // Not binary operator.

@@ -21,7 +21,7 @@ import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.MachineFunctionPass;
-import backend.target.TargetInstrInfo;
+import backend.target.TargetOpcodes;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -34,7 +34,7 @@ import java.util.ListIterator;
  * It must be performed after LoopInfo and DomTree.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class UnreachableMachineBlockElim extends MachineFunctionPass {
   @Override
@@ -78,7 +78,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass {
           for (ListIterator<MachineInstr> itr = succ.getInsts().listIterator();
                itr.hasNext(); ) {
             MachineInstr mi = itr.next();
-            if (mi.getOpcode() != TargetInstrInfo.PHI)
+            if (mi.getOpcode() != TargetOpcodes.PHI)
               break;
 
             for (int j = mi.getNumOperands() - 1; j >= 2; j -= 2) {
@@ -103,7 +103,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass {
     for (int i = 0, e = mf.getNumBlocks(); i < e; i++) {
       // Prune the unneeded PHI nodes.
       MachineBasicBlock mbb = mf.getMBBAt(i);
-      if (mbb.isEmpty() || mbb.getInstAt(0).getOpcode() != TargetInstrInfo.PHI)
+      if (mbb.isEmpty() || mbb.getInstAt(0).getOpcode() != TargetOpcodes.PHI)
         continue;
 
       HashSet<MachineBasicBlock> pred = new HashSet<>();
@@ -111,7 +111,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass {
 
       MachineInstr phi;
       for (int j = 0; j < mbb.size() && (phi = mbb.getInstAt(j))
-          .getOpcode() == TargetInstrInfo.PHI; ) {
+          .getOpcode() == TargetOpcodes.PHI; ) {
         for (int k = phi.getNumOperands() - 1; k >= 1; k -= 2) {
           // Removes some phi entries that is not from predecessor.
           if (!pred.contains(phi.getOperand(k).getMBB())) {

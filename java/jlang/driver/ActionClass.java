@@ -22,7 +22,7 @@ package jlang.driver;
  * Action instance.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 enum ActionClass {
   /***

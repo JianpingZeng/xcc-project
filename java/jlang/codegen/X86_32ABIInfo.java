@@ -33,7 +33,7 @@ import tools.Util;
  * The X86_32 ABI information.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86_32ABIInfo implements ABIInfo {
   private ASTContext context;

@@ -28,7 +28,7 @@ import java.util.List;
  * and handles diagnostic wrangling.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SourceMgr {
   public enum DiagKind {

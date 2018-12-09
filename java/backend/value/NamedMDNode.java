@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class NamedMDNode extends MetadataBase {
   private Module parent;

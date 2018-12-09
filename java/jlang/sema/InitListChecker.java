@@ -40,7 +40,7 @@ import static jlang.sema.Sema.AssignAction.AA_Initializing;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class InitListChecker {
   private Sema sema;

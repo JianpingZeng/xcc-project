@@ -8,7 +8,7 @@ import tools.Util;
  * This class was served as represents typedef declaration in C language.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TypedefType extends Type {
   /**

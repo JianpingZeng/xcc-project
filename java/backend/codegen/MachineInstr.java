@@ -1,7 +1,8 @@
 package backend.codegen;
 
-import backend.target.TargetInstrDesc;
+import backend.mc.MCInstrDesc;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetOpcodes;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.Value;
@@ -14,8 +15,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import static backend.target.TargetInstrInfo.INLINEASM;
-import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetOpcodes.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
@@ -39,10 +40,10 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineInstr implements Cloneable {
-  private TargetInstrDesc tid;
+  private MCInstrDesc tid;
 
   private int opCode;              // the opcode
   private int opCodeFlags;         // flags modifying instrn behavior
@@ -77,11 +78,11 @@ public class MachineInstr implements Cloneable {
     return false;
   }
 
-  public MachineInstr(TargetInstrDesc tid) {
+  public MachineInstr(MCInstrDesc tid) {
     this(tid, false);
   }
 
-  public MachineInstr(TargetInstrDesc tid, boolean noImp) {
+  public MachineInstr(MCInstrDesc tid, boolean noImp) {
     this.tid = tid;
     if (!noImp && tid.getImplicitDefs() != null) {
       numImplicitOps += tid.getImplicitDefs().length;
@@ -211,8 +212,8 @@ public class MachineInstr implements Cloneable {
   }
 
   public MachineOperand getOperand(int index) {
-    Util.assertion(index >= 0 && index < getNumOperands(), StringFormatter.format("%d out of bound %d", index, getNumOperands()).getValue());
-
+    Util.assertion(index >= 0 && index < getNumOperands(),
+        StringFormatter.format("%d out of bound %d", index, getNumOperands()).getValue());
     return operands.get(index);
   }
 
@@ -253,24 +254,24 @@ public class MachineInstr implements Cloneable {
 
   public boolean isLabel() {
     int op = getOpcode();
-    return op == TargetInstrInfo.DBG_LABEL || op == TargetInstrInfo.EH_LABEL
-        || op == TargetInstrInfo.GC_LABEL;
+    return op == TargetOpcodes.DBG_LABEL || op == TargetOpcodes.EH_LABEL
+        || op == TargetOpcodes.GC_LABEL;
   }
 
   public boolean isGCLabel() {
-    return getOpcode() == TargetInstrInfo.GC_LABEL;
+    return getOpcode() == TargetOpcodes.GC_LABEL;
   }
 
   public boolean isEHLabel() {
-    return getOpcode() == TargetInstrInfo.EH_LABEL;
+    return getOpcode() == TargetOpcodes.EH_LABEL;
   }
 
   public boolean isDebugLabel() {
-    return getOpcode() == TargetInstrInfo.DBG_LABEL;
+    return getOpcode() == TargetOpcodes.DBG_LABEL;
   }
 
   public boolean isPHI() {
-    return getOpcode() == TargetInstrInfo.PHI;
+    return getOpcode() == TargetOpcodes.PHI;
   }
 
   public boolean isReturn() {
@@ -282,23 +283,23 @@ public class MachineInstr implements Cloneable {
   }
 
   public boolean isDeclare() {
-    return getOpcode() == TargetInstrInfo.DECLARE;
+    return getOpcode() == TargetOpcodes.DECLARE;
   }
 
   public boolean isImplicitDef() {
-    return getOpcode() == TargetInstrInfo.IMPLICIT_DEF;
+    return getOpcode() == TargetOpcodes.IMPLICIT_DEF;
   }
 
   public boolean isInlineAsm() {
-    return getOpcode() == TargetInstrInfo.INLINEASM;
+    return getOpcode() == TargetOpcodes.INLINEASM;
   }
 
   public boolean isInsertSubreg() {
-    return getOpcode() == TargetInstrInfo.INSERT_SUBREG;
+    return getOpcode() == TargetOpcodes.INSERT_SUBREG;
   }
 
   public boolean isSubregToReg() {
-    return getOpcode() == TargetInstrInfo.SUBREG_TO_REG;
+    return getOpcode() == TargetOpcodes.SUBREG_TO_REG;
   }
 
   public boolean readsRegister(int reg, TargetRegisterInfo tri) {
@@ -404,7 +405,7 @@ public class MachineInstr implements Cloneable {
    * @return
    */
   public int findFirstPredOperandIdx() {
-    TargetInstrDesc tid = getDesc();
+    MCInstrDesc tid = getDesc();
     if (tid.isPredicable()) {
       for (int i = 0, e = getNumOperands(); i != e; i++)
         if (tid.opInfo[i].isPredicate())
@@ -430,7 +431,7 @@ public class MachineInstr implements Cloneable {
     }
 
     Util.assertion(getOperand(defOpIdx).isDef(), "defOpIdx is not a def!");
-    TargetInstrDesc TID = getDesc();
+    MCInstrDesc TID = getDesc();
     for (int i = 0, e = TID.getNumOperands(); i != e; ++i) {
       MachineOperand MO = getOperand(i);
       if (MO.isRegister() && MO.isUse()
@@ -462,7 +463,7 @@ public class MachineInstr implements Cloneable {
       return false;
     }
 
-    TargetInstrDesc tid = getDesc();
+    MCInstrDesc tid = getDesc();
     if (useOpIdx >= tid.getNumOperands())
       return false;
     MachineOperand mo = getOperand(useOpIdx);
@@ -505,7 +506,7 @@ public class MachineInstr implements Cloneable {
    * @param mi
    */
   public void copyPredicates(MachineInstr mi) {
-    TargetInstrDesc tid = getDesc();
+    MCInstrDesc tid = getDesc();
     if (!tid.isPredicable())
       return;
     for (int i = 0; i < getNumOperands(); i++) {
@@ -787,7 +788,7 @@ public class MachineInstr implements Cloneable {
     print(System.err, null);
   }
 
-  public void setDesc(TargetInstrDesc tid) {
+  public void setDesc(MCInstrDesc tid) {
     this.tid = tid;
   }
 
@@ -825,7 +826,7 @@ public class MachineInstr implements Cloneable {
     parent = mbb;
   }
 
-  public TargetInstrDesc getDesc() {
+  public MCInstrDesc getDesc() {
     return tid;
   }
 

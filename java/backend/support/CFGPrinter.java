@@ -30,7 +30,7 @@ import static backend.support.GraphWriter.writeGraph;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CFGPrinter implements FunctionPass {
   private AnalysisResolver resolver;

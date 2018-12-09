@@ -7,7 +7,7 @@ import static jlang.clex.Token.TokenFlags.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Token implements Cloneable {
   private SourceLocation loc;

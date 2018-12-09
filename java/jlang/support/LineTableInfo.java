@@ -25,7 +25,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LineTableInfo {
   /// filenameIDs - This map is used to assign unique IDs to filenames in

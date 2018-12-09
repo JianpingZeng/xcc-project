@@ -22,7 +22,7 @@ import backend.support.MachineFunctionPass;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86CodeEmitter extends MachineFunctionPass {
   public static X86CodeEmitter createX86CodeEmitterPass(

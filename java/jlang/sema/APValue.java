@@ -30,7 +30,7 @@ import static jlang.sema.APValue.ValueKind.LValue;
  * , [Complex APSInt], [Complex APSFloat].
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class APValue {
   public enum ValueKind {

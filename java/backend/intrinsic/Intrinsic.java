@@ -15,7 +15,7 @@ import java.util.Arrays;
  * Intrinsic instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Intrinsic {
   public enum ID {

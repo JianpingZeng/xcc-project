@@ -22,9 +22,9 @@ import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutRef;
@@ -48,7 +48,7 @@ import static tools.commandline.Desc.desc;
  * on live interval to eliminate redundant move instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LiveIntervalCoalescing extends MachineFunctionPass {
   public static IntStatistic numJoins =
@@ -339,7 +339,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
    * @return
    */
   private boolean differingRegisterClasses(int regA, int regB) {
-    TargetRegisterClass rc = null;
+    MCRegisterClass rc = null;
     if (isPhysicalRegister(regA)) {
       Util.assertion(isVirtualRegister(regB), "Can't consider two physical register");
       rc = mri.getRegClass(regB);

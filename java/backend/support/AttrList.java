@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class AttrList {
   public static final int ReturnIndex = 0;

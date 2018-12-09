@@ -18,7 +18,7 @@ package jlang.sema;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DeclLink<T extends Redeclarable<T>> {
   T decl;

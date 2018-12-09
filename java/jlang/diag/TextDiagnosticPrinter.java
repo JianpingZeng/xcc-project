@@ -29,7 +29,7 @@ import java.util.Arrays;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TextDiagnosticPrinter implements DiagnosticClient {
   private static final Colors CaretColor = Colors.GREEN;

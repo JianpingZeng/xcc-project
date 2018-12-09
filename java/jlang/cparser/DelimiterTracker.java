@@ -22,7 +22,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DelimiterTracker {
   private int paren, brace, square, less, lessless;

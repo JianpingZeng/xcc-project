@@ -31,7 +31,7 @@ import java.util.Iterator;
  * edges leaving a machine basic block are in the same equivalence set.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class EdgeBundles extends MachineFunctionPass {
   private MachineFunction mf;

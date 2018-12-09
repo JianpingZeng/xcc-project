@@ -26,7 +26,7 @@ import java.io.PrintStream;
  * The different target should derives the concrete subclass of this.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ELFWriter extends MachineFunctionPass {
   private MachineCodeEmitter mce;

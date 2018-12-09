@@ -21,7 +21,7 @@ package jlang.support;
  * code, system code
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum CharacteristicKind {
   C_User, C_System;

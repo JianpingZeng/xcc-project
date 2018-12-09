@@ -55,7 +55,7 @@ import static jlang.support.Linkage.NoLinkage;
  * analysis and builds ASTs for C language.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Sema implements DiagnosticParseTag,
     DiagnosticCommonKindsTag,

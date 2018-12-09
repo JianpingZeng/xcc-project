@@ -45,7 +45,7 @@ import static backend.analysis.aa.AliasSetTracker.AliasSet.AliasType.MustAlias;
  * to memory disjoint from the other sets.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class AliasSetTracker {
   private AliasAnalysis aa;

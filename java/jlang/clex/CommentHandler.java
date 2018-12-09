@@ -24,7 +24,7 @@ import jlang.support.SourceRange;
  * source ranges for each of the comments encountered in the source file.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface CommentHandler {
   void handleComoment(Preprocessor pp, SourceRange comment);

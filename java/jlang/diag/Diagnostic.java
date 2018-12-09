@@ -34,7 +34,7 @@ import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Diagnostic {
   public static final int DIAG_START_DRIVER = 300;
@@ -990,7 +990,7 @@ public final class Diagnostic {
 
   /**
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class DiagnosticBuilder {
     private Diagnostic diagObj;

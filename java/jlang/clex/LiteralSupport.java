@@ -23,7 +23,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LiteralSupport {
   static boolean isPrintable(char ch) {

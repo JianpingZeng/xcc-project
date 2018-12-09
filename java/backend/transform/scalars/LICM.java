@@ -44,7 +44,7 @@ import static backend.transform.utils.PromoteMemToReg.promoteMemToReg;
  * <p>This file is a member of Machine Independence Optimization</p>.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LICM implements LoopPass {
   /**

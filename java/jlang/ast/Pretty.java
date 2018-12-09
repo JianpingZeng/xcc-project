@@ -14,7 +14,7 @@ import java.util.List;
  * Prints out the C source file as a tree.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Pretty extends StmtVisitor {
   public Pretty(PrintWriter out, boolean sourceOutput) {

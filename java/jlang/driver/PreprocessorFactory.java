@@ -31,7 +31,7 @@ import java.math.BigInteger;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 class PreprocessorFactory {
   private Diagnostic diag;

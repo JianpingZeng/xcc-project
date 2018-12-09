@@ -23,7 +23,7 @@ import backend.target.TargetMachine;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @FunctionalInterface
  */
 public interface SchedPassCtor {

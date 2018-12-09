@@ -27,7 +27,7 @@ import java.io.PrintStream;
  * an input translation unit.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SourceLocation implements Comparable<SourceLocation> {
   public static final SourceLocation NOPOS = new SourceLocation();

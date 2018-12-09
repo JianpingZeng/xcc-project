@@ -21,7 +21,7 @@ import backend.pass.PassRegisterationUtility;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TargetSelect {
   protected TargetSelect() {

@@ -20,6 +20,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCRegisterClass;
 import backend.mc.MCSymbol;
 import backend.support.AttrList;
 import backend.support.Attribute;
@@ -61,7 +62,7 @@ import static tools.APFloat.x87DoubleExtended;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetLowering extends TargetLowering {
   private int varArgsFrameIndex;
@@ -1179,7 +1180,7 @@ public class X86TargetLowering extends TargetLowering {
 
       if (va.isRegLoc()) {
         EVT regVT = va.getLocVT();
-        TargetRegisterClass rc = null;
+        MCRegisterClass rc = null;
         int simpleVT = regVT.getSimpleVT().simpleVT;
         if (simpleVT == MVT.i32)
           rc = X86GenRegisterInfo.GR32RegisterClass;
@@ -1365,7 +1366,7 @@ public class X86TargetLowering extends TargetLowering {
   private int getAlignedArgumentStackSize(int stackSize, SelectionDAG dag) {
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameInfo tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameInfo();
     int stackAlign = tfi.getStackAlignment();
     int alignMask = stackAlign - 1;
     int offset = stackSize;
@@ -2414,7 +2415,7 @@ public class X86TargetLowering extends TargetLowering {
       int copyOpc,
       int notOpc,
       int eaxReg,
-      TargetRegisterClass rc) {
+      MCRegisterClass rc) {
     return emitAtomicBitwiseWithCustomInserter(mi, mbb, regOpc, immOpc,
         loadOpc, cxchgOpc, copyOpc, notOpc, eaxReg, rc, false);
   }
@@ -2428,7 +2429,7 @@ public class X86TargetLowering extends TargetLowering {
       int copyOpc,
       int notOpc,
       int eaxReg,
-      TargetRegisterClass rc,
+      MCRegisterClass rc,
       boolean invSrc) {
     // For the atomic bitwise operator, we generate
     //   thisMBB:
@@ -2528,7 +2529,7 @@ public class X86TargetLowering extends TargetLowering {
     //     bz  newMBB
     //     result in out1, out2
     //     fallthrough -->nextMBB
-    TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+    MCRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
     int loadOpc = X86GenInstrNames.MOV32rm;
     int copyOpc = X86GenInstrNames.MOV32rr;
     int notOpc = X86GenInstrNames.NOT32r;
@@ -2654,7 +2655,7 @@ public class X86TargetLowering extends TargetLowering {
     // First build the CFG.
     MachineFunction mf = mbb.getParent();
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
-    TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+    MCRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
 
     MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
     MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
@@ -4939,7 +4940,7 @@ public class X86TargetLowering extends TargetLowering {
         */
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameInfo tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameInfo();
     int stackAlignment = tfi.getStackAlignment();
     EVT vt = op.getValueType();
     int ssfi = mf.getFrameInfo().createStackObject(2, stackAlignment);

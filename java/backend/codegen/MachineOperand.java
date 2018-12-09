@@ -44,7 +44,7 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
  * Again, the field Value value identifies the value.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 
 public class MachineOperand {

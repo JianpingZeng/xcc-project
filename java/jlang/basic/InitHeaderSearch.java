@@ -28,7 +28,7 @@ import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class InitHeaderSearch {
   public enum IncludeDirGroup {

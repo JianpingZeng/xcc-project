@@ -55,7 +55,7 @@ import static jlang.codegen.RValue.*;
  * This class responsible for generating LLVM code from AST.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CodeGenFunction {
   private HIRModuleGenerator generator;

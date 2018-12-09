@@ -28,7 +28,7 @@ import java.util.ArrayList;
  * common API used by top level pass manager.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface PMTopLevelManager {
   enum TopLevelPassManagerType {

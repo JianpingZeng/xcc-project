@@ -34,7 +34,7 @@ package tools.commandline;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum FormattingFlags {
   NormalFormatting(0x000),     // Nothing special

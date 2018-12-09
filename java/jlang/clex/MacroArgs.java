@@ -27,7 +27,7 @@ import static jlang.diag.DiagnosticLexKindsTag.pp_invalid_string_literal;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MacroArgs {
   /// The number of raw, unexpanded tokens for the

@@ -43,7 +43,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  * This class emit code for jlang expression of typed scalar to HIR code.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ScalarExprEmitter extends StmtVisitor<Value> {
   public static class BinOpInfo {

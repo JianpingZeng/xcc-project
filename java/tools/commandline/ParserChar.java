@@ -20,7 +20,7 @@ import tools.OutRef;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ParserChar extends Parser<Character> {
   public boolean parse(Option<?> opt,

@@ -18,7 +18,7 @@ package jlang.sema;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum UnaryOperatorKind {
   UO_PostInc, UO_PostDec, // [C99 6.5.2.4] Postfix increment and decrement

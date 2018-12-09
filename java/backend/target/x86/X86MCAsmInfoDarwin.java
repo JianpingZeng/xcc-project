@@ -14,7 +14,7 @@ import backend.mc.MCAsmInfoDarwin;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86MCAsmInfoDarwin extends MCAsmInfoDarwin {
   public X86MCAsmInfoDarwin(Triple triple) {

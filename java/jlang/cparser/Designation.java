@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * designators.  This class is mostly a helper for initListDesignations.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Designation {
   /**

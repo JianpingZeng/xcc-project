@@ -21,7 +21,7 @@ package jlang.clex;
  * references (meaningful only to some external source) into IdentifierInfo.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface ExternalIdentifierLookup {
   /**

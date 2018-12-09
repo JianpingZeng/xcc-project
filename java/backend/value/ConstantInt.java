@@ -28,7 +28,7 @@ import tools.Util;
  * This is an abstract base class of all bool and integral constants.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConstantInt extends Constant {
   private APInt val;

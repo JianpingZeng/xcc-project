@@ -32,7 +32,7 @@ import java.util.List;
  * branch instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LowerSwitch implements FunctionPass {
   public static LowerSwitch createLowerSwitchPass() {

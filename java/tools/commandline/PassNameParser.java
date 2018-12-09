@@ -24,7 +24,7 @@ import java.util.Comparator;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PassNameParser extends Parser<PassInfo> implements PassRegistrationListener {
   public PassNameParser() {

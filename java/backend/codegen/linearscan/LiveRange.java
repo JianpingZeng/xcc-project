@@ -24,7 +24,7 @@ import java.util.Objects;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LiveRange implements Comparable<LiveRange>, Cloneable {
   public static final LiveRange EndMarker =

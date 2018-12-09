@@ -35,7 +35,7 @@ import static tools.commandline.OptionNameApplicator.optionName;
  * registers to physical register or stack slot.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class VirtRegRewriter {
   public static IntStatistic numSpills =

@@ -1,21 +1,17 @@
 package backend.target.x86;
 
 import backend.codegen.*;
-import backend.codegen.MachineOperand.RegState;
-import backend.support.Attribute;
-import backend.target.*;
+import backend.mc.MCRegisterClass;
+import backend.target.TargetFrameLowering;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetRegisterInfo;
 import backend.type.Type;
-import backend.value.Function;
 import tools.BitMap;
 import tools.OutRef;
-import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
 
-import static backend.codegen.MachineInstrBuilder.addRegOffset;
-import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.target.TargetOptions.DisableFramePointerElim;
 import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
@@ -23,7 +19,7 @@ import static backend.target.x86.X86GenRegisterNames.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class X86RegisterInfo extends TargetRegisterInfo {
   /**
@@ -84,17 +80,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
   private X86Subtarget subtarget;
 
-  public X86RegisterInfo(X86TargetMachine tm,
-                         TargetRegisterDesc[] desc,
-                         TargetRegisterClass[] regClasses,
-                         int[] subregs, int subregHashSize,
-                         int[] superregs, int superregHashSize,
-                         int[] aliases, int aliasHashSize,
-                         RegClassInfo[] rcInfo,
-                         int mode) {
-    super(desc, regClasses, subregs, subregHashSize,
-        superregs, superregHashSize, aliases, aliasHashSize,
-        rcInfo, mode);
+  public X86RegisterInfo(X86TargetMachine tm) {
     this.tm = tm;
     subtarget = tm.getSubtarget();
     is64Bit = subtarget.is64Bit();
@@ -274,8 +260,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     return 0;
   }
 
-  public TargetRegisterClass getMatchingSuperRegClass(TargetRegisterClass a,
-                                                      TargetRegisterClass b, int subIdx) {
+  public MCRegisterClass getMatchingSuperRegClass(MCRegisterClass a,
+                                                  MCRegisterClass b, int subIdx) {
     switch (subIdx) {
       default:
         return null;
@@ -376,12 +362,12 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     return null;
   }
 
-  public TargetRegisterClass getPointerRegClass() {
+  public MCRegisterClass getPointerRegClass() {
     return getPointerRegClass(0);
   }
 
   @Override
-  public TargetRegisterClass getPointerRegClass(int kind) {
+  public MCRegisterClass getPointerRegClass(int kind) {
     switch (kind) {
       default:
         Util.shouldNotReachHere(
@@ -398,7 +384,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   }
 
   @Override
-  public TargetRegisterClass getCrossCopyRegClass(TargetRegisterClass rc) {
+  public MCRegisterClass getCrossCopyRegClass(MCRegisterClass rc) {
     if (rc == CCRRegisterClass) {
       if (is64Bit)
         return GR64RegisterClass;
@@ -434,21 +420,21 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   }
 
   @Override
-  public TargetRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
-    final TargetRegisterClass[] calleeSavedRegClasses32Bit = {
+  public MCRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
+    final MCRegisterClass[] calleeSavedRegClasses32Bit = {
         GR32RegisterClass, GR32RegisterClass, GR32RegisterClass,
         GR32RegisterClass};
-    final TargetRegisterClass[] calleeSavedRegClasses32EHRet = {
+    final MCRegisterClass[] calleeSavedRegClasses32EHRet = {
         GR32RegisterClass, GR32RegisterClass, GR32RegisterClass,
         GR32RegisterClass, GR32RegisterClass, GR32RegisterClass};
-    final TargetRegisterClass[] calleeSavedRegClasses64Bit = {
+    final MCRegisterClass[] calleeSavedRegClasses64Bit = {
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass,
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass};
-    final TargetRegisterClass[] calleeSavedRegClasses64EHRet = {
+    final MCRegisterClass[] calleeSavedRegClasses64EHRet = {
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass,
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass,
         GR64RegisterClass, GR64RegisterClass};
-    final TargetRegisterClass[] calleeSavedRegClassesWin64 = {
+    final MCRegisterClass[] calleeSavedRegClassesWin64 = {
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass,
         GR64RegisterClass, GR64RegisterClass, GR64RegisterClass,
         GR64RegisterClass, GR64RegisterClass, VR128RegisterClass,
@@ -467,20 +453,15 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   @Override
   public boolean needsStackRealignment(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-
     return EnableRealignStack.value && mfi.getMaxAlignment() > stackAlign
         && !mfi.hasVarSizedObjects();
   }
 
   @Override
-  public boolean hasReservedCallFrame(MachineFunction mf) {
-    return !mf.getFrameInfo().hasVarSizedObjects();
-  }
-
-  @Override
   public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
                                       OutRef<Integer> frameIdx) {
-    if (reg == framePtr && hasFP(mf)) {
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    if (reg == framePtr && tli.hasFP(mf)) {
       frameIdx.set(mf.getFrameInfo().getObjectIndexBegin());
       return true;
     }
@@ -515,9 +496,10 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         .max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
 
     mfi.setMaxAlignment(maxAlign);
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
 
-    if (hasFP(mf)) {
-      TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    if (tli.hasFP(mf)) {
+      TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
       int frameIndex = mfi.createFixedObject(slotSize,
           -slotSize + tfi.getLocalAreaOffset());
       Util.assertion(frameIndex == mfi.getObjectIndexBegin(), "Slot for EBP register must be last in order to be found!");
@@ -538,12 +520,13 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
   @Override
   public int getFrameRegister(MachineFunction mf) {
-    return hasFP(mf) ? framePtr : stackPtr;
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    return tli.hasFP(mf) ? framePtr : stackPtr;
   }
 
   @Override
   public int getFrameIndexOffset(MachineFunction mf, int fi) {
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
     int offset = mfi.getObjectOffset(fi) - tfi.getLocalAreaOffset();
     int stackSize = mfi.getStackSize();
@@ -558,7 +541,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
         return offset + stackSize;
       }
     } else {
-      if (!hasFP(mf))
+      TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+      if (!tli.hasFP(mf))
         return offset + stackSize;
 
       offset += slotSize;
@@ -588,7 +572,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     return GR8_ABCD_HRegisterClass.contains(reg);
   }
 
-  private static int getStoreRegOpcode(int srcReg, TargetRegisterClass rc,
+  private static int getStoreRegOpcode(int srcReg, MCRegisterClass rc,
                                        boolean isStackAligned, X86TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
@@ -647,7 +631,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     return opc;
   }
 
-  private static int getLoadRegOpcode(int DestReg, TargetRegisterClass rc,
+  private static int getLoadRegOpcode(int DestReg, MCRegisterClass rc,
                                       boolean isStackAligned, X86TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
@@ -715,7 +699,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   @Override
   public void processFunctionBeforeFrameFinalized(
       MachineFunction mf) {
-    if (hasFP(mf)) {
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    if (tli.hasFP(mf)) {
       // creates a stack object for saving EBP.
       int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
       Util.assertion(frameIndex == mf.getFrameInfo().getObjectIndexEnd() - 1, "The slot for EBP must be last");
@@ -733,12 +718,13 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
 
     }
 
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
     int frameIndex = mi.getOperand(i).getIndex();
     int basePtr;
     if (needsStackRealignment(mf))
       basePtr = frameIndex < 0 ? framePtr : stackPtr;
     else
-      basePtr = hasFP(mf) ? framePtr : stackPtr;
+      basePtr = tli.hasFP(mf) ? framePtr : stackPtr;
 
     mi.getOperand(i).changeToRegister(basePtr, false);
     if (mi.getOperand(i + 3).isImm()) {
@@ -763,7 +749,8 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     reserved.set(SPL);
 
     // Set the frame-pointer register and its aliases as reserved if needed.
-    if (hasFP(mf)) {
+    TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+    if (tli.hasFP(mf)) {
       reserved.set(RBP);
       reserved.set(EBP);
       reserved.set(BP);
@@ -785,259 +772,13 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   }
 
   /**
-   * Return true if the specified function should have a dedicated stack pointer
-   * register. This is true if function has variable sized objects or if frame
-   * pointer elimination is disabled.
-   * <p>
-   * the frame pointer is usually EBP in X86 target machine.
-   *
-   * @param mf
-   * @return
-   */
-  public boolean hasFP(MachineFunction mf) {
-    MachineFrameInfo mfi = mf.getFrameInfo();
-    return (DisableFramePointerElim.value || needsStackRealignment(mf)
-        || mfi.hasVarSizedObjects() || mfi.isFrameAddressTaken());
-  }
-
-  /**
-   * This method insert prologue code into the function. Such as push callee-saved
-   * registers onto the stack, which automatically adjust the stack pointer.
-   * Adjust the stack pointer to space for local variables. Also emit labels
-   * used by the exception handler to generate the exception handling frames.
-   *
-   * @param mf
-   */
-  @Override
-  public void emitPrologue(MachineFunction mf) {
-    MachineBasicBlock mbb = mf.getEntryBlock();
-    Function fn = mf.getFunction();
-    int mbbi = 0;  // a index position where a new instr will inserts.
-    MachineFrameInfo mfi = mf.getFrameInfo();
-    MachineInstr mi;
-    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
-    int maxAlign = mfi.getMaxAlignment();
-    int stackSize = mfi.getStackSize();
-    boolean hasFP = hasFP(mf);
-    X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
-
-    int tailCallReturnAddrDelta = x86FI.getTCReturnAddrDelta();
-    if (tailCallReturnAddrDelta < 0) {
-      x86FI.setCalleeSavedFrameSize(x86FI.getCalleeSavedFrameSize() - tailCallReturnAddrDelta);
-    }
-
-    if (is64Bit && !fn.hasFnAttr(Attribute.NoRedZone) &&
-        !needsStackRealignment(mf) && !mfi.hasVarSizedObjects()
-        && !mfi.hasCalls() && !subtarget.isTargetWin64()) {
-      int minSize = x86FI.getCalleeSavedFrameSize();
-      if (hasFP)
-        minSize += slotSize;
-      stackSize = Math.max(minSize, stackSize > 128 ? stackSize - 128 : 0);
-      mfi.setStackSize(stackSize);
-    } else if (subtarget.isTargetWin64()) {
-      stackSize += 32;
-      mfi.setStackSize(stackSize);
-    }
-
-    if (tailCallReturnAddrDelta < 0) {
-      mi = buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? SUB64ri32 : SUB32ri),
-          stackPtr).addReg(stackPtr).addImm(-tailCallReturnAddrDelta).getMInstr();
-      mi.getOperand(3).setIsDead(true);   // The EFLAGS implicit def is dead.
-    }
-
-    // Get the number of bytes to allocate from the FrameInfo.
-    int numBytes = 0;
-    TargetData td = tm.getTargetData();
-
-    int stackGrowth = (tm.getFrameInfo().getStackGrowDirection()
-        == TargetFrameInfo.StackDirection.StackGrowUp ?
-        td.getPointerSize() : -td.getPointerSize());
-
-    if (hasFP) {
-      // get the offset of the stack slot for the %ebp register.
-      // Note that: this offset is away from ESP.
-      int frameSize = stackSize - slotSize;
-      if (needsStackRealignment(mf))
-        frameSize = (frameSize + maxAlign - 1) / maxAlign * maxAlign;
-      numBytes = frameSize - x86FI.getCalleeSavedFrameSize();
-      mfi.setOffsetAdjustment(-numBytes);
-
-      buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? PUSH64r : PUSH32r))
-          .addReg(framePtr, RegState.Kill);
-      buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? MOV64rr : MOV32rr), framePtr).addReg(stackPtr);
-
-      // mark the frameptr as live-in in every block excepts the entry.
-      for (int i = 1, e = mf.getNumBlocks(); i < e; i++) {
-        mf.getBasicBlocks().get(i).addLiveIn(framePtr);
-
-        // realign stack.
-        if (needsStackRealignment(mf)) {
-          mi = buildMI(mbb, mbbi,
-              getInstrInfo().get(is64Bit ? AND64ri32 : AND32ri), stackPtr)
-              .addReg(stackPtr).addImm(-maxAlign).getMInstr();
-          mi.getOperand(3).setIsDead(true);
-        }
-      }
-    } else {
-      numBytes = stackSize - x86FI.getCalleeSavedFrameSize();
-    }
-
-    boolean pushedRegs = false;
-    int stackOffset = 2 * stackGrowth;
-    while (mbbi < mbb.size() && mbb.getInstAt(mbbi).getOpcode() == PUSH32r
-        || mbb.getInstAt(mbbi).getOpcode() == PUSH64r) {
-      pushedRegs = true;
-      ++mbbi;
-    }
-    if (numBytes >= 4096 && subtarget.isTargetCygMing()) {
-      boolean isEAXLive = false;
-      for (Pair<Integer, Integer> intPair : mf.getMachineRegisterInfo().getLiveIns()) {
-        int reg = intPair.first;
-        isEAXLive = reg == EAX || reg == AX || reg == AH || reg == AL;
-      }
-      if (!isEAXLive) {
-        buildMI(mbb, mbbi, getInstrInfo().get(MOV32ri), EAX).addImm(numBytes);
-        buildMI(mbb, mbbi, getInstrInfo().get(CALLpcrel32))
-            .addExternalSymbol("_alloca", 0, 0);
-      } else {
-        buildMI(mbb, mbbi, getInstrInfo().get(PUSH32r)).addReg(EAX, RegState.Kill);
-
-        buildMI(mbb, mbbi, getInstrInfo().get(MOV32ri), EAX).addImm(numBytes - 4);
-        buildMI(mbb, mbbi, getInstrInfo().get(CALLpcrel32))
-            .addExternalSymbol("_alloca", 0, 0);
-
-        mi = addRegOffset(buildMI(getInstrInfo().get(MOV32rm), EAX), stackPtr,
-            false, numBytes - 4).getMInstr();
-        mbb.insert(mbbi, mi);
-      }
-    } else if (numBytes != 0) {
-      OutRef<Integer> x = new OutRef<>(mbbi);
-      numBytes -= mergeSPUpdates(mbb, x, stackPtr, true);
-      mbbi = x.get();
-      x = new OutRef<>(numBytes);
-      mergeSPUpdatesDown(mbb, new OutRef<>(mbbi), stackPtr, x);
-      numBytes = x.get();
-
-      if (numBytes != 0)
-        emitSPUpdate(mbb, mbbi, stackPtr, -numBytes, is64Bit, getInstrInfo());
-    }
-  }
-
-  private int mergeSPUpdates(
-      MachineBasicBlock mbb,
-      OutRef<Integer> mbbi,
-      int stackPtr,
-      boolean doMergeWithPrevious) {
-    if ((doMergeWithPrevious && mbbi.get() == 0) ||
-        (!doMergeWithPrevious && mbbi.get() == mbb.size())) {
-      return 0;
-    }
-
-    int prev = doMergeWithPrevious ? mbbi.get() - 1 : mbbi.get();
-    int next = doMergeWithPrevious ? -1 : mbbi.get() + 1;
-    int opc = mbb.getInstAt(prev).getOpcode();
-    int offset = 0;
-    if ((opc == ADD64ri32 || opc == ADD64ri8 ||
-        opc == ADD32ri || opc == ADD32ri8) &&
-        mbb.getInstAt(prev).getOperand(0).getReg() == stackPtr) {
-      offset += mbb.getInstAt(prev).getOperand(2).getImm();
-      mbb.remove(prev);
-      if (!doMergeWithPrevious)
-        mbbi.set(next);
-    } else if ((opc == SUB64ri32 || opc == SUB64ri8 ||
-        opc == SUB32ri || opc == SUB32ri8) && mbb.getInstAt(prev).getOperand(0)
-        .getReg() == stackPtr) {
-      offset -= mbb.getInstAt(prev).getOperand(2).getImm();
-      mbb.remove(prev);
-      if (!doMergeWithPrevious)
-        mbbi.set(next);
-    }
-    return offset;
-  }
-
-  private void mergeSPUpdatesDown(
-      MachineBasicBlock mbb,
-      OutRef<Integer> mbbi,
-      int stackPtr,
-      OutRef<Integer> numBytes) {
-  }
-
-  private void emitSPUpdate(MachineBasicBlock mbb,
-                            int mbbi,
-                            int stackPtr, int numBytes, boolean is64Bit,
-                            TargetInstrInfo tii) {
-    boolean isSub = numBytes < 0;
-    long offset = isSub ? -numBytes : numBytes;
-    int opc = isSub
-        ? ((offset < 128) ?
-        (is64Bit ? SUB64ri8 : SUB32ri8) :
-        (is64Bit ? SUB64ri32 : SUB32ri))
-        : ((offset < 128) ?
-        (is64Bit ? ADD64ri8 : ADD32ri8) :
-        (is64Bit ? ADD64ri32 : ADD32ri));
-    long chunk = (1L << 31) - 1;
-    while (offset != 0) {
-      long thisVal = (offset > chunk) ? chunk : offset;
-      MachineInstr mi = buildMI(mbb, mbbi,
-          tii.get(opc), stackPtr).addReg(stackPtr)
-          .addImm(thisVal).getMInstr();
-      mi.getOperand(3).setIsDead(true);
-      offset -= thisVal;
-    }
-  }
-
-  /**
-   * This method insert epilogue code into the function.
-   *
-   * @param mf
-   * @param mbb
-   */
-  @Override
-  public void emitEpilogue(MachineFunction mf,
-                           MachineBasicBlock mbb) {
-    MachineFrameInfo mfi = mf.getFrameInfo();
-    // get the position where epilogue code will inserts after.
-    int mbbi = mbb.size() - 1;
-    MachineInstr mi;
-    Util.assertion(mbb.getInstAt(mbbi).getOpcode() == RET, "Can only insert epilogue code into returning blocks");
-
-
-    if (hasFP(mf)) {
-      // get the offset of the stack slot for the %ebp register.
-      // which is guaranteed to be the last slot by processFunctionBeforeFrameFinalized().
-      int ebpOffset = mfi.getObjectOffset(mfi.getObjectIndexEnd() - 1) + 4;
-      // mov %ebp, %esp.
-      mi = buildMI(mbb, mbbi++, getInstrInfo().get(is64Bit ? MOV64rr : MOV32rr), stackPtr).
-          addReg(EBP, RegState.Kill).getMInstr();
-      mi.getOperand(3).setIsDead(true);
-
-      // mov offset(%esp), %ebp.
-      mi = buildMI(mbb, mbbi, getInstrInfo().get(is64Bit ? MOV64rm : MOV32rm), framePtr).
-          addReg(stackPtr).addImm(ebpOffset).getMInstr();
-    } else {
-      // get the number of bytes allocated from the frameInfo.
-      int numBytes = mfi.getStackSize();
-      if (numBytes != 0) {
-        // addjust stack getNumOfSubLoop: %esp += numBytes (up)
-        int opc = numBytes < 128 ?
-            is64Bit ? ADD64ri8 : ADD32ri8 :
-            is64Bit ? AND64ri32 : ADD32ri;
-        mi = buildMI(mbb, mbbi, getInstrInfo().get(opc), stackPtr).
-            addReg(stackPtr, RegState.Kill).
-            addImm(numBytes).getMInstr();
-        mi.getOperand(3).setIsDead(true);
-      }
-    }
-  }
-
-  /**
    * Obtains the register class is enough to hold the specified data of typed
    * {@code ty}.
    *
    * @param ty
    * @return
    */
-  public TargetRegisterClass getRegClassForType(Type ty) {
+  public MCRegisterClass getRegClassForType(Type ty) {
     Util.assertion(false, "Should not reaching here");
     return null;
   }

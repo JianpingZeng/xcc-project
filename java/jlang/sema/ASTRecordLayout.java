@@ -31,7 +31,7 @@ import java.util.HashMap;
  * whic is a struct/union class. The decl represented must be definition.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ASTRecordLayout {
   /**
@@ -127,7 +127,7 @@ public final class ASTRecordLayout {
 
   /**
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class ASTRecordLayoutBuilder {
     /**

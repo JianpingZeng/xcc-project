@@ -18,7 +18,7 @@ package jlang.sema;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum BinaryOperatorKind {
   // Operators listed in order of precedence.

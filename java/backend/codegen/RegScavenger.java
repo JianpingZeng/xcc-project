@@ -17,14 +17,14 @@ package backend.codegen;
  */
 
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 
 import java.util.BitSet;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegScavenger {
   TargetRegisterInfo TRI;
@@ -48,7 +48,7 @@ public class RegScavenger {
 
   /// ScavengedRC - Register class of the scavenged register.
   ///
-  TargetRegisterClass ScavengedRC;
+  MCRegisterClass ScavengedRC;
 
   /// ScavengeRestore - Instruction that restores the scavenged register from
   /// stack.
@@ -112,7 +112,7 @@ public class RegScavenger {
 
   /// FindUnusedReg - Find a unused register of the specified register class.
   /// Return 0 if none is found.
-  public int FindUnusedReg(TargetRegisterClass RegClass) {
+  public int FindUnusedReg(MCRegisterClass RegClass) {
     // TODO: 17-8-3
     return 0;
   }
@@ -131,12 +131,12 @@ public class RegScavenger {
   /// available and do the appropriate bookkeeping. SPAdj is the stack
   /// adjustment due to call frame, it's passed along to eliminateFrameIndex().
   /// Returns the scavenged register.
-  public int scavengeRegister(TargetRegisterClass RegClass, int I, int SPAdj) {
+  public int scavengeRegister(MCRegisterClass RegClass, int I, int SPAdj) {
     // TODO: 17-8-3
     return 0;
   }
 
-  public int scavengeRegister(TargetRegisterClass RegClass, int SPAdj) {
+  public int scavengeRegister(MCRegisterClass RegClass, int SPAdj) {
     return scavengeRegister(RegClass, MBBI, SPAdj);
   }
 

@@ -171,7 +171,7 @@ public abstract class Tree implements StmtClass {
    * Everything in one source file is kept in a TopLevel structure.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class TopLevel extends Tree {
     /**
@@ -255,7 +255,7 @@ public abstract class Tree implements StmtClass {
    * This is the null statement ";": C99 6.8.3p3.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class NullStmt extends Stmt {
     private SourceLocation semiLoc;

@@ -23,7 +23,7 @@ package tools;
  * It essentially combines the roles of guard and sticky bits.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum LostFraction {
   /**

@@ -24,7 +24,7 @@ package jlang.clex;
  * information about which macro (if any) controls the header is returned.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MultipleIncludeOpt {
   /**

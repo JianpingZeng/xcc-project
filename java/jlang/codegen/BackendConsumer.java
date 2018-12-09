@@ -25,7 +25,6 @@ import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
-import backend.support.ErrorHandling;
 import backend.support.PrintModulePass;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
@@ -74,7 +73,7 @@ import static jlang.support.BackendAction.Backend_EmitNothing;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @see ASTConsumer
  * @see ASTContext
  */
@@ -316,7 +315,7 @@ public class BackendConsumer implements ASTConsumer {
           featureStr = features.getString();
         }
 
-        TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
+        TargetMachine tm = theTarget.createTargetMachine(triple, compileOptions.CPU, featureStr);
         tm.setAsmVerbosityDefault(true);
 
         // Set the default Register Allocator.

@@ -18,7 +18,7 @@ package backend.target;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SubtargetFeatureKV implements Comparable<SubtargetFeatureKV> {
   public String key;

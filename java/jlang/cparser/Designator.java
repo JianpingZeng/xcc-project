@@ -34,7 +34,7 @@ import static jlang.cparser.Designator.DesignatorKind.*;
  * int a[10] = {2, 4, [8]=9, 10};
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Designator {
   public enum DesignatorKind {

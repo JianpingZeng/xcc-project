@@ -20,6 +20,7 @@ package backend.codegen;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.*;
@@ -33,7 +34,7 @@ import tools.Util;
 import java.util.*;
 
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel.*;
-import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
+import static backend.target.TargetFrameLowering.StackDirection.StackGrowDown;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
@@ -46,7 +47,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * instruction selector.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PrologEpilogInserter extends MachineFunctionPass {
   public static final IntStatistic numSRRecord = new IntStatistic(
@@ -214,7 +215,8 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       // and there is no dynamic allocation(therefore referencing frame
       // slots off sp), leave the psedo ops alone. we'll eliminate them
       // later.
-      if (tri.hasReservedCallFrame(mf) || tri.hasFP(mf))
+      TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+      if (tfl.hasReservedCallFrame(mf) || tfl.hasFP(mf))
         tii.eliminateCallFramePseudoInstr(mf, mi);
     }
   }
@@ -1189,7 +1191,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
   private void calculateCalleeSavedRegisters(MachineFunction mf) {
     TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
     TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
 
@@ -1206,7 +1208,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     if (calleeSavedRegs == null || calleeSavedRegs.length == 0)
       return;
 
-    TargetRegisterClass[] csRegClasses = regInfo.getCalleeSavedRegClasses(mf);
+    MCRegisterClass[] csRegClasses = regInfo.getCalleeSavedRegClasses(mf);
     ArrayList<CalleeSavedInfo> csInfo = new ArrayList<>();
     for (int i = 0, sz = calleeSavedRegs.length; i != sz; i++) {
       int reg = calleeSavedRegs[i];
@@ -1236,7 +1238,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     Pair<Integer, Integer>[] fixedSpillSlots = tfi.getCalleeSavedSpillSlots();
     for (CalleeSavedInfo info : csInfo) {
       int reg = info.getReg();
-      TargetRegisterClass rc = info.getRegisterClass();
+      MCRegisterClass rc = info.getRegisterClass();
 
       OutRef<Integer> temp = new OutRef<>(0);
       if (regInfo.hasReservedSpillSlot(mf, reg, temp)) {
@@ -1278,13 +1280,13 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    * @param mf
    */
   private void calculateFrameObjectOffsets(MachineFunction mf) {
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
-    boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
+    TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+    boolean stackGrowDown = tfl.getStackGrowDirection() == StackGrowDown;
 
     MachineFrameInfo mfi = mf.getFrameInfo();
     int maxAlign = mfi.getMaxAlignment();
 
-    long offset = tfi.getLocalAreaOffset();
+    long offset = tfl.getLocalAreaOffset();
     if (stackGrowDown)
       offset = -offset;
     Util.assertion(offset >= 0, "Local area offset should be in direction of stack growth");
@@ -1323,7 +1325,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     }
 
     TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
-    if (rs != null && regInfo.hasFP(mf)) {
+    if (rs != null && tfl.hasFP(mf)) {
       int sfi = rs.getScavengingFrameIndex();
       if (sfi >= 0) {
         OutRef<Long> t1 = new OutRef<>(offset);
@@ -1354,7 +1356,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       maxAlign = t2.get();
     }
 
-    if (rs != null && !regInfo.hasFP(mf)) {
+    if (rs != null && !tfl.hasFP(mf)) {
       int sfi = rs.getScavengingFrameIndex();
       if (sfi >= 0) {
         t1.set(offset);
@@ -1369,14 +1371,14 @@ public class PrologEpilogInserter extends MachineFunctionPass {
         (mfi.hasCalls() || mfi.hasVarSizedObjects() ||
             (regInfo.needsStackRealignment(mf) &&
                 mfi.getObjectIndexEnd() != 0))) {
-      if (regInfo.hasReservedCallFrame(mf))
+      if (tfl.hasReservedCallFrame(mf))
         offset += mfi.getMaxCallFrameSize();
 
-      int alignMask = Math.max(tfi.getStackAlignment(), maxAlign) - 1;
+      int alignMask = Math.max(tfl.getStackAlignment(), maxAlign) - 1;
       offset = (offset + alignMask) & ~alignMask;
     }
 
-    mfi.setStackSize((int) (offset + tfi.getLocalAreaOffset()));
+    mfi.setStackSize((int) (offset + tfl.getLocalAreaOffset()));
 
     mfi.setMaxAlignment(maxAlign);
   }
@@ -1422,12 +1424,12 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    * @param mf
    */
   private void insertPrologEpilogCode(MachineFunction mf) {
-    TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
-    regInfo.emitPrologue(mf);
+    TargetFrameLowering tfl = mf.getTarget().getFrameInfo();
+    tfl.emitPrologue(mf);
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       if (!mbb.isEmpty() && mbb.getLastInst().getDesc().isReturn())
-        regInfo.emitEpilogue(mf, mbb);
+        tfl.emitEpilogue(mf, mbb);
     }
   }
 

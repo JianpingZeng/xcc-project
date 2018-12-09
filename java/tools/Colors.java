@@ -22,7 +22,7 @@ package tools;
  * foreground color of output stream.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum Colors {
   BLACK,

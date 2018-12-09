@@ -20,7 +20,7 @@ import static jlang.diag.Diagnostic.DiagnosticFrontendBegin;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface DiagnosticFrontendKindsTag {
   public static final int err_fe_error_backend = DiagnosticFrontendBegin;

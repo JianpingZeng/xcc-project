@@ -30,7 +30,7 @@ import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SDNodeInfo {
   private Record theDef;

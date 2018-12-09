@@ -30,7 +30,7 @@ import static tools.Util.isInt32;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface X86 {
   // Enums for memory operand decoding.  Each memory operand is represented with

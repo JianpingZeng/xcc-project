@@ -32,7 +32,7 @@ import tools.Util;
  * 4: __attribute__(( aligned(16) )). ParmName is unused, Args/Num used.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AttributeList {
   /**

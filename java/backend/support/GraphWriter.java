@@ -32,7 +32,7 @@ import java.nio.file.Paths;
  * (like CFG, CallGraph, DomTree, Dominance Frontier) into dot file.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class GraphWriter {
   public static PrintStream writeGraph(PrintStream out,

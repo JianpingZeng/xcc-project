@@ -22,7 +22,7 @@ package jlang.support;
  * SpellingLoc - where the actual character data for the token came from.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class InstantiationInfo {
   /**

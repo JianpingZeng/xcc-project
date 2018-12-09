@@ -23,6 +23,7 @@ import backend.codegen.dagisel.SDNode.CondCodeSDNode;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
 import backend.codegen.dagisel.SDNode.MachineSDNode;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
 import backend.support.MachineFunctionPass;
@@ -71,7 +72,7 @@ import static backend.target.TargetOptions.*;
  * </pre>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class SelectionDAGISel extends MachineFunctionPass implements BuiltinOpcodes, NodeFlag {
   protected SelectionDAG curDAG;
@@ -151,7 +152,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     MachineBasicBlock entryBB = mf.getEntryBlock();
     for (Pair<Integer, Integer> regs : mri.getLiveIns()) {
       if (regs.second != 0) {
-        TargetRegisterClass rc = mri.getRegClass(regs.second);
+        MCRegisterClass rc = mri.getRegClass(regs.second);
         boolean emitted = tii.copyRegToReg(entryBB, 0, regs.second, regs.first, rc, rc);
         Util.assertion(emitted, "Fail to emit a copy of live-in register!");
       }
@@ -1706,7 +1707,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         sdl.bitTestCases.isEmpty()) {
       for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-        Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a phi node!");
+        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a phi node!");
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
         phi.addOperand(MachineOperand.createMBB(mbb, 0));
@@ -1744,7 +1745,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
         MachineBasicBlock mbb = phi.getParent();
-        Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a phi node!");
+        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a phi node!");
 
         if (mbb.equals(sdl.bitTestCases.get(i).defaultMBB)) {
           phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
@@ -1790,7 +1791,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
         MachineBasicBlock phiMBB = phi.getParent();
-        Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI, "This is not a PHI node!");
+        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a PHI node!");
         if (phiMBB.equals(sdl.jtiCases.get(i).second.defaultMBB)) {
           phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
               false, false));
@@ -1807,7 +1808,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++) {
       MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-      Util.assertion(phi.getOpcode() == TargetInstrInfo.PHI);
+      Util.assertion(phi.getOpcode() == TargetOpcodes.PHI);
       if (mbb.isSuccessor(phi.getParent())) {
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
@@ -1826,7 +1827,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
       while ((mbb = sdl.switchCases.get(i).trueMBB) != null) {
         for (int pi = 0, sz = mbb.size(); pi < sz &&
-            mbb.getInstAt(pi).getOpcode() == TargetInstrInfo.PHI; ++pi) {
+            mbb.getInstAt(pi).getOpcode() == TargetOpcodes.PHI; ++pi) {
           MachineInstr phi = mbb.getInstAt(pi);
           for (int pn = 0; ; ++pn) {
             Util.assertion(pn != sdl.phiNodesToUpdate.size(), "Didn't find PHI entry!");
@@ -1989,7 +1990,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
   public SDNode select_UNDEF(SDValue n) {
-    return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.IMPLICIT_DEF,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.IMPLICIT_DEF,
         n.getValueType());
   }
 
@@ -1997,7 +1998,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     SDValue chain = n.getOperand(0);
     int c = ((LabelSDNode) n.getNode()).getLabelID();
     SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.DBG_LABEL,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.DBG_LABEL,
         new EVT(MVT.Other), tmp, chain);
   }
 
@@ -2005,7 +2006,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     SDValue chain = n.getOperand(0);
     int c = ((LabelSDNode) n.getNode()).getLabelID();
     SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetInstrInfo.EH_LABEL,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.EH_LABEL,
         new EVT(MVT.Other), tmp, chain);
   }
 

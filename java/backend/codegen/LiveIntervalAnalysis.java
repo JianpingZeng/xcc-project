@@ -23,9 +23,9 @@ import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -46,7 +46,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LiveIntervalAnalysis extends MachineFunctionPass {
   public static IntStatistic numIntervals =
@@ -567,7 +567,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass {
       System.err.println();
     }
 
-    TargetRegisterClass rc = mri.getRegClass(interval.register);
+    MCRegisterClass rc = mri.getRegClass(interval.register);
 
     for (LiveRange lr : interval.ranges) {
       int index = getBaseIndex(lr.start);

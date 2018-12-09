@@ -20,7 +20,7 @@ package jlang.sema;
  * Represents the result of getIdentifier lookup up.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 
 import jlang.clex.IdentifierInfo;

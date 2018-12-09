@@ -16,6 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import backend.mc.SubtargetInfoKV;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -35,7 +36,7 @@ import java.util.ArrayList;
  * specification.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SubtargetFeatures {
   ArrayList<String> features;    // Subtarget features as a vector
@@ -194,20 +195,20 @@ public class SubtargetFeatures {
    * @param featureTable
    * @return
    */
-  public int getBits(SubtargetFeatureKV[] cpuTable,
+  public long getBits(SubtargetFeatureKV[] cpuTable,
                      SubtargetFeatureKV[] featureTable) {
     Util.assertion(cpuTable != null, "missing CPU table");
     Util.assertion(featureTable != null, "missing features table");
 
-    int bit = 0;
+    long bit = 0;
 
-    if (features.get(0).equals("help")) {
+    if (!features.isEmpty() && features.get(0).equals("help")) {
       help(cpuTable, featureTable);
     }
 
     SubtargetFeatureKV cpuEntry = null;
     for (SubtargetFeatureKV kv : cpuTable) {
-      if (kv.key.equals(features.get(0))) {
+      if (!features.isEmpty() && kv.key.equals(features.get(0))) {
         cpuEntry = kv;
         break;
       }
@@ -222,11 +223,10 @@ public class SubtargetFeatures {
           bit = setImpliedBits(bit, kv, featureTable);
       }
     } else {
-      if (Util.DEBUG) {
-        System.err.printf("'" + features.get(0)
+      if (Util.DEBUG && !features.isEmpty()) {
+        System.err.print("'" + features.get(0)
             + "' is not a recognized processor for this target"
-            + " (ignoring processor)"
-            + "\n");
+            + " (ignoring processor)");
       }
     }
     for (int i = 1; i < features.size(); i++) {
@@ -255,10 +255,9 @@ public class SubtargetFeatures {
         }
       } else {
         if (Util.DEBUG) {
-          System.err.printf("'" + feature
+          System.err.println("'" + feature
               + "' is not a recognized feature for this target"
-              + " (ignoring feature)"
-              + "\n");
+              + " (ignoring feature)");
         }
       }
     }
@@ -280,7 +279,7 @@ public class SubtargetFeatures {
     return feature.charAt(0) == '+';
   }
 
-  private static int clearImpliedBits(int bits,
+  private static long clearImpliedBits(long bits,
                                       SubtargetFeatureKV featureEntry,
                                       SubtargetFeatureKV[] featureTable) {
     for (SubtargetFeatureKV kv : featureTable) {
@@ -294,7 +293,7 @@ public class SubtargetFeatures {
     return bits;
   }
 
-  private static int setImpliedBits(int bits,
+  private static long setImpliedBits(long bits,
                                     SubtargetFeatureKV featureKV,
                                     SubtargetFeatureKV[] featureTable) {
     for (int i = 0; i < featureTable.length; i++) {
@@ -364,5 +363,33 @@ public class SubtargetFeatures {
     char ch = feature.charAt(0);
     // Check if first character is '+' or '-' flag
     return ch == '+' || ch == '-';
+  }
+
+  public long toggleFeature(long bits, String feature, SubtargetFeatureKV[] featureTable) {
+    // find feature in table.
+    SubtargetFeatureKV featureEntry = null;
+    for (SubtargetFeatureKV kv : featureTable) {
+      if (kv.key.equals(feature)) {
+        featureEntry = kv;
+        break;
+      }
+    }
+    if (featureEntry != null) {
+      if ((bits & featureEntry.value) == featureEntry.value) {
+        bits &= ~featureEntry.value;
+
+        bits = clearImpliedBits(bits, featureEntry, featureTable);
+      }
+      else {
+        bits |= featureEntry.value;
+
+        bits = setImpliedBits(bits, featureEntry, featureTable);
+      }
+    }
+    else {
+      System.err.printf("'%s' is not a recognized feature of this target (ignoring feature)\n",
+          feature);
+    }
+    return bits;
   }
 }

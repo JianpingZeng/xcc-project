@@ -26,7 +26,7 @@ import java.util.HashSet;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SCEVExpander implements SCEVVisitor<Value> {
   private ScalarEvolution se;

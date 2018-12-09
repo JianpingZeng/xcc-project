@@ -22,7 +22,7 @@ import tools.Util;
  * Machine Value Type, which contains the various low-level value types.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MVT implements Comparable<MVT>, Cloneable {
   // If you change this numbering, you must change the values in

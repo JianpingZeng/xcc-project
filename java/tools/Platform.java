@@ -20,7 +20,7 @@ package tools;
  * Keep information of what type of this platform.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum Platform {
   Any("any"),

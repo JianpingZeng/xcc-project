@@ -29,7 +29,7 @@ import java.util.ArrayList;
  * MachineFunction using class {@linkplain MachineDomTreeInfoCooper}.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MachineDomTree extends MachineFunctionPass {
   private IMachineDomTreeInfo dt;

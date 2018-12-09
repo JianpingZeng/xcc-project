@@ -20,7 +20,7 @@ package jlang.sema;
  * Flags controlling the computation of linkage and visibility.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LVFlags {
   public boolean considerGlobalVisibility;

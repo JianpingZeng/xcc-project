@@ -17,23 +17,22 @@ package backend.target.x86;
  */
 
 import backend.support.CallingConv;
-import backend.support.Triple;
-import backend.target.SubtargetFeatureKV;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
 import tools.CPUInfoUtility;
 import tools.Util;
 
-import static backend.target.x86.X86Subtarget.TargetType.*;
 import static backend.target.x86.X863DNowEnum.*;
+import static backend.target.x86.X86GenSubtarget.*;
 import static backend.target.x86.X86SSEEnum.*;
+import static backend.target.x86.X86Subtarget.TargetType.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public class X86Subtarget extends TargetSubtarget {
+public abstract class X86Subtarget extends TargetSubtarget {
   public enum PICStyle {
     /**
      * sed on i386-darwin in -fPIC mode.
@@ -144,18 +143,12 @@ public class X86Subtarget extends TargetSubtarget {
 
   private X86TargetMachine tm;
 
-  private SubtargetFeatureKV[] subTypeKeyValue;
-  private SubtargetFeatureKV[] featureKV;
-  private Triple targetTriple;
-
-  protected X86Subtarget(String tt, String fs,
-                         X86TargetMachine tm,
-                         SubtargetFeatureKV[] subTypeKV,
-                         SubtargetFeatureKV[] featureKV) {
-    targetTriple = new Triple(tt);
+  protected X86Subtarget(X86TargetMachine tm,
+                         String tt,String cpu,
+                         String fs,
+                         int stackAlignOverride,
+                         boolean is64Bit) {
     this.tm = tm;
-    subTypeKeyValue = subTypeKV;
-    this.featureKV = featureKV;
     picStyle = PICStyle.None;
     x86SSELevel = NoMMXSSE;
     x863DNowLevel = NoThreeDNow;
@@ -167,10 +160,9 @@ public class X86Subtarget extends TargetSubtarget {
     isBTMemSlow = false;
     darwinVers = 0;
     isLinux = false;
-    stackAlignemnt = 8;
     // This is known good to Yonah, but I don't known about other.
     maxInlineSizeThreshold = 128;
-    this.is64Bit = targetTriple.getArch() == Triple.ArchType.x86_64;
+    this.is64Bit = is64Bit;
 
     // Default to ELF unless user explicitly specify.
     targetType = isELF;
@@ -180,29 +172,48 @@ public class X86Subtarget extends TargetSubtarget {
     // default to hard float ABI.
 
     // determine default and user specified characteristics.
-    if (fs != null && !fs.isEmpty()) {
+    if ((fs != null && !fs.isEmpty() || (cpu != null && !cpu.isEmpty()))) {
       // if feature string is not empty and null, parse features string.
-      String cpu = getCurrentX86CPU(isLittleEndian);
-      parseSubtargetFeatures(fs, cpu);
-      // All X86-64 CPUs also have SSE2, however user might request no SSE via
-      // -mattr, so don't force SSELevel here.
+      String cpuName = getCurrentX86CPU(isLittleEndian);
+      // Make sure 64-bit features are available in 64-bit mode. (But make sure
+      // SSE2 can be turned off explicitly.)
+      String fullFS = fs;
+      if (is64Bit) {
+        // All X86-64 CPUs also have SSE2, however user might request no SSE via
+        // -mattr, so don't force SSELevel here.
+        if (!fullFS.isEmpty())
+          fullFS = "+64bit,+sse2," + fullFS;
+        else
+          fullFS = "+64bit,+sse2";
+      }
+
+      parseSubtargetFeatures(fullFS, cpuName);
     } else {
       // Otherwise, automatical detect CPU type and kind.
       autoDetectSubtargetFeatures();
       // make sure SSE2 is enabled, it is available in all of x86_64 CPU.
-      if (is64Bit && x86SSELevel.compareTo(SSE2) < 0)
-        x86SSELevel = SSE2;
+      if (is64Bit) {
+        hasX86_64 = true;
+        toggleFeature(Feature64Bit);
+        /*
+        TODO
+        hasCMove = true;
+        toggleFeature(FeatureCMOV);*/
+        if (!hasAVX && x86SSELevel.compareTo(SSE2) < 0) {
+          x86SSELevel = SSE2;
+          toggleFeature(FeatureSSE1);
+          toggleFeature(FeatureSSE2);
+        }
+      }
     }
 
-    // If requesting codegen for X86-64, make sure that 64-bit features
-    // are enabled.
-    if (is64Bit)
-      hasX86_64 = true;
-
+    if (hasAVX)
+      x86SSELevel = NoMMXSSE;
 
     Util.Debug("Subtarget features: SSELevel " + x86SSELevel
         + ", 3DNowLevel " + x863DNowLevel + ", 64bit " + hasX86_64);
     Util.assertion(!is64Bit || hasX86_64, "64-bit code requested on a subtarget that doesn't support it!");
+
     if (tt.length() > 5) {
       int pos = -1;
       if ((pos = tt.indexOf("-darwin")) != -1) {
@@ -231,25 +242,16 @@ public class X86Subtarget extends TargetSubtarget {
 
     // Stack alignment is 16 Bytes on Darwin (both 32 and 64 bit) and
     // for all 64 bit targets.
-    if (targetType == isDarwin || is64Bit)
+    // Stack alignment is 16 bytes on Darwin, FreeBSD, Linux and Solaris (both
+    // 32 and 64 bit) and for all 64-bit targets.
+    if (stackAlignOverride != 0)
+      stackAlignemnt = stackAlignOverride;
+    else if (targetType == isDarwin || is64Bit)
       stackAlignemnt = 16;
   }
 
   public X86TargetMachine getTargetMachine() {
     return tm;
-  }
-
-  /**
-   * Create a X86Subtarget instance with specified target triple, features string,
-   * and predicate.
-   *
-   * @param tt Target triple
-   * @param fs Features string
-   * @return
-   */
-  public static X86Subtarget createX86Subtarget(String tt, String fs,
-                                                X86TargetMachine tm) {
-    return new X86GenSubtarget(tt, fs, tm);
   }
 
   public X86RegisterInfo getRegisterInfo() {
@@ -270,11 +272,6 @@ public class X86Subtarget extends TargetSubtarget {
 
   public int getMaxInlineSizeThreshold() {
     return maxInlineSizeThreshold;
-  }
-
-  @Override
-  public String parseSubtargetFeatures(String fs, String cpu) {
-    return "";
   }
 
   private static int[] detectFamilyModel(int eax) {

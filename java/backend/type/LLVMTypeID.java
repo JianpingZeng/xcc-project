@@ -23,7 +23,7 @@ package backend.type;
  * Type::getPrimitiveType function, or else things will break!
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface LLVMTypeID {
   int VoidTyID = 0;           //  0, 1: Basics...

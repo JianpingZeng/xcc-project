@@ -23,7 +23,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DeclVisitor {
   public void visit(Decl decl) {

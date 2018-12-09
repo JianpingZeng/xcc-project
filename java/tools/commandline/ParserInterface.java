@@ -29,7 +29,7 @@ import static tools.commandline.ValueExpected.ValueRequired;
  * line parser.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface ParserInterface<T> {
   boolean parse(Option<?> opt,

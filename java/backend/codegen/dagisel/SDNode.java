@@ -37,7 +37,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   protected int opcode;
@@ -315,7 +315,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
           if (dag != null) {
             TargetInstrInfo tii = dag.getTarget().getInstrInfo();
             if (tii != null)
-              if (getMachineOpcode() < tii.getNumTotalOpCodes())
+              if (getMachineOpcode() < tii.getNumOperands())
                 return tii.get(getMachineOpcode()).getName();
           }
           return "<<Unknown Machine Node>>";

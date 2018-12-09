@@ -11,7 +11,7 @@ import java.util.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LPPassManager extends PMDataManager implements FunctionPass {
   private LinkedList<Loop> loopQueue = new LinkedList<>();

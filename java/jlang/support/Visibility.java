@@ -18,7 +18,7 @@ package jlang.support;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum Visibility {
   /// Objects with "hidden" visibility are not seen by the dynamic

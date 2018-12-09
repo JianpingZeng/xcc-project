@@ -41,7 +41,7 @@ import java.util.ArrayList;
  * performance some minor optimization, but I would to do in the future.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     ModulePass, InstVisitor<Void> {

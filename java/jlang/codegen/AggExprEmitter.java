@@ -34,7 +34,7 @@ import tools.Util;
  * This class responsible for emitting HIR code for aggregate type expression.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AggExprEmitter extends StmtVisitor<Void> {
   private CodeGenFunction cgf;

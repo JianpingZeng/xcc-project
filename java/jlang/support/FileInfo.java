@@ -29,7 +29,7 @@ package jlang.support;
  * FileInfos contain a "ContentCache " reference, with the contents of the file.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FileInfo {
   private int includeLoc;

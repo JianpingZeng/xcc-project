@@ -45,7 +45,7 @@ import static backend.target.TargetMachine.RelocModel.Static;
  * in a very similar way across different target.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class AsmPrinter extends MachineFunctionPass {
   /**
@@ -170,6 +170,12 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       // TODO, handle alias
     }
 
+    Function trampolineIntrinsic = m.getFunction("llvm.init.trampoline");
+    if (trampolineIntrinsic == null || trampolineIntrinsic.isUseEmpty()) {
+      MCSection s = mai.getNonexecutableStackSection(outContext);
+      if (s != null)
+        outStreamer.switchSection(s);
+    }
     emitEndOfAsmFile(m);
     outStreamer.finish();
     return false;
@@ -413,18 +419,18 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           emitComments(mi, outStreamer.getCommentOS());;
 
           switch (mi.getOpcode()) {
-            case TargetInstrInfo.DBG_LABEL:
-            case TargetInstrInfo.EH_LABEL:
-            case TargetInstrInfo.GC_LABEL:
+            case TargetOpcodes.DBG_LABEL:
+            case TargetOpcodes.EH_LABEL:
+            case TargetOpcodes.GC_LABEL:
               printLabel(mi);
               break;
-            case TargetInstrInfo.INLINEASM:
+            case TargetOpcodes.INLINEASM:
               printInlineAsm(mi);
               break;
-            case TargetInstrInfo.IMPLICIT_DEF:
+            case TargetOpcodes.IMPLICIT_DEF:
               printImplicitDef(mi);
               break;
-            case TargetInstrInfo.DECLARE:
+            case TargetOpcodes.DECLARE:
               printDeclare(mi);
               break;
             default:

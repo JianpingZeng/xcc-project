@@ -16,7 +16,7 @@ import static backend.mc.MCAsmInfo.MCSymbolAttr.MCSA_Protected;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MCAsmInfo {
   public enum ExceptionHandlingType {

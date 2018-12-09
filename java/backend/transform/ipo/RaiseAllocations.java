@@ -40,7 +40,7 @@ import java.util.Stack;
  * to corresponding instructions.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RaiseAllocations implements ModulePass {
   public final static IntStatistic NumRaised =

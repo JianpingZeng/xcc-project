@@ -5,7 +5,7 @@ package jlang.clex;
  * returned from lexical analysis.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface Tag {
   // Not a token.

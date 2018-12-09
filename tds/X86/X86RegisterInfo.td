@@ -285,7 +285,7 @@ def GR8 : RegisterClass<"X86", [i8],  8,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
 
             int[] res;
             int begin, end;
@@ -296,7 +296,7 @@ def GR8 : RegisterClass<"X86", [i8],  8,
                 // If not, just don't allocate SPL.
                 end = X86_GR8_AO_64.length;
             }
-            else if (ri.hasFP(mf))
+            else if (tli.hasFP(mf))
             {
                 res = X86_GR8_AO_64;
                 begin = 0;
@@ -335,7 +335,7 @@ def GR16 : RegisterClass<"X86", [i16], 16,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
 
             int[] res;
             int begin = 0, end;
@@ -351,7 +351,7 @@ def GR16 : RegisterClass<"X86", [i16], 16,
             if (subtarget.is64Bit())
             {
                 // Does the function dedicate RBP to being a frame ptr?
-                if (ri.hasFP(mf))
+                if (tli.hasFP(mf))
                     // If so, don't allocate SP or BP.
                     end = X86_GR16_AO_64.length - 1;
                 else
@@ -361,7 +361,7 @@ def GR16 : RegisterClass<"X86", [i16], 16,
             else
             {
                 // Does the function dedicate EBP to being a frame ptr?
-                if (ri.hasFP(mf))
+                if (tli.hasFP(mf))
                     // If so, don't allocate SP or BP.
                     end = begin + 6;
                 else
@@ -392,7 +392,7 @@ def GR32 : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
 
             int[] res;
             int begin = 0, end;
@@ -408,7 +408,7 @@ def GR32 : RegisterClass<"X86", [i32], 32,
             if (subtarget.is64Bit())
             {
                 // Does the function dedicate RBP to being a frame ptr?
-                if (ri.hasFP(mf))
+                if (tli.hasFP(mf))
                     // If so, don't allocate ESP or EBP.
                     end = X86_GR32_AO_64.length - 1;
                 else
@@ -418,7 +418,7 @@ def GR32 : RegisterClass<"X86", [i32], 32,
             else
             {
                 // Does the function dedicate EBP to being a frame ptr?
-                if (ri.hasFP(mf))
+                if (tli.hasFP(mf))
                     // If so, don't allocate ESP or EBP.
                     end = begin + 6;
                 else
@@ -445,12 +445,12 @@ def GR64 : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
                 end = begin;    // None of these are allocatable in 32-bit.
-            else if (ri.hasFP(mf))  // Does the function dedicate RBP to being a frame ptr?
+            else if (tli.hasFP(mf))  // Does the function dedicate RBP to being a frame ptr?
                 end = res.length - 3;   // If so, don't allocate RIP, RSP or RBP
             else
                 end = res.length - 2;   // If not, just don't allocate RIP or RSP
@@ -501,7 +501,7 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res;
             int begin = 0, end;
 
@@ -514,7 +514,7 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
             if (!subtarget.is64Bit())
                 // In 32-mode, none of the 8-bit registers aliases EBP or ESP.
                 end = begin + 8;
-            else if (ri.hasFP(mf))
+            else if (tli.hasFP(mf))
                 // If so, don't allocate SPL or BPL.
                 end = X86_GR8_NOREX_AO_64.length - 1;
             else
@@ -535,12 +535,12 @@ def GR16_NOREX : RegisterClass<"X86", [i16], 16,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
 
             // Does the function dedicate RBP / EBP to being a frame ptr?
-            if (ri.hasFP(mf))
+            if (tli.hasFP(mf))
                 // If so, don't allocate SP or BP.
                 end = res.length - 2;
             else
@@ -563,12 +563,12 @@ def GR32_NOREX : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
 
             // Does the function dedicate RBP / EBP to being a frame ptr?
-            if (ri.hasFP(mf))
+            if (tli.hasFP(mf))
                 // If so, don't allocate ESP or EBP.
                 end = res.length - 2;
             else
@@ -591,12 +591,12 @@ def GR64_NOREX : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
 
             // Does the function dedicate RBP / EBP to being a frame ptr?
-            if (ri.hasFP(mf))
+            if (tli.hasFP(mf))
                 // If so, don't allocate RSP or RBP.
                 end = res.length - 2;
             else
@@ -628,7 +628,7 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res;
             int begin = 0, end;
             if (subtarget.is64Bit())
@@ -645,7 +645,7 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
             if (subtarget.is64Bit())
             {
                 // Does the function dedicate RBP to being a frame ptr?
-                if (ri.hasFP(mf))
+                if (tli.hasFP(mf))
                   // If so, don't allocate EBP.
                   end = X86_GR32_NOSP_AO_64.length - 1;
                 else
@@ -655,7 +655,7 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
             else
             {
             // Does the function dedicate EBP to being a frame ptr?
-              if (ri.hasFP(mf))
+              if (tli.hasFP(mf))
               // If so, don't allocate EBP.
               end = begin + 6;
             else
@@ -680,12 +680,12 @@ def GR64_NOSP : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
                 end = begin;
-            if (ri.hasFP(mf))
+            if (tli.hasFP(mf))
                 end = res.length - 1;
             else
                 end = res.length;
@@ -706,11 +706,11 @@ def GR64_NOREX_NOSP : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             // Does the function dedicate RBP to being a frame ptr?
-            if (ri.hasFP(mf))
+            if (tli.hasFP(mf))
                 // If so, don't allocate RBP.
                 end = res.length - 1;
             else
@@ -739,7 +739,7 @@ def FR32 : RegisterClass<"X86", [f32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -763,7 +763,7 @@ def FR64 : RegisterClass<"X86", [f64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -815,7 +815,7 @@ def VR128 : RegisterClass<"X86", [v16i8, v8i16, v4i32, v2i64, v4f32, v2f64],128,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetRegisterInfo ri = tm.getRegisterInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())

@@ -31,7 +31,7 @@ import static backend.analysis.SCEV.SCEVType.scAddRecExpr;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SCEVAddExpr extends SCEVCommutativeExpr {
   private ArrayList<SCEV> ops;

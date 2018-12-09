@@ -27,7 +27,6 @@ import backend.support.Triple.ArchType;
 import tools.OutRef;
 import tools.Util;
 
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Iterator;
 
@@ -44,7 +43,7 @@ import java.util.Iterator;
  * </p
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Target {
   public interface AsmInfoCtor {
@@ -52,7 +51,7 @@ public class Target {
   }
 
   public interface TargetMachineCtor {
-    TargetMachine create(Target t, String triple, String features);
+    TargetMachine create(Target t, String triple, String cpu, String features);
   }
 
   public interface AsmPrinterCtor {
@@ -120,10 +119,10 @@ public class Target {
    * @param features
    * @return
    */
-  public TargetMachine createTargetMachine(String triple, String features) {
+  public TargetMachine createTargetMachine(String triple, String cpu, String features) {
     if (targetMachineCtor == null)
       return null;
-    return targetMachineCtor.create(this, triple, features);
+    return targetMachineCtor.create(this, triple, cpu, features);
   }
 
   /**
@@ -172,7 +171,7 @@ public class Target {
    * A target registry factory.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class TargetRegistry {
     /**

@@ -19,19 +19,28 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
-import backend.target.*;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetOpcodes;
+import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.type.Type;
 import backend.value.ConstantFP;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Objects;
+import java.util.Stack;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.SDep.Kind.Data;
 import static backend.codegen.dagisel.SDep.Kind.Order;
-import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
-import static backend.target.TargetRegisterInfo.*;
+import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * A ScheduleDAG for scheduling SDNode-based DAGs.
@@ -148,24 +157,24 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     // if this is a machine instruction.
     if (node.isMachineOpecode()) {
       int opc = node.getMachineOpcode();
-      if (opc == TargetInstrInfo.EXTRACT_SUBREG ||
-          opc == TargetInstrInfo.INSERT_SUBREG ||
-          opc == TargetInstrInfo.SUBREG_TO_REG) {
+      if (opc == TargetOpcodes.EXTRACT_SUBREG ||
+          opc == TargetOpcodes.INSERT_SUBREG ||
+          opc == TargetOpcodes.SUBREG_TO_REG) {
         emitSubregNode(node, vrBaseMap);
         return;
       }
 
-      if (opc == TargetInstrInfo.COPY_TO_REGCLASS) {
+      if (opc == TargetOpcodes.COPY_TO_REGCLASS) {
         emitCopyToRegClassNode(node, vrBaseMap);
         return;
       }
 
-      if (opc == TargetInstrInfo.IMPLICIT_DEF) {
+      if (opc == TargetOpcodes.IMPLICIT_DEF) {
         // We just want a unique VR for each IMPLICIT_DEF use.
         return;
       }
 
-      TargetInstrDesc tid = tii.get(opc);
+      MCInstrDesc tid = tii.get(opc);
       int numResults = countResults(node);
       int nodeOperands = countOperands(node);
       int memOperandsEnd = computeMemOperandEnd(node);
@@ -228,7 +237,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         int destReg = ((RegisterSDNode) node.getOperand(1).getNode()).getReg();
         if (srcReg == destReg) break;
 
-        TargetRegisterClass srcRC = null, destRC = null;
+        MCRegisterClass srcRC = null, destRC = null;
         if (isVirtualRegister(srcReg))
           srcRC = mri.getRegClass(srcReg);
         else
@@ -349,13 +358,13 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       }
     }
 
-    if (opc == TargetInstrInfo.EXTRACT_SUBREG) {
+    if (opc == TargetOpcodes.EXTRACT_SUBREG) {
       long subIdx = ((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue();
-      MachineInstr mi = buildMI(tii.get(TargetInstrInfo.EXTRACT_SUBREG)).getMInstr();
+      MachineInstr mi = buildMI(tii.get(TargetOpcodes.EXTRACT_SUBREG)).getMInstr();
 
       int vreg = getVR(node.getOperand(0), vrBaseMap);
-      TargetRegisterClass destRC = mri.getRegClass(vreg);
-      TargetRegisterClass srcRC = destRC.getSubRegisterRegClass(subIdx);
+      MCRegisterClass destRC = mri.getRegClass(vreg);
+      MCRegisterClass srcRC = destRC.getSubRegisterRegClass(subIdx);
       Util.assertion(srcRC != null, "Invalid subregister index in EXTRACT_SUBREG");
 
       if (vrBase == 0 || srcRC != mri.getRegClass(vrBase)) {
@@ -366,15 +375,15 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       addOperand(mi, node.getOperand(0), 0, null, vrBaseMap);
       mi.addOperand(MachineOperand.createImm(subIdx));
       mbb.insert(insertPos++, mi);
-    } else if (opc == TargetInstrInfo.INSERT_SUBREG ||
-        opc == TargetInstrInfo.SUBREG_TO_REG) {
+    } else if (opc == TargetOpcodes.INSERT_SUBREG ||
+        opc == TargetOpcodes.SUBREG_TO_REG) {
       SDValue n0 = node.getOperand(0);
       SDValue n1 = node.getOperand(1);
       SDValue n2 = node.getOperand(2);
       int subReg = getVR(n1, vrBaseMap);
       int subIdx = (int) ((ConstantSDNode) n2.getNode()).getZExtValue();
-      TargetRegisterClass destRC = mri.getRegClass(subReg);
-      TargetRegisterClass srcRC = destRC
+      MCRegisterClass destRC = mri.getRegClass(subReg);
+      MCRegisterClass srcRC = destRC
           .getSuperRegisterRegClass(tri, destRC, subIdx, node.getValueType(0));
 
       if (vrBase == 0 || !srcRC.equals(mri.getRegClass(vrBase))) {
@@ -384,7 +393,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       MachineInstr mi = buildMI(tii.get(opc)).getMInstr();
       mi.addOperand(MachineOperand.createReg(vrBase, true, false));
 
-      if (opc == TargetInstrInfo.SUBREG_TO_REG) {
+      if (opc == TargetOpcodes.SUBREG_TO_REG) {
         ConstantSDNode sdn = (ConstantSDNode) n0.getNode();
         mi.addOperand(MachineOperand.createImm(sdn.getZExtValue()));
       } else
@@ -404,10 +413,10 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   private void emitCopyToRegClassNode(SDNode node,
                                       TObjectIntHashMap<SDValue> vrBaseMap) {
     int vreg = getVR(node.getOperand(0), vrBaseMap);
-    TargetRegisterClass srcRC = mri.getRegClass(vreg);
+    MCRegisterClass srcRC = mri.getRegClass(vreg);
 
     int destRCIdx = (int) ((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue();
-    TargetRegisterClass destRC = tri.getRegClass(destRCIdx);
+    MCRegisterClass destRC = tri.getRegClass(destRCIdx);
 
     int newVReg = mri.createVirtualRegister(destRC);
     boolean emitted = tii.copyRegToReg(mbb, insertPos++, newVReg, vreg,
@@ -423,13 +432,13 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
    * specified SDValue.
    */
   private int getVR(SDValue op, TObjectIntHashMap<SDValue> vrBaseMap) {
-    if (op.isMachineOpcode() && op.getMachineOpcode() == TargetInstrInfo.IMPLICIT_DEF) {
+    if (op.isMachineOpcode() && op.getMachineOpcode() == TargetOpcodes.IMPLICIT_DEF) {
       int vreg = getDstOfOnlyCopyToRegUse(op.getNode(), op.getResNo());
       if (vreg == 0) {
-        TargetRegisterClass rc = tli.getRegClassFor(op.getValueType());
+        MCRegisterClass rc = tli.getRegClassFor(op.getValueType());
         vreg = mri.createVirtualRegister(rc);
       }
-      buildMI(mbb, tii.get(TargetInstrInfo.IMPLICIT_DEF), vreg);
+      buildMI(mbb, tii.get(TargetOpcodes.IMPLICIT_DEF), vreg);
       return vreg;
     }
 
@@ -455,7 +464,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   private void addOperand(MachineInstr mi,
                           SDValue op,
                           int iiOpNum,
-                          TargetInstrDesc tid,
+                          MCInstrDesc tid,
                           TObjectIntHashMap<SDValue> vrBaseMap) {
     if (op.isMachineOpcode())
       addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
@@ -514,7 +523,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   private void addRegisterOperand(MachineInstr mi,
                                   SDValue op,
                                   int iiOpNum,
-                                  TargetInstrDesc tid,
+                                  MCInstrDesc tid,
                                   TObjectIntHashMap<SDValue> vrBaseMap) {
     Util.assertion(!op.getValueType().equals(new EVT(MVT.Other)) &&
         !op.getValueType().equals(new EVT(MVT.Flag)));
@@ -522,12 +531,12 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     int vreg = getVR(op, vrBaseMap);
     Util.assertion(isVirtualRegister(vreg));
 
-    TargetInstrDesc ii = mi.getDesc();
+    MCInstrDesc ii = mi.getDesc();
     boolean isOptDef = iiOpNum < ii.getNumOperands() && ii.opInfo[iiOpNum].isOptionalDef();
 
     if (tid != null) {
-      TargetRegisterClass srcRC = mri.getRegClass(vreg);
-      TargetRegisterClass destRC = null;
+      MCRegisterClass srcRC = mri.getRegClass(vreg);
+      MCRegisterClass destRC = null;
       if (iiOpNum < tid.getNumOperands())
         destRC = tid.opInfo[iiOpNum].getRegisterClass(tri);
       Util.assertion(destRC != null || (ii.isVariadic() &&
@@ -563,7 +572,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     }
 
     boolean matchReg = true;
-    TargetRegisterClass useRC = null;
+    MCRegisterClass useRC = null;
     if (!isClone && !isCloned) {
       for (SDUse u : node.useList) {
         SDNode user = u.getUser();
@@ -591,14 +600,14 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
             match = false;
             if (user.isMachineOpecode()) {
-              TargetInstrDesc ii = tii.get(user.getMachineOpcode());
-              TargetRegisterClass rc = null;
+              MCInstrDesc ii = tii.get(user.getMachineOpcode());
+              MCRegisterClass rc = null;
               if (i + ii.getNumDefs() < ii.getNumOperands())
                 rc = ii.opInfo[i + ii.getNumDefs()].getRegisterClass(tri);
               if (useRC == null)
                 useRC = rc;
               else if (rc != null) {
-                TargetRegisterClass comRC = tri.getCommonSubClass(useRC, rc);
+                MCRegisterClass comRC = tri.getCommonSubClass(useRC, rc);
                 if (comRC != null)
                   useRC = comRC;
               }
@@ -611,7 +620,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       }
 
       EVT vt = node.getValueType(resNo);
-      TargetRegisterClass srcRC, destRC;
+      MCRegisterClass srcRC, destRC;
       srcRC = tri.getPhysicalRegisterRegClass(srcReg, vt);
 
       if (vrbase != 0)
@@ -640,14 +649,14 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
   private void createVirtualRegisters(SDNode node,
                                       MachineInstr mi,
-                                      TargetInstrDesc tid,
+                                      MCInstrDesc tid,
                                       boolean isClone,
                                       boolean isCloned,
                                       TObjectIntHashMap<SDValue> vrBaseMap) {
-    Util.assertion(node.getMachineOpcode() != TargetInstrInfo.IMPLICIT_DEF);
+    Util.assertion(node.getMachineOpcode() != TargetOpcodes.IMPLICIT_DEF);
     for (int i = 0; i < tid.getNumDefs(); i++) {
       int vrbase = 0;
-      TargetRegisterClass rc = tid.opInfo[i].getRegisterClass(tri);
+      MCRegisterClass rc = tid.opInfo[i].getRegisterClass(tri);
       if (tid.opInfo[i].isOptionalDef()) {
         int numResult = countResults(node);
         vrbase = ((RegisterSDNode) node.getOperand(i - numResult).getNode()).getReg();
@@ -663,7 +672,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
               user.getOperand(2).getResNo() == i) {
             int reg = ((RegisterSDNode) user.getOperand(1).getNode()).getReg();
             if (isVirtualRegister(reg)) {
-              TargetRegisterClass regRC = mri.getRegClass(reg);
+              MCRegisterClass regRC = mri.getRegClass(reg);
               if (regRC.equals(rc)) {
                 vrbase = reg;
                 mi.addOperand(MachineOperand.createReg(reg, true, false));
@@ -760,7 +769,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
       if (node.isMachineOpecode()) {
         int opc = node.getMachineOpcode();
-        TargetInstrDesc tid = tii.get(opc);
+        MCInstrDesc tid = tii.get(opc);
         for (int j = 0; j < tid.getNumOperands(); j++) {
           if (tid.getOperandConstraint(j, TIED_TO) != -1) {
             su.isTwoAddress = true;
@@ -830,11 +839,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
     int resNo = user.getOperand(2).getResNo();
     if (def.isMachineOpecode()) {
-      TargetInstrDesc tid = tii.get(def.getMachineOpcode());
+      MCInstrDesc tid = tii.get(def.getMachineOpcode());
       if (resNo >= tid.getNumDefs() && tid.implicitDefs != null &&
           tid.implicitDefs[resNo - tid.getNumDefs()] == reg) {
         res[0] = reg;
-        TargetRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, def.getValueType(resNo));
+        MCRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, def.getValueType(resNo));
         res[1] = rc.getCopyCost();
       }
     }

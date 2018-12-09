@@ -8,7 +8,7 @@ import backend.pass.Pass;
  * kind of pass manager it is.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @T This generic type parameter represents the type of entity on which different
  * Pass will operates.
  * @PassType Represents the type of pass.

@@ -26,7 +26,7 @@ import static backend.type.LLVMTypeID.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class EVT implements Comparable<EVT> {
   private MVT v;

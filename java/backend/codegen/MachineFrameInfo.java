@@ -1,8 +1,8 @@
 package backend.codegen;
 
+import backend.mc.MCRegisterClass;
 import backend.target.TargetData;
-import backend.target.TargetFrameInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import tools.Util;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineFrameInfo {
   /**
@@ -106,10 +106,10 @@ public class MachineFrameInfo {
 
   private boolean csIValid;
 
-  private TargetFrameInfo tfi;
+  private TargetFrameLowering tfi;
   private TargetRegisterInfo tri;
 
-  public MachineFrameInfo(TargetFrameInfo tfi,
+  public MachineFrameInfo(TargetFrameLowering tfi,
                           TargetRegisterInfo tri) {
     csInfo = new ArrayList<>();
     this.tfi = tfi;
@@ -309,7 +309,7 @@ public class MachineFrameInfo {
         td.getTypeAlign(type));
   }
 
-  public int createStackObject(TargetRegisterClass rc) {
+  public int createStackObject(MCRegisterClass rc) {
     return createStackObject(tri.getRegSize(rc), tri.getSpillAlignment(rc));
   }
 
@@ -342,7 +342,7 @@ public class MachineFrameInfo {
   }
 
   public void print(MachineFunction mf, PrintStream os) {
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameInfo();
     int valueOffset = tfi != null ? tfi.getLocalAreaOffset() : 0;
 
     for (int i = 0, e = objects.size(); i < e; i++) {

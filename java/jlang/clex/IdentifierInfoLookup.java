@@ -21,7 +21,7 @@ package jlang.clex;
  * for performing lookups from strings to {@linkplain IdentifierInfo} objects.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface IdentifierInfoLookup {
   /**

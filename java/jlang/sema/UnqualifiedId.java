@@ -25,7 +25,7 @@ import jlang.support.SourceRange;
  * Represents a C unqualified id that has been parsed.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class UnqualifiedId {
   public enum DeclarationKind {

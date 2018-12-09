@@ -21,7 +21,7 @@ package backend.codegen;
  * Track the registration of register allocations.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegisterRegAlloc extends MachinePassRegistryNode<MachinePassCtor> {
   public static final MachinePassRegistry<MachinePassCtor> registry =

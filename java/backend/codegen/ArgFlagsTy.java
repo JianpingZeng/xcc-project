@@ -20,7 +20,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ArgFlagsTy {
   private final static long NoFlagSet = 0L;

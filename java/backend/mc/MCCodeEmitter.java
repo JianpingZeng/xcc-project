@@ -8,5 +8,9 @@
 
 package backend.mc;
 
-public class MCCodeEmitter {
+import java.io.PrintStream;
+import java.util.ArrayList;
+
+public interface MCCodeEmitter {
+  void encodeInstruction(MCInst inst, PrintStream os, ArrayList<MCFixup> fixups);
 }

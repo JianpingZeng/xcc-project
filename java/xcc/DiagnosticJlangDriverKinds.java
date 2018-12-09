@@ -24,7 +24,7 @@ import static jlang.diag.Diagnostic.Mapping.MAP_ERROR;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum DiagnosticJlangDriverKinds implements DiagnosticJlangDriverTag {
   ERR_DRV_NO_SUCH_FILE(err_drv_no_such_file, CLASS_ERROR, MAP_ERROR, "no such file or directory: '%0'", true, null),

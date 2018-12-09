@@ -29,7 +29,7 @@ import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MPPassManager extends PMDataManager implements Pass {
   private HashMap<Pass, FunctionPassManagerImpl> onTheFlyManager;

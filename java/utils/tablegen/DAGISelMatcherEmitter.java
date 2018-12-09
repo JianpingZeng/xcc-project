@@ -895,11 +895,10 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");
     os.println("import backend.target.TargetInstrInfo;");
-    /*os.printf("import backend.target.%s.%sInstrInfo;%n",
-        targetName.toLowerCase(), targetName);*/
     os.println("import backend.codegen.dagisel.SDNode;");
     os.println("import backend.target.TargetMachine.CodeModel;");
     os.println("import backend.target.TargetMachine.RelocModel;");
+    os.println("import backend.target.TargetOpcodes;");
     os.println("import backend.type.PointerType;");
     os.println("import backend.value.Value;");
     os.println("import tools.Util;");

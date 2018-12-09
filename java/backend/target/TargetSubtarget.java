@@ -18,17 +18,15 @@ package backend.target;
 
 import backend.codegen.dagisel.SDep;
 import backend.codegen.dagisel.SUnit;
+import backend.mc.MCSubtargetInfo;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public abstract class TargetSubtarget {
-
+public abstract class TargetSubtarget extends MCSubtargetInfo {
   protected TargetInstrInfo instrInfo;
   protected TargetRegisterInfo regInfo;
-  protected SubtargetFeatureKV[] subTypeKV;
-  protected SubtargetFeatureKV[] featureKV;
 
   public int getSpecialAddressLatency() {
     return 0;
@@ -59,21 +57,6 @@ public abstract class TargetSubtarget {
 
   public int getHwMode() {
     return 0;
-  }
-
-  /**
-   * Checks if the specified feature is enabled or not in current
-   * hardware mode.
-   *
-   * @param fs Features.
-   * @return
-   */
-  public boolean checkFeatures(String fs) {
-    SubtargetFeatures testFS = new SubtargetFeatures(fs);
-    SubtargetFeatures features = new SubtargetFeatures(fs);
-    int featuresbits = features.getBits(subTypeKV, featureKV);
-    int testBits = testFS.getBits(subTypeKV, featureKV);
-    return (featuresbits & testBits) == featuresbits;
   }
 
   public TargetRegisterInfo getRegisterInfo() {

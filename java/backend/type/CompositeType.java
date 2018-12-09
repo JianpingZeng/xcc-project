@@ -22,7 +22,7 @@ import backend.value.Value;
  * Common super class of ArrayType, StructType, and PointerType.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class CompositeType extends Type {
   protected CompositeType(int typeID) {

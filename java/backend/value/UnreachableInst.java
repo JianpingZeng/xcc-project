@@ -21,7 +21,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class UnreachableInst extends Instruction.TerminatorInst {
   public UnreachableInst(BasicBlock insertAtEnd) {

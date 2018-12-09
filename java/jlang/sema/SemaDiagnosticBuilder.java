@@ -20,7 +20,7 @@ import static jlang.diag.Diagnostic.DiagnosticBuilder;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SemaDiagnosticBuilder extends DiagnosticBuilder {
   private Sema sema;

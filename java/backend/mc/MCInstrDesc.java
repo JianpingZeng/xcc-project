@@ -1,26 +1,21 @@
-package backend.target;
 /*
- * Extremely C language Compiler
+ * BSD 3-Clause License
+ *
  * Copyright (c) 2015-2018, Jianping Zeng.
+ * All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Please refer the LICENSE for detail.
  */
+
+package backend.mc;
+
+import backend.target.TID;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public class TargetInstrDesc {
+public class MCInstrDesc {
   /**
    * The opcode of this instruction specfified with target machine.
    */
@@ -61,15 +56,15 @@ public class TargetInstrDesc {
   /**
    * Reg classes completely "clobbered".
    */
-  public TargetRegisterClass[] rcBarriers;
+  public MCRegisterClass[] rcBarriers;
 
   /**
    * {@linkplain this#numOperands} entries about operands.
    */
-  public TargetOperandInfo[] opInfo;
+  public MCOperandInfo[] opInfo;
 
   /**
-   * The constructor that creats an instance of class {@linkplain TargetInstrDesc}
+   * The constructor that creats an instance of class {@linkplain MCInstrDesc}
    * with the specified several parameters.
    *
    * @param opcode      The opcode.
@@ -81,17 +76,17 @@ public class TargetInstrDesc {
    * @param implUses    The implicitly used register.
    * @param implDefs    The implicit registers defined by this instruction.
    */
-  public TargetInstrDesc(int opcode,
-                         int numOperands,
-                         int numDefs,
-                         int schedClass,
-                         String name,
-                         int flags,
-                         int tSFlags,
-                         int[] implUses,
-                         int[] implDefs,
-                         TargetRegisterClass[] rcBarriers,
-                         TargetOperandInfo[] opInfo) {
+  public MCInstrDesc(int opcode,
+                     int numOperands,
+                     int numDefs,
+                     int schedClass,
+                     String name,
+                     int flags,
+                     int tSFlags,
+                     int[] implUses,
+                     int[] implDefs,
+                     MCRegisterClass[] rcBarriers,
+                     MCOperandInfo[] opInfo) {
     opCode = opcode;
     this.numOperands = numOperands;
     this.numDefs = numDefs;
@@ -170,7 +165,7 @@ public class TargetInstrDesc {
     return false;
   }
 
-  public TargetRegisterClass[] getRegClassBarriers() {
+  public MCRegisterClass[] getRegClassBarriers() {
     return rcBarriers;
   }
 

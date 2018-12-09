@@ -32,7 +32,7 @@ import static utils.tablegen.Init.BinOpInit.BinaryOp.CONCAT;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CodeGenInstruction {
   /**

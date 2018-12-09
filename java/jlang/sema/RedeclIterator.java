@@ -20,7 +20,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RedeclIterator<T extends Redeclarable<T>> {
   private Redeclarable<T> current;

@@ -25,7 +25,7 @@ package jlang.sema;
  * source and destination type.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 enum AssignConvertType {
   /**

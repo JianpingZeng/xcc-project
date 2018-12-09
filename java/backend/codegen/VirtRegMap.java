@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.SetMultiMap;
 import tools.Util;
@@ -28,7 +28,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class VirtRegMap {
   private MachineFunction mf;
@@ -59,7 +59,7 @@ public class VirtRegMap {
   }
 
   public int assignVirt2StackSlot(int virtReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virtReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virtReg);
     int fi = mf.getFrameInfo().createStackObject(rc);
     v2StackSlotMap.put(virtReg, fi);
     return fi;

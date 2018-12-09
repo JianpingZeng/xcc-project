@@ -31,7 +31,7 @@ import tools.APFloat.CmpResult;
  * expression is an integer. Otherwise, issue error messages if failed.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean> {
   private OutRef<APValue> result;

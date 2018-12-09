@@ -18,19 +18,15 @@ package backend.target.x86;
 
 import backend.codegen.AsmWriterFlavorTy;
 import backend.mc.MCAsmInfo;
-import backend.mc.MCInstPrinter;
-import backend.mc.MCStreamer;
-import backend.mc.MCSymbol;
 import backend.support.Triple;
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
-import backend.target.TargetMachine;
 
 import java.io.PrintStream;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetInfo {
   private static Target theX86_32Target = new Target();
@@ -50,13 +46,13 @@ public class X86TargetInfo {
    * A function interface variable to create X86 32bit target machine.
    */
   private static Target.TargetMachineCtor X86_32TargetMachineMaker =
-      (t, triple, features) -> new X86_32TargetMachine(t, triple, features);
+      (t, triple, cpu, features) -> new X86_32TargetMachine(t, triple, cpu, features);
 
   /**
    * A function interface variable to create X86 64 bit target machine.
    */
   private static Target.TargetMachineCtor X86_64TargetMachineMaker =
-      (t, triple, features) -> new X86_64TargetMachine(t, triple, features);
+      (t, triple, cpu, features) -> new X86_64TargetMachine(t, triple, cpu, features);
 
   private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
   {

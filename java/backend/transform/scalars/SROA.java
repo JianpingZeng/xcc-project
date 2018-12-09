@@ -68,7 +68,7 @@ import static backend.transform.utils.PromoteMemToReg.isAllocaPromotable;
  * After performed, suitable aggregates would in favour of subsequent optimization.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SROA implements FunctionPass {
   public static final IntStatistic NumReplaced =

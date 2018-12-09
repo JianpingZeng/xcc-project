@@ -65,7 +65,7 @@ import static tools.Util.countLeadingZeros32;
  * </ol>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class APInt implements Cloneable {
   /**

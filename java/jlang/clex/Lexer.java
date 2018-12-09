@@ -36,7 +36,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * on the specified Preprocessor object to handle preprocessor directives, etc.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Lexer extends PreprocessorLexer {
   // The buffer to content to be read.

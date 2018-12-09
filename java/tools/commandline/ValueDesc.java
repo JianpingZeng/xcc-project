@@ -18,7 +18,7 @@ package tools.commandline;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ValueDesc implements Modifier {
   private String desc;

@@ -32,7 +32,7 @@ import static backend.target.TargetData.roundUpAlignment;
  * Record builder helper.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CGRecordLayoutBuilder {
   private CodeGenTypes types;

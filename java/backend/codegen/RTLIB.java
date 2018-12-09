@@ -21,7 +21,7 @@ package backend.codegen;
  * This enum defines all of the runtime library calls that backend can emit.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum RTLIB {
   // Integer

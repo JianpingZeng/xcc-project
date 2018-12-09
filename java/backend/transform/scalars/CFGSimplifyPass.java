@@ -40,7 +40,7 @@ import static backend.transform.utils.ConstantFolder.*;
  * FunctionProto.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CFGSimplifyPass implements FunctionPass {
   private AnalysisResolver resolver;

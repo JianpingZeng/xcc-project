@@ -47,7 +47,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class DomTreeInfoCooper implements IDomTreeInfo {
   /**

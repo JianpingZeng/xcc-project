@@ -19,7 +19,7 @@ package xcc;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface DiagnosticJlangDriverTag {
   int err_drv_no_such_file = 0;

@@ -27,7 +27,7 @@ import tools.Util;
  * in the memory.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RValue {
   private Value v1, v2;

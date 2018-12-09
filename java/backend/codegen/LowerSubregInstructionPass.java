@@ -20,11 +20,12 @@ package backend.codegen;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.codegen.MachineOperand.RegState;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetOpcodes;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
 
@@ -33,7 +34,7 @@ import static backend.codegen.MachineOperand.createReg;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LowerSubregInstructionPass extends MachineFunctionPass {
   @Override
@@ -58,13 +59,13 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
         curPos = i;
         MachineInstr mi = mbb.getInstAt(i);
         switch (mi.getOpcode()) {
-          case TargetInstrInfo.EXTRACT_SUBREG:
+          case TargetOpcodes.EXTRACT_SUBREG:
             madeChange |= lowerExtract(mi);
             break;
-          case TargetInstrInfo.INSERT_SUBREG:
+          case TargetOpcodes.INSERT_SUBREG:
             madeChange |= lowerInsert(mi);
             break;
-          case TargetInstrInfo.SUBREG_TO_REG:
+          case TargetOpcodes.SUBREG_TO_REG:
             madeChange |= lowerSubregToReg(mi);
             break;
         }
@@ -102,7 +103,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
 
     if (srcReg == destReg) {
       if (mo1.isKill()) {
-        mi.setDesc(tii.get(TargetInstrInfo.IMPLICIT_DEF));
+        mi.setDesc(tii.get(TargetOpcodes.IMPLICIT_DEF));
         mi.removeOperand(2);
         if (Util.DEBUG) {
           System.err.printf("subreg: replace by: ");
@@ -115,8 +116,8 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
         System.err.print("subreg: eliminated!");
     } else {
       // insert a copy.
-      TargetRegisterClass srcRC = tri.getPhysicalRegisterRegClass(srcReg);
-      TargetRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
+      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(srcReg);
+      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
       boolean emitted = tii.copyRegToReg(mbb, mi.index(), destReg, srcReg,
           destRC, srcRC);
       Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
@@ -166,7 +167,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       // <undef>, we need to make sure it is alive by inserting an IMPLICIT_DEF
       if (mo1.isUndef() && !mo0.isDead()) {
         MachineInstrBuilder mib = buildMI(mbb, mi.index(),
-            tii.get(TargetInstrInfo.IMPLICIT_DEF), destReg);
+            tii.get(TargetOpcodes.IMPLICIT_DEF), destReg);
         if (mo2.isUndef())
           mib.addReg(insReg, RegState.Implicit | RegState.Undef);
         else
@@ -180,10 +181,10 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       }
     } else {
       // Insert sub-register copy
-      TargetRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
-      TargetRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
+      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
+      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       if (mo2.isUndef())
-        buildMI(mbb, mi.index(), tii.get(TargetInstrInfo.IMPLICIT_DEF), destSubReg);
+        buildMI(mbb, mi.index(), tii.get(TargetOpcodes.IMPLICIT_DEF), destSubReg);
       else {
         boolean emitted = tii.copyRegToReg(mbb, mi.index(), destSubReg,
             insReg, destRC, srcRC);
@@ -243,8 +244,8 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       if (Util.DEBUG)
         System.err.print("subreg: eliminated!");
     } else {
-      TargetRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
-      TargetRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
+      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
+      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
       tii.copyRegToReg(mbb, mi.index(), destSubReg, insReg, destRC, srcRC);
       if (mo0.isDead())
         transferDeadFlag(mi, destSubReg, tri);

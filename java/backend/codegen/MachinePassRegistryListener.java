@@ -21,7 +21,7 @@ package backend.codegen;
  * A listener for client registering a MachineFunction pass.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface MachinePassRegistryListener<T> {
   /**

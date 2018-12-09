@@ -35,7 +35,7 @@ import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.*;
  * AT&T grammar.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class AsmWriterEmitter extends TableGenBackend {
   private PrintStream os;

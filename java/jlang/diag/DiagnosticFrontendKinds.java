@@ -21,7 +21,7 @@ import static jlang.diag.Diagnostic.Mapping.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum DiagnosticFrontendKinds implements DiagnosticFrontendKindsTag {
   ERR_FE_ERROR_BACKEND(err_fe_error_backend, CLASS_ERROR, MAP_FATAL, "error in backend: %0", null, true),

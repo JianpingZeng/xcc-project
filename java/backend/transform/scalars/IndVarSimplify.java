@@ -78,7 +78,7 @@ import java.util.Stack;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class IndVarSimplify implements LoopPass {
   private LoopInfo li;

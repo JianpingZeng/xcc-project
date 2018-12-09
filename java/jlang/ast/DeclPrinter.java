@@ -37,7 +37,7 @@ import static jlang.sema.Decl.VarDecl.getStorageClassSpecifierString;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DeclPrinter extends DeclVisitor {
   private PrintStream out;

@@ -1,8 +1,12 @@
 package backend.codegen;
 
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
-import backend.target.*;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
@@ -16,7 +20,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * It not keeps track of values in register across instructions.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RegAllocSimple extends MachineFunctionPass {
   private MachineFunction mf;
@@ -40,7 +44,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
    * from. Since this is a simple register allocator, when we need a register
    * of a certain class, we just take the next available one.
    */
-  private TObjectIntHashMap<TargetRegisterClass> regClassIdx;
+  private TObjectIntHashMap<MCRegisterClass> regClassIdx;
 
   /**
    * Statics data for performance evaluation.
@@ -48,7 +52,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
   private int numSpilled;
   private int numReloaded;
 
-  private int getStackSlotForVirReg(int virReg, TargetRegisterClass rc) {
+  private int getStackSlotForVirReg(int virReg, MCRegisterClass rc) {
     // Find the location virReg would belong.
     if (stackSlotForVirReg.containsKey(virReg)) {
       return stackSlotForVirReg.get(virReg);
@@ -61,7 +65,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
   }
 
   private int getFreeReg(int virReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int[] allocatableRegs = rc.getAllocableRegs(mf);
     while (true) {
       if (!regClassIdx.contains(rc)) {
@@ -86,7 +90,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
   }
 
   private int reloadVirReg(MachineBasicBlock mbb, int insertPos, int virReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int frameIdx = getStackSlotForVirReg(virReg, rc);
     int phyReg = getFreeReg(virReg);
 
@@ -99,7 +103,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
 
   private void spillVirReg(MachineBasicBlock mbb, int insertPos,
                            int virReg, int phyReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int frameIdx = getStackSlotForVirReg(virReg, rc);
     boolean isKilled = !(insertPos < mbb.size() &&
         mbb.getInstAt(insertPos).readsRegister(phyReg, regInfo));
@@ -120,7 +124,7 @@ public final class RegAllocSimple extends MachineFunctionPass {
       virToPhyRegMap.clear();
 
       int opcode = mi.getOpcode();
-      TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
+      MCInstrDesc desc = tm.getInstrInfo().get(opcode);
       if (desc.implicitUses != null && desc.implicitUses.length > 0)
         for (int useReg : desc.implicitUses)
           regUsed.set(useReg);

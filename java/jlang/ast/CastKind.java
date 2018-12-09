@@ -20,7 +20,7 @@ package jlang.ast;
  * The kind of operator required for type conversion.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum CastKind {
   CK_Invalid("Invalid"),

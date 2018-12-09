@@ -25,7 +25,7 @@ import jlang.support.SourceLocation;
  * implement preprocessor level tool.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface PPCallBack {
   enum FileChangeReason {

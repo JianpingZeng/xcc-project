@@ -21,7 +21,7 @@ package tools;
  * so that simulates the semantic of 'out' keyword of C#.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class OutRef<T> {
   private Object[] ptr;

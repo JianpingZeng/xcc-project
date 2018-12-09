@@ -25,7 +25,7 @@ import tools.Util;
  * literals) (C99 5.1.1.2p1).
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class StringLiteralParser {
   private Preprocessor pp;

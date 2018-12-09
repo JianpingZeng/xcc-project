@@ -1,59 +1,53 @@
-package backend.target;
 /*
- * Extremely C language Compiler
- * Copyright (c) 2015-2018, Jianping Zeng
+ * BSD 3-Clause License
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2015-2018, Jianping Zeng.
+ * All rights reserved.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Please refer the LICENSE for detail.
  */
+
+package backend.mc;
 
 import backend.codegen.EVT;
 import backend.codegen.MachineFunction;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public abstract class TargetRegisterClass {
+public abstract class MCRegisterClass {
   /**
-   * The id of this {@linkplain TargetRegisterClass}.
+   * The id of this {@linkplain MCRegisterClass}.
    */
   private int id;
   /**
-   * The name of this {@linkplain TargetRegisterClass}.
+   * The name of this {@linkplain MCRegisterClass}.
    */
   private String name;
   private TIntHashSet regSet;
-  private TargetRegisterClass[] subClasses;
-  private TargetRegisterClass[] superClasses;
-  private TargetRegisterClass[] subRegClasses;
-  private TargetRegisterClass[] superRegClasses;
+  private MCRegisterClass[] subClasses;
+  private MCRegisterClass[] superClasses;
+  private MCRegisterClass[] subRegClasses;
+  private MCRegisterClass[] superRegClasses;
   private int copyCost;
 
   /**
-   * The register list contained in this {@linkplain TargetRegisterClass}.
+   * The register list contained in this {@linkplain MCRegisterClass}.
    */
   private int[] regs;
 
-  protected TargetRegisterClass(int id,
-                                String name,
-                                TargetRegisterClass[] subcs,
-                                TargetRegisterClass[] supercs,
-                                TargetRegisterClass[] subregcs,
-                                TargetRegisterClass[] superregcs,
-                                int copyCost,
-                                int[] regs) {
+  protected MCRegisterClass(int id,
+                            String name,
+                            MCRegisterClass[] subcs,
+                            MCRegisterClass[] supercs,
+                            MCRegisterClass[] subregcs,
+                            MCRegisterClass[] superregcs,
+                            int copyCost,
+                            int[] regs) {
     this.id = id;
     this.name = name;
     subClasses = subcs;
@@ -66,19 +60,19 @@ public abstract class TargetRegisterClass {
     regSet.addAll(regs);
   }
 
-  public void setSubClasses(TargetRegisterClass[] subClasses) {
+  public void setSubClasses(MCRegisterClass[] subClasses) {
     this.subClasses = subClasses;
   }
 
-  public void setSubRegClasses(TargetRegisterClass[] subRegClasses) {
+  public void setSubRegClasses(MCRegisterClass[] subRegClasses) {
     this.subRegClasses = subRegClasses;
   }
 
-  public void setSuperClasses(TargetRegisterClass[] superClasses) {
+  public void setSuperClasses(MCRegisterClass[] superClasses) {
     this.superClasses = superClasses;
   }
 
-  public void setSuperRegClasses(TargetRegisterClass[] superRegClasses) {
+  public void setSuperRegClasses(MCRegisterClass[] superRegClasses) {
     this.superRegClasses = superRegClasses;
   }
 
@@ -113,7 +107,7 @@ public abstract class TargetRegisterClass {
   /**
    * Obtains the allocatable registers of type array.
    * Default, returned array is as same as registers array contained in this
-   * TargetRegisterClass. But it is may be altered for concrete sub class. e.g.
+   * MCRegisterClass. But it is may be altered for concrete sub class. e.g.
    * GR32RegisterClass have more register (R8D, R9D etc) in 64bit subtarget.
    *
    * @return An array of allocatable registers for specified sub-target.
@@ -133,45 +127,45 @@ public abstract class TargetRegisterClass {
     return regSet.contains(reg);
   }
 
-  public boolean hasSuperClass(TargetRegisterClass rc) {
+  public boolean hasSuperClass(MCRegisterClass rc) {
     if (superClasses == null) return false;
 
-    for (TargetRegisterClass superRC : superClasses)
+    for (MCRegisterClass superRC : superClasses)
       if (superRC.equals(rc))
         return true;
 
     return false;
   }
 
-  public boolean hasSubClass(TargetRegisterClass subRC) {
+  public boolean hasSubClass(MCRegisterClass subRC) {
     if (subClasses == null || subClasses.length <= 0)
       return false;
-    for (TargetRegisterClass rc : subClasses)
+    for (MCRegisterClass rc : subClasses)
       if (rc.equals(subRC))
         return true;
     return false;
   }
 
-  public TargetRegisterClass[] getSubClasses() {
+  public MCRegisterClass[] getSubClasses() {
     return subClasses;
   }
 
-  public TargetRegisterClass[] getSuperClasses() {
+  public MCRegisterClass[] getSuperClasses() {
     return superClasses;
   }
 
-  public TargetRegisterClass getSubRegisterRegClass(long subIdx) {
+  public MCRegisterClass getSubRegisterRegClass(long subIdx) {
     for (int i = 0; i < subIdx - 1; i++)
       if (subRegClasses[i] == null)
         return null;
     return subRegClasses[(int) (subIdx - 1)];
   }
 
-  public TargetRegisterClass getSuperRegisterRegClass(
+  public MCRegisterClass getSuperRegisterRegClass(
       TargetRegisterInfo tri,
-      TargetRegisterClass rc,
+      MCRegisterClass rc,
       int subIdx, EVT vt) {
-    for (TargetRegisterClass itr : superRegClasses) {
+    for (MCRegisterClass itr : superRegClasses) {
       if (tri.isLegalTypeForRegClass(this, vt.getSimpleVT()) &&
           itr.getSubRegisterRegClass(subIdx).equals(rc))
         return itr;

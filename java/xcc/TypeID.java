@@ -19,7 +19,7 @@ package xcc;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface TypeID {
   int TY_INVALID = -1;

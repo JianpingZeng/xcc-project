@@ -21,7 +21,7 @@ import static jlang.diag.Diagnostic.Mapping.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum DiagnosticParseKinds implements DiagnosticParseTag {
   ERR_ANON_TYPE_DEFINITION(err_anon_type_definition, CLASS_ERROR, MAP_ERROR,

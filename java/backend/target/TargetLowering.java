@@ -21,6 +21,7 @@ import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.intrinsic.Intrinsic;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCRegisterClass;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -52,7 +53,7 @@ import static backend.target.TargetOptions.EnablePerformTailCallOpt;
  * target-specific constructs to SelectionDAG operators.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class TargetLowering {
   /**
@@ -164,7 +165,7 @@ public abstract class TargetLowering {
    * This indicates the default register class to use for
    * each ValueType the target supports natively.
    */
-  protected TargetRegisterClass[] registerClassForVT;
+  protected MCRegisterClass[] registerClassForVT;
   protected EVT[] transformToType;
   protected int[] numRegistersForVT;
   protected EVT[] registerTypeForVT;
@@ -174,7 +175,7 @@ public abstract class TargetLowering {
   protected TargetMachine tm;
   protected TargetData td;
 
-  private ArrayList<Pair<EVT, TargetRegisterClass>> availableRegClasses;
+  private ArrayList<Pair<EVT, MCRegisterClass>> availableRegClasses;
   private boolean isLittleEndian;
   private MVT pointerTy;
   /**
@@ -250,7 +251,7 @@ public abstract class TargetLowering {
     td = tm.getTargetData();
     valueTypeAction = new ValueTypeAction();
     availableRegClasses = new ArrayList<>();
-    registerClassForVT = new TargetRegisterClass[MVT.LAST_VALUETYPE];
+    registerClassForVT = new MCRegisterClass[MVT.LAST_VALUETYPE];
     transformToType = new EVT[MVT.LAST_VALUETYPE];
     numRegistersForVT = new int[MVT.LAST_VALUETYPE];
     registerTypeForVT = new EVT[MVT.LAST_VALUETYPE];
@@ -759,9 +760,9 @@ public abstract class TargetLowering {
     return valueTypeAction.getTypeAction(nvt);
   }
 
-  public TargetRegisterClass getRegClassFor(EVT vt) {
+  public MCRegisterClass getRegClassFor(EVT vt) {
     Util.assertion(vt.isSimple(), "getRegClassFor called on illegal type!");
-    TargetRegisterClass rc = registerClassForVT[vt.getSimpleVT().simpleVT];
+    MCRegisterClass rc = registerClassForVT[vt.getSimpleVT().simpleVT];
     Util.assertion(rc != null, "This value type is not natively supported!");
     return rc;
   }
@@ -777,7 +778,7 @@ public abstract class TargetLowering {
    *
    * @param vt
    */
-  public void addRegisterClass(int vt, TargetRegisterClass regClass) {
+  public void addRegisterClass(int vt, MCRegisterClass regClass) {
     Util.assertion(vt < registerClassForVT.length);
     availableRegClasses.add(Pair.get(new EVT(vt), regClass));
     registerClassForVT[vt] = regClass;

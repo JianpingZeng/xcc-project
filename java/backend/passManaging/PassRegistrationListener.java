@@ -21,7 +21,7 @@ import backend.pass.PassRegistrar;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface PassRegistrationListener {
   default void passRegistered(PassInfo pi) {

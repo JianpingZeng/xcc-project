@@ -21,7 +21,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LocationOpt<T> extends Opt<T> {
   private LocationClass<T> lc;

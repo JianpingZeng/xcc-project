@@ -23,7 +23,7 @@ import java.util.Set;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SetMultiMap<K, V> {
   private HashMap<K, Set<V>> map;

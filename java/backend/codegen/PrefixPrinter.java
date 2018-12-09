@@ -9,7 +9,7 @@ import java.io.PrintStream;
  * machine basic block and machine instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PrefixPrinter {
   public PrintStream print(PrintStream os, MachineBasicBlock mbb) {

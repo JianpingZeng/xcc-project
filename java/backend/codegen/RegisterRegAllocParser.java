@@ -25,7 +25,7 @@ import tools.commandline.Parser;
  * RegAllocLocal, RegAllocaLinearScan etc.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegisterRegAllocParser extends Parser<MachinePassCtor>
     implements MachinePassRegistryListener<MachinePassCtor> {

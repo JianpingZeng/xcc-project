@@ -25,7 +25,7 @@ import java.io.PrintStream;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SCEVCouldNotCompute extends SCEV {
   private final static SCEVCouldNotCompute instance = new SCEVCouldNotCompute();

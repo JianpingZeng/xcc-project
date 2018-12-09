@@ -16,26 +16,26 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 
 /**
  * The CalleeSavedInfo class tracks the information need to locate where a
  * callee saved register in the current frame.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CalleeSavedInfo {
 
   private int reg;
-  private TargetRegisterClass regClass;
+  private MCRegisterClass regClass;
   private int frameIdx;
 
-  public CalleeSavedInfo(int r, TargetRegisterClass rc) {
+  public CalleeSavedInfo(int r, MCRegisterClass rc) {
     this(r, rc, 0);
   }
 
-  public CalleeSavedInfo(int r, TargetRegisterClass rc, int fi) {
+  public CalleeSavedInfo(int r, MCRegisterClass rc, int fi) {
     reg = r;
     regClass = rc;
     frameIdx = fi;
@@ -46,7 +46,7 @@ public class CalleeSavedInfo {
     return reg;
   }
 
-  public TargetRegisterClass getRegisterClass() {
+  public MCRegisterClass getRegisterClass() {
     return regClass;
   }
 

@@ -25,7 +25,7 @@ import java.util.Stack;
  * Retains the information of a function or block that is being parsed.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FunctionScopeInfo {
   /**

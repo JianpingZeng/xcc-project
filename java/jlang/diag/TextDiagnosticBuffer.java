@@ -31,7 +31,7 @@ import java.util.ArrayList;
  * by "-verify" option in command line.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TextDiagnosticBuffer implements DiagnosticClient, Cloneable {
   private ArrayList<Pair<SourceLocation, String>> errors;

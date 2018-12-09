@@ -23,7 +23,7 @@ import tools.Util;
  * A PBQP problem solver using heuristic algorithm.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class HeuristicSolver implements PBQPSolver {
   /**

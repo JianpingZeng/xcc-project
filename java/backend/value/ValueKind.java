@@ -20,7 +20,7 @@ package backend.value;
  * An enumeration for keeping track of the concrete subclass.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ValueKind {
   public static int TypeVal = 0;

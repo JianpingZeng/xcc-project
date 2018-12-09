@@ -32,7 +32,7 @@ import java.util.HashSet;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class IVUsers implements LoopPass {
   private Loop loop;

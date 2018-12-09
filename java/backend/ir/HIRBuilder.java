@@ -38,7 +38,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  * comparison, shift-wise operation to accompolish this purpose.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class HIRBuilder {
   /**

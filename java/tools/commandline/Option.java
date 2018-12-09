@@ -29,7 +29,7 @@ import static tools.commandline.ValueExpected.ValueMask;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * indicates the type of value attached to this option if available.
  */
 public abstract class Option<T> {

@@ -24,7 +24,7 @@ import java.util.Iterator;
  * This file defines a class that implements an equivalence set.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class EquivalenceClass<T> {
   /**

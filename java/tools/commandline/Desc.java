@@ -22,7 +22,7 @@ package tools.commandline;
  * when user type "-help" from console.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Desc implements Modifier {
   private String desc;

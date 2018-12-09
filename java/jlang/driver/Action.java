@@ -29,7 +29,7 @@ package jlang.driver;
  * produce a single output to feed into subsequent actions.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Action {
   private ActionClass kind;

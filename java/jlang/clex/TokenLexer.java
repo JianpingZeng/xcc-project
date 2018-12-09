@@ -36,7 +36,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * macro expansion and _Pragma handling
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TokenLexer {
   private MacroInfo macro;

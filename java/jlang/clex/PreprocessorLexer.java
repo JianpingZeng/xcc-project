@@ -27,7 +27,7 @@ import static jlang.diag.DiagnosticLexKindsTag.err_pp_expects_filename;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class PreprocessorLexer {
   /**

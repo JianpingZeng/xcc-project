@@ -31,7 +31,7 @@ import java.util.Stack;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineLoop extends MachineFunctionPass
     implements LoopInfoBase<MachineBasicBlock, MachineLoopInfo> {

@@ -24,7 +24,7 @@ import tools.SourceMgr;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ValID {
   /// ValID - Represents a reference of a definition of some sort with no type.

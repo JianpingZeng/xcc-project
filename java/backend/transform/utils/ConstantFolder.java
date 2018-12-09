@@ -43,7 +43,7 @@ import static backend.intrinsic.Intrinsic.ID.stacksave;
  * Performs some local constant folding optimizaiton.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ConstantFolder {
   /**

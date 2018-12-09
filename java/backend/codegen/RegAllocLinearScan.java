@@ -21,7 +21,7 @@ import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.EquivalenceClass;
 import backend.support.MachineFunctionPass;
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Util;
@@ -40,7 +40,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * </pre>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegAllocLinearScan extends MachineFunctionPass {
   private TreeSet<LiveInterval> unhandled;
@@ -64,9 +64,9 @@ public class RegAllocLinearScan extends MachineFunctionPass {
    * compiled, and keeps track of which register classes have registers that
    * belong to multiple classes or have aliases that are in other classes.
    */
-  private EquivalenceClass<TargetRegisterClass> relatedRegisterClasses;
+  private EquivalenceClass<MCRegisterClass> relatedRegisterClasses;
 
-  private HashMap<Integer, TargetRegisterClass> oneClassForEachPhysReg;
+  private HashMap<Integer, MCRegisterClass> oneClassForEachPhysReg;
 
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
@@ -122,7 +122,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     if (!vrm.hasStackSlot(cur.register))
       return;
     int ss = vrm.getStackSlot(cur.register);
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     LiveInterval slotInterval = ls.getOrCreateInterval(ss, rc);
     int valNumber;
     if (slotInterval.hasAtLeastOneValue())
@@ -191,7 +191,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
   private void assignRegOrStackSlot(LiveInterval cur) {
     spillWeights = new float[tri.getNumRegs()];
     // The register class for current live interval.
-    TargetRegisterClass rc1 = mri.getRegClass(cur.register);
+    MCRegisterClass rc1 = mri.getRegClass(cur.register);
 
     // Update spill weight.
     for (LiveInterval li : active) {
@@ -203,12 +203,12 @@ public class RegAllocLinearScan extends MachineFunctionPass {
 
     // for every interval in inactive we overlap with, mark the
     // register as not free and update spill weights.
-    EquivalenceClass.ECNode<TargetRegisterClass> node =
+    EquivalenceClass.ECNode<MCRegisterClass> node =
         relatedRegisterClasses.findLeading(rc1), node2;
-    TargetRegisterClass leadingRC = node != null ? node.getValue() : null;
+    MCRegisterClass leadingRC = node != null ? node.getValue() : null;
     for (LiveInterval li : inactive) {
       node2 = relatedRegisterClasses.findLeading(mri.getRegClass(li.register));
-      TargetRegisterClass rcs = node2 != null ? node2.getValue() : null;
+      MCRegisterClass rcs = node2 != null ? node2.getValue() : null;
       if (leadingRC == rcs && leadingRC != null && cur.overlaps(li)) {
         int reg = li.register;
         if (isVirtualRegister(reg))
@@ -225,7 +225,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     for (LiveInterval li : fixed) {
       Util.assertion(oneClassForEachPhysReg.containsKey(li.register));
       node2 = relatedRegisterClasses.findLeading(oneClassForEachPhysReg.get(li.register));
-      TargetRegisterClass rcs = node2 != null ? node2.getValue() : null;
+      MCRegisterClass rcs = node2 != null ? node2.getValue() : null;
       if (leadingRC != null && leadingRC == rcs && cur.overlaps(li)) {
         int reg = li.register;
         updateSpillWeights(reg, li.weight);
@@ -253,7 +253,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     }
     float minWeigth = Float.MAX_VALUE;
     int minReg = 0;
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     for (int reg : rc.getAllocableRegs(mf)) {
       if (spillWeights[reg] <= minWeigth) {
         minWeigth = spillWeights[reg];
@@ -432,7 +432,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
   }
 
   private int getFreePhysReg(LiveInterval cur) {
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     for (int reg : rc.getAllocableRegs(mf)) {
       if (prt.isRegAvail(reg))
         return reg;
@@ -461,7 +461,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
       return;
 
     boolean hasAlias = false;
-    for (TargetRegisterClass rc : tri.getRegClasses()) {
+    for (MCRegisterClass rc : tri.getRegClasses()) {
       if (rc.getRegs() == null || rc.getRegs().length <= 0)
         continue;
       relatedRegisterClasses.insert(rc);
@@ -476,7 +476,7 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     }
     if (hasAlias) {
       for (int reg : oneClassForEachPhysReg.keySet()) {
-        TargetRegisterClass rc = oneClassForEachPhysReg.get(reg);
+        MCRegisterClass rc = oneClassForEachPhysReg.get(reg);
         int[] alias = tri.getAliasSet(reg);
         if (alias != null && alias.length > 0) {
           for (int aliasReg : alias)

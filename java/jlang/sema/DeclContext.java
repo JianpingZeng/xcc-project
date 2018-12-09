@@ -28,7 +28,7 @@ import static jlang.cparser.DeclKind.*;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @see jlang.sema.Decl.TranslationUnitDecl
  * @see jlang.sema.Decl.FunctionDecl
  * @see jlang.sema.Decl.TagDecl

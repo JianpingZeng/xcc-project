@@ -369,7 +369,7 @@ def MOVZX64rm32 : I<0x8B, MRMSrcMem, (outs GR64:$dst), (ins i32mem:$src),
 // up to 64 bits.
 def def32 : PatLeaf<(i32 GR32:$src), [{
   return n.getOpcode() != ISD.TRUNCATE &&
-         n.getOpcode() != TargetInstrInfo.EXTRACT_SUBREG &&
+         n.getOpcode() != TargetOpcodes.EXTRACT_SUBREG &&
          n.getOpcode() != ISD.CopyFromReg &&
          n.getOpcode() != X86ISD.CMOV;
 }]>;

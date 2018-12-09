@@ -27,7 +27,7 @@ import backend.value.Value;
  * the fact that both lay their components out in memory identically.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class SequentialType extends CompositeType {
   protected int numElts;

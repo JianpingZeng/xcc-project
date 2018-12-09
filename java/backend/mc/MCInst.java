@@ -36,7 +36,7 @@ public class MCInst {
       os.print(' ');
       op.print(os, mai);
     });
-    os.printf(">");
+    os.print(">");
   }
 
   public void dump() {

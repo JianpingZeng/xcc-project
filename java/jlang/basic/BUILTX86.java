@@ -20,7 +20,7 @@ import static jlang.basic.BuiltIDX86.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum BUILTX86 {
   __BUILTIN_IA32_EMMS(BI__builtin_ia32_emms, "__builtin_ia32_emms", "v", ""),

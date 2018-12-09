@@ -35,7 +35,7 @@ import static tools.Util.escapeString;
  * A specialized graph trait provider for DomTree.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class DomTreeDotGraphTrait extends DefaultDotGraphTrait<BasicBlock> {
   private DomTree dt;

@@ -1,5 +1,7 @@
 package backend.target;
 
+import backend.codegen.MachineBasicBlock;
+import backend.codegen.MachineFunction;
 import tools.Pair;
 
 /**
@@ -7,9 +9,9 @@ import tools.Pair;
  * information about the specified target machine.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public class TargetFrameInfo {
+public abstract class TargetFrameLowering {
   public enum StackDirection {
     /**
      * Adding to the stack increasing the stack address.
@@ -39,7 +41,7 @@ public class TargetFrameInfo {
    */
   private int localAreaOffset;
 
-  public TargetFrameInfo(StackDirection dir, int stackAlign, int lao) {
+  public TargetFrameLowering(StackDirection dir, int stackAlign, int lao) {
     direction = dir;
     stackAlignment = stackAlign;
     localAreaOffset = lao;
@@ -82,5 +84,22 @@ public class TargetFrameInfo {
    */
   public Pair<Integer, Integer>[] getCalleeSavedSpillSlots() {
     return null;
+  }
+
+  /**
+   * This method insert prologue code into the function.
+   */
+  public abstract void emitPrologue(MachineFunction MF);
+
+  /**
+   * This method insert epilogue code into the function.
+   */
+  public abstract void emitEpilogue(MachineFunction MF,
+                                    MachineBasicBlock mbb);
+
+  public abstract boolean hasFP(MachineFunction mf);
+
+  public boolean hasReservedCallFrame(MachineFunction mf) {
+    return !hasFP(mf);
   }
 }

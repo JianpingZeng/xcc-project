@@ -29,7 +29,7 @@ import static backend.value.ValueKind.MDNodeVal;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MDNode extends MetadataBase {
   private ArrayList<Value> nodes;

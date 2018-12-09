@@ -25,7 +25,7 @@ package jlang.support;
  * range.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CharSourceRange {
   private SourceRange range;

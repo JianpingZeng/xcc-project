@@ -31,7 +31,7 @@ import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
  * radix of the value and can convert it to a useful value.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class NumericLiteralParser {
   private Preprocessor pp;

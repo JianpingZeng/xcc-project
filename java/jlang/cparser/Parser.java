@@ -54,7 +54,7 @@ import static jlang.sema.Sema.TagUseKind.*;
  * as binary operation for specially.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Parser implements Tag,
     DiagnosticParseTag,

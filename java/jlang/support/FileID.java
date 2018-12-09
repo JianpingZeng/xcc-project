@@ -21,7 +21,7 @@ package jlang.support;
  * a source file (MemoryBuffer) along with its #include path and #line data.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class FileID implements Comparable<FileID> {
   /**

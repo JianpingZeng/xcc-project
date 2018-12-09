@@ -7,7 +7,7 @@ import java.util.ArrayList;
  * passed to the backend.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CompileOptions {
   public enum InliningMethod {

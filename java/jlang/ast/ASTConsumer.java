@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * AST producer (e.g. {@linkplain jlang.cparser.Parser}, AST dumper).
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface ASTConsumer {
   /**

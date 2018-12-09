@@ -23,7 +23,7 @@ import jlang.support.LangOptions;
  * front-end, which formats and prints fully processed diagnostics.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface DiagnosticClient {
   /**

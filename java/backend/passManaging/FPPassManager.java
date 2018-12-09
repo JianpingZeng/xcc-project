@@ -30,7 +30,7 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.*;
  * function.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class FPPassManager extends PMDataManager implements ModulePass {
   private AnalysisResolver resolver;

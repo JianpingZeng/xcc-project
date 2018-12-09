@@ -24,7 +24,7 @@ import jlang.support.PrintingPolicy;
  * TypeOfExprType (GCC extension).
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TypeOfExprType extends jlang.type.Type {
   private Expr toexpr;

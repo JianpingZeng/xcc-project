@@ -27,7 +27,7 @@ import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TargetOptions {
   public static final Opt<RelocModel> DefRelocationModel =

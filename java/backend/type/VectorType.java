@@ -23,7 +23,7 @@ import java.util.TreeMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class VectorType extends SequentialType {
   private static class VectorValType implements Comparable<VectorValType> {

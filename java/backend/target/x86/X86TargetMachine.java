@@ -7,14 +7,12 @@ import backend.passManaging.PassManagerBase;
 import backend.target.*;
 import tools.Util;
 
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 import static backend.support.BackendCmdOptions.InstructionSelector;
-import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
-import static backend.target.x86.X86AsmPrinter.createX86AsmCodeEmitter;
+import static backend.target.TargetOptions.OverrideStackAlignment;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86FloatingPointRegKill.createX86FPRegKillPass;
 import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;
@@ -22,27 +20,26 @@ import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetMachine extends LLVMTargetMachine {
   /**
    * A stack frame info class used for organizing data layout of frame when
    * function calling.
    */
-  private TargetFrameInfo frameInfo;
+  private X86FrameLowering frameInfo;
   private X86Subtarget subtarget;
   private TargetData dataLayout;
   private X86TargetLowering tli;
   private RelocModel defRelocModel;
 
   public X86TargetMachine(Target t, String triple,
-                          String fs, boolean is64Bit) {
+                          String cpu, String fs,
+                          boolean is64Bit) {
     super(t, triple);
-    subtarget = new X86GenSubtarget(triple, fs, this);
+    subtarget = new X86GenSubtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);
     dataLayout = new TargetData(subtarget.getDataLayout());
-    frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
-        (subtarget.isTargetWin64() ? -40 :
-            (subtarget.is64Bit() ? -8 : -4)));
+    frameInfo = new X86FrameLowering(this, subtarget);
     tli = new X86TargetLowering(this);
 
     defRelocModel = getRelocationModel();
@@ -133,7 +130,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
   }
 
   @Override
-  public TargetFrameInfo getFrameInfo() {
+  public TargetFrameLowering getFrameInfo() {
     return frameInfo;
   }
 

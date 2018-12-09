@@ -24,7 +24,7 @@ import static jlang.clex.IdentifierTable.KEYALL;
  * to "asm".
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum KeywordAlias {
   // Alternate spelling for various tokens.  There are GCC extensions in all

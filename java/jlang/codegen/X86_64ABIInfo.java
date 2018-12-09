@@ -36,7 +36,7 @@ import static jlang.codegen.CodeGenFunction.hasAggregateLLVMType;
  * for more details.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86_64ABIInfo implements ABIInfo {
   /**
