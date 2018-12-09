@@ -68,7 +68,6 @@ public final class FPPassManager extends PMDataManager implements ModulePass {
 
       if (changed) {
         dumpPassInfo(fp, MODIFICATION_MSG, ON_FUNCTION_MSG, f.getName());
-        ;
       }
       dumpPreservedSet(fp);
 

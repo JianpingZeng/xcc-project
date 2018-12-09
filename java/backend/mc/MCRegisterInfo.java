@@ -267,6 +267,6 @@ public class MCRegisterInfo {
   }
 
   public RegClassInfo getRegClassInfo(MCRegisterClass rc) {
-    return regClassInfo[hwMode * getNumRegClasses() * rc.getID()];
+    return regClassInfo[hwMode * getNumRegClasses() + rc.getID() - 1];
   }
 }

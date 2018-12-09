@@ -57,7 +57,7 @@ public final class PatternToMatch {
     forceMode = false;
   }
 
-  static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {
+  private static int getPatternSize(TreePatternNode pat, CodeGenDAGPatterns cgp) {
     int size = 3;
     if (pat.isLeaf() && pat.getLeafValue() instanceof Init.IntInit)
       size += 2;
@@ -87,7 +87,7 @@ public final class PatternToMatch {
     return size;
   }
 
-  static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) {
+  private static int getResultPatternCost(TreePatternNode inst, CodeGenDAGPatterns cgp) {
     if (inst.isLeaf()) return 0;
 
     int cost = 0;
@@ -103,7 +103,7 @@ public final class PatternToMatch {
     return cost;
   }
 
-  static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) {
+  private static int getResultPatternSize(TreePatternNode node, CodeGenDAGPatterns cgp) {
     if (node.isLeaf()) return 0;
 
     int size = 0;
@@ -115,7 +115,7 @@ public final class PatternToMatch {
     return size;
   }
 
-  static boolean nodeIsComplexPattern(TreePatternNode node) {
+  private static boolean nodeIsComplexPattern(TreePatternNode node) {
     return (node.isLeaf() && (node.getLeafValue() instanceof Init.DefInit)
         && ((Init.DefInit) node.getLeafValue()).getDef().isSubClassOf("ComplexPattern"));
   }
@@ -132,8 +132,8 @@ public final class PatternToMatch {
     return false;
   }
 
-  protected static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
-                                                        CodeGenDAGPatterns cgp) {
+  private static ComplexPattern nodeGetComplexPattern(TreePatternNode node,
+                                                      CodeGenDAGPatterns cgp) {
     if (node.isLeaf() && (node.getLeafValue() instanceof Init.DefInit)
         && ((Init.DefInit) node.getLeafValue()).getDef().isSubClassOf("ComplexPattern")) {
       return cgp.getComplexPattern(((Init.DefInit) node.getLeafValue()).getDef());
@@ -141,7 +141,7 @@ public final class PatternToMatch {
     return null;
   }
 
-  static boolean patternHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
+  private static boolean patternHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
     if (nodeHasProperty(node, prop, cgp))
       return true;
 
@@ -153,7 +153,7 @@ public final class PatternToMatch {
     return false;
   }
 
-  static boolean nodeHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
+  private static boolean nodeHasProperty(TreePatternNode node, int prop, CodeGenDAGPatterns cgp) {
     if (node.isLeaf()) {
       ComplexPattern cp = nodeGetComplexPattern(node, cgp);
       if (cp != null)
@@ -165,11 +165,11 @@ public final class PatternToMatch {
     return cgp.getSDNodeInfo(rec).hasProperty(prop);
   }
 
-  static String getOpcodeName(Record opc, CodeGenDAGPatterns cgp) {
+  private static String getOpcodeName(Record opc, CodeGenDAGPatterns cgp) {
     return cgp.getSDNodeInfo(opc).getEnumName();
   }
 
-  static void removeAllTypes(TreePatternNode node) {
+  private static void removeAllTypes(TreePatternNode node) {
     node.removeTypes();
     if (!node.isLeaf()) {
       for (int i = 0, e = node.getNumChildren(); i < e; i++)
@@ -209,10 +209,7 @@ public final class PatternToMatch {
    * @throws Exception
    */
   public String getPredicateCheck() {
-    StringBuilder predicateCheck = new StringBuilder();
-    TreeSet<Predicate> predLists = new TreeSet<>();
-    predLists.addAll(preds);
-
+    TreeSet<Predicate> predLists = new TreeSet<>(preds);
     StringBuilder sb = new StringBuilder();
     int i = 0;
     for (Predicate p : predLists) {

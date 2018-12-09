@@ -552,7 +552,7 @@ public class DAGISelMatcherEmitter {
     if (opc.startsWith(targetName))
       opc = targetName + "GenInstrNames" + opc.substring(targetName.length());
 
-    os.printf("(byte)(%s&255), (byte)(%s>>>8)", opc, opc);
+    os.printf("%s&0xFF, (%s>>>8)&0xFF", opc, opc);
   }
 
   private long emitVBRValue(long val, FormattedOutputStream os) {

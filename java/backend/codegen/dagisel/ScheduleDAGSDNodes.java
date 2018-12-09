@@ -573,6 +573,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
     boolean matchReg = true;
     MCRegisterClass useRC = null;
+
+    EVT vt = node.getValueType(resNo);
+    if (tli.isTypeLegal(vt))
+      useRC = tli.getRegClassFor(vt);
+
     if (!isClone && !isCloned) {
       for (SDUse u : node.useList) {
         SDNode user = u.getUser();
@@ -593,7 +598,6 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
             if (!op.getNode().equals(node) || op.getResNo() != resNo)
               continue;
 
-            EVT vt = node.getValueType(op.getResNo());
             if (vt.getSimpleVT().simpleVT == MVT.Other ||
                 vt.getSimpleVT().simpleVT == MVT.Flag)
               continue;
@@ -619,7 +623,6 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
           break;
       }
 
-      EVT vt = node.getValueType(resNo);
       MCRegisterClass srcRC, destRC;
       srcRC = tri.getPhysicalRegisterRegClass(srcReg, vt);
 

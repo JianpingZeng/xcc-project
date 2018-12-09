@@ -1330,8 +1330,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         }
         case OPC_EmitNode:
         case OPC_MorphNodeTo: {
-          int targetOpc = matcherTable[matcherIndex++];
-          targetOpc |= (matcherTable[matcherIndex++]) << 8;
+          int targetOpc = Integer.parseUnsignedInt(Integer.toUnsignedString(matcherTable[matcherIndex++]&0xff));
+          targetOpc |= (Integer.parseUnsignedInt(Integer.toUnsignedString(matcherTable[matcherIndex++]&0x0ff))) << 8;
           int emitNodeInfo = matcherTable[matcherIndex++];
 
           // get the result vt list.
