@@ -285,7 +285,7 @@ def GR8 : RegisterClass<"X86", [i8],  8,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
 
             int[] res;
             int begin, end;
@@ -335,7 +335,7 @@ def GR16 : RegisterClass<"X86", [i16], 16,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
 
             int[] res;
             int begin = 0, end;
@@ -392,7 +392,7 @@ def GR32 : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
 
             int[] res;
             int begin = 0, end;
@@ -445,7 +445,7 @@ def GR64 : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -501,7 +501,7 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res;
             int begin = 0, end;
 
@@ -535,7 +535,7 @@ def GR16_NOREX : RegisterClass<"X86", [i16], 16,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
 
@@ -563,7 +563,7 @@ def GR32_NOREX : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
 
@@ -591,7 +591,7 @@ def GR64_NOREX : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
 
@@ -628,7 +628,7 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res;
             int begin = 0, end;
             if (subtarget.is64Bit())
@@ -680,7 +680,7 @@ def GR64_NOSP : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -706,7 +706,7 @@ def GR64_NOREX_NOSP : RegisterClass<"X86", [i64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             // Does the function dedicate RBP to being a frame ptr?
@@ -739,7 +739,7 @@ def FR32 : RegisterClass<"X86", [f32], 32,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -763,7 +763,7 @@ def FR64 : RegisterClass<"X86", [f64], 64,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
@@ -815,7 +815,7 @@ def VR128 : RegisterClass<"X86", [v16i8, v8i16, v4i32, v2i64, v4f32, v2f64],128,
         {
             TargetMachine tm = mf.getTarget();
             X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-            TargetFrameLowering tli = mf.getTarget().getFrameInfo();
+            TargetFrameLowering tli = mf.getTarget().getFrameLowering();;
             int[] res = getRegs();
             int begin = 0, end;
             if (!subtarget.is64Bit())
