@@ -338,7 +338,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
         if (defMI != null)
           defMI.removeFromParent();
       }
-      vreg = reMatRegs.findNext(vreg);
+      vreg = reMatRegs.findNext(vreg+1);
     }
 
     if (TargetOptions.PrintMachineCode.value) {

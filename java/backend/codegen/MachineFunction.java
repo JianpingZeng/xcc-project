@@ -208,6 +208,10 @@ public class MachineFunction {
     print(os, new PrefixPrinter());
   }
 
+  public void dump() {
+    print(System.err);
+  }
+
   public void print(PrintStream os, PrefixPrinter prefix) {
     os.printf("# Machine code for %s():%n", fn.getName());
 

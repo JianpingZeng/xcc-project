@@ -168,7 +168,7 @@ public final class MachineInstrBuilder {
   }
 
   public MachineInstrBuilder addConstantPoolIndex(int idx,
-                                                  int offset,
+                                                  long offset,
                                                   int targetFlags) {
     mi.addOperand(MachineOperand.createConstantPoolIndex(idx, offset, targetFlags));
     return this;

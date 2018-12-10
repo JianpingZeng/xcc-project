@@ -754,16 +754,17 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       }
     }
 
+    // Get the prior instruction to current instr.
+    MachineInstr newMI;
     if (clone) {
       MachineInstr mi = origin.clone();
       mi.getOperand(0).setReg(destReg);
       mbb.insert(insertPos, mi);
+      newMI = mi;
     } else {
-      buildMI(mbb, insertPos, get(opc), destReg).addImm(0);
+      newMI = buildMI(mbb, insertPos, get(opc), destReg).addImm(0).getMInstr();
     }
 
-    // Get the prior instruction to current instr.
-    MachineInstr newMI = mbb.getInstAt(insertPos - 1);
     newMI.getOperand(0).setSubreg(subIdx);
   }
 

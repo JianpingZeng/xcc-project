@@ -846,7 +846,7 @@ public class MachineInstr implements Cloneable {
 
     // Add operands
     for (int i = 0; i != getNumOperands(); i++)
-      res.addOperand(getOperand(i));
+      res.addOperand(getOperand(i).clone());
 
     res.numImplicitOps = numImplicitOps;
 

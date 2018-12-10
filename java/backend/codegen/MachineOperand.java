@@ -92,7 +92,7 @@ public class MachineOperand {
   //   the generated machine code.
   // LLVM global for MO_GlobalAddress.
 
-  private long immedVal;        // Constant value for an explicit ant
+  private long immVal;        // Constant value for an explicit ant
   private MachineBasicBlock mbb;     // For MO_MachineBasicBlock type
   // For constant FP.
   private ConstantFP cfp;
@@ -136,20 +136,17 @@ public class MachineOperand {
 
   // For Offset and an object identifier. this represent the object as with
   // an optional offset from it.
-  private static class OffsetedInfo {
+  private static class OffsetInfo {
     Val val;
     long offset;
 
-    OffsetedInfo() {
+    OffsetInfo() {
       val = new Val();
       offset = 0;
     }
   }
 
-  private OffsetedInfo offsetedInfo;
-
-
-  private String SymbolName;    // For MO_ExternalSymbol type
+  private OffsetInfo offsetInfo;
 
   private MachineOperandType opKind;  // Pack into 8 bits efficiently after flags.
 
@@ -183,6 +180,34 @@ public class MachineOperand {
   private MachineOperand(MachineOperandType k) {
     opKind = k;
     parentMI = null;
+  }
+
+  @Override
+  public MachineOperand clone() {
+    switch (getType()) {
+      case MO_Register:
+        return createReg(reg.regNo,isDef, isImp, isKill, isDead,
+            isUndef,isEarlyClobber, subReg);
+      case MO_Immediate:
+        return createImm(immVal);
+      case MO_FPImmediate:
+        return createFPImm(cfp);
+      case MO_MachineBasicBlock:
+        return createMBB(mbb, targetFlags);
+      case MO_FrameIndex:
+        return createFrameIndex(getIndex());
+      case MO_ConstantPoolIndex:
+        return createConstantPoolIndex(getIndex(), getOffset(), targetFlags);
+      case MO_JumpTableIndex:
+        return createJumpTableIndex(getIndex(), getTargetFlags());
+      case MO_ExternalSymbol:
+        return createExternalSymbol(getSymbolName(), getOffset(), getTargetFlags());
+      case MO_GlobalAddress:
+        return createGlobalAddress(getGlobal(), getOffset(), getTargetFlags());
+      default:
+        Util.shouldNotReachHere("Unknown machine operand type!");
+        return null;
+    }
   }
 
   // Accessor methods.  Caller is responsible for checking the
@@ -487,7 +512,7 @@ public class MachineOperand {
 
   public long getImm() {
     Util.assertion(isImm(), "Wrong MachineOperand accessor");
-    return immedVal;
+    return immVal;
   }
 
   public ConstantFP getFPImm() {
@@ -501,42 +526,43 @@ public class MachineOperand {
   }
 
   public int getIndex() {
-    Util.assertion(isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
-
-    return offsetedInfo.val.index;
+    Util.assertion(isFrameIndex() || isConstantPoolIndex() ||
+        isJumpTableIndex(), "Wrong MachineOperand accessor");
+    return offsetInfo.val.index;
   }
 
   public long getOffset() {
-    Util.assertion(isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex(), "Wrong MachineOperand accessor");
+    Util.assertion(isGlobalAddress() || isExternalSymbol() ||
+        isConstantPoolIndex(), "Wrong MachineOperand accessor");
 
-    return offsetedInfo.offset;
+    return offsetInfo.offset;
   }
 
   public GlobalValue getGlobal() {
     Util.assertion(isGlobalAddress(), "Wrong MachineOperand accessor");
-    return offsetedInfo.val.gv;
+    return offsetInfo.val.gv;
   }
 
   public String getSymbolName() {
     Util.assertion(isExternalSymbol(), "Wrong MachineOperand accessor");
-    return offsetedInfo.val.symbolName;
+    return offsetInfo.val.symbolName;
   }
 
   public void setImm(long imm) {
     Util.assertion(isImm(), "Wrong MachineOperand accessor");
-    immedVal = imm;
+    immVal = imm;
   }
 
   public void setOffset(long offset) {
-    Util.assertion(isGlobalAddress() || isExternalSymbol() || isConstantPoolIndex(), "Wrong MachineOperand accessor");
-
-    offsetedInfo.offset = offset;
+    Util.assertion(isGlobalAddress() || isExternalSymbol() ||
+        isConstantPoolIndex(), "Wrong MachineOperand accessor");
+    offsetInfo.offset = offset;
   }
 
   public void setIndex(int idx) {
-    Util.assertion(isFrameIndex() || isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
-
-    offsetedInfo.val.index = idx;
+    Util.assertion(isFrameIndex() || isConstantPoolIndex() ||
+        isJumpTableIndex(), "Wrong MachineOperand accessor");
+    offsetInfo.val.index = idx;
   }
 
   public void setMBB(MachineBasicBlock mbb) {
@@ -596,7 +622,7 @@ public class MachineOperand {
         && getParent().getParent().getParent() != null)
       removeRegOperandFromRegInfo();
     opKind = MO_Immediate;
-    immedVal = immVal;
+    this.immVal = immVal;
   }
 
   public void removeRegOperandFromRegInfo() {
@@ -758,7 +784,8 @@ public class MachineOperand {
   public static MachineOperand createReg(int reg,
                                          boolean isDef,
                                          boolean isImp) {
-    return createReg(reg, isDef, isImp, false, false, false, false, 0);
+    return createReg(reg, isDef, isImp, false, false,
+        false, false, 0);
   }
 
   public static MachineOperand createReg(int reg,
@@ -791,14 +818,16 @@ public class MachineOperand {
 
   public static MachineOperand createFrameIndex(int idx) {
     MachineOperand op = new MachineOperand(MO_FrameIndex);
-    op.offsetedInfo = new OffsetedInfo();
+    op.offsetInfo = new OffsetInfo();
     op.setIndex(idx);
     return op;
   }
 
-  public static MachineOperand createConstantPoolIndex(int idx, int offset, int targetFlags) {
+  public static MachineOperand createConstantPoolIndex(int idx,
+                                                       long offset,
+                                                       int targetFlags) {
     MachineOperand op = new MachineOperand(MO_ConstantPoolIndex);
-    op.offsetedInfo = new OffsetedInfo();
+    op.offsetInfo = new OffsetInfo();
     op.setIndex(idx);
     op.setOffset(offset);
     op.setTargetFlags(targetFlags);
@@ -816,8 +845,8 @@ public class MachineOperand {
                                                    long offset,
                                                    int targetFlags) {
     MachineOperand op = new MachineOperand(MO_GlobalAddress);
-    op.offsetedInfo = new OffsetedInfo();
-    op.offsetedInfo.val.gv = gv;
+    op.offsetInfo = new OffsetInfo();
+    op.offsetInfo.val.gv = gv;
     op.setOffset(offset);
     op.setTargetFlags(targetFlags);
     return op;
@@ -827,8 +856,8 @@ public class MachineOperand {
                                                     long offset,
                                                     int targetFlags) {
     MachineOperand op = new MachineOperand(MO_ExternalSymbol);
-    op.offsetedInfo = new OffsetedInfo();
-    op.offsetedInfo.val.symbolName = symName;
+    op.offsetInfo = new OffsetInfo();
+    op.offsetInfo.val.symbolName = symName;
     op.setOffset(offset);
     op.setTargetFlags(targetFlags);
     return op;
