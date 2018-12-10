@@ -1370,7 +1370,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             // Determine the start index to copy from.
             int firstToCopy = getNumFixedFromVariadicInfo(emitNodeInfo);
             firstToCopy += (emitNodeInfo & OPFL_Chain) != 0 ? 1 : 0;
-            Util.assertion(nodeToMatch.getNumOperands() > firstToCopy,
+            Util.assertion(nodeToMatch.getNumOperands() >= firstToCopy,
                 "invalid variadic node");
             for (int i = firstToCopy, e = nodeToMatch.getNumOperands(); i < e; i++) {
               SDValue v = nodeToMatch.getOperand(i);

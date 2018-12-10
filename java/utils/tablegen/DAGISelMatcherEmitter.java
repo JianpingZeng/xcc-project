@@ -393,7 +393,7 @@ public class DAGISelMatcherEmitter {
       case EmitStringInteger: {
         EmitStringIntegerMatcher esm = (EmitStringIntegerMatcher) m;
         String val = esm.getValue();
-        os.printf("OPC_EmitStringInteger, %s, %sGenRegisterInfo.%s,\n",
+        os.printf("OPC_EmitInteger, %s, %sGenRegisterInfo.%s,\n",
             MVT.getEnumName(esm.getVT()), targetName, val);
         return 3;
       }
@@ -832,7 +832,7 @@ public class DAGISelMatcherEmitter {
 
   private static void printMatcherTable(String table, long totalSize, PrintStream os) {
     os.printf("  private static int[] initTable%d() {\n", index++);
-    os.println("    final int[] table = {");
+    os.println("    return new int[]{");
 
     for (int i = 0, size = table.length(); i < size; ) {
       String endMarker = "OPC_CompleteMatch";
@@ -866,13 +866,12 @@ public class DAGISelMatcherEmitter {
 
         // Create a new initializing sub-routines.
         os.println("    };");
-        os.println("    return table;");
         os.println("  }");
 
         // Checks if it is needed to create a new initializing functions.
         if (i < size) {
           os.printf("  private static int[] initTable%d() {\n", index++);
-          os.println("    final int[] table = {");
+          os.println("    return new int[]{");
         }
       } else {
         os.print(table.charAt(i));
