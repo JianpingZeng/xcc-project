@@ -30,7 +30,7 @@ public class MCInstrInfo {
   public int getNumOperands() { return desc.length; }
 
   public MCInstrDesc get(int opcode) {
-    Util.assertion(opcode >= 9 && opcode < getNumOperands(), "Invalid opcode!");
+    Util.assertion(opcode >= 0 && opcode < getNumOperands(), "Invalid opcode!");
     return desc[opcode];
   }
 

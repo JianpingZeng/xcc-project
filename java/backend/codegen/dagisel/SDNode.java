@@ -1131,7 +1131,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   protected void initOperands(SDValue... vals) {
-    Util.assertion(vals != null && vals.length > 0, "Illegal values for initialization!");
+    if (vals == null || vals.length <= 0)
+      return;
     operandList = new SDUse[vals.length];
     for (int i = 0; i < operandList.length; i++) {
       operandList[i] = new SDUse();
