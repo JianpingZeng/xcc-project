@@ -23,10 +23,12 @@ public class MCAsmStreamer extends MCStreamer {
       PrintStream fos,
       MCAsmInfo mai,
       boolean isLittleEndian,
+      boolean isVerboseAsm,
       MCInstPrinter instPrinter,
       MCCodeEmitter ce,
       boolean showInst) {
-    return new MCAsmStreamer(context, fos, mai, isLittleEndian, instPrinter, ce, showInst);
+    return new MCAsmStreamer(context, fos, mai, isLittleEndian,
+        isVerboseAsm, instPrinter, ce, showInst);
   }
 
   private FormattedOutputStream fos;
@@ -45,6 +47,7 @@ public class MCAsmStreamer extends MCStreamer {
                           PrintStream os,
                           MCAsmInfo mai,
                           boolean isLittleEndian,
+                          boolean isVerboseAsm,
                           MCInstPrinter instPrinter,
                           MCCodeEmitter ce,
                           boolean showInst) {
@@ -55,6 +58,7 @@ public class MCAsmStreamer extends MCStreamer {
     this.os = os;
     this.mai = mai;
     this.isLittleEndian = isLittleEndian;
+    this.isVerboseAsm = isVerboseAsm;
     this.instPrinter = instPrinter;
     this.emitter = ce;
     this.showInst = showInst;
@@ -80,7 +84,8 @@ public class MCAsmStreamer extends MCStreamer {
     
     commentStream.flush();
     String comments = commentToEmit.toString();
-    Util.assertion(comments.charAt(comments.length()-1) == '\n', "Comment array not newline terminated");
+    Util.assertion(comments.charAt(comments.length()-1) == '\n',
+        "Comment array not newline terminated");
     do {
       fos.padToColumn(mai.getCommentColumn());
       int position = comments.indexOf('\n');
@@ -88,11 +93,12 @@ public class MCAsmStreamer extends MCStreamer {
       comments = comments.substring(position+1);
     }while (!comments.isEmpty());
 
-    try {
-      commentToEmit.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+    resetCommentOS();
+  }
+
+  private void resetCommentOS() {
+    commentToEmit = new ByteArrayOutputStream();
+    commentStream = new PrintStream(commentToEmit);
   }
 
   @Override
@@ -101,10 +107,23 @@ public class MCAsmStreamer extends MCStreamer {
   }
 
   @Override
+  public boolean hasRawTextSupport() {
+    return true;
+  }
+
+  @Override
+  public void emitRawText(String str) {
+    if (!hasRawTextSupport()) return;
+    if (!str.isEmpty() && str.charAt(str.length()-1) == '\n')
+      str = str.substring(0, str.length()-1);
+    fos.print(str);
+    emitEOL();
+  }
+
+  @Override
   public void addComment(String str) {
     if (!isVerboseAsm) return;
     PrintStream cos = getCommentOS();
-    cos.flush();
     cos.println(str);
   }
 

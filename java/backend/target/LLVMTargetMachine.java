@@ -168,8 +168,8 @@ public abstract class LLVMTargetMachine extends TargetMachine {
         MCInstPrinter instPrinter =
             getTarget().createMCInstPrinter(mai.getAssemblerDialect(), legacyOutput, mai);
         streamer = MCAsmStreamer.createAsmStreamer(ctx, legacyOutput,
-            mai, getTargetData().isLittleEndian(), instPrinter,
-            null, false);
+            mai, getTargetData().isLittleEndian(), getAsmVerbosityDefault(),
+            instPrinter, null, false);
         break;
       }
       case CGFT_Null:

@@ -79,7 +79,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   protected boolean verboseAsm;
 
-  protected MachineLoop li;
+  protected MachineLoopInfo li;
   /**
    * A asmName mangler for performing necessary mangling on global linkage entity.
    */
@@ -94,6 +94,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   protected MCStreamer outStreamer;
   private TargetSubtarget subtarget;
   public MachineFunction mf;
+  protected MachineModuleInfo mmi;
 
   protected AsmPrinter(OutputStream os, TargetMachine tm,
                        MCSymbol.MCContext ctx,
@@ -104,7 +105,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     this.mai = mai;
     this.tri = tm.getRegisterInfo();
     subtarget = tm.getSubtarget();
-
+    mmi = null;
     outContext = ctx;
     outStreamer = streamer;
     verboseAsm = streamer.isVerboseAsm();
@@ -113,7 +114,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     if (verboseAsm)
-      au.addRequired(MachineLoop.class);
+      au.addRequired(MachineLoopInfo.class);
     super.getAnalysisUsage(au);
   }
 
@@ -473,10 +474,131 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     // TODO Jianping Zeng 12/8/2018, emit Jump table info
   }
 
-  private void emitFunctionBodyEnd() { }
-  private void emitBasicBlockStart(MachineBasicBlock mbb) { }
+  private void emitFunctionBodyEnd() {}
 
-  protected void emitFunctionBodyStart() {}
+  /**
+   * This method prints the label for the specified basic block.
+   * An alignment and a comment describing it if appropriate.
+   * @param mbb
+   */
+  private void emitBasicBlockStart(MachineBasicBlock mbb) {
+    int align = mbb.getAlignment();
+    if (align != 0)
+      emitAlignment(Util.log2(align));
+
+    // If the block has its address taken, emit any labels that were used to
+    // reference the block.  It is possible that there is more than one label
+    // here, because multiple LLVM BB's may have been RAUW'd to this block after
+    // the references were generated.
+    if (mbb.hasAddressTaken()) {
+      BasicBlock bb = mbb.getBasicBlock();
+      if (verboseAsm) {
+        outStreamer.addComment("Block address taken");
+      }
+      Util.shouldNotReachHere("Address taken not supported yet!");
+    }
+    // Print the main label for the block.
+    if (mbb.getNumPredecessors() <= 0 || isBlockOnlyReachableByFallThrough(mbb)) {
+      if (verboseAsm && outStreamer.hasRawTextSupport()) {
+        BasicBlock bb = mbb.getBasicBlock();
+        if (bb != null && bb.hasName()) {
+          outStreamer.addComment("%" + bb.getName());
+        }
+
+        emitBasicBlockLoopComments(mbb, li, this);
+        // NOTE: Want this comment at start of line, don't emit with AddComment.
+        outStreamer.emitRawText(mai.getCommentString() + "BB#" + mbb.getNumber() + ":");
+      }
+    }
+    else {
+      if (verboseAsm) {
+        BasicBlock bb = mbb.getBasicBlock();
+        if (bb != null && bb.hasName()) {
+          outStreamer.addComment("%"+bb.getName());
+        }
+        emitBasicBlockLoopComments(mbb, li, this);
+      }
+      outStreamer.emitLabel(mbb.getSymbol(outContext));
+    }
+  }
+
+  /**
+   * Return true if the specified mbb has exactly one predecessor and is reached
+   * from it's single predecessor by fall through.
+   * @param mbb
+   * @return
+   */
+  private boolean isBlockOnlyReachableByFallThrough(MachineBasicBlock mbb) {
+    if (mbb.isLandingPad() || mbb.isPredEmpty())
+    return false;
+
+    if (mbb.getNumPredecessors() != 1)
+      return false;
+
+    MachineBasicBlock pred = mbb.predAt(0);
+    if (!pred.isLayoutSuccessor(mbb))
+      return false;
+
+    // If the only predecessor is empty, it definitely satisfy the condition.
+    if (mbb.predAt(0).isEmpty())
+      return true;
+
+    return !pred.getLastInst().getDesc().isBarrier();
+  }
+
+  private static void emitBasicBlockLoopComments(MachineBasicBlock mbb,
+                                                 MachineLoopInfo li,
+                                                 AsmPrinter printer) {
+    MachineLoop loop = li.getLoopFor(mbb);
+    if (loop == null) return;
+
+    MachineBasicBlock header = loop.getHeaderBlock();
+    Util.assertion(header != null, "no header for loop");
+
+    // If this block is not a loop header, just print out what is the loop header
+    // and return.
+    if (header != mbb) {
+      printer.outStreamer.addComment(" in Loop: Header=BB" +
+          printer.getFunctionNumber()+"_"+
+          header.getNumber()+" Depth="+loop.getLoopDepth());
+      return;
+    }
+
+    // Otherwise, it is a loop header.  Print out information about child and
+    // parent loops.
+    PrintStream cos = printer.outStreamer.getCommentOS();
+    printParentLoopComment(cos, loop.getParentLoop(), printer.getFunctionNumber());
+
+    cos.print("=>");
+    cos.print(Util.fixedLengthString(loop.getLoopDepth()*2-2, ' '));
+
+    cos.print("This ");
+    if (loop.isEmpty())
+      cos.print("Inner ");
+    cos.printf("Loop Header: Depth=%d\n", loop.getLoopDepth());
+    printChildLoopComment(cos, loop, printer.mai, printer.getFunctionNumber());
+  }
+
+  /**
+   * Print comments about parent loops of this one.
+   * @param os
+   * @param loop
+   * @param functionNumber
+   */
+  private static void printParentLoopComment(PrintStream os,
+                                             MachineLoop loop,
+                                             int functionNumber) {
+    if (loop == null) return;
+    printParentLoopComment(os, loop.getParentLoop(), functionNumber);
+
+    os.print(Util.fixedLengthString(loop.getLoopDepth()*2-2, ' '));
+    os.printf("Parent Loop BB%d_%d Depth=%d\n",
+        functionNumber,
+        loop.getHeaderBlock().getNumber(),
+        loop.getLoopDepth());
+  }
+
+  private void emitFunctionBodyStart() {}
 
   /**
    * This should be called when a new machine function is being processed when
@@ -487,7 +609,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     curFuncSym = getGlobalValueSymbol(mf.getFunction());
 
     if (verboseAsm)
-      li = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+      li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
   }
 
   private class SectionCPs {
@@ -901,11 +1023,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   private static void printChildLoopComment(
       PrintStream os,
-      MachineLoopInfo loop,
+      MachineLoop loop,
       MCAsmInfo tai,
       int functionNumber) {
     // Add child loop information.
-    for (MachineLoopInfo childLoop : loop.getSubLoops()) {
+    for (MachineLoop childLoop : loop.getSubLoops()) {
       MachineBasicBlock header = childLoop.getHeaderBlock();
       Util.assertion(header != null, "No header for loop");
 

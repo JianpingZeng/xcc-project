@@ -17,7 +17,7 @@ package backend.codegen;
  */
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.MachineFunctionPass;
@@ -54,7 +54,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass {
     ArrayList<MachineBasicBlock> reachable;
 
     MachineDomTree mdt = (MachineDomTree) getAnalysisToUpDate(MachineDomTree.class);
-    MachineLoop mli = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo mli = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
 
     // mark all reachable machine block.
     reachable = DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
@@ -150,13 +150,13 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass {
 
   /**
    * Add all required MachineFunctionPasses for UnreachableMachineBlockElim
-   * to the PassManager, like MachineLoop and MachineDomTree.
+   * to the PassManager, like MachineLoopInfo and MachineDomTree.
    *
    * @param au
    */
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }

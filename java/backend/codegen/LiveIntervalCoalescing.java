@@ -18,7 +18,7 @@
 package backend.codegen;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
@@ -77,7 +77,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     Util.assertion(au != null);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(LiveIntervalAnalysis.class);
     au.addPreserved(LiveVariables.class);
     au.addPreserved(PhiElimination.class);
@@ -113,7 +113,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
 
     // perform a final pass over the instructions and compute spill
     // weights, coalesce virtual registers and remove identity moves
-    MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo loopInfo = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     TargetInstrInfo tii = tm.getInstrInfo();
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
@@ -178,7 +178,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
     if (Util.DEBUG)
       System.err.println("************ Joining Intervals *************");
 
-    MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo loopInfo = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     if (loopInfo != null) {
       if (loopInfo.isNoTopLevelLoop()) {
         // If there are no loops in the function, join intervals in function

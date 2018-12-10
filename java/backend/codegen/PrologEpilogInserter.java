@@ -79,7 +79,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
   private MachineBasicBlock entryBlock;
   private ArrayList<MachineBasicBlock> returnBlocks;
-  private TreeMap<MachineBasicBlock, MachineLoopInfo> tlLoops;
+  private TreeMap<MachineBasicBlock, MachineLoop> tlLoops;
 
   private boolean hasFastExitPath;
   private MachineFunction mf;
@@ -109,7 +109,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }
@@ -323,7 +323,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
     // Walk instructions in all MBBs, create CSRUsed[] sets, choose
     // whether or not to shrink wrap this function.
-    MachineLoop li = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     MachineDomTree dt = (MachineDomTree) getAnalysisToUpDate(MachineDomTree.class);
     TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
 
@@ -362,15 +362,15 @@ public class PrologEpilogInserter extends MachineFunctionPass {
         continue;
 
       // Propagate csrUsed.get(mbb) in loops
-      MachineLoopInfo lp = li.getLoopFor(mbb);
+      MachineLoop lp = li.getLoopFor(mbb);
       if (lp != null) {
         // Add top level loop to work list.
         MachineBasicBlock hdr = getTopLevelLoopPreHeader(lp);
-        MachineLoopInfo plp = getTopLevelParentLoop(lp);
+        MachineLoop plp = getTopLevelParentLoop(lp);
 
         if (hdr == null) {
           hdr = plp.getHeaderBlock();
-          Util.assertion(!hdr.predIsEmpty(), "Loop header has no predecessor");
+          Util.assertion(!hdr.isPredEmpty(), "Loop header has no predecessor");
           hdr = hdr.predAt(0);
         }
         tlLoops.put(hdr, plp);
@@ -563,7 +563,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
    * @param mbb
    * @param loop
    */
-  private void propagateUsesAroundLoop(MachineBasicBlock mbb, MachineLoopInfo loop) {
+  private void propagateUsesAroundLoop(MachineBasicBlock mbb, MachineLoop loop) {
     if (mbb == null || loop == null)
       return;
     for (MachineBasicBlock lbb : loop.getBlocks()) {
@@ -573,17 +573,17 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     }
   }
 
-  private MachineBasicBlock getTopLevelLoopPreHeader(MachineLoopInfo lp) {
+  private MachineBasicBlock getTopLevelLoopPreHeader(MachineLoop lp) {
     Util.assertion(lp != null, "Machine loop is null!");
-    MachineLoopInfo parent = getTopLevelParentLoop(lp);
+    MachineLoop parent = getTopLevelParentLoop(lp);
     return parent.getLoopPreheader();
   }
 
-  private MachineLoopInfo getTopLevelParentLoop(MachineLoopInfo loop) {
+  private MachineLoop getTopLevelParentLoop(MachineLoop loop) {
     if (loop == null)
       return null;
 
-    MachineLoopInfo parent = loop.getParentLoop();
+    MachineLoop parent = loop.getParentLoop();
     while (parent != null) {
       loop = parent;
       parent = loop.getParentLoop();
@@ -847,9 +847,9 @@ public class PrologEpilogInserter extends MachineFunctionPass {
   private boolean addUsesForTopLevelLoops(Stack<MachineBasicBlock> blocks) {
     boolean addedUses = false;
 
-    for (Map.Entry<MachineBasicBlock, MachineLoopInfo> pair : tlLoops.entrySet()) {
+    for (Map.Entry<MachineBasicBlock, MachineLoop> pair : tlLoops.entrySet()) {
       MachineBasicBlock mbb = pair.getKey();
-      MachineLoopInfo loop = pair.getValue();
+      MachineLoop loop = pair.getValue();
 
       MachineBasicBlock hdr = loop.getHeaderBlock();
       ArrayList<MachineBasicBlock> exitBlocks = new ArrayList<>();

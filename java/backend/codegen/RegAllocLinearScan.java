@@ -17,7 +17,7 @@ package backend.codegen;
  */
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.EquivalenceClass;
 import backend.support.MachineFunctionPass;
@@ -77,8 +77,8 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     au.addRequired(LiveStackSlot.class);
     au.addPreserved(LiveStackSlot.class);
 
-    au.addRequired(MachineLoop.class);
-    au.addPreserved(MachineLoop.class);
+    au.addRequired(MachineLoopInfo.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }

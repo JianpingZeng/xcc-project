@@ -84,18 +84,20 @@ public class MCSymbol {
     this.value = value;
   }
 
-  private static boolean isAccpatableChar(char ch) {
+  private static boolean isAcceptableChar(char ch) {
     return (ch >= 'a' && ch <= 'z') ||
         (ch >= 'A' && ch <= 'Z') ||
+        (ch >= '0' && ch <= '9') ||
         ch == '_' || ch == '$' ||
-        ch == '@';
+        ch == '@' || ch == '.';
   }
 
   private static boolean nameNeedsQuoting(String name) {
-    Util.assertion(name != null && !name.isEmpty(), "Canot create an empty MCSymbol");
+    Util.assertion(name != null && !name.isEmpty(),
+        "Can not create an empty MCSymbol");
     for (int i = 0,e = name.length(); i < e; i++) {
       char ch = name.charAt(i);
-      if (!isAccpatableChar(ch))
+      if (!isAcceptableChar(ch))
         return true;
     }
     return false;

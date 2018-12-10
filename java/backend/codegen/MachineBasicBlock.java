@@ -32,6 +32,14 @@ public class MachineBasicBlock {
 
   private MachineFunction parent;
   private int alignment;
+  /**
+   * Indicate that this basic block is reached via exception handler.
+   */
+  private boolean isLandingPad;
+  /**
+   * Indicate this basic block is the target of indirect branch.
+   */
+  private boolean addressTaken;
 
   public MachineBasicBlock(final BasicBlock bb) {
     insts = new LinkedList<>();
@@ -40,6 +48,14 @@ public class MachineBasicBlock {
     predecessors = new ArrayList<>();
     successors = new ArrayList<>();
     liveIns = new TIntArrayList();
+  }
+
+  public boolean hasAddressTaken() {
+    return addressTaken;
+  }
+
+  public boolean isLandingPad() {
+    return isLandingPad;
   }
 
   public BasicBlock getBasicBlock() {
@@ -169,7 +185,7 @@ public class MachineBasicBlock {
     successors.set(idx, newOne);
   }
 
-  public boolean predIsEmpty() {
+  public boolean isPredEmpty() {
     return predecessors.isEmpty();
   }
 
@@ -255,6 +271,15 @@ public class MachineBasicBlock {
     insts.remove(indexToDel);
   }
 
+  /**
+   * Return true if the specified MBB will be emitted
+   * immediately after this block, such that if this block exits by
+   * falling through, control will transfer to the specified MBB. Note
+   * that MBB need not be a successor at all, for example if this block
+   * ends with an unconditional branch to some other block.
+   * @param mbb
+   * @return
+   */
   public boolean isLayoutSuccessor(MachineBasicBlock mbb) {
     if (parent != null && mbb.getParent() != null && parent == mbb.getParent()) {
       ArrayList<MachineBasicBlock> mbbs = parent.getBasicBlocks();
@@ -298,7 +323,7 @@ public class MachineBasicBlock {
    * @return
    */
   public boolean isOnlyReachableByFallThrough() {
-    if (predIsEmpty())
+    if (isPredEmpty())
       return false;
 
     // If there is not exactly one predecessor, it can not be a fall through.

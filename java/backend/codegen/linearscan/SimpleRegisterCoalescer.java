@@ -18,7 +18,7 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
@@ -67,7 +67,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     Util.assertion(au != null);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(LiveIntervalAnalysis.class);
     au.addPreserved(LiveVariables.class);
     //au.addPreserved(PhiElimination.class);
@@ -167,7 +167,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
     if (Util.DEBUG)
       System.err.println("************ Joining Intervals *************");
 
-    MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo loopInfo = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     if (loopInfo == null || loopInfo.isNoTopLevelLoop()) {
       // If there are no loops in the function, join intervals in function
       // order.

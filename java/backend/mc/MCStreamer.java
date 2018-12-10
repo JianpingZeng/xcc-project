@@ -43,6 +43,21 @@ public abstract class MCStreamer {
    */
   public boolean isVerboseAsm() { return false; }
 
+  /**
+   * Return true if this asm streamer supports emitting
+   * unformatted text to the .s file with EmitRawText.
+   * @return
+   */
+  public boolean hasRawTextSupport() { return false; }
+
+  /**
+   * If this file is backed by a assembly streamer, this dumps
+   * the specified string in the output .s file. This capability is
+   * indicated by the {@linkplain this::hasRawTextSupport()}.
+   * @param str
+   */
+  public void emitRawText(String str) { }
+
   /** Add a comment that can be emitted to the generated .s
    * file if applicable as a QoI issue to make the output of the compiler
    * more readable.  This only affects the MCAsmStreamer, and only when

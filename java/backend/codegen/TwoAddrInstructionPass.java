@@ -19,7 +19,7 @@ package backend.codegen;
 
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
@@ -483,7 +483,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     Util.assertion(au != null);
     au.setPreservesCFG();
     au.addPreserved(LiveVariables.class);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     au.addPreserved(PhiElimination.class);
     super.getAnalysisUsage(au);

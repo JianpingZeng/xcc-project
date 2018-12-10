@@ -18,7 +18,7 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
@@ -70,8 +70,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
     // each live interval. The more nested, the more weight.
     au.addPreserved(MachineDomTree.class);
     au.addRequired(MachineDomTree.class);
-    au.addPreserved(MachineLoop.class);
-    au.addRequired(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
+    au.addRequired(MachineLoopInfo.class);
 
     super.getAnalysisUsage(au);
   }
@@ -86,7 +86,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   private MachineRegisterInfo mri;
   private IntervalLocKeeper ilk;
   private MachineFunction mf;
-  private MachineLoop ml;
+  private MachineLoopInfo ml;
   private MoveResolver resolver;
   private TargetInstrInfo tii;
   private LiveInterval cur;
@@ -127,7 +127,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
     resolver = new MoveResolver(this);
 
     li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
-    ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    ml = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     spiller = new SimpleVirtualRegSpiller(ilk, mri);
 
     Util.assertion(ml != null);

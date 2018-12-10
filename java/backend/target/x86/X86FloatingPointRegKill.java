@@ -18,7 +18,7 @@
 package backend.target.x86;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
@@ -49,7 +49,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.setPreservesCFG();
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }

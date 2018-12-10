@@ -18,7 +18,7 @@
 package backend.codegen;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineOperand.RegState;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
@@ -40,7 +40,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.setPreservesCFG();
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }
