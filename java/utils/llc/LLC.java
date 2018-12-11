@@ -17,6 +17,7 @@
 
 package utils.llc;
 
+import backend.codegen.RegAllocLinearScan;
 import backend.codegen.RegAllocLocal;
 import backend.codegen.RegAllocSimple;
 import backend.codegen.RegisterRegAlloc;
@@ -81,7 +82,8 @@ public class LLC {
           optionName("filetype"),
           desc("Specify the type of generated file, default to 'asm'"),
           new ValueClass<>(new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_AssemblyFile, "asm", "Generate assembly code"),
-              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_ObjectFile, "obj(experimental)", "Generate object code")));
+              new ValueClass.Entry<>(TargetMachine.CodeGenFileType.CGFT_ObjectFile, "obj(experimental)", "Generate object code")),
+          init(TargetMachine.CodeGenFileType.CGFT_AssemblyFile));
 
   public static class OptLevelParser extends ParserUInt {
     public boolean parse(Option<?> O, String ArgName,
@@ -262,7 +264,7 @@ public class LLC {
 
     // Set the default register allocator.
     RegisterRegAlloc.setDefault(oLvl == None ?
-        RegAllocSimple::createSimpleRegAllocator : RegAllocLocal::createLocalRegAllocator);
+        RegAllocSimple::createSimpleRegAllocator : RegAllocLinearScan::createLinearScanRegAllocator);
     // Set the default instruction scheduler.
     RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
 

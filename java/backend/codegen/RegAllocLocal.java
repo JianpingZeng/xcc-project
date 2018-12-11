@@ -110,8 +110,8 @@ public class RegAllocLocal extends MachineFunctionPass {
 
       // Spill a the least used physical register into memory.
       for (int i = 0; phyReg == 0; i++) {
-        Util.assertion(i != phyRegsUseOrder.size(), "Can't find a register of the appropriate class");
-
+        Util.assertion(i != phyRegsUseOrder.size(),
+            "Can't find a register of the appropriate class");
 
         int r = phyRegsUseOrder.get(i);
         Util.assertion(r != -1, "Physical register in phyRegsUseOrder, but it not allocated!");
