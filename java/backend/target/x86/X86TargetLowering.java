@@ -100,7 +100,7 @@ public class X86TargetLowering extends TargetLowering {
         X86GenRegisterNames.RSP :
         X86GenRegisterNames.ESP;
 
-    regInfo = (X86RegisterInfo) tm.getRegisterInfo();
+    regInfo = subtarget.getRegisterInfo();
 
     // Set up the register classes.
     setShiftAmountTy(new MVT(MVT.i8));

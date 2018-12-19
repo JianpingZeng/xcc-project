@@ -412,7 +412,7 @@ public class X86FrameLowering extends TargetFrameLowering {
    */
   public boolean hasFP(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-    TargetRegisterInfo tri = tm.getRegisterInfo();
+    TargetRegisterInfo tri = subtarget.getRegisterInfo();
 
     return (disableFramePointerElim(mf) || tri.needsStackRealignment(mf)
         || mfi.hasVarSizedObjects() || mfi.isFrameAddressTaken());

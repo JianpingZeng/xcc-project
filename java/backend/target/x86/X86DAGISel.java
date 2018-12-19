@@ -1701,7 +1701,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
   }
 
   protected SDNode getGlobalBaseReg() {
-    int baseReg = getTargetMachine().getInstrInfo().getGlobalBaseReg(mf);
+    int baseReg = subtarget.getInstrInfo().getGlobalBaseReg(mf);
     return curDAG.getRegister(baseReg, new EVT(tli.getPointerTy())).getNode();
   }
 
