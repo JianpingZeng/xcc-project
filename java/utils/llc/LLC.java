@@ -17,9 +17,7 @@
 
 package utils.llc;
 
-import backend.codegen.RegAllocLinearScan;
 import backend.codegen.RegAllocLocal;
-import backend.codegen.RegAllocSimple;
 import backend.codegen.RegisterRegAlloc;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
@@ -263,8 +261,7 @@ public class LLC {
     tm.setAsmVerbosityDefault(true);
 
     // Set the default register allocator.
-    RegisterRegAlloc.setDefault(oLvl == None ?
-        RegAllocSimple::createSimpleRegAllocator : RegAllocLinearScan::createLinearScanRegAllocator);
+    RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
     // Set the default instruction scheduler.
     RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);
 

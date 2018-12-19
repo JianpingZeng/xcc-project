@@ -3318,17 +3318,16 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     MachineRegisterInfo RegInfo = mf.getMachineRegisterInfo();
     int PC = RegInfo.createVirtualRegister(GR32RegisterClass);
 
-    TargetInstrInfo TII = tm.getInstrInfo();
     // Operand of MovePCtoStack is completely ignored by asm printer. It's
     // only used in JIT code emission as displacement to pc.
-    buildMI(FirstMBB, MBBI, TII.get(MOVPC32r), PC).addImm(0);
+    buildMI(FirstMBB, MBBI, get(MOVPC32r), PC).addImm(0);
 
     // If we're using vanilla 'GOT' PIC style, we should use relative addressing
     // not to pc, but to _GLOBAL_OFFSET_TABLE_ external.
-    if (((X86Subtarget) tm.getSubtarget()).isPICStyleGOT()) {
+    if (tm.getSubtarget().isPICStyleGOT()) {
       GlobalBaseReg = RegInfo.createVirtualRegister(GR32RegisterClass);
       // Generate addl $__GLOBAL_OFFSET_TABLE_ + [.-piclabel], %some_register
-      buildMI(FirstMBB, MBBI, TII.get(ADD32ri), GlobalBaseReg).addReg(PC)
+      buildMI(FirstMBB, MBBI, get(ADD32ri), GlobalBaseReg).addReg(PC)
           .addExternalSymbol("_GLOBAL_OFFSET_TABLE_", 0,
               X86II.MO_GOT_ABSOLUTE_ADDRESS);
     } else {

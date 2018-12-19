@@ -43,7 +43,12 @@ JNIEnv* createVM(char* cmdPath)
 #else
         char absolute[4086] = {0};
 #endif
-    (void)realpath(cmdPath, absolute);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result" 
+    realpath(cmdPath, absolute);
+#pragma GCC diagnostic pop
+
 #ifdef DEBUG
     fprintf(stderr, "%s\n", absolute);
 #endif
@@ -118,6 +123,9 @@ void invokeClass(char* cmdPath, const char* mainClassName, int argc, char** argv
             env->SetObjectArrayElement(applicationArgs, i+1, applicationArg0);
         }
         env->CallStaticVoidMethod(mainClass, mainMethod, applicationArgs);
+		// check if an exception occurred
+		if (env->ExceptionOccurred())
+    		env->ExceptionDescribe(); // print the stack trace
         env->DeleteLocalRef(applicationArgs);
 	}
 }
