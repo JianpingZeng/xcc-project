@@ -36,7 +36,7 @@ public interface EEVT {
 
   static boolean isExtFloatingPointInVTs(TIntArrayList evts) {
     Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-    return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPoint)).isEmpty();
+    return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPointType)).isEmpty();
   }
 
   static boolean isExtVectorVTs(TIntArrayList evts) {

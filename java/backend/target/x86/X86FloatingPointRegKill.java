@@ -102,7 +102,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
           for (int j = 0, sz = succBB.size(); j < sz && succBB.getInstAt(j) instanceof PhiNode; j++) {
             inst = (PhiNode) succBB.getInstAt(j);
             if (inst.getType().equals(LLVMContext.X86_FP80Ty) ||
-                (!subtarget.hasSSE1() && inst.getType().isFloatingPoint()) ||
+                (!subtarget.hasSSE1() && inst.getType().isFloatingPointType()) ||
                 (!subtarget.hasSSE2() && inst.getType().equals(LLVMContext.DoubleTy))) {
               containsFPCode = true;
               break;

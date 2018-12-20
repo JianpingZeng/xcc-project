@@ -758,7 +758,7 @@ public final class LLLexer {
         error("illegal hex number!");
         return 0;
       }
-      if (oldResult > result)
+      if (Long.compareUnsigned(oldResult, result) > 0)
         error("constant bigger than 64 bits detected!");
     }
     return result;
@@ -832,7 +832,7 @@ public final class LLLexer {
         floatVal = new APFloat(new APInt(pair, 128));
         break;
       default:
-        Util.assertion(false, "Illegal character after '0x'");
+        Util.assertion("Illegal character after '0x'");
         break;
     }
     return APFloat;

@@ -222,10 +222,9 @@ public abstract class TargetLowering {
   private int exceptionSelectorRegister;
 
   private long[][] opActions;
-  private long[] loadExtActions;
-  private long[] truncStoreActions;
-  private long[][][] indexedModeActions;
-  private long[] convertActions;
+  private LegalizeAction[][] loadExtActions;
+  private LegalizeAction[][] truncStoreActions;
+  private long[][] indexedModeActions;
   private long[] condCodeActions;
   private byte[] targetDAGCombineArray;
   private TObjectIntHashMap<Pair<Integer, Integer>> promoteType;
@@ -258,11 +257,10 @@ public abstract class TargetLowering {
     libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
-    opActions = new long[MVT.LAST_VALUETYPE / 8 * 4][ISD.BUILTIN_OP_END];
-    loadExtActions = new long[LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
-    truncStoreActions = new long[MVT.LAST_VALUETYPE];
-    indexedModeActions = new long[MVT.LAST_VALUETYPE][2][MemIndexedMode.values().length];
-    convertActions = new long[MVT.LAST_VALUETYPE];
+    opActions = new long[MVT.LAST_VALUETYPE][ISD.BUILTIN_OP_END];
+    loadExtActions = new LegalizeAction[MVT.LAST_VALUETYPE][LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
+    truncStoreActions = new LegalizeAction[MVT.LAST_VALUETYPE][MVT.LAST_VALUETYPE];
+    indexedModeActions = new long[MVT.LAST_VALUETYPE][MemIndexedMode.LAST_INDEXED_MODE.ordinal()];
     condCodeActions = new long[SETCC_INVALID.ordinal()];
     targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END + 7) / 8];
     promoteType = new TObjectIntHashMap<Pair<Integer, Integer>>();
@@ -271,7 +269,8 @@ public abstract class TargetLowering {
     stackPointerRegisterToSaveRestore = 0;
 
     for (int vt = 0; vt < MVT.LAST_VALUETYPE; vt++) {
-      for (MemIndexedMode im : MemIndexedMode.values()) {
+      for (int i = 0, e = MemIndexedMode.LAST_INDEXED_MODE.ordinal(); i < e; i++) {
+        MemIndexedMode im = MemIndexedMode.values()[i];
         if (im != MemIndexedMode.UNINDEXED) {
           setIndexedLoadAction(im, vt, Expand);
           setIndexedStoreAction(im, vt, Expand);
@@ -559,22 +558,145 @@ public abstract class TargetLowering {
     opActions[i][opc] |= (long) action.ordinal() << (j * 2);
   }
 
-  public void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < 64 * 4 && im.ordinal() < loadExtActions.length, "Table isn't big enough!");
-    loadExtActions[im.ordinal()] &= ~(3L << (vt * 2));
-    loadExtActions[im.ordinal()] |= action.ordinal() << (vt * 2);
+  public void setIndexedLoadAction(MemIndexedMode im, int vt,
+                                   LegalizeAction action) {
+    Util.assertion(vt < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    indexedModeActions[vt][im.ordinal()] &= ~0xf0;
+    indexedModeActions[vt][im.ordinal()] |= action.ordinal() << 4;
   }
 
-  public void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length, "Table isn't big enough!");
-
-    indexedModeActions[vt][0][im.ordinal()] = action.ordinal();
+  public void setIndexedLoadAction(MemIndexedMode im, EVT vt,
+                                   LegalizeAction action) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] &= ~0xf0;
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] |= action.ordinal() << 4;
   }
 
   public void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length, "Table isn't big enough!");
+    Util.assertion(vt < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    indexedModeActions[vt][im.ordinal()] &= ~0x0f;
+    indexedModeActions[vt][im.ordinal()] |= action.ordinal();
+  }
 
-    indexedModeActions[vt][1][im.ordinal()] = action.ordinal();
+  public void setIndexedStoreAction(MemIndexedMode im, EVT vt, LegalizeAction action) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] &= ~0x0f;
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] |= action.ordinal();
+  }
+
+  public LegalizeAction getIndexedLoadAction(MemIndexedMode idxMode, EVT vt) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        idxMode.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    return LegalizeAction.values()[(int)(indexedModeActions[vt.getSimpleVT().simpleVT][idxMode.ordinal()]>>>4) & 0x0f];
+  }
+
+  public LegalizeAction getIndexedStoreAction(MemIndexedMode idxMode, EVT vt) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        idxMode.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    return LegalizeAction.values()[(int)(indexedModeActions[vt.getSimpleVT().simpleVT][idxMode.ordinal()]) & 0x0f];
+  }
+
+  public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action) {
+    Util.assertion(vt.simpleVT < 64 * 4 &&
+        extType.ordinal() < loadExtActions.length, "Table isn't big enough!");
+
+    loadExtActions[vt.simpleVT][extType.ordinal()] = action;
+  }
+
+  public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt) {
+    Util.assertion(lType.ordinal() < loadExtActions.length &&
+        vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    return loadExtActions[vt.getSimpleVT().simpleVT][lType.ordinal()];
+  }
+
+  public LegalizeAction getOperationAction(int opc, EVT vt) {
+    if (vt.isExtended()) return Expand;
+    Util.assertion(opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64 * 8, "Table isn't big enough!");
+
+    int i = vt.getSimpleVT().simpleVT;
+    int j = i & 31;
+    i = i >> 5;
+    return LegalizeAction.values()[(int) ((opActions[i][opc] >> (j * 2)) & 3)];
+  }
+
+  public boolean isOperationLegalOrCustom(int opc, EVT vt) {
+    return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
+        && (getOperationAction(opc, vt) == Legal ||
+        getOperationAction(opc, vt) == Custom);
+  }
+
+  public boolean isLoadExtLegal(LoadExtType lType, EVT vt) {
+    return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
+        getLoadExtAction(lType, vt) == Custom);
+  }
+
+  public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT) {
+    Util.assertion(valVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        memVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    return truncStoreActions[valVT.getSimpleVT().simpleVT][memVT.getSimpleVT().simpleVT];
+  }
+
+  public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action) {
+    Util.assertion(valVT < MVT.LAST_VALUETYPE &&
+        memVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    truncStoreActions[valVT][memVT] = action;
+  }
+
+  public void setTruncStoreAction(EVT valVT, EVT memVT, LegalizeAction action) {
+    Util.assertion(valVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        memVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    truncStoreActions[valVT.getSimpleVT().simpleVT][memVT.getSimpleVT().simpleVT] = action;
+  }
+
+  public boolean isTruncStoreLegal(EVT valVT, EVT memVT) {
+    return isTypeLegal(valVT) && memVT.isSimple() &&
+        (getTruncStoreAction(valVT, memVT) == Legal ||
+            getTruncStoreAction(valVT, memVT) == Custom);
+  }
+
+  public boolean isIndexedLoadLegal(MemIndexedMode idxMode, EVT vt) {
+    return vt.isSimple() && (getIndexedLoadAction(idxMode, vt) == Legal ||
+        getIndexedLoadAction(idxMode, vt) == Custom);
+  }
+
+
+  public boolean isIndexedStoreLegal(MemIndexedMode idxMode, EVT vt) {
+    return vt.isSimple() && (getIndexedStoreAction(idxMode, vt) == Legal ||
+        getIndexedStoreAction(idxMode, vt) == Custom);
+  }
+
+  public LegalizeAction getCondCodeAction(CondCode cc, EVT vt) {
+    Util.assertion(cc.ordinal() < condCodeActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
+    LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
+        (2 * vt.getSimpleVT().simpleVT) & 3)];
+    Util.assertion(action != Promote, "Can't promote condition code!");
+    return action;
+  }
+
+  public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action) {
+    Util.assertion(vt < 64 * 4 && cc.ordinal() < condCodeActions.length, "Table isn't big enough!");
+    condCodeActions[cc.ordinal()] &= ~(3L << vt * 2);
+    condCodeActions[cc.ordinal()] |= ((long) action.ordinal() << vt * 2);
+  }
+
+  public boolean isCondCodeLegal(CondCode cc, EVT vt) {
+    return getCondCodeAction(cc, vt) == Legal ||
+        getCondCodeAction(cc, vt) == Custom;
   }
 
   public ValueTypeAction getValueTypeActions() {
@@ -635,13 +757,6 @@ public abstract class TargetLowering {
 
   public void setUseUnderscoreLongJmp(boolean val) {
     this.useUnderscoreLongJmp = val;
-  }
-
-  public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < 64 * 4 && extType.ordinal() < loadExtActions.length, "Table isn't big enough!");
-
-    loadExtActions[extType.ordinal()] &= ~(3L << vt.simpleVT * 2);
-    loadExtActions[extType.ordinal()] |= ((long) action.ordinal() << vt.simpleVT * 2);
   }
 
   /**
@@ -1248,119 +1363,6 @@ public abstract class TargetLowering {
    */
   public boolean isVectorClearMaskLegal(TIntArrayList indices, EVT vt) {
     return false;
-  }
-
-  public LegalizeAction getOperationAction(int opc, EVT vt) {
-    if (vt.isExtended()) return Expand;
-    Util.assertion(opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64 * 8, "Table isn't big enough!");
-
-    int i = vt.getSimpleVT().simpleVT;
-    int j = i & 31;
-    i = i >> 5;
-    return LegalizeAction.values()[(int) ((opActions[i][opc] >> (j * 2)) & 3)];
-  }
-
-  public boolean isOperationLegalOrCustom(int opc, EVT vt) {
-    return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
-        && (getOperationAction(opc, vt) == Legal ||
-        getOperationAction(opc, vt) == Custom);
-  }
-
-  public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt) {
-    Util.assertion(lType.ordinal() < loadExtActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) (loadExtActions[lType.ordinal()]
-        >> ((2 * vt.getSimpleVT().simpleVT) & 3))];
-  }
-
-  public boolean isLoadExtLegal(LoadExtType lType, EVT vt) {
-    return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
-        getLoadExtAction(lType, vt) == Custom);
-  }
-
-  public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT) {
-    Util.assertion(valVT.getSimpleVT().simpleVT < truncStoreActions.length && memVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) (truncStoreActions[valVT.getSimpleVT().simpleVT] >>
-        ((2 * memVT.getSimpleVT().simpleVT) & 3))];
-  }
-
-  public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action) {
-    Util.assertion(valVT < truncStoreActions.length && memVT < 64 * 4, "Table isn't big enough!");
-
-    truncStoreActions[valVT] &= ~(3L << memVT * 2);
-    truncStoreActions[valVT] |= (long) action.ordinal() << memVT * 2;
-  }
-
-  public boolean isTruncStoreLegal(EVT valVT, EVT memVT) {
-    return isTypeLegal(valVT) && memVT.isSimple() &&
-        (getTruncStoreAction(valVT, memVT) == Legal ||
-            getTruncStoreAction(valVT, memVT) == Custom);
-  }
-
-  public LegalizeAction getIndexedLoadAction(int idxMode, EVT vt) {
-    Util.assertion(idxMode < indexedModeActions[0][0].length && vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE,
-        "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][0][idxMode]];
-  }
-
-  public void setIndexedModeAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE && idxMode.ordinal() < indexedModeActions[0][0].length,
-        "Table isn't big enough!");
-
-    indexedModeActions[vt.simpleVT][0][idxMode.ordinal()] = action.ordinal();
-  }
-
-  public boolean isIndexedLoadLegal(MemIndexedMode idxMode, EVT vt) {
-    return vt.isSimple() && (getIndexedLoadAction(idxMode.ordinal(), vt) == Legal ||
-        getIndexedLoadAction(idxMode.ordinal(), vt) == Custom);
-  }
-
-  public LegalizeAction getIndexedStoreAction(int idxMode, EVT vt) {
-    Util.assertion(idxMode < indexedModeActions[0][1].length && vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE,
-        "Table is't big enough!");
-
-    return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][1][idxMode]];
-  }
-
-  public void setIndexedStoreAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE && idxMode.ordinal() < indexedModeActions[0][1].length,
-        "Table isn't big enough!");
-
-    indexedModeActions[vt.simpleVT][1][idxMode.ordinal()] = action.ordinal();
-  }
-
-  public boolean isIndexedStoreLegal(MemIndexedMode idxMode, EVT vt) {
-    return vt.isSimple() && (getIndexedStoreAction(idxMode.ordinal(), vt) == Legal
-        || getIndexedStoreAction(idxMode.ordinal(), vt) == Custom);
-  }
-
-  public LegalizeAction getConvertAction(EVT fromVT, EVT toVT) {
-    Util.assertion(fromVT.getSimpleVT().simpleVT < condCodeActions.length && toVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) condCodeActions[fromVT.getSimpleVT().simpleVT >>
-        (2 * toVT.getSimpleVT().simpleVT) & 3]];
-  }
-
-  public LegalizeAction getCondCodeAction(CondCode cc, EVT vt) {
-    Util.assertion(cc.ordinal() < condCodeActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
-        (2 * vt.getSimpleVT().simpleVT) & 3)];
-    Util.assertion(action != Promote, "Can't promote condition code!");
-    return action;
-  }
-
-  public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action) {
-    Util.assertion(vt < 64 * 4 && cc.ordinal() < condCodeActions.length, "Table isn't big enough!");
-    condCodeActions[cc.ordinal()] &= ~(3L << vt * 2);
-    condCodeActions[cc.ordinal()] |= ((long) action.ordinal() << vt * 2);
-  }
-
-  public boolean isCondCodeLegal(CondCode cc, EVT vt) {
-    return getCondCodeAction(cc, vt) == Legal ||
-        getCondCodeAction(cc, vt) == Custom;
   }
 
   public void addLegalFPImmediate(APFloat imm) {

@@ -94,7 +94,7 @@ public class VectorType extends SequentialType {
   }
 
   public static boolean isValidElementType(Type eltTy) {
-    return (eltTy.isInteger() || eltTy.isFloatingPoint() ||
+    return (eltTy.isInteger() || eltTy.isFloatingPointType() ||
         eltTy instanceof OpaqueType);
   }
 

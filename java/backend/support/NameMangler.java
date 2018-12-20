@@ -114,7 +114,7 @@ public class NameMangler {
         mangledGlobals.add(existingValue);
         existingValue = gv;
       } else if (gv.hasExternalLinkage() && existingValue.hasExternalLinkage()
-          && gv.isExternal() && existingValue.isExternal()) {
+          && gv.isDeclaration() && existingValue.isDeclaration()) {
         // If the two globals both have external inkage, and are both external,
         // don't mangle either of them, we just have some silly type mismatch.
       } else {

@@ -246,6 +246,19 @@ public final class Module implements Iterable<Function> {
     valSymTable.createValueName(fn.getName(), fn);
   }
 
+  /**
+   * Add the global variable before the specified position.
+   * @param idx
+   * @param gv
+   */
+  public void addGlobalVariable(int idx, GlobalVariable gv) {
+    Util.assertion(gv != null && !globalVariableList.contains(gv) &&
+        gv.getName() != null && !gv.getName().isEmpty());
+    globalVariableList.add(idx, gv);
+    valSymTable.createValueName(gv.getName(), gv);
+    gv.setParent(this);
+  }
+
   public void addGlobalVariable(GlobalVariable gv) {
     Util.assertion(gv != null && !globalVariableList.contains(gv) &&
         gv.getName() != null && !gv.getName().isEmpty());

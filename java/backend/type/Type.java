@@ -122,11 +122,6 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == IntegerTyID;
   }
 
-  public boolean isFloatingPoint() {
-    return id == FloatTyID || id == DoubleTyID
-        || id == X86_FP80TyID || id == FP128TyID;
-  }
-
   public int getPrimitiveSizeInBits() {
     switch (getTypeID()) {
       case FloatTyID:
@@ -189,7 +184,16 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isFloatingPointType() {
-    return id == FloatTyID || id == DoubleTyID;
+    return id == FloatTyID || id == DoubleTyID
+        || id == X86_FP80TyID || id == FP128TyID;
+  }
+
+  public boolean isFloatTy() {
+    return id == FloatTyID;
+  }
+
+  public boolean isDoubleTy() {
+    return id == DoubleTyID;
   }
 
   public boolean isLabelTy() {

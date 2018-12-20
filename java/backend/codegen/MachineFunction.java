@@ -54,7 +54,7 @@ public class MachineFunction {
   private MachineJumpTableInfo jumpTableInfo;
   private int functionNumber;
 
-  public MachineFunction(Function fn, TargetMachine tm) {
+  public MachineFunction(Function fn, TargetMachine tm, int fnNumber) {
     this.fn = fn;
     target = tm;
     mbbNumber = new ArrayList<>();
@@ -67,6 +67,7 @@ public class MachineFunction {
     alignment = tm.getTargetLowering().getFunctionAlignment(fn);
     int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
     jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
+    functionNumber = fnNumber;
 
     // associate this machine function with HIR function.
     fn.setMachineFunc(this);

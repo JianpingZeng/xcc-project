@@ -151,13 +151,13 @@ public class ConstantFP extends Constant {
   public static Value getZeroValueForNegation(Type type) {
     if (type instanceof VectorType) {
       VectorType vty = (VectorType) type;
-      if (vty.getElementType().isFloatingPoint()) {
+      if (vty.getElementType().isFloatingPointType()) {
         Constant[] zeros = new Constant[vty.getNumElements()];
         Arrays.fill(zeros, getNegativeZero(vty.getElementType()));
         return ConstantVector.get(zeros);
       }
     }
-    if (type.isFloatingPoint())
+    if (type.isFloatingPointType())
       return getNegativeZero(type);
     return Constant.getNullValue(type);
   }

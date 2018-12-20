@@ -1084,17 +1084,17 @@ public abstract class Instruction extends User {
           return srcTy.isInteger() && destTy.isInteger() &&
               srcBits < destBits;
         case FPTrunc:
-          return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+          return srcTy.isFloatingPointType() && destTy.isFloatingPointType()
               && srcBits > destBits;
         case FPExt:
-          return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+          return srcTy.isFloatingPointType() && destTy.isFloatingPointType()
               && srcBits < destBits;
         case FPToSI:
         case FPToUI:
-          return srcTy.isFloatingPoint() && destTy.isInteger();
+          return srcTy.isFloatingPointType() && destTy.isInteger();
         case SIToFP:
         case UIToFP:
-          return srcTy.isInteger() && destTy.isFloatingPoint();
+          return srcTy.isInteger() && destTy.isFloatingPointType();
         case BitCast:
           // bit cast is no op in machine level, but we should check
           // both type is same when one is of type PointerType

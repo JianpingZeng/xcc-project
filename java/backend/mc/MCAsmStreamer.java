@@ -13,7 +13,6 @@ import tools.TextUtils;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 
 public class MCAsmStreamer extends MCStreamer {
@@ -154,7 +153,7 @@ public class MCAsmStreamer extends MCStreamer {
 
   @Override
   public void emitLabel(MCSymbol symbol) {
-    Util.assertion(symbol.isUndefined());
+    Util.assertion(symbol.isUndefined(),"can't define a symbol twice");
     Util.assertion(curSection != null);
     symbol.print(os);
     fos.print(':');

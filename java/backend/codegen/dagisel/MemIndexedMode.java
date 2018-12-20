@@ -27,4 +27,5 @@ public enum MemIndexedMode {
   PRE_DEC,
   POST_INC,
   POST_DEC,
+  LAST_INDEXED_MODE,
 }

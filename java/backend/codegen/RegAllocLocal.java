@@ -556,13 +556,16 @@ public class RegAllocLocal extends MachineFunctionPass {
 
     computeLocalLiveness(mbb);
 
-    for (int i = 0; i < mbb.size(); i++) {
-      MachineInstr mi = mbb.getInstAt(i);
+    LinkedList<MachineInstr> worklist = new LinkedList<>(mbb.getInsts());
+    while (!worklist.isEmpty()) {
+      MachineInstr mi = worklist.removeFirst();
+      int i = mbb.getInsts().indexOf(mi);
+
       int opcode = mi.getOpcode();
       MCInstrDesc desc = tm.getInstrInfo().get(opcode);
 
       if (Util.DEBUG) {
-        System.err.printf("\nStarting RegAlloc of:");
+        System.err.print("\nStarting RegAlloc of:");
         mi.dump();
         for (int j = 0; j < phyRegUsed.length; j++) {
           int usedReg = phyRegUsed[j];
@@ -602,9 +605,9 @@ public class RegAllocLocal extends MachineFunctionPass {
             && isVirtualRegister(mi.getOperand(j).getReg())) {
           int virtReg = mi.getOperand(j).getReg();
           reloadVirReg(mbb, i, virtReg, mi, j);
+          // update the counter caused by inserting reload code.
         }
       }
-
 
       // If this instruction is the last user of this register, kill the
       // value, freeing the register being used, so it doesn't need to be
@@ -618,8 +621,8 @@ public class RegAllocLocal extends MachineFunctionPass {
         } else if (phyRegUsed[phyReg] == -2) {
           // ignore the unallocatable register.
         } else {
-          Util.assertion(phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1, "Silently clearing a virtual register?");
-
+          Util.assertion(phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1,
+              "Silently clearing a virtual register?");
         }
 
         if (phyReg != 0) {
@@ -780,7 +783,6 @@ public class RegAllocLocal extends MachineFunctionPass {
       int[] regs = new int[4];    // srcReg, destReg, srcSubReg, destSubReg.
       if (regInfo.isMoveInstr(mi, regs) && regs[0] == regs[1] && deadDefs.isEmpty()) {
         mbb.remove(i);
-        i -= 1;
       }
     }
 

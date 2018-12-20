@@ -14,12 +14,10 @@ import backend.codegen.MachineOperand;
 import backend.mc.*;
 import backend.mc.MCSymbol.MCContext;
 import backend.support.NameMangler;
-import backend.target.TargetLowering;
 import backend.value.GlobalValue;
 import tools.Util;
 
 import static backend.target.x86.X86GenRegisterNames.*;
-import static backend.target.x86.X86GenRegisterNames.R15;
 
 /**
  * This class is used to lower an MachineInstr into an MCInst.
@@ -59,12 +57,13 @@ public class X86MCInstLower {
         case X86II.MO_DARWIN_NONLAZY_PIC_BASE:
         case X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
           isImplicitlyPrivate = true;
+          break;
+      }
 
-          GlobalValue gv = mo.getGlobal();
-          name = mangler.getMangledNameWithPrefix(gv, isImplicitlyPrivate);
-          if (getSubtarget().isTargetCygMing()) {
-            Util.shouldNotReachHere("Cygwin is not supported");;
-          }
+      GlobalValue gv = mo.getGlobal();
+      name = mangler.getMangledNameWithPrefix(gv, isImplicitlyPrivate);
+      if (getSubtarget().isTargetCygMing()) {
+        Util.shouldNotReachHere("Cygwin is not supported");;
       }
     }
     else {

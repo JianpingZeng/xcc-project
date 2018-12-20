@@ -37,6 +37,7 @@ public class MachineFunctionAnalysis implements FunctionPass {
   private TargetMachine tm;
   private TargetMachine.CodeGenOpt optLevel;
   private AnalysisResolver resolver;
+  private int nextFnNumber;
 
   @Override
   public void setAnalysisResolver(AnalysisResolver resolver) {
@@ -69,7 +70,7 @@ public class MachineFunctionAnalysis implements FunctionPass {
   public boolean runOnFunction(Function f) {
     Util.assertion(f.getMachineFunc() == null, "MachineFunctionAnalysis already initialized!");
 
-    new MachineFunction(f, tm);
+    new MachineFunction(f, tm, nextFnNumber++);
     return false;
   }
 }

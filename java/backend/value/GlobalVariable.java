@@ -37,7 +37,7 @@ public class GlobalVariable extends GlobalValue {
     }
     if (before != null) {
       int beforeIdx = before.getParent().getGlobalVariableList().indexOf(before);
-      before.getParent().getGlobalVariableList().add(beforeIdx + 1, this);
+      before.getParent().addGlobalVariable(beforeIdx + 1, this);
     } else {
       m.addGlobalVariable(this);
     }
@@ -68,17 +68,6 @@ public class GlobalVariable extends GlobalValue {
     setOperand(0, (Constant) to);
   }
 
-  /**
-   * Return true if the primary definition of this global value is
-   * outside of the current translation unit.
-   *
-   * @return
-   */
-  @Override
-  public boolean isExternal() {
-    return operand(0) == null;
-  }
-
   public void setInitializer(Constant init) {
     setOperand(0, new Use(init, this));
   }
@@ -92,7 +81,7 @@ public class GlobalVariable extends GlobalValue {
   }
 
   public boolean hasInitializer() {
-    return !isExternal();
+    return !isDeclaration();
   }
 
   @Override

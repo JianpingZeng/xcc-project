@@ -563,8 +563,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitSwitch(u);
         break;
       case Unreachable:
-        // binary operator
-        Util.shouldNotReachHere();
+        // ignore unreachable instr.
         break;
       // add
       case Add:
@@ -1999,7 +1998,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "copysign":
           case "copysignf": {
             if (ci.getNumOfOperands() == 3 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType()) &&
                 ci.getType().equals(ci.operand(2).getType())) {
               SDValue lhs = getValue(ci.operand(1));
@@ -2013,7 +2012,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "fabs":
           case "fabsf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FABS, lhs.getValueType(), lhs));
@@ -2024,7 +2023,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "sin":
           case "sinf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FSIN, lhs.getValueType(), lhs));
@@ -2036,7 +2035,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "cosf":
           case "cosl": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FCOS, lhs.getValueType(), lhs));

@@ -196,7 +196,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
    * @return
    */
   @Override
-  public boolean isExternal() {
+  public boolean isDeclaration() {
     return basicBlockList.isEmpty();
   }
 

@@ -583,11 +583,10 @@ public final class LLParser {
       return error(tyLoc, "invalid type for global variable");
     }
     GlobalVariable gv = null;
+    // See if the global was forward referenced, if so, use the global.
     if (name != null && !name.isEmpty()) {
-      if ((gv = m.getGlobalVariable(name, true)) != null
-          && forwardRefVals.remove(name) == null) {
-        return error(nameLoc, StringFormatter
-            .format("redefinition of global '@%s'", name).getValue());
+      if ((gv = m.getGlobalVariable(name, true)) != null) {
+        forwardRefVals.remove(name);
       }
     } else {
       if (forwardRefValIDs.containsKey(numberedVals.size())) {
@@ -604,8 +603,6 @@ public final class LLParser {
       if (!gv.getType().getElementType().equals(globalTy))
         return error(tyLoc,
             "forward reference and definition of global have different types");
-
-      m.addGlobalVariable(gv);
     }
 
     if (name == null || name.isEmpty())
@@ -1674,7 +1671,7 @@ public final class LLParser {
       }
 
       OutRef<Boolean> needConsiderComma = new OutRef<>(false);
-      if (parseInstruction(inst, bb, pfs, needConsiderComma))
+      if (parseInstruction(inst, pfs, needConsiderComma))
         return true;
       else {
         bb.appendInst(inst.get());
@@ -1704,12 +1701,10 @@ public final class LLParser {
    * Parse one of the many different instructions.
    *
    * @param inst
-   * @param bb
    * @param pfs
    * @return
    */
   private boolean parseInstruction(OutRef<Instruction> inst,
-                                   BasicBlock bb,
                                    PerFunctionState pfs,
                                    OutRef<Boolean> needConsiderComma) {
     LLTokenKind kind = lexer.getTokKind();
@@ -1729,7 +1724,7 @@ public final class LLParser {
         return tokError("currently, invoke is not supported");
       case kw_unreachable:
         inst.set(new UnreachableInst());
-        return true;
+        return false;
       case kw_ret:
         return parseRet(inst, pfs);
       case kw_br:
@@ -2380,7 +2375,7 @@ public final class LLParser {
     Value lhs = val1.get(), rhs = val2.get();
     SMLoc lhsLoc = loc.get();
     if (opc == Operator.FCmp) {
-      if (!lhs.getType().isFloatingPoint())
+      if (!lhs.getType().isFloatingPointType())
         return error(lhsLoc, "fcmp op requires floating point operand");
     } else {
       Util.assertion(opc == Operator.ICmp);
@@ -2575,7 +2570,7 @@ public final class LLParser {
         if (elts.isEmpty())
           return error(id.loc, "constant vector must not be empty");
 
-        if (!elts.get(0).getType().isInteger() && elts.get(0).getType().isFloatingPoint())
+        if (!elts.get(0).getType().isInteger() && elts.get(0).getType().isFloatingPointType())
           return error(firstEltLoc,
               "vector elements must have integer or floating point");
 
@@ -2689,7 +2684,7 @@ public final class LLParser {
           return error(id.loc, "compare operands must have same type");
 
         if (opc == Operator.FCmp) {
-          if (!val0.get().getType().isFloatingPoint())
+          if (!val0.get().getType().isFloatingPointType())
             return error(id.loc, "fcmp requires floating point operand");
           id.constantVal = ConstantExpr.getFCmp(pred.get(), val0.get(), val1.get());
         } else {
@@ -2752,7 +2747,7 @@ public final class LLParser {
             return error(modifierLoc, "nsw only applied to integral binary operator");
         }
 
-        if (!val0.get().getType().isInteger() && !val0.get().getType().isFloatingPoint()) {
+        if (!val0.get().getType().isInteger() && !val0.get().getType().isFloatingPointType()) {
           return error(id.loc, "constantexpr requires integer, fp operand");
         }
         Constant c = ConstantExpr.get(opc, val0.get(), val1.get());
@@ -3000,7 +2995,7 @@ public final class LLParser {
         val.set(ConstantInt.get(id.apsIntVal));
         return false;
       case t_APFloat:
-        if (!ty.isFloatingPoint() ||
+        if (!ty.isFloatingPointType() ||
             !ConstantFP.isValueValidForType(ty, id.apFloatVal))
           return error(id.loc, "floating point constant invalid for type");
 
@@ -3080,7 +3075,7 @@ public final class LLParser {
       fwdVal = new Function(ft, LinkageType.ExternalLinkage, name, null);
     } else {
       fwdVal = new GlobalVariable(m, pty.getElementType(), false,
-          LinkageType.ExternalLinkage, null, "", null, 0);
+          LinkageType.ExternalLinkage, null, name, null, 0);
     }
 
     forwardRefVals.put(name, Pair.get(fwdVal, loc));
@@ -3134,11 +3129,12 @@ public final class LLParser {
       case kw_shufflevector:
       case kw_extractvalue:
       case kw_insertvalue:
-      case kw_select:
       case kw_va_arg:
       default:
         tokError("invalid opecode!");
         return null;
+      case kw_select:
+        return Operator.Select;
       case kw_add:
         return Operator.Add;
       case kw_fadd:
@@ -3183,6 +3179,7 @@ public final class LLParser {
       case kw_phi:
         return Operator.Phi;
       case kw_call:
+      case kw_tail:
         return Operator.Call;
       case kw_trunc:
         return Operator.Trunc;
@@ -3366,8 +3363,7 @@ public final class LLParser {
             id.apFloatVal))
           return error(id.loc, "floating point constant invalid for type");
 
-          if (id.apFloatVal.getSemantics() == tools.APFloat.IEEEdouble &&
-          ty.isFloatingPointType()) {
+          if (id.apFloatVal.getSemantics() == tools.APFloat.IEEEdouble && ty.isFloatTy()) {
             OutRef<Boolean> ignores = new OutRef<>(false);
             id.apFloatVal.convert(tools.APFloat.IEEEsingle, tools.APFloat.RoundingMode.rmNearestTiesToEven,
                 ignores);
@@ -3588,8 +3584,8 @@ public final class LLParser {
         break;
       case 0:
         // both int and fp.
-        valid = (op1.getType().isInteger() || op1.getType().isFloatingPoint())
-            && (op2.getType().isInteger() || op2.getType().isFloatingPoint());
+        valid = (op1.getType().isInteger() || op1.getType().isFloatingPointType())
+            && (op2.getType().isInteger() || op2.getType().isFloatingPointType());
         break;
       case 1:
         // only integral allowed
@@ -3597,7 +3593,7 @@ public final class LLParser {
         break;
       case 2:
         // only fp allowed
-        valid = op1.getType().isFloatingPoint() && op2.getType().isFloatingPoint();
+        valid = op1.getType().isFloatingPointType() && op2.getType().isFloatingPointType();
         break;
     }
     if (!valid)
@@ -3612,6 +3608,22 @@ public final class LLParser {
    * @return
    */
   private boolean validateEndOfModule() {
+
+    if (!forwardRefInstMetadata.isEmpty()) {
+      for (Map.Entry<Instruction, ArrayList<MDRef>> entry : forwardRefInstMetadata.entrySet()) {
+        Instruction inst = entry.getKey();
+        ArrayList<MDRef> mdList = entry.getValue();
+
+        for (MDRef ref : mdList) {
+          int slotNo = ref.mdSlot;
+          if (slotNo >= numberedMetadata.size() || numberedMetadata.get(slotNo) == null)
+            return error(ref.loc, String.format("use of undefined metadata '!%d'", slotNo));
+            inst.setMetadata(ref.mdKind, numberedMetadata.get(slotNo));
+        }
+      }
+      forwardRefInstMetadata.clear();
+    }
+
     if (!forwardRefTypes.isEmpty()) {
       Map.Entry<String, Pair<Type, SMLoc>> itr = forwardRefTypes.entrySet().iterator().next();
       return error(itr.getValue().second,
