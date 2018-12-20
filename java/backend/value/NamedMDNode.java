@@ -20,42 +20,53 @@ import backend.support.LLVMContext;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
-public final class NamedMDNode extends MetadataBase {
+public final class NamedMDNode extends Value {
   private Module parent;
-  private ArrayList<MetadataBase> node;
+  private ArrayList<MDNode> operands;
+  private String name;
 
-  public NamedMDNode(String name, MetadataBase[] elts, Module m) {
-    super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
-    parent = m;
-    node = new ArrayList<>();
-    for (MetadataBase n : elts)
-      node.add(n);
+  public NamedMDNode(String name, MDNode[] elts, Module m) {
+    this(name, Arrays.asList(elts), m);
   }
 
-  public NamedMDNode(String name, List<MetadataBase> elts, Module m) {
+  public NamedMDNode(String name, List<MDNode> elts, Module m) {
     super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
     parent = m;
-    node = new ArrayList<>();
-    node.addAll(elts);
+    this.name = name;
+    operands = new ArrayList<>();
+    operands.addAll(elts);
   }
 
-  public static NamedMDNode create(String name, ArrayList<MetadataBase> elts,
+  public NamedMDNode(String name) {
+    this(name, new ArrayList<>(), null);
+  }
+
+  public static NamedMDNode create(String name, ArrayList<MDNode> elts,
                                    Module m) {
     return new NamedMDNode(name, elts, m);
   }
 
   public int getNumOfNode() {
-    return node.size();
+    return operands.size();
   }
 
   public Value getNode(int index) {
     Util.assertion(index >= 0 && index < getNumOfNode());
-    return node.get(index);
+    return operands.get(index);
+  }
+
+  public void addOperand(MDNode n) {
+    operands.add(n);
+  }
+
+  public MDNode getOperand(int i) {
+    return operands.get(i);
   }
 }

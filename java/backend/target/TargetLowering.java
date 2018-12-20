@@ -118,10 +118,10 @@ public abstract class TargetLowering {
           if (c == null) return false;
 
           if (op.getOpcode() == ISD.XOR &&
-              (c.getAPIntValue().or(demanded.negative())).isAllOnesValue())
+              (c.getAPIntValue().or(demanded.not())).isAllOnesValue())
             return false;
 
-          if (c.getAPIntValue().intersects(demanded.negative())) {
+          if (c.getAPIntValue().intersects(demanded.not())) {
             EVT vt = op.getValueType();
             SDValue newVal = dag.getNode(op.getOpcode(), vt, op.getOperand(0),
                 dag.getConstant(demanded.and(c.getAPIntValue()), vt, false));

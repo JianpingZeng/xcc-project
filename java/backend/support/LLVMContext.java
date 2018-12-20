@@ -21,6 +21,8 @@ import backend.type.IntegerType;
 import backend.type.LLVMTypeID;
 import backend.type.Type;
 
+import java.util.TreeMap;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -38,4 +40,14 @@ public class LLVMContext {
   public static final Type DoubleTy = new Type(LLVMTypeID.DoubleTyID);
   public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
   public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
+
+  private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
+  public static int getMDKindID(String name) {
+    if (customMDKindNamesMap.containsKey(name))
+      return customMDKindNamesMap.get(name);
+
+    int val = customMDKindNamesMap.size();
+    customMDKindNamesMap.put(name, val);
+    return val;
+  }
 }

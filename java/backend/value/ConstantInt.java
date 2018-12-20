@@ -152,7 +152,7 @@ public class ConstantInt extends Constant {
       return false;
 
     ConstantInt ci = (ConstantInt) obj;
-    return val.eq(ci.getValue());
+    return val.getBitWidth() == ci.getValue().getBitWidth() && val.eq(ci.getValue());
   }
 
   @Override

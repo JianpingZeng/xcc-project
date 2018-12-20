@@ -192,6 +192,14 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == FloatTyID || id == DoubleTyID;
   }
 
+  public boolean isLabelTy() {
+    return id == LabelTyID;
+  }
+
+  public boolean isMetadataTy() {
+    return id == MetadataTyID;
+  }
+
   /**
    * Return true if the type is "first class", meaning it
    * is a valid type for a Value.

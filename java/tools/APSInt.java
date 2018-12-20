@@ -296,7 +296,7 @@ public class APSInt extends APInt {
    * @return
    */
   public APSInt not() {
-    return new APSInt(((APInt) this).not(), isUnsigned);
+    return new APSInt(super.not(), isUnsigned);
   }
 
   /**

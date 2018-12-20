@@ -1,9 +1,6 @@
 package backend.value;
 
-import backend.support.AssemblyWriter;
-import backend.support.AttrList;
-import backend.support.SlotTracker;
-import backend.support.ValueSymbolTable;
+import backend.support.*;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -62,6 +59,8 @@ public final class Module implements Iterable<Function> {
   private String dataLayout;
 
   private String targetTriple;
+  private HashMap<String, NamedMDNode> namedMDSymTab;
+  private ArrayList<NamedMDNode> namedMDList;
 
   /**
    * Constructor.
@@ -74,6 +73,8 @@ public final class Module implements Iterable<Function> {
     this.functionList = functions;
     valSymTable = new ValueSymbolTable();
     typeSymbolTable = new HashMap<>();
+    namedMDSymTab = new HashMap<>();
+    namedMDList = new ArrayList<>();
   }
 
   public Module(String moduleID) {
@@ -82,6 +83,8 @@ public final class Module implements Iterable<Function> {
     functionList = new ArrayList<>(32);
     valSymTable = new ValueSymbolTable();
     typeSymbolTable = new HashMap<>();
+    namedMDSymTab = new HashMap<>();
+    namedMDList = new ArrayList<>();
   }
 
   public String getModuleIdentifier() {
@@ -249,5 +252,19 @@ public final class Module implements Iterable<Function> {
     globalVariableList.add(gv);
     valSymTable.createValueName(gv.getName(), gv);
     gv.setParent(this);
+  }
+
+  public int getMDKindID(String name) {
+    return LLVMContext.getMDKindID(name);
+  }
+
+  public NamedMDNode getOrCreateNamedMetadata(String name) {
+    if (namedMDSymTab.containsKey(name))
+      return namedMDSymTab.get(name);
+
+    NamedMDNode res = new NamedMDNode(name);
+    namedMDSymTab.put(name, res);
+    namedMDList.add(res);
+    return res;
   }
 }

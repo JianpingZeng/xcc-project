@@ -413,6 +413,15 @@ public abstract class Instruction extends User {
   }
 
   /**
+   * set the metadata of the specified kind to the specified node.
+   * @param mdk
+   * @param node
+   */
+  public void setMetadata(int mdk, MDNode node) {
+    // TODO, fake 12/19/2018
+  }
+
+  /**
    * The abstract base class definition for unary operator.
    */
   public static class UnaryOps extends Instruction {

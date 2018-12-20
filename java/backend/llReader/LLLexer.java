@@ -86,8 +86,6 @@ public final class LLLexer {
   }
 
   private void initKeywords() {
-    keywords.put("begin", kw_begin);
-    keywords.put("end", kw_end);
     keywords.put("true", kw_true);
     keywords.put("false", kw_false);
     keywords.put("declare", kw_declare);
@@ -108,6 +106,7 @@ public final class LLLexer {
     keywords.put("dllexport", kw_dllexport);
     keywords.put("common", kw_common);
     keywords.put("default", kw_default);
+    keywords.put("unnamed_addr", kw_unnamed_addr);
     keywords.put("hidden", kw_hidden);
     keywords.put("protected", kw_protected);
     keywords.put("extern_weak", kw_extern_weak);
@@ -204,7 +203,7 @@ public final class LLLexer {
     typeKeywords.put("x86_fp80", LLVMContext.X86_FP80Ty);
     typeKeywords.put("fp128", LLVMContext.FP128Ty);
     typeKeywords.put("label", LLVMContext.LabelTy);
-    typeKeywords.put("metadata", null);
+    typeKeywords.put("metadata", LLVMContext.MetadataTy);
   }
 
   private void initOpcKeywords() {
@@ -252,9 +251,7 @@ public final class LLLexer {
     opcKeywords.put("unwind", null/*Pair.get(Unwind, kw_unwind)*/);
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));
 
-    opcKeywords.put("malloc", Pair.get(Malloc, kw_malloc));
     opcKeywords.put("alloca", Pair.get(Alloca, kw_alloca));
-    opcKeywords.put("free", Pair.get(Free, kw_free));
     opcKeywords.put("load", Pair.get(Load, kw_load));
     opcKeywords.put("store", Pair.get(Store, kw_store));
     opcKeywords.put("getelementptr",
@@ -557,7 +554,7 @@ public final class LLLexer {
    * @return
    */
   private static boolean isLabelChar(int ch) {
-    return isLLIdentifierPart(ch) || Character.isDigit((char) ch);
+    return isLLIdentifierPart(ch) || Character.isDigit((char) ch) || ch == '\\';
   }
 
   /**
@@ -1026,20 +1023,16 @@ public final class LLLexer {
    * @return
    */
   private LLTokenKind lexMetadata() {
-    int ch = getNextChar();
-    if (ch == -1) {
-      error("End of file in metadata");
-      return Error;
-    }
-    if (Character.isLetter((char) ch)) {
+    int ch = buffer.getCharAt(curPtr);
+    if (isLLIdentifierPart(ch) || ch == '\\') {
       do {
         ch = getNextChar();
       } while (isLabelChar(ch));
       // skip the !
-      strVal = buffer.getSubString(tokStart + 1, curPtr - 1);
-      return NamedMD;
+      strVal = unEscapeLexed(buffer.getSubString(tokStart + 1, curPtr - 1));
+      return MetadataVar;
     } else {
-      return Metadata;
+      return exclaim;
     }
   }
 

@@ -387,7 +387,10 @@ public final class UniqueConstantValueImpl {
     public int hashCode() {
       FoldingSetNodeID id = new FoldingSetNodeID();
       id.addInteger(elts.size());
-      elts.forEach(elt -> id.addInteger(elt.hashCode()));
+      elts.forEach(elt -> {
+        if (elt != null)
+          id.addInteger(elt.hashCode());
+      });
       return id.computeHash();
     }
 
