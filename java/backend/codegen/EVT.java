@@ -544,4 +544,12 @@ public class EVT implements Comparable<EVT> {
     else
       return v.simpleVT - o.v.simpleVT;
   }
+
+  /**
+   * If this is a vector type, return the type of it's element. Otherwise return this.
+   * @return
+   */
+  public EVT getScalarType() {
+    return isVector() ? getVectorElementType() : this;
+  }
 }

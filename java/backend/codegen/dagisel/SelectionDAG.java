@@ -1627,7 +1627,7 @@ public class SelectionDAG {
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - bits).and(mask);
         APInt inSignBit = APInt.getSignBit(bits);
         APInt inputDemandedBits = mask.and(APInt.getLowBitsSet(bitwidth, bits));
-        inSignBit.zext(bitwidth);
+        inSignBit = inSignBit.zext(bitwidth);
         if (newBits.getBoolValue())
           inputDemandedBits.orAssign(inSignBit);
 
@@ -1668,12 +1668,12 @@ public class SelectionDAG {
         int inBits = inVT.getSizeInBits();
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - inBits).and(mask);
         APInt inMask = new APInt(mask);
-        inMask.trunc(inBits);
-        knownVals[0].trunc(inBits);
-        knownVals[1].trunc(inBits);
+        inMask = inMask.trunc(inBits);
+        knownVals[0] = knownVals[0].trunc(inBits);
+        knownVals[1] = knownVals[1].trunc(inBits);
         computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
-        knownVals[0].zext(bitwidth);
-        knownVals[1].zext(bitwidth);
+        knownVals[0] = knownVals[0].zext(bitwidth);
+        knownVals[1] = knownVals[1].zext(bitwidth);
         knownVals[0].orAssign(newBits);
         break;
       }
@@ -1683,24 +1683,24 @@ public class SelectionDAG {
         APInt inSignBits = APInt.getSignBit(inBits);
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - inBits).and(mask);
         APInt inMask = new APInt(mask);
-        inMask.trunc(inBits);
+        inMask = inMask.trunc(inBits);
         if (newBits.getBoolValue())
           inMask.orAssign(inSignBits);
 
-        knownVals[0].trunc(inBits);
-        knownVals[1].trunc(inBits);
+        knownVals[0] = knownVals[0].trunc(inBits);
+        knownVals[1] = knownVals[1].trunc(inBits);
 
         computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
         boolean signBitKnownZero = knownVals[0].isNegative();
         boolean signBitKnownOne = knownVals[1].isNegative();
         Util.assertion(!(signBitKnownOne && signBitKnownZero));
         inMask = new APInt(mask);
-        inMask.trunc(inBits);
+        inMask = inMask.trunc(inBits);
         knownVals[0].andAssign(inMask);
         knownVals[1].andAssign(inMask);
 
-        knownVals[0].zext(bitwidth);
-        knownVals[1].zext(bitwidth);
+        knownVals[0] = knownVals[0].zext(bitwidth);
+        knownVals[1] = knownVals[1].zext(bitwidth);
 
         if (signBitKnownZero)
           knownVals[0].orAssign(newBits);
@@ -1713,24 +1713,24 @@ public class SelectionDAG {
         EVT inVT = op.getOperand(0).getValueType();
         int inBits = inVT.getSizeInBits();
         APInt inMask = new APInt(mask);
-        inMask.trunc(inBits);
-        knownVals[0].trunc(inBits);
-        knownVals[1].trunc(inBits);
+        inMask = inMask.trunc(inBits);
+        knownVals[0] = knownVals[0].trunc(inBits);
+        knownVals[1] = knownVals[1].trunc(inBits);
         computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
-        knownVals[0].zext(bitwidth);
-        knownVals[1].zext(bitwidth);
+        knownVals[0] = knownVals[0].zext(bitwidth);
+        knownVals[1] = knownVals[1].zext(bitwidth);
         break;
       }
       case ISD.TRUNCATE: {
         EVT inVT = op.getOperand(0).getValueType();
         int inBits = inVT.getSizeInBits();
         APInt inMask = new APInt(mask);
-        inMask.zext(inBits);
-        knownVals[0].zext(inBits);
-        knownVals[1].zext(inBits);
+        inMask = inMask.zext(inBits);
+        knownVals[0] = knownVals[0].zext(inBits);
+        knownVals[1] = knownVals[1].zext(inBits);
         computeMaskedBits(op.getOperand(0), inMask, knownVals, depth + 1);
-        knownVals[0].trunc(bitwidth);
-        knownVals[1].trunc(bitwidth);
+        knownVals[0] = knownVals[0].trunc(bitwidth);
+        knownVals[1] = knownVals[1].trunc(bitwidth);
         break;
       }
       case ISD.AssertZext: {

@@ -713,12 +713,12 @@ public final class LLLexer {
       if (buffer.getCharAt(tokStart) == '-') {
         int minBits = tmp.getMinSignedBits();
         if (minBits > 0 && minBits < numBits)
-          tmp.trunc(minBits);
+          tmp = tmp.trunc(minBits);
         apsIntVal = new APSInt(tmp, false);
       } else {
         int activeBits = tmp.getActiveBits();
         if (activeBits > 0 && activeBits < numBits)
-          tmp.trunc(activeBits);
+          tmp = tmp.trunc(activeBits);
         apsIntVal = new APSInt(tmp, true);
       }
       return APSInt;

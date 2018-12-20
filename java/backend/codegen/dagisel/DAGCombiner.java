@@ -2689,11 +2689,11 @@ public class DAGCombiner {
         ConstantSDNode cst = (ConstantSDNode) n101.getNode();
         EVT truncVT = n1.getValueType();
         SDValue n100 = n1.getOperand(0).getOperand(0);
-        APInt trunc = cst.getAPIntValue();
-        trunc.trunc(truncVT.getSizeInBits());
+        APInt truncVal = cst.getAPIntValue();
+        truncVal = truncVal.trunc(truncVT.getSizeInBits());
         return dag.getNode(ISD.SRL, vt, n0, dag.getNode(ISD.AND, truncVT,
             dag.getNode(ISD.TRUNCATE, truncVT, n100),
-            dag.getConstant(trunc, truncVT, false)));
+            dag.getConstant(truncVal, truncVT, false)));
       }
     }
 
@@ -2738,7 +2738,7 @@ public class DAGCombiner {
         EVT truncVT = n1.getValueType();
         SDValue n100 = n1.getOperand(0).getOperand(0);
         APInt trunc = n101C.getAPIntValue();
-        trunc.trunc(truncVT.getSizeInBits());
+        trunc = trunc.trunc(truncVT.getSizeInBits());
         return dag.getNode(ISD.SHL, vt, n0,
             dag.getNode(ISD.AND, truncVT, dag.getNode(ISD.TRUNCATE, truncVT, n100),
                 dag.getConstant(trunc, truncVT, false)));
@@ -3396,7 +3396,7 @@ public class DAGCombiner {
     if (c1 != null && op0.getOpcode() == ISD.ANY_EXTEND) {
       SDValue op00 = op0.getOperand(0);
       APInt mask = c1.getAPIntValue().not();
-      mask.trunc(op00.getValueSizeInBits());
+      mask = mask.trunc(op00.getValueSizeInBits());
       if (dag.maskedValueIsZero(op00, mask)) {
         SDValue zext = dag.getNode(ISD.ZERO_EXTEND, op0.getValueType(),
             op00);

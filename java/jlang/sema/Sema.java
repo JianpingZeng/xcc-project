@@ -1559,7 +1559,7 @@ public final class Sema implements DiagnosticParseTag,
 
         if (initVal.getBitWidth() > intWidth) {
           APSInt v = new APSInt(initVal);
-          v.trunc(intWidth);
+          v = new APSInt(v.trunc(intWidth), v.isUnsigned());
           v.extend(initVal.getBitWidth());
           if (v.ne(initVal))
             diag(ecd.getLocation(), ext_enum_value_not_int).emit();

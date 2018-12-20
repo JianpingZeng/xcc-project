@@ -1805,7 +1805,7 @@ public abstract class TargetLowering {
           return dag.getSetCC(vt, lhs.getOperand(0), lhs.getOperand(1), ccT);
         }
         if ((lhs.getOpcode() == ISD.XOR || lhs.getOpcode() == ISD.AND) &&
-            lhs.getOperand(0).getOpcode() == ISD.XOR &
+            lhs.getOperand(0).getOpcode() == ISD.XOR &&
                 lhs.getOperand(1).equals(lhs.getOperand(0).getOperand(1)) &&
             lhs.getOperand(1).getNode() instanceof ConstantSDNode &&
             ((ConstantSDNode) lhs.getOperand(1).getNode()).getAPIntValue().eq(1)) {
@@ -2279,7 +2279,7 @@ public abstract class TargetLowering {
       case ISD.ZERO_EXTEND: {
         int operandBitWidth = op.getOperand(0).getValueSizeInBits();
         APInt inMask = new APInt(newMask);
-        inMask.trunc(operandBitWidth);
+        inMask = inMask.trunc(operandBitWidth);
 
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - operandBitWidth).
             and(newMask);
@@ -2291,8 +2291,8 @@ public abstract class TargetLowering {
           return true;
         }
         Util.assertion(res[0].add(res[1]).eq(0), "Bits known to be one AND zero?");
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
         res[0].orAssign(newBits);
         break;
       }
@@ -2309,12 +2309,12 @@ public abstract class TargetLowering {
 
         APInt inDemandedBits = inMask.and(newMask);
         inDemandedBits.orAssign(inSignBit);
-        inDemandedBits.trunc(inBits);
+        inDemandedBits = inDemandedBits.trunc(inBits);
         if (simplifyDemandedBits(op.getOperand(0), inDemandedBits,
             tlo, res, depth + 1))
           return true;
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
 
         if (res[0].intersects(inSignBit)) {
           return tlo.combineTo(op, tlo.dag.getNode(ISD.ZERO_EXTEND,
@@ -2332,21 +2332,21 @@ public abstract class TargetLowering {
       case ISD.ANY_EXTEND: {
         int operandBitWidth = op.getOperand(0).getValueSizeInBits();
         APInt inMask = newMask;
-        inMask.trunc(operandBitWidth);
+        inMask = inMask.trunc(operandBitWidth);
         if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth + 1))
           return true;
         Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
         break;
       }
       case ISD.TRUNCATE: {
-        APInt truncMask = newMask;
-        truncMask.zext(op.getOperand(0).getValueSizeInBits());
+        int operandBitWidth = op.getOperand(0).getValueType().getScalarType().getSizeInBits();
+        APInt truncMask = newMask.zext(operandBitWidth);
         if (simplifyDemandedBits(op.getOperand(0), truncMask, tlo, res, depth + 1))
           return true;
-        res[0].trunc(bitwidth);
-        res[1].trunc(bitwidth);
+        res[0] = res[0].trunc(bitwidth);
+        res[1] = res[1].trunc(bitwidth);
 
         if (op.getOperand(0).getNode().hasOneUse()) {
           SDValue in = op.getOperand(0);
@@ -2361,7 +2361,7 @@ public abstract class TargetLowering {
                 APInt highBits = APInt.getHighBitsSet(inBitwidth,
                     inBitwidth - bitwidth);
                 highBits = highBits.lshr(shAmt.getZExtValue());
-                highBits.trunc(bitwidth);
+                highBits = highBits.trunc(bitwidth);
 
                 if (shAmt.getZExtValue() < bitwidth &&
                     highBits.and(newMask).eq(0)) {

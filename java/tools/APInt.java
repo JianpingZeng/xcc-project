@@ -619,18 +619,12 @@ public class APInt implements Cloneable {
    */
   public APInt zext(int width) {
     Util.assertion(width > bitWidth, "Invalid APInt ZeroExtend request");
-    int wordBefore = getNumWords();
-    bitWidth = width;
-    int wordAfter = getNumWords();
-    if (wordBefore != wordAfter) {
-      long[] newVal = new long[wordAfter];
-      if (wordBefore == 1)
-        newVal[0] = val;
-      else
-        System.arraycopy(pVal, 0, newVal, 0, pVal.length);
-      pVal = newVal;
-    }
-    return this;
+    if (width <= APINT_BITS_PER_WORD)
+      return new APInt(width, val);
+
+    APInt result = new APInt(new long[getNumWords(width)], width);
+    System.arraycopy(getRawData(), 0, result.pVal, 0, getNumWords());
+    return result;
   }
 
   public APInt sext(int width) {
@@ -681,21 +675,20 @@ public class APInt implements Cloneable {
     Util.assertion(width < bitWidth, "Invalid APInt Truncate request");
     Util.assertion(width > 0, " Can't truncate to 0 bits");
 
-    int wordsBefore = getNumWords();
-    bitWidth = width;
-    int wordsAfter = getNumWords();
-    if (wordsBefore != wordsAfter) {
-      if (wordsAfter == 1) {
-        val = pVal[0];
-        pVal = null;
-      } else {
-        long[] newVal = new long[wordsAfter];
-        for (int i = 0; i < wordsAfter; i++)
-          newVal[i] = pVal[i];
-        pVal = newVal;
-      }
-    }
-    return clearUnusedBits();
+    if (width <= APINT_BITS_PER_WORD)
+      return new APInt(width, getRawData()[0]);
+
+    APInt result = new APInt(new long[getNumWords(width)], width);
+    // copy full words.
+    int numWords = width / APINT_BITS_PER_WORD;
+    System.arraycopy(pVal, 0, result.pVal, 0, numWords);
+
+    // truncate and copy any partial word.
+    int bits = (0 - width) % APINT_BITS_PER_WORD;
+    if (bits != 0)
+      result.pVal[numWords] = pVal[numWords] << bits >>> bits;
+
+    return result;
   }
 
   public APInt zextOrTrunc(int width) {
