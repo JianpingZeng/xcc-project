@@ -799,6 +799,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
           SUnit opSU = sunits.get(opN.getNodeID());
           Util.assertion(opSU != null);
           if (Objects.equals(opSU, su)) continue;
+          if (n.getOperand(j).getValueType().equals(new EVT(MVT.Flag)))
+            continue;
 
           EVT opVT = n.getOperand(j).getValueType();
           Util.assertion(!opVT.equals(new EVT(MVT.Flag)));

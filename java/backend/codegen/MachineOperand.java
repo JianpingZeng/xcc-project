@@ -631,9 +631,22 @@ public class MachineOperand {
     MachineRegisterInfo regInfo = parentMI.getRegInfo();
     MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
     if (head.equals(this)) {
-      if (head.reg.next != null)
-        head.reg.next.reg.prev = null;
-      regInfo.updateRegUseDefListHead(getReg(), head.reg.next);
+      if (head.reg.next != null) {
+        head.reg.next.reg.prev = head.reg.prev;
+        if (head.reg.prev != null)
+          head.reg.prev.reg.next = head.reg.next;
+
+        regInfo.updateRegUseDefListHead(getReg(), head.reg.next);
+        head.reg.next = null;
+      }
+      else if (head.reg.prev != null) {
+        regInfo.updateRegUseDefListHead(getReg(), head.reg.prev);
+        head.reg.prev.reg.next = head.reg.next;
+        head.reg.prev = null;
+      }
+      else
+        regInfo.updateRegUseDefListHead(getReg(), null);
+
     } else {
       if (reg.prev != null) {
         Util.assertion(reg.prev.getReg() == getReg(), "Corrupt reg use/def chain!");

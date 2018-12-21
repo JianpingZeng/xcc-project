@@ -1305,18 +1305,18 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectLEAAddr(SDNode op, SDValue val, SDValue[] comp) {
+  protected boolean selectLEAAddr(SDNode root, SDValue n, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     X86ISelAddressMode am = new X86ISelAddressMode();
-    SDValue copy = am.segment;
+    SDValue backup = am.segment.clone();
     SDValue t = curDAG.getRegister(0, new EVT(MVT.i32));
     am.segment = t;
-    if (matchAddress(val, am))
+    if (matchAddress(n, am))
       return false;
     Util.assertion(t.equals(am.segment));
-    am.segment = copy;
+    am.segment = backup;
 
-    EVT vt = val.getValueType();
+    EVT vt = n.getValueType();
     int complexity = 0;
     if (am.baseType == X86ISelAddressMode.BaseType.RegBase) {
       if (am.base.reg.getNode() != null)
@@ -1349,7 +1349,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     SDValue[] temp = new SDValue[5];
     temp[4] = new SDValue();    // segment.
     getAddressOperands(am, temp);
-    System.arraycopy(comp, 0, temp, 0, 4);
+    System.arraycopy(temp, 0, comp, 0, 4);
     return true;
   }
 

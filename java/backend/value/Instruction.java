@@ -2231,8 +2231,12 @@ public abstract class Instruction extends User {
       return operand(index + ArgumentOffset);
     }
 
+    /**
+     * Return the called function, if return null indicates this is an indirect call.
+     * @return
+     */
     public Function getCalledFunction() {
-      return (Function) operand(0);
+      return operand(0) instanceof Function ? (Function) operand(0) : null;
     }
 
     public Value getCalledValue() {
