@@ -253,8 +253,8 @@ public class MCRegisterInfo {
    * @return
    */
   public MCRegisterClass getRegClass(int i) {
-    Util.assertion(i >= 1 && i <= regClasses.length);
-    return regClasses[i - 1];
+    Util.assertion(i >= 0 && i <= regClasses.length);
+    return i != 0 ? regClasses[i - 1] : null;
   }
   /**
    * This method should return the register where the return

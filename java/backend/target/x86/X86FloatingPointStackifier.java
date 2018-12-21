@@ -301,7 +301,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private int calcLiveInMask(MachineBasicBlock mbb) {
     int mask = 0;
     for (TIntIterator itr = mbb.getLiveIns().iterator(); itr.hasNext(); ) {
-      int reg = itr.next() - X86GenRegisterNames.FP0;
+      int fpr = itr.next();
+      if (fpr < X86GenRegisterNames.FP0)
+        continue;
+      int reg = fpr - X86GenRegisterNames.FP0;
       if (reg < 8)
         mask |= 1 << reg;
     }

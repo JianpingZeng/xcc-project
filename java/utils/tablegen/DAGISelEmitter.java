@@ -66,8 +66,7 @@ public final class DAGISelEmitter extends TableGenBackend {
           "Covering for " + targetName + ".", os);
 
       // Add all the patterns to a temporary list so we can sort them.
-      ArrayList<PatternToMatch> patterns = new ArrayList<>();
-      patterns.addAll(cgp.getPatternsToMatch());
+      ArrayList<PatternToMatch> patterns = new ArrayList<>(cgp.getPatternsToMatch());
 
       // We want to process the matches in order of minimal cost.  Sort the patterns
       // so the least cost one is at the start.

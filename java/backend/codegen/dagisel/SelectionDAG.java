@@ -2379,11 +2379,10 @@ public class SelectionDAG {
   public SDNode morphNodeTo(SDNode n,
                             int opc,
                             SDVTList vts,
-                            ArrayList<SDValue> ops,
-                            int numOps) {
+                            ArrayList<SDValue> ops) {
     SDValue[] tmp = new SDValue[ops.size()];
     ops.toArray(tmp);
-    return morphNodeTo(n, opc, vts, tmp, numOps);
+    return morphNodeTo(n, opc, vts, tmp, tmp.length);
   }
 
   public SDNode morphNodeTo(SDNode n, int opc, SDVTList vts, SDValue[] ops,

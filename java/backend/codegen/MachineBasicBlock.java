@@ -368,8 +368,7 @@ public class MachineBasicBlock {
   public void print(FormattedOutputStream os, PrefixPrinter prefix) {
     MachineFunction mf = getParent();
     if (mf == null) {
-      os.printf("Can't print out MachineBasicBlock because parent MachineFunction is null\n");
-      ;
+      os.println("Can't print out MachineBasicBlock because parent MachineFunction is null");
       return;
     }
 
@@ -386,7 +385,7 @@ public class MachineBasicBlock {
     if (!liveIns.isEmpty()) {
       os.printf("Live Ins:");
       for (int i = 0, e = liveIns.size(); i < e; i++)
-        outputReg(os, liveIns.get(i));
+        outputReg(os, liveIns.get(i), getParent().getTarget().getRegisterInfo());
 
       os.println();
     }
@@ -424,7 +423,7 @@ public class MachineBasicBlock {
   private static void outputReg(FormattedOutputStream os, int reg, TargetRegisterInfo tri) {
     if (reg == 0 || TargetRegisterInfo.isPhysicalRegister(reg)) {
       if (tri != null)
-        os.printf(" %%s", tri.getName(reg));
+        os.printf(" %%%s", tri.getName(reg));
       else
         os.printf(" %%reg(%d)", reg);
     } else {

@@ -1400,7 +1400,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
               recordedNodes.add(new SDValue(res, i));
             }
           } else {
-            res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops, emitNodeInfo);
+            res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops);
           }
 
           if ((emitNodeInfo & OPFL_FlagOutput) != 0) {

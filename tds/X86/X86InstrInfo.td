@@ -3243,9 +3243,6 @@ def MOV16r0  : I<0x31, MRMInitReg,  (outs GR16:$dst), (ins),
 def MOV32r0  : I<0x31, MRMInitReg,  (outs GR32:$dst), (ins),
                  "",
                  [(set GR32:$dst, 0)]>;
-def MOV64r0  : I<0x31, MRMInitReg, (outs GR64:$dst), (ins),
-                 "",
-                 [(set GR64:$dst, 0)]>;
 }
 
 //===----------------------------------------------------------------------===//
