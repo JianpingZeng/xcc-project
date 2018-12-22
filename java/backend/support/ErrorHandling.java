@@ -34,7 +34,7 @@ public class ErrorHandling {
     if (errorHandler != null)
       errorHandler.apply(diagEngineer, msg);
     else
-      System.err.printf(msg);
+      System.err.println(msg);
     // It should terminate program immediately when backend error occurs.
     System.exit(-1);
   }
