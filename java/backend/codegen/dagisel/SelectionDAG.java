@@ -93,7 +93,7 @@ public class SelectionDAG {
   }
 
   private void add(int pos, SDNode n) {
-    Util.assertion(pos >= 0 && pos < allNodes.size(), "Postion to be inserted out of range!");
+    Util.assertion(pos >= 0 && pos < allNodes.size(), "Position to be inserted out of range!");
     if (allNodes.contains(n)) return;
     allNodes.add(pos, n);
   }
@@ -3627,7 +3627,7 @@ public class SelectionDAG {
     Util.assertion(index != -1);
     int nIdx = allNodes.indexOf(n);
     Util.assertion(nIdx != -1);
-    add(index, n);
+    allNodes.add(index, n);
     if (index < nIdx)
       ++nIdx;
     allNodes.remove(nIdx);

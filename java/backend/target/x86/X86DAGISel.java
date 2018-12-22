@@ -902,7 +902,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean matchAddress(SDValue val, X86ISelAddressMode am) {
+  private boolean matchAddress(SDValue val, X86ISelAddressMode am) {
     if (matchAddressRecursively(val, am, 0))
       return true;
 
