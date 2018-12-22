@@ -593,9 +593,11 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.print(header);
     os.print("\t@Override\n\tpublic void printInst(MCInst mi) \n\t{\n");
 
-    os.print("\t\t// Emit the opcode for the instruction.\n\n"
-        + "\t\tlong bits = opInfo[mi.getOpcode()][0];\n"
-        + "\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n\n");
+    os.println("\t\t// Emit the opcode for the instruction.");
+    os.println("\t\tos.print('\\t')");
+    os.println("\t\tlong bits = opInfo[mi.getOpcode()][0];");
+    os.println("\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n");
+
     int asmStrBitsMask = (1 << asmStrBits) - 1;
     os.printf("\t\t// Starting index of asm namespace encoded into %d bit%n", asmStrBits);
 
