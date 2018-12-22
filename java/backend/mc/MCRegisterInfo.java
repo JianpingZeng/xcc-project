@@ -9,6 +9,7 @@
 
 package backend.mc;
 
+import backend.codegen.EVT;
 import backend.codegen.MachineFunction;
 import backend.target.RegClassInfo;
 import tools.BitMap;
@@ -268,5 +269,13 @@ public class MCRegisterInfo {
 
   public RegClassInfo getRegClassInfo(MCRegisterClass rc) {
     return regClassInfo[hwMode * getNumRegClasses() + rc.getID() - 1];
+  }
+
+  public boolean hasType(MCRegisterClass rc, EVT vt) {
+    for (int v : getRegClassInfo(rc).vts) {
+      if (v == vt.getSimpleVT().simpleVT)
+        return true;
+    }
+    return false;
   }
 }

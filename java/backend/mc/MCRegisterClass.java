@@ -166,8 +166,7 @@ public abstract class MCRegisterClass {
       MCRegisterClass rc,
       int subIdx, EVT vt) {
     for (MCRegisterClass itr : superRegClasses) {
-      if (tri.isLegalTypeForRegClass(this, vt.getSimpleVT()) &&
-          itr.getSubRegisterRegClass(subIdx).equals(rc))
+      if (tri.hasType(itr, vt) && itr.getSubRegisterRegClass(subIdx).equals(rc))
         return itr;
     }
     Util.assertion("Couldn't find the register class!");

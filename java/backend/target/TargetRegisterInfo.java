@@ -27,7 +27,7 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
 
     MCRegisterClass bestRC = null;
     for (MCRegisterClass rc : regClasses) {
-      if ((vt.equals(new EVT(MVT.Other)) || isLegalTypeForRegClass(rc, vt.getSimpleVT())) &&
+      if ((vt.equals(new EVT(MVT.Other)) || hasType(rc, vt)) &&
           rc.contains(reg) && (bestRC == null || bestRC.hasSuperClass(rc))) {
         bestRC = rc;
       }
@@ -239,14 +239,6 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
 
   public int[] getRegisterClassVTs(MCRegisterClass rc) {
     return getRegClassInfo(rc).vts;
-  }
-
-  public boolean isLegalTypeForRegClass(MCRegisterClass rc, MVT vt) {
-    for (int v : getRegClassInfo(rc).vts) {
-      if (v == vt.simpleVT)
-        return true;
-    }
-    return false;
   }
 
   public MCRegisterClass getCommonSubClass(
