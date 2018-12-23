@@ -1020,8 +1020,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             if (!result.get())
               break;
 
-            System.err.printf("  Skipped scope entry at index %d continuing at %d\n",
-                matcherIndex, failIndex);
+            if (Util.DEBUG) {
+              System.err.printf("  Skipped scope entry at index %d continuing at %d\n",
+                  matcherIndex, failIndex);
+            }
 
             // Otherwise, we know that this case of the Scope is guaranteed to fail,
             // move to the next case.
