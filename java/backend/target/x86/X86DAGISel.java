@@ -348,7 +348,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
         // Copy the high half of the result, if it is needed.
         if (!new SDValue(node, 1).isUseEmpty()) {
-          SDValue result = new SDValue();
+          SDValue result;
           if (hiReg == X86GenRegisterNames.AH & subtarget.is64Bit()) {
             // Prevent use of AH in a REX instruction by referencing AX instead.
             // Shift it down 8 bits.

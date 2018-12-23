@@ -1385,8 +1385,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if ((emitNodeInfo & OPFL_FlagInput) != 0 && inputFlag.getNode() != null)
             ops.add(inputFlag);
 
-          SDNode res = null;
-          if (opcode != OPC_MorphNodeTo) {
+          MachineSDNode res = null;
+          /*if (opcode != OPC_MorphNodeTo)*/ {
             // If this is a normal EmitNode command, just create the new node and
             // add the results to the RecordedNodes list.
             SDValue[] tempOps = new SDValue[ops.size()];
@@ -1399,14 +1399,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                 break;
               recordedNodes.add(new SDValue(res, i));
             }
-          } else {
+          }/* else {
             res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops);
-          }
+          }*/
 
           if ((emitNodeInfo & OPFL_FlagOutput) != 0) {
             inputFlag = new SDValue(res, vts.size() - 1);
             if ((emitNodeInfo & OPFL_Chain) != 0)
-              inputChain = new SDValue(res, vts.size() - 1);
+              inputChain = new SDValue(res, vts.size() - 2);
           } else if ((emitNodeInfo & OPFL_Chain) != 0)
             inputChain = new SDValue(res, vts.size() - 1);
 
@@ -1415,7 +1415,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if ((emitNodeInfo & OPFL_MemRefs) != 0) {
             MachineMemOperand[] refs = new MachineMemOperand[matchedMemRefs.size()];
             matchedMemRefs.toArray(refs);
-            ((MachineSDNode) res).setMemRefs(refs);
+            res.setMemRefs(refs);
           }
 
           // If this was a MorphNodeTo then we're completely done!

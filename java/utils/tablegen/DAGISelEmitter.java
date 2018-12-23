@@ -37,6 +37,7 @@ import java.util.ArrayList;
 
 import static utils.tablegen.DAGISelMatcherEmitter.emitMatcherTable;
 import static utils.tablegen.DAGISelMatcherGen.convertPatternToMatcher;
+import static utils.tablegen.DAGISelMatcherOpt.optimizeMatcher;
 
 /**
  * This is class definition used to generate a DFA-based instruction selector
@@ -93,6 +94,7 @@ public final class DAGISelEmitter extends TableGenBackend {
       }
 
       Matcher theMatcher = new Matcher.ScopeMatcher(patternMatchers);
+      theMatcher = optimizeMatcher(theMatcher, cgp);
       emitMatcherTable(theMatcher, cgp, os);
     }
   }

@@ -594,7 +594,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.print("\t@Override\n\tpublic void printInst(MCInst mi) \n\t{\n");
 
     os.println("\t\t// Emit the opcode for the instruction.");
-    os.println("\t\tos.print('\\t')");
+    os.println("\t\tos.print('\\t');");
     os.println("\t\tlong bits = opInfo[mi.getOpcode()][0];");
     os.println("\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n");
 

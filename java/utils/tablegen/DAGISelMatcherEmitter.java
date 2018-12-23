@@ -501,7 +501,7 @@ public class DAGISelMatcherEmitter {
             baos = new ByteArrayOutputStream();
             tmpOS = new PrintStream(baos);
             mnm.getPattern().getDstPattern().print(tmpOS);
-            os.print(baos.toString());
+            os.println(baos.toString());
           }
         } else
           os.println();
@@ -833,52 +833,64 @@ public class DAGISelMatcherEmitter {
   private static void printMatcherTable(String table, long totalSize, PrintStream os) {
     os.printf("  private static int[] initTable%d() {\n", index++);
     os.println("    return new int[]{");
-
+    String completeMark = "OPC_CompleteMatch";
+    String morphMark = "OPC_MorphNodeTo";
     for (int i = 0, size = table.length(); i < size; ) {
-      String endMarker = "OPC_CompleteMatch";
-      int end = i + endMarker.length();
-      if (end < size && table.substring(i, end).equals(endMarker)) {
-        // separate the matcher for each complete match code piece.
-        os.print(endMarker);
-        i = end;
-        int numNewLines = 0;
-        while (i < size && numNewLines < 3) {
-          os.print(table.charAt(i));
-          if (table.charAt(i) == '\n')
-            ++numNewLines;
-          ++i;
-        }
-
-        // If we can't see any OPC_CompleteMatch in the successive part, we have to
-        // include this part into current function instead of separating it into other function
-        boolean shouldSplit = false;
-        for (int j = i; j < size - endMarker.length(); j++) {
-          if (table.substring(j, j + endMarker.length()).equals(endMarker)) {
-            shouldSplit = true;
-            break;
-          }
-        }
-
-        if (!shouldSplit) {
-          for (;i < size; i++)
-            os.print(table.charAt(i));
-        }
-
-        // Create a new initializing sub-routines.
-        os.println("    };");
-        os.println("  }");
-
-        // Checks if it is needed to create a new initializing functions.
-        if (i < size) {
-          os.printf("  private static int[] initTable%d() {\n", index++);
-          os.println("    return new int[]{");
-        }
-      } else {
+      int end;
+      String endMark;
+      int NumNewlineSkipped;
+      if (size - i > completeMark.length() && table.substring(i, i + completeMark.length()).equals(completeMark)) {
+        end = i + completeMark.length();
+        endMark = completeMark;
+        NumNewlineSkipped = 3;
+      }
+      else if (size - i > morphMark.length() && table.substring(i, i + morphMark.length()).equals(morphMark)) {
+        end = i + morphMark.length();
+        endMark = morphMark;
+        NumNewlineSkipped = 4;
+      }
+      else {
         os.print(table.charAt(i));
         ++i;
+        continue;
+      }
+
+      // separate the matcher for each complete match code piece.
+      os.print(endMark);
+      i = end;
+      int numNewLines = 0;
+      while (i < size && numNewLines < NumNewlineSkipped) {
+        os.print(table.charAt(i));
+        if (table.charAt(i) == '\n')
+          ++numNewLines;
+        ++i;
+      }
+
+      // If we can't see any OPC_CompleteMatch in the successive part, we have to
+      // include this part into current function instead of separating it into other function
+      boolean shouldSplit = false;
+      for (int j = i; j < size - endMark.length(); j++) {
+        if (table.substring(j, j + endMark.length()).equals(endMark)) {
+          shouldSplit = true;
+          break;
+        }
+      }
+
+      if (!shouldSplit) {
+        for (;i < size; i++)
+          os.print(table.charAt(i));
+      }
+
+      // Create a new initializing sub-routines.
+      os.println("    };");
+      os.println("  }");
+
+      // Checks if it is needed to create a new initializing functions.
+      if (i < size) {
+        os.printf("  private static int[] initTable%d() {\n", index++);
+        os.println("    return new int[]{");
       }
     }
-
     os.printf("  // Matcher Table size is %d bytes\n", totalSize);
   }
 
