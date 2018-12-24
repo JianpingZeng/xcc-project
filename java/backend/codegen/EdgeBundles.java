@@ -73,7 +73,7 @@ public class EdgeBundles extends MachineFunctionPass {
       }
     }
     blocks = new TIntArrayList[getNumBundles()];
-    for (int i = 0, e; i < getNumBundles(); i++)
+    for (int i = 0, e = getNumBundles(); i < e; i++)
       blocks[i] = new TIntArrayList();
 
     groupID = new TIntIntHashMap();

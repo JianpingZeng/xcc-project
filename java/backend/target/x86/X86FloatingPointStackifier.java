@@ -389,8 +389,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private static int getFPReg(MachineOperand mo) {
     Util.assertion(mo.isRegister(), "Expected an FP register!");
     int reg = mo.getReg();
-    Util.assertion(reg >= X86GenRegisterNames.FP0 && reg <= X86GenRegisterNames.FP6, "Expected FP register!");
-
+    Util.assertion(reg >= X86GenRegisterNames.FP0 &&
+        reg <= X86GenRegisterNames.FP6, "Expected FP register!");
     return reg - X86GenRegisterNames.FP0;
   }
 
@@ -891,7 +891,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
           stack[slot] = destReg;
           regMap[destReg] = slot;
         } else {
-          duplicateToTop(srcReg, destReg, itr);
+          duplicateToTop(srcReg, destReg, itr++);
         }
         break;
       }
@@ -990,8 +990,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
               || mo.getReg() > X86GenRegisterNames.FP6)
             continue;
 
-          Util.assertion(mo.isUse() && (mo.isKill() || getFPReg(mo) == firstFPRegOp || mi.killsRegister(mo.getReg())), "Ret only defs operand, and values aren't live beyond it");
-
+          Util.assertion(mo.isUse() && (mo.isKill() ||
+                  getFPReg(mo) == firstFPRegOp
+                  || mi.killsRegister(mo.getReg())),
+              "Ret only defs operand, and values aren't live beyond it");
 
           if (firstFPRegOp == ~0)
             firstFPRegOp = getFPReg(mo);
@@ -1010,15 +1012,16 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         if (liveMask == 0) return itr;
 
         if (secondFPRegOp == ~0) {
-          Util.assertion(stackTop == 1 && firstFPRegOp == getStackEntry(0), "Top of stack not the right register for RET!");
-
+          Util.assertion(stackTop == 1 && firstFPRegOp == getStackEntry(0),
+              "Top of stack not the right register for RET!");
 
           stackTop = 0;
           return itr;
         }
 
         if (stackTop == 1) {
-          Util.assertion(firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0), "Stack misconfiguration for RET!");
+          Util.assertion(firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0),
+              "Stack misconfiguration for RET!");
 
           int newReg = getScratchReg();
           duplicateToTop(firstFPRegOp, newReg, itr);

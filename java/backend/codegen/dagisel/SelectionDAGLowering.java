@@ -801,8 +801,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       if (bo.hasOneUses() && (bo.getOpcode() == And || bo.getOpcode() == Or)) {
         findMergedConditions(bo, succ0MBB, succ1MBB, curMBB, bo.getOpcode());
 
-        Util.assertion(switchCases.get(0).thisMBB.equals(curMBB), "Unexpected lowering!");
-
+        Util.assertion(switchCases.isEmpty() || switchCases.get(0).thisMBB.equals(curMBB),
+            "Unexpected lowering!");
 
         if (shouldEmitAsBranches(switchCases)) {
           switchCases.forEach(cb -> {

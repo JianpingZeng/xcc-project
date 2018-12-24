@@ -33,6 +33,7 @@ import java.io.PrintStream;
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
+import static backend.support.BackendCmdOptions.PrintAfterAll;
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
@@ -59,7 +60,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
   private static void printAndVerify(PassManagerBase pm,
                                      boolean allowDoubleDefs, String banner) {
-    if (PrintMachineCode.value)
+    if (PrintMachineCode.value || PrintAfterAll.value)
       pm.add(createMachineFunctionPrinterPass(System.err, banner));
 
     if (VerifyMachineCode.value)
@@ -118,7 +119,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
     // Perform register allocation to convert to a concrete x86 representation
     pm.add(BackendCmdOptions.createRegisterAllocator());
-
     // Print machine code after register allocation.
     printAndVerify(pm, false,
         "# *** IR dump after Register Allocator ***:\n");

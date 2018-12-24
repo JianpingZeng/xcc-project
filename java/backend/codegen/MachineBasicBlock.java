@@ -83,6 +83,10 @@ public class MachineBasicBlock {
     return insts.get(index);
   }
 
+  public int getIndexOf(MachineInstr mi) {
+    return mi != null ? insts.indexOf(mi) : -1;
+  }
+
   private void addNodeToList(MachineInstr instr) {
     Util.assertion(instr.getParent() == null, "machine instruction already have parent!");
     instr.setParent(this);
