@@ -21,6 +21,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
+import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.type.Type;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.LoadExtType.*;
 import static tools.Util.bitsToDouble;
 
@@ -866,7 +868,7 @@ public class SelectionDAGLegalizer {
 
     if (node.getOpcode() == ISD.CALLSEQ_START)
       return node;
-    Util.assertion(node.getOperand(0).getValueType().equals(new EVT(MVT.Other)), "Node doesn't have a token chain argument!");
+    Util.assertion(node.getOperand(0).getValueType().equals(new EVT(MVT.Other)), "node doesn't have a token chain argument!");
 
     return findCallStartFromCallEnd(node.getOperand(0).getNode());
   }
@@ -1053,7 +1055,7 @@ public class SelectionDAGLegalizer {
    * @param vt
    * @param values
    */
-  private void legalizeSetCCCondCode(EVT vt, SDValue[] values) {
+  private void legalizeSetCCCondCode(EVT vt, SDValue... values) {
     Util.assertion(values != null && values.length == 3);
     SDValue lhs = values[0], rhs = values[1], cc = values[2];
 
@@ -1069,7 +1071,7 @@ public class SelectionDAGLegalizer {
           default:
             Util.shouldNotReachHere("Don't know how to expand this condition!");
           case SETOEQ:
-            cc1 = CondCode.SETEQ;
+            cc1 = SETEQ;
             cc2 = CondCode.SETO;
             opc = ISD.AND;
             break;
@@ -1079,7 +1081,7 @@ public class SelectionDAGLegalizer {
             opc = ISD.AND;
             break;
           case SETOGE:
-            cc1 = CondCode.SETGE;
+            cc1 = SETGE;
             cc2 = CondCode.SETO;
             opc = ISD.AND;
             break;
@@ -1094,12 +1096,12 @@ public class SelectionDAGLegalizer {
             opc = ISD.AND;
             break;
           case SETONE:
-            cc1 = CondCode.SETNE;
+            cc1 = SETNE;
             cc2 = CondCode.SETO;
             opc = ISD.AND;
             break;
           case SETUEQ:
-            cc1 = CondCode.SETEQ;
+            cc1 = SETEQ;
             cc2 = CondCode.SETUO;
             opc = ISD.OR;
             break;
@@ -1109,7 +1111,7 @@ public class SelectionDAGLegalizer {
             opc = ISD.OR;
             break;
           case SETUGE:
-            cc1 = CondCode.SETGE;
+            cc1 = SETGE;
             cc2 = CondCode.SETUO;
             opc = ISD.OR;
             break;
@@ -1124,7 +1126,7 @@ public class SelectionDAGLegalizer {
             opc = ISD.OR;
             break;
           case SETUNE:
-            cc1 = CondCode.SETNE;
+            cc1 = SETNE;
             cc2 = CondCode.SETUO;
             opc = ISD.OR;
             break;
@@ -1927,6 +1929,360 @@ public class SelectionDAGLegalizer {
           results.add(expandConstantFP(fp, true, dag, tli));
         break;
       }
+      case ISD.EXCEPTIONADDR: {
+        int reg = tli.getExceptionPointerRegister();
+        Util.assertion(reg != 0, "can't expand to unknown register!");
+        results.add(dag.getCopyFromReg(node.getOperand(0), reg, node.getValueType(0)));
+        results.add(results.get(0).getValue(1));
+        break;
+      }
+      case ISD.UREM:
+      case ISD.SREM: {
+        EVT vt = node.getValueType(0);
+        SDVTList vts = dag.getVTList(vt, vt);
+        boolean isSigned = node.getOpcode() == ISD.SREM;
+        int divOpc = isSigned ? ISD.SDIV : ISD.UDIV;
+        int divRemOpc = isSigned ? ISD.SDIVREM : ISD.UDIVREM;
+        temp2 = node.getOperand(0);
+        temp3 = node.getOperand(1);
+        if (tli.isOperationLegalOrCustom(divRemOpc, vt)) {
+          temp1 = dag.getNode(divRemOpc, vts, temp2, temp3).getValue(1);
+        } else if (tli.isOperationLegalOrCustom(divOpc, vt)) {
+          // X % Y -> X-X/Y*Y
+          temp1 = dag.getNode(divOpc, vt, temp2, temp3);
+          temp1 = dag.getNode(ISD.MUL, vt, temp1, temp3);
+          temp1 = dag.getNode(ISD.SUB, vt, temp2, temp1);
+        } else if (isSigned) {
+          temp1 = expandIntLibCall(node, true,
+              RTLIB.SREM_I8,
+              RTLIB.SREM_I16,
+              RTLIB.SREM_I32,
+              RTLIB.SREM_I64,
+              RTLIB.SREM_I128);
+        } else {
+          temp1 = expandIntLibCall(node, false,
+              RTLIB.UREM_I8,
+              RTLIB.UREM_I16,
+              RTLIB.UREM_I32,
+              RTLIB.UREM_I64,
+              RTLIB.UREM_I128);
+        }
+        results.add(temp1);
+        break;
+      }
+      case ISD.UDIV:
+      case ISD.SDIV: {
+        boolean isSigned = node.getOpcode() == ISD.SDIV;
+        int divRemOpc = isSigned ? ISD.SDIVREM : ISD.UDIVREM;
+        EVT vt = node.getValueType(0);
+        SDVTList vts = dag.getVTList(vt, vt);
+        if (tli.isOperationLegalOrCustom(divRemOpc, vt))
+          temp1 = dag.getNode(divRemOpc, vts, node.getOperand(0),
+              node.getOperand(1));
+        else if (isSigned) {
+          temp1 = expandIntLibCall(node, true,
+              RTLIB.SDIV_I8,
+              RTLIB.SDIV_I16,
+              RTLIB.SDIV_I32,
+              RTLIB.SDIV_I64,
+              RTLIB.SDIV_I128);
+        } else {
+          temp1 = expandIntLibCall(node, false,
+              RTLIB.UDIV_I8,
+              RTLIB.UDIV_I16,
+              RTLIB.UDIV_I32,
+              RTLIB.UDIV_I64,
+              RTLIB.UDIV_I128);
+        }
+        results.add(temp1);
+        break;
+      }
+      case ISD.MULHU:
+      case ISD.MULHS: {
+        int expandOpc = node.getOpcode() == ISD.MULHU ? ISD.UMUL_LOHI : ISD.SMUL_LOHI;
+        EVT vt = node.getValueType(0);
+        SDVTList vts = dag.getVTList(vt, vt);
+        Util.assertion(tli.isOperationLegalOrCustom(expandOpc, vt),
+            "If this wasn't legal, it shouldn't have been created!");
+        temp1 = dag.getNode(expandOpc, vts, node.getOperand(0), node.getOperand(1));
+        results.add(temp1);
+        break;
+      }
+      case ISD.MUL: {
+        EVT vt = node.getValueType(0);
+        SDVTList vts = dag.getVTList(vt, vt);
+        // See if multiply or divide can be lowered using two-result operations.
+        // We just need the low half of the multiply; try both the signed
+        // and int forms. If the target supports both SMUL_LOHI and
+        // UMUL_LOHI, form a preference by checking which forms of plain
+        // MULH it supports.
+        boolean HasSMUL_LOHI = tli.isOperationLegalOrCustom(ISD.SMUL_LOHI, vt);
+        boolean HasUMUL_LOHI = tli.isOperationLegalOrCustom(ISD.UMUL_LOHI, vt);
+        boolean HasMULHS = tli.isOperationLegalOrCustom(ISD.MULHS, vt);
+        boolean HasMULHU = tli.isOperationLegalOrCustom(ISD.MULHU, vt);
+        int opToUse = 0;
+        if (HasSMUL_LOHI && !HasMULHS) {
+          opToUse = ISD.SMUL_LOHI;
+        } else if (HasUMUL_LOHI && !HasMULHU) {
+          opToUse = ISD.UMUL_LOHI;
+        } else if (HasSMUL_LOHI) {
+          opToUse = ISD.SMUL_LOHI;
+        } else if (HasUMUL_LOHI) {
+          opToUse = ISD.UMUL_LOHI;
+        }
+        if (opToUse != 0) {
+          results.add(dag.getNode(opToUse, vts, node.getOperand(0),
+              node.getOperand(1)));
+          break;
+        }
+        temp1 = expandIntLibCall(node, false,
+            RTLIB.MUL_I8,
+            RTLIB.MUL_I16, RTLIB.MUL_I32,
+            RTLIB.MUL_I64, RTLIB.MUL_I128);
+        results.add(temp1);
+        break;
+      }
+      case ISD.SADDO:
+      case ISD.SSUBO: {
+        SDValue lhs = node.getOperand(0);
+        SDValue rhs = node.getOperand(1);
+        SDValue sum = dag.getNode(node.getOpcode() == ISD.SADDO ?
+                ISD.ADD : ISD.SUB, lhs.getValueType(),
+            lhs, rhs);
+        results.add(sum);
+        EVT OType = node.getValueType(1);
+
+        SDValue Zero = dag.getConstant(0, lhs.getValueType(), false);
+
+        //   lhsSign -> lhs >= 0
+        //   rhsSign -> rhs >= 0
+        //   sumSign -> sum >= 0
+        //
+        //   Add:
+        //   Overflow -> (lhsSign == rhsSign) && (lhsSign != sumSign)
+        //   Sub:
+        //   Overflow -> (lhsSign != rhsSign) && (lhsSign != sumSign)
+        //
+        SDValue lhsSign = dag.getSetCC(OType, lhs, Zero, SETGE);
+        SDValue rhsSign = dag.getSetCC(OType, rhs, Zero, SETGE);
+        SDValue SignsMatch = dag.getSetCC(OType, lhsSign, rhsSign,
+            node.getOpcode() == ISD.SADDO ?
+                SETEQ : SETNE);
+
+        SDValue sumSign = dag.getSetCC(OType, sum, Zero, SETGE);
+        SDValue SumSignNE = dag.getSetCC(OType, lhsSign, sumSign, SETNE);
+
+        SDValue cmp = dag.getNode(ISD.AND, OType, SignsMatch, SumSignNE);
+        results.add(cmp);
+        break;
+      }
+      case ISD.UADDO:
+      case ISD.USUBO: {
+        SDValue lhs = node.getOperand(0);
+        SDValue rhs = node.getOperand(1);
+        SDValue sum = dag.getNode(node.getOpcode() == ISD.UADDO ?
+                ISD.ADD : ISD.SUB, lhs.getValueType(),
+            lhs, rhs);
+        results.add(sum);
+        results.add(dag.getSetCC(node.getValueType(1), sum, lhs,
+            node.getOpcode() == ISD.UADDO ? SETULT : SETUGT));
+        break;
+      }
+      case ISD.UMULO:
+      case ISD.SMULO: {
+        EVT vt = node.getValueType(0);
+        SDValue lhs = node.getOperand(0);
+        SDValue rhs = node.getOperand(1);
+        SDValue bottomHalf = new SDValue();
+        SDValue topHalf = new SDValue();
+
+        int[][] ops = {
+            {
+                ISD.MULHU, ISD.UMUL_LOHI, ISD.ZERO_EXTEND
+            },
+            {
+                ISD.MULHS, ISD.SMUL_LOHI, ISD.SIGN_EXTEND
+            }
+        };
+
+        int isSigned = node.getOpcode() == ISD.SMULO ? 1 : 0;
+        if (tli.isOperationLegalOrCustom(ops[isSigned][0], vt)) {
+          bottomHalf = dag.getNode(ISD.MUL, vt, lhs, rhs);
+          topHalf = dag.getNode(ops[isSigned][0], vt, lhs, rhs);
+        } else if (tli.isOperationLegalOrCustom(ops[isSigned][1], vt)) {
+          bottomHalf = dag.getNode(ops[isSigned][1], dag.getVTList(vt, vt), lhs,
+              rhs);
+          topHalf = bottomHalf.getValue(1);
+        } else if (tli.isTypeLegal(EVT.getIntegerVT(vt.getSizeInBits() * 2))) {
+          EVT WideVT = EVT.getIntegerVT(vt.getSizeInBits() * 2);
+          lhs = dag.getNode(ops[isSigned][2], WideVT, lhs);
+          rhs = dag.getNode(ops[isSigned][2], WideVT, rhs);
+          temp1 = dag.getNode(ISD.MUL, WideVT, lhs, rhs);
+          bottomHalf = dag.getNode(ISD.EXTRACT_ELEMENT, vt, temp1,
+              dag.getIntPtrConstant(0));
+          topHalf = dag.getNode(ISD.EXTRACT_ELEMENT, vt, temp1,
+              dag.getIntPtrConstant(1));
+        } else {
+          // FIXME: We should be able to fall back to a libcall with an illegal
+          // type in some cases.
+          // Also, we can fall back to a division in some cases, but that's a big
+          // performance hit in the general case.
+          Util.shouldNotReachHere("Don't know how to expand this operation yet!");
+        }
+        if (isSigned != 0) {
+          temp1 = dag.getConstant(vt.getSizeInBits() - 1, new EVT(tli.getShiftAmountTy()), false);
+          temp1 = dag.getNode(ISD.SRA, vt, bottomHalf, temp1);
+          topHalf = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)), topHalf, temp1,
+              SETNE);
+        } else {
+          topHalf = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)), topHalf,
+              dag.getConstant(0, vt, false), SETNE);
+        }
+        results.add(bottomHalf);
+        results.add(topHalf);
+        break;
+      }
+      case ISD.BUILD_PAIR: {
+        EVT pairTy = node.getValueType(0);
+        temp1 = dag.getNode(ISD.ZERO_EXTEND, pairTy, node.getOperand(0));
+        temp2 = dag.getNode(ISD.ANY_EXTEND, pairTy, node.getOperand(1));
+        temp2 = dag.getNode(ISD.SHL, pairTy, temp2,
+            dag.getConstant(pairTy.getSizeInBits() / 2,
+                new EVT(tli.getShiftAmountTy()), false));
+        results.add(dag.getNode(ISD.OR, pairTy, temp1, temp2));
+        break;
+      }
+      case ISD.SELECT:
+        temp1 = node.getOperand(0);
+        temp2 = node.getOperand(1);
+        temp3 = node.getOperand(2);
+        if (temp1.getOpcode() == ISD.SETCC) {
+          temp1 = dag.getSelectCC(temp1.getOperand(0), temp1.getOperand(1),
+              temp2, temp3, ((CondCodeSDNode) (temp1.getOperand(2)).getNode()).getCondition());
+        } else {
+          temp1 = dag.getSelectCC(temp1,
+              dag.getConstant(0, temp1.getValueType(), false),
+              temp2, temp3, SETNE);
+        }
+        results.add(temp1);
+        break;
+      case ISD.BR_JT: {
+        SDValue chain = node.getOperand(0);
+        SDValue table = node.getOperand(1);
+        SDValue index = node.getOperand(2);
+
+        EVT pty = new EVT(tli.getPointerTy());
+        TargetData td = dag.getMachineFunction().getTarget().getTargetData();
+        int EntrySize = dag.getMachineFunction().getJumpTableInfo().getEntrySize(td);
+
+        index = dag.getNode(ISD.MUL, pty,
+            index, dag.getConstant(EntrySize, pty, false));
+        SDValue addr = dag.getNode(ISD.ADD, pty, index, table);
+
+        EVT memVT = EVT.getIntegerVT(EntrySize * 8);
+        SDValue ld = dag.getExtLoad(SEXTLOAD, pty, chain, addr,
+            PseudoSourceValue.getJumpTable(), 0, memVT,
+            false, 0);
+        addr = ld;
+        if (tli.getTargetMachine().getRelocationModel() == TargetMachine.RelocModel.PIC_) {
+          // For PIC, the sequence is:
+          // BRIND(load(Jumptable + index) + RelocBase)
+          // RelocBase can be JumpTable, GOT or some sort of global base.
+          addr = dag.getNode(ISD.ADD, pty, addr,
+              tli.getPICJumpTableRelocBase(table, dag));
+        }
+        temp1 = dag.getNode(ISD.BRIND, new EVT(MVT.Other), ld.getValue(1), addr);
+        results.add(temp1);
+        break;
+      }
+      case ISD.BRCOND:
+        // Expand brcond's setcc into its constituent parts and create a BR_CC
+        // node.
+        temp1 = node.getOperand(0);
+        temp2 = node.getOperand(1);
+        if (temp2.getOpcode() == ISD.SETCC) {
+          temp1 = dag.getNode(ISD.BR_CC,
+              new EVT(MVT.Other),
+              temp1, temp2.getOperand(2),
+              temp2.getOperand(0),
+              temp2.getOperand(1),
+              node.getOperand(2));
+        } else {
+          temp1 = dag.getNode(ISD.BR_CC, new EVT(MVT.Other), temp1,
+              dag.getCondCode(SETNE), temp2,
+              dag.getConstant(0, temp2.getValueType(), false),
+              node.getOperand(2));
+        }
+        results.add(temp1);
+        break;
+      case ISD.SETCC: {
+        temp1 = node.getOperand(0);
+        temp2 = node.getOperand(1);
+        temp3 = node.getOperand(2);
+        legalizeSetCCCondCode(node.getValueType(0), temp1, temp2, temp3);
+
+        // If we expanded the SETCC into an AND/OR, return the new node
+        if (temp2.getNode() == null) {
+          results.add(temp1);
+          break;
+        }
+
+        // Otherwise, SETCC for the given comparison type must be completely
+        // illegal; expand it into a SELECT_CC.
+        EVT vt = node.getValueType(0);
+        temp1 = dag.getNode(ISD.SELECT_CC, vt, temp1, temp2,
+            dag.getConstant(1, vt, false), dag.getConstant(0, vt, false), temp3);
+        results.add(temp1);
+        break;
+      }
+      case ISD.SELECT_CC: {
+        temp1 = node.getOperand(0);   // lhs
+        temp2 = node.getOperand(1);   // rhs
+        temp3 = node.getOperand(2);   // True
+        temp4 = node.getOperand(3);   // False
+        SDValue CC = node.getOperand(4);
+
+        legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp1.getValueType())),
+            temp1, temp2, CC);
+
+        Util.assertion(temp2.getNode() == null, "Can't legalize SELECT_CC with legal condition!");
+        temp2 = dag.getConstant(0, temp1.getValueType(), false);
+        CC = dag.getCondCode(SETNE);
+        temp1 = dag.getNode(ISD.SELECT_CC, node.getValueType(0), temp1, temp2,
+            temp3, temp4, CC);
+        results.add(temp1);
+        break;
+      }
+      case ISD.BR_CC: {
+        temp1 = node.getOperand(0);              // Chain
+        temp2 = node.getOperand(2);              // lhs
+        temp3 = node.getOperand(3);              // rhs
+        temp4 = node.getOperand(1);              // CC
+        legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp2.getValueType())),
+            temp2, temp3, temp4);
+        lastCALLSEQ_END = dag.getEntryNode();
+
+        Util.assertion(temp3.getNode() == null, "Can't legalize BR_CC with legal condition!");
+        temp3 = dag.getConstant(0, temp2.getValueType(), false);
+        temp4 = dag.getCondCode(SETNE);
+        temp1 = dag.getNode(ISD.BR_CC, node.getValueType(0), temp1, temp4, temp2,
+            temp3, node.getOperand(4));
+        results.add(temp1);
+        break;
+      }
+      case ISD.GLOBAL_OFFSET_TABLE:
+      case ISD.GlobalAddress:
+      case ISD.GlobalTLSAddress:
+      case ISD.ExternalSymbol:
+      case ISD.ConstantPool:
+      case ISD.JumpTable:
+      case ISD.INTRINSIC_W_CHAIN:
+      case ISD.INTRINSIC_WO_CHAIN:
+      case ISD.INTRINSIC_VOID:
+        // FIXME: Custom lowering for these operations shouldn't return null!
+        for (int i = 0, e = node.getNumValues(); i != e; ++i)
+          results.add(new SDValue(node, i));
+        break;
       default:
         if (Util.DEBUG) {
           node.dump(dag);
@@ -2011,10 +2367,14 @@ public class SelectionDAGLegalizer {
   }
 
   private SDValue expandIntLibCall(SDNode node, boolean isSigned,
-                                   RTLIB callI16, RTLIB callI32,
-                                   RTLIB callI64, RTLIB callI128) {
+                                   RTLIB callI8, RTLIB callI16,
+                                   RTLIB callI32, RTLIB callI64,
+                                   RTLIB callI128) {
     RTLIB lc = RTLIB.UNKNOWN_LIBCALL;
     switch (node.getValueType(0).getSimpleVT().simpleVT) {
+      case MVT.i8:
+        lc = callI8;
+        break;
       case MVT.i16:
         lc = callI16;
         break;
@@ -2029,7 +2389,6 @@ public class SelectionDAGLegalizer {
         break;
       default:
         Util.shouldNotReachHere("Unexpected request for libcall!");
-        ;
     }
     return expandLibCall(lc, node, isSigned);
   }
@@ -2084,7 +2443,7 @@ public class SelectionDAGLegalizer {
         if (opc == ISD.CTTZ) {
           temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(nvt)),
               temp1, dag.getConstant(nvt.getSizeInBits(), nvt, false),
-              CondCode.SETEQ);
+              SETEQ);
           temp1 = dag.getNode(ISD.SELECT, nvt, temp2,
               dag.getConstant(ovt.getSizeInBits(), nvt, false),
               temp1);

@@ -3921,7 +3921,7 @@ public class DAGCombiner {
   }
 
   private EVT getShiftAmountTy() {
-    return legalTypes ? getShiftAmountTy() : new EVT(tli.getPointerTy());
+    return legalTypes ? new EVT(tli.getShiftAmountTy()) : new EVT(tli.getPointerTy());
   }
 
   private SDValue visitADDE(SDNode n) {

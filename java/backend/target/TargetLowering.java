@@ -36,6 +36,8 @@ import tools.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static backend.codegen.MachineJumpTableInfo.JTEntryKind.EK_GPRel32BlockAddress;
+import static backend.codegen.MachineJumpTableInfo.JTEntryKind.EK_LabelDifference32;
 import static backend.codegen.RTLIB.*;
 import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
@@ -221,7 +223,7 @@ public abstract class TargetLowering {
 
   private int exceptionSelectorRegister;
 
-  private long[][] opActions;
+  private LegalizeAction[][] opActions;
   private LegalizeAction[][] loadExtActions;
   private LegalizeAction[][] truncStoreActions;
   private long[][] indexedModeActions;
@@ -257,9 +259,18 @@ public abstract class TargetLowering {
     libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
-    opActions = new long[MVT.LAST_VALUETYPE][ISD.BUILTIN_OP_END];
+    opActions = new LegalizeAction[MVT.LAST_VALUETYPE][ISD.BUILTIN_OP_END];
+    for (LegalizeAction[] tmp : opActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
     loadExtActions = new LegalizeAction[MVT.LAST_VALUETYPE][LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
+    for (LegalizeAction[] tmp : loadExtActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
     truncStoreActions = new LegalizeAction[MVT.LAST_VALUETYPE][MVT.LAST_VALUETYPE];
+    for (LegalizeAction[] tmp : truncStoreActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
     indexedModeActions = new long[MVT.LAST_VALUETYPE][MemIndexedMode.LAST_INDEXED_MODE.ordinal()];
     condCodeActions = new long[SETCC_INVALID.ordinal()];
     targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END + 7) / 8];
@@ -551,11 +562,8 @@ public abstract class TargetLowering {
   }
 
   public void setOperationAction(int opc, int vt, LegalizeAction action) {
-    int i = vt;
-    int j = i & 31;
-    i = i >> 5;
-    opActions[i][opc] &= ~(3L << (j * 2));
-    opActions[i][opc] |= (long) action.ordinal() << (j * 2);
+    Util.assertion(opc < ISD.BUILTIN_OP_END && vt < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+    opActions[vt][opc] = action;
   }
 
   public void setIndexedLoadAction(MemIndexedMode im, int vt,
@@ -622,12 +630,9 @@ public abstract class TargetLowering {
 
   public LegalizeAction getOperationAction(int opc, EVT vt) {
     if (vt.isExtended()) return Expand;
-    Util.assertion(opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64 * 8, "Table isn't big enough!");
-
-    int i = vt.getSimpleVT().simpleVT;
-    int j = i & 31;
-    i = i >> 5;
-    return LegalizeAction.values()[(int) ((opActions[i][opc] >> (j * 2)) & 3)];
+    Util.assertion(opc < ISD.BUILTIN_OP_END &&
+        vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+    return opActions[vt.getSimpleVT().simpleVT][opc];
   }
 
   public boolean isOperationLegalOrCustom(int opc, EVT vt) {
@@ -2627,5 +2632,24 @@ public abstract class TargetLowering {
    */
   public boolean isNarrowingProfitable(EVT vt1, EVT vt2) {
     return false;
+  }
+
+  public SDValue getPICJumpTableRelocBase(SDValue table, SelectionDAG dag) {
+    if (getJumpTableEncoding() == EK_GPRel32BlockAddress)
+      return dag.getGLOBAL_OFFSET_TABLE(new EVT(getPointerTy()));
+    return table;
+  }
+
+  public MachineJumpTableInfo.JTEntryKind getJumpTableEncoding() {
+    // In non-pic modes, just use the address of a block.
+    if (getTargetMachine().getRelocationModel() != TargetMachine.RelocModel.PIC_)
+      return MachineJumpTableInfo.JTEntryKind.EK_BlockAddress;
+
+    // In PIC mode, if the target supports a GPRel32 directive, use it.
+    if (getTargetMachine().getMCAsmInfo().getGPRel32Directive() != null)
+    return MachineJumpTableInfo.JTEntryKind.EK_GPRel32BlockAddress;
+
+    // Otherwise, use a label difference.
+    return EK_LabelDifference32;
   }
 }

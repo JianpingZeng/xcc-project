@@ -218,6 +218,10 @@ public final class Module implements Iterable<Function> {
     new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
   }
 
+  public void dump() throws IOException {
+    print(new FormattedOutputStream(System.err));
+  }
+
   public Function getFunction(String funcName) {
     GlobalValue gv = getValueByName(funcName);
     return gv instanceof Function ? (Function) gv : null;

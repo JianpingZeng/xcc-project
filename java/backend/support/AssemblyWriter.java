@@ -1134,15 +1134,16 @@ public class AssemblyWriter {
       writeOperand(operand, true);
       out.print(", ");
       writeOperand(inst.operand(1), true);
-      out.print("[");
+      out.println(" [");
 
       for (int i = 2, e = inst.getNumOfOperands(); i < e; i += 2) {
-        out.println();
+        out.print("  ");
         writeOperand(inst.operand(i), true);
         out.print(", ");
         writeOperand(inst.operand(i + 1), true);
+        out.println();
       }
-      out.print("\n ]");
+      out.print(" ]");
     } else if (inst instanceof PhiNode) {
       out.print(' ');
       typePrinter.print(inst.getType(), out);

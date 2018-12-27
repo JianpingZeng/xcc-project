@@ -5747,4 +5747,12 @@ public class X86TargetLowering extends TargetLowering {
         mai.getPrivateGlobalPrefix() +
             mf.getFunctionNumber() + "$pb");
   }
+
+  @Override
+  public SDValue getPICJumpTableRelocBase(SDValue table, SelectionDAG dag) {
+    if (!subtarget.is64Bit()) {
+      return dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy()));
+    }
+    return table;
+  }
 }

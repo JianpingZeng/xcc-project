@@ -2410,6 +2410,7 @@ public abstract class Instruction extends User {
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
+    private int numOps;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2455,12 +2456,18 @@ public abstract class Instruction extends User {
       reserve(offset + numCases);
       setOperand(0, cond, this);
       setOperand(1, defaultBB, this);
+      numOps = 2;
+    }
+
+    public int getNumOfOperands() {
+      return numOps;
     }
 
     public void addCase(Constant caseVal, BasicBlock targetBB) {
       int opNo = getNumOfCases();
-      setOperand(opNo, caseVal, this);
-      setOperand(opNo + 1, targetBB, this);
+      setOperand(opNo*2, caseVal, this);
+      setOperand(opNo*2 + 1, targetBB, this);
+      numOps += 2;
     }
 
     public void removeCase(int idx) {
@@ -2468,8 +2475,9 @@ public abstract class Instruction extends User {
       Util.assertion((idx * 2 < getNumOfOperands()), "Successor index out of range!!!");
 
       // unlink the last value.
-      operandList.remove(idx);
-      operandList.remove(idx + 1);
+      operandList.remove(idx*2);
+      operandList.remove(idx*2 + 1);
+      numOps -= 2;
     }
 
     /**

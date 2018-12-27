@@ -3501,7 +3501,8 @@ public final class LLParser {
     if (!cond.getType().isIntegerType())
       return error(condLoc, "condition of switch instr must have 'i1' type");
 
-    if (parseTypeAndValue(valWrapper, locWrapper, pfs)) return true;
+    if (eatIfPresent(comma) &&
+        parseTypeAndValue(valWrapper, locWrapper, pfs)) return true;
     Value defaultVal = valWrapper.get();
     SMLoc defaultValLoc = locWrapper.get();
     if (!(defaultVal instanceof BasicBlock))
@@ -3512,8 +3513,9 @@ public final class LLParser {
 
       OutRef<Value> val2 = new OutRef<>();
       OutRef<SMLoc> loc2 = new OutRef<>();
-      HashSet<Constant> elts = new HashSet<>();
+      ArrayList<Constant> elts = new ArrayList<>();
       ArrayList<BasicBlock> dests = new ArrayList<>();
+      HashSet<Constant> uniqueElts = new HashSet<>();
 
       while (lexer.getTokKind() != rsquare) {
         if (parseTypeAndValue(valWrapper, locWrapper, pfs) ||
@@ -3524,11 +3526,13 @@ public final class LLParser {
         if (!valWrapper.get().getType().isIntegerType() ||
             !(valWrapper.get() instanceof ConstantInt))
           return error(locWrapper.get(), "case value is not a integer constant");
-        if (elts.add((Constant) valWrapper.get()))
+        if (!uniqueElts.add((Constant) valWrapper.get()))
           return error(locWrapper.get(), "duplicate case value in switch");
         if (!(val2.get() instanceof BasicBlock))
           return error(loc2.get(), "case destination must be a basic block");
+
         dests.add((BasicBlock) val2.get());
+        elts.add((Constant) valWrapper.get());
       }
       if (elts.size() != dests.size())
         return error(lsquareLoc, "the number of case value and destination basic block is not matched");

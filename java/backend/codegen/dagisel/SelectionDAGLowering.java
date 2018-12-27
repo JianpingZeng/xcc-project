@@ -1255,7 +1255,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     int frontCaseIdx = 0, backCaseIdx = cr.caseRanges.size();
 
     APInt first = cr.caseRanges.get(0).low.getValue();
-    APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt last = cr.caseRanges.get(backCaseIdx-1).high.getValue();
 
     int tsize = 0;
     for (Case c : cr.caseRanges)
@@ -1306,7 +1306,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
     }
 
-    int jti = mf.getJumpTableInfo().getJumpTableIndex(destMBBs);
+    MachineJumpTableInfo.JTEntryKind encoding = tli.getJumpTableEncoding();
+    int jti = mf.getOrCreateJumpTableInfo(encoding).getJumpTableIndex(destMBBs);
 
     JumpTable jt = new JumpTable(-1, jti, jumpTableBB, defaultMBB);
     JumpTableHeader jht = new JumpTableHeader(first, last, val, cr.mbb,
@@ -1454,13 +1455,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return true;
   }
 
-  static boolean areJTsAllowed(TargetLowering tli) {
-    return !DisableJumpTables.value && (
-        tli.isOperationLegalOrCustom(ISD.BR_JT, new EVT(MVT.Other))
-            || tli.isOperationLegalOrCustom(ISD.BRIND, new EVT(MVT.Other)));
+  private static boolean areJTsAllowed(TargetLowering tli) {
+    return !DisableJumpTables.value && (tli.isOperationLegalOrCustom(ISD.BR_JT, new EVT(MVT.Other))
+        || tli.isOperationLegalOrCustom(ISD.BRIND, new EVT(MVT.Other)));
   }
 
-  static APInt computeRange(APInt first, APInt last) {
+  private static APInt computeRange(APInt first, APInt last) {
     APInt lastExt = new APInt(last), firstExt = new APInt(first);
     int bitWidth = Math.max(last.getBitWidth(), first.getBitWidth()) + 1;
     lastExt.sext(bitWidth);
@@ -1468,7 +1468,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return lastExt.sub(firstExt).add(1);
   }
 
-  public void visitBitTestHeader(BitTestBlock btb) {
+  void visitBitTestHeader(BitTestBlock btb) {
     SDValue switchOp = getValue(btb.val);
     EVT vt = switchOp.getValueType();
     SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(btb.first, vt, false));

@@ -180,6 +180,7 @@ public class MachineOperand {
   private MachineOperand(MachineOperandType k) {
     opKind = k;
     parentMI = null;
+    offsetInfo = new MachineOperand.OffsetInfo();
   }
 
   @Override
@@ -336,7 +337,7 @@ public class MachineOperand {
         os.printf(">");
         break;
       case MO_JumpTableIndex:
-        os.printf("<ji#^d>", getIndex());
+        os.printf("<ji#%d>", getIndex());
         break;
       case MO_GlobalAddress:
         os.printf("<ga:%s", getGlobal().getName());

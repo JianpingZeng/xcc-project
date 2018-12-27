@@ -63,10 +63,6 @@ public class MachineFunction {
     constantPool = new MachineConstantPool(tm.getTargetData());
     phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
-    boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
-    alignment = tm.getTargetLowering().getFunctionAlignment(fn);
-    int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
-    jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
     functionNumber = fnNumber;
 
     // associate this machine function with HIR function.
@@ -309,5 +305,12 @@ public class MachineFunction {
         mai.getPrivateGlobalPrefix();
     String name = prefix + "JTI" + getFunctionNumber() + "_" + jtiId;
     return outContext.getOrCreateSymbol(name);
+  }
+
+  public MachineJumpTableInfo getOrCreateJumpTableInfo(MachineJumpTableInfo.JTEntryKind kind) {
+    if (jumpTableInfo != null)
+      return jumpTableInfo;
+    jumpTableInfo = new MachineJumpTableInfo(kind);
+    return jumpTableInfo;
   }
 }

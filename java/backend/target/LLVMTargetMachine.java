@@ -20,7 +20,10 @@ import backend.codegen.LowerSubregInstructionPass;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.codegen.RearrangementMBB;
-import backend.mc.*;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCAsmStreamer;
+import backend.mc.MCInstPrinter;
+import backend.mc.MCStreamer;
 import backend.mc.MCSymbol.MCContext;
 import backend.pass.FunctionPass;
 import backend.passManaging.PassManagerBase;
@@ -37,7 +40,6 @@ import static backend.support.BackendCmdOptions.PrintAfterAll;
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
-import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;
 
 /**
@@ -87,8 +89,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
    */
   protected boolean addCommonCodeGenPasses(PassManagerBase pm, CodeGenOpt level) {
     // lowers switch instr into chained branch instr.
-    pm.add(createLowerSwitchPass());
-
+    // pm.add(createLowerSwitchPass());
     if (level != CodeGenOpt.None) {
       // todo pm.add(createLoopStrengthReducePass(getTargetLowering()));
     }
@@ -101,9 +102,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addInstSelector(pm, level))
       return true;
 
-    // print the machine instructions.
-    printAndVerify(pm, true,
-        "# *** IR dump after Instruction Selection ***:\n");
     if (!DisableRearrangementMBB.value) {
       // Before instruction selection, rearragement blocks.
       pm.add(RearrangementMBB.createRearrangeemntPass());

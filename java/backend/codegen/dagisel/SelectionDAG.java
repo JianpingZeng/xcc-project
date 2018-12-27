@@ -941,7 +941,8 @@ public class SelectionDAG {
 
   public SDValue getConstant(long val, EVT vt, boolean isTarget) {
     EVT eltVt = vt.isVector() ? vt.getVectorElementType() : vt;
-    Util.assertion(eltVt.getSizeInBits() >= 64 || (val >> eltVt.getSizeInBits()) + 1 < 2, "getConstant with a long value that doesn't fit in type!");
+    Util.assertion(eltVt.getSizeInBits() >= 64 || (val >> eltVt.getSizeInBits()) + 1 < 2,
+        "getConstant with a long value that doesn't fit in type!");
 
     return getConstant(new APInt(eltVt.getSizeInBits(), val), vt, isTarget);
   }
@@ -1992,6 +1993,10 @@ public class SelectionDAG {
     return new SDValue(result, 0);
   }
 
+  public SDValue getGLOBAL_OFFSET_TABLE(EVT vt) {
+    return getNode(ISD.GLOBAL_OFFSET_TABLE, vt);
+  }
+
   static class UseMemo {
     SDNode user;
     int index;
@@ -2878,7 +2883,8 @@ public class SelectionDAG {
   }
 
   public SDValue getExtLoad(LoadExtType extType, EVT vt, SDValue chain,
-                            SDValue ptr, Value sv, int svOffset, EVT evt, boolean isVolatile,
+                            SDValue ptr, Value sv, int svOffset, EVT evt,
+                            boolean isVolatile,
                             int alignment) {
     SDValue undef = getUNDEF(ptr.getValueType());
     return getLoad(UNINDEXED, extType, vt, chain, ptr, undef, sv, svOffset,

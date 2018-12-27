@@ -85,7 +85,7 @@ public class TargetOptions {
       new BooleanOpt(new OptionHiddenApplicator(Hidden),
           optionName("disable-jump-tables"),
           desc("Do not generate jump tables."),
-          init(true));
+          init(false));
 
   public static final BooleanOpt EnableStrongPhiElim =
       new BooleanOpt(optionName("strong-phi-elim"),
