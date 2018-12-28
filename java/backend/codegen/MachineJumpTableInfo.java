@@ -104,7 +104,7 @@ public class MachineJumpTableInfo {
     }
   }
 
-  private JTEntryKind getEntryKind() {
+  public JTEntryKind getEntryKind() {
     return entryKind;
   }
 

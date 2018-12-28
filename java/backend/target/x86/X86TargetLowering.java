@@ -20,6 +20,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.mc.MCAsmInfo;
+import backend.mc.MCExpr;
 import backend.mc.MCRegisterClass;
 import backend.mc.MCSymbol;
 import backend.support.AttrList;
@@ -975,6 +976,7 @@ public class X86TargetLowering extends TargetLowering {
     maxStoresPerMemmove = 3; // For @llvm.memmove -> sequence of stores
     setPrefLoopAlignment = 16;
     benefitFromCodePlacementOpt = true;
+    setPrefFunctionAlignment(4); // 2^4 bytes.
   }
 
   @Override
@@ -1712,8 +1714,10 @@ public class X86TargetLowering extends TargetLowering {
     if (!memOpChains.isEmpty())
       chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), memOpChains);
 
+    // Build a sequence of copy-to-reg nodes chained together with token chain
+    // and flag operands which copy the outgoing args into registers
     SDValue inFlag = new SDValue();
-    if (isTailCall) {
+    if (!isTailCall) {
       for (int i = 0, e = regsToPass.size(); i < e; i++) {
         chain = dag.getCopyToReg(chain, regsToPass.get(i).first,
             regsToPass.get(i).second, inFlag);
@@ -3840,7 +3844,7 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag) {
-    SDValue bias = dag.getConstantFP(Util.bitsToDouble(0x4330000000000000L),
+    SDValue bias = dag.getConstantFP(Double.longBitsToDouble(0x4330000000000000L),
         new EVT(MVT.f64), false);
     SDValue load = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v4i32),
         dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
@@ -5754,5 +5758,14 @@ public class X86TargetLowering extends TargetLowering {
       return dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy()));
     }
     return table;
+  }
+
+  @Override
+  public MCExpr lowerJumpTableEntry(MachineJumpTableInfo jumpTable,
+                                    MachineBasicBlock mbb, int jti,
+                                    MCSymbol.MCContext outContext) {
+    Util.assertion(getTargetMachine().getRelocationModel() == PIC_ && subtarget.isPICStyleGOT());
+    return X86MCTargetExpr.create(mbb.getSymbol(outContext), X86MCTargetExpr.VariantKind.GOTOFF,
+        outContext);
   }
 }

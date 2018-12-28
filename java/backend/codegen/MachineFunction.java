@@ -3,6 +3,7 @@ package backend.codegen;
 import backend.mc.MCAsmInfo;
 import backend.mc.MCSymbol;
 import backend.mc.MCRegisterClass;
+import backend.support.Attribute;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
@@ -62,6 +63,9 @@ public class MachineFunction {
     regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
     constantPool = new MachineConstantPool(tm.getTargetData());
     phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
+    alignment = tm.getTargetLowering().getMinFunctionAlignment();
+    if (!fn.hasFnAttr(Attribute.OptimizeForSize))
+      alignment = Math.max(alignment, tm.getTargetLowering().getPrefFunctionAlignment());
 
     functionNumber = fnNumber;
 
@@ -112,6 +116,7 @@ public class MachineFunction {
 
   public void erase(MachineBasicBlock mbb) {
     mbbNumber.remove(mbb);
+    mbb.setNumber(-1);
   }
 
   /**
@@ -130,6 +135,7 @@ public class MachineFunction {
 
   public MachineBasicBlock removeMBBAt(int blockNo) {
     Util.assertion(blockNo >= 0 && blockNo < mbbNumber.size());
+    mbbNumber.get(blockNo).setNumber(-1);
     return mbbNumber.remove(blockNo);
   }
 
@@ -216,7 +222,8 @@ public class MachineFunction {
     frameInfo.print(this, os);
 
     // Print JumpTable information.
-    jumpTableInfo.print(os);
+    if (jumpTableInfo != null)
+      jumpTableInfo.print(os);
 
     // Print Jump table information.
     // Print constant pool.
@@ -224,7 +231,7 @@ public class MachineFunction {
 
     TargetRegisterInfo tri = target.getRegisterInfo();
     if (regInfo != null && !regInfo.isLiveInEmpty()) {
-      os.printf("Live Ins:");
+      os.print("Live Ins:");
       for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
         if (tri != null)
           os.printf(" %s", tri.getName(entry.first));
@@ -238,7 +245,7 @@ public class MachineFunction {
     }
 
     if (regInfo != null && !regInfo.isLiveOutEmpty()) {
-      os.printf("Live Outs:");
+      os.print("Live Outs:");
       for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
         if (tri != null)
           os.printf(" %s", tri.getName(entry.first));
@@ -277,6 +284,9 @@ public class MachineFunction {
 
   public void insert(int insertPos, MachineBasicBlock mbb) {
     Util.assertion(insertPos >= 0 && insertPos < mbbNumber.size());
+
+    // update the unique number of mbb
+    mbb.setNumber(mbbNumber.size());
     mbbNumber.add(insertPos, mbb);
   }
 
@@ -296,7 +306,9 @@ public class MachineFunction {
     return functionNumber;
   }
 
-  public MCSymbol getJTISymbol(int jtiId, MCSymbol.MCContext outContext, boolean isLinkerPrivate) {
+  public MCSymbol getJTISymbol(int jtiId,
+                               MCSymbol.MCContext outContext,
+                               boolean isLinkerPrivate) {
     Util.assertion(jumpTableInfo != null, "no jump tables");
     Util.assertion(jtiId < jumpTableInfo.getJumpTables().size());
     MCAsmInfo mai = getTarget().getMCAsmInfo();

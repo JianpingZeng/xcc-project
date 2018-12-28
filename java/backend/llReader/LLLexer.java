@@ -817,7 +817,7 @@ public final class LLLexer {
     switch (kind) {
       case 'J':
         long val = hexToInt(buffer.getSubString(tokStart + 2, curPtr));
-        floatVal = new APFloat(Util.bitsToDouble(val));
+        floatVal = new APFloat(Double.longBitsToDouble(val));
         break;
       case 'K':
         fp80HexFPToIntPair(buffer.getSubString(tokStart + 3, curPtr), pair);

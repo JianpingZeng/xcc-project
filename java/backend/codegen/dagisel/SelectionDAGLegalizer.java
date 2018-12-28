@@ -38,7 +38,6 @@ import java.util.HashSet;
 
 import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.LoadExtType.*;
-import static tools.Util.bitsToDouble;
 
 /**
  * This takes an arbitrary {@linkplain SelectionDAG} as input and transform it
@@ -1355,8 +1354,8 @@ public class SelectionDAGLegalizer {
       SDValue store2 = dag.getStore(store1, initialHi, hi, null, 0, false, 0);
       SDValue load = dag.getLoad(new EVT(MVT.i64), store2, stackSlot, null, 0);
       SDValue bias = dag.getConstantFP(isSigned ?
-              bitsToDouble(0x4330000080000000L) :
-              bitsToDouble(0x4330000000000000L),
+              Double.longBitsToDouble(0x4330000080000000L) :
+              Double.longBitsToDouble(0x4330000000000000L),
           new EVT(MVT.f64), false);
       SDValue sub = dag.getNode(ISD.FSUB, new EVT(MVT.f64), load, bias);
       SDValue result = new SDValue();

@@ -165,6 +165,10 @@ public class EVT implements Comparable<EVT> {
     return (getSizeInBits() + 7) / 8 * 8;
   }
 
+  public int getStoreSize() {
+    return getStoreSizeInBits() * 8;
+  }
+
   public EVT getRoundIntegerType() {
     Util.assertion(isInteger() && !isVector(), "Invalid integer type!");
     int bitwidth = getSizeInBits();

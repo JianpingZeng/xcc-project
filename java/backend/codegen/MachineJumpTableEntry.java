@@ -30,4 +30,8 @@ public class MachineJumpTableEntry {
     mbbs = new ArrayList<>();
     mbbs.addAll(bbs);
   }
+
+  public ArrayList<MachineBasicBlock> getMBBs() {
+    return mbbs;
+  }
 }

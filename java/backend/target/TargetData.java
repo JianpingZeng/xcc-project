@@ -2,12 +2,12 @@ package backend.target;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.ImmutablePass;
-import backend.type.ArrayType;
-import backend.type.IntegerType;
-import backend.type.StructType;
-import backend.type.Type;
+import backend.support.LLVMContext;
+import backend.type.*;
+import backend.value.ConstantInt;
 import backend.value.GlobalVariable;
 import backend.value.Module;
+import backend.value.Value;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -625,6 +625,10 @@ public class TargetData implements ImmutablePass {
     return roundUpAlignment(getTypeStoreSize(ty), getABITypeAlignment(ty));
   }
 
+  public long getTypeAllocSizeInBits(Type ty) {
+    return getTypeAllocSize(ty) * 8;
+  }
+
   public int getPrefTypeAlignment(Type type) {
     return getAlignment(type, false);
   }
@@ -656,5 +660,28 @@ public class TargetData implements ImmutablePass {
         return elt.abiAlign;
     }
     return getABITypeAlignment(ty);
+  }
+
+  public long getIndexedOffset(Type ty, ArrayList<Value> indices) {
+    Util.assertion(ty.isPointerType(), "Illegal argument for getIndexedOffset");
+    long result = 0;
+
+    for (int idx = 0, e = indices.size(); idx < e; ++idx) {
+      if (ty instanceof StructType) {
+        StructType sty = (StructType) ty;
+        Util.assertion(indices.get(idx).getType().equals(LLVMContext.Int32Ty));
+        long fieldNo = ((ConstantInt)indices.get(idx)).getZExtValue();
+        StructLayout layout = getStructLayout(sty);
+        result += layout.getElementOffset(fieldNo);
+
+        ty = sty.getElementType((int) fieldNo);
+      }
+      else {
+        ty = ((SequentialType)ty).getElementType();
+        long arrayIdx = ((ConstantInt)indices.get(idx)).getSExtValue();
+        result += arrayIdx * getTypeAllocSize(ty);
+      }
+    }
+    return result;
   }
 }

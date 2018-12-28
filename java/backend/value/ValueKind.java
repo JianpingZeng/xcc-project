@@ -26,7 +26,8 @@ public class ValueKind {
   public static int TypeVal = 0;
   public static int ArgumentVal = TypeVal + 1;              // This is an instance of Argument
   public static int BasicBlockVal = ArgumentVal + 1;            // This is an instance of BasicBlock
-  public static int FunctionVal = BasicBlockVal + 2;              // This is an instance of FunctionProto
+  public static int BlockAddressVal = BasicBlockVal + 1;
+  public static int FunctionVal = BasicBlockVal + 1;              // This is an instance of FunctionProto
   public static int GlobalVariableVal = FunctionVal + 1;        // This is an instance of GlobalVariable
   public static int UndefValueVal = GlobalVariableVal + 1;            // This is an instance of UndefValue
   public static int ConstantExprVal = UndefValueVal + 1;          // This is an instance of ConstantExpr

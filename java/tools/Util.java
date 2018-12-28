@@ -490,39 +490,6 @@ public class Util {
 
   /**
    * <pre>
-   * Converts a value of type long to double in bit sbuject to IEEE754 standard.
-   * It equivalence to following C code:
-   * double bitsToDouble(long val)
-   * {
-   *   union
-   *   {
-   *     long l;
-   *     double d;
-   *   }t;
-   *   t.l = val;
-   *   return t.d;
-   * }
-   * </pre>
-   *
-   * @param val
-   * @return
-   */
-  public static double bitsToDouble(long val) {
-    int sign = (int) ((val >>> 63) & 0x1);
-    int exp = (int) (val >>> 52) & ((1 << 11) - 1) - 1023;
-    long r = (val & ((1L << 52) - 1));
-    double t = 0;
-    for (int i = 0; i < 52; i++) {
-      t += r & 0x1;
-      t /= 2;
-      r >>>= 1;
-    }
-    double res = Math.pow(2.0, exp) * (1.0 + t);
-    return sign == 1 ? -res : res;
-  }
-
-  /**
-   * <pre>
    * Converts a value of type int to float in bit. It equivalence to following
    * C code:
    * float bitsToDouble(int val)
@@ -563,16 +530,6 @@ public class Util {
    */
   public static int floatToBits(float val) {
     return Float.floatToRawIntBits(val);
-  }
-
-  /**
-   * Converts a double value to long in bitwise. Like {@linkplain #bitsToDouble(long)}.
-   *
-   * @param val
-   * @return
-   */
-  public static long doubleToBits(double val) {
-    return Double.doubleToRawLongBits(val);
   }
 
   public static char hexDigit(int x) {

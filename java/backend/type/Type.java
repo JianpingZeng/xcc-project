@@ -196,6 +196,10 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == DoubleTyID;
   }
 
+  public boolean isX86_FP80Ty() {
+    return id == X86_FP80TyID;
+  }
+
   public boolean isLabelTy() {
     return id == LabelTyID;
   }

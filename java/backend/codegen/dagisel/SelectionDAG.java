@@ -40,6 +40,9 @@ import tools.*;
 
 import java.util.*;
 
+import static backend.codegen.MachineMemOperand.MOLoad;
+import static backend.codegen.MachineMemOperand.MOStore;
+import static backend.codegen.MachineMemOperand.MOVolatile;
 import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
@@ -1846,10 +1849,16 @@ public class SelectionDAG {
 
   public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
                            SDValue ptr, SDValue val, Value ptrVal, int alignment) {
-    Util.assertion(opcode == ISD.ATOMIC_LOAD_ADD || opcode == ISD.ATOMIC_LOAD_SUB || opcode == ISD.ATOMIC_LOAD_AND || opcode == ISD.ATOMIC_LOAD_OR
-        || opcode == ISD.ATOMIC_LOAD_XOR || opcode == ISD.ATOMIC_LOAD_NAND
-        || opcode == ISD.ATOMIC_LOAD_MIN || opcode == ISD.ATOMIC_LOAD_MAX
-        || opcode == ISD.ATOMIC_LOAD_UMIN || opcode == ISD.ATOMIC_LOAD_UMAX ||
+    Util.assertion(opcode == ISD.ATOMIC_LOAD_ADD ||
+        opcode == ISD.ATOMIC_LOAD_SUB ||
+        opcode == ISD.ATOMIC_LOAD_AND ||
+        opcode == ISD.ATOMIC_LOAD_OR ||
+        opcode == ISD.ATOMIC_LOAD_XOR ||
+        opcode == ISD.ATOMIC_LOAD_NAND ||
+        opcode == ISD.ATOMIC_LOAD_MIN ||
+        opcode == ISD.ATOMIC_LOAD_MAX ||
+        opcode == ISD.ATOMIC_LOAD_UMIN ||
+        opcode == ISD.ATOMIC_LOAD_UMAX ||
         opcode == ISD.ATOMIC_SWAP);
 
     EVT vt = val.getValueType();
@@ -1865,8 +1874,13 @@ public class SelectionDAG {
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val,
-        ptrVal, alignment);
+
+    int flags = MOLoad | MachineMemOperand.MOStore;
+
+    // For now, atomics are considered to be volatile always.
+    flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(ptrVal, flags, 0, memoryVT.getStoreSize(), alignment);
+    SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
@@ -1891,8 +1905,13 @@ public class SelectionDAG {
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap,
-        ptrVal, alignment);
+
+    int flags = MOLoad | MachineMemOperand.MOStore;
+
+    // For now, atomics are considered to be volatile always.
+    flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(ptrVal, flags, 0, memVT.getStoreSize(), alignment);
+    SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
@@ -1936,6 +1955,16 @@ public class SelectionDAG {
     MemIntrinsicSDNode n = null;
     SDValue[] temp = new SDValue[ops.size()];
     ops.toArray(temp);
+    int Flags = 0;
+    if (writeMem)
+      Flags |= MOStore;
+    if (readMem)
+      Flags |= MOLoad;
+    if (vol)
+      Flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(srcVal, Flags, offset,
+            memVT.getStoreSize(), align);
+
     if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT != MVT.Flag) {
       FoldingSetNodeID compute = new FoldingSetNodeID();
       addNodeToIDNode(compute, opc, vts, temp);
@@ -1943,18 +1972,20 @@ public class SelectionDAG {
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
 
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
-          srcVal, offset, align, vol, readMem, writeMem);
+      n = new MemIntrinsicSDNode(opc, vts, temp, memVT, mmo);
       cseMap.put(id, n);
     } else {
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,
-          srcVal, offset, align, vol, readMem, writeMem);
+      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,mmo);
     }
     allNodes.add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getMemset(SDValue root, SDValue op1, SDValue op2, SDValue op3, int align, Value operand, int i) {
+  public SDValue getMemset(SDValue root, SDValue op1,
+                           SDValue op2,
+                           SDValue op3, int align,
+                           Value operand, int i) {
+    /// TODO 12/28/2018
     return null;
   }
 
@@ -2810,7 +2841,8 @@ public class SelectionDAG {
   }
 
   public SDValue getTruncStore(SDValue chain, SDValue val, SDValue ptr, Value sv,
-                               int svOffset, EVT svt, boolean isVolatile, int alignment) {
+                               int svOffset, EVT svt,
+                               boolean isVolatile, int alignment) {
     EVT vt = val.getValueType();
     if (vt.equals(svt))
       return getStore(chain, val, ptr, sv, svOffset, isVolatile, alignment);
@@ -2832,8 +2864,11 @@ public class SelectionDAG {
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
 
-    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, true, svt, sv, svOffset,
-        alignment, isVolatile);
+    int flags = MOStore;
+    if (isVolatile)
+      flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset, svt.getStoreSize(), alignment);
+    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, true, svt, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
@@ -2857,8 +2892,11 @@ public class SelectionDAG {
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
 
-    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, false, vt, sv, svOffset,
-        alignment, isVolatile);
+    int flags = MOStore;
+    if (isVolatile)
+      flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset, vt.getStoreSize(), alignment);
+    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, false, vt, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
@@ -2891,47 +2929,69 @@ public class SelectionDAG {
         evt, isVolatile, alignment);
   }
 
-  public SDValue getLoad(MemIndexedMode am, LoadExtType extType, EVT vt,
-                         SDValue chain, SDValue ptr, SDValue offset, Value sv, int svOffset,
-                         EVT evt, boolean isVolatile, int alignment) {
+  public SDValue getLoad(MemIndexedMode am,
+                         LoadExtType extType, EVT vt,
+                         SDValue chain, SDValue ptr,
+                         SDValue offset, Value sv,
+                         int svOffset, EVT evt,
+                         boolean isVolatile, int alignment) {
     if (alignment == 0)
       alignment = getEVTAlignment(vt);
 
-    if (vt.equals(evt))
+    if (sv == null) {
+      if (ptr.getNode() instanceof FrameIndexSDNode) {
+        FrameIndexSDNode fiNode = (FrameIndexSDNode) ptr.getNode();
+        sv = PseudoSourceValue.getFixedStack(fiNode.getFrameIndex());
+      }
+    }
+    MachineFunction mf = getMachineFunction();
+    int flags = MOLoad;
+    if (isVolatile)
+      flags |= MOVolatile;
+    MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset,
+        evt.getStoreSizeInBits()*8, alignment);
+    return getLoad(am, extType, vt, chain, ptr, offset, evt, mmo);
+  }
+
+  public SDValue getLoad(MemIndexedMode am,
+                         LoadExtType extType,
+                         EVT vt,
+                         SDValue chain,
+                         SDValue ptr,
+                         SDValue offset,
+                         EVT memVT,
+                         MachineMemOperand mmo) {
+    if (vt.equals(memVT))
       extType = LoadExtType.NON_EXTLOAD;
     else if (extType == LoadExtType.NON_EXTLOAD)
-      Util.assertion(vt.equals(evt));
+      Util.assertion(vt.equals(memVT), "non-extending load from different memory type!");
     else {
-      if (vt.isInteger())
-        Util.assertion(evt.getVectorNumElements() == vt.getVectorNumElements());
-      else
-        Util.assertion(evt.bitsLT(vt));
-      Util.assertion(extType == LoadExtType.EXTLOAD || vt.isInteger());
-      Util.assertion(vt.isInteger() == evt.isInteger());
+      Util.assertion(memVT.getScalarType().bitsLT(vt.getScalarType()),
+          "Should only be an extending load, not truncating");
+      Util.assertion(vt.isInteger() == memVT.isInteger(), "Can't convert from FP to Int or Int -> FP!");
+      Util.assertion(vt.isVector() == memVT.isVector(), "Can't use trunc store to convert to or from a vectgor!");
+      Util.assertion(!vt.isVector() || vt.getVectorNumElements() == memVT.getVectorNumElements(),
+          "Can't use trunc store to change the number of vector elements!");
     }
 
     boolean indexed = am != UNINDEXED;
-    Util.assertion(indexed || offset.getOpcode() == ISD.UNDEF);
-
-    SDVTList vts = indexed ?
-        getVTList(vt, ptr.getValueType(), new EVT(MVT.Other)) :
-        getVTList(vt, new EVT(MVT.Other));
+    Util.assertion(indexed || offset.getOpcode() == ISD.UNDEF, "Unindexed load with an offset");
+    SDVTList vts = indexed ? getVTList(vt, ptr.getValueType(), new EVT(MVT.Other)) : getVTList(vt, new EVT(MVT.Other));
     SDValue[] ops = {chain, ptr, offset};
     FoldingSetNodeID compute = new FoldingSetNodeID();
-    addNodeToIDNode(compute, ISD.LOAD, vts, ops);
-    compute.addInteger(evt.getRawBits().hashCode());
-    compute.addInteger(
-        encodeMemSDNodeFlags(extType.ordinal(), am, isVolatile,
-            alignment));
+    addNodeToIDNode(compute, ISD.LOAD, vts, ops, 3);
+    compute.addInteger(memVT.getRawBits().hashCode());
+    compute.addInteger(encodeMemSDNodeFlags(extType.ordinal(), am, mmo.isVolatile(), mmo.getAlignment()));
+
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode n = new LoadSDNode(ops, vts, am, extType, evt, sv, svOffset,
-        alignment, isVolatile);
+    SDNode n = new LoadSDNode(ops, vts, am, extType, memVT, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
+
 
   public SDValue getLoad(EVT vt, SDValue chain, SDValue ptr, Value sv, int svOffset) {
     return getLoad(vt, chain, ptr, sv, svOffset, false, 0);
@@ -2965,9 +3025,9 @@ public class SelectionDAG {
     int id = calc.computeHash();
     if (cseMap.containsValue(id))
       return new SDValue(cseMap.get(id), 0);
+
     SDNode n = new StoreSDNode(ops, vts, am, st.isTruncatingStore(),
-        st.getMemoryVT(), st.getSrcValue(), st.getSrcValueOffset(),
-        st.getAlignment(), st.isVolatile());
+        st.getMemoryVT(), st.getMemOperand());
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);

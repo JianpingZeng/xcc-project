@@ -20,8 +20,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.intrinsic.Intrinsic;
-import backend.mc.MCAsmInfo;
-import backend.mc.MCRegisterClass;
+import backend.mc.*;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -58,6 +57,7 @@ import static backend.target.TargetOptions.EnablePerformTailCallOpt;
  * @version 0.4
  */
 public abstract class TargetLowering {
+
   /**
    * This enum indicates whether operations are valid for a
    * target, and if not, what action should be used to make them valid.
@@ -245,6 +245,16 @@ public abstract class TargetLowering {
 
   protected ArrayList<APFloat> legalFPImmediates;
   private TargetLoweringObjectFile tlof;
+  /**
+   * The minimum function alignment used when optimization for size, and to prevent
+   * explicitly provided alignment from leading to incorrect code.
+   */
+  private int minFunctionAlignment;
+  /**
+   * The preferred function alignment used when alginment unspecified and optimizing
+   * for speed.
+   */
+  private int prefFunctionAlignment;
 
   public TargetLowering(TargetMachine tm,
                         TargetLoweringObjectFile tlof) {
@@ -329,6 +339,22 @@ public abstract class TargetLowering {
     MCAsmInfo asmInfo = tm.getMCAsmInfo();
     if (asmInfo == null || !asmInfo.hasDotLocAndDotFile())
       setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
+  }
+
+  public int getMinFunctionAlignment() {
+    return minFunctionAlignment;
+  }
+
+  public void setMinFunctionAlignment(int minFunctionAlignment) {
+    this.minFunctionAlignment = minFunctionAlignment;
+  }
+
+  public int getPrefFunctionAlignment() {
+    return prefFunctionAlignment;
+  }
+
+  public void setPrefFunctionAlignment(int prefFunctionAlignment) {
+    this.prefFunctionAlignment = prefFunctionAlignment;
   }
 
   public TargetLoweringObjectFile getObjFileLowering() {
@@ -2651,5 +2677,17 @@ public abstract class TargetLowering {
 
     // Otherwise, use a label difference.
     return EK_LabelDifference32;
+  }
+
+  public MCExpr getPICJumpTableRelocBaseExpr(MachineFunction mf, int jti, MCSymbol.MCContext ctx) {
+    return MCSymbolRefExpr.create(mf.getJTISymbol(jti, ctx, false), ctx);
+  }
+
+  public MCExpr lowerJumpTableEntry(MachineJumpTableInfo jumpTable,
+                                    MachineBasicBlock mbb,
+                                    int jti,
+                                    MCSymbol.MCContext outContext) {
+    Util.assertion("Need to implement this hook if target has custom JTIs");
+    return null;
   }
 }
