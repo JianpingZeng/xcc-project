@@ -84,7 +84,7 @@ public class ConstantInt extends Constant {
   public static ConstantInt getFalse() {
     if (FALSE != null)
       return FALSE;
-    return (FALSE = get(LLVMContext.Int1Ty, 1, false));
+    return (FALSE = get(LLVMContext.Int1Ty, 0, false));
   }
 
   public boolean isMaxValue(boolean isSigned) {

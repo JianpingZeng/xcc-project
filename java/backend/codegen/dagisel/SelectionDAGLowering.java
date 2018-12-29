@@ -894,7 +894,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
   }
 
-  static boolean inBlock(Value val, BasicBlock bb) {
+  private static boolean inBlock(Value val, BasicBlock bb) {
     if (val instanceof Instruction) {
       return ((Instruction) val).getParent().equals(bb);
     }
@@ -988,8 +988,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock temp = cb.trueMBB;
       cb.trueMBB = cb.falseMBB;
       cb.falseMBB = temp;
-      SDValue t = dag.getConstant(1, cond.getValueType(), false);
-      cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, t);
     }
     SDValue brCond = dag
         .getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(), cond,
@@ -1030,8 +1028,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     ArrayList<Case> cases = new ArrayList<>();
-    int numCmps = clusterify(cases, si);
-    numCmps = 0;
+    clusterify(cases, si);
 
     Value condVal = si.operand(0);
     Stack<CaseRec> worklist = new Stack<>();

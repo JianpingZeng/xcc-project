@@ -41,6 +41,7 @@ import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
+import static backend.target.x86.X86RegisterInfo.SUBREG_8BIT;
 
 public abstract class X86DAGISel extends SelectionDAGISel {
   protected X86TargetLowering tli;
@@ -359,7 +360,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 new EVT(MVT.i16), result, curDAG.getTargetConstant(8,
                     new EVT(MVT.i8))), 0);
             // Then truncate it down to i8.
-            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
                 new EVT(MVT.i8), result);
           } else {
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
@@ -505,7 +506,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16ri,
                 new EVT(MVT.i16), result, curDAG.getTargetConstant(8, new EVT(MVT.i8))), 0);
             // then truncate it down to i8
-            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
                 new EVT(MVT.i8), result);
           } else {
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
@@ -557,8 +558,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             }
 
             // Extract the l-register
-            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.EXTRACT_SUBREG,
-                new EVT(MVT.i8), reg);
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT, new EVT(MVT.i8), reg);
             // emit a testb
             return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, new EVT(MVT.i32), subreg, imm);
           }
@@ -590,7 +590,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
                 new EVT(MVT.i8), reg);
 
             // Emit a testb. No special NOREX tricks are needed since there's

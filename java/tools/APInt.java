@@ -882,7 +882,7 @@ public class APInt implements Cloneable {
   }
 
   public String toString(int radix) {
-    return toString(radix, true);
+    return toString(radix, false);
   }
 
   public void toString(StringBuilder buffer,
@@ -1452,7 +1452,7 @@ public class APInt implements Cloneable {
   }
 
   public boolean getBoolValue() {
-    return this != null;
+    return !eq(0);
   }
 
   public APInt set() {
@@ -1461,7 +1461,7 @@ public class APInt implements Cloneable {
       return clearUnusedBits();
     }
     for (int i = 0; i < getNumWords(); i++)
-      pVal[i] = -1l;
+      pVal[i] = -1L;
     return clearUnusedBits();
   }
 
@@ -1496,7 +1496,7 @@ public class APInt implements Cloneable {
   }
 
   public static APInt getSignedMaxValue(int numBits) {
-    return new APInt(numBits, 0).clear(numBits - 1);
+    return new APInt(numBits, 0).set().clear(numBits - 1);
   }
 
   public static APInt getMinValue(int numBits) {
@@ -2621,7 +2621,7 @@ public class APInt implements Cloneable {
   }
 
   public void print(PrintStream os) {
-    print(os, true);
+    print(os, false);
   }
 
   public void print(PrintStream os, boolean isSigned) {
