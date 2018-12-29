@@ -814,9 +814,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           return null;
         }
 
-        switchCases.forEach(cb -> {
-          funcInfo.mf.erase(cb.thisMBB);
-        });
+        for (int i = 1, e = switchCases.size(); i < e; i++) {
+          funcInfo.mf.erase(switchCases.get(i).thisMBB);
+        }
         switchCases.clear();
       }
     }
@@ -849,15 +849,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     copyValueToVirtualRegister(val, reg);
   }
 
-  private void findMergedConditions(Value cond, MachineBasicBlock tbb,
-                                    MachineBasicBlock fbb, MachineBasicBlock curBB, Operator opc) {
-    if (!(cond instanceof CmpInst))
-      return;
-
-    CmpInst ci = (CmpInst) cond;
-    if (ci.getOpcode() != opc || !ci.hasOneUses() || ci.getParent() != curBB
-        .getBasicBlock() || !inBlock(ci.operand(0), curBB.getBasicBlock()) || !inBlock(ci.operand(1),
-        curBB.getBasicBlock())) {
+  private void findMergedConditions(Value cond,
+                                    MachineBasicBlock tbb,
+                                    MachineBasicBlock fbb,
+                                    MachineBasicBlock curBB,
+                                    Operator opc) {
+    Instruction inst = cond instanceof Instruction ? (Instruction)cond : null;
+    if (inst == null || !(inst instanceof BinaryOps ||
+        inst instanceof CmpInst) ||
+        inst.getOpcode() != opc || !inst.hasOneUses() ||
+        inst.getParent() != curBB.getBasicBlock() ||
+        !inBlock(inst.operand(0), curBB.getBasicBlock()) ||
+        !inBlock(inst.operand(1), curBB.getBasicBlock())) {
       emitBranchForMergedCondition(cond, tbb, fbb, curBB);
       return;
     }
@@ -874,8 +877,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       // TmpBB:
       //   jmp_if_Y TBB
       //   jmp FBB
-      findMergedConditions(ci.operand(0), tbb, tempBB, curBB, opc);
-      findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+      findMergedConditions(inst.operand(0), tbb, tempBB, curBB, opc);
+      findMergedConditions(inst.operand(1), tbb, fbb, tempBB, opc);
     } else {
       Util.assertion(opc == And);
       // Codegen X & Y as:
@@ -886,8 +889,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       //   jmp FBB
       //
       //  This requires creation of TmpBB after CurBB.
-      findMergedConditions(ci.operand(0), tempBB, fbb, curBB, opc);
-      findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+      findMergedConditions(inst.operand(0), tempBB, fbb, curBB, opc);
+      findMergedConditions(inst.operand(1), tbb, fbb, tempBB, opc);
     }
   }
 

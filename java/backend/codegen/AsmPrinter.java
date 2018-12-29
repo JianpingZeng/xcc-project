@@ -1108,7 +1108,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     if (fp.getType().isDoubleTy()) {
       if (verboseAsm) {
         double val = fp.getValueAPF().convertToDouble();
-        outStreamer.getCommentOS().printf("double %f\n", val);
+        outStreamer.getCommentOS().printf("double %e\n", val);
       }
 
       long val = fp.getValueAPF().bitcastToAPInt().getZExtValue();
@@ -1119,7 +1119,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     if (fp.getType().isFloatTy()) {
       if (verboseAsm) {
         float val = fp.getValueAPF().convertToFloat();
-        outStreamer.getCommentOS().printf("float %f\n", val);
+        outStreamer.getCommentOS().printf("float %e\n", val);
       }
 
       long val = fp.getValueAPF().bitcastToAPInt().getZExtValue();

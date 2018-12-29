@@ -283,11 +283,14 @@ public class MachineFunction {
   }
 
   public void insert(int insertPos, MachineBasicBlock mbb) {
-    Util.assertion(insertPos >= 0 && insertPos < mbbNumber.size());
+    Util.assertion(insertPos >= 0 && insertPos <= mbbNumber.size());
 
     // update the unique number of mbb
     mbb.setNumber(mbbNumber.size());
-    mbbNumber.add(insertPos, mbb);
+    if (insertPos == mbbNumber.size())
+      mbbNumber.add(mbb);
+    else
+      mbbNumber.add(insertPos, mbb);
   }
 
   public MachineJumpTableInfo getJumpTableInfo() {
