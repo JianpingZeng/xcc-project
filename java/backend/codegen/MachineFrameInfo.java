@@ -310,7 +310,7 @@ public class MachineFrameInfo {
   }
 
   public int createStackObject(MCRegisterClass rc) {
-    return createStackObject(tri.getRegSize(rc), tri.getSpillAlignment(rc));
+    return createStackObject(tri.getRegSize(rc)/8, tri.getSpillAlignment(rc)/8);
   }
 
   /**
