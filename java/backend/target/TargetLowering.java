@@ -786,6 +786,14 @@ public abstract class TargetLowering {
     this.useUnderscoreSetJmp = val;
   }
 
+  public boolean isUseUnderscoreSetJmp() {
+    return useUnderscoreSetJmp;
+  }
+
+  public boolean isUseUnderscoreLongJmp() {
+    return useUnderscoreLongJmp;
+  }
+
   public void setUseUnderscoreLongJmp(boolean val) {
     this.useUnderscoreLongJmp = val;
   }
@@ -2464,6 +2472,17 @@ public abstract class TargetLowering {
                                          long dstOff,
                                          Value srcVal,
                                          long srcOff) {
+    return new SDValue();
+  }
+
+  public SDValue emitTargetCodeForMemset(SelectionDAG dag,
+                                         SDValue chain,
+                                         SDValue op1,
+                                         SDValue op2,
+                                         SDValue op3,
+                                         int align,
+                                         Value dstSV,
+                                         long dstOff) {
     return new SDValue();
   }
 

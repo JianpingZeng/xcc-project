@@ -2067,7 +2067,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
    * @return
    */
   private String visitIntrinsicCall(CallInst ci, Intrinsic.ID iid) {
-    // TODO: 2018/6/18
     switch (iid) {
       default:
         // turns on call to intrinsic to target specified handler.
@@ -2082,6 +2081,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case vacopy:
         visitVACopy(ci);
         return null;
+      case returnaddress:
+        setValue(ci, dag.getNode(ISD.RETURNADDR, new EVT(tli.getPointerTy()),
+            getValue(ci.operand(1))));
+        return null;
+      case frameaddress:
+        setValue(ci, dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
+            getValue(ci.operand(1))));
+        return null;
+      case setjmp:
+        return "_setjmp" + (tli.isUseUnderscoreSetJmp()?"0":"1");
+      case longjmp:
+        return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
       case memset: {
         SDValue op1 = getValue(ci.operand(1));
         SDValue op2 = getValue(ci.operand(2));
@@ -2101,19 +2112,84 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             0, ci.operand(2), 0));
         return null;
       }
+      case sqrt:
+        setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+        return null;
+      case sin:
+        setValue(ci, dag.getNode(ISD.FSIN, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+      case cos:
+        setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+      case log:
+      case log2:
+      case log10:
+      case exp:
+      case exp2:
+      case pow:
+        Util.shouldNotReachHere("unimplemented math function!");
+        return null;
+      case pcmarker:
+        SDValue tmp = getValue(ci.operand(1));
+        dag.setRoot(dag.getNode(ISD.PCMARKER, new EVT(MVT.Other),
+            getRoot(), tmp));
+        return null;
+      case bswap:
+        setValue(ci, dag.getNode(ISD.BSWAP,
+            getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+        return null;
+      case cttz: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTTZ, vt, arg));
+        return null;
+      }
+      case ctlz: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTLZ, vt, arg));
+        return null;
+      }
+      case ctpop: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTPOP, vt, arg));
+        return null;
+      }
+      case stacksave: {
+        SDValue op = getValue(ci.operand(1));
+        SDValue res = dag.getNode(ISD.STACKSAVE,
+            dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other)), op);
+        setValue(ci, res);
+        dag.setRoot(res.getValue(1));
+        return null;
+      }
+      case stackrestore: {
+        SDValue res = getValue(ci.operand(1));
+        dag.setRoot(dag.getNode(ISD.STACKRESTORE, new EVT(MVT.Other), getRoot(),
+            res));
+        return null;
+      }
     }
   }
 
   private void visitVACopy(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VACOPY, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(0)), getValue(ci.operand(2)),
+        dag.getSrcValue(ci.operand(1)),
+        dag.getSrcValue(ci.operand(2))));
   }
 
   private void visitVAEnd(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VAEND, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(0)), dag.getSrcValue(ci.operand(1))));
   }
 
   private void visitVAStart(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VASTART, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(0)), dag.getSrcValue(ci.operand(1))));
   }
 
   public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
@@ -2130,7 +2206,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     IntrinsicInfo info = new IntrinsicInfo();
     boolean isTargetIntrinsic = tli.getTargetMemIntrinsic(info, ci, iid);
-    ;
     if (!isTargetIntrinsic)
       ops.add(dag.getConstant(iid.ordinal(), new EVT(tli.getPointerTy()), false));
 

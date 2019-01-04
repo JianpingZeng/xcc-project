@@ -47,7 +47,7 @@ public class X86MCInstLower {
    * @return
    */
   public MCSymbol getSymbolFromOperand(MachineOperand mo) {
-    Util.assertion(mo.isGlobalAddress());
+    Util.assertion(mo.isGlobalAddress() || mo.isExternalSymbol(), "Isn't a global address or external symbol?");
     String name = "";
     if (mo.isGlobalAddress()) {
       boolean isImplicitlyPrivate = false;

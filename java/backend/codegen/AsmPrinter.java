@@ -422,7 +422,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         // TODO processDebugLoc();
         if (verboseAsm)
           emitComments(mi, outStreamer.getCommentOS());
-        ;
 
         switch (mi.getOpcode()) {
           case TargetOpcodes.DBG_LABEL:

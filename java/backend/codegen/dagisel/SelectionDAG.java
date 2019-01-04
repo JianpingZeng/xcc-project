@@ -40,9 +40,7 @@ import tools.*;
 
 import java.util.*;
 
-import static backend.codegen.MachineMemOperand.MOLoad;
-import static backend.codegen.MachineMemOperand.MOStore;
-import static backend.codegen.MachineMemOperand.MOVolatile;
+import static backend.codegen.MachineMemOperand.*;
 import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
@@ -1981,12 +1979,109 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
-  public SDValue getMemset(SDValue root, SDValue op1,
-                           SDValue op2,
-                           SDValue op3, int align,
-                           Value operand, int i) {
-    /// TODO 12/28/2018
-    return null;
+  public SDValue getMemset(SDValue chain,
+                           SDValue dst,
+                           SDValue src,
+                           SDValue size,
+                           int align,
+                           Value destSV,
+                           long dstSVOff) {
+    if (size.getNode() instanceof ConstantSDNode) {
+      ConstantSDNode csd = (ConstantSDNode)size.getNode();
+      if (csd.isNullValue())
+        return chain;
+
+      SDValue result = getMemsetStores(chain, dst, src, csd.getZExtValue(),
+          align, destSV, dstSVOff);
+      if (result.getNode() != null)
+        return result;
+    }
+
+    SDValue result = tli.emitTargetCodeForMemset(this, chain, dst, src, size,
+        align, destSV, dstSVOff);
+    if (result.getNode() != null)
+      return result;
+
+    // emit a library call.
+    Type intPtrty = tli.getTargetData().getIntPtrType();
+    ArrayList<ArgListEntry> args = new ArrayList<>();
+    ArgListEntry entry = new ArgListEntry();
+    entry.node = dst;
+    entry.ty = intPtrty;
+    args.add(entry);
+    // extend or truncate the argument to be an i32 value for the call.
+    if (src.getValueType().bitsGT(new EVT(MVT.i32)))
+      src = getNode(ISD.TRUNCATE, new EVT(MVT.i32), src);
+    else
+      src = getNode(ISD.ZERO_EXTEND, new EVT(MVT.i32), src);
+
+    entry = new ArgListEntry();
+    entry.node = src;
+    entry.ty = LLVMContext.Int32Ty;
+    entry.isSExt = true;
+    args.add(entry);
+    entry = new ArgListEntry();
+    entry.node = size;
+    entry.ty = intPtrty;
+    entry.isSExt = false;
+    args.add(entry);
+
+    Pair<SDValue, SDValue> callResult =
+        tli.lowerCallTo(chain, LLVMContext.VoidTy,
+            false, false, false, false, 0,
+            tli.getLibCallCallingConv(RTLIB.MEMSET),
+            false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMSET),
+                new EVT(tli.getPointerTy())), args, this);
+
+    return callResult.second;
+  }
+
+  private SDValue getMemsetStores(SDValue chain,
+                                 SDValue dst,
+                                 SDValue src,
+                                 long size,
+                                 int align,
+                                 Value dstSV,
+                                 long dstSVOff) {
+    TargetLowering tli = getTargetLoweringInfo();
+    ArrayList<EVT> memOps = new ArrayList<>();
+    OutRef<String> str = new OutRef<>("");
+    OutRef<Boolean> copyFromStr = new OutRef<>(false);
+    if (!meetsMaxMemopRequirement(memOps, dst, src, tli.getMaxStoresPerMemset(),
+        size, align, str, copyFromStr)) {
+      return new SDValue();
+    }
+
+    ArrayList<SDValue> outChains = new ArrayList<>();
+    long dstOff = 0;
+    int numMemOps = memOps.size();
+    for (int i = 0; i < numMemOps; i++) {
+      EVT vt = memOps.get(i);
+      int vtSize = vt.getSizeInBits()/8;
+      SDValue value = getMemsetValue(src, vt);
+      SDValue store = getStore(chain, value, getMemBasePlusOffset(dst, (int) dstOff),
+          dstSV, (int) (dstSVOff+dstOff), false, 0);
+      outChains.add(store);
+      dstOff += vtSize;
+    }
+    return getNode(ISD.TokenFactor, new EVT(MVT.Other), outChains);
+  }
+
+  private SDValue getMemsetValue(SDValue value, EVT vt) {
+    int numBits = vt.getScalarType().getSizeInBits();
+    if (value.getNode() instanceof ConstantSDNode) {
+      ConstantSDNode c = (ConstantSDNode) value.getNode();
+      APInt val = new APInt(numBits, c.getZExtValue()&255);
+      int shift = 8;
+      for (int i = numBits; i >8; i >>>= 1) {
+        val = (val.shl(shift)).or(val);
+        shift <<= 1;
+      }
+      if (vt.isInteger())
+        return getConstant(val, vt, false);
+      return getConstantFP(new APFloat(val), vt, false);
+    }
+    return value;
   }
 
   public boolean signBitIsZero(SDValue n, int depth) {

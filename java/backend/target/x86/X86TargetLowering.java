@@ -5695,6 +5695,18 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   @Override
+  public SDValue emitTargetCodeForMemset(SelectionDAG dag,
+                                         SDValue chain,
+                                         SDValue op1,
+                                         SDValue op2,
+                                         SDValue op3,
+                                         int align,
+                                         Value dstSV,
+                                         long dstOff) {
+    return super.emitTargetCodeForMemset(dag, chain, op1,op2, op3, align,dstSV,dstOff);
+  }
+
+  @Override
   public boolean isGAPlusOffset(SDNode n,
                                 OutRef<GlobalValue> gv,
                                 OutRef<Long> offset) {
