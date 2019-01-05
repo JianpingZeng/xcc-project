@@ -469,7 +469,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     if (op.isMachineOpcode())
       addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
     else if (op.getNode() instanceof ConstantSDNode) {
-      long imm = ((ConstantSDNode) op.getNode()).getZExtValue();
+      long imm = ((ConstantSDNode) op.getNode()).getSExtValue();
       mi.addOperand(MachineOperand.createImm(imm));
     } else if (op.getNode() instanceof ConstantFPSDNode) {
       ConstantFP imm = ((ConstantFPSDNode) op.getNode()).getConstantFPValue();

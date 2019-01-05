@@ -1000,8 +1000,8 @@ public class SelectionDAG {
   public SDValue getConstant(ConstantInt ci, EVT vt, boolean isTarget) {
     Util.assertion(vt.isInteger(), "Can't create FP integer constant");
     EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
-    Util.assertion(ci.getBitsWidth() == eltVT.getSizeInBits(), "APInt size doesn't match type size!");
-
+    Util.assertion(ci.getBitsWidth() == eltVT.getSizeInBits(),
+        "APInt size doesn't match type size!");
 
     int opc = isTarget ? ISD.TargetConstant : ISD.Constant;
     FoldingSetNodeID id = new FoldingSetNodeID();

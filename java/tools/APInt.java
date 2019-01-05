@@ -636,35 +636,35 @@ public class APInt implements Cloneable {
       return this;
     }
     // the sign bit is set.
-    if (width <= APINT_BITS_PER_WORD) {
-      long val_ = val << (APINT_BITS_PER_WORD - bitWidth);
-      return new APInt(width, val_ >> (APINT_BITS_PER_WORD - width));
+    int wordsBefore = getNumWords();
+    int wordBits = bitWidth % APINT_BITS_PER_WORD;
+    bitWidth = width;
+    int wordsAfter = getNumWords();
+
+    if (wordsBefore == wordsAfter) {
+      int newWordBits = width % APINT_BITS_PER_WORD;
+      long mask = ~0L;
+      if (newWordBits != 0)
+        mask >>>= APINT_BITS_PER_WORD - newWordBits;
+      mask <<= wordBits;
+      if (wordsBefore == 1)
+        val |= mask;
+      else
+        pVal[wordsBefore-1] |= mask;
+      return clearUnusedBits();
     }
 
-    APInt result = new APInt(new long[getNumWords(width)], width);
-
-    int i;
-    long word = 0;
-    for (i = 0; i != bitWidth / APINT_BITS_PER_WORD; ++i) {
-      word = getRawData()[i];
-      result.pVal[i] = word;
+    long mask = wordBits == 0 ? 0 : ~0L << wordBits;
+    long[] newVal = new long[wordsAfter];
+    if (wordsBefore == 1)
+      newVal[0] = val;
+    else {
+      System.arraycopy(pVal, 0, newVal, 0, wordsBefore);
+      newVal[wordsBefore-1] |= mask;
     }
-
-    int bits = (0 - bitWidth) % APINT_BITS_PER_WORD;
-    if (bits != 0)
-      word = getRawData()[i] << bits >> bits;
-    else
-      word = word >> (APINT_BITS_PER_WORD - 1);
-
-    for (; i != width / APINT_BITS_PER_WORD; ++i) {
-      result.pVal[i] = word;
-      word = word >> (APINT_BITS_PER_WORD - 1);
-    }
-
-    bits = (0 - width) % APINT_BITS_PER_WORD;
-    if (bits != 0)
-      result.pVal[i] = word << bits >> bits;
-    return result;
+    Arrays.fill(newVal, wordsBefore, wordsAfter, -1L);
+    pVal = newVal;
+    return clearUnusedBits();
   }
 
   public boolean intersects(APInt rhs) {
@@ -1121,7 +1121,7 @@ public class APInt implements Cloneable {
    */
   public int getMinSignedBits() {
     if (isNegative())
-      return bitWidth - countLeadingOnes() - 1;
+      return bitWidth - countLeadingOnes() + 1;
     return getActiveBits() + 1;
 
   }
@@ -2621,7 +2621,7 @@ public class APInt implements Cloneable {
   }
 
   public void print(PrintStream os) {
-    print(os, false);
+    print(os, true);
   }
 
   public void print(PrintStream os, boolean isSigned) {

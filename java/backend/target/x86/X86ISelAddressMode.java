@@ -98,22 +98,22 @@ public class X86ISelAddressMode implements Cloneable {
       System.err.print("null");
     System.err.printf(" Base.FrameIndex %d%n", base.frameIndex);
     System.err.printf(" Scale %d%n", scale);
-    System.err.printf("IndexReg ");
+    System.err.print("IndexReg ");
     if (indexReg.getNode() != null)
       indexReg.getNode().dump();
     else
-      System.err.printf("null");
+      System.err.print("null");
     System.err.printf(" Disp %d%n", disp);
-    System.err.printf("GV ");
+    System.err.print("GV ");
     if (gv != null)
       gv.dump();
     else
-      System.err.printf("null");
-    System.err.printf(" CP ");
+      System.err.print("null");
+    System.err.print(" CP ");
     if (cp != null)
       cp.dump();
     else
-      System.err.printf("null");
+      System.err.print("null");
     System.err.println();
     System.err.print("ES ");
     if (externalSym != null)
@@ -141,5 +141,20 @@ public class X86ISelAddressMode implements Cloneable {
     res.align = this.align;
     res.symbolFlags = this.symbolFlags;
     return res;
+  }
+
+  public void setValuesFrom(X86ISelAddressMode am) {
+    this.base = am.base;
+    this.indexReg = am.indexReg;
+    this.disp = am.disp;
+    this.baseType = am.baseType;
+    this.scale = am.scale;
+    this.symbolFlags = am.symbolFlags;
+    this.segment = am.segment;
+    this.gv = am.gv;
+    this.externalSym = am.externalSym;
+    this.cp = am.cp;
+    this.jti = am.jti;
+    this.align = am.align;
   }
 }

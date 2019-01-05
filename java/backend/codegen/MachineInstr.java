@@ -739,11 +739,15 @@ public class MachineInstr implements Cloneable {
     }
 
     os.printf(getDesc().getName());
-
+    // we have to print the first six operands instead of all operands in the sake of space.
     for (int i = startOp, e = getNumOperands(); i != e; i++) {
       if (i != startOp)
         os.print(",");
       os.print(" ");
+      if (i == 6) {
+        os.print("...");
+        break;
+      }
       getOperand(i).print(os, tm);
     }
 

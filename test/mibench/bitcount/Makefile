@@ -5,8 +5,13 @@ SRCS=$(wildcard *.c)
 PREDS = $(SRCS:.c=.i)
 LLS = $(SRCS:.c=.ll)
 ASMS=$(SRCS:.c=.s)
+OBJS=$(SRCS:.c=.o)
+TARGET=bitcnts
 
-all: $(ASMS) $(LLS) $(PREDS)
+all: $(TARGET)
+
+$(TARGET): $(ASMS)
+	gcc -O2 $^ -o $@
 
 %.s: %.ll
 	$(LLC) $< -o $@
