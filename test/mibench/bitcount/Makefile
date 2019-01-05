@@ -1,5 +1,5 @@
 CLANG=/home/xlous/Development/compiler/llvm/cmake-build-debug/bin/clang -cc1 -emit-llvm -O2
-LLC=/home/xlous/Development/compiler/xcc/out/bin/llc
+LLC=/home/xlous/Development/compiler/xcc/out/bin/llc -O0
 
 SRCS=$(wildcard *.c)
 PREDS = $(SRCS:.c=.i)
