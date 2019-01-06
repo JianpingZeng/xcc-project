@@ -61,6 +61,7 @@ public final class Module implements Iterable<Function> {
   private String targetTriple;
   private HashMap<String, NamedMDNode> namedMDSymTab;
   private ArrayList<NamedMDNode> namedMDList;
+  private String globalScopeAsm;
 
   /**
    * Constructor.
@@ -75,6 +76,7 @@ public final class Module implements Iterable<Function> {
     typeSymbolTable = new HashMap<>();
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
+    globalScopeAsm = "";
   }
 
   public Module(String moduleID) {
@@ -85,6 +87,7 @@ public final class Module implements Iterable<Function> {
     typeSymbolTable = new HashMap<>();
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
+    globalScopeAsm = "";
   }
 
   public String getModuleIdentifier() {
@@ -106,6 +109,25 @@ public final class Module implements Iterable<Function> {
   public int getNumFunctions() {
     return functionList != null ? functionList.size() : 0;
   }
+
+  public void appendModuleInlineAsm(String asm) {
+    if (globalScopeAsm == null)
+      globalScopeAsm = asm;
+    else
+      globalScopeAsm += asm;
+    if (!globalScopeAsm.isEmpty() &&
+        globalScopeAsm.charAt(globalScopeAsm.length()-1) != '\n')
+      globalScopeAsm += '\n';
+  }
+
+  public void setModuleInlineAsm(String asm) {
+    globalScopeAsm = asm;
+    if (!globalScopeAsm.isEmpty() &&
+        globalScopeAsm.charAt(globalScopeAsm.length()-1) != '\n')
+      globalScopeAsm += '\n';
+  }
+
+  public String getModuleInlineAsm() { return globalScopeAsm; }
 
   /**
    * Return the first global value in the module with the specified getIdentifier, of

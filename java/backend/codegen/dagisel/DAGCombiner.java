@@ -37,10 +37,7 @@ import tools.APInt;
 import tools.OutRef;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.*;
 import static backend.codegen.dagisel.SelectionDAG.isCommutativeBinOp;
@@ -3198,7 +3195,7 @@ public class DAGCombiner {
     if (matchRotateHalf(rhs, rhsRes))
       return null;
 
-    if (!lhsRes[0].getOperand(0).equals(rhsRes[0].getOperand(0)))
+    if (!Objects.equals(lhsRes[0].getOperand(0), rhsRes[0].getOperand(0)))
       return null;
 
     if (lhsRes[0].getOpcode() == rhsRes[0].getOpcode())

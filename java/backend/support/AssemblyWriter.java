@@ -188,6 +188,8 @@ public class AssemblyWriter {
       }
     }
 
+    if (name.charAt(0) == '"' && name.charAt(name.length()-1) == '"')
+      needQuotes = false;
     if (!needQuotes) {
       os.print(name);
       return;
@@ -1280,10 +1282,19 @@ public class AssemblyWriter {
     }
 
     if (m.getDataLayout() != null && !m.getDataLayout().isEmpty()) {
-      out.printf("target datalayout = \"%s\"\n", m.getDataLayout());
+      out.printf("target datalayout = %s\n", m.getDataLayout());
     }
     if (m.getTargetTriple() != null && !m.getTargetTriple().isEmpty()) {
-      out.printf("target triple = \"%s\"\n", m.getTargetTriple());
+      out.printf("target triple = %s\n", m.getTargetTriple());
+    }
+    if (m.getModuleInlineAsm() != null && !m.getModuleInlineAsm().isEmpty()) {
+      String[] temp = m.getModuleInlineAsm().split("\\n");
+      out.print("\nmodule asm ");
+      for (String str : temp) {
+        if (!str.isEmpty()) {
+          out.printf("\"%s\"\n", str);
+        }
+      }
     }
 
     // Loop over all symbol, emitting all id's types.

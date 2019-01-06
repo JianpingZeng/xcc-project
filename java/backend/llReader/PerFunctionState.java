@@ -53,6 +53,8 @@ public final class PerFunctionState {
     }
   }
 
+  public Function getFunction() { return fn; }
+
   public boolean verifyFunctionComplete() {
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<Value, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
@@ -225,8 +227,12 @@ public final class PerFunctionState {
 
     // Otherwise, create a new forward reference for this value and remember it.
     Value fwdVal;
-    if (ty.equals(LLVMContext.LabelTy))
-      fwdVal = BasicBlock.createBasicBlock(name, fn);
+    if (ty.equals(LLVMContext.LabelTy)) {
+      // just create a new block but not insert it into the basic blocks list of function
+      // so as to preserve the block order as input file.
+      fwdVal = BasicBlock.createBasicBlock(name, (Function) null);
+      fn.getValueSymbolTable().createValueName(name, fwdVal);
+    }
     else
       fwdVal = new Argument(ty, name, fn);
     forwardRefVals.put(name, Pair.get(fwdVal, loc));

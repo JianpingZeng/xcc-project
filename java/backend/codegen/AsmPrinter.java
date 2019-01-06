@@ -38,6 +38,7 @@ import java.util.HashSet;
 
 import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.Static;
+import static tools.Util.unEscapeLexed;
 
 /**
  * This is a common base class be used for target-specific asmwriters. This
@@ -139,7 +140,20 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       // .file "foo.c"
       outStreamer.emitFileDirective(m.getModuleIdentifier());
     }
+
+    // Emit module-level inline asm if it exists.
+    if (!m.getModuleInlineAsm().isEmpty()) {
+      outStreamer.addComment("Start of file scope inline assembly");
+      outStreamer.addBlankLine();
+      emitInlineAsm(m.getModuleInlineAsm()+"\n");
+      outStreamer.addComment("End of file scope inline assembly");
+      outStreamer.addBlankLine();
+    }
     return false;
+  }
+
+  private void emitInlineAsm(String inlineAsm) {
+    outStreamer.emitRawText(unEscapeLexed(inlineAsm));
   }
 
   @Override

@@ -39,6 +39,7 @@ import tools.SourceMgr.SMLoc;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static tools.Util.unEscapeLexed;
 import static backend.llReader.LLTokenKind.*;
 import static backend.llReader.ValID.ValIDKind.t_PackedConstantStruct;
 
@@ -158,7 +159,9 @@ public final class LLParser {
             return true;
           break;
         case kw_module:
-          return tokError("module asm not supported");
+          if (parseModuleAsm())
+            return true;
+          break;
         case kw_target:
           if (parseTargetDefinition())
             return true;
@@ -243,6 +246,22 @@ public final class LLParser {
     }
   }
 
+  /**
+   * TopLevelEntity ::=
+   *  'module' 'asm' STRINGCONSTANT
+   * @return
+   */
+  private boolean parseModuleAsm() {
+    Util.assertion(lexer.getTokKind() == kw_module);
+    lexer.lex();
+
+    OutRef<String> asmStr = new OutRef<>("");
+    if (parseToken(kw_asm, "expected 'module asm'") ||
+        parseStringConstant(asmStr))
+      return true;
+    m.appendModuleInlineAsm(asmStr.get());
+    return false;
+  }
   /**
    * !foo = !{!1, !2}
    *
@@ -1140,6 +1159,9 @@ public final class LLParser {
         case kw_nounwind:
           attr |= Attribute.NoUnwind;
           break;
+        case kw_uwtable:
+          attr |= Attribute.UWTable;
+          break;
         case kw_noinline:
           attr |= Attribute.NoInline;
           break;
@@ -1148,6 +1170,9 @@ public final class LLParser {
           break;
         case kw_readonly:
           attr |= Attribute.ReadOnly;
+          break;
+        case kw_inlinehint:
+          attr |= Attribute.InlineHint;
           break;
         case kw_alwaysinline:
           attr |= Attribute.AlwaysInline;
@@ -1170,6 +1195,16 @@ public final class LLParser {
         case kw_naked:
           attr |= Attribute.Naked;
           break;
+        case kw_nonlazybind:
+          attr |= Attribute.NonLazyBind;
+          break;
+        case kw_alignstack: {
+          OutRef<Integer> alignment = new OutRef<>(0);
+          if (parseOptionalStackAlignment(alignment))
+            return true;
+          attr |= Attribute.constructStackAlignmentFromInt(alignment.get());
+          continue;
+        }
 
         case kw_align: {
           OutRef<Integer> align = new OutRef<>(0);
@@ -1183,6 +1218,31 @@ public final class LLParser {
       }
       lexer.lex();
     }
+  }
+
+  /**
+   * optionalStackAlignment ::=
+   * /empty/
+   * 'alignstack' '(' 4 ')'
+   * @param alignment
+   * @return
+   */
+  private boolean parseOptionalStackAlignment(OutRef<Integer> alignment) {
+    alignment.set(0);
+    if (!eatIfPresent(kw_alignstack))
+      return false;
+    SMLoc parentLoc = lexer.getLoc();
+    if (!eatIfPresent(lparen))
+      return error(parentLoc, "expected a '('");
+    SMLoc alignLoc = lexer.getLoc();
+    if (parseInt32(alignment))
+      return true;
+    parentLoc = lexer.getLoc();
+    if (!eatIfPresent(rparen))
+      return error(parentLoc, "expected a ')'");
+    if (!Util.isPowerOf2(alignment.get()))
+      return error(alignLoc, "stack alignment is not a power of two");
+    return false;
   }
 
   private boolean parseType(OutRef<Type> result,
@@ -1647,6 +1707,7 @@ public final class LLParser {
     if (bb == null)
       return false;
 
+    pfs.getFunction().addBasicBlock(bb);
     // Parse the instructions in this block until we get a terminator.
     String nameStr;
 
@@ -2626,7 +2687,7 @@ public final class LLParser {
       case kw_c:
         // c "foo"
         lexer.lex();
-        id.constantVal = ConstantArray.get(lexer.getStrVal(), false);
+        id.constantVal = ConstantArray.get(unEscapeLexed(lexer.getStrVal()), false);
         if (parseToken(StringConstant, "expected string"))
           return true;
         id.kind = ValID.ValIDKind.t_Constant;
@@ -2750,9 +2811,9 @@ public final class LLParser {
         if (!val0.get().getType().isInteger() && !val0.get().getType().isFloatingPointType()) {
           return error(id.loc, "constantexpr requires integer, fp operand");
         }
-        Constant c = ConstantExpr.get(opc, val0.get(), val1.get());
+
         // Allow nsw and nuw, exact, but ignore it.
-        id.constantVal = c;
+        id.constantVal = ConstantExpr.get(opc, val0.get(), val1.get());
         id.kind = ValID.ValIDKind.t_Constant;
         return false;
       }
@@ -2799,8 +2860,7 @@ public final class LLParser {
         if (elts.isEmpty() || !(elts.get(0).getType() instanceof PointerType))
           return error(id.loc, "getelementptr requires poinertype");
 
-        ArrayList<Value> tmp = new ArrayList<>();
-        tmp.addAll(elts);
+        ArrayList<Value> tmp = new ArrayList<>(elts);
 
         if (GetElementPtrInst.getIndexedType(elts.get(0).getType(),
             tmp.subList(1, tmp.size())) == null)

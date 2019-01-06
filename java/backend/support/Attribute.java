@@ -71,6 +71,10 @@ public final class Attribute {
   public static final int InlineHint = 1 << 25;
   public static final int StackAlignment = 7 << 26;
 
+  public static final int ReturnsTwice = 1 << 29;
+  public static final int UWTable = 1 << 30;
+  public static final int NonLazyBind = 1 <<31;
+
   /// @brief Attributes that only apply to function parameters.
   public static final int ParameterOnly =
       ByVal | Nest | StructRet | NoCapture;
@@ -80,7 +84,8 @@ public final class Attribute {
   public static final int FunctionOnly =
       NoReturn | NoUnwind | ReadNone | ReadOnly | NoInline | AlwaysInline
           | OptimizeForSize | StackProtect | StackProtectReq
-          | NoRedZone | NoImplicitFloat | Naked;
+          | NoRedZone | NoImplicitFloat | Naked | ReturnsTwice
+          | UWTable | NonLazyBind;
 
   /// @brief Parameter attributes that do not apply to vararg call arguments.
   public static final int VarArgsIncompatible = StructRet;
@@ -110,6 +115,14 @@ public final class Attribute {
       return 0;
 
     return 1 << ((align >> 16) - 1);
+  }
+
+  public static int constructStackAlignmentFromInt(int i) {
+    if (i == 0)
+      return 0;
+    Util.assertion(Util.isPowerOf2(i), "alignment must be a power of two.");
+    Util.assertion(i <= 0x100, "alignment too large.");
+    return (Util.log2(i)+1) << 26;
   }
 
   /// The set of Attributes set in Attributes is converted to a

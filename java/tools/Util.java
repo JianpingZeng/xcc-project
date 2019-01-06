@@ -725,4 +725,31 @@ public class Util {
   public static char toOctal(int x) {
     return (char) (x & 0x7 + '0');
   }
+
+  public static boolean isHexDigit(char ch) {
+    return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch < 'f') || (ch >= 'A' && ch <= 'F');
+  }
+
+  public static String unEscapeLexed(String str) {
+    if (str == null || str.isEmpty())
+      return "";
+
+    StringBuilder buf = new StringBuilder();
+    for (int i = 0, e = str.length(); i != e; ) {
+      if (str.charAt(i) == '\\') {
+        if (i < e - 1 && str.charAt(i + 1) == '\\') {
+          buf.append('\\');
+          i += 2;
+        } else if (i < e - 2 && isHexDigit(str.charAt(i + 1)) && isHexDigit(str.charAt(i + 2))) {
+          buf.append((char)Integer.parseInt(str.substring(i + 1, i + 3), 16));
+          i += 3;
+        } else {
+          buf.append(str.charAt(i++));
+        }
+      } else {
+        buf.append(str.charAt(i++));
+      }
+    }
+    return buf.toString();
+  }
 }
