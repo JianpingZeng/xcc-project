@@ -1,14 +1,12 @@
-CLANG=/home/xlous/Development/compiler/llvm/cmake-build-debug/bin/clang -cc1 -emit-llvm -O2
+CLANG=/home/xlous/Development/compiler/llvm/cmake-build-debug/bin/clang -emit-llvm -S -O2
 LLC=/home/xlous/Development/compiler/xcc/out/bin/llc -O0
 
 SRCS=$(wildcard *.c)
-PREDS = $(SRCS:.c=.i)
 LLS = $(SRCS:.c=.ll)
 ASMS=$(SRCS:.c=.s)
-OBJS=$(SRCS:.c=.o)
 TARGET=bitcnts
 
-all: $(TARGET)
+all: $(TARGET) $(LLS)
 
 $(TARGET): $(ASMS)
 	gcc -O2 $^ -o $@
@@ -16,11 +14,8 @@ $(TARGET): $(ASMS)
 %.s: %.ll
 	$(LLC) $< -o $@
 
-%.ll: %.i
+%.ll: %.c
 	$(CLANG) $< -o $@
-
-%.i: %.c
-	gcc -E $< > $@
 
 clean:
 	rm -rf $(TARGET) output* *.ll *.bc *.s *.o *.i

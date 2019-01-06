@@ -1824,18 +1824,19 @@ public final class LLParser {
       case kw_fsub:
       case kw_fmul:
         return parseArithmetic(inst, pfs, opc, 2);
-      case kw_sdiv: {
+      case kw_sdiv:
+      case kw_udiv:
+      case kw_lshr:
+      case kw_ashr: {
         boolean exact = false;
         if (eatIfPresent(kw_exact))
           exact = true;
-        boolean result = parseArithmetic(inst, pfs, opc, 1);
-        if (!result) {
-          if (exact)
-            tokError("exact flag ignored");
-        }
-        return result;
+        if (parseArithmetic(inst, pfs, opc, 1))
+          return true;
+        if (exact)
+          ((BinaryOps)inst.get()).setIsExact(true);
+        return false;
       }
-      case kw_udiv:
       case kw_urem:
       case kw_srem:
         return parseArithmetic(inst, pfs, opc, 1);
@@ -1843,8 +1844,6 @@ public final class LLParser {
       case kw_frem:
         return parseArithmetic(inst, pfs, opc, 2);
       case kw_shl:
-      case kw_lshr:
-      case kw_ashr:
       case kw_and:
       case kw_or:
       case kw_xor:

@@ -490,6 +490,12 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class BinaryOps extends Instruction {
+    /**
+     * Indicates the operation (such as udiv, sdiv, lshr, and ashr)
+     * doesn't have extra bits to been destroyed.
+     */
+    private boolean isExact;
+
     public BinaryOps(
         Type ty,
         Operator opcode,
@@ -508,7 +514,8 @@ public abstract class Instruction extends User {
         Instruction insertBefore) {
       super(ty, opcode, name, insertBefore);
       reserve(2);
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Can not create binary operation with two operands of differing jlang.type.");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Can not create binary operation with two operands of differing jlang.type.");
 
       init(lhs, rhs);
     }
@@ -521,7 +528,8 @@ public abstract class Instruction extends User {
         String name,
         BasicBlock insertAtEnd) {
       super(ty, opcode, name, insertAtEnd);
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Can not create binary operation with two operands of differing jlang.type.");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Can not create binary operation with two operands of differing jlang.type.");
 
       init(lhs, rhs);
     }
@@ -537,7 +545,8 @@ public abstract class Instruction extends User {
         Value rhs,
         String name,
         Instruction insertBefore) {
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertBefore);
     }
@@ -547,7 +556,8 @@ public abstract class Instruction extends User {
         Value lhs,
         Value rhs,
         String name) {
-      Util.assertion(lhs.getType() == rhs.getType(), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType() == rhs.getType(),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, (Instruction) null);
     }
@@ -558,9 +568,14 @@ public abstract class Instruction extends User {
         Value rhs,
         String name,
         BasicBlock insertAtEnd) {
-      Util.assertion(lhs.getType() == rhs.getType(), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType() == rhs.getType(),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+    }
+
+    public void setIsExact(boolean val) {
+      this.isExact = val;
     }
 
     //=====================================================================//
@@ -1307,7 +1322,7 @@ public abstract class Instruction extends User {
     protected Predicate pred;
 
     protected CmpInst(
-        backend.type.Type ty,
+        Type ty,
         Operator op,
         Predicate pred,
         Value lhs,
@@ -1319,7 +1334,7 @@ public abstract class Instruction extends User {
     }
 
     protected CmpInst(
-        backend.type.Type ty,
+        Type ty,
         Operator op,
         Predicate pred,
         Value lhs,
