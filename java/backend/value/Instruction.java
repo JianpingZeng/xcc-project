@@ -2554,13 +2554,15 @@ public abstract class Instruction extends User {
     }
 
     public ConstantInt getSuccessorValue(int index) {
-      Util.assertion(index >= 0 && index < getNumOfSuccessors(), "Successor value index out of range for switch");
+      Util.assertion(index >= 0 && index < getNumOfSuccessors(),
+          "Successor value index out of range for switch");
 
       return (ConstantInt) operand(2 * index);
     }
 
     public BasicBlock getSuccessor(int index) {
-      Util.assertion(index >= 0 && index < getNumOfSuccessors(), "Successor index out of range for switch");
+      Util.assertion(index >= 0 && index < getNumOfSuccessors(),
+          "Successor index out of range for switch");
 
       return (BasicBlock) operand(2 * index + 1);
 

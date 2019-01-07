@@ -621,10 +621,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   private void findPosAndInsertMove(MachineBasicBlock src, MachineBasicBlock dst) {
     if (src.getNumSuccessors() <= 1) {
       // insert a move instruction at the end of source basic block.
-      resolver.insertMoveInstr(src, src.getLastInst().index());
+      resolver.insertMoveInstr(src, src.getLastInst().getIndexInMBB());
     } else {
       // insert a move instruction at the begining of destination block.
-      resolver.insertMoveInstr(dst, dst.getFirstInst().index());
+      resolver.insertMoveInstr(dst, dst.getFirstInst().getIndexInMBB());
     }
   }
 

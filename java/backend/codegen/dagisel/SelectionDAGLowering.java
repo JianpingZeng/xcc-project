@@ -947,11 +947,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue cond;
     SDValue condLHS = getValue(cb.cmpLHS);
     if (cb.cmpMHS == null) {
-      if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ)
+      if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ) {
         cond = condLHS;
+      }
       else if (cb.cmpRHS.equals(ConstantInt.getFalse()) & cb.cc == CondCode.SETEQ) {
-        SDValue t = dag.getConstant(1, condLHS.getValueType(), false);
-        cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, t);
+        SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
+        cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, one);
       } else {
         cond = dag.getSetCC(new EVT(MVT.i1), condLHS, getValue(cb.cmpRHS),
             cb.cc);
@@ -988,24 +989,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock temp = cb.trueMBB;
       cb.trueMBB = cb.falseMBB;
       cb.falseMBB = temp;
+      SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
+      cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, one);
     }
-    SDValue brCond = dag
-        .getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(), cond,
-            dag.getBasicBlock(cb.trueMBB));
 
-    if (brCond.getOpcode() == ISD.BR) {
-      curMBB.removeSuccessor(cb.falseMBB);
-      dag.setRoot(brCond);
-    } else {
-      if (brCond.equals(getControlRoot()))
-        curMBB.removeSuccessor(cb.falseMBB);
+    SDValue brCond = dag.getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(),
+        cond, dag.getBasicBlock(cb.trueMBB));
 
-      if (cb.falseMBB.equals(nextBlock))
-        dag.setRoot(brCond);
-      else
-        dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
-            dag.getBasicBlock(cb.falseMBB)));
-    }
+    // Insert the false branch. Do this even if it's a fall through branch,
+    // this makes it easier to do DAG optimizations which require inverting
+    // the branch condition.
+      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+          brCond, dag.getBasicBlock(cb.falseMBB)));
   }
 
   @Override
@@ -1116,7 +1111,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     APInt minVal = cr.caseRanges.get(frontCaseIdx).low.getValue();
-    APInt maxVal = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt maxVal = cr.caseRanges.get(backCaseIdx-1).high.getValue();
 
     APInt cmpRange = maxVal.sub(minVal);
 
@@ -1207,6 +1202,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         if (cr.caseRanges.get(i).mbb.equals(nextBlock)) {
           Case t = cr.caseRanges.get(i);
           cr.caseRanges.set(i, backCase);
+          cr.caseRanges.set(cr.caseRanges.size() - 1, t);
           backCase = t;
           break;
         }
@@ -1218,7 +1214,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock fallThrough = null;
       if (!cr.caseRanges.get(i).equals(cr.caseRanges.get(e - 1))) {
         fallThrough = mf.createMachineBasicBlock(curBlock.getBasicBlock());
-        mf.insert(itr, fallThrough);
+        mf.insert(itr++, fallThrough);
 
         exportFromCurrentBlock(val);
       } else {

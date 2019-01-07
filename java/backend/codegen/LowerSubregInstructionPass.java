@@ -106,7 +106,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
         mi.setDesc(tii.get(TargetOpcodes.IMPLICIT_DEF));
         mi.removeOperand(2);
         if (Util.DEBUG) {
-          System.err.printf("subreg: replace by: ");
+          System.err.print("subreg: replace by: ");
           mi.dump();
           return true;
         }
@@ -118,7 +118,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       // insert a copy.
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(srcReg);
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
-      boolean emitted = tii.copyRegToReg(mbb, mi.index(), destReg, srcReg,
+      boolean emitted = tii.copyRegToReg(mbb, mi.getIndexInMBB(), destReg, srcReg,
           destRC, srcRC);
       Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       if (mo0.isDead())
@@ -166,7 +166,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       // No need to insert an identity copy instruction. If the SrcReg was
       // <undef>, we need to make sure it is alive by inserting an IMPLICIT_DEF
       if (mo1.isUndef() && !mo0.isDead()) {
-        MachineInstrBuilder mib = buildMI(mbb, mi.index(),
+        MachineInstrBuilder mib = buildMI(mbb, mi.getIndexInMBB(),
             tii.get(TargetOpcodes.IMPLICIT_DEF), destReg);
         if (mo2.isUndef())
           mib.addReg(insReg, RegState.Implicit | RegState.Undef);
@@ -184,13 +184,13 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       if (mo2.isUndef())
-        buildMI(mbb, mi.index(), tii.get(TargetOpcodes.IMPLICIT_DEF), destSubReg);
+        buildMI(mbb, mi.getIndexInMBB(), tii.get(TargetOpcodes.IMPLICIT_DEF), destSubReg);
       else {
-        boolean emitted = tii.copyRegToReg(mbb, mi.index(), destSubReg,
+        boolean emitted = tii.copyRegToReg(mbb, mi.getIndexInMBB(), destSubReg,
             insReg, destRC, srcRC);
         Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       }
-      MachineInstr copyMI = mi.getParent().getInstAt(mi.index() - 1);
+      MachineInstr copyMI = mi.getParent().getInstAt(mi.getIndexInMBB() - 1);
       Util.assertion(copyMI != null);
       if (!mo1.isUndef())
         copyMI.addOperand(createReg(destReg, false, true, true, false, false, false, 0));
@@ -246,7 +246,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
     } else {
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
-      tii.copyRegToReg(mbb, mi.index(), destSubReg, insReg, destRC, srcRC);
+      tii.copyRegToReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, destRC, srcRC);
       if (mo0.isDead())
         transferDeadFlag(mi, destSubReg, tri);
       if (mo2.isKill())
@@ -269,7 +269,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
    */
   private void transferDeadFlag(MachineInstr mi, int destReg, TargetRegisterInfo tri) {
     MachineBasicBlock mbb = mi.getParent();
-    for (int i = mi.index() - 1; ; i--) {
+    for (int i = mi.getIndexInMBB() - 1; ; i--) {
       if (mbb.getInstAt(i).addRegisterDead(destReg, tri))
         break;
       Util.assertion(i != 0, "copyRegToReg doesn't reference destination register!");
@@ -294,7 +294,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
                                 int srcReg, TargetRegisterInfo tri,
                                 boolean addIfNotFound) {
     MachineBasicBlock mbb = mi.getParent();
-    for (int i = mi.index() - 1; ; i--) {
+    for (int i = mi.getIndexInMBB() - 1; ; i--) {
       if (mbb.getInstAt(i).addRegisterKilled(srcReg, tri, addIfNotFound))
         break;
       Util.assertion(i != 0, "copyRegToReg doesn't reference source register!");

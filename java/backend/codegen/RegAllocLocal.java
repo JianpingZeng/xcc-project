@@ -243,6 +243,33 @@ public class RegAllocLocal extends MachineFunctionPass {
   }
 
   /**
+   * Insert a store instruction after the specified position.
+   * @param parent
+   * @param index
+   * @param virReg
+   * @param phyReg
+   */
+  private void spillVirRegAfter(MachineBasicBlock parent,
+                           int index,
+                           int virReg,
+                           int phyReg) {
+    if (virReg == 0) return;
+
+    // We just spill those modified virtual register into memory cell.
+    if (isVirRegModified(virReg)) {
+      MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+      int frameIdx = getStackSlotForVirReg(virReg, rc);
+      boolean isKilled = !parent.getInstAt(index-1).readsRegister(phyReg, regInfo);
+      instrInfo.storeRegToStackSlot(parent, index, phyReg, isKilled, frameIdx, rc);
+
+      // add count for spilled.
+      NumSpilled.inc();
+    }
+    virToPhyRegMap.remove(virReg, phyReg);
+    removePhyReg(phyReg);
+  }
+
+  /**
    * Spill the specified virtual reg into stack slot associated.
    *
    * @param insertPos
@@ -775,8 +802,13 @@ public class RegAllocLocal extends MachineFunctionPass {
     for (int phyReg = 0, e = regInfo.getNumRegs(); phyReg < e; phyReg++) {
       // If the specified physical register is allocated, just free it!
       if (phyRegUsed[phyReg] != -1 && phyRegUsed[phyReg] != -2) {
-        int itr = mbb.getFirstTerminator() - 1;
-        spillVirReg(mbb.getInstAt(itr), phyRegUsed[phyReg], phyReg);
+        int itr = mbb.getFirstTerminator();
+        // if itr == the size of mbb, which means there is no terminator instr in the current mbb.
+        // we have to decrease it by one to set it points to the last instr.
+        if (itr == mbb.size())
+          spillVirRegAfter(mbb, itr, phyRegUsed[phyReg], phyReg);
+        else
+          spillVirReg(mbb.getInstAt(itr), phyRegUsed[phyReg], phyReg);
       } else
         removePhyReg(phyReg);
     }

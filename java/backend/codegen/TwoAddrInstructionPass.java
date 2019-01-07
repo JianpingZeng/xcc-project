@@ -212,8 +212,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
 
                     mri.replaceDefRegInfo(regA, oldMI, newMI);
                     if (!sunk) {
-                      distanceMap.put(newMI.index(), i + 1);
-                      i = newMI.index();
+                      distanceMap.put(newMI.getIndexInMBB(), i + 1);
+                      i = newMI.getIndexInMBB();
                       nmi = i + 1;
                     }
 
@@ -408,7 +408,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       return false;
 
     MachineOperand killMO = null;
-    int killPos = killMI.index();
+    int killPos = killMI.getIndexInMBB();
     killPos++;
 
     int numVisited = 0;
@@ -444,10 +444,10 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     if (lv != null)
       lv.replaceKillInstruction(savedReg, killMI, mi);
 
-    if (killPos == mi.index())
+    if (killPos == mi.getIndexInMBB())
       return false;
 
-    Util.assertion(killPos > mi.index(), "must sink the specified instr");
+    Util.assertion(killPos > mi.getIndexInMBB(), "must sink the specified instr");
     mi.removeFromParent();
     mbb.insert(killPos - 1, mi);
     return true;
@@ -471,8 +471,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
 
       mbb.insert(mi.get(), newMI);
       mbb.remove(mi.get());
-      mi.set(newMI.index());
-      distanceMap.put(newMI.index(), dist);
+      mi.set(newMI.getIndexInMBB());
+      distanceMap.put(newMI.getIndexInMBB(), dist);
     }
 
     return true;
@@ -542,13 +542,13 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       MachineInstr mi = itr.getMachineInstr();
       if (!mi.getParent().equals(mbb))
         continue;
-      if (!distanceMap.containsKey(mi.index()))
+      if (!distanceMap.containsKey(mi.getIndexInMBB()))
         continue;
 
-      if (mo.isUse() && distanceMap.get(mi.index()) < lastUse)
-        lastUse = distanceMap.get(mi.index());
-      if (mo.isDef() && distanceMap.get(mi.index()) > lastDef.get())
-        lastDef.set(distanceMap.get(mi.index()));
+      if (mo.isUse() && distanceMap.get(mi.getIndexInMBB()) < lastUse)
+        lastUse = distanceMap.get(mi.getIndexInMBB());
+      if (mo.isDef() && distanceMap.get(mi.getIndexInMBB()) > lastDef.get())
+        lastDef.set(distanceMap.get(mi.getIndexInMBB()));
       itr.next();
     }
     return (!(lastUse > lastDef.get() && lastUse < dist));
@@ -567,7 +567,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       MachineInstr useMI = itr.getMachineInstr();
       MachineBasicBlock useBB = useMI.getParent();
       if (useBB.equals(mbb)) {
-        int idx = useMI.index();
+        int idx = useMI.getIndexInMBB();
         if (distanceMap.containsKey(idx) && distanceMap.get(idx) == loc) {
           otherUse = true;
           if (isTwoAddrUse(useMI, reg))

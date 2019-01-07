@@ -744,7 +744,7 @@ public class MachineInstr implements Cloneable {
       if (i != startOp)
         os.print(",");
       os.print(" ");
-      if (i == 6) {
+      if (i == 6 && isCall()) {
         os.print("...");
         break;
       }
@@ -876,7 +876,7 @@ public class MachineInstr implements Cloneable {
     getOperand(idx).setReg(reg);
   }
 
-  public int index() {
+  public int getIndexInMBB() {
     return getParent().getInsts().indexOf(this);
   }
 

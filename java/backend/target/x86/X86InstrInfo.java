@@ -2934,8 +2934,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       }
 
     } else {  // We need a SIB byte, so start by outputting the ModR/M byte first
-      Util.assertion(IndexReg.getReg() != ESP && IndexReg.getReg() != RSP, "Cannot use ESP as index reg!");
-
+      Util.assertion(IndexReg.getReg() != ESP && IndexReg.getReg() != RSP,
+          "Cannot use ESP as index reg!");
 
       boolean ForceDisp32 = false;
       if (BaseReg == 0 || DispForReloc != null) {

@@ -3466,7 +3466,7 @@ public class SelectionDAG {
       if (gep.getNumOfOperands() != 3)
         return false;
 
-      // Make sure the index-ee is a pointer to array of i8.
+      // Make sure the index is a pointer to array of i8.
       if (!(gep.operand(0).getType() instanceof PointerType))
         return false;
       PointerType pty = (PointerType) gep.operand(0).getType();

@@ -324,8 +324,7 @@ public class MachineOperand {
           os.print(getFPImm().getValueAPF().convertToDouble());
         break;
       case MO_MachineBasicBlock:
-        os.printf("mbb<%s,0x%x>", getMBB().getBasicBlock().getName(),
-            getMBB().hashCode());
+        os.printf("<BB#%d>", getMBB().getNumber());
         break;
       case MO_FrameIndex:
         os.printf("<fi#%d>", getIndex());

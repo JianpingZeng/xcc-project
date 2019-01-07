@@ -378,27 +378,36 @@ public class MachineBasicBlock {
 
     BasicBlock bb = getBasicBlock();
     os.println();
-    if (bb != null)
-      os.printf("%s: ", bb.getName());
-    os.printf("0x%x, LLVM BB @0x%x, ID#%d", hashCode(),
-        bb == null ? 0 : bb.hashCode(), getNumber());
-    if (alignment != 0)
-      os.printf(", Alignment %d", alignment);
-    os.printf(":%n");
+    os.printf("BB#%d: ", getNumber());
+    String comma = "";
+    if (bb != null) {
+      comma = ",";
+      os.printf("derived from LLVM BB %%%s\n", bb.getName());
+    }
 
+    if (isLandingPad()) {
+      os.printf("%sEH LANDING PAD", comma);
+      comma = ", ";
+    }
+    if (hasAddressTaken()) {
+      os.printf("%sADDRESS TAKEN", comma);
+      // comma = ", ";
+    }
+
+    TargetRegisterInfo tri = getParent().getTarget().getRegisterInfo();
     if (!liveIns.isEmpty()) {
-      os.printf("Live Ins:");
+      os.printf("    Live Ins:");
       for (int i = 0, e = liveIns.size(); i < e; i++)
-        outputReg(os, liveIns.get(i), getParent().getTarget().getRegisterInfo());
+        outputReg(os, liveIns.get(i), tri);
 
       os.println();
     }
 
     // Print the preds of this block according to the CFGs.
     if (predecessors != null && !predecessors.isEmpty()) {
-      os.printf("\tPredecessors according to CFG:");
+      os.printf("    Predecessors according to CFG:");
       for (MachineBasicBlock pred : predecessors)
-        os.printf(" 0x%x (#%d)", pred.hashCode(), pred.getNumber());
+        os.printf(" BB#%d", pred.getNumber());
       os.println();
     }
 
@@ -410,11 +419,11 @@ public class MachineBasicBlock {
 
     // Print the sucessors of this block according to CFG
     if (!succIsEmpty()) {
-      os.printf("\tSuccessors according to CFG:");
+      os.printf("    Successors according to CFG:");
       Iterator<MachineBasicBlock> itr = succIterator();
       while (itr.hasNext()) {
         MachineBasicBlock succ = itr.next();
-        os.printf(" 0x%x (#%d)", succ.hashCode(), succ.getNumber());
+        os.printf(" BB#%d", succ.getNumber());
       }
       os.println();
     }
