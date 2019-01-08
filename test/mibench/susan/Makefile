@@ -8,9 +8,10 @@ CC=/home/xlous/Development/compiler/llvm/cmake-build-debug/bin/clang -cc1 -emit-
 LLC=/home/xlous/Development/compiler/xcc/out/bin/llc -O0
 
 ASMS = susan.s
-PREDS = susan.i
+LLS = susan.ll
 TARGET = susan
 
+all: $(TARGET) $(LLS)
 $(TARGET): $(ASMS)
 	gcc $^ -o $@
 %.s: %.ll

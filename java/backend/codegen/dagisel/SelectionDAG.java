@@ -45,6 +45,7 @@ import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
+import static backend.target.TargetLowering.BooleanContent.ZeroOrNegativeOneBooleanContent;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;
 import static tools.APFloat.CmpResult.*;
 import static tools.APFloat.OpStatus.opDivByZero;
@@ -3566,9 +3567,199 @@ public class SelectionDAG {
     return computeNumSignBits(op, 0);
   }
 
+  /**
+   * Return the number of times the sign bit of the register is replicated into the
+   * other bits. We know that all at least 1 bit is always equal to the sign bit (itself).
+   * but other cases can give us more information. for example, immediately after on
+   * "SRA X, 2", we know that the top 3 bits are all equal to each other, so it return 3.
+   * @param op
+   * @param depth
+   * @return
+   */
   public int computeNumSignBits(SDValue op, int depth) {
-    Util.assertion(false, "Unimplemented currently!");
-    return 0;
+    EVT vt = op.getValueType();
+    Util.assertion(vt.isInteger(), "Invalid VT!");
+    int vtBits = vt.getScalarType().getSizeInBits();
+    int tmp, tmp2;
+    int firstAnswer = 1;
+    if (depth >= 6)
+      return 1;
+
+    switch (op.getOpcode()) {
+      default: break;
+      case ISD.AssertSext:
+        tmp = ((VTSDNode)op.getOperand(1).getNode()).getVT().getSizeInBits();
+        return vtBits - tmp + 1;
+      case ISD.AssertZext:
+        tmp = ((VTSDNode)op.getOperand(1).getNode()).getVT().getSizeInBits();
+        return vtBits - tmp;
+      case ISD.Constant: {
+        APInt val = ((ConstantSDNode)op.getNode()).getAPIntValue();
+        return val.getNumSignBits();
+      }
+      case ISD.SIGN_EXTEND:
+        tmp = vtBits - op.getOperand(0).getValueType().getSizeInBits();
+        return computeNumSignBits(op.getOperand(0), depth+1) + tmp;
+      case ISD.SIGN_EXTEND_INREG:
+        tmp = ((VTSDNode)op.getOperand(1).getNode()).getVT().getScalarType().getSizeInBits();
+        tmp = vtBits - tmp + 1;
+        tmp2 = computeNumSignBits(op.getOperand(0), depth+1);
+        return Math.max(tmp, tmp2);
+      case ISD.SRA:
+        tmp = computeNumSignBits(op.getOperand(0), depth+1);
+        // SRA X, C -> adds C sign bits.
+        if (op.getOperand(1).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode csd = (ConstantSDNode) op.getOperand(1).getNode();
+          tmp += csd.getZExtValue();
+          if (tmp > vtBits)
+            tmp = vtBits;
+        }
+        return tmp;
+      case ISD.SHL:
+        tmp = computeNumSignBits(op.getOperand(0), depth+1);
+        // shl destroys sign bits.
+        if (op.getOperand(1).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode csd = (ConstantSDNode) op.getOperand(1).getNode();
+          if (Long.compareUnsigned(csd.getZExtValue(), vtBits) >= 0 ||
+              Long.compareUnsigned(csd.getZExtValue(), tmp) >= 0)
+            return (int) (tmp - csd.getZExtValue());
+        }
+        break;
+      case ISD.AND:
+      case ISD.OR:
+      case ISD.XOR:
+        // Logical binary ops preserve the number of sign bits at the worst.
+        tmp = computeNumSignBits(op.getOperand(0), depth+1);
+        if (tmp != 1) {
+          tmp2 = computeNumSignBits(op.getOperand(1), depth+1);
+          firstAnswer = Math.min(tmp, tmp2);
+        }
+        break;
+      case ISD.SELECT:
+        tmp = computeNumSignBits(op.getOperand(1), depth+1);
+        if (tmp == 1) return 1;
+        tmp2 = computeNumSignBits(op.getOperand(2), depth+1);
+        return Math.min(tmp, tmp2);
+      case ISD.SADDO:
+      case ISD.UADDO:
+      case ISD.SSUBO:
+      case ISD.USUBO:
+      case ISD.SMULO:
+      case ISD.UMULO:
+        if (op.getResNo() != 1)
+          break;
+      case ISD.SETCC:
+        if (tli.getBooleanContents() == ZeroOrNegativeOneBooleanContent)
+          return vtBits;
+        break;
+      case ISD.ROTL:
+      case ISD.ROTR:
+        if (op.getOperand(1).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode csd = (ConstantSDNode) op.getOperand(1).getNode();
+          long rotAmt = csd.getZExtValue() & (vtBits - 1);
+          if (op.getOpcode() == ISD.ROTR)
+            rotAmt = (vtBits - rotAmt) & (vtBits - 1);
+          tmp = computeNumSignBits(op.getOperand(0), depth + 1);
+          if (tmp > rotAmt + 1)
+            return (int) (tmp - rotAmt);
+        }
+        break;
+      case ISD.ADD:
+        // Add can have at most one carry bit.  Thus we know that the output
+        // is, at worst, one more bit than the inputs.
+        tmp = computeNumSignBits(op.getOperand(0), depth + 1);
+        if (tmp == 1) return 1;
+
+        // Special case decrementing a value (ADD X, -1):
+        if (op.getOperand(1).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode rhsC = (ConstantSDNode) op.getOperand(1).getNode();
+          if (rhsC.isAllOnesValue()) {
+            APInt[] knowVals = new APInt[2];
+            APInt mask = APInt.getAllOnesValue(vtBits);
+            computeMaskedBits(op.getOperand(0), mask, knowVals, depth + 1);
+            APInt knowZero = knowVals[0];
+            if (knowZero.or(new APInt(vtBits, 1)).eq(mask))
+              return vtBits;
+
+            if (knowZero.isNegative())
+              return tmp;
+          }
+        }
+        tmp2 = computeNumSignBits(op.getOperand(1), depth + 1);
+        if (tmp2 == 1) return 1;
+        return Math.min(tmp, tmp2) - 1;
+      case ISD.SUB:
+        tmp2 = computeNumSignBits(op.getOperand(1), depth + 1);
+        if (tmp2 == 1) return 1;
+
+        // handle NEG.
+        if (op.getOperand(0).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode lhsC = (ConstantSDNode) op.getOperand(0).getNode();
+          if (lhsC.isNullValue()) {
+            APInt[] knowVals = new APInt[2];
+            APInt mask = APInt.getAllOnesValue(vtBits);
+            computeMaskedBits(op.getOperand(1), mask, knowVals, depth + 1);
+            APInt knowZero = knowVals[0];
+
+            if (knowZero.or(new APInt(vtBits, 1)).eq(mask))
+              return vtBits;
+
+            if (knowZero.isNegative())
+              return tmp2;
+          }
+        }
+        tmp = computeNumSignBits(op.getOperand(0), depth + 1);
+        if (tmp == 1) return 1;
+        return Math.min(tmp, tmp2) - 1;
+      case ISD.TRUNCATE:
+        // FIXME: it's tricky to do anything useful for this, but it is an important
+        // case for targets like X86.
+        break;
+    }
+
+    // Handle LOADX separately here. EXTLOAD case will fallthrough.
+    if (op.getOpcode() == ISD.LOAD) {
+      LoadSDNode ld = (LoadSDNode) op.getNode();
+      LoadExtType extType = ld.getExtensionType();
+      switch (extType) {
+        default:break;
+        case SEXTLOAD:
+          tmp = ld.getMemoryVT().getScalarType().getSizeInBits();
+          return vtBits - tmp + 1;
+        case ZEXTLOAD:
+          tmp = ld.getMemoryVT().getScalarType().getSizeInBits();
+          return vtBits - tmp;
+      }
+    }
+
+    // Allow the target to implement this method for its nodes.
+    if (op.getOpcode() >= ISD.BUILTIN_OP_END ||
+        op.getOpcode() == ISD.INTRINSIC_WO_CHAIN ||
+        op.getOpcode() == ISD.INTRINSIC_W_CHAIN ||
+        op.getOpcode() == ISD.INTRINSIC_VOID) {
+      int numBits = tli.computeNumSignBitsForTargetNode(op, depth);
+      if (numBits > 1)
+        firstAnswer = Math.max(firstAnswer, numBits);
+    }
+
+    APInt[] knownVals = new APInt[2];
+    APInt mask = APInt.getAllOnesValue(vtBits);
+    computeMaskedBits(op, mask, knownVals, depth);
+    APInt knownZero = knownVals[0], knonwOne = knownVals[1];
+    if (knownZero.isNegative())
+      mask = knownZero;
+    else if (knonwOne.isNegative())
+      mask = knonwOne;
+    else
+      return firstAnswer;
+
+    // Okay, we know that the sign bit in Mask is set.  Use CLZ to determine
+    // the number of identical bits in the top of the input value.
+    mask = mask.not();
+    mask.shlAssign(mask.getBitWidth() - vtBits);
+    // Return # leading zeros.  We use 'min' here in case Val was zero before
+    // shifting.  We don't want to return '64' as for an i32 "0".
+    return Math.max(firstAnswer, Math.min(vtBits, mask.countLeadingZeros()));
   }
 
   public SDValue getVectorShuffle(EVT vt, SDValue op0, SDValue op1, int[] mask) {

@@ -246,7 +246,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         if (isVirtualRegister(destReg))
           destRC = mri.getRegClass(destReg);
         else
-          destRC = tri.getPhysicalRegisterRegClass(destReg);
+          destRC = tri.getPhysicalRegisterRegClass(destReg, node.getOperand(1).getValueType());
 
         boolean emitted = tii.copyRegToReg(mbb, insertPos++, destReg, srcReg,
             destRC, srcRC);

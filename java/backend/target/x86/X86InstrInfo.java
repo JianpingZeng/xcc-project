@@ -959,7 +959,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         if (hasLiveCondCodeDef(mi))
           return null;
 
-        boolean is64Bit = tm.getSubtarget().isIn64BitMode;
+        boolean is64Bit = tm.getSubtarget().in64BitMode;
         switch (miOpc) {
           case INC64r:
           case INC32r:
@@ -1724,7 +1724,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       } else if (commonRC == GR8_ABCD_LRegisterClass) {
         opc = MOV8rr;
       } else if (commonRC == GR8_ABCD_HRegisterClass) {
-        if (((X86Subtarget) tm.getSubtarget()).is64Bit())
+        if (tm.getSubtarget().is64Bit())
           opc = MOV8rr_NOREX;
         else
           opc = MOV8rr;
@@ -1834,8 +1834,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return false;
   }
 
-  static int getStoreRegOpcode(int SrcReg, MCRegisterClass rc,
-                               boolean isStackAligned, TargetMachine tm) {
+  private static int getStoreRegOpcode(int SrcReg, MCRegisterClass rc,
+                                       boolean isStackAligned, TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
       opc = MOV64mr;

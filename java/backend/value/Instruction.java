@@ -495,6 +495,8 @@ public abstract class Instruction extends User {
      * doesn't have extra bits to been destroyed.
      */
     private boolean isExact;
+    private boolean hasNoUnsignedWrap;
+    private boolean hasNoSignedWrap;
 
     public BinaryOps(
         Type ty,
@@ -911,6 +913,22 @@ public abstract class Instruction extends User {
           return true;
       }
       return false;
+    }
+
+    public void setHasNoUnsignedWrap(boolean val) {
+      this.hasNoUnsignedWrap = val;
+    }
+
+    public boolean getHasNoUnsignedWrap() {
+      return hasNoUnsignedWrap;
+    }
+
+    public void setHasNoSignedWrap(boolean val) {
+      this.hasNoSignedWrap = val;
+    }
+
+    public boolean getHasNoSignedWrap() {
+      return hasNoSignedWrap;
     }
   }
 

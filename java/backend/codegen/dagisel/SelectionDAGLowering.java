@@ -1573,7 +1573,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case LShr:
         return ISD.SRA;
       default:
-        Util.assertion(false, "Unknown binary operator!");
+        Util.assertion("Unknown binary operator!");
         return -1;
     }
   }

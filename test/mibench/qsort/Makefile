@@ -3,12 +3,12 @@ LLC=/home/xlous/Development/compiler/xcc/out/bin/llc
 
 TARGET=qsort_small qsort_large 
 
-all: $(TARGET)
+all: $(TARGET) qsort_small.ll qsort_large.ll
 
 qsort_small: qsort_small.s
 	gcc -O2 $< -o $@
 qsort_large: qsort_large.s
-	gcc -O2 $< -o $@
+	gcc -O2 $< -o $@ -lm
 
 %.s: %.ll
 	$(LLC) $< -o $@

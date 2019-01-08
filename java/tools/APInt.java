@@ -68,6 +68,7 @@ import static tools.Util.countLeadingZeros32;
  * @version 0.4
  */
 public class APInt implements Cloneable {
+
   /**
    * Magic data for optimising unsigned division by a constant.
    */
@@ -1521,7 +1522,7 @@ public class APInt implements Cloneable {
 
   /**
    * Performs a bitwise complement operation on this APInt value.
-   *
+   * It is equivalent to ~ operation in C.
    * @return
    */
   public APInt not() {
@@ -3459,5 +3460,13 @@ public class APInt implements Cloneable {
 
     magu.s = p - d.getBitWidth();
     return magu;
+  }
+
+  /**
+   * Get the number of leading bits fo this APInt object that are equal to its sign bit.
+   * @return
+   */
+  public int getNumSignBits() {
+    return isNegative() ? countLeadingOnes() : countLeadingZeros();
   }
 }

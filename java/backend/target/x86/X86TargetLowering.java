@@ -84,7 +84,7 @@ public class X86TargetLowering extends TargetLowering {
     boolean is64Bit = subtarget.is64Bit();
     Util.assertion(subtarget.isTargetELF(), "only ELF supported current");
     /*if (subtarget.isTargetDarwin()) {
-      if (isIn64BitMode) return X86_64MachoTargetObjectFile();
+      if (in64BitMode) return X86_64MachoTargetObjectFile();
       return new TargetLoweringObjectFileMachO();
     }
     */
@@ -1480,6 +1480,13 @@ public class X86TargetLowering extends TargetLowering {
             mask.getBitWidth() - 1));
         break;
     }
+  }
+
+  @Override
+  public int computeNumSignBitsForTargetNode(SDValue op, int depth) {
+    if (op.getOpcode() == X86ISD.SETCC_CARRY)
+      return op.getValueType().getScalarType().getSizeInBits();
+    return 1;
   }
 
   public boolean isScalarFPTypeInSSEReg(EVT vt) {

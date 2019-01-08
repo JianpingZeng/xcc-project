@@ -1201,9 +1201,22 @@ public abstract class TargetLowering {
     Util.assertion(opc >= ISD.BUILTIN_OP_END ||
         opc == ISD.INTRINSIC_VOID ||
         opc == ISD.INTRINSIC_W_CHAIN ||
-        opc == ISD.INTRINSIC_WO_CHAIN);
+        opc == ISD.INTRINSIC_WO_CHAIN,
+        "Should use computeMaskedBits if you don't know whether Op" +
+        " is a target node!");
 
     knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
+  }
+
+  public int computeNumSignBitsForTargetNode(SDValue op, int depth) {
+    int opc = op.getOpcode();
+    Util.assertion(opc >= ISD.BUILTIN_OP_END ||
+        opc == ISD.INTRINSIC_VOID ||
+        opc == ISD.INTRINSIC_W_CHAIN ||
+        opc == ISD.INTRINSIC_WO_CHAIN,
+        "Should use computeNumSignBits if you don't know whether Op" +
+        " is a target node!");
+    return 1;
   }
 
   public abstract SDValue lowerReturn(SDValue chain,
@@ -1883,7 +1896,7 @@ public abstract class TargetLowering {
 
       if (cc == SETLE || cc == SETULE) {
         if (c.eq(maxVal)) return dag.getConstant(1, vt, false);
-        return dag.getSetCC(vt, lhs, dag.getConstant(c.increase(),
+        return dag.getSetCC(vt, lhs, dag.getConstant(c.clone().increase(),
             rhs.getValueType(), false), cc == SETLE ? SETLT : SETULT);
       }
 

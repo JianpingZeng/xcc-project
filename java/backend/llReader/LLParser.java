@@ -1794,7 +1794,8 @@ public final class LLParser {
         return parseSwitch(inst, pfs);
       case kw_add:
       case kw_sub:
-      case kw_mul: {
+      case kw_mul:
+      case kw_shl: {
         boolean nuw = false;
         boolean nsw = false;
         SMLoc modifierLoc = lexer.getLoc();
@@ -1817,6 +1818,8 @@ public final class LLParser {
                   "nsw only applies to integer operation");
           }
           // Allow nsw and nuw, but ignores it.
+          ((BinaryOps)inst.get()).setHasNoUnsignedWrap(true);
+          ((BinaryOps)inst.get()).setHasNoSignedWrap(true);
         }
         return result;
       }
@@ -1843,7 +1846,6 @@ public final class LLParser {
       case kw_fdiv:
       case kw_frem:
         return parseArithmetic(inst, pfs, opc, 2);
-      case kw_shl:
       case kw_and:
       case kw_or:
       case kw_xor:

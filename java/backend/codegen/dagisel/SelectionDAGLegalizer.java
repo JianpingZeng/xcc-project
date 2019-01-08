@@ -27,10 +27,7 @@ import backend.target.TargetMachine;
 import backend.type.Type;
 import backend.value.*;
 import gnu.trove.list.array.TIntArrayList;
-import tools.APFloat;
-import tools.APInt;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1052,20 +1049,19 @@ public class SelectionDAGLegalizer {
    * values[2] -- cc
    *
    * @param vt
-   * @param values
    */
-  private void legalizeSetCCCondCode(EVT vt, SDValue... values) {
-    Util.assertion(values != null && values.length == 3);
-    SDValue lhs = values[0], rhs = values[1], cc = values[2];
-
-    EVT opVT = lhs.getValueType();
-    CondCode ccCode = ((CondCodeSDNode) cc.getNode()).getCondition();
+  private void legalizeSetCCCondCode(EVT vt,
+                                     OutRef<SDValue> lhs,
+                                     OutRef<SDValue> rhs,
+                                     OutRef<SDValue> cc) {
+    EVT opVT = lhs.get().getValueType();
+    CondCode ccCode = ((CondCodeSDNode) cc.get().getNode()).getCondition();
     switch (tli.getCondCodeAction(ccCode, opVT)) {
       case Legal:
         break;
       case Expand: {
-        CondCode cc1 = CondCode.SETCC_INVALID, cc2 = CondCode.SETCC_INVALID;
-        int opc = 0;
+        CondCode cc1, cc2;
+        int opc;
         switch (ccCode) {
           default:
             Util.shouldNotReachHere("Don't know how to expand this condition!");
@@ -1130,17 +1126,14 @@ public class SelectionDAGLegalizer {
             opc = ISD.OR;
             break;
         }
-        SDValue setcc1 = dag.getSetCC(vt, lhs, rhs, cc1);
-        SDValue setcc2 = dag.getSetCC(vt, lhs, rhs, cc2);
-        lhs = dag.getNode(opc, vt, setcc1, setcc2);
-        rhs = new SDValue();
-        cc = new SDValue();
+        SDValue setcc1 = dag.getSetCC(vt, lhs.get(), rhs.get(), cc1);
+        SDValue setcc2 = dag.getSetCC(vt, lhs.get(), rhs.get(), cc2);
+        lhs.set(dag.getNode(opc, vt, setcc1, setcc2));
+        rhs.set(new SDValue());
+        cc.set(new SDValue());
         break;
       }
     }
-    values[0] = lhs;
-    values[1] = rhs;
-    values[2] = cc;
   }
 
   private SDValue emitStackConvert(SDValue srcOp, EVT slotVT,
@@ -2218,7 +2211,13 @@ public class SelectionDAGLegalizer {
         temp1 = node.getOperand(0);
         temp2 = node.getOperand(1);
         temp3 = node.getOperand(2);
-        legalizeSetCCCondCode(node.getValueType(0), temp1, temp2, temp3);
+        OutRef<SDValue> lhsRef = new OutRef<>(temp1);
+        OutRef<SDValue> rhsRef = new OutRef<>(temp2);
+        OutRef<SDValue> ccRef = new OutRef<>(temp3);
+        legalizeSetCCCondCode(node.getValueType(0), lhsRef, rhsRef, ccRef);
+        temp1 = lhsRef.get();
+        temp2 = rhsRef.get();
+        temp3 = ccRef.get();
 
         // If we expanded the SETCC into an AND/OR, return the new node
         if (temp2.getNode() == null) {
@@ -2239,16 +2238,22 @@ public class SelectionDAGLegalizer {
         temp2 = node.getOperand(1);   // rhs
         temp3 = node.getOperand(2);   // True
         temp4 = node.getOperand(3);   // False
-        SDValue CC = node.getOperand(4);
+        SDValue cc = node.getOperand(4);
 
+        OutRef<SDValue> lhsRef = new OutRef<>(temp1);
+        OutRef<SDValue> rhsRef = new OutRef<>(temp2);
+        OutRef<SDValue> ccRef = new OutRef<>(cc);
         legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp1.getValueType())),
-            temp1, temp2, CC);
+            lhsRef, rhsRef, ccRef);
+        temp1 = lhsRef.get();
+        temp2 = rhsRef.get();
+        cc = ccRef.get();
 
         Util.assertion(temp2.getNode() == null, "Can't legalize SELECT_CC with legal condition!");
         temp2 = dag.getConstant(0, temp1.getValueType(), false);
-        CC = dag.getCondCode(SETNE);
+        cc = dag.getCondCode(SETNE);
         temp1 = dag.getNode(ISD.SELECT_CC, node.getValueType(0), temp1, temp2,
-            temp3, temp4, CC);
+            temp3, temp4, cc);
         results.add(temp1);
         break;
       }
@@ -2257,8 +2262,16 @@ public class SelectionDAGLegalizer {
         temp2 = node.getOperand(2);              // lhs
         temp3 = node.getOperand(3);              // rhs
         temp4 = node.getOperand(1);              // CC
+
+        OutRef<SDValue> lhsRef = new OutRef<>(temp2);
+        OutRef<SDValue> rhsRef = new OutRef<>(temp3);
+        OutRef<SDValue> ccRef = new OutRef<>(temp4);
         legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp2.getValueType())),
-            temp2, temp3, temp4);
+            lhsRef, rhsRef, ccRef);
+        temp2 = lhsRef.get();
+        temp3 = rhsRef.get();
+        temp4 = ccRef.get();
+
         lastCALLSEQ_END = dag.getEntryNode();
 
         Util.assertion(temp3.getNode() == null, "Can't legalize BR_CC with legal condition!");

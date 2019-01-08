@@ -64,81 +64,102 @@ public abstract class X86Subtarget extends TargetSubtarget {
   /**
    * Which PIC style to use
    */
-  protected PICStyle picStyle;
+  private PICStyle picStyle;
 
   /**
    * MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42, or
    * none supported.
    */
-  protected X86SSEEnum x86SSELevel;
+  X86SSEEnum x86SSELevel;
   /**
    * 3DNow or 3DNow Athlon, or none supported.
    */
-  protected X863DNowEnum x863DNowLevel;
-
+  X863DNowEnum x863DNowLevel;
+  /**
+   * Does this processor support conditional move instructions (available on pentium pro+)
+   */
+   boolean hasCMov;
   /**
    * True if the processor supports X86-64 instructions.
    */
-  protected boolean hasX86_64;
+  boolean hasX86_64;
 
   /**
    * True if the processor supports SSE4A instructions.
    */
-  protected boolean hasSSE4A;
+  boolean hasSSE4A;
 
   /**
    * Target has AVX instructions
    */
-  protected boolean hasAVX;
+  boolean hasAVX;
+
+  boolean hasAVX2;
 
   /**
    * Target has 3-operand fused multiply-add
    */
-  protected boolean hasFMA3;
+  boolean hasFMA3;
 
   /**
    * Target has 4-operand fused multiply-add
    */
-  protected boolean hasFMA4;
+  boolean hasFMA4;
 
   /**
    * True if BT (bit test) of memory instructions are slow.
    */
-  protected boolean isBTMemSlow;
+  boolean isBTMemSlow;
 
   /**
    * Nonzero if this is a darwin platform: the numeric
    * version of the platform, e.g. 8 = 10.4 (Tiger), 9 = 10.5 (Leopard), etc.
    */
-  protected int darwinVers;
+  private int darwinVers;
 
   /**
    * true if this is a "linux" platform.
    */
-  protected boolean isLinux;
+  private boolean isLinux;
 
   /**
    * The minimum alignment known to hold of the stack frame on
    * entry to the function and which must be maintained by every function.
    */
-  protected int stackAlignemnt;
+  private int stackAlignemnt;
 
   /**
    * Max. memset / memcpy size that is turned into rep/movs, rep/stos ops.
    */
-  protected int maxInlineSizeThreshold;
+  private int maxInlineSizeThreshold;
 
   /**
    * True if the processor supports 64-bit instructions and
    * pointer size is 64 bit.
    */
-  protected boolean isIn64BitMode;
+  protected boolean in64BitMode;
+
+  boolean hasAES;
+  boolean hasBMI;
+  boolean hasBMI2;
+  boolean hasCLMUL;
+  boolean hasF16C;
+  boolean hasFSGSBase;
+  boolean hasLZCNT;
+  boolean hasMOVBE;
+  boolean asPOPCNT;
+  boolean hasRDRAND;
+  boolean hasVectorUAMem;
+  boolean hasXOP;
+  boolean hasPOPCNT;
+  boolean hasCmpxchg16b;
+  boolean isUAMemFast;
 
   public enum TargetType {
     isELF, isCygwin, isDarwin, isWindows, isMingw
   }
 
-  public TargetType targetType;
+  private TargetType targetType;
   private boolean isLittleEndian;
   private X86TargetMachine tm;
   private Triple targetTriple;
@@ -155,6 +176,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
     hasX86_64 = false;
     hasSSE4A = false;
     hasAVX = false;
+    hasAVX2 = false;
     hasFMA3 = false;
     hasFMA4 = false;
     isBTMemSlow = false;
@@ -162,7 +184,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
     isLinux = false;
     // This is known good to Yonah, but I don't known about other.
     maxInlineSizeThreshold = 128;
-    this.isIn64BitMode = is64Bit;
+    this.in64BitMode = is64Bit;
     // Default to ELF unless user explicitly specify.
     targetType = isELF;
     this.isLittleEndian = true;
@@ -180,7 +202,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
       if (is64Bit) {
         // All X86-64 CPUs also have SSE2, however user might request no SSE via
         // -mattr, so don't force SSELevel here.
-        if (!fullFS.isEmpty())
+        if (fullFS != null && !fullFS.isEmpty())
           fullFS = "+64bit,+sse2," + fullFS;
         else
           fullFS = "+64bit,+sse2";
@@ -194,11 +216,9 @@ public abstract class X86Subtarget extends TargetSubtarget {
       if (is64Bit) {
         hasX86_64 = true;
         toggleFeature(Feature64Bit);
-        /*
-        TODO
-        hasCMove = true;
-        toggleFeature(FeatureCMOV);*/
-        if (!hasAVX && x86SSELevel.compareTo(SSE2) < 0) {
+        hasCMov = true;
+        toggleFeature(FeatureCMOV);
+        if (x86SSELevel.compareTo(SSE2) < 0) {
           x86SSELevel = SSE2;
           toggleFeature(FeatureSSE1);
           toggleFeature(FeatureSSE2);
@@ -206,8 +226,8 @@ public abstract class X86Subtarget extends TargetSubtarget {
       }
     }
 
-    if (hasAVX)
-      x86SSELevel = NoMMXSSE;
+    if (in64BitMode)
+      toggleFeature(Mode64Bit);
 
     Util.Debug("Subtarget features: SSELevel " + x86SSELevel
         + ", 3DNowLevel " + x863DNowLevel + ", 64bit " + hasX86_64);
@@ -274,6 +294,11 @@ public abstract class X86Subtarget extends TargetSubtarget {
     return maxInlineSizeThreshold;
   }
 
+  /**
+   * Return an array containing [family, model]
+   * @param eax
+   * @return
+   */
   private static int[] detectFamilyModel(int eax) {
     // return [family, model].
     int family = (eax >> 8) & 0xf;
@@ -320,47 +345,146 @@ public abstract class X86Subtarget extends TargetSubtarget {
     String cpuName = convertToString(u, 1, isLittleEndian);
     int eax = u[0];
     int[] u2 = new int[4];
-    u2[0] = eax;    // EAX, EBX, ECX, EDX.
+    u2[0] = eax;    // EAX, EBX, ecx, edx.
     CPUInfoUtility.getCpuIDAndInfo(0x1, u2);
     eax = u2[0];
     int ebx = u2[1], ecx = u2[2], edx = u2[3];
-    if (((edx >> 23) & 0x1) != 0)
+    if (((edx >> 15) & 1) != 0) {
+      hasCMov = true;
+      toggleFeature(FeatureCMOV);
+    }
+    if (((edx >> 23) & 0x1) != 0) {
       x86SSELevel = MMX;
-    if (((edx >> 25) & 0x1) != 0)
+      toggleFeature(FeatureMMX);
+    }
+    if (((edx >> 25) & 0x1) != 0) {
       x86SSELevel = SSE1;
-    if (((edx >> 26) & 0x1) != 0)
+      toggleFeature(FeatureSSE1);
+    }
+    if (((edx >> 26) & 0x1) != 0) {
       x86SSELevel = SSE2;
-    if ((ecx & 0x1) != 0)
+      toggleFeature(FeatureSSE2);
+    }
+    if ((ecx & 0x1) != 0) {
       x86SSELevel = SSE3;
-    if (((ecx >> 9) & 0x1) != 0)
+      toggleFeature(FeatureSSE3);
+    }
+    if (((ecx >> 9) & 0x1) != 0) {
       x86SSELevel = SSSE3;
-    if (((ecx >> 19) & 0x1) != 0)
+      toggleFeature(FeatureSSSE3);
+    }
+    if (((ecx >> 19) & 0x1) != 0) {
       x86SSELevel = SSE41;
-    if (((ecx >> 20) & 0x1) != 0)
+      toggleFeature(FeatureSSE41);
+    }
+    if (((ecx >> 20) & 0x1) != 0) {
       x86SSELevel = SSE42;
+      toggleFeature(FeatureSSE42);
+    }
     boolean isIntel = cpuName.equals("GenuineIntel");
     boolean isAMD = cpuName.equals("AuthenticAMD");
     hasFMA3 = isIntel && ((ecx >> 12) & 0x1) != 0;
     hasAVX = ((ecx >> 28) & 0x1) != 0;
-    if (isIntel || isAMD) {
-      int[] res = detectFamilyModel(eax);
-      int family = res[0];
-      int model = res[1];
-      isBTMemSlow = isAMD || (family == 6 && model >= 13);
+    if (isIntel && ((ecx >> 1) & 0x1) != 0) {
+      hasCLMUL = true;
+      toggleFeature(FeatureCLMUL);
+    }
+    if (isIntel && ((ecx >> 1) & 0x1) != 0) {
+      hasCLMUL = true;
+      toggleFeature(FeatureCLMUL);
+    }
+    if (isIntel && ((ecx >> 12) & 0x1) != 0) {
+      hasFMA3 = true;
+      toggleFeature(FeatureFMA3);
+    }
+    if (isIntel && ((ecx >> 22) & 0x1) != 0) {
+      hasMOVBE = true;
+      toggleFeature(FeatureMOVBE);
+    }
+    if (isIntel && ((ecx >> 23) & 0x1) != 0) {
+      hasPOPCNT = true;
+      toggleFeature(FeaturePOPCNT);
+    }
+    if (isIntel && ((ecx >> 25) & 0x1) != 0) {
+      hasAES = true;
+      toggleFeature(FeatureAES);
+    }
+    if (isIntel && ((ecx >> 29) & 0x1) != 0) {
+      hasF16C = true;
+      toggleFeature(FeatureF16C);
+    }
+    if (isIntel && ((ecx >> 30) & 0x1) != 0) {
+      hasRDRAND = true;
+      toggleFeature(FeatureRDRAND);
+    }
+    if (((ecx >> 13) & 0x1) != 0) {
+      hasCmpxchg16b = true;
+      toggleFeature(FeatureCMPXCHG16B);
+    }
 
-      u[0] = eax;     // EAX
-      u[1] = ebx;     // EBX
-      u[2] = ecx;     // ECX
-      u[3] = edx;     // EDX
-      CPUInfoUtility.getCpuIDAndInfo(0x80000001, u);
-      hasX86_64 = ((u[3] >> 29) & 0x1) != 0;
-      hasSSE4A = isAMD && ((u[2] >> 6) & 0x1) != 0;
-      hasFMA4 = isAMD && ((u[2] >> 16) & 0x1) != 0;
+    if (isIntel || isAMD) {
+      // Determine if bit test memory instructions are slow.
+      int[] temp = detectFamilyModel(eax);
+      int family = temp[0];
+      int model = temp[1];
+
+      if (isAMD || (family == 6 && model >= 13)) {
+        isBTMemSlow = true;
+        toggleFeature(FeatureSlowBTMem);
+      }
+      // If it's Nehalem, unaligned memory access is fast.
+      // FIXME: Nehalem is family 6. Also include Westmere and later processors?
+      if (family == 15 && model == 26) {
+        isUAMemFast = true;
+        toggleFeature(FeatureFastUAMem);
+      }
+
+      int maxExtLevel;
+      u2 = new int[4];
+      u2[0] = 0;    // EAX, EBX, ecx, edx.
+      u2[1] = ebx;
+      u2[2] = ecx;
+      u2[3] = edx;
+      CPUInfoUtility.getCpuIDAndInfo(0x80000000, u2);
+      maxExtLevel = u2[0];
+
+      if (maxExtLevel >= 0x80000001) {
+        u2[0] = eax;    // EAX, EBX, ecx, edx.
+
+        CPUInfoUtility.getCpuIDAndInfo(0x80000001, u2);
+        eax = u2[0];
+        ebx = u2[1];
+        ecx = u2[2];
+        edx = u2[3];
+
+        if (((edx >> 29) & 0x1) != 0) {
+          hasX86_64 = true;
+          toggleFeature(Feature64Bit);
+        }
+        if (((ecx >> 5) & 0x1) != 0) {
+          hasLZCNT = true;
+          toggleFeature(FeatureLZCNT);
+        }
+        if (isAMD) {
+          if (((ecx >> 6) & 0x1) != 0) {
+            hasSSE4A = true;
+            toggleFeature(FeatureSSE4A);
+          }
+          if (((ecx >> 11) & 0x1) != 0) {
+            hasXOP = true;
+            toggleFeature(FeatureXOP);
+          }
+          if (((ecx >> 16) & 0x1) != 0) {
+            hasFMA4 = true;
+            toggleFeature(FeatureFMA4);
+          }
+        }
+      }
     }
   }
 
   public boolean is64Bit() {
-    return isIn64BitMode;
+    return in64BitMode;
   }
 
   public PICStyle getPICStyle() {
@@ -460,7 +584,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
   }
 
   public boolean isTargetWin64() {
-    return isIn64BitMode && (targetType == isMingw || targetType == isWindows);
+    return in64BitMode && (targetType == isMingw || targetType == isWindows);
   }
 
   public void setIsLittleEndian(boolean isLittleEndian) {
@@ -562,7 +686,7 @@ public abstract class X86Subtarget extends TargetSubtarget {
   }
 
   private static String getCurrentX86CPU(boolean isLittleEndian) {
-    int[] u = new int[4];  // {EAX, EBX, ECX, EDX}
+    int[] u = new int[4];  // {EAX, EBX, ecx, edx}
     if (CPUInfoUtility.getCpuIDAndInfo(0x1, u))
       return "generic";
     int[] res = detectFamilyModel(u[0]);

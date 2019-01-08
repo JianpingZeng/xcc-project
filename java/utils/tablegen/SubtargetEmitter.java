@@ -513,8 +513,7 @@ public class SubtargetEmitter extends TableGenBackend {
       String className = targetName + "GenSubtarget";
 
       os.printf("import backend.target.SubtargetFeatureKV;\n"
-              + "import backend.target.SubtargetFeatures;\n\n"
-              + "import static backend.target.%s.%sSubtarget.*;\n",
+              + "import backend.target.SubtargetFeatures;\n\n",
           targetName.toLowerCase(), targetName);
 
       String superClass = targetName + "Subtarget";

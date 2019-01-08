@@ -106,11 +106,14 @@ public class X86ISD {
   /// X86 SetCC. Operand 0 is condition code, and operand 1 is the flag
   /// operand produced by a CMP instruction.
   public static final int SETCC = BT + 1;
+
+  public static final int SETCC_CARRY = SETCC + 1;
+
   /// X86 conditional moves. Operand 0 and operand 1 are the two values
   /// to select from. Operand 2 is the condition code, and operand 3 is the
   /// flag operand produced by a CMP or TEST instruction. It also writes a
   /// flag result.
-  public static final int CMOV = SETCC + 1;
+  public static final int CMOV = SETCC_CARRY + 1;
   /// X86 conditional branches. Operand 0 is the chain operand, operand 1
   /// is the block to branch if condition is true, operand 2 is the
   /// condition code, and operand 3 is the flag operand produced by a CMP
