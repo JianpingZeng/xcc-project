@@ -243,27 +243,24 @@ public final class LLLexer {
     opcKeywords.put("inttoptr", Pair.get(IntToPtr, kw_inttoptr));
     opcKeywords.put("ptrtoint", Pair.get(PtrToInt, kw_ptrtoint));
     opcKeywords.put("bitcast", Pair.get(BitCast, kw_bitcast));
-    opcKeywords.put("select", null/*Pair.get(Select, kw_select)*/);
-    opcKeywords.put("va_arg", null/*Pair.get(VAArg, kw_va_arg)*/);
+    opcKeywords.put("select", Pair.get(Select, kw_select));
+    opcKeywords.put("va_arg", Pair.get(VAArg, kw_va_arg));
     opcKeywords.put("ret", Pair.get(Ret, kw_ret));
     opcKeywords.put("br", Pair.get(Br, kw_br));
     opcKeywords.put("switch", Pair.get(Switch, kw_switch));
-    opcKeywords.put("invoke", null/*Pair.get(Invoke, kw_invoke)*/);
-    opcKeywords.put("unwind", null/*Pair.get(Unwind, kw_unwind)*/);
+    opcKeywords.put("invoke", Pair.get(Invoke, kw_invoke));
+    opcKeywords.put("unwind", Pair.get(Unwind, kw_unwind));
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));
 
     opcKeywords.put("alloca", Pair.get(Alloca, kw_alloca));
     opcKeywords.put("load", Pair.get(Load, kw_load));
     opcKeywords.put("store", Pair.get(Store, kw_store));
-    opcKeywords.put("getelementptr",
-        Pair.get(GetElementPtr, kw_getelementptr));
-
-    opcKeywords.put("extractelement", null/*Pair.get(ExtractElement, kw_extractelement)*/);
-    opcKeywords.put("insertelement", null/*Pair.get(InsertElement, kw_insertelement)*/);
-    opcKeywords.put("shufflevector", null/*Pair.get(ShuffleVector, kw_shufflevector)*/);
-    opcKeywords.put("getresult", null/*Pair.get(ExtractValue, kw_getresult)*/);
-    opcKeywords.put("extractvalue", null/*Pair.get(ExtractValue, kw_extractvalue)*/);
-    opcKeywords.put("insertvalue", null/*Pair.get(InsertValue, kw_insertvalue)*/);
+    opcKeywords.put("getelementptr", Pair.get(GetElementPtr, kw_getelementptr));
+    opcKeywords.put("extractelement", Pair.get(ExtractElement, kw_extractelement));
+    opcKeywords.put("insertelement", Pair.get(InsertElement, kw_insertelement));
+    opcKeywords.put("shufflevector", Pair.get(ShuffleVector, kw_shufflevector));
+    opcKeywords.put("extractvalue", Pair.get(ExtractValue, kw_extractvalue));
+    opcKeywords.put("insertvalue", Pair.get(InsertValue, kw_insertvalue));
   }
 
   public LLTokenKind lex() {

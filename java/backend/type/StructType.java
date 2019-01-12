@@ -24,6 +24,7 @@ import tools.TypeMap;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * @author Jianping Zeng
@@ -58,7 +59,8 @@ public class StructType extends CompositeType {
   }
 
   private boolean packed;
-  private boolean opaque;
+  private boolean hasBody;
+  private boolean literal;
 
   private static TypeMap<StructValType, StructType> structTypes = new TypeMap<>();
 
@@ -66,57 +68,86 @@ public class StructType extends CompositeType {
    * A place holder type.
    */
   private static StructType PlaceHolderType;
+  private String name;
 
-  protected StructType(ArrayList<Type> memberTypes) {
-    this(memberTypes, false);
+  private StructType() {
+    super(StructTyID);
+    packed = false;
+    hasBody = false;
+    literal = false;
+    name = "";
   }
 
-  public static boolean isValidElementType(backend.type.Type elemTy) {
+  public static boolean isValidElementType(Type elemTy) {
     return !elemTy.equals(LLVMContext.VoidTy) && !elemTy.equals(LLVMContext.LabelTy);
   }
 
-  protected StructType(ArrayList<Type> memberTypes, boolean packed) {
-    super(StructTyID);
-    containedTys = new PATypeHandle[memberTypes.size()];
-
-    this.packed = packed;
-    isAbstract = false;
-    for (int i = 0, e = memberTypes.size(); i < e; i++) {
-      Util.assertion(memberTypes.get(i) != null, "<null> type for structure type!");
-      Util.assertion(isValidElementType(memberTypes.get(i)), "Invalid type for structure element!");
-      isAbstract |= memberTypes.get(i).isAbstract();
-      containedTys[i] = new PATypeHandle(memberTypes.get(i), this);
-    }
-    setAbstract(isAbstract);
+  public static StructType create() {
+    return create("");
   }
 
-  public static StructType get(ArrayList<Type> memberTypes, boolean packed) {
-    StructValType svt = new StructValType(memberTypes, packed);
+  public static StructType create(String name) {
+    StructType st = new StructType();
+    if (name != null && !name.isEmpty())
+      st.setName(name);
+    return st;
+  }
+
+  public static StructType create(ArrayList<Type> elementTypes, String name) {
+    return create(elementTypes, name, false);
+  }
+
+  public static StructType create(ArrayList<Type> elementTypes, String name, boolean isPacked) {
+    Util.assertion(elementTypes != null && !elementTypes.isEmpty(),
+        "this method may not be invoked with an empty list");
+    StructType st = create(name);
+    st.setBody(elementTypes, isPacked);
+    return st;
+  }
+
+  /**
+   * The serial of get method are used to create a literal struct type object.
+   * @param memberTypes
+   * @param isPacked
+   * @return
+   */
+  public static StructType get(ArrayList<Type> memberTypes, boolean isPacked) {
+    StructValType svt = new StructValType(memberTypes, isPacked);
     StructType st = structTypes.get(svt);
     if (st != null)
       return st;
 
-    st = new StructType(memberTypes, packed);
+    st = new StructType();
     structTypes.put(svt, st);
+    st.literal = true;
+    st.setBody(memberTypes, isPacked);
     return st;
   }
 
-  public static StructType get(Type... tys) {
-    ArrayList<Type> elts = new ArrayList<>();
-    for (Type t : tys)
-      elts.add(t);
-    return get(elts, false);
+  public void setBody(ArrayList<Type> eltTypes, boolean isPacked) {
+    Util.assertion(isOpaque(), "struct body already set");
+    hasBody = true;
+    containedTys = new PATypeHandle[eltTypes.size()];
+    for (int i = 0, e = eltTypes.size(); i < e; i++) {
+      Util.assertion(eltTypes.get(i) != null, "<null> type for structure type!");
+      Util.assertion(isValidElementType(eltTypes.get(i)), "Invalid type for structure element!");
+      isAbstract |= eltTypes.get(i).isAbstract();
+      containedTys[i] = new PATypeHandle(eltTypes.get(i), this);
+    }
+    setAbstract(isAbstract);
   }
 
   public static StructType get(boolean packed) {
     return get(new ArrayList<>(), packed);
   }
 
-  public static StructType get() {
-    if (PlaceHolderType == null)
-      PlaceHolderType = new StructType(null);
+  public static StructType get(Type... tys) {
+    ArrayList<Type> elts = new ArrayList<>(Arrays.asList(tys));
+    return get(elts, false);
+  }
 
-    return PlaceHolderType;
+  public static StructType get() {
+    return get(false);
   }
 
   @Override
@@ -139,6 +170,11 @@ public class StructType extends CompositeType {
   }
 
   @Override
+  public boolean indexValid(int idx) {
+    return idx >= 0 && idx < getNumContainedTypes();
+  }
+
+  @Override
   public Type getIndexType() {
     return LLVMContext.Int32Ty;
   }
@@ -151,8 +187,10 @@ public class StructType extends CompositeType {
     return containedTys[idx].getType();
   }
 
+  @Override
   public Type getTypeAtIndex(int index) {
-    Util.assertion(index >= 0 && index < getNumOfElements(), "Invalid structure index!");
+    Util.assertion(index >= 0 && index < getNumContainedTypes(),
+        "Invalid structure index!");
     return containedTys[index].getType();
   }
 
@@ -160,8 +198,12 @@ public class StructType extends CompositeType {
     return packed;
   }
 
-  public boolean isOpaque() {
-    return opaque;
+  public boolean isHasBody() {
+    return hasBody;
+  }
+
+  public boolean isLiteral() {
+    return literal;
   }
 
   @Override
@@ -175,5 +217,18 @@ public class StructType extends CompositeType {
   public void typeBecameConcrete(DerivedType absTy) {
     // TODO: 17-6-11
     super.typeBecameConcrete(absTy);
+  }
+
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public boolean isOpaque() {
+    return !hasBody;
   }
 }

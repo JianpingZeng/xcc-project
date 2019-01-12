@@ -17,13 +17,12 @@ package backend.support;
  */
 
 import backend.type.*;
+import backend.value.Module;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.FormattedOutputStream;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.util.HashMap;
-import java.util.Stack;
+import java.util.ArrayList;
 
 import static backend.type.LLVMTypeID.*;
 
@@ -32,106 +31,41 @@ import static backend.type.LLVMTypeID.*;
  * @version 0.4
  */
 public final class TypePrinting {
-  private HashMap<Type, String> typenames;
-
+  ArrayList<StructType> namedTypes;
+  TObjectIntHashMap<StructType> numberedTypes;
   public TypePrinting() {
-    typenames = new HashMap<>();
+    namedTypes = new ArrayList<>();
+    numberedTypes = new TObjectIntHashMap<>();
   }
 
   public void clear() {
-    typenames.clear();
+    namedTypes.clear();
+    numberedTypes.clear();
   }
 
-  public void print(Type ty, FormattedOutputStream os) {
-    print(ty, os, false);
+  void incorporateType(Module m) {
+    m.findUsedStructTypes(namedTypes);
+
+    int nextNumber = 0;
+    int nextUse = 0;
+    for (StructType sty : namedTypes) {
+      // ignore anonnymous literal structure.
+      if (sty.isLiteral())
+        continue;
+
+      if (sty.getName().isEmpty())
+        numberedTypes.put(sty, nextNumber++);
+      else
+        namedTypes.set(nextUse++, sty);
+    }
+    namedTypes = new ArrayList<>(namedTypes.subList(0, nextUse));
   }
 
   public void print(Type ty, PrintStream os) {
-    print(ty, os, false);
+    print(ty, new FormattedOutputStream(os));
   }
 
-  public void print(Type ty, FormattedOutputStream os, boolean ignoreTopLevelName) {
-    // Check to see if the type is named.
-    if (!ignoreTopLevelName) {
-      if (typenames.containsKey(ty)) {
-        os.print(typenames.get(ty));
-        return;
-      }
-    }
-
-    // Otherwise we have a type that has not been named but is a derived type.
-    // Carefully recurse the type hierarchy to print out any contained symbolic
-    // names.
-    Stack<Type> typeStack = new Stack<>();
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         PrintStream out = new PrintStream(baos)) {
-      calcTypeName(ty, typeStack, out, ignoreTopLevelName);
-      os.print(baos.toString());
-
-      if (!ignoreTopLevelName)
-        typenames.put(ty, baos.toString());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public void print(Type ty, PrintStream os, boolean ignoreTopLevelName) {
-    // Check to see if the type is named.
-    if (!ignoreTopLevelName) {
-      if (typenames.containsKey(ty)) {
-        os.print(typenames.get(ty));
-        return;
-      }
-    }
-
-    // Otherwise we have a type that has not been named but is a derived type.
-    // Carefully recurse the type hierarchy to print out any contained symbolic
-    // names.
-    Stack<Type> typeStack = new Stack<>();
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         PrintStream out = new PrintStream(baos)) {
-      calcTypeName(ty, typeStack, out, ignoreTopLevelName);
-      os.print(baos.toString());
-
-      if (!ignoreTopLevelName)
-        typenames.put(ty, baos.toString());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public boolean hasTypeName(Type ty) {
-    return typenames.containsKey(ty);
-  }
-
-  public void addTypeName(Type ty, String name) {
-    typenames.put(ty, name);
-  }
-
-  private void calcTypeName(Type ty, Stack<Type> typeStack, PrintStream os) {
-    calcTypeName(ty, typeStack, os, false);
-  }
-
-  private void calcTypeName(Type ty, Stack<Type> typeStack,
-                            PrintStream os, boolean ignroeTopLevelName) {
-    // TODO: 2017/10/10
-    if (!ignroeTopLevelName) {
-      if (typenames.containsKey(ty)) {
-        os.print(typenames.get(ty));
-        return;
-      }
-    }
-
-    int slot = 0, curSize = typeStack.size();
-    while (slot < curSize && !typeStack.get(slot).equals(ty))
-      ++slot;
-
-    if (slot < curSize) {
-      os.printf("\\%d", curSize - slot);
-      return;
-    }
-
-    typeStack.push(ty);
+  public void print(Type ty, FormattedOutputStream os) {
     switch (ty.getTypeID()) {
       case VoidTyID:
         os.print("void");
@@ -156,12 +90,12 @@ public final class TypePrinting {
         break;
       case FunctionTyID: {
         FunctionType ft = (FunctionType) ty;
-        calcTypeName(ft.getReturnType(), typeStack, os);
+        print(ft.getReturnType(), os);
         os.print("(");
         for (int i = 0, e = ft.getNumParams(); i != e; i++) {
           if (i != 0)
             os.print(", ");
-          calcTypeName(ft.getParamType(i), typeStack, os);
+          print(ft.getParamType(i), os);
         }
         if (ft.isVarArg()) {
           if (ft.getNumParams() != 0)
@@ -173,12 +107,21 @@ public final class TypePrinting {
       }
       case StructTyID: {
         StructType st = (StructType) ty;
+        if (st.isLiteral()) {
+          printStructBody(st, os);
+          return;
+        }
+        if (!st.getName().isEmpty()) {
+          AssemblyWriter.printLLVMName(os, st.getName(), AssemblyWriter.PrefixType.LocalPrefix);
+          return;
+        }
+
         if (st.isPacked())
           os.print('<');
 
         os.print('{');
         for (int i = 0, e = st.getNumOfElements(); i != e; i++) {
-          calcTypeName(st.getElementType(i), typeStack, os);
+          print(st.getElementType(i), os);
           if (i != e - 1)
             os.print(',');
           os.print(' ');
@@ -190,33 +133,58 @@ public final class TypePrinting {
       }
       case PointerTyID: {
         PointerType pty = (PointerType) ty;
-        calcTypeName(pty.getElementType(), typeStack, os);
+        print(pty.getElementType(), os);
         int addrspace = pty.getAddressSpace();
         if (addrspace != 0)
           os.printf("addrspace(%d)", addrspace);
-        os.printf("*");
+        os.print("*");
         break;
       }
       case ArrayTyID: {
         ArrayType at = (ArrayType) ty;
         os.printf("[%d x ", at.getNumElements());
-        calcTypeName(at.getElementType(), typeStack, os);
-        os.printf("]");
+        print(at.getElementType(), os);
+        os.print("]");
         break;
       }
-      case OpaqueTyID: {
-        os.printf("opaque");
+      case VectorTyID: {
+        VectorType vty = (VectorType) ty;
+        os.printf("<%d x ", vty.getNumElements());
+        print(vty.getElementType(), os);
+        os.print(">");
         break;
       }
       default:
-        os.printf("<unrecognized-type>");
+        os.print("<unrecognized-type>");
         break;
     }
-    // remove self from stack.
-    typeStack.pop();
   }
 
-  public void printAtLeastOneLevel(Type type, FormattedOutputStream out) {
-    print(type, out, true);
+  public void printStructBody(StructType sty, FormattedOutputStream os) {
+    if (sty.isOpaqueTy()) {
+      os.print("opaque");
+      return;
+    }
+
+    if (sty.isPacked())
+      os.print('<');
+
+    if (sty.getNumOfElements() == 0)
+      os.print("{}");
+    else {
+      os.print("{ ");
+      int e = sty.getNumContainedTypes();
+      if (e > 0) {
+
+        print(sty.getElementType(0), os);
+        for (int i = 1; i < e; i++) {
+          os.print(", ");
+          print(sty.getElementType(i), os);
+        }
+      }
+      os.print(" }");
+    }
+    if (sty.isPacked())
+      os.print('>');
   }
 }

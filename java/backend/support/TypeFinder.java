@@ -23,32 +23,33 @@ import backend.type.Type;
 import backend.value.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.TreeMap;
 
 public class TypeFinder {
   private HashSet<Value> visitedConstants;
   private HashSet<Type> visitedTypes;
+  private ArrayList<StructType> structTypes;
 
-  private TypePrinting printer;
-  private ArrayList<Type> numberedTypes;
-
-  public TypeFinder(TypePrinting printer, ArrayList<Type> fp) {
+  public TypeFinder(ArrayList<StructType> namedTypes) {
     visitedConstants = new HashSet<>();
     visitedTypes = new HashSet<>();
-    this.printer = printer;
-    numberedTypes = fp;
+    structTypes = namedTypes;
   }
 
   public void run(Module m) {
     // Get types for type definition in Module.
-    HashMap<String, Type> st = m.getTypeSymbolTable();
-    for (Type ty : st.values())
-      incorperateType(ty);
+    TreeMap<String, Type> st = m.getTypeSymbolTable();
+    for (Type ty : st.values()) {
+      if (ty instanceof OpaqueType)
+        incorporateType(ty.getForwardType());
+      else
+        incorporateType(ty);
+    }
 
     // Get the type of GlobalVariable.
     for (GlobalVariable gv : m.getGlobalVariableList()) {
-      incorperateType(gv.getType());
+      incorporateType(gv.getType());
       if (gv.hasInitializer())
         incorperateValue(gv.getInitializer());
     }
@@ -57,7 +58,7 @@ public class TypeFinder {
     for (Function f : m.getFunctionList()) {
       for (BasicBlock bb : f.getBasicBlockList()) {
         for (Instruction inst : bb) {
-          incorperateType(inst.getType());
+          incorporateType(inst.getType());
           for (int i = 0, e = inst.getNumOfOperands(); i != e; i++) {
             incorperateValue(inst.operand(i));
           }
@@ -67,32 +68,28 @@ public class TypeFinder {
   }
 
   private void incorperateValue(Value val) {
-    if (val == null || !(val instanceof Constant) || val instanceof GlobalValue)
+    if (!(val instanceof Constant) || val instanceof GlobalValue)
       return;
 
     if (!visitedConstants.add(val))
       return;
 
-    incorperateType(val.getType());
+    incorporateType(val.getType());
 
     Constant c = (Constant) val;
     for (int i = 0, e = c.getNumOfOperands(); i != e; i++)
       incorperateValue(c.operand(i));
   }
 
-  private void incorperateType(Type ty) {
+  private void incorporateType(Type ty) {
     if (!visitedTypes.add(ty))
       return;
 
-    if (((ty instanceof StructType && ((StructType) ty).getNumOfElements() != 0)
-        || ty instanceof OpaqueType) && !printer.hasTypeName(ty)) {
-      printer.addTypeName(ty, "%" + numberedTypes.size());
-      numberedTypes.add(ty);
-    }
+    if (ty instanceof StructType)
+      structTypes.add((StructType) ty);
 
     // Recursively walk all contained types.
     for (int i = 0, e = ty.getNumContainedTypes(); i != e; i++)
-      incorperateType(ty.getContainedType(i));
+      incorporateType(ty.getContainedType(i));
   }
-
 }

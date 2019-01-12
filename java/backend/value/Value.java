@@ -256,7 +256,7 @@ public class Value implements Cloneable {
     // get the symbol table to update for this object.
     ValueSymbolTable vt = getSymTab(this);
     if (vt == null) {
-      name = LLVMNameMangling.computeUniqueName(newName);
+      name = newName;
       return;
     }
 

@@ -402,8 +402,11 @@ public final class LLParser {
     lexer.lex();    // eat LocalVar
 
     OutRef<Type> result = new OutRef<>();
-    if (parseToken(equal, "expected '=' after name") || parseToken(kw_type,
-        "expected 'type' after '='") || parseType(result, false))
+    if (parseToken(equal, "expected '=' after name") ||
+        parseToken(kw_type, "expected 'type' after '='"))
+      return true;
+
+    if (parseStructDefinition(nameLoc, name, result))
       return true;
 
     // set the type name, checking for conflicts as we do so.
@@ -432,6 +435,83 @@ public final class LLParser {
     return error(nameLoc, StringFormatter
         .format("redefinition of type named '%s' of type '%s'", name,
             result.get().getDescription()).getValue());
+  }
+
+  private boolean parseStructDefinition(SMLoc typeLoc,
+                                        String name,
+                                        OutRef<Type> resultTy) {
+    if (eatIfPresent(kw_opaque)) {
+      resultTy.set(OpaqueType.get());
+      return false;
+    }
+
+    boolean isPacked = eatIfPresent(less);
+
+    // If we don't have a struct, then we have a random type alias, which we
+    // accept for compatibility with old files.  These types are not allowed to be
+    // forward referenced and not allowed to be recursive.
+    if (lexer.getTokKind() != lbrace) {
+      error(typeLoc, "forward references to non-struct type");
+      resultTy.set(null);
+      if (isPacked)
+        return parseArrayVectorType(resultTy, true);
+      return parseType(resultTy, false);
+    }
+
+    StructType sty = StructType.create(name);
+
+    ArrayList<Type> body = new ArrayList<>();
+    if (parseStructBody(body) ||
+        (isPacked && parseToken(greater, "expected '>' in packed struct")))
+      return true;
+
+    sty.setBody(body, isPacked);
+    resultTy.set(handleUpRefs(sty));
+    return false;
+  }
+
+  /**
+   * StructBody ::= '{' '}'
+   *               '{' Type (',' Type)* '}'
+   *               '<' '{' '}' '>'
+   *               '<' '{' Type (',' Type)* '}' '<'
+   * @param body
+   * @return
+   */
+  private boolean parseStructBody(ArrayList<Type> body) {
+    Util.assertion(lexer.getTokKind() == lbrace);
+    lexer.lex();  // consume the '{'
+
+    // handle the empty struct body
+    if (eatIfPresent(rbrace))
+      return false;
+
+    SMLoc eleTyLoc = lexer.getLoc();
+    OutRef<Type> ty = new OutRef<>();
+    if (parseType(ty, false))
+      return true;
+
+    if (ty.get().equals(LLVMContext.VoidTy))
+      return error(eleTyLoc, "struct element can not have void type");
+    if (!StructType.isValidElementType(ty.get()))
+      return error(eleTyLoc, "invalid element type for struct");
+
+    body.add(ty.get());
+
+    while (eatIfPresent(comma)) {
+      ty.set(null);
+      if (parseType(ty, false))
+        return true;
+
+      if (ty.get().equals(LLVMContext.VoidTy))
+        return error(eleTyLoc, "struct element can not have void type");
+      if (!StructType.isValidElementType(ty.get()))
+        return error(eleTyLoc, "invalid element type for struct");
+
+      body.add(ty.get());
+    }
+
+    return parseToken(rbrace, "expect a '}' at end of struct");
   }
 
   /**
@@ -1246,6 +1326,11 @@ public final class LLParser {
   }
 
   private boolean parseType(OutRef<Type> result,
+                            OutRef<SMLoc> loc) {
+    return parseType(result, loc, false);
+  }
+
+  private boolean parseType(OutRef<Type> result,
                             OutRef<SMLoc> retLoc, boolean allowVoid) {
     retLoc.set(lexer.getLoc());
     return parseType(result, allowVoid);
@@ -1277,7 +1362,7 @@ public final class LLParser {
         lexer.lex();
         break;
       case lbrace:
-        if (parseStructType(result, false))
+        if (parseAnonStructType(result, false))
           return true;
         break;
       case lsquare:
@@ -1289,7 +1374,7 @@ public final class LLParser {
         // Either vector or packed struct.
         lexer.lex();
         if (lexer.getTokKind() == LLTokenKind.lbrace) {
-          if (parseStructType(result, true) || parseToken(LLTokenKind.greater,
+          if (parseAnonStructType(result, true) || parseToken(LLTokenKind.greater,
               "expected '>' at end of packed struct"))
             return true;
         } else if (parseArrayVectorType(result, true))
@@ -1529,40 +1614,19 @@ public final class LLParser {
     return parseToken(rparen, "expected ')' at end of argument list");
   }
 
-  private boolean parseStructType(OutRef<Type> result, boolean packed) {
-    Util.assertion(lexer.getTokKind() == lbrace);
-    lexer.lex();    // eat the '{'
-    if (eatIfPresent(rbrace)) {
-      result.set(StructType.get(packed));
-      return false;
-    }
-
-    ArrayList<Type> paramList = new ArrayList<>();
-    SMLoc eltTyLoc = lexer.getLoc();
-    if (parseTypeRec(result))
-      return true;
-    paramList.add(result.get());
-
-    if (result.get().equals(LLVMContext.VoidTy))
-      return error(eltTyLoc, "struct element can not have void type");
-    if (!StructType.isValidElementType(result.get()))
-      return error(eltTyLoc, "invalid element type for struct");
-
-    while (eatIfPresent(comma)) {
-      eltTyLoc = lexer.getLoc();
-      if (parseTypeRec(result))
-        return true;
-
-      if (result.get().equals(LLVMContext.VoidTy))
-        return error(eltTyLoc, "invalid element type for struct");
-      if (!StructType.isValidElementType(result.get()))
-        return error(eltTyLoc, "invalid element type for struct");
-      paramList.add(result.get());
-    }
-    if (parseToken(rbrace, "expected '}' at the end of struct"))
+  /**
+   * Parse anonymous struct definiton as following.
+   * %1 = call {i64, i1} memcpy(...)
+   * @param result
+   * @param packed
+   * @return
+   */
+  private boolean parseAnonStructType(OutRef<Type> result, boolean packed) {
+    ArrayList<Type> body = new ArrayList<>();
+    if (parseStructBody(body))
       return true;
 
-    result.set(handleUpRefs(StructType.get(paramList, packed)));
+    result.set(StructType.get(body, packed));
     return false;
   }
 
@@ -1780,9 +1844,12 @@ public final class LLParser {
       default:
         return error(loc, "expected instruction");
       case kw_unwind:
-        return tokError("currently, unwind is not supported");
+        inst.set(new UnWindInst());
+        return false;
       case kw_invoke:
         return tokError("currently, invoke is not supported");
+      case kw_indirectbr:
+        return tokError("currently, indirectbr is not supported");
       case kw_unreachable:
         inst.set(new UnreachableInst());
         return false;
@@ -1870,15 +1937,6 @@ public final class LLParser {
       // Other.
       case kw_select:
         return parseSelect(inst, pfs);
-      case kw_va_arg:
-        return tokError("va_arg instruction not supported");
-      case kw_extractelement:
-        return tokError(
-            "extractelement element instruction not supported");
-      case kw_insertelement:
-        return tokError("insertelement instruction not supported");
-      case kw_shufflevector:
-        return tokError("shufflevector instruction not supported");
       case kw_phi:
         return parsePHI(inst, pfs);
       case kw_call:
@@ -1904,10 +1962,18 @@ public final class LLParser {
           return tokError("expected 'load' or 'store'");
       case kw_getelementptr:
         return parseGetElementPtr(inst, pfs);
+      case kw_va_arg:
+        return parseVAArg(inst, pfs);
       case kw_extractvalue:
-        return tokError("extractvalue instruction not supported");
+        return parseExtractValue(inst, pfs);
       case kw_insertvalue:
-        return tokError("insertvalue instruction not supported");
+        return parseInsertValue(inst, pfs);
+      case kw_extractelement:
+        return parseExtractElement(inst, pfs);
+      case kw_insertelement:
+        return parseInsertElement(inst, pfs);
+      case kw_shufflevector:
+        return parseShuffleVector(inst, pfs);
     }
   }
 
@@ -2158,10 +2224,11 @@ public final class LLParser {
     ArrayList<backend.llReader.ParamInfo> argList = new ArrayList<>();
     SMLoc callLoc = lexer.getLoc();
 
-    if ((isTail && parseToken(kw_call, "expected 'tail call'")) || parseCallingConv(cc)
-        || parseOptionalAttrs(attrs1, 1)
-        || parseType(ty, retLoc, true/*allow void*/) || parseValID(valID) || parseParameterList(argList, pfs)
-        || parseOptionalAttrs(attrs2, 2))
+    if ((isTail && parseToken(kw_call, "expected 'tail call'")) ||
+        parseCallingConv(cc) || parseOptionalAttrs(attrs1, 1)
+        || parseType(ty, retLoc, true/*allow void*/) ||
+        parseValID(valID) || parseParameterList(argList, pfs) ||
+        parseOptionalAttrs(attrs2, 2))
       return true;
 
     // If RetType is a non-function pointer type, then this is the short syntax
@@ -2176,8 +2243,7 @@ public final class LLParser {
             (FunctionType) ptr.getElementType() : null : null;
 
     if (ptr == null || fty == null) {
-      ArrayList<Type> paramType = new ArrayList<>();
-      paramType.addAll(argList.stream().map(arg -> arg.val.getType()).collect(Collectors.toList()));
+      ArrayList<Type> paramType = argList.stream().map(arg -> arg.val.getType()).collect(Collectors.toCollection(ArrayList::new));
       if (!FunctionType.isValidArgumentType(retTy))
         return error(retLoc.get(),
             "Invalid result type for LLVM function");
@@ -3825,6 +3891,162 @@ public final class LLParser {
 
     id.mdNodeVal = MDNode.get(elts);
     id.kind = ValID.ValIDKind.t_MDNode;
+    return false;
+  }
+
+  /**
+   * VA_Arg ::= 'va_arg' TypeAndValue ',' Type
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseVAArg(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<Value> op = new OutRef<>();
+    OutRef<Type> eltTy = new OutRef<>(LLVMContext.VoidTy);
+    OutRef<SMLoc> typeLoc = new OutRef<>();
+    if (parseTypeAndValue(op, pfs) ||
+        parseToken(comma, "expected ',' after vaarg operand") ||
+        parseType(eltTy, typeLoc))
+          return true;
+    if (!eltTy.get().isFirstClassType())
+      return error(typeLoc.get(), "va_arg requires operand with first class type");
+    inst.set(new VAArgInst(op.get(), eltTy.get()));
+    return false;
+  }
+
+  /**
+   * ExtractValueInst ::= 'extractvalue' TypeAndValue (',' uint32)+
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseExtractValue(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<Value> op0 = new OutRef<>();
+    OutRef<Integer> idx = new OutRef<>(0);
+    TIntArrayList indices = new TIntArrayList();
+
+    if (parseTypeAndValue(op0, loc, pfs) ||
+        parseToken(comma, "expected a ',' after extractvalue operands") ||
+        parseInt32(idx))
+      return true;
+
+    indices.add(idx.get());
+    while (eatIfPresent(comma)) {
+      if (parseInt32(idx))
+        return true;
+
+      indices.add(idx.get());
+    }
+
+    if (!op0.get().getType().isAggregateType())
+      return error(loc.get(), "extractvalue operand must be aggregate type");
+
+    if (ExtractValueInst.getIndexedType(op0.get().getType(), indices.toArray()) == null)
+      return error(loc.get(), "invalid indices for extractvalue instruction");
+
+    inst.set(new ExtractValueInst(op0.get(), indices.toArray()));
+    return false;
+  }
+
+  /**
+   * InsertValueInst ::= 'insertvalue' TypeAndValue ',' TypeAndValue (',' uint32)+
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseInsertValue(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<Value> vec = new OutRef<>(), elt = new OutRef<>();
+    OutRef<Integer> idx = new OutRef<>(0);
+    TIntArrayList indices = new TIntArrayList();
+
+    if (parseTypeAndValue(vec, loc, pfs) ||
+        parseToken(comma, "expected a ',' after extractvalue operands") ||
+        parseTypeAndValue(elt, pfs) ||
+        parseInt32(idx))
+      return true;
+
+    indices.add(idx.get());
+    while (eatIfPresent(comma)) {
+      if (parseInt32(idx))
+        return true;
+
+      indices.add(idx.get());
+    }
+
+    if (!vec.get().getType().isAggregateType())
+      return error(loc.get(), "insertvalue operand must be aggregate type");
+
+    if (ExtractValueInst.getIndexedType(vec.get().getType(), indices.toArray()) == null)
+      return error(loc.get(), "invalid indices for insertvalue instruction");
+
+    inst.set(new InsertValueInst(vec.get(), elt.get(), indices.toArray()));
+    return false;
+  }
+
+  /**
+   * ExtractElement ::= 'extractelement' TypeAndValue ',' TypeAndValue
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseExtractElement(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<Value> op0 = new OutRef<>(), op1 = new OutRef<>();
+    if (parseTypeAndValue(op0, loc, pfs) ||
+    parseToken(comma, "expected a ',' after extractelemnt operands") ||
+    parseTypeAndValue(op1, pfs))
+      return true;
+
+    if (!ExtractElementInst.isValidOperands(op0.get(), op1.get()))
+      return error(loc.get(), "invalid extractelement operrands");
+
+    inst.set(new ExtractElementInst(op0.get(), op1.get()));
+    return false;
+  }
+
+  /**
+   * InsertElement = 'insertelement' TypeAndValue ',' TypeAndValue ',' TypeAndValue
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseInsertElement(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<Value> vec = new OutRef<>(), elt = new OutRef<>(), index = new OutRef<>();
+    if (parseTypeAndValue(vec, loc, pfs) ||
+        parseToken(comma, "expected a ',' after insertelemnt operands") ||
+        parseTypeAndValue(elt, pfs) ||
+        parseTypeAndValue(index, pfs))
+      return true;
+
+    if (!InsertElementInst.isValidOperands(vec.get(), elt.get(), index.get()))
+      return error(loc.get(), "invalid insertelement operrands");
+
+    inst.set(new InsertElementInst(vec.get(), elt.get(), index.get()));
+    return false;
+  }
+
+  /**
+   * ShuffleVectorInst = 'shufflevector' TypeAndValue ',' TypeAndValue ',' TypeAndValue
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseShuffleVector(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<Value> op0 = new OutRef<>(), op1 = new OutRef<>(), op2 = new OutRef<>();
+    if (parseTypeAndValue(op0, loc, pfs) ||
+        parseToken(comma, "expected a ',' after shufflevector operands") ||
+        parseTypeAndValue(op1, pfs) ||
+        parseTypeAndValue(op2, pfs))
+      return true;
+
+    if (!ShuffleVectorInst.isValidOperands(op0.get(), op1.get(), op2.get()))
+      return error(loc.get(), "invalid shufflevector operrands");
+
+    inst.set(new ShuffleVectorInst(op0.get(), op1.get(), op2.get()));
     return false;
   }
 }

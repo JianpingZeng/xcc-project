@@ -66,6 +66,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
    * efficiently, and dynamically very few types do not contain any elements.
    */
   protected PATypeHandle containedTys[];
+
   private static HashMap<Type, String> concreteTypeDescription =
       new HashMap<>();
 
@@ -151,6 +152,10 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return false;
   }
 
+  public boolean isIntegerType(int bitwidth) {
+    return isIntegerType() && ((IntegerType)this).getBitWidth() == bitwidth;
+  }
+
   public boolean isIntegral() {
     return isIntegerType() || this == LLVMContext.Int1Ty;
   }
@@ -206,6 +211,14 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   public boolean isMetadataTy() {
     return id == MetadataTyID;
+  }
+
+  public boolean isVectorTy() {
+    return id == VectorTyID;
+  }
+
+  public boolean isOpaqueTy() {
+    return id == OpaqueTyID;
   }
 
   /**
@@ -323,7 +336,14 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   public Type getContainedType(int idx) {
     Util.assertion(containedTys != null && idx >= 0 && idx < containedTys.length);
+    Type ty = containedTys[idx].getType();
+    if (ty.isOpaqueTy()) {
+      return ((OpaqueType)ty).getForwardType();
+    }
+    return ty;
+  }
 
-    return containedTys[idx].getType();
+  public Type getForwardType() {
+    return this;
   }
 }

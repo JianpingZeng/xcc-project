@@ -8,8 +8,10 @@ CC=/home/xlous/Development/compiler/llvm/cmake-build-debug/bin/clang -cc1 -emit-
 LLC=/home/xlous/Development/compiler/xcc/out/bin/llc -O0
 
 ASMS = sha.s sha_driver.s
-PREDS = sha.i sha_driver.i
+LLS=sha.ll sha_driver.ll
 TARGET = sha
+
+all: $(TARGET) $(LLS)
 
 $(TARGET): $(ASMS)
 	gcc $^ -o $@

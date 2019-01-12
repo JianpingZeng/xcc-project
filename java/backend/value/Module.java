@@ -3,6 +3,7 @@ package backend.value;
 import backend.support.*;
 import backend.type.FunctionType;
 import backend.type.PointerType;
+import backend.type.StructType;
 import backend.type.Type;
 import tools.FormattedOutputStream;
 import tools.Util;
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.TreeMap;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
@@ -49,7 +51,7 @@ public final class Module implements Iterable<Function> {
   /**
    * Symbol table for types.
    */
-  private HashMap<String, Type> typeSymbolTable;
+  private TreeMap<String, Type> typeSymbolTable;
 
   /**
    * Human readable unique identifier for this module.
@@ -73,7 +75,7 @@ public final class Module implements Iterable<Function> {
     this.globalVariableList = globalVariableList;
     this.functionList = functions;
     valSymTable = new ValueSymbolTable();
-    typeSymbolTable = new HashMap<>();
+    typeSymbolTable = new TreeMap<>();
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
@@ -84,7 +86,7 @@ public final class Module implements Iterable<Function> {
     globalVariableList = new ArrayList<>(32);
     functionList = new ArrayList<>(32);
     valSymTable = new ValueSymbolTable();
-    typeSymbolTable = new HashMap<>();
+    typeSymbolTable = new TreeMap<>();
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
@@ -216,16 +218,16 @@ public final class Module implements Iterable<Function> {
    * @return
    */
   public boolean addTypeName(String name, Type type) {
-    HashMap<String, Type> st = getTypeSymbolTable();
+    TreeMap<String, Type> st = getTypeSymbolTable();
     if (st.containsKey(name)) return true;
 
     st.put(name, type);
     return false;
   }
 
-  public HashMap<String, Type> getTypeSymbolTable() {
+  public TreeMap<String, Type> getTypeSymbolTable() {
     if (typeSymbolTable == null)
-      typeSymbolTable = new HashMap<>();
+      typeSymbolTable = new TreeMap<>();
 
     return typeSymbolTable;
   }
@@ -305,5 +307,9 @@ public final class Module implements Iterable<Function> {
     namedMDSymTab.put(name, res);
     namedMDList.add(res);
     return res;
+  }
+
+  public void findUsedStructTypes(ArrayList<StructType> namedTypes) {
+    new TypeFinder(namedTypes).run(this);
   }
 }

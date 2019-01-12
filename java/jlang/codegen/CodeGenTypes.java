@@ -620,7 +620,7 @@ public class CodeGenTypes {
     }
 
     decl = decl.getDefinition();
-    if (decl == null || !decl.isCompleteDefinition() || !ty.isOpaque())
+    if (decl == null || !decl.isCompleteDefinition() || !ty.isHasBody())
       return ty;
 
     if (!isSafeToConvert(decl)) {
