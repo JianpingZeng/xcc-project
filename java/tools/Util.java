@@ -752,4 +752,17 @@ public class Util {
     }
     return buf.toString();
   }
+
+  public static String escapedString(String name) {
+    StringBuilder buf = new StringBuilder();
+
+    for (int i = 0, e = name.length(); i < e; i++) {
+      char ch = name.charAt(i);
+      if (TextUtils.isPrintable(ch) && ch != '\\' && ch != '"')
+        buf.append(ch);
+      else
+        buf.append(String.format("\\%c%c", hexDigit(ch >> 4), hexDigit(ch & 0xF)));
+    }
+    return buf.toString();
+  }
 }

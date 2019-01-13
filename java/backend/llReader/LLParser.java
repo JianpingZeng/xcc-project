@@ -950,14 +950,14 @@ public final class LLParser {
     int idx = 0;
     // All of arguments we parsed to the function.
     for (ArgInfo ai : argList) {
+      ++idx;
       if (ai.name == null || ai.name.isEmpty())
         continue;
 
-      fnArgs.get(idx++).setName(ai.name);
+      fnArgs.get(idx-1).setName(ai.name);
     }
 
     f.set(fn);
-
     return false;
   }
 
@@ -1776,7 +1776,7 @@ public final class LLParser {
     String nameStr;
 
     OutRef<Instruction> inst = new OutRef<>();
-    while (true) {
+    do {
       // This instruction may have three possibilities for a name: a) none
       // specified, b) name specified "%foo =", c) number specified: "%4 =".
       nameLoc = lexer.getLoc();
@@ -1812,9 +1812,7 @@ public final class LLParser {
       // set the name of the instruction.
       if (pfs.setInstName(nameID, nameStr, nameLoc, inst.get()))
         return true;
-      if (inst.get() instanceof TerminatorInst)
-        break;
-    }
+    } while (!(inst.get() instanceof TerminatorInst));
     return false;
   }
 

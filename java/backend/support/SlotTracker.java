@@ -96,9 +96,8 @@ public final class SlotTracker {
   }
 
   public int getLocalSlot(Value v) {
-    Util.assertion(!(v instanceof Constant), "Can't get a constant or global slot with this!");
-
-
+    Util.assertion(!(v instanceof Constant),
+        "Can't get a constant or global slot with this!");
     initialize();
     return fMap.containsKey(v) ? fMap.get(v) : -1;
   }

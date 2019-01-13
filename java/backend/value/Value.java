@@ -268,8 +268,7 @@ public class Value implements Cloneable {
   }
 
   public boolean hasName() {
-    return name != null && !name.isEmpty() &&
-        !name.equalsIgnoreCase("tmp") && !name.startsWith("tmp");
+    return name != null && !name.isEmpty();
   }
 
   public void print(FormattedOutputStream os) {
@@ -297,7 +296,7 @@ public class Value implements Cloneable {
       TypePrinting printer = new TypePrinting();
       printer.print(mds.getType(), os);
       os.print(" !\"");
-      printEscapedString(mds.getString(), os);
+      os.print(Util.escapedString(mds.getString()));
       os.print('"');
     } else if (this instanceof MDNode) {
       MDNode node = (MDNode) this;
@@ -326,7 +325,7 @@ public class Value implements Cloneable {
       TypePrinting printer = new TypePrinting();
       printer.print(c.getType(), os);
       os.print(' ');
-      writeConstantInt(os, c, printer, null);
+      writeConstantInternal(os, c, printer, null);
     } else if (this instanceof Argument) {
       Argument arg = (Argument) this;
       writeAsOperand(os, this, true,

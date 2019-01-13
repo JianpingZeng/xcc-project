@@ -1144,6 +1144,10 @@ public abstract class Instruction extends User {
             return false;
 
           return srcTy.getPrimitiveSizeInBits() == destTy.getPrimitiveSizeInBits();
+        case PtrToInt:
+          return srcTy.isPointerType() && destTy.isIntegerType();
+        case IntToPtr:
+          return srcTy.isIntegerType() && destTy.isPointerType();
         default:
           return false;   // input error
       }

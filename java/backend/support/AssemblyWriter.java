@@ -29,13 +29,11 @@ import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.iterator.TObjectIntIterator;
 import tools.*;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
 import static backend.support.AssemblyWriter.PrefixType.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
-import static tools.Util.hexDigit;
 
 public class AssemblyWriter {
   private FormattedOutputStream out;
@@ -161,7 +159,7 @@ public class AssemblyWriter {
     os.printf("\"%s\"", name);
   }
 
-  public void write(Module m) throws IOException {
+  public void write(Module m) {
     printModule(m);
   }
 
@@ -261,7 +259,7 @@ public class AssemblyWriter {
     Constant cv = val instanceof Constant ? (Constant) val : null;
     if (cv != null && !(cv instanceof GlobalValue)) {
       Util.assertion(printer != null, "Constants require TypePrintering");
-      writeConstantInt(out, cv, printer, tracker);
+      writeConstantInternal(out, cv, printer, tracker);
       return;
     }
 
@@ -297,7 +295,7 @@ public class AssemblyWriter {
     Constant cv = val instanceof Constant ? (Constant) val : null;
     if (cv != null && !(cv instanceof GlobalValue)) {
       Util.assertion(printer != null, "Constants require TypePrintering");
-      writeConstantInt(out, cv, printer, tracker);
+      writeConstantInternal(out, cv, printer, tracker);
       return;
     }
 
@@ -387,8 +385,8 @@ public class AssemblyWriter {
     writeAsOperandInternal(out, val, printer, null);
   }
 
-  public static void writeConstantInt(PrintStream out, Constant cv,
-                                      TypePrinting printer, SlotTracker tracker) {
+  public static void writeConstantInternal(PrintStream out, Constant cv,
+                                           TypePrinting printer, SlotTracker tracker) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
       if (ci.getType().equals(LLVMContext.Int1Ty)) {
@@ -494,7 +492,7 @@ public class AssemblyWriter {
       Type elty = ca.getType().getElementType();
       if (ca.isString()) {
         out.print("c\"");
-        out.print(ca.getAsString());
+        out.print(Util.escapedString(ca.getAsString()));
         out.print("\"");
       } else {
         out.print("[");
@@ -579,8 +577,8 @@ public class AssemblyWriter {
     out.print("<placeholder or erroneous Constant>");
   }
 
-  public static void writeConstantInt(FormattedOutputStream out, Constant cv,
-                                      TypePrinting printer, SlotTracker tracker) {
+  public static void writeConstantInternal(FormattedOutputStream out, Constant cv,
+                                           TypePrinting printer, SlotTracker tracker) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
       if (ci.getType().equals(LLVMContext.Int1Ty)) {
@@ -686,7 +684,7 @@ public class AssemblyWriter {
       Type elty = ca.getType().getElementType();
       if (ca.isString()) {
         out.print("c\"");
-        out.print(ca.getAsString());
+        out.print(Util.escapedString(ca.getAsString()));
         out.print("\"");
       } else {
         out.print("[");
@@ -1324,16 +1322,6 @@ public class AssemblyWriter {
 
       typePrinter.printStructBody(sty, out);
       out.println();
-    }
-  }
-
-  public static void printEscapedString(String name, FormattedOutputStream os) {
-    for (int i = 0, e = name.length(); i < e; i++) {
-      char ch = name.charAt(i);
-      if (TextUtils.isPrintable(ch) && ch != '\\' && ch != '"')
-        os.print(ch);
-      else
-        os.printf("\\%d%d", hexDigit(ch >> 4), hexDigit(ch & 0xF));
     }
   }
 

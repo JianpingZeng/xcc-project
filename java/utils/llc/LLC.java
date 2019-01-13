@@ -183,8 +183,6 @@ public class LLC {
       System.exit(0);
     }
 
-    theModule.dump();
-
     Triple theTriple = new Triple(theModule.getTargetTriple());
     if (theTriple.getTriple().isEmpty())
       theTriple.setTriple(Process.getHostTriple());

@@ -180,7 +180,7 @@ public class ConstantArray extends Constant {
     StringBuilder sb = new StringBuilder();
 
     for (int i = 0, e = getNumOfOperands(); i != e; i++) {
-      sb.append(((ConstantInt) operand(i)).getZExtValue());
+      sb.append((char)((ConstantInt) operand(i)).getZExtValue());
     }
     return sb.toString();
   }
