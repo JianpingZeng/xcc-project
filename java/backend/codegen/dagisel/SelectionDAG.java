@@ -168,7 +168,7 @@ public class SelectionDAG {
   public MachineSDNode getMachineNode(int opcode,
                                       SDVTList vts,
                                       SDValue[] ops) {
-    boolean doCSE = !vts.vts[vts.numVTs-1].equals(new EVT(MVT.Flag));
+    boolean doCSE = !vts.vts[vts.numVTs-1].equals(new EVT(MVT.Glue));
     MachineSDNode n = null;
     int hash = 0;
     if (doCSE) {
@@ -200,7 +200,7 @@ public class SelectionDAG {
       return getNode(opc, vtList.vts[0], ops);
 
     SDNode node;
-    if (vtList.vts[vtList.numVTs - 1].getSimpleVT().simpleVT != MVT.Flag) {
+    if (vtList.vts[vtList.numVTs - 1].getSimpleVT().simpleVT != MVT.Glue) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vtList, ops, ops.length);
       int id = calc.computeHash();
@@ -283,7 +283,7 @@ public class SelectionDAG {
 
     SDNode node;
     SDVTList vts = getVTList(vt);
-    if (!vt.equals(new EVT(MVT.Flag))) {
+    if (!vt.equals(new EVT(MVT.Glue))) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vts, ops);
       int id = calc.computeHash();
@@ -524,7 +524,7 @@ public class SelectionDAG {
 
     SDNode node;
     SDVTList vts = getVTList(vt);
-    if (!vt.equals(new EVT(MVT.Flag))) {
+    if (!vt.equals(new EVT(MVT.Glue))) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vts, op0);
       int id = calc.computeHash();
@@ -792,7 +792,7 @@ public class SelectionDAG {
 
     SDNode node;
     SDVTList vts = getVTList(vt);
-    if (!vt.equals(new EVT(MVT.Flag))) {
+    if (!vt.equals(new EVT(MVT.Glue))) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vts, op0, op1);
       int id = calc.computeHash();
@@ -879,7 +879,7 @@ public class SelectionDAG {
 
     SDNode node;
     SDVTList vts = getVTList(vt);
-    if (!vt.equals(new EVT(MVT.Flag))) {
+    if (!vt.equals(new EVT(MVT.Glue))) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vts, op0, op1, op2);
       int id = calc.computeHash();
@@ -1964,7 +1964,7 @@ public class SelectionDAG {
     MachineMemOperand mmo = new MachineMemOperand(srcVal, Flags, offset,
             memVT.getStoreSize(), align);
 
-    if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT != MVT.Flag) {
+    if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT != MVT.Glue) {
       FoldingSetNodeID compute = new FoldingSetNodeID();
       addNodeToIDNode(compute, opc, vts, temp);
       int id = compute.computeHash();
@@ -2179,7 +2179,7 @@ public class SelectionDAG {
   }
 
   private static boolean doNotCSE(SDNode node) {
-    if (node.getValueType(0).getSimpleVT().simpleVT == MVT.Flag)
+    if (node.getValueType(0).getSimpleVT().simpleVT == MVT.Glue)
       return true;
 
     switch (node.getOpcode()) {
@@ -2194,7 +2194,7 @@ public class SelectionDAG {
     }
 
     for (int i = 0, e = node.getNumValues(); i < e; i++) {
-      if (node.getValueType(i).getSimpleVT().simpleVT == MVT.Flag)
+      if (node.getValueType(i).getSimpleVT().simpleVT == MVT.Glue)
         return true;
     }
     return false;
@@ -2520,7 +2520,7 @@ public class SelectionDAG {
   public SDNode morphNodeTo(SDNode n, int opc, SDVTList vts, SDValue[] ops,
                             int numOps) {
     int id = 0;
-    if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT == MVT.Flag) {
+    if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT == MVT.Glue) {
       FoldingSetNodeID compute = new FoldingSetNodeID();
       addNodeToIDNode(compute, opc, vts, ops, numOps);
       id = compute.computeHash();
@@ -2872,7 +2872,7 @@ public class SelectionDAG {
   }
 
   public SDValue getCopyFromReg(SDValue chain, int reg, EVT vt, SDValue flag) {
-    SDVTList vts = getVTList(vt, new EVT(MVT.Other));
+    SDVTList vts = getVTList(vt, new EVT(MVT.Other), new EVT(MVT.Glue));
     if (flag.getNode() != null) {
       SDValue[] ops = {chain, getRegister(reg, vt), flag};
       return getNode(ISD.CopyFromReg, vts, ops);
@@ -2884,7 +2884,7 @@ public class SelectionDAG {
 
   public SDValue getCopyToReg(SDValue chain, SDValue reg, SDValue node,
                               SDValue flag) {
-    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
 
     if (flag.getNode() != null) {
       SDValue[] ops = {chain, reg, node, flag};
@@ -3173,14 +3173,14 @@ public class SelectionDAG {
   }
 
   public SDValue getCALLSEQ_START(SDValue chain, SDValue op) {
-    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue[] ops = {chain, op};
     return getNode(ISD.CALLSEQ_START, vts, ops);
   }
 
   public SDValue getCALLSEQ_END(SDValue chain, SDValue op1, SDValue op2,
                                 SDValue inFlag) {
-    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     ops.add(chain);
     ops.add(op1);
@@ -3777,12 +3777,15 @@ public class SelectionDAG {
       Util.assertion(val < numElts * 2, "Index out of range!");
     maskVec.addAll(mask);
 
+    // Canonicalize shuffle v, v -> v, undef
     if (op0.equals(op1)) {
       op1 = getUNDEF(vt);
       for (int i = 0; i < numElts; i++)
         if (maskVec.get(i) >= numElts)
           maskVec.set(i, maskVec.get(i) - numElts);
     }
+
+    // Canonicalize shuffle undef, v -> v, undef.  Commute the shuffle mask.
     Util.shouldNotReachHere("Not implemented!");
     return null;
   }
@@ -3986,7 +3989,7 @@ public class SelectionDAG {
   }
 
   public SDNode getNodeIfExists(int opc, SDVTList vts, SDValue[] ops) {
-    if (!vts.vts[vts.vts.length - 1].equals(new EVT(MVT.Flag))) {
+    if (!vts.vts[vts.vts.length - 1].equals(new EVT(MVT.Glue))) {
       FoldingSetNodeID calc = new FoldingSetNodeID();
       addNodeToIDNode(calc, opc, vts, ops);
       int id = calc.computeHash();

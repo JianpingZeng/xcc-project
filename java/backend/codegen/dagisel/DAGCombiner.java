@@ -3187,12 +3187,12 @@ public class DAGCombiner {
     boolean hasROTR = tli.isOperationLegalOrCustom(ISD.ROTR, vt);
     if (!hasROTL && !hasROTR) return null;
 
-    SDValue[] lhsRes = new SDValue[2];
+    SDValue[] lhsRes = {new SDValue(), new SDValue()};
     if (!matchRotateHalf(lhs, lhsRes))
       return null;
 
-    SDValue[] rhsRes = new SDValue[2];
-    if (matchRotateHalf(rhs, rhsRes))
+    SDValue[] rhsRes = {new SDValue(), new SDValue()};
+    if (!matchRotateHalf(rhs, rhsRes))
       return null;
 
     if (!Objects.equals(lhsRes[0].getOperand(0), rhsRes[0].getOperand(0)))
@@ -3950,7 +3950,7 @@ public class DAGCombiner {
     EVT vt = n0.getValueType();
     if (n.hasNumUsesOfValue(0, 1)) {
       return combineTo(n, dag.getNode(ISD.ADD, vt, n1, n0),
-          dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+          dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
     }
     if (c1 != null && c2 == null) {
       return dag.getNode(ISD.ADDC, n.getValueList(), n1, n0);
@@ -3964,7 +3964,7 @@ public class DAGCombiner {
       if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
           lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask))) {
         return combineTo(n, dag.getNode(ISD.OR, vt, n0, n1),
-            dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+            dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
       }
     }
 

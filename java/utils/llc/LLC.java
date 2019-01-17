@@ -238,7 +238,7 @@ public class LLC {
     PrintStream os = computeOutFile(theTarget.getName());
     if (os == null) System.exit(1);
 
-    TargetMachine.CodeGenOpt oLvl = TargetMachine.CodeGenOpt.Default;
+    TargetMachine.CodeGenOpt oLvl = TargetMachine.CodeGenOpt.None;
     switch (OptLevel.value) {
       default:
         System.err.println("llc: invalid optimization level.");

@@ -270,7 +270,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
 
   public SDNode getFlaggedNode() {
     if (getNumOperands() != 0 && getOperand(getNumOperands() - 1).
-        getValueType().getSimpleVT().simpleVT == MVT.Flag) {
+        getValueType().getSimpleVT().simpleVT == MVT.Glue) {
       return getOperand(getNumOperands() - 1).getNode();
     }
     return null;
@@ -292,7 +292,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public EVT getValueType(int resNo) {
-    Util.assertion(resNo < getNumValues() && resNo >= 0);
+    Util.assertion(resNo < getNumValues() && resNo >= 0, "resNo out of range");
     return valueList[resNo];
   }
 
@@ -1685,9 +1685,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public static class ShuffleVectorSDNode extends SDNode {
     private int[] mask;
 
-    public ShuffleVectorSDNode(int opc, SDVTList vts, ArrayList<SDValue> ops,
+    public ShuffleVectorSDNode(SDVTList vts, ArrayList<SDValue> ops,
                                int[] mask) {
-      super(opc, vts, ops);
+      super(ISD.VECTOR_SHUFFLE, vts, ops);
       this.mask = mask;
     }
 

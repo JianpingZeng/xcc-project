@@ -3,6 +3,7 @@ package backend.value;
 import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.*;
+import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
@@ -3431,6 +3432,37 @@ public abstract class Instruction extends User {
           !maskTy.getElementType().isIntegerType(32))
         return false;
       return true;
+    }
+
+    /**
+     * Return the full mask for this instrucion, where each element is the element
+     * number and undef's are returned as -1.
+     * @param mask
+     * @param result
+     */
+    public static void getShuffleMask(Constant mask, TIntArrayList result) {
+      Util.assertion(mask.getType().isVectorTy(), "not a vector constant!");
+
+      if (mask instanceof ConstantVector) {
+        ConstantVector conVec = (ConstantVector) mask;
+        for (int i = 0, e = conVec.getNumOfOperands(); i < e; ++i) {
+          Constant elt = conVec.operand(i);
+          if (elt instanceof UndefValue)
+            result.add(-1);
+          else
+            result.add((int) ((ConstantInt)elt).getSExtValue());
+        }
+        return;
+      }
+
+      VectorType vt = (VectorType)mask.getType();
+      if (mask instanceof ConstantAggregateZero) {
+        for (int i = 0, e = vt.getNumElements(); i < e; ++i)
+          result.add(0);
+        return;
+      }
+
+      Util.shouldNotReachHere("Unknown type, must be constant expr etc!");
     }
 
     public VectorType getType() {

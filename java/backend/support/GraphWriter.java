@@ -114,7 +114,7 @@ public final class GraphWriter {
       writeGraph(out, dotTrait, false, title);
       displayGraph(temp);
     } catch (Exception e) {
-      System.err.println(e.getMessage());
+      e.printStackTrace();
     } finally {
       if (out != null) out.close();
       if (temp != null) temp.delete();

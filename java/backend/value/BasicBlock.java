@@ -509,7 +509,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
     } else {
       // Okay, now we know that we need to remove predecessor #pred_idx from all
       // PHI nodes.  Iterate over each PHI node fixing them up
-      for (Instruction inst : instructions) {
+      ArrayList<Instruction> worklist = new ArrayList<>(instructions);
+      for (Instruction inst : worklist) {
         if (!(inst instanceof PhiNode)) break;
 
         pn = (PhiNode) inst;

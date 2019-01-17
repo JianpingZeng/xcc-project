@@ -840,7 +840,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           continue;
 
         SDValue chainVal = new SDValue(chainNode, chainNode.getNumValues() - 1);
-        if (chainVal.getValueType().equals(new EVT(MVT.Flag)))
+        if (chainVal.getValueType().equals(new EVT(MVT.Glue)))
           chainVal = chainVal.getValue(chainVal.getNode().getNumValues() - 2);
         Util.assertion(chainVal.getValueType().equals(new EVT(MVT.Other)), "not a chain!");
         curDAG.replaceAllUsesOfValueWith(chainVal, inputChain, null);
@@ -858,7 +858,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         if (flagNode.getOpcode() == ISD.DELETED_NODE)
           continue;
 
-        Util.assertion(flagNode.getValueType(flagNode.getNumValues() - 1).equals(new EVT(MVT.Flag)),
+        Util.assertion(flagNode.getValueType(flagNode.getNumValues() - 1).equals(new EVT(MVT.Glue)),
             "Doesn't have a flag result");
         curDAG.replaceAllUsesOfValueWith(new SDValue(flagNode, flagNode.getNumValues() - 1),
             inputFlag, null);
@@ -1071,7 +1071,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           continue;
         case OPC_CaptureFlagInput:
           if (n.getNumOperands() > 0 &&
-              n.getOperand(n.getNumOperands() - 1).getValueType().equals(new EVT(MVT.Flag)))
+              n.getOperand(n.getNumOperands() - 1).getValueType().equals(new EVT(MVT.Glue)))
             inputFlag = n.getOperand(n.getNumOperands() - 1);
           continue;
         case OPC_MoveChild: {
@@ -1348,7 +1348,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if ((emitNodeInfo & OPFL_Chain) != 0)
             vts.add(new EVT(MVT.Other));
           if ((emitNodeInfo & OPFL_FlagOutput) != 0)
-            vts.add(new EVT(MVT.Flag));
+            vts.add(new EVT(MVT.Glue));
 
           SDNode.SDVTList vtlist = curDAG.getVTList(vts);
 
@@ -1376,7 +1376,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                 "invalid variadic node");
             for (int i = firstToCopy, e = nodeToMatch.getNumOperands(); i < e; i++) {
               SDValue v = nodeToMatch.getOperand(i);
-              if (v.getValueType().equals(new EVT(MVT.Flag))) break;
+              if (v.getValueType().equals(new EVT(MVT.Glue))) break;
               ops.add(v);
             }
           }
@@ -1397,7 +1397,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             // Add all the non-flag/non-chain results to the RecordedNodes list.
             for (int i = 0, e = vts.size(); i < e; i++) {
               if (vts.get(i).equals(new EVT(MVT.Other)) ||
-                  vts.get(i).equals(new EVT(MVT.Flag)))
+                  vts.get(i).equals(new EVT(MVT.Glue)))
                 break;
               recordedNodes.add(new SDValue(res, i));
             }
@@ -1469,7 +1469,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             // entry.
             if (nodeToMatch.getNumValues() <= i ||
                 nodeToMatch.getValueType(i).equals(new EVT(MVT.Other)) ||
-                nodeToMatch.getValueType(i).equals(new EVT(MVT.Flag)))
+                nodeToMatch.getValueType(i).equals(new EVT(MVT.Glue)))
               break;
             Util.assertion(nodeToMatch.getValueType(i).equals(res.getValueType()) ||
                 nodeToMatch.getValueType(i).equals(new EVT(MVT.iPTR)) ||
@@ -1481,7 +1481,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
           // If the root node defines a flag, add it to the flag nodes to update
           // list.
-          if (nodeToMatch.getValueType(nodeToMatch.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Flag)
+          if (nodeToMatch.getValueType(nodeToMatch.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Glue)
             flagResultNodesMatched.add(nodeToMatch);
 
           // Update chain and flag uses.
@@ -1859,7 +1859,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     if (optLevel == CodeGenOpt.None || !node.hasOneUse()) return false;
 
     EVT vt = root.getValueType(root.getNumValues() - 1);
-    while (vt.equals(new EVT(MVT.Flag))) {
+    while (vt.equals(new EVT(MVT.Glue))) {
       SDNode fu = findFlagUse(root);
       if (fu == null)
         break;
@@ -1986,7 +1986,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     ArrayList<EVT> vts = new ArrayList<>();
     vts.add(new EVT(MVT.Other));
-    vts.add(new EVT(MVT.Flag));
+    vts.add(new EVT(MVT.Glue));
     SDValue newNode = curDAG.getNode(ISD.INLINEASM, vts);
     return newNode.getNode();
   }

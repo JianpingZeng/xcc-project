@@ -82,7 +82,7 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode> {
   public String getEdgeAttributes(SDNode from, Object to) {
     SDValue dest = (SDValue) to;
     EVT vt = dest.getValueType();
-    if (vt.equals(new EVT(MVT.Flag)))
+    if (vt.equals(new EVT(MVT.Glue)))
       return "color=red,style=bold";
     else if (vt.equals(new EVT(MVT.Other)))
       return "color=blue,style=dashed";

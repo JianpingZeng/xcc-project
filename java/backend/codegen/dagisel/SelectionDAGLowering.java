@@ -28,6 +28,7 @@ import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.*;
@@ -712,7 +713,24 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case Select:
         visitSelect(u);
         break;
+      case ExtractElement:
+        visitExtractElementInst(u);
+        break;
+      case InsertElement:
+        visitInsertElementInst(u);
+        break;
+      case ShuffleVector:
+        visitShuffleVectorInst(u);
+        break;
+      case ExtractValue:
+        visitExtractVectorInst(u);
+        break;
+      case InsertValue:
+        visitInsertValueInst(u);
+        break;
+      case Invoke:
       default:
+        // TODO 1/16/2019
         Util.shouldNotReachHere("Unknown operator!");
     }
   }
@@ -2090,12 +2108,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case longjmp:
         return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
       case memset: {
-        SDValue op1 = getValue(ci.operand(1));
+        // FIXME, memset optimization has bugs.
+        /*SDValue op1 = getValue(ci.operand(1));
         SDValue op2 = getValue(ci.operand(2));
         SDValue op3 = getValue(ci.operand(3));
         int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
         dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
-            align, ci.operand(1), 0));
+            align, ci.operand(1), 0));*/
         return null;
       }
       case memcpy: {
@@ -2333,6 +2352,177 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   @Override
   public Void visitFree(User inst) {
     Util.shouldNotReachHere("Not implemented currently!");
+    return null;
+  }
+
+  @Override
+  public Void visitExtractElementInst(User inst) {
+    SDValue inVec = getValue(inst.operand(0));
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+        getValue(inst.operand(1)));
+    setValue(inst, dag.getNode(ISD.EXTRACT_VECTOR_ELT, tli.getValueType(inst.getType()),
+        inVec, inIdx));
+    return null;
+  }
+
+  @Override
+  public Void visitInsertElementInst(User inst) {
+    SDValue inVec = getValue(inst.operand(0));
+    SDValue inVal = getValue(inst.operand(1));
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+        getValue(inst.operand(2)));
+    setValue(inst, dag.getNode(ISD.INSERT_VECTOR_ELT, tli.getValueType(inst.getType()),
+        inVec, inVal, inIdx));
+    return null;
+  }
+
+  @Override
+  public Void visitShuffleVectorInst(User inst) {
+    SDValue src1 = getValue(inst.operand(0));
+    SDValue src2 = getValue(inst.operand(1));
+
+    TIntArrayList mask = new TIntArrayList();
+    ShuffleVectorInst.getShuffleMask((Constant)inst.operand(2), mask);
+
+    EVT vt = tli.getValueType(inst.getType());
+    EVT srcVT = src1.getValueType();
+    int srcNumElts = srcVT.getVectorNumElements();
+    int maskNumElts = mask.size();
+    if (srcNumElts == maskNumElts) {
+      setValue(inst, dag.getVectorShuffle(vt, src1, src2, mask.toArray()));
+      return null;
+    }
+    // TODO
+    return null;
+  }
+
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices) {
+    return computeLinearIndex(ty, indices, 0);
+  }
+
+  /**
+   * Given an LLVM IR aggregate type and a sequence of insertvalue or extractvalue
+   * indices that identify a member, return the linearized index of the start of
+   * the member.
+   * @param ty
+   * @param indices
+   * @param curIndex
+   * @return
+   */
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices,
+                                        int curIndex) {
+    return computeLinearIndex(ty, indices, 0, indices.length, curIndex);
+  }
+
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices,
+                                        int indexBegin,
+                                        int indexEnd,
+                                        int curIndex) {
+    // base case, we are done.
+    if (indices != null && indexBegin == indexEnd)
+      return curIndex;
+
+    if (ty instanceof StructType) {
+      StructType sty = (StructType) ty;
+      for (int i = 0, e = sty.getNumOfElements(); i < e; i++) {
+        if (indices != null && indices[indexBegin] == e - i)
+          return computeLinearIndex(sty.getElementType(i), indices, indexBegin+1, indexEnd, curIndex);
+        curIndex = computeLinearIndex(sty.getElementType(i), null, 0, 0, curIndex);
+      }
+      return curIndex;
+    }
+
+    // given array type, recursively tranverse the element.
+    else if (ty instanceof ArrayType) {
+      ArrayType aty = (ArrayType) ty;
+      Type eltTy = aty.getElementType();
+      for (int i = 0, e = (int) aty.getNumElements(); i < e; i++) {
+        if (indices != null && indexBegin < indexEnd && indices[indexBegin] == i)
+          return computeLinearIndex(eltTy, indices, indexBegin+1, indexEnd, curIndex);
+        curIndex = computeLinearIndex(eltTy, null, 0, 0, curIndex);
+      }
+      return curIndex;
+    }
+    return curIndex + 1;
+  }
+
+  @Override
+  public Void visitExtractVectorInst(User inst) {
+    Value op0 = inst.operand(0);
+    Type aggTy = op0.getType();
+    Type valTy = inst.getType();
+    boolean outOfUndef = op0 instanceof Value.UndefValue;
+
+    int linearIndex = computeLinearIndex(aggTy, ((ExtractValueInst)inst).getIndices());
+    ArrayList<EVT> valValueVTs = new ArrayList<>();
+    computeValueVTs(tli, valTy, valValueVTs);
+
+    int numValValues = valValueVTs.size();
+    if (numValValues == 0) {
+      setValue(inst, dag.getUNDEF(new EVT(MVT.Other)));
+      return null;
+    }
+
+    SDValue[] values = new SDValue[numValValues];
+    SDValue agg = getValue(op0);
+    // Copy out the selected value(s).
+    for (int i = linearIndex; i < linearIndex + numValValues; i++) {
+      values[i - linearIndex] = outOfUndef ? dag.getUNDEF(agg.getNode().getValueType(agg.getResNo()+i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valValueVTs), values));
+    return null;
+  }
+
+  @Override
+  public Void visitInsertValueInst(User inst) {
+    InsertValueInst ivInst = (InsertValueInst) inst;
+    Value op0 = inst.operand(0);
+    Value op1 = inst.operand(1);
+    Type aggTy = inst.getType();
+    Type valTy = op1.getType();
+
+    boolean intoUndef = op0 instanceof Value.UndefValue;
+    boolean fromUndef = op1 instanceof Value.UndefValue;
+
+    int linearIndex = computeLinearIndex(aggTy, ivInst.getIndices());
+    ArrayList<EVT> aggValueVTs = new ArrayList<>();
+    computeValueVTs(tli, aggTy, aggValueVTs);
+
+    ArrayList<EVT> valValueVTs = new ArrayList<>();
+    computeValueVTs(tli, valTy, valValueVTs);
+
+    int numAggValues = aggValueVTs.size();
+    int numValValues = valValueVTs.size();
+    SDValue[] values = new SDValue[numAggValues];
+    SDValue agg = getValue(op0);
+
+    int i = 0;
+    // Copy the beginning value(s) from the original aggregate.
+    for (; i < linearIndex; i++) {
+      values[i] = intoUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    // Copy values from the inserted value(s).
+    if (numValValues != 0) {
+      SDValue val = getValue(op1);
+      for (; i < linearIndex + numValValues; ++i)
+        values[i] = fromUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+            new SDValue(val.getNode(), val.getResNo() + i - linearIndex);
+    }
+
+    // Copy remaining value(s) from the original aggregate.
+    for (; i < numAggValues; ++i) {
+      values[i] = intoUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(aggValueVTs), values));
     return null;
   }
 }

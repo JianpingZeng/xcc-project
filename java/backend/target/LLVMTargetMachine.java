@@ -94,7 +94,8 @@ public abstract class LLVMTargetMachine extends TargetMachine {
       // todo pm.add(createLoopStrengthReducePass(getTargetLowering()));
     }
 
-    pm.add(createUnreachableBlockEliminationPass());
+    if (level.compareTo(CodeGenOpt.None) > 0)
+      pm.add(createUnreachableBlockEliminationPass());
 
     pm.add(new MachineFunctionAnalysis(this, level));
 

@@ -264,18 +264,19 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   /**
-   * Return true if it makes sense to take the getNumOfSubLoop of this type.
-   * To get the actual getNumOfSubLoop for a particular TargetData, it is reasonable
+   * Return true if it makes sense to take the size of this type.
+   * To get the actual size for a particular TargetData, it is reasonable
    * to use the TargetData subsystem to do that.
    *
    * @return
    */
   public boolean isSized() {
-    if ((id >= IntegerTyID && id <= IntegerTyID)
-        || isFloatingPointType() || id == PointerTyID)
+    // If it's a primitive, it is always sized.
+    if (id == IntegerTyID || isFloatingPointType() ||
+        id == PointerTyID || id == X86_MMXTyID)
       return true;
 
-    if (id != StructTyID && id != ArrayTyID)
+    if (id != StructTyID && id != ArrayTyID && id != VectorTyID)
       return false;
     // Otherwise we have to try harder to decide.
     return isSizedDerivedType() || !isAbstract();
@@ -294,6 +295,9 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     if (isArrayType()) {
       return ((ArrayType) this).getElementType().isSized();
     }
+    if (isVectorTy())
+      return ((VectorType)this).getElementType().isSized();
+
     if (!isStructType())
       return false;
     StructType st = (StructType) this;

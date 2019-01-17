@@ -107,7 +107,6 @@ public class RegAllocLocal extends MachineFunctionPass {
     if (phyReg == 0) {
       Util.assertion(!phyRegsUseOrder.isEmpty(), "No allocatable registers");
 
-
       // Spill a the least used physical register into memory.
       for (int i = 0; phyReg == 0; i++) {
         Util.assertion(i != phyRegsUseOrder.size(),

@@ -132,7 +132,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     boolean tryUnFold = false;
     for (int i = 0, e = n.getNumValues(); i < e; i++) {
       EVT vt = n.getValueType(i);
-      if (vt.getSimpleVT().simpleVT == MVT.Flag)
+      if (vt.getSimpleVT().simpleVT == MVT.Glue)
         return null;
       else if (vt.getSimpleVT().simpleVT == MVT.Other)
         tryUnFold = true;
@@ -141,7 +141,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     for (int i = 0, e = n.getNumOperands(); i < e; i++) {
       SDValue op = n.getOperand(i);
       EVT vt = op.getNode().getValueType(op.getResNo());
-      if (vt.getSimpleVT().simpleVT == MVT.Flag)
+      if (vt.getSimpleVT().simpleVT == MVT.Glue)
         return null;
     }
 

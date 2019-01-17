@@ -326,11 +326,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
           SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
-              new EVT(MVT.Flag), ops);
+              new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 
@@ -462,7 +462,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         } else {
           inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), loReg, n0, new SDValue()).getValue(1);
           if (isSigned && !signBitIsZero) {
-            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Flag), inFlag), 0);
+            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Glue), inFlag), 0);
           } else {
             SDValue clrNode = new SDValue(curDAG.getMachineNode(clrOpcode, nvt), 0);
             inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), clrReg, clrNode,
@@ -474,11 +474,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
           SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
-              new EVT(MVT.Flag), ops);
+              new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 

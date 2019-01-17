@@ -2342,7 +2342,7 @@ public abstract class TargetLowering {
         if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth + 1)) {
           return true;
         }
-        Util.assertion(res[0].add(res[1]).eq(0), "Bits known to be one AND zero?");
+        Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
         res[0] = res[0].zext(bitwidth);
         res[1] = res[1].zext(bitwidth);
         res[0].orAssign(newBits);

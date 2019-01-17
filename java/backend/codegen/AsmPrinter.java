@@ -196,7 +196,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return false;
   }
 
-  public void emitGlobalVariable(GlobalVariable gv) {
+  private void emitGlobalVariable(GlobalVariable gv) {
     TargetData td = tm.getTargetData();
 
     // External global require no code
@@ -286,7 +286,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     outStreamer.addBlankLine();
   }
 
-  public static boolean isScale(MachineOperand mo) {
+  private static boolean isScale(MachineOperand mo) {
     long imm;
     return mo.isImm() && (
         ((imm = mo.getImm()) & (imm - 1)) == 0)
@@ -300,7 +300,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param opNo
    * @return
    */
-  public static boolean isMem(MachineInstr mi, int opNo) {
+  protected static boolean isMem(MachineInstr mi, int opNo) {
     if (mi.getOperand(opNo).isFrameIndex()) return true;
     return mi.getNumOperands() >= opNo + 4 &&
         mi.getOperand(opNo).isRegister()
@@ -614,7 +614,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       Util.shouldNotReachHere("Address taken not supported yet!");
     }
     // Print the main label for the block.
-    if (mbb.getNumPredecessors() <= 0 || isBlockOnlyReachableByFallThrough(mbb)) {
+    if (mbb.getNumPredecessors() == 0/* || isBlockOnlyReachableByFallThrough(mbb)*/) {
       if (verboseAsm && outStreamer.hasRawTextSupport()) {
         BasicBlock bb = mbb.getBasicBlock();
         if (bb != null && bb.hasName()) {
@@ -1505,7 +1505,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @return
    */
   public MCSymbol getCPISymbol(int cpiId) {
-    String name = mai.getPrivateGlobalPrefix() +
+    String name = mai.getPrivateGlobalPrefix() + "CPI" +
         getFunctionNumber() + "_" + cpiId;
     return outContext.getOrCreateSymbol(name);
   }

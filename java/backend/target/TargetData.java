@@ -299,8 +299,9 @@ public class TargetData implements ImmutablePass {
     alignments.add(TargetAlignElem.get(alignType, abiAlign, prefAlign, bitWidth));
   }
 
-  public TargetData(String targetName, boolean isLittleEndian, int ptrSize,
-                    int ptrAlign, int doubleAlign, int floatAlign, int longAlign, int intAlign,
+  public TargetData(String targetName, boolean isLittleEndian,
+                    int ptrSize, int ptrAlign, int doubleAlign,
+                    int floatAlign, int longAlign, int intAlign,
                     int shortAlign, int byteAlign) {
     this.targetName = targetName;
     littleEndian = isLittleEndian;
@@ -328,6 +329,7 @@ public class TargetData implements ImmutablePass {
     byteAlignment = td.byteAlignment;
     alignments = new ArrayList<>(td.alignments);
     resolver = td.resolver;
+    pointerABIAlign = td.pointerABIAlign;
   }
 
   public IntegerType getIntPtrType() {
@@ -353,12 +355,12 @@ public class TargetData implements ImmutablePass {
       case Type.FloatTyID:
         return 32;
       case Type.DoubleTyID:
+      case Type.X86_MMXTyID:
         return 64;
       case X86_FP80TyID:
         return 80;
       case FP128TyID:
         return 128;
-
       case LabelTyID:
       case Type.PointerTyID:
         return getPointerSizeInBits();
@@ -370,8 +372,10 @@ public class TargetData implements ImmutablePass {
         // Get the struct layout annotation, which is createed lazily on demand.
         return getStructLayout((StructType) type).getSizeInBits();
       }
+      case VectorTyID:
+        return ((VectorType)type).getBitWidth();
       default: {
-        Util.assertion(false, "Bad type for getTypeInfo!");
+        Util.assertion("Bad type for getTypeInfo!");
         break;
       }
     }
@@ -571,6 +575,10 @@ public class TargetData implements ImmutablePass {
       case FP128TyID:
         alignType = FLOAT_ALIGN;
         break;
+      case X86_MMXTyID:
+      case VectorTyID:
+        alignType = VECTOR_ALIGN;
+        break;
       default:
         Util.shouldNotReachHere("Bad type for getAlignemnt!");
         break;
@@ -578,11 +586,10 @@ public class TargetData implements ImmutablePass {
     return getAlignmentInfo(alignType, (int) getTypeSizeInBits(ty), abiOrPref, ty);
   }
 
-  private int getAlignmentInfo(
-      AlignTypeEnum alignType,
-      int bitwidth,
-      boolean abiInfo,
-      Type ty) {
+  private int getAlignmentInfo(AlignTypeEnum alignType,
+                               int bitwidth,
+                               boolean abiInfo,
+                               Type ty) {
     int bestMatchIdx = -1;
     int largestInt = -1;
     for (int i = 0, e = alignments.size(); i < e; i++) {
@@ -606,7 +613,18 @@ public class TargetData implements ImmutablePass {
       if (alignType == INTEGER_ALIGN) {
         bestMatchIdx = largestInt;
       } else {
-        Util.assertion(false, "Unknown alignment type!");
+        Util.assertion(alignType == VECTOR_ALIGN, "Unknown alignment type!");
+
+        // By default, use natural alignment for vector types. This is consistent
+        // with what clang and llvm-gcc do.
+        long align = getTypeAllocSize(((VectorType)ty).getElementType());
+        align *= ((VectorType)ty).getNumElements();
+
+        // If the alignment is not a power of 2, round up to the next power of 2.
+        // This happens for non-power-of-2 length vectors.
+        if ((align & (align-1)) != 0)
+          align = Util.nextPowerOf2(align);
+        return (int) align;
       }
     }
     return abiInfo ? alignments.get(bestMatchIdx).abiAlign : alignments.get(bestMatchIdx).prefAlign;
@@ -670,15 +688,14 @@ public class TargetData implements ImmutablePass {
       if (ty instanceof StructType) {
         StructType sty = (StructType) ty;
         Util.assertion(indices.get(idx).getType().equals(LLVMContext.Int32Ty));
-        long fieldNo = ((ConstantInt)indices.get(idx)).getZExtValue();
+        long fieldNo = ((ConstantInt) indices.get(idx)).getZExtValue();
         StructLayout layout = getStructLayout(sty);
         result += layout.getElementOffset(fieldNo);
 
         ty = sty.getElementType((int) fieldNo);
-      }
-      else {
-        ty = ((SequentialType)ty).getElementType();
-        long arrayIdx = ((ConstantInt)indices.get(idx)).getSExtValue();
+      } else {
+        ty = ((SequentialType) ty).getElementType();
+        long arrayIdx = ((ConstantInt) indices.get(idx)).getSExtValue();
         result += arrayIdx * getTypeAllocSize(ty);
       }
     }

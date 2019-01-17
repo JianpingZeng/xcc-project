@@ -127,7 +127,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
   public static int countResults(SDNode node) {
     int n = node.getNumValues();
-    while (n != 0 && node.getValueType(n - 1).getSimpleVT().simpleVT == MVT.Flag)
+    while (n != 0 && node.getValueType(n - 1).getSimpleVT().simpleVT == MVT.Glue)
       --n;
     if (n > 0 && node.getValueType(n - 1).getSimpleVT().simpleVT == MVT.Other)
       --n;
@@ -143,7 +143,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
   public static int computeMemOperandEnd(SDNode node) {
     int n = node.getNumOperands();
-    while (n > 0 && node.getOperand(n - 1).getValueType().getSimpleVT().simpleVT == MVT.Flag)
+    while (n > 0 && node.getOperand(n - 1).getValueType().getSimpleVT().simpleVT == MVT.Glue)
       --n;
     if (n > 0 && node.getOperand(n - 1).getValueType().getSimpleVT().simpleVT == MVT.Other)
       --n;
@@ -515,7 +515,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
           0, es.getTargetFlags()));
     } else {
       Util.assertion(!op.getValueType().equals(new EVT(MVT.Other)) &&
-          !op.getValueType().equals(new EVT(MVT.Flag)));
+          !op.getValueType().equals(new EVT(MVT.Glue)));
       addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);
     }
   }
@@ -526,7 +526,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
                                   MCInstrDesc tid,
                                   TObjectIntHashMap<SDValue> vrBaseMap) {
     Util.assertion(!op.getValueType().equals(new EVT(MVT.Other)) &&
-        !op.getValueType().equals(new EVT(MVT.Flag)));
+        !op.getValueType().equals(new EVT(MVT.Glue)));
 
     int vreg = getVR(op, vrBaseMap);
     Util.assertion(isVirtualRegister(vreg));
@@ -599,7 +599,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
               continue;
 
             if (vt.getSimpleVT().simpleVT == MVT.Other ||
-                vt.getSimpleVT().simpleVT == MVT.Flag)
+                vt.getSimpleVT().simpleVT == MVT.Glue)
               continue;
 
             match = false;
@@ -730,14 +730,14 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       SDNode n = curNode;
       while (n.getNumOperands() != 0 &&
           n.getOperand(n.getNumOperands() - 1).getValueType().getSimpleVT()
-              .simpleVT == MVT.Flag) {
+              .simpleVT == MVT.Glue) {
         n = n.getOperand(n.getNumOperands() - 1).getNode();
         Util.assertion(n.getNodeID() == -1);
         n.setNodeID(nodeSUnit.nodeNum);
       }
 
       n = curNode;
-      while (n.getValueType(n.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Flag) {
+      while (n.getValueType(n.getNumValues() - 1).getSimpleVT().simpleVT == MVT.Glue) {
         SDValue flagVal = new SDValue(n, n.getNumValues() - 1);
         boolean hasFlagUse = false;
         for (SDUse u : n.useList) {
@@ -799,11 +799,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
           SUnit opSU = sunits.get(opN.getNodeID());
           Util.assertion(opSU != null);
           if (Objects.equals(opSU, su)) continue;
-          if (n.getOperand(j).getValueType().equals(new EVT(MVT.Flag)))
+          if (n.getOperand(j).getValueType().equals(new EVT(MVT.Glue)))
             continue;
 
           EVT opVT = n.getOperand(j).getValueType();
-          Util.assertion(!opVT.equals(new EVT(MVT.Flag)));
+          Util.assertion(!opVT.equals(new EVT(MVT.Glue)));
           boolean isChain = opVT.equals(new EVT(MVT.Other));
 
           int[] res = checkForPhysRegDependency(opN, n, i, tri, tii);

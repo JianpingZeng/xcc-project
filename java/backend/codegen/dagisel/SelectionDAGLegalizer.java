@@ -326,7 +326,7 @@ public class SelectionDAGLegalizer {
 
         temp1 = legalizeOp(node.getOperand(0));
         if (node.getOperand(node.getNumOperands() - 1).getValueType()
-            .getSimpleVT().simpleVT != MVT.Flag) {
+            .getSimpleVT().simpleVT != MVT.Glue) {
           if (!temp1.equals(node.getOperand(0))) {
             SDValue[] ops = new SDValue[node.getNumOperands()];
             ops[0] = temp1;

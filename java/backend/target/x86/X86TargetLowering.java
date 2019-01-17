@@ -1846,7 +1846,7 @@ public class X86TargetLowering extends TargetLowering {
       mf.getMachineRegisterInfo().addLiveOut(calleeReg);
     }
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     if (isTailCall) {
       chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(numBytes, true),
@@ -3562,7 +3562,7 @@ public class X86TargetLowering extends TargetLowering {
   private static SDValue getTLSADDR(SelectionDAG dag, SDValue chain, GlobalAddressSDNode ga,
                                     SDValue inFlag, EVT ptrVT, int returnReg,
                                     int operandFlag) {
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue tga = dag.getTargetGlobalAddress(ga.getGlobalValue(), ga.getValueType(0),
         ga.getOffset(), operandFlag);
     if (inFlag != null) {
@@ -3717,7 +3717,7 @@ public class X86TargetLowering extends TargetLowering {
     SDVTList vts;
     boolean useSSE = isScalarFPTypeInSSEReg(op.getValueType());
     if (useSSE)
-      vts = dag.getVTList(new EVT(MVT.f64), new EVT(MVT.Other), new EVT(MVT.Flag));
+      vts = dag.getVTList(new EVT(MVT.f64), new EVT(MVT.Other), new EVT(MVT.Glue));
     else
       vts = dag.getVTList(op.getValueType(), new EVT(MVT.Other));
 
@@ -4446,7 +4446,7 @@ public class X86TargetLowering extends TargetLowering {
       cc = dag.getConstant(COND_NE, new EVT(MVT.i8), false);
       cond = emitTest(cond, COND_NE, dag);
     }
-    SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     ops.add(op.getOperand(2));
     ops.add(op.getOperand(1));
@@ -4649,7 +4649,7 @@ public class X86TargetLowering extends TargetLowering {
     chain = dag.getCopyToReg(chain, X86GenRegisterNames.EAX, size, flag);
     flag = chain.getValue(1);
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue[] ops = {chain,
         dag.getTargetExternalSymbol("_alloca", intPtr, 0),
         dag.getRegister(X86GenRegisterNames.EAX, intPtr),
@@ -5138,7 +5138,7 @@ public class X86TargetLowering extends TargetLowering {
     SDValue[] ops = {ins.getValue(0), op.getOperand(1), op.getOperand(3),
         dag.getTargetConstant(size, new EVT(MVT.i8)),
         ins.getValue(1)};
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue result = dag.getNode(X86ISD.LCMPXCHG8_DAG, vts, ops);
     SDValue out = dag.getCopyFromReg(result.getValue(0), reg,
         vt, result.getValue(1));
@@ -5161,7 +5161,7 @@ public class X86TargetLowering extends TargetLowering {
 
   private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag) {
     Util.assertion(subtarget.is64Bit(), "Result not type legalized!");
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue chain = op.getOperand(0);
 
     SDValue rd = dag.getNode(X86ISD.RDTSC_DAG, vts, chain);
@@ -5369,7 +5369,7 @@ public class X86TargetLowering extends TargetLowering {
         return;
       }
       case ISD.READCYCLECOUNTER: {
-        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
         SDValue chain = n.getOperand(0);
         SDValue rd = dag.getNode(X86ISD.RDTSC_DAG, vts, chain);
         SDValue eax = dag.getCopyFromReg(rd, X86GenRegisterNames.EAX,
@@ -5407,7 +5407,7 @@ public class X86TargetLowering extends TargetLowering {
         swapInH = dag.getCopyToReg(swapInL.getValue(0), X86GenRegisterNames.ECX,
             swapInH, swapInL.getValue(1));
         SDValue[] ops = {swapInH.getValue(0), n.getOperand(1), swapInH.getValue(1)};
-        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
         SDValue result = dag.getNode(X86ISD.LCMPXCHG8_DAG, vts, ops);
         SDValue cpOutL = dag.getCopyFromReg(result.getValue(0),
             X86GenRegisterNames.EAX, i32, result.getValue(1));
@@ -5677,7 +5677,7 @@ public class X86TargetLowering extends TargetLowering {
         src, inFlag);
     inFlag = chain.getValue(1);
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     ops.add(chain);
     ops.add(dag.getValueType(vt));

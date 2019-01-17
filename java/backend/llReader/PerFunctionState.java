@@ -231,7 +231,7 @@ public final class PerFunctionState {
       // just create a new block but not insert it into the basic blocks list of function
       // so as to preserve the block order as input file.
       fwdVal = BasicBlock.createBasicBlock(name, (Function) null);
-      fn.getValueSymbolTable().createValueName(name, fwdVal);
+      // fn.getValueSymbolTable().createValueName(name, fwdVal);
     }
     else
       fwdVal = new Argument(ty, name, fn);
