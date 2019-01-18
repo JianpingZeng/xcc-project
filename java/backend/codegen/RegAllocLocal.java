@@ -11,6 +11,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.Pair;
 import tools.Util;
@@ -103,6 +104,8 @@ public class RegAllocLocal extends MachineFunctionPass {
     MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     // first check to see if we have a free register.
     int phyReg = getFreeReg(rc);
+    TIntHashSet allocableRegs = new TIntHashSet();
+    allocableRegs.addAll(rc.getAllocableRegs(mf));
 
     if (phyReg == 0) {
       Util.assertion(!phyRegsUseOrder.isEmpty(), "No allocatable registers");
@@ -118,16 +121,16 @@ public class RegAllocLocal extends MachineFunctionPass {
         // We just can spill those physical register occupied with virtual
         // register
         if (phyRegUsed[r] > 0) {
-          if (rc.contains(r)) {
+          if (allocableRegs.contains(r)) {
             phyReg = r;
             break;
           } else {
             int[] aliases = regInfo.getAliasSet(r);
             if (aliases != null && aliases.length > 0) {
               for (int aliasReg : aliases) {
-                if (rc.contains(aliasReg)
-                    && phyRegUsed[aliasReg] != 0
-                    && phyRegUsed[aliasReg] != -2) {
+                if (allocableRegs.contains(aliasReg) &&
+                    phyRegUsed[aliasReg] != 0 &&
+                    phyRegUsed[aliasReg] != -2) {
                   phyReg = aliasReg;
                   break;
                 }
@@ -138,7 +141,6 @@ public class RegAllocLocal extends MachineFunctionPass {
       }
 
       Util.assertion(phyReg != 0, "Physical register not be assigned");
-
       spillPhyReg(insertPos, phyReg, false);
     }
 

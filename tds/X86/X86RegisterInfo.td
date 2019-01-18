@@ -308,7 +308,7 @@ def GR8 : RegisterClass<"X86", [i8],  8,
                 res = getRegs();
                 begin = 0;
                 // In 32-mode, none of the 8-bit registers aliases EBP or ESP.
-                end = 0 + 8;
+                end = begin + 8;
             }
 
             int[] temp = new int[end - begin];
