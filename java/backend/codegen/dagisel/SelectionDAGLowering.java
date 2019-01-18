@@ -2187,6 +2187,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             res));
         return null;
       }
+      case uadd_with_overflow:
+        return implVisitAluOverflow(ci, ISD.UADDO);
+      case sadd_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SADDO);
+      case usub_with_overflow:
+        return implVisitAluOverflow(ci, ISD.USUBO);
+      case ssub_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SSUBO);
+      case umul_with_overflow:
+        return implVisitAluOverflow(ci, ISD.UMULO);
+      case smul_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SMULO);
     }
   }
 
@@ -2523,6 +2535,21 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(aggValueVTs), values));
+    return null;
+  }
+
+  /**
+   * Lower the arithmetic instrinsics into the normal call.
+   * @param inst
+   * @param opc
+   * @return
+   */
+  private String implVisitAluOverflow(CallInst inst, int opc) {
+    SDValue op1 = getValue(inst.getArgOperand(0));
+    SDValue op2 = getValue(inst.getArgOperand(1));
+
+    SDNode.SDVTList vts = dag.getVTList(op1.getValueType(), new EVT(MVT.i1));
+    setValue(inst, dag.getNode(opc, vts, op1, op2));
     return null;
   }
 }

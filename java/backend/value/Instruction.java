@@ -2486,6 +2486,14 @@ public abstract class Instruction extends User {
     public boolean isTailCall() {
       return tailCall;
     }
+
+    public Value getArgOperand(int i) {
+      return operand(i+1);
+    }
+
+    public void setArgOperand(int i, Value val) {
+      setOperand(i+1, val);
+    }
   }
 
   public static class SwitchInst extends TerminatorInst {

@@ -14,8 +14,9 @@ $(TARGET): $(ASMS)
 %.s: %.ll
 	$(LLC) $< -o $@
 
-%.ll: %.c
+%.ll: %.i
 	$(CLANG) $< -o $@
-
+%.i: %.c
+	gcc -E $< > $@
 clean:
 	rm -rf $(TARGET) output* *.ll *.bc *.s *.o *.i

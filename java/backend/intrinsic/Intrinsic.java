@@ -49,12 +49,12 @@ public class Intrinsic {
     stackrestore("llvm.stackrestore"),
     stackprotector("llvm.stackprotector"),
     trap("llvm.trap"),
-    uadd_with_overflow("llvm.uadd_with_overflow"),
-    sadd_with_overflow("llvm.sadd_with_overflow"),
-    usub_with_overflow("llvm.usub_with_overflow"),
-    ssub_with_overflow("llvm.ssub_with_overflow"),
-    umul_with_overflow("llvm.umul_with_overflow"),
-    smul_with_overflow("llvm.smul_with_overflow"),
+    uadd_with_overflow("llvm.uadd.with.overflow"),
+    sadd_with_overflow("llvm.sadd.with.overflow"),
+    usub_with_overflow("llvm.usub.with.overflow"),
+    ssub_with_overflow("llvm.ssub.with.overflow"),
+    umul_with_overflow("llvm.umul.with.overflow"),
+    smul_with_overflow("llvm.smul.with.overflow"),
     num_intrinsics("num_intrinsics");
 
     public String name;
