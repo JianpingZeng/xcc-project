@@ -3886,15 +3886,19 @@ public class X86TargetLowering extends TargetLowering {
       destVT = new EVT(MVT.i64);
     }
 
-    Util.assertion(destVT.getSimpleVT().simpleVT <= MVT.i64 && destVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown FP_TO_XINT to lower!");
-
+    Util.assertion(destVT.getSimpleVT().simpleVT <= MVT.i64 &&
+        destVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown FP_TO_XINT to lower!");
 
     if (destVT.getSimpleVT().simpleVT == MVT.i32 &&
-        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType())) {
-      if (subtarget.is64Bit() && destVT.getSimpleVT().simpleVT == MVT.i64 &&
-          isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
-        return Pair.get(new SDValue(), new SDValue());
-    }
+        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+      return Pair.get(new SDValue(), new SDValue());
+
+    if (subtarget.is64Bit() && destVT.getSimpleVT().simpleVT == MVT.i64 &&
+        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+      return Pair.get(new SDValue(), new SDValue());
+
+    // We lower FP->sint64 into FISTP64, followed by a load, all to a temporary
+    // stack slot.
     MachineFunction mf = dag.getMachineFunction();
     int memSize = destVT.getSizeInBits() / 8;
     int ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
@@ -3940,7 +3944,12 @@ public class X86TargetLowering extends TargetLowering {
       return new SDValue();
     }
     Pair<SDValue, SDValue> vals = fpToIntHelper(op, dag, true);
-    return new SDValue();
+    // If FP_TO_INTHelper failed, the node is actually supposed to be Legal.
+    SDValue fist = vals.first, stackslot = vals.second;
+    if (fist.getNode() == null)
+      return op;
+    // Load the result.
+    return dag.getLoad(op.getValueType(), fist, stackslot, null, 0);
   }
 
   private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag) {

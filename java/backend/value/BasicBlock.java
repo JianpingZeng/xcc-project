@@ -546,7 +546,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
         if (ti.operand(0) instanceof BasicBlock) {
           BasicBlock bb = (BasicBlock) ti.operand(0);
           bb.getUseList().remove(ti.getOperand(i));
-          ti.operandList.remove(i);
+          ti.removeOperand(i);
           --e;
           --i;
         }

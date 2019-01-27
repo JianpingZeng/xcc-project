@@ -663,7 +663,7 @@ public final class LLLexer {
       return LabelStr;
     }
 
-    // Skip sequnce of digits.
+    // Skip sequence of digits.
     while (Character.isDigit(buffer.getCharAt(curPtr)))
       ++curPtr;
 

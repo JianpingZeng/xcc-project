@@ -8,7 +8,6 @@ import tools.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.List;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -96,8 +95,7 @@ public abstract class Instruction extends User {
     for (int i = 0; i < getNumOfOperands(); i++) {
       operand(i).killUse(this);
     }
-    operandList.clear();
-
+    operandList = null;
     if (usesList != null && !usesList.isEmpty()) {
       for (Use u : usesList) {
         Instruction inst = ((Instruction) u.getUser());
@@ -1717,9 +1715,9 @@ public abstract class Instruction extends User {
     @Override
     public void swapOperands() {
       pred = getSwappedPredicate();
-      Use u = operandList.get(0);
-      operandList.set(0, operandList.get(1));
-      operandList.set(1, u);
+      Use u = operandList[0];
+      operandList[0] = operandList[1];
+      operandList[1] = u;
     }
   }
 
@@ -1843,7 +1841,7 @@ public abstract class Instruction extends User {
     public static boolean isSignedPredicate(Predicate pred) {
       switch (pred) {
         default:
-          Util.assertion(false, ("Undefined icmp predicate!"));
+          Util.assertion("Undefined icmp predicate!");
         case ICMP_SGT:
         case ICMP_SLT:
         case ICMP_SGE:
@@ -1867,9 +1865,9 @@ public abstract class Instruction extends User {
     @Override
     public void swapOperands() {
       pred = getSwappedPredicate();
-      Use u = operandList.get(0);
-      operandList.set(0, operandList.get(1));
-      operandList.set(1, u);
+      Use u = operandList[0];
+      operandList[0] = operandList[1];
+      operandList[1] = u;
     }
 
     /**
@@ -2098,16 +2096,15 @@ public abstract class Instruction extends User {
     }
 
     /**
-     * Change the current branch to an unconditional branch targetting the
+     * Change the current branch to an unconditional branch targeting the
      * specified block.
      *
      * @param dest
      */
     public void setUnconditionalDest(BasicBlock dest) {
-      ArrayList<Use> list = new ArrayList<>();
-      list.add(getOperand(0));
-      operandList = list;
-      setOperand(0, dest);
+      operandList = new Use[1];
+      operandList[0] = new Use(dest, this);
+      numOps = 1;
     }
   }
 
@@ -2499,7 +2496,6 @@ public abstract class Instruction extends User {
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
-    private int numOps;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2548,10 +2544,6 @@ public abstract class Instruction extends User {
       numOps = 2;
     }
 
-    public int getNumOfOperands() {
-      return numOps;
-    }
-
     public void addCase(Constant caseVal, BasicBlock targetBB) {
       int opNo = getNumOfCases();
       setOperand(opNo*2, caseVal, this);
@@ -2564,8 +2556,8 @@ public abstract class Instruction extends User {
       Util.assertion((idx * 2 < getNumOfOperands()), "Successor index out of range!!!");
 
       // unlink the last value.
-      operandList.remove(idx*2);
-      operandList.remove(idx*2 + 1);
+      if (getNumOfOperands() - idx * 2 + 2 >= 0)
+        System.arraycopy(operandList, idx * 2 + 2, operandList, idx * 2 + 2 - 2, getNumOfOperands() - idx * 2 + 2);
       numOps -= 2;
     }
 
@@ -2661,7 +2653,8 @@ public abstract class Instruction extends User {
     public SwitchInst clone() {
       SwitchInst inst = new SwitchInst(getCondition(),
           getDefaultBlock(), getNumOfCases(), name);
-      inst.operandList = new ArrayList<>(inst.operandList);
+      inst.operandList = new Use[getNumOfOperands()];
+      System.arraycopy(operandList, 0, inst.operandList, 0, getNumOfOperands());
       return inst;
     }
 
@@ -2683,7 +2676,7 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class PhiNode extends Instruction {
-    private int numOperands;
+    private int opIndex;
 
     public PhiNode(Type ty,
                    int numReservedValues,
@@ -2724,13 +2717,10 @@ public abstract class Instruction extends User {
       Util.assertion(value != null, "Phi node got a null value");
       Util.assertion(block != null, "Phi node got a null basic block");
       Util.assertion(value.getType().equals(getType()), "All of operands of Phi must be same type.");
-      if (numOperands + 2 > getNumOfOperands()) {
-        operandList.add(null);
-        operandList.add(null);
-      }
-      operandList.set(numOperands, new Use(value, this));
-      operandList.set(numOperands + 1, new Use(block, this));
-      numOperands += 2;
+      Util.assertion(opIndex + 2 <= getNumOfOperands(), "no enough space for inserting a pair of incoming value");
+      operandList[opIndex] = new Use(value, this);
+      operandList[opIndex + 1] = new Use(block, this);
+      opIndex += 2;
     }
 
     /**
@@ -2781,12 +2771,12 @@ public abstract class Instruction extends User {
       Value old = operand(index * 2);
       int numOps = getNumOfOperands();
       for (int i = (index + 1) * 2; i < numOps; i++) {
-        operandList.set(i - 2, operandList.get(i));
-        operandList.set(i - 2 + 1, operandList.get(i + 1));
+        operandList[i - 2] = operandList[i];
+        operandList[i - 1] = operandList[i + 1];
       }
-      numOperands -= 2;
-      operandList.set(numOps - 2, null);
-      operandList.set(numOps - 2 + 1, null);
+      opIndex -= 2;
+      operandList[numOps - 2] = null;
+      operandList[numOps - 1] = null;
 
       // delete this phi node if it has zero entities.
       if (numOps == 2 && deletePhiIfEmpty) {
@@ -2814,11 +2804,6 @@ public abstract class Instruction extends User {
           return i;
       }
       return -1;
-    }
-
-    @Override
-    public int getNumOfOperands() {
-      return numOperands;
     }
 
     /**
@@ -3141,7 +3126,7 @@ public abstract class Instruction extends User {
                              String name, Instruction insertBefore) {
       super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices))),
           GetElementPtr, name, insertBefore);
-      reserve(indices.size());
+      reserve(indices.size() + 1);
       setOperand(0, ptr, this);
       int i = 1;
       for (Value idx : indices) {

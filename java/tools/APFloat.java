@@ -811,6 +811,10 @@ public class APFloat implements Cloneable {
     return semantics;
   }
 
+  public void setSemantics(FltSemantics semantics) {
+    this.semantics = semantics;
+  }
+
   public boolean isZero() {
     return category == FltCategory.fcZero;
   }
