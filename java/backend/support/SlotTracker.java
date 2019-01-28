@@ -17,6 +17,7 @@ package backend.support;
  */
 
 import backend.value.*;
+import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 

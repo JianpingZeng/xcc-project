@@ -21,6 +21,7 @@ import backend.pass.Pass;
 import backend.support.Attribute;
 import backend.support.CallSite;
 import backend.value.*;
+import backend.value.Module;
 import tools.Util;
 
 public class BasicInliner extends Inliner {

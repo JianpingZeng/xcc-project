@@ -1843,7 +1843,7 @@ public abstract class Instruction extends User {
     public static boolean isSignedPredicate(Predicate pred) {
       switch (pred) {
         default:
-          Util.assertion(false, ("Undefined icmp predicate!"));
+          Util.assertion("Undefined icmp predicate!");
         case ICMP_SGT:
         case ICMP_SLT:
         case ICMP_SGE:
@@ -2098,7 +2098,7 @@ public abstract class Instruction extends User {
     }
 
     /**
-     * Change the current branch to an unconditional branch targetting the
+     * Change the current branch to an unconditional branch targeting the
      * specified block.
      *
      * @param dest
@@ -2499,7 +2499,7 @@ public abstract class Instruction extends User {
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
-    private int numOps;
+    private int curIndex;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2532,7 +2532,7 @@ public abstract class Instruction extends User {
                       String name,
                       Instruction insertBefore) {
       super(Operator.Switch, name, insertBefore);
-      init(condV, defaultBB, numCases);
+      init(condV, defaultBB, numCases * 2);
     }
 
 
@@ -2545,18 +2545,14 @@ public abstract class Instruction extends User {
       reserve(offset + numCases);
       setOperand(0, cond, this);
       setOperand(1, defaultBB, this);
-      numOps = 2;
-    }
-
-    public int getNumOfOperands() {
-      return numOps;
+      curIndex = 2;
     }
 
     public void addCase(Constant caseVal, BasicBlock targetBB) {
-      int opNo = getNumOfCases();
+      int opNo = curIndex >> 1;
       setOperand(opNo*2, caseVal, this);
       setOperand(opNo*2 + 1, targetBB, this);
-      numOps += 2;
+      curIndex += 2;
     }
 
     public void removeCase(int idx) {
@@ -2566,7 +2562,7 @@ public abstract class Instruction extends User {
       // unlink the last value.
       operandList.remove(idx*2);
       operandList.remove(idx*2 + 1);
-      numOps -= 2;
+      curIndex -= 2;
     }
 
     /**
@@ -2683,7 +2679,7 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class PhiNode extends Instruction {
-    private int numOperands;
+    private int opIndex;
 
     public PhiNode(Type ty,
                    int numReservedValues,
@@ -2724,13 +2720,11 @@ public abstract class Instruction extends User {
       Util.assertion(value != null, "Phi node got a null value");
       Util.assertion(block != null, "Phi node got a null basic block");
       Util.assertion(value.getType().equals(getType()), "All of operands of Phi must be same type.");
-      if (numOperands + 2 > getNumOfOperands()) {
-        operandList.add(null);
-        operandList.add(null);
-      }
-      operandList.set(numOperands, new Use(value, this));
-      operandList.set(numOperands + 1, new Use(block, this));
-      numOperands += 2;
+      Util.assertion(opIndex + 2 <= getNumOfOperands(), "no enough space for inserting a pair of incoming value");
+
+      operandList.set(opIndex, new Use(value, this));
+      operandList.set(opIndex + 1, new Use(block, this));
+      opIndex += 2;
     }
 
     /**
@@ -2784,7 +2778,7 @@ public abstract class Instruction extends User {
         operandList.set(i - 2, operandList.get(i));
         operandList.set(i - 2 + 1, operandList.get(i + 1));
       }
-      numOperands -= 2;
+      opIndex -= 2;
       operandList.set(numOps - 2, null);
       operandList.set(numOps - 2 + 1, null);
 
@@ -2814,11 +2808,6 @@ public abstract class Instruction extends User {
           return i;
       }
       return -1;
-    }
-
-    @Override
-    public int getNumOfOperands() {
-      return numOperands;
     }
 
     /**
@@ -3141,7 +3130,7 @@ public abstract class Instruction extends User {
                              String name, Instruction insertBefore) {
       super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices))),
           GetElementPtr, name, insertBefore);
-      reserve(indices.size());
+      reserve(indices.size() + 1);
       setOperand(0, ptr, this);
       int i = 1;
       for (Value idx : indices) {

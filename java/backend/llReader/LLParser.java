@@ -28,7 +28,7 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import com.sun.javafx.binding.StringFormatter;
+import backend.value.Module;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -39,9 +39,9 @@ import tools.SourceMgr.SMLoc;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static tools.Util.unEscapeLexed;
 import static backend.llReader.LLTokenKind.*;
 import static backend.llReader.ValID.ValIDKind.t_PackedConstantStruct;
+import static tools.Util.unEscapeLexed;
 
 /**
  * This file defines a class which responsible for a frontend pipeline, reading
@@ -432,9 +432,9 @@ public final class LLParser {
       return false;
 
     // Any other kind of (non-equivalent) redefinition is an error.
-    return error(nameLoc, StringFormatter
+    return error(nameLoc, String
         .format("redefinition of type named '%s' of type '%s'", name,
-            result.get().getDescription()).getValue());
+            result.get().getDescription()));
   }
 
   private boolean parseStructDefinition(SMLoc typeLoc,
@@ -524,9 +524,8 @@ public final class LLParser {
     // handle localVarID form.
     if (lexer.getTokKind() == LocalVarID) {
       if (lexer.getIntVal() != typeID)
-        return tokError(StringFormatter
-            .format("type expected to be numbered '%d'", typeID)
-            .getValue());
+        return tokError(String
+            .format("type expected to be numbered '%d'", typeID));
       lexer.lex();
 
       if (parseToken(equal, "expected '=' after name"))
@@ -2283,8 +2282,8 @@ public final class LLParser {
       }
 
       if (expectedTy != null && !expectedTy.equals(argList.get(i).val.getType())) {
-        return error(argList.get(i).loc, StringFormatter.format("argument is not of expected type '%s'",
-            expectedTy.getDescription()).getValue());
+        return error(argList.get(i).loc, String.format("argument is not of expected type '%s'",
+            expectedTy.getDescription()));
       }
       args.add(argList.get(i).val);
       if (argList.get(i).attrs != Attribute.None) {
@@ -2375,8 +2374,8 @@ public final class LLParser {
     SMLoc opLoc = loc.get();
     if (!CastInst.castIsValid(opc, op, destTy)) {
       CastInst.castIsValid(opc, op, destTy);
-      return error(opLoc, StringFormatter.format("invalid type conversion from '%s' to '%s'",
-          op.getType().getDescription(), destTy.getDescription()).getValue());
+      return error(opLoc, String.format("invalid type conversion from '%s' to '%s'",
+          op.getType().getDescription(), destTy.getDescription()));
     }
     inst.set(CastInst.create(opc, op, destTy, "", null));
     return false;
@@ -3184,8 +3183,8 @@ public final class LLParser {
 
     if (gv != null) {
       if (gv.getType().equals(ty)) return gv;
-      error(loc, StringFormatter.format("'@%s' defined with type '%s'",
-          name, gv.getType().getDescription()).getValue());
+      error(loc, String.format("'@%s' defined with type '%s'",
+          name, gv.getType().getDescription()));
     }
 
     // Otherwise, create a new forward references for the value.
@@ -3756,27 +3755,27 @@ public final class LLParser {
     if (!forwardRefTypes.isEmpty()) {
       Map.Entry<String, Pair<Type, SMLoc>> itr = forwardRefTypes.entrySet().iterator().next();
       return error(itr.getValue().second,
-          StringFormatter.format("use of undefined type name '%s'", itr.getKey()).getValue());
+          String.format("use of undefined type name '%s'", itr.getKey()));
     }
     if (!forwardRefTypeIDs.isEmpty()) {
       TIntObjectIterator<Pair<Type, SMLoc>> itr = forwardRefTypeIDs.iterator();
       return error(itr.value().second,
-          StringFormatter.format("use of undefined type '%%%d'", itr.key()).getValue());
+          String.format("use of undefined type '%%%d'", itr.key()));
     }
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<GlobalValue, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
       return error(itr.getValue().second,
-          StringFormatter.format("use of undefined value '@%s'", itr.getKey()).getValue());
+          String.format("use of undefined value '@%s'", itr.getKey()));
     }
     if (!forwardRefValIDs.isEmpty()) {
       TIntObjectIterator<Pair<GlobalValue, SMLoc>> itr = forwardRefValIDs.iterator();
       return error(itr.value().second,
-          StringFormatter.format("use of undefined value'@%d'", itr.key()).getValue());
+          String.format("use of undefined value'@%d'", itr.key()));
     }
     if (!forwardRefMDNodes.isEmpty()) {
       TIntObjectIterator<Pair<MDNode, SMLoc>> itr = forwardRefMDNodes.iterator();
       return error(itr.value().second,
-          StringFormatter.format("use of undefined metadata '!%d'", itr.key()).getValue());
+          String.format("use of undefined metadata '!%d'", itr.key()));
     }
 
     // Look for intrinsic functions and CallInst that need to be upgraded

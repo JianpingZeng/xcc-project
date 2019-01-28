@@ -6,7 +6,6 @@ import backend.target.TargetOpcodes;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.Value;
-import com.sun.javafx.binding.StringFormatter;
 import tools.FormattedOutputStream;
 import tools.OutRef;
 import tools.Util;
@@ -213,7 +212,7 @@ public class MachineInstr implements Cloneable {
 
   public MachineOperand getOperand(int index) {
     Util.assertion(index >= 0 && index < getNumOperands(),
-        StringFormatter.format("%d out of bound %d", index, getNumOperands()).getValue());
+        String.format("%d out of bound %d", index, getNumOperands()));
     return operands.get(index);
   }
 

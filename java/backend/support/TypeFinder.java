@@ -21,6 +21,7 @@ import backend.type.OpaqueType;
 import backend.type.StructType;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Module;
 
 import java.util.ArrayList;
 import java.util.HashSet;

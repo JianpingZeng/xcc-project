@@ -26,6 +26,7 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import backend.value.Module;
 import gnu.trove.iterator.TObjectIntIterator;
 import tools.*;
 

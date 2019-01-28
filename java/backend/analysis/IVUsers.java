@@ -22,6 +22,7 @@ import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.value.*;
 import backend.value.Instruction.PhiNode;
+import backend.value.Module;
 import tools.OutRef;
 import tools.Util;
 

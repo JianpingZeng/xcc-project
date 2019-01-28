@@ -41,7 +41,7 @@ import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
-import static backend.target.x86.X86RegisterInfo.SUBREG_8BIT;
+import static backend.target.x86.X86RegisterInfo.*;
 
 public abstract class X86DAGISel extends SelectionDAGISel {
   protected X86TargetLowering tli;
@@ -590,7 +590,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
-            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT_HI,
                 new EVT(MVT.i8), reg);
 
             // Emit a testb. No special NOREX tricks are needed since there's
@@ -607,7 +607,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 16-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.EXTRACT_SUBREG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_16BIT,
                 new EVT(MVT.i16), reg);
 
             // Emit a testw.
@@ -623,7 +623,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 32-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(TargetOpcodes.SUBREG_TO_REG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_32BIT,
                 new EVT(MVT.i32), reg);
 
             // Emit a testl

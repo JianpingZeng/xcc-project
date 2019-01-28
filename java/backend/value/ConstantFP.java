@@ -56,7 +56,7 @@ public class ConstantFP extends Constant {
     if (ty.equals(LLVMContext.FP128Ty))
       return APFloat.IEEEquad;
 
-    Util.assertion(false, "Unkown FP format");
+    Util.assertion("Unknown FP format");
     return null;
   }
 
@@ -160,5 +160,10 @@ public class ConstantFP extends Constant {
     if (type.isFloatingPointType())
       return getNegativeZero(type);
     return Constant.getNullValue(type);
+  }
+
+  @Override
+  public Value clone() {
+    return new ConstantFP(getType(), getValueAPF().clone());
   }
 }

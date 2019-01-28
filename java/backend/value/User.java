@@ -46,8 +46,11 @@ public abstract class User extends Value {
   }
 
   public void setOperand(int index, Value val, User user) {
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     setOperand(index, new Use(val, user));
   }
+
+  // operandList[] temp = new Use[1];
 
   /**
    * set element at specified position with {@code use}
@@ -67,13 +70,18 @@ public abstract class User extends Value {
   }
 
   public void setOperand(int index, Value opVal) {
-    Util.assertion(index >= 0 && index < getNumOfOperands());
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     operandList.get(index).setValue(opVal);
   }
 
   public Use getOperand(int index) {
-    Util.assertion((index >= 0 && index < getNumOfOperands()));
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     return operandList.get(index);
+  }
+
+  public void removeOperand(int index) {
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
+    operandList.remove(index);
   }
 
   /**
@@ -100,10 +108,8 @@ public abstract class User extends Value {
    */
   public void replaceUsesOfWith(Value from, Value to) {
     if (from == to) return;
-
-    Util.assertion(!(this instanceof Constant) || (this instanceof GlobalValue), "Cannot call User.replaceUsesOfWith() on a constant");
-
-
+    Util.assertion(!(this instanceof Constant) || (this instanceof GlobalValue),
+        "Can't call User.replaceUsesOfWith() on a constant");
     for (int i = 0, e = getNumOfOperands(); i < e; i++) {
       if (operand(i) == from) {
         setOperand(i, to, this);

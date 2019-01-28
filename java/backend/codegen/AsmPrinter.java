@@ -27,6 +27,7 @@ import backend.support.NameMangler;
 import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Module;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 import tools.*;

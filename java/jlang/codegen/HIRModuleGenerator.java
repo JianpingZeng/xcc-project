@@ -8,6 +8,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
+import backend.value.Module;
 import jlang.ast.Attr;
 import jlang.ast.AttrKind;
 import jlang.ast.RegparmAttr;

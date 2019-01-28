@@ -304,12 +304,7 @@ public class APFloat implements Cloneable {
 
   @Override
   public APFloat clone() {
-    try {
-      return (APFloat) super.clone();
-    } catch (CloneNotSupportedException e) {
-      e.printStackTrace();
-      return null;
-    }
+    return new APFloat(this);
   }
 
   // IEEE remainder.
@@ -809,6 +804,10 @@ public class APFloat implements Cloneable {
 
   public FltSemantics getSemantics() {
     return semantics;
+  }
+
+  public void setSemantics(FltSemantics semantics) {
+    this.semantics = semantics;
   }
 
   public boolean isZero() {

@@ -17,7 +17,6 @@ package backend.llReader;
  */
 
 import backend.value.Module;
-import com.sun.javafx.binding.StringFormatter;
 import jlang.support.MemoryBuffer;
 import tools.OutRef;
 import tools.SMDiagnostic;
@@ -37,7 +36,7 @@ public final class Parser {
 
     if (f == null) {
       diag.set(srcMgr.getMessage(new SMLoc(),
-          StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
+          String.format("Could not open input file '%s'\n", filename),
           SourceMgr.DiagKind.DK_Error));
       return null;
     }

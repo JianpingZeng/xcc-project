@@ -25,6 +25,7 @@ import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.PhiNode;
+import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 

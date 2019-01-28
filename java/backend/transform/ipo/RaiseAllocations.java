@@ -30,6 +30,7 @@ import backend.value.*;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.CastInst;
 import backend.value.Instruction.IntToPtrInst;
+import backend.value.Module;
 
 import java.util.ArrayList;
 import java.util.HashSet;
