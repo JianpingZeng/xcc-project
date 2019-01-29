@@ -1,0 +1,80 @@
+usage: rasta [options]
+Where at least one option is required, and
+where options can be any of the following:
+         -O for online processing [FALSE]
+         -d for debug output [FALSE]
+         -M adds a small constant to the power spectrum [FALSE]
+                equivalent to one bit of random noise on the input.
+                This helps to avoid the numerical problems that occur
+                when there are long stretches of zeros in the data
+         -F highpass filter on waveform (in case of DC offset problems) [FALSE]
+         -i input file name [stdin]
+         -o output file name [stdout]
+         -a for input file ascii rather than shorts [FALSE]
+                Note that default input is binary shorts
+         -A for output file ascii rather than floats [FALSE]
+                Note that default output is binary floats
+         -e for input files ESPS format[FALSE]
+                Note that default input is binary shorts
+         -E for output files ESPS format[FALSE]
+                Note that default output is binary floats
+         -b for input files MAT format[FALSE]
+                Note that default input is binary shorts
+         -B for output files MAT format[FALSE]
+                Note that default output is binary floats
+         -z for input files SPHERE format[FALSE]
+                Note that default input is binary shorts
+         -k for Abbot I/O [FALSE]
+                Note that the default I/O format is binary shorts
+         -T for little-endian input. [FALSE]
+                This option only applies to raw binary input.
+         -U for little-endian output. [FALSE]
+                This option only applies to raw binary output.
+         -y for padded input. [FALSE]
+                If there are M points per step and L input points,
+                produce L/M frames, where the ((n + 0.5) * M)-th point
+                is centered in the n-th frame.
+                There must be at least one window of data to produce output.
+         -J for JAH rasta [FALSE]
+         -C for constant JAH.  This option should [FALSE]
+                generally be used during recognizer training.
+                Default is adapting JAH according to noisepower
+                Only use option -C when -J is used
+         -f for JAH Rasta mapping coefficients input text file
+         -L for log rasta [FALSE]
+         -R for getting critical band values as output(ASCII)
+                instead of cepstral coefficients [FALSE]
+                Note: This is useful for users who would like to find
+                      their own spectral mapping coefficients.
+                Note: This overrules the -P option.
+         -P for getting cube root compressed and equalized
+                 critical band values as output instead of cepstral
+                 coefficients [FALSE]
+         -r for partially rasta, partially plp
+            e.g. -r 1.0 => no mixing, -r 0.8 => 80% rasta 20% PLP  [1.0]
+         -w analysis window size (in milliseconds) [20]
+         -W windowing constant [0.540000]
+         -s window step size (in milliseconds) [10]
+         -S Sampling frequency (in Hertz) [8000]
+         -l liftering exponent [0.600000]
+         -p pole position [0.940000]
+         -m model order [8]
+         -n number of output parameters 
+                where default is model order plus 1 (log gain) 
+                and log gain is given first
+         -c num of crit band filters order 
+                where default depends on sampling freq, but is 17 for 8000 Hz
+         -v (if you want triangular filters)[trapezoidal]
+         -g (if you don't want gain computed)[compute gain]
+         -N numerator rastafilt file 
+                 (currently unimplemented)
+         -D denominator rastafilt file 
+                 (currently unimplemented)
+         -j Constant J [1.000000e-06] depends on the noise level,
+                ( smaller for more noisy speech)
+                Note: Only use option -j when -C is used
+         -h use stored noise level estimation and RASTA filter
+                history for initialization (if history file is
+                available, otherwise use normal initialization)
+         -H history filename [history.out]
+

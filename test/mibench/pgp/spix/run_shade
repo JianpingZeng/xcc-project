@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../src/pgp -fes Bill -zbillms -u Bill < pgptest.plain > pgptext.pgp 
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../src/pgp -fdb -zbillms < pgptext.pgp > pgptest.dec

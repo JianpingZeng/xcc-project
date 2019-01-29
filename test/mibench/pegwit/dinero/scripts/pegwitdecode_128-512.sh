@@ -1,0 +1,4 @@
+#!/bin/sh -f
+/u/gs3/leec/leec/Projects/shade/bin/gen -o pegwitdecode.512.16.1.summary -- ../../bin/pegwitdecode -d ../../data/pegwit.enc ../../data/pegwit.dec < ../../data/my.sec | /u/class/cs251a/dinero/dineroIII -b16 -d512 -i512 -a1 -z2000000000 > ../pegwitencode_sum/pegwitdecode.512.16.1.dinero
+/u/gs3/leec/leec/Projects/shade/bin/gen -o pegwitdecode.128.16.1.summary -- ../../bin/pegwitdecode -d ../../data/pegwit.enc ../../data/pegwit.dec < ../../data/my.sec | /u/class/cs251a/dinero/dineroIII -b16 -d128 -i128 -a1 -z2000000000 > ../pegwitencode_sum/pegwitdecode.128.16.1.dinero
+/u/gs3/leec/leec/Projects/shade/bin/gen -o pegwitdecode.256.16.1.summary -- ../../bin/pegwitdecode -d ../../data/pegwit.enc ../../data/pegwit.dec < ../../data/my.sec | /u/class/cs251a/dinero/dineroIII -b16 -d256 -i256 -a1 -z2000000000 > ../pegwitencode_sum/pegwitdecode.256.16.1.dineo

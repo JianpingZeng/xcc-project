@@ -1,0 +1,4 @@
+You should check http://www.cs.ucla.edu/~leec/mediabench/applications.html
+for keys and key installation instructions. Once the keys are installed
+cd to data and run ../spix/run_shade. The output will be produced as 
+pgptest.dec and pgptext.pgp.

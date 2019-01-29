@@ -1,0 +1,305 @@
+
+rate control: sequence initialization
+ initial global complexity measures (I,P,B): Xi=6956522, Xp=2608696, Xb=1826087
+ reaction parameter: r=333333
+ initial virtual buffer fullness (I,P,B): d0i=107527, d0p=107527, d0b=150537
+ initial average activity: avg_act=400.0
+
+rate control: new group of pictures (GOP)
+ target number of bits for GOP: R=666667
+ number of P pictures in GOP: Np=1
+ number of B pictures in GOP: Nb=2
+
+Frame 0 (#0 in display order):
+ picture_type=I
+ temporal_reference=0
+ frame_pred_frame_dct=0
+ q_scale_type=1
+ intra_vlc_format=1
+ alternate_scan=0
+
+rate control: start of picture
+ target number of bits: T=380953
+
+vbv_delay=28888 (bitcount=688, decoding_time=28901.38, bitcnt_EOP=0)
+
+rate control: end of picture
+ actual number of bits: S=284889
+ average quantization parameter Q=6.2
+ remaining number of bits in GOP: R=381778
+ global complexity measures (I,P,B): Xi=886231, Xp=2608696, Xb=1826087
+ virtual buffer fullness (I,P,B): d0i=11463, d0p=107527, d0b=150537
+ remaining number of P pictures in GOP: Np=1
+ remaining number of B pictures in GOP: Nb=2
+ average activity: avg_act=604.0
+Y: variance=3831, MSE=8.68 (38.7 dB), SNR=26.4 dB
+U: variance= 568, MSE=1.79 (45.6 dB), SNR= 25 dB
+V: variance=152.4, MSE=1.21 (47.3 dB), SNR= 21 dB
+
+picture statistics:
+ # of intra coded macroblocks:   352 (100.0%)
+ # of coded blocks:             2112 (100.0%)
+ # of not coded macroblocks:       0 (0.0%)
+ # of skipped macroblocks:         0 (0.0%)
+ # of forw. pred. macroblocks:     0 (0.0%)
+ # of backw. pred. macroblocks:    0 (0.0%)
+ # of interpolated macroblocks:    0 (0.0%)
+
+macroblock_type map:
+IQ IQ I  IQ I  IQ IQ IQ IQ IQ IQ IQ IQ IQ IQ IQ IQ IQ I  I  I  I  
+I  IQ I  IQ IQ I  IQ I  I  I  I  I  I  IQ IQ IQ IQ IQ I  I  IQ I  
+I  I  IQ IQ I  IQ IQ I  I  I  I  I  I  IQ I  I  IQ IQ IQ I  I  I  
+I  I  I  I  I  I  IQ I  IQ IQ I  I  I  IQ IQ IQ IQ I  I  IQ IQ IQ 
+IQ I  IQ I  I  I  I  I  I  I  I  I  I  IQ I  I  IQ IQ IQ IQ IQ IQ 
+IQ IQ I  I  I  I  I  I  I  IQ IQ I  IQ IQ I  I  IQ IQ IQ IQ IQ IQ 
+IQ I  IQ I  I  I  IQ IQ I  IQ IQ IQ IQ IQ I  IQ IQ IQ IQ IQ IQ IQ 
+IQ IQ I  I  I  IQ IQ IQ I  IQ IQ IQ IQ IQ I  I  I  I  IQ IQ IQ IQ 
+IQ I  I  I  IQ I  IQ IQ IQ IQ I  IQ IQ IQ I  I  IQ IQ IQ IQ IQ IQ 
+IQ IQ I  I  IQ IQ IQ IQ IQ I  I  IQ IQ IQ I  I  IQ I  IQ IQ I  I  
+IQ IQ IQ I  I  I  I  IQ I  IQ IQ I  IQ IQ I  I  IQ I  I  I  IQ IQ 
+IQ IQ I  IQ IQ IQ IQ IQ I  IQ IQ IQ IQ IQ I  I  IQ I  I  I  IQ I  
+IQ IQ I  IQ I  IQ I  I  I  I  I  IQ I  IQ IQ I  IQ I  I  I  IQ I  
+IQ I  IQ IQ I  I  I  I  I  I  I  I  IQ IQ IQ IQ IQ I  I  IQ I  I  
+IQ IQ IQ I  I  I  IQ IQ I  IQ IQ I  IQ IQ IQ IQ IQ I  IQ I  IQ I  
+I  IQ I  IQ IQ IQ IQ IQ I  IQ I  I  I  I  I  IQ IQ IQ IQ IQ IQ I  
+
+mquant map:
+ 14 20    10    28 24 16 28 24 22 24 20 16 20 18 12  8            
+  8 10    12 20     8                   10 14 10 12  8        7   
+  7    12  8    10  7                    8       10  7  6         
+  6                 5     6  5           6  7  6  8        7  5  6
+  5     4                                5        7  5  6  5  6  8
+  4  3                       5  3     4  3        4  3  4  7  8  5
+  3     2           4  2     5  2  5  4  3     4  3  5  4  3  7  4
+  6  2           3  5  2     5  6  3  6  3              5  3  4  3
+  2           3     4  3  6  4     3  4  3        4  5  6  5  6  7
+  3  2        4  3  5  6  4        7  5  3        6     5  6      
+  7  6  7              6     8  6     7  3        6           7  5
+  6  7     8  7  6  4  7     8  6  7  8  3        7           8   
+  7  8     7     8                 7     3  4     8           6   
+  8     7  8                          5  4  3  4  8        7      
+  8  7  8           7  8     6  5     6  4  3  4  6     7     3   
+  3  6     5  7  2  7  4     2                 3  2  1  2  3  1   
+
+Frame 1 (#3 in display order):
+ picture_type=P
+ temporal_reference=3
+ frame_pred_frame_dct=0
+ q_scale_type=1
+ intra_vlc_format=0
+ alternate_scan=0
+ forward search window: -11...11 / -11...11
+ forward vector range: -16...15.5 / -16...15.5
+
+rate control: start of picture
+ target number of bits: T=190889
+
+vbv_delay=26761 (bitcount=285576, decoding_time=31901.38, bitcnt_EOP=285544)
+
+rate control: end of picture
+ actual number of bits: S=147940
+ average quantization parameter Q=11.8
+ remaining number of bits in GOP: R=233838
+ global complexity measures (I,P,B): Xi=886231, Xp=873350, Xb=1826087
+ virtual buffer fullness (I,P,B): d0i=11463, d0p=64578, d0b=150537
+ remaining number of P pictures in GOP: Np=0
+ remaining number of B pictures in GOP: Nb=2
+ average activity: avg_act=573.0
+Y: variance=3773, MSE=18.1 (35.6 dB), SNR=23.2 dB
+U: variance=540.6, MSE=3.15 (43.2 dB), SNR=22.3 dB
+V: variance=145.9, MSE=2.39 (44.3 dB), SNR=17.8 dB
+
+picture statistics:
+ # of intra coded macroblocks:    62 (17.6%)
+ # of coded blocks:             1432 (67.8%)
+ # of not coded macroblocks:      15 (4.3%)
+ # of skipped macroblocks:        21 (6.0%)
+ # of forw. pred. macroblocks:   260 (73.9%)
+ # of backw. pred. macroblocks:    0 (0.0%)
+ # of interpolated macroblocks:    0 (0.0%)
+
+macroblock_type map:
+fQ fQ fQ fQ IQ fQ f  IQ IQ IQ IQ IQ I  IQ f  fQ f  IQ SN I  fN FN 
+FQ FQ F  FQ fQ FQ F  F  F  f  f  f  IQ IQ IQ fQ IQ FN SN SN SN FN 
+fQ FQ FQ f  F  FQ f  FN f  F  F  SN IQ f  fQ IQ FQ FN 0Q FN FN 0  
+fQ FQ F  f  f  F  F  F  F  F  SN 0  IQ I  I  IQ FQ FQ FQ FQ f  fQ 
+fQ SN 0  0  0  F  F  SN F  F  SN FN IQ I  IQ IQ FQ FQ F  F  F  FQ 
+FN SN SN SN SN FQ F  SN FQ FQ FN FQ fQ I  I  IQ F  F  F  F  fQ FQ 
+0Q SN SN SN SN F  FQ SN FQ FQ FQ F  IQ I  IQ fQ FQ F  FQ FQ FQ F  
+FQ FN FN FN FQ FQ FQ FQ FQ FQ FQ FQ IQ I  I  FQ FQ F  FQ FQ F  fQ 
+FQ 0  SN FQ FQ FQ FQ FQ FQ FQ FQ FQ IQ I  I  fQ FQ FQ FQ F  F  fQ 
+FQ FN SN fQ FQ FQ FQ FQ F  FQ F  FQ IQ I  I  FQ F  FQ FQ FQ F  fQ 
+FQ FQ FQ F  FQ F  FQ FQ FQ F  F  f  IQ IQ IQ FQ FQ F  F  F  FQ I  
+FQ FQ FQ F  F  FQ FQ FQ F  FQ FQ fQ IQ f  IQ FQ FQ FQ FQ FQ fQ f  
+FQ FQ F  FQ FQ FQ FQ F  F  FQ F  IQ IQ I  IQ FQ FQ FQ FQ FQ FQ IQ 
+FQ F  FQ FQ F  FQ FQ F  FQ F  F  IQ I  f  IQ FQ F  FQ FQ FQ FQ fQ 
+F  fQ FQ FQ FQ F  F  FQ FQ F  fQ fQ FQ f  fQ FQ FQ FQ FQ IQ fQ fQ 
+fQ fQ fQ fQ f  fQ fQ fQ f  IQ fQ I  fQ I  IQ IQ I  fQ fQ IQ IQ 0Q 
+
+mquant map:
+ 14 20 14 10 20 24    28 24 18 16 18    16    14    10            
+ 12 10    14 18 10                   12 14 12 18 16 10            
+  8 12 10        8                   10    12 20 18  8            
+ 10  8                               10       14 12 16 10  8    10
+  8                                  10     8 14 12 10          12
+  8                       7  8  7     8       10             20 14
+  7                 8  7    12 10     8    10 14 12    10  8 10   
+  8  7          10 16  8  7 18 14 10  8       18 10    14  8    10
+  7        8 10  8 18 12 16 10 12 10  8       10 12 14 16       18
+ 14  7       12  7 18 12    14    16  8       14    20 12 14    12
+ 18 16 18    20    12 18 14           8  7  8 12 14          12   
+ 16 18 16       12 14 16    14 16 10  7     8 16 18 14 16 20 18   
+ 16 18    16 18 16 18       16    10  7    10 16 20 16 20 18 12 16
+ 18    16 18    20 16    18        8        7 16    18 16 14 16 14
+ 14 20 14 18 16       18 12     8 10  8    12 10 14 16 14  8  7  8
+  7 12 14 10     7 14 10     7  8     7    10  7     8 10  7  6 10
+
+Frame 2 (#1 in display order):
+ picture_type=B
+ temporal_reference=1
+ frame_pred_frame_dct=0
+ q_scale_type=1
+ intra_vlc_format=0
+ alternate_scan=0
+ forward search window: -3...3 / -3...3
+ forward vector range: -8...7.5 / -8...7.5
+ backward search window: -7...7 / -7...7
+ backward vector range: -8...7.5 / -8...7.5
+
+rate control: start of picture
+ target number of bits: T=116919
+
+vbv_delay=27098 (bitcount=433512, decoding_time=34901.38, bitcnt_EOP=433480)
+
+rate control: end of picture
+ actual number of bits: S=64094
+ average quantization parameter Q=18.2
+ remaining number of bits in GOP: R=169744
+ global complexity measures (I,P,B): Xi=886231, Xp=873350, Xb=582673
+ virtual buffer fullness (I,P,B): d0i=11463, d0p=64578, d0b=97712
+ remaining number of P pictures in GOP: Np=0
+ remaining number of B pictures in GOP: Nb=1
+ average activity: avg_act=542.9
+Y: variance=3732, MSE=28.2 (33.6 dB), SNR=21.2 dB
+U: variance=538.3, MSE=3.74 (42.4 dB), SNR=21.6 dB
+V: variance=145.1, MSE=2.68 (43.9 dB), SNR=17.3 dB
+
+picture statistics:
+ # of intra coded macroblocks:     5 (1.4%)
+ # of coded blocks:             1026 (48.6%)
+ # of not coded macroblocks:      74 (21.0%)
+ # of skipped macroblocks:         0 (0.0%)
+ # of forw. pred. macroblocks:    70 (19.9%)
+ # of backw. pred. macroblocks:   42 (11.9%)
+ # of interpolated macroblocks:  235 (66.8%)
+
+macroblock_type map:
+fQ dQ b  bQ bQ bQ dQ BQ dQ BQ dQ dQ dQ d  dQ dQ fQ FQ fN B  D  bN 
+f  d  D  DQ dQ DQ DQ dN dN d  D  d  d  DQ DQ DQ dQ fN BN fN DN FN 
+fN DQ dQ DQ D  D  FQ DN dN d  dN DN F  DQ dQ dQ bQ fQ FN fN bN f  
+fQ d  D  F  DN fN DQ FN DQ dN BN dN fQ IQ dQ DQ dQ fQ fQ dN fQ DQ 
+fQ FN dN fN FN d  F  BN dN dN FN dN f  IQ D  IQ dQ DQ d  fQ d  DQ 
+fN bN BN bN bN dN dQ FN dN dQ dN dN dQ dQ dQ F  dQ dQ f  fQ fQ dQ 
+fN bN fN bN BN dN d  bN DN dN dN dQ dQ dQ dQ dQ fN dQ dQ dQ fQ fQ 
+fQ dN bN DN dQ dN dN dQ dN dN bN dQ fQ dQ dQ bQ dQ d  dQ fQ dQ fQ 
+fQ fN fN D  dQ DQ dQ dQ dN DQ dQ dQ d  D  d  D  fQ dQ dN dQ dQ b  
+fQ dQ BN D  dQ dQ dQ dQ dQ d  b  fQ fQ DQ dQ dQ fQ DQ dQ dQ fQ DQ 
+fQ dQ dQ d  d  dQ dQ dQ d  dQ dQ d  dQ dQ d  DQ dN dQ dQ dN dQ bQ 
+fQ dQ dQ b  dQ dQ dQ dQ d  d  dQ d  dQ dQ d  fQ dQ dQ d  dQ DQ bQ 
+f  dQ dQ dQ d  d  dN dQ d  dQ d  dQ dQ dQ dQ dQ dQ dQ d  D  dQ bQ 
+fQ b  b  d  d  dQ dQ dQ bQ dQ d  d  dQ IQ d  dQ dQ bQ bN dQ dQ BQ 
+fN dQ bQ bQ d  dQ dQ dQ DQ dQ DQ DQ D  DQ dQ dQ dQ dQ dQ dQ dQ f  
+fN dQ bQ d  fQ dN dQ DQ fQ FQ fQ fQ D  f  IQ bQ DQ D  d  dQ bQ f  
+
+mquant map:
+ 18 24    14 16 40 24 36 32 24 32 28 24    28 16 18 14            
+ 14       22 32 24 14                   16 22 16 22 14    12      
+ 14    16 14       12                   16 14 16 22 12            
+ 14          12          14 12          14 18 14 16 22 16 14 12 14
+ 12                                     14    16 20 14    16    22
+ 12                         16 12    14 12 14    18 16    20 36 16
+ 12                16 12    28 16 24 14 12 14 18 16 22 20 12 36 20
+ 18 12 10       16 28 12 10 32 24 16 28 14 12 18 14    24 12 20 14
+ 12 10    12 16 14 24 16 32 18 20 14             18 22 28 24 28   
+ 22 10       16 12 24 28 18       32 16 12 14 16 22 32 18 22 28 18
+ 28 24 28       24 20 24    28 22    14 12    16 20 22 24 20 32 22
+ 24 28 24    32 22 18 24       22    12 10    18 28 22    24 32 28
+ 28 32 28 24       28       24    22 12 10 12 16 32 24       18 22
+ 28             32 28 20 32 28       10 12    20 28 24 28 22 24 18
+ 28 24 22 28    24 22 24 22 20 14 16    12 10 18 16 22 20 24 10   
+ 14 24 14    32 14 24 12 16 12  8 12       10 14 10       16 10   
+
+Frame 3 (#2 in display order):
+ picture_type=B
+ temporal_reference=2
+ frame_pred_frame_dct=0
+ q_scale_type=1
+ intra_vlc_format=0
+ alternate_scan=0
+ forward search window: -7...7 / -7...7
+ forward vector range: -8...7.5 / -8...7.5
+ backward search window: -3...3 / -3...3
+ backward vector range: -8...7.5 / -8...7.5
+
+rate control: start of picture
+ target number of bits: T=169744
+
+vbv_delay=28944 (bitcount=497608, decoding_time=37901.38, bitcnt_EOP=497576)
+
+rate control: end of picture
+ actual number of bits: S=112949
+ average quantization parameter Q=8.9
+ remaining number of bits in GOP: R=56795
+ global complexity measures (I,P,B): Xi=886231, Xp=873350, Xb=502816
+ virtual buffer fullness (I,P,B): d0i=11463, d0p=64578, d0b=40917
+ remaining number of P pictures in GOP: Np=0
+ remaining number of B pictures in GOP: Nb=0
+ average activity: avg_act=542.7
+Y: variance=3710, MSE= 10 (38.1 dB), SNR=25.7 dB
+U: variance=532.2, MSE=2.59 ( 44 dB), SNR=23.1 dB
+V: variance=143.6, MSE=2.11 (44.9 dB), SNR=18.3 dB
+
+picture statistics:
+ # of intra coded macroblocks:     6 (1.7%)
+ # of coded blocks:             1097 (51.9%)
+ # of not coded macroblocks:      85 (24.1%)
+ # of skipped macroblocks:         1 (0.3%)
+ # of forw. pred. macroblocks:    35 (9.9%)
+ # of backw. pred. macroblocks:  112 (31.8%)
+ # of interpolated macroblocks:  199 (56.5%)
+
+macroblock_type map:
+dQ BQ BQ dQ B  BQ bQ bQ bQ bQ bQ bQ b  B  bQ bQ FQ bN fN bQ b  bN 
+fQ dQ DQ DQ dQ DQ BN DN dN DQ d  d  dQ dQ DQ dQ bQ dN BN fN DN FN 
+fN DQ D  D  D  DN DN DN BN D  dN DN d  DQ d  DQ dQ DQ fN fN bN D  
+d  D  D  D  DN d  D  BN b  dN BN DN d  d  DQ dQ dQ DQ dQ d  d  d  
+fQ FN dN bN FN DN DQ FN dN dN FN DN b  D  D  dQ dQ DQ dN DN d  DQ 
+bN fN FN fN BN dN dQ FN dN dN dN bQ DQ I  DQ bQ dN dN dQ d  dQ DQ 
+fN bN fN bN BN DQ DQ bN DN dN dN bN DQ d  d  bQ dQ dN DQ dQ dQ DQ 
+FQ SN bN bN d  DN dQ dN dN b  bN dN BQ IQ d  bQ dN dN DQ dN dN dQ 
+FQ FN BN dN bQ bQ bQ dN dQ dN dN fN DQ d  d  bQ dQ dQ d  d  dN bQ 
+fQ dQ fN D  bQ bQ bQ bQ bQ d  dQ dQ dQ DQ dQ bQ dN dQ dQ dQ d  DQ 
+fQ bQ bQ b  b  b  bQ bQ dN dQ dQ f  bQ d  d  bQ d  dQ d  dQ bQ bQ 
+fQ bQ bQ b  dQ dQ d  dQ d  d  b  dQ bQ d  DQ bQ dQ dQ dQ dN dQ bQ 
+fQ bQ bQ b  b  d  bQ dQ bQ dQ d  dQ IQ d  D  bQ bQ dQ d  b  dQ bQ 
+f  bQ bQ d  b  DQ d  bQ bQ bQ DQ d  dQ D  d  bQ bQ b  d  dQ DQ bQ 
+f  b  bQ bQ bQ b  bQ bQ dQ d  DQ DQ bQ dQ d  bQ dQ bQ dQ DQ DQ dQ 
+fQ bQ d  b  bQ b  BQ bQ BQ IQ fQ DQ d  DQ I  DQ DQ bN dQ d  IQ f  
+
+mquant map:
+ 12 18 14 10    24 22 24 20 18 20 16       18 10 14  8            
+ 10  8 10 14 22 12  8                12 10 12 10 14  8            
+  8                                     10    12 14  8            
+  8                                        10 16 10 14  8         
+  7           8        7              8       14 10  8          10
+  7                          8  6     8     7 10  8          16 10
+  6                 8  6    12  8 10  7       14  8 10     6 16  8
+  6              7 14  6    14 12  8  7  6    12  8    10  6  8  6
+  5        6  8  6 12  8 14  8     6           7  8 10          12
+ 10  5        8  5 12 10  8    10 12  5  6  5 10    14  8 10     8
+ 12 10 12           8 12    10  8     5        8    10     8 10  8
+ 10 12 10    12  8    10           8  4     5 10 12  8 12    10  8
+ 10 12 10          12 10 12 10     8  5       10 12 10        7 12
+ 12  8 10       12    10 12 10 12     5       10 12       10  7 10
+ 10     8 12 10     8 12  8     6  7  6  5    10  8 10  8  6  5  6
+ 10  8        6    10  6  5  6  4  5     4     6  4  5        4   

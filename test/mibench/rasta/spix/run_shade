@@ -1,0 +1,3 @@
+#!/bin/sh
+
+../../../simplesim-2.0/sim-profile -iclass -iprof -brprof ../src/rasta -z -A -J -S 8000 -n 12 -f map_weights.dat < ex5_c1.wav > ex5.asc 3> rasta.shade

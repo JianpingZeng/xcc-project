@@ -1,0 +1,1713 @@
+# PARTIAL translation file for PGP 2.6
+# This is the set of strings from PGP 2.6, merged with the
+# translation file from PGP 2.3a.  Some strings have been
+# updated where the change is only in formatting or spacing,
+# but others need work.
+
+# The format should be obvious.  It should serve as a good starting
+# point for anyone who wants to provide a full translation.
+# The untranslated strings are marked with "No translation".
+
+# ------------------------------------------------------------------
+# Language:       French
+# Character set:  7-bit ASCII, with digraphs
+#                 Converted to ISO Latin-1 by Colin Plumb <colin@nyx.cs.du.edu>
+# Date revised:   June 1993
+# Translator:     Jean-loup Gailly <jloup@chorus.fr>
+
+# ------------------------------------------------------------------
+# Language/Idioma:       Castilian spanish/Castellano
+# Date/Fecha:            June 1993
+
+# Translator/Traductor:  Armando Ramos <armando@clerval.org>
+# Address/Direcci¢n:     Boix y Morer 9, Oficina 4
+#                        E-28003-Madrid
+#                        Spain-Espa¤a/EC
+# Phone/Tel‚fono:        34-1-352-3090
+# Fax:                   34-1-535-2685
+
+#------------------------------------------------------------------
+"\nClear signature file: %s\n"
+es: "\nFichero normal con firma: %s\n"
+fr: "\nFichier de signature en clair: %s\n"
+
+"\nTransport armor file: %s\n"
+es: "\nFichero con armadura de transporte: %s\n"
+
+"\nClear signature file: %s\n"
+fr: "\nFichier de signature en clair: %s\n"
+es: "\nFichero normal con firma: %s\n"
+
+"\nTransport armor file: %s\n"
+fr: "\nfichier de transport armure: %s\n"
+es: "\nFichero con armadura de transporte: %s\n"
+
+"\nTransport armor files: "
+fr: "\nfichiers de transport armure: "
+es: "\nFicheros con armadura de transporte: "
+
+"ERROR: Bad ASCII armor checksum in section %d.\n"
+fr: "ERREUR: mauvaise v\351rification de l'armure ASCII dans la section %d.\n"
+es: "ERROR: Suma incorrecta de verificaci\363n en la armadura ASCII, secci\363n %d.\n"
+
+"Can't find section %d.\n"
+fr: "Section %d introuvable.\n"
+es: "No puede encontrarse la secci\363n %d.\n"
+
+"Badly formed section header, part %d.\n"
+fr: "En-t\352te de section mal form\351e, partie %d.\n"
+es: "Cabecera de secci\363n mal construida en la parte %d.\n"
+
+"Sections out of order, expected part %d"
+fr: "Sections en d\351sordre, partie %d attendue"
+es: "Las secciones est\341n desordenadas, se esperaba la parte %d"
+
+", got part %d\n"
+fr: ", partie %d obtenue\n"
+es: ", encontrada la parte %d\n"
+
+"ERROR: Hit EOF in header of section %d.\n"
+fr: "ERREUR: find de fichier dans l'en-t\352te de la section %d.\n"
+es: "ERROR: Hay un EOF (fin de fichero) en la cabecera de la secci\363n %d.\n"
+
+"ERROR: Badly formed ASCII armor checksum, line %d.\n"
+fr: "ERREUR: Verification de l'armure ASCII mal form\351e, ligne %d.\n"
+es: "ERROR: Suma de verificaci\363n mal construida en la armadura ASCII, l\355nea %d.\n"
+
+"WARNING: No ASCII armor `END' line.\n"
+fr: "ATTENTION: Pas de ligne `END' dans l'armure ASCII.\n"
+es: "ADVERTENCIA: No hay l\355nea `END' en la armadura ASCII.\n"
+
+"ERROR: Bad ASCII armor character, line %d.\n"
+fr: "ERREUR: Mauvais charact\350re dans l'armure ASCII, ligne %d.\n"
+es: "ERROR: Car\341cter incorrecto en la armadura ASCII, l\355nea %d.\n"
+
+"ERROR: Bad ASCII armor line length %d on line %d.\n"
+fr: "ERREUR: Mauvais longueur de ligne %d dans l'armure ASCII, ligne %d.\n"
+es: "ERROR: Longitud incorrecta (%d) de l\355nea en la armadura ASCII, l\355nea %d.\n"
+
+"ERROR: Bad ASCII armor checksum"
+fr: "ERREUR de v\351rification dans l'armure ASCII"
+es: "ERROR: Suma incorrecta de verificaci\363n en la armadura ASCII"
+
+" in section %d"
+fr: " dans la section %d"
+es: " en la secci\363n %d"
+
+"Warning: Transport armor lacks a checksum.\n"
+fr: "Attention: l'armure de transport n'a pas de v\351rification.\n"
+es: "Aviso: La armadura de transporte no tiene suma de verificaci\363n.\n"
+
+"ERROR: Can't find file %s\n"
+fr: "ERREUR: Fichier %s introuvable\n"
+es: "ERROR: No se puede encontrar el fichero %s\n"
+
+"ERROR: No ASCII armor `BEGIN' line!\n"
+fr: "ERREUR: Pas de ligne `BEGIN' dans l'armure ASCII!\n"
+es: "ERROR: No hay l\355nea 'BEGIN' en la armadura ASCII\n"
+
+"\n\007Unable to write ciphertext output file '%s'.\n"
+fr: "\n\7Ecriture impossible dans le fichier de sortie chiffr\351 '%s'.\n"
+es: "\n\7No puede escribirse el fichero de salida cifrado '%s'.\n"
+
+"ERROR: ASCII armor decode input ended unexpectedly!\n"
+fr: "ERREUR: fin pr\351matur\351e du fichier armure ASCII!\n"
+es: "ERROR: La entrada con armadura ASCII termina antes de tiempo\n"
+
+"ERROR: Hit EOF in header.\n"
+fr: "ERREUR: fin de fichier dans l'en-t\352te.\n"
+es: "ERROR: Hay un EOF (fin de fichero) en la cabecera.\n"
+
+"Unsupported character set: '%s'\n"
+fr: "Table de caract\350res non support\351e: '%s'\n"
+es: "Conjunto de caracteres no admitido: '%s'\n"
+
+"\007\nWARNING:  This key has been revoked by its owner,\n\
+possibly because the secret key was compromised.\n"
+fr: "\7\nATTENTION: cette cl\351 a \351t\351 r\351voqu\351e par son propri\351taire,\n\
+probablement parce que la cl\351 secr\350te a \351t\351 compromise.\n"
+es: "\7\nADVERTENCIA:  Esta tecla ha sido revocada por su propietario,\n\
+seguramente porque se ha visto comprometida la clave secreta.\n"
+
+"This could mean that this signature is a forgery.\n"
+fr: "Ceci peut signifier que cette signature est un faux.\n"
+es: "Puede significar que esta firma est\351 falsificada.\n"
+
+"You cannot use this revoked key.\n"
+fr: "Vous ne pouvez pas utiliser cette cl\351 r\351voqu\351e.\n"
+es: "No puede utilizar esta clave revocada.\n"
+
+"\007\nWARNING:  Because this public key is not certified with a trusted\n\
+signature, it is not known with high confidence that this public key\n\
+actually belongs to: \"%s\".\n"
+fr: "\7\nATTENTION: Cette cl\351 publique n'est pas certifi\351e avec une\n\
+signature fiable. Il n'est donc pas reconnu avec un haut degr\351 de confiance\n\
+que cette signature appartient effectivement \340: \"%s\".\n"
+es: "\7\nAVISO: Esta clave p\372blica no est\341 certificada con una firma de confianza,\n\
+por lo que no se sabe con seguridad si realmente pertenece a:\n\
+ \"%s\".\n"
+
+"\007\nWARNING:  This public key is not trusted to actually belong to:\n\
+\"%s\".\n"
+fr: "\7\nATTENTION: Cette cl\351 publique n'est pas reconnue comme\n\
+appartenant \340: \"%s\".\n"
+es: "\7\nADVERTENCIA:  No se sabe con seguridad si esta clave p\372blica pertenece\n\
+realmente a: \"%s\".\n"
+
+"\007\nWARNING:  Because this public key is not certified with enough trusted\n\
+signatures, it is not known with high confidence that this public key\n\
+actually belongs to: \"%s\".\n"
+fr: "\7\nATTENTION: puisque cette cl\351 publique n'est pas certifi\351e avec\n\
+suffisament de signatures, il n'est pas connu avec un haut niveau de confiance\
+\nque cette cl\351 appartient effectivement \340: \"%s\".\n"
+es: "\7\nADVERTENCIA:  Esta clave no est\341 certificada con suficientes firmas\n\
+fiables, por lo que no se sabe con seguridad si realmente pertenece a:\n\
+ \"%s\".\n"
+
+"But you previously approved using this public key anyway.\n"
+fr: "Mais vous avez d\351j\340 accept\351 l'usage de cette cl\351 publique.\n"
+es: "Ya ha permitido que se utilice esta clave p\372blica anteriormente.\n"
+
+"\nAre you sure you want to use this public key (y/N)? "
+fr: "\nEtes vous s\373r(e) de vouloir utiliser cette cl\351 publique (o/N)? "
+es: "\n\277Est\341 seguro/a de querer utilizar esta clave p\372blica (s/N)? "
+
+"\n\007Unsupported packet format - you need a newer version of PGP for this file.\n"
+No translation
+No translation
+
+"Preparing random session key..."
+fr: "Pr\351paration de la cl\351 al\351atoire..."
+es: "Preparando la clave para la sesi\363n aleatoria..."
+
+"\n\007Error: System clock/calendar is set wrong.\n"
+fr: "\n\7Erreur: L'horloge du syst\350me est incorrecte.\n"
+es: "\n\7Error: El reloj/calendario del sistema est\341 equivocado.\n"
+
+"Just a moment..."
+fr: "Un moment..."
+es: "Un momento..."
+
+"\a\nError: key is too large.  RSA keys may be no longer than 1024 bits,\n\
+due to limitations imposed by software provided by RSADSI.\n"
+No translation
+No translation
+
+"\n\007Can't open input plaintext file '%s'\n"
+fr: "\n\7Ouverture du fichier en clair '%s' impossible.\n"
+es: "\n\7No puede abrirse el fichero normal de entrada '%s'\n"
+
+"\n\007Can't open plaintext file '%s'\n"
+fr: "\n\7Ouverture du fichier en clair '%s' impossible\n"
+es: "\n\7No puede abrirse el fichero normal '%s'\n"
+
+"\n\007Can't create signature file '%s'\n"
+fr: "\n\7Cr\351ation du fichier de signature '%s' impossible\n"
+es: "\n\7No puede crearse el fichero de firma '%s'\n"
+
+"\n\007Can't open key ring file '%s'\n"
+fr: "\n\7Ouverture du fichier de cl\351 '%s' impossible\n"
+es: "\n\7No puede abrirse el anillo de claves '%s'\n"
+
+"This key has already been revoked.\n"
+fr: "Cette cl\351 a d\351j\340 \351t\351 r\351voqu\351e.\n"
+es: "Esta clave ya ha sido revocada.\n"
+
+"\n\007Can't create output file to update key ring.\n"
+fr: "\n\7Impossible de cr\351er le fichier de sortie pour modifier le\
+\nfichier de cl\351s\n"
+es: "\n\7No puede crearse el fichero de salida para actualizar el anillo.\n"
+
+"\nKey compromise certificate created.\n"
+fr: "\nCertificat de compromission de cl\351 cr\351\351.\n"
+es: "\nCreado el certificado de compromiso de la clave.\n"
+
+"\nError: Key for signing userid '%s'\n\
+does not appear in public keyring '%s'.\n\
+Thus, a signature made with this key cannot be checked on this keyring.\n"
+No translation
+No translation
+
+"\nLooking for key for user '%s':\n"
+fr: "\nRecherche de la cl\351 pour l'utilisateur '%s':\n"
+es: "\nBuscando la clave de '%s':\n"
+
+"\n\007Key is already signed by user '%s'.\n"
+fr: "\n\7La cl\351 est d\351j\340 sign\351e par l'utilisateur '%s'.\n"
+es: "\n\7La clave ya ha sido firmada por el usuario '%s'.\n"
+
+"\n\nREAD CAREFULLY:  Based on your own direct first-hand knowledge, are\n\
+you absolutely certain that you are prepared to solemnly certify that\n\
+the above public key actually belongs to the user specified by the\n\
+above user ID (y/N)? "
+fr: "\n\nLIRE ATTENTIVEMENT: Selon votre propre connaissance directe,\n\
+\352tes vous absoluement certain(e) d'\352tre pr\352t(e) \340 certifier\n\
+solennellement que la cl\351 publique ci-dessus appartient effectivement \340\n\
+la personne sp\351cifi\351e par le nom d'utilisateur ci-dessus (o/N)? "
+es: "\n\nLEA ATENTAMENTE: Bas\341ndose en su conocimiento directo, \277est\341 usted\n\
+absolutamente seguro de estar preparado para certificar solemnemente que\n\
+la clave p\372blica anterior pertenece realmente al usuario especificado por\n\
+ese identificador (s/N)? "
+
+"\nKey signature certificate added.\n"
+fr: "\nCertificat de signature de cl\351 ajout\351.\n"
+es: "\nSe ha a\361adido el certificado de firma.\n"
+
+"\n\007Can't open ciphertext file '%s'\n"
+fr: "\n\7Ouverture du fichier chiffr\351 '%s' impossible\n"
+es: "\n\7No puede abrirse el fichero cifrado '%s'\n"
+
+"\nFile '%s' has signature, but with no text."
+fr: "\nLe fichier '%s' \340 une signature, mais pas de texte."
+es: "\nEl fichero '%s' tiene firma, pero no texto."
+
+"\nText is assumed to be in file '%s'.\n"
+fr: "\nLe texte est suppos\351 \352tre dans le fichier '%s'.\n"
+es: "\nSe asume que el texto est\341 en el fichero '%s'.\n"
+
+"\nPlease enter filename of material that signature applies to: "
+fr: "\nEntrez le nom du fichier auquel la signature s'applique: "
+es: "\nIntroduzca el nombre del texto al que se refiere la firma: "
+
+"\n\007Can't open file '%s'\n"
+fr: "\n\7Ouverture du fichier '%s' impossible\n"
+es: "\n\7No puede abrirse el fichero '%s'\n"
+
+"File type: '%c'\n"
+fr: "Type de fichier: '%c'\n"
+es: "\nTipo de fichero: '%c'\n"
+
+"Original plaintext file name was: '%s'\n"
+fr: "Le nom originel du fichier en clair \351tait: '%s'\n"
+es: "El nombre del fichero original de texto normal era: '%s'\n"
+
+"\n\007WARNING: Can't find the right public key-- can't check signature integrity.\n"
+fr: "\n\7ATTENTION: impossible de trouver la cl\351 publique ad\351quate et de\n\
+v\351rifier l'integrit\351 de la signature.\n"
+es: "\n\7AVISO: No se encuentra la clave p\372blica adecuada para comprobar\n\
+la integridad de la firma.\n"
+
+"\007\nUnrecognized message digest algorithm.\n\
+This may require a newer version of PGP.\n\
+Can't check signature integrity.\n"
+fr: "\7\nAlgorithme de groupe de messages non reconnu.\n\
+Ceci peut n\351cessiter une nouvelle version de PGP.\n\
+Impossible de v\351rifier l'int\351grit\351 de la signature.\n"
+es: "\7\nAlgoritmo no reconocido de resumen de mensaje.\n\
+Puede necesitar una versi\363n m\341s reciente de PGP.\n\
+No puede comprobarse la integridad de la firma.\n"
+
+"\a\nMalformed or obsolete signature.  Can't check signature integrity.\n"
+No translation
+No translation
+
+"\a\nSigning key is too large.  RSA keys may be no longer than 1024 bits,\n\
+due to limitations imposed by software provided by RSADSI.\n\
+Can't check signature integrity.\n"
+No translation
+No translation
+
+"\n\007Error: RSA-decrypted block is corrupted.\n\
+This may be caused either by corrupted data or by using the wrong RSA key.\n"
+fr: "\n\7Erreur: le block dechiffr\351 par RSA est endommag\351.\n\
+Ceci est peut \352tre caus\351 par des donn\351es endommag\351es our par\n\
+l'utilisation d'une mauvaise cl\351 RSA.\n"
+es: "\n\7Error: El bloque desencriptado RSA est\341 da\361ado.\n\
+Puede deberse a da\361o en los datos o a utilizar una clave RSA equivocada.\n"
+
+"\007\nWARNING: Bad signature, doesn't match file contents!\007\n"
+fr: "\7\nATTENTION: Mauvaise signature, ne correspond pas au contenu du \
+fichier!\7\n"
+es: "\7\nAVISO: Firma incorrecta, no coincide con el contenido del fichero\7\n"
+
+"\nBad signature from user \"%s\".\n"
+fr: "\nMauvaise signature de l'utilisateur \"%s\".\n"
+es: "\nFirma incorrecta de \"%s\".\n"
+
+"Signature made %s\n"
+fr: "Signature faite le %s\n"
+es: "Firma hecha el %s\n"
+
+"\nPress ENTER to continue..."
+fr: "\nAppuyez sur la touche Retour ou Entr\351e pour continuer..."
+es: "\nPulse ENTER (retorno) para continuar..."
+
+"\nGood signature from user \"%s\".\n"
+fr: "\nBonne signature de l'utilisateur \"%s\".\n"
+es: "\nFirma correcta de \"%s\".\n"
+
+"\nSignature and text are separate.  No output file produced. "
+fr: "\nLa signature et le texte sont s\351par\351s. Fichier de sortie non produit."
+es: "\nLa firma y el texto est\341n separados. No se produce fichero de salida. "
+
+"\n\007Can't create plaintext file '%s'\n"
+fr: "\n\7Creation du fichier en clair '%s' impossible.\n"
+es: "\n\7No puede crearse el fichero de texto normal '%s'\n"
+
+"\n\007Signature file '%s' already exists.  Overwrite (y/N)? "
+fr: "\n\7Le fichier de signature '%s' existe d\351j\340.  A \351craser (o/N)? "
+es: "\n\7El fichero de firma '%s' ya existe. \277Se sobreescribe (s/N)? "
+
+"\nWriting signature certificate to '%s'\n"
+fr: "\nEcriture du certificat de signature dans '%s'\n"
+es: "\nEscribiendo el certificado de firma para '%s'\n"
+
+"\n\007Error: Badly-formed or corrupted signature certificate.\n"
+fr: "\n\7Erreur: certificat de signature mal form\351 ou endommag\351\n"
+es: "\n\7Error: Certificado de firma incorrecto o da\361ado.\n"
+
+"File \"%s\" does not have a properly-formed signature.\n"
+fr: "Le fichier \"%s\" n'a pas une signature correctement form\351e.\n"
+es: "El fichero \"%s\" no tiene una firma construida correctamente.\n"
+
+"compressed.  "
+fr: "comprim\351.  "
+es: "comprimido.  "
+
+"\n\007Can't create compressed file '%s'\n"
+fr: "\n\7Cr\351ation du fichier compress\351 '%s' impossible\n"
+es: "\n\7No puede crearse el fichero comprimido '%s'\n"
+
+"Compressing file..."
+fr: "Compression du fichier..."
+es: "Comprimiendo el fichero..."
+
+"\n\007Can't create ciphertext file '%s'\n"
+fr: "\n\7Cr\351ation du fichier chiffr\351 '%s' impossible.\n"
+es: "\n\7No puede crearse el fichero cifrado '%s'\n"
+
+"\nYou need a pass phrase to encrypt the file. "
+fr: "\nUn mot de passe est n\351cessaire pour chiffrer ce fichier. "
+es: "\nSe necesita una contrase\361a para encriptar el fichero. "
+
+"\n\007Cannot find the public key matching userid '%s'\n\
+This user will not be able to decrypt this message.\n"
+fr: "\n\7Impossible de trouver la cl\351 publique pour l'utilisateur '%s'\n\
+Cet utilisateur ne pourra pas d\351chiffrer ce message.\n"
+es: "\n\7No se puede encontrar la clave p\372blica del identificador '%s'\n\
+Ese usuario no podr\341 descifrar el mensaje.\n"
+
+"Skipping userid %s\n"
+No translation
+No translation
+
+"\n\007'%s' is not a cipher file.\n"
+fr: "\n\7'%s' n'est pas un fichier chiffr\351.\n"
+es: "\n\7'%s' no es un fichero cifrado.\n"
+
+"\n\007Out of memory.\n"
+fr: "\n\7M\351moire insuffisante.\n"
+es: "\n\7No queda memoria.\n"
+
+"\nThis message can only be read by:\n"
+fr: "\nCe message ne peut \352tre lu que par:\n"
+es: "\nEste mensaje s\363lo puede ser le\355do por:\n"
+
+"\n\007You do not have the secret key needed to decrypt this file.\n"
+fr: "\n\7Vous n'avez pas la cl\351 secr\350te requise pour d\351chiffrer\
+\nce fichier.\n"
+es: "\n\7Usted no tiene la clave secreta necesaria para descifrar este fichero.\n"
+
+"\n\007Error: Decrypted plaintext is corrupted.\n"
+fr: "\n\7Erreur: le fichier d\351chiffr\351 est endommag\351.\n"
+es: "\n\7Error: El texto normal desencriptado est\341 da\361ado.\n"
+
+"\nYou need a pass phrase to decrypt this file. "
+fr: "\nUn mot de passe est n\351cessaire pour d\351chiffrer ce fichier. "
+es: "\nSe necesita la contrase\361a para desencriptar este fichero. "
+
+"\n\007Error:  Bad pass phrase.\n"
+fr: "\n\7Erreur:  Mauvais mot de passe.\n"
+es: "\n\7Error:  Contrase\361a incorrecta.\n"
+
+"Pass phrase appears good. "
+fr: "Le mot de passe semble correct. "
+es: "La frase parece correcta. "
+
+"Decompressing plaintext..."
+fr: "Decompression du texte en clair..."
+es: "Descomprimiendo el texto normal..."
+
+"\n\007Can't open compressed file '%s'\n"
+fr: "\n\7Ouverture du fichier compress\351 '%s' impossible.\n"
+es: "\n\7No puede abrirse el fichero comprimido '%s'\n"
+
+"\007\nUnrecognized compression algorithm.\n\
+This may require a newer version of PGP.\n"
+fr: "\7\nAlgorithme de compression non reconnu.\n\
+Ceci peut n\351cessiter une nouvelle version de PGP.\n"
+es: "\7\nAlgoritmo de compresi\363n no reconocido.\n\
+Puede necesitar una nueva versi\363n de PGP.\n"
+
+"\n\007Can't create decompressed file '%s'\n"
+fr: "\n\7Cr\351ation du fichier d\351compress\351 '%s' impossible.\n"
+es: "\n\7No puede crearse el fichero descomprimido '%s'\n"
+
+"\n\007Decompression error.  Probable corrupted input.\n"
+No translation
+No translation
+
+"done.  "
+fr: "termin\351.  "
+es: "hecho.  "
+
+"y"
+fr: "o"
+es: "s"
+
+"n"
+fr: "n"
+es: "n"
+
+"\nShould '%s' be renamed to '%s' [Y/n]? "
+fr: "\nFaut il renommer '%s' en '%s' [O/n]? "
+es: "\n\277Se renombra '%s' como '%s' [S/n]? "
+
+"\nDisk full.\n"
+fr: "\nDisque plein.\n"
+es: "\nEl disco est\341 lleno.\n"
+
+"\nFile write error.\n"
+fr: "\nErreur d'\351criture sur fichier.\n"
+es: "\nError de escritura del fichero.\n"
+
+"\007Write error on stdout.\n"
+fr: "\7Erreur d'\351criture sur la sortie standard.\n"
+es: "\7Error de escritura en la salida est\341ndar (\"stdout\").\n"
+
+"\n\007Cannot create temporary file '%s'\n"
+fr: "\n\7Cr\351ation du fichier temporaire '%s' impossible\n"
+es: "\n\7No puede crearse el fichero temporal '%s'\n"
+
+"\n\007Output file '%s' already exists.\n"
+fr: "\n\7Le ficher de sortie '%s' existe d\351j\340.\n"
+es: "\n\7El fichero de salida '%s' ya existe.\n"
+
+"\n\007Output file '%s' already exists.  Overwrite (y/N)? "
+fr: "\n\7Le fichier de sortie '%s' existe d\351j\340.  A \351craser (o/N)? "
+es: "\n\7El fichero de salida '%s' ya existe. \277Se sobreescribe (s/N)? "
+
+"\nEnter new file name: "
+fr: "\nEntrez le nouveau nom de fichier: "
+es: "\nIntroduzca el nuevo nombre de fichero: "
+
+"Can't create output file '%s'\n"
+fr: "Cr\351ation du fichier '%s' impossible.\n"
+es: "No puede crearse el fichero '%s'\n"
+
+"New signature from keyID %s on userid \"%s\"\n"
+fr: "Nouvelle signature de la cl\351 %s sur l'utilisateur \"%s\"\n"
+es: "Nueva firma de la clave %s para el usuario \"%s\"\n"
+
+"New signature from %s\n"
+fr: "\nNouvelle signature de %s\n"
+es: "Nueva firma de %s\n"
+
+"on userid \"%s\"\n"
+fr: "pour le nom d'utilisateur \"%s\"\n"
+es: "en el identificador \"%s\"\n"
+
+"Key revocation certificate from \"%s\".\n"
+fr: "Certificat de r\351vocation de cl\351 de \"%s\".\n"
+es: "Certificado de revocaci\363n de clave de \"%s\".\n"
+
+"\n\007WARNING:  File '%s' contains bad revocation certificate.\n"
+fr: "\n\7ATTENTION: the fichier '%s' contient de mauvais certificats\n\
+de r\351vocation.\n"
+es: "\n\7AVISO: El fichero '%s' tiene un certificado de revocaci\363n incorrecto.\n"
+
+"New userid: \"%s\".\n"
+fr: "Nouveau nom d'utilisateur: \"%s\".\n"
+es: "Nuevo identificador: \"%s\".\n"
+
+"\nWill be added to the following key:\n"
+fr: "\nSera ajout\351(e) \340 la cl\351 suivante:\n"
+es: "\nSe a\361adir\341 a la clave siguiente:\n"
+
+"\nAdd this userid (y/N)? "
+fr: "\nAjouter ce nom d'utilisateur (o/N)? "
+es: "\n\277A\361adir este identificador (s/N)? "
+
+"\n\007Can't open key file '%s'\n"
+fr: "\n\7Ouverture du fichier de cl\351 '%s' impossible\n"
+es: "\n\7No puede abrirse el fichero de claves '%s'\n"
+
+"\nKey ring file '%s' cannot be created.\n"
+fr: "\nCr\351ation du fichier de cl\351s '%s' impossible.\n"
+es: "\nNo se puede crear el anillo de claves '%s'.\n"
+
+"\nLooking for new keys...\n"
+fr: "\nRecherche des nouvelles cl\351s...\n"
+es: "\nBuscando claves nuevas...\n"
+
+"\n\007Could not read key from file '%s'.\n"
+fr: "\n\7Lecture impossible de la cl\351 dans le fichier '%s'.\n"
+es: "\n\7No ha podido leerse la clave en el fichero '%s'.\n"
+
+"\n\007Warning: Key ID %s matches key ID of key already on \n\
+key ring '%s', but the keys themselves differ.\n\
+This is highly suspicious.  This key will not be added to ring.\n\
+Acknowledge by pressing return: "
+fr: "\n\7Attention: l'identificateur de cl\351 %s correspond \340 une cl\351\
+\nd\351j\340 dans le fichier de cl\351s '%s', mais les cl\351s sont diff\351rentes.\
+\nCeci est tr\350s suspect. Cette cl\351 ne sera pas ajout\351e au fichier de cl\351s.\
+\nAppuyez sur la touche Retour ou Entr\351e: "
+es: "\n\7Advertencia: El identificador de clave %s coincide con otro \n\
+en el anillo '%s', pero las claves son distintas.\n\
+Es muy sospechoso. Esta clave no se incluir\341 en el anillo.\n\
+Confirme pulsando retorno: "
+
+"\nDo you want to add this key to keyring '%s' (y/N)? "
+fr: "\nVoulez vous ajouter cette cl\351 au fichier de cl\351s '%s' (o/N)? "
+es: "\n\277Quiere a\361adir esta clave al anillo '%s' (s/N)? "
+
+"Key has been revoked.\n"
+fr: "La cl\351 a \351t\351 r\351voqu\351e.\n"
+es: "La clave ha sido revocada.\n"
+
+"\n\007Key file contains duplicate keys: cannot be added to keyring\n"
+fr: "\n\7Le fichier contient des cl\351s dupliqu\351es: impossible\n\
+de l'ajouter au fichier de cl\351s\n"
+es: "\n\7El fichero contiene claves duplicadas: no puede a\361adirse al anillo\n"
+
+"No new keys or signatures in keyfile.\n"
+fr: "Pas de nouvelles cl\351s ou signatures dans le fichier de cl\351s.\n"
+es: "No hay nuevas claves ni nuevas firmas en el fichero.\n"
+
+"\nKeyfile contains:\n"
+fr: "\nLe fichier de cl\351s contient:\n"
+es: "\nEl fichero de claves contiene:\n"
+
+"%4d new key(s)\n"
+fr: "%4d nouvelle(s) cl\351(s)\n"
+es: "%4d nueva(s) clave(s)\n"
+
+"%4d new signatures(s)\n"
+fr: "%4d nouvelle(s) signatures(s)\n"
+es: "%4d nueva(s) firma(s)\n"
+
+"%4d new user ID(s)\n"
+fr: "%4d nouveau(x) nom(s) d'utilisateur\n"
+es: "%4d nuevo(s) identificador(es) de usuario\n"
+
+"%4d new revocation(s)\n"
+fr: "%4d nouvelle(s) r\351vocation(s)\n"
+es: "%4d nueva(s) revocacion(es)\n"
+
+"\nNo keys found in '%s'.\n"
+fr: "\nPas de cl\351s trouv\351es dans '%s'.\n"
+es: "\nNo se encuentran claves en '%s'.\n"
+
+"\nOne or more of the new keys are not fully certified.\n\
+Do you want to certify any of these keys yourself (y/N)? "
+fr: "\nUne ou plusieurs des nouvelles cl\351s ne sont pas compl\350tement\
+\ncertifi\351es. Voulez vous certifier ces cl\351s vous m\352me (o/N)? "
+es: "\nUna o m\341s de las claves nuevas no est\341n completamente certificadas.\n\
+\277Quiere certificar alguna de ellas usted mismo (s/N)? "
+
+"\nDo you want to certify this key yourself (y/N)? "
+fr: "\nVoulez vous certifier cette cl\351 vous m\352me (o/N)? "
+es: "\n\277Quiere certificar esta clave usted mismo/a (s/N)? "
+
+"undefined"
+fr: "ind\351finie"
+es: "sin definir"
+
+"unknown"
+fr: "inconnu"
+es: "desconocida"
+
+"untrusted"
+fr: "non s\373r"
+es: "no fiable"
+
+"marginal"
+fr: "marginal"
+es: "relativa"
+
+"complete"
+fr: "compl\350te"
+es: "completa"
+
+"ultimate"
+fr: "ultime"
+es: "fundamental"
+
+"\nCan't open backup key ring file '%s'\n"
+fr: "\nImpossible d'ouvrir le fichier de cl\351 de sauvegarde '%s'\n"
+es: "\nNo se puede abrir la copia de seguridad del anillo '%s'\n"
+
+"\n%d \"trust parameter(s)\" need to be changed.\n"
+fr: "\n%d \"param\350tre(s) de confiance\" doi(ven)t \352tre chang\351(s).\n"
+es: "\n%d \"par\341metro(s) de confianza\" hay que cambiarlo(s).\n"
+
+"Continue with '%s' (Y/n)? "
+fr: "Continuer avec '%s' (O/n)? "
+es: "\277Sigue con '%s' (S/n)? "
+
+"\n%d \"trust parameter(s)\" changed.\n"
+fr: "\n%d \"param\350tre(s) de confiance\" chang\351(s).\n"
+es: "\nCambiados %d \"par\341metro(s) de confianza.\n"
+
+"Update public keyring '%s' (Y/n)? "
+fr: "Modifier le fichier de cl\351s publiques '%s' (O/n)? "
+es: "\277Actualizar el anillo de claves p\372blicas '%s' (S/n)? "
+
+"\nCan't open secret key ring file '%s'\n"
+fr: "\nOuverture du fichier de cl\351s secr\350tes '%s' impossible.\n"
+es: "\nNo se puede abrir el anillo de claves secretas '%s'\n"
+
+"\nPass 1: Looking for the \"ultimately-trusted\" keys...\n"
+fr: "\nPasse 1: Recherche des cl\351s \"de confiance ultime\"...\n"
+es: "\nProceso 1: B\372squeda de las claves \"fundamentalmente fiables\" ...\n"
+
+"\nPass 2: Tracing signature chains...\n"
+fr: "\nPasse 2: V\351rification des chaines de signatures...\n"
+es: "\nProceso 2: Seguimiento de las cadenas de firmas...\n"
+
+"Keyring contains duplicate key: %s\n"
+fr: "Le fichier de cl\351s contient des cl\351s dupliqu\351es: %s\n"
+es: "El anillo contiene una clave duplicada: %s\n"
+
+"No ultimately-trusted keys.\n"
+fr: "Pas de cl\351s de confiance ultime.\n"
+es: "No hay ninguna clave fundamentalmente fiable.\n"
+
+"  KeyID    Trust     Validity  User ID\n"
+fr: "  Cl\351     Confiance   Validit\351  Utilisateur\n"
+es: "  Clave    Confianza    Validez     Usuario\n"
+
+"\n\007Cannot read from secret keyring.\n"
+fr: "\n\7Lecture du fichier de cl\351s secr\350tes impossible.\n"
+es: "\n\7No puede leerse el anillo de claves secretas.\n"
+
+"\n\007WARNING: Public key for user ID: \"%s\"\n\
+does not match the corresponding key in the secret keyring.\n"
+fr: "\n\7ATTENTION: la cl\351 publique pour l'utilisateur: \"%s\"\n\
+ne correspond pas avec la cl\351 respective dans le fichier de cl\351s\
+secr\350tes.\n"
+es: "\n\7AVISO: La clave p\372blica del identificador \"%s\"\n\
+no coincide con la clave correspondiente en el anillo de claves secretas.\n"
+
+"This is a serious condition, indicating possible keyring tampering.\n"
+fr: "Ceci est une condition s\351rieuse,  indiquant une possible manipulation\n\
+du fichier de cl\351s.\n"
+es: "Es una situaci\363n seria, que indica una posible manipulaci\363n de anillos.\n"
+
+"\nKey for user ID \"%s\"\n\
+also appears in the secret key ring."
+No translation
+No translation
+
+"\nUse this key as an ultimately-trusted introducer (y/N)? "
+fr: "\nUtiliser cette cl\351 comme introducteur de confiance ultime (o/N)? "
+es: "\n\277Se utiliza esta clave como referencia fundamentalmente fiable (s/N)? "
+
+"Public key for: \"%s\"\n\
+is not present in the backup keyring '%s'.\n"
+fr: "La cl\351 publique pour: \"%s\"\n\
+n'est pas pr\351sente dans le fichier de cl\351s de sauvegarde '%s'.\n"
+es: "La clave p\372blica de: \"%s\"\n\
+no est\341 en la copia de seguridad del anillo '%s'.\n"
+
+"\n\007WARNING: Secret key for: \"%s\"\n\
+does not match the key in the backup keyring '%s'.\n"
+fr: "\n\7ATTENTION: la cl\351 secr\350te pour: \"%s\"\n\
+ne correspond pas avec la cl\351 dans le fichier de cl\351s de sauvegarde.\n"
+es: "\n\7AVISO: La clave secreta de: \"%s\"\n\
+no coincide con la clave en la copia de seguridad del anillo '%s'.\n"
+
+"\nMake a determination in your own mind whether this key actually\n\
+belongs to the person whom you think it belongs to, based on available\n\
+evidence.  If you think it does, then based on your estimate of\n\
+that person's integrity and competence in key management, answer\n\
+the following question:\n"
+fr: "\nDeterminez vous m\352me si cette cl\351 appartient vraiment \340 la personne\
+\n\340 qui vous croyez qu'elle appartient, selon les informations disponibles.\
+\nSi vous le croyez, alors selon votre estimation de l'int\351grit\351 de cette\
+\npersonne et de sa comp\351tence dans la gestion de cl\351s, r\351pondez \340 la\
+\nquestion suivante:\n"
+es: "\nDecida usted mismo si esta clave realmente pertenece, seg\372n la\n\
+evidencia a su alcance, a la persona que usted cree.  Si es as\355,\n\
+conteste la siguiente pregunta, bas\341ndose en su estimaci\363n de la\n\
+integridad de esa persona y de su conocimiento sobre gesti\363n de claves:\n"
+
+"\nWould you trust \"%s\"\n\
+to act as an introducer and certify other people's public keys to you?\n\
+(1=I don't know. 2=No. 3=Usually. 4=Yes, always.) ? "
+fr: "\nAuriez vous confiance en \"%s\"\n\
+pour servir d'introducteur et certifier pour vous les cl\351s publiques d'autres\
+\npersonnes? (1=Ne sais pas. 2=Non. 3=G\351n\351ralement. 4=Oui, toujours.) ? "
+es: "\n\277Confiar\355a en \"%s\"\n\
+como referencia, y para certificar ante usted otras claves p\372blicas?\n\
+(1=No s\351. 2=No. 3=Normalmente. 4=S\355, siempre.) ? "
+
+"This user is untrusted to certify other keys.\n"
+fr: "Cet utilisateur n'est pas de confiance pour certifier d'autres cl\351s.\n"
+es: "Este usuario no es fiable para certificar otras claves.\n"
+
+"This user is generally trusted to certify other keys.\n"
+fr: "Cet utilisateur est g\351n\351ralement de confiance pour certifier d'autres\
+ cl\351s.\n"
+es: "Este usuario es de relativa confianza para certificar otras claves.\n"
+
+"This user is completely trusted to certify other keys.\n"
+fr: "Cet utilisateur est de confiance totale pour certifier d'autres cl\351s.\n"
+es: "Este usuario es de completa confianza para certificar otras claves.\n"
+
+"This axiomatic key is ultimately trusted to certify other keys.\n"
+fr: "Cette cl\351 axiomatique est de confiance ultime pour certifier\n\
+d'autres cl\351s\n"
+es: "Esta clave axiom\341tica es absolutamente fiable para certificar otras.\n"
+
+"This key/userID association is not certified.\n"
+fr: "Cette association cl\351/utilisateur n'est pas certifi\351e.\n"
+es: "Esta asociaci\363n clave/usuario no est\341 certificada.\n"
+
+"This key/userID association is marginally certified.\n"
+fr: "Cette association cl\351/utilisateur est marginalement certifi\351e.\n"
+es: "Esta asociaci\363n clave/usuario est\341 relativamente certificada.\n"
+
+"This key/userID association is fully certified.\n"
+fr: "Cette association cl\351/utilisateur est compl\350tement certifi\351e.\n"
+es: "Esta asociaci\363n clave/usuario est\341 completamente certificada.\n"
+
+"  Questionable certification from:\n  "
+fr: "  Certificat de confiance douteux de:\n  "
+es: "  Certificaci\363n cuestionable de:\n  "
+
+"  Untrusted certification from:\n  "
+fr: "  Certificat non s\373r de:\n  "
+es: "  Certificaci\363n no fiable de:\n  "
+
+"  Generally trusted certification from:\n  "
+fr: "  Certificat de confiance relatif de:\n  "
+es: "  Certificaci\363n relativamente fiable de:\n  "
+
+"  Completely trusted certification from:\n  "
+fr: "  Certificat de confiance complet de:\n  "
+es: "  Certificaci\363n completamente fiable de:\n  "
+
+"  Axiomatically trusted certification from:\n  "
+fr: "  Certificat de confiance par axiome de:\n  "
+es: "  Certificaci\363n axiom\341ticamente fiable de:\n  "
+
+"\nKey for user ID: %s\n"
+fr: "\nCl\351 pour le nom d'utilisateur: %s\n"
+es: "\nClave del usuario: %s\n"
+
+"%d-bit key, Key ID %s, created %s\n"
+fr: " Cl\351 de %d bits, identificateur de cl\351 %s, cr\351\351e le %s\n"
+es: " Clave de %d bits, con identificador %s, creada el %s\n"
+
+"Bad key format.\n"
+fr: "Mauvais format de cl\351\n"
+es: "Formato de clave incorrecto.\n"
+
+"Unrecognized version.\n"
+fr: "Version non reconnue.\n"
+es: "Versi\363n no reconocida.\n"
+
+"Key is disabled.\n"
+fr: "La cl\351 est inactiv\351e.\n"
+es: "La clave est\341 desactivada.\n"
+
+"Also known as: %s\n"
+fr: "Egalement connu(e) en tant que: %s\n"
+es: "Tambi\351n conocido/a como: %s\n"
+
+"  Certified by: "
+fr: "  Certifi\351e par: "
+es: "  Certificado por: "
+
+"\n\007Unable to create key file '%s'.\n"
+fr: "\n\7Impossible de cr\351er le fichier de cl\351s '%s'.\n"
+es: "\n\7No puede crearse el fichero de claves '%s'.\n"
+
+"\n\007Keyring file '%s' does not exist. "
+fr: "\n\7Le fichier de cl\351s '%s' n'existe pas. "
+es: "\n\7El anillo '%s' no existe. "
+
+"\n\007Sorry, this key has been revoked by its owner.\n"
+fr: "\n\7D\351sol\351, cette cl\351 a \351t\351 r\351voqu\351e par son propri\351taire.\n"
+es: "\n\7Esa clave ha sido revocada por su propietario.\n"
+
+"\nKey for user ID \"%s\"\n\
+has been revoked.  You cannot use this key.\n"
+fr: "\nLa cl\351 pour l'utilisateur \"%s\"\n\
+a \351t\351 r\351voqu\351e. Vous ne pouvez utiliser cette cl\351.\n"
+es: "\nLa clave del ID de usuario \"%s\"\n\
+ha sido revocada.  No puede utilizarla.\n"
+
+"\n\007Key matching expected Key ID %s not found in file '%s'.\n"
+fr: "\n\7Cl\351 correspondant \340 l'identificateur %s non trouv\351e\
+\ndans le fichier '%s'.\n"
+es: "\n\7La comprobaci\363n esperaba un identificador de clave %s que\
+\nno se encuentra en '%s'.\n"
+
+"\n\007Key matching userid '%s' not found in file '%s'.\n"
+fr: "\n\7Cl\351 correspondant \340 l'utilisateur '%s' introuvable\n\
+dans le fichier '%s'.\n"
+es: "\n\7La clave correspondiente al usuario '%s'\n\
+no se encuentra en el fichero '%s'.\n"
+
+"Enter secret key filename: "
+fr: "Entrez le nom du fichier de cl\351s secr\350tes: "
+es: "Introduzca el nombre del fichero de claves secretas: "
+
+"Enter public key filename: "
+fr: "Entrez le nom du fichier de cl\351s publiques: "
+es: "Introduzca el nombre del fichero de claves p\372blicas: "
+
+"\nYou need a pass phrase to unlock your RSA secret key. "
+fr: "\nVous devez avoir un mot de passe pour utiliser votre cl\351 secr\350te RSA."
+es: "\nSe necesita la contrase\361a para abrir la clave secreta RSA. "
+
+"\nKey for user ID \"%s\"\n"
+fr: "\nCl\351 pour l'utilisateur \"%s\"\n"
+es: "\nClave del identificador de usuario \"%s\"\n"
+
+"No passphrase; secret key unavailable.\n"
+No translation
+No translation
+
+"\nAdvisory warning: This RSA secret key is not protected by a passphrase.\n"
+fr: "\nAttention: cette cl\351 secr\350te RSA n'est pas prot\351g\351e par un mot \
+de passe"
+es: "\nAdvertencia: Esta clave secreta RSA no tiene frase de contrase\361a.\n"
+
+"Pass phrase is good.  "
+fr: "Le mot de passe est correct.  "
+es: "La frase es correcta.  "
+
+"\n\007Key file '%s' is not a secret key file.\n"
+fr: "\n\7Le fichier de cl\351 '%s' n'est pas un fichier de cl\351s secr\350tes.\n"
+es: "\n\7El fichero '%s' no tiene claves secretas.\n"
+
+"Key fingerprint ="
+fr: "Empreinte de la cl\351 ="
+es: "Huella dactilar de la clave ="
+
+"\nKey ring: '%s'"
+fr: "\nFichier de cl\351: '%s'"
+es: "\nAnillo de claves: '%s'"
+
+", looking for user ID \"%s\"."
+fr: ", recherche du nom d'utilisateur \"%s\"."
+es: ", buscando el identificador \"%s\"."
+
+"\nType bits/keyID    Date       User ID\n"
+fr: "\nType bits/ident.   Date       Utilisateur\n"
+es: "\nTipo bits/idclave  Fecha      Usuario\n"
+
+"*** KEY REVOKED ***\n"
+fr: "*** CLE' REVOQUE ***\n"
+es: "*** CLAVE REVOCADA ***\n"
+
+"(Unknown signator, can't be checked)\n"
+fr: "(Signataire inconnu, ne peut \352tre v\351rifi\351)\n"
+es: "(Firmante desconocido, no puede comprobarse)\n"
+
+"1 matching key found.\n"
+No translation
+No translation
+
+"%d matching keys found.\n"
+No translation
+No translation
+
+"\nChecking signatures...\n"
+fr: "\nV\351rification des signatures...\n"
+es: "\nComprobando las firmas...\n"
+
+"(Unknown signator, can't be checked)"
+No translation
+No translation
+
+"(Key too long, can't be checked)"
+No translation
+No translation
+
+"(Malformed or obsolete signature format)"
+No translation
+No translation
+
+"(Unknown public-key algorithm)"
+No translation
+No translation
+
+"(Unknown hash algorithm)"
+No translation
+No translation
+
+"(Unknown signature packet version)"
+No translation
+No translation
+
+"(Malformed signature)"
+No translation
+No translation
+
+"(Corrupted signature packet)"
+No translation
+No translation
+
+"\007**** BAD SIGNATURE! ****"
+fr: "\7**** MAUVAISE SIGNATURE! ****"
+es: "\7**** FIRMA INCORRECTA ****"
+
+"Remove bad signatures (Y/n)? "
+fr: "Supprimer les mauvaises signatures (O/n)? "
+es: "\277Suprimir las firmas incorrectas (S/n)? "
+
+"\nRemoving signatures from userid '%s' in key ring '%s'\n"
+fr: "\nSuppression des signatures de l'utilisateur '%s'\n\
+dans le fichier de cl\351s '%s'\n"
+es: "\nSuprimiendo las firmas del usuario '%s'\n\
+del anillo de claves '%s'\n"
+
+"\n\007Key not found in key ring '%s'.\n"
+fr: "\n\7Cl\351 introuvable dans le fichier de cl\351s '%s'.\n"
+es: "\n\7No se ha encontrado la clave en el anillo '%s'.\n"
+
+"\nKey has no signatures to remove.\n"
+fr: "\nLa cl\351 n'a pas de signatures \340 supprimer.\n"
+es: "\nLa clave no tiene ninguna firma que borrar.\n"
+
+"\nKey has %d signature(s):\n"
+fr: "\nLa cl\351 a %d signature(s):\n"
+es: "\nLa clave tiene %d firma(s):\n"
+
+"Remove this signature (y/N)? "
+fr: "Suppression de cette signature (o/N)? "
+es: "\277Suprimir esta firma (s/N)? "
+
+"\nNo key signatures removed.\n"
+fr: "\nPas de supression de signature de cl\351.\n"
+es: "\nNo se ha suprimido ninguna firma.\n"
+
+"\n%d key signature(s) removed.\n"
+fr: "\n%d signature(s) de cl\351 supprim\351e(s).\n"
+es: "\nSuprimidas %d firma(s) de clave.\n"
+
+"\nRemoving from key ring: '%s'"
+fr: "\nSuppression du ficher de cl\351s: '%s'"
+es: "\nSuprimiendo del anillo: '%s'"
+
+", userid \"%s\".\n"
+fr: ", utilisateur \"%s\".\n"
+es: ", identificador \"%s\".\n"
+
+"\nKey has more than one user ID.\n\
+Do you want to remove the whole key (y/N)? "
+fr: "\nLa cl\351 a plus d'un nom d'utilisateur.\n\
+Voulez vous supprimier toute la cl\351 (o/N)? "
+es: "\nLa clave tiene m\341s de un identificador de usuario.\n\
+\277Quiere suprimirla por completo (s/N)? "
+
+"\nNo more user ID's\n"
+fr: "\nPlus de noms d'utilisateur\n"
+es: "\nNo hay m\341s identificadores de usuario\n"
+
+"Remove \"%s\" (y/N)? "
+fr: "Supprimer \"%s\" (o/N)? "
+es: "\277Suprimir \"%s\" (s/N)? "
+
+"\nAre you sure you want this key removed (y/N)? "
+fr: "\nEtes vous s\373r(e) de vouloir supprimer cette cl\351 (o/N)? "
+es: "\n\277Est\341 seguro/a de querer suprimir esta clave (s/N)? "
+
+"\nUser ID removed from key ring.\n"
+fr: "\nNom d'utilisateur supprim\351 du fichier de cl\351s.\n"
+es: "\nIdentificador suprimido del anillo.\n"
+
+"\nKey removed from key ring.\n"
+fr: "\nCl\351 supprim\351e du fichier de cl\351s.\n"
+es: "\nClave suprimida del anillo.\n"
+
+"\nKey or user ID is also present in secret keyring.\n\
+Do you also want to remove it from the secret keyring (y/N)? "
+fr: "\nLa cl\351 ou le nom d'utilisateur est aussi dans le fichier de cl\351s\n\
+secr\350tes. Voulez vous l'enlever du ficher de cl\351s secr\350tes (o/N)? "
+es: "\nEl identificador de usuario o de clave tambi\351n est\341 en el anillo\n\
+de claves secretas. \277Quiere borrarlo tambi\351n de ah\355 (s/N)? "
+
+"\nExtracting from key ring: '%s'"
+fr: "\nExtraction du fichier de cl\351s: '%s'"
+es: "\nExtrayendo del anillo de claves: '%s'"
+
+"\nExtract the above key into which file? "
+fr: "\nExtraire la cl\351 ci-dessus dans quel fichier? "
+es: "\n\277En qu\351 fichero hay que extraer la clave anterior? "
+
+"Key ID %s is already included in key ring '%s'.\n"
+fr: "L'identificateur de cl\351 %s est d\351j\340 pr\351sent\
+\ndans le fichier de cl\351s '%s'.\n"
+es: "El identificador de clave %s ya est\341 en el anillo '%s'.\n"
+
+"\nKey extracted to file '%s'.\n"
+fr: "\nCl\351 mise dans le fichier '%s'.\n"
+es: "\nClave extra\355da en el fichero '%s'.\n"
+
+"\nThis operation may not be performed on a secret keyring.\n\
+Defaulting to public keyring."
+fr: "\nCette operation ne peut pas \352tre effectu\351e sur un fichier de cl\351s\n\
+secr\350tes. Le fichier de cl\351s publiques sera utilis\351 \340 la place."
+es: "\nEsta operacion no se puede realizar sobre el anillo de claves secretas.\n\
+Dando plazo al anillo de claves p\372blicas."
+
+"\nEditing userid \"%s\" in key ring: '%s'.\n"
+fr: "\nModification du nom d'utilsateur \"%s\"\n\
+dans le fichier de cl\351: '%s'.\n"
+es: "\nModificaci\363n del identificador \"%s\"\n\
+en el anillo: '%s'.\n"
+
+"\nCan't open public key ring file '%s'\n"
+fr: "\nOuverture du fichier de cl\351s publiques '%s' impossible.\n"
+es: "\nNo se puede abrir el anillo de claves p\372blicas '%s'\n"
+
+"\n\007File '%s' is not a public keyring.\n"
+fr: "\n\7Le fichier '%s' n'est pas un fichier de cl\351s publiques.\n"
+es: "\n\7El fichero '%s' no es un anillo de claves p\372blicas.\n"
+
+"\n\007This key has been revoked by its owner.\n"
+fr: "\n\7Cette cl\351 a \351t\351 r\351voqu\351e par son propri\351taire.\n"
+es: "\n\7Esta clave ha sido revocada por su propietario.\n"
+
+"\nNo secret key available.  Editing public key trust parameter.\n"
+fr: "\nPas de cl\351 secr\350te disponible. Modification du param\350tre de\n\
+confiance de la cl\351 publique.\n"
+es: "\nNo hay clave secreta disponible. Modificando el par\341metro de confianza\n\
+de la clave p\372blica.\n"
+
+"Current trust for this key's owner is: %s\n"
+fr: "Le niveau de confiance courant pour le propri\351taire de\n\
+cette cl\351 est: %s\n"
+es: "La confianza actual en el due\361o de esta clave es: %s\n"
+
+"Public key ring updated.\n"
+fr: "Fichier de cl\351s publiques modifi\351...\n"
+es: "Actualizado el anillo de claves p\372blicas.\n"
+
+"\nCurrent user ID: %s"
+fr: "\nNom d'utilisateur courant: %s"
+es: "\nIdentificador actual de usuario: %s"
+
+"\nDo you want to add a new user ID (y/N)? "
+No translation
+No translation
+
+"\nEnter the new user ID: "
+fr: "\nEntrez le nouveau nom d'utilisateur: "
+es: "\nIntroduzca el nuevo identificador: "
+
+"\nMake this user ID the primary user ID for this key (y/N)? "
+fr: "\nEtablir ce nom d'utilisateur comme nom principal pour cette cl\351 \
+(o/N)? "
+es: "\n\277Se establece este identificador como el principal de esta clave (s/N)? "
+
+"\nDo you want to change your pass phrase (y/N)? "
+fr: "\nVoulez vous changer votre mot de passe (o/N)? "
+es: "\n\277Quiere cambiar la contrase\361a (s/N)? "
+
+"(No changes will be made.)\n"
+fr: "(Aucun changement ne sera effectu\351.)\n"
+es: "(No se realizar\341 ning\372n cambio.)\n"
+
+"\n\007Unable to update secret key ring.\n"
+fr: "\n\7Impossible de modifier le fichier de cl\351s secr\350tes.\n"
+es: "\n\7No puede actualizarse el anillo de claves secretas.\n"
+
+"\nSecret key ring updated...\n"
+fr: "\nFichier de cl\351s secr\350tes modifi\351...\n"
+es: "\nActualizado el anillo de claves secretas ...\n"
+
+"\n\007Unable to update public key ring.\n"
+fr: "\n\7Impossible de modifier le fichier de cl\351s publiques.\n"
+es: "\n\7No puede actualizarse el anillo de claves p\372blicas.\n"
+
+"(No need to update public key ring)\n"
+fr: "(Pas besoin de modifier le fichier de cl\351s publiques)\n"
+es: "(No hay que actualizar el anillo de claves p\372blicas)\n"
+
+"\nDo you want to permanently revoke your public key\n\
+by issuing a secret key compromise certificate\n\
+for \"%s\" (y/N)? "
+fr: "\nVoulez vous r\351voquer de fa\347on permanente votre cl\351 publique\n\
+en \351mettant un certificat de compromission de cl\351 secr\350te\n\
+pour \"%s\" (o/N)? "
+es: "\n\277Quiere revocar permanentemente su clave p\372blica\n\
+emitiendo un certificado de compromiso de clave secreta\n\
+para \"%s\" (s/N)? "
+
+"You can only disable keys on your public keyring.\n"
+fr: "Vous ne pouvez inactiver des cl\351s que sur votre fichier de cl\351s\
+\npubliques.\n"
+es: "S\363lo puede desactivar claves en el anillo de claves p\372blicas.\n"
+
+"\nKey is already disabled.\n\
+Do you want to enable this key again (y/N)? "
+fr: "\nLa cl\351 est d\351j\340 inactiv\351e.\n\
+Voulez vous r\351activer cette cl\351 (o/N)? "
+es: "\nLa clave ya est\341 desactivada.\n\
+\277Quiere activarla otra vez (s/N)? "
+
+"\nDisable this key (y/N)? "
+fr: "D\351sactiver cette cl\351 (o/N)? "
+es: "\n\277Desactivar esta clave (s/N)? "
+
+"Pick your RSA key size:\n\
+    1)   512 bits- Low commercial grade, fast but less secure\n\
+    2)   768 bits- High commercial grade, medium speed, good security\n\
+    3)  1024 bits- \"Military\" grade, slow, highest security\n\
+Choose 1, 2, or 3, or enter desired number of bits: "
+No translation
+No translation
+
+"Generating an RSA key with a %d-bit modulus.\n"
+fr: "Generation d'une cl\351 RSA avec un module de %d bits.\n"
+es: "Generando una clave RSA con m\363dulo de %d bits.\n"
+
+"\nYou need a user ID for your public key.  The desired form for this\n\
+user ID is your name, followed by your E-mail address enclosed in\n\
+<angle brackets>, if you have an E-mail address.\n\
+For example:  John Q. Smith <12345.6789@compuserve.com>\n\
+Enter a user ID for your public key: \n"
+fr: "\nIl vous faut un nom d'utilisateur pour votre cl\351 publique. La forme\n\
+d\351sir\351e pour ce nom d'utilisateur est votre nom, suivi de votre addresse\n\
+de courrier \351lectronique entre <crochets>, si vous en avez une.\n\
+Par exemple:  Jean Dupont <dupont@toto.fr>\n\
+Entrez un nom d'utilisateur pour votre cl\351 publique\n\
+(votre nom): "
+es: "\nNecesitar\341 un identificador para su clave p\372blica.  El formato requerido\n\
+consiste en su nombre, seguido de su direcci\363n de correo electr\363nico,\n\
+si tiene una, entre <\341ngulos>.\n\
+Por ejemplo:  Juan Espannol <juan@burua.org>\n\
+Introduzca un identificador de usuario para su clave p\372blica: \n"
+
+"\nYou need a pass phrase to protect your RSA secret key.\n\
+Your pass phrase can be any sentence or phrase and may have many\n\
+words, spaces, punctuation, or any other printable characters.\n"
+fr: "\nVous devez avoir un mot de passe pour prot\351ger votre cl\351 RSA \n\
+secr\350te. Votre mot de passe peut \352tre n'importe quelle phrase ou portion\n\
+de phrase et peut avoir plusieurs mots, espaces, caract\350res de ponctuation\n\
+ou tout autre caract\350re imprimable.\n"
+es: "\nNecesita una frase de contrase\361a para proteger su clave secreta RSA.\n\
+Puede ser cualquier expresi\363n formada por varias palabras, espacios,\n\
+signos de puntuaci\363n o cualquier otro car\341cter imprimible.\n"
+
+"\nNote that key generation is a lengthy process.\n"
+fr: "\nNotez que la g\351n\351ration de cl\351 est une proc\351dure lente.\n"
+es: "\nTenga en cuenta que la generaci\363n de claves es un proceso lento.\n"
+
+"\n\007Keygen failed!\n"
+fr: "\n\7Generation de cl\351 non r\351ussie!\n"
+es: "\n\7Error en la generaci\363n de claves\n"
+
+"Key ID %s\n"
+fr: "identificateur de cl\351 %s\n"
+es: "Identificador de clave %s\n"
+
+"Display secret components (y/N)?"
+No translation
+No translation
+
+"\007Key generation completed.\n"
+fr: "\7G\351n\351ration de cl\351 termin\351e.\n"
+es: "\7Generaci\363n de claves finalizada.\n"
+
+"\n\007File '%s' is not a text file; cannot display.\n"
+fr: "\n\7Le fichier '%s' n'est pas un fichier de texte et ne peut \352tre \
+visualis\351\n"
+es: "\n\7El fichero '%s' no es un fichero de texto; no puede mostrarse.\n"
+
+"\nDone...hit any key\r"
+fr: "\nTermin\351... appuyez sur n'importe quelle touche \r"
+es: "\nHecho...pulse cualquier tecla\r"
+
+"More -- %d%% -- Hit space for next screen, Enter for new line, 'Q' to quit --\r"
+fr: "Suite -- (%d%%) -- Espace: \351cran suivant, Entr\351e: nouvelle ligne, Q: quitter\r"
+es: "M\341s -- %d%% -- Espacio: siguiente pantalla, Enter: nueva l\355nea, 'Q': salir --\r"
+
+"\nEnter pass phrase: "
+fr: "\nEntrez votre mot de passe: "
+es: "\nIntroduzca la frase de contrase\361a: "
+
+"\nEnter same pass phrase again: "
+fr: "\nEntrez le m\352me mot de passe de nouveau: "
+es: "\nIntroduzca la misma frase otra vez: "
+
+"\n\007Error: Pass phrases were different.  Try again."
+fr: "\n\7Erreur: Les mots de passe \351taient diff\351rents. Essayez encore."
+es: "\n\7Error: Las frases son diferentes. Pruebe otra vez."
+
+"2.5"
+fr: "2.5"
+es: "2.5"
+
+"\nStopped at user request\n"
+fr: "\nArr\352t par demande de l'utilisateur\n"
+es: "\nInterrumpido a petici\363n del usuario\n"
+
+"Pretty Good Privacy(tm) %s - Public-key encryption for the masses.\n"
+fr: "Pretty Good Privacy(tm) %s - Cryptographie \340 cl\351 publique pour tous.\n"
+es: "Pretty Good Privacy(tm) %s - Criptograf\355a de clave p\372blica para todos.\n"
+
+"(c) 1990-1994 Philip Zimmermann, Phil's Pretty Good Software. %s\n"
+fr: "(c) 1990-1994 Philip Zimmermann, Phil's Pretty Good Software. %s\n"
+es: "(c) 1990-1994 Philip Zimmermann, Phil's Pretty Good Software. %s\n"
+
+"NOTE: IT IS ILLEGAL TO EXPORT THIS SOFTWARE FROM THE USA.\n"
+No translation
+No translation
+
+"\007No configuration file found.\n"
+No translation
+No translation
+
+"\007WARNING: Environmental variable TZ is not defined, so GMT timestamps\n\
+may be wrong.  See the PGP User's Guide to properly define TZ\n\
+in AUTOEXEC.BAT file.\n"
+fr: "\7ATTENTION: La variable d'environnement TZ n'est pas d\351finie, les\n\
+temps GMT peuvent donc \352tres faux. Voir le guide de l'utilisateur PGP pour\n\
+d\351finir correctement TZ dans le fichier AUTOEXEC.BAT.\n"
+es: "\7ADVERTENCIA: La variable TZ no est\341 definida en el entorno, por lo\n\
+tanto los sellos de fecha GMT pueden estar equivocados.  V\351ase la Gu\355a del\n\
+Usuario de PGP para definir adecuadamente TZ en AUTOEXEC.BAT.\n"
+
+"\nWARNING: PGP User's Guide not found.  You should not use PGP\n\
+without first looking at the User's Guide.\n"
+No translation
+No translation
+
+"\nFile %s wiped and deleted. "
+fr: "\nFichier %s effac\351 et d\351truit. "
+es: "\nEl archivo %s ha sido borrado y destruido. "
+
+"\nFor details on licensing and distribution, see the PGP User's Guide.\
+\nFor other cryptography products and custom development services, contact:\
+\nPhilip Zimmermann, 3021 11th St, Boulder CO 80304 USA, phone +1 303 541-0140\n"
+fr: "\nConsulter le guide de l'utilisateur de PGP pour les d\351tails de\n\
+license et de distribution. Pour d'autres produits de cryptographie\n\
+et services de d\351veloppement personalis\351s, contacter: Philip Zimmermann,\n\
+3021 11th St, Boulder CO 80304 USA, t\351l\351phone (19) 1 303 541 0140\n"
+es: "\nInformaci\363n sobre licencia y distribuci\363n en la Gu\355a del Usuario de PGP.\
+\nM\341s informaci\363n sobre otros productos y servicios criptogr\341ficos a medida:\
+\nPhilip Zimmermann, 3021 11th St, Boulder CO 80304 USA, tel (1-303) 541-0140\n"
+
+"@translator@"
+fr: "\nTraduction fran\347aise de Jean-loup Gailly, jloup@chorus.fr\n"
+es: "\nTraducido al castellano por Armando Ramos <armando@clerval.org>\n"
+
+"\nFor a usage summary, type:  pgp -h\n"
+fr: "\nPour un sommaire d'utilisation, tapez:  pgp -h\n"
+es: "\nPara ver un resumen de las instrucciones, escriba: pgp -h\n"
+
+"\007File [%s] does not exist.\n"
+fr: "\7Le fichier [%s] n'existe pas.\n"
+es: "\7El fichero [%s] no existe.\n"
+
+"\007Invalid filename: [%s] too long\n"
+fr: "\7Nom de fichier invalide: [%s] trop long\n"
+es: "\7Nombre incorrecto de fichero: [%s] es demasiado largo\n"
+
+"\n\007Input file '%s' looks like it may have been created by PGP. "
+fr: "\n\7Le fichier d'entr\351e '%s' semble avoir \351t\351 cr\351\351 par PGP. "
+es: "\n\7El fichero de entrada '%s' parece haber sido creado por PGP. "
+
+"\nIs it safe to assume that it was created by PGP (y/N)? "
+fr: "\nEtes vous s\373r qu'il a \351t\351 cr\351\351 par PGP (o/N)? "
+es: "\n\277Puede asumirse con seguridad que lo ha creado PGP (s/N)? "
+
+"\n\007Warning: '%s' is not a pure text file.\nFile will be treated as binary data.\n"
+fr: "\n\7Attention: '%s' n'est pas un fichier de texte pur.\n\
+Le fichier sera trait\351 comme des donn\351es binaires.\n"
+es: "\n\7Advertencia: '%s' no es un fichero de texto puro.\nSe tratar\341 como si fuese binario.\n"
+
+"\n\007Error: Only text files may be sent as display-only.\n"
+fr: "\n\7Erreur: seuls les fichiers de texte peuvent \352tre envoy\351s\n\
+pour affichage exclusivement.\n"
+es: "\n\7Error: S\363lo los ficheros de texto pueden enviarse exclusivamente para mostrar.\n"
+
+"\nA secret key is required to make a signature. "
+fr: "\nUne cl\351 secr\350te est n\351cessaire pour faire une signature. "
+es: "\nSe necesita una clave secreta para generar la firma. "
+
+"\nYou specified no user ID to select your secret key,\n\
+so the default user ID and key will be the most recently\n\
+added key on your secret keyring.\n"
+fr: "\nVous n'avez pas sp\351cifi\351 de nom d'utilisateur pour s\351lectionner\n\
+votre cl\351 secr\350te, donc le nom et la cl\351 par d\351faut seront ceux les\n\
+plus r\351cemment ajout\351s \340 votre fichier de cl\351s secr\350tes.\n"
+es: "\nNo ha indicado ning\372n identificador para escoger la clave secreta,\n\
+por lo tanto el identificador y la clave por omisi\363n ser\341n los \372ltimos\n\
+a\361adidos al anillo.\n"
+
+"\007Signature error\n"
+fr: "\7Erreur de signature\n"
+es: "\7Error de firma\n"
+
+"\n\nRecipients' public key(s) will be used to encrypt. "
+fr: "\n\nLa ou les cl\351s publiques du destinataire seront utilis\351es\
+ pour chiffrer. "
+es: "\n\nSe utilizan las claves p\372blicas de los destinatarios para encriptar. "
+
+"\nA user ID is required to select the recipient's public key. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351\n\
+publique du destinataire. "
+es: "\nSe necesita un identificador de usuario para encontrar la clave p\372blica\n\
+del destinatario. "
+
+"\nEnter the recipient's user ID: "
+fr: "\nEntrez le nom d'utilisateur du destinataire: "
+es: "\nIntroduzca el identificador del destinatario: "
+
+"\007Encryption error\n"
+fr: "\7Erreur de chiffrage\n"
+es: "\7Error en encriptaci\363n\n"
+
+"\nCiphertext file: %s\n"
+fr: "\nFichier chiffr\351: %s\n"
+es: "\nFichero cifrado: %s\n"
+
+"\nSignature file: %s\n"
+fr: "\nFichier de signature: %s\n"
+es: "\nFichero de firma: %s\n"
+
+"\n\007Error: Transport armor stripping failed for file %s\n"
+fr: "\n\7Erreur dans la suppression de la protection de transport pour\n\
+le fichier %s\n"
+es: "\n\7Error: No se ha podido quitar la armadura de transporte de %s\n"
+
+"Stripped transport armor from '%s', producing '%s'.\n"
+fr: "Protection de transport supprim\351e pour '%s', produisant '%s'.\n"
+es: "Quitada la armadura de transporte de '%s', produciendo '%s'.\n"
+
+"\nLooking for next packet in '%s'...\n"
+fr: "\nRecherche du prochain paquet dans '%s'...\n"
+es: "\nBuscando el siguiente paquete en '%s'...\n"
+
+"\nFile is encrypted.  Secret key is required to read it. "
+fr: "\nLe fichier est chiffr\351. La cl\351 secr\350te est n\351cessaire pour le lire."
+es: "\nEl fichero est\341 encriptado. Para leerlo se necesita la clave secreta. "
+
+"\nThis file has a signature, which will be left in place.\n"
+fr: "\nCe fichier a une signature, qui sera gard\351e.\n"
+es: "\nEste fichero tiene firma, que se deja en su sitio.\n"
+
+"\nFile has signature.  Public key is required to check signature. "
+fr: "\nLe fichier a une signature. La cl\351 publique est n\351cessaire pour la\n\
+v\351rifier. "
+es: "\nEl fichero tiene firma.  Se necesita la clave p\372blica para comprobarla. "
+
+"\nFile is conventionally encrypted.  "
+fr: "\nLe fichier est chiffr\351 de mani\350re conventionnelle.  "
+es: "\nEl fichero ha sido encriptado convencionalmente.  "
+
+"\nFile contains key(s).  Contents follow..."
+fr: "\nLe fichier contient une ou plusieurs cl\351s. Le contenu suit..."
+es: "\nEl fichero contiene una o m\341s claves. Se muestra a continuaci\363n ..."
+
+"\nDo you want to add this keyfile to keyring '%s' (y/N)? "
+fr: "\nVoulez vous ajouter ce fichier de cl\351 au fichier '%s' (o/N)? "
+es: "\n\277Quiere a\361adir este fichero de claves al anillo '%s' (s/N)? "
+
+"\007Keyring add error. "
+fr: "\7Erreur dans l'addition au fichier de cl\351s. "
+es: "\7Error al a\361adir en el anillo. "
+
+"\007\nError: '%s' is not a ciphertext, signature, or key file.\n"
+fr: "\7\nErreur: '%s' n'est pas un fichier chiffr\351, de signatures\
+\nou de cl\351s.\n"
+es: "\7\nError: '%s' no es un texto cifrado, de firma ni de clave.\n"
+
+"\n\nThis message is marked \"For your eyes only\".  Display now (Y/n)? "
+fr: "\n\nCe message est marqu\351 \"Pour vos yeux seulement\".\n\
+Afficher maintenant (O/n)? "
+es: "\n\nEste mensaje est\341 marcado como \"S\363lo para sus ojos\". \277Mostrar ahora (S/n)? "
+
+"\n\nPlaintext message follows...\n"
+fr: "\n\nLe message en clair suit...\n"
+es: "\n\nMensaje en texto normal a continuaci\363n...\n"
+
+"Save this file permanently (y/N)? "
+fr: "Sauvegarde de ce fichier de mani\350re permanente (o/N)? "
+es: "\277Almacenar este fichero de forma permanente (s/N)? "
+
+"Enter filename to save file as: "
+fr: "Entrez le nom du fichier de sauvegarde: "
+es: "Introduzca el nombre para el fichero: "
+
+"\nPlaintext filename: %s"
+fr: "\nNom du fichier en clair: %s"
+es: "\nNombre del fichero normal: %s"
+
+"\nPlaintext file '%s' looks like it contains a public key."
+fr: "\nLe ficher en clair '%s' semble contenir une cl\351 publique."
+es: "\nEl fichero normal '%s' parece contener una clave p\372blica."
+
+"\nPlaintext file '%s' looks like a %s file."
+fr: "\nLe fichier en clair '%s' semble \352tre un fichier %s."
+es: "\nEl fichero normal '%s' parece un fichero %s."
+
+"\n\007Output file '%s' may contain more ciphertext or signature."
+fr: "\n\7Le fichier de sortie '%s' peut contenir d'autre texte chiffr\351\n\
+ou signature."
+es: "\n\7El fichero de salida '%s' puede contener m\341s texto cifrado, o una firma."
+
+"\a\nError: PGP User's Guide not found.\n\
+PGP looked for it in the following directories:\n"
+No translation
+No translation
+
+"and the doc subdirectory of each of the above.  Please put a copy of\n\
+both volumes of the User's Guide in one of these directories.\n\
+\n\
+Under NO CIRCUMSTANCES should PGP ever be distributed without the PGP\n\
+User's Guide, which is included in the standard distribution package.\n\
+If you got a copy of PGP without the manual, please inform whomever you\n\
+got it from that this is an incomplete package that should not be\n\
+distributed further.\n\
+\n\
+PGP will not generate a key without finding the User's Guide.\n\
+\n"
+No translation
+No translation
+
+"\007Keygen error. "
+fr: "\7Erreur dans la g\351n\351ration de cl\351. "
+es: "\7Error en la generaci\363n de claves. "
+
+"\007Keyring check error.\n"
+fr: "\7Erreur dans la v\351rification du fichier de cl\351s.\n"
+es: "\7Error al comprobar el anillo.\n"
+
+"\007Maintenance pass error. "
+fr: "\7Erreur dans la passe de maintenance. "
+es: "\7Error en el proceso de mantenimiento. "
+
+"File '%s' is not a public keyring\n"
+fr: "Le fichier '%s' n'est pas un fichier de cl\351s publiques\n"
+es: "El fichero '%s' no es un anillo de claves p\372blicas\n"
+
+"\nA user ID is required to select the public key you want to sign. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351\n\
+publique que vous voulez signer. "
+es: "\nSe necesita un identificador de usuario para elegir la clave p\372blica\n\
+que quiera firmar. "
+
+"\nEnter the public key's user ID: "
+fr: "\nEntrez le nom d'utilisateur pour la cl\351 publique: "
+es: "\nIntroduzca el identificador de la clave p\372blica: "
+
+"\007Key signature error. "
+fr: "\7Erreur dans la signature de cl\351. "
+es: "\7Error en una firma de clave. "
+
+"\nA user ID is required to select the key you want to revoke or disable. "
+fr: "\nUn nom d'utilisateur est requis pour s\351lectionner la cl\351 que vous\
+voulez r\351voquer ou inactiver. "
+es: "\nSe necesita un identificador de usuario para elegir la clave que quiere\n\
+revocar o desactivar. "
+
+"\nEnter user ID: "
+fr: "\nEntrez le nom d'utilisateur: "
+es: "\nIntroduzca el identificador: "
+
+"\nA user ID is required to select the key you want to edit. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351 que\n\
+vous voulez modifier. "
+es: "\nSe necesita el identificador de usuario para elegir la clave que\n\
+quiera modificar. "
+
+"\nEnter the key's user ID: "
+fr: "\nEntrez le nom d'utilisateur pour la cl\351: "
+es: "\nIntroduzca el identificador de la clave: "
+
+"\007Keyring edit error. "
+fr: "\7Erreur dans la modification du fichier de cl\351s. "
+es: "\7Error en la modificaci\363n del anillo. "
+
+"\n\007Key file '%s' does not exist.\n"
+fr: "\n\7Le fichier de cl\351s '%s' n'existe pas.\n"
+es: "\n\7El fichero de claves '%s' no existe.\n"
+
+"\nA user ID is required to select the key you want to extract. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351 que\n\
+vous voulez extraire. "
+es: "\nSe necesita el identificador de usuario para elegir la clave que\n\
+quiera extraer. "
+
+"\007Keyring extract error. "
+fr: "\7Erreur dans l'extraction du fichier de cl\351s. "
+es: "\7Error al extraer del anillo. "
+
+"\nA user ID is required to select the public key you want to\n\
+remove certifying signatures from. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351\
+ publique\n\
+pour laquelle vous voulez supprimer des signatures de certification. "
+es: "\nSe necesita el identificador de usuario para elegir la clave p\372blica\n\
+de la que suprimir firmas. "
+
+"\nA user ID is required to select the key you want to remove. "
+fr: "\nUn nom d'utilisateur est n\351cessaire pour s\351lectionner la cl\351 que\n\
+vous voulez supprimer. "
+es: "\nSe necesita el identificador de usuario para elegir la clave que\n\
+quiera suprimir . "
+
+"\007Key signature remove error. "
+fr: "\7Erreur dans la suppression de signature d'une cl\351. "
+es: "\7Error en la supresi\363n de la firma de una clave. "
+
+"\007Keyring remove error. "
+fr: "\7Erreur dans la suppression du fichier de cl\351s. "
+es: "\7Error al suprimir del anillo. "
+
+"\007Keyring view error. "
+fr: "\7Erreur dans la visualisation du fichier de cl\351s. "
+es: "\7Error al visualizar el anillo. "
+
+"For more detailed help, consult the PGP User's Guide.\n"
+fr: "Pour une aide plus d\351taill\351e, consultez le guide de l'utilisateur de PGP.\n"
+es: "Para obtener ayuda m\341s detallada, consulte la Gu\355a del Usuario de PGP.\n"
+
+"\nInvalid arguments.\n"
+fr: "\nArguments invalides.\n"
+es: "\nArgumentos no v\341lidos.\n"
+
+"\nUsage summary:\
+\nTo encrypt a plaintext file with recipent's public key, type:\
+\n   pgp -e textfile her_userid [other userids] (produces textfile.pgp)\
+\nTo sign a plaintext file with your secret key:\
+\n   pgp -s textfile [-u your_userid]           (produces textfile.pgp)\
+\nTo sign a plaintext file with your secret key, and then encrypt it\
+\n   with recipent's public key, producing a .pgp file:\
+\n   pgp -es textfile her_userid [other userids] [-u your_userid]\
+\nTo encrypt with conventional encryption only:\
+\n   pgp -c textfile\
+\nTo decrypt or check a signature for a ciphertext (.pgp) file:\
+\n   pgp ciphertextfile [plaintextfile]\
+\nTo produce output in ASCII for email, add the -a option to other options.\
+\nTo generate your own unique public/secret key pair:  pgp -kg\
+\nFor help on other key management functions, type:   pgp -k\n"
+fr: "\nSommaire:\
+\nPour chiffrer un fichier en clair avec la cl\351 publique du destinataire, \
+tapez:\
+\n   pgp -e fichier  son_nom [autres noms]              (produit fichier.pgp)\
+\nPour signer un texte en clair avec votre cl\351 secr\350te:\
+\n   pgp -s  fichier [-u votre_nom]             (produit fichier.pgp)\
+\nPour signer un texte en clair avec votre cl\351 secr\350te, puis le chiffrer\
+\n   avec la cl\351 publique du destinataire, produisant un fichier .pgp:\
+\n   pgp -es fichier  son_nom [autres noms] [-u votre_nom]\
+\nPour chiffrer de mani\350re conventionelle seulement:\
+\n   pgp -c fichier\
+\nPour d\351chiffrer ou v\351rifier une signature pour un fichier chiffr\351 (.pgp):\
+\n   pgp fichier_chiffr\351  [-o fichier_en_clair]\
+\nPour produire une sortie en ASCII pour courrier \351lectronique, ajouter\
+\nl'option -a aux autres options.\
+\nPour g\351n\351rer votre propre paire de cl\351s publique/secr\350te:\
+\n   pgp -kg\
+\nPour de l'aide sur les autres fonctions de gestion de cl\351, tapez:  pgp -k\n"
+es: "\nResumen de las instrucciones:\
+\nEncriptar fichero normal con la clave p\372blica del destinatario; escriba:\
+\n   pgp -e ftexto identificador_des             (produce ftexto.pgp)\
+\nFirmar un fichero de texto normal con su clave secreta:\
+\n   pgp -s ftexto [-u su_identificador]         (produce ftexto.pgp)\
+\nFirmar un fichero normal con su clave secreta y despu\351s encriptarlo\
+\n   con la clave p\372blica del destinatario, produciendo un fichero .pgp:\
+\n   pgp -es ftexto identificador_des [otros] [-u su_identificador]\
+\nEncriptar s\363lo con cifrado convencional:\
+\n   pgp -c ftexto\
+\nDesencriptar o comprobar la firma en un fichero cifrado (.pgp):\
+\n   pgp ftextocifrado [ftextonormal]\
+\nProducir resultado en ASCII para correo electr\363nico: a\361adir la opci\363n -a.\
+\nGenerar su propio par \372nico de claves p\372blica/secreta:      pgp -kg\
+\nAyuda sobre otras funciones de gesti\363n de claves; escriba:  pgp -k\n"
+
+"\nKey management functions:\
+\nTo generate your own unique public/secret key pair:\
+\n   pgp -kg\
+\nTo add a key file's contents to your public or secret key ring:\
+\n   pgp -ka keyfile [keyring]\
+\nTo remove a key or a user ID from your public or secret key ring:\
+\n   pgp -kr userid [keyring]\
+\nTo edit your user ID or pass phrase:\
+\n   pgp -ke your_userid [keyring]\
+\nTo extract (copy) a key from your public or secret key ring:\
+\n   pgp -kx userid keyfile [keyring]\
+\nTo view the contents of your public key ring:\
+\n   pgp -kv[v] [userid] [keyring]\
+\nTo check signatures on your public key ring:\
+\n   pgp -kc [userid] [keyring]\
+\nTo sign someone else's public key on your public key ring:\
+\n   pgp -ks her_userid [-u your_userid] [keyring]\
+\nTo remove selected signatures from a userid on a keyring:\
+\n   pgp -krs userid [keyring]\
+\n"
+fr: "Fonctions de gestion des cl\351s:\
+\nPour g\351n\351rer votre propre paire de cl\351s publique/secr\350te:\
+\n   pgp -kg\
+\nPour ajouter le contenu d'un fichier de cl\351s \340 votre fichier de cl\351s\
+\n   public ou secret:\
+\n   pgp -ka fichier_de_cl\351s  [votre_fichier_de_cl\351s]\
+\nPour retirer une cl\351 de votre fichier de cl\351s public ou secret:\
+\n   pgp -kr nom_d_utilisateur [fichier_de_cl\351s]\
+\nPour extraire (copier) une cl\351 de votre fichier de cl\351s public ou secret:\
+\n   pgp -kx nom_d_utilisateur fichier_de_la_cl\351 [fichier_de_cl\351s]\
+\nPour visualiser le contenu de votre fichier de cl\351s:\
+\n   pgp -kv[v]  [nom_d_utilisateur]  [ficher_de_cl\351s]\
+\nPour v\351rifier les signatures sur votre fichier de cl\351s publiques:\
+\n   pgp -kc [nom_d_utilisateur]  [ficher_de_cl\351s]\
+\nPour signer la cl\351 publique de quelqu'un d'autre sur votre fichier de\
+\n   cl\351s publiques:\
+\n   pgp -ks  son_nom  votre_nom  [fichier_de_cl\351s]\
+\nPour enlever certaines signatures d'une personne sur un fichier de cl\351s:\
+\n   pgp -krs  son_nom  [fichier_de_cl\351s]\n"
+es: "\nFunciones para la gesti\363n de claves:\
+\nGenerar su propio par \372nico de claves p\372blica/secreta:\
+\n   pgp -kg\
+\nA\361adir contenido de fichero de clave al anillo de claves p\372blicas o secretas:\
+\n   pgp -ka fdclaves [anillo]\
+\nSuprimir una clave o ID de usuario del anillo de claves p\372blicas o secretas:\
+\n   pgp -kr idusuario [anillo]\
+\nModificar su ID de usuario o su frase de contrase\361a:\
+\n   pgp -ke su_idusuario [anillo]\
+\nExtraer (copiar) una clave del anillo de claves p\372blicas o secretas:\
+\n   pgp -kx idusuario fdclaves [anillo]\
+\nVisualizar el contenido del anillo de claves p\372blicas:\
+\n   pgp -kv[v] [idusuario] [anillo]\
+\nComprobar las firmas del anillo de claves p\372blicas:\
+\n   pgp -kc [idusuario] [anillo]\
+\nFirmar la clave p\372blica de alguien en el anillo de claves p\372blicas:\
+\n   pgp -ks otro_idusuario [-u su_idusuario] [anillo]\
+\nSuprimir ciertas firmas de un idusuario en un anillo:\
+\n   pgp -krs idusuario [anillo]\
+\n"
+
+"\nWe need to generate %u random bits.  This is done by measuring the\
+\ntime intervals between your keystrokes.  Please enter some random text\
+\non your keyboard until you hear the beep:\n"
+fr: "\nNous devons g\351n\351rer %d bits al\351atoires. Ceci est fait en mesurant\
+\nl'intervalle de temps entre les frappes de touches. Veuillez tapper du\
+\ntexte al\351atoire sur votre clavier jusqu'\340 ce que vous entendiez le\
+\nsignal sonore:\n"
+es: "\nNecesitamos generar %d bits aleatorios.  Se hace midiendo los\
+\nintervalos de tiempo entre sus pulsaciones de tecla.  Introduzca\
+\nalg\372n texto al azar en el teclado hasta que oiga un pitido:\n"
+
+"\007 -Enough, thank you.\n"
+fr: "\7 -Assez, merci.\n"
+es: "\7 -Es suficiente, gracias.\n"
+
+"Distributed by the Massachusetts Institute of Technology.  Uses RSAREF 2.0.\n"
+No translation
+No translation
+
+"\nOut of memory\n"
+fr: "\nM\351moire insuffisante\n"
+es: "\nNo queda memoria\n"
+
+"\nCompression/decompression error\n"
+fr: "\nErreur de compression/decompression\n"
+es: "\nError en la compresi\363n/descompresi\363n\n"

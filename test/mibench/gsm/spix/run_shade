@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.pcm .
+echo "copied a speech file (clinton.pcm)"
+
+/u/gs3/leec/leec/Projects/MediaBench/SPIX/SHADE/src/alu -o toast.summary -- ../bin/toast -fpl clinton.pcm > toast.shade
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.pcm.gsm .
+echo "copied an encoded speech file (clinton.pcm.gsm)"
+
+/u/gs3/leec/leec/Projects/MediaBench/SPIX/SHADE/src/alu -o untoast.summary -- ../bin/untoast -fpl clinton.pcm.gsm > untoast.shade

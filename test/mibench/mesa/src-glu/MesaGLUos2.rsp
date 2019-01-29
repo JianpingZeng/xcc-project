@@ -1,0 +1,14 @@
+glu.obj+
+mipmap.obj+
+nurbs.obj+
+nurbscrv.obj+
+nurbssrf.obj+
+nurbsutl.obj+
+polytest.obj+
+project.obj+
+quadric.obj+
+tess.obj+
+tesselat.obj+
+/NOL /NOD /BAT
+MesaGLU.dll
+

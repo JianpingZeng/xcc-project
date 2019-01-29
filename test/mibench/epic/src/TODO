@@ -1,0 +1,44 @@
+BUGS:
+-----
+- Doesn't always give perfect reconstruction with binsize = 0 (a few pixels
+  may be off by one graylevel value).
+
+
+PROGRAM IMPROVEMENTS:
+---------------------
+
+- [DONE] Allow non-square images.  These are currently not accepted, because
+  of collapse_pyr.
+
+- [DONE, although it stillis more effective for powers of 2]
+  Allow arbitrary image sizes (the dimensions currently have to be divisible
+  by 2^num_levels).  This is just a matter of augmenting the collapse_pyr code...
+
+- include a im_stats utility for comparing images.
+
+- Provide an option to use ORTHOGONAL wavelet filters, which produce
+  slightly better (perceptually) compression results.
+
+- Provide a silent (quiet) mode with -q flag.
+
+- color images: provide rgb->yiq, yiq->rgb
+
+- pipes: should be able to read from/write to stdin/stdout.
+
+- allow PROGRESSIVE display (i.e., reconstruct low-res image, and
+  then gradually add in detail).
+
+
+CODER IMPROVEMENTS:
+-------------------
+- Choose quantization binsizes adaptively for each subband 
+  [this usually gives a small improvement, and may not be worth it].
+
+- Instead of sending Huffman trees, use a parameterized model for
+  coefficient statistics to generate them automatically.
+
+- Use an arithmetic coder, or a vector quantizer, instead of run-length 
+  and/or huffman?  [problem: arithmetic is patented.]
+
+- Use some sort of (nonlinear) prediction to guess the high-frequency
+  subband coefficients given the low-frequency subbands.

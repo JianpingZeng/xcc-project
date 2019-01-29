@@ -1,0 +1,97 @@
+# Sample config.txt file for PGP 2.6.2.
+# Blank lines are ignored, as is anything following a '#'.
+# Keywords are not case-sensitive.  
+# Whatever appears in here can be overridden on the command line,
+# by specifying (for example) "+armor=on".
+
+# MyName is substring of default user ID for secret key to make signatures.
+# If not set, PGP will use the first key on your secret keyring (the last
+# key you created) if you don't specify the user with -u
+# MyName = "John Q. Public"
+
+# The language we will be using for displaying messages to the user.  
+#
+# Available languages:
+#   en = English (default), es = Spanish, fr = French, 
+#   de = German, it = Italian, br = Brazilian portuguese
+#
+# Languages not yet available:
+#   esp = Esperanto, lv = Latvian, lt3 = Lithuanian,
+#   ru = Russian, nl = Dutch, #   fi = Finnish,
+#   hu = Hungarian, no = Norwegian, pt = Portugese,
+#   sv = Swedish, da = Danish, is = Icelandic,
+#   zh = Chinese, ko = Korean, ar = Arabic, iw = Hebrew,
+#   el = Greek, tr = Turkish, ja = Japanese
+#
+# Most of these codes are the ISO 639-1988 2-letter "Codes for
+# Representation of Names of Languages"
+# 
+Language = en
+
+# Character set for displaying messages and for conversion of text files.
+# If you set this variable to cp850, ascii or alt_codes, PGP will do
+# character set conversions if TextMode = on or if you specify the -t
+# option when encrypting or signing a file.
+# 
+# Available character sets:
+#   latin1, cp850, alt_codes, koi8, ascii
+#
+# For MSDOS with a standard character set you should use cp850 to get
+# correct character translations.  Russian character sets for MSDOS are
+# usually alt_codes.
+#
+# The default for CharSet is "noconv" which means no character conversion.
+# Note that noconv, latin1, and koi8 are all treated as equivalent.
+#
+# CharSet = cp850
+
+# TMP is the directory name for PGP scratch files, usually a RAM disk.
+# TMP = "e:\"     # Can be overridden by environment variable TMP
+
+# Pager is the file viewing program used for viewing messages with -m
+# If not set or set to "pgp", a built-in pager will be used.  The pager set
+# in config.txt will override the environment variable PAGER.
+# Pager = "list"
+
+# ArmorLines is the maximum number of lines per packet when creating a
+# transport armored file.  Set to 0 to disable splitting in parts.
+Armorlines = 720
+
+# The following commented-out settings are *not* the defaults.
+# Uncomment (remove the leading "#" character) them to get the
+# non-default behaviour indicated.
+
+# Armor = on          # Use -a flag for ASCII armor whenever applicable
+# TextMode = on       # Attempt to use -t option where applicable
+clearsig = on       # Use unarmored plaintext for unencrypted signed message
+# KeepBinary = on     # Decrypt will not delete intermediate .pgp file
+# verbose = 2         # verbose diagnostic messages
+# verbose = 0         # be quiet
+# compress = off      # off means suppress compression to aid debugging
+# showpass = on       # Echo password when user types it
+
+
+# BakRing is the path to a backup copy of your secret keyring, usually
+# on floppy disk.  Your secret keys will be compared with the backup copy
+# when doing a keyring check (pgp -kc)
+# BakRing = "a:\secring.pgp"
+
+# Number of completely trusted signatures needed to make a key valid.
+Completes_Needed = 1
+
+# Number of marginally trusted signatures needed to make a key valid.
+Marginals_Needed = 2
+
+# How many levels of introducers may introduce other introducers.
+Cert_Depth = 4
+
+# TZFix is hours to add to time() to get GMT, for GMT timestamps.
+# Since MSDOS assumes local time is US Pacific time, and pre-corrects 
+# Pacific time to GMT, make TZFix=0 for California, -1 for Colorado, 
+# -2 for Chicago, -3 for NY, -8 for London, -9 for Amsterdam.  
+# However, if your MSDOS environmental variable TZ is properly defined 
+# for your timezone, you can leave TZFix=0.  Unix systems probably 
+# shouldn't need to worry about setting TZFix.
+# TZFix = 0
+
+

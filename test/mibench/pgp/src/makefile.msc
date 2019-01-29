@@ -1,0 +1,176 @@
+# makefile for PGP (Microsoft C)
+#
+#
+# PGP 2.6 can be compiled to use either the modular exponentiation
+# routines that come with RSAREF or those that are built into the
+# multiprecision library (mpilib) that comes with PGP.  For UNIX machines
+# (and probably VAX/VMS, too), we recommend using the RSAREF routines.
+# For MSDOS, we recommend using the mpilib routines (there are assembly
+# language routines that mpilib can call under MSDOS making it much faster
+# than the C code in RSAREF).  By default we have configured both RSAREF
+# and PGP 2.6 to use miplib. If you want to use pure RSAREF you should:
+#	(1) make sure you have the version of RSAREF that comes with
+#	    the PGP 2.6 distribution,
+#	(2) in this makefile, remove the compiler switch -DUSEMPILIB from
+#	    CFLAGS for your system below,
+#	(3) in the RSAREF makefile, remove the compiler switch
+#	    -DUSEMPILIB from CFLAGS before building RSAREF.
+# Note: when you build RSAREF with -DUSEMPILIB, rdemo and dhdemo will
+# fail to link, because they will be unable to find the modular
+# exponentiation routines.  This is OK.
+#
+# Alternatively, to build PGP 2.6.1 with the RSAREF exponentiation routines,
+#	(1) you can use any version of the March 16, 1994 distribution
+#	    of RSAREF,
+#	(2) you need not modify this makefile,
+#	(3) you need not modify the RSAREF makefile.
+#
+#
+# CFLAGS options:
+#
+# -DDEBUG     to include debugging information
+# -DDYN_ALLOC if your compiler does not support large static arrays
+# -DSMALL_MEM if your machine has a small memory (required for MSDOS)
+#
+# Define one of:
+# -DMERRITT    Merritt's modmult (fast on risc machines)
+# -DPEASANT    Russian peasant modulo multiply algorithm
+# -DUPTON      use Upton's modmult algorithm
+# -DSMITH      use Smith's modmult
+# See also the file platform.h for system defaults
+#
+# If you don't have a working FIONREAD ioctl you must use one of these:
+# -DUSE_SELECT to use select() system call
+# -DUSE_NBIO   to use non-blocking read()
+
+DEFINES  = -DMSDOS -DDYN_ALLOC -DSMALL_MEM -DUSEMPILIB -I..\rsaref\source -I..\rsaref\install
+ADEFINES = -DDYN_ALLOC -DSS_NEQ_DS
+
+CC      = cl -nologo -AL
+OPT	= -Oilt
+CFLAGS	= -c -Gt $(OPT) $(DEFINES)
+LD      = link		# Link command
+LDFLAGS	= /M /STACK:24576
+
+ASM	= masm		# Assembler command
+AFLAGS	= -ml $(ADEFINES)
+# For MASM 6.0, use the following
+#ASM	= ml -nologo
+#AFLAGS	= -Zm -Cp -c $(ADEFINES)
+
+OBJS_EXT= 8086.obj zmatch.obj	# ASM obj. files
+LIBS_EXT=			# Libararies
+
+PROJ	=pgp
+EXT	=.exe
+
+.c.obj:
+	$(CC) $(CFLAGS) $(DEBUG) $*.c
+
+all:	$(PROJ)$(EXT)
+
+clean:
+	del $(PROJ)$(EXT)
+	del *.obj
+
+scratch: clean all
+
+new:     clean all
+
+# For a non-RSA version, uncomment the following line
+# RSAOBJS = rsaglue1.obj
+
+# For an RSAREF version, uncomment the following lines
+RSAOBJS = rsaglue2.obj
+RSALIBS = ..\rsaref\install\rsaref.lib
+
+
+# Assembly-language subroutine dependencies
+
+8086.obj: 8086.asm
+	$(ASM) $(AFLAGS) 8086.asm
+
+zmatch.obj: zmatch.asm
+	$(ASM) $(AFLAGS) $(ADEFINES) zmatch.asm
+
+ZIPOBJS= zbits.obj zdeflate.obj zfile_io.obj zglobals.obj \
+	zinflate.obj zip.obj zipup.obj ztrees.obj zunzip.obj 
+
+OBJ1	= pgp.obj crypto.obj keymgmt.obj fileio.obj mdfile.obj more.obj
+OBJ2	= armor.obj mpilib.obj mpiio.obj genprime.obj rsagen.obj random.obj
+OBJ3	= idea.obj passwd.obj md5.obj system.obj language.obj getopt.obj
+OBJ4	= keyadd.obj config.obj keymaint.obj charset.obj randpool.obj noise.obj
+OBJ5	= $(OBJS_EXT) $(RSAOBJS) sleep.obj
+
+$(PROJ)$(EXT):	$(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(ZIPOBJS)
+	echo $(OBJ1)+ >pgp.rsp
+	echo $(OBJ2)+ >>pgp.rsp
+	echo $(OBJ3)+ >>pgp.rsp
+	echo $(OBJ4)+ >>pgp.rsp
+	echo $(OBJ5)+ >>pgp.rsp
+	echo $(ZIPOBJS) >>pgp.rsp
+	echo $(PROJ)$(EXT) >>pgp.rsp
+	echo NUL.MAP >>pgp.rsp
+	echo $(LIBS_EXT) $(RSALIBS); >>pgp.rsp 
+	$(LD) $(LDFLAGS) @pgp.rsp
+
+## Dependencies ##
+armor.obj: armor.c mpilib.h usuals.h platform.h fileio.h mpiio.h language.h 
+armor.obj: pgp.h more.h armor.h crypto.h 
+charset.obj: charset.c usuals.h language.h charset.h system.h 
+config.obj: config.c usuals.h fileio.h pgp.h more.h armor.h config.h charset.h 
+crypto.obj: crypto.c mpilib.h usuals.h platform.h mpiio.h random.h idea.h 
+crypto.obj: crypto.h keymgmt.h keymaint.h pgp.h more.h armor.h mdfile.h md5.h 
+crypto.obj: fileio.h charset.h language.h exitpgp.h zipup.h rsaglue.h 
+fileio.obj: fileio.c random.h usuals.h mpilib.h platform.h mpiio.h fileio.h 
+fileio.obj: language.h pgp.h more.h armor.h exitpgp.h charset.h system.h 
+genprime.obj: genprime.c mpilib.h usuals.h platform.h genprime.h random.h 
+getopt.obj: getopt.c getopt.h 
+idea.obj: idea.c idea.h usuals.h randpool.h 
+keyadd.obj: keyadd.c mpilib.h usuals.h platform.h crypto.h fileio.h keymgmt.h 
+keyadd.obj: charset.h language.h pgp.h more.h armor.h exitpgp.h keyadd.h 
+keyadd.obj: keymaint.h keymaint.c mpilib.h usuals.h platform.h random.h 
+keymaint.obj: crypto.h fileio.h keymgmt.h keymaint.h pgp.h more.h armor.h 
+keymaint.obj: mpiio.h charset.h language.h 
+keymgmt.obj: keymgmt.c system.h mpilib.h usuals.h platform.h idea.h random.h 
+keymgmt.obj: crypto.h fileio.h keymgmt.h rsagen.h mpiio.h language.h pgp.h 
+keymgmt.obj: more.h armor.h md5.h charset.h keymaint.h 
+language.obj: language.c usuals.h fileio.h language.h pgp.h more.h armor.h 
+language.obj: charset.h 
+md5.obj: md5.c md5.h 
+mdfile.obj: mdfile.c mpilib.h usuals.h platform.h mdfile.h md5.h fileio.h 
+mdfile.obj: language.h pgp.h more.h armor.h 
+more.obj: more.c mpilib.h usuals.h platform.h language.h fileio.h pgp.h more.h 
+more.obj: armor.h charset.h 
+mpiio.obj: mpiio.c mpilib.h usuals.h platform.h mpiio.h pgp.h more.h armor.h 
+mpilib.obj: mpilib.c mpilib.h usuals.h platform.h 
+noise.obj: noise.c usuals.h randpool.h noise.h 
+passwd.obj: passwd.c random.h usuals.h md5.h language.h pgp.h more.h armor.h 
+pgp.obj: pgp.c system.h mpilib.h usuals.h platform.h random.h crypto.h fileio.h 
+pgp.obj: keymgmt.h language.h pgp.h more.h armor.h exitpgp.h charset.h getopt.h 
+pgp.obj: config.h keymaint.h keyadd.h rsaglue.h 
+r3000.obj: r3000.c mpilib.h usuals.h platform.h lmul.h 
+random.obj: random.c system.h idea.h usuals.h md5.h noise.h language.h random.h 
+random.obj: fileio.h pgp.h more.h armor.h randpool.h 
+randpool.obj: randpool.c randpool.h usuals.h md5.h 
+rsagen.obj: rsagen.c mpilib.h usuals.h platform.h genprime.h rsagen.h random.h 
+rsagen.obj: rsaglue.h 
+rsaglue1.obj: rsaglue1.c mpilib.h usuals.h platform.h mpiio.h pgp.h more.h 
+rsaglue1.obj: armor.h rsaglue.h random.h 
+rsaglue2.obj: rsaglue2.c mpilib.h usuals.h platform.h mpiio.h pgp.h more.h 
+rsaglue2.obj: armor.h rsaglue.h random.h ../rsaref/install/global.h 
+rsaglue2.obj: ../rsaref/source/rsaref.h ../rsaref/source/md2.h 
+rsaglue2.obj: ../rsaref/source/md5.h ../rsaref/source/des.h 
+rsaglue2.obj: ../rsaref/source/rsa.h 
+sleep.obj: sleep.c
+system.obj: system.c exitpgp.h system.h usuals.h 
+zbits.obj: zbits.c zip.h ztailor.h ziperr.h 
+zdeflate.obj: zdeflate.c zunzip.h usuals.h system.h zip.h ztailor.h ziperr.h 
+zfile_io.obj: zfile_io.c zunzip.h usuals.h system.h 
+zglobals.obj: zglobals.c zip.h ztailor.h ziperr.h 
+zinflate.obj: zinflate.c zunzip.h usuals.h system.h exitpgp.h 
+zip.obj: zip.c usuals.h fileio.h language.h pgp.h more.h armor.h exitpgp.h 
+zip.obj: ziperr.h 
+zipup.obj: zipup.c zip.h ztailor.h ziperr.h zrevisio.h 
+ztrees.obj: ztrees.c zip.h ztailor.h ziperr.h 
+zunzip.obj: zunzip.c zunzip.h usuals.h system.h 

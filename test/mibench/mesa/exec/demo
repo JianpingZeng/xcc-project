@@ -1,0 +1,1 @@
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../demos/osdemo >! out2

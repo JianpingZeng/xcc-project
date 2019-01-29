@@ -1,0 +1,12 @@
+! VAXCRTL.OPT - Options file for PGP/VMS with VAX C RTL
+! (c) Copyright 1992 by Hugh Kennedy. All rights reserved.
+!
+! The author assumes no liability for damages resulting from the use 
+! of this software, even if the damage results from defects in this 
+! software.  No warranty is expressed or implied.  
+!
+! The above notwithstanding, a license to use this software is granted
+! to anyone either in the original or modified form on condition that 
+! this notice is not removed.
+!
+sys$share:vaxcrtl/share

@@ -1,0 +1,14 @@
+====================
+README --  By C. Lee
+====================
+This directory contains modified source files. Modifications
+had been made to facilitate dinero and spix simulations. The
+original program expects an input stream from stdin and 
+produces an output stream to stdout. Since we need to pipe 
+memory addresses referenced by the program execution to the
+dinero cache simulator. Also in case that a shell does not allow
+to specify the file descriptor 3 to which the signature (execution
+characteristics) of a instrumented program has to be redirected
+(i.e., "3>"), the output of the program cannot be directed to
+stdout. In such cases, use source files in this directory instead 
+of ones in src subdirectory.

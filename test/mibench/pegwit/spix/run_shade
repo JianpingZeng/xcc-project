@@ -1,0 +1,6 @@
+#!/bin/sh
+
+../../../simplesim-2.0/sim-profile -iclass -iprof -brprof ../bin/pegwit -e my.pub pgptest.plain pegwit.enc < encryption_junk >pegwitenc.shade
+
+../../../simplesim-2.0/sim-profile -iclass -iprof -brprof ../bin/pegwit -d pegwit.enc pegwit.dec < my.sec >pegwitdec.shade
+

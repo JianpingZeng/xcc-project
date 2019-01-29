@@ -1,0 +1,86 @@
+# Makefile for core library for MS-DOS cwallace@dreamworks.com
+# requires denis vadura`s dmake 3.80 or above
+
+# Mesa 3-D graphics library
+# Version:  2.1
+# Copyright (C) 1995-1996  Brian Paul
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Library General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Library General Public License for more details.
+#
+# You should have received a copy of the GNU Library General Public
+# License along with this library; if not, write to the Free
+# Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+
+# $Id:$
+
+# $Log:$
+
+##### MACROS #####
+
+VPATH = RCS
+
+INCDIR = ..\include
+LIBDIR = ..\lib
+
+# dont define both univbe and glide, its pointless !.
+
+# Want UniVBE (Display Doctor) Support, Scitech Software www.scitechsoft.com
+# Set /I to point to scitech include files.
+# You only need to rebuild dosmesa.c for this to happen.
+CFLAGS += /DUNIVBE /IC:\scitech\include
+
+# Want MGL Support, again scitech software
+#CFLAGS += /DMGL /IC:\scitech\include
+
+# Want GLIDE Support, http://www.3dfx.com
+#CFLAGS += /DGLIDE /IC:\glide\dos\include
+
+CORE_SOURCES = accum.c alpha.c alphabuf.c api.c attrib.c bitmap.c blend.c \
+	bresenhm.c clip.c context.c copypix.c depth.c dlist.c draw.c \
+	drawpix.c enable.c eval.c fog.c feedback.c get.c image.c \
+	interp.c light.c lines.c logic.c masking.c matrix.c misc.c osmesa.c \
+	pb.c pixel.c points.c pointers.c polygon.c readpix.c scissor.c span.c \
+	stencil.c teximage.c texobj.c texture.c triangle.c varray.c vb.c \
+	vertex.c winpos.c xform.c
+
+DRIVER_SOURCES = dosmesa.c
+
+SOURCES = $(CORE_SOURCES) $(DRIVER_SOURCES)
+
+OBJECTS = $(SOURCES:.c=.obj)
+
+##### RULES #####
+
+.c.obj:
+	$(CC) /C /DDOSVGA /I$(INCDIR) $(CFLAGS) $<
+
+##### TARGETS #####
+
+GL_LIB = dosmesa.lib
+
+default: $(GL_LIB)
+
+clean:
+	-rm *.o *~
+
+MAKELIB = wlib /b /c /n /q
+RANLIB = ls
+
+# Make the library
+$(GL_LIB): $(OBJECTS)
+	$(MAKELIB) $(GL_LIB) $(OBJECTS)
+#	$(RANLIB) $(GL_LIB)
+#	move $(GL_LIB)* $(LIBDIR)
+
+#include ..\Make.dos
+include depend.dos
+

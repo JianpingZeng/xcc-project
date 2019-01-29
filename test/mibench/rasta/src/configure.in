@@ -1,0 +1,51 @@
+dnl $Header: /u/drspeech/src/rasta/RCS/configure.in,v 1.5 1996/12/07 02:53:18 davidj Exp $
+dnl
+dnl configure.in for the RASTA program
+dnl Process this file with autoconf to produce a configure script.
+
+AC_INIT(rasta.h)
+AC_CANONICAL_SYSTEM
+AC_PREFIX_DEFAULT(/usr/local)
+if test "${exec_prefix}" = "NONE" 
+then
+	exec_prefix=${prefix}
+fi
+AC_CONFIG_HEADER(config.h)
+AC_ARG_WITH(esps, [  --with-esps             use the ESPS libraries ])
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PATH_PROG(PERL, perl, "/usr/bin/perl")
+
+dnl Checks for header files.
+AC_HEADER_STDC
+
+dnl Check for libraries.
+dnl We can only use ESPS or SPHERE (although the ESPS libs include the
+dnl sphere functionality).
+if test "$with_esps" =  "yes"; then
+	dnl ESPS needs extra network libraries on some systems.
+	AC_CHECK_LIB(socket,bind,
+		     AC_DEFINE(HAVE_LIBSOCKET) LIBS="$LIBS -lsocket -lnsl",
+		     -lnsl)
+	dnl The ESPS libraries.
+	AC_CHECK_LIB(exv,zero_fill,
+		LIBS="$LIBS -lexv -lhdre -lespsg"; AC_DEFINE(HAVE_LIBESPS),
+		AC_MSG_WARN("failed to find ESPS libs - ESPS I/O not supported"),
+		-lhdre -lespsg -lm)
+else
+	dnl The sphere libraries.
+	AC_CHECK_LIB(sp,sp_open,
+		AC_DEFINE(HAVE_LIBSP) LIBS="$LIBS -lsp -lutil",
+		AC_MSG_WARN("failed to find sphere libs - sphere I/O not supported"),
+		-lutil -lm)
+fi
+
+dnl The matlab library.
+AC_CHECK_LIB(mat,matOpen,
+	AC_DEFINE(HAVE_LIBMAT) LIBS="$LIBS -lmat",
+	AC_MSG_WARN("failed to find matlab libs - matlab I/O not supported"),
+	-lm)
+
+AC_OUTPUT(Makefile create_mapping)
