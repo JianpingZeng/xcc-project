@@ -1,0 +1,6 @@
+1. In bench, undefined calling to llvm.lifetime.start, llvm.lifetime.end etc.
+2. In buffer, assertion failure in DAGCombiner.
+3. In bytes, assertion failure of getSizeInBits called on extended MVT.
+4. chfreg.c, undefined calling to llvm.lifetime.start and llvm.lifetime.end.
+   index out of range in visitSwitch of SelectionDAGLowering class.
+
