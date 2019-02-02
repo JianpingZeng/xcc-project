@@ -18,6 +18,7 @@
 package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
+import backend.analysis.aa.AliasResult;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.intrinsic.Intrinsic;
@@ -2109,12 +2110,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
       case memset: {
         // FIXME, memset optimization has bugs.
-        /*SDValue op1 = getValue(ci.operand(1));
+        SDValue op1 = getValue(ci.operand(1));
         SDValue op2 = getValue(ci.operand(2));
         SDValue op3 = getValue(ci.operand(3));
         int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
         dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
-            align, ci.operand(1), 0));*/
+            align, ci.operand(1), 0));
         return null;
       }
       case memcpy: {
@@ -2125,6 +2126,28 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
             align, false, ci.operand(1),
             0, ci.operand(2), 0));
+        return null;
+      }
+      case memmove: {
+        SDValue op1 = getValue(ci.operand(1));
+        SDValue op2 = getValue(ci.operand(2));
+        SDValue op3 = getValue(ci.operand(3));
+        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+
+        // If the source and destination are known to not be aliases, we can
+        // lower memmove as memcpy.
+        long size = -1;
+        if (op3.getNode() instanceof SDNode.ConstantSDNode) {
+          size = ((SDNode.ConstantSDNode)op3.getNode()).getZExtValue();
+        }
+        if (aa.alias(ci.operand(1), (int)size, ci.operand(2), (int)size) == AliasResult.NoAlias) {
+          dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.operand(1),
+              0, ci.operand(2), 0));
+          return null;
+        }
+
+        dag.setRoot(dag.getMemmove(getRoot(), op1, op2, op3,
+            align, ci.operand(1), 0, ci.operand(2), 0));
         return null;
       }
       case sqrt:
@@ -2199,6 +2222,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return implVisitAluOverflow(ci, ISD.UMULO);
       case smul_with_overflow:
         return implVisitAluOverflow(ci, ISD.SMULO);
+      case llvm_invariant_start:
+      case llvm_lifetime_start:
+        // discard it
+        setValue(ci, dag.getUNDEF(new EVT(tli.getPointerTy())));
+        return null;
+      case llvm_invariant_end:
+      case llvm_lifetime_end:
+        return null;
     }
   }
 
@@ -2216,7 +2247,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   private void visitVAStart(CallInst ci) {
     dag.setRoot(dag.getNode(ISD.VASTART, new EVT(MVT.Other), getRoot(),
-        getValue(ci.operand(0)), dag.getSrcValue(ci.operand(1))));
+        getValue(ci.operand(1)), dag.getSrcValue(ci.operand(1))));
   }
 
   public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {

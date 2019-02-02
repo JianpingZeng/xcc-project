@@ -3246,6 +3246,107 @@ public class SelectionDAG {
     return callResult.second;
   }
 
+  public SDValue getMemmove(SDValue chain, SDValue dst,
+                            SDValue src, SDValue size,
+                            int align,
+                            Value dstSV, long dstDiff,
+                            Value srcSV, long srcDiff) {
+    // Check to see if we should lower the memmove to loads and stores first.
+    // For cases within the target-specified limits, this is the best choice.
+    if (size.getNode() instanceof ConstantSDNode) {
+      ConstantSDNode csd = (ConstantSDNode) size.getNode();
+      if (csd.isNullValue())
+        return chain;
+
+      SDValue result = getMemmoveLoadsAndStores(chain, dst, src, csd.getZExtValue(),
+          align, false, dstSV, dstDiff, srcSV, srcDiff);
+      if (result.getNode() != null)
+        return result;
+    }
+
+    // Then check to see if we should lower the memmove with target-specific
+    // code. If the target chooses to do this, this is the next best.
+    SDValue result = tli.emitTargetCodeForMemmove(this, chain, dst, src, size, align,
+        dstSV, dstDiff, srcSV, srcDiff);
+
+    if (result.getNode() != null)
+      return result;
+
+    // emit a library call.
+    ArrayList<ArgListEntry> args = new ArrayList<>();
+    ArgListEntry entry = new ArgListEntry();
+    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.node = dst;
+    args.add(entry);
+
+    entry = new ArgListEntry();
+    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.node = src;
+    args.add(entry);
+
+    entry = new ArgListEntry();
+    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.node = size;
+    args.add(entry);
+
+    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(chain, LLVMContext.VoidTy,
+        false, false, false, false, 0, tli.getLibCallCallingConv(RTLIB.MEMMOVE),
+        false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMMOVE),
+            new EVT(tli.getPointerTy())), args, this);
+    return callResult.second;
+  }
+
+  private SDValue getMemmoveLoadsAndStores(SDValue chain, SDValue dst,
+                                           SDValue src, long size,
+                                           int align, boolean alwaysInline,
+                                           Value dstSV, long dstDiff,
+                                           Value srcSV, long srcDiff) {
+    if (src.getOpcode() == ISD.UNDEF)
+      return new SDValue();
+
+    TargetLowering tli = mf.getTarget().getTargetLowering();
+    ArrayList<EVT> memOps = new ArrayList<>();
+    long limit = -1;
+    if (!alwaysInline)
+      limit = tli.getMaxStoresPerMemmove();
+
+    int dstAlign = align;
+    OutRef<String> str = new OutRef<>("");
+    OutRef<Boolean> copyFromStr = new OutRef<>(false);
+    if (!meetsMaxMemopRequirement(memOps, dst, src, (int) limit, size, dstAlign, str, copyFromStr))
+      return new SDValue();
+
+    long srcOff = 0, dstOff = 0;
+    ArrayList<SDValue> loadValues = new ArrayList<>();
+    ArrayList<SDValue> loadChains = new ArrayList<>();
+    ArrayList<SDValue> outChains = new ArrayList<>();
+    int numMemOps = memOps.size();
+    for (int i = 0; i < numMemOps; i++ ){
+      EVT vt = memOps.get(i);
+      int vtSize = vt.getSizeInBits()/8;
+
+      SDValue value = getLoad(vt, chain, getMemBasePlusOffset(src, (int) srcOff),
+          srcSV, (int) (srcDiff + srcOff), false, align);
+      loadValues.add(value);
+      loadChains.add(value.getValue(1));
+      srcOff += vtSize;
+    }
+
+    chain = getNode(ISD.TokenFactor, new EVT(MVT.Other), loadChains);
+    outChains.clear();
+
+    for (int i = 0; i < numMemOps; i++) {
+      EVT vt = memOps.get(i);
+      int vtSize = vt.getSizeInBits()/8;
+      SDValue store = getStore(chain, loadValues.get(i),
+          getMemBasePlusOffset(dst, (int) dstOff), dstSV, (int) (dstDiff + dstOff), false, dstAlign);
+      outChains.add(store);
+      dstOff += vtSize;
+    }
+
+    return getNode(ISD.TokenFactor, new EVT(MVT.Other), outChains);
+  }
+
   private SDValue getMemcpyLoadsAndStores(SDValue chain, SDValue dst,
                                           SDValue src, long size,
                                           int align, boolean alwaysInline,

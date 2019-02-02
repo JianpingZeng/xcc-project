@@ -4736,8 +4736,8 @@ public class X86TargetLowering extends TargetLowering {
     }
 
     if (argNode == 2) {
-      Util.assertion(!GenerateSoftFloatCalls.value && !(dag.getMachineFunction().getFunction().hasFnAttr(Attribute.NoImplicitFloat)));
-
+      Util.assertion(!GenerateSoftFloatCalls.value &&
+          !(dag.getMachineFunction().getFunction().hasFnAttr(Attribute.NoImplicitFloat)));
     }
 
     ArrayList<SDValue> instOps = new ArrayList<>();
@@ -5719,7 +5719,24 @@ public class X86TargetLowering extends TargetLowering {
                                          int align,
                                          Value dstSV,
                                          long dstOff) {
+    // TODO, 2/1/2019
     return super.emitTargetCodeForMemset(dag, chain, op1,op2, op3, align,dstSV,dstOff);
+  }
+
+  @Override
+  public SDValue emitTargetCodeForMemmove(SelectionDAG dag,
+                                          SDValue chain,
+                                          SDValue op1,
+                                          SDValue op2,
+                                          SDValue op3,
+                                          int align,
+                                          Value dstSV,
+                                          long dstOff,
+                                          Value srcSV,
+                                          long srcOff) {
+    // TODO, 2/1/2019
+    return super.emitTargetCodeForMemmove(dag, chain, op1, op2, op3, align, dstSV, dstOff,
+        srcSV, srcOff);
   }
 
   @Override

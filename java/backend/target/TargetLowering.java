@@ -2499,6 +2499,19 @@ public abstract class TargetLowering {
     return new SDValue();
   }
 
+  public SDValue emitTargetCodeForMemmove(SelectionDAG dag,
+                                          SDValue chain,
+                                          SDValue op1,
+                                          SDValue op2,
+                                          SDValue op3,
+                                          int align,
+                                          Value dstSV,
+                                          long dstOff,
+                                          Value srcSV,
+                                          long srcOff) {
+    return new SDValue();
+  }
+
   public boolean isOffsetFoldingLegal(GlobalAddressSDNode ga) {
     // assume that everything is safe in static mode.
     if (tm.getRelocationModel() == TargetMachine.RelocModel.Static)

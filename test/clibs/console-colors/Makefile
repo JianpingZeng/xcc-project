@@ -12,5 +12,5 @@ example: console-colors.s test/example.s
 	$(GCC) -E $< > $@
 
 clean:
-	$(RM) console-colors.s test/example.s
+	$(RM) console-colors.s test/example.s example
 	
