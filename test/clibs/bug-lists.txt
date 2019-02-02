@@ -3,4 +3,24 @@
 3. In bytes, assertion failure of getSizeInBits called on extended MVT.
 4. chfreg.c, undefined calling to llvm.lifetime.start and llvm.lifetime.end.
    index out of range in visitSwitch of SelectionDAGLowering class.
-
+5. commander, LLParser failure
+6. file, fail in Schedule
+7. flag, LLParser failed to parse the given ll file
+8. hash, uncoginized keyword in ll file
+9. jsmn, failure in handleBTSplitSwitchCase
+10. linenoise, LLParser failure
+11. list, LLParser failure in test.c
+12. logfmt, LLParser failure
+13. parson, LLParser failure
+14. readline, LLParser failure
+15. red-black-tree, LLParser failure and bug in DAGCombiner
+16. rgba, LLParser failure
+17. rle, LLParser failure
+18. logger, memset in DAG Selection
+19. sds, LLParser failure
+20. sqlite3, LLParser failure
+21. strdup, memset in DAG selection
+22. strndup, memset in DAG selection
+23. strsplit, memset in DAG selection
+24. console-colors, llvm.va.end and llvm.va.start
+25. describe.h, failed to lowerCallTo

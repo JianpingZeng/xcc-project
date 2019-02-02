@@ -5,8 +5,6 @@ CFLAGS ?= -Wall -g -O2 -DNDEBUG=1  -DSG=1
 #CFLAGS += -m32
 #LDFLAGS += -m32
 
-# just needs the kerneldoc script. if you don't have a kernel source
-# download it somewhere and point to it
 KDOC := /usr/src/linux/scripts/kernel-doc
 
 all: scmd verify sgverify
@@ -34,7 +32,6 @@ man: snappy.man
 %.man: %.c
 	${KDOC} $^ > $@
 
-#LZO := ../comp/lzo.o
 LZO := ../comp/minilzo-2.06/minilzo.o
 
 OTHER := ${LZO} ../comp/zlib.o ../comp/lzf.o ../comp/quicklz.o \

@@ -1,10 +1,9 @@
 include ../config/make.common
 
-SRCS=test.c src/rgba.c
-ASMS=$(SRCS:.c=.s)
+all: trim.o
 
-test: $(ASMS)
-	@$(GCC) $^ -o $@
+trim.o: trim.s
+	$(GCC) -c $< -o $@
 %.s: %.ll
 	$(LLC) $< -o $@
 %.ll: %.i
@@ -13,5 +12,4 @@ test: $(ASMS)
 	$(GCC) -E $< > $@
 
 clean:
-	$(RM) test *.o *.s *.ll *.i
-.PHONY: test clean
+	$(RM) *.s *.o *.ll *.i

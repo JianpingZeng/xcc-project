@@ -1,19 +1,22 @@
+include ../config/make.common
+CFLAGS = -std=c99 -Wall -Wextra -I../
+SRCS=$(wildcard *.c */*/*.c)
+ASMS=$(SRCS:.c=.s)
 
-SRC = strsplit.c
-DEPS = $(wildcard deps/*/*.c)
-OBJS = $(SRC:.c=.o) $(DEPS:.c=.o)
-CFLAGS = -std=c99 -Wall -Wextra -Ideps
+check: strsplit
+	./test
 
-all: clean test
+strsplit: $(ASMS)
+	$(GCC) $^ -o $@
+
+%.s: %.ll
+	$(LLC) $< -o $@
+%.ll: %.i
+	$(CLANG) $< -o $@
+%.i: %.c	
+	$(GCC) $< -E $(CFLAGS) > $@
 
 clean:
-	rm -f strsplit-test $(OBJS)
+	rm -f test *.s *.o *.ll *.i
 
-test: test.o $(OBJS)
-	$(CC) $^ -o strsplit-test $(CFLAGS)
-	./strsplit-test
-
-%.o: %.c
-	$(CC) $< -c -o $@ $(CFLAGS)
-
-.PHONY: clean all test
+.PHONY: check clean

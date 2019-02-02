@@ -1,10 +1,9 @@
 include ../config/make.common
 
-SRCS=test.c src/rgba.c
-ASMS=$(SRCS:.c=.s)
+all: example
 
-test: $(ASMS)
-	@$(GCC) $^ -o $@
+example: console-colors.s test/example.s
+	$(GCC) $^ -o $@
 %.s: %.ll
 	$(LLC) $< -o $@
 %.ll: %.i
@@ -13,5 +12,5 @@ test: $(ASMS)
 	$(GCC) -E $< > $@
 
 clean:
-	$(RM) test *.o *.s *.ll *.i
-.PHONY: test clean
+	$(RM) console-colors.s test/example.s
+	

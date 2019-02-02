@@ -1,15 +1,21 @@
-TESTCFLAGS=-g -Wall -Werror
+include ../config/make.common
 TESTLINKER=-lcunit
-TESTSOURCES=test.c sha1.c
+SRCS=test.c sha1.c
+ASMS=$(SRCS:.c=.s)
 TESTBINARY=sha1test
 
 .FORCE: test
-all:
-	make test
+all: test
 
 clean:
-	rm -rf *.o $(TESTBINARY)
+	rm -rf *.o $(TESTBINARY) *.s *.ll *.o *.i
 
-test:
-	$(CC) $(TESTCFLAGS) -o $(TESTBINARY) $(TESTSOURCES) $(TESTLINKER)
-	./$(TESTBINARY)	
+test: $(ASMS)
+	$(GCC) -o $(TESTBINARY) $^ $(TESTLINKER)
+	./$(TESTBINARY)
+%.s: %.ll
+	$(LLC) $, -o $@
+%.ll: %.i
+	$(CLANG) $< -o $@
+%.i: %.c
+	$(GCC) -E $< > $@

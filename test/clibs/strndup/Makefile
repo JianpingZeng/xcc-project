@@ -1,16 +1,20 @@
-
+include ../config/make.common
 CFLAGS = -std=c99 -Wall -Wextra
 
 check: test
 	./test
 
-test: strndup.o test.o
-	$(CC) $^ -o $@
+test: strndup.s test.s
+	$(GCC) $^ -o $@
 
-%.o: %.c
-	$(CC) $< -c -o $@ $(CFLAGS)
+%.s: %.ll
+	$(LLC) $< -o $@
+%.ll: %.i
+	$(CLANG) $< -o $@
+%.i: %.c	
+	$(GCC) $< -E $(CFLAGS) > $@
 
 clean:
-	rm -f test strndup.o test.o
+	rm -f test *.s *.o *.ll *.i
 
 .PHONY: check clean

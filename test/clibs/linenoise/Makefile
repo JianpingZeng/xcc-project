@@ -1,7 +1,16 @@
-linenoise_example: linenoise.h linenoise.c
+include ../config/make.common
 
-linenoise_example: linenoise.c example.c
-	$(CC) -Wall -W -Os -g -o linenoise_example linenoise.c example.c
+SRCS=$(wildcard *.c)
+ASMS=$(SRCS:.c=.s)
+
+linenoise_example: $(ASMS)
+	$(GCC) $^ -o $@
+%.s: %.ll
+	$(LLC) $< -o $@
+%.ll: %.i
+	$(CLANG) $< -o $@
+%.i: %.c
+	$(GCC) -E $< > $@
 
 clean:
-	rm -f linenoise_example
+	rm -f linenoise_example *.s *.o *.ll *.i
