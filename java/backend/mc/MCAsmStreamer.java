@@ -307,7 +307,7 @@ public class MCAsmStreamer extends MCStreamer {
         case '\t': fos.print("\\t"); break;
         default:
           fos.print("\\");
-          fos.print(Util.toOctal(ch>>6));
+          fos.print(Util.toOctal(ch >> 6));
           fos.print(Util.toOctal(ch >> 3));
           fos.print(Util.toOctal(ch));
           break;

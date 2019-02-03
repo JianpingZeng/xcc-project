@@ -1,5 +1,4 @@
-2. In buffer, assertion failure in DAGCombiner.
-3. In bytes, assertion failure of getSizeInBits called on extended MVT.
+2. In buffer, at backend.codegen.dagisel.SelectionDAG.assignTopologicalOrder(SelectionDAG.java:2408)
 4. chfreg.c, failure in handleBTSplitSwitchCase
 5. commander, LLParser failure
 6. file, fail in Schedule
@@ -14,10 +13,5 @@
 15. red-black-tree, LLParser failure and bug in DAGCombiner
 16. rgba, LLParser failure
 17. rle, LLParser failure
-18. logger, memset in DAG Selection
 19. sds, LLParser failure
 20. sqlite3, LLParser failure
-21. strdup, memset in DAG selection
-22. strndup, memset in DAG selection
-23. strsplit, memset in DAG selection
-25. describe.h, failed to lowerCallTo

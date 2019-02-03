@@ -26,6 +26,6 @@ test/*/*/*.bc
 test/*/*/*.i
 test/*/*/.*
 test/*/*/*.o
-
+*.swp
 
 

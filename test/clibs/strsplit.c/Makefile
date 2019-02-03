@@ -3,8 +3,7 @@ CFLAGS = -std=c99 -Wall -Wextra -I../
 SRCS=$(wildcard *.c */*/*.c)
 ASMS=$(SRCS:.c=.s)
 
-check: strsplit
-	./test
+all: strsplit
 
 strsplit: $(ASMS)
 	$(GCC) $^ -o $@
@@ -17,6 +16,6 @@ strsplit: $(ASMS)
 	$(GCC) $< -E $(CFLAGS) > $@
 
 clean:
-	rm -f test *.s *.o *.ll *.i
+	rm -f strsplit *.s *.o *.ll *.i
 
 .PHONY: check clean

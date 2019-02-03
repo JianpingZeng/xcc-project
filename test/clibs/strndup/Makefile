@@ -1,8 +1,7 @@
 include ../config/make.common
 CFLAGS = -std=c99 -Wall -Wextra
 
-check: test
-	./test
+all: test
 
 test: strndup.s test.s
 	$(GCC) $^ -o $@

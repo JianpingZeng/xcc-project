@@ -325,11 +325,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   public void copyValueToVirtualRegister(Value val, int reg) {
     SDValue op = getValue(val);
-    Util.assertion(op.getOpcode() != ISD.CopyFromReg || ((RegisterSDNode) op.getOperand(1).getNode()).getReg()
-        != reg, "Copy from a arg to the same reg");
+    Util.assertion(op.getOpcode() != ISD.CopyFromReg ||
+        ((RegisterSDNode) op.getOperand(1).getNode()).getReg() != reg, "Copy from a arg to the same reg");
 
     Util.assertion(!TargetRegisterInfo.isPhysicalRegister(reg), "Is a physical reg?");
-
 
     RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
     SDValue chain = dag.getEntryNode();
@@ -2109,30 +2108,45 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case longjmp:
         return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
       case memset: {
-        // FIXME, memset optimization has bugs.
-        SDValue op1 = getValue(ci.operand(1));
-        SDValue op2 = getValue(ci.operand(2));
-        SDValue op3 = getValue(ci.operand(3));
-        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
         dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
-            align, ci.operand(1), 0));
+            align, ci.getArgOperand(0), 0));
         return null;
       }
       case memcpy: {
-        SDValue op1 = getValue(ci.operand(1));
-        SDValue op2 = getValue(ci.operand(2));
-        SDValue op3 = getValue(ci.operand(3));
-        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
+        boolean isVolatile = ((ConstantInt)ci.getArgOperand(4)).getZExtValue() == 1;
         dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
-            align, false, ci.operand(1),
-            0, ci.operand(2), 0));
+            align, false, ci.getArgOperand(0),
+            0, ci.getArgOperand(1), 0));
+
         return null;
       }
       case memmove: {
-        SDValue op1 = getValue(ci.operand(1));
-        SDValue op2 = getValue(ci.operand(2));
-        SDValue op3 = getValue(ci.operand(3));
-        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
 
         // If the source and destination are known to not be aliases, we can
         // lower memmove as memcpy.
@@ -2140,14 +2154,15 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         if (op3.getNode() instanceof SDNode.ConstantSDNode) {
           size = ((SDNode.ConstantSDNode)op3.getNode()).getZExtValue();
         }
-        if (aa.alias(ci.operand(1), (int)size, ci.operand(2), (int)size) == AliasResult.NoAlias) {
-          dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.operand(1),
-              0, ci.operand(2), 0));
+        if (aa != null && aa.alias(ci.getArgOperand(0), (int)size,
+            ci.getArgOperand(1), (int)size) == AliasResult.NoAlias) {
+          dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.getArgOperand(0),
+              0, ci.getArgOperand(1), 0));
           return null;
         }
 
         dag.setRoot(dag.getMemmove(getRoot(), op1, op2, op3,
-            align, ci.operand(1), 0, ci.operand(2), 0));
+            align, ci.getArgOperand(0), 0, ci.getArgOperand(1), 0));
         return null;
       }
       case sqrt:
@@ -2250,7 +2265,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         getValue(ci.operand(1)), dag.getSrcValue(ci.operand(1))));
   }
 
-  public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
+  private void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
     boolean hasChain = !ci.doesNotAccessMemory();
     boolean onlyLoad = hasChain && ci.onlyReadsMemory();
 

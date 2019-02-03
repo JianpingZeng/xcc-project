@@ -863,6 +863,7 @@ public class SelectionDAG {
         }
         if (op1.equals(op2))
           return op1;
+        break;
       }
       case ISD.BRCOND:
         if (cn1 != null) {
@@ -1838,14 +1839,6 @@ public class SelectionDAG {
     }
   }
 
-  public SDValue getZeroExtendInReg(SDValue op, EVT vt) {
-    if (op.getValueType().equals(vt))
-      return op;
-    APInt imm = APInt.getLowBitsSet(op.getValueSizeInBits(), vt.getSizeInBits());
-    return getNode(ISD.AND, op.getValueType(), op,
-        getConstant(imm, op.getValueType(), false));
-  }
-
   public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
                            SDValue ptr, SDValue val, Value ptrVal, int alignment) {
     Util.assertion(opcode == ISD.ATOMIC_LOAD_ADD ||
@@ -2122,6 +2115,32 @@ public class SelectionDAG {
 
   public SDValue getGLOBAL_OFFSET_TABLE(EVT vt) {
     return getNode(ISD.GLOBAL_OFFSET_TABLE, vt);
+  }
+
+  public SDValue getAnyExtOrTrunc(SDValue op, EVT vt) {
+    return vt.bitsGT(op.getValueType()) ?
+        getNode(ISD.ANY_EXTEND, vt, op):
+        getNode(ISD.TRUNCATE, vt, op);
+  }
+
+  public SDValue getSExtOrTrunc(SDValue op, EVT vt) {
+    return vt.bitsGT(op.getValueType()) ?
+        getNode(ISD.SIGN_EXTEND, vt, op):
+        getNode(ISD.TRUNCATE, vt, op);
+  }
+  public SDValue getZExtOrTrunc(SDValue op, EVT vt) {
+    return vt.bitsGT(op.getValueType()) ?
+        getNode(ISD.ZERO_EXTEND, vt, op):
+        getNode(ISD.TRUNCATE, vt, op);
+  }
+
+  public SDValue getZeroExtendInReg(SDValue op, EVT vt) {
+    Util.assertion(!vt.isVector(),
+        "getZeroExtendInReg should use the vector element type instead of the vector type");
+    if (op.getValueType().equals(vt)) return op;
+    int bitWidth = op.getValueType().getScalarType().getSizeInBits();
+    APInt imm = APInt.getLowBitsSet(bitWidth, vt.getSizeInBits());
+    return getNode(ISD.AND, op.getValueType(), op, getConstant(imm, op.getValueType(), false));
   }
 
   static class UseMemo {
@@ -3369,7 +3388,7 @@ public class SelectionDAG {
     int srcOffset = 0, destOffset = 0;
     for (int i = 0; i < numMemOps; i++) {
       EVT vt = memOps.get(i);
-      int vtSize = vt.getSizeInBits();
+      int vtSize = vt.getSizeInBits() / 8;
       SDValue value, store;
       if (copyFromStr.get() && (isZeroStr || !vt.isVector())) {
         value = getMemsetStringVal(vt, str.get(), srcOffset);
