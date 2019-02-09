@@ -16,7 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.Error;
 import tools.Pair;
 import tools.SourceMgr;

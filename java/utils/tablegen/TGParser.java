@@ -16,7 +16,7 @@
 package utils.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.Error;
 import tools.Pair;
 import tools.SourceMgr;

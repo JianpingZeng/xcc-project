@@ -6,7 +6,7 @@ if(NOT CMAKE_java_COMPILER)
     endif()
 endif()
 
-project(Jlang)
+project(XCC)
 
 set(PACKAGE_NAME "xcc")
 set(XCC_MAJOR_VERSION 0)
@@ -40,13 +40,13 @@ set(OUT_INCLUDE_DIR "${XCC_BINARY_DIR}/include")
 set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
-set(GEN_OPTIONS_SRCS "${GEN_SOURCES_DIR}/xcc")
+set(GEN_OPTIONS_SRCS "${GEN_SOURCES_DIR}/driver")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
-set(EXCLUDE_JLANG_DRIVER "${SRC_DIR}/xcc")
+set(EXCLUDE_XCC_DRIVER "${SRC_DIR}/driver")
 set(TARGET_DIRECTORY "${SRC_DIR}/backend/target")
 
 # Find the executable for displaying dot file.
@@ -189,8 +189,8 @@ add_custom_target(GenCpuInfoHeader
 # Add sources file to be compiled.
 file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
 
-# The jlang driver related sources
-file(GLOB_RECURSE JLANG_DRIVER_SRCS ${SRC_DIR}/xcc/*.java)
+# The xcc driver related sources
+file(GLOB_RECURSE XCC_DRIVER_SRCS ${SRC_DIR}/driver/*.java)
 
 # Collects targets to be excluded.
 foreach(t ${XCC_ALL_TARGETS})
@@ -201,13 +201,13 @@ endforeach()
 set(TMP_TARGET "${EXCLUDE_TARGET}")
 string(REGEX REPLACE "^\\|" "" EXCLUDE_TARGET ${TMP_TARGET})
 
-# Remove target-specific or jlang driver related source files.
+# Remove target-specific or xcc driver related source files.
 foreach (file ${SRCS_NO_TARGET})
     if ("${file}" MATCHES "(.*)${EXCLUDE_TARGET}(.*)")
         #message(STATUS "Remove Item from List:${file}")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
-    if ("${file}" MATCHES "(.*)${EXCLUDE_JLANG_DRIVER}(.*)")
+    if ("${file}" MATCHES "(.*)${EXCLUDE_XCC_DRIVER}(.*)")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
 
@@ -242,7 +242,7 @@ file(GLOB TROVE_SRCS
 
 file(MAKE_DIRECTORY ${CLASSES_DIR})
 
-# Custom target for compiling jlang/backend source files except for
+# Custom target for compiling xcc/backend source files except for
 # target-specific codes.
 add_custom_target(CommonBackend
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
@@ -268,10 +268,10 @@ add_subdirectory(java/backend/target)
 #message(STATUS "${TARGET_SRCS}")
 #message(STATUS "${TABLEGEN_OUTPUT}")
 
-# Generates jlang options for jlang driver.
+# Generates xcc options for xcc driver.
 file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})
-macro(JlangTableGen ofn)
-  set(local_tds "${XCC_SOURCE_DIR}/java/xcc")
+macro(XCCTableGen ofn)
+  set(local_tds "${XCC_SOURCE_DIR}/java/driver")
   add_custom_command(OUTPUT ${GEN_OPTIONS_SRCS}/${ofn}
   COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
   -o ${GEN_OPTIONS_SRCS}/${ofn} ${ARGN} -I ${local_tds} ${local_tds}/Options.td
@@ -279,22 +279,22 @@ macro(JlangTableGen ofn)
   COMMENT "Building ${ofn}...")
   set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_OPTIONS_SRCS}/${ofn}
   )
-endmacro(JlangTableGen)
+endmacro(XCCTableGen)
 
-JlangTableGen(OptionInfo.java -gen-jlang-options)
-add_public_tablegen_target(JlangOptionsTableGen)
+XCCTableGen(OptionInfo.java -gen-xcc-options)
+add_public_tablegen_target(XCCOptionsTableGen)
 
 # Compiling collection of generated java source code by TableGen tool.
 macro(add_gen_tblgen target_name)
     if (TABLEGEN_OUTPUT)
         add_custom_target(${target_name}
             COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
-            ${TABLEGEN_OUTPUT} ${TARGET_SRCS} ${JLANG_DRIVER_SRCS}
+            ${TABLEGEN_OUTPUT} ${TARGET_SRCS} ${XCC_DRIVER_SRCS}
             ${GEN_OPTIONS_SRCS}/OptionID.java
             ${GEN_OPTIONS_SRCS}/OptionKind.java
             ${GEN_OPTIONS_SRCS}/Group.java
             ${GEN_OPTIONS_SRCS}/GroupID.java
-        DEPENDS ${BACKEND_TARGET} JlangOptionsTableGen
+        DEPENDS ${BACKEND_TARGET} XCCOptionsTableGen
         COMMENT "Compiling taraget-specific source files")
     else()
         message(FATAL "failed to generate code via llvm-tblgen according to td file")
@@ -320,30 +320,30 @@ endmacro(add_gen_jar)
 add_gen_jar()
 
 set(COM_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/cpp/NativeLauncher.cpp)
-set(JLANG_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/Jlang.cpp)
-set(JLANG_CC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/JlangCC.cpp)
+set(XCC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/xcc.cpp)
+set(XCC_CC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/xcc-cc.cpp)
 set(TABLEGEN_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/TableGen.cpp)
 set(OPT_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/Opt.cpp)
 set(LLC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/llc.cpp)
 
-macro(add_jlang_target name)
+macro(add_xcc_target name)
     add_executable(${name} ${ARGN})
     add_dependencies(${name} jar)
 endmacro()
 
-add_jlang_target(jlang ${JLANG_SRCS})
-add_jlang_target(jlang-cc ${JLANG_CC_SRCS})
-add_jlang_target(tblgen ${TABLEGEN_SRCS})
-add_jlang_target(opt ${OPT_SRCS})
-add_jlang_target(llc ${LLC_SRCS})
+add_xcc_target(xcc ${XCC_SRCS})
+add_xcc_target(xcc-cc ${XCC_CC_SRCS})
+add_xcc_target(tblgen ${TABLEGEN_SRCS})
+add_xcc_target(opt ${OPT_SRCS})
+add_xcc_target(llc ${LLC_SRCS})
 
 set(CPU_ID_SRCS "${XCC_SOURCE_DIR}/cpp/GetCpuIDAndInfo.cpp")
 add_library(${CPUInfoUtility_NAME} SHARED ${CPU_ID_SRCS})
 add_dependencies(${CPUInfoUtility_NAME} jar)
 add_dependencies(${CPUInfoUtility_NAME} GenCpuInfoHeader)
 
-target_link_libraries(jlang jvm)
-target_link_libraries(jlang-cc jvm)
+target_link_libraries(xcc jvm)
+target_link_libraries(xcc-cc jvm)
 target_link_libraries(tblgen jvm)
 target_link_libraries(opt jvm)
 target_link_libraries(llc jvm)
@@ -353,5 +353,5 @@ add_executable(FileCheck  ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/FileCheck.cpp)
 target_link_libraries(FileCheck jvm)
 add_executable(not ${XCC_SOURCE_DIR}/cpp/not.cpp)
 
-add_subdirectory(java/test)
-add_subdirectory(java/utils/xcc-lit)
+#add_subdirectory(java/test)
+#add_subdirectory(java/utils/xcc-lit)

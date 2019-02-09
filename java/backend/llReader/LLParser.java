@@ -32,7 +32,7 @@ import backend.value.Module;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.*;
 import tools.SourceMgr.SMLoc;
 

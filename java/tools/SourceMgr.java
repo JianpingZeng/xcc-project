@@ -16,7 +16,7 @@ package tools;
  * permissions and limitations under the License.
  */
 
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

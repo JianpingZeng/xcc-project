@@ -49,7 +49,7 @@ public final class TableGen {
     GenDAGISel,
     GenFastISel,
     GenSubtarget,
-    GenJlangOptions,
+    GenXCCOptions,
   }
 
   private static Opt<ActionType> action = new Opt<ActionType>(
@@ -77,8 +77,8 @@ public final class TableGen {
               "Generate a \"fast\" instruction selector"),
           new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
               "Generate subtarget enumerations"),
-          new ValueClass.Entry<>(GenJlangOptions, "gen-jlang-options",
-              "Generate JlangTool options")
+          new ValueClass.Entry<>(GenXCCOptions, "gen-xcc-options",
+              "Generate XCC C Compiler options")
       ));
 
   private static StringOpt outputFileName = new StringOpt(
@@ -145,8 +145,8 @@ public final class TableGen {
         case GenSubtarget:
           new SubtargetEmitter(records).run(outputFile);
           break;
-        case GenJlangOptions:
-          new JlangOptionsEmitter(records).run(outputFile);
+        case GenXCCOptions:
+          new XCCOptionsEmitter(records).run(outputFile);
           break;
         default:
           Util.assertion(false, "Invalid action type!");

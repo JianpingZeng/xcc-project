@@ -28,8 +28,8 @@ import backend.support.Triple;
 import backend.target.*;
 import backend.value.Function;
 import backend.value.Module;
-import jlang.basic.TargetInfo;
-import jlang.system.Process;
+import cfe.basic.TargetInfo;
+import cfe.system.Process;
 import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.Util;
@@ -47,7 +47,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import static backend.target.TargetMachine.CodeGenOpt.*;
-import static jlang.driver.JlangCC.MacOSVersionMin;
+import static cfe.driver.CFrontEnd.MacOSVersionMin;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.Initializer.init;
@@ -152,7 +152,7 @@ public class LLC {
           init(false));
 
   /**
-   * This static code block is attempted to add some desired JlangTool command line
+   * This static code block is attempted to add some desired XCCTool command line
    * options into CommandLine DataBase.
    */
   static {

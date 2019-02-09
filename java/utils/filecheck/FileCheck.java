@@ -18,7 +18,7 @@
 package utils.filecheck;
 
 import gnu.trove.list.array.TCharArrayList;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.Error;
 import tools.SourceMgr;
 import tools.Util;

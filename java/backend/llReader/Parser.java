@@ -17,7 +17,7 @@ package backend.llReader;
  */
 
 import backend.value.Module;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.SourceMgr;

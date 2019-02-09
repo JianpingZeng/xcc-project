@@ -16,7 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import jlang.diag.Diagnostic;
+import cfe.diag.Diagnostic;
 
 /**
  * @author Jianping Zeng
