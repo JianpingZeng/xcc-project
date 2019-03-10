@@ -21,7 +21,7 @@ package tools.commandline;
  * of this option is required.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum ValueExpected {
   ValueOptional(0x08),      // The value can appear... or not

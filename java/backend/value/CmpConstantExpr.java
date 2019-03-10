@@ -21,7 +21,7 @@ import backend.value.Instruction.CmpInst.Predicate;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CmpConstantExpr extends ConstantExpr {
   Predicate predicate;

@@ -1,6 +1,7 @@
 package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
+import backend.mc.MCAsmInfo;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 
@@ -13,7 +14,7 @@ import java.io.PrintStream;
  * this interface.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @see TargetData
  */
 public abstract class TargetMachine {
@@ -22,6 +23,7 @@ public abstract class TargetMachine {
    */
   public enum CodeGenOpt {
     None,
+    Less,
     Default,
     Aggressive
   }
@@ -31,7 +33,7 @@ public abstract class TargetMachine {
    * addPassesToEmitFile to indicate what type of file to emit.
    */
   public enum CodeGenFileType {
-    AssemblyFile, ObjectFile, DynamicLibrary
+    CGFT_AssemblyFile, CGFT_ObjectFile, CGFT_Null,
   }
 
   public enum CodeModel {
@@ -55,7 +57,9 @@ public abstract class TargetMachine {
 
   protected Target theTarget;
 
-  protected TargetAsmInfo asmInfo;
+  protected MCAsmInfo asmInfo;
+
+  protected boolean asmVerbosityDefault;
 
   /**
    * Can only called by subclass.
@@ -74,7 +78,7 @@ public abstract class TargetMachine {
     return null;
   }
 
-  public TargetAsmInfo getTargetAsmInfo() {
+  public MCAsmInfo getMCAsmInfo() {
     return asmInfo;
   }
 
@@ -94,6 +98,14 @@ public abstract class TargetMachine {
     relocModel = model;
   }
 
+  public void setAsmVerbosityDefault(boolean val) {
+    asmVerbosityDefault = val;
+  }
+
+  public boolean getAsmVerbosityDefault() {
+    return asmVerbosityDefault;
+  }
+
   // Interface to the major aspects of target machine information:
   // 1.Instruction opcode and operand information.
   // 2.Pipeline and scheduling information.
@@ -105,7 +117,7 @@ public abstract class TargetMachine {
 
   public abstract TargetRegisterInfo getRegisterInfo();
 
-  public abstract TargetFrameInfo getFrameInfo();
+  public abstract TargetFrameLowering getFrameLowering();
 
   public abstract TargetLowering getTargetLowering();
 
@@ -127,37 +139,20 @@ public abstract class TargetMachine {
    * </p>
    * <p>
    * Note that: this method would be overriden by concrete subclass for
-   * different backend.target, like IA32, Sparc.
+   * different backend.target, like IA32, Sparc. Return false on successful.
    * </p>
    *
    * @param pm
-   * @param asmOutStream
-   * @param genFileType
+   * @param os
+   * @param fileType
    * @param optLevel
    * @return
    */
-  public FileModel addPassesToEmitFile(
+  public boolean addPassesToEmitFile(
       PassManagerBase pm,
-      OutputStream asmOutStream,
-      CodeGenFileType genFileType,
+      OutputStream os,
+      CodeGenFileType fileType,
       CodeGenOpt optLevel) {
-    return FileModel.None;
-  }
-
-  /**
-   * if the passes to emit the specified file had to be split up (e.g., to add
-   * an object writer pass), this method can be used to finish up adding passes
-   * to emit the file, if necessary.
-   *
-   * @param pm
-   * @param mce
-   * @param opt
-   * @return
-   */
-  public boolean addPassesToEmitFileFinish(
-      PassManagerBase pm,
-      MachineCodeEmitter mce,
-      CodeGenOpt opt) {
     return true;
   }
 

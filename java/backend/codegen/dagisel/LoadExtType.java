@@ -19,7 +19,7 @@ package backend.codegen.dagisel;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum LoadExtType {
   NON_EXTLOAD,

@@ -1,0 +1,38 @@
+#
+#
+#
+CC= /home/lqingrui/idriver/gcc.sh
+
+#static compilation
+IDEMFLAG = --idempotence-construction=none --idempotence-preservation=none --livein-checkpoint=none --reverse-compute=none --target=armv7 -funroll-loops -static
+CFLAGS= -O2  $(IDEMFLAG) -static --target=armv7
+LDFLAGS= -O2 -static --target=armv7 -m32
+
+##dynamic compilation
+#IDEMFLAG = --idempotence-construction=none --idempotence-preservation=none --livein-checkpoint=none --reverse-compute=none --target=armv7 -funroll-loops
+#CFLAGS= -O2  $(IDEMFLAG) --target=armv7
+#LDFLAGS= -O2 --target=armv7 -m32
+
+LN= /home/lqingrui/gcc/gcc-arm-build/bin/arm-none-linux-gnueabi-gcc
+
+#CC = /export/ramoth4/bishop/simplescalar/bin/ssbig-na-sstrix-gcc -static
+#CFLAGS = -O3 -DBIG_ENDIAN
+#LDFLAGS = 
+
+MAIN = pegwit
+OBJS = $(MAIN).o ec_crypt.o ec_curve.o ec_field.o ec_param.o ec_vlong.o \
+       square.o sqcts.o sha1.o binasc.o
+HDRS = ec_crypt.h ec_curve.h ec_field.h ec_param.h ec_vlong.h sha1.h \
+       square.h sqcts.h square.tab binasc.h
+
+all: $(MAIN)
+	cp $(MAIN) ../bin/.
+
+$(MAIN): $(OBJS) $(HDRS)
+	$(LN) $(LDFLAGS) -o $(MAIN) $(OBJS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $<
+
+clean:
+	rm -f *~ ; rm -f *.o ; rm -f $(MAIN);rm -f *.ll *.s *.bc

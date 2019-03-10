@@ -19,7 +19,7 @@ package backend.codegen.pbqp;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AdjNode {
   public AdjNode prev, next, reverse;

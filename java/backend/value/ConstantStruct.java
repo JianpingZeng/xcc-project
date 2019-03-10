@@ -32,7 +32,7 @@ import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
  * in LLVM IR, like '{1, 2, 3}' defines a constant struct with 3 integer.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConstantStruct extends Constant {
   /**
@@ -60,7 +60,7 @@ public class ConstantStruct extends Constant {
   }
 
   public static Constant get(StructType type, List<Constant> elts) {
-    // Create a ConstantAggregateZero value if all elements are zeros
+    // create a ConstantAggregateZero value if all elements are zeros
     for (Constant elt : elts) {
       if (!elt.isNullValue()) {
         ConstantStructKey key = new ConstantStructKey(type, elts);

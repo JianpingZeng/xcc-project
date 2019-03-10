@@ -21,7 +21,7 @@ package backend.codegen;
  * hold private target-specific information for each MachineFunction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineFunctionInfo {
 }

@@ -25,7 +25,7 @@ import java.io.PrintStream;
  * Abstract base class for all machine specific constant pool value subclass.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class MachineConstantPoolValue {
   private Type ty;

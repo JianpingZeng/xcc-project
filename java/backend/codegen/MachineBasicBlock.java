@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.mc.MCSymbol;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;
@@ -14,7 +15,7 @@ import java.util.Objects;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineBasicBlock {
   private LinkedList<MachineInstr> insts;
@@ -31,6 +32,14 @@ public class MachineBasicBlock {
 
   private MachineFunction parent;
   private int alignment;
+  /**
+   * Indicate that this basic block is reached via exception handler.
+   */
+  private boolean isLandingPad;
+  /**
+   * Indicate this basic block is the target of indirect branch.
+   */
+  private boolean addressTaken;
 
   public MachineBasicBlock(final BasicBlock bb) {
     insts = new LinkedList<>();
@@ -39,6 +48,14 @@ public class MachineBasicBlock {
     predecessors = new ArrayList<>();
     successors = new ArrayList<>();
     liveIns = new TIntArrayList();
+  }
+
+  public boolean hasAddressTaken() {
+    return addressTaken;
+  }
+
+  public boolean isLandingPad() {
+    return isLandingPad;
   }
 
   public BasicBlock getBasicBlock() {
@@ -64,6 +81,10 @@ public class MachineBasicBlock {
 
   public MachineInstr getInstAt(int index) {
     return insts.get(index);
+  }
+
+  public int getIndexOf(MachineInstr mi) {
+    return mi != null ? insts.indexOf(mi) : -1;
   }
 
   private void addNodeToList(MachineInstr instr) {
@@ -168,7 +189,7 @@ public class MachineBasicBlock {
     successors.set(idx, newOne);
   }
 
-  public boolean predIsEmpty() {
+  public boolean isPredEmpty() {
     return predecessors.isEmpty();
   }
 
@@ -254,6 +275,15 @@ public class MachineBasicBlock {
     insts.remove(indexToDel);
   }
 
+  /**
+   * Return true if the specified MBB will be emitted
+   * immediately after this block, such that if this block exits by
+   * falling through, control will transfer to the specified MBB. Note
+   * that MBB need not be a successor at all, for example if this block
+   * ends with an unconditional branch to some other block.
+   * @param mbb
+   * @return
+   */
   public boolean isLayoutSuccessor(MachineBasicBlock mbb) {
     if (parent != null && mbb.getParent() != null && parent == mbb.getParent()) {
       ArrayList<MachineBasicBlock> mbbs = parent.getBasicBlocks();
@@ -297,7 +327,7 @@ public class MachineBasicBlock {
    * @return
    */
   public boolean isOnlyReachableByFallThrough() {
-    if (predIsEmpty())
+    if (isPredEmpty())
       return false;
 
     // If there is not exactly one predecessor, it can not be a fall through.
@@ -342,34 +372,42 @@ public class MachineBasicBlock {
   public void print(FormattedOutputStream os, PrefixPrinter prefix) {
     MachineFunction mf = getParent();
     if (mf == null) {
-      os.printf("Can't print out MachineBasicBlock because parent MachineFunction is null\n");
-      ;
+      os.println("Can't print out MachineBasicBlock because parent MachineFunction is null");
       return;
     }
 
     BasicBlock bb = getBasicBlock();
     os.println();
-    if (bb != null)
-      os.printf("%s: ", bb.getName());
-    os.printf("0x%x, LLVM BB @0x%x, ID#%d", hashCode(),
-        bb == null ? 0 : bb.hashCode(), getNumber());
-    if (alignment != 0)
-      os.printf(", Alignment %d", alignment);
-    os.printf(":%n");
+    os.printf("BB#%d: ", getNumber());
+    String comma = "";
+    if (bb != null) {
+      comma = ",";
+      os.printf("derived from LLVM BB %%%s\n", bb.getName());
+    }
 
+    if (isLandingPad()) {
+      os.printf("%sEH LANDING PAD", comma);
+      comma = ", ";
+    }
+    if (hasAddressTaken()) {
+      os.printf("%sADDRESS TAKEN", comma);
+      // comma = ", ";
+    }
+
+    TargetRegisterInfo tri = getParent().getTarget().getRegisterInfo();
     if (!liveIns.isEmpty()) {
-      os.printf("Live Ins:");
+      os.printf("    Live Ins:");
       for (int i = 0, e = liveIns.size(); i < e; i++)
-        outputReg(os, liveIns.get(i));
+        outputReg(os, liveIns.get(i), tri);
 
       os.println();
     }
 
     // Print the preds of this block according to the CFGs.
     if (predecessors != null && !predecessors.isEmpty()) {
-      os.printf("\tPredecessors according to CFG:");
+      os.printf("    Predecessors according to CFG:");
       for (MachineBasicBlock pred : predecessors)
-        os.printf(" 0x%x (#%d)", pred.hashCode(), pred.getNumber());
+        os.printf(" BB#%d", pred.getNumber());
       os.println();
     }
 
@@ -381,11 +419,11 @@ public class MachineBasicBlock {
 
     // Print the sucessors of this block according to CFG
     if (!succIsEmpty()) {
-      os.printf("\tSuccessors according to CFG:");
+      os.printf("    Successors according to CFG:");
       Iterator<MachineBasicBlock> itr = succIterator();
       while (itr.hasNext()) {
         MachineBasicBlock succ = itr.next();
-        os.printf(" 0x%x (#%d)", succ.hashCode(), succ.getNumber());
+        os.printf(" BB#%d", succ.getNumber());
       }
       os.println();
     }
@@ -398,7 +436,7 @@ public class MachineBasicBlock {
   private static void outputReg(FormattedOutputStream os, int reg, TargetRegisterInfo tri) {
     if (reg == 0 || TargetRegisterInfo.isPhysicalRegister(reg)) {
       if (tri != null)
-        os.printf(" %%s", tri.getName(reg));
+        os.printf(" %%%s", tri.getName(reg));
       else
         os.printf(" %%reg(%d)", reg);
     } else {
@@ -421,5 +459,12 @@ public class MachineBasicBlock {
     fromMBB.getSuccessors().forEach(this::addSuccessor);
     if (!fromMBB.getSuccessors().isEmpty())
       fromMBB.getSuccessors().clear();
+  }
+
+  public MCSymbol getSymbol(MCSymbol.MCContext ctx) {
+    MachineFunction mf = getParent();
+    String name = mf.getTarget().getMCAsmInfo().getPrivateGlobalPrefix() +
+        mf.getFunctionNumber() + "_" + getNumber();
+    return ctx.getOrCreateSymbol(name);
   }
 }

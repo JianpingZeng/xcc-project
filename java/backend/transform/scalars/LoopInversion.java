@@ -27,7 +27,7 @@ import backend.value.Value;
  *    							1.b).after inversion
  * </pre>                                
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 /*
 public final class LoopInversion implements LoopPass

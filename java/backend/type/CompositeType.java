@@ -22,7 +22,7 @@ import backend.value.Value;
  * Common super class of ArrayType, StructType, and PointerType.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class CompositeType extends Type {
   protected CompositeType(int typeID) {
@@ -31,7 +31,11 @@ public abstract class CompositeType extends Type {
 
   public abstract Type getTypeAtIndex(Value v);
 
-  public abstract boolean indexValid(final Value v);
+  public abstract Type getTypeAtIndex(int idx);
+
+  public abstract boolean indexValid(Value v);
+
+  public abstract boolean indexValid(int idx);
 
   // getIndexType - Return the type required of indices for this composite.
   // For structures, this is ubyte, for arrays, this is uint.

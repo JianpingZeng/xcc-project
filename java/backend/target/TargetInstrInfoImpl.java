@@ -31,13 +31,12 @@ import java.util.ArrayList;
  * for various methods.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class TargetInstrInfoImpl extends TargetInstrInfo {
-  protected TargetInstrInfoImpl(TargetInstrDesc[] desc,
-                                int frameSetupOp,
+  protected TargetInstrInfoImpl(int frameSetupOp,
                                 int frameDestroyOp) {
-    super(desc, frameSetupOp, frameDestroyOp);
+    super(frameSetupOp, frameDestroyOp);
   }
 
   @Override

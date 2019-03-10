@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RecordKeeper {
   private HashMap<String, Record> classes, defs;

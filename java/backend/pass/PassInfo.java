@@ -10,7 +10,7 @@ import java.util.Objects;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PassInfo implements Printable {
   /**
@@ -30,7 +30,7 @@ public final class PassInfo implements Printable {
   private boolean isCFGOnlyPass;
 
   /**
-   * Create a PassInfo instance that encanpsulates some information about how
+   * create a PassInfo instance that encanpsulates some information about how
    * to instance a pass, what name of Pass, and what is command line argument
    * corresponding to Pass.
    *
@@ -75,7 +75,7 @@ public final class PassInfo implements Printable {
     } catch (IllegalAccessException | InstantiationException e) {
       e.printStackTrace();
     }
-    Util.assertion(false, "Can not create instance without default ctor!");
+    Util.assertion("Can not create instance without default ctor!");
     return null;
   }
 

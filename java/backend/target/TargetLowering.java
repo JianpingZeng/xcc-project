@@ -20,6 +20,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.intrinsic.Intrinsic;
+import backend.mc.*;
 import backend.support.CallingConv;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -34,6 +35,8 @@ import tools.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static backend.codegen.MachineJumpTableInfo.JTEntryKind.EK_GPRel32BlockAddress;
+import static backend.codegen.MachineJumpTableInfo.JTEntryKind.EK_LabelDifference32;
 import static backend.codegen.RTLIB.*;
 import static backend.codegen.dagisel.CondCode.*;
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
@@ -51,9 +54,10 @@ import static backend.target.TargetOptions.EnablePerformTailCallOpt;
  * target-specific constructs to SelectionDAG operators.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class TargetLowering {
+
   /**
    * This enum indicates whether operations are valid for a
    * target, and if not, what action should be used to make them valid.
@@ -116,10 +120,10 @@ public abstract class TargetLowering {
           if (c == null) return false;
 
           if (op.getOpcode() == ISD.XOR &&
-              (c.getAPIntValue().or(demanded.negative())).isAllOnesValue())
+              (c.getAPIntValue().or(demanded.not())).isAllOnesValue())
             return false;
 
-          if (c.getAPIntValue().intersects(demanded.negative())) {
+          if (c.getAPIntValue().intersects(demanded.not())) {
             EVT vt = op.getValueType();
             SDValue newVal = dag.getNode(op.getOpcode(), vt, op.getOperand(0),
                 dag.getConstant(demanded.and(c.getAPIntValue()), vt, false));
@@ -163,7 +167,7 @@ public abstract class TargetLowering {
    * This indicates the default register class to use for
    * each ValueType the target supports natively.
    */
-  protected TargetRegisterClass[] registerClassForVT;
+  protected MCRegisterClass[] registerClassForVT;
   protected EVT[] transformToType;
   protected int[] numRegistersForVT;
   protected EVT[] registerTypeForVT;
@@ -173,7 +177,7 @@ public abstract class TargetLowering {
   protected TargetMachine tm;
   protected TargetData td;
 
-  private ArrayList<Pair<EVT, TargetRegisterClass>> availableRegClasses;
+  private ArrayList<Pair<EVT, MCRegisterClass>> availableRegClasses;
   private boolean isLittleEndian;
   private MVT pointerTy;
   /**
@@ -219,11 +223,10 @@ public abstract class TargetLowering {
 
   private int exceptionSelectorRegister;
 
-  private long[][] opActions;
-  private long[] loadExtActions;
-  private long[] truncStoreActions;
-  private long[][][] indexedModeActions;
-  private long[] convertActions;
+  private LegalizeAction[][] opActions;
+  private LegalizeAction[][] loadExtActions;
+  private LegalizeAction[][] truncStoreActions;
+  private long[][] indexedModeActions;
   private long[] condCodeActions;
   private byte[] targetDAGCombineArray;
   private TObjectIntHashMap<Pair<Integer, Integer>> promoteType;
@@ -241,33 +244,54 @@ public abstract class TargetLowering {
   protected boolean benefitFromCodePlacementOpt;
 
   protected ArrayList<APFloat> legalFPImmediates;
+  private TargetLoweringObjectFile tlof;
+  /**
+   * The minimum function alignment used when optimization for size, and to prevent
+   * explicitly provided alignment from leading to incorrect code.
+   */
+  private int minFunctionAlignment;
+  /**
+   * The preferred function alignment used when alginment unspecified and optimizing
+   * for speed.
+   */
+  private int prefFunctionAlignment;
 
-  public TargetLowering(TargetMachine tm) {
+  public TargetLowering(TargetMachine tm,
+                        TargetLoweringObjectFile tlof) {
     this.tm = tm;
     td = tm.getTargetData();
     valueTypeAction = new ValueTypeAction();
     availableRegClasses = new ArrayList<>();
-    registerClassForVT = new TargetRegisterClass[MVT.LAST_VALUETYPE];
+    registerClassForVT = new MCRegisterClass[MVT.LAST_VALUETYPE];
     transformToType = new EVT[MVT.LAST_VALUETYPE];
     numRegistersForVT = new int[MVT.LAST_VALUETYPE];
     registerTypeForVT = new EVT[MVT.LAST_VALUETYPE];
     libCallRoutineNames = new String[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     cmpLibCallCCs = new CondCode[RTLIB.UNKNOWN_LIBCALL.ordinal()];
     libCallCallingConv = new CallingConv[RTLIB.UNKNOWN_LIBCALL.ordinal()];
-    opActions = new long[MVT.LAST_VALUETYPE / 8 * 4][ISD.BUILTIN_OP_END];
-    loadExtActions = new long[LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
-    truncStoreActions = new long[MVT.LAST_VALUETYPE];
-    indexedModeActions = new long[MVT.LAST_VALUETYPE][2][MemIndexedMode.values().length];
-    convertActions = new long[MVT.LAST_VALUETYPE];
+    opActions = new LegalizeAction[MVT.LAST_VALUETYPE][ISD.BUILTIN_OP_END];
+    for (LegalizeAction[] tmp : opActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
+    loadExtActions = new LegalizeAction[MVT.LAST_VALUETYPE][LoadExtType.LAST_LOADEXT_TYPE.ordinal()];
+    for (LegalizeAction[] tmp : loadExtActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
+    truncStoreActions = new LegalizeAction[MVT.LAST_VALUETYPE][MVT.LAST_VALUETYPE];
+    for (LegalizeAction[] tmp : truncStoreActions)
+      Arrays.fill(tmp, LegalizeAction.Legal);
+
+    indexedModeActions = new long[MVT.LAST_VALUETYPE][MemIndexedMode.LAST_INDEXED_MODE.ordinal()];
     condCodeActions = new long[SETCC_INVALID.ordinal()];
     targetDAGCombineArray = new byte[(ISD.BUILTIN_OP_END + 7) / 8];
     promoteType = new TObjectIntHashMap<Pair<Integer, Integer>>();
     legalFPImmediates = new ArrayList<>();
-
+    this.tlof = tlof;
     stackPointerRegisterToSaveRestore = 0;
 
     for (int vt = 0; vt < MVT.LAST_VALUETYPE; vt++) {
-      for (MemIndexedMode im : MemIndexedMode.values()) {
+      for (int i = 0, e = MemIndexedMode.LAST_INDEXED_MODE.ordinal(); i < e; i++) {
+        MemIndexedMode im = MemIndexedMode.values()[i];
         if (im != MemIndexedMode.UNINDEXED) {
           setIndexedLoadAction(im, vt, Expand);
           setIndexedStoreAction(im, vt, Expand);
@@ -312,9 +336,29 @@ public abstract class TargetLowering {
     initCmpLibcallCCs();
     initLibcallCallingConvs();
 
-    TargetAsmInfo asmInfo = tm.getTargetAsmInfo();
+    MCAsmInfo asmInfo = tm.getMCAsmInfo();
     if (asmInfo == null || !asmInfo.hasDotLocAndDotFile())
       setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
+  }
+
+  public int getMinFunctionAlignment() {
+    return minFunctionAlignment;
+  }
+
+  public void setMinFunctionAlignment(int minFunctionAlignment) {
+    this.minFunctionAlignment = minFunctionAlignment;
+  }
+
+  public int getPrefFunctionAlignment() {
+    return prefFunctionAlignment;
+  }
+
+  public void setPrefFunctionAlignment(int prefFunctionAlignment) {
+    this.prefFunctionAlignment = prefFunctionAlignment;
+  }
+
+  public TargetLoweringObjectFile getObjFileLowering() {
+    return tlof;
   }
 
   public boolean isIntDivCheap() {
@@ -544,29 +588,146 @@ public abstract class TargetLowering {
   }
 
   public void setOperationAction(int opc, int vt, LegalizeAction action) {
-    int i = vt;
-    int j = i & 31;
-    i = i >> 5;
-    opActions[i][opc] &= ~(3L << (j * 2));
-    opActions[i][opc] |= (long) action.ordinal() << (j * 2);
+    Util.assertion(opc < ISD.BUILTIN_OP_END && vt < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+    opActions[vt][opc] = action;
   }
 
-  public void setLoadExtActions(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < 64 * 4 && im.ordinal() < loadExtActions.length, "Table isn't big enough!");
-    loadExtActions[im.ordinal()] &= ~(3L << (vt * 2));
-    loadExtActions[im.ordinal()] |= action.ordinal() << (vt * 2);
+  public void setIndexedLoadAction(MemIndexedMode im, int vt,
+                                   LegalizeAction action) {
+    Util.assertion(vt < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    indexedModeActions[vt][im.ordinal()] &= ~0xf0;
+    indexedModeActions[vt][im.ordinal()] |= action.ordinal() << 4;
   }
 
-  public void setIndexedLoadAction(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][0].length, "Table isn't big enough!");
-
-    indexedModeActions[vt][0][im.ordinal()] = action.ordinal();
+  public void setIndexedLoadAction(MemIndexedMode im, EVT vt,
+                                   LegalizeAction action) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] &= ~0xf0;
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] |= action.ordinal() << 4;
   }
 
   public void setIndexedStoreAction(MemIndexedMode im, int vt, LegalizeAction action) {
-    Util.assertion(vt < MVT.LAST_VALUETYPE && im.ordinal() < indexedModeActions[0][1].length, "Table isn't big enough!");
+    Util.assertion(vt < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    indexedModeActions[vt][im.ordinal()] &= ~0x0f;
+    indexedModeActions[vt][im.ordinal()] |= action.ordinal();
+  }
 
-    indexedModeActions[vt][1][im.ordinal()] = action.ordinal();
+  public void setIndexedStoreAction(MemIndexedMode im, EVT vt, LegalizeAction action) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        im.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] &= ~0x0f;
+    indexedModeActions[vt.getSimpleVT().simpleVT][im.ordinal()] |= action.ordinal();
+  }
+
+  public LegalizeAction getIndexedLoadAction(MemIndexedMode idxMode, EVT vt) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        idxMode.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // Load action are kept in the upper half.
+    return LegalizeAction.values()[(int)(indexedModeActions[vt.getSimpleVT().simpleVT][idxMode.ordinal()]>>>4) & 0x0f];
+  }
+
+  public LegalizeAction getIndexedStoreAction(MemIndexedMode idxMode, EVT vt) {
+    Util.assertion(vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        idxMode.ordinal() < MemIndexedMode.LAST_INDEXED_MODE.ordinal(), "Table isn't big enough!");
+    // store action are kept in the lower half.
+    return LegalizeAction.values()[(int)(indexedModeActions[vt.getSimpleVT().simpleVT][idxMode.ordinal()]) & 0x0f];
+  }
+
+  public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action) {
+    Util.assertion(vt.simpleVT < 64 * 4 &&
+        extType.ordinal() < loadExtActions.length, "Table isn't big enough!");
+
+    loadExtActions[vt.simpleVT][extType.ordinal()] = action;
+  }
+
+  public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt) {
+    Util.assertion(lType.ordinal() < loadExtActions.length &&
+        vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    return loadExtActions[vt.getSimpleVT().simpleVT][lType.ordinal()];
+  }
+
+  public LegalizeAction getOperationAction(int opc, EVT vt) {
+    if (vt.isExtended()) return Expand;
+    Util.assertion(opc < ISD.BUILTIN_OP_END &&
+        vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+    return opActions[vt.getSimpleVT().simpleVT][opc];
+  }
+
+  public boolean isOperationLegalOrCustom(int opc, EVT vt) {
+    return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
+        && (getOperationAction(opc, vt) == Legal ||
+        getOperationAction(opc, vt) == Custom);
+  }
+
+  public boolean isLoadExtLegal(LoadExtType lType, EVT vt) {
+    return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
+        getLoadExtAction(lType, vt) == Custom);
+  }
+
+  public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT) {
+    Util.assertion(valVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        memVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    return truncStoreActions[valVT.getSimpleVT().simpleVT][memVT.getSimpleVT().simpleVT];
+  }
+
+  public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action) {
+    Util.assertion(valVT < MVT.LAST_VALUETYPE &&
+        memVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    truncStoreActions[valVT][memVT] = action;
+  }
+
+  public void setTruncStoreAction(EVT valVT, EVT memVT, LegalizeAction action) {
+    Util.assertion(valVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE &&
+        memVT.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+
+    truncStoreActions[valVT.getSimpleVT().simpleVT][memVT.getSimpleVT().simpleVT] = action;
+  }
+
+  public boolean isTruncStoreLegal(EVT valVT, EVT memVT) {
+    return isTypeLegal(valVT) && memVT.isSimple() &&
+        (getTruncStoreAction(valVT, memVT) == Legal ||
+            getTruncStoreAction(valVT, memVT) == Custom);
+  }
+
+  public boolean isIndexedLoadLegal(MemIndexedMode idxMode, EVT vt) {
+    return vt.isSimple() && (getIndexedLoadAction(idxMode, vt) == Legal ||
+        getIndexedLoadAction(idxMode, vt) == Custom);
+  }
+
+
+  public boolean isIndexedStoreLegal(MemIndexedMode idxMode, EVT vt) {
+    return vt.isSimple() && (getIndexedStoreAction(idxMode, vt) == Legal ||
+        getIndexedStoreAction(idxMode, vt) == Custom);
+  }
+
+  public LegalizeAction getCondCodeAction(CondCode cc, EVT vt) {
+    Util.assertion(cc.ordinal() < condCodeActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
+
+    LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
+        (2 * vt.getSimpleVT().simpleVT) & 3)];
+    Util.assertion(action != Promote, "Can't promote condition code!");
+    return action;
+  }
+
+  public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action) {
+    Util.assertion(vt < 64 * 4 && cc.ordinal() < condCodeActions.length, "Table isn't big enough!");
+    condCodeActions[cc.ordinal()] &= ~(3L << vt * 2);
+    condCodeActions[cc.ordinal()] |= ((long) action.ordinal() << vt * 2);
+  }
+
+  public boolean isCondCodeLegal(CondCode cc, EVT vt) {
+    return getCondCodeAction(cc, vt) == Legal ||
+        getCondCodeAction(cc, vt) == Custom;
   }
 
   public ValueTypeAction getValueTypeActions() {
@@ -625,19 +786,20 @@ public abstract class TargetLowering {
     this.useUnderscoreSetJmp = val;
   }
 
+  public boolean isUseUnderscoreSetJmp() {
+    return useUnderscoreSetJmp;
+  }
+
+  public boolean isUseUnderscoreLongJmp() {
+    return useUnderscoreLongJmp;
+  }
+
   public void setUseUnderscoreLongJmp(boolean val) {
     this.useUnderscoreLongJmp = val;
   }
 
-  public void setLoadExtAction(LoadExtType extType, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < 64 * 4 && extType.ordinal() < loadExtActions.length, "Table isn't big enough!");
-
-    loadExtActions[extType.ordinal()] &= ~(3L << vt.simpleVT * 2);
-    loadExtActions[extType.ordinal()] |= ((long) action.ordinal() << vt.simpleVT * 2);
-  }
-
   /**
-   * Create a detail info about machine function.
+   * create a detail info about machine function.
    *
    * @param mf
    * @return
@@ -752,9 +914,9 @@ public abstract class TargetLowering {
     return valueTypeAction.getTypeAction(nvt);
   }
 
-  public TargetRegisterClass getRegClassFor(EVT vt) {
+  public MCRegisterClass getRegClassFor(EVT vt) {
     Util.assertion(vt.isSimple(), "getRegClassFor called on illegal type!");
-    TargetRegisterClass rc = registerClassForVT[vt.getSimpleVT().simpleVT];
+    MCRegisterClass rc = registerClassForVT[vt.getSimpleVT().simpleVT];
     Util.assertion(rc != null, "This value type is not natively supported!");
     return rc;
   }
@@ -770,7 +932,7 @@ public abstract class TargetLowering {
    *
    * @param vt
    */
-  public void addRegisterClass(int vt, TargetRegisterClass regClass) {
+  public void addRegisterClass(int vt, MCRegisterClass regClass) {
     Util.assertion(vt < registerClassForVT.length);
     availableRegClasses.add(Pair.get(new EVT(vt), regClass));
     registerClassForVT[vt] = regClass;
@@ -1039,9 +1201,22 @@ public abstract class TargetLowering {
     Util.assertion(opc >= ISD.BUILTIN_OP_END ||
         opc == ISD.INTRINSIC_VOID ||
         opc == ISD.INTRINSIC_W_CHAIN ||
-        opc == ISD.INTRINSIC_WO_CHAIN);
+        opc == ISD.INTRINSIC_WO_CHAIN,
+        "Should use computeMaskedBits if you don't know whether Op" +
+        " is a target node!");
 
     knownVals[0] = knownVals[1] = new APInt(mask.getBitWidth(), 0);
+  }
+
+  public int computeNumSignBitsForTargetNode(SDValue op, int depth) {
+    int opc = op.getOpcode();
+    Util.assertion(opc >= ISD.BUILTIN_OP_END ||
+        opc == ISD.INTRINSIC_VOID ||
+        opc == ISD.INTRINSIC_W_CHAIN ||
+        opc == ISD.INTRINSIC_WO_CHAIN,
+        "Should use computeNumSignBits if you don't know whether Op" +
+        " is a target node!");
+    return 1;
   }
 
   public abstract SDValue lowerReturn(SDValue chain,
@@ -1240,119 +1415,6 @@ public abstract class TargetLowering {
    */
   public boolean isVectorClearMaskLegal(TIntArrayList indices, EVT vt) {
     return false;
-  }
-
-  public LegalizeAction getOperationAction(int opc, EVT vt) {
-    if (vt.isExtended()) return Expand;
-    Util.assertion(opc < opActions[0].length && vt.getSimpleVT().simpleVT < 64 * 8, "Table isn't big enough!");
-
-    int i = vt.getSimpleVT().simpleVT;
-    int j = i & 31;
-    i = i >> 5;
-    return LegalizeAction.values()[(int) ((opActions[i][opc] >> (j * 2)) & 3)];
-  }
-
-  public boolean isOperationLegalOrCustom(int opc, EVT vt) {
-    return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
-        && (getOperationAction(opc, vt) == Legal ||
-        getOperationAction(opc, vt) == Custom);
-  }
-
-  public LegalizeAction getLoadExtAction(LoadExtType lType, EVT vt) {
-    Util.assertion(lType.ordinal() < loadExtActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) (loadExtActions[lType.ordinal()]
-        >> ((2 * vt.getSimpleVT().simpleVT) & 3))];
-  }
-
-  public boolean isLoadExtLegal(LoadExtType lType, EVT vt) {
-    return vt.isSimple() && (getLoadExtAction(lType, vt) == Legal ||
-        getLoadExtAction(lType, vt) == Custom);
-  }
-
-  public LegalizeAction getTruncStoreAction(EVT valVT, EVT memVT) {
-    Util.assertion(valVT.getSimpleVT().simpleVT < truncStoreActions.length && memVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) (truncStoreActions[valVT.getSimpleVT().simpleVT] >>
-        ((2 * memVT.getSimpleVT().simpleVT) & 3))];
-  }
-
-  public void setTruncStoreAction(int valVT, int memVT, LegalizeAction action) {
-    Util.assertion(valVT < truncStoreActions.length && memVT < 64 * 4, "Table isn't big enough!");
-
-    truncStoreActions[valVT] &= ~(3L << memVT * 2);
-    truncStoreActions[valVT] |= (long) action.ordinal() << memVT * 2;
-  }
-
-  public boolean isTruncStoreLegal(EVT valVT, EVT memVT) {
-    return isTypeLegal(valVT) && memVT.isSimple() &&
-        (getTruncStoreAction(valVT, memVT) == Legal ||
-            getTruncStoreAction(valVT, memVT) == Custom);
-  }
-
-  public LegalizeAction getIndexedLoadAction(int idxMode, EVT vt) {
-    Util.assertion(idxMode < indexedModeActions[0][0].length && vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE,
-        "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][0][idxMode]];
-  }
-
-  public void setIndexedModeAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE && idxMode.ordinal() < indexedModeActions[0][0].length,
-        "Table isn't big enough!");
-
-    indexedModeActions[vt.simpleVT][0][idxMode.ordinal()] = action.ordinal();
-  }
-
-  public boolean isIndexedLoadLegal(MemIndexedMode idxMode, EVT vt) {
-    return vt.isSimple() && (getIndexedLoadAction(idxMode.ordinal(), vt) == Legal ||
-        getIndexedLoadAction(idxMode.ordinal(), vt) == Custom);
-  }
-
-  public LegalizeAction getIndexedStoreAction(int idxMode, EVT vt) {
-    Util.assertion(idxMode < indexedModeActions[0][1].length && vt.getSimpleVT().simpleVT < MVT.LAST_VALUETYPE,
-        "Table is't big enough!");
-
-    return LegalizeAction.values()[(int) indexedModeActions[vt.getSimpleVT().simpleVT][1][idxMode]];
-  }
-
-  public void setIndexedStoreAction(MemIndexedMode idxMode, MVT vt, LegalizeAction action) {
-    Util.assertion(vt.simpleVT < MVT.LAST_VALUETYPE && idxMode.ordinal() < indexedModeActions[0][1].length,
-        "Table isn't big enough!");
-
-    indexedModeActions[vt.simpleVT][1][idxMode.ordinal()] = action.ordinal();
-  }
-
-  public boolean isIndexedStoreLegal(MemIndexedMode idxMode, EVT vt) {
-    return vt.isSimple() && (getIndexedStoreAction(idxMode.ordinal(), vt) == Legal
-        || getIndexedStoreAction(idxMode.ordinal(), vt) == Custom);
-  }
-
-  public LegalizeAction getConvertAction(EVT fromVT, EVT toVT) {
-    Util.assertion(fromVT.getSimpleVT().simpleVT < condCodeActions.length && toVT.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    return LegalizeAction.values()[(int) condCodeActions[fromVT.getSimpleVT().simpleVT >>
-        (2 * toVT.getSimpleVT().simpleVT) & 3]];
-  }
-
-  public LegalizeAction getCondCodeAction(CondCode cc, EVT vt) {
-    Util.assertion(cc.ordinal() < condCodeActions.length && vt.getSimpleVT().simpleVT < 32, "Table isn't big enough!");
-
-    LegalizeAction action = LegalizeAction.values()[(int) (condCodeActions[cc.ordinal()] >>
-        (2 * vt.getSimpleVT().simpleVT) & 3)];
-    Util.assertion(action != Promote, "Can't promote condition code!");
-    return action;
-  }
-
-  public void setCondCodeAction(CondCode cc, int vt, LegalizeAction action) {
-    Util.assertion(vt < 64 * 4 && cc.ordinal() < condCodeActions.length, "Table isn't big enough!");
-    condCodeActions[cc.ordinal()] &= ~(3L << vt * 2);
-    condCodeActions[cc.ordinal()] |= ((long) action.ordinal() << vt * 2);
-  }
-
-  public boolean isCondCodeLegal(CondCode cc, EVT vt) {
-    return getCondCodeAction(cc, vt) == Legal ||
-        getCondCodeAction(cc, vt) == Custom;
   }
 
   public void addLegalFPImmediate(APFloat imm) {
@@ -1795,7 +1857,7 @@ public abstract class TargetLowering {
           return dag.getSetCC(vt, lhs.getOperand(0), lhs.getOperand(1), ccT);
         }
         if ((lhs.getOpcode() == ISD.XOR || lhs.getOpcode() == ISD.AND) &&
-            lhs.getOperand(0).getOpcode() == ISD.XOR &
+            lhs.getOperand(0).getOpcode() == ISD.XOR &&
                 lhs.getOperand(1).equals(lhs.getOperand(0).getOperand(1)) &&
             lhs.getOperand(1).getNode() instanceof ConstantSDNode &&
             ((ConstantSDNode) lhs.getOperand(1).getNode()).getAPIntValue().eq(1)) {
@@ -1834,7 +1896,7 @@ public abstract class TargetLowering {
 
       if (cc == SETLE || cc == SETULE) {
         if (c.eq(maxVal)) return dag.getConstant(1, vt, false);
-        return dag.getSetCC(vt, lhs, dag.getConstant(c.increase(),
+        return dag.getSetCC(vt, lhs, dag.getConstant(c.clone().increase(),
             rhs.getValueType(), false), cc == SETLE ? SETLT : SETULT);
       }
 
@@ -2269,7 +2331,7 @@ public abstract class TargetLowering {
       case ISD.ZERO_EXTEND: {
         int operandBitWidth = op.getOperand(0).getValueSizeInBits();
         APInt inMask = new APInt(newMask);
-        inMask.trunc(operandBitWidth);
+        inMask = inMask.trunc(operandBitWidth);
 
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - operandBitWidth).
             and(newMask);
@@ -2280,9 +2342,9 @@ public abstract class TargetLowering {
         if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth + 1)) {
           return true;
         }
-        Util.assertion(res[0].add(res[1]).eq(0), "Bits known to be one AND zero?");
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
         res[0].orAssign(newBits);
         break;
       }
@@ -2299,12 +2361,12 @@ public abstract class TargetLowering {
 
         APInt inDemandedBits = inMask.and(newMask);
         inDemandedBits.orAssign(inSignBit);
-        inDemandedBits.trunc(inBits);
+        inDemandedBits = inDemandedBits.trunc(inBits);
         if (simplifyDemandedBits(op.getOperand(0), inDemandedBits,
             tlo, res, depth + 1))
           return true;
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
 
         if (res[0].intersects(inSignBit)) {
           return tlo.combineTo(op, tlo.dag.getNode(ISD.ZERO_EXTEND,
@@ -2322,21 +2384,21 @@ public abstract class TargetLowering {
       case ISD.ANY_EXTEND: {
         int operandBitWidth = op.getOperand(0).getValueSizeInBits();
         APInt inMask = newMask;
-        inMask.trunc(operandBitWidth);
+        inMask = inMask.trunc(operandBitWidth);
         if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth + 1))
           return true;
         Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
-        res[0].zext(bitwidth);
-        res[1].zext(bitwidth);
+        res[0] = res[0].zext(bitwidth);
+        res[1] = res[1].zext(bitwidth);
         break;
       }
       case ISD.TRUNCATE: {
-        APInt truncMask = newMask;
-        truncMask.zext(op.getOperand(0).getValueSizeInBits());
+        int operandBitWidth = op.getOperand(0).getValueType().getScalarType().getSizeInBits();
+        APInt truncMask = newMask.zext(operandBitWidth);
         if (simplifyDemandedBits(op.getOperand(0), truncMask, tlo, res, depth + 1))
           return true;
-        res[0].trunc(bitwidth);
-        res[1].trunc(bitwidth);
+        res[0] = res[0].trunc(bitwidth);
+        res[1] = res[1].trunc(bitwidth);
 
         if (op.getOperand(0).getNode().hasOneUse()) {
           SDValue in = op.getOperand(0);
@@ -2351,7 +2413,7 @@ public abstract class TargetLowering {
                 APInt highBits = APInt.getHighBitsSet(inBitwidth,
                     inBitwidth - bitwidth);
                 highBits = highBits.lshr(shAmt.getZExtValue());
-                highBits.trunc(bitwidth);
+                highBits = highBits.trunc(bitwidth);
 
                 if (shAmt.getZExtValue() < bitwidth &&
                     highBits.and(newMask).eq(0)) {
@@ -2423,6 +2485,30 @@ public abstract class TargetLowering {
                                          long dstOff,
                                          Value srcVal,
                                          long srcOff) {
+    return new SDValue();
+  }
+
+  public SDValue emitTargetCodeForMemset(SelectionDAG dag,
+                                         SDValue chain,
+                                         SDValue op1,
+                                         SDValue op2,
+                                         SDValue op3,
+                                         int align,
+                                         Value dstSV,
+                                         long dstOff) {
+    return new SDValue();
+  }
+
+  public SDValue emitTargetCodeForMemmove(SelectionDAG dag,
+                                          SDValue chain,
+                                          SDValue op1,
+                                          SDValue op2,
+                                          SDValue op3,
+                                          int align,
+                                          Value dstSV,
+                                          long dstOff,
+                                          Value srcSV,
+                                          long srcOff) {
     return new SDValue();
   }
 
@@ -2617,5 +2703,36 @@ public abstract class TargetLowering {
    */
   public boolean isNarrowingProfitable(EVT vt1, EVT vt2) {
     return false;
+  }
+
+  public SDValue getPICJumpTableRelocBase(SDValue table, SelectionDAG dag) {
+    if (getJumpTableEncoding() == EK_GPRel32BlockAddress)
+      return dag.getGLOBAL_OFFSET_TABLE(new EVT(getPointerTy()));
+    return table;
+  }
+
+  public MachineJumpTableInfo.JTEntryKind getJumpTableEncoding() {
+    // In non-pic modes, just use the address of a block.
+    if (getTargetMachine().getRelocationModel() != TargetMachine.RelocModel.PIC_)
+      return MachineJumpTableInfo.JTEntryKind.EK_BlockAddress;
+
+    // In PIC mode, if the target supports a GPRel32 directive, use it.
+    if (getTargetMachine().getMCAsmInfo().getGPRel32Directive() != null)
+    return MachineJumpTableInfo.JTEntryKind.EK_GPRel32BlockAddress;
+
+    // Otherwise, use a label difference.
+    return EK_LabelDifference32;
+  }
+
+  public MCExpr getPICJumpTableRelocBaseExpr(MachineFunction mf, int jti, MCSymbol.MCContext ctx) {
+    return MCSymbolRefExpr.create(mf.getJTISymbol(jti, ctx, false), ctx);
+  }
+
+  public MCExpr lowerJumpTableEntry(MachineJumpTableInfo jumpTable,
+                                    MachineBasicBlock mbb,
+                                    int jti,
+                                    MCSymbol.MCContext outContext) {
+    Util.assertion("Need to implement this hook if target has custom JTIs");
+    return null;
   }
 }

@@ -1,0 +1,68 @@
+LIBRARY MESAAUX
+
+DESCRIPTION "X11R6 XFree86 libMesaaux.dll for OS/2 EMX09B VERSION=1.2.7"
+
+CODE
+   PRELOAD
+
+DATA
+   MULTIPLE NONSHARED
+
+STACKSIZE 4096
+
+EXPORTS
+    auxInitDisplayMode @1 NONAME
+    auxInitPosition @2 NONAME
+    auxInitWindow @3 NONAME
+    auxCloseWindow @4 NONAME
+    auxQuit @5 NONAME
+    auxSwapBuffers @6 NONAME
+    auxXDisplay @7 NONAME
+    auxXWindow @8 NONAME
+    auxMainLoop @9 NONAME
+    auxExposeFunc @10 NONAME
+    auxReshapeFunc @11 NONAME
+    auxIdleFunc @12 NONAME
+    auxKeyFunc @13 NONAME
+    auxMouseFunc @14 NONAME
+    auxDeleteMouseFunc @15 NONAME
+    auxGetColorMapSize @16 NONAME
+    auxGetMouseLoc @17 NONAME
+    auxSetOneColor @18 NONAME
+    auxSetFogRamp @19 NONAME
+    auxSetGreyRamp @20 NONAME
+    auxSetRGBMap @21 NONAME
+    auxRGBImageLoad @22 NONAME
+    auxCreateFont @23 NONAME
+    auxDrawStr @24 NONAME
+    auxWireSphere @25 NONAME
+    auxSolidSphere @26 NONAME
+    auxWireCube @27 NONAME
+    auxSolidCube @28 NONAME
+    auxWireBox @29 NONAME
+    auxSolidBox @30 NONAME
+    auxWireTorus @31 NONAME
+    auxSolidTorus @32 NONAME
+    auxWireCylinder @33 NONAME
+    auxSolidCylinder @34 NONAME
+    auxWireIcosahedron @35 NONAME
+    auxSolidIcosahedron @36 NONAME
+    auxWireOctahedron @37 NONAME
+    auxSolidOctahedron @38 NONAME
+    auxWireTetrahedron @39 NONAME
+    auxSolidTetrahedron @40 NONAME
+    auxWireDodecahedron @41 NONAME
+    auxSolidDodecahedron @42 NONAME
+    auxWireCone @43 NONAME
+    auxSolidCone @44 NONAME
+    auxWireTeapot @45 NONAME
+    auxSolidTeapot @46 NONAME
+    auxInitDisplayModePolicy @47 NONAME
+    auxGetDisplayModePolicy @48 NONAME
+    auxInitDisplayModeID @49 NONAME
+    auxGetDisplayModeID @50 NONAME
+    auxGetDisplayMode @51 NONAME
+    auxGetScreenSize @52 NONAME
+    auxAnimation @53 NONAME
+
+

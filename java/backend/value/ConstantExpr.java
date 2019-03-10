@@ -34,7 +34,7 @@ import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class ConstantExpr extends Constant {
   protected Operator opcode;
@@ -114,36 +114,36 @@ public abstract class ConstantExpr extends Constant {
 
   public static Constant getIntToPtr(Constant c, Type ty) {
     Util.assertion(ty.isPointerType(), "PtrToInt destination must be pointer");
-    Util.assertion(c.getType().isIntegerType(), "PtrToInt source must be integral");
+    Util.assertion(c.getType().isIntegerTy(), "PtrToInt source must be integral");
     return getFoldedCast(Operator.IntToPtr, c, ty);
   }
 
   public static Constant getPtrToInt(Constant c, Type ty) {
     Util.assertion(c.getType().isPointerType(), "PtrToInt source must be pointer");
-    Util.assertion(ty.isIntegerType(), "PtrToInt destination must be integral");
+    Util.assertion(ty.isIntegerTy(), "PtrToInt destination must be integral");
     return getFoldedCast(Operator.PtrToInt, c, ty);
   }
 
   public static Constant getFPToUI(Constant c, Type ty) {
-    Util.assertion(c.getType().isFloatingPointType() && ty.isIntegerType(), "This is an illegal floating point to uint cast!");
+    Util.assertion(c.getType().isFloatingPointType() && ty.isIntegerTy(), "This is an illegal floating point to uint cast!");
 
     return getFoldedCast(Operator.FPToUI, c, ty);
   }
 
   public static Constant getFPToSI(Constant c, Type ty) {
-    Util.assertion(c.getType().isFloatingPointType() && ty.isIntegerType(), "This is an illegal floating point to sint cast!");
+    Util.assertion(c.getType().isFloatingPointType() && ty.isIntegerTy(), "This is an illegal floating point to sint cast!");
 
     return getFoldedCast(Operator.FPToSI, c, ty);
   }
 
   public static Constant getSIToFP(Constant c, Type ty) {
-    Util.assertion(c.getType().isIntegerType() && ty.isFloatingPointType(), "This is an illegal uint to floating point cast!");
+    Util.assertion(c.getType().isIntegerTy() && ty.isFloatingPointType(), "This is an illegal uint to floating point cast!");
 
     return getFoldedCast(Operator.SIToFP, c, ty);
   }
 
   public static Constant getUIToFP(Constant c, Type ty) {
-    Util.assertion(c.getType().isIntegerType() && ty.isFloatingPointType(), "This is an illegal uint to floating point cast!");
+    Util.assertion(c.getType().isIntegerTy() && ty.isFloatingPointType(), "This is an illegal uint to floating point cast!");
 
     return getFoldedCast(Operator.UIToFP, c, ty);
   }
@@ -165,8 +165,8 @@ public abstract class ConstantExpr extends Constant {
   }
 
   public static Constant getSExt(Constant c, Type ty) {
-    Util.assertion(c.getType().isIntegerType(), "SExt operand must be integer");
-    Util.assertion(ty.isIntegerType(), "SExt produces only integral");
+    Util.assertion(c.getType().isIntegerTy(), "SExt operand must be integer");
+    Util.assertion(ty.isIntegerTy(), "SExt produces only integral");
     Util.assertion(c.getType().getScalarSizeBits() < ty.getScalarSizeBits(), "SrcTy must be smaller than DestTy for Trunc!");
 
 
@@ -174,15 +174,15 @@ public abstract class ConstantExpr extends Constant {
   }
 
   public static Constant getZExt(Constant c, Type ty) {
-    Util.assertion(c.getType().isIntegerType(), "ZExt operand must be integer");
-    Util.assertion(ty.isIntegerType(), "ZExt produces only integral");
+    Util.assertion(c.getType().isIntegerTy(), "ZExt operand must be integer");
+    Util.assertion(ty.isIntegerTy(), "ZExt produces only integral");
     Util.assertion(c.getType().getScalarSizeBits() < ty.getScalarSizeBits(), "SrcTy must be smaller than DestTy for Trunc!");
     return getFoldedCast(Operator.ZExt, c, ty);
   }
 
   public static Constant getTrunc(Constant c, Type ty) {
-    Util.assertion(c.getType().isIntegerType(), "Trunc operand must be integer");
-    Util.assertion(ty.isIntegerType(), "Trunc produces only integral");
+    Util.assertion(c.getType().isIntegerTy(), "Trunc operand must be integer");
+    Util.assertion(ty.isIntegerTy(), "Trunc produces only integral");
     Util.assertion(c.getType().getScalarSizeBits() > ty.getScalarSizeBits(), "SrcTy must be larger than DestTy for Trunc!");
     return getFoldedCast(Operator.Trunc, c, ty);
   }
@@ -230,7 +230,7 @@ public abstract class ConstantExpr extends Constant {
   public static Constant getNeg(Constant c) {
     if (c.getType().isFloatingPointType())
       return getFNeg(c);
-    Util.assertion(c.getType().isIntegerType(), "Cann't NEG a non integral value!");
+    Util.assertion(c.getType().isIntegerTy(), "Cann't NEG a non integral value!");
     return get(Operator.Sub, ConstantInt.getNullValue(c.getType()), c);
   }
 
@@ -319,7 +319,7 @@ public abstract class ConstantExpr extends Constant {
   }
 
   public static Constant getNot(ConstantInt value) {
-    Util.assertion(value.getType().isIntegerType());
+    Util.assertion(value.getType().isIntegerTy());
     return get(Operator.Xor, value, Constant.getAllOnesValue(value.getType()));
   }
 

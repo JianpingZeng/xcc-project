@@ -96,7 +96,7 @@ public class Combiner implements InstVisitor<Instruction> {
       if ((destEleTySize % srcEleTySize) != 0)
         return null;
 
-      if (srcEleTy.isAggregateType() && destEleTy.isIntegerType()) {
+      if (srcEleTy.isAggregateType() && destEleTy.isIntegerTy()) {
         int scale = (int) (srcEleTySize / destEleTySize);
         Value numElements = ai.operand(0);
         Value amt;

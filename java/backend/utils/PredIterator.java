@@ -24,7 +24,7 @@ import java.util.NoSuchElementException;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PredIterator<B extends Value> implements Iterator<BasicBlock> {
   private BasicBlock curBB;

@@ -17,12 +17,17 @@ package backend.target;
  */
 
 import backend.codegen.AsmPrinter;
+import backend.codegen.AsmWriterFlavorTy;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCInstPrinter;
+import backend.mc.MCStreamer;
+import backend.mc.MCSymbol;
 import backend.support.Triple;
 import backend.support.Triple.ArchType;
 import tools.OutRef;
 import tools.Util;
 
-import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Iterator;
 
 /**
@@ -38,24 +43,29 @@ import java.util.Iterator;
  * </p
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Target {
-  private boolean asmVerbosityDefault;
-
   public interface AsmInfoCtor {
-    TargetAsmInfo create(Target t, String triple);
+    MCAsmInfo create(Target t, String triple);
   }
 
   public interface TargetMachineCtor {
-    TargetMachine create(Target t, String triple, String features);
+    TargetMachine create(Target t, String triple, String cpu, String features);
   }
 
   public interface AsmPrinterCtor {
-    AsmPrinter create(OutputStream os,
+    AsmPrinter create(PrintStream os,
                       TargetMachine tm,
-                      TargetAsmInfo asmInfo,
-                      boolean verbose);
+                      MCSymbol.MCContext ctx,
+                      MCStreamer streamer,
+                      MCAsmInfo mai);
+  }
+
+  public interface MCInstPrinterCtor {
+    MCInstPrinter create(AsmWriterFlavorTy asmflavor,
+                         PrintStream os,
+                         MCAsmInfo mai);
   }
 
   private Target next;
@@ -82,8 +92,9 @@ public class Target {
    */
   private AsmPrinterCtor asmPrinterCtor;
 
+  private MCInstPrinterCtor mcInstPrinterCtor;
   /**
-   * Create a TargetAsmInfo implementation for the specified
+   * create a MCAsmInfo implementation for the specified
    * target triple.
    *
    * @param triple This argument is used to determine the target machine
@@ -92,14 +103,14 @@ public class Target {
    *               host if that does not exist.
    * @return
    */
-  public TargetAsmInfo createAsmInfo(String triple) {
+  public MCAsmInfo createAsmInfo(String triple) {
     if (asmInfoCtor == null)
       return null;
     return asmInfoCtor.create(this, triple);
   }
 
   /**
-   * Create a target specific machine implementation for the specified {@code triple}
+   * create a target specific machine implementation for the specified {@code triple}
    *
    * @param triple   This argument is used to determine the target machine
    *                 feature set; it should always be provided. Generally this should be
@@ -108,28 +119,36 @@ public class Target {
    * @param features
    * @return
    */
-  public TargetMachine createTargetMachine(String triple, String features) {
+  public TargetMachine createTargetMachine(String triple, String cpu, String features) {
     if (targetMachineCtor == null)
       return null;
-    return targetMachineCtor.create(this, triple, features);
+    return targetMachineCtor.create(this, triple, cpu, features);
   }
 
   /**
-   * Create a target specific assembly printer pass.
+   * create a target specific assembly printer pass.
    *
    * @param os
    * @param tm
-   * @param asmInfo
-   * @param verbose
+   * @param mai
    * @return
    */
-  public AsmPrinter createAsmPrinter(OutputStream os,
+  public AsmPrinter createAsmPrinter(PrintStream os,
                                      TargetMachine tm,
-                                     TargetAsmInfo asmInfo,
-                                     boolean verbose) {
+                                     MCSymbol.MCContext ctx,
+                                     MCStreamer streamer,
+                                     MCAsmInfo mai) {
     if (asmPrinterCtor == null)
       return null;
-    return asmPrinterCtor.create(os, tm, asmInfo, verbose);
+    return asmPrinterCtor.create(os, tm, ctx, streamer, mai);
+  }
+
+  public MCInstPrinter createMCInstPrinter(AsmWriterFlavorTy asmflavor,
+                                           PrintStream os,
+                                           MCAsmInfo mai) {
+    if (mcInstPrinterCtor == null)
+      return null;
+    return mcInstPrinterCtor.create(asmflavor, os, mai);
   }
 
   public String getName() {
@@ -138,14 +157,6 @@ public class Target {
 
   public String getShortDescription() {
     return shortDesc;
-  }
-
-  public void setAsmVerbosityDefault(boolean val) {
-    asmVerbosityDefault = val;
-  }
-
-  public boolean getAsmVerbosityDefault() {
-    return asmVerbosityDefault;
   }
 
   /**
@@ -160,7 +171,7 @@ public class Target {
    * A target registry factory.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static class TargetRegistry {
     /**
@@ -185,6 +196,12 @@ public class Target {
       if (target.asmPrinterCtor != null)
         return;
       target.asmPrinterCtor = ctor;
+    }
+
+    public static void registerMCInstPrinter(Target target, MCInstPrinterCtor ctor) {
+      if (target.mcInstPrinterCtor != null)
+        return;
+      target.mcInstPrinterCtor = ctor;
     }
 
     private static void registerTarget(Target t,

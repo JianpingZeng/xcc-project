@@ -79,7 +79,7 @@ def RISCVAsmParser : AsmParser {
 
 
 def RISCVAsmWriter : AsmWriter {
-  string AsmWriterClassName  = "RISCVAsmPrinter";
+  string AsmWriterClassName  = "RISCVInstPrinter";
   int Variant = 0;
 }
 

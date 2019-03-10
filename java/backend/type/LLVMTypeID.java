@@ -23,7 +23,7 @@ package backend.type;
  * Type::getPrimitiveType function, or else things will break!
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface LLVMTypeID {
   int VoidTyID = 0;           //  0, 1: Basics...
@@ -35,21 +35,18 @@ public interface LLVMTypeID {
   int TypeTyID = X86_FP80TyID + 1;
   int LabelTyID = TypeTyID + 1;         // 12   : Labels...
   int MetadataTyID = LabelTyID + 1;     //
-
+  int X86_MMXTyID = MetadataTyID + 1;     ///<  8: MMX vectors (64 bits, X86 specific)
 
   // Derived types... see DerivedTypes class...
   // Make sure FirstDerivedTyID stays up to date!!!
-  int IntegerTyID = MetadataTyID + 1;          // Arbitrary bit width integers.
+  int IntegerTyID = X86_MMXTyID + 1;          // Arbitrary bit width integers.
   int FunctionTyID = IntegerTyID + 1;       // Functions... Structs...
   int StructTyID = FunctionTyID + 1;
   int ArrayTyID = StructTyID + 1;          // Array... pointer...
   int PointerTyID = ArrayTyID + 1;
   int OpaqueTyID = PointerTyID + 1;
   int VectorTyID = OpaqueTyID + 1;
-  //...
 
-  int NumPrimitiveIDs = OpaqueTyID + 1;   // Must remain as last defined ID
-
-  int LastPrimitiveTyID = LabelTyID;
+  int LastPrimitiveTyID = X86_MMXTyID;
   int FirstDerivedTyID = IntegerTyID;
 }

@@ -23,7 +23,7 @@ import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class IntegerType extends DerivedType {
   private int numBits;
@@ -44,10 +44,6 @@ public class IntegerType extends DerivedType {
   }
 
   public boolean isSigned() {
-    return true;
-  }
-
-  public boolean isIntegerType() {
     return true;
   }
 

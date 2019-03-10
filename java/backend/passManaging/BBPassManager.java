@@ -30,7 +30,7 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.*;
  * processing next basic block.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class BBPassManager extends PMDataManager implements FunctionPass {
   private AnalysisResolver resolver;

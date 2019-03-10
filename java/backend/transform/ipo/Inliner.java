@@ -30,6 +30,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
+import backend.value.Module;
 import backend.value.Value.UndefValue;
 import tools.Pair;
 import tools.Util;

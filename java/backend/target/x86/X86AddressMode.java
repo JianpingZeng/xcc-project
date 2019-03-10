@@ -25,7 +25,7 @@ import backend.value.GlobalValue;
  * also include the offset of a global value.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86AddressMode {
   public enum BaseType {

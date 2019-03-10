@@ -36,7 +36,7 @@ import java.util.HashMap;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LCSSA implements LoopPass {
   private LoopInfo li;

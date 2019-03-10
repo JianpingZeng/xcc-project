@@ -32,5 +32,5 @@ package backend.target.x86;
  * @version 0.4
  */
 enum X86SSEEnum {
-  NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42
+  NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42, AVX, AVX2
 }

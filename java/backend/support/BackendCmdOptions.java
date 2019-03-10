@@ -29,7 +29,6 @@ import tools.commandline.*;
 import java.util.Objects;
 import java.util.TreeSet;
 
-import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
 import static backend.codegen.AsmWriterFlavorTy.ATT;
 import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
@@ -48,7 +47,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  * CommandLine DataBase.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class BackendCmdOptions {
   public static final Opt<PMDataManager.PassDebugLevel> PassDebugging =
@@ -92,12 +91,6 @@ public class BackendCmdOptions {
       desc("Shrink wrap the specified function"), valueDesc("funcname"),
       init(""));
 
-  public static final Opt<AsmPrinter.BoolOrDefault> AsmVerbose = new Opt<AsmPrinter.BoolOrDefault>(
-      new Parser<>(),
-      optionName("asm-verbose"),
-      desc("Add comments to directives."),
-      init(BOU_UNSET)
-  );
   public static final BooleanOpt NewAsmPrinter =
       new BooleanOpt(optionName("experimental-asm-printer"),
           new OptionHiddenApplicator(Hidden));

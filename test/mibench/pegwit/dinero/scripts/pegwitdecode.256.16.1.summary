@@ -1,0 +1,10 @@
+Analyzer: /u/gs3/leec/leec/Projects/shade/bin/gen
+Version: 1.0 (4/Apr/97) (shade version: 5.25 V8 SPARC ELF32 (14/Feb/95))
+Uname: panther sun4u SunOS 5.5.1 Generic_103640-08
+Start: Mon Jul  7 04:03:51 1997
+Application: ../../bin/pegwitdecode -d ../../data/pegwit.enc ../../data/pegwit.dec
+Application Instructions: 18592217
+Stop: Mon Jul  7 04:13:50 1997
+Instructions: 18592217
+Time: 62.360 usr  1.480 sys  599.461 real  10.650%
+Speed: 291.231 KIPS

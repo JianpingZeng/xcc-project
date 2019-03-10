@@ -1,8 +1,8 @@
 package backend.codegen;
 
+import backend.mc.MCRegisterClass;
 import backend.target.TargetData;
-import backend.target.TargetFrameInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import tools.Util;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineFrameInfo {
   /**
@@ -106,10 +106,10 @@ public class MachineFrameInfo {
 
   private boolean csIValid;
 
-  private TargetFrameInfo tfi;
+  private TargetFrameLowering tfi;
   private TargetRegisterInfo tri;
 
-  public MachineFrameInfo(TargetFrameInfo tfi,
+  public MachineFrameInfo(TargetFrameLowering tfi,
                           TargetRegisterInfo tri) {
     csInfo = new ArrayList<>();
     this.tfi = tfi;
@@ -273,7 +273,7 @@ public class MachineFrameInfo {
   }
 
   /**
-   * createFixedObject - Create a new object at a fixed location on the stack.
+   * createFixedObject - create a new object at a fixed location on the stack.
    * All fixed objects should be created before other objects are created for
    * efficiency.  This returns an index with a negative value.
    * <p>
@@ -291,7 +291,7 @@ public class MachineFrameInfo {
   }
 
   /**
-   * createStackObject - Create a new statically sized stack object, returning
+   * createStackObject - create a new statically sized stack object, returning
    * a positive integer to represent it.
    */
   public int createStackObject(long size, int Alignment) {
@@ -309,8 +309,8 @@ public class MachineFrameInfo {
         td.getTypeAlign(type));
   }
 
-  public int createStackObject(TargetRegisterClass rc) {
-    return createStackObject(tri.getRegSize(rc), tri.getSpillAlignment(rc));
+  public int createStackObject(MCRegisterClass rc) {
+    return createStackObject(tri.getRegSize(rc)/8, tri.getSpillAlignment(rc)/8);
   }
 
   /**
@@ -342,7 +342,7 @@ public class MachineFrameInfo {
   }
 
   public void print(MachineFunction mf, PrintStream os) {
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     int valueOffset = tfi != null ? tfi.getLocalAreaOffset() : 0;
 
     for (int i = 0, e = objects.size(); i < e; i++) {

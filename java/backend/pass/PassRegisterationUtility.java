@@ -33,7 +33,7 @@ import backend.transform.scalars.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PassRegisterationUtility {
   /**
@@ -48,7 +48,7 @@ public final class PassRegisterationUtility {
     new RegisterPass("Live Variable Analysis", "livevars", LiveVariables.class);
     new RegisterPass("Natural Loop Information", "loops", LoopInfo.class, true, true);
     new RegisterPass("Machine Dominator Tree Construction", "machinedomtree", MachineDomTree.class, true, true);
-    new RegisterPass("Machine Natural Loop Construction", "machine-loops", MachineLoop.class, true, true);
+    new RegisterPass("Machine Natural Loop Construction", "machine-loops", MachineLoopInfo.class, true, true);
     new RegisterPass("Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
     new RegisterPass("Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
     new RegisterPass("Print out cfg into dot file", "dot-cfg", CFGPrinter.class, false, true);

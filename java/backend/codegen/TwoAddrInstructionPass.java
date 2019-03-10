@@ -19,22 +19,27 @@ package backend.codegen;
 
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.support.PrintMachineFunctionPass;
-import backend.target.*;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
+import backend.target.TargetOptions;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
 
+import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
-import static backend.target.TargetInstrInfo.INLINEASM;
-import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetOpcodes.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
@@ -61,7 +66,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TwoAddrInstructionPass extends MachineFunctionPass {
   public static final IntStatistic NumTwoAddressInsts = new IntStatistic(
@@ -112,7 +117,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       for (int i = 0, e = mbb.size(); i < e; ) {
         MachineInstr mi = mbb.getInstAt(i);
         int nmi = i + 1;
-        TargetInstrDesc tid = mbb.getInstAt(i).getDesc();
+        MCInstrDesc tid = mbb.getInstAt(i).getDesc();
         boolean firstTied = true;
 
         distanceMap.put(i, i + 1);
@@ -207,8 +212,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
 
                     mri.replaceDefRegInfo(regA, oldMI, newMI);
                     if (!sunk) {
-                      distanceMap.put(newMI.index(), i + 1);
-                      i = newMI.index();
+                      distanceMap.put(newMI.getIndexInMBB(), i + 1);
+                      i = newMI.getIndexInMBB();
                       nmi = i + 1;
                     }
 
@@ -235,7 +240,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
               }
             }
 
-            TargetRegisterClass rc = mri.getRegClass(regA);
+            MCRegisterClass rc = mri.getRegClass(regA);
             MachineInstr defMI = mri.getVRegDef(regB);
 
             if (defMI != null && defMI.getDesc().isAsCheapAsAMove()
@@ -333,7 +338,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
         if (defMI != null)
           defMI.removeFromParent();
       }
-      vreg = reMatRegs.findNext(vreg);
+      vreg = reMatRegs.findNext(vreg+1);
     }
 
     if (TargetOptions.PrintMachineCode.value) {
@@ -346,7 +351,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
   }
 
   private static boolean isTwoAddrUse(MachineInstr useMI, int reg) {
-    TargetInstrDesc tid = useMI.getDesc();
+    MCInstrDesc tid = useMI.getDesc();
     for (int i = 0, e = tid.getNumOperands(); i != e; i++) {
       MachineOperand mo = useMI.getOperand(i);
       if (mo.isRegister() && mo.getReg() == reg &&
@@ -403,7 +408,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       return false;
 
     MachineOperand killMO = null;
-    int killPos = killMI.index();
+    int killPos = killMI.getIndexInMBB();
     killPos++;
 
     int numVisited = 0;
@@ -439,10 +444,10 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     if (lv != null)
       lv.replaceKillInstruction(savedReg, killMI, mi);
 
-    if (killPos == mi.index())
+    if (killPos == mi.getIndexInMBB())
       return false;
 
-    Util.assertion(killPos > mi.index(), "must sink the specified instr");
+    Util.assertion(killPos > mi.getIndexInMBB(), "must sink the specified instr");
     mi.removeFromParent();
     mbb.insert(killPos - 1, mi);
     return true;
@@ -466,8 +471,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
 
       mbb.insert(mi.get(), newMI);
       mbb.remove(mi.get());
-      mi.set(newMI.index());
-      distanceMap.put(newMI.index(), dist);
+      mi.set(newMI.getIndexInMBB());
+      distanceMap.put(newMI.getIndexInMBB(), dist);
     }
 
     return true;
@@ -478,7 +483,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     Util.assertion(au != null);
     au.setPreservesCFG();
     au.addPreserved(LiveVariables.class);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     au.addPreserved(PhiElimination.class);
     super.getAnalysisUsage(au);
@@ -537,20 +542,20 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       MachineInstr mi = itr.getMachineInstr();
       if (!mi.getParent().equals(mbb))
         continue;
-      if (!distanceMap.containsKey(mi.index()))
+      if (!distanceMap.containsKey(mi.getIndexInMBB()))
         continue;
 
-      if (mo.isUse() && distanceMap.get(mi.index()) < lastUse)
-        lastUse = distanceMap.get(mi.index());
-      if (mo.isDef() && distanceMap.get(mi.index()) > lastDef.get())
-        lastDef.set(distanceMap.get(mi.index()));
+      if (mo.isUse() && distanceMap.get(mi.getIndexInMBB()) < lastUse)
+        lastUse = distanceMap.get(mi.getIndexInMBB());
+      if (mo.isDef() && distanceMap.get(mi.getIndexInMBB()) > lastDef.get())
+        lastDef.set(distanceMap.get(mi.getIndexInMBB()));
       itr.next();
     }
     return (!(lastUse > lastDef.get() && lastUse < dist));
   }
 
   private boolean isProfitableToReMat(int reg,
-                                      TargetRegisterClass rc,
+                                      MCRegisterClass rc,
                                       MachineInstr mi,
                                       MachineInstr defMI,
                                       MachineBasicBlock mbb,
@@ -562,7 +567,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
       MachineInstr useMI = itr.getMachineInstr();
       MachineBasicBlock useBB = useMI.getParent();
       if (useBB.equals(mbb)) {
-        int idx = useMI.index();
+        int idx = useMI.getIndexInMBB();
         if (distanceMap.containsKey(idx) && distanceMap.get(idx) == loc) {
           otherUse = true;
           if (isTwoAddrUse(useMI, reg))

@@ -324,4 +324,14 @@ public interface InstVisitor<RetTy> {
    * @return
    */
   RetTy visitSelect(User inst);
+
+  default RetTy visitExtractElementInst(User inst) { return null; }
+
+  default RetTy visitInsertElementInst(User inst) { return null; }
+
+  default RetTy visitShuffleVectorInst(User inst) { return null; }
+
+  default RetTy visitExtractVectorInst(User inst) { return null; }
+
+  default RetTy visitInsertValueInst(User inst) { return null; }
 }

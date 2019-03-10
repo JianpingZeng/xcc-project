@@ -1,20 +1,14 @@
-package backend.mc;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2018, Jianping Zeng.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Licensed under the BSD License version 3. Please refer LICENSE
+ * for details.
  */
+package backend.mc;
+
+import backend.target.SectionKind;
+import java.io.PrintStream;
 
 /**
  * Instances of this class represent a uniqued identifier for
@@ -22,7 +16,23 @@ package backend.mc;
  * uniques and creates these.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MCSection {
+  private SectionKind kind;
+  private static MCSection FakeSection;
+  public static MCSection getFakeSection() {
+    if (FakeSection == null)
+      FakeSection = new MCSection(null);
+    return FakeSection;
+  }
+
+  protected MCSection(SectionKind k) { kind = k; }
+
+  public SectionKind getKind() {
+    return kind;
+  }
+
+  public void printSwitchToSection(MCAsmInfo mai,
+                                   PrintStream os) {}
 }

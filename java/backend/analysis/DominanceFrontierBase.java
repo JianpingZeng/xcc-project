@@ -26,7 +26,7 @@ import java.util.HashSet;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class DominanceFrontierBase implements FunctionPass {
   protected HashMap<BasicBlock, HashSet<BasicBlock>> frontiers;

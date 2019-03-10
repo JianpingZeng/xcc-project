@@ -19,7 +19,7 @@ package tools;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class APSInt extends APInt {
   private boolean isUnsigned;
@@ -296,7 +296,7 @@ public class APSInt extends APInt {
    * @return
    */
   public APSInt not() {
-    return new APSInt(((APInt) this).not(), isUnsigned);
+    return new APSInt(super.not(), isUnsigned);
   }
 
   /**

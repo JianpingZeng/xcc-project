@@ -18,8 +18,8 @@
 package backend.codegen.linearscan;
 
 import backend.codegen.MachineBasicBlock;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import tools.Pair;
 import tools.Util;
@@ -30,7 +30,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MoveResolver {
   private ArrayList<Pair<LiveInterval, LiveInterval>> mappings;
@@ -122,18 +122,18 @@ public final class MoveResolver {
 
     if (ilk.isAssignedPhyReg(srcIt) && ilk.isAssignedPhyReg(dstIt)) {
       int srcReg = ilk.getPhyReg(srcIt), dstReg = ilk.getPhyReg(dstIt);
-      TargetRegisterClass srcRC = tri.getRegClass(srcReg);
-      TargetRegisterClass dstRC = tri.getRegClass(dstReg);
+      MCRegisterClass srcRC = tri.getRegClass(srcReg);
+      MCRegisterClass dstRC = tri.getRegClass(dstReg);
       boolean emitted = tii.copyRegToReg(insertedMBB, insertedIndex, dstReg, srcReg, dstRC, srcRC);
       Util.assertion(emitted, "Can't emit a copy from reg to reg");
     } else if (ilk.isAssignedStackSlot(srcIt) && ilk.isAssignedPhyReg(dstIt)) {
       int srcSlot = ilk.getStackSlot(srcIt), dstReg = ilk.getPhyReg(dstIt);
-      TargetRegisterClass dstRC = tri.getRegClass(dstReg);
+      MCRegisterClass dstRC = tri.getRegClass(dstReg);
       tii.loadRegFromStackSlot(insertedMBB, insertedIndex, dstReg, srcSlot, dstRC);
     } else if (ilk.isAssignedPhyReg(srcIt) && ilk.isAssignedStackSlot(dstIt)) {
       int srcReg = ilk.getPhyReg(srcIt);
       int dstFI = ilk.getStackSlot(dstIt);
-      TargetRegisterClass rc = tri.getRegClass(srcReg);
+      MCRegisterClass rc = tri.getRegClass(srcReg);
       tii.storeRegToStackSlot(insertedMBB, insertedIndex, srcReg, true, dstFI, rc);
     } else {
       Util.shouldNotReachHere("Can't insert move between two stack slots");

@@ -29,7 +29,7 @@ import tools.Util;
  * C/C++ language in the level of LLVM IR.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SelectInst extends Instruction {
   /**

@@ -41,7 +41,7 @@ import java.util.Stack;
  * </ul>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SCCPSolver implements InstVisitor<Void> {
   private enum LatticeKind {

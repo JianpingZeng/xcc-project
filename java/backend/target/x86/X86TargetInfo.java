@@ -16,19 +16,23 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.AsmWriterFlavorTy;
+import backend.mc.MCAsmInfo;
 import backend.support.Triple;
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
 
+import java.io.PrintStream;
+
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetInfo {
-  public static Target theX86_32Target = new Target();
-  public static Target theX86_64Target = new Target();
+  private static Target theX86_32Target = new Target();
+  private static Target theX86_64Target = new Target();
 
-  public static void InitializeX86TargetInfo() {
+  static void InitializeX86TargetInfo() {
     TargetRegistry.registerTarget(theX86_32Target, "x86",
         "32-bit X86: Pentium-Pro and above",
         Triple.ArchType.x86, false);
@@ -41,34 +45,36 @@ public class X86TargetInfo {
   /**
    * A function interface variable to create X86 32bit target machine.
    */
-  public static Target.TargetMachineCtor X86_32TargetMachineMaker =
-      (t, triple, features) -> new X86_32TargetMachine(t, triple, features);
+  private static Target.TargetMachineCtor X86_32TargetMachineMaker =
+      (t, triple, cpu, features) -> new X86_32TargetMachine(t, triple, cpu, features);
 
   /**
    * A function interface variable to create X86 64 bit target machine.
    */
-  public static Target.TargetMachineCtor X86_64TargetMachineMaker =
-      (t, triple, features) -> new X86_64TargetMachine(t, triple, features);
+  private static Target.TargetMachineCtor X86_64TargetMachineMaker =
+      (t, triple, cpu, features) -> new X86_64TargetMachine(t, triple, cpu, features);
 
-  public static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
+  private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
   {
     Triple theTriple = new Triple(triple);
     switch (theTriple.getOS()) {
       case Darwin:
-        return new X86DarwinTargetAsmInfo(theTriple);
+        return new X86MCAsmInfoDarwin(theTriple);
       default:
-        return new X86ELFTargetAsmInfo(theTriple);
+        return new X86ELFMCAsmInfo(theTriple);
     }
   };
 
-  public static Target.AsmPrinterCtor createX86AsmPrinter = (os, tm, asmInfo, verbose) ->
-  {
-        /*
-        FIXME currently only supporting ATT syntax assembler.
-        if (tm.getTargetAsmInfo().getAssemblerDialect() == 1)
-            return new X86IntelAsmPrinter(os, tm, asmInfo, verbose);
-        */
-    return ATTAsmPrinter.createX86AsmCodeEmitter(os, (X86TargetMachine) tm, asmInfo, verbose);
+  private static Target.AsmPrinterCtor createX86AsmPrinter = (os, tm, ctx, streamer, mai) -> {
+    assert tm instanceof X86TargetMachine;
+    return new X86AsmPrinter(os, (X86TargetMachine) tm, ctx, streamer, mai);
+  };
+
+  private static Target.MCInstPrinterCtor createX86MCInstPrinter = (AsmWriterFlavorTy ty,
+                                                                    PrintStream os,
+                                                                    MCAsmInfo mai) -> {
+    return X86ATTInstPrinter.createX86ATTInstPrinter(os, mai);
+    // TODO X86 sytle asm printer not supported;
   };
 
   public static void LLVMInitiliazeX86Target() {
@@ -79,5 +85,9 @@ public class X86TargetInfo {
     TargetRegistry.registerAsmInfo(theX86_64Target, createTargetAsmInfo);
 
     TargetRegistry.registerAsmPrinter(theX86_32Target, createX86AsmPrinter);
+    TargetRegistry.registerAsmPrinter(theX86_64Target, createX86AsmPrinter);
+
+    TargetRegistry.registerMCInstPrinter(theX86_32Target, createX86MCInstPrinter);
+    TargetRegistry.registerMCInstPrinter(theX86_64Target, createX86MCInstPrinter);
   }
 }

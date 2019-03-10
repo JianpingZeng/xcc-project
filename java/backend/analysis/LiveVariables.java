@@ -18,11 +18,11 @@ package backend.analysis;
 
 import backend.codegen.*;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
+import backend.mc.MCInstrDesc;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.MachineFunctionPass;
-import backend.target.TargetInstrDesc;
-import backend.target.TargetInstrInfo;
+import backend.target.TargetOpcodes;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -40,7 +40,7 @@ import static backend.target.TargetRegisterInfo.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LiveVariables extends MachineFunctionPass {
   /**
@@ -218,7 +218,7 @@ public final class LiveVariables extends MachineFunctionPass {
 
         // process all the operands.
         int numOperands = inst.getNumOperands();
-        if (inst.getOpcode() == TargetInstrInfo.PHI)
+        if (inst.getOpcode() == TargetOpcodes.PHI)
           numOperands = 1;
 
         TIntArrayList defRegs = new TIntArrayList();
@@ -273,7 +273,7 @@ public final class LiveVariables extends MachineFunctionPass {
 
       // Finally, if the last instruction in the block is a return,
       // make sure it as using all of the live out values in the fucntion.
-      TargetInstrDesc tid;
+      MCInstrDesc tid;
       if (!mbb.isEmpty() && (tid = mbb.getLastInst().getDesc()) != null && tid.isReturn()) {
         MachineInstr ret = mbb.getInsts().getLast();
         TIntArrayList liveouts = mf.getMachineRegisterInfo().getLiveOuts();
@@ -728,7 +728,7 @@ public final class LiveVariables extends MachineFunctionPass {
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       MachineInstr mi;
       for (int i = 0, e = mbb.size(); i < e &&
-          (mi = mbb.getInstAt(i)).getOpcode() == TargetInstrInfo.PHI; i++) {
+          (mi = mbb.getInstAt(i)).getOpcode() == TargetOpcodes.PHI; i++) {
         for (int j = 1, sz = mi.getNumOperands(); j < sz; j += 2)
           phiVarInfo[mi.getOperand(j + 1).getMBB().getNumber()].
               add(mi.getOperand(j).getReg());

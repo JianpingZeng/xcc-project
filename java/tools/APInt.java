@@ -65,9 +65,10 @@ import static tools.Util.countLeadingZeros32;
  * </ol>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class APInt implements Cloneable {
+
   /**
    * Magic data for optimising unsigned division by a constant.
    */
@@ -619,18 +620,12 @@ public class APInt implements Cloneable {
    */
   public APInt zext(int width) {
     Util.assertion(width > bitWidth, "Invalid APInt ZeroExtend request");
-    int wordBefore = getNumWords();
-    bitWidth = width;
-    int wordAfter = getNumWords();
-    if (wordBefore != wordAfter) {
-      long[] newVal = new long[wordAfter];
-      if (wordBefore == 1)
-        newVal[0] = val;
-      else
-        System.arraycopy(pVal, 0, newVal, 0, pVal.length);
-      pVal = newVal;
-    }
-    return this;
+    if (width <= APINT_BITS_PER_WORD)
+      return new APInt(width, val);
+
+    APInt result = new APInt(new long[getNumWords(width)], width);
+    System.arraycopy(getRawData(), 0, result.pVal, 0, getNumWords());
+    return result;
   }
 
   public APInt sext(int width) {
@@ -642,35 +637,35 @@ public class APInt implements Cloneable {
       return this;
     }
     // the sign bit is set.
-    if (width <= APINT_BITS_PER_WORD) {
-      long val_ = val << (APINT_BITS_PER_WORD - bitWidth);
-      return new APInt(width, val_ >> (APINT_BITS_PER_WORD - width));
+    int wordsBefore = getNumWords();
+    int wordBits = bitWidth % APINT_BITS_PER_WORD;
+    bitWidth = width;
+    int wordsAfter = getNumWords();
+
+    if (wordsBefore == wordsAfter) {
+      int newWordBits = width % APINT_BITS_PER_WORD;
+      long mask = ~0L;
+      if (newWordBits != 0)
+        mask >>>= APINT_BITS_PER_WORD - newWordBits;
+      mask <<= wordBits;
+      if (wordsBefore == 1)
+        val |= mask;
+      else
+        pVal[wordsBefore-1] |= mask;
+      return clearUnusedBits();
     }
 
-    APInt result = new APInt(new long[getNumWords(width)], width);
-
-    int i;
-    long word = 0;
-    for (i = 0; i != bitWidth / APINT_BITS_PER_WORD; ++i) {
-      word = getRawData()[i];
-      result.pVal[i] = word;
+    long mask = wordBits == 0 ? 0 : ~0L << wordBits;
+    long[] newVal = new long[wordsAfter];
+    if (wordsBefore == 1)
+      newVal[0] = val;
+    else {
+      System.arraycopy(pVal, 0, newVal, 0, wordsBefore);
+      newVal[wordsBefore-1] |= mask;
     }
-
-    int bits = (0 - bitWidth) % APINT_BITS_PER_WORD;
-    if (bits != 0)
-      word = getRawData()[i] << bits >> bits;
-    else
-      word = word >> (APINT_BITS_PER_WORD - 1);
-
-    for (; i != width / APINT_BITS_PER_WORD; ++i) {
-      result.pVal[i] = word;
-      word = word >> (APINT_BITS_PER_WORD - 1);
-    }
-
-    bits = (0 - width) % APINT_BITS_PER_WORD;
-    if (bits != 0)
-      result.pVal[i] = word << bits >> bits;
-    return result;
+    Arrays.fill(newVal, wordsBefore, wordsAfter, -1L);
+    pVal = newVal;
+    return clearUnusedBits();
   }
 
   public boolean intersects(APInt rhs) {
@@ -681,21 +676,20 @@ public class APInt implements Cloneable {
     Util.assertion(width < bitWidth, "Invalid APInt Truncate request");
     Util.assertion(width > 0, " Can't truncate to 0 bits");
 
-    int wordsBefore = getNumWords();
-    bitWidth = width;
-    int wordsAfter = getNumWords();
-    if (wordsBefore != wordsAfter) {
-      if (wordsAfter == 1) {
-        val = pVal[0];
-        pVal = null;
-      } else {
-        long[] newVal = new long[wordsAfter];
-        for (int i = 0; i < wordsAfter; i++)
-          newVal[i] = pVal[i];
-        pVal = newVal;
-      }
-    }
-    return clearUnusedBits();
+    if (width <= APINT_BITS_PER_WORD)
+      return new APInt(width, getRawData()[0]);
+
+    APInt result = new APInt(new long[getNumWords(width)], width);
+    // copy full words.
+    int numWords = width / APINT_BITS_PER_WORD;
+    System.arraycopy(pVal, 0, result.pVal, 0, numWords);
+
+    // truncate and copy any partial word.
+    int bits = (0 - width) % APINT_BITS_PER_WORD;
+    if (bits != 0)
+      result.pVal[numWords] = pVal[numWords] << bits >>> bits;
+
+    return result;
   }
 
   public APInt zextOrTrunc(int width) {
@@ -889,7 +883,7 @@ public class APInt implements Cloneable {
   }
 
   public String toString(int radix) {
-    return toString(radix, true);
+    return toString(radix, false);
   }
 
   public void toString(StringBuilder buffer,
@@ -1128,7 +1122,7 @@ public class APInt implements Cloneable {
    */
   public int getMinSignedBits() {
     if (isNegative())
-      return bitWidth - countLeadingOnes() - 1;
+      return bitWidth - countLeadingOnes() + 1;
     return getActiveBits() + 1;
 
   }
@@ -1459,7 +1453,7 @@ public class APInt implements Cloneable {
   }
 
   public boolean getBoolValue() {
-    return this != null;
+    return !eq(0);
   }
 
   public APInt set() {
@@ -1468,7 +1462,7 @@ public class APInt implements Cloneable {
       return clearUnusedBits();
     }
     for (int i = 0; i < getNumWords(); i++)
-      pVal[i] = -1l;
+      pVal[i] = -1L;
     return clearUnusedBits();
   }
 
@@ -1503,7 +1497,7 @@ public class APInt implements Cloneable {
   }
 
   public static APInt getSignedMaxValue(int numBits) {
-    return new APInt(numBits, 0).clear(numBits - 1);
+    return new APInt(numBits, 0).set().clear(numBits - 1);
   }
 
   public static APInt getMinValue(int numBits) {
@@ -1528,7 +1522,7 @@ public class APInt implements Cloneable {
 
   /**
    * Performs a bitwise complement operation on this APInt value.
-   *
+   * It is equivalent to ~ operation in C.
    * @return
    */
   public APInt not() {
@@ -3466,5 +3460,13 @@ public class APInt implements Cloneable {
 
     magu.s = p - d.getBitWidth();
     return magu;
+  }
+
+  /**
+   * Get the number of leading bits fo this APInt object that are equal to its sign bit.
+   * @return
+   */
+  public int getNumSignBits() {
+    return isNegative() ? countLeadingOnes() : countLeadingZeros();
   }
 }

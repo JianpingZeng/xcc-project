@@ -1,0 +1,86 @@
+# Makefile for core library for NeXT contributed by Pascal Thibaudeau
+# (pthibaud@frbdx11.cribx1.u-bordeaux.fr)
+
+# Mesa 3-D graphics library
+# Version:  2.0
+# Copyright (C) 1995-1996  Brian Paul
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Library General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Library General Public License for more details.
+#
+# You should have received a copy of the GNU Library General Public
+# License along with this library; if not, write to the Free
+# Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+
+# $Id$
+
+# $Log$
+
+
+
+##### MACROS #####
+
+VPATH = RCS
+
+INCDIR = ../include
+LIBDIR = ../lib
+
+CORE_SOURCES = accum.c alpha.c alphabuf.c api.c attrib.c bitmap.c \
+	blend.c bresenhm.c clip.c context.c copypix.c depth.c \
+	dlist.c draw.c drawpix.c enable.c eval.c feedback.c fog.c  \
+	get.c interp.c image.c light.c lines.c logic.c \
+	masking.c matrix.c misc.c pb.c pixel.c points.c pointers.c  \
+	polygon.c readpix.c scissor.c span.c stencil.c teximage.c \
+	texobj.c texture.c triangle.c varray.c vb.c vertex.c winpos.c \
+	xform.c
+
+DRIVER_SOURCES = osmesa.c
+
+
+OBJECTS = $(CORE_SOURCES:.c=.o) $(DRIVER_SOURCES:.c=.o)
+
+
+
+##### RULES #####
+
+.c.o:
+	$(CC) -c -I$(INCDIR) $(CFLAGS) $<
+
+
+##### TARGETS #####
+
+default:
+	@echo "Specify a target configuration"
+
+clean:
+	-rm *.o *~
+
+targets: $(LIBDIR)/$(GL_LIB)
+
+# Make the library
+$(LIBDIR)/$(GL_LIB): $(OBJECTS)
+	$(MAKELIB) $(GL_LIB) $(OBJECTS)
+	$(RANLIB) $(GL_LIB)
+	mv $(GL_LIB)* $(LIBDIR)
+
+include ../Make-config
+
+include depend
+
+
+
+#
+# Run 'make depend' to update the dependencies if you change what's included
+# by any source file.
+#
+dep: $(CORE_SOURCES) $(DRIVER_SOURCES)
+	makedepend -fdepend -Y -I../include $(SOURCES)
+

@@ -18,14 +18,14 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutRef;
@@ -44,7 +44,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * on live interval to eliminate redundant move instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SimpleRegisterCoalescer extends MachineFunctionPass {
   public static IntStatistic numJoins =
@@ -67,7 +67,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     Util.assertion(au != null);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(LiveIntervalAnalysis.class);
     au.addPreserved(LiveVariables.class);
     //au.addPreserved(PhiElimination.class);
@@ -167,7 +167,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
     if (Util.DEBUG)
       System.err.println("************ Joining Intervals *************");
 
-    MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo loopInfo = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     if (loopInfo == null || loopInfo.isNoTopLevelLoop()) {
       // If there are no loops in the function, join intervals in function
       // order.
@@ -318,7 +318,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
    * @return
    */
   private boolean differingRegisterClasses(int regA, int regB) {
-    TargetRegisterClass rc;
+    MCRegisterClass rc;
     if (isPhysicalRegister(regA)) {
       Util.assertion(isVirtualRegister(regB), "Can't consider two physical register");
       rc = mri.getRegClass(regB);

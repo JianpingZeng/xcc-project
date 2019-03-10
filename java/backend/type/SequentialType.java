@@ -27,7 +27,7 @@ import backend.value.Value;
  * the fact that both lay their components out in memory identically.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class SequentialType extends CompositeType {
   protected int numElts;
@@ -56,9 +56,19 @@ public abstract class SequentialType extends CompositeType {
   }
 
   @Override
+  public Type getTypeAtIndex(int idx) {
+    return containedTys[0].getType();
+  }
+
+  @Override
   public boolean indexValid(Value v) {
     // must be a integral index.
-    return v.getType().isIntegerType();
+    return v.getType().isIntegerTy();
+  }
+
+  @Override
+  public boolean indexValid(int idx) {
+    return true;
   }
 
   @Override

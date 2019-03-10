@@ -2,12 +2,13 @@ package backend.codegen;
 
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
 import backend.support.PrintMachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetOpcodes;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
 
@@ -20,7 +21,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PhiElimination extends MachineFunctionPass {
   private TargetInstrInfo instInfo;
@@ -102,7 +103,7 @@ public final class PhiElimination extends MachineFunctionPass {
   }
 
   private static boolean isDummyPhiInstr(int opcode) {
-    return opcode == TargetInstrInfo.PHI;
+    return opcode == TargetOpcodes.PHI;
   }
 
   /**
@@ -119,11 +120,11 @@ public final class PhiElimination extends MachineFunctionPass {
     MachineInstr phiMI = mbb.getFirstInst();
     int destReg = phiMI.getOperand(0).getReg();
 
-    TargetRegisterClass destRC = mri.getRegClass(destReg);
+    MCRegisterClass destRC = mri.getRegClass(destReg);
 
     // update the def of this incomingReg will be performed at predecessor.
     int incomingReg = mri.createVirtualRegister(destRC);
-    TargetRegisterClass srcRC = mri.getRegClass(incomingReg);
+    MCRegisterClass srcRC = mri.getRegClass(incomingReg);
     // creates a register to register copy instruction at the position where
     // indexed by firstInstAfter.
     instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
@@ -272,7 +273,7 @@ public final class PhiElimination extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.addPreserved(LiveVariables.class);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }

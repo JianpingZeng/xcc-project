@@ -16,7 +16,7 @@ package tools;
  * permissions and limitations under the License.
  */
 
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import java.util.List;
  * and handles diagnostic wrangling.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SourceMgr {
   public enum DiagKind {

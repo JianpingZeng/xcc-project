@@ -17,238 +17,237 @@ package backend.analysis;
  */
 
 import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.pass.AnalysisUsage;
-import backend.support.DepthFirstOrder;
+import backend.support.LoopBase;
 import backend.support.LoopInfoBase;
-import backend.support.MachineFunctionPass;
 import tools.Util;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Stack;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public class MachineLoop extends MachineFunctionPass
-    implements LoopInfoBase<MachineBasicBlock, MachineLoopInfo> {
-  private HashMap<MachineBasicBlock, MachineLoopInfo> bbMap = new HashMap<>();
-
-  private ArrayList<MachineLoopInfo> topLevelLoops = new ArrayList<>();
-
-  @Override
-  public void getAnalysisUsage(AnalysisUsage au) {
-    Util.assertion(au != null);
-    au.setPreservedAll();
-    au.addRequired(MachineDomTree.class);
-    super.getAnalysisUsage(au);
+public final class MachineLoop
+    extends LoopBase<MachineBasicBlock, MachineLoop> {
+  public MachineLoop(MachineBasicBlock block) {
+    super(block);
   }
 
   @Override
-  public String getPassName() {
-    return "Machine Natural MachineLoopInfo tree Construction";
+  public int getLoopDepth() {
+    int d = 1;
+    for (MachineLoop cur = outerLoop; cur != null; cur = cur.outerLoop)
+      d++;
+    return d;
   }
 
-  /**
-   * This method must be overridded by concrete subclass for performing
-   * desired machine code transformation or analysis.
-   *
-   * @param mf
-   * @return
-   */
   @Override
-  public boolean runOnMachineFunction(MachineFunction mf) {
-    calculate((MachineDomTree) getAnalysisToUpDate(MachineDomTree.class));
+  public boolean isLoopExitingBlock(MachineBasicBlock bb) {
+    if (!contains(bb))
+      return false;
+    for (Iterator<MachineBasicBlock> itr = bb.succIterator(); itr.hasNext(); ) {
+      if (!contains(itr.next()))
+        return true;
+    }
     return false;
   }
 
-  private void calculate(MachineDomTree dt) {
-    MachineBasicBlock rootNode = dt.getRootNode().getBlock();
-
-    ArrayList<MachineBasicBlock> dfList = DepthFirstOrder.reversePostOrder(rootNode);
-    for (MachineBasicBlock bb : dfList) {
-      MachineLoopInfo loop = considerForLoop(bb, dt);
-      if (loop != null)
-        topLevelLoops.add(loop);
+  @Override
+  public int getNumBackEdges() {
+    int numBackEdges = 0;
+    Iterator<MachineBasicBlock> itr = getHeaderBlock().predIterator();
+    while (itr.hasNext()) {
+      if (contains(itr.next()))
+        ++numBackEdges;
     }
+    return numBackEdges;
   }
 
-  private MachineLoopInfo considerForLoop(MachineBasicBlock bb, MachineDomTree dt) {
-    if (bbMap.containsKey(bb))
+  @Override
+  public MachineBasicBlock getLoopPreheader() {
+    // keep track of blocks outside the loop branching to the header
+    MachineBasicBlock out = getLoopPredecessor();
+    if (out == null) return null;
+
+    // make sure there is exactly one exit out of the preheader
+    if (out.getNumSuccessors() > 1)
       return null;
+    // the predecessor has exactly one successor, so it is
+    // a preheader.
+    return out;
+  }
 
-    Stack<MachineBasicBlock> todoStack = new Stack<>();
-    Iterator<MachineBasicBlock> itr = bb.predIterator();
-    while (itr.hasNext()) {
-      MachineBasicBlock pred = itr.next();
-      if (dt.dominates(bb, pred))
-        todoStack.push(pred);
-    }
-
-    if (todoStack.isEmpty()) return null;
-
-    MachineLoopInfo l = new MachineLoopInfo(bb);
-    bbMap.put(bb, l);
-
-    MachineBasicBlock entryBlock = bb.getParent().getEntryBlock();
-    while (!todoStack.isEmpty()) {
-      MachineBasicBlock cur = todoStack.pop();
-      // The current block is not contained in loop as yet,
-      // and it is reachable from entry block.
-      if (!l.contains(cur) && dt.dominates(entryBlock, cur)) {
-        // Check to see if this block already belongs to a loop.  If this occurs
-        // then we have a case where a loop that is supposed to be a child of
-        // the current loop was processed before the current loop.  When this
-        // occurs, this child loop gets added to a part of the current loop,
-        // making it a sibling to the current loop.  We have to reparent this
-        // loop.
-        MachineLoopInfo subLoop = getLoopFor(cur);
-        if (subLoop != null) {
-          if (subLoop.getHeaderBlock() == cur && isNotAlreadyContainedIn(subLoop, l)) {
-            Util.assertion(subLoop.getParentLoop() != null && subLoop.getParentLoop() != l);
-            MachineLoopInfo subParentLoop = subLoop.outerLoop;
-            Util.assertion(subParentLoop.getSubLoops().contains(subLoop));
-            subParentLoop.subLoops.remove(subLoop);
-
-            subLoop.setParentLoop(l);
-            l.subLoops.add(subLoop);
-          }
-        }
-
-        l.addBasicBlockIntoLoop(cur, this);
-        for (Iterator<MachineBasicBlock> predItr = cur.predIterator();
-             predItr.hasNext(); ) {
-          todoStack.push(predItr.next());
-        }
+  @Override
+  protected MachineBasicBlock getLoopPredecessor() {
+    MachineBasicBlock header = getHeaderBlock();
+    MachineBasicBlock outer = null;
+    for (Iterator<MachineBasicBlock> predItr = header.predIterator(); predItr.hasNext(); ) {
+      MachineBasicBlock pred = predItr.next();
+      if (!contains(pred)) {
+        if (outer != null && outer != pred)
+          return null;
+        outer = pred;
       }
     }
-
-    // If there are any loops nested within this loop, create them.
-    for (MachineBasicBlock block : l.blocks) {
-      MachineLoopInfo newLoop = considerForLoop(block, dt);
-      if (newLoop != null) {
-        l.subLoops.add(newLoop);
-        newLoop.setParentLoop(l);
-      }
-    }
-
-    // Add the basic blocks that comprise this loop to the BBMap so that this
-    // loop can be found for them.
-    for (MachineBasicBlock block : l.blocks) {
-      if (!bbMap.containsKey(block)) {
-        bbMap.put(block, l);
-      }
-    }
-
-    HashMap<MachineBasicBlock, MachineLoopInfo> containingLoops = new HashMap<>();
-    for (int i = 0; i < l.subLoops.size(); i++) {
-      MachineLoopInfo childLoop = l.subLoops.get(i);
-      Util.assertion(childLoop.getParentLoop() == l);
-
-      MachineLoopInfo containedLoop;
-      if ((containedLoop = containingLoops.get(childLoop.getHeaderBlock())) != null) {
-        moveSiblingLoopInto(childLoop, containedLoop);
-        --i;
-      } else {
-        for (int b = 0, e = childLoop.blocks.size(); b < e; b++) {
-          MachineLoopInfo blockLoop = containingLoops.get(childLoop.blocks.get(i));
-          if (blockLoop == null)
-            blockLoop = childLoop;
-          else if (blockLoop != childLoop) {
-            for (int j = 0, sz = blockLoop.blocks.size(); j < sz; j++) {
-              containingLoops.put(blockLoop.blocks.get(j), childLoop);
-
-              moveSiblingLoopInto(blockLoop, childLoop);
-              --i;
-            }
-          }
-        }
-      }
-    }
-
-    return l;
+    return outer;
   }
 
   /**
-   * This method moves the newChild loop to live inside of the newParent,
-   * instead of being a slibing of it.
+   * If there is a single loop latch block, return it. Otherwise, return null.
+   * <b>A latch block is a block where the control flow branch back to the
+   * loop header block.
+   * </b>
    *
-   * @param newChild
-   * @param newParent
+   * @return
    */
-  private void moveSiblingLoopInto(MachineLoopInfo newChild, MachineLoopInfo newParent) {
-    MachineLoopInfo oldParent = newChild.getParentLoop();
-    Util.assertion(oldParent != null && oldParent == newParent.getParentLoop());
-
-    Util.assertion(oldParent.subLoops.contains(newChild), "Parent field incorrent!");
-    oldParent.subLoops.remove(newChild);
-    newParent.subLoops.add(newChild);
-    newChild.setParentLoop(null);
-
-    insertLoopInto(newChild, newParent);
-  }
-
-  private void insertLoopInto(MachineLoopInfo child, MachineLoopInfo parent) {
-    MachineBasicBlock header = child.getHeaderBlock();
-    Util.assertion(parent.contains(header), "This loop should not be inserted here");
-
-    // Check to see if it belongs in a child loop...
-    for (int i = 0, e = parent.subLoops.size(); i < e; i++) {
-      if (parent.subLoops.get(i).contains(header)) {
-        insertLoopInto(child, parent.subLoops.get(i));
-        return;
+  @Override
+  public MachineBasicBlock getLoopLatch() {
+    MachineBasicBlock header = getHeaderBlock();
+    if (header == null) return null;
+    MachineBasicBlock latch = null;
+    for (MachineBasicBlock pred : header.getPredecessors()) {
+      if (contains(pred)) {
+        // If there are more than two latch blocks, return null.
+        if (latch != null)
+          return null;
+        latch = pred;
       }
     }
-
-    parent.subLoops.add(child);
-    child.setParentLoop(parent);
+    return latch;
   }
 
-  private boolean isNotAlreadyContainedIn(MachineLoopInfo subLoop, MachineLoopInfo parentLoop) {
-    if (subLoop == null) return true;
-    if (subLoop == parentLoop) return false;
-    return isNotAlreadyContainedIn(subLoop.getParentLoop(), parentLoop);
-  }
-
-  @Override
-  public HashMap<MachineBasicBlock, MachineLoopInfo> getBBMap() {
-    return bbMap;
-  }
-
-  @Override
-  public ArrayList<MachineLoopInfo> getTopLevelLoop() {
-    return topLevelLoops;
+  /**
+   * Return true if the specified machine loop contained in this.
+   *
+   * @param loop
+   * @return
+   */
+  public boolean contains(MachineLoop loop) {
+    if (loop == null) return false;
+    if (loop == this) return true;
+    return contains(loop.outerLoop);
   }
 
   @Override
-  public int getLoopDepth(MachineBasicBlock bb) {
-    MachineLoopInfo ml = getLoopFor(bb);
-    return ml != null ? ml.getLoopDepth() : 0;
+  public void replaceChildLoopWith(MachineLoop newOne, MachineLoop oldOne) {
+    Util.assertion(newOne != null && oldOne != null);
+    Util.assertion(oldOne.outerLoop == this);
+    Util.assertion(newOne.outerLoop == null);
+
+    Util.assertion(subLoops.contains(oldOne), "oldOne loop not contained in current");
+    int idx = subLoops.indexOf(oldOne);
+    newOne.outerLoop = this;
+    subLoops.set(idx, newOne);
   }
 
   @Override
-  public boolean isLoopHeader(MachineBasicBlock bb) {
-    MachineLoopInfo ml = getLoopFor(bb);
-    return ml != null && ml.getHeaderBlock() == bb;
+  public void addChildLoop(MachineLoop loop) {
+    Util.assertion(loop != null && loop.outerLoop == null);
+    loop.outerLoop = this;
+    subLoops.add(loop);
   }
 
   @Override
-  public void ensureIsTopLevel(MachineLoopInfo loop, String msg) {
-    Util.assertion(loop.getParentLoop() == null, msg);
-  }
+  public void addBasicBlockIntoLoop(MachineBasicBlock bb,
+                                    LoopInfoBase<MachineBasicBlock, MachineLoop> li) {
+    Util.assertion(blocks.isEmpty() || li.getLoopFor(getHeaderBlock()) != null,
+        "Incorrect LI specified for this loop");
 
-  @Override
-  public void removeBlock(MachineBasicBlock mbb) {
-    if (bbMap.containsKey(mbb)) {
-      MachineLoopInfo loop = bbMap.get(mbb);
-      while (loop != null) {
-        loop.removeBlockFromLoop(mbb);
-        loop = loop.getParentLoop();
-      }
-      bbMap.remove(mbb);
+    Util.assertion(bb != null);
+    Util.assertion(li.getLoopFor(bb) == null);
+
+    li.getBBMap().put(bb, this);
+    MachineLoop l = this;
+    while (l != null) {
+      l.blocks.add(bb);
+      l = l.getParentLoop();
     }
+  }
+
+  /**
+   * Returns a list of all loop exit block.
+   *
+   * @return
+   */
+  @Override
+  public ArrayList<MachineBasicBlock> getExitingBlocks() {
+    ArrayList<MachineBasicBlock> exitBBs = new ArrayList<>();
+    for (MachineBasicBlock block : blocks) {
+      for (MachineBasicBlock succ : block.getSuccessors()) {
+        if (!blocks.contains(succ))
+          exitBBs.add(succ);
+      }
+    }
+    return exitBBs;
+  }
+
+  /**
+   * Returns the unique exit blocks list of this loop.
+   * <p>
+   * The unique exit block means that if there are multiple edge from
+   * a block in loop to this exit block, we just count one.
+   * </p>
+   *
+   * @return
+   */
+  @Override
+  public ArrayList<MachineBasicBlock> getUniqueExitBlocks() {
+    HashSet<MachineBasicBlock> switchExitBlocks = new HashSet<>();
+    ArrayList<MachineBasicBlock> exitBBs = new ArrayList<>();
+
+    for (MachineBasicBlock curBB : blocks) {
+      switchExitBlocks.clear();
+      for (MachineBasicBlock succBB : curBB.getSuccessors()) {
+        MachineBasicBlock firstPred = succBB.predAt(0);
+
+        if (curBB != firstPred)
+          continue;
+
+        if (curBB.getNumSuccessors() <= 2) {
+          exitBBs.add(succBB);
+          continue;
+        }
+
+        if (!switchExitBlocks.contains(succBB)) {
+          switchExitBlocks.add(succBB);
+          exitBBs.add(succBB);
+        }
+      }
+    }
+    return exitBBs;
+  }
+
+  @Override
+  public void print(OutputStream os, int depth) {
+    try (PrintWriter writer = new PrintWriter(os)) {
+      writer.print(String.format("%" + depth * 2 + "s", " "));
+      writer.printf("Loop at depth: %d, containing: ", getLoopDepth());
+      for (int i = 0, e = blocks.size(); i < e; i++) {
+        if (i != 0)
+          writer.print(",");
+        MachineBasicBlock bb = blocks.get(i);
+        writer.printf("Block#%s", bb.getNumber());
+        if (bb == getHeaderBlock())
+          writer.print("<header>");
+        if (isLoopExitingBlock(bb))
+          writer.print("<exit>");
+      }
+      writer.println();
+      for (MachineLoop subLoop : subLoops)
+        subLoop.print(os, depth + 2);
+    }
+  }
+
+  @Override
+  public void dump() {
+    print(System.err, 0);
+  }
+
+  public boolean isEmpty() {
+    return subLoops.isEmpty();
   }
 }

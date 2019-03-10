@@ -2,10 +2,8 @@ package backend.value;
 
 import backend.ir.AllocationInst;
 import backend.support.*;
-import backend.type.CompositeType;
-import backend.type.FunctionType;
-import backend.type.PointerType;
-import backend.type.Type;
+import backend.type.*;
+import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
@@ -72,6 +70,18 @@ public abstract class Instruction extends User {
       Operator op,
       String name) {
     this(ty, op, name, (Instruction) null);
+  }
+
+  /**
+   * A simple wrapper function to given a better assert failure message
+   * on bad indexes for a {@linkplain GetElementPtrInst} instruction.
+   *
+   * @param ty
+   * @return
+   */
+  public static Type checkType(Type ty) {
+    Util.assertion(ty != null, "Invalid GetElementPtrInst indices for type!");
+    return ty;
   }
 
   /**
@@ -413,9 +423,18 @@ public abstract class Instruction extends User {
   }
 
   /**
+   * set the metadata of the specified kind to the specified node.
+   * @param mdk
+   * @param node
+   */
+  public void setMetadata(int mdk, MDNode node) {
+    // TODO, fake 12/19/2018
+  }
+
+  /**
    * The abstract base class definition for unary operator.
    */
-  public static class UnaryOps extends Instruction {
+  public static class UnaryInstruction extends Instruction {
     private void initialize(Value op, User user) {
       reserve(1);
       setOperand(0, op, user);
@@ -428,7 +447,7 @@ public abstract class Instruction extends User {
      * @param opcode The operator code for this instruction.
      * @param op     The sole LIROperand.
      */
-    public UnaryOps(
+    public UnaryInstruction(
         Type ty,
         Operator opcode,
         Value op,
@@ -445,7 +464,7 @@ public abstract class Instruction extends User {
      * @param opcode The operator code for this instruction.
      * @param op     The sole LIROperand.
      */
-    public UnaryOps(
+    public UnaryInstruction(
         Type ty,
         Operator opcode,
         Value op,
@@ -460,11 +479,11 @@ public abstract class Instruction extends User {
      * @param name
      * @param insertAtEnd
      */
-    public UnaryOps(Type ty,
-                    Operator opcode,
-                    Value op,
-                    String name,
-                    BasicBlock insertAtEnd) {
+    public UnaryInstruction(Type ty,
+                            Operator opcode,
+                            Value op,
+                            String name,
+                            BasicBlock insertAtEnd) {
       super(ty, opcode, name, insertAtEnd);
       initialize(op, this);
     }
@@ -481,6 +500,14 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class BinaryOps extends Instruction {
+    /**
+     * Indicates the operation (such as udiv, sdiv, lshr, and ashr)
+     * doesn't have extra bits to been destroyed.
+     */
+    private boolean isExact;
+    private boolean hasNoUnsignedWrap;
+    private boolean hasNoSignedWrap;
+
     public BinaryOps(
         Type ty,
         Operator opcode,
@@ -499,7 +526,8 @@ public abstract class Instruction extends User {
         Instruction insertBefore) {
       super(ty, opcode, name, insertBefore);
       reserve(2);
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Can not create binary operation with two operands of differing jlang.type.");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Can not create binary operation with two operands of differing jlang.type.");
 
       init(lhs, rhs);
     }
@@ -512,7 +540,8 @@ public abstract class Instruction extends User {
         String name,
         BasicBlock insertAtEnd) {
       super(ty, opcode, name, insertAtEnd);
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Can not create binary operation with two operands of differing jlang.type.");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Can not create binary operation with two operands of differing jlang.type.");
 
       init(lhs, rhs);
     }
@@ -528,7 +557,8 @@ public abstract class Instruction extends User {
         Value rhs,
         String name,
         Instruction insertBefore) {
-      Util.assertion(lhs.getType().equals(rhs.getType()), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType().equals(rhs.getType()),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertBefore);
     }
@@ -538,7 +568,8 @@ public abstract class Instruction extends User {
         Value lhs,
         Value rhs,
         String name) {
-      Util.assertion(lhs.getType() == rhs.getType(), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType() == rhs.getType(),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, (Instruction) null);
     }
@@ -549,9 +580,14 @@ public abstract class Instruction extends User {
         Value rhs,
         String name,
         BasicBlock insertAtEnd) {
-      Util.assertion(lhs.getType() == rhs.getType(), "Cannot create binary operator with two operands of differing type!");
+      Util.assertion(lhs.getType() == rhs.getType(),
+          "Cannot create binary operator with two operands of differing type!");
 
       return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+    }
+
+    public void setIsExact(boolean val) {
+      this.isExact = val;
     }
 
     //=====================================================================//
@@ -888,6 +924,22 @@ public abstract class Instruction extends User {
       }
       return false;
     }
+
+    public void setHasNoUnsignedWrap(boolean val) {
+      this.hasNoUnsignedWrap = val;
+    }
+
+    public boolean getHasNoUnsignedWrap() {
+      return hasNoUnsignedWrap;
+    }
+
+    public void setHasNoSignedWrap(boolean val) {
+      this.hasNoSignedWrap = val;
+    }
+
+    public boolean getHasNoSignedWrap() {
+      return hasNoSignedWrap;
+    }
   }
 
   public static boolean isNeg(Value val) {
@@ -910,7 +962,7 @@ public abstract class Instruction extends User {
     return false;
   }
 
-  public static class CastInst extends UnaryOps {
+  public static class CastInst extends UnaryInstruction {
     protected CastInst(Type ty,
                        Operator opcode,
                        Value x,
@@ -946,7 +998,7 @@ public abstract class Instruction extends User {
         boolean isSigned,
         String instName,
         Instruction insertBefore) {
-      Util.assertion(value.getType().isIntegerType() && destTy.isIntegerType(), "Invalid type!");
+      Util.assertion(value.getType().isIntegerTy() && destTy.isIntegerTy(), "Invalid type!");
 
       int srcBits = value.getType().getScalarSizeBits();
       int destBits = destTy.getScalarSizeBits();
@@ -1066,26 +1118,26 @@ public abstract class Instruction extends User {
       int destBits = destTy.getScalarSizeBits();
       switch (opc) {
         case Trunc:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits > destBits;
         case SExt:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits < destBits;
         case ZExt:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits < destBits;
         case FPTrunc:
-          return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+          return srcTy.isFloatingPointType() && destTy.isFloatingPointType()
               && srcBits > destBits;
         case FPExt:
-          return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+          return srcTy.isFloatingPointType() && destTy.isFloatingPointType()
               && srcBits < destBits;
         case FPToSI:
         case FPToUI:
-          return srcTy.isFloatingPoint() && destTy.isInteger();
+          return srcTy.isFloatingPointType() && destTy.isIntegerTy();
         case SIToFP:
         case UIToFP:
-          return srcTy.isInteger() && destTy.isFloatingPoint();
+          return srcTy.isIntegerTy() && destTy.isFloatingPointType();
         case BitCast:
           // bit cast is no op in machine level, but we should check
           // both type is same when one is of type PointerType
@@ -1093,6 +1145,10 @@ public abstract class Instruction extends User {
             return false;
 
           return srcTy.getPrimitiveSizeInBits() == destTy.getPrimitiveSizeInBits();
+        case PtrToInt:
+          return srcTy.isPointerType() && destTy.isIntegerTy();
+        case IntToPtr:
+          return srcTy.isIntegerTy() && destTy.isPointerType();
         default:
           return false;   // input error
       }
@@ -1298,7 +1354,7 @@ public abstract class Instruction extends User {
     protected Predicate pred;
 
     protected CmpInst(
-        backend.type.Type ty,
+        Type ty,
         Operator op,
         Predicate pred,
         Value lhs,
@@ -1310,7 +1366,7 @@ public abstract class Instruction extends User {
     }
 
     protected CmpInst(
-        backend.type.Type ty,
+        Type ty,
         Operator op,
         Predicate pred,
         Value lhs,
@@ -1680,7 +1736,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType() || lhs.getType() instanceof PointerType, "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy() || lhs.getType() instanceof PointerType, "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1691,7 +1747,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1702,7 +1758,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1713,7 +1769,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType() || lhs.getType().isPointerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy() || lhs.getType().isPointerType(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1787,7 +1843,7 @@ public abstract class Instruction extends User {
     public static boolean isSignedPredicate(Predicate pred) {
       switch (pred) {
         default:
-          Util.assertion(false, ("Undefined icmp predicate!"));
+          Util.assertion("Undefined icmp predicate!");
         case ICMP_SGT:
         case ICMP_SLT:
         case ICMP_SGE:
@@ -1839,7 +1895,7 @@ public abstract class Instruction extends User {
    * a basic block.  Thus, these are all the flow control jlang.type of operations.
    *
    * @author Jianping Zeng
-   * @version 0.1
+   * @version 0.4
    */
   public static abstract class TerminatorInst extends Instruction {
     TerminatorInst(
@@ -2042,7 +2098,7 @@ public abstract class Instruction extends User {
     }
 
     /**
-     * Change the current branch to an unconditional branch targetting the
+     * Change the current branch to an unconditional branch targeting the
      * specified block.
      *
      * @param dest
@@ -2116,6 +2172,40 @@ public abstract class Instruction extends User {
     @Override
     public void setSuccessor(int index, BasicBlock bb) {
       Util.assertion(true, ("ReturnInst has no successors!"));
+    }
+  }
+
+  /**
+   * Immediately exit the current function, unwinding the stack
+   * until an invoke instruction is found.
+   */
+  public static class UnWindInst extends TerminatorInst {
+
+    public UnWindInst(Instruction insertBefore) {
+      super(Unwind, "", insertBefore);
+    }
+    public UnWindInst() {
+      this((Instruction)null);
+    }
+
+    public UnWindInst(BasicBlock insertAtEnd) {
+      super(Unwind, "", insertAtEnd);
+    }
+
+    @Override
+    public BasicBlock getSuccessor(int index) {
+      Util.shouldNotReachHere("UnWindInst doesn't have successor!");
+      return null;
+    }
+
+    @Override
+    public int getNumOfSuccessors() {
+      return 0;
+    }
+
+    @Override
+    public void setSuccessor(int index, BasicBlock bb) {
+      Util.shouldNotReachHere("UnWindInst doesn't have successor!");
     }
   }
 
@@ -2222,8 +2312,12 @@ public abstract class Instruction extends User {
       return operand(index + ArgumentOffset);
     }
 
+    /**
+     * Return the called function, if return null indicates this is an indirect call.
+     * @return
+     */
     public Function getCalledFunction() {
-      return (Function) operand(0);
+      return operand(0) instanceof Function ? (Function) operand(0) : null;
     }
 
     public Value getCalledValue() {
@@ -2392,11 +2486,20 @@ public abstract class Instruction extends User {
     public boolean isTailCall() {
       return tailCall;
     }
+
+    public Value getArgOperand(int i) {
+      return operand(i+1);
+    }
+
+    public void setArgOperand(int i, Value val) {
+      setOperand(i+1, val);
+    }
   }
 
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
+    private int curIndex;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2429,7 +2532,7 @@ public abstract class Instruction extends User {
                       String name,
                       Instruction insertBefore) {
       super(Operator.Switch, name, insertBefore);
-      init(condV, defaultBB, numCases);
+      init(condV, defaultBB, numCases * 2);
     }
 
 
@@ -2442,12 +2545,14 @@ public abstract class Instruction extends User {
       reserve(offset + numCases);
       setOperand(0, cond, this);
       setOperand(1, defaultBB, this);
+      curIndex = 2;
     }
 
     public void addCase(Constant caseVal, BasicBlock targetBB) {
-      int opNo = getNumOfCases();
-      setOperand(opNo, caseVal, this);
-      setOperand(opNo + 1, targetBB, this);
+      int opNo = curIndex >> 1;
+      setOperand(opNo*2, caseVal, this);
+      setOperand(opNo*2 + 1, targetBB, this);
+      curIndex += 2;
     }
 
     public void removeCase(int idx) {
@@ -2455,8 +2560,9 @@ public abstract class Instruction extends User {
       Util.assertion((idx * 2 < getNumOfOperands()), "Successor index out of range!!!");
 
       // unlink the last value.
-      operandList.remove(idx);
-      operandList.remove(idx + 1);
+      operandList.remove(idx*2);
+      operandList.remove(idx*2 + 1);
+      curIndex -= 2;
     }
 
     /**
@@ -2518,13 +2624,15 @@ public abstract class Instruction extends User {
     }
 
     public ConstantInt getSuccessorValue(int index) {
-      Util.assertion(index >= 0 && index < getNumOfSuccessors(), "Successor value index out of range for switch");
+      Util.assertion(index >= 0 && index < getNumOfSuccessors(),
+          "Successor value index out of range for switch");
 
       return (ConstantInt) operand(2 * index);
     }
 
     public BasicBlock getSuccessor(int index) {
-      Util.assertion(index >= 0 && index < getNumOfSuccessors(), "Successor index out of range for switch");
+      Util.assertion(index >= 0 && index < getNumOfSuccessors(),
+          "Successor index out of range for switch");
 
       return (BasicBlock) operand(2 * index + 1);
 
@@ -2571,7 +2679,7 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class PhiNode extends Instruction {
-    private int numOperands;
+    private int opIndex;
 
     public PhiNode(Type ty,
                    int numReservedValues,
@@ -2612,13 +2720,11 @@ public abstract class Instruction extends User {
       Util.assertion(value != null, "Phi node got a null value");
       Util.assertion(block != null, "Phi node got a null basic block");
       Util.assertion(value.getType().equals(getType()), "All of operands of Phi must be same type.");
-      if (numOperands + 2 > getNumOfOperands()) {
-        operandList.add(null);
-        operandList.add(null);
-      }
-      operandList.set(numOperands, new Use(value, this));
-      operandList.set(numOperands + 1, new Use(block, this));
-      numOperands += 2;
+      Util.assertion(opIndex + 2 <= getNumOfOperands(), "no enough space for inserting a pair of incoming value");
+
+      operandList.set(opIndex, new Use(value, this));
+      operandList.set(opIndex + 1, new Use(block, this));
+      opIndex += 2;
     }
 
     /**
@@ -2672,7 +2778,7 @@ public abstract class Instruction extends User {
         operandList.set(i - 2, operandList.get(i));
         operandList.set(i - 2 + 1, operandList.get(i + 1));
       }
-      numOperands -= 2;
+      opIndex -= 2;
       operandList.set(numOps - 2, null);
       operandList.set(numOps - 2 + 1, null);
 
@@ -2702,11 +2808,6 @@ public abstract class Instruction extends User {
           return i;
       }
       return -1;
-    }
-
-    @Override
-    public int getNumOfOperands() {
-      return numOperands;
     }
 
     /**
@@ -2930,7 +3031,7 @@ public abstract class Instruction extends User {
   /**
    * An instruction for reading data from memory.
    */
-  public static class LoadInst extends UnaryOps {
+  public static class LoadInst extends UnaryInstruction {
     private boolean isVolatile;
     private int alignment;
 
@@ -3029,7 +3130,7 @@ public abstract class Instruction extends User {
                              String name, Instruction insertBefore) {
       super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices))),
           GetElementPtr, name, insertBefore);
-      reserve(indices.size());
+      reserve(indices.size() + 1);
       setOperand(0, ptr, this);
       int i = 1;
       for (Value idx : indices) {
@@ -3041,18 +3142,6 @@ public abstract class Instruction extends User {
       Util.assertion(getNumOfOperands() == 2, "NumOperands not initialized.");
       setOperand(0, ptr, this);
       setOperand(1, idx, this);
-    }
-
-    /**
-     * A simple wrapper function to given a better assert failure message
-     * on bad indexes for a {@linkplain GetElementPtrInst} instruction.
-     *
-     * @param ty
-     * @return
-     */
-    public static Type checkType(Type ty) {
-      Util.assertion(ty != null, "Invalid GetElementPtrInst indices for type!");
-      return ty;
     }
 
     public static Type getIndexedType(Type ptrType, List<Value> indices) {
@@ -3143,5 +3232,389 @@ public abstract class Instruction extends User {
       }
       return true;
     }
+  }
+
+  /**
+   * This class represents the va_arg llvm instruction, which returns
+   * an argument of the specified type given a va_list and increments that list
+   */
+  public static class VAArgInst extends UnaryInstruction {
+    public VAArgInst(Value list,
+                     Type ty) {
+      this(list, ty, "");
+    }
+
+    public VAArgInst(Value list,
+                     Type ty,
+                     String name) {
+      this(list, ty, name, (Instruction) null);
+    }
+
+    public VAArgInst(Value list,
+                     Type ty,
+                     String name,
+                     Instruction insertBefore) {
+      super(ty, VAArg, list, name, insertBefore);
+    }
+
+    public VAArgInst(Value list,
+                     Type ty,
+                     String name,
+                     BasicBlock insertAtEnd) {
+      super(ty, VAArg, list, name, insertAtEnd);
+    }
+  }
+
+  /**
+   * This instruction extracts a single (scalar) element from a VectorType value
+   */
+  public static class ExtractElementInst extends Instruction {
+
+    public ExtractElementInst(Value vec, Value index) {
+      this(vec, index, "");
+    }
+
+    public ExtractElementInst(Value vec,
+                              Value index,
+                              String name) {
+      this(vec, index, name, (Instruction)null);
+    }
+
+    public ExtractElementInst(Value vec, Value index,
+                              String name,
+                              Instruction insertBefore) {
+      super(((VectorType)vec.getType()).getElementType(), ExtractElement, name, insertBefore);
+      Util.assertion(isValidOperands(vec, index), "invalid extractelement instruction operands!");
+      reserve(2);
+      setOperand(0, new Use(vec, this));
+      setOperand(1, new Use(index, this));
+    }
+
+    public ExtractElementInst(Value vec, Value index,
+                              String name,
+                              BasicBlock insertAtEnd) {
+      super(((VectorType)vec.getType()).getElementType(), ExtractElement, name, insertAtEnd);
+      Util.assertion(isValidOperands(vec, index), "invalid extractelement instruction operands!");
+      reserve(2);
+      setOperand(0, new Use(vec, this));
+      setOperand(1, new Use(index, this));
+    }
+
+    public static boolean isValidOperands(Value vec, Value index) {
+      if (!vec.getType().isVectorTy())
+        return false;
+
+      if (index.getType().isIntegerTy(32))
+        return false;
+      return true;
+    }
+
+    public Value getVectorOperand() { return operand(0); }
+    public Value getIndexOperand() { return operand(1); }
+    public VectorType getVectorTypeOperandType() {
+      return (VectorType) getVectorOperand().getType();
+    }
+  }
+
+  /**
+   * This instruction inserts a single (scalar) element into a VectorType value
+   */
+  public static class InsertElementInst extends Instruction {
+
+    public InsertElementInst(Value vec,
+                             Value newElt,
+                             Value idx,
+                             String name) {
+      this(vec, newElt, idx, name, (Instruction)null);
+    }
+
+    public InsertElementInst(Value vec,
+                             Value newElt,
+                             Value idx) {
+      this(vec, newElt, idx, "");
+    }
+
+    public InsertElementInst(Value vec,
+                             Value newElt,
+                             Value idx,
+                             String name,
+                             Instruction insertBefore) {
+      super(vec.getType(), InsertElement, name, insertBefore);
+      Util.assertion(isValidOperands(vec, newElt, idx), "invalid insertelement instruction operands!");
+      reserve(3);
+      setOperand(0, new Use(vec, this));
+      setOperand(1, new Use(newElt, this));
+      setOperand(2, new Use(idx, this));
+    }
+
+    public InsertElementInst(Value vec, Value newElt,
+                             Value idx,
+                             String name,
+                             BasicBlock insertAtEnd) {
+      super(vec.getType(), InsertElement, name, insertAtEnd);
+      Util.assertion(isValidOperands(vec, newElt, idx), "invalid insertelement instruction operands!");
+      reserve(3);
+      setOperand(0, new Use(vec, this));
+      setOperand(1, new Use(newElt, this));
+      setOperand(2, new Use(idx, this));
+    }
+
+    public static boolean isValidOperands(Value vec, Value newElt, Value idx) {
+      if (!vec.getType().isVectorTy())
+        return false;
+      if (!newElt.getType().equals( ((VectorType)vec.getType()).getElementType()))
+        return false;
+      if (!idx.getType().isIntegerTy(32))
+        return false;
+      return true;
+    }
+
+    public VectorType getType() {
+      return (VectorType)super.getType();
+    }
+  }
+
+  public static class ShuffleVectorInst extends Instruction {
+
+    public ShuffleVectorInst(Value v1,
+                             Value v2,
+                             Value mask) {
+      this(v1, v2, mask, "");
+    }
+
+    public ShuffleVectorInst(Value v1,
+                             Value v2,
+                             Value mask,
+                             String name) {
+      this(v1, v2, mask, name, (Instruction)null);
+    }
+
+    public ShuffleVectorInst(Value v1,
+                             Value v2,
+                             Value mask,
+                             String name,
+                             Instruction insertBefore) {
+      super(VectorType.get(((VectorType)v1.getType()).getElementType(),
+          ((VectorType)v1.getType()).getNumElements()),
+          ShuffleVector,
+          name, insertBefore);
+      reserve(3);
+      setOperand(0, new Use(v1, this));
+      setOperand(1, new Use(v2, this));
+      setOperand(2, new Use(mask, this));
+    }
+
+    public ShuffleVectorInst(Value v1,
+                             Value v2,
+                             Value mask,
+                             String name,
+                             BasicBlock insertAtEnd) {
+      super(VectorType.get(((VectorType)v1.getType()).getElementType(),
+          ((VectorType)v1.getType()).getNumElements()),
+          ShuffleVector,
+          name, insertAtEnd);
+      reserve(3);
+      setOperand(0, new Use(v1, this));
+      setOperand(1, new Use(v2, this));
+      setOperand(2, new Use(mask, this));
+    }
+
+    public static boolean isValidOperands(Value v1, Value v2, Value mask) {
+      if (!v1.getType().isVectorTy() || !v1.getType().equals(v2.getType()))
+        return false;
+
+      VectorType maskTy = mask.getType() instanceof VectorType ?
+          (VectorType) mask.getType() : null;
+      if (!(mask instanceof Constant) || maskTy == null ||
+          !maskTy.getElementType().isIntegerTy(32))
+        return false;
+      return true;
+    }
+
+    /**
+     * Return the full mask for this instrucion, where each element is the element
+     * number and undef's are returned as -1.
+     * @param mask
+     * @param result
+     */
+    public static void getShuffleMask(Constant mask, TIntArrayList result) {
+      Util.assertion(mask.getType().isVectorTy(), "not a vector constant!");
+
+      if (mask instanceof ConstantVector) {
+        ConstantVector conVec = (ConstantVector) mask;
+        for (int i = 0, e = conVec.getNumOfOperands(); i < e; ++i) {
+          Constant elt = conVec.operand(i);
+          if (elt instanceof UndefValue)
+            result.add(-1);
+          else
+            result.add((int) ((ConstantInt)elt).getSExtValue());
+        }
+        return;
+      }
+
+      VectorType vt = (VectorType)mask.getType();
+      if (mask instanceof ConstantAggregateZero) {
+        for (int i = 0, e = vt.getNumElements(); i < e; ++i)
+          result.add(0);
+        return;
+      }
+
+      Util.shouldNotReachHere("Unknown type, must be constant expr etc!");
+    }
+
+    public VectorType getType() {
+      return (VectorType)super.getType();
+    }
+
+    public int getMaskValue(int i) {
+      Constant mask = (Constant) operand(2);
+      if (mask instanceof UndefValue) return -1;
+      if (mask instanceof ConstantAggregateZero) return 0;
+      ConstantVector maskCV = (ConstantVector) mask;
+      Util.assertion(i < maskCV.getNumOfOperands(), "index out of range!");
+      if (maskCV.operand(i) instanceof UndefValue)
+        return -1;
+      return (int) ((ConstantInt)maskCV.operand(i)).getZExtValue();
+    }
+  }
+
+  /**
+   * This instruction represents the operation that extracting a value of the
+   * structure or array type.
+   */
+  public static class ExtractValueInst extends Instruction {
+
+    private int[] indices;
+    private void init(Value agg, int[] idxs, String name) {
+      Util.assertion(idxs.length == 1, "the number of operands must be two!");
+      reserve(1);
+      setOperand(0, new Use(agg, this));
+      setName(name);
+      indices = idxs;
+    }
+    public ExtractValueInst(Value agg,
+                            int[] indices) {
+      this(agg, indices, "");
+    }
+
+    public ExtractValueInst(Value agg,
+                            int[] indices,
+                            String name) {
+      this(agg, indices, name, (Instruction)null);
+    }
+
+    public ExtractValueInst(Value agg,
+                           int[] indices,
+                           String name,
+                           Instruction insertBefore) {
+      super(checkType(getIndexedType(agg.getType(), indices)), ExtractValue, name, insertBefore);
+      init(agg, indices, name);
+    }
+
+    public ExtractValueInst(Value agg,
+                           int[] indices,
+                           String name,
+                           BasicBlock insertAtEnd) {
+      super(checkType(getIndexedType(agg.getType(), indices)), ExtractValue, name, insertAtEnd);
+      init(agg, indices, name);
+    }
+
+    public int[] getIndices() { return indices; }
+
+    public Value getAggregateOperand() {
+      return operand(0);
+    }
+
+    public static int getAggregateOperandIndex() { return 0; }
+
+    public static Type getIndexedType(Type agg,
+                                      int[] indices) {
+      int curIdx = 0;
+      for (; curIdx < indices.length; ++curIdx) {
+        CompositeType ct = null;
+        if (agg instanceof CompositeType) {
+          ct = (CompositeType) agg;
+        }
+        if (ct == null || ct.isPointerType() || ct.isVectorTy())
+          return null;
+
+        int index = indices[curIdx];
+        if (!ct.indexValid(index)) return null;
+        agg = ct.getTypeAtIndex(index);
+      }
+      return curIdx == indices.length ? agg : null;
+    }
+
+    public static Type getIndexedType(Type agg,
+                                      int idx) {
+      return getIndexedType(agg, new int[]{idx});
+    }
+
+    public int getNumIndices() { return indices.length; }
+
+    public boolean hasIndices() { return true; }
+  }
+
+  /**
+   * This instruction represents the action that inserting a value into a aggregate value.
+   */
+  public static class InsertValueInst extends Instruction {
+    private int[] indices;
+
+    private void init(Value agg, Value val, int[] idxs, String name) {
+      Util.assertion(idxs.length == 2, "the number of operands must be two!");
+      reserve(2);
+      setOperand(0, agg);
+      setOperand(1, val);
+      setName(name);
+      indices = idxs;
+    }
+
+    public InsertValueInst(Value agg,
+                           Value val,
+                           int[] indices) {
+      this(agg, val, indices, "");
+    }
+
+    public InsertValueInst(Value agg,
+                           Value val,
+                           int[] indices,
+                           String name) {
+      this(agg, val, indices, name, (Instruction)null);
+    }
+
+    public InsertValueInst(Value agg,
+                           Value val,
+                           int[] indices,
+                           String name,
+                           Instruction insertBefore) {
+      super(agg.getType(), InsertValue, name, insertBefore);
+      init(agg, val, indices, name);
+    }
+
+    public InsertValueInst(Value agg,
+                           Value val,
+                           int[] indices,
+                           String name,
+                           BasicBlock insertAtEnd) {
+      super(agg.getType(), InsertValue, name, insertAtEnd);
+      init(agg, val, indices, name);
+    }
+
+    public int[] getIndices() { return indices; }
+
+    public Value getAggregateOperand() {
+      return operand(0);
+    }
+
+    public static int getAggregateOperandIndex() { return 0; }
+
+    public Value getInsertedValueOperand() { return operand(1); }
+
+    public static int getInsertedValueOperandIndex() { return 1; }
+
+    public int getNumIndices() { return indices.length; }
+
+    public boolean hasIndices() { return true; }
   }
 }

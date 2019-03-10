@@ -490,39 +490,6 @@ public class Util {
 
   /**
    * <pre>
-   * Converts a value of type long to double in bit sbuject to IEEE754 standard.
-   * It equivalence to following C code:
-   * double bitsToDouble(long val)
-   * {
-   *   union
-   *   {
-   *     long l;
-   *     double d;
-   *   }t;
-   *   t.l = val;
-   *   return t.d;
-   * }
-   * </pre>
-   *
-   * @param val
-   * @return
-   */
-  public static double bitsToDouble(long val) {
-    int sign = (int) ((val >>> 63) & 0x1);
-    int exp = (int) (val >>> 52) & ((1 << 11) - 1) - 1023;
-    long r = (val & ((1L << 52) - 1));
-    double t = 0;
-    for (int i = 0; i < 52; i++) {
-      t += r & 0x1;
-      t /= 2;
-      r >>>= 1;
-    }
-    double res = Math.pow(2.0, exp) * (1.0 + t);
-    return sign == 1 ? -res : res;
-  }
-
-  /**
-   * <pre>
    * Converts a value of type int to float in bit. It equivalence to following
    * C code:
    * float bitsToDouble(int val)
@@ -563,16 +530,6 @@ public class Util {
    */
   public static int floatToBits(float val) {
     return Float.floatToRawIntBits(val);
-  }
-
-  /**
-   * Converts a double value to long in bitwise. Like {@linkplain #bitsToDouble(long)}.
-   *
-   * @param val
-   * @return
-   */
-  public static long doubleToBits(double val) {
-    return Double.doubleToRawLongBits(val);
   }
 
   public static char hexDigit(int x) {
@@ -763,5 +720,51 @@ public class Util {
 
   public static boolean isInt32(long val) {
     return val >= Integer.MIN_VALUE && val <= Integer.MAX_VALUE;
+  }
+
+  public static char toOctal(int x) {
+    x = x & 0x07;
+    char[] res = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e'};
+    return res[x];
+  }
+
+  public static boolean isHexDigit(char ch) {
+    return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch < 'f') || (ch >= 'A' && ch <= 'F');
+  }
+
+  public static String unEscapeLexed(String str) {
+    if (str == null || str.isEmpty())
+      return "";
+
+    StringBuilder buf = new StringBuilder();
+    for (int i = 0, e = str.length(); i != e; ) {
+      if (str.charAt(i) == '\\') {
+        if (i < e - 1 && str.charAt(i + 1) == '\\') {
+          buf.append('\\');
+          i += 2;
+        } else if (i < e - 2 && isHexDigit(str.charAt(i + 1)) && isHexDigit(str.charAt(i + 2))) {
+          buf.append((char)Integer.parseInt(str.substring(i + 1, i + 3), 16));
+          i += 3;
+        } else {
+          buf.append(str.charAt(i++));
+        }
+      } else {
+        buf.append(str.charAt(i++));
+      }
+    }
+    return buf.toString();
+  }
+
+  public static String escapedString(String name) {
+    StringBuilder buf = new StringBuilder();
+
+    for (int i = 0, e = name.length(); i < e; i++) {
+      char ch = name.charAt(i);
+      if (TextUtils.isPrintable(ch) && ch != '\\' && ch != '"')
+        buf.append(ch);
+      else
+        buf.append(String.format("\\%c%c", hexDigit(ch >> 4), hexDigit(ch & 0xF)));
+    }
+    return buf.toString();
   }
 }

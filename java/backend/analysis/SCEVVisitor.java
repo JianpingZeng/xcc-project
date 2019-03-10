@@ -7,7 +7,7 @@ import tools.Util;
  * SCEV analysis purposes.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface SCEVVisitor<RetVal> {
   default RetVal visit(SCEV s) {

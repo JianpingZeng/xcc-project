@@ -41,7 +41,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  * This class aimed to test and verify various of optimization pass in Backend.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Optimizer {
   // The OptimizationList is automatically populated with registered Passes by

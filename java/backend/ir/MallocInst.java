@@ -27,7 +27,7 @@ import backend.value.Value;
  * An instruction to allocated memory on the heap.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MallocInst extends AllocationInst {
   public MallocInst(Type ty) {

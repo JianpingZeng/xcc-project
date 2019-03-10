@@ -20,19 +20,26 @@ import backend.codegen.LowerSubregInstructionPass;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.codegen.RearrangementMBB;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCAsmStreamer;
+import backend.mc.MCInstPrinter;
+import backend.mc.MCStreamer;
+import backend.mc.MCSymbol.MCContext;
+import backend.pass.FunctionPass;
 import backend.passManaging.PassManagerBase;
 import backend.support.BackendCmdOptions;
 import tools.Util;
 
 import java.io.OutputStream;
+import java.io.PrintStream;
 
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
+import static backend.support.BackendCmdOptions.PrintAfterAll;
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
-import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;
 
 /**
@@ -40,7 +47,7 @@ import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBl
  * implemented with the LLVM target-independent code generator.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class LLVMTargetMachine extends TargetMachine {
   protected LLVMTargetMachine(Target target, String triple) {
@@ -50,12 +57,12 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
   private void initAsmInfo(Target target, String triple) {
     asmInfo = target.createAsmInfo(triple);
-    Util.assertion(asmInfo != null, "Must initialize the TargetAsmInfo for AsmPrinter!");
+    Util.assertion(asmInfo != null, "Must initialize the MCAsmInfo for AsmPrinter!");
   }
 
   private static void printAndVerify(PassManagerBase pm,
                                      boolean allowDoubleDefs, String banner) {
-    if (PrintMachineCode.value)
+    if (PrintMachineCode.value || PrintAfterAll.value)
       pm.add(createMachineFunctionPrinterPass(System.err, banner));
 
     if (VerifyMachineCode.value)
@@ -82,13 +89,13 @@ public abstract class LLVMTargetMachine extends TargetMachine {
    */
   protected boolean addCommonCodeGenPasses(PassManagerBase pm, CodeGenOpt level) {
     // lowers switch instr into chained branch instr.
-    pm.add(createLowerSwitchPass());
-
+    // pm.add(createLowerSwitchPass());
     if (level != CodeGenOpt.None) {
       // todo pm.add(createLoopStrengthReducePass(getTargetLowering()));
     }
 
-    pm.add(createUnreachableBlockEliminationPass());
+    if (level.compareTo(CodeGenOpt.None) > 0)
+      pm.add(createUnreachableBlockEliminationPass());
 
     pm.add(new MachineFunctionAnalysis(this, level));
 
@@ -96,9 +103,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addInstSelector(pm, level))
       return true;
 
-    // print the machine instructions.
-    printAndVerify(pm, true,
-        "# *** IR dump after Instruction Selection ***:\n");
     if (!DisableRearrangementMBB.value) {
       // Before instruction selection, rearragement blocks.
       pm.add(RearrangementMBB.createRearrangeemntPass());
@@ -114,7 +118,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
     // Perform register allocation to convert to a concrete x86 representation
     pm.add(BackendCmdOptions.createRegisterAllocator());
-
     // Print machine code after register allocation.
     printAndVerify(pm, false,
         "# *** IR dump after Register Allocator ***:\n");
@@ -133,11 +136,11 @@ public abstract class LLVMTargetMachine extends TargetMachine {
   }
 
   @Override
-  public FileModel addPassesToEmitFile(PassManagerBase pm,
-                                       OutputStream asmOutStream, CodeGenFileType fileType,
+  public boolean addPassesToEmitFile(PassManagerBase pm,
+                                       OutputStream os, CodeGenFileType fileType,
                                        CodeGenOpt optLevel) {
     if (addCommonCodeGenPasses(pm, optLevel))
-      return FileModel.Error;
+      return true;
 
     if (PrintMachineCode.value) {
       pm.add(createMachineFunctionPrinterPass(System.err,
@@ -147,28 +150,46 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value) {
       pm.add(createMachineFunctionPrinterPass(System.err,
           "# *** IR dump after emitting code ***:\n"));
-      return FileModel.Error;
+      return true;
     }
+
+    MCContext ctx = new MCContext();
+    MCStreamer streamer = null;
+    PrintStream legacyOutput = null;
 
     switch (fileType) {
       default:
-        return FileModel.Error;
-      case AssemblyFile:
-        if (addAssemblyEmitter(pm, optLevel, theTarget.getAsmVerbosityDefault(), asmOutStream))
-          return FileModel.Error;
-        return FileModel.AsmFile;
-      case ObjectFile:
-        return FileModel.ElfFile;
+        return true;
+      case CGFT_AssemblyFile: {
+        MCAsmInfo mai = getMCAsmInfo();
+        // Set the AsmPrinter's "O" to the output file.
+        legacyOutput = new PrintStream(os);
+        MCInstPrinter instPrinter =
+            getTarget().createMCInstPrinter(mai.getAssemblerDialect(), legacyOutput, mai);
+        streamer = MCAsmStreamer.createAsmStreamer(ctx, legacyOutput,
+            mai, getTargetData().isLittleEndian(), getAsmVerbosityDefault(),
+            instPrinter, null, false);
+        break;
+      }
+      case CGFT_Null:
+      case CGFT_ObjectFile: {
+        Util.shouldNotReachHere("Object emit is not supported yet!");;
+        return true;
+      }
     }
+
+    FunctionPass printer = getTarget().createAsmPrinter(legacyOutput,
+        this, ctx, streamer, getMCAsmInfo());
+    if (printer == null)
+      return true;
+
+    setCodeModelForStatic();
+    pm.add(printer);
+    return false;
   }
 
-  @Override
-  public boolean addPassesToEmitFileFinish(PassManagerBase pm,
-                                           MachineCodeEmitter mce, CodeGenOpt opt) {
-    if (mce != null)
-      addSimpleCodeEmitter(pm, opt, mce);
-    // success!
-    return false;
+  public void setCodeModelForStatic() {
+    setCodeModel(CodeModel.Small);
   }
 
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
@@ -199,12 +220,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
    */
   public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
                                       MachineCodeEmitter mce) {
-    return true;
-  }
-
-  public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
-                                    boolean verbose,
-                                    OutputStream os) {
     return true;
   }
 }

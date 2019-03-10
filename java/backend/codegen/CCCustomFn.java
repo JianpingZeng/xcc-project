@@ -20,7 +20,7 @@ import tools.OutRef;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface CCCustomFn {
   boolean apply(OutRef<Integer> valNo,

@@ -18,7 +18,7 @@ import static backend.value.Instruction.CmpInst.Predicate.ICMP_ULT;
  * Note that all operands of an {@code AddRec} are required to be loop invariant.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SCEVAddRecExpr extends SCEV {
   private ArrayList<SCEV> operands;

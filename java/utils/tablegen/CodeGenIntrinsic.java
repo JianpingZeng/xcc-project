@@ -32,7 +32,7 @@ import static backend.codegen.MVT.vAny;
  * This class defines a wrapper for the 'Intrinsic' TablleGen class.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  * @since 0.1
  */
 public final class CodeGenIntrinsic {

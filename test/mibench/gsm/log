@@ -1,0 +1,29 @@
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/add.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/code.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/debug.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/decode.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/long_term.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/lpc.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/preprocess.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/rpe.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_destroy.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_decode.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_encode.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_explode.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_implode.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_create.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_print.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/gsm_option.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/short_term.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/table.c
+rm  ./lib/libgsm.a
+*** Error code 2 (ignored)
+/usr/ccs/bin/ar cr ./lib/libgsm.a ./src/add.o		 ./src/code.o		 ./src/debug.o		 ./src/decode.o		 ./src/long_term.o	 ./src/lpc.o		 ./src/preprocess.o	 ./src/rpe.o		 ./src/gsm_destroy.o	 ./src/gsm_decode.o	 ./src/gsm_encode.o	 ./src/gsm_explode.o	 ./src/gsm_implode.o	 ./src/gsm_create.o	 ./src/gsm_print.o	 ./src/gsm_option.o	 ./src/short_term.o	 ./src/table.o
+true ./lib/libgsm.a
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/toast.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/toast_lin.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/toast_ulaw.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/toast_alaw.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic -c -O2 -DNeedFunctionPrototypes=1 -DSASR     -I./inc src/toast_audio.c
+../../bin/ssbig-na-sstrix-gcc -static -ansi -pedantic   -o ./bin/toast ./src/toast.o 		 ./src/toast_lin.o	 ./src/toast_ulaw.o	 ./src/toast_alaw.o	 ./src/toast_audio.o ./lib/libgsm.a 
+*** Error code 1

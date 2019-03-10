@@ -17,8 +17,7 @@ package backend.llReader;
  */
 
 import backend.value.Module;
-import com.sun.javafx.binding.StringFormatter;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.SourceMgr;
@@ -26,7 +25,7 @@ import tools.SourceMgr.SMLoc;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Parser {
   public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag) {
@@ -37,7 +36,7 @@ public final class Parser {
 
     if (f == null) {
       diag.set(srcMgr.getMessage(new SMLoc(),
-          StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
+          String.format("Could not open input file '%s'\n", filename),
           SourceMgr.DiagKind.DK_Error));
       return null;
     }

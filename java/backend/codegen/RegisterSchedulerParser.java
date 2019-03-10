@@ -23,7 +23,7 @@ import tools.commandline.Parser;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegisterSchedulerParser extends Parser<SchedPassCtor>
     implements MachinePassRegistryListener<SchedPassCtor> {

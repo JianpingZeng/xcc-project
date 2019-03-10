@@ -1,0 +1,17 @@
+To build RSAREF, copy the makefile for your operating system from the
+'install' subdirectory to the 'test' subdirectory. Then run your
+operating system's 'make' program from the 'test' subdirectory. The
+makefile will compile the RSAREF source code and build the
+demonstration program. Makefiles are found in subdirectories of the
+'install' subdirectory:
+
+     dos       Personal Computer running DOS, Microsoft C v6.00a
+     mac       Macintosh running System 7, MPW 3.2
+     unix      NeXTStation, DECStation 3100, SPARCStation 1
+     vax       MicroVAX II running VMS
+
+For example, suppose you are running DOS with Microsoft's NMAKE
+utility. From the 'test' directory you would run the commands:
+
+     copy ..\install\dos\makefile
+     nmake

@@ -20,7 +20,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ValueClass<T> implements Modifier {
   public static class Entry<T> {

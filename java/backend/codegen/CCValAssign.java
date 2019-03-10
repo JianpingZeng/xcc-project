@@ -22,7 +22,7 @@ import tools.Util;
  * Represent assignment of one arg/retval to a location.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class CCValAssign {
   public enum LocInfo {

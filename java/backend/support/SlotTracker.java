@@ -17,6 +17,7 @@ package backend.support;
  */
 
 import backend.value.*;
+import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
@@ -24,7 +25,7 @@ import tools.Util;
  * Enumerates slot number for unnamed values.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SlotTracker {
   /**
@@ -96,9 +97,8 @@ public final class SlotTracker {
   }
 
   public int getLocalSlot(Value v) {
-    Util.assertion(!(v instanceof Constant), "Can't get a constant or global slot with this!");
-
-
+    Util.assertion(!(v instanceof Constant),
+        "Can't get a constant or global slot with this!");
     initialize();
     return fMap.containsKey(v) ? fMap.get(v) : -1;
   }

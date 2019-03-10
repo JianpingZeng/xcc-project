@@ -29,6 +29,7 @@ import backend.value.*;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.LoadInst;
 import backend.value.Instruction.StoreInst;
+import backend.value.Module;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -63,7 +64,7 @@ import static backend.analysis.aa.ModRefResult.*;
  * which supply functionality for the entire suite of client APIs.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class AliasAnalysis implements ModulePass {
   private AliasAnalysis aa;

@@ -29,7 +29,7 @@ import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConstantFP extends Constant {
   private APFloat val;
@@ -56,7 +56,7 @@ public class ConstantFP extends Constant {
     if (ty.equals(LLVMContext.FP128Ty))
       return APFloat.IEEEquad;
 
-    Util.assertion(false, "Unkown FP format");
+    Util.assertion("Unknown FP format");
     return null;
   }
 
@@ -151,14 +151,19 @@ public class ConstantFP extends Constant {
   public static Value getZeroValueForNegation(Type type) {
     if (type instanceof VectorType) {
       VectorType vty = (VectorType) type;
-      if (vty.getElementType().isFloatingPoint()) {
+      if (vty.getElementType().isFloatingPointType()) {
         Constant[] zeros = new Constant[vty.getNumElements()];
         Arrays.fill(zeros, getNegativeZero(vty.getElementType()));
         return ConstantVector.get(zeros);
       }
     }
-    if (type.isFloatingPoint())
+    if (type.isFloatingPointType())
       return getNegativeZero(type);
     return Constant.getNullValue(type);
+  }
+
+  @Override
+  public Value clone() {
+    return new ConstantFP(getType(), getValueAPF().clone());
   }
 }

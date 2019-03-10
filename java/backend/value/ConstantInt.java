@@ -28,7 +28,7 @@ import tools.Util;
  * This is an abstract base class of all bool and integral constants.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConstantInt extends Constant {
   private APInt val;
@@ -84,7 +84,7 @@ public class ConstantInt extends Constant {
   public static ConstantInt getFalse() {
     if (FALSE != null)
       return FALSE;
-    return (FALSE = get(LLVMContext.Int1Ty, 1, false));
+    return (FALSE = get(LLVMContext.Int1Ty, 0, false));
   }
 
   public boolean isMaxValue(boolean isSigned) {
@@ -152,7 +152,7 @@ public class ConstantInt extends Constant {
       return false;
 
     ConstantInt ci = (ConstantInt) obj;
-    return val.eq(ci.getValue());
+    return val.getBitWidth() == ci.getValue().getBitWidth() && val.eq(ci.getValue());
   }
 
   @Override

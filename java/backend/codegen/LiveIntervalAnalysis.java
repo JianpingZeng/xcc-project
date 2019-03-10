@@ -18,14 +18,14 @@ package backend.codegen;
 
 import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -46,7 +46,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class LiveIntervalAnalysis extends MachineFunctionPass {
   public static IntStatistic numIntervals =
@@ -101,8 +101,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass {
     // each live interval. The more nested, the more weight.
     au.addPreserved(MachineDomTree.class);
     au.addRequired(MachineDomTree.class);
-    au.addPreserved(MachineLoop.class);
-    au.addRequired(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
+    au.addRequired(MachineLoopInfo.class);
     // Eliminate phi node.
     au.addPreserved(PhiElimination.class);
     au.addRequired(PhiElimination.class);
@@ -146,7 +146,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass {
     idx2MBBs = new TreeMap<>();
     mbb2Idx = new TObjectIntHashMap<>();
 
-    MachineLoop ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    MachineLoopInfo ml = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
 
     // Step#1: Handle live-in regs of mf.
     // Step#2: Numbering each MachineInstr in each MachineBasicBlock.
@@ -567,7 +567,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass {
       System.err.println();
     }
 
-    TargetRegisterClass rc = mri.getRegClass(interval.register);
+    MCRegisterClass rc = mri.getRegClass(interval.register);
 
     for (LiveRange lr : interval.ranges) {
       int index = getBaseIndex(lr.start);

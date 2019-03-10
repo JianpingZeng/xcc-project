@@ -22,7 +22,7 @@ package utils.tablegen;
  * have an associated memory operand that describes the access.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface SDNP {
   int SDNPCommutative = 0;

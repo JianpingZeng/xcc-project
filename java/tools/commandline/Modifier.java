@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  * command line option parsers..
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface Modifier extends Consumer<Option<?>> {
   void apply(Option<?> opt);

@@ -37,10 +37,7 @@ import tools.APInt;
 import tools.OutRef;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.*;
 import static backend.codegen.dagisel.SelectionDAG.isCommutativeBinOp;
@@ -48,7 +45,7 @@ import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DAGCombiner {
   private SelectionDAG dag;
@@ -285,28 +282,315 @@ public class DAGCombiner {
   }
 
   private SDValue visitVECTOR_SHUFFLE(SDNode n) {
-    Util.shouldNotReachHere("Vector operation is not supported!");
+    EVT vt = n.getValueType(0);
+    int numElts = vt.getVectorNumElements();
+
+    SDValue n0 = n.getOperand(0);
+    Util.assertion(n0.getValueType().getVectorNumElements() == numElts,
+        "Vector shuffle must be normalized in DAG");
+
+    // If it is a splat, check if the argument vector is another splat or a
+    // build_vector with all scalar elements the same.
+    ShuffleVectorSDNode svn = (ShuffleVectorSDNode) n;
+    if (svn.isSplat() && svn.getSplatIndex() < numElts) {
+      SDNode v = n0.getNode();
+
+      if (v.getOpcode() == ISD.BIT_CONVERT) {
+        SDValue convInput = v.getOperand(0);
+        if (convInput.getValueType().isVector() &&
+            convInput.getValueType().getVectorNumElements() == numElts)
+          v = convInput.getNode();
+      }
+
+      // If this is a bit convert that changes the element type of the vector but
+      // not the number of vector elements, look through it.  Be careful not to
+      // look though conversions that change things like v4f32 to v2f64.
+      if (v.getOpcode() == ISD.BUILD_VECTOR) {
+        Util.assertion(v.getNumOperands() == numElts,
+            "BUILD_VECTOR has wrong number of operands");
+        SDValue base = new SDValue();
+        boolean allSame = true;
+        for (int i = 0; i < numElts; ++i) {
+          if (v.getOperand(i).getOpcode() != ISD.UNDEF) {
+            base = v.getOperand(i);
+            break;
+          }
+        }
+        // Splat of <u, u, u, u>, return <u, u, u, u>
+        if (base.getNode() == null)
+          return n0;
+        for (int i = 0; i < numElts; i++) {
+          if (!v.getOperand(i).equals(base)) {
+            allSame = false;
+            break;
+          }
+        }
+
+        // Splat of<x, x, x, x>, return <x, x, x, x>
+        if (allSame)
+          return n0;
+      }
+    }
     return new SDValue();
   }
 
   private SDValue visitCONCAT_VECTORS(SDNode n) {
-    Util.shouldNotReachHere("Vector operation is not supported!");
+    // If we only have one input vector, we don't need to do any concatenation.
+    if (n.getNumOperands() == 1)
+      return n.getOperand(0);
+
     return new SDValue();
   }
 
   private SDValue visitBUILD_VECTOR(SDNode n) {
-    Util.shouldNotReachHere("Vector operation is not supported!");
+    int numInScalars = n.getNumOperands();
+    // The type of first produced value
+    EVT vt = n.getValueType(0);
+
+    // Check to see if this is a BUILD_VECTOR of a bunch of EXTRACT_VECTOR_ELT
+    // operations.  If so, and if the EXTRACT_VECTOR_ELT vector inputs come from
+    // at most two distinct vectors, turn this into a shuffle node.
+    SDValue vecIn1 = new SDValue(), vecIn2 = new SDValue();
+    for (int i = 0; i < numInScalars; i++) {
+      // ignores undef inputs.
+      if (n.getOperand(i).getOpcode() == ISD.UNDEF) continue;
+
+      // if this input is something other than a EXTRACT_VECTOR_ELT with a
+      // constant index, bail out.
+      if (n.getOperand(i).getOpcode() != ISD.EXTRACT_VECTOR_ELT ||
+          !(n.getOperand(i).getOperand(1).getNode() instanceof ConstantSDNode)) {
+        vecIn1 = vecIn2 = new SDValue();
+        break;
+      }
+
+      // if the input vector type disagrees with the result of the build_vector,
+      // we can't make a shuffle.
+      SDValue extractedFromVec = n.getOperand(i).getOperand(0);
+      if (!extractedFromVec.getValueType().equals(vt)) {
+        vecIn1 = vecIn2 = new SDValue();
+        break;
+      }
+
+      // otherwise, remember this, we allow up to two distinct input vectors.
+      if (extractedFromVec == vecIn1 || extractedFromVec == vecIn2)
+        continue;
+
+      if (vecIn1.getNode() == null)
+        vecIn1 = extractedFromVec;
+      else if (vecIn2.getNode() == null)
+        vecIn2 = extractedFromVec;
+      else {
+        // too many inputs.
+        vecIn1 = vecIn2 = new SDValue();
+        break;
+      }
+    }
+
+    // If everything is good, we can make a shuffle operation.
+    if (vecIn1.getNode() != null) {
+      TIntArrayList mask = new TIntArrayList();
+      for (int i = 0; i < numInScalars; ++i) {
+        if (n.getOperand(i).getOpcode() == ISD.UNDEF) {
+          mask.add(-1);
+          continue;
+        }
+
+        // if extracting from the first vector, just use the index directly
+        SDValue extract = n.getOperand(i);
+        SDValue extVal = extract.getOperand(1);
+        if (extract.getOperand(0).equals(vecIn1)) {
+          long extIndex = ((ConstantSDNode) extVal.getNode()).getZExtValue();
+          if (extIndex > vt.getVectorNumElements())
+            return new SDValue();
+
+          mask.add((int) extIndex);
+          continue;
+        }
+        // otherwise, use index + vector size
+        int idx = (int) ((ConstantSDNode) extVal.getNode()).getZExtValue();
+        mask.add(idx + numInScalars);
+      }
+
+      // add input and size info
+      if (!isTypeLegal(vt))
+        return new SDValue();
+
+      // return the new VECTOR_SHUFFLE node.
+      SDValue op1 = vecIn2.getNode() != null ? vecIn2 : dag.getUNDEF(vt);
+      return dag.getVectorShuffle(vt, vecIn1, op1, mask.toArray());
+    }
+
     return new SDValue();
   }
 
+  /**
+   * This method returns true if we are running before type legalization phase
+   * or if the specified vt is legal.
+   *
+   * @param vt
+   * @return
+   */
+  private boolean isTypeLegal(EVT vt) {
+    if (!legalTypes) return true;
+    return tli.isTypeLegal(vt);
+  }
+
   private SDValue visitEXTRACT_VECTOR_ELT(SDNode n) {
-    Util.shouldNotReachHere("Vector operation is not supported!");
+    // (vextract (scalar_to_vector val, 0) -> val
+    SDValue inVec = n.getOperand(0);
+    if (inVec.getOpcode() == ISD.SCALAR_TO_VECTOR) {
+      // Check if the result type doesn't match the inserted element type. A
+      // SCALAR_TO_VECTOR may truncate the inserted element and the
+      // EXTRACT_VECTOR_ELT may widen the extracted vector.
+      SDValue inOp = inVec.getOperand(0);
+      EVT nvt = n.getValueType(0);
+      if (!inOp.getValueType().equals(nvt)) {
+        Util.assertion(inOp.getValueType().isInteger() && nvt.isInteger());
+        return dag.getSExtOrTrunc(inOp, nvt);
+      }
+      return inOp;
+    }
+
+    // Perform only after legalization to ensure build_vector / vector_shuffle
+    // optimizations have already been done.
+    if (!legalOprations) return new SDValue();
+
+    // (vextract (v4f32 load $addr), c) -> (f32 load $addr+c*size)
+    // (vextract (v4f32 s2v (f32 load $addr)), c) -> (f32 load $addr+c*size)
+    // (vextract (v4f32 shuffle (load $addr), <1,u,u,u>), 0) -> (f32 load $addr)
+    SDValue eltNo = n.getOperand(1);
+
+    if (eltNo.getNode() instanceof ConstantSDNode) {
+      int elt = (int) ((ConstantSDNode) eltNo.getNode()).getZExtValue();
+      boolean newLoad = false;
+      boolean bcNumEltsChanged = false;
+      EVT vt = inVec.getValueType();
+      EVT extVT = vt.getVectorElementType();
+      EVT lvt = extVT;
+
+      if (inVec.getOpcode() == ISD.BIT_CONVERT) {
+        EVT bcvt = inVec.getOperand(0).getValueType();
+        if (!bcvt.isVector() || extVT.bitsGT(bcvt.getVectorElementType()))
+          return new SDValue();
+        if (vt.getVectorNumElements() != bcvt.getVectorNumElements())
+          bcNumEltsChanged = true;
+        inVec = inVec.getOperand(0);
+        extVT = bcvt.getVectorElementType();
+        newLoad = true;
+      }
+
+      LoadSDNode ln0 = null;
+      ShuffleVectorSDNode svn = null;
+      if (inVec.getNode().isNormalLoad())
+        ln0 = (LoadSDNode) inVec.getNode();
+      else if (inVec.getOpcode() == ISD.SCALAR_TO_VECTOR &&
+          inVec.getOperand(0).getValueType().equals(extVT) &&
+          inVec.getOperand(0).getNode().isNormalLoad()) {
+        ln0 = (LoadSDNode) inVec.getOperand(0).getNode();
+      }
+      else if (inVec.getNode() instanceof ShuffleVectorSDNode) {
+        svn = (ShuffleVectorSDNode) inVec.getNode();
+        // (vextract (vector_shuffle (load $addr), v2, <1, u, u, u>), 1)
+        // =>
+        // (load $addr+1*size)
+
+        // If the bit convert changed the number of elements, it is unsafe
+        // to examine the mask.
+        if (bcNumEltsChanged)
+          return new SDValue();
+
+        // Select the input vector, guarding against out of range extract vector.
+        int numElts = vt.getVectorNumElements();
+        int idx = (elt > numElts) ? -1 : svn.getMaskElt(elt);
+        inVec = (idx < numElts) ? inVec.getOperand(0) : inVec.getOperand(1);
+
+        if (inVec.getOpcode() == ISD.BIT_CONVERT)
+          inVec = inVec.getOperand(0);
+        if (inVec.getNode().isNormalLoad()) {
+          ln0 = (LoadSDNode) inVec.getNode();
+          elt = idx < numElts ? idx : idx - numElts;
+        }
+      }
+
+      if (ln0 == null || !ln0.hasNumUsesOfValue(1, 0) || ln0.isVolatile())
+        return new SDValue();
+
+      // If Idx was -1 above, Elt is going to be -1, so just return undef.
+      if (elt == -1)
+        return dag.getUNDEF(lvt);
+
+      int align = ln0.getAlignment();
+      if (newLoad) {
+        // Check the resultant load doesn't need a higher alignment than the
+        // original load.
+        int newAlign = tli.getTargetData().getABITypeAlignment(lvt.getTypeForEVT());
+        if (newAlign > align || !tli.isOperationLegalOrCustom(ISD.LOAD, lvt))
+          return new SDValue();
+
+        align = newAlign;
+      }
+
+      SDValue newPtr = ln0.getBasePtr();
+      int ptrOff = 0;
+      if (elt != 0) {
+        ptrOff = lvt.getSizeInBits()*elt/8;
+        EVT ptrType = newPtr.getValueType();
+        if (tli.isBigEndian())
+          ptrOff = vt.getSizeInBits() / 8 - ptrOff;
+        newPtr = dag.getNode(ISD.ADD, ptrType, newPtr, dag.getConstant(ptrOff, ptrType, false));
+      }
+
+      return dag.getLoad(lvt, ln0.getChain(), newPtr, ln0.getSrcValue(), ptrOff, ln0.isVolatile(), align);
+    }
     return new SDValue();
   }
 
   private SDValue visitINSERT_VECTOR_ELT(SDNode n) {
-    Util.shouldNotReachHere("Vector operation is not supported!");
-    return new SDValue();
+    SDValue inVec = n.getOperand(0);
+    SDValue inVal = n.getOperand(1);
+    SDValue eltNo = n.getOperand(2);
+    // if the inserted value is an UNDEF, just use the input vector.
+    if (inVal.getOpcode() == ISD.UNDEF)
+      return inVec;
+
+    // rseult type
+    EVT vt = inVec.getValueType();
+    // If we can't generate a legal BUILD_VECTOR, exit
+    if (legalOprations && !tli.isOperationLegal(ISD.BUILD_VECTOR, vt))
+      return new SDValue();
+
+    // Check that we know which element is being inserted
+    if (eltNo.getNode() instanceof ConstantSDNode)
+      return new SDValue();
+
+    int elt = (int) ((ConstantSDNode)eltNo.getNode()).getZExtValue();
+    // Check that the operand is a BUILD_VECTOR (or UNDEF, which can essentially
+    // be converted to a BUILD_VECTOR).  Fill in the Ops vector with the
+    // vector elements.
+    ArrayList<SDValue> ops = new ArrayList<>();
+    if (inVec.getOpcode() == ISD.BUILD_VECTOR) {
+      for (int i = 0; i < inVec.getNumOperands(); ++i)
+        ops.add(inVec.getOperand(i));
+    }
+    else if (inVec.getOpcode() == ISD.UNDEF) {
+      int numElts = vt.getVectorNumElements();
+      for (int i = 0; i < numElts; i++)
+        ops.add(dag.getUNDEF(inVal.getValueType()));
+    }
+    else
+      return new SDValue();
+
+    // insert the element.
+    if (elt < ops.size()) {
+      // All the operands of BUILD_VECTOR must have the same type;
+      // we enforce that here.
+      EVT opVT = ops.get(0).getValueType();
+      if (!inVal.getValueType().equals(opVT))
+        inVal = dag.getAnyExtOrTrunc(inVal, opVT);
+      ops.set(elt, inVal);
+    }
+    // build an new vector.
+    return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
   }
 
   /**
@@ -566,7 +850,7 @@ public class DAGCombiner {
       MachineFrameInfo mfi = dag.getMachineFunction().getFrameInfo();
       if (mfi.isFixedObjectIndex(frameIndex)) {
         long objectOffset = mfi.getObjectOffset(frameIndex) + frameOffset;
-        int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+        int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
         int align = Util.minAlign(stackAlign, (int) objectOffset);
         int fiInfoAlign = Util.minAlign(mfi.getObjectAlignment(frameIndex), (int) frameOffset);
         return Math.max(align, fiInfoAlign);
@@ -1896,7 +2180,7 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.TRUNCATE &
         (!legalOprations || tli.isOperationLegal(ISD.AND, vt))) {
       SDValue op = n0.getOperand(0);
-      if (op.getValueType().bitsGT(vt))
+      if (vt.bitsGT(op.getValueType()))
         op = dag.getNode(ISD.ANY_EXTEND, vt, op);
       else if (op.getValueType().bitsGT(vt))
         op = dag.getNode(ISD.TRUNCATE, vt, op);
@@ -2280,22 +2564,18 @@ public class DAGCombiner {
     }
 
     // fold (select X, X, Y) -> (or X, Y)
-    if (n0.equals(n1)) {
-      return dag.getNode(ISD.OR, vt, n0, n2);
-    }
     // fold (select X, 1, Y) -> (or X, Y)
-    if (n1.getNode() instanceof ConstantSDNode &&
-        ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)) {
+    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n1) ||
+        (n1.getNode() instanceof ConstantSDNode &&
+        ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)))) {
       return dag.getNode(ISD.OR, vt, n0, n2);
     }
 
     // fold (select X, Y, X) -> (and X, Y)
-    if (n0.equals(n2)) {
-      return dag.getNode(ISD.AND, vt, n0, n1);
-    }
     // fold (select X, Y, 0) -> (and X, Y)
-    if (n2.getNode() instanceof ConstantSDNode &&
-        ((ConstantSDNode) n2.getNode()).isNullValue()) {
+    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n2) ||
+        (n2.getNode() instanceof ConstantSDNode &&
+            ((ConstantSDNode) n2.getNode()).isNullValue()))) {
       return dag.getNode(ISD.AND, vt, n0, n1);
     }
 
@@ -2380,7 +2660,6 @@ public class DAGCombiner {
 
   private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2) {
     Util.assertion(n0.getOpcode() == ISD.SETCC, "First argument must be a SetCC node!");
-    ;
 
     SDValue scc = simplifySelectCC(n0.getOperand(0),
         n0.getOperand(1), n1, n2,
@@ -2689,11 +2968,11 @@ public class DAGCombiner {
         ConstantSDNode cst = (ConstantSDNode) n101.getNode();
         EVT truncVT = n1.getValueType();
         SDValue n100 = n1.getOperand(0).getOperand(0);
-        APInt trunc = cst.getAPIntValue();
-        trunc.trunc(truncVT.getSizeInBits());
+        APInt truncVal = cst.getAPIntValue();
+        truncVal = truncVal.trunc(truncVT.getSizeInBits());
         return dag.getNode(ISD.SRL, vt, n0, dag.getNode(ISD.AND, truncVT,
             dag.getNode(ISD.TRUNCATE, truncVT, n100),
-            dag.getConstant(trunc, truncVT, false)));
+            dag.getConstant(truncVal, truncVT, false)));
       }
     }
 
@@ -2738,7 +3017,7 @@ public class DAGCombiner {
         EVT truncVT = n1.getValueType();
         SDValue n100 = n1.getOperand(0).getOperand(0);
         APInt trunc = n101C.getAPIntValue();
-        trunc.trunc(truncVT.getSizeInBits());
+        trunc = trunc.trunc(truncVT.getSizeInBits());
         return dag.getNode(ISD.SHL, vt, n0,
             dag.getNode(ISD.AND, truncVT, dag.getNode(ISD.TRUNCATE, truncVT, n100),
                 dag.getConstant(trunc, truncVT, false)));
@@ -3190,15 +3469,15 @@ public class DAGCombiner {
     boolean hasROTR = tli.isOperationLegalOrCustom(ISD.ROTR, vt);
     if (!hasROTL && !hasROTR) return null;
 
-    SDValue[] lhsRes = new SDValue[2];
+    SDValue[] lhsRes = {new SDValue(), new SDValue()};
     if (!matchRotateHalf(lhs, lhsRes))
       return null;
 
-    SDValue[] rhsRes = new SDValue[2];
-    if (matchRotateHalf(rhs, rhsRes))
+    SDValue[] rhsRes = {new SDValue(), new SDValue()};
+    if (!matchRotateHalf(rhs, rhsRes))
       return null;
 
-    if (!lhsRes[0].getOperand(0).equals(rhsRes[0].getOperand(0)))
+    if (!Objects.equals(lhsRes[0].getOperand(0), rhsRes[0].getOperand(0)))
       return null;
 
     if (lhsRes[0].getOpcode() == rhsRes[0].getOpcode())
@@ -3396,7 +3675,7 @@ public class DAGCombiner {
     if (c1 != null && op0.getOpcode() == ISD.ANY_EXTEND) {
       SDValue op00 = op0.getOperand(0);
       APInt mask = c1.getAPIntValue().not();
-      mask.trunc(op00.getValueSizeInBits());
+      mask = mask.trunc(op00.getValueSizeInBits());
       if (dag.maskedValueIsZero(op00, mask)) {
         SDValue zext = dag.getNode(ISD.ZERO_EXTEND, op0.getValueType(),
             op00);
@@ -3921,7 +4200,7 @@ public class DAGCombiner {
   }
 
   private EVT getShiftAmountTy() {
-    return legalTypes ? getShiftAmountTy() : new EVT(tli.getPointerTy());
+    return legalTypes ? new EVT(tli.getShiftAmountTy()) : new EVT(tli.getPointerTy());
   }
 
   private SDValue visitADDE(SDNode n) {
@@ -3953,7 +4232,7 @@ public class DAGCombiner {
     EVT vt = n0.getValueType();
     if (n.hasNumUsesOfValue(0, 1)) {
       return combineTo(n, dag.getNode(ISD.ADD, vt, n1, n0),
-          dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+          dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
     }
     if (c1 != null && c2 == null) {
       return dag.getNode(ISD.ADDC, n.getValueList(), n1, n0);
@@ -3967,7 +4246,7 @@ public class DAGCombiner {
       if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
           lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask))) {
         return combineTo(n, dag.getNode(ISD.OR, vt, n0, n1),
-            dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Flag)), true);
+            dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
       }
     }
 

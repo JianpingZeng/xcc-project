@@ -40,7 +40,7 @@ import static backend.transform.utils.ConstantFolder.*;
  * FunctionProto.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CFGSimplifyPass implements FunctionPass {
   private AnalysisResolver resolver;
@@ -1670,7 +1670,7 @@ public final class CFGSimplifyPass implements FunctionPass {
           ArrayList<ConstantInt> values = new ArrayList<>();
           boolean trueWhenEqual = gatherValueComparisons(cond, x, values);
           Value compVal = x.get();
-          if (compVal != null && compVal.getType().isInteger()) {
+          if (compVal != null && compVal.getType().isIntegerTy()) {
             Util.unique(values);
             values.sort(ConstantIntOrdering);
             BasicBlock defaultBB = br.getSuccessor(1);

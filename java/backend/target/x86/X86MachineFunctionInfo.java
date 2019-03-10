@@ -26,7 +26,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.None
  * contains private X86 target-specific information for each MachineFunction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86MachineFunctionInfo extends MachineFunctionInfo {
   public enum NameDecorationStyle {

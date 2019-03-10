@@ -1,0 +1,19 @@
+#!/opt/local/bin/tcsh -f
+# Script for the simulation
+#
+set analyzer = /u/gs3/leec/leec/Projects/shade/bin/gen
+set benchmark = ../bin/epic
+set options = "-b 25"
+set input = test_image.pgm
+set output =
+set count = 1000000000
+set cache = 1024
+set line = 16
+set assoc = 1
+#
+while ( ${cache} < 20000 )
+echo "${analyzer} -o ${benchmark}.${cache}.summary -- ${benchmark} ${input} ${options} ${output} | dineroIII -b${line} -d${cache} -i${cache} -a${assoc} -z${count} > ${benchmark}.${cache}.dinero"
+#
+ @ cache = ${cache} * 2
+end
+

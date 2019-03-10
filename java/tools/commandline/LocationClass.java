@@ -23,7 +23,7 @@ package tools.commandline;
  * didn't want to store it in the option ifself.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class LocationClass<T> {
   public abstract void setLocation(T location);

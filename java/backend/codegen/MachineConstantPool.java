@@ -11,7 +11,7 @@ import java.util.ArrayList;
  * Keeps track of information for constant spilled into stack frame.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MachineConstantPool {
   private ArrayList<MachineConstantPoolEntry> constants;

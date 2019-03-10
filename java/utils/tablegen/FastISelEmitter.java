@@ -33,7 +33,7 @@ import java.util.TreeMap;
  * instruction selector.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class FastISelEmitter extends TableGenBackend {
   private RecordKeeper records;

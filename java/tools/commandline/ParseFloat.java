@@ -20,7 +20,7 @@ import tools.OutRef;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ParseFloat extends Parser<Float> {
   public boolean parse(Option<?> opt,

@@ -605,7 +605,7 @@ public class DAGISelMatcherGen {
     // the non-chain and non-flag results of the newly emitted node get recorded.
     for (int i = 0, e = resultVTs.size(); i < e; i++) {
       int vt = resultVTs.get(i);
-      if (vt == MVT.Other || vt == MVT.Flag) break;
+      if (vt == MVT.Other || vt == MVT.Glue) break;
       resultOps.add(nextRecordedOperandNo++);
     }
   }

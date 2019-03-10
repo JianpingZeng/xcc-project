@@ -7,14 +7,12 @@ import backend.passManaging.PassManagerBase;
 import backend.target.*;
 import tools.Util;
 
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 import static backend.support.BackendCmdOptions.InstructionSelector;
-import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
-import static backend.target.x86.ATTAsmPrinter.createX86AsmCodeEmitter;
+import static backend.target.TargetOptions.OverrideStackAlignment;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86FloatingPointRegKill.createX86FPRegKillPass;
 import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;
@@ -22,27 +20,26 @@ import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetMachine extends LLVMTargetMachine {
   /**
    * A stack frame info class used for organizing data layout of frame when
    * function calling.
    */
-  private TargetFrameInfo frameInfo;
+  private X86FrameLowering frameInfo;
   private X86Subtarget subtarget;
   private TargetData dataLayout;
   private X86TargetLowering tli;
   private RelocModel defRelocModel;
 
   public X86TargetMachine(Target t, String triple,
-                          String fs, boolean is64Bit) {
+                          String cpu, String fs,
+                          boolean is64Bit) {
     super(t, triple);
-    subtarget = new X86GenSubtarget(triple, fs, this);
+    subtarget = new X86GenSubtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);
     dataLayout = new TargetData(subtarget.getDataLayout());
-    frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
-        (subtarget.isTargetWin64() ? -40 :
-            (subtarget.is64Bit() ? -8 : -4)));
+    frameInfo = new X86FrameLowering(this, subtarget);
     tli = new X86TargetLowering(this);
 
     defRelocModel = getRelocationModel();
@@ -106,6 +103,13 @@ public class X86TargetMachine extends LLVMTargetMachine {
   }
 
   @Override
+  public void setCodeModelForStatic() {
+    if (getCodeModel() != CodeModel.Default) return;
+    // For static codegen, if we're not already set, use Small codegen.
+    super.setCodeModelForStatic();
+  }
+
+  @Override
   public X86Subtarget getSubtarget() {
     return subtarget;
   }
@@ -115,18 +119,27 @@ public class X86TargetMachine extends LLVMTargetMachine {
     return dataLayout;
   }
 
+  /**
+   * You should directly call argetSubtarget::getInstrInfo().
+   * @return
+   */
+  @Deprecated
   @Override
   public TargetInstrInfo getInstrInfo() {
     return subtarget.getInstrInfo();
   }
 
+  /**
+   * You should directly call argetSubtarget::getRegisterInfo().
+   * @return
+   */
+  @Deprecated
   @Override
   public TargetRegisterInfo getRegisterInfo() {
     return subtarget.getRegisterInfo();
   }
 
-  @Override
-  public TargetFrameInfo getFrameInfo() {
+  public TargetFrameLowering getFrameLowering() {
     return frameInfo;
   }
 
@@ -165,13 +178,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
     // converts virtual register in X86 FP inst into floating point stack slot.
     pm.add(createX86FPStackifierPass());
-    return false;
-  }
-
-  @Override
-  public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
-                                    boolean verbose, OutputStream os) {
-    pm.add(createX86AsmCodeEmitter(os, this, getTargetAsmInfo(), verbose));
     return false;
   }
 

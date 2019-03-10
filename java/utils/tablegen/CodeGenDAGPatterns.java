@@ -40,7 +40,7 @@ import static utils.tablegen.TreePattern.getNumNodeResults;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CodeGenDAGPatterns {
   private RecordKeeper records;
@@ -86,7 +86,6 @@ public final class CodeGenDAGPatterns {
     parsePatternFragments();
     parseDefaultOperands();
     parseInstructions();
-    // FIXME (Already fixed 2017.7.23) LLVM-tblgen has 1715 instructions after parseInstructions.
     parsePatterns();
 
     // Break patterns with parameterized types into a series of patterns,
@@ -99,7 +98,6 @@ public final class CodeGenDAGPatterns {
     // For example, commutative patterns can match multiple ways.Add them
     // to patternToMatch as well.
     generateVariants();
-    // FIXME LLVM-tblgen has 2605 patterns after generateVariants.
 
     // For example, we can detect loads, stores, and side effects in many
     // cases by examining an instruction's pattern.
@@ -988,7 +986,7 @@ public final class CodeGenDAGPatterns {
           }
         }
 
-        // Create and insert the instruction.
+        // create and insert the instruction.
         ArrayList<Record> impResults = new ArrayList<>();
         ArrayList<Record> impOperands = new ArrayList<>();
         instructions.put(instr, new DAGInstruction(results, operands, impResults, impOperands));

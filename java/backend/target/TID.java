@@ -17,13 +17,13 @@ package backend.target;
  */
 
 /**
- * TargetInstrDesc flags - These should be considered private to the
- * implementation of the TargetInstrDesc class.  Clients should use the
- * predicate methods on TargetInstrDesc, not use these directly.  These
- * all correspond to bitfields in the TargetInstrDesc::Flags field.
+ * MCInstrDesc flags - These should be considered private to the
+ * implementation of the MCInstrDesc class.  Clients should use the
+ * predicate methods on MCInstrDesc, not use these directly.  These
+ * all correspond to bitfields in the MCInstrDesc::Flags field.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface TID {
   int Variadic = 0;

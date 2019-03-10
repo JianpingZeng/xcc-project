@@ -20,7 +20,7 @@ import backend.intrinsic.Intrinsic;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class IntrinsicInst extends Instruction.CallInst {
   public IntrinsicInst() {

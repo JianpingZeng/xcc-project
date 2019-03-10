@@ -25,7 +25,7 @@ import tools.Util;
  * of the caller) return value virtual register.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class OutputArg {
   public ArgFlagsTy flags;

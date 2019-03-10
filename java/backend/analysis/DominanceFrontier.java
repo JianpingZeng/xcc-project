@@ -36,7 +36,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
  * forward dominator frontiers.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class DominanceFrontier extends DominanceFrontierBase {
   private AnalysisResolver resolver;

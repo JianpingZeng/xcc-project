@@ -21,7 +21,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DerivedType extends Type {
   /**
@@ -42,11 +42,10 @@ public class DerivedType extends Type {
       user.typeBecameConcrete(this);
 
       Util.assertion(abstractTypeUsers.size() < oldSize--, "AbstractTypeUser did not remove ifself");
-
     }
   }
 
-  protected void unlockRefineAbstractTypeTo(Type newType) {
+  private void unlockRefineAbstractTypeTo(Type newType) {
     Util.assertion(isAbstract(), "refinedAbstractTypeto: Current type is not abstract");
     Util.assertion(this != newType, "Can not refine to itself!");
 

@@ -38,7 +38,7 @@ import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
  * program, allowing it to eliminate conditional branches in some cases.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConditionalPropagate implements FunctionPass {
   public static IntStatistic NumBrThread =

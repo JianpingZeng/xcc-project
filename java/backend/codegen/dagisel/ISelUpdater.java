@@ -21,7 +21,7 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ISelUpdater implements DAGUpdateListener {
   private int iselPos;

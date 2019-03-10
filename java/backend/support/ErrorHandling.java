@@ -16,11 +16,11 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import jlang.diag.Diagnostic;
+import cfe.diag.Diagnostic;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ErrorHandling {
   public interface LLVMErrorHandler {
@@ -34,7 +34,7 @@ public class ErrorHandling {
     if (errorHandler != null)
       errorHandler.apply(diagEngineer, msg);
     else
-      System.err.printf(msg);
+      System.err.println(msg);
     // It should terminate program immediately when backend error occurs.
     System.exit(-1);
   }

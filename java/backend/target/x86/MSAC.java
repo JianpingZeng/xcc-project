@@ -28,7 +28,7 @@ import backend.target.TargetRegisterInfo;
  * alignment for specified MachineFunction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MSAC extends MachineFunctionPass {
   /**

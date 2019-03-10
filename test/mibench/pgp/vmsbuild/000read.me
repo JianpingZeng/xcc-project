@@ -1,0 +1,95 @@
+Program:	000READ.ME
+
+Author:	David G. North, CCP
+		1333 Maywood Ct
+		Plano, Texas  75023-1914
+		(214) 881-1553
+		d_north@ondec.lonestar.org
+
+Date:		94.05.16
+
+Revisions:
+  Who		Date	Description
+  D.North	940516	Public Release
+
+License:
+    Ownership of and rights to these programs is retained by the author(s).
+    Limited license to use and distribute the software in this library is
+    hereby granted under the following conditions:
+      1. Any and all authorship, ownership, copyright or licensing
+         information is preserved within any source copies at all times.
+      2. Under absolutely *NO* circumstances may any of this code be used
+         in any form for commercial profit without a written licensing
+         agreement from the author(s).  This does not imply that such
+         a written agreement could not be obtained.
+      3. Except by written agreement under condition 2, and subject to
+         condition 5, source shall be freely provided with all binaries.
+      4. Library contents may be transferred or copied in any form so
+         long as conditions 1, 2, 3, and 5 are met.  Nominal charges may
+         be assessed for media and transferral labor without such charges
+         being considered 'commercial profit' thereby violating condition 2.
+      5. THESE ROUTINES ARE FOR U.S. INTERNAL USE ONLY.  The Author WILL
+         NOT BE HELD ACCOUNTABLE FOR _YOUR_ EXPORTING THESE ROUTINES FROM
+         THE UNITED STATES.  EXPORT OF THESE ROUTINES FROM THE U.S. TO ANY
+         FOREIGN COUNTRY MAY BE A VIOLATION OF ITAR REGULATIONS AND MAY
+         SUBJECT YOU TO PROSECUTION BY THE U.S. GOVERNMENT, POSSIBLY RESULTING
+         IN YOUR INCARCERATION.
+
+Extended conditions:
+   These routines were designed to build the RSAREF library distributed
+   with MIT PGP V2.6, and the MIT PGP V2.6 sources AS DISTRIBUTED.  The
+   author explicitly denies any responsibilities regarding your rights to
+   posses, to use, or to modify ANYTHING called PGP or RSAREF.  These
+   routines essentially 'edit' and compile arbitrary source files provided
+   by you.  The content of those source files, and the source files
+   resulting from the editing operations are YOUR SOLE RESPONSIBILITY with
+   respect to any legal ramifications that may exist.
+
+Warranty:
+   These programs are distributed in the hopes that they will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.
+
+Revisions:	When	   What
+		94.05.16   Initial release
+
+		94.09.04   Move rsaref directory
+
+Description:
+	This directory contains the necessary files to build PGP 2.6 source
+	under VMS.
+
+	Usage is generally:
+		1) Unpack your PGP 2.6 Sources including the files
+			in [.PGP26]
+		2) Set default to [.PGP26.VMSBUILD] and perform:
+		   @ALLBUILD
+
+Operation:
+	The distribution directory tree [relevant] structure is:
+	[.pgp26]
+		[.src]
+			!PGP2.6 sources
+			pgp.c			!etc.
+			...
+		[.vmsbuild]
+			!VMS Build files
+			000read.me
+			allbuild.com			!Calls builds and link
+			rsabuild.com			!Build proc for RSAREFLIB
+			pgpbuild.com			!Build proc for PGP sources
+			pgplink.com			!Linker proc for PGP 2.6
+		...
+	
+	        [.rsaref]
+		        [.source]
+			     !RSAREF sources
+			     desc.c
+			     ...
+		...
+
+
+	The RSABUILD.COM and PGPBUILD.COM structures DEPEND on this relative
+	layout of the source directories.  If your layout is different, the
+	provided build procedures WILL NOT WORK.  You will have to modify
+	them to match your directory layout.

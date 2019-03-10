@@ -1,8 +1,21 @@
 include "../Target.td"
 
 //===----------------------------------------------------------------------===//
+// X86 Subtarget state.
+//
+
+def Mode64Bit : SubtargetFeature<"64bit-mode", "in64BitMode", "true",
+                                  "64-bit mode (x86_64)">;
+
+//===----------------------------------------------------------------------===//
 // X86 Subtarget features.
 //===----------------------------------------------------------------------===//
+
+def FeatureCMOV    : SubtargetFeature<"cmov","hasCMov", "true",
+                                      "Enable conditional move instructions">;
+
+def FeaturePOPCNT   : SubtargetFeature<"popcnt", "asPOPCNT", "true",
+                                       "Support POPCNT instruction">;
 
 def FeatureMMX     : SubtargetFeature<"mmx","x86SSELevel", "X86SSEEnum.MMX",
                                       "Enable MMX instructions">;
@@ -34,17 +47,53 @@ def Feature3DNowA  : SubtargetFeature<"3dnowa", "x863DNowLevel", "X863DNowEnum.T
 // without disabling 64-bit mode.
 def Feature64Bit   : SubtargetFeature<"64bit", "hasX86_64", "true",
                                       "Support 64-bit instructions">;
+
+def FeatureCMPXCHG16B : SubtargetFeature<"cmpxchg16b", "hasCmpxchg16b", "true",
+                                      "64-bit with cmpxchg16b",
+                                      [Feature64Bit]>;
+def FeatureFastUAMem : SubtargetFeature<"fast-unaligned-mem",
+                                        "isUAMemFast", "true",
+                                        "Fast unaligned memory access">;
 def FeatureSlowBTMem : SubtargetFeature<"slow-bt-mem", "isBTMemSlow", "true",
                                        "Bit testing of memory is slow">;
+
 def FeatureSSE4A   : SubtargetFeature<"sse4a", "hasSSE4A", "true",
                                       "Support SSE 4a instructions">;
 
-def FeatureAVX     : SubtargetFeature<"avx", "hasAVX", "true",
+def FeatureAVX     : SubtargetFeature<"avx", "x86SSELevel", "X86SSEEnum.AVX",
                                       "Enable AVX instructions">;
+def FeatureAVX2    : SubtargetFeature<"avx2", "x86SSELevel", "X86SSEEnum.AVX2",
+                                    "Enable AVX2 instructions",
+                                    [FeatureAVX]>;
+def FeatureCLMUL   : SubtargetFeature<"clmul", "hasCLMUL", "true",
+                               "Enable carry-less multiplication instructions">;
+
 def FeatureFMA3    : SubtargetFeature<"fma3", "hasFMA3", "true",
                                       "Enable three-operand fused multiple-add">;
 def FeatureFMA4    : SubtargetFeature<"fma4", "hasFMA4", "true",
                                       "Enable four-operand fused multiple-add">;
+
+def FeatureXOP     : SubtargetFeature<"xop", "hasXOP", "true",
+                                      "Enable XOP instructions">;
+def FeatureVectorUAMem : SubtargetFeature<"vector-unaligned-mem",
+                                          "hasVectorUAMem", "true",
+                 "Allow unaligned memory operands on vector/SIMD instructions">;
+def FeatureAES     : SubtargetFeature<"aes", "hasAES", "true",
+                                      "Enable AES instructions">;
+def FeatureMOVBE   : SubtargetFeature<"movbe", "hasMOVBE", "true",
+                                      "Support MOVBE instruction">;
+def FeatureRDRAND  : SubtargetFeature<"rdrand", "hasRDRAND", "true",
+                                      "Support RDRAND instruction">;
+def FeatureF16C    : SubtargetFeature<"f16c", "hasF16C", "true",
+                       "Support 16-bit floating point conversion instructions">;
+def FeatureFSGSBase : SubtargetFeature<"fsgsbase", "hasFSGSBase", "true",
+                                       "Support FS/GS Base instructions">;
+def FeatureLZCNT   : SubtargetFeature<"lzcnt", "hasLZCNT", "true",
+                                      "Support LZCNT instruction">;
+def FeatureBMI     : SubtargetFeature<"bmi", "hasBMI", "true",
+                                      "Support BMI instructions">;
+def FeatureBMI2    : SubtargetFeature<"bmi2", "hasBMI2", "true",
+                                      "Support BMI2 instructions">;
 
 //===----------------------------------------------------------------------===//
 // X86 processors supported.
@@ -178,11 +227,11 @@ def ATTAsmParser : AsmParser {
 // The X86 target supports two different syntaxes for emitting machine code.
 // This is controlled by the -x86-asm-syntax={att|intel}
 def ATTAsmWriter : AsmWriter {
-  string AsmWriterClassName  = "ATTAsmPrinter";
+  string AsmWriterClassName  = "ATTInstPrinter";
   int Variant = 0;
 }
 def IntelAsmWriter : AsmWriter {
-  string AsmWriterClassName  = "IntelAsmPrinter";
+  string AsmWriterClassName  = "IntelInstPrinter";
   int Variant = 1;
 }
 

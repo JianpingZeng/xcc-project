@@ -1,0 +1,4 @@
+#!/bin/sh
+
+../bin/rasta.spix -z -A -J -S 8000 -n 12 -f map_weights.dat < ex5_c1.wav > ex5.spix.asc 3>rasta.bb
+spixstats -b rasta.bb ../bin/rasta > rasta.stats

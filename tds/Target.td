@@ -190,7 +190,7 @@ class Predicate; // Forward def
 
 //===----------------------------------------------------------------------===//
 // Instruction set description - These classes correspond to the Java classes in
-// the Target/TargetInstrInfo.h file.
+// the Target/TargetOpcodes.java file.
 //
 class Instruction {
   string Namespace = "";
@@ -275,7 +275,7 @@ class Instruction {
   /// be encoded into the output machineinstr.
   string DisableEncoding = "";
 
-  // Target-specific flags which will be encoded into TargetInstrDesc.
+  // Target-specific flags which will be encoded into MCInstrDesc.
   bits<64> TSFlags = 0;
 }
 
@@ -452,54 +452,54 @@ def PHI : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops variable_ops);
   let AsmString = "PHINODE";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
 }
 def INLINEASM : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops variable_ops);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
 }
 def DBG_LABEL : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops i32imm:$id);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let hasCtrlDep = 1;
 }
 def EH_LABEL : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops i32imm:$id);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let hasCtrlDep = 1;
 }
 def GC_LABEL : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops i32imm:$id);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let hasCtrlDep = 1;
 }
 def DECLARE : Instruction {
   let OutOperandList = (ops);
   let InOperandList = (ops variable_ops);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let hasCtrlDep = 1;
 }
 def EXTRACT_SUBREG : Instruction {
   let OutOperandList = (ops unknown:$dst);
   let InOperandList = (ops unknown:$supersrc, i32imm:$subidx);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let neverHasSideEffects = 1;
 }
 def INSERT_SUBREG : Instruction {
   let OutOperandList = (ops unknown:$dst);
   let InOperandList = (ops unknown:$supersrc, unknown:$subsrc, i32imm:$subidx);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let neverHasSideEffects = 1;
   let Constraints = "$supersrc = $dst";
 }
@@ -507,7 +507,7 @@ def IMPLICIT_DEF : Instruction {
   let OutOperandList = (ops unknown:$dst);
   let InOperandList = (ops);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let neverHasSideEffects = 1;
   let isReMaterializable = 1;
   let isAsCheapAsAMove = 1;
@@ -516,14 +516,14 @@ def SUBREG_TO_REG : Instruction {
   let OutOperandList = (ops unknown:$dst);
   let InOperandList = (ops unknown:$implsrc, unknown:$subsrc, i32imm:$subidx);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let neverHasSideEffects = 1;
 }
 def COPY_TO_REGCLASS : Instruction {
   let OutOperandList = (ops unknown:$dst);
   let InOperandList = (ops unknown:$src, i32imm:$regclass);
   let AsmString = "";
-  let Namespace = "TargetInstrInfo";
+  let Namespace = "TargetOpcodes";
   let neverHasSideEffects = 1;
   let isAsCheapAsAMove = 1;
 }

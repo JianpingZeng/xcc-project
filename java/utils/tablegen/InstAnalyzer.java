@@ -23,7 +23,7 @@ import static utils.tablegen.SDNP.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class InstAnalyzer {
   CodeGenDAGPatterns cdp;

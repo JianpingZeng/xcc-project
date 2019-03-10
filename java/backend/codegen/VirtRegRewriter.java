@@ -35,7 +35,7 @@ import static tools.commandline.OptionNameApplicator.optionName;
  * registers to physical register or stack slot.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class VirtRegRewriter {
   public static IntStatistic numSpills =
@@ -64,7 +64,7 @@ public abstract class VirtRegRewriter {
   public abstract boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm);
 
   /**
-   * Create an return a spiller object, as specified on the command line.
+   * create an return a spiller object, as specified on the command line.
    *
    * @return
    */

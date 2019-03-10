@@ -3,7 +3,7 @@ set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/x86")
 file(GLOB_RECURSE TARGET_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/*.java")
 
 file(MAKE_DIRECTORY "${GEN_TBLGEN_SRCS}")
-tablegen(X86GenATTAsmPrinter.java -gen-asm-printer)
+tablegen(X86GenATTInstPrinter.java -gen-asm-printer)
 tablegen(X86GenRegisterInfo.java -gen-register-info)
 tablegen(X86GenRegisterNames.java -gen-register-names)
 tablegen(X86GenInstrInfo.java -gen-instr-info)

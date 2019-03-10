@@ -17,6 +17,8 @@
 
 package backend.codegen;
 
+import backend.target.TargetData;
+import backend.type.IntegerType;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -24,16 +26,44 @@ import java.util.ArrayList;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineJumpTableInfo {
-  private int entrySize;
-  private int alignment;
-  private ArrayList<MachineJumpTableEntry> jumpTables;
+  public enum JTEntryKind {
+    /**
+     * ach entry is a plain address of block, e.g.:
+     *     .word LBB123
+     */
+    EK_BlockAddress,
 
-  public MachineJumpTableInfo(int entrySize, int alignment) {
-    this.entrySize = entrySize;
-    this.alignment = alignment;
+    /**
+     * Each entry is an address of block, encoded with a relocation as gp-relative, e.g.:
+     *     .gprel32 LBB123
+     */
+    EK_GPRel32BlockAddress,
+
+    /**
+     * Each entry is the address of the block minus the address of the jump table.
+     * This is used for PIC jump tables where gprel32 is not supported.  e.g.:
+     *     .word LBB123 - LJTI1_2
+     * If the .set directive is supported, this is emitted as:
+     *     .set L4_5_set_123, LBB123 - LJTI1_2
+     *     .word L4_5_set_123
+     */
+    EK_LabelDifference32,
+
+    /**
+     * Each entry is a 32-bit value that is custom lowered by the
+     * TargetLowering::LowerCustomJumpTableEntry hook.
+     */
+    EK_Custom32
+  }
+
+  private ArrayList<MachineJumpTableEntry> jumpTables;
+  private JTEntryKind entryKind;
+
+  public MachineJumpTableInfo(JTEntryKind kind) {
+    entryKind = kind;
     jumpTables = new ArrayList<>();
   }
 
@@ -60,12 +90,36 @@ public class MachineJumpTableInfo {
     jumpTables.get(idx).mbbs.clear();
   }
 
-  public int getEntrySize() {
-    return entrySize;
+  public int getEntrySize(TargetData td) {
+    switch (getEntryKind()) {
+      case EK_BlockAddress:
+        return td.getPointerSize();
+      case EK_GPRel32BlockAddress:
+      case EK_LabelDifference32:
+      case EK_Custom32:
+        return 4;
+      default:
+        Util.shouldNotReachHere("unknown jump table encoding!");
+        return ~0;
+    }
   }
 
-  public int getAlignment() {
-    return alignment;
+  public JTEntryKind getEntryKind() {
+    return entryKind;
+  }
+
+  public int getAlignment(TargetData td) {
+    switch (getEntryKind()) {
+      case EK_BlockAddress:
+        return td.getPointerABIAlign();
+      case EK_GPRel32BlockAddress:
+      case EK_LabelDifference32:
+      case EK_Custom32:
+        return td.getABITypeAlignment(IntegerType.get(32));
+      default:
+        Util.shouldNotReachHere("unknown jump table encoding!");
+        return ~0;
+    }
   }
 
   public boolean replaceMBBInJumpTables(MachineBasicBlock oldOne, MachineBasicBlock newOne) {

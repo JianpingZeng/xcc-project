@@ -50,7 +50,7 @@ import static backend.support.Triple.ArchType.*;
  * rewriting a triple).
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Triple {
   public enum ArchType {
@@ -143,12 +143,12 @@ public class Triple {
   }
 
   public Triple(String tripleStr) {
-    data = tripleStr;
+    data = tripleStr != null ? tripleStr : "";
     arch = InvalidArch;
   }
 
   public Triple(String archStr, String vendorStr, String osStr) {
-    data = archStr;
+    data = archStr != null ? archStr : "";
     arch = InvalidArch;
     data += '-';
     data += vendorStr;

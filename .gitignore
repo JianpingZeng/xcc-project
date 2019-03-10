@@ -20,6 +20,12 @@ cmake_install.cmake
 CMakeCache.txt
 *.s
 *.iml
-
+test/*/*/*.ll
+test/*/*/*.s
+test/*/*/*.bc
+test/*/*/*.i
+test/*/*/.*
+test/*/*/*.o
+*.swp
 
 

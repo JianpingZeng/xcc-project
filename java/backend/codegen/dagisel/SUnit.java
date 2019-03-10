@@ -18,7 +18,7 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.MachineInstr;
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -65,7 +65,7 @@ public class SUnit {
   private int depth;
   private int height;
 
-  public TargetRegisterClass copyDstRC, copySrcRC;
+  public MCRegisterClass copyDstRC, copySrcRC;
 
   /**
    * Constructor for DAGNode based Scheduler(pre-ra).

@@ -19,6 +19,7 @@ package backend.codegen;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
+import backend.type.VectorType;
 import tools.Util;
 
 import static backend.codegen.MVT.*;
@@ -26,7 +27,7 @@ import static backend.type.LLVMTypeID.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class EVT implements Comparable<EVT> {
   private MVT v;
@@ -165,6 +166,10 @@ public class EVT implements Comparable<EVT> {
     return (getSizeInBits() + 7) / 8 * 8;
   }
 
+  public int getStoreSize() {
+    return getStoreSizeInBits() * 8;
+  }
+
   public EVT getRoundIntegerType() {
     Util.assertion(isInteger() && !isVector(), "Invalid integer type!");
     int bitwidth = getSizeInBits();
@@ -240,8 +245,8 @@ public class EVT implements Comparable<EVT> {
         return "isVoid";
       case Other:
         return "ch";
-      case Flag:
-        return "flag";
+      case Glue:
+        return "glue";
       case v2i8:
         return "v2i8";
       case v4i8:
@@ -296,7 +301,7 @@ public class EVT implements Comparable<EVT> {
     switch (v.simpleVT) {
       default:
         Util.assertion(isExtended(), "Type is not extended!");
-        Util.assertion(false, "Vector type currently not supported");
+        Util.assertion("Vector type currently not supported");
         return llvmTy;
       case isVoid:
         return LLVMContext.VoidTy;
@@ -322,48 +327,50 @@ public class EVT implements Comparable<EVT> {
         return LLVMContext.FP128Ty;
       case ppcf128:
         return null;
-      //case v2i8:
-
-                /*VectorType.get(Type.getInt8Ty(), 2);
-            case v4i8:
-                return VectorType.get(Type.getInt8Ty(), 4);
-            case v8i8:
-                return VectorType.get(Type.getInt8Ty(), 8);
-            case v16i8:
-                return VectorType.get(Type.getInt8Ty(), 16);
-            case v32i8:
-                return VectorType.get(Type.getInt8Ty(), 32);
-            case v2i16:
-                return VectorType.get(Type.getInt16Ty(), 2);
-            case v4i16:
-                return VectorType.get(Type.getInt16Ty(), 4);
-            case v8i16:
-                return VectorType.get(Type.getInt16Ty(), 8);
-            case v16i16:
-                return VectorType.get(Type.getInt16Ty(), 16);
-            case v2i32:
-                return VectorType.get(Type.getInt32Ty(), 2);
-            case v4i32:
-                return VectorType.get(Type.getInt32Ty(), 4);
-            case v8i32:
-                return VectorType.get(Type.getInt32Ty(), 8);
-            case v1i64:
-                return VectorType.get(Type.getInt64Ty(), 1);
-            case v2i64:
-                return VectorType.get(Type.getInt64Ty(), 2);
-            case v4i64:
-                return VectorType.get(Type.getInt64Ty(), 4);
-            case v2f32:
-                return VectorType.get(Type.getFloatTy(), 2);
-            case v4f32:
-                return VectorType.get(Type.getFloatTy(), 4);
-            case v8f32:
-                return VectorType.get(Type.getFloatTy(), 8);
-            case v2f64:
-                return VectorType.get(Type.getDoubleTy(), 2);
-            case v4f64:
-                return VectorType.get(Type.getDoubleTy(), 4);
-                */
+      case v2i8:
+        return VectorType.get(LLVMContext.Int8Ty, 2);
+      case v4i8:
+        return VectorType.get(LLVMContext.Int8Ty, 4);
+      case v8i8:
+        return VectorType.get(LLVMContext.Int8Ty, 8);
+      case v16i8:
+        return VectorType.get(LLVMContext.Int8Ty, 16);
+      case v32i8:
+        return VectorType.get(LLVMContext.Int8Ty, 32);
+      case v2i16:
+        return VectorType.get(LLVMContext.Int16Ty, 2);
+      case v4i16:
+        return VectorType.get(LLVMContext.Int16Ty, 4);
+      case v8i16:
+        return VectorType.get(LLVMContext.Int16Ty, 8);
+      case v16i16:
+        return VectorType.get(LLVMContext.Int16Ty, 16);
+      case v2i32:
+        return VectorType.get(LLVMContext.Int32Ty, 2);
+      case v4i32:
+        return VectorType.get(LLVMContext.Int32Ty, 4);
+      case v8i32:
+        return VectorType.get(LLVMContext.Int32Ty, 8);
+      case v1i64:
+        return VectorType.get(LLVMContext.Int64Ty, 1);
+      case v2i64:
+        return VectorType.get(LLVMContext.Int64Ty, 2);
+      case v4i64:
+        return VectorType.get(LLVMContext.Int64Ty, 4);
+      case v2f32:
+        return VectorType.get(LLVMContext.FloatTy, 2);
+      case v4f32:
+        return VectorType.get(LLVMContext.FloatTy, 4);
+      case v8f32:
+        return VectorType.get(LLVMContext.FloatTy, 8);
+      case v16f32:
+        return VectorType.get(LLVMContext.FloatTy, 16);
+      case v2f64:
+        return VectorType.get(LLVMContext.DoubleTy, 2);
+      case v4f64:
+        return VectorType.get(LLVMContext.DoubleTy, 4);
+      case v8f64:
+        return VectorType.get(LLVMContext.DoubleTy, 8);
     }
   }
 
@@ -543,5 +550,13 @@ public class EVT implements Comparable<EVT> {
       return llvmTy.hashCode() - o.llvmTy.hashCode();
     else
       return v.simpleVT - o.v.simpleVT;
+  }
+
+  /**
+   * If this is a vector type, return the type of it's element. Otherwise return this.
+   * @return
+   */
+  public EVT getScalarType() {
+    return isVector() ? getVectorElementType() : this;
   }
 }

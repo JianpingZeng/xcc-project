@@ -1,12 +1,17 @@
 package backend.codegen;
 
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
-import backend.target.*;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.Pair;
 import tools.Util;
@@ -20,7 +25,7 @@ import static backend.target.TargetRegisterInfo.*;
  * Basic Block.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RegAllocLocal extends MachineFunctionPass {
   private MachineFunction mf;
@@ -67,7 +72,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     virToPhyRegMap = new HashMap<>();
   }
 
-  private int getStackSlotForVirReg(int virReg, TargetRegisterClass rc) {
+  private int getStackSlotForVirReg(int virReg, MCRegisterClass rc) {
     // Find the location virReg would belong.
     if (stackSlotForVirReg.containsKey(virReg)) {
       return stackSlotForVirReg.get(virReg);
@@ -95,19 +100,20 @@ public class RegAllocLocal extends MachineFunctionPass {
     markPhyRegRecentlyUsed(phyReg);
   }
 
-  private int getReg(MachineBasicBlock mbb, int insertPos, int virReg) {
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+  private int getReg(MachineInstr insertPos, int virReg) {
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     // first check to see if we have a free register.
     int phyReg = getFreeReg(rc);
+    TIntHashSet allocableRegs = new TIntHashSet();
+    allocableRegs.addAll(rc.getAllocableRegs(mf));
 
     if (phyReg == 0) {
       Util.assertion(!phyRegsUseOrder.isEmpty(), "No allocatable registers");
 
-
       // Spill a the least used physical register into memory.
       for (int i = 0; phyReg == 0; i++) {
-        Util.assertion(i != phyRegsUseOrder.size(), "Can't find a register of the appropriate class");
-
+        Util.assertion(i != phyRegsUseOrder.size(),
+            "Can't find a register of the appropriate class");
 
         int r = phyRegsUseOrder.get(i);
         Util.assertion(r != -1, "Physical register in phyRegsUseOrder, but it not allocated!");
@@ -115,16 +121,16 @@ public class RegAllocLocal extends MachineFunctionPass {
         // We just can spill those physical register occupied with virtual
         // register
         if (phyRegUsed[r] > 0) {
-          if (rc.contains(r)) {
+          if (allocableRegs.contains(r)) {
             phyReg = r;
             break;
           } else {
             int[] aliases = regInfo.getAliasSet(r);
             if (aliases != null && aliases.length > 0) {
               for (int aliasReg : aliases) {
-                if (rc.contains(aliasReg)
-                    && phyRegUsed[aliasReg] != 0
-                    && phyRegUsed[aliasReg] != -2) {
+                if (allocableRegs.contains(aliasReg) &&
+                    phyRegUsed[aliasReg] != 0 &&
+                    phyRegUsed[aliasReg] != -2) {
                   phyReg = aliasReg;
                   break;
                 }
@@ -135,8 +141,7 @@ public class RegAllocLocal extends MachineFunctionPass {
       }
 
       Util.assertion(phyReg != 0, "Physical register not be assigned");
-
-      spillPhyReg(mbb, insertPos, phyReg, false);
+      spillPhyReg(insertPos, phyReg, false);
     }
 
     // now that we know which register we need to assign to this.
@@ -163,7 +168,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     return true;
   }
 
-  private int getFreeReg(TargetRegisterClass rc) {
+  private int getFreeReg(MCRegisterClass rc) {
     for (int phyReg : rc.getAllocableRegs(mf)) {
       if (isPhyRegAvailable(phyReg)) {
         Util.assertion(phyReg != 0, "Can not use register!");
@@ -179,8 +184,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     virRegModified[virReg] = isModified;
   }
 
-  private void reloadVirReg(MachineBasicBlock mbb, int insertPos, int virReg,
-                            MachineInstr mi, int numOps) {
+  private void reloadVirReg(int virReg, MachineInstr mi, int numOps) {
     // the virtual register already resides in a physical reg.
     if (virToPhyRegMap.containsKey(virReg)) {
       int phyReg = virToPhyRegMap.get(virReg);
@@ -189,16 +193,15 @@ public class RegAllocLocal extends MachineFunctionPass {
       mi.setMachineOperandReg(numOps, phyReg);
       return;
     }
+    int phyReg = getReg(mi, virReg);
 
-    int phyReg = getReg(mbb, insertPos, virReg);
-
-    TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+    MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int frameIdx = getStackSlotForVirReg(virReg, rc);
 
     // note that this reg is just reloaded.
     markVirRegModified(virReg, false);
 
-    instrInfo.loadRegFromStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+    instrInfo.loadRegFromStackSlot(mi.getParent(), mi.getParent().getIndexOf(mi), phyReg, frameIdx, rc);
     markPhyRegRecentlyUsed(phyReg);
     mf.getMachineRegisterInfo().setPhysRegUsed(phyReg);
     mi.setMachineOperandReg(numOps, phyReg);
@@ -213,22 +216,21 @@ public class RegAllocLocal extends MachineFunctionPass {
    * then the request is ignored if the physical register does not contain a
    * virtual register.
    *
-   * @param mbb
    * @param insertPos
    * @param phyReg
    * @param onlyVirReg
    */
-  private void spillPhyReg(MachineBasicBlock mbb, int insertPos, int phyReg, boolean onlyVirReg) {
+  private void spillPhyReg(MachineInstr insertPos, int phyReg, boolean onlyVirReg) {
     if (phyRegUsed[phyReg] != -1) {
       Util.assertion(phyRegUsed[phyReg] != -2, "Non allocatable register used!");
       if (phyRegUsed[phyReg] != 0 || !onlyVirReg)
-        spillVirReg(mbb, insertPos, phyRegUsed[phyReg], phyReg);
+        spillVirReg(insertPos, phyRegUsed[phyReg], phyReg);
     } else {
       int[] alias = regInfo.getAliasSet(phyReg);
       if (alias != null && alias.length > 0) {
         for (int aliasReg : alias) {
           if (phyRegUsed[aliasReg] != -1 && phyRegUsed[aliasReg] != -2)
-            spillVirReg(mbb, insertPos, phyRegUsed[aliasReg], aliasReg);
+            spillVirReg(insertPos, phyRegUsed[aliasReg], aliasReg);
         }
       }
     }
@@ -242,24 +244,51 @@ public class RegAllocLocal extends MachineFunctionPass {
   }
 
   /**
+   * Insert a store instruction after the specified position.
+   * @param parent
+   * @param index
+   * @param virReg
+   * @param phyReg
+   */
+  private void spillVirRegAfter(MachineBasicBlock parent,
+                           int index,
+                           int virReg,
+                           int phyReg) {
+    if (virReg == 0) return;
+
+    // We just spill those modified virtual register into memory cell.
+    if (isVirRegModified(virReg)) {
+      MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+      int frameIdx = getStackSlotForVirReg(virReg, rc);
+      boolean isKilled = !parent.getInstAt(index-1).readsRegister(phyReg, regInfo);
+      instrInfo.storeRegToStackSlot(parent, index, phyReg, isKilled, frameIdx, rc);
+
+      // add count for spilled.
+      NumSpilled.inc();
+    }
+    virToPhyRegMap.remove(virReg, phyReg);
+    removePhyReg(phyReg);
+  }
+
+  /**
    * Spill the specified virtual reg into stack slot associated.
    *
-   * @param mbb
    * @param insertPos
    * @param virReg
    * @param phyReg
    */
-  private void spillVirReg(MachineBasicBlock mbb, int insertPos,
+  private void spillVirReg(MachineInstr insertPos,
                            int virReg, int phyReg) {
     if (virReg == 0) return;
 
     // We just spill those modified virtual register into memory cell.
     if (isVirRegModified(virReg)) {
-      TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+      MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
       int frameIdx = getStackSlotForVirReg(virReg, rc);
-      boolean isKilled = !(insertPos < mbb.size() &&
-          mbb.getInstAt(insertPos).readsRegister(phyReg, regInfo));
-      instrInfo.storeRegToStackSlot(mbb, insertPos, phyReg, isKilled, frameIdx, rc);
+      boolean isKilled = !insertPos.readsRegister(phyReg, regInfo);
+      MachineBasicBlock mbb = insertPos.getParent();
+      int idx = mbb.getIndexOf(insertPos);
+      instrInfo.storeRegToStackSlot(insertPos.getParent(), idx, phyReg, isKilled, frameIdx, rc);
 
       // add count for spilled.
       NumSpilled.inc();
@@ -334,19 +363,6 @@ public class RegAllocLocal extends MachineFunctionPass {
 
     if (phyRegsUseOrder.contains(phyReg))
       phyRegsUseOrder.remove(Integer.valueOf(phyReg));
-  }
-
-  /**
-   * Make sure the specified physical register is available for
-   * use.  If there is currently a value in it, it is either moved out of the way
-   * or spilled to memory.
-   *
-   * @param mbb
-   * @param insertPos
-   * @param phyReg
-   */
-  private void liberatePhyReg(MachineBasicBlock mbb, int insertPos, int phyReg) {
-    spillPhyReg(mbb, insertPos, phyReg, false);
   }
 
   /**
@@ -552,13 +568,15 @@ public class RegAllocLocal extends MachineFunctionPass {
 
     computeLocalLiveness(mbb);
 
-    for (int i = 0; i < mbb.size(); i++) {
-      MachineInstr mi = mbb.getInstAt(i);
+    LinkedList<MachineInstr> worklist = new LinkedList<>(mbb.getInsts());
+    while (!worklist.isEmpty()) {
+      MachineInstr mi = worklist.removeFirst();
+
       int opcode = mi.getOpcode();
-      TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
+      MCInstrDesc desc = tm.getInstrInfo().get(opcode);
 
       if (Util.DEBUG) {
-        System.err.printf("\nStarting RegAlloc of:");
+        System.err.print("\nStarting RegAlloc of:");
         mi.dump();
         for (int j = 0; j < phyRegUsed.length; j++) {
           int usedReg = phyRegUsed[j];
@@ -597,10 +615,9 @@ public class RegAllocLocal extends MachineFunctionPass {
             && !mi.getOperand(j).isDef()
             && isVirtualRegister(mi.getOperand(j).getReg())) {
           int virtReg = mi.getOperand(j).getReg();
-          reloadVirReg(mbb, i, virtReg, mi, j);
+          reloadVirReg(virtReg, mi, j);
         }
       }
-
 
       // If this instruction is the last user of this register, kill the
       // value, freeing the register being used, so it doesn't need to be
@@ -614,8 +631,8 @@ public class RegAllocLocal extends MachineFunctionPass {
         } else if (phyRegUsed[phyReg] == -2) {
           // ignore the unallocatable register.
         } else {
-          Util.assertion(phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1, "Silently clearing a virtual register?");
-
+          Util.assertion(phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1,
+              "Silently clearing a virtual register?");
         }
 
         if (phyReg != 0) {
@@ -659,7 +676,7 @@ public class RegAllocLocal extends MachineFunctionPass {
             continue;
 
           mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-          spillPhyReg(mbb, i, reg, true);
+          spillPhyReg(mi, reg, true);
           phyRegUsed[reg] = 0;    // it if free but reserved now.
           markPhyRegRecentlyUsed(reg);
 
@@ -683,7 +700,7 @@ public class RegAllocLocal extends MachineFunctionPass {
       if (desc.implicitDefs != null && desc.implicitDefs.length > 0) {
         for (int impDefReg : desc.implicitDefs) {
           if (phyRegUsed[impDefReg] != -2) {
-            spillPhyReg(mbb, i, impDefReg, false);
+            spillPhyReg(mi, impDefReg, false);
             phyRegUsed[impDefReg] = 0;
             markPhyRegRecentlyUsed(impDefReg);
           }
@@ -722,14 +739,14 @@ public class RegAllocLocal extends MachineFunctionPass {
             !op.isEarlyClobber() &&
             isVirtualRegister(op.getReg()))) {
           int destVirReg = mi.getOperand(j).getReg();
-          int destPhyReg = 0;
+          int destPhyReg;
 
           // if this destVirReg already is held in physical reg,
           // remove it since it is defined reg.
           if (virToPhyRegMap.containsKey(destVirReg)) {
             destPhyReg = virToPhyRegMap.get(destVirReg);
           } else
-            destPhyReg = getReg(mbb, i, destVirReg);
+            destPhyReg = getReg(mi, destVirReg);
           mf.getMachineRegisterInfo().setPhysRegUsed(destPhyReg);
           markVirRegModified(destVirReg, true);
           mi.setMachineOperandReg(j, destPhyReg);
@@ -775,21 +792,24 @@ public class RegAllocLocal extends MachineFunctionPass {
       // the register scavenger.  See pr4100.)
       int[] regs = new int[4];    // srcReg, destReg, srcSubReg, destSubReg.
       if (regInfo.isMoveInstr(mi, regs) && regs[0] == regs[1] && deadDefs.isEmpty()) {
-        mbb.remove(i);
-        i -= 1;
+        mbb.remove(mi);
       }
     }
 
     // find a position of the first non-terminator instruction where
     // some instrs will were inserts after when needed.
 
-    int itr = mbb.getFirstTerminator() - 1;
-
     // Spill all physical register holding virtual register.
     for (int phyReg = 0, e = regInfo.getNumRegs(); phyReg < e; phyReg++) {
       // If the specified physical register is allocated, just free it!
       if (phyRegUsed[phyReg] != -1 && phyRegUsed[phyReg] != -2) {
-        spillVirReg(mbb, itr, phyRegUsed[phyReg], phyReg);
+        int itr = mbb.getFirstTerminator();
+        // if itr == the size of mbb, which means there is no terminator instr in the current mbb.
+        // we have to decrease it by one to set it points to the last instr.
+        if (itr == mbb.size())
+          spillVirRegAfter(mbb, itr, phyRegUsed[phyReg], phyReg);
+        else
+          spillVirReg(mbb.getInstAt(itr), phyRegUsed[phyReg], phyReg);
       } else
         removePhyReg(phyReg);
     }

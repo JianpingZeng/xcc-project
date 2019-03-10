@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/u/gs3/leec/leec/Projects/MediaBench/SPIX/SHADE/src/alu -o mpeg2encode.summary -- ../src/mpeg2enc/mpeg2encode options.par out.m2v > mpeg2encode.shade

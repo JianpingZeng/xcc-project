@@ -22,6 +22,6 @@
  * gcc, parsing the value of each option in the given command line etc.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 package tools.commandline;

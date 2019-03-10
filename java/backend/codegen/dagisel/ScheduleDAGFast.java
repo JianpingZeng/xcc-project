@@ -20,10 +20,10 @@ package backend.codegen.dagisel;
 import backend.codegen.EVT;
 import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
-import backend.target.TargetInstrDesc;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine.CodeGenOpt;
-import backend.target.TargetRegisterClass;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Pair;
@@ -31,7 +31,7 @@ import tools.Util;
 
 import java.util.*;
 
-import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
 
 public class ScheduleDAGFast extends ScheduleDAGSDNodes {
   private LinkedList<SUnit> availableQueue;
@@ -132,7 +132,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     boolean tryUnFold = false;
     for (int i = 0, e = n.getNumValues(); i < e; i++) {
       EVT vt = n.getValueType(i);
-      if (vt.getSimpleVT().simpleVT == MVT.Flag)
+      if (vt.getSimpleVT().simpleVT == MVT.Glue)
         return null;
       else if (vt.getSimpleVT().simpleVT == MVT.Other)
         tryUnFold = true;
@@ -141,7 +141,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     for (int i = 0, e = n.getNumOperands(); i < e; i++) {
       SDValue op = n.getOperand(i);
       EVT vt = op.getNode().getValueType(op.getResNo());
-      if (vt.getSimpleVT().simpleVT == MVT.Flag)
+      if (vt.getSimpleVT().simpleVT == MVT.Glue)
         return null;
     }
 
@@ -166,7 +166,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
       Util.assertion(n.getNodeID() == -1);
       n.setNodeID(su2.nodeNum);
 
-      TargetInstrDesc tid = tii.get(n.getMachineOpcode());
+      MCInstrDesc tid = tii.get(n.getMachineOpcode());
       for (int i = 0; i < tid.getNumOperands(); i++) {
         if (tid.getOperandConstraint(i, TIED_TO) != -1) {
           su2.isTwoAddress = true;
@@ -275,8 +275,8 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     return newSU;
   }
 
-  private void insertCopiesAndMoveSuccs(SUnit su, int reg, TargetRegisterClass dstRC,
-                                        TargetRegisterClass srcRC, ArrayList<SUnit> copies) {
+  private void insertCopiesAndMoveSuccs(SUnit su, int reg, MCRegisterClass dstRC,
+                                        MCRegisterClass srcRC, ArrayList<SUnit> copies) {
     SUnit copyFromSU = newSUnit(null);
     copyFromSU.copyDstRC = dstRC;
     copyFromSU.copySrcRC = srcRC;
@@ -311,7 +311,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
   }
 
   static EVT getPhysicalRegisterVT(SDNode n, int reg, TargetInstrInfo tii) {
-    TargetInstrDesc tid = tii.get(n.getMachineOpcode());
+    MCInstrDesc tid = tii.get(n.getMachineOpcode());
     Util.assertion(tid.implicitDefs != null && tid.implicitDefs.length > 0);
     int numRes = tid.getNumDefs();
     for (int def : tid.implicitDefs) {
@@ -351,7 +351,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     for (SDNode node = su.getNode(); node != null; node = node.getFlaggedNode()) {
       if (!node.isMachineOpecode())
         continue;
-      TargetInstrDesc tid = tii.get(node.getMachineOpcode());
+      MCInstrDesc tid = tii.get(node.getMachineOpcode());
       if (tid.implicitDefs == null)
         continue;
 
@@ -410,8 +410,8 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
         int reg = lregs.get(0);
         SUnit lrDef = liveRegDefs[reg];
         EVT vt = getPhysicalRegisterVT(lrDef.getNode(), reg, tii);
-        TargetRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, vt);
-        TargetRegisterClass destRC = tri.getCrossCopyRegClass(rc);
+        MCRegisterClass rc = tri.getPhysicalRegisterRegClass(reg, vt);
+        MCRegisterClass destRC = tri.getCrossCopyRegClass(rc);
 
         SUnit newDef = null;
         if (destRC != null)

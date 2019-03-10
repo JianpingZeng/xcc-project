@@ -1,0 +1,105 @@
+.\" EPIC - efficient image pyramid coder, by Eero P. Simoncelli and Edward H. Adelson
+.TH EPIC 1 "August 1989"
+.SH NAME
+epic \- efficient image pyramid coder
+.SH SYNOPSIS
+.B epic
+.I imagefile
+[
+.B -o 
+.I epicfile
+] 
+[
+.B -x
+.I xdim
+] 
+[
+.B -y
+.I ydim
+] 
+[
+.B -l
+.I levels
+] 
+[
+.B -b
+.I binsize
+] 
+.LP
+.B unepic
+.I epicfile
+[
+.I resultfile
+] 
+.\|.\|.
+.SH DESCRIPTION
+.LP
+Epic compresses raw (8-bit) image files, using an asymmetrical subband
+pyramid (biorthogonal wavelet) decomposition, and a combined
+run-length/Huffman entropy coder.  Epic is a lossy coder: it
+introduces errors in the compressed image.  Unepic decompresses the
+files that have been compressed using Epic.
+.LP
+The required Epic argument
+.IR imagefile
+must be the name of a raw 8-bit image file.
+.LP
+The required Unepic argument
+.IR epicfile
+must be the name of a compressed file created using epic.
+
+.SS OPTIONS:
+.LP
+.IR epicfile
+is the name to be used for the compressed image file.  It defaults to a 
+concatenation of the 
+.I imagefile 
+name and the extensions ".E".
+.LP
+.IR resultfile
+is the name of the file in which unepic puts the de-compressed image.  It 
+defaults to a concatenation of the
+.I epicfile
+name and the extension ".U".
+.LP
+.IR xdim
+is the x dimension (line length) of the image in pixels.  It defaults to 256.
+Note that this must be specified if the image width is not 256!
+.LP
+.IR ydim
+is the y dimension (height) of the image in pixels.  It defaults to 256.
+Note that this must be specified if the image height is not 256!
+.LP
+.IR levels
+specifies the number of recursive pyramid levels to build.  This defaults
+to 4 which is appropriate for images of size 256x256.
+.LP
+.IR binsize
+specifies the quantization binsize to be used in compressing the image.  This
+parameter determines the amount of compression (or the loss of quality). 
+Setting it to 0 will produce the highest quality (but least compressed) image.
+
+.SH CAVEATS
+.LP
+1. The dimensions of the image should be divisible by 2^levels.
+.LP
+2. Color images may be compressed by converting from RGB space to YIQ space
+and compressing each of the components separately.
+
+.SH AUTHORS
+Written by Eero P. Simoncelli and Edward H. Adelson, August, 1989.
+
+.SH REFERENCES
+
+.LP
+Edward H. Adelson, Eero P. Simoncelli.  Subband Image Coding with
+Three-tap Pyramids.  Picture Coding Symposium, 1990.  Cambridge, MA.
+
+.LP
+Eero P. Simoncelli.  Orthogonal Sub-band Image Transforms.  Master's Thesis,
+EECS Department, Massachusetts Institute of Technology. May, 1988.
+
+.LP
+Edward H. Adelson, Eero P. Simoncelli and Rajesh Hingorani.  Orthogonal
+pyramid transforms for image coding.  In Proceedings of SPIE,
+October 1987, Volume 845.

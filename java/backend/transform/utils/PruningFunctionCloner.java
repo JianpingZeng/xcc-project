@@ -351,7 +351,8 @@ public final class PruningFunctionCloner {
     if (valueMap.containsKey(val))
       return valueMap.get(val);
 
-    if (val instanceof GlobalValue || val instanceof MetadataBase ||
+    if (val instanceof GlobalValue || val instanceof MDString ||
+        val instanceof MDNode || val instanceof NamedMDNode ||
         val instanceof ConstantInt || val instanceof ConstantFP ||
         val instanceof ConstantPointerNull || val instanceof ConstantAggregateZero ||
         val instanceof UndefValue) {

@@ -27,7 +27,7 @@ import java.util.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class InstrInfoEmitter extends TableGenBackend {
   private RecordKeeper records;
@@ -64,9 +64,12 @@ public final class InstrInfoEmitter extends TableGenBackend {
       int barriersNumber = 0;
       TObjectIntHashMap<Record> barriersMap = new TObjectIntHashMap<>();
 
+      os.println("import backend.mc.MCInstrDesc;");
+      os.println("import backend.mc.MCOperandInfo;");
+      os.println("import backend.mc.MCRegisterClass;");
       os.printf("\nimport backend.target.*;\n\n"
-              + "import static backend.target.TargetOperandInfo.OperandConstraint.*;\n"
-              + "import static backend.target.TargetOperandInfo.OperandFlags.*;\n"
+              + "import static backend.mc.MCOperandInfo.OperandConstraint.*;\n"
+              + "import static backend.mc.MCOperandInfo.OperandFlags.*;\n"
               + "import static backend.target.%s.%sGenRegisterInfo.*;\n"
               + "import static backend.target.%s.%sGenRegisterNames.*;\n\n",
           lowertargetName, targetName, lowertargetName, targetName);
@@ -112,10 +115,10 @@ public final class InstrInfoEmitter extends TableGenBackend {
       ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
       target.getInstructionsByEnumValue(numberedInstrs);
 
-      // Emit all of the TargetInstrDesc records in there ENUM order.
+      // Emit all of the MCInstrDesc records in there ENUM order.
       os.printf("\n\t// Since the java code limit to 65535, the initializer of %sInsts must be divided.\n",
           targetName);
-      os.printf("\tpublic final static TargetInstrDesc[] %sInsts = new TargetInstrDesc[%d];\n",
+      os.printf("\tpublic final static MCInstrDesc[] %sInsts = new MCInstrDesc[%d];\n",
           targetName, numberedInstrs.size());
       final int NUM = 500;
       int bucketNum = numberedInstrs.size() / NUM * NUM;
@@ -146,7 +149,8 @@ public final class InstrInfoEmitter extends TableGenBackend {
       os.printf("\t}\n");
 
       os.printf("  public %sGenInstrInfo(%sTargetMachine tm) {%n", targetName, targetName);
-      os.printf("    super(tm, %sInsts);%n", targetName);
+      os.println("    super(tm);");
+      os.printf("    initMCInstrInfo(%sInsts);\n", targetName);
       os.println("  }\n");
       os.println("}");
     } catch (FileNotFoundException e) {
@@ -171,7 +175,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
           + (int) inst.operandList.get(sz - 1).miNumOperands;
     }
 
-    os.printf("\t\t%sInsts[%d] = new TargetInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+    os.printf("\t\t%sInsts[%d] = new MCInstrDesc(%d, %d, %d, %d, \"%s\", 0",
         targetName,
         num,
         num, minOperands, inst.numDefs,
@@ -331,13 +335,13 @@ public final class InstrInfoEmitter extends TableGenBackend {
 
       operandInfoIDs.put(operandInfo, ++operandListNum);
 
-      os.printf("\n\tpublic static final TargetOperandInfo[] operandInfo%d = {\n",
+      os.printf("\n\tpublic static final MCOperandInfo[] operandInfo%d = {\n",
           operandListNum);
       int e = operandInfo.size();
       if (e > 0) {
-        os.printf("\t\tnew TargetOperandInfo(%s)", operandInfo.get(0));
+        os.printf("\t\tnew MCOperandInfo(%s)", operandInfo.get(0));
         for (int i = 1; i < e; i++)
-          os.printf(",\n\t\tnew TargetOperandInfo(%s)", operandInfo.get(i));
+          os.printf(",\n\t\tnew MCOperandInfo(%s)", operandInfo.get(i));
       }
       os.printf("\n\t};\n");
     }
@@ -428,7 +432,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
   }
 
   private static void printBarriers(ArrayList<Record> barriers, int num, PrintStream os) {
-    os.printf("\tpublic static final TargetRegisterClass[] barriers%d = { ", num);
+    os.printf("\tpublic static final MCRegisterClass[] barriers%d = { ", num);
     int e = barriers.size();
     if (e > 0) {
       os.printf("%sRegisterClass", barriers.get(0).getName());

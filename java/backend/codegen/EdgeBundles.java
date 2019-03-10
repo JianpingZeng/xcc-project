@@ -31,7 +31,7 @@ import java.util.Iterator;
  * edges leaving a machine basic block are in the same equivalence set.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class EdgeBundles extends MachineFunctionPass {
   private MachineFunction mf;
@@ -73,7 +73,7 @@ public class EdgeBundles extends MachineFunctionPass {
       }
     }
     blocks = new TIntArrayList[getNumBundles()];
-    for (int i = 0, e; i < getNumBundles(); i++)
+    for (int i = 0, e = getNumBundles(); i < e; i++)
       blocks[i] = new TIntArrayList();
 
     groupID = new TIntIntHashMap();

@@ -4,7 +4,7 @@ import backend.support.MachineFunctionPass;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MachineCodeVerifier extends MachineFunctionPass {
   public static MachineCodeVerifier createMachineVerifierPass(boolean allowDoubleDefs) {

@@ -20,7 +20,7 @@ package backend.pass;
  * This class declares all passes registeration method.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class InitializePasses {
   // TODO LiveAnalysisPass.

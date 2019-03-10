@@ -19,7 +19,7 @@ package backend.codegen.dagisel;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum MemIndexedMode {
   UNINDEXED,
@@ -27,4 +27,5 @@ public enum MemIndexedMode {
   PRE_DEC,
   POST_INC,
   POST_DEC,
+  LAST_INDEXED_MODE,
 }

@@ -6,12 +6,13 @@ import backend.value.UniqueConstantValueImpl.ConstantArrayKey;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ConstantArray extends Constant {
   /**
@@ -60,10 +61,7 @@ public class ConstantArray extends Constant {
   }
 
   public static Constant get(ArrayType ty, Constant[] elementVals) {
-    ArrayList<Constant> elts = new ArrayList<>();
-    for (Constant c : elementVals)
-      elts.add(c);
-    return get(ty, elts);
+    return get(ty, new ArrayList<>(Arrays.asList(elementVals)));
   }
 
   public static Constant get(ArrayType ty, ArrayList<Constant> elementVals) {
@@ -182,7 +180,7 @@ public class ConstantArray extends Constant {
     StringBuilder sb = new StringBuilder();
 
     for (int i = 0, e = getNumOfOperands(); i != e; i++) {
-      sb.append(((ConstantInt) operand(i)).getZExtValue());
+      sb.append((char)((ConstantInt) operand(i)).getZExtValue());
     }
     return sb.toString();
   }

@@ -30,7 +30,7 @@ import static tools.Util.isInt32;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface X86 {
   // Enums for memory operand decoding.  Each memory operand is represented with
@@ -52,6 +52,18 @@ public interface X86 {
    * Total number of operands in a memory reference.
    */
   int AddrNumOperands = 5;
+
+  String[] x86_asm_table = {
+      "{si}", "S",
+      "{di}", "D",
+      "{ax}", "a",
+      "{cx}", "c",
+      "{memory}", "memory",
+      "{flags}", "",
+      "{dirflag}", "",
+      "{fpsr}", "",
+      "{cc}", "cc",
+  };
 
   /**
    * Return true if the specified VECTOR_SHUFFLE operand specifies a shuffle

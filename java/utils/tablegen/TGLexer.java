@@ -16,7 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.Error;
 import tools.Pair;
 import tools.SourceMgr;
@@ -29,7 +29,7 @@ import java.io.File;
  * This is a lexer for TableGen Files.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class TGLexer {
   enum TokKind {

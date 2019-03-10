@@ -35,7 +35,7 @@ import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.*;
  * AT&T grammar.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class AsmWriterEmitter extends TableGenBackend {
   private PrintStream os;
@@ -323,9 +323,6 @@ public final class AsmWriterEmitter extends TableGenBackend {
           lastEmitted = varEnd;
         }
       }
-
-      operands.add(new AsmWriterOperand("emitComments(mi);\n", isLiteralStatementOperand));
-      addLiteralString("\\n");
     }
 
     /**
@@ -381,23 +378,37 @@ public final class AsmWriterEmitter extends TableGenBackend {
     String targetName = target.getName();
     String lowerTargetName = targetName.toLowerCase();
 
-    os.printf("package backend.target.%s;\n\n\n"
-        + "import backend.codegen.MachineInstr;\n"
-        + "import backend.target.TargetAsmInfo;\n\n"
-        + "import java.io.OutputStream;", lowerTargetName);
+    os.println("package backend.target.x86;");
+    os.println("import backend.mc.MCAsmInfo;");
+    os.println("import backend.mc.MCInst;");
     os.println("import tools.Util;");
+    os.println("import java.io.PrintStream;");
 
     emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
-
     Record asmWriter = target.getAsmWriter();
 
     String className = target.getName() + "Gen" +
         asmWriter.getValueAsString("AsmWriterClassName");
-    String superName = asmWriter.getValueAsString("AsmWriterClassName");
-
-    long variant = asmWriter.getValueAsInt("Variant");
+    String superName = target.getName() +
+        asmWriter.getValueAsString("AsmWriterClassName");
 
     os.printf("public final class %s extends %s {\n\t", className, superName);
+
+    emitPrintInstruction(os, target);
+    emitGetRegisterName(os, target);
+    emitGetInstructionName(os, target);
+
+    // Emit constructor.
+    os.printf("\n  public %s(PrintStream os, MCAsmInfo mai) {\n"
+        + "    super(os, mai);\n  }\n", className);
+    os.println("}");
+
+    // Close the print stream.
+    os.close();
+  }
+
+  private void emitPrintInstruction(PrintStream os, CodeGenTarget target) {
+    Record asmWriter = target.getAsmWriter();
 
     String header = "/**\n"
         + "\t * This static array used for encoding asm and it's length of each instruction\n"
@@ -484,7 +495,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
       // For the first operand check, add a default value for instructions with
       // just opcode strings to use.
       if (isFirst) {
-        uniqueOperandCommands.add("\t\t\t\treturn true;\n");
+        uniqueOperandCommands.add("\t\t\t\treturn;\n");
         isFirst = false;
       }
 
@@ -580,11 +591,13 @@ public final class AsmWriterEmitter extends TableGenBackend {
         + "\t* described to print it, otherwise it will return false.\n "
         + "\t*/\n";
     os.print(header);
-    os.print("\t@Override\n\tpublic boolean printInstruction(MachineInstr mi) \n\t{\n");
+    os.print("\t@Override\n\tpublic void printInst(MCInst mi) \n\t{\n");
 
-    os.print("\t\t// Emit the opcode for the instruction.\n\n"
-        + "\t\tlong bits = opInfo[mi.getOpcode()][0];\n"
-        + "\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n\n");
+    os.println("\t\t// Emit the opcode for the instruction.");
+    os.println("\t\tos.print('\\t');");
+    os.println("\t\tlong bits = opInfo[mi.getOpcode()][0];");
+    os.println("\t\tUtil.assertion(bits != 0,  \"Cannot print this instruction\");\n");
+
     int asmStrBitsMask = (1 << asmStrBits) - 1;
     os.printf("\t\t// Starting index of asm namespace encoded into %d bit%n", asmStrBits);
 
@@ -666,7 +679,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
         for (int j = 0, sz = commands.size(); j < sz; j++) {
           os.printf("\t\t\tcase %d:\n", j);
           os.print(commands.get(j));
-          if (!commands.get(j).trim().endsWith("return true;"))
+          if (!commands.get(j).trim().endsWith("return;"))
             os.print("\t\t\t\tbreak;\n");
         }
         os.print("\t\t}\n\n");
@@ -694,22 +707,56 @@ public final class AsmWriterEmitter extends TableGenBackend {
         emitInstructions(instructions, os);
       }
       os.print("\t\t\t}\n");
-      os.print("\t\treturn true;\n");
+      os.print("\t\treturn;\n");
     }
     os.print("\t}\n");
+  }
 
-    // Emit constructor.
-    os.printf("\n\tpublic %s(OutputStream os, \n"
-        + "\t\t\t%sTargetMachine tm,\n"
-        + "\t\t\tTargetAsmInfo tai, \n"
-        + "\t\t\tboolean verbose)\n"
-        + "\t{\n"
-        + "\t\tsuper(os, tm, tai, verbose);\n\t}", className, targetName);
+  private void emitGetRegisterName(PrintStream os, CodeGenTarget target) {
+    ArrayList<CodeGenRegister> registers = target.getRegisters();
 
-    os.println("}");
+    os.println();
+    os.print("  private final static String[] RegNameStrs = {");
+    for (int i = 0, e = registers.size(); i < e; i++) {
+      CodeGenRegister reg = registers.get(i);
+      String asmName = reg.theDef.getValueAsString("AsmName");
+      if (asmName == null || asmName.isEmpty())
+        asmName = reg.getName();
 
-    // Close the print stream.
-    os.close();
+      if ((i % 10) == 0)
+        os.print("\n    ");
+      os.printf("\"%s\"", asmName);
+      os.print(", ");
+    }
+    os.println("};\n");
+
+    os.println("  public String getRegisterName(int regNo) {");
+    os.printf("    Util.assertion(regNo > 0 && regNo < %d, \"Invalid register number!\");\n",
+        registers.size()-1);
+    os.println("    return RegNameStrs[regNo-1];");
+    os.println("  }");
+  }
+
+  private void emitGetInstructionName(PrintStream os, CodeGenTarget target) {
+    Record asmWriter = target.getAsmWriter();
+    os.println();
+    os.print("  private final static String[] InstNameStrs = {");
+    for (int i = 0, e = numberedInstructions.size(); i < e; i++) {
+      CodeGenInstruction cgi = numberedInstructions.get(i);
+      String asmName = cgi.theDef.getName();
+
+      if ((i % 6) == 0)
+        os.print("\n    ");
+      os.printf("\"%s\"", asmName);
+      os.print(", ");
+    }
+    os.println("};\n");
+
+    os.println("  public String getInstructionName(int opc) {");
+    os.printf("    Util.assertion(opc < %d, \"Invalid instruction opcode\");\n",
+        numberedInstructions.size());
+    os.println("    return InstNameStrs[opc];");
+    os.println("  }");
   }
 
   /**
@@ -798,7 +845,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
       command = "\t\t\t\t" + inst.operands.get(0).getCode() + "\n";
       if (inst.operands.size() == 1)
-        command += "\t\t\t\treturn true;\n";
+        command += "\t\t\t\treturn;\n";
 
       boolean foundIt = false;
       for (int idx = 0, sz = uniqueOperandCommands.size(); idx != sz; ++idx) {
@@ -856,7 +903,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
         String command = "\t\t\t\t" + firstInst.operands.get(op).getCode() + "\n";
         if (firstInst.operands.size() == op + 1 &&
             firstInst.operands.size() == maxSize) {
-          command += "\t\t\t\treturn true;\n";
+          command += "\t\t\t\treturn;\n";
         }
 
         uniqueOperandCommands.set(commandIdx, uniqueOperandCommands.get(commandIdx) + command);

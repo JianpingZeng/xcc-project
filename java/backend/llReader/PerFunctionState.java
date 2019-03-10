@@ -20,7 +20,6 @@ import backend.support.LLVMContext;
 import backend.type.OpaqueType;
 import backend.type.Type;
 import backend.value.*;
-import com.sun.javafx.binding.StringFormatter;
 import tools.Pair;
 import tools.SourceMgr.SMLoc;
 
@@ -30,7 +29,7 @@ import java.util.TreeMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PerFunctionState {
   private LLParser parser;
@@ -53,17 +52,19 @@ public final class PerFunctionState {
     }
   }
 
+  public Function getFunction() { return fn; }
+
   public boolean verifyFunctionComplete() {
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<Value, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
       return parser.error(itr.getValue().second,
-          StringFormatter.format("use of undefined value '%%%s'", itr.getKey()).getValue());
+          String.format("use of undefined value '%%%s'", itr.getKey()));
     }
 
     if (!forwardRefValIDs.isEmpty()) {
       Map.Entry<Integer, Pair<Value, SMLoc>> itr = forwardRefValIDs.entrySet().iterator().next();
       return parser.error(itr.getValue().second,
-          StringFormatter.format("use of undefined value '%%%d'", itr.getKey()).getValue());
+          String.format("use of undefined value '%%%d'", itr.getKey()));
     }
     return false;
   }
@@ -122,15 +123,14 @@ public final class PerFunctionState {
 
       if (nameID != numberedVals.size())
         return parser.error(nameLoc,
-            StringFormatter.format("instruction expected to be numbered '%%%d'",
-                numberedVals.size()).getValue());
+            String.format("instruction expected to be numbered '%%%d'", numberedVals.size()));
 
       if (forwardRefValIDs.containsKey(nameID)) {
         Pair<Value, SMLoc> itr = forwardRefValIDs.get(nameID);
         if (!itr.first.getType().equals(inst.getType())) {
           return parser.error(nameLoc,
-              StringFormatter.format("instruction forward referenced with type '%%%s'"
-                  , itr.first.getType().getDescription()).getValue());
+              String.format("instruction forward referenced with type '%%%s'",
+                  itr.first.getType().getDescription()));
         }
         itr.first.replaceAllUsesWith(inst);
         forwardRefValIDs.remove(nameID);
@@ -143,8 +143,8 @@ public final class PerFunctionState {
     if (forwardRefVals.containsKey(nameStr)) {
       Pair<Value, SMLoc> itr = forwardRefVals.get(nameStr);
       if (!itr.first.getType().equals(inst.getType())) {
-        return parser.error(nameLoc, StringFormatter.format("instruction forward referenced with type '%%%s'",
-            itr.first.getType().getDescription()).getValue());
+        return parser.error(nameLoc, String.format("instruction forward referenced with type '%%%s'",
+            itr.first.getType().getDescription()));
       }
       itr.first.replaceAllUsesWith(inst);
       forwardRefVals.remove(nameStr);
@@ -153,7 +153,7 @@ public final class PerFunctionState {
         /*
         if (inst.getName().equals(nameStr))
         {
-            return parser.error(nameLoc, StringFormatter
+            return parser.error(nameLoc, String
                     .format("multiple definition of local value named '%%%s'",
                             nameStr).getValue());
         }*/
@@ -172,11 +172,11 @@ public final class PerFunctionState {
     if (val != null) {
       if (val.getType().equals(ty)) return val;
       if (ty.equals(LLVMContext.LabelTy))
-        parser.error(loc, StringFormatter
+        parser.error(loc, String
             .format("'%%%d' is not a basic block", id).toString());
       else
-        parser.error(loc, StringFormatter.format("'%%%d' defined with type '%s'",
-            id, val.getType().getDescription()).getValue());
+        parser.error(loc, String.format("'%%%d' defined with type '%s'",
+            id, val.getType().getDescription()));
       return null;
     }
 
@@ -209,11 +209,11 @@ public final class PerFunctionState {
     if (val != null) {
       if (val.getType().equals(ty)) return val;
       if (ty.equals(LLVMContext.LabelTy))
-        parser.error(loc, StringFormatter
+        parser.error(loc, String
             .format("'%%%s' is not a basic block", name).toString());
       else
-        parser.error(loc, StringFormatter.format("'%%%s' defined with type '%s'",
-            name, val.getType().getDescription()).getValue());
+        parser.error(loc, String.format("'%%%s' defined with type '%s'",
+            name, val.getType().getDescription()));
       return null;
     }
 
@@ -225,8 +225,12 @@ public final class PerFunctionState {
 
     // Otherwise, create a new forward reference for this value and remember it.
     Value fwdVal;
-    if (ty.equals(LLVMContext.LabelTy))
-      fwdVal = BasicBlock.createBasicBlock(name, fn);
+    if (ty.equals(LLVMContext.LabelTy)) {
+      // just create a new block but not insert it into the basic blocks list of function
+      // so as to preserve the block order as input file.
+      fwdVal = BasicBlock.createBasicBlock(name, (Function) null);
+      // fn.getValueSymbolTable().createValueName(name, fwdVal);
+    }
     else
       fwdVal = new Argument(ty, name, fn);
     forwardRefVals.put(name, Pair.get(fwdVal, loc));

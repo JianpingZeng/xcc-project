@@ -34,7 +34,7 @@ import java.util.ArrayList;
  * exposed by the Utils library.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class Mem2Reg implements FunctionPass {
   /**

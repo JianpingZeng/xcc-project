@@ -31,7 +31,7 @@ import java.util.HashSet;
  * selection.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class RearrangementMBB extends MachineFunctionPass {
   private AnalysisResolver resolver;

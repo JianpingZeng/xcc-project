@@ -43,7 +43,7 @@ import static backend.transform.utils.ConstantFolder.constantFoldBinaryInstructi
  * </pre>
  *
  * @author xlos.zjp
- * @version 0.1
+ * @version 0.4
  */
 public final class InductionVarSimplify implements LoopPass {
   private static class IVRecord {

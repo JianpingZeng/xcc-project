@@ -1,11 +1,9 @@
 package backend.value;
 
-import backend.support.AssemblyWriter;
-import backend.support.AttrList;
-import backend.support.SlotTracker;
-import backend.support.ValueSymbolTable;
+import backend.support.*;
 import backend.type.FunctionType;
 import backend.type.PointerType;
+import backend.type.StructType;
 import backend.type.Type;
 import tools.FormattedOutputStream;
 import tools.Util;
@@ -14,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.TreeMap;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
@@ -52,7 +51,7 @@ public final class Module implements Iterable<Function> {
   /**
    * Symbol table for types.
    */
-  private HashMap<String, Type> typeSymbolTable;
+  private TreeMap<String, Type> typeSymbolTable;
 
   /**
    * Human readable unique identifier for this module.
@@ -62,6 +61,9 @@ public final class Module implements Iterable<Function> {
   private String dataLayout;
 
   private String targetTriple;
+  private HashMap<String, NamedMDNode> namedMDSymTab;
+  private ArrayList<NamedMDNode> namedMDList;
+  private String globalScopeAsm;
 
   /**
    * Constructor.
@@ -73,7 +75,10 @@ public final class Module implements Iterable<Function> {
     this.globalVariableList = globalVariableList;
     this.functionList = functions;
     valSymTable = new ValueSymbolTable();
-    typeSymbolTable = new HashMap<>();
+    typeSymbolTable = new TreeMap<>();
+    namedMDSymTab = new HashMap<>();
+    namedMDList = new ArrayList<>();
+    globalScopeAsm = "";
   }
 
   public Module(String moduleID) {
@@ -81,7 +86,10 @@ public final class Module implements Iterable<Function> {
     globalVariableList = new ArrayList<>(32);
     functionList = new ArrayList<>(32);
     valSymTable = new ValueSymbolTable();
-    typeSymbolTable = new HashMap<>();
+    typeSymbolTable = new TreeMap<>();
+    namedMDSymTab = new HashMap<>();
+    namedMDList = new ArrayList<>();
+    globalScopeAsm = "";
   }
 
   public String getModuleIdentifier() {
@@ -103,6 +111,25 @@ public final class Module implements Iterable<Function> {
   public int getNumFunctions() {
     return functionList != null ? functionList.size() : 0;
   }
+
+  public void appendModuleInlineAsm(String asm) {
+    if (globalScopeAsm == null)
+      globalScopeAsm = asm;
+    else
+      globalScopeAsm += asm;
+    if (!globalScopeAsm.isEmpty() &&
+        globalScopeAsm.charAt(globalScopeAsm.length()-1) != '\n')
+      globalScopeAsm += '\n';
+  }
+
+  public void setModuleInlineAsm(String asm) {
+    globalScopeAsm = asm;
+    if (!globalScopeAsm.isEmpty() &&
+        globalScopeAsm.charAt(globalScopeAsm.length()-1) != '\n')
+      globalScopeAsm += '\n';
+  }
+
+  public String getModuleInlineAsm() { return globalScopeAsm; }
 
   /**
    * Return the first global value in the module with the specified getIdentifier, of
@@ -191,16 +218,16 @@ public final class Module implements Iterable<Function> {
    * @return
    */
   public boolean addTypeName(String name, Type type) {
-    HashMap<String, Type> st = getTypeSymbolTable();
+    TreeMap<String, Type> st = getTypeSymbolTable();
     if (st.containsKey(name)) return true;
 
     st.put(name, type);
     return false;
   }
 
-  public HashMap<String, Type> getTypeSymbolTable() {
+  public TreeMap<String, Type> getTypeSymbolTable() {
     if (typeSymbolTable == null)
-      typeSymbolTable = new HashMap<>();
+      typeSymbolTable = new TreeMap<>();
 
     return typeSymbolTable;
   }
@@ -213,6 +240,10 @@ public final class Module implements Iterable<Function> {
 
   public void print(FormattedOutputStream os) throws IOException {
     new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
+  }
+
+  public void dump() throws IOException {
+    print(new FormattedOutputStream(System.err));
   }
 
   public Function getFunction(String funcName) {
@@ -243,11 +274,42 @@ public final class Module implements Iterable<Function> {
     valSymTable.createValueName(fn.getName(), fn);
   }
 
+  /**
+   * Add the global variable before the specified position.
+   * @param idx
+   * @param gv
+   */
+  public void addGlobalVariable(int idx, GlobalVariable gv) {
+    Util.assertion(gv != null && !globalVariableList.contains(gv) &&
+        gv.getName() != null && !gv.getName().isEmpty());
+    globalVariableList.add(idx, gv);
+    valSymTable.createValueName(gv.getName(), gv);
+    gv.setParent(this);
+  }
+
   public void addGlobalVariable(GlobalVariable gv) {
     Util.assertion(gv != null && !globalVariableList.contains(gv) &&
         gv.getName() != null && !gv.getName().isEmpty());
     globalVariableList.add(gv);
     valSymTable.createValueName(gv.getName(), gv);
     gv.setParent(this);
+  }
+
+  public int getMDKindID(String name) {
+    return LLVMContext.getMDKindID(name);
+  }
+
+  public NamedMDNode getOrCreateNamedMetadata(String name) {
+    if (namedMDSymTab.containsKey(name))
+      return namedMDSymTab.get(name);
+
+    NamedMDNode res = new NamedMDNode(name);
+    namedMDSymTab.put(name, res);
+    namedMDList.add(res);
+    return res;
+  }
+
+  public void findUsedStructTypes(ArrayList<StructType> namedTypes) {
+    new TypeFinder(namedTypes).run(this);
   }
 }

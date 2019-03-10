@@ -141,7 +141,7 @@ public abstract class Matcher {
       next.print(os, indent);
   }
 
-  public void dumpOne(PrintStream os) {
+  public void printOne(PrintStream os) {
     printImpl(os, 0);
   }
 

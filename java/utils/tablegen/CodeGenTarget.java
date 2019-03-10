@@ -30,7 +30,7 @@ import static backend.codegen.MVT.Other;
  * This class corresponds to the Target class in .td file.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class CodeGenTarget {
   private Record targetRec;
@@ -73,6 +73,10 @@ public final class CodeGenTarget {
 
   private void readRegisters() {
     ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Register");
+    regs.sort((r1, r2) -> {
+      return r1.getName().compareTo(r2.getName());
+    });
+
     if (regs.isEmpty())
       Error.printFatalError("No 'Register' subclasses defined!");
     registers = new ArrayList<>();

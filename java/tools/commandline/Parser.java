@@ -26,7 +26,7 @@ import static tools.commandline.CL.markOptionsChanged;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Parser<T> implements ParserInterface<T> {
   protected ArrayList<Pair<String, Pair<T, String>>> values;

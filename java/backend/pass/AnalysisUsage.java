@@ -25,7 +25,7 @@ import static backend.pass.PassRegistrar.getPassInfo;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class AnalysisUsage {
   private LinkedHashSet<PassInfo> required, preserved;

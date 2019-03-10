@@ -22,7 +22,7 @@ import tools.Util;
  * Machine Value Type, which contains the various low-level value types.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MVT implements Comparable<MVT>, Cloneable {
   // If you change this numbering, you must change the values in
@@ -42,7 +42,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int f128 = (11);   // This is a 128 bit floating point value
   public static final int ppcf128 = (12);   // This is a PPC 128-bit floating point value
 
-  public static final int Flag = (13);   // This is a condition code or machine flag.
+  public static final int Glue = (13);   // This glues nodes together during pre-RA sched
 
   public static final int isVoid = (14);   // This has no value
 
@@ -181,8 +181,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
         return "MVT.f128";
       case ppcf128:
         return "MVT.ppcf128";
-      case Flag:
-        return "MVT.Flag";
+      case Glue:
+        return "MVT.Glue";
       case isVoid:
         return "MVT.isVoid";
       case v2i8:

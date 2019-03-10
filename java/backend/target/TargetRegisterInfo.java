@@ -1,6 +1,8 @@
 package backend.target;
 
 import backend.codegen.*;
+import backend.mc.MCRegisterClass;
+import backend.mc.MCRegisterInfo;
 import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
@@ -13,95 +15,19 @@ import java.util.ArrayList;
  * purposed, especially register allocation.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
-public abstract class TargetRegisterInfo {
-  /**
-   * This is used as the destination register for instructions that do not
-   * produce a value.
-   */
-  public static final int NoRegister = 0;
-
-  /**
-   * This is the first register number that is
-   * considered to be a 'public abstract' register, which is part of the SSA
-   * namespace.  This must be the same for all targets, which means that each
-   * target is limited to 1024 registers.
-   */
-  public static final int FirstVirtualRegister = 1024;
-
-  private TargetRegisterDesc[] desc;
-
-  /**
-   * Register classes of target machine.
-   */
-  private TargetRegisterClass[] regClasses;
-
-  protected int[] subregHash;
-  protected int[] superregHash;
-  protected int[] aliasesHash;
-  int subregHashSize;
-  int superregHashSize;
-  int aliasHashSize;
-  /**
-   * The register class information, such as register size, spill size
-   * and spilling alignment, by hardware mode.
-   */
-  private RegClassInfo[] regClassInfo;
-  private int hwMode;
-
-  protected TargetRegisterInfo(
-      TargetRegisterDesc[] desc,
-      TargetRegisterClass[] regClasses,
-      int[] subregs, int subregHashSize,
-      int[] superregs, int superregHashSize,
-      int[] aliases, int aliasHashSize,
-      RegClassInfo[] rcInfo,
-      int mode) {
-    this.desc = desc;
-    this.regClasses = regClasses;
-    subregHash = subregs;
-    this.subregHashSize = subregHashSize;
-    superregHash = superregs;
-    this.superregHashSize = superregHashSize;
-    aliasesHash = aliases;
-    this.aliasHashSize = aliasHashSize;
-    this.regClassInfo = rcInfo;
-    this.hwMode = mode;
-  }
-
-  protected TargetRegisterInfo(TargetRegisterDesc[] desc,
-                               TargetRegisterClass[] regClasses,
-                               int[] subregs, int subregHashSize,
-                               int[] superregs, int superregHashSize,
-                               int[] aliases, int aliasHashSize,
-                               RegClassInfo[] rcInfo/*, with default mode = 0*/) {
-    this(desc, regClasses, subregs,
-        subregHashSize, superregs,
-        superregHashSize, aliases,
-        aliasHashSize, rcInfo, 0);
-  }
-
-  public static boolean isPhysicalRegister(int reg) {
-    Util.assertion(reg != 0, "this is not a register");
-    return reg < FirstVirtualRegister;
-  }
-
-  public static boolean isVirtualRegister(int reg) {
-    Util.assertion(reg != 0, "this is not a register");
-    return reg >= FirstVirtualRegister;
-  }
-
-  public TargetRegisterClass getPhysicalRegisterRegClass(int reg) {
+public abstract class TargetRegisterInfo extends MCRegisterInfo {
+  public MCRegisterClass getPhysicalRegisterRegClass(int reg) {
     return getPhysicalRegisterRegClass(reg, new EVT(MVT.Other));
   }
 
-  public TargetRegisterClass getPhysicalRegisterRegClass(int reg, EVT vt) {
+  public MCRegisterClass getPhysicalRegisterRegClass(int reg, EVT vt) {
     Util.assertion(isPhysicalRegister(reg), "reg must be physical register!");
 
-    TargetRegisterClass bestRC = null;
-    for (TargetRegisterClass rc : regClasses) {
-      if ((vt.equals(new EVT(MVT.Other)) || isLegalTypeForRegClass(rc, vt.getSimpleVT())) &&
+    MCRegisterClass bestRC = null;
+    for (MCRegisterClass rc : regClasses) {
+      if ((vt.equals(new EVT(MVT.Other)) || hasType(rc, vt)) &&
           rc.contains(reg) && (bestRC == null || bestRC.hasSuperClass(rc))) {
         bestRC = rc;
       }
@@ -109,163 +35,9 @@ public abstract class TargetRegisterInfo {
     return bestRC;
   }
 
-  /**
-   * Toggle the bits that represent allocatable
-   * registers for the specific register class.
-   *
-   * @param mf
-   * @param rc
-   * @param r
-   */
-  public static void getAllocatableSetForRC(MachineFunction mf,
-                                            TargetRegisterClass rc, BitMap r) {
-    for (int reg : rc.getAllocableRegs(mf))
-      r.set(reg);
-  }
-
-  /**
-   * Returns a bitset indexed by register number
-   * indicating if a register is allocatable or not. If a register class is
-   * specified, returns the subset for the class.
-   *
-   * @param mf
-   * @param rc
-   * @return
-   */
-  public BitMap getAllocatableSet(MachineFunction mf, TargetRegisterClass rc) {
-    BitMap allocatable = new BitMap(desc.length);
-    if (rc != null) {
-      getAllocatableSetForRC(mf, rc, allocatable);
-      return allocatable;
-    }
-    for (TargetRegisterClass _rc : regClasses)
-      getAllocatableSetForRC(mf, _rc, allocatable);
-
-    return allocatable;
-  }
-
-  public BitMap getAllocatableSet(MachineFunction mf) {
-    return getAllocatableSet(mf, null);
-  }
-
-  /**
-   * Obtains the register information indexed with given register number.
-   *
-   * @param regNo
-   * @return
-   */
-  public TargetRegisterDesc get(int regNo) {
-    Util.assertion(regNo >= 0 && regNo < desc.length);
-    return desc[regNo];
-  }
-
-  public int[] getAliasSet(int regNo) {
-    return get(regNo).aliasSet;
-  }
-
-  public int[] getSubRegisters(int regNo) {
-    return get(regNo).subRegs;
-  }
-
-  public int[] getSuperRegisters(int regNo) {
-    return get(regNo).superRegs;
-  }
-
-  public String getAsmName(int regNo) {
-    return get(regNo).asmName;
-  }
-
-  /**
-   * Note that the returned register name of this method can't used as
-   * AsmPrinter. If you want to do that, just use {@linkplain #getAsmName(int)}
-   * instead.
-   *
-   * @param regNo
-   * @return
-   */
-  public String getName(int regNo) {
-    return get(regNo).name;
-  }
-
-  public int getNumRegs() {
-    return desc.length;
-  }
-
-  /**
-   * Returns true if the two registers are equal or alias each
-   * other. The registers may be virtual register.
-   *
-   * @param regA
-   * @param regB
-   * @return
-   */
-  public boolean regsOverlap(int regA, int regB) {
-    if (regA == regB)
-      return true;
-
-    if (isVirtualRegister(regA) || isVirtualRegister(regB))
-      return false;
-
-    int index = (regA + regB * 37) & (aliasHashSize - 1);
-
-    int probeAmt = 0;
-    while (aliasesHash[index * 2] != 0 && aliasesHash[index * 2 + 1] != 0) {
-      if (aliasesHash[index * 2] == regA && aliasesHash[index * 2 + 1] == regB)
-        return true;
-
-      index = (index + probeAmt) & (aliasHashSize - 1);
-      probeAmt += 2;
-    }
-    return false;
-  }
-
-  /**
-   * Return true if regB is a sub-register of regA.
-   *
-   * @param regA
-   * @param regB
-   * @return
-   */
-  public boolean isSubRegister(int regA, int regB) {
-    int index = (regA + regB * 37) & (subregHashSize - 1);
-
-    int probeAmt = 2;
-    while (subregHash[index * 2] != 0 && subregHash[index * 2 + 1] != 0) {
-      if (subregHash[index * 2] == regA && subregHash[index * 2 + 1] == regB)
-        return true;
-
-      index = (index + probeAmt) & (subregHashSize - 1);
-      probeAmt += 2;
-    }
-    return false;
-  }
-
-  /**
-   * Returns true if regB is a super-register of regA.
-   *
-   * @param regA
-   * @param regB
-   * @return
-   */
-  public boolean isSuperRegister(int regA, int regB) {
-    //System.err.printf("%d, %d. %s, %s%n", regA, regB, getName(regA), getName(regB));
-    int index = (regA + regB * 37) & (superregHashSize - 1);
-
-    int probeAmt = 2;
-    while (superregHash[index * 2] != 0 && superregHash[index * 2 + 1] != 0) {
-      if (superregHash[index * 2] == regA
-          && superregHash[index * 2 + 1] == regB)
-        return true;
-
-      index = (index + probeAmt) & (superregHashSize - 1);
-      probeAmt += 2;
-    }
-    return false;
-  }
-
   public abstract int[] getCalleeSavedRegs(MachineFunction mf);
 
-  public abstract TargetRegisterClass[] getCalleeSavedRegClasses(
+  public abstract MCRegisterClass[] getCalleeSavedRegClasses(
       MachineFunction mf);
 
   public abstract BitMap getReservedRegs(MachineFunction mf);
@@ -281,7 +53,7 @@ public abstract class TargetRegisterInfo {
    */
   public abstract int getSubReg(int regNo, int index);
 
-  public int getMatchingSuperReg(int reg, int subIdx, TargetRegisterClass rc) {
+  public int getMatchingSuperReg(int reg, int subIdx, MCRegisterClass rc) {
     int[] srs = getSuperRegisters(reg);
     for (int sr : srs) {
       if (reg == getSubReg(sr, subIdx) && rc.contains(sr))
@@ -290,40 +62,20 @@ public abstract class TargetRegisterInfo {
     return 0;
   }
 
-  public TargetRegisterClass getMatchingSuperRegClass(TargetRegisterClass a,
-                                                      TargetRegisterClass b) {
+  public MCRegisterClass getMatchingSuperRegClass(MCRegisterClass a,
+                                                  MCRegisterClass b) {
     return null;
   }
 
-  public TargetRegisterClass[] getRegClasses() {
-    return regClasses;
-  }
-
-  public int getNumRegClasses() {
-    return regClasses.length;
-  }
-
   /**
-   * Returns the register class associated with the enumeration
-   * value.  See class TargetOperandInfo.
-   *
-   * @param i
-   * @return
-   */
-  public TargetRegisterClass getRegClass(int i) {
-    Util.assertion(i >= 1 && i <= regClasses.length);
-    return regClasses[i - 1];
-  }
-
-  /**
-   * Returns a TargetRegisterClass used for pointer
+   * Returns a MCRegisterClass used for pointer
    * values.  If a target supports multiple different pointer register classes,
    * kind specifies which one is indicated.
    *
    * @param kind
    * @return
    */
-  public TargetRegisterClass getPointerRegClass(int kind) {
+  public MCRegisterClass getPointerRegClass(int kind) {
     Util.assertion(false, "Target didn't implement getPointerRegClass!");
     return null;
   }
@@ -336,7 +88,7 @@ public abstract class TargetRegisterInfo {
    * @param rc
    * @return
    */
-  public TargetRegisterClass getCrossCopyRegClass(TargetRegisterClass rc) {
+  public MCRegisterClass getCrossCopyRegClass(MCRegisterClass rc) {
     return null;
   }
 
@@ -379,12 +131,6 @@ public abstract class TargetRegisterInfo {
     return false;
   }
 
-  public abstract boolean hasFP(MachineFunction mf);
-
-  public boolean hasReservedCallFrame(MachineFunction mf) {
-    return !hasFP(mf);
-  }
-
   public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
                                       OutRef<Integer> frameIdx) {
     return false;
@@ -412,7 +158,7 @@ public abstract class TargetRegisterInfo {
 
   /**
    * This method is called immediately before the specified functions frame
-   * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
+   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
    * MO_FrameIndex operands are replaced with direct ants.  This method is
    * optional.
    */
@@ -437,33 +183,14 @@ public abstract class TargetRegisterInfo {
                                            MachineInstr mi,
                                            RegScavenger rs);
 
-  /**
-   * This method insert prologue code into the function.
-   */
-  public abstract void emitPrologue(MachineFunction MF);
-
-  /**
-   * This method insert epilogue code into the function.
-   */
-  public abstract void emitEpilogue(MachineFunction MF,
-                                    MachineBasicBlock mbb);
-
   public abstract int getFrameRegister(MachineFunction mf);
 
   public int getFrameIndexOffset(MachineFunction mf, int fi) {
-    TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
     MachineFrameInfo mfi = mf.getFrameInfo();
     return (int) (mfi.getObjectOffset(fi) + mfi.getStackSize() -
         tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment());
   }
-
-  /**
-   * This method should return the register where the return
-   * address can be found.
-   *
-   * @return
-   */
-  public abstract int getRARegister();
 
   /**
    * Returns a list of machine moves that are assumed
@@ -489,52 +216,41 @@ public abstract class TargetRegisterInfo {
     return false;
   }
 
-  public RegClassInfo getRegClassInfo(TargetRegisterClass rc) {
-    return regClassInfo[hwMode * getNumRegClasses() * rc.getID()];
-  }
 
-  public int getSpillSize(TargetRegisterClass rc) {
+  public int getSpillSize(MCRegisterClass rc) {
     return getRegClassInfo(rc).spillSize;
   }
 
-  public int getRegSizeInBit(TargetRegisterClass rc) {
+  public int getRegSizeInBit(MCRegisterClass rc) {
     return getRegClassInfo(rc).regSize / 8;
   }
 
-  public int getRegSize(TargetRegisterClass rc) {
+  public int getRegSize(MCRegisterClass rc) {
     return getRegClassInfo(rc).regSize;
   }
 
-  public int getSpillAlignmentInBit(TargetRegisterClass rc) {
+  public int getSpillAlignmentInBit(MCRegisterClass rc) {
     return getRegClassInfo(rc).spillAlignment / 8;
   }
 
-  public int getSpillAlignment(TargetRegisterClass rc) {
+  public int getSpillAlignment(MCRegisterClass rc) {
     return getRegClassInfo(rc).spillAlignment;
   }
 
-  public int[] getRegisterClassVTs(TargetRegisterClass rc) {
+  public int[] getRegisterClassVTs(MCRegisterClass rc) {
     return getRegClassInfo(rc).vts;
   }
 
-  public boolean isLegalTypeForRegClass(TargetRegisterClass rc, MVT vt) {
-    for (int v : getRegClassInfo(rc).vts) {
-      if (v == vt.simpleVT)
-        return true;
-    }
-    return false;
-  }
-
-  public TargetRegisterClass getCommonSubClass(
-      TargetRegisterClass rc1,
-      TargetRegisterClass rc2) {
+  public MCRegisterClass getCommonSubClass(
+      MCRegisterClass rc1,
+      MCRegisterClass rc2) {
     if (rc1 == rc2) return rc1;
     if (rc1 == null || rc2 == null) return null;
 
     if (rc2.hasSubClass(rc1)) return rc1;
 
-    TargetRegisterClass bestRC = null;
-    for (TargetRegisterClass rc : rc1.getSubClasses()) {
+    MCRegisterClass bestRC = null;
+    for (MCRegisterClass rc : rc1.getSubClasses()) {
       if (rc == rc2) return rc;
 
       if (!rc2.hasSubClass(rc)) continue;

@@ -27,7 +27,7 @@ import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class TargetOptions {
   public static final Opt<RelocModel> DefRelocationModel =
@@ -61,9 +61,14 @@ public class TargetOptions {
   /**
    * Disable frame pointer elimination optimization.
    */
-  public static final BooleanOpt DisableFramePointerElim =
+  public static final BooleanOpt DisableFPElim =
       new BooleanOpt(optionName("disable-fp-elim"),
           desc("Disable frame pointer elimination optimization"),
+          init(false));
+
+  public static final BooleanOpt DisableFPEliMLeaf =
+      new BooleanOpt(optionName("disable-non-leaf-fp-elim"),
+          desc("Disable frame pointer elimination optimization for non-leaf funcs"),
           init(false));
 
   public static final BooleanOpt EnableRealignStack =
@@ -80,7 +85,7 @@ public class TargetOptions {
       new BooleanOpt(new OptionHiddenApplicator(Hidden),
           optionName("disable-jump-tables"),
           desc("Do not generate jump tables."),
-          init(true));
+          init(false));
 
   public static final BooleanOpt EnableStrongPhiElim =
       new BooleanOpt(optionName("strong-phi-elim"),
@@ -156,6 +161,16 @@ public class TargetOptions {
       new BooleanOpt(optionName("disable-mmx"),
           desc("Disable use of MMX"),
           new OptionHiddenApplicator(Hidden),
+          init(false));
+
+  public static final BooleanOpt DataSections =
+      new BooleanOpt(optionName("fdata-sections"),
+          desc("Emit data into separate section"),
+          init(false));
+
+  public static final BooleanOpt FunctionSections =
+      new BooleanOpt(optionName("ffunction-sections"),
+          desc("Emit function into seperate sections"),
           init(false));
 
   public static void registerTargetOptions() {

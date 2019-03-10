@@ -1,0 +1,120 @@
+PGP Public Keyservers
+---------------------
+
+There are PGP public key servers which allow one to exchange public
+keys running through the Internet and UUCP mail systems.
+
+The information below is OUT OF DATE, and the release of PGP 2.6
+will cause a great deal of upheaval, especially in the U.S.
+The command reference is the most useful part.
+
+
+NOTE!
+
+This service is NOT supported in any way whatsoever by the schools or
+organizations on which these servers run.  It is here only to help
+transfer keys between PGP users.  It does NOT attempt to guarantee
+that a key is a valid key; use the signators on a key for that kind of
+security.  This service can be discontinued at any time without prior
+notification.
+
+Each keyserver processes requests in the form of mail messages.  The
+commands for the server are entered on the Subject: line.
+
+        To: pgp-public-keys@pgp.mit.edu
+        From: johndoe@some.site.edu
+        Subject: help
+
+Sending your key to ONE server is enough.  After it processes your
+key, it will forward your add request to other servers automagically.
+
+For example, to add your key to the keyserver, or to update your key if it is
+already there, send a message similar to the following to any server:
+
+        To: pgp-public-keys@pgp.mit.edu
+        From: johndoe@some.site.edu
+        Subject: add
+
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+        Version: 2.5
+
+        <blah blah blah>
+        -----END PGP PUBLIC KEY BLOCK-----
+
+COMPROMISED KEYS:  Create a Key Revocation Certificate (read the PGP
+docs on how to do that) and mail your key to the server once again,
+with the ADD command.
+
+Valid commands are:
+
+Command                Message body contains
+---------------------- -------------------------------------------------
+ADD                    Your PGP public key (key to add is body of msg)
+INDEX                  List all PGP keys the server knows about (-kv)
+VERBOSE INDEX          List all PGP keys, verbose format (-kvv)
+GET                    Get the whole public key ring
+GET userid             Get just that one key
+MGET regexp            Get all keys which match /regexp/
+LAST days              Get the keys updated in the last `days' days
+------------------------------------------------------------------------
+
+Examples for the MGET command:
+
+        MGET michael         Gets all keys which have "michael" in them
+        MGET iastate         All keys which contain "iastate"
+        MGET F605A5|3A738B   Those two keyid's
+
+
+As of 24-Apr-93, these sites are running this system:
+
+Internet sites:
+        pgp-public-keys@pgp.mit.edu
+                Derek Atkins
+                warlord@MIT.EDU
+                FTP: toxicwaste.mit.edu:/pub/keys/public-keys.pgp
+	public-key-server@pgp.ai.mit.edu or
+	pgp-public-keys@pgp.ai.mit.edu
+		Brian LaMacchia
+		public-key-server-request@martigny.ai.mit.edu
+		http://www-swiss.ai.mit.edu/~bal/pks-toplev.html
+        pgp-public-keys@pgp.iastate.edu
+                Michael Graff
+                explorer@iastate.edu
+                FTP: pgp.iastate.edu:/usr/explorer/public-keys.pgp
+        pgp-public-keys@demon.co.uk
+                Mark Turner
+                mark@demon.co.uk
+                FTP: ftp.demon.co.uk:/pub/pgp/pubring.pgp (Updated daily)
+	pgp-public-keys@fbihh.informatik.uni-hamburg.de
+		Vesselin V. Bontchev 
+		bontchev@fbihh.informatik.uni-hamburg.de
+		FTP: ftp.informatik.uni-hamburg.de:/pub/virus/misc/pubkring.pgp
+	pgp-public-keys@pgp.ox.ac.uk
+		Paul Leyland 
+		pcl@ox.ac.uk
+	pgp-public-keys@dsi.unimi.it
+		David Vincenzetti 
+		vince@dsi.unimi.it
+		FTP: ghost.dsi.unimi.it:/pub/crypt/public-keys.pgp
+	pgp-public-keys@kub.nl
+		Teun Nijssen
+		teun@kub.nl
+	pgp-public-keys@ext221.sra.co.jp
+		Hironobu Suzuki
+		hironobu@sra.co.jp
+        pgp-public-keys@sw.oz.au
+                Jeremy Fitzhardinge
+                jeremy@sw.oz.au
+	pgp-public-keys@io.com
+		Sysop: pgpkeys@wasabi.io.com
+		FTP: wasabi.io.com:/pub/pgpkeys
+	pgp-public-keys@kiae.su
+		blaster@rd.relcom.msk.su
+
+UUCP site:
+        pgp-public-keys@jpunix.com
+                John Perry
+                perry@jpunix.com
+
+Check the Usenet newsgroup alt.security.pgp for updates to this system
+and for new sites.

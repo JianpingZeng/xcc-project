@@ -24,7 +24,7 @@ import java.util.TreeMap;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ValueSymbolTable {
   private TreeMap<String, Value> map;

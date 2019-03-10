@@ -1,8 +1,10 @@
 package backend.codegen;
 
-import backend.support.LLVMContext;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCSymbol;
+import backend.mc.MCRegisterClass;
+import backend.support.Attribute;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
 import backend.value.BasicBlock;
@@ -16,7 +18,7 @@ import java.util.List;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineFunction {
   private Function fn;
@@ -51,21 +53,21 @@ public class MachineFunction {
   MachineFunctionInfo mfInfo;
   private int alignment;
   private MachineJumpTableInfo jumpTableInfo;
+  private int functionNumber;
 
-  public MachineFunction(Function fn, TargetMachine tm) {
+  public MachineFunction(Function fn, TargetMachine tm, int fnNumber) {
     this.fn = fn;
     target = tm;
     mbbNumber = new ArrayList<>();
-    frameInfo = new MachineFrameInfo(tm.getFrameInfo(), tm.getRegisterInfo());
+    frameInfo = new MachineFrameInfo(tm.getFrameLowering(), tm.getRegisterInfo());
     regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
     constantPool = new MachineConstantPool(tm.getTargetData());
     phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
+    alignment = tm.getTargetLowering().getMinFunctionAlignment();
+    if (!fn.hasFnAttr(Attribute.OptimizeForSize))
+      alignment = Math.max(alignment, tm.getTargetLowering().getPrefFunctionAlignment());
 
-    boolean isPIC = tm.getRelocationModel() == TargetMachine.RelocModel.PIC_;
-    alignment = isPIC ? tm.getTargetData().getABITypeAlignment(
-        LLVMContext.Int32Ty) : tm.getTargetData().getPointerABIAlign();
-    int entrySize = isPIC ? 4 : tm.getTargetData().getPointerSize();
-    jumpTableInfo = new MachineJumpTableInfo(entrySize, alignment);
+    functionNumber = fnNumber;
 
     // associate this machine function with HIR function.
     fn.setMachineFunc(this);
@@ -114,6 +116,7 @@ public class MachineFunction {
 
   public void erase(MachineBasicBlock mbb) {
     mbbNumber.remove(mbb);
+    mbb.setNumber(-1);
   }
 
   /**
@@ -132,6 +135,7 @@ public class MachineFunction {
 
   public MachineBasicBlock removeMBBAt(int blockNo) {
     Util.assertion(blockNo >= 0 && blockNo < mbbNumber.size());
+    mbbNumber.get(blockNo).setNumber(-1);
     return mbbNumber.remove(blockNo);
   }
 
@@ -185,6 +189,10 @@ public class MachineFunction {
     return alignment;
   }
 
+  /**
+   * Set the alignment (log2, not bytes) of the function.
+   * @param align
+   */
   public void setAlignment(int align) {
     alignment = align;
   }
@@ -203,6 +211,10 @@ public class MachineFunction {
     print(os, new PrefixPrinter());
   }
 
+  public void dump() {
+    print(System.err);
+  }
+
   public void print(PrintStream os, PrefixPrinter prefix) {
     os.printf("# Machine code for %s():%n", fn.getName());
 
@@ -210,7 +222,8 @@ public class MachineFunction {
     frameInfo.print(this, os);
 
     // Print JumpTable information.
-    jumpTableInfo.print(os);
+    if (jumpTableInfo != null)
+      jumpTableInfo.print(os);
 
     // Print Jump table information.
     // Print constant pool.
@@ -218,7 +231,7 @@ public class MachineFunction {
 
     TargetRegisterInfo tri = target.getRegisterInfo();
     if (regInfo != null && !regInfo.isLiveInEmpty()) {
-      os.printf("Live Ins:");
+      os.print("Live Ins:");
       for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
         if (tri != null)
           os.printf(" %s", tri.getName(entry.first));
@@ -232,7 +245,7 @@ public class MachineFunction {
     }
 
     if (regInfo != null && !regInfo.isLiveOutEmpty()) {
-      os.printf("Live Outs:");
+      os.print("Live Outs:");
       for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {
         if (tri != null)
           os.printf(" %s", tri.getName(entry.first));
@@ -258,7 +271,7 @@ public class MachineFunction {
    * @param rc
    * @return
    */
-  public int addLiveIn(int locReg, TargetRegisterClass rc) {
+  public int addLiveIn(int locReg, MCRegisterClass rc) {
     Util.assertion(rc.contains(locReg), "Not the current regclass!");
     int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
     getMachineRegisterInfo().addLiveIn(locReg, virReg);
@@ -270,8 +283,14 @@ public class MachineFunction {
   }
 
   public void insert(int insertPos, MachineBasicBlock mbb) {
-    Util.assertion(insertPos >= 0 && insertPos < mbbNumber.size());
-    mbbNumber.add(insertPos, mbb);
+    Util.assertion(insertPos >= 0 && insertPos <= mbbNumber.size());
+
+    // update the unique number of mbb
+    mbb.setNumber(mbbNumber.size());
+    if (insertPos == mbbNumber.size())
+      mbbNumber.add(mbb);
+    else
+      mbbNumber.add(insertPos, mbb);
   }
 
   public MachineJumpTableInfo getJumpTableInfo() {
@@ -284,5 +303,29 @@ public class MachineFunction {
 
   public TargetSubtarget getSubtarget() {
     return getTarget().getSubtarget();
+  }
+
+  public int getFunctionNumber() {
+    return functionNumber;
+  }
+
+  public MCSymbol getJTISymbol(int jtiId,
+                               MCSymbol.MCContext outContext,
+                               boolean isLinkerPrivate) {
+    Util.assertion(jumpTableInfo != null, "no jump tables");
+    Util.assertion(jtiId < jumpTableInfo.getJumpTables().size());
+    MCAsmInfo mai = getTarget().getMCAsmInfo();
+    String prefix = isLinkerPrivate ?
+        mai.getLinkerPrivateGlobalPrefix() :
+        mai.getPrivateGlobalPrefix();
+    String name = prefix + "JTI" + getFunctionNumber() + "_" + jtiId;
+    return outContext.getOrCreateSymbol(name);
+  }
+
+  public MachineJumpTableInfo getOrCreateJumpTableInfo(MachineJumpTableInfo.JTEntryKind kind) {
+    if (jumpTableInfo != null)
+      return jumpTableInfo;
+    jumpTableInfo = new MachineJumpTableInfo(kind);
+    return jumpTableInfo;
   }
 }

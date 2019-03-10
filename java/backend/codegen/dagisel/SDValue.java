@@ -35,7 +35,7 @@ import java.util.Objects;
  * of information is represented with the SDValue value type.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SDValue implements Comparable<SDValue>, Cloneable {
   /**

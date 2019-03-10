@@ -1,0 +1,3 @@
+CLANG=$(HOME)/Development/compiler/llvm/cmake-build-debug/bin/clang -cc1 -S -emit-llvm -O2
+LLC=$(HOME)/Development/compiler/xcc/out/bin/llc -O0 -filetype=asm
+GCC=gcc

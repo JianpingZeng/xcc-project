@@ -19,7 +19,7 @@ package backend.codegen;
 
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
-import backend.target.TargetRegisterClass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.iterator.TIntObjectIterator;
@@ -34,11 +34,11 @@ import java.io.PrintStream;
  * stack slot.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LiveStackSlot extends MachineFunctionPass {
   private TIntObjectHashMap<LiveInterval> slot2LI;
-  private TIntObjectHashMap<TargetRegisterClass> slot2RC;
+  private TIntObjectHashMap<MCRegisterClass> slot2RC;
   private TargetRegisterInfo tri;
 
   public LiveStackSlot() {
@@ -58,7 +58,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
     return "Live Stack Slot Analysis Pass";
   }
 
-  public LiveInterval getOrCreateInterval(int slot, TargetRegisterClass rc) {
+  public LiveInterval getOrCreateInterval(int slot, MCRegisterClass rc) {
     Util.assertion(slot >= 0, "Spill slot indice must be >= 0");
     if (!slot2LI.containsKey(slot)) {
       LiveInterval li = new LiveInterval(slot, 0.0f, true);
@@ -67,7 +67,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
     } else {
       // Use the largest common subclass register class
       Util.assertion(slot2RC.containsKey(slot));
-      TargetRegisterClass oldRC = slot2RC.get(slot);
+      MCRegisterClass oldRC = slot2RC.get(slot);
       Util.assertion(oldRC != null);
 
       slot2RC.put(slot, tri.getCommonSubClass(oldRC, rc));
@@ -85,7 +85,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
     return slot2LI.containsKey(slot);
   }
 
-  public TargetRegisterClass getIntervalRegClass(int slot) {
+  public MCRegisterClass getIntervalRegClass(int slot) {
     Util.assertion(slot >= 0, "Spill stack slot must be >= 0");
     Util.assertion(slot2RC.containsKey(slot), "RegClass doesn't exist for stack slot #" + slot);
     return slot2RC.get(slot);
@@ -105,7 +105,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
       int slot = itr.key();
       LiveInterval interval = itr.value();
       interval.print(os, null);
-      TargetRegisterClass rc = getIntervalRegClass(slot);
+      MCRegisterClass rc = getIntervalRegClass(slot);
       if (rc != null) {
         os.printf("[%s]\n", rc.getName());
       } else {

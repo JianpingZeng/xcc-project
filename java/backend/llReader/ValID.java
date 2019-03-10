@@ -17,14 +17,15 @@ package backend.llReader;
  */
 
 import backend.value.Constant;
-import backend.value.MetadataBase;
+import backend.value.MDNode;
+import backend.value.MDString;
 import tools.APFloat;
 import tools.APSInt;
 import tools.SourceMgr;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class ValID {
   /// ValID - Represents a reference of a definition of some sort with no type.
@@ -33,14 +34,17 @@ public final class ValID {
   /// or a symbolic (%var) reference.  This is just a discriminated union.
 
   enum ValIDKind {
-    t_LocalID, t_GlobalID,      // ID in intVal.
+    t_LocalID, t_GlobalID,      // ID in UIntVal.
     t_LocalName, t_GlobalName,  // Name in StrVal.
     t_APSInt, t_APFloat,        // Value in APSIntVal/APFloatVal.
     t_Null, t_Undef, t_Zero,    // No value.
     t_EmptyArray,               // No value:  []
     t_Constant,                 // Value in ConstantVal.
-    t_InlineAsm,                // Value in StrVal/StrVal2/intVal.
-    t_Metadata                  // Value in MetadataVal.
+    t_InlineAsm,                // Value in StrVal/StrVal2/UIntVal.
+    t_MDNode,                   // Value in MDNodeVal.
+    t_MDString,                 // Value in MDStringVal.
+    t_ConstantStruct,           // Value in ConstantStructElts.
+    t_PackedConstantStruct      // Value in ConstantStructElts.
   }
 
   ValIDKind kind;
@@ -50,7 +54,9 @@ public final class ValID {
   APSInt apsIntVal;
   APFloat apFloatVal;
   Constant constantVal;
-  MetadataBase metadataVal;
+  MDNode mdNodeVal;
+  MDString mdStringVal;
+  Constant[] constantStructElts;
 
   ValID() {
     apFloatVal = new APFloat(0.0f);

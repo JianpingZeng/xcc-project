@@ -19,6 +19,10 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCExpr;
+import backend.mc.MCRegisterClass;
+import backend.mc.MCSymbol;
 import backend.support.AttrList;
 import backend.support.Attribute;
 import backend.support.CallingConv;
@@ -59,7 +63,7 @@ import static tools.APFloat.x87DoubleExtended;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86TargetLowering extends TargetLowering {
   private int varArgsFrameIndex;
@@ -75,8 +79,21 @@ public class X86TargetLowering extends TargetLowering {
   private X86RegisterInfo regInfo;
   private final static int X86AddrNumOperands = 5;
 
+  private static TargetLoweringObjectFile createTLOF(X86TargetMachine tm) {
+    X86Subtarget subtarget = tm.getSubtarget();
+    boolean is64Bit = subtarget.is64Bit();
+    Util.assertion(subtarget.isTargetELF(), "only ELF supported current");
+    /*if (subtarget.isTargetDarwin()) {
+      if (in64BitMode) return X86_64MachoTargetObjectFile();
+      return new TargetLoweringObjectFileMachO();
+    }
+    */
+    return is64Bit ? new X86_64ELFTargetObjectFile(tm) :
+        new X86_32ELFTargetObjectFile(tm);
+  }
+
   public X86TargetLowering(X86TargetMachine tm) {
-    super(tm);
+    super(tm, createTLOF(tm));
     subtarget = tm.getSubtarget();
     x86ScalarSSEf64 = subtarget.hasSSE2();
     x86ScalarSSEf32 = subtarget.hasSSE1();
@@ -84,7 +101,7 @@ public class X86TargetLowering extends TargetLowering {
         X86GenRegisterNames.RSP :
         X86GenRegisterNames.ESP;
 
-    regInfo = (X86RegisterInfo) tm.getRegisterInfo();
+    regInfo = subtarget.getRegisterInfo();
 
     // Set up the register classes.
     setShiftAmountTy(new MVT(MVT.i8));
@@ -959,6 +976,7 @@ public class X86TargetLowering extends TargetLowering {
     maxStoresPerMemmove = 3; // For @llvm.memmove -> sequence of stores
     setPrefLoopAlignment = 16;
     benefitFromCodePlacementOpt = true;
+    setPrefFunctionAlignment(4); // 2^4 bytes.
   }
 
   @Override
@@ -1164,7 +1182,7 @@ public class X86TargetLowering extends TargetLowering {
 
       if (va.isRegLoc()) {
         EVT regVT = va.getLocVT();
-        TargetRegisterClass rc = null;
+        MCRegisterClass rc = null;
         int simpleVT = regVT.getSimpleVT().simpleVT;
         if (simpleVT == MVT.i32)
           rc = X86GenRegisterInfo.GR32RegisterClass;
@@ -1350,7 +1368,7 @@ public class X86TargetLowering extends TargetLowering {
   private int getAlignedArgumentStackSize(int stackSize, SelectionDAG dag) {
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameInfo tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameLowering();
     int stackAlign = tfi.getStackAlignment();
     int alignMask = stackAlign - 1;
     int offset = stackSize;
@@ -1464,6 +1482,13 @@ public class X86TargetLowering extends TargetLowering {
     }
   }
 
+  @Override
+  public int computeNumSignBitsForTargetNode(SDValue op, int depth) {
+    if (op.getOpcode() == X86ISD.SETCC_CARRY)
+      return op.getValueType().getScalarType().getSizeInBits();
+    return 1;
+  }
+
   public boolean isScalarFPTypeInSSEReg(EVT vt) {
     int simpleVT = vt.getSimpleVT().simpleVT;
     return (simpleVT == MVT.f64 && x86ScalarSSEf64) ||
@@ -1545,7 +1570,7 @@ public class X86TargetLowering extends TargetLowering {
 
   @Override
   public boolean isTruncateFree(Type ty1, Type ty2) {
-    if (!ty1.isInteger() || !ty2.isInteger())
+    if (!ty1.isIntegerTy() || !ty2.isIntegerTy())
       return false;
 
     int numBit1 = ty1.getPrimitiveSizeInBits();
@@ -1696,8 +1721,10 @@ public class X86TargetLowering extends TargetLowering {
     if (!memOpChains.isEmpty())
       chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), memOpChains);
 
+    // Build a sequence of copy-to-reg nodes chained together with token chain
+    // and flag operands which copy the outgoing args into registers
     SDValue inFlag = new SDValue();
-    if (isTailCall) {
+    if (!isTailCall) {
       for (int i = 0, e = regsToPass.size(); i < e; i++) {
         chain = dag.getCopyToReg(chain, regsToPass.get(i).first,
             regsToPass.get(i).second, inFlag);
@@ -1819,7 +1846,7 @@ public class X86TargetLowering extends TargetLowering {
       mf.getMachineRegisterInfo().addLiveOut(calleeReg);
     }
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     if (isTailCall) {
       chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(numBytes, true),
@@ -2399,7 +2426,7 @@ public class X86TargetLowering extends TargetLowering {
       int copyOpc,
       int notOpc,
       int eaxReg,
-      TargetRegisterClass rc) {
+      MCRegisterClass rc) {
     return emitAtomicBitwiseWithCustomInserter(mi, mbb, regOpc, immOpc,
         loadOpc, cxchgOpc, copyOpc, notOpc, eaxReg, rc, false);
   }
@@ -2413,7 +2440,7 @@ public class X86TargetLowering extends TargetLowering {
       int copyOpc,
       int notOpc,
       int eaxReg,
-      TargetRegisterClass rc,
+      MCRegisterClass rc,
       boolean invSrc) {
     // For the atomic bitwise operator, we generate
     //   thisMBB:
@@ -2513,7 +2540,7 @@ public class X86TargetLowering extends TargetLowering {
     //     bz  newMBB
     //     result in out1, out2
     //     fallthrough -->nextMBB
-    TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+    MCRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
     int loadOpc = X86GenInstrNames.MOV32rm;
     int copyOpc = X86GenInstrNames.MOV32rr;
     int notOpc = X86GenInstrNames.NOT32r;
@@ -2639,7 +2666,7 @@ public class X86TargetLowering extends TargetLowering {
     // First build the CFG.
     MachineFunction mf = mbb.getParent();
     MachineRegisterInfo mri = mf.getMachineRegisterInfo();
-    TargetRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+    MCRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
 
     MachineBasicBlock newMBB = mf.createMachineBasicBlock(llvmBB);
     MachineBasicBlock nextMBB = mf.createMachineBasicBlock(llvmBB);
@@ -2716,7 +2743,7 @@ public class X86TargetLowering extends TargetLowering {
     // easier on the hardware branch predictor, and stores aren't all that
     // expensive anyway.
 
-    // Create the new basic blocks. One block contains all the XMM stores,
+    // create the new basic blocks. One block contains all the XMM stores,
     // and one block is the final destination regardless of whether any
     // stores were performed.
 
@@ -3535,7 +3562,7 @@ public class X86TargetLowering extends TargetLowering {
   private static SDValue getTLSADDR(SelectionDAG dag, SDValue chain, GlobalAddressSDNode ga,
                                     SDValue inFlag, EVT ptrVT, int returnReg,
                                     int operandFlag) {
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue tga = dag.getTargetGlobalAddress(ga.getGlobalValue(), ga.getValueType(0),
         ga.getOffset(), operandFlag);
     if (inFlag != null) {
@@ -3690,7 +3717,7 @@ public class X86TargetLowering extends TargetLowering {
     SDVTList vts;
     boolean useSSE = isScalarFPTypeInSSEReg(op.getValueType());
     if (useSSE)
-      vts = dag.getVTList(new EVT(MVT.f64), new EVT(MVT.Other), new EVT(MVT.Flag));
+      vts = dag.getVTList(new EVT(MVT.f64), new EVT(MVT.Other), new EVT(MVT.Glue));
     else
       vts = dag.getVTList(op.getValueType(), new EVT(MVT.Other));
 
@@ -3824,7 +3851,7 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   private SDValue lowerUINT_TO_FP_i32(SDValue op, SelectionDAG dag) {
-    SDValue bias = dag.getConstantFP(Util.bitsToDouble(0x4330000000000000L),
+    SDValue bias = dag.getConstantFP(Double.longBitsToDouble(0x4330000000000000L),
         new EVT(MVT.f64), false);
     SDValue load = dag.getNode(ISD.SCALAR_TO_VECTOR, new EVT(MVT.v4i32),
         dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
@@ -3859,15 +3886,19 @@ public class X86TargetLowering extends TargetLowering {
       destVT = new EVT(MVT.i64);
     }
 
-    Util.assertion(destVT.getSimpleVT().simpleVT <= MVT.i64 && destVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown FP_TO_XINT to lower!");
-
+    Util.assertion(destVT.getSimpleVT().simpleVT <= MVT.i64 &&
+        destVT.getSimpleVT().simpleVT >= MVT.i16, "Unknown FP_TO_XINT to lower!");
 
     if (destVT.getSimpleVT().simpleVT == MVT.i32 &&
-        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType())) {
-      if (subtarget.is64Bit() && destVT.getSimpleVT().simpleVT == MVT.i64 &&
-          isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
-        return Pair.get(new SDValue(), new SDValue());
-    }
+        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+      return Pair.get(new SDValue(), new SDValue());
+
+    if (subtarget.is64Bit() && destVT.getSimpleVT().simpleVT == MVT.i64 &&
+        isScalarFPTypeInSSEReg(op.getOperand(0).getValueType()))
+      return Pair.get(new SDValue(), new SDValue());
+
+    // We lower FP->sint64 into FISTP64, followed by a load, all to a temporary
+    // stack slot.
     MachineFunction mf = dag.getMachineFunction();
     int memSize = destVT.getSizeInBits() / 8;
     int ssfi = mf.getFrameInfo().createStackObject(memSize, memSize);
@@ -3913,7 +3944,12 @@ public class X86TargetLowering extends TargetLowering {
       return new SDValue();
     }
     Pair<SDValue, SDValue> vals = fpToIntHelper(op, dag, true);
-    return new SDValue();
+    // If FP_TO_INTHelper failed, the node is actually supposed to be Legal.
+    SDValue fist = vals.first, stackslot = vals.second;
+    if (fist.getNode() == null)
+      return op;
+    // Load the result.
+    return dag.getLoad(op.getValueType(), fist, stackslot, null, 0);
   }
 
   private SDValue lowerFP_TO_UINT(SDValue op, SelectionDAG dag) {
@@ -4068,11 +4104,13 @@ public class X86TargetLowering extends TargetLowering {
           }
         }
       } else if (op0.getOperand(0).getOpcode() == ISD.SHL) {
-        if (op0.getOperand(1).getOperand(0).getNode() instanceof ConstantSDNode) {
-          ConstantSDNode csd = (ConstantSDNode) op0.getOperand(1).getOperand(0).getNode();
+        SDValue and = op0;
+        SDValue shl = and.getOperand(0);
+        if (shl.getOperand(0).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode csd = (ConstantSDNode) shl.getOperand(0).getNode();
           if (csd.getZExtValue() == 1) {
-            lhs = op0.getOperand(0);
-            rhs = op0.getOperand(1).getOperand(1);
+            lhs = and.getOperand(1);
+            rhs = shl.getOperand(1);
           }
         }
       } else if (op0.getOperand(1).getOpcode() == ISD.Constant) {
@@ -4419,7 +4457,7 @@ public class X86TargetLowering extends TargetLowering {
       cc = dag.getConstant(COND_NE, new EVT(MVT.i8), false);
       cond = emitTest(cond, COND_NE, dag);
     }
-    SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(op.getValueType(), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     ops.add(op.getOperand(2));
     ops.add(op.getOperand(1));
@@ -4622,7 +4660,7 @@ public class X86TargetLowering extends TargetLowering {
     chain = dag.getCopyToReg(chain, X86GenRegisterNames.EAX, size, flag);
     flag = chain.getValue(1);
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue[] ops = {chain,
         dag.getTargetExternalSymbol("_alloca", intPtr, 0),
         dag.getRegister(X86GenRegisterNames.EAX, intPtr),
@@ -4700,8 +4738,8 @@ public class X86TargetLowering extends TargetLowering {
     }
 
     if (argNode == 2) {
-      Util.assertion(!GenerateSoftFloatCalls.value && !(dag.getMachineFunction().getFunction().hasFnAttr(Attribute.NoImplicitFloat)));
-
+      Util.assertion(!GenerateSoftFloatCalls.value &&
+          !(dag.getMachineFunction().getFunction().hasFnAttr(Attribute.NoImplicitFloat)));
     }
 
     ArrayList<SDValue> instOps = new ArrayList<>();
@@ -4924,7 +4962,7 @@ public class X86TargetLowering extends TargetLowering {
         */
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameInfo tfi = tm.getFrameInfo();
+    TargetFrameLowering tfi = tm.getFrameLowering();
     int stackAlignment = tfi.getStackAlignment();
     EVT vt = op.getValueType();
     int ssfi = mf.getFrameInfo().createStackObject(2, stackAlignment);
@@ -5111,7 +5149,7 @@ public class X86TargetLowering extends TargetLowering {
     SDValue[] ops = {ins.getValue(0), op.getOperand(1), op.getOperand(3),
         dag.getTargetConstant(size, new EVT(MVT.i8)),
         ins.getValue(1)};
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue result = dag.getNode(X86ISD.LCMPXCHG8_DAG, vts, ops);
     SDValue out = dag.getCopyFromReg(result.getValue(0), reg,
         vt, result.getValue(1));
@@ -5134,7 +5172,7 @@ public class X86TargetLowering extends TargetLowering {
 
   private SDValue lowerREADCYCLECOUNTER(SDValue op, SelectionDAG dag) {
     Util.assertion(subtarget.is64Bit(), "Result not type legalized!");
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue chain = op.getOperand(0);
 
     SDValue rd = dag.getNode(X86ISD.RDTSC_DAG, vts, chain);
@@ -5342,7 +5380,7 @@ public class X86TargetLowering extends TargetLowering {
         return;
       }
       case ISD.READCYCLECOUNTER: {
-        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
         SDValue chain = n.getOperand(0);
         SDValue rd = dag.getNode(X86ISD.RDTSC_DAG, vts, chain);
         SDValue eax = dag.getCopyFromReg(rd, X86GenRegisterNames.EAX,
@@ -5380,7 +5418,7 @@ public class X86TargetLowering extends TargetLowering {
         swapInH = dag.getCopyToReg(swapInL.getValue(0), X86GenRegisterNames.ECX,
             swapInH, swapInL.getValue(1));
         SDValue[] ops = {swapInH.getValue(0), n.getOperand(1), swapInH.getValue(1)};
-        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+        SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
         SDValue result = dag.getNode(X86ISD.LCMPXCHG8_DAG, vts, ops);
         SDValue cpOutL = dag.getCopyFromReg(result.getValue(0),
             X86GenRegisterNames.EAX, i32, result.getValue(1));
@@ -5650,7 +5688,7 @@ public class X86TargetLowering extends TargetLowering {
         src, inFlag);
     inFlag = chain.getValue(1);
 
-    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
     ops.add(chain);
     ops.add(dag.getValueType(vt));
@@ -5672,6 +5710,35 @@ public class X86TargetLowering extends TargetLowering {
           srcVal, srcOff + offset));
     }
     return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), results);
+  }
+
+  @Override
+  public SDValue emitTargetCodeForMemset(SelectionDAG dag,
+                                         SDValue chain,
+                                         SDValue op1,
+                                         SDValue op2,
+                                         SDValue op3,
+                                         int align,
+                                         Value dstSV,
+                                         long dstOff) {
+    // TODO, 2/1/2019
+    return super.emitTargetCodeForMemset(dag, chain, op1,op2, op3, align,dstSV,dstOff);
+  }
+
+  @Override
+  public SDValue emitTargetCodeForMemmove(SelectionDAG dag,
+                                          SDValue chain,
+                                          SDValue op1,
+                                          SDValue op2,
+                                          SDValue op3,
+                                          int align,
+                                          Value dstSV,
+                                          long dstOff,
+                                          Value srcSV,
+                                          long srcOff) {
+    // TODO, 2/1/2019
+    return super.emitTargetCodeForMemmove(dag, chain, op1, op2, op3, align, dstSV, dstOff,
+        srcSV, srcOff);
   }
 
   @Override
@@ -5717,5 +5784,35 @@ public class X86TargetLowering extends TargetLowering {
   @Override
   public boolean isNarrowingProfitable(EVT vt1, EVT vt2) {
     return !(vt1.equals(new EVT(MVT.i32)) && vt2.equals(new EVT(MVT.i16)));
+  }
+
+  /**
+   * Return the X86-32 PIC base.
+   * @param mf
+   * @param ctx
+   * @return
+   */
+  public MCSymbol getPICBaseSymbol(MachineFunction mf, MCSymbol.MCContext ctx) {
+    MCAsmInfo mai = getTargetMachine().getMCAsmInfo();
+    return ctx.getOrCreateSymbol(
+        mai.getPrivateGlobalPrefix() +
+            mf.getFunctionNumber() + "$pb");
+  }
+
+  @Override
+  public SDValue getPICJumpTableRelocBase(SDValue table, SelectionDAG dag) {
+    if (!subtarget.is64Bit()) {
+      return dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy()));
+    }
+    return table;
+  }
+
+  @Override
+  public MCExpr lowerJumpTableEntry(MachineJumpTableInfo jumpTable,
+                                    MachineBasicBlock mbb, int jti,
+                                    MCSymbol.MCContext outContext) {
+    Util.assertion(getTargetMachine().getRelocationModel() == PIC_ && subtarget.isPICStyleGOT());
+    return X86MCTargetExpr.create(mbb.getSymbol(outContext), X86MCTargetExpr.VariantKind.GOTOFF,
+        outContext);
   }
 }

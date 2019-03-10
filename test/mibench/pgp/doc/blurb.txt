@@ -1,0 +1,14 @@
+PGP (Pretty Good Privacy) ver 2.6.2 - RSA public-key encryption freeware
+for MSDOS, protects E-mail.  Lets you communicate securely with people
+you've never met, with no secure channels needed for prior exchange of
+keys.  Well featured and fast!  Excellent user documentation.
+
+PGP has sophisticated key management, an RSA/conventional hybrid
+encryption scheme, message digests for digital signatures, data
+compression before encryption, and good ergonomic design.  Source
+code is free.
+
+Filenames:  pgp262.zip (executable and manuals), pgp262s.zip (sources)
+            pgp262dc.zip (manuals)
+Keywords:   PGP, Pretty Good Privacy, RSA, public key, encryption,
+            privacy, authentication, signatures, email

@@ -17,7 +17,7 @@ import static backend.value.ValueKind.PseudoSourceValueVal;
  * space), or constant pool.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PseudoSourceValue extends Value {
   private static TIntObjectHashMap<PseudoSourceValue> fsValueMap = new TIntObjectHashMap<>();

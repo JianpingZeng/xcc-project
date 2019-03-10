@@ -14,7 +14,7 @@ import java.util.List;
  * the predecessor list for the same blocks.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PredIteratorCache {
   private HashMap<BasicBlock, List<BasicBlock>> blockToPredsMap;

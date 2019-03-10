@@ -20,7 +20,7 @@ import backend.codegen.MVT;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface EEVT {
   int isFP = MVT.LAST_VALUETYPE;
@@ -31,12 +31,12 @@ public interface EEVT {
   /*
   static boolean isExtIntegerInVTs(TIntArrayList evts) {
     Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-    return evts.get(0) == isInt || !(filterEVTs(evts, isInteger)).isEmpty();
+    return evts.get(0) == isInt || !(filterEVTs(evts, isIntegerTy)).isEmpty();
   }
 
   static boolean isExtFloatingPointInVTs(TIntArrayList evts) {
     Util.assertion(!evts.isEmpty(), "Cannot check for integer in empty ExtVT list!");
-    return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPoint)).isEmpty();
+    return evts.get(0) == isFP || !(filterEVTs(evts, isFloatingPointType)).isEmpty();
   }
 
   static boolean isExtVectorVTs(TIntArrayList evts) {

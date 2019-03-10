@@ -665,7 +665,7 @@ public final class DomTreeInfo implements IDomTreeInfo {
         newBBIDom = findNearestCommonDominator(newBB, preds.get(i));
     }
 
-    // Create a new dominator tree node, and set it as the idom of newBB.
+    // create a new dominator tree node, and set it as the idom of newBB.
     DomTreeNodeBase<BasicBlock> newBBNode = addNewBlock(newBB, newBBIDom);
 
     // If newBB strictly dominates other blocks, then it is now the immediate

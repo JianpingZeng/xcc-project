@@ -23,7 +23,7 @@ import backend.value.BasicBlock;
  * which may require a jump out through normal cleanups.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class JumpDest {
   private BasicBlock block;

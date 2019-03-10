@@ -44,7 +44,7 @@ import static backend.target.TargetLowering.LegalizeAction.Custom;
  * values.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class DAGTypeLegalizer {
   private TargetLowering tli;
@@ -1882,7 +1882,7 @@ public class DAGTypeLegalizer {
     boolean hasCarry = tli.isOperationLegalOrCustom(n.getOpcode() == ISD.ADD ?
         ISD.ADDC : ISD.SUBC, tli.getTypeToExpandTo(nvt));
     if (hasCarry) {
-      SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Flag));
+      SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Glue));
       if (n.getOpcode() == ISD.ADD) {
         res[0] = dag.getNode(ISD.ADDC, vts, loOps);
         hiOps[2] = res[0].getValue(1);
@@ -1926,7 +1926,7 @@ public class DAGTypeLegalizer {
     SDValue[] res = new SDValue[2];
     SDValue[] lhsT = getExpandedInteger(n.getOperand(0));
     SDValue[] rhsT = getExpandedInteger(n.getOperand(1));
-    SDVTList vts = dag.getVTList(lhsT[0].getValueType(), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(lhsT[0].getValueType(), new EVT(MVT.Glue));
     SDValue[] loOps = {lhsT[0], rhsT[0]};
     SDValue[] hiOps = {lhsT[1], rhsT[1], null};
 
@@ -1948,7 +1948,7 @@ public class DAGTypeLegalizer {
     SDValue[] res = new SDValue[2];
     SDValue[] lhsT = getExpandedInteger(n.getOperand(0));
     SDValue[] rhsT = getExpandedInteger(n.getOperand(1));
-    SDVTList vts = dag.getVTList(lhsT[0].getValueType(), new EVT(MVT.Flag));
+    SDVTList vts = dag.getVTList(lhsT[0].getValueType(), new EVT(MVT.Glue));
     SDValue[] loOps = {lhsT[0], rhsT[0], n.getOperand(2)};
     SDValue[] hiOps = {lhsT[1], rhsT[1]};
 
@@ -2257,7 +2257,7 @@ public class DAGTypeLegalizer {
         res[1] = t[0];
       } else if (amt == 1 && tli.isOperationLegal(ISD.ADDC,
           tli.getTypeToExpandTo(nvt))) {
-        SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Flag));
+        SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Glue));
         SDValue[] ops = {t[0], t[0]};
         res[0] = dag.getNode(ISD.ADDC, vts, ops);
         SDValue[] ops3 = {t[1], t[1], res[0].getValue(1)};

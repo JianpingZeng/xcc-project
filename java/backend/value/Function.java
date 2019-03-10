@@ -20,7 +20,7 @@ import java.util.List;
  * This class is representation at the Module(high-level IR) of a function or method.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Function extends GlobalValue implements Iterable<BasicBlock> {
   /**
@@ -196,7 +196,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
    * @return
    */
   @Override
-  public boolean isExternal() {
+  public boolean isDeclaration() {
     return basicBlockList.isEmpty();
   }
 

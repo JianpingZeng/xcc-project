@@ -78,7 +78,7 @@ import java.util.Stack;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class IndVarSimplify implements LoopPass {
   private LoopInfo li;
@@ -135,7 +135,7 @@ public final class IndVarSimplify implements LoopPass {
     BasicBlock exitingBlock = loop.getExitingBlock(); // may be null.
     SCEV iterationCount = se.getIterationCount(loop);
 
-    // Create a rewriter object that we will use to transform the code with.
+    // create a rewriter object that we will use to transform the code with.
     SCEVExpander rewriter = new SCEVExpander(se);
 
     // Checks to see if this loop has a computable loop-invariant exit expression.
@@ -483,7 +483,7 @@ public final class IndVarSimplify implements LoopPass {
           // SCEV only supports integer type.
           if (!(inVal instanceof Instruction)
               || !(inVal.getType().isPointerType()
-              && (inVal.getType().isIntegerType())))
+              && (inVal.getType().isIntegerTy())))
             continue;
 
           // If this pred is for a subloop, not loop, skip it.

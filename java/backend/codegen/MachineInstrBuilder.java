@@ -1,7 +1,7 @@
 package backend.codegen;
 
 import backend.codegen.MachineOperand.RegState;
-import backend.target.TargetInstrDesc;
+import backend.mc.MCInstrDesc;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 import tools.Util;
@@ -14,7 +14,7 @@ import static backend.codegen.MachineMemOperand.MOStore;
  * specified target machine, e.g.X86.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class MachineInstrBuilder {
   private MachineInstr mi;
@@ -46,7 +46,7 @@ public final class MachineInstrBuilder {
     MachineInstr mi = mib.getMInstr();
     MachineFunction mf = mi.getParent().getParent();
     MachineFrameInfo mfi = mf.getFrameInfo();
-    TargetInstrDesc tii = mi.getDesc();
+    MCInstrDesc tii = mi.getDesc();
     int flags = 0;
     if (tii.mayLoad()) {
       flags |= MOLoad;
@@ -168,7 +168,7 @@ public final class MachineInstrBuilder {
   }
 
   public MachineInstrBuilder addConstantPoolIndex(int idx,
-                                                  int offset,
+                                                  long offset,
                                                   int targetFlags) {
     mi.addOperand(MachineOperand.createConstantPoolIndex(idx, offset, targetFlags));
     return this;
@@ -206,7 +206,7 @@ public final class MachineInstrBuilder {
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
       int insertPos,
-      TargetInstrDesc tid) {
+      MCInstrDesc tid) {
     MachineInstr mi = new MachineInstr(tid);
     mbb.insert(insertPos, mi);
     return new MachineInstrBuilder(mi);
@@ -215,7 +215,7 @@ public final class MachineInstrBuilder {
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
       int insertPos,
-      TargetInstrDesc tid,
+      MCInstrDesc tid,
       int destReg) {
     MachineInstr mi = new MachineInstr(tid);
     mbb.insert(insertPos, mi);
@@ -224,7 +224,7 @@ public final class MachineInstrBuilder {
 
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
-      TargetInstrDesc tid,
+      MCInstrDesc tid,
       int destReg) {
     MachineInstr mi = new MachineInstr(tid);
     mbb.addLast(mi);
@@ -233,17 +233,17 @@ public final class MachineInstrBuilder {
 
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
-      TargetInstrDesc tid) {
+      MCInstrDesc tid) {
     MachineInstr mi = new MachineInstr(tid);
     mbb.addLast(mi);
     return new MachineInstrBuilder(mi);
   }
 
-  public static MachineInstrBuilder buildMI(TargetInstrDesc desc) {
+  public static MachineInstrBuilder buildMI(MCInstrDesc desc) {
     return new MachineInstrBuilder(new MachineInstr(desc));
   }
 
-  public static MachineInstrBuilder buildMI(TargetInstrDesc desc, int destReg) {
+  public static MachineInstrBuilder buildMI(MCInstrDesc desc, int destReg) {
     return new MachineInstrBuilder(new MachineInstr(desc)).
         addReg(destReg, RegState.Define);
   }

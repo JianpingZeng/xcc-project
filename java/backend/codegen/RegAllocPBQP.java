@@ -17,12 +17,12 @@
 
 package backend.codegen;
 
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.pbqp.*;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
@@ -57,7 +57,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class RegAllocPBQP extends MachineFunctionPass {
   public static RegAllocPBQP createPBQPRegisterAllocator() {
@@ -67,7 +67,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
   private MachineFunction mf;
   private LiveIntervalAnalysis li;
   private LiveStackSlot ls;
-  private MachineLoop ml;
+  private MachineLoopInfo ml;
   private ArrayList<LiveInterval> virtIntervalToBeHandled;
   private ArrayList<LiveInterval> emptyIntervalToBeHandled;
   private PhysRegTracker pst;
@@ -85,8 +85,8 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     au.addRequired(LiveIntervalCoalescing.class);
     au.addRequired(LiveStackSlot.class);
     au.addPreserved(LiveStackSlot.class);
-    au.addRequired(MachineLoop.class);
-    au.addPreserved(MachineLoop.class);
+    au.addRequired(MachineLoopInfo.class);
+    au.addPreserved(MachineLoopInfo.class);
     super.getAnalysisUsage(au);
   }
 
@@ -108,7 +108,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     this.mf = mf;
     li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
     ls = (LiveStackSlot) getAnalysisToUpDate(LiveStackSlot.class);
-    ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    ml = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     virtIntervalToBeHandled = new ArrayList<>();
     emptyIntervalToBeHandled = new ArrayList<>();
     tri = mf.getTarget().getRegisterInfo();
@@ -203,10 +203,10 @@ public final class RegAllocPBQP extends MachineFunctionPass {
         if (isSrcPhyReg && isDestPhyReg)
           continue;
 
-        TargetRegisterClass srcRC = isSrcPhyReg ?
+        MCRegisterClass srcRC = isSrcPhyReg ?
             tri.getPhysicalRegisterRegClass(srcRegister) :
             mri.getRegClass(srcRegister);
-        TargetRegisterClass destRC = isDestPhyReg ?
+        MCRegisterClass destRC = isDestPhyReg ?
             tri.getPhysicalRegisterRegClass(destRegister) :
             mri.getRegClass(destRegister);
         if (srcRC != destRC)
@@ -413,7 +413,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     if (!vrm.hasStackSlot(cur.register))
       return;
     int ss = vrm.getStackSlot(cur.register);
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     LiveInterval slotInterval = ls.getOrCreateInterval(ss, rc);
     int valNumber;
     if (slotInterval.hasAtLeastOneValue())

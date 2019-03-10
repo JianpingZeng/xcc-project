@@ -21,7 +21,7 @@ import backend.pass.ImmutablePass;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachineModuleInfo implements ImmutablePass {
   private AnalysisResolver resolver;

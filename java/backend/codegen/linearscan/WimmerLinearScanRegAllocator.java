@@ -18,14 +18,14 @@
 package backend.codegen.linearscan;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import tools.BitMap;
 import tools.Util;
@@ -54,7 +54,7 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * </pre>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   public static WimmerLinearScanRegAllocator createWimmerLinearScanRegAlloc() {
@@ -70,8 +70,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
     // each live interval. The more nested, the more weight.
     au.addPreserved(MachineDomTree.class);
     au.addRequired(MachineDomTree.class);
-    au.addPreserved(MachineLoop.class);
-    au.addRequired(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
+    au.addRequired(MachineLoopInfo.class);
 
     super.getAnalysisUsage(au);
   }
@@ -86,7 +86,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   private MachineRegisterInfo mri;
   private IntervalLocKeeper ilk;
   private MachineFunction mf;
-  private MachineLoop ml;
+  private MachineLoopInfo ml;
   private MoveResolver resolver;
   private TargetInstrInfo tii;
   private LiveInterval cur;
@@ -127,7 +127,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
     resolver = new MoveResolver(this);
 
     li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
-    ml = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+    ml = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     spiller = new SimpleVirtualRegSpiller(ilk, mri);
 
     Util.assertion(ml != null);
@@ -268,7 +268,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   }
 
   private int allocateBlockedRegister(LiveInterval cur) {
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     int[] allocatableRegs = rc.getAllocableRegs(mf);
     int[] freeUntilPos = new int[tri.getNumRegs()];
     int[] blockPosBy = new int[tri.getNumRegs()];
@@ -431,7 +431,7 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   }
 
   private int getFreePhysReg(LiveInterval cur) {
-    TargetRegisterClass rc = mri.getRegClass(cur.register);
+    MCRegisterClass rc = mri.getRegClass(cur.register);
     int[] allocatableRegs = rc.getAllocableRegs(mf);
     int[] freeUntilPos = new int[tri.getNumRegs()];
     // set the free position of all free physical register as
@@ -621,10 +621,10 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   private void findPosAndInsertMove(MachineBasicBlock src, MachineBasicBlock dst) {
     if (src.getNumSuccessors() <= 1) {
       // insert a move instruction at the end of source basic block.
-      resolver.insertMoveInstr(src, src.getLastInst().index());
+      resolver.insertMoveInstr(src, src.getLastInst().getIndexInMBB());
     } else {
       // insert a move instruction at the begining of destination block.
-      resolver.insertMoveInstr(dst, dst.getFirstInst().index());
+      resolver.insertMoveInstr(dst, dst.getFirstInst().getIndexInMBB());
     }
   }
 

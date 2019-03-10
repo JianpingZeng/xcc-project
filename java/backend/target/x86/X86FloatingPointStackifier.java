@@ -18,13 +18,14 @@
 package backend.target.x86;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetOpcodes;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
@@ -40,14 +41,14 @@ import static backend.target.x86.X86GenRegisterInfo.RFP80RegisterClass;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86FloatingPointStackifier extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.setPreservesCFG();
     au.addRequired(EdgeBundles.class);
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }
@@ -300,7 +301,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private int calcLiveInMask(MachineBasicBlock mbb) {
     int mask = 0;
     for (TIntIterator itr = mbb.getLiveIns().iterator(); itr.hasNext(); ) {
-      int reg = itr.next() - X86GenRegisterNames.FP0;
+      int fpr = itr.next();
+      if (fpr < X86GenRegisterNames.FP0)
+        continue;
+      int reg = fpr - X86GenRegisterNames.FP0;
       if (reg < 8)
         mask |= 1 << reg;
     }
@@ -385,8 +389,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private static int getFPReg(MachineOperand mo) {
     Util.assertion(mo.isRegister(), "Expected an FP register!");
     int reg = mo.getReg();
-    Util.assertion(reg >= X86GenRegisterNames.FP0 && reg <= X86GenRegisterNames.FP6, "Expected FP register!");
-
+    Util.assertion(reg >= X86GenRegisterNames.FP0 &&
+        reg <= X86GenRegisterNames.FP6, "Expected FP register!");
     return reg - X86GenRegisterNames.FP0;
   }
 
@@ -887,7 +891,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
           stack[slot] = destReg;
           regMap[destReg] = slot;
         } else {
-          duplicateToTop(srcReg, destReg, itr);
+          duplicateToTop(srcReg, destReg, itr++);
         }
         break;
       }
@@ -963,7 +967,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
                 }
                 break;
             }*/
-      case TargetInstrInfo.IMPLICIT_DEF: {
+      case TargetOpcodes.IMPLICIT_DEF: {
         int reg = mi.getOperand(0).getReg() - X86GenRegisterNames.FP0;
         if (Util.DEBUG)
           System.err.printf("Emitting LD_F0 for implicit FP%d%n", reg);
@@ -971,7 +975,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         pushReg(reg);
         break;
       }
-      case TargetInstrInfo.INLINEASM: {
+      case TargetOpcodes.INLINEASM: {
         llvmReportError("inline asm not supported yet!");
         break;
       }
@@ -986,8 +990,10 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
               || mo.getReg() > X86GenRegisterNames.FP6)
             continue;
 
-          Util.assertion(mo.isUse() && (mo.isKill() || getFPReg(mo) == firstFPRegOp || mi.killsRegister(mo.getReg())), "Ret only defs operand, and values aren't live beyond it");
-
+          Util.assertion(mo.isUse() && (mo.isKill() ||
+                  getFPReg(mo) == firstFPRegOp
+                  || mi.killsRegister(mo.getReg())),
+              "Ret only defs operand, and values aren't live beyond it");
 
           if (firstFPRegOp == ~0)
             firstFPRegOp = getFPReg(mo);
@@ -1006,15 +1012,16 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         if (liveMask == 0) return itr;
 
         if (secondFPRegOp == ~0) {
-          Util.assertion(stackTop == 1 && firstFPRegOp == getStackEntry(0), "Top of stack not the right register for RET!");
-
+          Util.assertion(stackTop == 1 && firstFPRegOp == getStackEntry(0),
+              "Top of stack not the right register for RET!");
 
           stackTop = 0;
           return itr;
         }
 
         if (stackTop == 1) {
-          Util.assertion(firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0), "Stack misconfiguration for RET!");
+          Util.assertion(firstFPRegOp == secondFPRegOp && firstFPRegOp == getStackEntry(0),
+              "Stack misconfiguration for RET!");
 
           int newReg = getScratchReg();
           duplicateToTop(firstFPRegOp, newReg, itr);
@@ -1072,7 +1079,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
       int flags = mi.getDesc().tSFlags;
 
       int fpInstClass = flags & X86II.FPTypeMask;
-      if (mi.getOpcode() == TargetInstrInfo.INLINEASM)
+      if (mi.getOpcode() == TargetOpcodes.INLINEASM)
         fpInstClass = X86II.SpecialFP;
 
       if (fpInstClass == X86II.NotFP)

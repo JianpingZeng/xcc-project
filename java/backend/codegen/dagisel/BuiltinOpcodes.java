@@ -70,14 +70,13 @@ public interface BuiltinOpcodes {
   byte OPC_CheckFoldableChainNode = 35;
 
   byte OPC_EmitInteger = 36;
-  byte OPC_EmitStringInteger = 37;
-  byte OPC_EmitRegister = 38;
-  byte OPC_EmitConvertToTarget = 39;
-  byte OPC_EmitMergeInputChains = 40;
-  byte OPC_EmitCopyToReg = 41;
-  byte OPC_EmitNodeXForm = 42;
-  byte OPC_EmitNode = 43;
-  byte OPC_MorphNodeTo = 44;
-  byte OPC_MarkFlagResults = 45;
-  byte OPC_CompleteMatch = 46;
+  byte OPC_EmitRegister = 37;
+  byte OPC_EmitConvertToTarget = 38;
+  byte OPC_EmitMergeInputChains = 39;
+  byte OPC_EmitCopyToReg = 40;
+  byte OPC_EmitNodeXForm = 41;
+  byte OPC_EmitNode = 42;
+  byte OPC_MorphNodeTo = 43;
+  byte OPC_MarkFlagResults = 44;
+  byte OPC_CompleteMatch = 45;
 };

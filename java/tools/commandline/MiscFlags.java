@@ -20,7 +20,7 @@ package tools.commandline;
  * Miscellaneous flags to adjust argument.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum MiscFlags {
   CommaSeparated(0x200),  // Should this cl::list split between commas?

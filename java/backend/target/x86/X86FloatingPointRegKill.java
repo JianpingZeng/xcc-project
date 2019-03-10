@@ -18,14 +18,14 @@
 package backend.target.x86;
 
 import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.LLVMContext;
 import backend.support.MachineFunctionPass;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterClass;
 import backend.utils.SuccIterator;
 import backend.value.BasicBlock;
 import backend.value.Instruction.PhiNode;
@@ -40,7 +40,7 @@ import static backend.target.x86.X86GenRegisterInfo.*;
  * each machine basic block wherever FP register is used.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86FloatingPointRegKill extends MachineFunctionPass {
   public static final IntStatistic NumFPKills =
@@ -49,7 +49,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.setPreservesCFG();
-    au.addPreserved(MachineLoop.class);
+    au.addPreserved(MachineLoopInfo.class);
     au.addPreserved(MachineDomTree.class);
     super.getAnalysisUsage(au);
   }
@@ -80,7 +80,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
       for (int j = 0, end = mbb.size(); j < end && !containsFPCode; j++) {
         MachineInstr mi = mbb.getInstAt(j);
         if (mi.getNumOperands() != 0 && mi.getOperand(0).isRegister()) {
-          TargetRegisterClass rc;
+          MCRegisterClass rc;
           for (int op = 0; op < mi.getNumOperands(); op++) {
             MachineOperand mo = mi.getOperand(op);
             if (mo.isRegister() && mo.isDef() && mo.getReg() != 0 &&
@@ -102,7 +102,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
           for (int j = 0, sz = succBB.size(); j < sz && succBB.getInstAt(j) instanceof PhiNode; j++) {
             inst = (PhiNode) succBB.getInstAt(j);
             if (inst.getType().equals(LLVMContext.X86_FP80Ty) ||
-                (!subtarget.hasSSE1() && inst.getType().isFloatingPoint()) ||
+                (!subtarget.hasSSE1() && inst.getType().isFloatingPointType()) ||
                 (!subtarget.hasSSE2() && inst.getType().equals(LLVMContext.DoubleTy))) {
               containsFPCode = true;
               break;

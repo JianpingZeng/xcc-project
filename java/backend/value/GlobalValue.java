@@ -25,7 +25,7 @@ import static backend.value.GlobalValue.LinkageType.LinkerPrivateLinkage;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public abstract class GlobalValue extends Constant {
   /**
@@ -71,14 +71,14 @@ public abstract class GlobalValue extends Constant {
    */
   public GlobalValue(Type ty, int valueType, LinkageType linkage, String name) {
     super(ty, valueType);
-    this.name = name;
+    setName(name);
     linkageType = linkage;
     section = "";
   }
 
   public boolean isDeclaration() {
     if (this instanceof GlobalVariable)
-      return ((GlobalVariable) this).getNumOfOperands() == 0;
+      return getNumOfOperands() == 0;
 
     if (this instanceof Function)
       return ((Function) this).empty();
@@ -159,14 +159,6 @@ public abstract class GlobalValue extends Constant {
   public void setSection(String newSection) {
     section = newSection;
   }
-
-  /**
-   * Return true if the primary definition of this global value is
-   * outside of the current translation unit.
-   *
-   * @return
-   */
-  public abstract boolean isExternal();
 
   public int getAlignment() {
     return alignment;

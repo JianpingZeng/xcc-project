@@ -15,7 +15,7 @@ import java.util.Arrays;
  * Intrinsic instruction.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Intrinsic {
   public enum ID {
@@ -23,9 +23,9 @@ public class Intrinsic {
     memcpy("llvm.memcpy"),
     memmove("llvm.memmove"),
     memset("llvm.memset"),
-    vastart("llvm.vastart"),
-    vaend("llvm.vaend"),
-    vacopy("llvm.vacopy"),
+    vastart("llvm.va_start"),
+    vaend("llvm.va_end"),
+    vacopy("llvm.va_copy"),
     returnaddress("llvm.returnaddress"),
     frameaddress("llvm.frameaddress"),
     setjmp("llvm.setjmp"),
@@ -34,6 +34,10 @@ public class Intrinsic {
     powi("llvm.powi"),
     sin("llvm.sin"),
     cos("llvm.cos"),
+    llvm_invariant_end("llvm.invariant.end"),
+    llvm_invariant_start("llvm.invariant.start"),
+    llvm_lifetime_end("llvm.lifetime.end"),
+    llvm_lifetime_start("llvm.lifetime.start"),
     log("llvm.log"),
     log2("llvm.log2"),
     log10("llvm.log10"),
@@ -49,12 +53,12 @@ public class Intrinsic {
     stackrestore("llvm.stackrestore"),
     stackprotector("llvm.stackprotector"),
     trap("llvm.trap"),
-    uadd_with_overflow("llvm.uadd_with_overflow"),
-    sadd_with_overflow("llvm.sadd_with_overflow"),
-    usub_with_overflow("llvm.usub_with_overflow"),
-    ssub_with_overflow("llvm.ssub_with_overflow"),
-    umul_with_overflow("llvm.umul_with_overflow"),
-    smul_with_overflow("llvm.smul_with_overflow"),
+    uadd_with_overflow("llvm.uadd.with.overflow"),
+    sadd_with_overflow("llvm.sadd.with.overflow"),
+    usub_with_overflow("llvm.usub.with.overflow"),
+    ssub_with_overflow("llvm.ssub.with.overflow"),
+    umul_with_overflow("llvm.umul.with.overflow"),
+    smul_with_overflow("llvm.smul.with.overflow"),
     num_intrinsics("num_intrinsics");
 
     public String name;

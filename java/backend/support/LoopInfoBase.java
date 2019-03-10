@@ -26,7 +26,7 @@ import java.util.HashMap;
  * in the specified function.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface LoopInfoBase<BlockT, LoopT> {
   default LoopT getLoopFor(BlockT block) {

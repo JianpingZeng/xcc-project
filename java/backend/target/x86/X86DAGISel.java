@@ -21,10 +21,11 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.support.Attribute;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
-import backend.target.TargetRegisterClass;
+import backend.target.TargetOpcodes;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import tools.OutRef;
@@ -40,6 +41,7 @@ import static backend.codegen.dagisel.LoadExtType.NON_EXTLOAD;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.target.x86.X86ISelAddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86ISelAddressMode.BaseType.RegBase;
+import static backend.target.x86.X86RegisterInfo.*;
 
 public abstract class X86DAGISel extends SelectionDAGISel {
   protected X86TargetLowering tli;
@@ -324,11 +326,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
           SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
-              new EVT(MVT.Flag), ops);
+              new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 
@@ -347,7 +349,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
         // Copy the high half of the result, if it is needed.
         if (!new SDValue(node, 1).isUseEmpty()) {
-          SDValue result = new SDValue();
+          SDValue result;
           if (hiReg == X86GenRegisterNames.AH & subtarget.is64Bit()) {
             // Prevent use of AH in a REX instruction by referencing AX instead.
             // Shift it down 8 bits.
@@ -358,7 +360,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 new EVT(MVT.i16), result, curDAG.getTargetConstant(8,
                     new EVT(MVT.i8))), 0);
             // Then truncate it down to i8.
-            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
                 new EVT(MVT.i8), result);
           } else {
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
@@ -460,7 +462,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         } else {
           inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), loReg, n0, new SDValue()).getValue(1);
           if (isSigned && !signBitIsZero) {
-            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Flag), inFlag), 0);
+            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Glue), inFlag), 0);
           } else {
             SDValue clrNode = new SDValue(curDAG.getMachineNode(clrOpcode, nvt), 0);
             inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), clrReg, clrNode,
@@ -472,11 +474,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
           SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
-              new EVT(MVT.Flag), ops);
+              new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Flag),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 
@@ -504,7 +506,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16ri,
                 new EVT(MVT.i16), result, curDAG.getTargetConstant(8, new EVT(MVT.i8))), 0);
             // then truncate it down to i8
-            result = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
                 new EVT(MVT.i8), result);
           } else {
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
@@ -539,7 +541,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
             // On x86-32, only the ABCD registers have 8-bit subregisters.
             if (!subtarget.is64Bit()) {
-              TargetRegisterClass trc = null;
+              MCRegisterClass trc = null;
               switch (n0.getValueType().getSimpleVT().simpleVT) {
                 case MVT.i32:
                   trc = X86GenRegisterInfo.GR32_ABCDClass.getInstance();
@@ -551,13 +553,12 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                   Util.shouldNotReachHere("Unsupported TEST operand type!");
               }
               SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-              reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+              reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
                   reg.getValueType(), reg, rc), 0);
             }
 
             // Extract the l-register
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
-                new EVT(MVT.i8), reg);
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT, new EVT(MVT.i8), reg);
             // emit a testb
             return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, new EVT(MVT.i32), subreg, imm);
           }
@@ -570,7 +571,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue shiftedImm = curDAG.getTargetConstant(c.getZExtValue() >> 8, new EVT(MVT.i8));
 
             SDValue reg = n0.getNode().getOperand(0);
-            TargetRegisterClass trc = null;
+            MCRegisterClass trc = null;
             switch (n0.getValueType().getSimpleVT().simpleVT) {
               case MVT.i16:
                 trc = X86GenRegisterInfo.GR16_ABCDClass.getInstance();
@@ -585,11 +586,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 Util.shouldNotReachHere("Unsupported TEST operand type!");
             }
             SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-            reg = new SDValue(curDAG.getMachineNode(X86InstrInfo.COPY_TO_REGCLASS,
+            reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
                 reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86RegisterInfo.SUBREG_8BIT,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT_HI,
                 new EVT(MVT.i8), reg);
 
             // Emit a testb. No special NOREX tricks are needed since there's
@@ -606,7 +607,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 16-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.EXTRACT_SUBREG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_16BIT,
                 new EVT(MVT.i16), reg);
 
             // Emit a testw.
@@ -622,7 +623,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue reg = n0.getNode().getOperand(0);
 
             // Extract the 32-bit subregister.
-            SDValue subreg = curDAG.getTargetExtractSubreg(X86InstrInfo.SUBREG_TO_REG,
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_32BIT,
                 new EVT(MVT.i32), reg);
 
             // Emit a testl
@@ -787,7 +788,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           }
         }
     }
-    SDValue undef = new SDValue(curDAG.getTargetNode(TargetInstrInfo.IMPLICIT_DEF, vt), 0);
+    SDValue undef = new SDValue(curDAG.getTargetNode(TargetOpcodes.IMPLICIT_DEF, vt), 0);
     SDValue memOp = curDAG.getMemOperand(((MemSDNode) node).getMemOperand());
     if (isInc || isDec) {
       SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], memOp, chain};
@@ -818,7 +819,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
-  protected boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am) {
+  private boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am) {
     Util.assertion(val.getOpcode() == X86ISD.SegmentBaseAddress);
     SDValue segment = val.getOperand(0);
     if (am.segment.getNode() == null) {
@@ -828,7 +829,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean matchLoad(SDValue val, X86ISelAddressMode am) {
+  private boolean matchLoad(SDValue val, X86ISelAddressMode am) {
     SDValue address = val.getOperand(1);
     if (address.getOpcode() == X86ISD.SegmentBaseAddress &&
         !matchSegmentBaseAddress(address, am))
@@ -837,7 +838,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean matchWrapper(SDValue val, X86ISelAddressMode am) {
+  private boolean matchWrapper(SDValue val, X86ISelAddressMode am) {
     if (am.hasSymbolicDisplacement())
       return true;
     SDValue n0 = val.getOperand(0);
@@ -901,9 +902,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean matchAddress(SDValue val, X86ISelAddressMode am) {
-    if (matchAddressRecursively(val, am, 0))
-      return true;
+  private boolean matchAddress(SDValue val, X86ISelAddressMode am) {
+    OutRef<X86ISelAddressMode> amRef = new OutRef<>(am);
+    boolean res = matchAddressRecursively(val, amRef, 0);
+    am.setValuesFrom(amRef.get());
+    if (res) return true;
 
     if (am.scale == 2 && am.baseType == X86ISelAddressMode.BaseType.RegBase &&
         am.base.reg.getNode() == null) {
@@ -924,21 +927,23 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
-  protected boolean matchAddressRecursively(SDValue n, X86ISelAddressMode am, int depth) {
+  private boolean matchAddressRecursively(SDValue n,
+                                          OutRef<X86ISelAddressMode> am,
+                                          int depth) {
     boolean is64Bit = subtarget.is64Bit();
     if (depth > 5)
-      return matchAddressBase(n, am);
+      return matchAddressBase(n, am.get());
 
     CodeModel m = tm.getCodeModel();
-    if (am.isRIPRelative()) {
-      if (am.externalSym == null && am.jti != -1)
+    if (am.get().isRIPRelative()) {
+      if (am.get().externalSym == null && am.get().jti != -1)
         return true;
 
       if (n.getNode() instanceof ConstantSDNode) {
         ConstantSDNode cn = (ConstantSDNode) n.getNode();
-        long val = am.disp + cn.getSExtValue();
-        if (X86.isOffsetSuitableForCodeModel(val, m, am.hasSymbolicDisplacement())) {
-          am.disp = (int) val;
+        long val = am.get().disp + cn.getSExtValue();
+        if (X86.isOffsetSuitableForCodeModel(val, m, am.get().hasSymbolicDisplacement())) {
+          am.get().disp = (int) val;
           return false;
         }
       }
@@ -950,57 +955,57 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         break;
       case ISD.Constant: {
         long val = ((ConstantSDNode) n.getNode()).getSExtValue();
-        if (!is64Bit || X86.isOffsetSuitableForCodeModel(am.disp + val,
-            m, am.hasSymbolicDisplacement())) {
-          am.disp += val;
+        if (!is64Bit || X86.isOffsetSuitableForCodeModel(am.get().disp + val,
+            m, am.get().hasSymbolicDisplacement())) {
+          am.get().disp += val;
           return false;
         }
         break;
       }
       case X86ISD.SegmentBaseAddress: {
-        if (!matchSegmentBaseAddress(n, am))
+        if (!matchSegmentBaseAddress(n, am.get()))
           return false;
         break;
       }
       case X86ISD.Wrapper:
       case X86ISD.WrapperRIP: {
-        if (!matchWrapper(n, am))
+        if (!matchWrapper(n, am.get()))
           return false;
         break;
       }
       case ISD.LOAD:
-        if (!matchLoad(n, am))
+        if (!matchLoad(n, am.get()))
           return false;
         break;
       case ISD.FrameIndex:
-        if (am.baseType == RegBase && am.base.reg.getNode() == null) {
-          am.baseType = FrameIndexBase;
-          am.base.frameIndex = ((FrameIndexSDNode) n.getNode()).getFrameIndex();
+        if (am.get().baseType == RegBase && am.get().base.reg.getNode() == null) {
+          am.get().baseType = FrameIndexBase;
+          am.get().base.frameIndex = ((FrameIndexSDNode) n.getNode()).getFrameIndex();
           return false;
         }
         break;
       case ISD.SHL:
-        if (am.indexReg.getNode() != null || am.scale == 1)
+        if (am.get().indexReg.getNode() != null || am.get().scale == 1)
           break;
         if (n.getOperand(1).getNode() instanceof ConstantSDNode) {
           ConstantSDNode csd = (ConstantSDNode) n.getOperand(1).getNode();
           long val = csd.getZExtValue();
           if (val == 1 || val == 2 || val == 3) {
-            am.scale = 1 << val;
+            am.get().scale = 1 << val;
             SDValue shVal = n.getOperand(0);
             if (shVal.getOpcode() == ISD.ADD && shVal.hasOneUse() &&
                 shVal.getOperand(1).getNode() instanceof ConstantSDNode) {
-              am.indexReg = shVal.getOperand(0);
+              am.get().indexReg = shVal.getOperand(0);
               ConstantSDNode addVal = (ConstantSDNode) shVal.getOperand(1).getNode();
-              long disp = am.disp + (addVal.getSExtValue() << val);
+              long disp = am.get().disp + (addVal.getSExtValue() << val);
               if (!is64Bit || X86.isOffsetSuitableForCodeModel(disp,
-                  m, am.hasSymbolicDisplacement()))
-                am.disp = Math.toIntExact(disp);
+                  m, am.get().hasSymbolicDisplacement()))
+                am.get().disp = Math.toIntExact(disp);
               else {
-                am.indexReg = shVal;
+                am.get().indexReg = shVal;
               }
             } else {
-              am.indexReg = shVal;
+              am.get().indexReg = shVal;
             }
             return false;
           }
@@ -1014,45 +1019,53 @@ public abstract class X86DAGISel extends SelectionDAGISel {
       case ISD.MUL:
       case X86ISD.MUL_IMM:
         // X*[3,5,9] --> X+X*[2,4,8]
-        if (am.baseType == RegBase &&
-            am.base.reg.getNode() == null &&
-            am.indexReg.getNode() == null) {
+        if (am.get().baseType == RegBase &&
+            am.get().base.reg.getNode() == null &&
+            am.get().indexReg.getNode() == null) {
           if (n.getOperand(1).getNode() instanceof ConstantSDNode) {
             ConstantSDNode csd = (ConstantSDNode) n.getOperand(1).getNode();
             long val = csd.getZExtValue();
             if (val == 3 || val == 5 || val == 9) {
-              am.scale = (int) (val - 1);
+              am.get().scale = (int) (val - 1);
               SDValue mulVal = n.getOperand(0);
               SDValue reg;
               if (mulVal.getOpcode() == ISD.ADD && mulVal.hasOneUse() &&
                   mulVal.getOperand(1).getNode() instanceof ConstantSDNode) {
                 reg = mulVal.getOperand(0);
                 ConstantSDNode addVal = (ConstantSDNode) mulVal.getOperand(1).getNode();
-                long disp = am.disp + addVal.getSExtValue() * val;
+                long disp = am.get().disp + addVal.getSExtValue() * val;
 
                 if (!is64Bit || X86.isOffsetSuitableForCodeModel(disp,
-                    m, am.hasSymbolicDisplacement()))
-                  am.disp = Math.toIntExact(disp);
+                    m, am.get().hasSymbolicDisplacement()))
+                  am.get().disp = Math.toIntExact(disp);
                 else
                   reg = n.getOperand(0);
               } else {
                 reg = n.getOperand(0);
               }
 
-              am.indexReg = am.base.reg = reg;
+              am.get().indexReg = am.get().base.reg = reg;
               return false;
             }
           }
         }
         break;
       case ISD.SUB: {
-        X86ISelAddressMode backup = am.clone();
+        // Given A-B, if A can be completely folded into the address and
+        // the index field with the index field unused, use -B as the index.
+        // This is a win if a has multiple parts that can be folded into
+        // the address. Also, this saves a mov if the base register has
+        // other uses, since it avoids a two-address sub instruction, however
+        // it costs an additional mov if the index register has other uses.
+
+        // Test if the LHS of the sub can be folded.
+        X86ISelAddressMode backup = am.get().clone();
         if (matchAddressRecursively(n.getOperand(0), am, depth + 1)) {
-          am = backup;
+          am.set(backup);
           break;
         }
-        if (am.indexReg.getNode() != null || am.isRIPRelative()) {
-          am = backup;
+        if (am.get().indexReg.getNode() != null || am.get().isRIPRelative()) {
+          am.set(backup);
           break;
         }
         int cost = 0;
@@ -1066,27 +1079,27 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 rhs.getOperand(0).getValueType().equals(new EVT(MVT.i32))))
           ++cost;
 
-        if ((am.baseType == RegBase && am.base.reg.getNode() != null &&
-            !am.base.reg.getNode().hasOneUse()) ||
-            am.baseType == FrameIndexBase) {
+        if ((am.get().baseType == RegBase && am.get().base.reg.getNode() != null &&
+            !am.get().base.reg.getNode().hasOneUse()) ||
+            am.get().baseType == FrameIndexBase) {
           --cost;
         }
-        boolean b1 = (am.hasSymbolicDisplacement() && !backup.hasSymbolicDisplacement());
-        boolean b2 = am.disp != 0 && backup.disp == 0;
-        boolean b3 = am.segment.getNode() != null && backup.segment.getNode() == null;
+        boolean b1 = (am.get().hasSymbolicDisplacement() && !backup.hasSymbolicDisplacement());
+        boolean b2 = am.get().disp != 0 && backup.disp == 0;
+        boolean b3 = am.get().segment.getNode() != null && backup.segment.getNode() == null;
         if ((b1 ? 1 : 0) + (b2 ? 1 : 0) + (b3 ? 1 : 0) >= 2) {
           --cost;
         }
 
         if (cost >= 0) {
-          am = backup;
+          am.set(backup);
           break;
         }
 
         SDValue zero = curDAG.getConstant(0, n.getValueType(), false);
         SDValue neg = curDAG.getNode(ISD.SUB, n.getValueType(), zero, rhs);
-        am.indexReg = neg;
-        am.scale = 1;
+        am.get().indexReg = neg;
+        am.get().scale = 1;
 
         if (zero.getNode().getNodeID() == -1 ||
             zero.getNode().getNodeID() > n.getNode().getNodeID()) {
@@ -1101,26 +1114,25 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         return false;
       }
       case ISD.ADD: {
-        X86ISelAddressMode backup = am.clone();
+        X86ISelAddressMode backup = am.get().clone();
         if (!matchAddressRecursively(n.getOperand(0), am, depth + 1) &&
             !matchAddressRecursively(n.getOperand(1), am, depth + 1)) {
           return false;
         }
 
-        am = backup;
-
+        am.set(backup);
         if (!matchAddressRecursively(n.getOperand(1), am, depth + 1) &&
             !matchAddressRecursively(n.getOperand(0), am, depth + 1))
           return false;
 
-        am = backup;
+        am.set(backup);
 
-        if (am.baseType == RegBase &&
-            am.base.reg.getNode() == null &&
-            am.indexReg.getNode() == null) {
-          am.base.reg = n.getOperand(0);
-          am.indexReg = n.getOperand(1);
-          am.scale = 1;
+        if (am.get().baseType == RegBase &&
+            am.get().base.reg.getNode() == null &&
+            am.get().indexReg.getNode() == null) {
+          am.get().base.reg = n.getOperand(0);
+          am.get().indexReg = n.getOperand(1);
+          am.get().scale = 1;
           return false;
         }
         break;
@@ -1128,17 +1140,17 @@ public abstract class X86DAGISel extends SelectionDAGISel {
       case ISD.OR: {
         if (n.getOperand(1).getNode() instanceof ConstantSDNode) {
           ConstantSDNode csd = (ConstantSDNode) n.getOperand(1).getNode();
-          X86ISelAddressMode backup = am.clone();
+          X86ISelAddressMode backup = am.get().clone();
           long offset = csd.getSExtValue();
           if (!matchAddressRecursively(n.getOperand(0), am, depth + 1) &&
-              am.gv == null &&
+              am.get().gv == null &&
               (!is64Bit || X86.isOffsetSuitableForCodeModel(
-                  am.disp + offset, m, am.hasSymbolicDisplacement())) &&
+                  am.get().disp + offset, m, am.get().hasSymbolicDisplacement())) &&
               curDAG.maskedValueIsZero(n.getOperand(0), csd.getAPIntValue())) {
-            am.disp += offset;
+            am.get().disp += offset;
             return false;
           }
-          am = backup;
+          am.set(backup);
         }
         break;
       }
@@ -1146,7 +1158,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         SDValue shift = n.getOperand(0);
         if (shift.getNumOperands() != 2) break;
 
-        if (am.indexReg.getNode() != null || am.scale != 1) break;
+        if (am.get().indexReg.getNode() != null || am.get().scale != 1) break;
         SDValue x = shift.getOperand(0);
         if (!(n.getOperand(1).getNode() instanceof ConstantSDNode) ||
             !(shift.getOperand(1).getNode() instanceof ConstantSDNode))
@@ -1199,8 +1211,8 @@ public abstract class X86DAGISel extends SelectionDAGISel {
               shl.getNode().setNodeID(n.getNode().getNodeID());
             }
             curDAG.replaceAllUsesWith(n, shl, null);
-            am.indexReg = and;
-            am.scale = 1 << scaleLog;
+            am.get().indexReg = and;
+            am.get().scale = 1 << scaleLog;
             return false;
           }
         }
@@ -1240,12 +1252,12 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           newShift.getNode().setNodeID(n.getNode().getNodeID());
         }
         curDAG.replaceAllUsesWith(n, newShift, null);
-        am.scale = 1 << shiftCst;
-        am.indexReg = newAnd;
+        am.get().scale = 1 << shiftCst;
+        am.get().indexReg = newAnd;
         return false;
       }
     }
-    return matchAddressBase(n, am);
+    return matchAddressBase(n, am.get());
   }
 
   protected boolean matchAddressBase(SDValue n, X86ISelAddressMode am) {
@@ -1304,18 +1316,18 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectLEAAddr(SDNode op, SDValue val, SDValue[] comp) {
+  protected boolean selectLEAAddr(SDNode root, SDValue n, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     X86ISelAddressMode am = new X86ISelAddressMode();
-    SDValue copy = am.segment;
+    SDValue backup = am.segment.clone();
     SDValue t = curDAG.getRegister(0, new EVT(MVT.i32));
     am.segment = t;
-    if (matchAddress(val, am))
+    if (matchAddress(n, am))
       return false;
     Util.assertion(t.equals(am.segment));
-    am.segment = copy;
+    am.segment = backup;
 
-    EVT vt = val.getValueType();
+    EVT vt = n.getValueType();
     int complexity = 0;
     if (am.baseType == X86ISelAddressMode.BaseType.RegBase) {
       if (am.base.reg.getNode() != null)
@@ -1348,7 +1360,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     SDValue[] temp = new SDValue[5];
     temp[4] = new SDValue();    // segment.
     getAddressOperands(am, temp);
-    System.arraycopy(comp, 0, temp, 0, 4);
+    System.arraycopy(temp, 0, comp, 0, 4);
     return true;
   }
 
@@ -1700,7 +1712,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
   }
 
   protected SDNode getGlobalBaseReg() {
-    int baseReg = getTargetMachine().getInstrInfo().getGlobalBaseReg(mf);
+    int baseReg = subtarget.getInstrInfo().getGlobalBaseReg(mf);
     return curDAG.getRegister(baseReg, new EVT(tli.getPointerTy())).getNode();
   }
 

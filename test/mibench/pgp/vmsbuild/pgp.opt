@@ -1,0 +1,51 @@
+NAME=PGP26
+IDENT="MIT V2.6.2"
+!
+more
+fileio
+md5
+mdfile
+getopt
+system
+mpilib
+mpiio
+random
+crypto
+rsagen
+noise
+randpool
+!
+idea
+passwd
+genprime
+pgp
+config
+vax
+language
+charset
+armor
+!
+! RSA Stuff
+!
+rsaglue2
+!
+! Key Stuff
+!
+keymgmt
+keymaint
+keyadd
+!
+! ZIP Stuff
+!
+zbits
+zdeflate
+zglobals
+zinflate
+zip
+zipup
+zfile_io
+ztrees
+zunzip
+!
+rsareflib/library
+sys$share:vaxcrtl/share

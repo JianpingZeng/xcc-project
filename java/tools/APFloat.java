@@ -123,7 +123,7 @@ import static tools.APFloat.RoundingMode.*;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class APFloat implements Cloneable {
   public static final FltSemantics IEEEsingle =
@@ -304,12 +304,7 @@ public class APFloat implements Cloneable {
 
   @Override
   public APFloat clone() {
-    try {
-      return (APFloat) super.clone();
-    } catch (CloneNotSupportedException e) {
-      e.printStackTrace();
-      return null;
-    }
+    return new APFloat(this);
   }
 
   // IEEE remainder.
@@ -811,6 +806,10 @@ public class APFloat implements Cloneable {
     return semantics;
   }
 
+  public void setSemantics(FltSemantics semantics) {
+    this.semantics = semantics;
+  }
+
   public boolean isZero() {
     return category == FltCategory.fcZero;
   }
@@ -1000,7 +999,7 @@ public class APFloat implements Cloneable {
         exponent -= extendedPrecision - omsb;
       }
 
-      /* Create new semantics.  */
+      /* create new semantics.  */
       extendedSemantics = semantics;
       extendedSemantics.precision = extendedPrecision;
 

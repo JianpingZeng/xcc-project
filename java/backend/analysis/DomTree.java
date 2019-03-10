@@ -30,7 +30,7 @@ import java.util.ArrayList;
  * class {@linkplain DomTreeInfo}.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class DomTree implements FunctionPass {
   private IDomTreeInfo dt;

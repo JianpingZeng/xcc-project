@@ -25,7 +25,7 @@ import static backend.target.x86.X86AddressMode.BaseType.RegBase;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class X86InstrBuilder {
   public static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,

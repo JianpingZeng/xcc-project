@@ -28,7 +28,7 @@ import java.util.ArrayList;
  * algorithm named of "Poor's man pointer analysis".
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PoorManAliasAnalysis extends AliasAnalysis {
   @Override

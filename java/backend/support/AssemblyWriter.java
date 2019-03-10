@@ -18,27 +18,23 @@
 package backend.support;
 
 import backend.type.FunctionType;
-import backend.type.OpaqueType;
 import backend.type.PointerType;
+import backend.type.StructType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import backend.value.Module;
 import gnu.trove.iterator.TObjectIntIterator;
 import tools.*;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import static backend.support.AssemblyWriter.PrefixType.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
-import static tools.Util.hexDigit;
 
 public class AssemblyWriter {
   private FormattedOutputStream out;
@@ -54,43 +50,8 @@ public class AssemblyWriter {
     typePrinter = new TypePrinting();
     numberedTypes = new ArrayList<>();
     slotTracker = tracker;
-    addModuleTypesToPrinter(typePrinter, numberedTypes, m);
-  }
-
-  private static void addModuleTypesToPrinter(TypePrinting printer,
-                                              ArrayList<Type> numberedTypes, Module m) {
-    if (m == null)
-      return;
-
-    HashMap<String, Type> st = m.getTypeSymbolTable();
-    for (Map.Entry<String, Type> entry : st.entrySet()) {
-      Type ty = entry.getValue();
-      if (ty instanceof PointerType) {
-        PointerType ptr = (PointerType) ty;
-        Type eleTy = ptr.getElementType();
-        if ((eleTy.isPrimitiveType() || eleTy.isInteger())
-            && !(eleTy instanceof OpaqueType)) {
-          continue;
-        }
-      }
-
-      if (ty.isInteger() || ty.isPrimitiveType())
-        continue;
-
-      try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-           FormattedOutputStream os = new FormattedOutputStream(baos)) {
-        printLLVMName(os, entry.getKey(), LocalPrefix);
-        printer.addTypeName(ty, baos.toString());
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-
-    // Walk the entire module to find references to unnamed structure and opaque
-    // types.  This is required for correctness by opaque types (because multiple
-    // uses of an unnamed opaque type needs to be referred to by the same ID) and
-    // it shrinks complex recursive structure types substantially in some cases.
-    new TypeFinder(printer, numberedTypes).run(m);
+    if (m != null)
+      typePrinter.incorporateType(m);
   }
 
   enum PrefixType {
@@ -115,8 +76,9 @@ public class AssemblyWriter {
    * @param name
    * @param pt
    */
-  private static void printLLVMName(PrintStream os, String name,
-                                    PrefixType pt) {
+  static void printLLVMName(PrintStream os,
+                            String name,
+                            PrefixType pt) {
     Util.assertion(name != null && !name.isEmpty(), "Cannot get empty name!");
     switch (pt) {
       default:
@@ -159,8 +121,9 @@ public class AssemblyWriter {
    * @param name
    * @param pt
    */
-  private static void printLLVMName(FormattedOutputStream os, String name,
-                                    PrefixType pt) {
+  static void printLLVMName(FormattedOutputStream os,
+                            String name,
+                            PrefixType pt) {
     Util.assertion(name != null && !name.isEmpty(), "Cannot get empty name!");
     switch (pt) {
       default:
@@ -188,6 +151,8 @@ public class AssemblyWriter {
       }
     }
 
+    if (name.charAt(0) == '"' && name.charAt(name.length()-1) == '"')
+      needQuotes = false;
     if (!needQuotes) {
       os.print(name);
       return;
@@ -195,7 +160,7 @@ public class AssemblyWriter {
     os.printf("\"%s\"", name);
   }
 
-  public void write(Module m) throws IOException {
+  public void write(Module m) {
     printModule(m);
   }
 
@@ -295,7 +260,7 @@ public class AssemblyWriter {
     Constant cv = val instanceof Constant ? (Constant) val : null;
     if (cv != null && !(cv instanceof GlobalValue)) {
       Util.assertion(printer != null, "Constants require TypePrintering");
-      writeConstantInt(out, cv, printer, tracker);
+      writeConstantInternal(out, cv, printer, tracker);
       return;
     }
 
@@ -331,7 +296,7 @@ public class AssemblyWriter {
     Constant cv = val instanceof Constant ? (Constant) val : null;
     if (cv != null && !(cv instanceof GlobalValue)) {
       Util.assertion(printer != null, "Constants require TypePrintering");
-      writeConstantInt(out, cv, printer, tracker);
+      writeConstantInternal(out, cv, printer, tracker);
       return;
     }
 
@@ -392,8 +357,8 @@ public class AssemblyWriter {
       context = getModuleFromVal(val);
 
     TypePrinting printer = new TypePrinting();
-    ArrayList<Type> numberedTypes = new ArrayList<>();
-    addModuleTypesToPrinter(printer, numberedTypes, context);
+    if (context != null)
+      printer.incorporateType(context);
     if (printType) {
       printer.print(val.getType(), out);
       out.print(" ");
@@ -412,8 +377,8 @@ public class AssemblyWriter {
       context = getModuleFromVal(val);
 
     TypePrinting printer = new TypePrinting();
-    ArrayList<Type> numberedTypes = new ArrayList<>();
-    addModuleTypesToPrinter(printer, numberedTypes, context);
+    if (context != null)
+      printer.incorporateType(context);
     if (printType) {
       printer.print(val.getType(), out);
       out.print(" ");
@@ -421,8 +386,8 @@ public class AssemblyWriter {
     writeAsOperandInternal(out, val, printer, null);
   }
 
-  public static void writeConstantInt(PrintStream out, Constant cv,
-                                      TypePrinting printer, SlotTracker tracker) {
+  public static void writeConstantInternal(PrintStream out, Constant cv,
+                                           TypePrinting printer, SlotTracker tracker) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
       if (ci.getType().equals(LLVMContext.Int1Ty)) {
@@ -464,9 +429,9 @@ public class AssemblyWriter {
 
       // Some form of long double.  These appear as a magic letter identifying
       // the type, then a fixed number of hex digits.
-      out.printf("0x");
+      out.print("0x");
       if (fp.getValueAPF().getSemantics() == APFloat.x87DoubleExtended) {
-        out.printf("K");
+        out.print("K");
         APInt api = fp.getValueAPF().bitcastToAPInt();
         long[] p = api.getRawData();
         long word = p[1];
@@ -489,7 +454,7 @@ public class AssemblyWriter {
         }
         return;
       } else if (fp.getValueAPF().getSemantics() == APFloat.IEEEquad) {
-        out.printf("L");
+        out.print("L");
       } else {
         Util.shouldNotReachHere("Unsupported floating point type");
       }
@@ -519,7 +484,7 @@ public class AssemblyWriter {
     }
 
     if (cv instanceof ConstantAggregateZero) {
-      out.printf("zeroinitializer");
+      out.print("zeroinitializer");
       return;
     }
 
@@ -528,7 +493,7 @@ public class AssemblyWriter {
       Type elty = ca.getType().getElementType();
       if (ca.isString()) {
         out.print("c\"");
-        out.print(ca.getAsString());
+        out.print(Util.escapedString(ca.getAsString()));
         out.print("\"");
       } else {
         out.print("[");
@@ -592,29 +557,29 @@ public class AssemblyWriter {
       if (ce.isCompare()) {
         out.printf(" %s", getPredicateText(ce.getPredicate()));
       }
-      out.printf(" (");
+      out.print(" (");
 
       for (int i = 0, e = ce.getNumOfOperands(); i != e; i++) {
         printer.print(ce.operand(i).getType(), out);
         out.print(' ');
         writeAsOperandInternal(out, ce.operand(i), printer, tracker);
         if (i < e - 1)
-          out.printf(", ");
+          out.print(", ");
       }
 
       if (ce.isCast()) {
-        out.printf(" to ");
+        out.print(" to ");
         printer.print(ce.getType(), out);
       }
-      out.printf(")");
+      out.print(")");
       return;
     }
 
-    out.printf("<placeholder or erroneous Constant>");
+    out.print("<placeholder or erroneous Constant>");
   }
 
-  public static void writeConstantInt(FormattedOutputStream out, Constant cv,
-                                      TypePrinting printer, SlotTracker tracker) {
+  public static void writeConstantInternal(FormattedOutputStream out, Constant cv,
+                                           TypePrinting printer, SlotTracker tracker) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
       if (ci.getType().equals(LLVMContext.Int1Ty)) {
@@ -720,7 +685,7 @@ public class AssemblyWriter {
       Type elty = ca.getType().getElementType();
       if (ca.isString()) {
         out.print("c\"");
-        out.print(ca.getAsString());
+        out.print(Util.escapedString(ca.getAsString()));
         out.print("\"");
       } else {
         out.print("[");
@@ -1134,15 +1099,16 @@ public class AssemblyWriter {
       writeOperand(operand, true);
       out.print(", ");
       writeOperand(inst.operand(1), true);
-      out.print("[");
+      out.println(" [");
 
       for (int i = 2, e = inst.getNumOfOperands(); i < e; i += 2) {
-        out.println();
+        out.print("  ");
         writeOperand(inst.operand(i), true);
         out.print(", ");
         writeOperand(inst.operand(i + 1), true);
+        out.println();
       }
-      out.print("\n ]");
+      out.print(" ]");
     } else if (inst instanceof PhiNode) {
       out.print(' ');
       typePrinter.print(inst.getType(), out);
@@ -1159,6 +1125,22 @@ public class AssemblyWriter {
       }
     } else if (inst instanceof ReturnInst && operand == null) {
       out.print(" void");
+    } else if (inst instanceof ExtractValueInst) {
+      out.print(' ');
+      writeOperand(inst.operand(0), true);
+      ExtractValueInst evi = (ExtractValueInst) inst;
+      for (int idx : evi.getIndices()) {
+        out.printf(", %d", idx);
+      }
+    } else if (inst instanceof InsertValueInst) {
+      out.print(' ');
+      writeOperand(inst.operand(0), true);
+      out.print(", ");
+      writeOperand(inst.operand(1), true);
+      InsertValueInst ivi = (InsertValueInst) inst;
+      for (int idx : ivi.getIndices()) {
+        out.printf(", %d", idx);
+      }
     } else if (inst instanceof CallInst) {
       Util.assertion(operand != null, "No called function for CallInst");
 
@@ -1279,17 +1261,26 @@ public class AssemblyWriter {
     }
 
     if (m.getDataLayout() != null && !m.getDataLayout().isEmpty()) {
-      out.printf("target datalayout = \"%s\"\n", m.getDataLayout());
+      out.printf("target datalayout = %s\n", m.getDataLayout());
     }
     if (m.getTargetTriple() != null && !m.getTargetTriple().isEmpty()) {
-      out.printf("target triple = \"%s\"\n", m.getTargetTriple());
+      out.printf("target triple = %s\n", m.getTargetTriple());
+    }
+    if (m.getModuleInlineAsm() != null && !m.getModuleInlineAsm().isEmpty()) {
+      String[] temp = m.getModuleInlineAsm().split("\\n");
+      out.print("\nmodule asm ");
+      for (String str : temp) {
+        if (!str.isEmpty()) {
+          out.printf("\"%s\"\n", str);
+        }
+      }
     }
 
     // Loop over all symbol, emitting all id's types.
     if (!m.getTypeSymbolTable().isEmpty() || !numberedTypes.isEmpty())
       out.println();
 
-    printTypeSymbolTable(m.getTypeSymbolTable());
+    printTypeIdentities();
 
     // Emitting all globals.
     if (!m.getGlobalVariableList().isEmpty())
@@ -1305,32 +1296,33 @@ public class AssemblyWriter {
     }
   }
 
-  private void printTypeSymbolTable(HashMap<String, Type> st) {
+  private void printTypeIdentities() {
+    if (theModule.getTypeSymbolTable().isEmpty() &&
+        numberedTypes.isEmpty())
+          return;
+
     // Emit all numbered types.
-    for (int i = 0, e = numberedTypes.size(); i != e; i++) {
+    StructType[] numberedTypes = new StructType[typePrinter.numberedTypes.size()];
+    typePrinter.numberedTypes.forEachEntry((key, val) -> {
+      numberedTypes[val] = key;
+      return true;
+    });
+
+    for (int i = 0, e = numberedTypes.length; i != e; i++) {
       out.printf("%%%d = type ", i);
 
-      typePrinter.printAtLeastOneLevel(numberedTypes.get(i), out);
+      typePrinter.printStructBody(numberedTypes[i], out);
       out.println();
     }
 
     // print named types.
-    for (Map.Entry<String, Type> entry : st.entrySet()) {
-      printLLVMName(out, entry.getKey(), LocalPrefix);
+
+    for (StructType sty : typePrinter.namedTypes) {
+      printLLVMName(out, sty.getName(), LocalPrefix);
       out.print(" = type ");
 
-      typePrinter.printAtLeastOneLevel(entry.getValue(), out);
+      typePrinter.printStructBody(sty, out);
       out.println();
-    }
-  }
-
-  public static void printEscapedString(String name, FormattedOutputStream os) {
-    for (int i = 0, e = name.length(); i < e; i++) {
-      char ch = name.charAt(i);
-      if (TextUtils.isPrintable(ch) && ch != '\\' && ch != '"')
-        os.print(ch);
-      else
-        os.printf("\\%d%d", hexDigit(ch >> 4), hexDigit(ch & 0xF));
     }
   }
 

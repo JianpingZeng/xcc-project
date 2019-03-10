@@ -28,7 +28,7 @@ import static tools.Util.escapeString;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class ScheduleDAGDotTraits extends DefaultDotGraphTrait<SUnit> {
   private ScheduleDAG dag;

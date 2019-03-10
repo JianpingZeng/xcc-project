@@ -21,7 +21,7 @@ import java.io.PrintStream;
  * functions in the module
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface FunctionPass extends Pass {
   //protected AnalysisResolver resolver = new FunctionPassManager();

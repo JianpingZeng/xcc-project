@@ -23,4 +23,4 @@ config.host_cxx = "@HOST_CXX@"
 
 # Let the main config do the real work.
 lit_config.load_config(config, "@XCC_SOURCE_DIR@/java/test/backend/lit.cfg")
-lit_config.load_config(config, "@XCC_SOURCE_DIR@/java/test/jlang/lit.cfg")
+#lit_config.load_config(config, "@XCC_SOURCE_DIR@/java/test/jlang/lit.cfg")

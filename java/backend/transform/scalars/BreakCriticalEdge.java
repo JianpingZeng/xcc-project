@@ -60,7 +60,7 @@ import java.util.LinkedList;
  * </pre>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class BreakCriticalEdge implements FunctionPass {
   private int numBroken;
@@ -162,7 +162,7 @@ public final class BreakCriticalEdge implements FunctionPass {
     BasicBlock destBB = ti.getSuccessor(succNum);
     Function f = tibb.getParent();
 
-    // Create a new block, linking it into the CFG.
+    // create a new block, linking it into the CFG.
     BasicBlock newBB = BasicBlock.createBasicBlock(
         tibb.getName() + "." + destBB.getName() + "_crit_edge",
         f);

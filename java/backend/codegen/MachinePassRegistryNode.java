@@ -21,7 +21,7 @@ package backend.codegen;
  * Machine pass node stored in registration list.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class MachinePassRegistryNode<T> {
   private MachinePassRegistryNode next;

@@ -22,7 +22,7 @@ import tools.Util;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class PointerType extends SequentialType {
   private static TypeMap<Type, PointerType> pointerTypes;
@@ -83,12 +83,17 @@ public class PointerType extends SequentialType {
   }
 
   @Override
+  public int getNumContainedTypes() {
+    return 1;
+  }
+
+  @Override
   public void refineAbstractType(DerivedType oldTy, Type newTy) {
     Util.assertion(oldTy != newTy);
-    for (int i = 0, e = getNumContainedTypes(); i < e; i++) {
-      if (containedTys[i].getType() == oldTy)
-        containedTys[i].setType(newTy);
-    }
+
+    if (containedTys[0].getType() == oldTy)
+      containedTys[0].setType(newTy);
+
     oldTy.abstractTypeUsers.remove(this);
     isAbstract = false;
   }

@@ -25,6 +25,7 @@ import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.PhiNode;
+import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
@@ -41,7 +42,7 @@ import java.util.ArrayList;
  * performance some minor optimization, but I would to do in the future.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
     ModulePass, InstVisitor<Void> {

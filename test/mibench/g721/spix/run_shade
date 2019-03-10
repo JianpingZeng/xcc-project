@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.pcm .
+echo "copied a speech file (clinton.pcm)"
+
+/u/gs3/leec/leec/Projects/shade/bin/alu3 -o encode.summary -- ../bin/encode -4 -l < clinton.pcm > out.g721 3> encode.shade
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.g721 .
+echo "copied an encoded speech file (clinton.g721)"
+
+/u/gs3/leec/leec/Projects/shade/bin/alu3 -o decode.summary -- ../bin/decode -4 -l < clinton.g721 > out.pcm 3> decode.shade

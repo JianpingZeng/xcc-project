@@ -92,10 +92,18 @@ public enum Operator {
   // other operation
   Phi("phi", Load.index + 1, 0),
   Call("call", Phi.index + 1, 0),
-  GetElementPtr("getelementptr", Call.index + 1, 0),
+  Invoke("invoke", Call.index + 1, 0),
+  Unwind("unwind", Invoke.index + 1, 0),
+  GetElementPtr("getelementptr", Unwind.index + 1, 0),
+  VAArg("vaarg", GetElementPtr.index + 1, 0),
+  ExtractElement("extractelement", VAArg.index + 1, 0),
+  InsertElement("insertelement", ExtractElement.index + 1, 0),
+  ShuffleVector("shufflevector", InsertElement.index + 1, 0),
+  InsertValue("insertvalue", ShuffleVector.index + 1, 0),
+  ExtractValue("extractvalue", InsertValue.index + 1, 0),
 
   // Select instruction acts as ?: operator in C language.
-  Select("select", GetElementPtr.index + 1, 0);
+  Select("select", ExtractValue.index + 1, 0);
 
   public final String opName;
   public final int index;

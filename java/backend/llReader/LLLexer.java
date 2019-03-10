@@ -20,7 +20,7 @@ package backend.llReader;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.value.Operator;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.APFloat;
 import tools.*;
 import tools.APSInt;
@@ -33,7 +33,7 @@ import static backend.value.Operator.*;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LLLexer {
   private MemoryBuffer buffer;
@@ -86,8 +86,6 @@ public final class LLLexer {
   }
 
   private void initKeywords() {
-    keywords.put("begin", kw_begin);
-    keywords.put("end", kw_end);
     keywords.put("true", kw_true);
     keywords.put("false", kw_false);
     keywords.put("declare", kw_declare);
@@ -108,6 +106,7 @@ public final class LLLexer {
     keywords.put("dllexport", kw_dllexport);
     keywords.put("common", kw_common);
     keywords.put("default", kw_default);
+    keywords.put("unnamed_addr", kw_unnamed_addr);
     keywords.put("hidden", kw_hidden);
     keywords.put("protected", kw_protected);
     keywords.put("extern_weak", kw_extern_weak);
@@ -154,6 +153,7 @@ public final class LLLexer {
     keywords.put("inreg", kw_inreg);
     keywords.put("sret", kw_sret);
     keywords.put("nounwind", kw_nounwind);
+    keywords.put("uwtable", kw_uwtable);
     keywords.put("noreturn", kw_noreturn);
     keywords.put("noalias", kw_noalias);
     keywords.put("nocapture", kw_nocapture);
@@ -204,7 +204,7 @@ public final class LLLexer {
     typeKeywords.put("x86_fp80", LLVMContext.X86_FP80Ty);
     typeKeywords.put("fp128", LLVMContext.FP128Ty);
     typeKeywords.put("label", LLVMContext.LabelTy);
-    typeKeywords.put("metadata", null);
+    typeKeywords.put("metadata", LLVMContext.MetadataTy);
   }
 
   private void initOpcKeywords() {
@@ -243,29 +243,24 @@ public final class LLLexer {
     opcKeywords.put("inttoptr", Pair.get(IntToPtr, kw_inttoptr));
     opcKeywords.put("ptrtoint", Pair.get(PtrToInt, kw_ptrtoint));
     opcKeywords.put("bitcast", Pair.get(BitCast, kw_bitcast));
-    opcKeywords.put("select", null/*Pair.get(Select, kw_select)*/);
-    opcKeywords.put("va_arg", null/*Pair.get(VAArg, kw_va_arg)*/);
+    opcKeywords.put("select", Pair.get(Select, kw_select));
+    opcKeywords.put("va_arg", Pair.get(VAArg, kw_va_arg));
     opcKeywords.put("ret", Pair.get(Ret, kw_ret));
     opcKeywords.put("br", Pair.get(Br, kw_br));
     opcKeywords.put("switch", Pair.get(Switch, kw_switch));
-    opcKeywords.put("invoke", null/*Pair.get(Invoke, kw_invoke)*/);
-    opcKeywords.put("unwind", null/*Pair.get(Unwind, kw_unwind)*/);
+    opcKeywords.put("invoke", Pair.get(Invoke, kw_invoke));
+    opcKeywords.put("unwind", Pair.get(Unwind, kw_unwind));
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));
 
-    opcKeywords.put("malloc", Pair.get(Malloc, kw_malloc));
     opcKeywords.put("alloca", Pair.get(Alloca, kw_alloca));
-    opcKeywords.put("free", Pair.get(Free, kw_free));
     opcKeywords.put("load", Pair.get(Load, kw_load));
     opcKeywords.put("store", Pair.get(Store, kw_store));
-    opcKeywords.put("getelementptr",
-        Pair.get(GetElementPtr, kw_getelementptr));
-
-    opcKeywords.put("extractelement", null/*Pair.get(ExtractElement, kw_extractelement)*/);
-    opcKeywords.put("insertelement", null/*Pair.get(InsertElement, kw_insertelement)*/);
-    opcKeywords.put("shufflevector", null/*Pair.get(ShuffleVector, kw_shufflevector)*/);
-    opcKeywords.put("getresult", null/*Pair.get(ExtractValue, kw_getresult)*/);
-    opcKeywords.put("extractvalue", null/*Pair.get(ExtractValue, kw_extractvalue)*/);
-    opcKeywords.put("insertvalue", null/*Pair.get(InsertValue, kw_insertvalue)*/);
+    opcKeywords.put("getelementptr", Pair.get(GetElementPtr, kw_getelementptr));
+    opcKeywords.put("extractelement", Pair.get(ExtractElement, kw_extractelement));
+    opcKeywords.put("insertelement", Pair.get(InsertElement, kw_insertelement));
+    opcKeywords.put("shufflevector", Pair.get(ShuffleVector, kw_shufflevector));
+    opcKeywords.put("extractvalue", Pair.get(ExtractValue, kw_extractvalue));
+    opcKeywords.put("insertvalue", Pair.get(InsertValue, kw_insertvalue));
   }
 
   public LLTokenKind lex() {
@@ -483,7 +478,6 @@ public final class LLLexer {
         }
         if (ch == '"') {
           strVal = buffer.getSubString(tokStart + 2, curPtr - 1);
-          strVal = unEscapeLexed(strVal);
           return GlobalVar;
         }
       }
@@ -518,33 +512,6 @@ public final class LLLexer {
     }
   }
 
-  private static boolean isHexDigit(char ch) {
-    return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch < 'f') || (ch >= 'A' && ch <= 'F');
-  }
-
-  private static String unEscapeLexed(String str) {
-    if (str == null || str.isEmpty())
-      return str;
-
-    StringBuilder buf = new StringBuilder();
-    for (int i = 0, e = str.length(); i != e; ) {
-      if (str.charAt(i) == '\\') {
-        if (i < e - 1 && str.charAt(i + 1) == '\\') {
-          buf.append('\\');
-          i += 2;
-        } else if (i < e - 2 && isHexDigit(str.charAt(i + 1)) && isHexDigit(str.charAt(i + 2))) {
-          buf.append((char) Integer.parseInt(str.substring(i + 1, i + 3), 16));
-          i += 3;
-        } else {
-          buf.append(str.charAt(i++));
-        }
-      } else {
-        buf.append(str.charAt(i++));
-      }
-    }
-    return buf.toString();
-  }
-
   private static boolean isLLIdentifierPart(int ch) {
     return ch == '-' || Character.isLetter((char) ch) ||
         ch == '$' || ch == '.' || ch == '_';
@@ -557,7 +524,7 @@ public final class LLLexer {
    * @return
    */
   private static boolean isLabelChar(int ch) {
-    return isLLIdentifierPart(ch) || Character.isDigit((char) ch);
+    return isLLIdentifierPart(ch) || Character.isDigit((char) ch) || ch == '\\';
   }
 
   /**
@@ -581,7 +548,13 @@ public final class LLLexer {
         if (nextCh != '"')
           continue;
 
-        strVal = buffer.getSubString(tokStart + 1, curPtr - 1);
+        int len = curPtr-1 - (tokStart + 2);
+        if (len <= 0) {
+          error(SourceMgr.SMLoc.get(buffer, tokStart), "empty string for value is not allowed");
+          return Error;
+        }
+
+        strVal = buffer.getSubString(tokStart + 2, curPtr-1);
         return LocalVar;
       }
     } else if (isLLIdentifierPart(ch)) {
@@ -653,14 +626,12 @@ public final class LLLexer {
           continue;
         if (buffer.getCharAt(curPtr) != ':') {
           // label.
-          strVal = buffer.getSubString(tokStart + 1, curPtr - 1);
-          strVal = unEscapeLexed(strVal);
+          strVal = buffer.getSubString(tokStart+1, curPtr-1);
           return StringConstant;
         }
-        ++curPtr;
         // label.
-        strVal = buffer.getSubString(tokStart + 1, curPtr - 2);
-        strVal = unEscapeLexed(strVal);
+        strVal = buffer.getSubString(tokStart+1, curPtr-1);
+        ++curPtr;
         return LabelStr;
       }
     }
@@ -692,7 +663,7 @@ public final class LLLexer {
       return LabelStr;
     }
 
-    // Skip sequnce of digits.
+    // Skip sequence of digits.
     while (Character.isDigit(buffer.getCharAt(curPtr)))
       ++curPtr;
 
@@ -716,12 +687,12 @@ public final class LLLexer {
       if (buffer.getCharAt(tokStart) == '-') {
         int minBits = tmp.getMinSignedBits();
         if (minBits > 0 && minBits < numBits)
-          tmp.trunc(minBits);
+          tmp = tmp.trunc(minBits);
         apsIntVal = new APSInt(tmp, false);
       } else {
         int activeBits = tmp.getActiveBits();
         if (activeBits > 0 && activeBits < numBits)
-          tmp.trunc(activeBits);
+          tmp = tmp.trunc(activeBits);
         apsIntVal = new APSInt(tmp, true);
       }
       return APSInt;
@@ -761,7 +732,7 @@ public final class LLLexer {
         error("illegal hex number!");
         return 0;
       }
-      if (oldResult > result)
+      if (Long.compareUnsigned(oldResult, result) > 0)
         error("constant bigger than 64 bits detected!");
     }
     return result;
@@ -788,7 +759,7 @@ public final class LLLexer {
     if (ch >= 'K' && ch <= 'M') {
       kind = (char) ch;
       ++curPtr;
-    } else if (isHexDigit((char) ch)) {
+    } else if (Util.isHexDigit((char) ch)) {
       kind = 'J';
     } else {
       tokStart = curPtr;
@@ -796,7 +767,7 @@ public final class LLLexer {
       return Error;
     }
     // HexFP80Constant   0xK[0-9A-Fa-f]+
-    if (kind >= 'K' && kind <= 'M' && !isHexDigit((char) getNextChar())) {
+    if (kind >= 'K' && kind <= 'M' && !Util.isHexDigit((char) getNextChar())) {
       tokStart = curPtr + 1;
       error("Must have at least one hex digit after 'K,L,M'");
       return Error;
@@ -808,7 +779,7 @@ public final class LLLexer {
         error("End of file in hex decimal");
         return Error;
       }
-      if (!isHexDigit((char) ch)) {
+      if (!Util.isHexDigit((char) ch)) {
         // done!
         --curPtr;   // backward one character.
         break;
@@ -820,7 +791,7 @@ public final class LLLexer {
     switch (kind) {
       case 'J':
         long val = hexToInt(buffer.getSubString(tokStart + 2, curPtr));
-        floatVal = new APFloat(Util.bitsToDouble(val));
+        floatVal = new APFloat(Double.longBitsToDouble(val));
         break;
       case 'K':
         fp80HexFPToIntPair(buffer.getSubString(tokStart + 3, curPtr), pair);
@@ -835,7 +806,7 @@ public final class LLLexer {
         floatVal = new APFloat(new APInt(pair, 128));
         break;
       default:
-        Util.assertion(false, "Illegal character after '0x'");
+        Util.assertion("Illegal character after '0x'");
         break;
     }
     return APFloat;
@@ -955,7 +926,7 @@ public final class LLLexer {
     if ((fisrtCh == 'u' || fisrtCh == 's') &&
         buffer.getCharAt(curPtr) == '0' &&
         buffer.getCharAt(curPtr + 1) == 'x' &&
-        isHexDigit(buffer.getCharAt(curPtr + 2))) {
+        Util.isHexDigit(buffer.getCharAt(curPtr + 2))) {
 
       return APSInt;
     }
@@ -1026,20 +997,16 @@ public final class LLLexer {
    * @return
    */
   private LLTokenKind lexMetadata() {
-    int ch = getNextChar();
-    if (ch == -1) {
-      error("End of file in metadata");
-      return Error;
-    }
-    if (Character.isLetter((char) ch)) {
+    int ch = buffer.getCharAt(curPtr);
+    if (isLLIdentifierPart(ch) || ch == '\\') {
       do {
         ch = getNextChar();
       } while (isLabelChar(ch));
       // skip the !
       strVal = buffer.getSubString(tokStart + 1, curPtr - 1);
-      return NamedMD;
+      return MetadataVar;
     } else {
-      return Metadata;
+      return exclaim;
     }
   }
 

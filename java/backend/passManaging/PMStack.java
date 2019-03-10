@@ -24,7 +24,7 @@ import java.util.Stack;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class PMStack implements Iterable<PMDataManager> {
   private Stack<PMDataManager> pms;

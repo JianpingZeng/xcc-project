@@ -18,7 +18,7 @@
 package utils.filecheck;
 
 import gnu.trove.list.array.TCharArrayList;
-import jlang.support.MemoryBuffer;
+import cfe.support.MemoryBuffer;
 import tools.Error;
 import tools.SourceMgr;
 import tools.Util;
@@ -35,7 +35,7 @@ import static tools.commandline.ValueDesc.valueDesc;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class FileCheck {
   private static final StringOpt CheckFilename =

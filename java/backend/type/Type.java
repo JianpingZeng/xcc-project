@@ -37,7 +37,7 @@ import java.util.LinkedList;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class Type implements LLVMTypeID, AbstractTypeUser {
   /**
@@ -66,6 +66,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
    * efficiently, and dynamically very few types do not contain any elements.
    */
   protected PATypeHandle containedTys[];
+
   private static HashMap<Type, String> concreteTypeDescription =
       new HashMap<>();
 
@@ -114,17 +115,12 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
       case LabelTyID:
         return "label";
       default:
-        return "<unkown type>";
+        return "<unknown type>";
     }
   }
 
-  public boolean isInteger() {
+  public boolean isIntegerTy() {
     return id == IntegerTyID;
-  }
-
-  public boolean isFloatingPoint() {
-    return id == FloatTyID || id == DoubleTyID
-        || id == X86_FP80TyID || id == FP128TyID;
   }
 
   public int getPrimitiveSizeInBits() {
@@ -149,15 +145,15 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isUnsigned() {
-    return false;
+    return !isSigned();
   }
 
-  public boolean isIntegerType() {
-    return false;
+  public boolean isIntegerTy(int bitwidth) {
+    return isIntegerTy() && ((IntegerType)this).getBitWidth() == bitwidth;
   }
 
   public boolean isIntegral() {
-    return isIntegerType() || this == LLVMContext.Int1Ty;
+    return isIntegerTy() || this == LLVMContext.Int1Ty;
   }
 
   public boolean isPrimitiveType() {
@@ -189,7 +185,36 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isFloatingPointType() {
-    return id == FloatTyID || id == DoubleTyID;
+    return id == FloatTyID || id == DoubleTyID
+        || id == X86_FP80TyID || id == FP128TyID;
+  }
+
+  public boolean isFloatTy() {
+    return id == FloatTyID;
+  }
+
+  public boolean isDoubleTy() {
+    return id == DoubleTyID;
+  }
+
+  public boolean isX86_FP80Ty() {
+    return id == X86_FP80TyID;
+  }
+
+  public boolean isLabelTy() {
+    return id == LabelTyID;
+  }
+
+  public boolean isMetadataTy() {
+    return id == MetadataTyID;
+  }
+
+  public boolean isVectorTy() {
+    return id == VectorTyID;
+  }
+
+  public boolean isOpaqueTy() {
+    return id == OpaqueTyID;
   }
 
   /**
@@ -235,18 +260,19 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   /**
-   * Return true if it makes sense to take the getNumOfSubLoop of this type.
-   * To get the actual getNumOfSubLoop for a particular TargetData, it is reasonable
+   * Return true if it makes sense to take the size of this type.
+   * To get the actual size for a particular TargetData, it is reasonable
    * to use the TargetData subsystem to do that.
    *
    * @return
    */
   public boolean isSized() {
-    if ((id >= IntegerTyID && id <= IntegerTyID)
-        || isFloatingPointType() || id == PointerTyID)
+    // If it's a primitive, it is always sized.
+    if (id == IntegerTyID || isFloatingPointType() ||
+        id == PointerTyID || id == X86_MMXTyID)
       return true;
 
-    if (id != StructTyID && id != ArrayTyID)
+    if (id != StructTyID && id != ArrayTyID && id != VectorTyID)
       return false;
     // Otherwise we have to try harder to decide.
     return isSizedDerivedType() || !isAbstract();
@@ -259,12 +285,15 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
    * @return
    */
   private boolean isSizedDerivedType() {
-    if (isIntegerType())
+    if (isIntegerTy())
       return true;
 
     if (isArrayType()) {
       return ((ArrayType) this).getElementType().isSized();
     }
+    if (isVectorTy())
+      return ((VectorType)this).getElementType().isSized();
+
     if (!isStructType())
       return false;
     StructType st = (StructType) this;
@@ -307,7 +336,14 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   public Type getContainedType(int idx) {
     Util.assertion(containedTys != null && idx >= 0 && idx < containedTys.length);
+    Type ty = containedTys[idx].getType();
+    if (ty.isOpaqueTy()) {
+      return ((OpaqueType)ty).getForwardType();
+    }
+    return ty;
+  }
 
-    return containedTys[idx].getType();
+  public Type getForwardType() {
+    return this;
   }
 }

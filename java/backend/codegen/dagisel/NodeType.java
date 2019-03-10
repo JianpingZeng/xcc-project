@@ -19,7 +19,7 @@ package backend.codegen.dagisel;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum NodeType {
   // DELETED_NODE - This is an illegal value that is used to catch

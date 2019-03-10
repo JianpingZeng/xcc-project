@@ -45,7 +45,7 @@ import java.util.HashMap;
  * put off legalizing them until {@linkplain SelectionDAG#legalize} method runs.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class VectorLegalizer {
   private SelectionDAG dag;

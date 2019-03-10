@@ -28,7 +28,7 @@ import static backend.support.BasicBlockUtil.splitBlockPredecessors;
  * Loop rotation</a>)</b> and <b>Insertion of pre-header</b>.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LoopSimplify implements FunctionPass {
   private LoopInfo li;

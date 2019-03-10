@@ -18,7 +18,7 @@ package backend.codegen;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public interface CCAssignFn {
   boolean apply(int valNo, EVT valVT, EVT locVT, CCValAssign.LocInfo locInfo,

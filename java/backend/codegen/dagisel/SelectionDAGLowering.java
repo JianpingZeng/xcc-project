@@ -18,6 +18,7 @@
 package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
+import backend.analysis.aa.AliasResult;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.intrinsic.Intrinsic;
@@ -28,6 +29,7 @@ import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.*;
@@ -44,7 +46,7 @@ import static backend.value.Operator.Or;
 
 /**
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public class SelectionDAGLowering implements InstVisitor<Void> {
   MachineBasicBlock curMBB;
@@ -56,7 +58,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return hasTailCall;
   }
 
-  public void copyToExpendRegsIfNeeds(Value val) {
+  public void copyToExportRegsIfNeeds(Value val) {
     if (!val.isUseEmpty()) {
       if (funcInfo.valueMap.containsKey(val)) {
         int reg = funcInfo.valueMap.get(val);
@@ -323,11 +325,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   public void copyValueToVirtualRegister(Value val, int reg) {
     SDValue op = getValue(val);
-    Util.assertion(op.getOpcode() != ISD.CopyFromReg || ((RegisterSDNode) op.getOperand(1).getNode()).getReg()
-        != reg, "Copy from a arg to the same reg");
+    Util.assertion(op.getOpcode() != ISD.CopyFromReg ||
+        ((RegisterSDNode) op.getOperand(1).getNode()).getReg() != reg, "Copy from a arg to the same reg");
 
     Util.assertion(!TargetRegisterInfo.isPhysicalRegister(reg), "Is a physical reg?");
-
 
     RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
     SDValue chain = dag.getEntryNode();
@@ -563,8 +564,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitSwitch(u);
         break;
       case Unreachable:
-        // binary operator
-        Util.shouldNotReachHere();
+        // ignore unreachable instr.
         break;
       // add
       case Add:
@@ -713,7 +713,24 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case Select:
         visitSelect(u);
         break;
+      case ExtractElement:
+        visitExtractElementInst(u);
+        break;
+      case InsertElement:
+        visitInsertElementInst(u);
+        break;
+      case ShuffleVector:
+        visitShuffleVectorInst(u);
+        break;
+      case ExtractValue:
+        visitExtractVectorInst(u);
+        break;
+      case InsertValue:
+        visitInsertValueInst(u);
+        break;
+      case Invoke:
       default:
+        // TODO 1/16/2019
         Util.shouldNotReachHere("Unknown operator!");
     }
   }
@@ -802,8 +819,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       if (bo.hasOneUses() && (bo.getOpcode() == And || bo.getOpcode() == Or)) {
         findMergedConditions(bo, succ0MBB, succ1MBB, curMBB, bo.getOpcode());
 
-        Util.assertion(switchCases.get(0).thisMBB.equals(curMBB), "Unexpected lowering!");
-
+        Util.assertion(switchCases.isEmpty() || switchCases.get(0).thisMBB.equals(curMBB),
+            "Unexpected lowering!");
 
         if (shouldEmitAsBranches(switchCases)) {
           switchCases.forEach(cb -> {
@@ -815,9 +832,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           return null;
         }
 
-        switchCases.forEach(cb -> {
-          funcInfo.mf.erase(cb.thisMBB);
-        });
+        for (int i = 1, e = switchCases.size(); i < e; i++) {
+          funcInfo.mf.erase(switchCases.get(i).thisMBB);
+        }
         switchCases.clear();
       }
     }
@@ -850,15 +867,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     copyValueToVirtualRegister(val, reg);
   }
 
-  private void findMergedConditions(Value cond, MachineBasicBlock tbb,
-                                    MachineBasicBlock fbb, MachineBasicBlock curBB, Operator opc) {
-    if (!(cond instanceof CmpInst))
-      return;
-
-    CmpInst ci = (CmpInst) cond;
-    if (ci.getOpcode() != opc || !ci.hasOneUses() || ci.getParent() != curBB
-        .getBasicBlock() || !inBlock(ci.operand(0), curBB.getBasicBlock()) || !inBlock(ci.operand(1),
-        curBB.getBasicBlock())) {
+  private void findMergedConditions(Value cond,
+                                    MachineBasicBlock tbb,
+                                    MachineBasicBlock fbb,
+                                    MachineBasicBlock curBB,
+                                    Operator opc) {
+    Instruction inst = cond instanceof Instruction ? (Instruction)cond : null;
+    if (inst == null || !(inst instanceof BinaryOps ||
+        inst instanceof CmpInst) ||
+        inst.getOpcode() != opc || !inst.hasOneUses() ||
+        inst.getParent() != curBB.getBasicBlock() ||
+        !inBlock(inst.operand(0), curBB.getBasicBlock()) ||
+        !inBlock(inst.operand(1), curBB.getBasicBlock())) {
       emitBranchForMergedCondition(cond, tbb, fbb, curBB);
       return;
     }
@@ -875,8 +895,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       // TmpBB:
       //   jmp_if_Y TBB
       //   jmp FBB
-      findMergedConditions(ci.operand(0), tbb, tempBB, curBB, opc);
-      findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+      findMergedConditions(inst.operand(0), tbb, tempBB, curBB, opc);
+      findMergedConditions(inst.operand(1), tbb, fbb, tempBB, opc);
     } else {
       Util.assertion(opc == And);
       // Codegen X & Y as:
@@ -887,12 +907,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       //   jmp FBB
       //
       //  This requires creation of TmpBB after CurBB.
-      findMergedConditions(ci.operand(0), tempBB, fbb, curBB, opc);
-      findMergedConditions(ci.operand(1), tbb, fbb, tempBB, opc);
+      findMergedConditions(inst.operand(0), tempBB, fbb, curBB, opc);
+      findMergedConditions(inst.operand(1), tbb, fbb, tempBB, opc);
     }
   }
 
-  static boolean inBlock(Value val, BasicBlock bb) {
+  private static boolean inBlock(Value val, BasicBlock bb) {
     if (val instanceof Instruction) {
       return ((Instruction) val).getParent().equals(bb);
     }
@@ -945,11 +965,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue cond;
     SDValue condLHS = getValue(cb.cmpLHS);
     if (cb.cmpMHS == null) {
-      if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ)
+      if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ) {
         cond = condLHS;
+      }
       else if (cb.cmpRHS.equals(ConstantInt.getFalse()) & cb.cc == CondCode.SETEQ) {
-        SDValue t = dag.getConstant(1, condLHS.getValueType(), false);
-        cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, t);
+        SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
+        cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, one);
       } else {
         cond = dag.getSetCC(new EVT(MVT.i1), condLHS, getValue(cb.cmpRHS),
             cb.cc);
@@ -986,26 +1007,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock temp = cb.trueMBB;
       cb.trueMBB = cb.falseMBB;
       cb.falseMBB = temp;
-      SDValue t = dag.getConstant(1, cond.getValueType(), false);
-      cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, t);
+      SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
+      cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, one);
     }
-    SDValue brCond = dag
-        .getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(), cond,
-            dag.getBasicBlock(cb.trueMBB));
 
-    if (brCond.getOpcode() == ISD.BR) {
-      curMBB.removeSuccessor(cb.falseMBB);
-      dag.setRoot(brCond);
-    } else {
-      if (brCond.equals(getControlRoot()))
-        curMBB.removeSuccessor(cb.falseMBB);
+    SDValue brCond = dag.getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(),
+        cond, dag.getBasicBlock(cb.trueMBB));
 
-      if (cb.falseMBB.equals(nextBlock))
-        dag.setRoot(brCond);
-      else
-        dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
-            dag.getBasicBlock(cb.falseMBB)));
-    }
+    // Insert the false branch. Do this even if it's a fall through branch,
+    // this makes it easier to do DAG optimizations which require inverting
+    // the branch condition.
+      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+          brCond, dag.getBasicBlock(cb.falseMBB)));
   }
 
   @Override
@@ -1028,8 +1041,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     ArrayList<Case> cases = new ArrayList<>();
-    int numCmps = clusterify(cases, si);
-    numCmps = 0;
+    clusterify(cases, si);
 
     Value condVal = si.operand(0);
     Stack<CaseRec> worklist = new Stack<>();
@@ -1117,7 +1129,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     APInt minVal = cr.caseRanges.get(frontCaseIdx).low.getValue();
-    APInt maxVal = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt maxVal = cr.caseRanges.get(backCaseIdx-1).high.getValue();
 
     APInt cmpRange = maxVal.sub(minVal);
 
@@ -1208,6 +1220,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         if (cr.caseRanges.get(i).mbb.equals(nextBlock)) {
           Case t = cr.caseRanges.get(i);
           cr.caseRanges.set(i, backCase);
+          cr.caseRanges.set(cr.caseRanges.size() - 1, t);
           backCase = t;
           break;
         }
@@ -1219,7 +1232,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock fallThrough = null;
       if (!cr.caseRanges.get(i).equals(cr.caseRanges.get(e - 1))) {
         fallThrough = mf.createMachineBasicBlock(curBlock.getBasicBlock());
-        mf.insert(itr, fallThrough);
+        mf.insert(itr++, fallThrough);
 
         exportFromCurrentBlock(val);
       } else {
@@ -1256,7 +1269,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     int frontCaseIdx = 0, backCaseIdx = cr.caseRanges.size();
 
     APInt first = cr.caseRanges.get(0).low.getValue();
-    APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt last = cr.caseRanges.get(backCaseIdx-1).high.getValue();
 
     int tsize = 0;
     for (Case c : cr.caseRanges)
@@ -1307,7 +1320,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
     }
 
-    int jti = mf.getJumpTableInfo().getJumpTableIndex(destMBBs);
+    MachineJumpTableInfo.JTEntryKind encoding = tli.getJumpTableEncoding();
+    int jti = mf.getOrCreateJumpTableInfo(encoding).getJumpTableIndex(destMBBs);
 
     JumpTable jt = new JumpTable(-1, jti, jumpTableBB, defaultMBB);
     JumpTableHeader jht = new JumpTableHeader(first, last, val, cr.mbb,
@@ -1381,7 +1395,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     int size = cr.caseRanges.size();
 
     APInt first = cr.caseRanges.get(frontCaseIdx).low.getValue();
-    APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt last = cr.caseRanges.get(backCaseIdx - 1).high.getValue();
     double fmetric = 0.0;
     int pivot = size / 2;
 
@@ -1415,15 +1429,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       pivot = size / 2;
     }
 
-    ArrayList<Case> lhsr = new ArrayList<>();
-    lhsr.addAll(cr.caseRanges.subList(0, pivot));
-    ArrayList<Case> rhsr = new ArrayList<>();
-    rhsr.addAll(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
+    ArrayList<Case> lhsr = new ArrayList<>(cr.caseRanges.subList(0, pivot));
+    ArrayList<Case> rhsr = new ArrayList<>(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
 
     ConstantInt c = cr.caseRanges.get(pivot).low;
     MachineBasicBlock falseBB = null, trueBB = null;
 
-    if (lhsr.size() == 1 && lhsr.get(0).high.getValue().eq(cr.high.getValue())
+    if (lhsr.size() == 1 && Objects.equals(lhsr.get(0).high, cr.high)
         && c.getValue().eq(cr.high.getValue().add(1))) {
       trueBB = lhsr.get(0).mbb;
     } else {
@@ -1455,13 +1467,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return true;
   }
 
-  static boolean areJTsAllowed(TargetLowering tli) {
-    return !DisableJumpTables.value && (
-        tli.isOperationLegalOrCustom(ISD.BR_JT, new EVT(MVT.Other))
-            || tli.isOperationLegalOrCustom(ISD.BRIND, new EVT(MVT.Other)));
+  private static boolean areJTsAllowed(TargetLowering tli) {
+    return !DisableJumpTables.value && (tli.isOperationLegalOrCustom(ISD.BR_JT, new EVT(MVT.Other))
+        || tli.isOperationLegalOrCustom(ISD.BRIND, new EVT(MVT.Other)));
   }
 
-  static APInt computeRange(APInt first, APInt last) {
+  private static APInt computeRange(APInt first, APInt last) {
     APInt lastExt = new APInt(last), firstExt = new APInt(first);
     int bitWidth = Math.max(last.getBitWidth(), first.getBitWidth()) + 1;
     lastExt.sext(bitWidth);
@@ -1469,7 +1480,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return lastExt.sub(firstExt).add(1);
   }
 
-  public void visitBitTestHeader(BitTestBlock btb) {
+  void visitBitTestHeader(BitTestBlock btb) {
     SDValue switchOp = getValue(btb.val);
     EVT vt = switchOp.getValueType();
     SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(btb.first, vt, false));
@@ -1578,7 +1589,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case LShr:
         return ISD.SRA;
       default:
-        Util.assertion(false, "Unknown binary operator!");
+        Util.assertion("Unknown binary operator!");
         return -1;
     }
   }
@@ -1865,7 +1876,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     else if (intPtr.bitsGT(allocaSize.getValueType()))
       allocaSize = dag.getNode(ISD.ZERO_EXTEND, intPtr, allocaSize);
 
-    int stackAlign = tli.getTargetMachine().getFrameInfo().getStackAlignment();
+    int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
     if (align <= stackAlign)
       align = 0;
 
@@ -1999,7 +2010,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "copysign":
           case "copysignf": {
             if (ci.getNumOfOperands() == 3 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType()) &&
                 ci.getType().equals(ci.operand(2).getType())) {
               SDValue lhs = getValue(ci.operand(1));
@@ -2013,7 +2024,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "fabs":
           case "fabsf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FABS, lhs.getValueType(), lhs));
@@ -2024,7 +2035,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "sin":
           case "sinf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FSIN, lhs.getValueType(), lhs));
@@ -2036,7 +2047,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "cosf":
           case "cosl": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPoint() &&
+                ci.operand(1).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.operand(1).getType())) {
               SDValue lhs = getValue(ci.operand(1));
               setValue(ci, dag.getNode(ISD.FCOS, lhs.getValueType(), lhs));
@@ -2068,7 +2079,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
    * @return
    */
   private String visitIntrinsicCall(CallInst ci, Intrinsic.ID iid) {
-    // TODO: 2018/6/18
     switch (iid) {
       default:
         // turns on call to intrinsic to target specified handler.
@@ -2083,41 +2093,177 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case vacopy:
         visitVACopy(ci);
         return null;
+      case returnaddress:
+        setValue(ci, dag.getNode(ISD.RETURNADDR, new EVT(tli.getPointerTy()),
+            getValue(ci.operand(1))));
+        return null;
+      case frameaddress:
+        setValue(ci, dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
+            getValue(ci.operand(1))));
+        return null;
+      case setjmp:
+        return "_setjmp" + (tli.isUseUnderscoreSetJmp()?"0":"1");
+      case longjmp:
+        return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
       case memset: {
-        SDValue op1 = getValue(ci.operand(1));
-        SDValue op2 = getValue(ci.operand(2));
-        SDValue op3 = getValue(ci.operand(3));
-        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
         dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
-            align, ci.operand(1), 0));
+            align, ci.getArgOperand(0), 0));
         return null;
       }
       case memcpy: {
-        SDValue op1 = getValue(ci.operand(1));
-        SDValue op2 = getValue(ci.operand(2));
-        SDValue op3 = getValue(ci.operand(3));
-        int align = (int) ((ConstantInt) ci.operand(4)).getZExtValue();
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
+        boolean isVolatile = ((ConstantInt)ci.getArgOperand(4)).getZExtValue() == 1;
         dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
-            align, false, ci.operand(1),
-            0, ci.operand(2), 0));
+            align, false, ci.getArgOperand(0),
+            0, ci.getArgOperand(1), 0));
+
         return null;
       }
+      case memmove: {
+        // Assert for address < 256 since we support only user defined address
+        // spaces.
+        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+
+        SDValue op1 = getValue(ci.getArgOperand(0));
+        SDValue op2 = getValue(ci.getArgOperand(1));
+        SDValue op3 = getValue(ci.getArgOperand(2));
+        int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
+
+        // If the source and destination are known to not be aliases, we can
+        // lower memmove as memcpy.
+        long size = -1;
+        if (op3.getNode() instanceof SDNode.ConstantSDNode) {
+          size = ((SDNode.ConstantSDNode)op3.getNode()).getZExtValue();
+        }
+        if (aa != null && aa.alias(ci.getArgOperand(0), (int)size,
+            ci.getArgOperand(1), (int)size) == AliasResult.NoAlias) {
+          dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.getArgOperand(0),
+              0, ci.getArgOperand(1), 0));
+          return null;
+        }
+
+        dag.setRoot(dag.getMemmove(getRoot(), op1, op2, op3,
+            align, ci.getArgOperand(0), 0, ci.getArgOperand(1), 0));
+        return null;
+      }
+      case sqrt:
+        setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+        return null;
+      case sin:
+        setValue(ci, dag.getNode(ISD.FSIN, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+      case cos:
+        setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+      case log:
+      case log2:
+      case log10:
+      case exp:
+      case exp2:
+      case pow:
+        Util.shouldNotReachHere("unimplemented math function!");
+        return null;
+      case pcmarker:
+        SDValue tmp = getValue(ci.operand(1));
+        dag.setRoot(dag.getNode(ISD.PCMARKER, new EVT(MVT.Other),
+            getRoot(), tmp));
+        return null;
+      case bswap:
+        setValue(ci, dag.getNode(ISD.BSWAP,
+            getValue(ci.operand(1)).getValueType(),
+            getValue(ci.operand(1))));
+        return null;
+      case cttz: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTTZ, vt, arg));
+        return null;
+      }
+      case ctlz: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTLZ, vt, arg));
+        return null;
+      }
+      case ctpop: {
+        SDValue arg = getValue(ci.operand(1));
+        EVT vt = arg.getValueType();
+        setValue(ci, dag.getNode(ISD.CTPOP, vt, arg));
+        return null;
+      }
+      case stacksave: {
+        SDValue op = getValue(ci.operand(1));
+        SDValue res = dag.getNode(ISD.STACKSAVE,
+            dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other)), op);
+        setValue(ci, res);
+        dag.setRoot(res.getValue(1));
+        return null;
+      }
+      case stackrestore: {
+        SDValue res = getValue(ci.operand(1));
+        dag.setRoot(dag.getNode(ISD.STACKRESTORE, new EVT(MVT.Other), getRoot(),
+            res));
+        return null;
+      }
+      case uadd_with_overflow:
+        return implVisitAluOverflow(ci, ISD.UADDO);
+      case sadd_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SADDO);
+      case usub_with_overflow:
+        return implVisitAluOverflow(ci, ISD.USUBO);
+      case ssub_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SSUBO);
+      case umul_with_overflow:
+        return implVisitAluOverflow(ci, ISD.UMULO);
+      case smul_with_overflow:
+        return implVisitAluOverflow(ci, ISD.SMULO);
+      case llvm_invariant_start:
+      case llvm_lifetime_start:
+        // discard it
+        setValue(ci, dag.getUNDEF(new EVT(tli.getPointerTy())));
+        return null;
+      case llvm_invariant_end:
+      case llvm_lifetime_end:
+        return null;
     }
   }
 
   private void visitVACopy(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VACOPY, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(0)), getValue(ci.operand(2)),
+        dag.getSrcValue(ci.operand(1)),
+        dag.getSrcValue(ci.operand(2))));
   }
 
   private void visitVAEnd(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VAEND, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(0)), dag.getSrcValue(ci.operand(1))));
   }
 
   private void visitVAStart(CallInst ci) {
-    // TODO: 2018/6/18
+    dag.setRoot(dag.getNode(ISD.VASTART, new EVT(MVT.Other), getRoot(),
+        getValue(ci.operand(1)), dag.getSrcValue(ci.operand(1))));
   }
 
-  public void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
+  private void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
     boolean hasChain = !ci.doesNotAccessMemory();
     boolean onlyLoad = hasChain && ci.onlyReadsMemory();
 
@@ -2131,7 +2277,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     IntrinsicInfo info = new IntrinsicInfo();
     boolean isTargetIntrinsic = tli.getTargetMemIntrinsic(info, ci, iid);
-    ;
     if (!isTargetIntrinsic)
       ops.add(dag.getConstant(iid.ordinal(), new EVT(tli.getPointerTy()), false));
 
@@ -2263,6 +2408,192 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   @Override
   public Void visitFree(User inst) {
     Util.shouldNotReachHere("Not implemented currently!");
+    return null;
+  }
+
+  @Override
+  public Void visitExtractElementInst(User inst) {
+    SDValue inVec = getValue(inst.operand(0));
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+        getValue(inst.operand(1)));
+    setValue(inst, dag.getNode(ISD.EXTRACT_VECTOR_ELT, tli.getValueType(inst.getType()),
+        inVec, inIdx));
+    return null;
+  }
+
+  @Override
+  public Void visitInsertElementInst(User inst) {
+    SDValue inVec = getValue(inst.operand(0));
+    SDValue inVal = getValue(inst.operand(1));
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+        getValue(inst.operand(2)));
+    setValue(inst, dag.getNode(ISD.INSERT_VECTOR_ELT, tli.getValueType(inst.getType()),
+        inVec, inVal, inIdx));
+    return null;
+  }
+
+  @Override
+  public Void visitShuffleVectorInst(User inst) {
+    SDValue src1 = getValue(inst.operand(0));
+    SDValue src2 = getValue(inst.operand(1));
+
+    TIntArrayList mask = new TIntArrayList();
+    ShuffleVectorInst.getShuffleMask((Constant)inst.operand(2), mask);
+
+    EVT vt = tli.getValueType(inst.getType());
+    EVT srcVT = src1.getValueType();
+    int srcNumElts = srcVT.getVectorNumElements();
+    int maskNumElts = mask.size();
+    if (srcNumElts == maskNumElts) {
+      setValue(inst, dag.getVectorShuffle(vt, src1, src2, mask.toArray()));
+      return null;
+    }
+    // TODO
+    return null;
+  }
+
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices) {
+    return computeLinearIndex(ty, indices, 0);
+  }
+
+  /**
+   * Given an LLVM IR aggregate type and a sequence of insertvalue or extractvalue
+   * indices that identify a member, return the linearized index of the start of
+   * the member.
+   * @param ty
+   * @param indices
+   * @param curIndex
+   * @return
+   */
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices,
+                                        int curIndex) {
+    return computeLinearIndex(ty, indices, 0, indices.length, curIndex);
+  }
+
+  private static int computeLinearIndex(Type ty,
+                                        int[] indices,
+                                        int indexBegin,
+                                        int indexEnd,
+                                        int curIndex) {
+    // base case, we are done.
+    if (indices != null && indexBegin == indexEnd)
+      return curIndex;
+
+    if (ty instanceof StructType) {
+      StructType sty = (StructType) ty;
+      for (int i = 0, e = sty.getNumOfElements(); i < e; i++) {
+        if (indices != null && indices[indexBegin] == e - i)
+          return computeLinearIndex(sty.getElementType(i), indices, indexBegin+1, indexEnd, curIndex);
+        curIndex = computeLinearIndex(sty.getElementType(i), null, 0, 0, curIndex);
+      }
+      return curIndex;
+    }
+
+    // given array type, recursively tranverse the element.
+    else if (ty instanceof ArrayType) {
+      ArrayType aty = (ArrayType) ty;
+      Type eltTy = aty.getElementType();
+      for (int i = 0, e = (int) aty.getNumElements(); i < e; i++) {
+        if (indices != null && indexBegin < indexEnd && indices[indexBegin] == i)
+          return computeLinearIndex(eltTy, indices, indexBegin+1, indexEnd, curIndex);
+        curIndex = computeLinearIndex(eltTy, null, 0, 0, curIndex);
+      }
+      return curIndex;
+    }
+    return curIndex + 1;
+  }
+
+  @Override
+  public Void visitExtractVectorInst(User inst) {
+    Value op0 = inst.operand(0);
+    Type aggTy = op0.getType();
+    Type valTy = inst.getType();
+    boolean outOfUndef = op0 instanceof Value.UndefValue;
+
+    int linearIndex = computeLinearIndex(aggTy, ((ExtractValueInst)inst).getIndices());
+    ArrayList<EVT> valValueVTs = new ArrayList<>();
+    computeValueVTs(tli, valTy, valValueVTs);
+
+    int numValValues = valValueVTs.size();
+    if (numValValues == 0) {
+      setValue(inst, dag.getUNDEF(new EVT(MVT.Other)));
+      return null;
+    }
+
+    SDValue[] values = new SDValue[numValValues];
+    SDValue agg = getValue(op0);
+    // Copy out the selected value(s).
+    for (int i = linearIndex; i < linearIndex + numValValues; i++) {
+      values[i - linearIndex] = outOfUndef ? dag.getUNDEF(agg.getNode().getValueType(agg.getResNo()+i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valValueVTs), values));
+    return null;
+  }
+
+  @Override
+  public Void visitInsertValueInst(User inst) {
+    InsertValueInst ivInst = (InsertValueInst) inst;
+    Value op0 = inst.operand(0);
+    Value op1 = inst.operand(1);
+    Type aggTy = inst.getType();
+    Type valTy = op1.getType();
+
+    boolean intoUndef = op0 instanceof Value.UndefValue;
+    boolean fromUndef = op1 instanceof Value.UndefValue;
+
+    int linearIndex = computeLinearIndex(aggTy, ivInst.getIndices());
+    ArrayList<EVT> aggValueVTs = new ArrayList<>();
+    computeValueVTs(tli, aggTy, aggValueVTs);
+
+    ArrayList<EVT> valValueVTs = new ArrayList<>();
+    computeValueVTs(tli, valTy, valValueVTs);
+
+    int numAggValues = aggValueVTs.size();
+    int numValValues = valValueVTs.size();
+    SDValue[] values = new SDValue[numAggValues];
+    SDValue agg = getValue(op0);
+
+    int i = 0;
+    // Copy the beginning value(s) from the original aggregate.
+    for (; i < linearIndex; i++) {
+      values[i] = intoUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    // Copy values from the inserted value(s).
+    if (numValValues != 0) {
+      SDValue val = getValue(op1);
+      for (; i < linearIndex + numValValues; ++i)
+        values[i] = fromUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+            new SDValue(val.getNode(), val.getResNo() + i - linearIndex);
+    }
+
+    // Copy remaining value(s) from the original aggregate.
+    for (; i < numAggValues; ++i) {
+      values[i] = intoUndef ? dag.getUNDEF(aggValueVTs.get(i)) :
+          new SDValue(agg.getNode(), agg.getResNo() + i);
+    }
+
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(aggValueVTs), values));
+    return null;
+  }
+
+  /**
+   * Lower the arithmetic instrinsics into the normal call.
+   * @param inst
+   * @param opc
+   * @return
+   */
+  private String implVisitAluOverflow(CallInst inst, int opc) {
+    SDValue op1 = getValue(inst.getArgOperand(0));
+    SDValue op2 = getValue(inst.getArgOperand(1));
+
+    SDNode.SDVTList vts = dag.getVTList(op1.getValueType(), new EVT(MVT.i1));
+    setValue(inst, dag.getNode(opc, vts, op1, op2));
     return null;
   }
 }

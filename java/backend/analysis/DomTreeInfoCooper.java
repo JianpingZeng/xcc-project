@@ -47,7 +47,7 @@ import static backend.support.DepthFirstOrder.dfTraversal;
  * </p>
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class DomTreeInfoCooper implements IDomTreeInfo {
   /**
@@ -310,7 +310,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo {
         newBBIDom = findNearestCommonDominator(newBB, preds.get(i));
     }
 
-    // Create a new dominator tree node, and set it as the idom of newBB.
+    // create a new dominator tree node, and set it as the idom of newBB.
     DomTreeNodeBase<BasicBlock> newBBNode = addNewBlock(newBB, newBBIDom);
 
     // If newBB strictly dominates other blocks, then it is now the immediate

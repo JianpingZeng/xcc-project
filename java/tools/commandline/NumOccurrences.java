@@ -20,7 +20,7 @@ package tools.commandline;
  * Flags for the number of occurrences allowed
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public enum NumOccurrences {
   Optional(0x01),      // Zero or One occurrence

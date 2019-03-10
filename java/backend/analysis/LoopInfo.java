@@ -19,7 +19,7 @@ import java.util.Stack;
  * This class defined as a helper class for identifying all loop in a method.
  *
  * @author Jianping Zeng
- * @version 0.1
+ * @version 0.4
  */
 public final class LoopInfo
     implements LoopInfoBase<BasicBlock, Loop>, FunctionPass {
