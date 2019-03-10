@@ -4104,11 +4104,13 @@ public class X86TargetLowering extends TargetLowering {
           }
         }
       } else if (op0.getOperand(0).getOpcode() == ISD.SHL) {
-        if (op0.getOperand(1).getOperand(0).getNode() instanceof ConstantSDNode) {
-          ConstantSDNode csd = (ConstantSDNode) op0.getOperand(1).getOperand(0).getNode();
+        SDValue and = op0;
+        SDValue shl = and.getOperand(0);
+        if (shl.getOperand(0).getNode() instanceof ConstantSDNode) {
+          ConstantSDNode csd = (ConstantSDNode) shl.getOperand(0).getNode();
           if (csd.getZExtValue() == 1) {
-            lhs = op0.getOperand(0);
-            rhs = op0.getOperand(1).getOperand(1);
+            lhs = and.getOperand(1);
+            rhs = shl.getOperand(1);
           }
         }
       } else if (op0.getOperand(1).getOpcode() == ISD.Constant) {

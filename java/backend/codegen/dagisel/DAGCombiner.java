@@ -2564,22 +2564,18 @@ public class DAGCombiner {
     }
 
     // fold (select X, X, Y) -> (or X, Y)
-    if (n0.equals(n1)) {
-      return dag.getNode(ISD.OR, vt, n0, n2);
-    }
     // fold (select X, 1, Y) -> (or X, Y)
-    if (n1.getNode() instanceof ConstantSDNode &&
-        ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)) {
+    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n1) ||
+        (n1.getNode() instanceof ConstantSDNode &&
+        ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)))) {
       return dag.getNode(ISD.OR, vt, n0, n2);
     }
 
     // fold (select X, Y, X) -> (and X, Y)
-    if (n0.equals(n2)) {
-      return dag.getNode(ISD.AND, vt, n0, n1);
-    }
     // fold (select X, Y, 0) -> (and X, Y)
-    if (n2.getNode() instanceof ConstantSDNode &&
-        ((ConstantSDNode) n2.getNode()).isNullValue()) {
+    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n2) ||
+        (n2.getNode() instanceof ConstantSDNode &&
+            ((ConstantSDNode) n2.getNode()).isNullValue()))) {
       return dag.getNode(ISD.AND, vt, n0, n1);
     }
 
@@ -2664,7 +2660,6 @@ public class DAGCombiner {
 
   private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2) {
     Util.assertion(n0.getOpcode() == ISD.SETCC, "First argument must be a SetCC node!");
-    ;
 
     SDValue scc = simplifySelectCC(n0.getOperand(0),
         n0.getOperand(1), n1, n2,

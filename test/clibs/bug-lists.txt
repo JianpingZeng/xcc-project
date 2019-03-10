@@ -1,10 +1,13 @@
 2. In buffer, at backend.codegen.dagisel.SelectionDAG.assignTopologicalOrder(SelectionDAG.java:2408)
-4. chfreg.c, failure in handleBTSplitSwitchCase
 5. commander, LLParser failure
 6. file, fail in Schedule
+/home/xlous/Development/compiler/xcc/out/bin/llc -O0 -filetype=asm src/file.ll -o src/file.s
+Exception in thread "main" java.lang.RuntimeException: Unable to issue a copy instruction!
+	at tools.Util.assertion(Util.java:638)
+	at backend.codegen.dagisel.ScheduleDAGSDNodes.emitNode(ScheduleDAGSDNodes.java:254)
+
 7. flag, LLParser failed to parse the given ll file
 8. hash, uncoginized keyword in ll file
-9. jsmn, failure in handleBTSplitSwitchCase
 10. linenoise, LLParser failure
 11. list, LLParser failure in test.c
 12. logfmt, LLParser failure

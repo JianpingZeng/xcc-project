@@ -1395,7 +1395,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     int size = cr.caseRanges.size();
 
     APInt first = cr.caseRanges.get(frontCaseIdx).low.getValue();
-    APInt last = cr.caseRanges.get(backCaseIdx).high.getValue();
+    APInt last = cr.caseRanges.get(backCaseIdx - 1).high.getValue();
     double fmetric = 0.0;
     int pivot = size / 2;
 
@@ -1429,15 +1429,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       pivot = size / 2;
     }
 
-    ArrayList<Case> lhsr = new ArrayList<>();
-    lhsr.addAll(cr.caseRanges.subList(0, pivot));
-    ArrayList<Case> rhsr = new ArrayList<>();
-    rhsr.addAll(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
+    ArrayList<Case> lhsr = new ArrayList<>(cr.caseRanges.subList(0, pivot));
+    ArrayList<Case> rhsr = new ArrayList<>(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
 
     ConstantInt c = cr.caseRanges.get(pivot).low;
     MachineBasicBlock falseBB = null, trueBB = null;
 
-    if (lhsr.size() == 1 && lhsr.get(0).high.getValue().eq(cr.high.getValue())
+    if (lhsr.size() == 1 && Objects.equals(lhsr.get(0).high, cr.high)
         && c.getValue().eq(cr.high.getValue().add(1))) {
       trueBB = lhsr.get(0).mbb;
     } else {
