@@ -22,10 +22,7 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
 import backend.support.LLVMContext;
-import backend.target.TargetData;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetLowering;
-import backend.target.TargetOpcodes;
+import backend.target.*;
 import backend.type.ArrayType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -39,6 +36,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 
@@ -52,10 +50,14 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
 public class FunctionLoweringInfo {
   public static class LiveOutInfo {
     public int numSignBits;
+    public boolean isValid;
     public APInt knownOne, knownZero;
 
     public LiveOutInfo() {
       numSignBits = 0;
+      isValid = true;
+      knownOne = new APInt(1, 0);
+      knownZero = new APInt(1, 0);
     }
   }
 
@@ -86,7 +88,12 @@ public class FunctionLoweringInfo {
    * Information about live out vregs, indexed by their register number offset
    * by 'FirstVirtualRegister'.
    */
-  public ArrayList<LiveOutInfo> liveOutRegInfo;
+  public HashMap<Integer, LiveOutInfo> liveOutRegInfo;
+
+  /**
+   * The set of basic blocks visited thus used for instruction selection.
+   */
+  public HashSet<BasicBlock> visitedBBs;
 
   public FunctionLoweringInfo(TargetLowering tli) {
     this.tli = tli;
@@ -94,7 +101,8 @@ public class FunctionLoweringInfo {
     valueMap = new HashMap<>();
 
     staticAllocaMap = new HashMap<>();
-    liveOutRegInfo = new ArrayList<>();
+    liveOutRegInfo = new HashMap<>();
+    visitedBBs = new HashSet<>();
   }
 
   /**
@@ -250,7 +258,6 @@ public class FunctionLoweringInfo {
       for (int i = 0, e = st.getNumOfElements(); i < e; i++) {
         computeValueVTs(tli, st.getElementType(i), valueVTs, offsets,
             startingOffset + layout.getElementOffset(i));
-        ;
       }
       return;
     }
@@ -260,7 +267,6 @@ public class FunctionLoweringInfo {
       long eltSize = tli.getTargetData().getTypeAllocSize(eltTy);
       for (long i = 0, e = at.getNumElements(); i < e; i++) {
         computeValueVTs(tli, eltTy, valueVTs, offsets, startingOffset + i * eltSize);
-        ;
       }
       return;
     }
@@ -315,5 +321,177 @@ public class FunctionLoweringInfo {
     valueMap.clear();
     staticAllocaMap.clear();
     liveOutRegInfo.clear();
+  }
+
+  /**
+   * Gets LiveOutInfo for a register, returning NULL if the
+   * register is a PHI destination and the PHI's LiveOutInfo is not valid.
+   * @param reg
+   * @return
+   */
+  public LiveOutInfo getLiveOutInfo(int reg) {
+    if (!liveOutRegInfo.containsKey(reg) || liveOutRegInfo.get(reg) == null)
+      return null;
+    LiveOutInfo loi = liveOutRegInfo.get(reg);
+    if (!loi.isValid)
+      return null;
+    return loi;
+  }
+
+  /**
+   * Gets LiveOutInfo for a register, returning NULL if the
+   * register is a PHI destination and the PHI's LiveOutInfo is not valid. If
+   * the register's LiveOutInfo is for a smaller bit width, it is extended to
+   * the larger bit width by zero extension. The bit width must be no smaller
+   * than the LiveOutInfo's existing bit width.
+   * @param reg
+   * @param bitWidth
+   * @return
+   */
+  public LiveOutInfo getLiveOutRegInfo(int reg, int bitWidth) {
+    if (!liveOutRegInfo.containsKey(reg) || liveOutRegInfo.get(reg) == null)
+      return null;
+
+    LiveOutInfo loi = liveOutRegInfo.get(reg);
+    if (!loi.isValid)
+      return null;
+
+    if (bitWidth > loi.knownZero.getBitWidth()) {
+      loi.numSignBits = 1;
+      loi.knownZero = loi.knownZero.zextOrTrunc(bitWidth);
+      loi.knownOne = loi.knownOne.zext(bitWidth);
+    }
+    return loi;
+  }
+
+  /**
+   * Compute LiveOutInfo for a PHI's destination register based on the LiveOutInfo of its operands.
+   * @param pn
+   */
+  public void computePHILiveOutRegInfo(PhiNode pn) {
+    if (pn == null || !pn.getType().isIntegerTy() || pn.getType().isVectorTy())
+      return;
+
+    Type ty = pn.getType();
+    ArrayList<EVT> valueVTs = new ArrayList<>();
+    computeValueVTs(tli, ty, valueVTs);
+    Util.assertion(valueVTs.size() == 1, "PHIs with non-vector integer types should have a single VT.");
+    EVT intVT = valueVTs.get(0);
+
+    if (tli.getNumRegisters(intVT) != 1)
+      return;
+
+    intVT = tli.getTypeToTransformTo(intVT);
+    int bitWidth = intVT.getSizeInBits();
+    int destReg = valueMap.get(pn);
+    if (!TargetRegisterInfo.isVirtualRegister(destReg))
+      return;
+
+    LiveOutInfo destLOI = new LiveOutInfo();
+    liveOutRegInfo.put(destReg, destLOI);
+    Value v = pn.getIncomingValue(0);
+    if (v instanceof Value.UndefValue || v instanceof ConstantExpr) {
+      destLOI.numSignBits = 1;
+      destLOI.knownZero = new APInt(bitWidth, 0);
+      destLOI.knownOne = new APInt(bitWidth, 0);
+      return;
+    }
+
+    if (v instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) v;
+      APInt val = ci.getValue().zextOrTrunc(bitWidth);
+      destLOI.numSignBits = val.getNumSignBits();
+      destLOI.knownZero = val.not();
+      destLOI.knownOne = val;
+    }
+    else {
+      Util.assertion(valueMap.containsKey(v), "V should have been placed in ValueMap when its CopyToReg node was created!");
+      int srcReg = valueMap.get(v);
+      if (!TargetRegisterInfo.isVirtualRegister(srcReg)) {
+        destLOI.isValid = false;
+        return;
+      }
+      LiveOutInfo srcLOT = getLiveOutRegInfo(srcReg, bitWidth);
+      if (srcLOT == null) {
+        destLOI.isValid = false;
+        return;
+      }
+      destLOI = srcLOT;
+      liveOutRegInfo.put(destReg, destLOI);
+    }
+
+    Util.assertion(destLOI.knownZero.getBitWidth() == bitWidth &&
+        destLOI.knownOne.getBitWidth() == bitWidth, "Masks should have the same bit width as the type.");
+    for (int i = 1, e = pn.getNumberIncomingValues(); i < e; i++) {
+      v = pn.getIncomingValue(i);
+
+      if (v instanceof Value.UndefValue || v instanceof ConstantExpr) {
+        destLOI.numSignBits = 1;
+        destLOI.knownZero = new APInt(bitWidth, 0);
+        destLOI.knownOne = new APInt(bitWidth, 0);
+        return;
+      }
+
+      if (v instanceof ConstantInt) {
+        ConstantInt ci = (ConstantInt) v;
+        APInt val = ci.getValue().zextOrTrunc(bitWidth);
+        destLOI.numSignBits = Math.min(destLOI.numSignBits, val.getNumSignBits());
+        destLOI.knownZero.andAssign(val.not());
+        destLOI.knownOne.andAssign(val);
+        continue;
+      }
+
+      Util.assertion(valueMap.containsKey(v), "V should have been placed in ValueMap when its CopyToReg node was created!");
+      int srcReg = valueMap.get(v);
+      if (!TargetRegisterInfo.isVirtualRegister(srcReg)) {
+        destLOI.isValid = false;
+        return;
+      }
+      LiveOutInfo srcLOT = getLiveOutRegInfo(srcReg, bitWidth);
+      if (srcLOT == null) {
+        destLOI.isValid = false;
+        return;
+      }
+      destLOI.numSignBits = Math.min(destLOI.numSignBits, srcLOT.numSignBits);
+      destLOI.knownZero.andAssign(srcLOT.knownZero);
+      destLOI.knownOne.andAssign(srcLOT.knownOne);
+    }
+  }
+
+  public void invalidatePHILiveOutRegInfo(PhiNode pn) {
+    if (!valueMap.containsKey(pn)) return;
+
+    int reg = valueMap.get(pn);
+    LiveOutInfo loi;
+    if (!liveOutRegInfo.containsKey(reg)) {
+      loi = new LiveOutInfo();
+      liveOutRegInfo.put(reg, loi);
+    }
+    else
+      loi = liveOutRegInfo.get(reg);
+    loi.isValid = false;
+  }
+
+  /**
+   * Adds LiveOutInfo for a register.
+   * @param destReg
+   * @param numSignBits
+   * @param knownZero
+   * @param knownOne
+   */
+  public void addLiveOutRegInfo(int destReg, int numSignBits, APInt knownZero, APInt knownOne) {
+    if (numSignBits == 1 && knownZero.eq(0) && knownOne.eq(0))
+      return;
+
+    LiveOutInfo loi;
+    if (liveOutRegInfo.containsKey(destReg))
+      loi = liveOutRegInfo.get(destReg);
+    else {
+      loi = new LiveOutInfo();
+      liveOutRegInfo.put(destReg, loi);
+    }
+    loi.numSignBits = numSignBits;
+    loi.knownOne = knownOne;
+    loi.knownZero = knownZero;
   }
 }

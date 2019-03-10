@@ -58,7 +58,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return hasTailCall;
   }
 
-  public void copyToExpendRegsIfNeeds(Value val) {
+  public void copyToExportRegsIfNeeds(Value val) {
     if (!val.isUseEmpty()) {
       if (funcInfo.valueMap.containsKey(val)) {
         int reg = funcInfo.valueMap.get(val);

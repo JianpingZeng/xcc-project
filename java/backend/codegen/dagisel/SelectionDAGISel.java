@@ -26,6 +26,7 @@ import backend.codegen.dagisel.SDNode.MachineSDNode;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
+import backend.support.DepthFirstOrder;
 import backend.support.MachineFunctionPass;
 import backend.target.*;
 import backend.target.TargetMachine.CodeGenOpt;
@@ -135,7 +136,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     TargetInstrInfo tii = mf.getTarget().getInstrInfo();
     MachineRegisterInfo regInfo = mf.getMachineRegisterInfo();
 
-    selectionAllBasicBlocks(f);
+    selectAllBasicBlocks(f);
     emitLiveInCopies(mf, tii, regInfo);
 
     for (Pair<Integer, Integer> reg : regInfo.getLiveIns()) {
@@ -159,14 +160,35 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     }
   }
 
-  private void selectionAllBasicBlocks(Function fn) {
-    // Iterate over all basic blocks in the function.
-    for (BasicBlock llvmBB : fn.getBasicBlockList()) {
+  private void selectAllBasicBlocks(Function fn) {
+    // Iterate over all basic blocks in the function in the post traversal order
+    ArrayList<BasicBlock> blocks = DepthFirstOrder.reversePostOrder(fn.getEntryBlock());
+    for (BasicBlock llvmBB : blocks) {
       // First, clear the locaValueMap.
       mbb = funcInfo.mbbmap.get(llvmBB);
 
-      int bi = 0, end = llvmBB.size();
+      boolean allPredsVisited = true;
+      for (int i = 0, e = llvmBB.getNumPredecessors(); i < e; i++) {
+        BasicBlock predBB = llvmBB.predAt(i);
+        if (!funcInfo.visitedBBs.contains(predBB)) {
+          allPredsVisited = false;
+          break;
+        }
+      }
 
+      if (allPredsVisited) {
+        for (int i = 0, e = llvmBB.size(); i < e && llvmBB.getInstAt(i) instanceof PhiNode; i++) {
+          funcInfo.computePHILiveOutRegInfo((PhiNode)llvmBB.getInstAt(i));
+        }
+      }
+      else {
+        for (int i = 0, e = llvmBB.size(); i < e && llvmBB.getInstAt(i) instanceof PhiNode; i++) {
+          funcInfo.invalidatePHILiveOutRegInfo((PhiNode)llvmBB.getInstAt(i));
+        }
+      }
+      funcInfo.visitedBBs.add(llvmBB);
+
+      int bi = 0, end = llvmBB.size();
       // Lower any arguments needed in this block if this is entry block.
       if (llvmBB.equals(fn.getEntryBlock())) {
         boolean fail = lowerArguments(llvmBB);
@@ -190,7 +212,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         for (bi = 0; bi != end; ++bi) {
           Instruction inst = llvmBB.getInstAt(bi);
           if (!(inst instanceof PhiNode))
-            sdl.copyToExpendRegsIfNeeds(inst);
+            sdl.copyToExportRegsIfNeeds(inst);
         }
         handlePhiNodeInSuccessorBlocks(llvmBB);
         sdl.visit(llvmBB.getTerminator());
@@ -337,6 +359,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         Util.assertion(!n.isDeleted());
       }
     }
+
+    // For virtual register info.
+    computeLiveOutVRegInfo();
+
     if (ViewDAGBeforeISel.value) {
       curDAG.viewGraph("dag-before-isel for " + blockName);
     }
@@ -1671,7 +1697,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       }
       if (!arg.isUseEmpty()) {
         sdl.setValue(arg, dag.getMergeValues(argValues));
-        sdl.copyToExpendRegsIfNeeds(arg);
+        sdl.copyToExportRegsIfNeeds(arg);
       }
       ++idx;
     }
@@ -2028,5 +2054,46 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
   public void cannotYetSelectIntrinsic(SDNode n) {
     llvmReportError("Cannot yet selectCommonCode intrinsic function.");
+  }
+
+  private void computeLiveOutVRegInfo() {
+    HashSet<SDNode> visitedNodes = new HashSet<>();
+    LinkedList<SDNode> worklist = new LinkedList<>();
+
+    worklist.add(curDAG.getRoot().getNode());
+
+    APInt mask;
+    APInt[] knownVals = new APInt[2];
+
+    do {
+      SDNode n = worklist.pop();
+      if (!visitedNodes.add(n))
+        continue;
+
+      // Otherwise, add all chain operands to the worklist.
+      for (int i = 0, e = n.getNumOperands(); i < e; ++i) {
+        if (n.getOperand(i).getValueType().getSimpleVT().simpleVT == MVT.Other)
+          worklist.push(n.getOperand(i).getNode());
+      }
+
+      // if this is a CopyToReg with a vreg dest, process it.
+      if (n.getOpcode() != ISD.CopyToReg)
+        continue;
+
+      int destReg = ((SDNode.RegisterSDNode)n.getOperand(1).getNode()).getReg();
+      if (!TargetRegisterInfo.isVirtualRegister(destReg))
+        continue;
+
+      // Ignore non-scalar or non-integer values.
+      SDValue src = n.getOperand(2);
+      EVT srcVT = src.getValueType();
+      if (!srcVT.isInteger() || srcVT.isVector())
+        continue;
+
+      int numSignBits = curDAG.computeNumSignBits(src);
+      mask = APInt.getAllOnesValue(srcVT.getSizeInBits());
+      curDAG.computeMaskedBits(src, mask, knownVals, 0);
+      funcInfo.addLiveOutRegInfo(destReg, numSignBits, knownVals[0], knownVals[1]);
+    }while (!worklist.isEmpty());
   }
 }

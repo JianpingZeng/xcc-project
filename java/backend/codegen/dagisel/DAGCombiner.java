@@ -2180,7 +2180,7 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.TRUNCATE &
         (!legalOprations || tli.isOperationLegal(ISD.AND, vt))) {
       SDValue op = n0.getOperand(0);
-      if (op.getValueType().bitsGT(vt))
+      if (vt.bitsGT(op.getValueType()))
         op = dag.getNode(ISD.ANY_EXTEND, vt, op);
       else if (op.getValueType().bitsGT(vt))
         op = dag.getNode(ISD.TRUNCATE, vt, op);

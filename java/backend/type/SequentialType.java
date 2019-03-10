@@ -63,7 +63,7 @@ public abstract class SequentialType extends CompositeType {
   @Override
   public boolean indexValid(Value v) {
     // must be a integral index.
-    return v.getType().isIntegerType();
+    return v.getType().isIntegerTy();
   }
 
   @Override

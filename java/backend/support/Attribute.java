@@ -189,7 +189,7 @@ public final class Attribute {
   public static int typeIncompatible(Type ty) {
     int incompatible = None;
 
-    if (!ty.isInteger())
+    if (!ty.isIntegerTy())
       // Attributes that only apply to integers.
       incompatible |= SExt | ZExt;
 

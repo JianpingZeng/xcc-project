@@ -1873,7 +1873,7 @@ public final class LLParser {
         // API compatibility: Accept either integer or floating-point types.
         boolean result = parseArithmetic(inst, pfs, opc, 0);
         if (!result) {
-          if (!inst.get().getType().isInteger()) {
+          if (!inst.get().getType().isIntegerTy()) {
             if (nuw)
               return error(modifierLoc,
                   "nuw only applies to integer operation");
@@ -2004,7 +2004,7 @@ public final class LLParser {
     while (eatIfPresent(comma)) {
       if (parseTypeAndValue(val, eltLoc, pfs))
         return true;
-      if (!val.get().getType().isInteger())
+      if (!val.get().getType().isIntegerTy())
         return error(eltLoc.get(),
             "index of getelementptr must be an integer");
 
@@ -2504,7 +2504,7 @@ public final class LLParser {
         return error(lhsLoc, "fcmp op requires floating point operand");
     } else {
       Util.assertion(opc == Operator.ICmp);
-      if (!lhs.getType().isInteger() && !(lhs.getType() instanceof PointerType))
+      if (!lhs.getType().isIntegerTy() && !(lhs.getType() instanceof PointerType))
         return error(lhsLoc, "icmp op requires integral operand");
     }
     inst.set(CmpInst.create(opc, pred, lhs, rhs, "", null));
@@ -2533,7 +2533,7 @@ public final class LLParser {
 
     Value lhs = val1.get(), rhs = val2.get();
     SMLoc lhsLoc = loc.get();
-    if (!lhs.getType().isInteger())
+    if (!lhs.getType().isIntegerTy())
       return error(lhsLoc, "the first operand of logical op must have integer type");
     inst.set(new Instruction.BinaryOps(lhs.getType(), opc, lhs, rhs, ""));
     return false;
@@ -2695,7 +2695,7 @@ public final class LLParser {
         if (elts.isEmpty())
           return error(id.loc, "constant vector must not be empty");
 
-        if (!elts.get(0).getType().isInteger() && elts.get(0).getType().isFloatingPointType())
+        if (!elts.get(0).getType().isIntegerTy() && elts.get(0).getType().isFloatingPointType())
           return error(firstEltLoc,
               "vector elements must have integer or floating point");
 
@@ -2814,7 +2814,7 @@ public final class LLParser {
           id.constantVal = ConstantExpr.getFCmp(pred.get(), val0.get(), val1.get());
         } else {
           Util.assertion(opc == Operator.ICmp, "Unexpected opcode for compare");
-          if (!val0.get().getType().isInteger()) {
+          if (!val0.get().getType().isIntegerTy()) {
             return error(id.loc, "icmp requires integral operand");
           }
           id.constantVal = ConstantExpr.getICmp(pred.get(), val0.get(), val1.get());
@@ -2865,14 +2865,14 @@ public final class LLParser {
           return true;
         if (!val0.get().getType().equals(val1.get().getType()))
           return error(id.loc, "operands of constantexpr must have same type");
-        if (!val0.get().getType().isInteger()) {
+        if (!val0.get().getType().isIntegerTy()) {
           if (nuw)
             return error(modifierLoc, "nuw only applied to integral binary operator");
           if (nsw)
             return error(modifierLoc, "nsw only applied to integral binary operator");
         }
 
-        if (!val0.get().getType().isInteger() && !val0.get().getType().isFloatingPointType()) {
+        if (!val0.get().getType().isIntegerTy() && !val0.get().getType().isFloatingPointType()) {
           return error(id.loc, "constantexpr requires integer, fp operand");
         }
 
@@ -2903,7 +2903,7 @@ public final class LLParser {
         if (!val0.get().getType().equals(val1.get().getType())) {
           return error(id.loc, "operands of constantexpr must have same type");
         }
-        if (!val0.get().getType().isInteger()) {
+        if (!val0.get().getType().isIntegerTy()) {
           return error(id.loc, "constexpr requires integer type");
         }
 
@@ -3477,7 +3477,7 @@ public final class LLParser {
         val.set(c.get());
         return false;
       case t_APSInt:
-        if (!ty.isIntegerType())
+        if (!ty.isIntegerTy())
           return error(id.loc, "integer constant must have integer type");
         id.apsIntVal = id.apsIntVal.extOrTrunc(ty.getPrimitiveSizeInBits());
         val.set(ConstantInt.get(id.apsIntVal));
@@ -3622,7 +3622,7 @@ public final class LLParser {
 
     Value cond = valWrapper.get();
     SMLoc condLoc = locWrapper.get();
-    if (!cond.getType().isIntegerType())
+    if (!cond.getType().isIntegerTy())
       return error(condLoc, "condition of switch instr must have 'i1' type");
 
     if (eatIfPresent(comma) &&
@@ -3647,7 +3647,7 @@ public final class LLParser {
             parseTypeAndValue(val2, loc2, pfs))
           return true;
 
-        if (!valWrapper.get().getType().isIntegerType() ||
+        if (!valWrapper.get().getType().isIntegerTy() ||
             !(valWrapper.get() instanceof ConstantInt))
           return error(locWrapper.get(), "case value is not a integer constant");
         if (!uniqueElts.add((Constant) valWrapper.get()))
@@ -3712,12 +3712,12 @@ public final class LLParser {
         break;
       case 0:
         // both int and fp.
-        valid = (op1.getType().isInteger() || op1.getType().isFloatingPointType())
-            && (op2.getType().isInteger() || op2.getType().isFloatingPointType());
+        valid = (op1.getType().isIntegerTy() || op1.getType().isFloatingPointType())
+            && (op2.getType().isIntegerTy() || op2.getType().isFloatingPointType());
         break;
       case 1:
         // only integral allowed
-        valid = op1.getType().isInteger() && op2.getType().isInteger();
+        valid = op1.getType().isIntegerTy() && op2.getType().isIntegerTy();
         break;
       case 2:
         // only fp allowed

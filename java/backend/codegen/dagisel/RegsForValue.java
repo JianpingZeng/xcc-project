@@ -84,74 +84,78 @@ public class RegsForValue {
                                  OutRef<SDValue> flag) {
     SDValue[] values = new SDValue[valueVTs.size()];
 
-    for (int i = 0, part = 0, e = valueVTs.size(); i < e; i++) {
-      EVT valueVT = valueVTs.get(i);
+    for (int value = 0, part = 0, e = valueVTs.size(); value < e; value++) {
+      EVT valueVT = valueVTs.get(value);
       int numRegs = tli.getNumRegisters(valueVT);
-      EVT registerVT = regVTs.get(i);
+      EVT registerVT = regVTs.get(value);
 
       SDValue[] parts = new SDValue[numRegs];
-      for (int j = 0; j < numRegs; j++) {
+      for (int i = 0; i < numRegs; i++) {
         SDValue p;
         if (flag == null)
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT);
+          p = dag.getCopyFromReg(chain.get(), regs.get(part + value), registerVT);
         else {
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT, flag.get());
+          p = dag.getCopyFromReg(chain.get(), regs.get(part + value), registerVT, flag.get());
           flag.set(p.getValue(2));
         }
         chain.set(p.getValue(1));
+        parts[i] = p;
 
-        if (TargetRegisterInfo.isVirtualRegister(regs.get(part + i)) &&
-            registerVT.isInteger() && !registerVT.isVector()) {
-          int slotNo = regs.get(part + i) - TargetRegisterInfo.FirstVirtualRegister;
-          FunctionLoweringInfo fli = dag.getFunctionLoweringInfo();
-          if (fli.liveOutRegInfo.size() > slotNo) {
-            FunctionLoweringInfo.LiveOutInfo loi = fli.liveOutRegInfo.get(slotNo);
-            int regSize = registerVT.getSizeInBits();
-            int numSignBits = loi.numSignBits;
-            int numZeroBits = loi.knownZero.countLeadingOnes();
+        // If the source register was virtual and if we know something about it,
+        // add an assert node.
+        if (!TargetRegisterInfo.isVirtualRegister(regs.get(part + value)) ||
+            !registerVT.isInteger() || registerVT.isVector())
+          continue;
 
-            boolean isSExt = true;
-            EVT fromVT = new EVT(MVT.Other);
-            if (numSignBits == regSize) {
-              isSExt = true;
-              fromVT = new EVT(MVT.i1);
-            } else if (numZeroBits >= regSize - 1) {
-              isSExt = false;
-              fromVT = new EVT(MVT.i1);
-            } else if (numSignBits > regSize - 8) {
-              isSExt = true;
-              fromVT = new EVT(MVT.i8);
-            } else if (numZeroBits >= regSize - 8) {
-              isSExt = false;
-              fromVT = new EVT(MVT.i8);
-            } else if (numSignBits > regSize - 16) {
-              isSExt = false;
-              fromVT = new EVT(MVT.i16);
-            } else if (numZeroBits >= regSize - 16) {
-              isSExt = false;
-              fromVT = new EVT(MVT.i16);
-            } else if (numSignBits > regSize - 32) {
-              isSExt = true;
-              fromVT = new EVT(MVT.i32);
-            } else if (numZeroBits >= regSize - 32) {
-              isSExt = false;
-              fromVT = new EVT(MVT.i32);
-            }
-            if (!fromVT.equals(new EVT(MVT.Other))) {
-              p = dag.getNode(isSExt ? ISD.AssertSext : ISD.AssertZext,
-                  registerVT, p, dag.getValueType(fromVT));
-            }
-          }
+        FunctionLoweringInfo fli = dag.getFunctionLoweringInfo();
+        FunctionLoweringInfo.LiveOutInfo loi = fli.getLiveOutInfo(regs.get(part + value));
+        if (loi == null)
+          continue;
+
+        int regSize = registerVT.getSizeInBits();
+        int numSignBits = loi.numSignBits;
+        int numZeroBits = loi.knownZero.countLeadingOnes();
+
+        boolean isSExt = true;
+        EVT fromVT = new EVT(MVT.Other);
+        if (numSignBits == regSize) {
+          isSExt = true;
+          fromVT = new EVT(MVT.i1);
+        } else if (numZeroBits >= regSize - 1) {
+          isSExt = false;
+          fromVT = new EVT(MVT.i1);
+        } else if (numSignBits > regSize - 8) {
+          isSExt = true;
+          fromVT = new EVT(MVT.i8);
+        } else if (numZeroBits >= regSize - 8) {
+          isSExt = false;
+          fromVT = new EVT(MVT.i8);
+        } else if (numSignBits > regSize - 16) {
+          isSExt = false;
+          fromVT = new EVT(MVT.i16);
+        } else if (numZeroBits >= regSize - 16) {
+          isSExt = false;
+          fromVT = new EVT(MVT.i16);
+        } else if (numSignBits > regSize - 32) {
+          isSExt = true;
+          fromVT = new EVT(MVT.i32);
+        } else if (numZeroBits >= regSize - 32) {
+          isSExt = false;
+          fromVT = new EVT(MVT.i32);
         }
-        parts[j] = p;
+        else
+          continue;
+
+        Util.assertion(!fromVT.equals(new EVT(MVT.Other)));
+        parts[i] = dag.getNode(isSExt ? ISD.AssertSext : ISD.AssertZext,
+            registerVT, p, dag.getValueType(fromVT));
       }
 
-      values[i] = getCopyFromParts(dag, parts, registerVT, valueVT);
+      values[value] = getCopyFromParts(dag, parts, registerVT, valueVT);
       part += numRegs;
     }
-    EVT[] vts = new EVT[valueVTs.size()];
-    valueVTs.toArray(vts);
-    return dag.getNode(ISD.MERGE_VALUES, dag.getVTList(vts), values);
+
+    return dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), values);
   }
 
   public void getCopyToRegs(SDValue val,

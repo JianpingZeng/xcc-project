@@ -1570,7 +1570,7 @@ public class X86TargetLowering extends TargetLowering {
 
   @Override
   public boolean isTruncateFree(Type ty1, Type ty2) {
-    if (!ty1.isInteger() || !ty2.isInteger())
+    if (!ty1.isIntegerTy() || !ty2.isIntegerTy())
       return false;
 
     int numBit1 = ty1.getPrimitiveSizeInBits();

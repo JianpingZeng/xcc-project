@@ -1827,15 +1827,14 @@ public class SelectionDAG {
         break;
       }
       default:
-        if (op.getOpcode() >= ISD.BUILTIN_OP_END) {
-          switch (op.getOpcode()) {
-            case ISD.INTRINSIC_WO_CHAIN:
-            case ISD.INTRINSIC_VOID:
-            case ISD.INTRINSIC_W_CHAIN:
-              tli.computeMaskedBitsForTargetNode(op, mask,
-                  knownVals, this, depth);
-          }
-        }
+        if (op.getOpcode() < ISD.BUILTIN_OP_END)
+          break;
+        // fall through
+      case ISD.INTRINSIC_WO_CHAIN:
+      case ISD.INTRINSIC_VOID:
+      case ISD.INTRINSIC_W_CHAIN:
+        tli.computeMaskedBitsForTargetNode(op, mask,
+            knownVals, this, depth);
     }
   }
 

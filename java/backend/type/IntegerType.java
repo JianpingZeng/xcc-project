@@ -47,10 +47,6 @@ public class IntegerType extends DerivedType {
     return true;
   }
 
-  public boolean isIntegerType() {
-    return true;
-  }
-
   public static IntegerType get(int numBits) {
     Util.assertion(numBits >= MIN_INT_BITS, "bitwidth too small!");
     Util.assertion(numBits <= MAX_INT_BITS, "bitwidth too large!");

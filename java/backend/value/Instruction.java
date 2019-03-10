@@ -998,7 +998,7 @@ public abstract class Instruction extends User {
         boolean isSigned,
         String instName,
         Instruction insertBefore) {
-      Util.assertion(value.getType().isIntegerType() && destTy.isIntegerType(), "Invalid type!");
+      Util.assertion(value.getType().isIntegerTy() && destTy.isIntegerTy(), "Invalid type!");
 
       int srcBits = value.getType().getScalarSizeBits();
       int destBits = destTy.getScalarSizeBits();
@@ -1118,13 +1118,13 @@ public abstract class Instruction extends User {
       int destBits = destTy.getScalarSizeBits();
       switch (opc) {
         case Trunc:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits > destBits;
         case SExt:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits < destBits;
         case ZExt:
-          return srcTy.isInteger() && destTy.isInteger() &&
+          return srcTy.isIntegerTy() && destTy.isIntegerTy() &&
               srcBits < destBits;
         case FPTrunc:
           return srcTy.isFloatingPointType() && destTy.isFloatingPointType()
@@ -1134,10 +1134,10 @@ public abstract class Instruction extends User {
               && srcBits < destBits;
         case FPToSI:
         case FPToUI:
-          return srcTy.isFloatingPointType() && destTy.isInteger();
+          return srcTy.isFloatingPointType() && destTy.isIntegerTy();
         case SIToFP:
         case UIToFP:
-          return srcTy.isInteger() && destTy.isFloatingPointType();
+          return srcTy.isIntegerTy() && destTy.isFloatingPointType();
         case BitCast:
           // bit cast is no op in machine level, but we should check
           // both type is same when one is of type PointerType
@@ -1146,9 +1146,9 @@ public abstract class Instruction extends User {
 
           return srcTy.getPrimitiveSizeInBits() == destTy.getPrimitiveSizeInBits();
         case PtrToInt:
-          return srcTy.isPointerType() && destTy.isIntegerType();
+          return srcTy.isPointerType() && destTy.isIntegerTy();
         case IntToPtr:
-          return srcTy.isIntegerType() && destTy.isPointerType();
+          return srcTy.isIntegerTy() && destTy.isPointerType();
         default:
           return false;   // input error
       }
@@ -1736,7 +1736,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType() || lhs.getType() instanceof PointerType, "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy() || lhs.getType() instanceof PointerType, "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1747,7 +1747,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1758,7 +1758,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -1769,7 +1769,7 @@ public abstract class Instruction extends User {
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
 
-      Util.assertion(lhs.getType().isIntegerType() || lhs.getType().isPointerType(), "Invalid operand types for ICmp instruction");
+      Util.assertion(lhs.getType().isIntegerTy() || lhs.getType().isPointerType(), "Invalid operand types for ICmp instruction");
 
     }
 
@@ -3304,7 +3304,7 @@ public abstract class Instruction extends User {
       if (!vec.getType().isVectorTy())
         return false;
 
-      if (index.getType().isIntegerType(32))
+      if (index.getType().isIntegerTy(32))
         return false;
       return true;
     }
@@ -3364,7 +3364,7 @@ public abstract class Instruction extends User {
         return false;
       if (!newElt.getType().equals( ((VectorType)vec.getType()).getElementType()))
         return false;
-      if (!idx.getType().isIntegerType(32))
+      if (!idx.getType().isIntegerTy(32))
         return false;
       return true;
     }
@@ -3426,7 +3426,7 @@ public abstract class Instruction extends User {
       VectorType maskTy = mask.getType() instanceof VectorType ?
           (VectorType) mask.getType() : null;
       if (!(mask instanceof Constant) || maskTy == null ||
-          !maskTy.getElementType().isIntegerType(32))
+          !maskTy.getElementType().isIntegerTy(32))
         return false;
       return true;
     }

@@ -483,7 +483,7 @@ public final class IndVarSimplify implements LoopPass {
           // SCEV only supports integer type.
           if (!(inVal instanceof Instruction)
               || !(inVal.getType().isPointerType()
-              && (inVal.getType().isIntegerType())))
+              && (inVal.getType().isIntegerTy())))
             continue;
 
           // If this pred is for a subloop, not loop, skip it.

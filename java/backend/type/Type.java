@@ -115,11 +115,11 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
       case LabelTyID:
         return "label";
       default:
-        return "<unkown type>";
+        return "<unknown type>";
     }
   }
 
-  public boolean isInteger() {
+  public boolean isIntegerTy() {
     return id == IntegerTyID;
   }
 
@@ -145,19 +145,15 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isUnsigned() {
-    return false;
+    return !isSigned();
   }
 
-  public boolean isIntegerType() {
-    return false;
-  }
-
-  public boolean isIntegerType(int bitwidth) {
-    return isIntegerType() && ((IntegerType)this).getBitWidth() == bitwidth;
+  public boolean isIntegerTy(int bitwidth) {
+    return isIntegerTy() && ((IntegerType)this).getBitWidth() == bitwidth;
   }
 
   public boolean isIntegral() {
-    return isIntegerType() || this == LLVMContext.Int1Ty;
+    return isIntegerTy() || this == LLVMContext.Int1Ty;
   }
 
   public boolean isPrimitiveType() {
@@ -289,7 +285,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
    * @return
    */
   private boolean isSizedDerivedType() {
-    if (isIntegerType())
+    if (isIntegerTy())
       return true;
 
     if (isArrayType()) {
