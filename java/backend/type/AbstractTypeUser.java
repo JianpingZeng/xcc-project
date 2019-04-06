@@ -34,7 +34,7 @@ package backend.type;
  * In addition to this, AbstractTypeUsers must keep the use list of the
  * potentially abstract type that they reference up-to-date.  To do this in a
  * nice, transparent way, the PATypeHandle class is used to hold "Potentially
- * Abstract Types", and keep the use list of the abstract types up-to-date.
+ * Abstract TypesParser", and keep the use list of the abstract types up-to-date.
  * </p>
  *
  * @author Jianping Zeng

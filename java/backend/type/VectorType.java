@@ -28,9 +28,9 @@ import java.util.TreeMap;
 public class VectorType extends SequentialType {
   private static class VectorValType implements Comparable<VectorValType> {
     Type valTy;
-    int size;
+    long size;
 
-    public VectorValType(Type ty, int sz) {
+    public VectorValType(Type ty, long sz) {
       valTy = ty;
       size = sz;
     }
@@ -39,7 +39,7 @@ public class VectorType extends SequentialType {
       return new VectorValType(ty.getElementType(), ty.getNumElements());
     }
 
-    public static int hashTypeStructure(VectorType pt) {
+    public static long hashTypeStructure(VectorType pt) {
       return pt.getNumElements();
     }
 
@@ -54,9 +54,9 @@ public class VectorType extends SequentialType {
   private static TreeMap<VectorValType, VectorType> vectorTypes =
       new TreeMap<>();
 
-  private int numElts;
+  private long numElts;
 
-  protected VectorType(Type eleType, int numEles) {
+  protected VectorType(Type eleType, long numEles) {
     super(VectorTyID, eleType);
     this.numElts = numEles;
     setAbstract(eleType.isAbstract);
@@ -64,7 +64,7 @@ public class VectorType extends SequentialType {
     Util.assertion(isValidElementType(eleType));
   }
 
-  public static VectorType get(Type eltType, int numElts) {
+  public static VectorType get(Type eltType, long numElts) {
     Util.assertion(eltType != null);
     VectorValType key = new VectorValType(eltType, numElts);
     if (vectorTypes.containsKey(key))
@@ -98,11 +98,11 @@ public class VectorType extends SequentialType {
         eltTy instanceof OpaqueType);
   }
 
-  public int getNumElements() {
+  public long getNumElements() {
     return numElts;
   }
 
-  public int getBitWidth() {
+  public long getBitWidth() {
     return numElts * getElementType().getPrimitiveSizeInBits();
   }
 

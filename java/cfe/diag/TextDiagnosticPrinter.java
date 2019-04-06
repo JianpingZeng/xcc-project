@@ -212,7 +212,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient {
           os.changeColor(Colors.SAVEDCOLOR, true);
         Pair<FileID, Integer> locInfo = sgr.getDecomposedInstantiationLoc(loc);
 
-        os.printf("%s:%d:", sgr.getBuffer(locInfo.first).getBufferName(),
+        os.printf("%s:%d:", sgr.getBuffer(locInfo.first).getBufferIdentifier(),
             sgr.getLineNumber(locInfo.first, locInfo.second));
         if (showColumn)
           os.printf("%d:", sgr.getColumnNumber(locInfo.first, locInfo.second));

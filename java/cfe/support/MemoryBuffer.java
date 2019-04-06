@@ -244,7 +244,7 @@ public class MemoryBuffer implements Cloneable {
     return MemoryBuffer.getMemBuffer("", "<stdin>");
   }
 
-  public String getBufferName() {
+  public String getBufferIdentifier() {
     return getFilename();
   }
 
@@ -272,7 +272,7 @@ public class MemoryBuffer implements Cloneable {
     }
 
     @Override
-    public String getBufferName() {
+    public String getBufferIdentifier() {
       return fileID;
     }
 

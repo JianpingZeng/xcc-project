@@ -1113,7 +1113,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   }
 
   private void emitGlobalConstantVector(ConstantVector c, int addrSpace) {
-    for (int i = 0, e = c.getType().getNumElements(); i < e; i++)
+    for (int i = 0, e = (int) c.getType().getNumElements(); i < e; i++)
       emitGlobalConstant(c.operand(i), addrSpace);
   }
 

@@ -195,7 +195,7 @@ public final class FileCheck {
     }
 
     return MemoryBuffer.getMemBuffer(
-        new String(newFile.toArray()), buffer.getBufferName());
+        new String(newFile.toArray()), buffer.getBufferIdentifier());
   }
 
   private static void printCheckFailed(SourceMgr sgr,

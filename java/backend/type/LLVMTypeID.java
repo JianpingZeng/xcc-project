@@ -31,8 +31,9 @@ public interface LLVMTypeID {
   int DoubleTyID = FloatTyID + 1;
   int FP128TyID = DoubleTyID + 1;
   int X86_FP80TyID = FP128TyID + 1;
+  int PPC_FP128TyID = X86_FP80TyID + 1;
 
-  int TypeTyID = X86_FP80TyID + 1;
+  int TypeTyID = PPC_FP128TyID + 1;
   int LabelTyID = TypeTyID + 1;         // 12   : Labels...
   int MetadataTyID = LabelTyID + 1;     //
   int X86_MMXTyID = MetadataTyID + 1;     ///<  8: MMX vectors (64 bits, X86 specific)

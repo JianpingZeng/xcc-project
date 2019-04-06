@@ -152,7 +152,7 @@ public class ConstantFP extends Constant {
     if (type instanceof VectorType) {
       VectorType vty = (VectorType) type;
       if (vty.getElementType().isFloatingPointType()) {
-        Constant[] zeros = new Constant[vty.getNumElements()];
+        Constant[] zeros = new Constant[(int) vty.getNumElements()];
         Arrays.fill(zeros, getNegativeZero(vty.getElementType()));
         return ConstantVector.get(zeros);
       }

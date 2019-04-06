@@ -3454,7 +3454,7 @@ public abstract class Instruction extends User {
 
       VectorType vt = (VectorType)mask.getType();
       if (mask instanceof ConstantAggregateZero) {
-        for (int i = 0, e = vt.getNumElements(); i < e; ++i)
+        for (int i = 0, e = (int) vt.getNumElements(); i < e; ++i)
           result.add(0);
         return;
       }

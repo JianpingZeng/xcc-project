@@ -286,7 +286,7 @@ public final class SourceMgr {
         break;
     }
     printedMsg += msg;
-    return new SMDiagnostic(curMB.getBufferName(), findLineNumber(loc, curBuf),
+    return new SMDiagnostic(curMB.getBufferIdentifier(), findLineNumber(loc, curBuf),
         curMB.getBufferStart() - columnStart, printedMsg,
         curMB.getSubString(columnStart, columnEnd));
   }
@@ -300,7 +300,7 @@ public final class SourceMgr {
 
     printIncludeStack(getBufferInfo(curBuf).includeLoc, os);
 
-    os.printf("Included from %s:%d:\n", getBufferInfo(curBuf).buffer.getBufferName(),
+    os.printf("Included from %s:%d:\n", getBufferInfo(curBuf).buffer.getBufferIdentifier(),
         findLineNumber(includeLoc, curBuf));
   }
 }

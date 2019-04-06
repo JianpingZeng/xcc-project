@@ -306,7 +306,7 @@ public final class LLLexer {
   }
 
   public String getFilename() {
-    return buffer.getBufferName();
+    return buffer.getBufferIdentifier();
   }
 
   private int getNextChar() {

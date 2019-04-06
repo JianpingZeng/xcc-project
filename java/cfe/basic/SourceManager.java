@@ -446,7 +446,7 @@ public class SourceManager {
 
   public String getBufferName(SourceLocation loc) {
     if (!loc.isValid()) return "<invalid identLoc>";
-    return getBuffer(getFileID(loc)).getBufferName();
+    return getBuffer(getFileID(loc)).getBufferIdentifier();
   }
 
   public CharacteristicKind getFileCharacteristicKind(SourceLocation loc) {
@@ -479,7 +479,7 @@ public class SourceManager {
     ContentCache cache = fi.getContentCache();
 
     String filename = cache.fileEntry != null ?
-        cache.fileEntry.normalize().toString() : cache.getBuffer().getBufferName();
+        cache.fileEntry.normalize().toString() : cache.getBuffer().getBufferIdentifier();
 
     int lineNo = getLineNumber(locInfo.first, locInfo.second);
     int colNo = getColumnNumber(locInfo.first, locInfo.second);

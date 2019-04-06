@@ -174,10 +174,8 @@ public class LLC {
     CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
 
     Util.DEBUG = DebugMode.value;
-
     OutRef<SMDiagnostic> diag = new OutRef<>();
-    theModule = backend.llReader.Parser
-        .parseAssemblyFile(InputFilename.value, diag);
+    theModule = backend.llReader.Parser.parseAssemblyFile(InputFilename.value, diag);
     if (theModule == null) {
       diag.get().print("llc", System.err);
       System.exit(0);

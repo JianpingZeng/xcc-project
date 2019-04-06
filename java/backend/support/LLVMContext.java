@@ -40,6 +40,7 @@ public class LLVMContext {
   public static final Type DoubleTy = new Type(LLVMTypeID.DoubleTyID);
   public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
   public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
+  public static final Type PPC_FP128Ty = new Type(LLVMTypeID.PPC_FP128TyID);
 
   private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
   public static int getMDKindID(String name) {
