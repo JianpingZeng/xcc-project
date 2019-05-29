@@ -18,6 +18,7 @@
 package backend.ir;
 
 import backend.support.LLVMContext;
+import backend.type.VectorType;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
 import backend.value.Operator;
@@ -32,25 +33,9 @@ import tools.Util;
  * @version 0.4
  */
 public final class SelectInst extends Instruction {
-  /**
-   * An checking on whether the specified operands by formal arguments are
-   * valid or not.
-   *
-   * @param cond
-   * @param lhs
-   * @param rhs
-   * @return
-   */
-  private static boolean areValidOperands(Value cond, Value lhs, Value rhs) {
-    if (!lhs.getType().equals(rhs.getType()))
-      return false;
-    if (!cond.getType().equals(LLVMContext.Int1Ty))
-      return false;
-    return true;
-  }
 
   private void init(Value cond, Value lhs, Value rhs) {
-    Util.assertion(areValidOperands(cond, lhs, rhs), "Invalid operands!");
+    Util.assertion(areInvalidOperands(cond, lhs, rhs) == null, "Invalid operands!");
     reserve(3);
     setOperand(0, cond, this);
     setOperand(1, lhs, this);
@@ -93,5 +78,26 @@ public final class SelectInst extends Instruction {
   @Override
   public SelectInst clone() {
     return new SelectInst(getCondition(), getTrueValue(), getTrueValue(), getName());
+  }
+
+  public static String areInvalidOperands(Value op0, Value op1, Value op2) {
+    if (!op1.getType().equals(op2.getType()))
+      return "both values to select must have same type";
+
+    if (op0.getType() instanceof VectorType) {
+      VectorType vty = (VectorType) op0.getType();
+      // vector select.
+      if (!vty.getElementType().equals(LLVMContext.Int1Ty))
+        return "vector select condition element type must be i1";
+      if (!(op1.getType() instanceof VectorType))
+        return "selected values for vector selection must be vector type";
+      VectorType et = (VectorType) op1.getType();
+      if (et.getNumElements() != vty.getNumElements())
+        return "vector select requires selected vectors to have the same vector length as select condition";
+    }
+    else if (!op0.getType().equals(LLVMContext.Int1Ty))
+      return "select condition must be i1 or <n x i1>";
+
+    return null;
   }
 }

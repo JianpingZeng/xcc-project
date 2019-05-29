@@ -16,10 +16,12 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.ir.SelectInst;
 import backend.support.LLVMContext;
 import backend.transform.utils.ConstantFolder;
 import backend.type.PointerType;
 import backend.type.Type;
+import backend.type.VectorType;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.GetElementPtrInst;
 import backend.value.UniqueConstantValueImpl.ExprMapKeyType;
@@ -465,5 +467,146 @@ public abstract class ConstantExpr extends Constant {
 
   public void destroyConstant() {
     getUniqueImpl().remove(this);
+  }
+
+  /**
+   * This returns the current constant expression with the
+   * operands replaced with the specified values.  The specified operands must
+   * match count and type with the existing ones.
+   * @param newOps
+   * @return
+   */
+  public Constant getWithOperands(ArrayList<Constant> newOps) {
+    Util.assertion(newOps.size() == getNumOfOperands(), "Operand count mismatch");
+    boolean anyChange = false;
+    for (int i = 0; i < getNumOfOperands(); i++) {
+      Util.assertion(newOps.get(i).getType().equals(operand(i).getType()),
+          "Operand type mismatch!");
+      anyChange |= !newOps.get(i).equals(operand(i));
+    }
+
+    if (!anyChange)
+      return this;
+
+    switch (getOpcode()) {
+      case Trunc:
+      case ZExt:
+      case SExt:
+      case FPTrunc:
+      case FPExt:
+      case UIToFP:
+      case SIToFP:
+      case FPToUI:
+      case FPToSI:
+      case PtrToInt:
+      case IntToPtr:
+      case BitCast:
+        return ConstantExpr.getCast(getOpcode(), newOps.get(0), getType());
+      case Select:
+        return ConstantExpr.getSelect(newOps.get(0), newOps.get(1),newOps.get(2));
+      case InsertElement:
+        return ConstantExpr.getInsertElement(newOps.get(0), newOps.get(1), newOps.get(2));
+      case ExtractElement:
+        return ConstantExpr.getExtractElement(newOps.get(0), newOps.get(1));
+      case ShuffleVector:
+        return ConstantExpr.getShuffleVector(newOps.get(0), newOps.get(1), newOps.get(2));
+      case GetElementPtr:
+        return ((GetElementPtrConstantExpr)this).isInBounds() ?
+            ConstantExpr.getInBoundsGetElementPtr(newOps.get(0), newOps.subList(1, newOps.size())) :
+            ConstantExpr.getGetElementPtr(newOps.get(0), newOps.subList(1, newOps.size()));
+      case ICmp:
+      case FCmp:
+        return ConstantExpr.getCompare(getPredicate(), newOps.get(0), newOps.get(1));
+      default:
+        Util.assertion(getNumOfOperands() == 2, "Must be binary operator?");
+        return ConstantExpr.get(getOpcode(), newOps.get(0), newOps.get(1));
+    }
+  }
+
+  public static Constant getShuffleVector(Constant val1, Constant val2, Constant mask) {
+    Util.assertion(Instruction.ShuffleVectorInst.isValidOperands(val1, val2, mask),
+        "Invalid shuffle vector constant expr operands!");
+    int numElts = (int) ((VectorType)mask.getType()).getNumElements();
+    Type eltTy = ((VectorType)val1.getType()).getElementType();
+    Type shuffleTy = VectorType.get(eltTy, numElts);
+    return getShuffleVectorTy(shuffleTy, val1, val2, mask);
+  }
+
+  protected static Constant getShuffleVectorTy(Type reqTy, Constant val1, Constant val2, Constant mask) {
+    ArrayList<Constant> argVec = new ArrayList<>();
+    argVec.add(val1);
+    argVec.add(val2);
+    argVec.add(mask);
+    return getCompositeTy(reqTy, Operator.ShuffleVector, argVec);
+  }
+
+  public static Constant getExtractElement(Constant val, Constant idx) {
+    Util.assertion(val.getType().isVectorTy(),
+        "Tried to create extractelement operation on non-vector type!");
+    Util.assertion(idx.getType().isIntegerTy(32),
+        "extractelement index must be i32 type!");
+    return getExtractElementTy(((VectorType)val.getType()).getElementType(), val, idx);
+  }
+
+  protected static Constant getExtractElementTy(Type reqTy, Constant val, Constant idx) {
+    ArrayList<Constant> argVec = new ArrayList<>();
+    argVec.add(val);
+    argVec.add(idx);
+    return getCompositeTy(reqTy, Operator.ExtractElement, argVec);
+  }
+
+  public static Constant getInsertElement(Constant val, Constant elt, Constant idx) {
+    Util.assertion(val.getType().isVectorTy(),
+        "Tried to create insertelement operation on non-vector type!");
+    Util.assertion(elt.getType().equals(((VectorType)val.getType()).getElementType()),
+        "InsertElement types must match!");
+    Util.assertion(idx.getType().isIntegerTy(32),
+        "InsertElement idnex must be i32 type!");
+    return getInsertElementTy(val.getType(), val, elt, idx);
+  }
+
+  protected static Constant getInsertElementTy(Type reqTy, Constant val, Constant elt, Constant idx) {
+    ArrayList<Constant> argVec = new ArrayList<>();
+    argVec.add(val);
+    argVec.add(elt);
+    argVec.add(idx);
+    return getCompositeTy(reqTy, Operator.InsertElement, argVec);
+  }
+
+  public static Constant getInsertValue(Constant agg, Constant val,
+                                         int[] idxList) {
+    Util.assertion(agg.getType().isFirstClassType(),
+        "Tried to create insertvalue operation on non-first-class type");
+    Type reqTy = agg.getType();
+    Type valTy = Instruction.ExtractValueInst.getIndexedType(reqTy, idxList);
+    Util.assertion(reqTy.equals(valTy), "insertvalue indices invalid!");
+    return getInsertValueTy(reqTy, agg, val, idxList);
+  }
+
+  protected static Constant getInsertValueTy(Type reqTy, Constant agg, Constant val, int[] idxList) {
+    Util.shouldNotReachHere("getInsertedValueTy is not implemented as yet!");
+    return null;
+  }
+
+  protected static Constant getCompositeTy(Type reqTy, Operator opc, ArrayList<Constant> argVec) {
+    ExprMapKeyType key = new ExprMapKeyType(opc, argVec, reqTy);
+    return getUniqueImpl().getOrCreate(key);
+  }
+
+  public static Constant getSelect(Constant cond, Constant lhs, Constant rhs) {
+    return getSelectTy(lhs.getType(), cond, lhs, rhs);
+  }
+
+  protected static Constant getSelectTy(Type reqTy, Constant cond, Constant lhs, Constant rhs) {
+    Util.assertion(SelectInst.areInvalidOperands(cond, lhs, rhs) == null,
+        "Invalid select operands");
+
+    ArrayList<Constant> argVec = new ArrayList<>();
+    argVec.add(cond);
+    argVec.add(lhs);
+    argVec.add(rhs);
+    ExprMapKeyType key = new ExprMapKeyType(Operator.Select, argVec, reqTy);
+    return getUniqueImpl().getOrCreate(key);
+
   }
 }

@@ -46,4 +46,8 @@ public class GetElementPtrConstantExpr extends ConstantExpr {
   public void setIsInBounds(boolean isInBounds) {
     this.isInBounds = isInBounds;
   }
+
+  public boolean isInBounds() {
+    return isInBounds;
+  }
 }

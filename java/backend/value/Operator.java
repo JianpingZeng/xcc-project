@@ -103,7 +103,10 @@ public enum Operator {
   ExtractValue("extractvalue", InsertValue.index + 1, 0),
 
   // Select instruction acts as ?: operator in C language.
-  Select("select", ExtractValue.index + 1, 0);
+  Select("select", ExtractValue.index + 1, 0),
+  // The following two operators only be used for compiler internal.
+  UserOp1("userop1", Select.index + 1, 0),
+  UserOp2("userop2", UserOp1.index + 1, 0);
 
   public final String opName;
   public final int index;

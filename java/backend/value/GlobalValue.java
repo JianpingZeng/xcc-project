@@ -20,8 +20,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
 
-import static backend.value.GlobalValue.LinkageType.ExternalWeakLinkage;
-import static backend.value.GlobalValue.LinkageType.LinkerPrivateLinkage;
+import static backend.value.GlobalValue.LinkageType.*;
 
 /**
  * @author Jianping Zeng
@@ -52,7 +51,7 @@ public abstract class GlobalValue extends Constant {
   }
 
   protected Module parent;
-  private LinkageType linkageType;
+  private LinkageType linkage;
   /**
    * The section on which this value will be printed.
    */
@@ -68,7 +67,7 @@ public abstract class GlobalValue extends Constant {
   public GlobalValue(Type ty, int valueType, LinkageType linkage, String name) {
     super(ty, valueType);
     setName(name);
-    linkageType = linkage;
+    this.linkage = linkage;
     section = "";
   }
 
@@ -94,39 +93,6 @@ public abstract class GlobalValue extends Constant {
 
   public void setParent(Module newParent) {
     parent = newParent;
-  }
-
-  public boolean hasExternalLinkage() {
-    return linkageType == LinkageType.ExternalLinkage;
-  }
-
-  public boolean hasExternalWeakLinkage() {
-    return linkageType == ExternalWeakLinkage;
-  }
-
-  public boolean hasInternalLinkage() {
-    return linkageType == LinkageType.InternalLinkage;
-  }
-
-  public boolean hasPrivateLinkage() {
-    return linkageType == LinkageType.PrivateLinkage;
-  }
-
-  public boolean hasLinkerPrivateLinkage() {
-    return linkageType == LinkerPrivateLinkage;
-  }
-
-  public boolean hasLocalLinkage() {
-    return hasInternalLinkage() || hasPrivateLinkage()
-        || hasLinkerPrivateLinkage();
-  }
-
-  public void setLinkage(LinkageType newLinkage) {
-    linkageType = newLinkage;
-  }
-
-  public LinkageType getLinkage() {
-    return linkageType;
   }
 
   @Override
@@ -197,11 +163,120 @@ public abstract class GlobalValue extends Constant {
     }
   }
 
-  public boolean isWeakForLinker() {
-    // TODO: 17-7-19
-    return false;
+  static LinkageType getLinkOnceLinkage(boolean ODR) {
+    return ODR ? LinkOnceODRLinkage : LinkOnceAnyLinkage;
+  }
+  static LinkageType getWeakLinkage(boolean ODR) {
+    return ODR ? WeakODRLinkage : WeakAnyLinkage;
   }
 
+  static boolean isExternalLinkage(LinkageType Linkage) {
+    return Linkage == ExternalLinkage;
+  }
+  static boolean isAvailableExternallyLinkage(LinkageType Linkage) {
+    return Linkage == AvailableExternallyLinkage;
+  }
+  static boolean isLinkOnceLinkage(LinkageType Linkage) {
+    return Linkage == LinkOnceAnyLinkage || Linkage == LinkOnceODRLinkage;
+  }
+  static boolean isWeakLinkage(LinkageType Linkage) {
+    return Linkage == WeakAnyLinkage || Linkage == WeakODRLinkage;
+  }
+  static boolean isAppendingLinkage(LinkageType Linkage) {
+    return Linkage == AppendingLinkage;
+  }
+  static boolean isInternalLinkage(LinkageType Linkage) {
+    return Linkage == InternalLinkage;
+  }
+  static boolean isPrivateLinkage(LinkageType Linkage) {
+    return Linkage == PrivateLinkage;
+  }
+  static boolean isLinkerPrivateLinkage(LinkageType Linkage) {
+    return Linkage == LinkerPrivateLinkage;
+  }
+  static boolean isLinkerPrivateWeakLinkage(LinkageType Linkage) {
+    return Linkage == LinkerPrivateWeakLinkage;
+  }
+  static boolean isLinkerPrivateWeakDefAutoLinkage(LinkageType Linkage) {
+    return Linkage == LinkerPrivateWeakDefAutoLinkage;
+  }
+  static boolean isLocalLinkage(LinkageType Linkage) {
+    return isInternalLinkage(Linkage) || isPrivateLinkage(Linkage) ||
+        isLinkerPrivateLinkage(Linkage) || isLinkerPrivateWeakLinkage(Linkage) ||
+        isLinkerPrivateWeakDefAutoLinkage(Linkage);
+  }
+  static boolean isDLLImportLinkage(LinkageType Linkage) {
+    return Linkage == DLLImportLinkage;
+  }
+  static boolean isDLLExportLinkage(LinkageType Linkage) {
+    return Linkage == DLLExportLinkage;
+  }
+  static boolean isExternalWeakLinkage(LinkageType Linkage) {
+    return Linkage == ExternalWeakLinkage;
+  }
+  static boolean isCommonLinkage(LinkageType Linkage) {
+    return Linkage == CommonLinkage;
+  }
+  
+  private static boolean maybeOverridden(LinkageType linkage) {
+    return linkage == WeakAnyLinkage ||
+        linkage == LinkOnceAnyLinkage ||
+        linkage == CommonLinkage ||
+        linkage == ExternalWeakLinkage ||
+        linkage == LinkerPrivateWeakLinkage ||
+        linkage == LinkerPrivateWeakDefAutoLinkage;
+  }
+
+  private static boolean isWeakForLinker(LinkageType linkage) {
+    return linkage == AvailableExternallyLinkage ||
+        linkage == WeakAnyLinkage ||
+        linkage == WeakODRLinkage ||
+        linkage == LinkOnceAnyLinkage ||
+        linkage == LinkOnceODRLinkage ||
+        linkage == CommonLinkage ||
+        linkage == ExternalWeakLinkage ||
+        linkage == LinkerPrivateWeakLinkage ||
+        linkage == LinkerPrivateWeakDefAutoLinkage;
+  }
+
+  public boolean hasExternalLinkage() { return isExternalLinkage(linkage); }
+  public boolean hasAvailableExternallyLinkage() {
+    return isAvailableExternallyLinkage(linkage);
+  }
+  public boolean hasLinkOnceLinkage() {
+    return isLinkOnceLinkage(linkage);
+  }
+  public boolean hasWeakLinkage() {
+    return isWeakLinkage(linkage);
+  }
+  public boolean hasAppendingLinkage() { return isAppendingLinkage(linkage); }
+  public boolean hasInternalLinkage() { return isInternalLinkage(linkage); }
+  public boolean hasPrivateLinkage() { return isPrivateLinkage(linkage); }
+  public boolean hasLinkerPrivateLinkage() { return isLinkerPrivateLinkage(linkage); }
+  public boolean hasLinkerPrivateWeakLinkage() {
+    return isLinkerPrivateWeakLinkage(linkage);
+  }
+  public boolean hasLinkerPrivateWeakDefAutoLinkage() {
+    return isLinkerPrivateWeakDefAutoLinkage(linkage);
+  }
+  public boolean hasLocalLinkage() { return isLocalLinkage(linkage); }
+  public boolean hasDLLImportLinkage() { return isDLLImportLinkage(linkage); }
+  public boolean hasDLLExportLinkage() { return isDLLExportLinkage(linkage); }
+  public boolean hasExternalWeakLinkage() { return isExternalWeakLinkage(linkage); }
+  public boolean hasCommonLinkage() { return isCommonLinkage(linkage); }
+
+  public void setLinkage(LinkageType LT) { linkage = LT; }
+  public LinkageType getLinkage() { return linkage; }
+
+
+  public boolean isWeakForLinker() {
+    return isWeakForLinker(linkage);
+  }
+
+  public boolean maybeOverridden() {
+    return maybeOverridden(linkage);
+  }
+  
   /**
    * An enumeration for the kinds of visibility of global values.
    */

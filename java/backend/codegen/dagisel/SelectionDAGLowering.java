@@ -2235,13 +2235,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return implVisitAluOverflow(ci, ISD.UMULO);
       case smul_with_overflow:
         return implVisitAluOverflow(ci, ISD.SMULO);
-      case llvm_invariant_start:
-      case llvm_lifetime_start:
+      case invariant_start:
+      case lifetime_start:
         // discard it
         setValue(ci, dag.getUNDEF(new EVT(tli.getPointerTy())));
         return null;
-      case llvm_invariant_end:
-      case llvm_lifetime_end:
+      case invariant_end:
+      case lifetime_end:
         return null;
     }
   }

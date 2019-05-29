@@ -34,6 +34,12 @@ import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
  * @author Jianping Zeng
  */
 public final class Module implements Iterable<Function> {
+
+  /**
+   * A list of global aliases.
+   */
+  private ArrayList<GlobalAlias> aliasList;
+
   /**
    * A list of global variables.
    */
@@ -64,6 +70,10 @@ public final class Module implements Iterable<Function> {
   private HashMap<String, NamedMDNode> namedMDSymTab;
   private ArrayList<NamedMDNode> namedMDList;
   private String globalScopeAsm;
+  /**
+   * The libraries needed by this module.
+   */
+  private ArrayList<String> libraryLists;
 
   /**
    * Constructor.
@@ -79,6 +89,7 @@ public final class Module implements Iterable<Function> {
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
+    libraryLists = new ArrayList<>();
   }
 
   public Module(String moduleID) {
@@ -90,6 +101,7 @@ public final class Module implements Iterable<Function> {
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
+    libraryLists = new ArrayList<>();
   }
 
   public String getModuleIdentifier() {
@@ -106,6 +118,10 @@ public final class Module implements Iterable<Function> {
 
   public ArrayList<GlobalVariable> getGlobalVariableList() {
     return globalVariableList;
+  }
+
+  public ArrayList<GlobalAlias> getAliasList() {
+    return aliasList;
   }
 
   public int getNumFunctions() {
@@ -311,5 +327,15 @@ public final class Module implements Iterable<Function> {
 
   public void findUsedStructTypes(ArrayList<StructType> namedTypes) {
     new TypeFinder(namedTypes).run(this);
+  }
+
+  public void addLibrary(String lib) {
+    if (libraryLists.contains(lib))
+      return;
+    libraryLists.add(lib);
+  }
+
+  public void removeLibrary(String lib) {
+    libraryLists.remove(lib);
   }
 }

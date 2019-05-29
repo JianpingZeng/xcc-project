@@ -29,26 +29,30 @@ package backend.bitcode.reader;
 
 import backend.io.BitStream;
 import backend.io.ByteSequence;
+import backend.support.AttrList;
+import backend.support.CallingConv;
 import backend.support.GVMaterializer;
-import backend.value.GlobalValue;
-import backend.value.Module;
+import backend.support.LLVMContext;
+import backend.type.*;
+import backend.value.*;
 import cfe.support.MemoryBuffer;
-import tools.OutRef;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.*;
 
 import static backend.bitcode.BitcodeUtil.*;
-import static backend.bitcode.reader.BitcodeReader.BlockIDs.MODULE_BLOCK_ID;
-import static backend.bitcode.reader.BitcodeReader.BlockInfoCodes.BLOCKINFO_CODE_BLOCKNAME;
-import static backend.bitcode.reader.BitcodeReader.BlockInfoCodes.BLOCKINFO_CODE_SETRECORDNAME;
+import static backend.bitcode.reader.BitcodeReader.BinaryOpcodes.*;
+import static backend.bitcode.reader.BitcodeReader.BlockIDs.*;
+import static backend.bitcode.reader.BitcodeReader.BlockInfoCodes.*;
+import static backend.bitcode.reader.BitcodeReader.CastOpcodes.*;
+import static backend.bitcode.reader.BitcodeReader.ConstantsCodes.*;
 import static backend.bitcode.reader.BitcodeReader.Encoding.*;
 import static backend.bitcode.reader.BitcodeReader.FixedAbbrevIDs.*;
-import static backend.bitcode.reader.BitcodeReader.StandardBlockIDs.BLOCKINFO_BLOCK_ID;
-import static backend.bitcode.reader.BitcodeReader.StandardBlockIDs.FIRST_APPLICATION_BLOCKID;
+import static backend.bitcode.reader.BitcodeReader.ModuleCodes.*;
+import static backend.bitcode.reader.BitcodeReader.StandardBlockIDs.*;
 import static backend.bitcode.reader.BitcodeReader.StandardWidths.*;
+import static backend.support.AutoUpgrade.upgradeGlobalVariable;
+import static backend.support.AutoUpgrade.upgradeIntrinsicFunction;
 
 /**
  * @author Jianping Zeng.
@@ -369,246 +373,6 @@ public class BitcodeReader implements GVMaterializer {
     FUNC_CODE_DEBUG_LOC2 = 35;  // DEBUG_LOC2: [Line,Col,ScopeVal, IAVal]
   }
 
-  private String errorString;
-  private ByteSequence buffer;
-  /**
-   * The current pointer to the buffer from which the current byte is read.
-   */
-  private int curOffset;
-  private BitStream bitStream;
-  /**
-   * Specify how many bytes would be read when calling {@linkplain #readCode()}.
-   * This value will changes when entering difference block.
-   */
-  private int curCodeSize;
-
-  private BitcodeReader(MemoryBuffer buffer) {
-    errorString = null;
-    theModule = null;
-    this.buffer = ByteSequence.create(buffer);
-    curOffset = 0;
-    curCodeSize = 2;
-  }
-
-  private String getErrorString() {
-    return errorString;
-  }
-
-  private boolean error(String msg) {
-    errorString = msg;
-    return true;
-  }
-
-  private long read(int size) {
-    long res = bitStream.read(curOffset, size);
-    curOffset += size;
-    return res;
-  }
-
-  private boolean atEndOfStream() {
-    return curOffset < bitStream.size();
-  }
-
-  private long readCode() {
-    return read(curCodeSize);
-  }
-
-  private int readSubBlockID() {
-    int res = (int) bitStream.readVBR(curOffset, BlockIDWidth);
-    curOffset += BlockIDWidth;
-    return res;
-  }
-
-  private boolean parseBitcodeInfo(Module m) {
-    theModule = null;
-    bitStream = null;
-    if ((buffer.length() & 3) != 0) {
-      if (!isRawBitcode(buffer) && !isBitcodeWrapper(buffer))
-        return error("Invalid bitcode signature");
-      else
-        return error("Bitcode stream should be a multiple of 4 bytes in length");
-    }
-
-    if (isBitcodeWrapper(buffer)) {
-      buffer = skipBitcodeWrapperHeader(buffer);
-      if (buffer == null)
-        return error("Invalid bitcode wrapper header");
-    }
-
-    bitStream = BitStream.create(buffer);
-    // sniff for the signature.
-    if (read(8) != 'B' || read(8) != 'C' ||
-        read(4) != 0x0 || read(4) != 0xC ||
-        read(4) != 0xE || read(4) != 0xD) {
-      return error("Invalid bitcode signature");
-    }
-
-    // we expect a number of well-defined blocks, though we don't necessarily
-    // need to understand them all.
-    while (!atEndOfStream()) {
-      long code = readCode();
-      if (code != ENTER_SUBBLOCK)
-        return error("Invalid record at top-level");
-
-      int blockID = readSubBlockID();
-      // We only know the MODULE subblock ID.
-      switch (blockID) {
-        case BLOCKINFO_BLOCK_ID:
-          if (readBlockInfoBlock())
-            return error("Malformed BlockInfoBlock");
-          break;
-        case MODULE_BLOCK_ID:
-          // Reject multiple MODULE_BLOCK's in a single bitstream.
-          if (theModule != null)
-            return error("Multiple MODULE_BLOCKS in same stream");
-
-          theModule = m;
-          if (parseModule())
-            return true;
-          break;
-        default:
-          if (skipBlock())
-            return error("Malformed block record");
-          break;
-      }
-    }
-    return true;
-  }
-
-  private boolean readBlockInfoBlock() {
-    // If this is the second stream to get to the block info block, skip it.
-    if (hasBlockInfoRecords())
-      return skipBlock();
-
-    if (enterSubBlock(BLOCKINFO_BLOCK_ID)) 
-      return true;
-
-    ArrayList<Integer> record = new ArrayList<>();
-    BlockInfo curBlockInfo = null;
-
-    // read all the records for this module.
-    while (true) {
-      int code = (int) readCode();
-      if (code == END_BLOCK)
-        return readBlockEnd();
-      if (code == ENTER_SUBBLOCK) {
-        readSubBlockID();
-        if (skipBlock())
-          return true;
-        continue;
-      }
-
-      // read abbrev records, associate them with curBID.
-      if (code == DEFINE_ABBREV) {
-        if (curBlockInfo == null) return true;
-
-        readAbbrevRecord();
-        BitCodeAbbrev abbv = curAbbrevs.getLast();
-        curAbbrevs.removeLast();
-        curBlockInfo.abbrevs.add(abbv);
-        continue;
-      }
-
-      // read a record.
-      record.clear();
-      switch (readRecord(code, record)) {
-        default:break;
-        case BLOCKINFO_BLOCK_ID:
-          if (record.size() < 1) return true;
-          curBlockInfo = getOrCreateBlcokInfo(record.get(0));
-          break;
-        case BLOCKINFO_CODE_BLOCKNAME: {
-          if (curBlockInfo == null) return true;
-
-          if (ignoreBlockInfoNames) break;
-          StringBuilder name = new StringBuilder();
-          for (int i : record)
-            name.append((char) i);
-          curBlockInfo.name = name.toString();
-          break;
-        }
-        case BLOCKINFO_CODE_SETRECORDNAME: {
-          if (curBlockInfo == null) return true;
-          if (ignoreBlockInfoNames) break;
-          StringBuilder name = new StringBuilder();
-          for (int i = 1, e = record.size(); i < e; i++)
-            name.append((char)record.get(i).intValue());
-          curBlockInfo.recordNames.add(Pair.get(record.get(0), name.toString()));
-          break;
-        }
-      }
-    }
-  }
-
-  private BlockInfo getOrCreateBlcokInfo(int id) {
-    return null;
-  }
-
-  private int readRecord(int code, ArrayList<Integer> record) {
-    return 0;
-  }
-
-  private void readAbbrevRecord() {
-
-  }
-
-  private boolean readBlockEnd() {
-    return false;
-  }
-
-  private boolean enterSubBlock(int blockID) {
-    return enterSubBlock(blockID, null);
-  }
-
-  private static class Block {
-    int prevCodeSize;
-    LinkedList<BitCodeAbbrev> prevAbbrevs;
-    Block(int pcs) {
-      this.prevCodeSize = pcs;
-      prevAbbrevs = new LinkedList<>();
-    }
-  }
-
-  private LinkedList<Block> blockScope;
-  private LinkedList<BitCodeAbbrev> curAbbrevs;
-
-  private boolean enterSubBlock(int blockID, OutRef<Integer> numWordsP) {
-    blockScope.push(new Block(curCodeSize));
-    LinkedList<BitCodeAbbrev> temp = curAbbrevs;
-    curAbbrevs = blockScope.getLast().prevAbbrevs;
-    blockScope.getLast().prevAbbrevs = temp;
-
-    BlockInfo info = getBlockInfo(blockID);
-    if (info != null) {
-      for (int i = 0, e = info.abbrevs.size(); i < e; i++) {
-        curAbbrevs.add(info.abbrevs.get(i));
-      }
-    }
-
-    // get the code size of this block.
-    curCodeSize = (int) readVBR(CodeLenWidth);
-    skipToWord();
-    int numWords = (int) read(BlockSizeWidth);
-    if (numWordsP != null)
-      numWordsP.set(numWords);
-
-    if (curCodeSize == 0 | atEndOfStream() ||
-        curOffset + numWords*4 > bitStream.size())
-      return true;
-    return false;
-  }
-
-  private BlockInfo getBlockInfo(int blockID) {
-    if (!blockInfoRecords.isEmpty() && blockInfoRecords.getLast().blockID == blockID)
-      return blockInfoRecords.getLast();
-
-    for (BlockInfo info : blockInfoRecords) {
-      if (info.blockID == blockID)
-        return info;
-    }
-    return null;
-  }
-
   interface Encoding {
     int Fixed = 1,  // A fixed width field, val specifies number of bits.
         VBR = 2,  // A VBR field where val specifies the width of each chunk.
@@ -740,12 +504,321 @@ public class BitcodeReader implements GVMaterializer {
     ArrayList<Pair<Integer, String>> recordNames;
   }
 
-  LinkedList<BlockInfo> blockInfoRecords;
+  private static class Block {
+    int prevCodeSize;
+    LinkedList<BitCodeAbbrev> prevAbbrevs;
+    Block(int pcs) {
+      this.prevCodeSize = pcs;
+      prevAbbrevs = new LinkedList<>();
+    }
+  }
+
+  private String errorString;
+  private ByteSequence buffer;
+  /**
+   * The current pointer to the buffer from which the current byte is read.
+   */
+  private int curOffset;
+  private BitStream bitStream;
+  /**
+   * Specify how many bytes would be read when calling {@linkplain #readCode()}.
+   * This value will changes when entering difference block.
+   */
+  private int curCodeSize;
+
+  private ArrayList<Pair<GlobalVariable, Integer>> globalInits;
+  private ArrayList<Pair<GlobalAlias, Integer>> aliasInits;
+
+  /**
+   * The set of attributes by index. Index zero in the file is for null,
+   * And is thus not represented here. As such all indices are off by one.
+   */
+  private ArrayList<AttrList> mattributes;
+
+  /**
+   * While parsing a function body, this is a list of the basic
+   * blocks for the function.
+   */
+  private ArrayList<BasicBlock> functionBBs;
+
+  /**
+   * When reading the module header, this list is populated with functions
+   * that have bodies in the file.
+   */
+  private LinkedList<Function> functionsWithBodies;
+
+  /**
+   * When intrinsic functions are encountered which requires upgrading they
+   * are stored here with their replacement function.
+   */
+  private ArrayList<Pair<Function, Function>> upgradedIntrinsics;
+
+  /**
+   * Map the bitcode's custom MDKind ID to the Module's MDKind ID.
+   */
+  private TreeMap<Integer, Integer> mdKindMap;
+
+  /**
+   * After the module headers have been read, the field {@linkplain #functionsWithBodies}
+   * list is reversed. This keeps track of whether we've done this yet.
+   */
+  private boolean hasReversedFunctionsWithBodies;
+
+  /**
+   * When function bodies are initially scanned. This map contains info
+   * about where to find deferred function body in the stream.
+   */
+  private HashMap<Function, Long> deferredFunctionInfo;
+
+  /**
+   * These are blockaddr references to basic blocks. These are resolved
+   * lazily when functions are loaded.
+   */
+  private HashMap<Function, ArrayList<Pair<Long, GlobalVariable>>> blockAddrFwdRefs;
+
+  private LinkedList<Block> blockScope;
+  private LinkedList<BitCodeAbbrev> curAbbrevs;
+
+  private LinkedList<BlockInfo> blockInfoRecords;
 
   /// IgnoreBlockInfoNames - This is set to true if we don't care about the
   /// block/record name information in the BlockInfo block. Only llvm-bcanalyzer
   /// uses this.
-  boolean ignoreBlockInfoNames;
+  private boolean ignoreBlockInfoNames;
+
+  private BitcodeReaderValueList valueList;
+  private ArrayList<Type> typeList;
+
+  private BitcodeReader(MemoryBuffer buffer) {
+    errorString = null;
+    theModule = null;
+    this.buffer = ByteSequence.create(buffer);
+    curOffset = 0;
+    curCodeSize = 2;
+    globalInits = new ArrayList<>();
+    aliasInits = new ArrayList<>();
+    mattributes = new ArrayList<>();
+    functionBBs = new ArrayList<>();
+    functionsWithBodies = new LinkedList<>();
+    upgradedIntrinsics = new ArrayList<>();
+    mdKindMap = new TreeMap<>();
+    hasReversedFunctionsWithBodies = false;
+    deferredFunctionInfo = new HashMap<>();
+    blockAddrFwdRefs = new HashMap<>();
+    blockScope = new LinkedList<>();
+    curAbbrevs = new LinkedList<>();
+    blockInfoRecords = new LinkedList<>();
+    ignoreBlockInfoNames = false;
+    valueList = new BitcodeReaderValueList();
+    typeList = new ArrayList<>();
+  }
+
+  private String getErrorString() {
+    return errorString;
+  }
+
+  private boolean error(String msg) {
+    errorString = msg;
+    return true;
+  }
+
+  private long read(int size) {
+    long res = bitStream.read(curOffset, size);
+    curOffset += size;
+    return res;
+  }
+
+  private boolean atEndOfStream() {
+    return curOffset < bitStream.size();
+  }
+
+  private long readCode() {
+    return read(curCodeSize);
+  }
+
+  private int readSubBlockID() {
+    int res = (int) bitStream.readVBR(curOffset, BlockIDWidth);
+    curOffset += BlockIDWidth;
+    return res;
+  }
+
+  private boolean parseBitcodeInfo(Module m) {
+    theModule = null;
+    bitStream = null;
+    if ((buffer.length() & 3) != 0) {
+      if (!isRawBitcode(buffer) && !isBitcodeWrapper(buffer))
+        return error("Invalid bitcode signature");
+      else
+        return error("Bitcode stream should be a multiple of 4 bytes in length");
+    }
+
+    if (isBitcodeWrapper(buffer)) {
+      buffer = skipBitcodeWrapperHeader(buffer);
+      if (buffer == null)
+        return error("Invalid bitcode wrapper header");
+    }
+
+    bitStream = BitStream.create(buffer);
+    // sniff for the signature.
+    if (read(8) != 'B' || read(8) != 'C' ||
+        read(4) != 0x0 || read(4) != 0xC ||
+        read(4) != 0xE || read(4) != 0xD) {
+      return error("Invalid bitcode signature");
+    }
+
+    // we expect a number of well-defined blocks, though we don't necessarily
+    // need to understand them all.
+    while (!atEndOfStream()) {
+      long code = readCode();
+      if (code != ENTER_SUBBLOCK)
+        return error("Invalid record at top-level");
+
+      int blockID = readSubBlockID();
+      // We only know the MODULE subblock ID.
+      switch (blockID) {
+        case BLOCKINFO_BLOCK_ID:
+          if (readBlockInfoBlock())
+            return error("Malformed BlockInfoBlock");
+          break;
+        case MODULE_BLOCK_ID:
+          // Reject multiple MODULE_BLOCK's in a single bitstream.
+          if (theModule != null)
+            return error("Multiple MODULE_BLOCKS in same stream");
+
+          theModule = m;
+          if (parseModule())
+            return true;
+          break;
+        default:
+          if (skipBlock())
+            return error("Malformed block record");
+          break;
+      }
+    }
+    return true;
+  }
+
+  private boolean readBlockInfoBlock() {
+    // If this is the second stream to get to the block info block, skip it.
+    if (hasBlockInfoRecords())
+      return skipBlock();
+
+    if (enterSubBlock(BLOCKINFO_BLOCK_ID)) 
+      return true;
+
+    ArrayList<Long> record = new ArrayList<>();
+    BlockInfo curBlockInfo = null;
+
+    // read all the records for this module.
+    while (true) {
+      int code = (int) readCode();
+      if (code == END_BLOCK)
+        return readBlockEnd();
+      if (code == ENTER_SUBBLOCK) {
+        readSubBlockID();
+        if (skipBlock())
+          return true;
+        continue;
+      }
+
+      // read abbrev records, associate them with curBID.
+      if (code == DEFINE_ABBREV) {
+        if (curBlockInfo == null) return true;
+
+        readAbbrevRecord();
+        BitCodeAbbrev abbv = curAbbrevs.getLast();
+        curAbbrevs.removeLast();
+        curBlockInfo.abbrevs.add(abbv);
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      switch (readRecord(code, record)) {
+        default:break;
+        case BLOCKINFO_BLOCK_ID:
+          if (record.size() < 1) return true;
+          curBlockInfo = getOrCreateBlcokInfo(record.get(0).intValue());
+          break;
+        case BLOCKINFO_CODE_BLOCKNAME: {
+          if (curBlockInfo == null) return true;
+
+          if (ignoreBlockInfoNames) break;
+          StringBuilder name = new StringBuilder();
+          for (Long i : record)
+            name.append((char) i.intValue());
+          curBlockInfo.name = name.toString();
+          break;
+        }
+        case BLOCKINFO_CODE_SETRECORDNAME: {
+          if (curBlockInfo == null) return true;
+          if (ignoreBlockInfoNames) break;
+          StringBuilder name = new StringBuilder();
+          for (int i = 1, e = record.size(); i < e; i++)
+            name.append((char)record.get(i).intValue());
+          curBlockInfo.recordNames.add(Pair.get(record.get(0).intValue(), name.toString()));
+          break;
+        }
+      }
+    }
+  }
+
+  private BlockInfo getOrCreateBlcokInfo(int id) {
+    return null;
+  }
+
+  private int readRecord(long code, ArrayList<Long> record) {
+    return 0;
+  }
+
+  private void readAbbrevRecord() {
+
+  }
+
+  private boolean readBlockEnd() {
+    return false;
+  }
+
+  private boolean enterSubBlock(int blockID) {
+    return enterSubBlock(blockID, null);
+  }
+
+  private boolean enterSubBlock(int blockID, OutRef<Integer> numWordsP) {
+    blockScope.push(new Block(curCodeSize));
+    LinkedList<BitCodeAbbrev> temp = curAbbrevs;
+    curAbbrevs = blockScope.getLast().prevAbbrevs;
+    blockScope.getLast().prevAbbrevs = temp;
+
+    BlockInfo info = getBlockInfo(blockID);
+    if (info != null) {
+      for (int i = 0, e = info.abbrevs.size(); i < e; i++) {
+        curAbbrevs.add(info.abbrevs.get(i));
+      }
+    }
+
+    // get the code size of this block.
+    curCodeSize = (int) readVBR(CodeLenWidth);
+    skipToWord();
+    int numWords = (int) read(BlockSizeWidth);
+    if (numWordsP != null)
+      numWordsP.set(numWords);
+
+    if (curCodeSize == 0 | atEndOfStream() ||
+        curOffset + numWords*4 > bitStream.size())
+      return true;
+    return false;
+  }
+
+  private BlockInfo getBlockInfo(int blockID) {
+    if (!blockInfoRecords.isEmpty() && blockInfoRecords.getLast().blockID == blockID)
+      return blockInfoRecords.getLast();
+
+    for (BlockInfo info : blockInfoRecords) {
+      if (info.blockID == blockID)
+        return info;
+    }
+    return null;
+  }
 
   /**
    * Return true if we've already read and processed the
@@ -758,7 +831,828 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private boolean parseModule() {
-    return true;
+    if (enterSubBlock(MODULE_BLOCK_ID))
+      return error("Malformed block record");
+
+    ArrayList<Long> record = new ArrayList<>();
+    ArrayList<String> sectionTable = new ArrayList<>();
+    ArrayList<String> gcTable = new ArrayList<>();
+
+    // Read all the records for this module.
+    while (!atEndOfStream()) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of module block");
+
+        // Patch the initializers for globals and alias up.
+        resolveGlobalAndAliasInits();
+        if (!globalInits.isEmpty() || !aliasInits.isEmpty())
+          return error("Malformed global initializer set");
+        if (!functionsWithBodies.isEmpty())
+          return error("Too few function bodies found");
+
+        // look for intrinsic functions which need to be upgraded at some point.
+        for (Function f : theModule.getFunctionList()) {
+          OutRef<Function> newFn = new OutRef<>();
+          if (upgradeIntrinsicFunction(f, newFn))
+            upgradedIntrinsics.add(Pair.get(f, newFn.get()));
+        }
+
+        // look for global variable which need to be renamed.
+        for (GlobalVariable gv : theModule.getGlobalVariableList()) {
+          upgradeGlobalVariable(gv);
+        }
+
+        globalInits.clear();
+        aliasInits.clear();
+        functionsWithBodies.clear();
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        switch (readSubBlockID()) {
+          default:
+            if (skipBlock())
+              return error("Malformed block record");
+            break;
+          case BLOCKINFO_BLOCK_ID:
+            if (readBlockInfoBlock())
+              return error("Malformed BlockInfoBlock");
+            break;
+          case PARAMATTR_BLOCK_ID:
+            if (parseAttributeBlock())
+              return true;
+            break;
+          case TYPE_BLOCK_ID:
+            if (parseTypeTable())
+              return true;
+            break;
+          case TYPE_SYMTAB_BLOCK_ID:
+            if (parseTypeSymbolTable())
+              return true;
+            break;
+          case VALUE_SYMTAB_BLOCK_ID:
+            if (parseValueSymbolTable())
+              return true;
+            break;
+          case CONSTANTS_BLOCK_ID:
+            if (parseConstants() || resolveGlobalAndAliasInits())
+              return true;
+            break;
+          case METADATA_BLOCK_ID:
+            if (parseMetadata())
+              return true;
+            break;
+          case FUNCTION_BLOCK_ID:
+            // if this is the first function body we're seen, reverse the functionWithBodies list.
+            if (!hasReversedFunctionsWithBodies) {
+              Collections.reverse(functionsWithBodies);
+              hasReversedFunctionsWithBodies = true;
+            }
+            if (rememberAndSkipFunctionBody())
+              return true;
+            break;
+        }
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // Read a record.
+      switch (readRecord(code, record)) {
+        default: break;
+        case MODULE_CODE_VERSION:
+          // VERSION: [version#]
+          if (record.size() < 1)
+            return error("Malformed MODULE_CODE_VERSION");
+          // Only version#0 is supported as yet.
+          if (record.get(0) != 0)
+            return error("Unknown bitstream version!");
+          break;
+        case MODULE_CODE_TRIPLE: {
+          StringBuilder sb = new StringBuilder();
+          if (convertToString(record, 0, sb))
+            return error("Invalid MODULE_CODE_TRIPLE record");
+          theModule.setTargetTriple(sb.toString());
+          break;
+        }
+        case MODULE_CODE_DATALAYOUT: {
+          // DATALAYOUT: [strchr x N]
+          StringBuilder res = new StringBuilder();
+          if (convertToString(record, 0, res))
+            return error("Invalid MODULE_CODE_DATALAYOUT record");
+          theModule.setDataLayout(res.toString());
+          break;
+        }
+        case MODULE_CODE_ASM: {
+          // ASM: [strchr x N]
+          StringBuilder sb = new StringBuilder();
+          if (convertToString(record, 0, sb))
+            return error("Invalid MODULE_CODE_ASM record");
+          theModule.setModuleInlineAsm(sb.toString());
+          break;
+        }
+        case MODULE_CODE_DEPLIB: {
+          // DEPLIB: [strchr x N]
+          StringBuilder sb = new StringBuilder();
+          if (convertToString(record, 0, sb))
+            return error("Invalid MODULE_CODE_DEPLIB record");
+          theModule.addLibrary(sb.toString());
+          break;
+        }
+        case MODULE_CODE_SECTIONNAME: {
+          // DEPLIB: [strchr x N]
+          StringBuilder sb = new StringBuilder();
+          if (convertToString(record, 0, sb))
+            return error("Invalid MODULE_CODE_SECTIONNAME record");
+          sectionTable.add(sb.toString());
+          break;
+        }
+        case MODULE_CODE_GCNAME: {
+          // DEPLIB: [strchr x N]
+          StringBuilder sb = new StringBuilder();
+          if (convertToString(record, 0, sb))
+            return error("Invalid MODULE_CODE_SECTIONNAME record");
+          gcTable.add(sb.toString());
+          break;
+        }
+        case MODULE_CODE_GLOBALVAR: {
+          // GLOBALVAR: [pointer type, isconst, initid,
+          //             linkage, alignment, section, visibility, threadlocal]
+          if (record.size() < 6)
+            return error("Invalid MODULE_CODE_GLOBALVAR record");
+          Type ty = getTypeByID(record.get(0).intValue());
+          if (!ty.isPointerType())
+            return error("Invalid MODULE_CODE_GLOBALVAR record");
+          PointerType pty = (PointerType) ty;
+          int addrSpace = pty.getAddressSpace();
+          ty = pty.getElementType();
+          boolean isConstant = record.get(1) != 0;
+          GlobalValue.LinkageType linkage = getDecodedLinkage(record.get(3).intValue());
+          int alignment = (1 << record.get(4)) >>> 1;
+          String section = "";
+          if (record.get(5) != 0) {
+            if (record.get(5) - 1 >= sectionTable.size())
+              return error("Invalid section ID");
+            section = sectionTable.get(record.get(5).intValue() - 1);
+          }
+
+          GlobalValue.VisibilityTypes visibility = GlobalValue.VisibilityTypes.DefaultVisibility;
+          if (record.size() > 6)
+            visibility = getDecodedVisibility(record.get(6).intValue());
+          boolean isThreadLocal = false;
+          if (record.size() > 7)
+            isThreadLocal = record.get(7) != 0;
+
+          GlobalVariable newGV = new GlobalVariable(theModule, ty, isConstant,
+              linkage, null, "", null, addrSpace);
+          newGV.setAlignment(alignment);
+          newGV.setThreadLocal(isThreadLocal);
+          newGV.setVisibility(visibility);
+          if (!section.isEmpty())
+            newGV.setSection(section);
+
+          valueList.add(newGV);
+          // remember which value to use for the global initializer.
+          int initId = record.get(2).intValue();
+          if (initId != 0)
+            globalInits.add(Pair.get(newGV, initId - 1));
+          break;
+        }
+        case MODULE_CODE_FUNCTION: {
+          // FUNCTION:  [type, callingconv, isproto, linkage, paramattr,
+          //             alignment, section, visibility, gc]
+          if (record.size() < 8)
+            return error("Invalid MODULE_CODE_FUNCTION record");
+          Type ty = getTypeByID(record.get(0).intValue());
+          if (!ty.isPointerType())
+            return error("Function not a pointer type");
+          Type eltTy = ((PointerType)ty).getElementType();
+          if (!eltTy.isFunctionType())
+            return error("Function not a pointer to function type!");
+          FunctionType fty = (FunctionType)eltTy;
+          Function func = new Function(fty, GlobalValue.LinkageType.ExternalLinkage,
+              "", theModule);
+          func.setCallingConv(getDecodedCallingConv(record.get(1).intValue()));
+          boolean isProto = record.get(2) != 0;
+          func.setLinkage(getDecodedLinkage(record.get(3).intValue()));
+          func.setAttributes(getAttributes(record.get(4).intValue()));
+          func.setAlignment((1 << record.get(5)) >>> 1);
+          if (record.get(6) != 0) {
+            if (record.get(6) - 1 >= sectionTable.size())
+              return error("Invalid section ID");
+            func.setSection(sectionTable.get(record.get(6).intValue() - 1));
+          }
+          func.setVisibility(getDecodedVisibility(record.get(7).intValue()));
+          if (record.size() > 8 && record.get(8) != 0) {
+            if (record.get(8) - 1 > gcTable.size())
+              return error("Invalid GC ID");
+            // Don't set GC, because we don't need it.
+          }
+          valueList.add(func);
+          // If this is a function with a body, remember the prototype we are
+          // creating now, so that we can match up the body with them later.
+          if (!isProto)
+            functionsWithBodies.add(func);
+          break;
+        }
+        case MODULE_CODE_ALIAS: {
+          // ALIAS: [alias type, aliasee val#, linkage]
+          // ALIAS: [alias type, aliasee val#, linkage, visibility]
+          if (record.size() < 3)
+            return error("Invalid MODULE_CODE_ALIAS");
+          Type ty = getTypeByID(record.get(0).intValue());
+          if (!ty.isPointerType())
+            return error("Alias not a pointer type");
+          GlobalAlias ga = new GlobalAlias(ty, getDecodedLinkage(record.get(2).intValue()),
+              "", null, theModule);
+          // old bitcode files didn't have visibility field.
+          if (record.size() > 3)
+            ga.setVisibility(getDecodedVisibility(record.get(3).intValue()));
+          valueList.add(ga);
+          aliasInits.add(Pair.get(ga, record.get(1).intValue()));
+          break;
+        }
+        case MODULE_CODE_PURGEVALS: {
+          /// MODULE_CODE_PURGEVALS: [numvals]
+          // trim down the value list to the specified size.
+          if (record.size() < 1 || record.get(0) > valueList.size())
+            return error("Invalid MODULE_CODE_PURGEVALS record");
+          valueList.shrinkTo(record.get(0).intValue());
+          break;
+        }
+      }
+      record.clear();
+    }
+
+    return error("Premature end of stream");
+  }
+
+  private static CallingConv getDecodedCallingConv(int val) {
+    switch (val) {
+      default:
+      case 0: return CallingConv.C;
+      case 8: return CallingConv.Fast;
+      case 9: return CallingConv.Cold;
+      case 64: return CallingConv.X86_StdCall;
+      case 65: return CallingConv.X86_FastCall;
+    }
+  }
+
+  private AttrList getAttributes(int val) {
+    if (val - 1 < mattributes.size())
+      return mattributes.get(val - 1);
+    return null;
+  }
+
+  private static GlobalValue.LinkageType getDecodedLinkage(int val) {
+    switch (val) {
+      default:
+      case 0: return GlobalValue.LinkageType.ExternalLinkage;
+      case 1:  return GlobalValue.LinkageType.WeakAnyLinkage;
+      case 2:  return GlobalValue.LinkageType.AppendingLinkage;
+      case 3:  return GlobalValue.LinkageType.InternalLinkage;
+      case 4:  return GlobalValue.LinkageType.LinkOnceAnyLinkage;
+      case 5:  return GlobalValue.LinkageType.DLLImportLinkage;
+      case 6:  return GlobalValue.LinkageType.DLLExportLinkage;
+      case 7:  return GlobalValue.LinkageType.ExternalWeakLinkage;
+      case 8:  return GlobalValue.LinkageType.CommonLinkage;
+      case 9:  return GlobalValue.LinkageType.PrivateLinkage;
+      case 10: return GlobalValue.LinkageType.WeakODRLinkage;
+      case 11: return GlobalValue.LinkageType.LinkOnceODRLinkage;
+      case 12: return GlobalValue.LinkageType.AvailableExternallyLinkage;
+      case 13: return GlobalValue.LinkageType.LinkerPrivateLinkage;
+      case 14: return GlobalValue.LinkageType.LinkerPrivateWeakLinkage;
+      case 15: return GlobalValue.LinkageType.LinkerPrivateWeakDefAutoLinkage;
+    }
+  }
+
+  private static GlobalValue.VisibilityTypes getDecodedVisibility(int val) {
+    switch (val) {
+      default:
+      case 0: return GlobalValue.VisibilityTypes.DefaultVisibility;
+      case 1: return GlobalValue.VisibilityTypes.HiddenVisibility;
+      case 2: return GlobalValue.VisibilityTypes.ProtectedVisibility;
+    }
+  }
+
+  private static Operator getDecodedCastOpcode(int val) {
+    switch (val) {
+      default: return Operator.None;
+      case CAST_TRUNC   : return Operator.Trunc;
+      case CAST_ZEXT    : return Operator.ZExt;
+      case CAST_SEXT    : return Operator.SExt;
+      case CAST_FPTOUI  : return Operator.FPToUI;
+      case CAST_FPTOSI  : return Operator.FPToSI;
+      case CAST_UITOFP  : return Operator.UIToFP;
+      case CAST_SITOFP  : return Operator.SIToFP;
+      case CAST_FPTRUNC : return Operator.FPTrunc;
+      case CAST_FPEXT   : return Operator.FPExt;
+      case CAST_PTRTOINT: return Operator.PtrToInt;
+      case CAST_INTTOPTR: return Operator.IntToPtr;
+      case CAST_BITCAST : return Operator.BitCast;
+    }
+  }
+
+  private static Operator getDecodedBinaryOpcode(int val, Type ty) {
+    switch (val) {
+      default: return Operator.None;
+      case BINOP_ADD:
+        return ty.isFPOrFPVectorTy() ? Operator.FAdd : Operator.Add;
+      case BINOP_SUB:
+        return ty.isFPOrFPVectorTy() ? Operator.FSub : Operator.Sub;
+      case BINOP_MUL:
+        return ty.isFPOrFPVectorTy() ? Operator.FMul : Operator.Mul;
+      case BINOP_UDIV: return Operator.UDiv;
+      case BINOP_SDIV:
+        return ty.isFPOrFPVectorTy() ? Operator.FDiv : Operator.SDiv;
+      case BINOP_UREM:  return Operator.URem;
+      case BINOP_SREM:
+        return ty.isFPOrFPVectorTy() ? Operator.FRem : Operator.SRem;
+      case BINOP_SHL: return Operator.Shl;
+      case BINOP_LSHR: return Operator.LShr;
+      case BINOP_ASHR: return Operator.AShr;
+      case BINOP_AND: return Operator.And;
+      case BINOP_OR: return Operator.Or;
+      case BINOP_XOR: return Operator.Xor;
+    }
+  }
+
+  private Type getTypeByID(int id, boolean isTypeTable) {
+    // if the type id is in the range, return it.
+    if (id >= 0 && id < typeList.size())
+      return typeList.get(id);
+    if (!isTypeTable) return null;
+
+    while (typeList.size() <= id)
+      typeList.add(OpaqueType.get());
+    return typeList.get(typeList.size()-1);
+
+  }
+
+  private Type getTypeByID(int id) {
+    return getTypeByID(id, false);
+  }
+
+  /**
+   * Convert a string from a record into a String object, return true on failure.
+   * @param record
+   * @param index
+   * @param result
+   * @return
+   */
+  private static boolean convertToString(ArrayList<Long> record,
+                                         int index, StringBuilder result) {
+    if (index > record.size())
+      return true;
+
+    for (int i = index,e  = record.size(); i < e; i++)
+      result.append((char)record.get(i).intValue());
+    return false;
+  }
+
+  /**
+   * When we see the block for a function body,
+   * remember where it is and then skip it.  This lets us lazily deserialize the
+   * functions.
+   * @return
+   */
+  private boolean rememberAndSkipFunctionBody() {
+    // get the function we are entering
+    if (functionsWithBodies.isEmpty())
+      return error("Insufficient function protos");
+    Function fn = functionsWithBodies.getLast();
+    functionsWithBodies.removeLast();
+
+    // save the current stream state.
+    long curBit = getCurrentBitNo();
+    deferredFunctionInfo.put(fn, curBit);
+    // skip over the function block for now.
+    if (skipBlock())
+      return error("Malformed block record");
+    return false;
+  }
+
+  private long getCurrentBitNo() {
+    // TODO
+    return 0;
+  }
+
+  private boolean parseMetadata() {
+    Util.shouldNotReachHere("Metadata is unimplemented as yet!");
+    return false;
+  }
+
+  private boolean parseConstants() {
+    if (enterSubBlock(CONSTANTS_BLOCK_ID))
+      return error("Malformed block record");
+
+    ArrayList<Long> record = new ArrayList<>();
+    // read all the records for this value table.
+    Type curTy = LLVMContext.Int32Ty;
+    int nextCstNo = valueList.size();
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK)
+        break;
+
+      if (code == ENTER_SUBBLOCK) {
+        // No known subblocks, always skip them.
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      Value v = null;
+      int bitcode = readRecord(code, record);
+      switch (bitcode) {
+        default:
+        case CST_CODE_UNDEF:
+          // UNDEF
+          v = Value.UndefValue.get(curTy);
+          break;
+        case CST_CODE_SETTYPE:
+          // SETTYPE: [typeid]
+          if (record.isEmpty())
+            return error("Malformed CST_CODE_SETTYPE record");
+          if (record.get(0).intValue() >= typeList.size())
+            return error("Invalid Type ID in CST_CODE_SETTYPE record");
+          curTy = typeList.get(record.get(0).intValue());
+          continue;
+        case CST_CODE_NULL:
+          // INTEGER: [NULL]
+          v = Constant.getNullValue(curTy);
+          break;
+        case CST_CODE_INTEGER:
+          // INTEGER: [intval]
+          if (!curTy.isIntegerTy() || record.isEmpty())
+            return error("Invalid CST_CODE_INTEGER record");
+          v = ConstantInt.get(curTy, decodeSignRotatedValue(record.get(0)));
+          break;
+        case CST_CODE_WIDE_INTEGER: {
+          // WIDE_INTEGER: [n x intval]
+          if (!curTy.isIntegerTy() || record.isEmpty())
+            return error("Invalid WIDE_CODE_INTEGER record");
+
+          int numWords = record.size();
+          ArrayList<Long> words = new ArrayList<>();
+          for (int i = 0; i < numWords; i++)
+            words.add(decodeSignRotatedValue(record.get(i)));
+          v = ConstantInt.get(new APInt(((IntegerType)curTy).getBitWidth(), words));
+          break;
+        }
+        case CST_CODE_FLOAT: {
+          // FLOAT: [fpval]
+          if (record.isEmpty())
+            return error("Invalid CST_CODE_FLOAT");
+          if (curTy.isFloatTy())
+            v = ConstantFP.get(new APFloat(new APInt(32, record.get(0).intValue())));
+          else if (curTy.isDoubleTy())
+            v = ConstantFP.get(new APFloat(new APInt(64, record.get(0))));
+          else if (curTy.isX86_FP80Ty()) {
+            // bits are not stored the same way as a normal i80 APInt, compensate.
+            long[] rearrange = new long[] {
+              (record.get(1) & 0xFFFFL) | (record.get(0) << 16),
+              record.get(0) >>> 48
+            };
+            v = ConstantFP.get(new APFloat(new APInt(80, rearrange)));
+          }
+          else if (curTy.isFP128Ty()) {
+            long[] rearrange = new long[] {record.get(0), record.get(1)};
+            v = ConstantFP.get(new APFloat(new APInt(128, rearrange), true));
+          }
+          else if (curTy.isPPC_FP128Ty()) {
+            long[] rearrange = new long[] {record.get(0), record.get(1)};
+            v = ConstantFP.get(new APFloat(new APInt(128, rearrange)));
+          }
+          else
+            v = Value.UndefValue.get(curTy);
+          break;
+        }
+        case CST_CODE_AGGREGATE: {
+          // AGGREGATE: [n x value number]
+          if (record.isEmpty())
+            return error("Invalid CST_AGGREGATE record");
+
+          int size = record.size();
+          ArrayList<Constant> elts = new ArrayList<>();
+          if (curTy instanceof StructType) {
+            StructType sty = (StructType) curTy;
+            for (int i = 0; i < size; i++)
+              elts.add(valueList.getConstantFwdRefs(record.get(0).intValue(), sty.getElementType(i)));
+            v = ConstantStruct.get(sty, elts);
+          }
+          else if (curTy instanceof ArrayType) {
+            ArrayType aty = (ArrayType) curTy;
+            Type eltTy = aty.getElementType();
+            for (int i = 0; i < size; i++)
+              elts.add(valueList.getConstantFwdRefs(record.get(i).intValue(), eltTy));
+            v = ConstantArray.get(aty, elts);
+          }
+          else if (curTy instanceof VectorType) {
+            VectorType vecTy = (VectorType) curTy;
+            Type eltTy = vecTy.getElementType();
+            for (int i = 0; i < size; i++)
+              elts.add(valueList.getConstantFwdRefs(record.get(i).intValue(), eltTy));
+            v = ConstantVector.get(elts);
+          }
+          else
+            v = Value.UndefValue.get(curTy);
+          break;
+        }
+
+        case CST_CODE_STRING: {
+          // STRING: [values]
+          if (record.isEmpty())
+            return error("Invlaid CST_CODE_STRING");
+
+          ArrayType aty = (ArrayType) curTy;
+          Type eltTy = aty.getElementType();
+
+          int size = record.size();
+          ArrayList<Constant> elts = new ArrayList<>();
+          for (int i = 0; i < size; i++)
+            elts.add(ConstantInt.get(eltTy, record.get(i).intValue()));
+          v = ConstantArray.get(aty, elts);
+          break;
+        }
+        case CST_CODE_CSTRING: {
+          // CSTRING: [values]
+          if (record.isEmpty())
+            return error("Invalid CST_CODE_CSTRING record");
+          ArrayType aty = (ArrayType) curTy;
+          Type eltTy = aty.getElementType();
+          int size = record.size();
+          ArrayList<Constant> elts = new ArrayList<>();
+          for (int i = 0; i < size; i++)
+            elts.add(ConstantInt.get(eltTy, record.get(i).intValue()));
+          elts.add(Constant.getNullValue(eltTy));
+          v = ConstantArray.get(aty, elts);
+          break;
+        }
+        case CST_CODE_CE_BINOP: {
+          // CE_BINOP: [opcode, opval, opval]
+          if (record.size() < 3)
+            return error("Invalid CSE_CODE_CE_BINOP record");
+          Operator opc = getDecodedBinaryOpcode(record.get(0).intValue(), curTy);
+          if (opc == Operator.None)
+            v = Value.UndefValue.get(curTy);
+          else {
+            Constant lhs = valueList.getConstantFwdRefs(record.get(1).intValue(), curTy);
+            Constant rhs = valueList.getConstantFwdRefs(record.get(2).intValue(), curTy);
+            int flags = 0;
+            if (record.size() >= 4) {
+              // Ignores all flags
+              // TODO
+            }
+            v = ConstantExpr.get(opc, lhs, rhs);
+          }
+          break;
+        }
+        case CST_CODE_CE_CAST: {
+          // CE_CAST: [opcode, opty, opval]
+          if (record.size() < 3)
+            return error("Invalid CST_CODE_CE_CAST record");
+          Operator opc = getDecodedCastOpcode(record.get(0).intValue());
+          if (opc == Operator.None)
+            v = Value.UndefValue.get(curTy);
+          else {
+            Type opTy = getTypeByID(record.get(1).intValue());
+            if (opTy == null)
+              return error("Invalid CE_CAST record");
+            Constant op = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+            v = ConstantExpr.getCast(opc, op, opTy);
+          }
+          break;
+        }
+        case CST_CODE_CE_INBOUNDS_GEP:
+        case CST_CODE_CE_GEP: {
+          // CE_GEP:        [n x operands]
+          if ((record.size() & 1) != 0)
+            return error("Invalid CE_GEP record");
+          ArrayList<Constant> elts = new ArrayList<>();
+          for (int i = 0, e = record.size(); i < e; i+=2) {
+            Type eltTy = getTypeByID(record.get(i).intValue());
+            if (eltTy == null) return error("Invalid CE_GEP record");
+            elts.add(valueList.getConstantFwdRefs(record.get(i+1).intValue(), eltTy));
+          }
+          if (bitcode == CST_CODE_CE_INBOUNDS_GEP)
+            v = ConstantExpr.getInBoundsGetElementPtr(elts.get(0), elts.subList(1, elts.size()));
+          else
+            v = ConstantExpr.getGetElementPtr(elts.get(0), elts.subList(1, elts.size()));
+          break;
+        }
+        case CST_CODE_CE_SELECT: {
+          // CE_SELECT: [opval#, opval#, opval#]
+          if (record.size() < 3)
+            return error("Invalid CSE_CODE_CE_SELECT record");
+          v = ConstantExpr.getSelect(
+              valueList.getConstantFwdRefs(record.get(0).intValue(), LLVMContext.Int1Ty),
+              valueList.getConstantFwdRefs(record.get(1).intValue(), curTy),
+              valueList.getConstantFwdRefs(record.get(2).intValue(), curTy));
+          break;
+        }
+        case CST_CODE_CE_EXTRACTELT: {
+          // CE_EXTRACTELT: [opty, opval, opval]
+          if (record.size() < 3) return error("Invalid CE_EXTRACTELT record");
+          Type resTy = getTypeByID(record.get(0).intValue());
+          VectorType opTy = resTy instanceof VectorType ? (VectorType)resTy : null;
+          if (opTy == null)
+            return error("Invalid CE_EXTRACTELEMENT record");
+          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          v = ConstantExpr.getExtractElement(op0, op1);
+          break;
+        }
+        case CST_CODE_CE_INSERTELT: {
+          // CE_INSERTELT: [opval, opval, opval]
+          if (record.size() < 3) return error("Invalid CE_INSERTELT record");
+          VectorType opTy = (VectorType) curTy;
+          Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy.getElementType());
+          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), LLVMContext.Int32Ty);
+          v = ConstantExpr.getInsertElement(op0, op1, op2);
+          break;
+        }
+        case CST_CODE_CE_SHUFFLEVEC: {
+          // CE_SHUFFLEVEC: [opval, opval, opval]
+          if (record.size() < 3) return error("Invalid CE_SHUFFLEVEC record");
+          VectorType opTy = (VectorType) curTy;
+          Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
+          Type shufTy = VectorType.get(LLVMContext.Int32Ty, opTy.getNumElements());
+          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
+          v = ConstantExpr.getShuffleVector(op0, op1, op2);
+          break;
+        }
+        case CST_CODE_CE_SHUFVEC_EX: {
+          // [opty, opval, opval, opval]
+          if (record.size() < 4) return error("Invalid CE_SHUFFLEVEC_EX record");
+          if (!(curTy instanceof VectorType) || !(getTypeByID(record.get(0).intValue()) instanceof VectorType))
+            return error("Invalid CE_SHUFFLEVEC_EX record");
+
+          VectorType rty = (VectorType) curTy;
+          VectorType opTy = (VectorType)getTypeByID(record.get(0).intValue());
+
+          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          Type shufTy = VectorType.get(LLVMContext.Int32Ty, rty.getNumElements());
+          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
+          v = ConstantExpr.getShuffleVector(op0, op1, op2);
+          break;
+        }
+        case CST_CODE_CE_CMP: {
+          // CE_CMP: [opty, opval, opval, pred]
+          if (record.size() < 4)
+            return error("Invalid CST_CODE_CE_CMP record");
+          Type opTy = getTypeByID(record.get(0).intValue());
+
+          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          if (opTy.isFPOrFPVectorTy())
+            v = ConstantExpr.getFCmp(getDecodedPredicate(record.get(3)), op0, op1);
+          else
+            v = ConstantExpr.getICmp(getDecodedPredicate(record.get(3)), op0, op1);
+          break;
+        }
+        case CST_CODE_INLINEASM: {
+          Util.shouldNotReachHere("inline asm is unimplemented!");
+          break;
+        }
+        case CST_CODE_BLOCKADDRESS: {
+          if (record.size() < 3)
+            return error("Invalid CE_BLOCKADDRESS record");
+          Type fnTy = getTypeByID(record.get(0).intValue());
+          if (fnTy == null)
+            return error("Invalid CE_BLOCKADDRESS record");
+          Value val = valueList.getConstantFwdRefs(record.get(1).intValue(), fnTy);
+          if (!(val instanceof Function))
+            return error("Invalid CE_BLOCKADDRESS record");
+          Function fn = (Function) val;
+          GlobalVariable fwdRef = new GlobalVariable(fn.getParent(),
+              LLVMContext.Int8Ty, false,
+              GlobalValue.LinkageType.InternalLinkage,
+              null, "", null, 0);
+
+          ArrayList<Pair<Long, GlobalVariable>> list;
+          if (blockAddrFwdRefs.containsKey(fn))
+            list = blockAddrFwdRefs.get(fn);
+          else {
+            list = new ArrayList<>();
+            blockAddrFwdRefs.put(fn, list);
+          }
+
+          list.add(Pair.get(record.get(2), fwdRef));
+          v = fwdRef;
+          break;
+        }
+      }
+      valueList.assignValue(v, nextCstNo);
+      ++nextCstNo;
+    }
+
+    if (nextCstNo != valueList.size())
+      return error("Invalid constant reference!");
+
+    if (readBlockEnd())
+      return error("Error at end of constants block");
+
+    // Once all constants have been read, go through and resolve forward references.
+    valueList.resolveConstantForwardRefs();
+    return false;
+  }
+
+  private Instruction.CmpInst.Predicate getDecodedPredicate(long val) {
+    if (val < 0 || val > Instruction.CmpInst.Predicate.values().length - 1)
+      return null;
+    return Instruction.CmpInst.Predicate.values()[(int) val];
+  }
+
+  /**
+   * Decode a signed value stored with the sign bit in the LSB for dense VBR encoding.
+   * @param val
+   * @return
+   */
+  private long decodeSignRotatedValue(long val) {
+    if ((val & 1) == 0)
+      return val >>> 1;
+    if (val != 1)
+      return -(val >>> 1);
+    // there is no such thing as -0 with integers. "0" really means MININT.
+    return 1L << 63;
+  }
+
+  private boolean parseValueSymbolTable() {
+    return false;
+  }
+
+  private boolean parseTypeSymbolTable() {
+    return false;
+  }
+
+  private boolean parseTypeTable() {
+    return false;
+  }
+
+  private boolean parseAttributeBlock() {
+    return false;
+  }
+
+  /**
+   * Resolve all of the initialiers for global valeus and alias that we can.
+   * @return
+   */
+  private boolean resolveGlobalAndAliasInits() {
+    LinkedList<Pair<GlobalVariable, Integer>> globalInitWorklist = new LinkedList<>(globalInits);
+    globalInits.clear();
+
+    LinkedList<Pair<GlobalAlias, Integer>> aliasInitWorklist = new LinkedList<>(aliasInits);
+    aliasInits.clear();
+
+    while (!globalInitWorklist.isEmpty()) {
+      int valID = globalInitWorklist.getLast().second;
+      if (valID >= valueList.size()) {
+        // not ready to resolve this yet, it requires something later in the file.
+        globalInits.add(globalInitWorklist.getLast());
+      }
+      else {
+        if (valueList.get(valID) instanceof Constant) {
+          Constant c = (Constant) valueList.get(valID);
+          globalInitWorklist.getLast().first.setInitializer(c);
+        }
+        else
+          return error("Global variable initializer is not a constant!");
+      }
+      globalInitWorklist.removeLast();
+    }
+
+    while (!aliasInitWorklist.isEmpty()) {
+      int valID = aliasInitWorklist.getLast().second;
+      if (valID >= valueList.size())
+        aliasInits.add(aliasInitWorklist.getLast());
+      else {
+        if (valueList.get(valID) instanceof Constant) {
+          Constant c = (Constant) valueList.get(valID);
+          aliasInitWorklist.getLast().first.setAliasee(c);
+        }
+        else
+          return error("Alias initializer is not constant!");
+      }
+      aliasInitWorklist.removeLast();
+    }
+    return false;
   }
 
   /**

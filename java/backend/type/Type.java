@@ -123,6 +123,19 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == IntegerTyID;
   }
 
+  public boolean isIntOrVectorTy() {
+    if (isIntegerTy()) return true;
+    if (id != VectorTyID) return false;
+    return ((VectorType)this).getElementType().isIntegerTy();
+  }
+
+  public boolean isFPOrFPVectorTy() {
+    if (isFloatingPointType())
+      return true;
+    if (id != VectorTyID) return false;
+    return ((VectorType)this).getElementType().isFloatingPointType();
+  }
+
   public int getPrimitiveSizeInBits() {
     switch (getTypeID()) {
       case FloatTyID:
@@ -203,6 +216,10 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   public boolean isFP128Ty() {
     return id == FP128TyID;
+  }
+
+  public boolean isPPC_FP128Ty() {
+    return id == PPC_FP128TyID;
   }
 
   public boolean isLabelTy() {

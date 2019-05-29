@@ -23,7 +23,7 @@ public enum CallingConv {
    * As with typical C calling conventions, the callee/caller have to
    * tolerate certain amounts of prototype mismatch.
    */
-  C,
+  C(0),
 
   /***
    * Generic LLVM calling conventions.  None of these calling conventions
@@ -32,7 +32,7 @@ public enum CallingConv {
    * Fast - This calling convention attempts to make calls as fast as
    * possible (e.g. by passing things in registers).
    */
-  Fast,
+  Fast(8),
 
   /**
    * This calling convention attempts to make code in the caller as
@@ -40,7 +40,7 @@ public enum CallingConv {
    * executed.  As such, these calls often preserve all registers so that the
    * call does not break any live ranges in the caller side.
    */
-  Cold,
+  Cold(9),
 
   /**
    * stdcall is the calling conventions mostly used by the
@@ -48,12 +48,17 @@ public enum CallingConv {
    * difference in that the callee is responsible for popping the arguments
    * from the stack.
    */
-  X86_StdCall,
+  X86_StdCall(64),
 
   /**
    * 'fast' analog of X86_StdCall. Passes first two arguments
    * in ECX:EDX registers, others - via stack. Callee is responsible for
    * stack cleaning.
    */
-  X86_FastCall,
+  X86_FastCall(65);
+
+  public final int enumValue;
+  CallingConv(int id) {
+    enumValue = id;
+  }
 }
