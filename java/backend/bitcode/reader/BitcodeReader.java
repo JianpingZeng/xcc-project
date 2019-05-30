@@ -27,12 +27,10 @@ package backend.bitcode.reader;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.dagisel.RegisterScheduler;
 import backend.io.BitStream;
 import backend.io.ByteSequence;
-import backend.support.AttrList;
-import backend.support.CallingConv;
-import backend.support.GVMaterializer;
-import backend.support.LLVMContext;
+import backend.support.*;
 import backend.type.*;
 import backend.value.*;
 import cfe.support.MemoryBuffer;
@@ -41,6 +39,7 @@ import tools.*;
 import java.util.*;
 
 import static backend.bitcode.BitcodeUtil.*;
+import static backend.bitcode.reader.BitcodeReader.AttributeCodes.PARAMATTR_CODE_ENTRY;
 import static backend.bitcode.reader.BitcodeReader.BinaryOpcodes.*;
 import static backend.bitcode.reader.BitcodeReader.BlockIDs.*;
 import static backend.bitcode.reader.BitcodeReader.BlockInfoCodes.*;
@@ -51,6 +50,10 @@ import static backend.bitcode.reader.BitcodeReader.FixedAbbrevIDs.*;
 import static backend.bitcode.reader.BitcodeReader.ModuleCodes.*;
 import static backend.bitcode.reader.BitcodeReader.StandardBlockIDs.*;
 import static backend.bitcode.reader.BitcodeReader.StandardWidths.*;
+import static backend.bitcode.reader.BitcodeReader.TypeCodes.*;
+import static backend.bitcode.reader.BitcodeReader.TypeSymtabCodes.TST_CODE_ENTRY;
+import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_BBENTRY;
+import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_ENTRY;
 import static backend.support.AutoUpgrade.upgradeGlobalVariable;
 import static backend.support.AutoUpgrade.upgradeIntrinsicFunction;
 
@@ -1109,6 +1112,11 @@ public class BitcodeReader implements GVMaterializer {
     return null;
   }
 
+  private BasicBlock getBasicBlock(int id) {
+    if (id >= functionBBs.size()) return null;
+    return functionBBs.get(id);
+  }
+
   private static GlobalValue.LinkageType getDecodedLinkage(int val) {
     switch (val) {
       default:
@@ -1528,7 +1536,30 @@ public class BitcodeReader implements GVMaterializer {
           break;
         }
         case CST_CODE_INLINEASM: {
-          Util.shouldNotReachHere("inline asm is unimplemented!");
+          if (record.size() < 2)
+            return error("Invalid CST_INLINE Code record");
+
+          StringBuilder asmStr = new StringBuilder();
+          // constraint string.
+          StringBuilder constrStr = new StringBuilder();
+          boolean hasSideEffects = (record.get(0) & 1) != 0;
+          boolean isAlignStack = (record.get(0) >> 1) != 0;
+          int asmStrSize = record.get(1).intValue();
+          if (2 + asmStrSize >= record.size())
+            return error("Invalid CST_INLINEASM record");
+          int constrStrSize = record.get(2+asmStrSize).intValue();
+          if (3 + asmStrSize + constrStrSize > record.size())
+            return error("Invlaid CST_INLINE record");
+
+          for (int i = 0; i < asmStrSize; i++)
+            asmStr.append((char)record.get(2+i).intValue());
+          for (int i = 0; i < constrStrSize; i++)
+            constrStr.append((char)record.get(3+asmStrSize+i).intValue());
+
+          PointerType pty = (PointerType)curTy;
+          v = InlineAsm.get((FunctionType)pty.getElementType(),
+              asmStr.toString(), constrStr.toString(),
+              hasSideEffects, isAlignStack);
           break;
         }
         case CST_CODE_BLOCKADDRESS: {
@@ -1595,19 +1626,374 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private boolean parseValueSymbolTable() {
-    return false;
+    if (enterSubBlock(VALUE_SYMTAB_BLOCK_ID))
+      return error("Malformed block record");
+
+    ArrayList<Long> record = new ArrayList<>();
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of value symbol table block");
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+      // read a record.
+      record.clear();
+      StringBuilder valueName = new StringBuilder();
+      switch (readRecord(code, record)) {
+        default:
+          break;
+        case VST_CODE_ENTRY: {
+          // VST_ENTRY: [valueid, namechar x N]
+          if (convertToString(record, 1, valueName))
+            return error("Invalid VST_ENTRY record");
+          int valueID = record.get(0).intValue();
+          if (valueID >= valueList.size())
+            return error("Invlaid Value ID in VST_ENTRY record");
+          Value v = valueList.get(valueID);
+
+          v.setName(valueName.toString());
+          break;
+        }
+        case VST_CODE_BBENTRY: {
+          if (convertToString(record, 1, valueName))
+            return error("Invalid VST_BBENTRY record");
+          BasicBlock bb = getBasicBlock(record.get(0).intValue());
+          if (bb == null)
+            return error("Invlaid BB ID in VST_BBENTRY record");
+
+          bb.setName(valueName.toString());
+          break;
+        }
+      }
+    }
   }
 
   private boolean parseTypeSymbolTable() {
-    return false;
+    if (enterSubBlock(TYPE_SYMTAB_BLOCK_ID))
+      return error("Malformed block record");
+
+    ArrayList<Long> record = new ArrayList<>();
+
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at the end of type symbol table block");
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      StringBuilder typeName = new StringBuilder();
+      switch (readRecord(code, record)) {
+        default:
+          // Uknown type.
+          break;
+        case TST_CODE_ENTRY:
+          // TST_ENTRY: [type, namechar x N]
+          if (convertToString(record, 1, typeName))
+            return error("Invlaid TST_ENTRY record");
+          int typeID = record.get(0).intValue();
+          if (typeID >= typeList.size())
+            return error("Invalid Type ID in TST_ENTRY record");
+
+          theModule.addTypeName(typeName.toString(), typeList.get(typeID));
+          break;
+      }
+    }
   }
 
+  /**
+   * Parse the type table.
+   * @return
+   */
   private boolean parseTypeTable() {
-    return false;
+    if (enterSubBlock(TYPE_BLOCK_ID))
+      return error("Malformed block record");
+    if (!typeList.isEmpty())
+      return error("Multiple TYPE_BLOCKs found!");
+
+    ArrayList<Long> record = new ArrayList<>();
+    int numRecords = 0;
+
+    // read all the records for this type table.
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (numRecords != typeList.size())
+          return error("Invalid type forward reference in TYPE_BLOCK");
+        if (readBlockEnd())
+          return error("Error at end of type table block");
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        // no known sub-blocks, always skip them.
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      Type resultTy = null;
+      switch (readRecord(code, record)) {
+        default:
+          // Unknown type.
+          break;
+        case TYPE_CODE_NUMENTRY:
+          // TYPE_CODE_NUMENTRY: [numentries]
+          // TYPE_CODE_NUMENTRY contains a count of the number of types in the
+          // type list.  This allows us to reserve space.
+          if (record.isEmpty())
+            return error("Invalid TYPE_CODE_NUMENTRY record");
+          typeList.ensureCapacity(Math.toIntExact(record.get(0)));
+          continue;
+        case TYPE_CODE_VOID:
+          resultTy = LLVMContext.VoidTy;
+          break;
+        case TYPE_CODE_FLOAT:
+          resultTy = LLVMContext.FloatTy;
+          break;
+        case TYPE_CODE_DOUBLE:
+          resultTy = LLVMContext.DoubleTy;
+          break;
+        case TYPE_CODE_X86_FP80:
+          resultTy = LLVMContext.X86_FP80Ty;
+          break;
+        case TYPE_CODE_FP128:
+          resultTy = LLVMContext.FP128Ty;
+          break;
+        case TYPE_CODE_PPC_FP128:
+          resultTy = LLVMContext.PPC_FP128Ty;
+          break;
+        case TYPE_CODE_LABEL:
+          resultTy = LLVMContext.LabelTy;
+          break;
+        case TYPE_CODE_OPAQUE:
+          resultTy = null;
+          break;
+        case TYPE_CODE_METADATA:
+          resultTy = LLVMContext.MetadataTy;
+          break;
+        case TYPE_CODE_INTEGER:
+          if (record.isEmpty())
+            return error("Invalid Integer type record");
+          resultTy = IntegerType.get(record.get(0).intValue());
+          break;
+        case TYPE_CODE_POINTER: {
+          // POINTER: [pointee type] or
+          //          [pointee type, address space]
+          if (record.isEmpty())
+            return error("Invalid Pointer Type record");
+          int addressSpace = 0;
+          if (record.size() == 2)
+            addressSpace = record.get(1).intValue();
+          resultTy = PointerType.get(getTypeByID(record.get(0).intValue(), true),
+              addressSpace);
+          break;
+        }
+        case TYPE_CODE_FUNCTION: {
+          // FIXME: attrid is dead, remove it in LLVM 3.0
+          // FUNCTION: [vararg, attrid, retty, paramty x N]
+          if (record.size() < 3)
+            return error("Invalid FUNCTION type record");
+          ArrayList<Type> argTy = new ArrayList<>();
+          for (int i = 3, e = record.size(); i < e; i++)
+            argTy.add(getTypeByID(record.get(i).intValue(), true));;
+
+          resultTy = FunctionType.get(getTypeByID(record.get(2).intValue(), true),
+              argTy, record.get(0) != 0);
+          break;
+        }
+        case TYPE_CODE_STRUCT: {
+          // STRUCT: [ispacked, eltty x N]
+          if (record.isEmpty())
+            return error("Invalid STRUCT type record");
+
+          ArrayList<Type> eltTys = new ArrayList<>();
+          for (int i = 1, e = record.size(); i < e; i++)
+            eltTys.add(getTypeByID(record.get(i).intValue(), true));
+          resultTy = StructType.get(eltTys, record.get(0) != 0);
+          break;
+        }
+        case TYPE_CODE_ARRAY:
+        case TYPE_CODE_VECTOR: {
+          // ARRAY: [numelts, eltty]
+          // or VECTOR: [numelts, elety]
+          boolean isArray = code == TYPE_CODE_ARRAY;
+          if (record.size() != 2)
+            return error(String.format("Invalid %s type record", isArray ? "ARRAY" : "VECTOR"));
+
+          if (isArray)
+            resultTy = ArrayType.get(getTypeByID(record.get(1).intValue(), true),
+                record.get(0));
+          else
+            resultTy = VectorType.get(getTypeByID(record.get(1).intValue(), true),
+                record.get(0));
+          break;
+        }
+      }
+
+      if (numRecords == typeList.size()) {
+        // if this is a new type slot, just append it to the
+        // tail of typeList.
+        typeList.add(resultTy != null ? resultTy : OpaqueType.get());;
+        ++numRecords;
+      }
+      else if (resultTy == null) {
+        // Otherwise, this was forward referenced, so an opaque type was created,
+        // but the result type is actually just an opaque.  Leave the one we
+        // created previously.
+        ++numRecords;
+      }
+      else {
+        // Otherwise, this was forward referenced, so an opaque type was created.
+        // Resolve the opaque type to the real type now.
+        Util.assertion(numRecords < typeList.size(),
+            "typeList imbalance");
+        OpaqueType oldTy = (OpaqueType) typeList.get(numRecords++);
+        // Don't directly push the new type on the Tab. Instead we want to replace
+        // the opaque type we previously inserted with the new concrete value. The
+        // refinement from the abstract (opaque) type to the new type causes all
+        // uses of the abstract type to use the concrete type (NewTy). This will
+        // also cause the opaque type to be deleted.
+        oldTy.refineAbstractTypeTo(resultTy);
+        Util.assertion(typeList.get(numRecords-1) != oldTy,
+            "refineAbstractTypeTo didn't work!");
+      }
+    }
   }
 
+  /**
+   * A method used to parse attribute block.
+   * @return
+   */
   private boolean parseAttributeBlock() {
-    return false;
+    if (enterSubBlock(PARAMATTR_BLOCK_ID))
+      return error("Malformed block record");
+    if (!mattributes.isEmpty())
+      return error("Multiple PARAMATTR blocks found!");
+
+    ArrayList<Long> record = new ArrayList<>();
+    ArrayList<AttributeWithIndex> attrs = new ArrayList<>();
+
+    // read all the records.
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of PARAMATTR block");
+        return false;
+      }
+      if (code == ENTER_SUBBLOCK) {
+        // if we found there is no sub-blocks, just skips thems.
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      switch (readRecord(code, record)) {
+        default:
+          // ignore it.
+          break;
+        case PARAMATTR_CODE_ENTRY: {
+          // ENTRY: [paramidx0, attr0, ...]
+          if ((record.size() & 0x1) != 0)
+            return error("Invlaid ENTRY record");
+
+          int retAttribute = Attribute.None;
+          int fnAttribute = Attribute.None;
+          for (int i = 0, e = record.size(); i < e; i+=2) {
+            int alignment = (int) ((record.get(i+1) & (0xffffL << 16)) >> 16);
+            if (alignment != 0 && Util.isPowerOf2(alignment)) {
+              return error("Alignment is not a power of two!");
+            }
+
+            long reconstituedAttr = record.get(i+1) & 0xffff;
+            if (alignment != 0)
+              reconstituedAttr |= Attribute.constructAlignmentFromInt(alignment);
+            reconstituedAttr |= (record.get(i+1) & (0xffffL << 32)) >> 11;
+            record.set(i+1, reconstituedAttr);
+
+            if (record.get(i) == 0)
+              retAttribute |= record.get(i+1);
+            else if (record.get(i) == ~0L)
+              fnAttribute |= record.get(i+1);
+          }
+
+          int oldRetAttribute = Attribute.NoUnwind |
+                                Attribute.NoReturn |
+                                Attribute.ReadOnly |
+                                Attribute.ReadNone;
+          if (fnAttribute == Attribute.None &&
+              retAttribute != Attribute.None &&
+              (retAttribute & oldRetAttribute) != 0) {
+            record.add(~0L);
+            record.add(0L);
+
+            fnAttribute |= retAttribute & oldRetAttribute;
+            retAttribute &= ~oldRetAttribute;
+          }
+
+          for (int i = 0, e = record.size(); i < e; i += 2) {
+            if (record.get(i) == 0) {
+              if (retAttribute != Attribute.None)
+                attrs.add(AttributeWithIndex.get(0, retAttribute));
+            }
+            else if (record.get(i) == ~0) {
+              if (fnAttribute != Attribute.None)
+                attrs.add(AttributeWithIndex.get(~0, fnAttribute));
+            }
+            else if (record.get(i+1) != Attribute.None) {
+              attrs.add(AttributeWithIndex.get(record.get(i).intValue(), record.get(i+1).intValue()));;
+            }
+
+            mattributes.add(new AttrList(attrs));
+            attrs.clear();
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**
