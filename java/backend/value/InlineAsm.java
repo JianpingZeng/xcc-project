@@ -130,14 +130,126 @@ public class InlineAsm extends Value {
 
     ArrayList<String> codes;
 
-    boolean parse(String str,
-                  ArrayList<ConstraintInfo> constraintsSoFar) {
+    private ConstraintInfo() {
+      type = ConstraintPrefix.IsInput;
+      isEarlyClobber = false;
+      matchingInput = -1;
+      isCommutative = false;
+      isIndirect = false;
+      codes = new ArrayList<>();
+    }
+
+    boolean parse(String str, ArrayList<ConstraintInfo> constraintsSoFar) {
+      int i = 0, e = str.length();
+      if (str.charAt(i) == '~') {
+        type = ConstraintPrefix.IsClobber;
+        ++i;
+      }
+      else if (str.charAt(i) == '=') {
+        ++i;
+        type = ConstraintPrefix.IsOutput;
+      }
+
+      if (str.charAt(i) == '*') {
+        isIndirect = true;
+        ++i;
+      }
+
+      // just prefix, no other constraints.
+      if (i == e) return true;
+
+      // parse modifiers
+      boolean doneWithModifiers = false;
+      while (!doneWithModifiers) {
+        switch (str.charAt(i)) {
+          default:
+            doneWithModifiers = true;
+            break;
+          case '&':
+            // Early clobber.
+            if (type != ConstraintPrefix.IsOutput ||
+                isEarlyClobber)
+              return true;
+            isEarlyClobber = true;
+            break;
+          case '%':
+            if (type == ConstraintPrefix.IsClobber ||
+                isCommutative)
+              return true;
+            isCommutative = true;
+            break;
+          case '#': // comment
+          case '*':
+            // register preferences.
+            return true;
+        }
+
+        if (!doneWithModifiers) {
+          ++i;
+          if (i == e) return true;
+        }
+      }
+      // Parse the various constraints.
+      while (i != e) {
+        if (str.charAt(i) == '{') {
+          // Physical register reference.
+          // Find the end of the register name.
+          int constraintEnd = str.indexOf(i, '}');
+          if (constraintEnd == -1) return true; // no '}' and only '{foo'
+          codes.add(str.substring(i, constraintEnd));
+          i = constraintEnd + 1;
+        }
+        else if (Character.isDigit(str.charAt(i))) {
+          // Maximal munch numbers.
+          int numStart = i;
+          while (i != e && Character.isDigit(str.charAt(i)))
+            ++i;
+          String res = str.substring(numStart, i);
+          codes.add(res);
+          int n = Integer.valueOf(res);
+          if (n >= constraintsSoFar.size() || constraintsSoFar.get(n).type != ConstraintPrefix.IsOutput ||
+              type != ConstraintPrefix.IsInput)
+            return true;
+
+          // If Operand N already has a matching input, reject this.  An output
+          // can't be constrained to the same value as multiple inputs.
+          if (constraintsSoFar.get(n).hasMatchingInput())
+            return true;
+
+          constraintsSoFar.get(n).matchingInput = constraintsSoFar.size();
+        }
+        else {
+          // Single letter constraint.
+          codes.add(str.substring(i, i+1));
+          ++i;
+        }
+      }
       return false;
     }
   }
 
   private static ArrayList<ConstraintInfo> parseConstraints(String constraintString) {
-    return null;
+    ArrayList<ConstraintInfo> result = new ArrayList<>();
+    for (int i = 0, e = constraintString.length(); i < e; i++) {
+      ConstraintInfo info = new ConstraintInfo();
+      int constraintEnd = constraintString.indexOf(',', i);
+      if (constraintEnd == i //  like ',,' string.
+           || info.parse(constraintString.substring(i, constraintEnd), result)) {
+        // error
+        result.clear();
+        break;
+      }
+
+      result.add(info);
+
+      i = constraintEnd;
+      if (i != e) {
+        ++i;
+        // don't allow "xyz,"
+        if (i == e) { result.clear(); break; }
+      }
+    }
+    return result;
   }
 
   private ArrayList<ConstraintInfo> parseConstraints() {

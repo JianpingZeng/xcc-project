@@ -27,7 +27,6 @@ package backend.bitcode.reader;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.codegen.dagisel.RegisterScheduler;
 import backend.io.BitStream;
 import backend.io.ByteSequence;
 import backend.support.*;
