@@ -491,7 +491,7 @@ public class BitcodeReader implements GVMaterializer {
       return operandList.get(n);
     }
 
-    void Add(BitCodeAbbrevOp opInfo) {
+    void add(BitCodeAbbrevOp opInfo) {
       operandList.add(opInfo);
     }
   }
@@ -518,7 +518,8 @@ public class BitcodeReader implements GVMaterializer {
   private String errorString;
   private ByteSequence buffer;
   /**
-   * The current pointer to the buffer from which the current byte is read.
+   * The current pointer to the buffer from which the current bit is read.
+   * Note that, this variable refers to the bit position instead of byte position.
    */
   private int curOffset;
   private BitStream bitStream;
@@ -765,19 +766,74 @@ public class BitcodeReader implements GVMaterializer {
     }
   }
 
-  private BlockInfo getOrCreateBlcokInfo(int id) {
-    return null;
+  private BlockInfo getOrCreateBlcokInfo(int blockID) {
+    BlockInfo bi = getBlockInfo(blockID);
+    if (bi != null) return bi;
+    // otherwise, create a new block info and insert it into
+    // the hash map.
+    bi = new BlockInfo();
+    blockInfoRecords.add(bi);
+    bi.blockID = blockID;
+    return bi;
   }
 
   private int readRecord(long code, ArrayList<Long> record) {
+
     return 0;
+  }
+  private boolean hasEncodingData(int e) {
+    switch (e) {
+      default:
+        Util.assertion("Unknown encoding");
+      case Fixed:
+      case VBR:
+        return true;
+      case Array:
+      case Char6:
+      case Blob:
+        return false;
+    }
   }
 
   private void readAbbrevRecord() {
+    BitCodeAbbrev abbv = new BitCodeAbbrev();
+    long numOpInfo = readVBR(5);
+    for (int i = 0; i < numOpInfo; i++) {
+      boolean isLiteral = read(1) != 0;
+      if (isLiteral) {
+        abbv.add(new BitCodeAbbrevOp(readVBR(8)));
+        continue;
+      }
 
+      int encoding = (int) read(3);
+      if (hasEncodingData(encoding))
+        abbv.add(new BitCodeAbbrevOp(encoding, readVBR(5)));
+      else
+        abbv.add(new BitCodeAbbrevOp(encoding));
+    }
+    curAbbrevs.add(abbv);
+  }
+
+  private void popBlockScope() {
+    curCodeSize = blockScope.getLast().prevCodeSize;
+    // delete abbrevs from popped scope.
+    for (int i = 0, e = curAbbrevs.size(); i < e; i++) {
+      curAbbrevs.set(i, null);
+    }
+
+    LinkedList<BitCodeAbbrev> temp = curAbbrevs;
+    curAbbrevs = blockScope.getLast().prevAbbrevs;
+    blockScope.getLast().prevAbbrevs = temp;
+    blockScope.pop();
   }
 
   private boolean readBlockEnd() {
+    if (blockScope.isEmpty()) return true;
+
+    // Block tail:
+    //   [END_BLOCK, <align4bytes>]
+    skipToWord();
+    popBlockScope();
     return false;
   }
 
@@ -1245,8 +1301,7 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private long getCurrentBitNo() {
-    // TODO
-    return 0;
+    return curOffset;
   }
 
   private boolean parseMetadata() {
@@ -2058,8 +2113,12 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private void skipToWord() {
-    // TODO
-    Util.shouldNotReachHere("TODO");
+    // ceiling the curOffset to the minimum value of power of 32 (4 bytes)
+    // we don't have to perform real read operation so as to make program
+    // more efficient.
+    int up = Util.roundUp(curCodeSize, 32);
+    int size = up - curCodeSize;
+    curOffset += size;
   }
 
   private long readVBR(int width) {
