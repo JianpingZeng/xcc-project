@@ -80,4 +80,12 @@ public final class AttrList {
   public void dump() {
     // TODO: 2017/11/27
   }
+
+  public int size() {
+    return attrs != null ? attrs.size() : 0;
+  }
+
+  public AttributeWithIndex getSlot(int i) {
+    return attrs.get(i);
+  }
 }

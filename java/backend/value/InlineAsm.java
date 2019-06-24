@@ -91,7 +91,7 @@ public class InlineAsm extends Value {
     return constraintString;
   }
 
-  public boolean isHasSideEffects() {
+  public boolean hasSideEffects() {
     return hasSideEffects;
   }
 

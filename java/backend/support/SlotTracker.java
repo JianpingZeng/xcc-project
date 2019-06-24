@@ -132,8 +132,8 @@ public final class SlotTracker {
     int slot = mdnNext++;
     mdnMap.put(node, slot);
 
-    for (int i = 0, e = node.getNumOfNode(); i < e; i++) {
-      Value val = node.getNode(i);
+    for (int i = 0, e = node.getNumOperands(); i < e; i++) {
+      Value val = node.getOperand(i);
       if (val != null && val instanceof MDNode)
         createMetadataSlot((MDNode) val);
     }
@@ -147,8 +147,8 @@ public final class SlotTracker {
 
   private void processNamedMDNode() {
     mdnNext = 0;
-    for (int i = 0, e = nNode.getNumOfNode(); i < e; i++) {
-      Value val = nNode.getNode(i);
+    for (int i = 0, e = nNode.getNumOfOperands(); i < e; i++) {
+      Value val = nNode.getOperand(i);
       if (val instanceof MDNode)
         createMetadataSlot((MDNode) val);
     }

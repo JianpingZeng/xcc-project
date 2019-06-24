@@ -310,7 +310,7 @@ public class Value implements Cloneable {
       TypePrinting printer = new TypePrinting();
       slotTable.initialize();
       os.printf("!%s = !{", node.getName());
-      for (int i = 0, e = node.getNumOfNode(); i < e; i++) {
+      for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
         if (i != 0) os.printf(", ");
         Value val = node.getNode(i);
         if (val instanceof MDNode)

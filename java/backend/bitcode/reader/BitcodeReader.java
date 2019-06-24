@@ -88,7 +88,7 @@ public class BitcodeReader implements GVMaterializer {
     return false;
   }
 
-  interface StandardWidths {
+  public interface StandardWidths {
     int BlockIDWidth = 8,  // We use VBR-8 for block IDs.
         CodeLenWidth = 4,  // Codelen are VBR-4.
         BlockSizeWidth = 32;  // BlockSize up to 2^32 32-bit words = 16GB per block.
@@ -96,7 +96,7 @@ public class BitcodeReader implements GVMaterializer {
 
   // The standard abbrev namespace always has a way to exit a block, enter a
   // nested block, define abbrevs, and define an unabbreviated record.
-  interface FixedAbbrevIDs {
+  public interface FixedAbbrevIDs {
     int END_BLOCK = 0,  // Must be zero to guarantee termination for broken bitcode.
         ENTER_SUBBLOCK = 1,
 
@@ -117,7 +117,7 @@ public class BitcodeReader implements GVMaterializer {
 
   /// StandardBlockIDs - All bitcode files can optionally include a BLOCKINFO
   /// block, which contains metadata about other blocks in the file.
-  interface StandardBlockIDs {
+  public interface StandardBlockIDs {
     /// BLOCKINFO_BLOCK is used to define metadata about blocks, for example,
     /// standard abbrevs that should be available to all blocks of a specified
     /// ID.
@@ -129,7 +129,7 @@ public class BitcodeReader implements GVMaterializer {
 
   /// BlockInfoCodes - The blockinfo block contains metadata about user-defined
   /// blocks.
-  interface BlockInfoCodes {
+  public interface BlockInfoCodes {
     // DEFINE_ABBREV has magic semantics here, applying to the current SETBID'd
     // block, instead of the BlockInfo block.
     int BLOCKINFO_CODE_SETBID = 1,       // SETBID: [blockid#]
@@ -138,7 +138,7 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   // The only top-level block type defined is for a module.
-  interface BlockIDs {
+  public interface BlockIDs {
     // Blocks
     int MODULE_BLOCK_ID = FIRST_APPLICATION_BLOCKID,
 
@@ -155,7 +155,7 @@ public class BitcodeReader implements GVMaterializer {
 
 
   /// MODULE blocks have a number of optional fields and subblocks.
-  interface ModuleCodes {
+  public interface ModuleCodes {
     int MODULE_CODE_VERSION = 1,    // VERSION:     [version#]
         MODULE_CODE_TRIPLE = 2,    // TRIPLE:      [strchr x N]
         MODULE_CODE_DATALAYOUT = 3,    // DATALAYOUT:  [strchr x N]
@@ -181,12 +181,12 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   /// PARAMATTR blocks have code for defining a parameter attribute set.
-  interface AttributeCodes {
+  public interface AttributeCodes {
     int PARAMATTR_CODE_ENTRY = 1;   // ENTRY: [paramidx0, attr0, paramidx1, attr1...]
   }
 
   /// TYPE blocks have codes for each type primitive they use.
-  interface TypeCodes {
+  public interface TypeCodes {
     int TYPE_CODE_NUMENTRY = 1,   // NUMENTRY: [numentries]
 
     // Type Codes
@@ -218,12 +218,12 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   // The value symbol table only has one code (VST_ENTRY_CODE).
-  interface ValueSymtabCodes {
+  public interface ValueSymtabCodes {
     int VST_CODE_ENTRY = 1,  // VST_ENTRY: [valid, namechar x N]
         VST_CODE_BBENTRY = 2;   // VST_BBENTRY: [bbid, namechar x N]
   }
 
-  interface MetadataCodes {
+  public interface MetadataCodes {
     int METADATA_STRING = 1,   // MDSTRING:      [values]
     // FIXME: Remove NODE in favor of NODE2 in LLVM 3.0
     METADATA_NODE = 2,   // NODE with potentially invalid metadata
@@ -243,7 +243,7 @@ public class BitcodeReader implements GVMaterializer {
 
   // The constants block (CONSTANTS_BLOCK_ID) describes emission for each
   // constant and maintains an implicit current type value.
-  interface ConstantsCodes {
+  public interface ConstantsCodes {
     int CST_CODE_SETTYPE = 1,  // SETTYPE:       [typeid]
         CST_CODE_NULL = 2,  // NULL
         CST_CODE_UNDEF = 3,  // UNDEF
@@ -271,7 +271,7 @@ public class BitcodeReader implements GVMaterializer {
   /// cast a CST_CODE_CE_CAST or a XXX refers to.  The values of these enums
   /// have no fixed relation to the LLVM IR enum values.  Changing these will
   /// break compatibility with old files.
-  interface CastOpcodes {
+  public interface CastOpcodes {
     int CAST_TRUNC = 0,
         CAST_ZEXT = 1,
         CAST_SEXT = 2,
@@ -290,7 +290,7 @@ public class BitcodeReader implements GVMaterializer {
   /// binop a CST_CODE_CE_BINOP or a XXX refers to.  The values of these enums
   /// have no fixed relation to the LLVM IR enum values.  Changing these will
   /// break compatibility with old files.
-  interface BinaryOpcodes {
+  public interface BinaryOpcodes {
     int BINOP_ADD = 0,
         BINOP_SUB = 1,
         BINOP_MUL = 2,
@@ -321,7 +321,7 @@ public class BitcodeReader implements GVMaterializer {
 
   // The function body block (FUNCTION_BLOCK_ID) describes function bodies.  It
   // can contain a constant block (CONSTANTS_BLOCK_ID).
-  interface FunctionCodes {
+  public interface FunctionCodes {
     int FUNC_CODE_DECLAREBLOCKS = 1, // DECLAREBLOCKS: [n]
 
     FUNC_CODE_INST_BINOP = 2, // BINOP:      [opcode, ty, opval, opval]
@@ -375,7 +375,7 @@ public class BitcodeReader implements GVMaterializer {
     FUNC_CODE_DEBUG_LOC2 = 35;  // DEBUG_LOC2: [Line,Col,ScopeVal, IAVal]
   }
 
-  interface Encoding {
+  public interface Encoding {
     int Fixed = 1,  // A fixed width field, val specifies number of bits.
         VBR = 2,  // A VBR field where val specifies the width of each chunk.
         Array = 3,  // A sequence of fields, next field species elt encoding.
@@ -387,23 +387,23 @@ public class BitcodeReader implements GVMaterializer {
   /// This is actually a union of two different things:
   ///   1. It could be a literal integer value ("the operand is always 17").
   ///   2. It could be an encoding specification ("this operand encoded like so").
-  class BitCodeAbbrevOp {
+  public static class BitCodeAbbrevOp {
     long val;           // A literal value or data for an encoding.
     boolean isLiteral;     // Indicate whether this is a literal value or not.
     int enc;     // The encoding to use.
 
-    BitCodeAbbrevOp(long v) {
+    public BitCodeAbbrevOp(long v) {
       val = v;
       isLiteral = true;
     }
 
-    BitCodeAbbrevOp(int e, long data) {
+    public BitCodeAbbrevOp(int e, long data) {
       val = data;
       isLiteral = false;
       enc = e;
     }
 
-    boolean isLiteral() {
+    public boolean isLiteral() {
       return isLiteral;
     }
 
@@ -412,23 +412,23 @@ public class BitcodeReader implements GVMaterializer {
     }
 
     // Accessors for literals.
-    long getLiteralValue() {
+    public long getLiteralValue() {
       assert (isLiteral());
       return val;
     }
 
     // Accessors for encoding info.
-    int getEncoding() {
+    public int getEncoding() {
       assert (isEncoding());
       return enc;
     }
 
-    long getEncodingData() {
+    public long getEncodingData() {
       assert (isEncoding() && hasEncodingData());
       return val;
     }
 
-    boolean hasEncodingData() {
+    public boolean hasEncodingData() {
       return hasEncodingData(getEncoding());
     }
 
@@ -447,7 +447,7 @@ public class BitcodeReader implements GVMaterializer {
     }
 
     /// isChar6 - Return true if this character is legal in the Char6 encoding.
-    boolean isChar6(char c) {
+    public static boolean isChar6(char c) {
       if (c >= 'a' && c <= 'z') return true;
       if (c >= 'A' && c <= 'Z') return true;
       if (c >= '0' && c <= '9') return true;
@@ -455,7 +455,7 @@ public class BitcodeReader implements GVMaterializer {
       return false;
     }
 
-    int encodeChar6(char c) {
+    public static int encodeChar6(byte c) {
       if (c >= 'a' && c <= 'z') return c - 'a';
       if (c >= 'A' && c <= 'Z') return c - 'A' + 26;
       if (c >= '0' && c <= '9') return c - '0' + 26 + 26;
@@ -480,18 +480,18 @@ public class BitcodeReader implements GVMaterializer {
   /// BitCodeAbbrev - This class represents an abbreviation record.  An
   /// abbreviation allows a complex record that has redundancy to be stored in a
   /// specialized format instead of the fully-general, fully-vbr, format.
-  static class BitCodeAbbrev {
+  public static class BitCodeAbbrev {
     ArrayList<BitCodeAbbrevOp> operandList;
 
-    int getNumOperandInfos() {
+    public int getNumOperandInfos() {
       return operandList.size();
     }
 
-    BitCodeAbbrevOp getOperandInfo(int n) {
+    public BitCodeAbbrevOp getOperandInfo(int n) {
       return operandList.get(n);
     }
 
-    void add(BitCodeAbbrevOp opInfo) {
+    public void add(BitCodeAbbrevOp opInfo) {
       operandList.add(opInfo);
     }
   }

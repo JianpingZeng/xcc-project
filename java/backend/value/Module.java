@@ -73,7 +73,7 @@ public final class Module implements Iterable<Function> {
   /**
    * The libraries needed by this module.
    */
-  private ArrayList<String> libraryLists;
+  private ArrayList<String> libraryList;
 
   /**
    * Constructor.
@@ -89,7 +89,7 @@ public final class Module implements Iterable<Function> {
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
-    libraryLists = new ArrayList<>();
+    libraryList = new ArrayList<>();
   }
 
   public Module(String moduleID) {
@@ -101,7 +101,7 @@ public final class Module implements Iterable<Function> {
     namedMDSymTab = new HashMap<>();
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
-    libraryLists = new ArrayList<>();
+    libraryList = new ArrayList<>();
   }
 
   public String getModuleIdentifier() {
@@ -330,12 +330,24 @@ public final class Module implements Iterable<Function> {
   }
 
   public void addLibrary(String lib) {
-    if (libraryLists.contains(lib))
+    if (libraryList.contains(lib))
       return;
-    libraryLists.add(lib);
+    libraryList.add(lib);
   }
 
   public void removeLibrary(String lib) {
-    libraryLists.remove(lib);
+    libraryList.remove(lib);
+  }
+
+  public ArrayList<String> getLibraryList() {
+    return libraryList;
+  }
+
+  public void setLibraryList(ArrayList<String> libraryList) {
+    this.libraryList = libraryList;
+  }
+
+  public ArrayList<NamedMDNode> getNamedMDList() {
+    return namedMDList;
   }
 }

@@ -1339,8 +1339,8 @@ public class AssemblyWriter {
       os.printf("!%d = metadata ", i);
       MDNode node = nodes[i];
       os.printf("!{");
-      for (int j = 0, e = node.getNumOfNode(); j < e; j++) {
-        Value val = node.getNode(j);
+      for (int j = 0, e = node.getNumOperands(); j < e; j++) {
+        Value val = node.getOperand(j);
         if (val == null) os.printf("null");
         else if (val instanceof MDNode) {
           MDNode n = (MDNode) val;

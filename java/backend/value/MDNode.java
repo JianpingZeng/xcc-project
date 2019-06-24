@@ -33,6 +33,8 @@ import static backend.value.ValueKind.MDNodeVal;
  */
 public class MDNode extends Value {
   private ArrayList<Value> nodes;
+  private boolean functionLocal;
+  private int numOperands;
 
   public MDNode(List<Value> vals) {
     super(LLVMContext.MetadataTy, MDNodeVal);
@@ -45,12 +47,20 @@ public class MDNode extends Value {
     return getUniqueImpl().getOrCreate(key);
   }
 
-  public int getNumOfNode() {
+  public boolean isFunctionLocal() {
+    return functionLocal;
+  }
+
+  public Function getFunction() {
+
+  }
+
+  public int getNumOperands() {
     return nodes.size();
   }
 
-  public Value getNode(int index) {
-    Util.assertion(index >= 0 && index < getNumOfNode());
+  public Value getOperand(int index) {
+    Util.assertion(index >= 0 && index < getNumOperands());
     return nodes.get(index);
   }
 }

@@ -20,7 +20,13 @@ package backend.support;
 import backend.type.IntegerType;
 import backend.type.LLVMTypeID;
 import backend.type.Type;
+import backend.value.Instruction;
+import backend.value.MDNode;
+import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Pair;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.TreeMap;
 
 /**
@@ -43,6 +49,12 @@ public class LLVMContext {
   public static final Type PPC_FP128Ty = new Type(LLVMTypeID.PPC_FP128TyID);
 
   private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
+  public ArrayList<Pair<DebugLoc, DebugLoc>> scopeInlineAtRecords;
+  public TObjectIntHashMap<Pair<MDNode, MDNode>> scopeInlineAtIdx;
+  public ArrayList<DebugLoc> scopeRecords;
+  public TObjectIntHashMap<MDNode> scopeRecordIdx;
+  public HashMap<Instruction, ArrayList<Pair<Integer, MDNode>>> metadataStore;
+
   public static int getMDKindID(String name) {
     if (customMDKindNamesMap.containsKey(name))
       return customMDKindNamesMap.get(name);

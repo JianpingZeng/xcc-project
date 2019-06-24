@@ -53,20 +53,16 @@ public final class NamedMDNode extends Value {
     return new NamedMDNode(name, elts, m);
   }
 
-  public int getNumOfNode() {
+  public int getNumOfOperands() {
     return operands.size();
   }
 
-  public Value getNode(int index) {
-    Util.assertion(index >= 0 && index < getNumOfNode());
+  public Value getOperand(int index) {
+    Util.assertion(index >= 0 && index < getNumOfOperands());
     return operands.get(index);
   }
 
   public void addOperand(MDNode n) {
     operands.add(n);
-  }
-
-  public MDNode getOperand(int i) {
-    return operands.get(i);
   }
 }

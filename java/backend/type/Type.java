@@ -69,6 +69,10 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   private static HashMap<Type, String> concreteTypeDescription =
       new HashMap<>();
+  /**
+   * This refers to the LLVMContext in which this type is uniqued.
+   */
+  private LLVMContext context;
 
   public Type(int typeID) {
     id = typeID;
@@ -366,5 +370,9 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   public Type getForwardType() {
     return this;
+  }
+
+  public LLVMContext getContext() {
+    return context;
   }
 }

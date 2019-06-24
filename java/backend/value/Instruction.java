@@ -4,6 +4,7 @@ import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.*;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Pair;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
@@ -34,6 +35,10 @@ public abstract class Instruction extends User {
    * The basic block containing this Value.
    */
   protected BasicBlock parent;
+
+  protected boolean hasMetadata;
+
+  protected DebugLoc dbgLoc;
 
   public Instruction(Type ty,
                      Operator opc,
@@ -429,6 +434,39 @@ public abstract class Instruction extends User {
    */
   public void setMetadata(int mdk, MDNode node) {
     // TODO, fake 12/19/2018
+  }
+
+  public boolean hasMetadataOtherThanDebugLoc() {
+    return hasMetadataHashEntry();
+  }
+
+  public boolean hasMetadataHashEntry() {
+    return hasMetadata;
+  }
+
+  public void setDebugLoc(DebugLoc loc) {
+    dbgLoc = loc;
+  }
+
+  public DebugLoc getDebugLoc() {
+    return dbgLoc;
+  }
+
+  public LLVMContext getContext() {
+    return getType().getContext();
+  }
+
+  public void getAllMetadataOtherThanDebugLoc(ArrayList<Pair<Integer, MDNode>> mds) {
+    if (hasMetadataOtherThanDebugLoc())
+      getAllMetadataOtherThanDebugLocImpl(mds);
+  }
+
+  public void getAllMetadataOtherThanDebugLocImpl(ArrayList<Pair<Integer, MDNode>> result) {
+    result.clear();
+    Util.assertion(hasMetadataHashEntry() &&
+        getContext().metadataStore.containsKey(this), "Shouldn't have called this");
+    ArrayList<Pair<Integer, MDNode>> info = getContext().metadataStore.get(this);
+    result.addAll(info);
   }
 
   /**
