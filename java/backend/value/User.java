@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.type.Type;
+import tools.FltSemantics;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -18,19 +19,21 @@ public abstract class User extends Value {
   /**
    * This array with element of jlang.type Value represents all operands.
    */
-  protected ArrayList<Use> operandList;
+  protected Use[] operandList;
+  protected int numOps;
 
   public User(Type ty, int valueKind) {
     super(ty, valueKind);
     id = -1;
-    operandList = new ArrayList<>();
+    operandList = null;
+    numOps = 0;
   }
 
   protected void reserve(int numOperands) {
     Util.assertion(numOperands > 0);
-    operandList = new ArrayList<>();
-    for (; numOperands > 0; --numOperands)
-      operandList.add(null);
+    numOps = numOperands;
+    if (operandList == null)
+      operandList = new Use[numOperands];
   }
 
   /**
@@ -40,17 +43,14 @@ public abstract class User extends Value {
    * @return the index-th operand.
    */
   public Value operand(int index) {
-    Util.assertion((index >= 0 && index < getNumOfOperands()));
-    return operandList.get(index) != null ?
-        operandList.get(index).getValue() : null;
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
+    return operandList[index] != null ? operandList[index].getValue() : null;
   }
 
   public void setOperand(int index, Value val, User user) {
     Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     setOperand(index, new Use(val, user));
   }
-
-  // operandList[] temp = new Use[1];
 
   /**
    * set element at specified position with {@code use}
@@ -59,29 +59,42 @@ public abstract class User extends Value {
    * @param use
    */
   public void setOperand(int index, Use use) {
-    Util.assertion(use != null);
-    if (operandList == null)
-      operandList = new ArrayList<>();
-    if (index >= getNumOfOperands()) {
-      for (int i = getNumOfOperands() - 1; i < index; i++)
-        operandList.add(null);
-    }
-    operandList.set(index, use);
+    Util.assertion(use != null, "can't set operand as null");
+    Util.assertion(operandList != null, "should initialize operands list before update operand");
+    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
+    /*if (index >= getNumOfOperands()) {
+      // allocate extra 10 elements.
+      int oldNumOps = numOps;
+      numOps = index+10;
+      Use[] newArray = new Use[numOps];
+      System.arraycopy(operandList, 0, newArray, 0, oldNumOps);
+      operandList = newArray;
+    }*/
+    FltSemantics fltSemantics = null;
+    if (use.getValue() instanceof ConstantFP)
+      fltSemantics = ((ConstantFP)use.getValue()).getValueAPF().getSemantics();
+
+    operandList[index] = use;
+    use = operandList[index];
+    if (fltSemantics != null)
+      ((ConstantFP)use.getValue()).getValueAPF().setSemantics(fltSemantics);
   }
 
   public void setOperand(int index, Value opVal) {
     Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
-    operandList.get(index).setValue(opVal);
+    operandList[index].setValue(opVal);
   }
 
   public Use getOperand(int index) {
     Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
-    return operandList.get(index);
+    return operandList[index];
   }
 
   public void removeOperand(int index) {
     Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
-    operandList.remove(index);
+    for (int i = index+1; i < getNumOfOperands() - 1; i++)
+      operandList[i] = operandList[i+1];
+    numOps -= 1;
   }
 
   /**
@@ -90,7 +103,7 @@ public abstract class User extends Value {
    * @return
    */
   public int getNumOfOperands() {
-    return operandList != null ? operandList.size() : 0;
+    return numOps;
   }
 
   /**

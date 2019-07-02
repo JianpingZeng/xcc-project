@@ -101,8 +101,7 @@ public abstract class Instruction extends User {
     for (int i = 0; i < getNumOfOperands(); i++) {
       operand(i).killUse(this);
     }
-    operandList.clear();
-
+    operandList = null;
     if (usesList != null && !usesList.isEmpty()) {
       for (Use u : usesList) {
         Instruction inst = ((Instruction) u.getUser());
@@ -1819,9 +1818,9 @@ public abstract class Instruction extends User {
     @Override
     public void swapOperands() {
       pred = getSwappedPredicate();
-      Use u = operandList.get(0);
-      operandList.set(0, operandList.get(1));
-      operandList.set(1, u);
+      Use u = operandList[0];
+      operandList[0] = operandList[1];
+      operandList[1] = u;
     }
   }
 
@@ -1969,9 +1968,9 @@ public abstract class Instruction extends User {
     @Override
     public void swapOperands() {
       pred = getSwappedPredicate();
-      Use u = operandList.get(0);
-      operandList.set(0, operandList.get(1));
-      operandList.set(1, u);
+      Use u = operandList[0];
+      operandList[0] = operandList[1];
+      operandList[1] = u;
     }
 
     /**
@@ -2206,10 +2205,9 @@ public abstract class Instruction extends User {
      * @param dest
      */
     public void setUnconditionalDest(BasicBlock dest) {
-      ArrayList<Use> list = new ArrayList<>();
-      list.add(getOperand(0));
-      operandList = list;
-      setOperand(0, dest);
+      operandList = new Use[1];
+      operandList[0] = new Use(dest, this);
+      numOps = 1;
     }
   }
 
@@ -2601,7 +2599,6 @@ public abstract class Instruction extends User {
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
-    private int curIndex;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2647,14 +2644,14 @@ public abstract class Instruction extends User {
       reserve(offset + numCases);
       setOperand(0, cond, this);
       setOperand(1, defaultBB, this);
-      curIndex = 2;
+      numOps = 2;
     }
 
     public void addCase(Constant caseVal, BasicBlock targetBB) {
-      int opNo = curIndex >> 1;
+      int opNo = getNumOfCases();
       setOperand(opNo*2, caseVal, this);
       setOperand(opNo*2 + 1, targetBB, this);
-      curIndex += 2;
+      numOps += 2;
     }
 
     public void removeCase(int idx) {
@@ -2662,9 +2659,9 @@ public abstract class Instruction extends User {
       Util.assertion((idx * 2 < getNumOfOperands()), "Successor index out of range!!!");
 
       // unlink the last value.
-      operandList.remove(idx*2);
-      operandList.remove(idx*2 + 1);
-      curIndex -= 2;
+      if (getNumOfOperands() - idx * 2 + 2 >= 0)
+        System.arraycopy(operandList, idx * 2 + 2, operandList, idx * 2 + 2 - 2, getNumOfOperands() - idx * 2 + 2);
+      numOps -= 2;
     }
 
     /**
@@ -2759,7 +2756,8 @@ public abstract class Instruction extends User {
     public SwitchInst clone() {
       SwitchInst inst = new SwitchInst(getCondition(),
           getDefaultBlock(), getNumOfCases(), name);
-      inst.operandList = new ArrayList<>(inst.operandList);
+      inst.operandList = new Use[getNumOfOperands()];
+      System.arraycopy(operandList, 0, inst.operandList, 0, getNumOfOperands());
       return inst;
     }
 
@@ -2823,9 +2821,8 @@ public abstract class Instruction extends User {
       Util.assertion(block != null, "Phi node got a null basic block");
       Util.assertion(value.getType().equals(getType()), "All of operands of Phi must be same type.");
       Util.assertion(opIndex + 2 <= getNumOfOperands(), "no enough space for inserting a pair of incoming value");
-
-      operandList.set(opIndex, new Use(value, this));
-      operandList.set(opIndex + 1, new Use(block, this));
+      operandList[opIndex] = new Use(value, this);
+      operandList[opIndex + 1] = new Use(block, this);
       opIndex += 2;
     }
 
@@ -2877,12 +2874,12 @@ public abstract class Instruction extends User {
       Value old = operand(index * 2);
       int numOps = getNumOfOperands();
       for (int i = (index + 1) * 2; i < numOps; i++) {
-        operandList.set(i - 2, operandList.get(i));
-        operandList.set(i - 2 + 1, operandList.get(i + 1));
+        operandList[i - 2] = operandList[i];
+        operandList[i - 1] = operandList[i + 1];
       }
       opIndex -= 2;
-      operandList.set(numOps - 2, null);
-      operandList.set(numOps - 2 + 1, null);
+      operandList[numOps - 2] = null;
+      operandList[numOps - 1] = null;
 
       // delete this phi node if it has zero entities.
       if (numOps == 2 && deletePhiIfEmpty) {
@@ -3198,6 +3195,7 @@ public abstract class Instruction extends User {
    */
   public static class GetElementPtrInst extends Instruction implements GEPOperator {
     private boolean inbounds;
+
     public GetElementPtrInst(Value ptr,
                              Value idx,
                              String name,
