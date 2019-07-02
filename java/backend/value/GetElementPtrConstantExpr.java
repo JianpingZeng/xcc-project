@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.type.PointerType;
 import backend.type.Type;
 
 import java.util.ArrayList;
@@ -26,7 +27,7 @@ import static backend.value.Operator.GetElementPtr;
  * @author Jianping Zeng
  * @version 0.4
  */
-public class GetElementPtrConstantExpr extends ConstantExpr {
+public class GetElementPtrConstantExpr extends ConstantExpr implements GEPOperator {
   private boolean isInBounds;
 
   /**
@@ -45,6 +46,56 @@ public class GetElementPtrConstantExpr extends ConstantExpr {
 
   public void setIsInBounds(boolean isInBounds) {
     this.isInBounds = isInBounds;
+  }
+
+  @Override
+  public int getIndexBegin() {
+    return 1;
+  }
+
+  @Override
+  public int getIndexEnd() {
+    return getNumOfOperands() - 1;
+  }
+
+  @Override
+  public Value getPointerOperand() {
+    return operand(0);
+  }
+
+  @Override
+  public int getPointerOperandIndex() {
+    return 0;
+  }
+
+  @Override
+  public PointerType getPointerOperandType() {
+    return (PointerType) operand(0).getType();
+  }
+
+  @Override
+  public int getNumIndices() {
+    return getNumOfOperands() - 1;
+  }
+
+  @Override
+  public boolean hasIndices() {
+    return getNumIndices() > 0;
+  }
+
+  @Override
+  public boolean hasAllZeroIndices() {
+    for (int i = getIndexBegin(), e = getIndexEnd(); i < e; i++) {
+      Constant c = operand(i);
+      if (!c.isNullValue())
+        return false;
+    }
+    return true;
+  }
+
+  @Override
+  public boolean hasAllConstantIndices() {
+    return true;
   }
 
   public boolean isInBounds() {

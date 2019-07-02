@@ -86,7 +86,7 @@ public final class UniqueConstantValueImpl {
     } else if (opc.isBinaryOps()) {
       Util.assertion(key.operands.size() == 2);
       Constant lhs = key.operands.get(0), rhs = key.operands.get(1);
-      ce = new BinaryConstantExpr(opc, lhs, rhs);
+      ce = BinaryConstantExpr.create(opc, lhs, rhs);
       ExprConstantMaps.put(key, ce);
       return ce;
     } else if (opc.isCastOps()) {

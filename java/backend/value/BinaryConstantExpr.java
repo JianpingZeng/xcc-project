@@ -26,10 +26,57 @@ public class BinaryConstantExpr extends ConstantExpr {
    *
    * @param opcode
    */
-  public BinaryConstantExpr(Operator opcode, Constant c1, Constant c2) {
+  private BinaryConstantExpr(Operator opcode, Constant c1, Constant c2) {
     super(c1.getType(), opcode);
     reserve(2);
     setOperand(0, c1, this);
     setOperand(1, c2, this);
+  }
+
+  public static BinaryConstantExpr create(Operator opcode, Constant c1, Constant c2) {
+    if (opcode == Operator.Add || opcode == Operator.Sub || opcode == Operator.Mul)
+      return new OverflowBinaryConstantExpr(opcode, c1, c2);
+    else
+      return new BinaryConstantExpr(opcode, c1, c2);
+  }
+
+  public static class OverflowBinaryConstantExpr extends BinaryConstantExpr implements OverflowBinaryOperator {
+    /**
+     * Indicates the operation (such as add, sub, mul)
+     * doesn't have extra bits to been destroyed.
+     */
+    private boolean hasNoUnsignedWrap;
+    private boolean hasNoSignedWrap;
+
+    /**
+     * Constructs a new instruction representing the specified constants.
+     *
+     * @param opcode
+     * @param c1
+     * @param c2
+     */
+    private OverflowBinaryConstantExpr(Operator opcode, Constant c1, Constant c2) {
+      super(opcode, c1, c2);
+    }
+
+    @Override
+    public void setHasNoUnsignedWrap(boolean val) {
+      hasNoUnsignedWrap = val;
+    }
+
+    @Override
+    public boolean getHasNoUnsignedWrap() {
+      return hasNoUnsignedWrap;
+    }
+
+    @Override
+    public void setHasNoSignedWrap(boolean val) {
+      hasNoSignedWrap = val;
+    }
+
+    @Override
+    public boolean getHasNoSignedWrap() {
+      return hasNoSignedWrap;
+    }
   }
 }
