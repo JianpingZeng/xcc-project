@@ -273,7 +273,7 @@ public final class LowerSwitch implements FunctionPass {
       } else {
         // emit value - Lo <= high-Lo (unsigned).
         Constant negLo = ConstantExpr.getNeg(leaf.low);
-        Instruction add = BinaryOps
+        Instruction add = BinaryOperator
             .createAdd(val, negLo, val.getName() + ".off",
                 newLeaf);
 

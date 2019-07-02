@@ -285,7 +285,7 @@ public final class LICM implements LoopPass {
       return false;
 
     }
-    return (inst instanceof BinaryOps) || (inst instanceof CastInst)
+    return (inst instanceof BinaryOperator) || (inst instanceof CastInst)
         || (inst instanceof GetElementPtrInst)
         || (inst instanceof CmpInst);
   }

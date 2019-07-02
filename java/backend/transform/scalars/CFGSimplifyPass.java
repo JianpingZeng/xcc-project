@@ -889,13 +889,13 @@ public final class CFGSimplifyPass implements FunctionPass {
 
     Value predBRCond = predBR.getCondition();
     if (predBROp != 0)
-      predBRCond = BinaryOps.createNot(predBRCond, predBRCond + ".not", predBR);
+      predBRCond = BinaryOperator.createNot(predBRCond, predBRCond + ".not", predBR);
 
     Value brCond = cond;
     if (brOp != 0)
-      brCond = BinaryOps.createNot(brCond, brCond.getName() + ".not", br);
+      brCond = BinaryOperator.createNot(brCond, brCond.getName() + ".not", br);
 
-    Value mergedCond = BinaryOps.createOr(predBRCond, brCond, "mergebr", predBR);
+    Value mergedCond = BinaryOperator.createOr(predBRCond, brCond, "mergebr", predBR);
     predBR.setCondition(mergedCond);
     predBR.setSuccessor(0, commonDest);
     predBR.setSuccessor(1, otherDest);
@@ -953,7 +953,7 @@ public final class CFGSimplifyPass implements FunctionPass {
     // we should ensure there are setcc and branch inst in current block.
     Instruction firstInst = bb.getFirstInst();
     if (firstInst != cond || (!(firstInst instanceof ICmpInst) &&
-        !(firstInst instanceof BinaryOps)) || !cond.hasOneUses())
+        !(firstInst instanceof BinaryOperator)) || !cond.hasOneUses())
       return false;
 
     // the current block must only have 2 instructions, including condition and
@@ -1015,7 +1015,7 @@ public final class CFGSimplifyPass implements FunctionPass {
       }
       Util.assertion(opc != null, "unknown situation to be handled!");
       if (invertPredCond) {
-        Instruction newCond = BinaryOps.createNot(cond, cond.getName() + ".not", predBR);
+        Instruction newCond = BinaryOperator.createNot(cond, cond.getName() + ".not", predBR);
         predBR.setCondition(newCond);
         BasicBlock succ0 = predBR.getSuccessor(0);
         BasicBlock succ1 = predBR.getSuccessor(1);
@@ -1025,7 +1025,7 @@ public final class CFGSimplifyPass implements FunctionPass {
       Instruction v = cond.clone();
       pred.insertBefore(v, predBR);
       cond.setName(cond.getName() + ".old");
-      Instruction newCond = BinaryOps.create(opc, predBR.getCondition(),
+      Instruction newCond = BinaryOperator.create(opc, predBR.getCondition(),
           v, "or.cond", predBR);
       predBR.setCondition(newCond);
       if (predBR.getSuccessor(0) == bb) {

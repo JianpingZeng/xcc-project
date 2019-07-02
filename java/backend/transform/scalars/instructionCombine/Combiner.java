@@ -108,7 +108,7 @@ public class Combiner implements InstVisitor<Instruction> {
           if (numElements instanceof ConstantInt) {
             amt = ConstantExpr.getMul((ConstantInt) amt, (ConstantInt) numElements);
           } else {
-            Instruction tmp = BinaryOps.createMul(amt, numElements, "tmp");
+            Instruction tmp = BinaryOperator.createMul(amt, numElements, "tmp");
             tmp.insertBefore(ai);
             amt = tmp;
           }
@@ -230,8 +230,8 @@ public class Combiner implements InstVisitor<Instruction> {
           Instruction newGEP = new GetElementPtrInst(bci.operand(0), newIndices, "gep.new");
           if (newGEP.getType().equals(gep.getType()))
             return gep;
-          if (gep.getInbounds())
-            ((GetElementPtrInst) newGEP).setInbounds(true);
+          if (gep.isInBounds())
+            ((GetElementPtrInst) newGEP).setIsInBounds(true);
 
           newGEP.insertBefore(gep);
           Instruction res = new BitCastInst(newGEP, gep.getType(), "bitcast", gep);
@@ -314,7 +314,7 @@ public class Combiner implements InstVisitor<Instruction> {
             ConstantInt rc = (ConstantInt) result;
             result = ConstantInt.get(rc.getValue().add(new APInt(intPtrWidth, size)));
           } else {
-            result = BinaryOps.createAdd(result, ConstantInt.get(intPtrTy, size),
+            result = BinaryOperator.createAdd(result, ConstantInt.get(intPtrTy, size),
                 gep.getName() + ".offs", gep);
           }
           continue;
@@ -327,7 +327,7 @@ public class Combiner implements InstVisitor<Instruction> {
           result = ConstantExpr.getAdd((Constant) result, scale);
         else {
           // emit an add instruction.
-          result = BinaryOps.createAdd(result, scale, gep.getName() + ".offs", gep);
+          result = BinaryOperator.createAdd(result, scale, gep.getName() + ".offs", gep);
         }
         continue;
       }
@@ -346,14 +346,14 @@ public class Combiner implements InstVisitor<Instruction> {
           Constant opC = (Constant) op;
           op = ConstantExpr.getMul(scale, opC);
         } else
-          op = BinaryOps.createMul(scale, op, gep.getName() + ".idx", gep);
+          op = BinaryOperator.createMul(scale, op, gep.getName() + ".idx", gep);
       }
 
       // emit an add instruction.
       if (op instanceof Constant && result instanceof Constant) {
         result = ConstantExpr.getAdd((Constant) result, (Constant) op);
       } else
-        result = BinaryOps.createAdd(result, op, op.getName() + ".add", gep);
+        result = BinaryOperator.createAdd(result, op, op.getName() + ".add", gep);
     }
     return result;
   }
@@ -380,7 +380,7 @@ public class Combiner implements InstVisitor<Instruction> {
     if (val instanceof UndefValue) return 0;
     else if (val instanceof Constant) return 1;
     else if (val instanceof Instruction) {
-      if (BinaryOps.isNot(val) || BinaryOps.isNeg(val) || BinaryOps.isFNeg(val))
+      if (BinaryOperator.isNot(val) || BinaryOperator.isNeg(val) || BinaryOperator.isFNeg(val))
         return 3;
       return 4;
     } else if (val instanceof Argument)
@@ -398,15 +398,15 @@ public class Combiner implements InstVisitor<Instruction> {
    * @param inst
    * @return
    */
-  private boolean simplifyCommutative(BinaryOps inst) {
+  private boolean simplifyCommutative(BinaryOperator inst) {
     boolean changed = false;
     if (getComplexity(inst.operand(0)) < getComplexity(inst.operand(1)))
       changed = !inst.swapOperands();
 
     if (!inst.isAssociative()) return changed;
     Value op0 = inst.operand(0), op1 = inst.operand(1);
-    if (op0 instanceof BinaryOps) {
-      BinaryOps binOp0 = (BinaryOps) op0;
+    if (op0 instanceof BinaryOperator) {
+      BinaryOperator binOp0 = (BinaryOperator) op0;
       if (binOp0.getOpcode() == inst.getOpcode()) {
         if (binOp0.operand(1) instanceof ConstantInt) {
           ConstantInt ci1 = (ConstantInt) binOp0.operand(1);
@@ -416,12 +416,12 @@ public class Combiner implements InstVisitor<Instruction> {
             inst.setOperand(0, binOp0.operand(0));
             inst.setOperand(1, foldedCE);
             changed = true;
-          } else if (op1 instanceof BinaryOps &&
-              ((BinaryOps) op1).getOpcode() == inst.getOpcode()) {
-            BinaryOps binaryOp1 = (BinaryOps) op1;
+          } else if (op1 instanceof BinaryOperator &&
+              ((BinaryOperator) op1).getOpcode() == inst.getOpcode()) {
+            BinaryOperator binaryOp1 = (BinaryOperator) op1;
             if (binaryOp1.operand(1) instanceof ConstantInt) {
               ConstantInt ci2 = (ConstantInt) binaryOp1.operand(1);
-              inst.setOperand(0, BinaryOps.create(inst.getOpcode(),
+              inst.setOperand(0, BinaryOperator.create(inst.getOpcode(),
                   binOp0.operand(0), binaryOp1.operand(0), "tmp", inst));
               inst.setOperand(1, ConstantExpr.get(inst.getOpcode(),
                   ci1, ci2));
@@ -436,7 +436,7 @@ public class Combiner implements InstVisitor<Instruction> {
 
   @Override
   public Instruction visitAdd(User inst) {
-    BinaryOps binOps = (BinaryOps) inst;
+    BinaryOperator binOps = (BinaryOperator) inst;
     boolean changed = simplifyCommutative(binOps);
     Value lhs = binOps.operand(0), rhs = binOps.operand(1);
     // any + C

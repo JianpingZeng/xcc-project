@@ -408,7 +408,7 @@ public final class SCEVExpander implements SCEVVisitor<Value> {
 
 
       Constant one = ConstantInt.get(ty, 1);
-      Instruction add = Instruction.BinaryOps
+      Instruction add = Instruction.BinaryOperator
           .createAdd(pn, one, "indvar.next",
               header.predAt(predItr).getTerminator());
 

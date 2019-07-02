@@ -814,8 +814,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     Value condVal = bi.getCondition();
     MachineBasicBlock succ1MBB = funcInfo.mbbmap.get(bi.getSuccessor(1));
 
-    if (condVal instanceof BinaryOps) {
-      BinaryOps bo = (BinaryOps) condVal;
+    if (condVal instanceof BinaryOperator) {
+      BinaryOperator bo = (BinaryOperator) condVal;
       if (bo.hasOneUses() && (bo.getOpcode() == And || bo.getOpcode() == Or)) {
         findMergedConditions(bo, succ0MBB, succ1MBB, curMBB, bo.getOpcode());
 
@@ -873,7 +873,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                                     MachineBasicBlock curBB,
                                     Operator opc) {
     Instruction inst = cond instanceof Instruction ? (Instruction)cond : null;
-    if (inst == null || !(inst instanceof BinaryOps ||
+    if (inst == null || !(inst instanceof BinaryOperator ||
         inst instanceof CmpInst) ||
         inst.getOpcode() != opc || !inst.hasOneUses() ||
         inst.getParent() != curBB.getBasicBlock() ||

@@ -168,12 +168,12 @@ public class BitcodeWriter {
   private static void writeTypeSymbolTable(TreeMap<String, Type> typeSymbolTable,
                                            ValueEnumerator ve,
                                            BitstreamWriter stream) {
-
+    // TODO: 7/2/19
   }
 
   private static void writeModuleMetadataStore(Module m,
                                                BitstreamWriter stream) {
-
+    // TODO: 7/2/19
   }
 
   /**
@@ -326,7 +326,7 @@ public class BitcodeWriter {
           vals.add(getEncodedCastOpcode(inst.getOpcode()));
         }
         else {
-          Util.assertion(inst instanceof BinaryOps, "Unknown instruction!");
+          Util.assertion(inst instanceof BinaryOperator, "Unknown instruction!");
           code = FUNC_CODE_INST_BINOP;
           if (!pushValueAndType(inst.operand(0), instID, vals, ve))
             abbrevToUse = FUNCTION_INST_BINOP_ABBREV;
@@ -338,7 +338,7 @@ public class BitcodeWriter {
         break;
       case GetElementPtr:
         code = FUNC_CODE_INST_GEP;
-        if (((Instruction.GetElementPtrInst)inst).isInBounds())
+        if (((GEPOperator)inst).isInBounds())
           code = FUNC_CODE_INST_INBOUNDS_GEP;
         for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
           pushValueAndType(inst.operand(i), instID, vals, ve);
@@ -762,8 +762,13 @@ public class BitcodeWriter {
             break;
           case GetElementPtr:
             code = CST_CODE_CE_GEP;
-
-            if () {}
+            GEPOperator gep = (GEPOperator) c;
+            if (gep.isInBounds())
+              code = CST_CODE_CE_INBOUNDS_GEP;
+            for (int j = 0, e = ce.getNumOfOperands(); j < e; j++) {
+              record.add(ve.getTypeID(c.operand(j).getType()));
+              record.add(ve.getValueID(ce.operand(j)));
+            }
             break;
           case Select:
             code = CST_CODE_CE_SELECT;

@@ -146,8 +146,8 @@ public final class InductionVarSimplify implements LoopPass {
       // search for instructions that compute fundamental induction
       // variable and accumulate informations about them in inductionVars
       for (Instruction inst : bb) {
-        if (inst instanceof Instruction.BinaryOps) {
-          Instruction.BinaryOps op = (Instruction.BinaryOps) inst;
+        if (inst instanceof Instruction.BinaryOperator) {
+          Instruction.BinaryOperator op = (Instruction.BinaryOperator) inst;
           if (ivPattern(op, op.operand(0), op.operand(1))
               || ivPattern(op, op.operand(1), op.operand(0))) {
             inductionVars.add(new IVRecord(op, op,
@@ -165,8 +165,8 @@ public final class InductionVarSimplify implements LoopPass {
         // check for dependent induction variables
         // and accumulate information in list inductionVars.
         for (Instruction inst : bb) {
-          if (inst instanceof Instruction.BinaryOps) {
-            Instruction.BinaryOps op = (Instruction.BinaryOps) inst;
+          if (inst instanceof Instruction.BinaryOperator) {
+            Instruction.BinaryOperator op = (Instruction.BinaryOperator) inst;
             Value x = op.operand(0), y = op.operand(1);
             change |= isMulIV(op, x, y, loop);
             change |= isMulIV(op, y, x, loop);
@@ -217,7 +217,7 @@ public final class InductionVarSimplify implements LoopPass {
    * @param op2
    * @return
    */
-  private boolean ivPattern(Instruction.BinaryOps inst, Value op1, Value op2) {
+  private boolean ivPattern(Instruction.BinaryOperator inst, Value op1, Value op2) {
     return inst == op1 && inst.getOpcode().isAdd()
         && op2.isConstant()
         && isLoopConstant(inst)
@@ -265,7 +265,7 @@ public final class InductionVarSimplify implements LoopPass {
    * @param loop
    * @return
    */
-  private boolean isMulIV(Instruction.BinaryOps inst, Value op1, Value op2, Loop loop) {
+  private boolean isMulIV(Instruction.BinaryOperator inst, Value op1, Value op2, Loop loop) {
     /*
      * Only when inst is a multiple operation and whose first operand
      * is a loop constant, then continue.
@@ -316,7 +316,7 @@ public final class InductionVarSimplify implements LoopPass {
    * @param loop
    * @return
    */
-  private boolean isAddIV(Instruction.BinaryOps inst, Value op1, Value op2, Loop loop) {
+  private boolean isAddIV(Instruction.BinaryOperator inst, Value op1, Value op2, Loop loop) {
     Util.assertion(inst.getOpcode().isAdd() || inst.getOpcode().isSub());
 
     /*
@@ -417,15 +417,14 @@ public final class InductionVarSimplify implements LoopPass {
             SRdone[i][j] = true;
             /** db = d*b; */
             Operator opcode = db.getType().isFloatingPointType() ? Operator.FMul : Operator.Mul;
-            Instruction.BinaryOps t1 = new Instruction.BinaryOps(db.getType(), opcode, r1.diff, r2.factor, "mul");
+            Instruction.BinaryOperator t1 = Instruction.BinaryOperator.create(opcode, r1.diff, r2.factor, "mul");
             StoreInst s1 = new StoreInst(t1, db, "store");
             Instruction[] insts = {t1, s1};
             appendPreheader(insts, preheaderBB);
 
             /** tj=b*i */
             opcode = r2.factor.getType().isFloatingPointType() ? Operator.FMul : Operator.Mul;
-            t1 = new Instruction.BinaryOps(r2.factor.getType(),
-                opcode,
+            t1 = Instruction.BinaryOperator.create(opcode,
                 r2.factor, r1.biv, "mul");
             s1 = new StoreInst(t1, tj, "store");
             Instruction[] insts2 = {t1, s1};
@@ -433,13 +432,13 @@ public final class InductionVarSimplify implements LoopPass {
 
             /** tj=tj+c */
             opcode = tj.getType().isFloatingPointType() ? Operator.FAdd : Operator.Add;
-            t1 = new Instruction.BinaryOps(tj.getType(), opcode, tj, r2.diff, opcode.opName);
+            t1 = Instruction.BinaryOperator.create(opcode, tj, r2.diff, opcode.opName);
             s1 = new StoreInst(t1, tj, "");
             Instruction[] insts3 = {t1, s1};
             appendPreheader(insts3, preheaderBB);
 
             /** tj=tj+db*/
-            t1 = new Instruction.BinaryOps(tj.getType(), opcode, tj, db, opcode.opName);
+            t1 = Instruction.BinaryOperator.create(opcode, tj, db, opcode.opName);
             s1 = new StoreInst(t1, tj, "");
             Instruction[] after = {t1, s1};
             insertAfter((Instruction) r2.div, after);

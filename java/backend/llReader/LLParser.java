@@ -1882,8 +1882,8 @@ public final class LLParser {
                   "nsw only applies to integer operation");
           }
           // Allow nsw and nuw, but ignores it.
-          ((BinaryOps)inst.get()).setHasNoUnsignedWrap(true);
-          ((BinaryOps)inst.get()).setHasNoSignedWrap(true);
+          ((BinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
+          ((BinaryOperator)inst.get()).setHasNoSignedWrap(true);
         }
         return result;
       }
@@ -1901,7 +1901,7 @@ public final class LLParser {
         if (parseArithmetic(inst, pfs, opc, 1))
           return true;
         if (exact)
-          ((BinaryOps)inst.get()).setIsExact(true);
+          ((BinaryOperator)inst.get()).setIsExact(true);
         return false;
       }
       case kw_urem:
@@ -2016,7 +2016,7 @@ public final class LLParser {
 
     GetElementPtrInst gep = new GetElementPtrInst(ptr.get(), indices, "",
         null);
-    gep.setInbounds(inBounds);
+    gep.setIsInBounds(inBounds);
 
     inst.set(gep);
     return false;
@@ -2535,7 +2535,7 @@ public final class LLParser {
     SMLoc lhsLoc = loc.get();
     if (!lhs.getType().isIntegerTy())
       return error(lhsLoc, "the first operand of logical op must have integer type");
-    inst.set(new Instruction.BinaryOps(lhs.getType(), opc, lhs, rhs, ""));
+    inst.set(BinaryOperator.create(opc, lhs, rhs, ""));
     return false;
   }
 
@@ -3726,7 +3726,7 @@ public final class LLParser {
     }
     if (!valid)
       return error(op1Loc, "invalid type for arithmetic instruction");
-    inst.set(new Instruction.BinaryOps(op1.getType(), opc, op1, op2, ""));
+    inst.set(BinaryOperator.create(opc, op1, op2, ""));
     return false;
   }
 

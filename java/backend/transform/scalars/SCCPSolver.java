@@ -340,7 +340,7 @@ public class SCCPSolver implements InstVisitor<Void> {
     });
   }
 
-  public Void visitBinaryOp(Instruction.BinaryOps inst) {
+  public Void visitBinaryOp(BinaryOperator inst) {
     LatticeStatus ls = getLatticeStatus(inst);
     if (ls.isOverdefined())
       return null;
