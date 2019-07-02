@@ -8,7 +8,10 @@
 
 package backend.support;
 
+import backend.type.Type;
+import backend.value.ConstantInt;
 import backend.value.MDNode;
+import backend.value.Value;
 import tools.OutRef;
 import tools.Util;
 
@@ -36,12 +39,57 @@ public class DebugLoc {
   }
 
   public static DebugLoc get(int line, int col,
-                             MDNode scope,
-                             MDNode inlineAt) {
-
+                             MDNode scope) {
+    return get(line, col, scope, null);
   }
 
-  public static DebugLoc getFromDILocation(MDNode n) {}
+  public static DebugLoc get(int line, int col,
+                             MDNode scope,
+                             MDNode inlineAt) {
+    DebugLoc result = new DebugLoc();
+    // if there is no such scope where this debug loc is attached,
+    // return an unknown debug loc.
+    if (scope == null) return result;
+
+    // saturate line and col
+    if (col > 255) col = 0;
+    if (line >= (1 << 24)) line = 0;
+    result.lineCol = line | (col << 24);
+
+    LLVMContext ctx = scope.getContext();
+    // If there is no inlined-at location, use the ScopeRecords array.
+    if (inlineAt == null)
+      result.scopeIdx = ctx.getOrAddScopeRecordIdxEntry(scope, 0);
+    else
+      result.scopeIdx = ctx.getOrAddScopeInlinedAtIdxEntry(scope, inlineAt, 0);
+    return result;
+  }
+
+  /**
+   * Translate the DILocation quad into a DebugLoc.
+   * @param n
+   * @return
+   */
+  public static DebugLoc getFromDILocation(MDNode n) {
+    if (n == null || n.getNumOperands() != 4)
+      return new DebugLoc();
+
+    if (!(n.getOperand(2) instanceof MDNode))
+      return new DebugLoc();
+    MDNode scope = (MDNode)n.getOperand(2);
+    int lineNo = 0, colNo = 0;
+    if (n.getOperand(0) instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) n.getOperand(0);
+      lineNo = (int) ci.getZExtValue();
+    }
+    if (n.getOperand(1) instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) n.getOperand(1);
+      colNo = (int) ci.getZExtValue();
+    }
+    MDNode ia = n.getOperand(3) instanceof MDNode ?
+        (MDNode)n.getOperand(3) : null;
+    return get(lineNo, colNo, scope, ia);
+  }
 
   public boolean isUnknown() {
     return scopeIdx == 0;
@@ -55,15 +103,33 @@ public class DebugLoc {
     return lineCol >>> 24;
   }
 
-  public MDNode getScope() {
-
+  /**
+   * This returns the scope pointer for this DebugLoc, or null if invalid.
+   * @param ctx
+   * @return
+   */
+  public MDNode getScope(LLVMContext ctx) {
+    if (scopeIdx == 0) return null;
+    if (scopeIdx > 0) {
+      Util.assertion(Integer.compareUnsigned(scopeIdx, ctx.scopeRecords.size()) <= 0,
+          "Invalid scopeIdx!");
+      return ctx.scopeRecords.get(scopeIdx-1);
+    }
+    Util.assertion(Integer.compareUnsigned(-scopeIdx, ctx.scopeRecords.size()) <= 0,
+        "Invalid scopeIdx!");
+    return ctx.scopeRecords.get(-scopeIdx-1);
   }
 
-  public MDNode getInlineAt() {}
+  public MDNode getInlineAt(LLVMContext ctx) {
+    if (scopeIdx >= 0) return null;
+    Util.assertion(Integer.compareUnsigned(-scopeIdx,
+        ctx.scopeInlineAtRecords.size()) <= 0, "Invalid scopeIdx!");
+    return ctx.scopeInlineAtRecords.get(-scopeIdx - 1).second;
+  }
 
-  public void getScopeAndInlineAt(OutRef<MDNode> scope,
-                                  OutRef<MDNode> ia,
-                                  LLVMContext ctx) {
+  public void getScopeAndInlinedAt(OutRef<MDNode> scope,
+                                   OutRef<MDNode> ia,
+                                   LLVMContext ctx) {
     if (scopeIdx == 0) {
       scope.set(null);
       ia.set(null);
@@ -87,7 +153,23 @@ public class DebugLoc {
     ia.set(ctx.scopeInlineAtRecords.get(-scopeIdx-1).second);
   }
 
-  public MDNode getAsMDNode() {}
+  public MDNode getAsMDNode(LLVMContext ctx) {
+    if (isUnknown()) return null;
+    OutRef<MDNode> scope = new OutRef<>();
+    OutRef<MDNode> ia = new OutRef<>();
+    getScopeAndInlinedAt(scope, ia, ctx);
+    Util.assertion(scope.get() != null && ia.get() != null,
+        "If scope is null, this should be isUnknown");
+    LLVMContext ctx2 = scope.get().getContext();
+    Type int32 = Type.getInt32Ty(ctx2);
+    Value[] elts = new Value[] {
+        ConstantInt.get(int32, getLine()),
+        ConstantInt.get(int32, getCol()),
+        scope.get(),
+        ia.get()
+    };
+    return MDNode.get(elts);
+  }
 
   @Override
   public boolean equals(Object obj) {

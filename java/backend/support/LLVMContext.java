@@ -49,11 +49,19 @@ public class LLVMContext {
   public static final Type PPC_FP128Ty = new Type(LLVMTypeID.PPC_FP128TyID);
 
   private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
-  public ArrayList<Pair<DebugLoc, DebugLoc>> scopeInlineAtRecords;
+  public ArrayList<Pair<MDNode, MDNode>> scopeInlineAtRecords;
   public TObjectIntHashMap<Pair<MDNode, MDNode>> scopeInlineAtIdx;
-  public ArrayList<DebugLoc> scopeRecords;
+  public ArrayList<MDNode> scopeRecords;
   public TObjectIntHashMap<MDNode> scopeRecordIdx;
   public HashMap<Instruction, ArrayList<Pair<Integer, MDNode>>> metadataStore;
+
+  public LLVMContext() {
+    scopeInlineAtRecords = new ArrayList<>();
+    scopeInlineAtIdx = new TObjectIntHashMap<>();
+    scopeRecords = new ArrayList<>();
+    scopeRecordIdx = new TObjectIntHashMap<>();
+    metadataStore = new HashMap<>();
+  }
 
   public static int getMDKindID(String name) {
     if (customMDKindNamesMap.containsKey(name))
@@ -62,5 +70,41 @@ public class LLVMContext {
     int val = customMDKindNamesMap.size();
     customMDKindNamesMap.put(name, val);
     return val;
+  }
+
+  public int getOrAddScopeRecordIdxEntry(MDNode scope, int existingIdx) {
+    // If we already have an entry for this scope, return it.
+    if (scopeRecordIdx.containsKey(scope))
+      return scopeRecordIdx.get(scope);
+
+    if (existingIdx != 0) {
+      scopeRecordIdx.put(scope, existingIdx);
+      return existingIdx;
+    }
+
+    // otherwise, add an new entry.
+    existingIdx = scopeRecords.size() + 1;
+    scopeRecords.add(scope);
+    scopeRecordIdx.put(scope, existingIdx);
+    return existingIdx;
+  }
+
+  public int getOrAddScopeInlinedAtIdxEntry(MDNode scope, MDNode inlineAt, int existingIdx) {
+    // If there is entry existing, return it.
+    Pair<MDNode, MDNode> key = Pair.get(scope, inlineAt);
+    if (scopeInlineAtIdx.containsKey(key))
+      return scopeInlineAtIdx.get(scope);
+
+    // if the input existingIdx is not zero, use it.
+    if (existingIdx != 0) {
+      scopeInlineAtIdx.put(key, existingIdx);
+      return existingIdx;
+    }
+
+    // Otherwise, add an new one.
+    existingIdx = scopeInlineAtRecords.size() - 1;
+    scopeInlineAtRecords.add(key);
+    scopeInlineAtIdx.put(key, existingIdx);
+    return existingIdx;
   }
 }

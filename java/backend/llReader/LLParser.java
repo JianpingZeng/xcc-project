@@ -3854,7 +3854,7 @@ public final class LLParser {
       return false;
 
     // create a temporary object
-    MDNode fwdNode = new MDNode(new ArrayList<>());
+    MDNode fwdNode = MDNode.get(new ArrayList<>());
     forwardRefMDNodes.put(slotNo.get(), Pair.get(fwdNode, lexer.getLoc()));
 
     if (slotNo.get() >= numberedMetadata.size()) {

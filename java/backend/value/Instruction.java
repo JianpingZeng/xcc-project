@@ -452,10 +452,6 @@ public abstract class Instruction extends User {
     return dbgLoc;
   }
 
-  public LLVMContext getContext() {
-    return getType().getContext();
-  }
-
   public void getAllMetadataOtherThanDebugLoc(ArrayList<Pair<Integer, MDNode>> mds) {
     if (hasMetadataOtherThanDebugLoc())
       getAllMetadataOtherThanDebugLocImpl(mds);

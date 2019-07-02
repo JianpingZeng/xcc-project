@@ -312,7 +312,7 @@ public class Value implements Cloneable {
       os.printf("!%s = !{", node.getName());
       for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
         if (i != 0) os.printf(", ");
-        Value val = node.getNode(i);
+        Value val = node.getOperand(i);
         if (val instanceof MDNode)
           os.printf("!%d", slotTable.getMetadataSlot((MDNode) val));
         else
@@ -358,6 +358,10 @@ public class Value implements Cloneable {
 
   public void intersectOptionalDataWith(Instruction val) {
     // TODO: 18-7-20
+  }
+
+  public LLVMContext getContext() {
+    return getType().getContext();
   }
 
   /**

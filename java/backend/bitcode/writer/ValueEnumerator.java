@@ -129,7 +129,7 @@ public class ValueEnumerator {
 
           if (!inst.getDebugLoc().isUnknown()) {
             OutRef<MDNode> scope = new OutRef<>(), ia = new OutRef<>();
-            inst.getDebugLoc().getScopeAndInlineAt(scope, ia, inst.getContext());
+            inst.getDebugLoc().getScopeAndInlinedAt(scope, ia, inst.getContext());
             if (scope.get() != null)
               enumerateMetadata(scope.get());
             if (ia.get() != null)

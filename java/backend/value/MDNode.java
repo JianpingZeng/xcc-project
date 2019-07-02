@@ -22,6 +22,7 @@ import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
@@ -36,7 +37,7 @@ public class MDNode extends Value {
   private boolean functionLocal;
   private int numOperands;
 
-  public MDNode(List<Value> vals) {
+  private MDNode(List<Value> vals) {
     super(LLVMContext.MetadataTy, MDNodeVal);
     nodes = new ArrayList<>();
     nodes.addAll(vals);
@@ -47,12 +48,44 @@ public class MDNode extends Value {
     return getUniqueImpl().getOrCreate(key);
   }
 
+  public static MDNode get(Value[] vals) {
+    return get(Arrays.asList(vals));
+  }
+
   public boolean isFunctionLocal() {
     return functionLocal;
   }
 
+  /**
+   * If this metadata node is a function-local metadata, ret the first function.
+   * @return
+   */
   public Function getFunction() {
+    if (!isFunctionLocal()) return null;
+    for (int i = 0, e = getNumOperands(); i < e; i++) {
+      Function f = getFunctionForValue(getOperand(i));
+      if (f != null) return f;
+    }
+    return null;
+  }
 
+  private static Function getFunctionForValue(Value v) {
+    if (v == null) return null;
+    if (v instanceof Instruction) {
+      BasicBlock bb = ((Instruction)v).getParent();
+      return bb != null ? bb.getParent() : null;
+    }
+
+    if (v instanceof Argument) {
+      return ((Argument)v).getParent();
+    }
+    if (v instanceof BasicBlock) {
+      return ((BasicBlock)v).getParent();
+    }
+    if (v instanceof MDNode) {
+      return ((MDNode)v).getFunction();
+    }
+    return null;
   }
 
   public int getNumOperands() {

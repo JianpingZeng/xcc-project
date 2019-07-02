@@ -194,7 +194,7 @@ public final class UniqueConstantValueImpl {
     if (MDNodeConstants.containsKey(key))
       return MDNodeConstants.get(key);
 
-    MDNode node = new MDNode(key.elts);
+    MDNode node = MDNode.get(key.elts);
     MDNodeConstants.put(key, node);
     return node;
   }

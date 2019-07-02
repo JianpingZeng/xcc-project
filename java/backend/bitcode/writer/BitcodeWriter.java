@@ -15,7 +15,6 @@ import backend.support.*;
 import backend.type.*;
 import backend.value.*;
 import backend.value.Instruction.*;
-import cfe.codegen.ABIArgInfo;
 import gnu.trove.list.array.TLongArrayList;
 import tools.APInt;
 import tools.OutRef;
@@ -41,7 +40,6 @@ import static backend.bitcode.reader.BitcodeReader.TypeCodes.*;
 import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_BBENTRY;
 import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_ENTRY;
 import static backend.type.LLVMTypeID.*;
-import static javafx.scene.input.KeyCode.T;
 
 /**
  * This class is designed to accommodate several important interface functions
@@ -232,7 +230,7 @@ public class BitcodeWriter {
         }
         else {
           OutRef<MDNode> scope = new OutRef<>(), ia = new OutRef<>();
-          dl.getScopeAndInlineAt(scope, ia, inst.getContext());
+          dl.getScopeAndInlinedAt(scope, ia, inst.getContext());
 
           vals.add(dl.getLine());
           vals.add(dl.getCol());

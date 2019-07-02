@@ -375,4 +375,32 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   public LLVMContext getContext() {
     return context;
   }
+
+  private Type getPointerTo(int as) { return PointerType.get(this, as); }
+
+  public static Type getVoidTy(LLVMContext ctx) { return ctx.VoidTy; }
+  public static Type getLabelTy(LLVMContext ctx) { return ctx.LabelTy; }
+  public static Type getFloatTy(LLVMContext ctx) { return ctx.FloatTy; }
+  public static Type getDoubleTy(LLVMContext ctx) { return ctx.DoubleTy; }
+  public static Type getMetadataTy(LLVMContext ctx) { return ctx.MetadataTy; }
+  public static Type getX86_FP80Ty(LLVMContext ctx) { return ctx.X86_FP80Ty; }
+  public static Type getFP128Ty(LLVMContext ctx) { return ctx.FP128Ty; }
+  public static Type getPPC_FP128Ty(LLVMContext ctx) { return ctx.PPC_FP128Ty; }
+  public static Type getIntNTy(LLVMContext ctx, int bits) { return IntegerType.get(bits); }
+  public static Type getInt1Ty(LLVMContext ctx) { return ctx.Int1Ty; }
+  public static Type getInt8Ty(LLVMContext ctx) { return ctx.Int8Ty; }
+  public static Type getInt16Ty(LLVMContext ctx) { return ctx.Int16Ty; }
+  public static Type getInt32Ty(LLVMContext ctx) { return ctx.Int32Ty; }
+  public static Type getInt64Ty(LLVMContext ctx) { return ctx.Int64Ty; }
+  public static Type getFloatPtrTy(LLVMContext ctx, int as) { return getFloatTy(ctx).getPointerTo(as); }
+  public static Type getDoublePtrTy(LLVMContext ctx, int as) { return getDoubleTy(ctx).getPointerTo(as); }
+  public static Type getX86_FP80PtrTy(LLVMContext ctx, int as) { return getX86_FP80Ty(ctx).getPointerTo(as); }
+  public static Type getFP128PtrTy(LLVMContext ctx, int as) { return getFP128Ty(ctx).getPointerTo(as); }
+  public static Type getPPC_FP128PtrTy(LLVMContext ctx, int as) { return getPPC_FP128Ty(ctx).getPointerTo(as); }
+  public static Type getIntNPtrTy(LLVMContext ctx, int bits, int as) { return getIntNTy(ctx, bits).getPointerTo(as); }
+  public static Type getInt1PtrTy(LLVMContext ctx, int as) { return getInt1Ty(ctx).getPointerTo(as); }
+  public static Type getInt8PtrTy(LLVMContext ctx, int as) { return getInt8Ty(ctx).getPointerTo(as); }
+  public static Type getInt16PtrTy(LLVMContext ctx, int as) { return getInt16Ty(ctx).getPointerTo(as); }
+  public static Type getInt32PtrTy(LLVMContext ctx, int as) { return getInt32Ty(ctx).getPointerTo(as); }
+  public static Type getInt64PtrTy(LLVMContext ctx, int as) { return getInt64Ty(ctx).getPointerTo(as); }
 }
