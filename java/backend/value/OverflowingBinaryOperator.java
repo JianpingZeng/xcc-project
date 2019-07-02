@@ -8,7 +8,7 @@
 
 package backend.value;
 
-public interface OverflowBinaryOperator {
+public interface OverflowingBinaryOperator {
   void setHasNoUnsignedWrap(boolean val);
   boolean getHasNoUnsignedWrap();
   void setHasNoSignedWrap(boolean val);

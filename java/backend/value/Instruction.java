@@ -3,6 +3,7 @@ package backend.value;
 import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.*;
+import com.sun.org.apache.bcel.internal.generic.LSHR;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
 import tools.Util;
@@ -582,10 +583,10 @@ public abstract class Instruction extends User {
         Instruction insertBefore) {
       Util.assertion(lhs.getType().equals(rhs.getType()),
           "Cannot create binary operator with two operands of differing type!");
-      if (op == Add || op == Sub || op == Mul)
-        return new OverflowBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
-      else if (op == SDiv)
-        return new SDivBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
+      if (op == Add || op == Sub || op == Mul || op == Shl)
+        return new OverflowingBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
+      else if (op == SDiv || op == UDiv || op == LShr || op == AShr)
+        return new ExactBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
       else
         return new BinaryOperator(lhs.getType(), op, lhs, rhs, name, insertBefore);
     }
@@ -597,10 +598,10 @@ public abstract class Instruction extends User {
         String name) {
       Util.assertion(lhs.getType() == rhs.getType(),
           "Cannot create binary operator with two operands of differing type!");
-      if (op == Add || op == Sub || op == Mul)
-        return new OverflowBinaryInstruction(lhs.getType(), op, lhs, rhs, name);
-      else if (op == SDiv)
-        return new SDivBinaryInstruction(lhs.getType(), op, lhs, rhs, name);
+      if (op == Add || op == Sub || op == Mul || op == Shl)
+        return new OverflowingBinaryInstruction(lhs.getType(), op, lhs, rhs, name);
+      else if (op == SDiv || op == UDiv || op == LShr || op == AShr)
+        return new ExactBinaryInstruction(lhs.getType(), op, lhs, rhs, name);
       else
         return new BinaryOperator(lhs.getType(), op, lhs, rhs, name, (Instruction) null);
     }
@@ -613,10 +614,10 @@ public abstract class Instruction extends User {
         BasicBlock insertAtEnd) {
       Util.assertion(lhs.getType() == rhs.getType(),
           "Cannot create binary operator with two operands of differing type!");
-      if (op == Add || op == Sub || op == Mul)
-        return new OverflowBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
-      else if (op == SDiv)
-        return new SDivBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+      if (op == Add || op == Sub || op == Mul || op == Shl)
+        return new OverflowingBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+      else if (op == SDiv || op == UDiv || op == LShr || op == AShr)
+        return new ExactBinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
       else
         return new BinaryOperator(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
     }
@@ -961,7 +962,7 @@ public abstract class Instruction extends User {
    * This class is used to encapsulate those binary operators with potential to
    * perform overflow operation, such as add, sub, mul.
    */
-  public static class OverflowBinaryInstruction extends BinaryOperator implements OverflowBinaryOperator {
+  public static class OverflowingBinaryInstruction extends BinaryOperator implements OverflowingBinaryOperator {
     /**
      * Indicates the operation (such as add, sub, mul)
      * doesn't have extra bits to been destroyed.
@@ -969,22 +970,22 @@ public abstract class Instruction extends User {
     private boolean hasNoUnsignedWrap;
     private boolean hasNoSignedWrap;
 
-    private OverflowBinaryInstruction(Type ty, Operator opcode,
-                                  Value lhs, Value rhs,
-                                  String name) {
+    private OverflowingBinaryInstruction(Type ty, Operator opcode,
+                                         Value lhs, Value rhs,
+                                         String name) {
       super(ty, opcode, lhs, rhs, name);
     }
 
-    private OverflowBinaryInstruction(Type ty,
-                                      Operator op,
-                                      Value lhs,
-                                      Value rhs,
-                                      String name,
-                                      Instruction insertBefore) {
+    private OverflowingBinaryInstruction(Type ty,
+                                         Operator op,
+                                         Value lhs,
+                                         Value rhs,
+                                         String name,
+                                         Instruction insertBefore) {
       super(ty, op, lhs, rhs, name, insertBefore);
     }
 
-    private OverflowBinaryInstruction(
+    private OverflowingBinaryInstruction(
         Type ty,
         Operator opcode,
         Value lhs,
@@ -1015,23 +1016,23 @@ public abstract class Instruction extends User {
    * This is used to encapsulate the sdiv operator which has potential to
    * indicate whether the operation is exact or not.
    */
-  public static class SDivBinaryInstruction extends BinaryOperator implements SDivBinaryOperator{
+  public static class ExactBinaryInstruction extends BinaryOperator implements ExactBinaryOperator {
     private boolean isExact;
-    private SDivBinaryInstruction(Type ty, Operator opcode,
-                                  Value lhs, Value rhs,
-                                  String name) {
+    private ExactBinaryInstruction(Type ty, Operator opcode,
+                                   Value lhs, Value rhs,
+                                   String name) {
       super(ty, opcode, lhs, rhs, name);
     }
 
-    private SDivBinaryInstruction(Type ty, Operator opcode,
-                                  Value lhs, Value rhs,
-                                  String name, Instruction insertBefore) {
+    private ExactBinaryInstruction(Type ty, Operator opcode,
+                                   Value lhs, Value rhs,
+                                   String name, Instruction insertBefore) {
       super(ty, opcode, lhs, rhs, name, insertBefore);
     }
 
-    private SDivBinaryInstruction(Type ty, Operator opcode,
-                                  Value lhs, Value rhs,
-                                  String name, BasicBlock insertAtEnd) {
+    private ExactBinaryInstruction(Type ty, Operator opcode,
+                                   Value lhs, Value rhs,
+                                   String name, BasicBlock insertAtEnd) {
       super(ty, opcode, lhs, rhs, name, insertAtEnd);
     }
 

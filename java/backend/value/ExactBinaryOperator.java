@@ -8,7 +8,11 @@
 
 package backend.value;
 
-public interface SDivBinaryOperator {
+/**
+ * This interface abstracts some important common operations which require exact attribute attached,
+ * such as sdiv, udiv, ashr, lshr, between instruction and constant expression.
+ */
+public interface ExactBinaryOperator {
   boolean isExact();
   void setIsExact(boolean b);
 }

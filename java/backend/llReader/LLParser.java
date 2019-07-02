@@ -87,6 +87,12 @@ public final class LLParser {
     }
   }
 
+  /**
+   * Each instruction parsing routine can return with a
+   * normal result, an error result, or return having eaten an extra comma.
+   */
+  private enum InstResult { InstNormal, InstError, InstExtraComma};
+
   private LLLexer lexer;
   private Module m;
   private TreeMap<String, Pair<Type, SMLoc>> forwardRefTypes;
@@ -1882,8 +1888,8 @@ public final class LLParser {
                   "nsw only applies to integer operation");
           }
           // Allow nsw and nuw, but ignores it.
-          ((BinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
-          ((BinaryOperator)inst.get()).setHasNoSignedWrap(true);
+          ((OverflowingBinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
+          ((OverflowingBinaryOperator)inst.get()).setHasNoSignedWrap(true);
         }
         return result;
       }
@@ -1901,7 +1907,7 @@ public final class LLParser {
         if (parseArithmetic(inst, pfs, opc, 1))
           return true;
         if (exact)
-          ((BinaryOperator)inst.get()).setIsExact(true);
+          ((ExactBinaryOperator)inst.get()).setIsExact(true);
         return false;
       }
       case kw_urem:
