@@ -3826,6 +3826,7 @@ public final class LLParser {
         Util.assertion(id.kind == ValID.ValIDKind.t_MDNode);
         inst.setMetadata(mdk, id.mdNodeVal);
       } else {
+        // Encounter a forward reference metadata with a MD id.
         OutRef<Integer> nodeId = new OutRef<>(0);
         if (parseMDNodeID(node, nodeId))
           return true;

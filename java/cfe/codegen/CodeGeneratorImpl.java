@@ -1,5 +1,6 @@
 package cfe.codegen;
 
+import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.value.Module;
 import cfe.diag.Diagnostic;
@@ -20,10 +21,11 @@ public class CodeGeneratorImpl implements CodeGenerator {
   private HIRModuleGenerator builder;
   private TargetData td;
 
-  public CodeGeneratorImpl(Diagnostic diags, String moduleName, CompileOptions compOpts) {
+  public CodeGeneratorImpl(Diagnostic diags, String moduleName,
+                           CompileOptions compOpts, LLVMContext ctx) {
     this.diags = diags;
     this.compOpts = compOpts;
-    m = new Module(moduleName);
+    m = new Module(moduleName, ctx);
   }
 
   @Override
@@ -72,8 +74,8 @@ public class CodeGeneratorImpl implements CodeGenerator {
   public static CodeGenerator createLLVMCodeGen(
       Diagnostic diags,
       String moduleName,
-      CompileOptions compOpts
-  ) {
-    return new CodeGeneratorImpl(diags, moduleName, compOpts);
+      CompileOptions compOpts,
+      LLVMContext ctx) {
+    return new CodeGeneratorImpl(diags, moduleName, compOpts, ctx);
   }
 }

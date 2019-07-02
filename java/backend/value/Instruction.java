@@ -3,7 +3,6 @@ package backend.value;
 import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.*;
-import com.sun.org.apache.bcel.internal.generic.LSHR;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
 import tools.Util;

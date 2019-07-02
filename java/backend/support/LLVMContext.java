@@ -54,8 +54,10 @@ public class LLVMContext {
   public ArrayList<MDNode> scopeRecords;
   public TObjectIntHashMap<MDNode> scopeRecordIdx;
   public HashMap<Instruction, ArrayList<Pair<Integer, MDNode>>> metadataStore;
+  private static final LLVMContext globalContext = new LLVMContext();
+  public static LLVMContext getGlobalContext() { return globalContext; }
 
-  public LLVMContext() {
+  private LLVMContext() {
     scopeInlineAtRecords = new ArrayList<>();
     scopeInlineAtIdx = new TObjectIntHashMap<>();
     scopeRecords = new ArrayList<>();
@@ -63,7 +65,7 @@ public class LLVMContext {
     metadataStore = new HashMap<>();
   }
 
-  public static int getMDKindID(String name) {
+  public int getMDKindID(String name) {
     if (customMDKindNamesMap.containsKey(name))
       return customMDKindNamesMap.get(name);
 

@@ -24,6 +24,7 @@ import backend.codegen.dagisel.ScheduleDAGFast;
 import backend.pass.PassRegisterationUtility;
 import backend.passManaging.FunctionPassManager;
 import backend.support.BackendCmdOptions;
+import backend.support.LLVMContext;
 import backend.support.Triple;
 import backend.target.*;
 import backend.value.Function;
@@ -175,7 +176,7 @@ public class LLC {
 
     Util.DEBUG = DebugMode.value;
     OutRef<SMDiagnostic> diag = new OutRef<>();
-    theModule = backend.llReader.Parser.parseAssemblyFile(InputFilename.value, diag);
+    theModule = backend.llReader.Parser.parseAssemblyFile(InputFilename.value, diag, LLVMContext.getGlobalContext());
     if (theModule == null) {
       diag.get().print("llc", System.err);
       System.exit(0);

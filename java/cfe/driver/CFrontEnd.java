@@ -18,6 +18,7 @@ package cfe.driver;
 
 import backend.support.BackendCmdOptions;
 import backend.support.ErrorHandling;
+import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetOptions;
 import backend.target.TargetSelect;
@@ -664,7 +665,8 @@ public class CFrontEnd implements DiagnosticFrontendKindsTag {
       Preprocessor pp,
       String infile,
       ProgramAction progAction,
-      HashMap<String, Boolean> features) {
+      HashMap<String, Boolean> features,
+      LLVMContext ctx) {
     ASTConsumer consumer = null;
     PrintStream os = null;
     StringBuilder outpath = new StringBuilder();
@@ -712,7 +714,8 @@ public class CFrontEnd implements DiagnosticFrontendKindsTag {
             pp.getLangOptions(),
             compOpts,
             infile, os,
-            targetMachineAllocator);
+            targetMachineAllocator,
+            ctx);
         break;
       }
       case ParseNoop:
@@ -1150,6 +1153,8 @@ public class CFrontEnd implements DiagnosticFrontendKindsTag {
     ts.LLVMInitializeTarget();
     // Register pass
     ts.registerAllPasses();
+    // Retrieve the global LLVMContext.
+    LLVMContext ctx = LLVMContext.getGlobalContext();
 
     // Parse the command line argument.
     CL.parseCommandLineOptions(args,
@@ -1251,7 +1256,7 @@ public class CFrontEnd implements DiagnosticFrontendKindsTag {
       if (initializeSourceManager(pp, inputFile))
         continue;
 
-      processInputFile(pp, inputFile, progAction, features);
+      processInputFile(pp, inputFile, progAction, features, ctx);
     }
 
     if (!NoCaretDiagnostics.value) {

@@ -16,6 +16,7 @@ package backend.llReader;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Module;
 import cfe.support.MemoryBuffer;
 import tools.OutRef;
@@ -28,11 +29,12 @@ import tools.SourceMgr.SMLoc;
  * @version 0.4
  */
 public final class Parser {
-  public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag) {
+  public static Module parseAssemblyFile(String filename, OutRef<SMDiagnostic> diag,
+                                         LLVMContext ctx) {
     MemoryBuffer f = MemoryBuffer.getFileOrSTDIN(filename);
     SourceMgr srcMgr = new SourceMgr();
     srcMgr.addNewSourceBuffer(f, new SMLoc());
-    Module m = new Module(filename);
+    Module m = new Module(filename, ctx);
 
     if (f == null) {
       diag.set(srcMgr.getMessage(new SMLoc(),

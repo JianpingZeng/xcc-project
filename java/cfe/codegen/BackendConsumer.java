@@ -25,6 +25,7 @@ import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.support.LLVMContext;
 import backend.support.PrintModulePass;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
@@ -100,12 +101,13 @@ public class BackendConsumer implements ASTConsumer {
       CompileOptions opts,
       String moduleName,
       PrintStream os,
-      Function<Module, TargetMachine> targetMachineAllocator) {
+      Function<Module, TargetMachine> targetMachineAllocator,
+      LLVMContext ctx) {
     action = act;
     this.diags = diags;
     this.langOpts = langOpts;
     compileOptions = opts;
-    gen = CodeGeneratorImpl.createLLVMCodeGen(diags, moduleName, compileOptions);
+    gen = CodeGeneratorImpl.createLLVMCodeGen(diags, moduleName, compileOptions, ctx);
     asmOutStream = os;
     //tm = targetMachineAllocator.apply(theModule);
   }
@@ -117,8 +119,9 @@ public class BackendConsumer implements ASTConsumer {
       CompileOptions compOpts,
       String moduleID,
       PrintStream os,
-      Function<Module, TargetMachine> targetMachine) {
-    return new BackendConsumer(act, diags, langOpts, compOpts, moduleID, os, targetMachine);
+      Function<Module, TargetMachine> targetMachine,
+      LLVMContext ctx) {
+    return new BackendConsumer(act, diags, langOpts, compOpts, moduleID, os, targetMachine, ctx);
   }
 
   /**

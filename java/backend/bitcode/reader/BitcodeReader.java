@@ -2135,8 +2135,9 @@ public class BitcodeReader implements GVMaterializer {
    * @return
    */
   public static Module getLazyBitcodeModule(MemoryBuffer buffer,
-                                            OutRef<String> errMsg) {
-    Module m = new Module(buffer.getBufferIdentifier());
+                                            OutRef<String> errMsg,
+                                            LLVMContext ctx) {
+    Module m = new Module(buffer.getBufferIdentifier(), ctx);
     BitcodeReader reader = new BitcodeReader(buffer);
     if (reader.parseBitcodeInfo(m)) {
       if (errMsg != null)
@@ -2156,7 +2157,8 @@ public class BitcodeReader implements GVMaterializer {
    * @return
    */
   public static Module parseBitcodeFile(MemoryBuffer buffer,
-                                        OutRef<String> errorMsg) {
-    return getLazyBitcodeModule(buffer, errorMsg);
+                                        OutRef<String> errorMsg,
+                                        LLVMContext ctx) {
+    return getLazyBitcodeModule(buffer, errorMsg, ctx);
   }
 }

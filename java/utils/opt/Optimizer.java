@@ -18,6 +18,7 @@ package utils.opt;
 
 import backend.pass.*;
 import backend.passManaging.PassManager;
+import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.value.Module;
 import tools.OutRef;
@@ -30,6 +31,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 
 import static backend.pass.PassCreator.createStandardModulePasses;
+import static backend.support.LLVMContext.getGlobalContext;
 import static backend.support.PrintModulePass.createPrintModulePass;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
@@ -86,7 +88,7 @@ public final class Optimizer {
 
       OutRef<SMDiagnostic> diag = new OutRef<>();
       Module m = backend.llReader.Parser
-          .parseAssemblyFile(InputFilename.value, diag);
+          .parseAssemblyFile(InputFilename.value, diag, getGlobalContext());
       if (m == null)
         diag.get().print("optimizer", System.err);
 

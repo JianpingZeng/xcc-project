@@ -75,24 +75,8 @@ public final class Module implements Iterable<Function> {
    */
   private ArrayList<String> libraryList;
 
-  /**
-   * Constructor.
-   *
-   * @param globalVariableList
-   * @param functions
-   */
-  private Module(ArrayList<GlobalVariable> globalVariableList, ArrayList<Function> functions) {
-    this.globalVariableList = globalVariableList;
-    this.functionList = functions;
-    valSymTable = new ValueSymbolTable();
-    typeSymbolTable = new TreeMap<>();
-    namedMDSymTab = new HashMap<>();
-    namedMDList = new ArrayList<>();
-    globalScopeAsm = "";
-    libraryList = new ArrayList<>();
-  }
-
-  public Module(String moduleID) {
+  private LLVMContext context;
+  public Module(String moduleID, LLVMContext ctx) {
     this.moduleID = moduleID;
     globalVariableList = new ArrayList<>(32);
     functionList = new ArrayList<>(32);
@@ -102,7 +86,10 @@ public final class Module implements Iterable<Function> {
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
     libraryList = new ArrayList<>();
+    context = ctx;
   }
+
+  public LLVMContext getContext() { return context; }
 
   public String getModuleIdentifier() {
     return moduleID;
@@ -312,7 +299,7 @@ public final class Module implements Iterable<Function> {
   }
 
   public int getMDKindID(String name) {
-    return LLVMContext.getMDKindID(name);
+    return context.getMDKindID(name);
   }
 
   public NamedMDNode getOrCreateNamedMetadata(String name) {
