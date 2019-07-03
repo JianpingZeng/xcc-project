@@ -23,7 +23,6 @@ import backend.pass.ModulePass;
 import backend.value.Module;
 import tools.FormattedOutputStream;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
@@ -58,11 +57,7 @@ public class PrintModulePass implements ModulePass {
 
   @Override
   public boolean runOnModule(Module m) {
-    try {
-      m.print(os);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+    m.print(os);
     return false;
   }
 

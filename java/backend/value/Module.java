@@ -8,11 +8,7 @@ import backend.type.Type;
 import tools.FormattedOutputStream;
 import tools.Util;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.*;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
@@ -86,6 +82,7 @@ public final class Module implements Iterable<Function> {
     namedMDList = new ArrayList<>();
     globalScopeAsm = "";
     libraryList = new ArrayList<>();
+    aliasList = new ArrayList<>();
     context = ctx;
   }
 
@@ -153,6 +150,13 @@ public final class Module implements Iterable<Function> {
                                       FunctionType type) {
     AttrList attrs = new AttrList(new ArrayList<>());
     return getOrInsertFunction(name, type, attrs);
+  }
+
+  public Constant getOrInsertFunction(String name,
+                                      Type retTy,
+                                      Type... argTys) {
+    return getOrInsertFunction(name, FunctionType.get(retTy,
+        new ArrayList<>(Arrays.asList(argTys)), false));
   }
 
   /**
@@ -241,12 +245,17 @@ public final class Module implements Iterable<Function> {
     return null;
   }
 
-  public void print(FormattedOutputStream os) throws IOException {
-    new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
+  public void print(FormattedOutputStream os) {
+    print(os, null);
   }
 
-  public void dump() throws IOException {
-    print(new FormattedOutputStream(System.err));
+  public void print(FormattedOutputStream os,
+                    AssemblerAnnotationWriter annotator) {
+    new AssemblyWriter(os, this, new SlotTracker(this), annotator).write(this);
+  }
+
+  public void dump() {
+    print(new FormattedOutputStream(System.err), null);
   }
 
   public Function getFunction(String funcName) {

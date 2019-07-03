@@ -51,6 +51,12 @@ public abstract class ConstantExpr extends Constant {
     this.opcode = opcode;
   }
 
+  public static Constant getTruncOrBitCast(Constant c, Type ty) {
+    if (c.getType().getScalarSizeBits() == ty.getScalarSizeBits())
+      return getBitCast(c, ty);
+    return getTrunc(c, ty);
+  }
+
   @Override
   public boolean isNullValue() {
     return false;

@@ -43,7 +43,7 @@ public final class Parser {
       return null;
     }
 
-    LLParser parser = new LLParser(f, srcMgr, m, diag);
+    LLParser parser = new LLParser(f, srcMgr, m, diag, ctx);
     if (parser.run()) {
       return null;
     }

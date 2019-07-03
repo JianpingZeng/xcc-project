@@ -590,7 +590,7 @@ public final class GVNPRE implements FunctionPass {
 
       if (newOp1 != ci.operand(0)) {
         Instruction newVal = CastInst.create(ci.getOpcode(),
-            newOp1, ci.getType(), ci.getName() + ".expr", null);
+            newOp1, ci.getType(), ci.getName() + ".expr", (Instruction) null);
         int v = valueTable.lookupOrAdd(newVal);
         Value leader = findLeader(availableOut.get(pred), v);
         if (leader == null) {

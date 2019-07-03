@@ -133,7 +133,7 @@ public final class Attribute {
   // Attribute Function Definitions
   //===----------------------------------------------------------------------===//
 
-  public String getAsString(int Attrs) {
+  public static String getAsString(int Attrs) {
     StringBuffer result = new StringBuffer();
     if ((Attrs & ZExt) != 0)
       result.append("zeroext ");

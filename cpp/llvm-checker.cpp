@@ -22,6 +22,6 @@
 int main(int argc, char **argv)
 {
     std::string cmdPath = getpath();
-    invokeClass((char*)cmdPath.c_str(), "utils/tablegen/TableGen", argc, argv);
+    invokeClass((char*)cmdPath.c_str(), "utils/llvmcheck/LLVMChecker", argc, argv);
     return 0;
 }

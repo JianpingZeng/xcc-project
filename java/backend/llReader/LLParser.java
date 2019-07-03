@@ -18,7 +18,6 @@
 package backend.llReader;
 
 import backend.ir.FreeInst;
-import backend.ir.MallocInst;
 import backend.ir.SelectInst;
 import backend.support.*;
 import backend.type.*;
@@ -28,17 +27,17 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.value.Module;
+import cfe.support.MemoryBuffer;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import cfe.support.MemoryBuffer;
 import tools.*;
 import tools.SourceMgr.SMLoc;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static backend.llReader.LLParser.InstResult.*;
 import static backend.llReader.LLTokenKind.*;
 import static backend.llReader.ValID.ValIDKind.t_PackedConstantStruct;
 import static tools.Util.unEscapeLexed;
@@ -91,7 +90,7 @@ public final class LLParser {
    * Each instruction parsing routine can return with a
    * normal result, an error result, or return having eaten an extra comma.
    */
-  private enum InstResult { InstNormal, InstError, InstExtraComma};
+  enum InstResult { InstNormal, InstError, InstExtraComma};
 
   private LLLexer lexer;
   private Module m;
@@ -106,8 +105,15 @@ public final class LLParser {
   private TIntObjectHashMap<Pair<GlobalValue, SMLoc>> forwardRefValIDs;
   private ArrayList<GlobalValue> numberedVals;
   private HashMap<Instruction, ArrayList<MDRef>> forwardRefInstMetadata;
+  private LLVMContext context;
+  /**
+   * This stub function is used to auto upgrade malloc instruction to a call
+   * to the mallocF.
+   */
+  private Function mallocF;
 
-  public LLParser(MemoryBuffer buf, SourceMgr smg, Module m, OutRef<SMDiagnostic> diag) {
+  public LLParser(MemoryBuffer buf, SourceMgr smg, Module m,
+                  OutRef<SMDiagnostic> diag, LLVMContext ctx) {
     lexer = new LLLexer(buf, smg, diag);
     this.m = m;
     forwardRefTypes = new TreeMap<>();
@@ -120,6 +126,8 @@ public final class LLParser {
     forwardRefValIDs = new TIntObjectHashMap<>();
     numberedVals = new ArrayList<>();
     forwardRefInstMetadata = new HashMap<>();
+    context = ctx;
+    mallocF = null;
   }
 
   /**
@@ -1165,12 +1173,17 @@ public final class LLParser {
     return false;
   }
 
-  private boolean parseIndexList(TIntArrayList indices) {
+  private boolean parseIndexList(TIntArrayList indices,
+                                 OutRef<Boolean> ateExtraComma) {
     if (lexer.getTokKind() != LLTokenKind.comma)
       return tokError("expected ',' as start of index list");
 
     OutRef<Integer> index = new OutRef<>(0);
     while (eatIfPresent(LLTokenKind.comma)) {
+      if (lexer.getTokKind() == MetadataVar) {
+        ateExtraComma.set(true);
+        return false;
+      }
       if (parseInt32(index))
         return true;
       indices.add(index.get());
@@ -1800,20 +1813,28 @@ public final class LLParser {
           return true;
       }
 
-      OutRef<Boolean> needConsiderComma = new OutRef<>(false);
-      if (parseInstruction(inst, pfs, needConsiderComma))
-        return true;
-      else {
-        bb.appendInst(inst.get());
-
-        // With a normal result, we check to see if the instruction is followed by
-        // a comma and metadata.
-        if (needConsiderComma.get() || eatIfPresent(comma)) {
+      switch (parseInstruction(inst, bb, pfs)) {
+        default:
+          Util.assertion("Unknown parseInstruction return result!");
+          break;
+        case InstError: return true;
+        case InstNormal:
+          bb.appendInst(inst.get());
+          // With a normal result, we check to see if the instruction is ended with a comma and
+          // metadata.
+          if (eatIfPresent(comma)) {
+            if (parseInstructionMetadata(inst.get(), pfs))
+              return true;
+          }
+          break;
+        case InstExtraComma:
+          bb.appendInst(inst.get());
+          // If the instruction parser ate an extra comma at the end of it, it
+          // *must* be followed by metadata.
           if (parseInstructionMetadata(inst.get(), pfs))
             return true;
-        }
+          break;
       }
-
       // set the name of the instruction.
       if (pfs.setInstName(nameID, nameStr, nameLoc, inst.get()))
         return true;
@@ -1832,12 +1853,14 @@ public final class LLParser {
    * @param pfs
    * @return
    */
-  private boolean parseInstruction(OutRef<Instruction> inst,
-                                   PerFunctionState pfs,
-                                   OutRef<Boolean> needConsiderComma) {
+  private InstResult parseInstruction(OutRef<Instruction> inst,
+                                   BasicBlock bb,
+                                   PerFunctionState pfs) {
     LLTokenKind kind = lexer.getTokKind();
     if (kind == Eof)
-      return tokError("found end of file when expecting more instructions");
+      return tokError("found end of file when expecting more instructions") ?
+          InstError :
+          InstResult.InstNormal;
 
     SMLoc loc = lexer.getLoc();
     Operator opc = parseOperator(kind);
@@ -1845,23 +1868,29 @@ public final class LLParser {
 
     switch (kind) {
       default:
-        return error(loc, "expected instruction");
+        return error(loc, "expected instruction") ?
+            InstError :
+            InstResult.InstNormal;
       case kw_unwind:
         inst.set(new UnWindInst());
-        return false;
+        return InstResult.InstNormal;
       case kw_invoke:
-        return tokError("currently, invoke is not supported");
+        return tokError("currently, invoke is not supported")?
+            InstError :
+            InstResult.InstNormal;
       case kw_indirectbr:
-        return tokError("currently, indirectbr is not supported");
+        return tokError("currently, indirectbr is not supported")?
+            InstError :
+            InstResult.InstNormal;
       case kw_unreachable:
         inst.set(new UnreachableInst());
-        return false;
+        return InstResult.InstNormal;
       case kw_ret:
-        return parseRet(inst, pfs);
+        return parseRet(inst, bb, pfs);
       case kw_br:
-        return parseBr(inst, pfs);
+        return parseBr(inst, pfs) ? InstError : InstResult.InstNormal;
       case kw_switch:
-        return parseSwitch(inst, pfs);
+        return parseSwitch(inst, pfs) ? InstError : InstResult.InstNormal;
       case kw_add:
       case kw_sub:
       case kw_mul:
@@ -1882,21 +1911,28 @@ public final class LLParser {
           if (!inst.get().getType().isIntegerTy()) {
             if (nuw)
               return error(modifierLoc,
-                  "nuw only applies to integer operation");
+                  "nuw only applies to integer operation") ?
+                  InstError :
+                  InstResult.InstNormal;
             if (nsw)
               return error(modifierLoc,
-                  "nsw only applies to integer operation");
+                  "nsw only applies to integer operation")?
+                  InstError :
+                  InstResult.InstNormal;
           }
           // Allow nsw and nuw, but ignores it.
           ((OverflowingBinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
           ((OverflowingBinaryOperator)inst.get()).setHasNoSignedWrap(true);
         }
-        return result;
+        return result ?
+            InstError :
+            InstResult.InstNormal;
       }
       case kw_fadd:
       case kw_fsub:
       case kw_fmul:
-        return parseArithmetic(inst, pfs, opc, 2);
+        return parseArithmetic(inst, pfs, opc, 2)
+            ? InstError : InstResult.InstNormal;
       case kw_sdiv:
       case kw_udiv:
       case kw_lshr:
@@ -1905,24 +1941,28 @@ public final class LLParser {
         if (eatIfPresent(kw_exact))
           exact = true;
         if (parseArithmetic(inst, pfs, opc, 1))
-          return true;
+          return InstError;
         if (exact)
           ((ExactBinaryOperator)inst.get()).setIsExact(true);
-        return false;
+        return InstResult.InstNormal;
       }
       case kw_urem:
       case kw_srem:
-        return parseArithmetic(inst, pfs, opc, 1);
+        return parseArithmetic(inst, pfs, opc, 1)
+            ? InstError : InstResult.InstNormal;
       case kw_fdiv:
       case kw_frem:
-        return parseArithmetic(inst, pfs, opc, 2);
+        return parseArithmetic(inst, pfs, opc, 2)
+            ? InstError : InstResult.InstNormal;
       case kw_and:
       case kw_or:
       case kw_xor:
-        return parseLogical(inst, pfs, opc);
+        return parseLogical(inst, pfs, opc)
+            ? InstError : InstResult.InstNormal;
       case kw_icmp:
       case kw_fcmp:
-        return parseCompare(inst, pfs, opc);
+        return parseCompare(inst, pfs, opc)
+            ? InstError : InstResult.InstNormal;
       // Casts.
       case kw_trunc:
       case kw_zext:
@@ -1936,47 +1976,54 @@ public final class LLParser {
       case kw_fptosi:
       case kw_inttoptr:
       case kw_ptrtoint:
-        return parseCast(inst, pfs, opc);
+        return parseCast(inst, pfs, opc)
+            ? InstError : InstResult.InstNormal;
       // Other.
       case kw_select:
-        return parseSelect(inst, pfs);
+        return parseSelect(inst, pfs)
+            ? InstError : InstResult.InstNormal;
       case kw_phi:
         return parsePHI(inst, pfs);
       case kw_call:
-        return parseCall(inst, pfs, false);
+        return parseCall(inst, pfs, false)
+            ? InstError : InstResult.InstNormal;
       case kw_tail:
-        return parseCall(inst, pfs, true);
+        return parseCall(inst, pfs, true)
+            ? InstError : InstResult.InstNormal;
       // Memory.
       case kw_alloca:
-      //case kw_malloc:
-        return parseAlloc(inst, pfs, opc, needConsiderComma);
+        return parseAlloc(inst, pfs, true, bb);
+      case kw_malloc:
+        return parseAlloc(inst, pfs, false, bb);
       //case kw_free:
       //  return parseFree(inst, pfs);
       case kw_load:
-        return parseLoad(inst, pfs, false, needConsiderComma);
+        return parseLoad(inst, pfs, false);
       case kw_store:
-        return parseStore(inst, pfs, false, needConsiderComma);
+        return parseStore(inst, pfs, false);
       case kw_volatile:
         if (eatIfPresent(kw_load))
-          return parseLoad(inst, pfs, true, needConsiderComma);
+          return parseLoad(inst, pfs, true);
         else if (eatIfPresent(kw_store))
-          return parseStore(inst, pfs, true, needConsiderComma);
+          return parseStore(inst, pfs, true);
         else
-          return tokError("expected 'load' or 'store'");
+          return tokError("expected 'load' or 'store'")
+              ? InstError : InstNormal;
       case kw_getelementptr:
         return parseGetElementPtr(inst, pfs);
-      case kw_va_arg:
-        return parseVAArg(inst, pfs);
       case kw_extractvalue:
         return parseExtractValue(inst, pfs);
       case kw_insertvalue:
         return parseInsertValue(inst, pfs);
+
+      case kw_va_arg:
+        return parseVAArg(inst, pfs) ? InstError : InstNormal;
       case kw_extractelement:
-        return parseExtractElement(inst, pfs);
+        return parseExtractElement(inst, pfs) ? InstError : InstNormal;
       case kw_insertelement:
-        return parseInsertElement(inst, pfs);
+        return parseInsertElement(inst, pfs) ? InstError : InstNormal;
       case kw_shufflevector:
-        return parseShuffleVector(inst, pfs);
+        return parseShuffleVector(inst, pfs) ? InstError : InstNormal;
     }
   }
 
@@ -1990,7 +2037,7 @@ public final class LLParser {
    *   ::= 'getelementptr' 'inbounds'? TypeAndValue (',' TypeAndValue)*
    * </pre>
    */
-  private boolean parseGetElementPtr(OutRef<Instruction> inst,
+  private InstResult parseGetElementPtr(OutRef<Instruction> inst,
                                      PerFunctionState pfs) {
     boolean inBounds = eatIfPresent(kw_inbounds);
     OutRef<Value> ptr, val;
@@ -1999,33 +2046,39 @@ public final class LLParser {
     val = new OutRef<>();
     loc = new OutRef<>();
     eltLoc = new OutRef<>();
+    OutRef<Boolean> needConsiderComma = new OutRef<>(false);
 
     if (parseTypeAndValue(ptr, loc, pfs))
-      return true;
+      return InstError;
 
     if (!(ptr.get().getType() instanceof PointerType))
-      return error(loc.get(), "base of getelementptr must be a pointer");
+      return error(loc.get(), "base of getelementptr must be a pointer")
+          ? InstError : InstNormal;
 
     ArrayList<Value> indices = new ArrayList<>();
     while (eatIfPresent(comma)) {
+      if (lexer.getTokKind() == MetadataVar) {
+        needConsiderComma.set(true);
+        break;
+      }
       if (parseTypeAndValue(val, eltLoc, pfs))
-        return true;
+        return InstError;
       if (!val.get().getType().isIntegerTy())
-        return error(eltLoc.get(),
-            "index of getelementptr must be an integer");
+        return error(eltLoc.get(), "index of getelementptr must be an integer")
+            ? InstError : InstNormal;
 
       indices.add(val.get());
     }
 
     if (GetElementPtrInst.getIndexedType(ptr.get().getType(), indices) == null)
-      return error(loc.get(), "invalid getelementptr indices");
+      return error(loc.get(), "invalid getelementptr indices") ? InstError : InstNormal;
 
     GetElementPtrInst gep = new GetElementPtrInst(ptr.get(), indices, "",
         null);
     gep.setIsInBounds(inBounds);
 
     inst.set(gep);
-    return false;
+    return needConsiderComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -2039,37 +2092,39 @@ public final class LLParser {
    * @param isVolatile
    * @return
    */
-  private boolean parseStore(OutRef<Instruction> inst,
+  private InstResult parseStore(OutRef<Instruction> inst,
                              PerFunctionState pfs,
-                             boolean isVolatile,
-                             OutRef<Boolean> needConsiderComma) {
+                             boolean isVolatile) {
     OutRef<Value> val, ptr;
     val = new OutRef<>();
     ptr = new OutRef<>();
     OutRef<SMLoc> valLoc = new OutRef<>();
     OutRef<SMLoc> ptrLoc = new OutRef<>();
     OutRef<Integer> align = new OutRef<>(0);
-    needConsiderComma.set(false);
+    OutRef<Boolean> needConsiderComma = new OutRef<>(false);
 
     if (parseTypeAndValue(val, valLoc, pfs) || parseToken(comma,
         "expected a ',' in store instruction") || parseTypeAndValue(ptr,
         ptrLoc, pfs) || parseOptionalCommaAlign(align, needConsiderComma))
-      return true;
+      return InstError;
 
     Value src = val.get(), dest = ptr.get();
     int alignment = align.get();
     SMLoc srcLoc = valLoc.get(), destLoc = ptrLoc.get();
 
     if (!src.getType().isFirstClassType())
-      return error(srcLoc, "store operand must be a first class value");
+      return error(srcLoc, "store operand must be a first class value")
+          ? InstError : InstNormal;
     if (!(dest.getType() instanceof PointerType))
       return error(destLoc,
-          "store instruction requires pointer type of destination");
+          "store instruction requires pointer type of destination")
+          ? InstError : InstNormal;
     if (!src.getType().equals(((PointerType) dest.getType()).getElementType()))
-      return error(srcLoc, "stored value and pointer type do not match");
+      return error(srcLoc, "stored value and pointer type do not match")
+          ? InstError : InstNormal;
 
     inst.set(new StoreInst(src, dest, isVolatile, alignment));
-    return false;
+    return needConsiderComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -2086,23 +2141,14 @@ public final class LLParser {
    * @param isVolatile
    * @return
    */
-  private boolean parseLoad(OutRef<Instruction> inst,
+  private InstResult parseLoad(OutRef<Instruction> inst,
                             PerFunctionState pfs,
-                            boolean isVolatile,
-                            OutRef<Boolean> needConsiderComma) {
-    boolean isAtomic = false;
+                            boolean isVolatile) {
     OutRef<Boolean> ateExtraComma = new OutRef<>(false);
-
-    if (lexer.getTokKind() == kw_atomic) {
-      if (isVolatile)
-        return tokError("mixing atomic with old volatile placement");
-      isAtomic = true;
-      lexer.lex();
-    }
-
     if (lexer.getTokKind() == kw_volatile) {
       if (isVolatile)
-        return tokError("duplicate volatile before and after load");
+        return tokError("duplicate volatile before and after load")
+            ? InstError : InstNormal;
       isVolatile = true;
       lexer.lex();
     }
@@ -2112,15 +2158,15 @@ public final class LLParser {
     OutRef<Integer> align = new OutRef<>(0);
     if (parseTypeAndValue(ptr, loc, pfs) ||
         parseOptionalCommaAlign(align, ateExtraComma)) {
-      return true;
+      return InstError;
     }
 
     if (!(ptr.get().getType() instanceof PointerType))
       return error(loc.get(),
-          "load instr requires the operand of pointer type");
+          "load instr requires the operand of pointer type")
+          ? InstError : InstNormal;
     inst.set(new LoadInst(ptr.get(), "", isVolatile, align.get()));
-    needConsiderComma.set(ateExtraComma.get());
-    return false;
+    return ateExtraComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -2156,33 +2202,34 @@ public final class LLParser {
    *
    * @param inst
    * @param pfs
-   * @param opc
+   * @param isAlloca
+   * @param bb
    * @return
    */
-  private boolean parseAlloc(OutRef<Instruction> inst,
+  private InstResult parseAlloc(OutRef<Instruction> inst,
                              PerFunctionState pfs,
-                             Operator opc,
-                             OutRef<Boolean> needConsiderComma) {
+                             boolean isAlloca,
+                             BasicBlock bb) {
     OutRef<Type> ty = new OutRef<>();
     if (parseType(ty, false))
-      return true;
+      return InstError;
 
     OutRef<Integer> align = new OutRef<>(0);
     OutRef<Value> val = new OutRef<>();
     OutRef<SMLoc> loc = new OutRef<>();
-    needConsiderComma.set(false);
+    OutRef<Boolean> ateExtraComma = new OutRef<>(false);
 
     if (eatIfPresent(comma)) {
       if (lexer.getTokKind() == kw_align) {
         if (parseOptionalAlignment(align))
-          return true;
+          return InstError;
       }
       else if (lexer.getTokKind() == MetadataVar)
-        needConsiderComma.set(true);
+        ateExtraComma.set(true);
       else {
         if ((parseTypeAndValue(val, loc, pfs) ||
-            parseOptionalCommaAlign(align, needConsiderComma)))
-        return true;
+            parseOptionalCommaAlign(align, ateExtraComma)))
+        return InstError;
       }
     }
     Type allocTy = ty.get();
@@ -2190,14 +2237,31 @@ public final class LLParser {
     Value size = val.get();
     SMLoc sizeLoc = loc.get();
 
-    if (size != null && size.getType().equals(LLVMContext.Int32Ty))
-      return error(sizeLoc, "allocated size must have 'i32' type");
+    if (size != null && !size.getType().isIntegerTy())
+      return error(sizeLoc, "allocated size must have 'i32' type")
+          ? InstError : InstNormal;
 
-    if (opc == Operator.Malloc)
-      inst.set(new MallocInst(allocTy, size, "", alignment, null));
-    else
+    if (isAlloca) {
       inst.set(new AllocaInst(allocTy, size, alignment));
-    return false;
+      return ateExtraComma.get() ? InstExtraComma : InstNormal;
+    }
+
+    // Autoupgrade old malloc instruction to malloc call.
+    // FIXME: Remove in LLVM 3.0.
+    if (size != null && !size.getType().isIntegerTy())
+      return error(sizeLoc, "allocated size must have 'i32' type")
+          ? InstError : InstNormal;
+
+    Type intPtrTy = backend.type.Type.getInt32Ty(context);
+    Constant allocSize = ConstantExpr.getSizeOf(ty.get());
+    allocSize = ConstantExpr.getTruncOrBitCast(allocSize, intPtrTy);
+    if (mallocF == null) {
+      // Prototype malloc as "void *(int32)".
+      // This function is renamed as "malloc" in ValidateEndOfModule().
+      mallocF = (Function) m.getOrInsertFunction("", backend.type.Type.getInt8Ty(context), intPtrTy, null);
+    }
+    inst.set(CallInst.createMalloc(bb, intPtrTy, ty.get(), allocSize, size, mallocF, ""));
+    return ateExtraComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -2383,7 +2447,7 @@ public final class LLParser {
       return error(opLoc, String.format("invalid type conversion from '%s' to '%s'",
           op.getType().getDescription(), destTy.getDescription()));
     }
-    inst.set(CastInst.create(opc, op, destTy, "", null));
+    inst.set(CastInst.create(opc, op, destTy, "", (Instruction) null));
     return false;
   }
 
@@ -2436,16 +2500,17 @@ public final class LLParser {
    * @param pfs
    * @return
    */
-  private boolean parsePHI(
+  private InstResult parsePHI(
       OutRef<Instruction> inst,
       PerFunctionState pfs) {
     SMLoc typeLoc = lexer.getLoc();
     OutRef<Type> ty = new OutRef<>();
     if (parseType(ty, false))
-      return true;
+      return InstError;
 
     if (!ty.get().isFirstClassType())
-      return error(typeLoc, "phi node must have first class type");
+      return error(typeLoc, "phi node must have first class type")
+          ? InstResult.InstError : InstResult.InstNormal;
 
     OutRef<Value> val = new OutRef<>();
     OutRef<Value> val2 = new OutRef<>();
@@ -2454,18 +2519,26 @@ public final class LLParser {
         parseToken(comma, "expected ',' in phi value list")
         || parseValue(LLVMContext.LabelTy, val2, pfs) ||
         parseToken(rsquare, "expected ']' at end of phi op"))
-      return true;
+      return InstError;
 
     ArrayList<Pair<Value, BasicBlock>> elts = new ArrayList<>();
-    elts.add(Pair.get(val.get(), (BasicBlock) val2.get()));
-    while (lexer.getTokKind() == comma) {
-      lexer.lex();    // eat the comma
+    boolean ateExtraComma = false;
+    while (true) {
+      elts.add(Pair.get(val.get(), (BasicBlock) val2.get()));
+      if (!eatIfPresent(comma))
+        break;
+
+      if (lexer.getTokKind() == MetadataVar) {
+        ateExtraComma = true;
+        break;
+      }
+
       if (parseToken(lsquare, "expected '[' at beginning of phi op") ||
           parseValue(ty.get(), val, pfs) ||
           parseToken(comma, "expected ',' in phi value list")
           || parseValue(LLVMContext.LabelTy, val2, pfs) ||
           parseToken(rsquare, "expected ']' at end of phi op"))
-        return true;
+        return InstError;
 
       elts.add(Pair.get(val.get(), (BasicBlock) val2.get()));
     }
@@ -2473,7 +2546,7 @@ public final class LLParser {
     PhiNode pn = new PhiNode(ty.get(), elts.size(), "");
     elts.forEach(pair -> pn.addIncoming(pair.first, pair.second));
     inst.set(pn);
-    return false;
+    return ateExtraComma ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -2557,25 +2630,51 @@ public final class LLParser {
    * @param pfs
    * @return
    */
-  private boolean parseRet(
+  private InstResult parseRet(
       OutRef<Instruction> inst,
+      BasicBlock bb,
       PerFunctionState pfs) {
     OutRef<Type> retTy = new OutRef<>();
     if (parseType(retTy, true/*allow void type*/))
-      return true;
+      return InstError;
     if (retTy.get().equals(LLVMContext.VoidTy)) {
       inst.set(new ReturnInst());
-      return false;
+      return InstResult.InstNormal;
     }
 
     OutRef<Value> rv = new OutRef<>();
-    if (parseValue(retTy.get(), rv, pfs)) return true;
+    if (parseValue(retTy.get(), rv, pfs)) return InstError;
 
-    // the normal case is one return value.
-    // FIXME: LLVM 3.0 remove MRV support for 'ret i32 1, i32 2', requiring use
-    // of 'ret {i32,i32} {i32 1, i32 2}'
+    boolean extraComma = false;
+    if (eatIfPresent(comma)) {
+      // parse optional custom metadata, e.g. !dbg.
+      if (lexer.getTokKind() == MetadataVar) {
+        extraComma = true;
+      }
+      else {
+        // the normal case is one return value.
+        // FIXME: LLVM 3.0 remove MRV support for 'ret i32 1, i32 2', requiring use
+        // of 'ret {i32,i32} {i32 1, i32 2}'
+        ArrayList<Value> rvs = new ArrayList<>();
+        rvs.add(rv.get());
+        do {
+          // if the optional custom metadata, e.g. !dbg is seen then this is the end of MRV.
+          if (lexer.getTokKind() == MetadataVar)
+            break;
+          if (parseTypeAndValue(rv, pfs)) return InstError;
+          rvs.add(rv.get());
+        }while (eatIfPresent(comma));
+
+        rv.set(Value.UndefValue.get(pfs.getFunction().getReturnType()));
+        for (int i = 0, e = rvs.size(); i < e; i++) {
+          Instruction ii = new InsertValueInst(rv.get(), rvs.get(i), i, "mrv");
+          bb.appendInst(ii);
+          rv.set(ii);
+        }
+      }
+    }
     inst.set(new ReturnInst(rv.get()));
-    return false;
+    return extraComma ? InstResult.InstExtraComma : InstResult.InstNormal;
   }
 
   private boolean parseTypeAndValue(OutRef<Value> op,
@@ -2593,7 +2692,7 @@ public final class LLParser {
   private boolean parseValue(Type ty, OutRef<Value> val,
                              PerFunctionState pfs) {
     ValID id = new ValID();
-    return parseValID(id) || convertValIDToValue(ty, id, val, pfs);
+    return parseValID(id, pfs) || convertValIDToValue(ty, id, val, pfs);
   }
 
   private boolean parseValID(ValID id) {
@@ -3924,33 +4023,26 @@ public final class LLParser {
    * @param pfs
    * @return
    */
-  private boolean parseExtractValue(OutRef<Instruction> inst, PerFunctionState pfs) {
+  private InstResult parseExtractValue(OutRef<Instruction> inst, PerFunctionState pfs) {
     OutRef<SMLoc> loc = new OutRef<>();
     OutRef<Value> op0 = new OutRef<>();
     OutRef<Integer> idx = new OutRef<>(0);
     TIntArrayList indices = new TIntArrayList();
-
+    OutRef<Boolean> ateExtraComma = new OutRef<>(false);
     if (parseTypeAndValue(op0, loc, pfs) ||
-        parseToken(comma, "expected a ',' after extractvalue operands") ||
-        parseInt32(idx))
-      return true;
-
-    indices.add(idx.get());
-    while (eatIfPresent(comma)) {
-      if (parseInt32(idx))
-        return true;
-
-      indices.add(idx.get());
-    }
+        parseIndexList(indices, ateExtraComma))
+      return InstError;
 
     if (!op0.get().getType().isAggregateType())
-      return error(loc.get(), "extractvalue operand must be aggregate type");
+      return error(loc.get(), "extractvalue operand must be aggregate type")
+          ? InstError : InstNormal;
 
     if (ExtractValueInst.getIndexedType(op0.get().getType(), indices.toArray()) == null)
-      return error(loc.get(), "invalid indices for extractvalue instruction");
+      return error(loc.get(), "invalid indices for extractvalue instruction")
+          ? InstError : InstNormal;
 
     inst.set(new ExtractValueInst(op0.get(), indices.toArray()));
-    return false;
+    return ateExtraComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**
@@ -3959,34 +4051,27 @@ public final class LLParser {
    * @param pfs
    * @return
    */
-  private boolean parseInsertValue(OutRef<Instruction> inst, PerFunctionState pfs) {
+  private InstResult parseInsertValue(OutRef<Instruction> inst, PerFunctionState pfs) {
     OutRef<SMLoc> loc = new OutRef<>();
     OutRef<Value> vec = new OutRef<>(), elt = new OutRef<>();
     OutRef<Integer> idx = new OutRef<>(0);
     TIntArrayList indices = new TIntArrayList();
+    OutRef<Boolean> ateExtraComma = new OutRef<>(false);
 
     if (parseTypeAndValue(vec, loc, pfs) ||
-        parseToken(comma, "expected a ',' after extractvalue operands") ||
-        parseTypeAndValue(elt, pfs) ||
-        parseInt32(idx))
-      return true;
-
-    indices.add(idx.get());
-    while (eatIfPresent(comma)) {
-      if (parseInt32(idx))
-        return true;
-
-      indices.add(idx.get());
-    }
+        parseIndexList(indices, ateExtraComma))
+      return InstError;
 
     if (!vec.get().getType().isAggregateType())
-      return error(loc.get(), "insertvalue operand must be aggregate type");
+      return error(loc.get(), "insertvalue operand must be aggregate type")
+          ? InstError : InstNormal;
 
     if (ExtractValueInst.getIndexedType(vec.get().getType(), indices.toArray()) == null)
-      return error(loc.get(), "invalid indices for insertvalue instruction");
+      return error(loc.get(), "invalid indices for insertvalue instruction")
+          ? InstError : InstNormal;
 
     inst.set(new InsertValueInst(vec.get(), elt.get(), indices.toArray()));
-    return false;
+    return ateExtraComma.get() ? InstExtraComma : InstNormal;
   }
 
   /**

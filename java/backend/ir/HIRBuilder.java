@@ -184,7 +184,7 @@ public class HIRBuilder {
     if (val instanceof Constant) {
       // TODO make constant folding.
     }
-    return insert(CastInst.create(op, val, destType, "", null), name);
+    return insert(CastInst.create(op, val, destType, "", (Instruction) null), name);
   }
 
   public Value createBitCast(Value value, Type destTy) {

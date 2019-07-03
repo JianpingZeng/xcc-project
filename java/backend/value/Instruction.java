@@ -464,6 +464,23 @@ public abstract class Instruction extends User {
     result.addAll(info);
   }
 
+  public void getAllMetadata(ArrayList<Pair<Integer, MDNode>> result) {
+    if (hasMetadata) {
+      result.clear();
+      // Handle 'dbg' as a special case since it is not stored in the hash table.
+      if (!dbgLoc.isUnknown()) {
+        result.add(Pair.get(LLVMContext.MD_dbg, dbgLoc.getAsMDNode(getContext())));
+        if (!hasMetadataHashEntry())
+          return;
+      }
+
+      Util.assertion(hasMetadataHashEntry() &&
+          getContext().metadataStore.containsKey(this), "shouldn't have called this");
+      Util.assertion(!getContext().metadataStore.get(this).isEmpty());
+      result.addAll(getContext().metadataStore.get(this));
+    }
+  }
+
   /**
    * The abstract base class definition for unary operator.
    */
@@ -1090,7 +1107,7 @@ public abstract class Instruction extends User {
     public static CastInst createIntegerCast(
         Value value, Type destTy,
         boolean isSigned) {
-      return createIntegerCast(value, destTy, isSigned, "", null);
+      return createIntegerCast(value, destTy, isSigned, "", (Instruction) null);
     }
 
     public static CastInst createIntegerCast(
@@ -1100,7 +1117,6 @@ public abstract class Instruction extends User {
         String instName,
         Instruction insertBefore) {
       Util.assertion(value.getType().isIntegerTy() && destTy.isIntegerTy(), "Invalid type!");
-
       int srcBits = value.getType().getScalarSizeBits();
       int destBits = destTy.getScalarSizeBits();
       Operator opcode = srcBits == destBits ? BitCast
@@ -1108,6 +1124,57 @@ public abstract class Instruction extends User {
           : (isSigned ? SExt : ZExt);
 
       return create(opcode, value, destTy, instName, insertBefore);
+    }
+
+    public static CastInst createIntegerCast(Value value,
+                                             Type destTy,
+                                             boolean isSigned,
+                                             String instName,
+                                             BasicBlock insertAtEnd) {
+      Util.assertion(value.getType().isIntegerTy() && destTy.isIntegerTy(), "Invalid type!");
+      int srcBits = value.getType().getScalarSizeBits();
+      int destBits = destTy.getScalarSizeBits();
+      Operator opcode = srcBits == destBits ? BitCast
+          : srcBits > destBits ? Trunc
+          : (isSigned ? SExt : ZExt);
+
+      return create(opcode, value, destTy, instName, insertAtEnd);
+    }
+
+    public static CastInst create(Operator opcode,
+                                  Value value,
+                                  Type ty,
+                                  String name,
+                                  BasicBlock insertAtEnd) {
+      switch (opcode) {
+        case Trunc:
+          return new TruncInst(value, ty, name, insertAtEnd);
+        case ZExt:
+          return new ZExtInst(value, ty, name, insertAtEnd);
+        case SExt:
+          return new SExtInst(value, ty, name, insertAtEnd);
+        case FPTrunc:
+          return new FPTruncInst(value, ty, name, insertAtEnd);
+        case FPExt:
+          return new FPExtInst(value, ty, name, insertAtEnd);
+        case UIToFP:
+          return new UIToFPInst(value, ty, name, insertAtEnd);
+        case SIToFP:
+          return new SIToFPInst(value, ty, name, insertAtEnd);
+        case FPToUI:
+          return new FPToUIInst(value, ty, name, insertAtEnd);
+        case FPToSI:
+          return new FPToSIInst(value, ty, name, insertAtEnd);
+        case PtrToInt:
+          return new PtrToIntInst(value, ty, name, insertAtEnd);
+        case IntToPtr:
+          return new IntToPtrInst(value, ty, name, insertAtEnd);
+        case BitCast:
+          return new BitCastInst(value, ty, name, insertAtEnd);
+        default:
+          Util.assertion("Invalid opcode provided!");
+      }
+      return null;
     }
 
     public static CastInst create(Operator opcode, Value value,
@@ -1138,7 +1205,7 @@ public abstract class Instruction extends User {
         case BitCast:
           return new BitCastInst(value, ty, name, insertBefore);
         default:
-          Util.assertion(false, "Invalid opcode provided!");
+          Util.assertion("Invalid opcode provided!");
       }
       return null;
     }
@@ -2380,6 +2447,104 @@ public abstract class Instruction extends User {
               getElementType()).getReturnType(),
           Operator.Call, name, insertAtEnd);
       init(target, args);
+    }
+
+    public static Instruction createMalloc(BasicBlock insertAtEnd,
+                                           Type intPtrTy,
+                                           Type allocTy,
+                                           Value allocSize,
+                                           Value arraySize,
+                                           Function mallocF,
+                                           String name) {
+      return createMalloc(null, insertAtEnd, intPtrTy, allocTy, allocSize, arraySize, mallocF, name);
+    }
+
+    public static Instruction createMalloc(Instruction insertBefore,
+                                           BasicBlock insertAtEnd,
+                                           Type intPtrTy,
+                                           Type allocTy,
+                                           Value allocSize,
+                                           Value arraySize,
+                                           Function mallocF,
+                                           String name) {
+      Util.assertion((insertBefore == null && insertAtEnd != null) ||
+              (insertBefore != null && insertAtEnd == null),
+          "createMalloc needs either insertBefore or insertAtEnd");
+      // malloc(type) becomes:
+      //       bitcast (i8* malloc(typeSize)) to type*
+      // malloc(type, arraySize) becomes:
+      //       bitcast (i8 *malloc(typeSize*arraySize)) to type*
+      if (arraySize == null)
+        arraySize = ConstantInt.get(intPtrTy, 1);
+      else if (!arraySize.getType().equals(intPtrTy)) {
+        if (insertBefore != null)
+          arraySize = CastInst.createIntegerCast(arraySize, intPtrTy, false,
+              "", insertBefore);
+        else
+          arraySize = CastInst.createIntegerCast(arraySize, intPtrTy, false,
+              "", insertAtEnd);
+      }
+
+      if (!isConstantOne(arraySize)) {
+        if (isConstantOne(allocSize)) {
+          allocSize = arraySize;  // Operand * 1 = Operand
+        } else if (arraySize instanceof Constant) {
+          Constant co = (Constant) arraySize;
+          Constant scale = ConstantExpr.getIntegerCast(co, intPtrTy, false);
+          // Malloc arg is constant product of type size and array size
+          allocSize = ConstantExpr.getMul(scale, (Constant) allocSize);
+        } else {
+          // Multiply type size by the array size...
+          if (insertBefore != null)
+            allocSize = BinaryOperator.createMul(arraySize, allocSize, "mallocsize", insertBefore);
+          else
+            allocSize = BinaryOperator.createMul(arraySize, allocSize, "mallocsize", insertAtEnd);
+        }
+      }
+
+      Util.assertion(allocSize.getType().equals(intPtrTy), "malloc arg is wrong size!");
+      // create a call to malloc.
+      BasicBlock bb = insertBefore != null ? insertBefore.getParent() : insertAtEnd;
+      Module m = bb.getParent().getParent();
+      Type bpTy = Type.getInt8PtrTy(bb.getContext(), 0);
+      if (mallocF == null)
+        // prototype malloc as "void *malloc(size_t)"
+        mallocF = (Function) m.getOrInsertFunction("malloc", bpTy, intPtrTy, null);
+      PointerType allocPtrType = PointerType.getUnqual(allocTy);
+      CallInst mcall = null;
+      Instruction result = null;
+      if (insertBefore != null) {
+        mcall = new CallInst(new Value[]{allocSize}, mallocF, "malloccall", insertBefore);
+        result = mcall;
+        if (!result.getType().equals(allocPtrType)) {
+          // create a cast instruction to convert to the right type.
+          result = new BitCastInst(mcall, allocPtrType, name);
+        }
+      }
+      else {
+        mcall = new CallInst(new Value[] {allocSize}, mallocF, "malloccall");
+        result = mcall;
+        if (!result.getType().equals(allocPtrType)) {
+          insertAtEnd.appendInst(mcall);
+          // create a cast instruction to convert to the right type.
+          result = new BitCastInst(mcall, allocPtrType, name);
+        }
+      }
+      mcall.setTailCall(true);
+      mcall.setCallingConv(mallocF.getCallingConv());
+      mallocF.setDoesNotAlias(0);
+      Util.assertion(!mcall.getType().isVoidType(), "malloc has void return type!");
+      return result;
+    }
+
+    /**
+     * Return true only if val is constant int 1
+     * @param value
+     * @return
+     */
+    private static boolean isConstantOne(Value value) {
+      Util.assertion(value != null, "doesn't work with null ptr!");
+      return value instanceof ConstantInt && ((ConstantInt)value).isOne();
     }
 
 
@@ -3701,6 +3866,13 @@ public abstract class Instruction extends User {
                            int[] indices,
                            String name) {
       this(agg, val, indices, name, (Instruction)null);
+    }
+
+    public InsertValueInst(Value agg,
+                           Value val,
+                           int idx,
+                           String name) {
+      this(agg, val, new int[] {idx}, name);
     }
 
     public InsertValueInst(Value agg,

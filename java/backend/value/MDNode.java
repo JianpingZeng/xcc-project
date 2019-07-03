@@ -37,19 +37,40 @@ public class MDNode extends Value {
   private boolean functionLocal;
   private int numOperands;
 
-  private MDNode(List<Value> vals) {
+  // FunctionLocal enums.
+  enum FunctionLocalness {
+    FL_Unknown,
+    FL_No,
+    FL_Yes
+  }
+
+  MDNode(List<Value> vals, boolean isFunctionLocal) {
     super(LLVMContext.MetadataTy, MDNodeVal);
     nodes = new ArrayList<>();
     nodes.addAll(vals);
+    functionLocal = isFunctionLocal;
   }
 
   public static MDNode get(List<Value> vals) {
-    MDNodeKeyType key = new MDNodeKeyType(vals);
-    return getUniqueImpl().getOrCreate(key);
+    return get(vals, FunctionLocalness.FL_Unknown);
   }
 
   public static MDNode get(Value[] vals) {
     return get(Arrays.asList(vals));
+  }
+
+  public static MDNode get(List<Value> vals, FunctionLocalness fl) {
+    MDNodeKeyType key = new MDNodeKeyType(vals);
+    return getUniqueImpl().getOrCreate(key, fl);
+  }
+
+  public static MDNode get(List<Value> vals, boolean isFunctionLocal) {
+    return get(vals, isFunctionLocal ? FunctionLocalness.FL_Yes : FunctionLocalness.FL_No);
+  }
+
+  public static boolean isFunctionLocalValue(Value v) {
+    return v instanceof Instruction || v instanceof Argument ||
+        v instanceof BasicBlock || (v instanceof MDNode && ((MDNode)v).isFunctionLocal());
   }
 
   public boolean isFunctionLocal() {

@@ -85,6 +85,9 @@ public final class TypePrinting {
       case LabelTyID:
         os.print("label");
         break;
+      case MetadataTyID:
+        os.print("metadata");
+        break;
       case IntegerTyID:
         os.printf("i%d", ((IntegerType) ty).getBitWidth());
         break;

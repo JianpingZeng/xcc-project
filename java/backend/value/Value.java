@@ -291,45 +291,22 @@ public class Value implements Cloneable {
       SlotTracker slotTable = new SlotTracker(gv.getParent());
       AssemblyWriter writer = new AssemblyWriter(os, gv.getParent(), slotTable);
       writer.write(gv);
-    } else if (this instanceof MDString) {
-      MDString mds = (MDString) this;
-      TypePrinting printer = new TypePrinting();
-      printer.print(mds.getType(), os);
-      os.print(" !\"");
-      os.print(Util.escapedString(mds.getString()));
-      os.print('"');
     } else if (this instanceof MDNode) {
       MDNode node = (MDNode) this;
-      SlotTracker slotTable = new SlotTracker(node);
-      TypePrinting printer = new TypePrinting();
-      slotTable.initialize();
-      writeMDNodes(os, printer, slotTable);
-    } else if (this instanceof NamedMDNode) {
-      NamedMDNode node = (NamedMDNode) this;
-      SlotTracker slotTable = new SlotTracker(node);
-      TypePrinting printer = new TypePrinting();
-      slotTable.initialize();
-      os.printf("!%s = !{", node.getName());
-      for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
-        if (i != 0) os.printf(", ");
-        Value val = node.getOperand(i);
-        if (val instanceof MDNode)
-          os.printf("!%d", slotTable.getMetadataSlot((MDNode) val));
-        else
-          os.printf("null");
-      }
-      os.println("}");
-      writeMDNodes(os, printer, slotTable);
+      Function f = node.getFunction();
+      SlotTracker slotTracker = new SlotTracker(f);
+      AssemblyWriter writer = new AssemblyWriter(os, f.getParent(), slotTracker);
+      writer.writeMDNodeBody(node);
     } else if (this instanceof Constant) {
       Constant c = (Constant) this;
       TypePrinting printer = new TypePrinting();
       printer.print(c.getType(), os);
       os.print(' ');
-      writeConstantInternal(os, c, printer, null);
-    } else if (this instanceof Argument) {
-      Argument arg = (Argument) this;
-      writeAsOperand(os, this, true,
-          arg.getParent() != null ? arg.getParent().getParent() : null);
+      writeConstantInternal(os, c, printer, null, null);
+    } else if (this instanceof Argument ||
+        this instanceof MDString ||
+        this instanceof InlineAsm) {
+      writeAsOperand(os, this, true, null);
     } else {
       Util.shouldNotReachHere("Unknown value to print out!");
     }

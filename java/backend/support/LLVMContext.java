@@ -25,9 +25,7 @@ import backend.value.MDNode;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * @author Jianping Zeng
@@ -47,6 +45,10 @@ public class LLVMContext {
   public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
   public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
   public static final Type PPC_FP128Ty = new Type(LLVMTypeID.PPC_FP128TyID);
+
+  // Pinned metadata names, which always have the same value. This is a compile-time performance
+  // optimization, not a correctness optimization.
+  public static int MD_dbg = 0;
 
   private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
   public ArrayList<Pair<MDNode, MDNode>> scopeInlineAtRecords;
@@ -108,5 +110,14 @@ public class LLVMContext {
     scopeInlineAtRecords.add(key);
     scopeInlineAtIdx.put(key, existingIdx);
     return existingIdx;
+  }
+
+  public void getMDKindNames(ArrayList<String> names) {
+    String[] temp = new String[customMDKindNamesMap.size()];
+    for (Map.Entry<String, Integer> entry : customMDKindNamesMap.entrySet()) {
+      temp[entry.getValue()] = entry.getKey();
+    }
+    names.clear();
+    names.addAll(Arrays.asList(temp));
   }
 }

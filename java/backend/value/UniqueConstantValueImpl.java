@@ -9,12 +9,10 @@ import backend.value.Instruction.CmpInst.Predicate;
 import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import static backend.value.Instruction.CmpInst.Predicate.FCMP_FALSE;
+import static backend.value.MDNode.isFunctionLocalValue;
 
 /**
  * This class is used for keep track of unique constant object for specified
@@ -190,17 +188,37 @@ public final class UniqueConstantValueImpl {
     return cs;
   }
 
-  public MDNode getOrCreate(MDNodeKeyType key) {
+  public MDNode getOrCreate(MDNodeKeyType key, MDNode.FunctionLocalness fl) {
     if (MDNodeConstants.containsKey(key))
       return MDNodeConstants.get(key);
 
-    MDNode node = MDNode.get(key.elts);
+    boolean isFunctionLocal = false;
+    switch (fl) {
+      case FL_Unknown:
+        for (int i = 0, e = key.elts.size(); i < e; i++) {
+          Value v = key.elts.get(i);
+          if (v == null) continue;
+          if (isFunctionLocalValue(v)) {
+            isFunctionLocal = true;
+            break;
+          }
+        }
+        break;
+      case FL_No:
+        isFunctionLocal = false;
+        break;
+      case FL_Yes:
+        isFunctionLocal = true;
+        break;
+    }
+
+    MDNode node = new MDNode(key.elts, isFunctionLocal);
     MDNodeConstants.put(key, node);
     return node;
   }
 
   public MDString getOrCreate(String key) {
-    Util.assertion(key != null && !key.isEmpty());
+    Util.assertion(key != null);
     if (MDStringConstants.containsKey(key))
       return MDStringConstants.get(key);
 
@@ -405,7 +423,7 @@ public final class UniqueConstantValueImpl {
       MDNodeKeyType key = (MDNodeKeyType) obj;
       if (key.elts.size() != elts.size()) return false;
       for (int i = 0, e = elts.size(); i < e; i++) {
-        if (!key.elts.get(i).equals(elts.get(i)))
+        if (!Objects.equals(key.elts.get(i), elts.get(i)))
           return false;
       }
       return true;

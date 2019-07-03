@@ -57,7 +57,7 @@ public final class NamedMDNode extends Value {
     return operands.size();
   }
 
-  public Value getOperand(int index) {
+  public MDNode getOperand(int index) {
     Util.assertion(index >= 0 && index < getNumOfOperands());
     return operands.get(index);
   }

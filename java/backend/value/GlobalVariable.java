@@ -60,15 +60,14 @@ public class GlobalVariable extends GlobalValue {
   @Override
   public void replaceUsesOfWithOnConstant(Value from, Value to, Use u) {
     Util.assertion(getNumOfOperands() == 1, "Attempt to replace uses of Constants on a GVar with no initializer");
-
     Util.assertion(operand(0).equals(from), "Attempt to replace wrong constant initializer in GVar");
-
     Util.assertion(to instanceof Constant, "Attempt to replace GVar initializer with non-constant");
-
-    setOperand(0, (Constant) to);
+    setOperand(0, to);
   }
 
   public void setInitializer(Constant init) {
+    if (operandList == null)
+      reserve(1);
     setOperand(0, new Use(init, this));
   }
 

@@ -28,6 +28,7 @@ import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Module;
 import gnu.trove.iterator.TObjectIntIterator;
+import gnu.trove.procedure.TObjectIntProcedure;
 import tools.*;
 
 import java.io.PrintStream;
@@ -43,8 +44,18 @@ public class AssemblyWriter {
   private ArrayList<Type> numberedTypes;
   private SlotTracker slotTracker;
   private final static int PadToColumns = 50;
+  private AssemblerAnnotationWriter annotationWriter;
 
-  public AssemblyWriter(FormattedOutputStream os, Module m, SlotTracker tracker) {
+  public AssemblyWriter(FormattedOutputStream os,
+                        Module m,
+                        SlotTracker tracker) {
+    this(os, m, tracker, null);
+  }
+
+  public AssemblyWriter(FormattedOutputStream os,
+                        Module m,
+                        SlotTracker tracker,
+                        AssemblerAnnotationWriter annotator) {
     out = os;
     theModule = m;
     typePrinter = new TypePrinting();
@@ -52,6 +63,7 @@ public class AssemblyWriter {
     slotTracker = tracker;
     if (m != null)
       typePrinter.incorporateType(m);
+    this.annotationWriter = annotator;
   }
 
   enum PrefixType {
@@ -191,7 +203,7 @@ public class AssemblyWriter {
    * @param gv
    */
   private void printGlobal(GlobalVariable gv) {
-    writeAsOperandInternal(out, gv, typePrinter, slotTracker);
+    writeAsOperandInternal(out, gv, typePrinter, slotTracker, theModule);
     out.print(" = ");
 
     if (!gv.hasInitializer() && gv.hasExternalLinkage())
@@ -199,6 +211,9 @@ public class AssemblyWriter {
 
     printLinkage(gv.getLinkage(), out);
     printVisibility(gv.getVisibility(), out);
+
+    if (gv.isThreadLocal())
+      out.print("thread_local ");
 
     int addressSpace = gv.getType().getAddressSpace();
     if (addressSpace != 0)
@@ -210,6 +225,11 @@ public class AssemblyWriter {
       out.print(" ");
       writeOperand(gv.getInitializer(), false);
     }
+    if (gv.hasSection()) {
+      out.print(", section \"");
+      out.print(Util.escapeString(gv.getSection()));
+      out.print('"');
+    }
     int align = gv.getAlignment();
     if (align != 0) {
       out.printf(", align %d", align);
@@ -219,13 +239,8 @@ public class AssemblyWriter {
   }
 
   private void printInfoComment(Value val) {
-    if (!val.getType().equals(LLVMContext.VoidTy)) {
-      out.padToColumn(PadToColumns);
-      out.print("; <");
-      typePrinter.print(val.getType(), out);
-      // output number of uses.
-      out.printf("> [#uses=%d]", val.getNumUses());
-    }
+    if (annotationWriter != null)
+      annotationWriter.printInfoComment(val, out);
   }
 
   public static SlotTracker createSlotTracker(Value val) {
@@ -287,7 +302,8 @@ public class AssemblyWriter {
   }
 
   public static void writeAsOperandInternal(FormattedOutputStream out, Value val,
-                                            TypePrinting printer, SlotTracker tracker) {
+                                            TypePrinting printer, SlotTracker tracker,
+                                            Module context) {
     if (val.hasName()) {
       printLLVMName(out, val);
       return;
@@ -296,7 +312,45 @@ public class AssemblyWriter {
     Constant cv = val instanceof Constant ? (Constant) val : null;
     if (cv != null && !(cv instanceof GlobalValue)) {
       Util.assertion(printer != null, "Constants require TypePrintering");
-      writeConstantInternal(out, cv, printer, tracker);
+      writeConstantInternal(out, cv, printer, tracker, context);
+      return;
+    }
+
+    if (val instanceof InlineAsm) {
+      out.print("asm ");
+      InlineAsm ia = (InlineAsm) val;
+      if (ia.hasSideEffects())
+        out.print("sideeffect ");
+      if (ia.isAlignStack())
+        out.print("alignstack ");
+      out.printf("\"%s\", \"%s\"",
+          Util.escapeString(ia.getAsmString()),
+          Util.escapeString(ia.getConstraintString()));
+      return;
+    }
+
+    if (val instanceof MDNode) {
+      MDNode node = (MDNode) val;
+      if (node.isFunctionLocal()) {
+        // Print metadata inline, not via slot reference number.
+        writeMDNodeBodyInternal(out, node, printer, tracker, context);
+        return;
+      }
+
+      if (tracker == null) {
+        if (node.isFunctionLocal())
+          tracker = new SlotTracker(node.getFunction());
+        else
+          tracker = new SlotTracker(context);
+      }
+
+      out.printf("!%d", tracker.getMetadataSlot(node));
+      return;
+    }
+
+    if (val instanceof MDString) {
+      MDString mds = (MDString) val;
+      out.printf("!\"%s\"", Util.escapeString(mds.getString()));
       return;
     }
 
@@ -369,7 +423,7 @@ public class AssemblyWriter {
   public static void writeAsOperand(FormattedOutputStream out, Value val,
                                     boolean printType, Module context) {
     if (!printType && (!(val instanceof Constant)) || val.hasName() || val instanceof GlobalValue) {
-      writeAsOperandInternal(out, val, null, null);
+      writeAsOperandInternal(out, val, null, null, context);
       return;
     }
 
@@ -383,7 +437,7 @@ public class AssemblyWriter {
       printer.print(val.getType(), out);
       out.print(" ");
     }
-    writeAsOperandInternal(out, val, printer, null);
+    writeAsOperandInternal(out, val, printer, null, context);
   }
 
   public static void writeConstantInternal(PrintStream out, Constant cv,
@@ -579,7 +633,8 @@ public class AssemblyWriter {
   }
 
   public static void writeConstantInternal(FormattedOutputStream out, Constant cv,
-                                           TypePrinting printer, SlotTracker tracker) {
+                                           TypePrinting printer, SlotTracker tracker,
+                                           Module context) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
       if (ci.getType().equals(LLVMContext.Int1Ty)) {
@@ -692,13 +747,12 @@ public class AssemblyWriter {
         if (ca.getNumOfOperands() != 0) {
           printer.print(elty, out);
           out.print(' ');
-          writeAsOperandInternal(out, ca.operand(0), printer, tracker);
+          writeAsOperandInternal(out, ca.operand(0), printer, tracker, context);
           for (int i = 1, e = ca.getNumOfOperands(); i != e; i++) {
             out.print(", ");
             printer.print(elty, out);
             out.print(' ');
-            writeAsOperandInternal(out, ca.operand(i), printer,
-                tracker);
+            writeAsOperandInternal(out, ca.operand(i), printer, tracker, context);
           }
         }
         out.print("]");
@@ -717,13 +771,13 @@ public class AssemblyWriter {
         printer.print(cs.operand(0).getType(), out);
         out.print(' ');
 
-        writeAsOperandInternal(out, cs.operand(0), printer, tracker);
+        writeAsOperandInternal(out, cs.operand(0), printer, tracker, context);
         for (int i = 1; i < n; i++) {
           out.print(", ");
           printer.print(cs.operand(i).getType(), out);
           out.print(' ');
 
-          writeAsOperandInternal(out, cs.operand(i), printer, tracker);
+          writeAsOperandInternal(out, cs.operand(i), printer, tracker, context);
         }
         out.print(' ');
       }
@@ -754,7 +808,7 @@ public class AssemblyWriter {
       for (int i = 0, e = ce.getNumOfOperands(); i != e; i++) {
         printer.print(ce.operand(i).getType(), out);
         out.print(' ');
-        writeAsOperandInternal(out, ce.operand(i), printer, tracker);
+        writeAsOperandInternal(out, ce.operand(i), printer, tracker, context);
         if (i < e - 1)
           out.printf(", ");
       }
@@ -856,11 +910,27 @@ public class AssemblyWriter {
   }
 
   private static void writeOptimizationInfo(FormattedOutputStream out, Value val) {
-    // TODO: 2017/10/10
+    if (val instanceof OverflowingBinaryOperator) {
+      OverflowingBinaryOperator ubo = (OverflowingBinaryOperator) val;
+      if (ubo.getHasNoUnsignedWrap())
+        out.print(" nuw");
+      if (ubo.getHasNoSignedWrap())
+        out.print(" nsw");
+    }
+    else if (val instanceof ExactBinaryOperator) {
+      ExactBinaryOperator ebo = (ExactBinaryOperator) val;
+      if (ebo.isExact())
+        out.print(" exact");
+    }
+    else if (val instanceof GEPOperator) {
+      GEPOperator gep = (GEPOperator) val;
+      if (gep.isInBounds())
+        out.print(" inbounds");
+    }
   }
 
   private static void writeOptimizationInfo(PrintStream out, Value val) {
-    // TODO: 2017/10/10
+    writeOptimizationInfo(new FormattedOutputStream(out), val);
   }
 
   private static void printLinkage(LinkageType linkage,
@@ -907,7 +977,7 @@ public class AssemblyWriter {
         typePrinter.print(operand.getType(), out);
         out.print(" ");
       }
-      writeAsOperandInternal(out, operand, typePrinter, slotTracker);
+      writeAsOperandInternal(out, operand, typePrinter, slotTracker, theModule);
     }
   }
 
@@ -943,9 +1013,14 @@ public class AssemblyWriter {
     }
 
     FunctionType ft = f.getFunctionType();
+    AttrList attrs = f.getAttributes();
+    int retAttr = attrs.getRetAttribute();
+    if (retAttr != Attribute.None)
+      out.printf("%s ", Attribute.getAsString(retAttr));
+
     typePrinter.print(ft.getReturnType(), out);
     out.print(' ');
-    writeAsOperandInternal(out, f, typePrinter, slotTracker);
+    writeAsOperandInternal(out, f, typePrinter, slotTracker, theModule);
     out.print('(');
     slotTracker.incorporateFunction(f);
 
@@ -973,6 +1048,15 @@ public class AssemblyWriter {
     }
 
     out.print(')');
+    int fnAttrs = attrs.getFnAttribute();
+    if (fnAttrs != Attribute.None)
+      out.printf(" %s", Attribute.getAsString(fnAttrs));
+
+    if (f.hasSection()) {
+      out.printf(" section\"%s", Util.escapeString(f.getSection()));
+      out.print('"');
+    }
+
     if (f.getAlignment() != 0) {
       out.printf(" align %d", f.getAlignment());
     }
@@ -1034,11 +1118,16 @@ public class AssemblyWriter {
 
     out.println();
 
+    if (annotationWriter != null)
+      annotationWriter.emitBasicBlockStartAnnot(bb, out);
+
     // Emit each instruction in the basic block.
     for (Instruction inst : bb) {
       printInstruction(inst);
       out.println();
     }
+    if (annotationWriter != null)
+      annotationWriter.emitBasicBlockEndAnnot(bb, out);
   }
 
   /**
@@ -1047,6 +1136,9 @@ public class AssemblyWriter {
    * @param inst
    */
   private void printInstruction(Instruction inst) {
+    if (annotationWriter != null)
+      annotationWriter.emitInstructionAnnot(inst, out);
+
     // print out indentation for each instruction.
     out.print(' ');
 
@@ -1068,9 +1160,10 @@ public class AssemblyWriter {
         || (inst instanceof StoreInst) && ((StoreInst) inst).isVolatile()) {
       out.print("volatile ");
     }
-    Operator opc = inst.getOpcode();
-    //if (opc != Operator.Store && opc != Operator.Ret && opc != Operator.Br)
-    //    out.print(" = ");
+    else if (inst instanceof CallInst && ((CallInst)inst).isTailCall()) {
+      //if this is a tail call, emit 'tail' keyword.
+      out.print("tail ");
+    }
 
     // Print the instruction operator name.
     out.print(inst.getOpcodeName());
@@ -1169,7 +1262,14 @@ public class AssemblyWriter {
       PointerType pty = (PointerType) operand.getType();
       FunctionType fty = (FunctionType) pty.getElementType();
       Type retTy = fty.getReturnType();
+      AttrList attrs = ci.getAttributes();
 
+      if (attrs.getRetAttribute() != Attribute.None)
+        out.printf(" %s", Attribute.getAsString(attrs.getRetAttribute()));
+
+      // If possible, print out the short form of the call instruction.  We can
+      // only do this if the first argument is a pointer to a nonvararg function,
+      // and if the return type is not a pointer to a function.
       out.print(' ');
 
       if (!fty.isVarArg() && (!(retTy instanceof PointerType)
@@ -1180,6 +1280,7 @@ public class AssemblyWriter {
       } else {
         writeOperand(operand, true);
       }
+
       out.print('(');
       for (int op = 1, e = inst.getNumOfOperands(); op != e; op++) {
         if (op > 1)
@@ -1195,6 +1296,9 @@ public class AssemblyWriter {
       if (ai.getArraySize() != null && ai.isArrayAllocation()) {
         out.print(", ");
         writeOperand(ai.getArraySize(), true);
+      }
+      if (ai.getAlignment() != 0) {
+        out.printf(", align %s", ai.getAlignment());
       }
     } else if (inst instanceof CastInst) {
       if (operand != null) {
@@ -1241,6 +1345,26 @@ public class AssemblyWriter {
         && (align = ((StoreInst) inst).getAlignment()) != 0) {
       out.printf(" ,align %d", align);
     }
+    // Print metadata information.
+    ArrayList<Pair<Integer, MDNode>> instMD = new ArrayList<>();
+    inst.getAllMetadata(instMD);
+
+    if (!instMD.isEmpty()) {
+      ArrayList<String> mdNames = new ArrayList<>();
+      inst.getType().getContext().getMDKindNames(mdNames);
+      for (int i = 0, e = instMD.size(); i < e; i++) {
+        int kind = instMD.get(i).first;
+        if (kind < mdNames.size()) {
+          out.printf(", !%s", mdNames.get(kind));
+        }
+        else {
+          out.printf(", !<unknown kind #%d>", kind);
+        }
+        out.print(' ');
+        writeAsOperandInternal(out, instMD.get(i).second, typePrinter, slotTracker, theModule);
+      }
+    }
+
     printInfoComment(inst);
   }
 
@@ -1251,7 +1375,7 @@ public class AssemblyWriter {
       // print argument tpye.
       typePrinter.print(op.getType(), out);
       out.print(' ');
-      writeAsOperandInternal(out, op, typePrinter, slotTracker);
+      writeAsOperandInternal(out, op, typePrinter, slotTracker, theModule);
     }
   }
 
@@ -1261,10 +1385,10 @@ public class AssemblyWriter {
     }
 
     if (m.getDataLayout() != null && !m.getDataLayout().isEmpty()) {
-      out.printf("target datalayout = %s\n", m.getDataLayout());
+      out.printf("target datalayout = \"%s\"\n", m.getDataLayout());
     }
     if (m.getTargetTriple() != null && !m.getTargetTriple().isEmpty()) {
-      out.printf("target triple = %s\n", m.getTargetTriple());
+      out.printf("target triple = \"%s\"\n", m.getTargetTriple());
     }
     if (m.getModuleInlineAsm() != null && !m.getModuleInlineAsm().isEmpty()) {
       String[] temp = m.getModuleInlineAsm().split("\\n");
@@ -1278,25 +1402,163 @@ public class AssemblyWriter {
 
     // Loop over all symbol, emitting all id's types.
     if (!m.getTypeSymbolTable().isEmpty() || !numberedTypes.isEmpty())
-      out.println();
-
-    printTypeIdentities();
+      printTypeSymbolTable();
 
     // Emitting all globals.
     if (!m.getGlobalVariableList().isEmpty())
       out.println();
 
-    for (GlobalVariable gv : m.getGlobalVariableList()) {
+    for (GlobalVariable gv : m.getGlobalVariableList())
       printGlobal(gv);
-    }
+
+    // Output all alias.
+    if (!m.getAliasList().isEmpty())
+      out.println();
+    for (GlobalAlias ga : m.getAliasList())
+      printAlias(ga);
 
     // Emitting all functions.
     for (Function f : m.getFunctionList()) {
       printFunction(f);
     }
+
+    // Output named metadata.
+    if (!m.getNamedMDList().isEmpty())
+      out.println();
+
+    for (NamedMDNode md : m.getNamedMDList()) {
+      printNamedMDNode(md);
+    }
+
+    // Output metadata.
+    if (!slotTracker.getMdnMap().isEmpty()) {
+      out.println();
+      writeAllMDNodes();
+    }
   }
 
-  private void printTypeIdentities() {
+  private void printNamedMDNode(NamedMDNode md) {
+    out.printf("!%s = !{", md.getName());
+    for (int i = 0, e = md.getNumOfOperands(); i < e; i++) {
+      if (i != 0) out.print(", ");
+      out.printf("!%d", slotTracker.getMetadataSlot(md.getOperand(i)));
+    }
+    out.println();
+  }
+
+  private void writeAllMDNodes() {
+    MDNode[] nodes = new MDNode[slotTracker.getMdnMap().size()];
+    slotTracker.getMdnMap().forEachEntry(new TObjectIntProcedure<Value>() {
+      @Override
+      public boolean execute(Value key, int value) {
+        nodes[value] = (MDNode) key;
+        return false;
+      }
+    });
+    for (int i = 0, e = nodes.length; i < e; i++) {
+      out.printf("!%d = metadata ", i);
+      writeMDNodeBody(nodes[i]);
+    }
+  }
+
+  public void writeMDNodeBody(MDNode md) {
+    writeMDNodeBodyInternal(out, md, typePrinter, slotTracker, theModule);
+    writeMDNodeComment(md, out);
+    out.println();
+  }
+
+  private static void writeMDNodeBodyInternal(FormattedOutputStream out,
+                                              MDNode node,
+                                              TypePrinting typePrinter,
+                                              SlotTracker slotTracker,
+                                              Module context) {
+    out.print("!{");
+    for (int i = 0, e = node.getNumOperands(); i < e; i++) {
+      Value v = node.getOperand(i);
+      if (v == null)
+        out.print("null");
+      else {
+        typePrinter.print(v.getType(), out);
+        out.print(' ');
+        writeAsOperandInternal(out, node.getOperand(i), typePrinter, slotTracker, context);
+      }
+      if (i + 1 != e)
+        out.print(", ");
+    }
+    out.print('}');
+  }
+
+  private static void writeMDNodeComment(MDNode node, FormattedOutputStream out) {
+    if (node.getNumOperands() < 1)
+      return;
+
+    if (!(node.getOperand(0) instanceof ConstantInt))
+      return;
+    ConstantInt ci = (ConstantInt) node.getOperand(0);
+    APInt val = ci.getValue();
+    APInt tag = val.and(new APInt(val.getBitWidth(), Dwarf.LLVMDebugVersionMask).not());
+    if (val.ult(Dwarf.LLVMDebugVersionMask))
+      return;
+
+    out.padToColumn(50);
+    if (tag.eq(Dwarf.DW_TAG_auto_variable))
+      out.print("; [ DW_TAG_auto_variable ]");
+    else if (tag.eq(Dwarf.DW_TAG_arg_variable))
+      out.print("; [ DW_TAG_arg_variable ]");
+    else if (tag.eq(Dwarf.DW_TAG_return_variable))
+      out.print("; [ DW_TAG_return_variable ]");
+    else if (tag.eq(Dwarf.DW_TAG_vector_type))
+      out.print("; [ DW_TAG_vector_type ]");
+    else if (tag.eq(Dwarf.DW_TAG_user_base))
+      out.print("; [ DW_TAG_user_base ]");
+    else if (tag.isIntN(32)) {
+      String tagName = Dwarf.tagString((int) tag.getZExtValue());
+      if (tagName != null)
+        out.printf("; [ %s ]", tagName);
+    }
+  }
+
+  private void printAlias(GlobalAlias alias) {
+    if (!alias.hasName())
+      out.print("<<nameless>> = ");
+    else {
+      printLLVMName(out, alias);
+      out.print(" = ");
+    }
+    printVisibility(alias.getVisibility(), out);
+    out.print("alias ");
+
+    printLinkage(alias.getLinkage(), out);
+    Constant aliasee = alias.getAliasee();
+    if (aliasee instanceof GlobalVariable) {
+      GlobalVariable gv = (GlobalVariable) aliasee;
+      typePrinter.print(gv.getType(), out);
+      out.print(" ");
+    }
+    else if (aliasee instanceof Function) {
+      Function f = (Function) aliasee;
+      typePrinter.print(f.getFunctionType(), out);
+      out.print("* ");
+
+      writeAsOperandInternal(out, f, typePrinter, slotTracker, theModule);
+    }
+    else if (aliasee instanceof GlobalAlias) {
+      GlobalAlias ga = (GlobalAlias) aliasee;
+      out.print(' ');
+      printLLVMName(out, ga);
+    }
+    else {
+      Util.assertion(aliasee instanceof ConstantExpr);
+      ConstantExpr ce = (ConstantExpr) aliasee;
+      Util.assertion(ce.getOpcode() == Operator.BitCast ||
+          ce.getOpcode() == Operator.GetElementPtr, "Unsupported aliasee!");
+      writeOperand(ce, false);
+    }
+    printInfoComment(alias);
+    out.println();
+  }
+
+  private void printTypeSymbolTable() {
     if (theModule.getTypeSymbolTable().isEmpty() &&
         numberedTypes.isEmpty())
           return;
@@ -1328,7 +1590,8 @@ public class AssemblyWriter {
 
   public static void writeMDNodes(FormattedOutputStream os,
                                   TypePrinting printer,
-                                  SlotTracker slotTable) {
+                                  SlotTracker slotTable,
+                                  Module context) {
     MDNode[] nodes = new MDNode[slotTable.getMdnMap().size()];
     TObjectIntIterator<Value> itr = slotTable.getMdnMap().iterator();
     while (itr.hasNext()) {
@@ -1348,7 +1611,7 @@ public class AssemblyWriter {
         } else {
           printer.print(val.getType(), os);
           os.print(' ');
-          writeAsOperandInternal(os, val, printer, slotTable);
+          writeAsOperandInternal(os, val, printer, slotTable, context);
         }
         if (j < e - 1)
           os.print(", ");

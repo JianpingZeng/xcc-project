@@ -17,9 +17,11 @@ package backend.support;
  */
 
 import backend.value.*;
-import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Pair;
 import tools.Util;
+
+import java.util.ArrayList;
 
 /**
  * Enumerates slot number for unnamed values.
@@ -161,15 +163,8 @@ public final class SlotTracker {
       theModule = null;
     }
 
-    if (theFunction != null && !functionProcessed) {
+    if (theFunction != null && !functionProcessed)
       processFunction();
-    }
-
-    if (mNode != null)
-      processMDNode();
-
-    if (nNode != null)
-      processNamedMDNode();
   }
 
   private void createModuleSlot(GlobalValue gv) {
@@ -198,6 +193,12 @@ public final class SlotTracker {
       }
     }
 
+    // Add metadata used by named metadata.
+    for (NamedMDNode nmd : theModule.getNamedMDList()) {
+      for (int i = 0,e = nmd.getNumOfOperands(); i < e; i++)
+        createMetadataSlot(nmd.getOperand(i));
+    }
+
     for (Function f : theModule.getFunctionList()) {
       if (!f.hasName())
         createModuleSlot(f);
@@ -212,6 +213,8 @@ public final class SlotTracker {
         createFunctionSlot(arg);
     }
 
+    ArrayList<Pair<Integer, MDNode>> mdForInst = new ArrayList<>();
+
     // Add all basic blocks and instructions don't have name.
     for (BasicBlock bb : theFunction.getBasicBlockList()) {
       if (!bb.hasName()) {
@@ -220,6 +223,27 @@ public final class SlotTracker {
       for (Instruction inst : bb) {
         if (!inst.getType().equals(LLVMContext.VoidTy) && !inst.hasName())
           createFunctionSlot(inst);
+
+        // Intrinsics can directly use metadata.  We allow direct calls to any
+        // llvm.foo function here, because the target may not be linked into the
+        // optimizer.
+        if (inst instanceof Instruction.CallInst) {
+          Instruction.CallInst ci = (Instruction.CallInst) inst;
+          Function f = ci.getCalledFunction();
+          if (f != null && f.getName().startsWith("llvm.")) {
+            for (int i = 0, e = inst.getNumOfOperands(); i < e; i++) {
+              if (inst.operand(i) instanceof MDNode)
+                createMetadataSlot((MDNode)inst.operand(i));
+            }
+          }
+        }
+
+        // process metedata attached to this instruction.
+        inst.getAllMetadata(mdForInst);
+        mdForInst.forEach(entry -> {
+          createMetadataSlot(entry.second);
+        });
+        mdForInst.clear();
       }
     }
     functionProcessed = true;
