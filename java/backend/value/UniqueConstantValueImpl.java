@@ -101,7 +101,7 @@ public final class UniqueConstantValueImpl {
       Util.assertion(key.operands.size() > 1);
       Constant base = key.operands.get(0);
       ArrayList<Constant> idx = new ArrayList<>(key.operands.subList(1, key.operands.size()));
-      ce = new GetElementPtrConstantExpr(base, idx, key.ty);
+      ce = new GetElementPtrConstantExpr(base, idx, key.ty, key.isInBounds);
       ExprConstantMaps.put(key, ce);
       return ce;
     }
@@ -247,6 +247,10 @@ public final class UniqueConstantValueImpl {
     ArrayList<Constant> operands;
     TIntArrayList indices;
     Type ty;
+    /**
+     * For GetElementPtr constant expression.
+     */
+    boolean isInBounds;
 
     public ExprMapKeyType(Operator opc, Constant op, Type ty) {
       this(opc, op, FCMP_FALSE, ty);
@@ -274,8 +278,14 @@ public final class UniqueConstantValueImpl {
       this(opc, ops, Predicate.FCMP_FALSE, ty);
     }
 
+    public ExprMapKeyType(Operator opc, List<Constant> ops, Type ty, boolean isInBounds) {
+      this(opc, ops, ty);
+      this.isInBounds = isInBounds;
+    }
+
     public ExprMapKeyType(Operator opc, List<Constant> ops,
-                          Predicate pred, TIntArrayList indices, Type ty) {
+                          Predicate pred, TIntArrayList indices,
+                          Type ty) {
       opcode = opc;
       predicate = pred;
       operands = new ArrayList<>();
@@ -296,7 +306,7 @@ public final class UniqueConstantValueImpl {
       ExprMapKeyType key = (ExprMapKeyType) obj;
       return opcode == key.opcode && predicate == key.predicate
           && operands.equals(key.operands) && indices.equals(key.indices)
-          && (ty == key.ty || ty.equals(key.ty));
+          && (ty == key.ty || ty.equals(key.ty)) && isInBounds == key.isInBounds;
     }
 
     @Override
@@ -310,6 +320,7 @@ public final class UniqueConstantValueImpl {
       for (int i = 0, e = indices.size(); i < e; i++)
         id.addInteger(indices.get(i));
       id.addInteger(ty.hashCode());
+      id.addBoolean(isInBounds);
       return id.computeHash();
     }
   }

@@ -94,7 +94,7 @@ public final class TypePrinting {
       case FunctionTyID: {
         FunctionType ft = (FunctionType) ty;
         print(ft.getReturnType(), os);
-        os.print("(");
+        os.print(" (");
         for (int i = 0, e = ft.getNumParams(); i != e; i++) {
           if (i != 0)
             os.print(", ");
@@ -102,7 +102,7 @@ public final class TypePrinting {
         }
         if (ft.isVarArg()) {
           if (ft.getNumParams() != 0)
-            os.print(",");
+            os.print(", ");
           os.print("...");
         }
         os.print(')');

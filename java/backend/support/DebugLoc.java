@@ -157,8 +157,7 @@ public class DebugLoc {
     OutRef<MDNode> scope = new OutRef<>();
     OutRef<MDNode> ia = new OutRef<>();
     getScopeAndInlinedAt(scope, ia, ctx);
-    Util.assertion(scope.get() != null && ia.get() != null,
-        "If scope is null, this should be isUnknown");
+    Util.assertion(scope.get() != null, "If scope is null, this should be isUnknown");
     LLVMContext ctx2 = scope.get().getContext();
     Type int32 = Type.getInt32Ty(ctx2);
     Value[] elts = new Value[] {

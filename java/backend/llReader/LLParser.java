@@ -3084,7 +3084,7 @@ public final class LLParser {
         ArrayList<Constant> elts = new ArrayList<>();
 
         lexer.lex();
-        boolean inBounds = eatIfPresent(kw_inbounds);
+        boolean isInBounds = eatIfPresent(kw_inbounds);
         if (parseToken(lparen, "expected '(' in logical constantexpr")
             || praseGlobalValueVector(elts) ||
             parseToken(rparen, "expected ')' at end of constantexpr"))
@@ -3098,7 +3098,7 @@ public final class LLParser {
             tmp.subList(1, tmp.size())) == null)
           return error(id.loc, "invalid indices for getelementptr");
 
-        id.constantVal = ConstantExpr.getGetElementPtr(elts.get(0), elts.subList(1, elts.size()));
+        id.constantVal = ConstantExpr.getGetElementPtr(elts.get(0), elts.subList(1, elts.size()), isInBounds);
         id.kind = ValID.ValIDKind.t_Constant;
         return false;
       }
@@ -3283,7 +3283,7 @@ public final class LLParser {
         if (!(ty instanceof IntegerType)) {
           return error(id.loc, "integer constant must have integer type");
         }
-        id.apsIntVal.extOrTrunc(ty.getPrimitiveSizeInBits());
+        id.apsIntVal = id.apsIntVal.extOrTrunc(ty.getPrimitiveSizeInBits());
         val.set(ConstantInt.get(context, id.apsIntVal));
         return false;
       case t_APFloat:

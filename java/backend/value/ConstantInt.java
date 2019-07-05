@@ -55,8 +55,7 @@ public class ConstantInt extends Constant {
   }
 
   public static ConstantInt get(IntegerType ty, APInt val) {
-    IntegerType ity = (IntegerType) Type.getIntNTy(ty.getContext(), ty.getBitWidth());
-    APIntKeyType key = new APIntKeyType(val, ity);
+    APIntKeyType key = new APIntKeyType(val, ty);
     return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
   }
 

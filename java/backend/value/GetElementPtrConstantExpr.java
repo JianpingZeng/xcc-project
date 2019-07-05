@@ -36,12 +36,13 @@ public class GetElementPtrConstantExpr extends ConstantExpr implements GEPOperat
    * @param ty
    */
   public GetElementPtrConstantExpr(Constant c, ArrayList<Constant> idxList,
-                                   Type ty) {
+                                   Type ty, boolean isInBounds) {
     super(ty, GetElementPtr);
     reserve(idxList.size() + 1);
     setOperand(0, c, this);
     for (int i = 0, e = idxList.size(); i != e; i++)
       setOperand(i + 1, idxList.get(i), this);
+    this.isInBounds = isInBounds;
   }
 
   public void setIsInBounds(boolean isInBounds) {

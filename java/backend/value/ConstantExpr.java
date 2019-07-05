@@ -65,7 +65,7 @@ public abstract class ConstantExpr extends Constant {
     ArrayList<Constant> index = new ArrayList<>();
     index.add(ConstantInt.get(Type.getInt32Ty(ty.getContext()), 1));
 
-    Constant gep = getGetElementPtr(Constant.getNullValue(PointerType.getUnqual(ty)), index);
+    Constant gep = getGetElementPtr(Constant.getNullValue(PointerType.getUnqual(ty)), index, false);
     return getCast(Operator.PtrToInt, gep, Type.getInt64Ty(ty.getContext()));
   }
 
@@ -389,31 +389,32 @@ public abstract class ConstantExpr extends Constant {
     return ((CmpConstantExpr) this).predicate;
   }
 
-  private static Constant getGetElementPtrTy(Type ty, Constant c, List<Value> indices) {
+  private static Constant getGetElementPtrTy(Type ty, Constant c, List<Value> indices, boolean isInBounds) {
     Util.assertion(GetElementPtrInst.getIndexedType(c.getType(), indices).equals(((PointerType) ty).getElementType()), "GEP indices invalid!");
-
 
     Util.assertion(c.getType() instanceof PointerType, "Non-pointer type for constant GetElementPtr expression");
 
     ArrayList<Constant> elts = new ArrayList<>();
     elts.add(c);
     indices.forEach(ind -> elts.add((Constant) ind));
-    ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts, ty);
+    ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts, ty, isInBounds);
     return getUniqueImpl().getOrCreate(key);
   }
 
-
   public static Constant getGetElementPtr(Constant base, List<Constant> elts) {
-    ArrayList<Value> ops = new ArrayList<>();
-    ops.addAll(elts);
+    return getGetElementPtr(base, elts, false);
+  }
+
+  public static Constant getGetElementPtr(Constant base, List<Constant> elts, boolean isInBounds) {
+    ArrayList<Value> ops = new ArrayList<>(elts);
     Type ty = GetElementPtrInst.getIndexedType(base.getType(), ops);
     Util.assertion(ty != null, "GEP indices invalid");
     int as = ((PointerType) base.getType()).getAddressSpace();
-    return getGetElementPtrTy(PointerType.get(ty, as), base, ops);
+    return getGetElementPtrTy(PointerType.get(ty, as), base, ops, isInBounds);
   }
 
   public static Constant getInBoundsGetElementPtr(Constant c, List<Constant> idxs) {
-    Constant result = getGetElementPtr(c, idxs);
+    Constant result = getGetElementPtr(c, idxs, true);
     if (result instanceof GetElementPtrConstantExpr)
       ((GetElementPtrConstantExpr) result).setIsInBounds(true);
 
@@ -436,7 +437,7 @@ public abstract class ConstantExpr extends Constant {
         if (val.equals(from)) val = toV;
         indices.add(val);
       }
-      replacement = ConstantExpr.getGetElementPtr(pointer, indices);
+      replacement = ConstantExpr.getGetElementPtr(pointer, indices, ((GetElementPtrConstantExpr)this).isInBounds());
     } else if (isCast()) {
       Util.assertion(operand(0).equals(from), "Cast only has one use!");
       replacement = ConstantExpr.getCast(getOpcode(), toV, getType());
@@ -517,7 +518,7 @@ public abstract class ConstantExpr extends Constant {
       case GetElementPtr:
         return ((GetElementPtrConstantExpr)this).isInBounds() ?
             ConstantExpr.getInBoundsGetElementPtr(newOps.get(0), newOps.subList(1, newOps.size())) :
-            ConstantExpr.getGetElementPtr(newOps.get(0), newOps.subList(1, newOps.size()));
+            ConstantExpr.getGetElementPtr(newOps.get(0), newOps.subList(1, newOps.size()), false);
       case ICmp:
       case FCmp:
         return ConstantExpr.getCompare(getPredicate(), newOps.get(0), newOps.get(1));

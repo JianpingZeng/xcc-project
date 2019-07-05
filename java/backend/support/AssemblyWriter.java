@@ -647,7 +647,6 @@ public class AssemblyWriter {
     if (fp != null) {
       if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble
           || fp.getValueAPF().getSemantics() == APFloat.IEEEsingle) {
-        boolean ignored = false;
         boolean isDouble = fp.getValueAPF().getSemantics() == APFloat.IEEEdouble;
         double val = isDouble ? fp.getValueAPF().convertToDouble() :
             fp.getValueAPF().convertToFloat();
@@ -666,7 +665,6 @@ public class AssemblyWriter {
         if (!isDouble) {
           OutRef<Boolean> x = new OutRef<>(false);
           apf.convert(APFloat.IEEEdouble, rmNearestTiesToEven, x);
-          ignored = x.get();
         }
         out.printf("0x%x", apf.bitcastToAPInt().getZExtValue());
         return;
@@ -1041,8 +1039,9 @@ public class AssemblyWriter {
     // Print the ... for variadic function.
     if (f.isVarArg()) {
       if (ft.getNumParams() != 0)
-        out.print(",...");
-      out.print("...");
+        out.print(", ...");
+      else
+        out.print("...");
     }
 
     out.print(')');
@@ -1138,7 +1137,7 @@ public class AssemblyWriter {
       annotationWriter.emitInstructionAnnot(inst, out);
 
     // print out indentation for each instruction.
-    out.print(' ');
+    out.print("  ");
 
     if (inst.hasName()) {
       printLLVMName(out, inst);
@@ -1338,10 +1337,10 @@ public class AssemblyWriter {
     int align = 0;
     if (inst instanceof LoadInst
         && (align = ((LoadInst) inst).getAlignment()) != 0) {
-      out.printf(" ,align %d", align);
+      out.printf(", align %d", align);
     } else if (inst instanceof StoreInst
         && (align = ((StoreInst) inst).getAlignment()) != 0) {
-      out.printf(" ,align %d", align);
+      out.printf(", align %d", align);
     }
     // Print metadata information.
     ArrayList<Pair<Integer, MDNode>> instMD = new ArrayList<>();
@@ -1379,14 +1378,14 @@ public class AssemblyWriter {
 
   public void printModule(Module m) {
     if (m.getModuleIdentifier() != null && !m.getModuleIdentifier().isEmpty()) {
-      out.printf(";ModuleID = '%s'\n", m.getModuleIdentifier());
+      out.printf("; ModuleID = '%s'\n", m.getModuleIdentifier());
     }
 
     if (m.getDataLayout() != null && !m.getDataLayout().isEmpty()) {
       out.printf("target datalayout = \"%s\"\n", m.getDataLayout());
     }
     if (m.getTargetTriple() != null && !m.getTargetTriple().isEmpty()) {
-      out.printf("target triple = \"%s\"\n", m.getTargetTriple());
+      out.printf("target triple = \"%s\"\n\n", m.getTargetTriple());
     }
     if (m.getModuleInlineAsm() != null && !m.getModuleInlineAsm().isEmpty()) {
       String[] temp = m.getModuleInlineAsm().split("\\n");
@@ -1490,7 +1489,7 @@ public class AssemblyWriter {
     ConstantInt ci = (ConstantInt) node.getOperand(0);
     APInt val = ci.getValue();
     APInt tag = val.and(new APInt(val.getBitWidth(), Dwarf.LLVMDebugVersionMask).not());
-    if (val.ult(Dwarf.LLVMDebugVersionMask))
+    if (val.ult(Dwarf.LLVMDebugVersion))
       return;
 
     out.padToColumn(50);

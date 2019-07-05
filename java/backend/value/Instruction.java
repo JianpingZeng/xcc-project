@@ -522,7 +522,7 @@ public abstract class Instruction extends User {
   }
 
   public void getAllMetadata(ArrayList<Pair<Integer, MDNode>> result) {
-    if (hasMetadataHashEntry) {
+    if (hasMetadata()) {
       result.clear();
       // Handle 'dbg' as a special case since it is not stored in the hash table.
       if (!dbgLoc.isUnknown()) {

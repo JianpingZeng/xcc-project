@@ -48,7 +48,7 @@ public class AllocationInst extends Instruction.UnaryInstruction {
 
   public void setAlignment(int align) {
     Util.assertion((align & (align - 1)) == 0, "Alignment is not a power of 2");
-    this.align = Util.log2(align) + 1;
+    this.align = align;
   }
 
   public int getAlignment() {
