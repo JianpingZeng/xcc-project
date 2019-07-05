@@ -74,7 +74,8 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
    */
   private LLVMContext context;
 
-  public Type(int typeID) {
+  public Type(LLVMContext ctx, int typeID) {
+    context = ctx;
     id = typeID;
     isAbstract = false;
     abstractTypeUsers = new LinkedList<>();
@@ -170,7 +171,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isIntegral() {
-    return isIntegerTy() || this == LLVMContext.Int1Ty;
+    return isIntegerTy() || this == Type.getInt1Ty(getContext());
   }
 
   public boolean isPrimitiveType() {
@@ -386,7 +387,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   public static Type getX86_FP80Ty(LLVMContext ctx) { return ctx.X86_FP80Ty; }
   public static Type getFP128Ty(LLVMContext ctx) { return ctx.FP128Ty; }
   public static Type getPPC_FP128Ty(LLVMContext ctx) { return ctx.PPC_FP128Ty; }
-  public static Type getIntNTy(LLVMContext ctx, int bits) { return IntegerType.get(bits); }
+  public static Type getIntNTy(LLVMContext ctx, int bits) { return new IntegerType(ctx, bits); }
   public static Type getInt1Ty(LLVMContext ctx) { return ctx.Int1Ty; }
   public static Type getInt8Ty(LLVMContext ctx) { return ctx.Int8Ty; }
   public static Type getInt16Ty(LLVMContext ctx) { return ctx.Int16Ty; }

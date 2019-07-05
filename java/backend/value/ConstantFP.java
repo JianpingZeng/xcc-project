@@ -47,35 +47,35 @@ public class ConstantFP extends Constant {
   }
 
   private static FltSemantics typeToFloatSemantics(Type ty) {
-    if (ty.equals(LLVMContext.FloatTy))
+    if (ty.equals(Type.getFloatTy(ty.getContext())))
       return APFloat.IEEEsingle;
-    if (ty.equals(LLVMContext.DoubleTy))
+    if (ty.equals(Type.getDoubleTy(ty.getContext())))
       return APFloat.IEEEdouble;
-    if (ty.equals(LLVMContext.X86_FP80Ty))
+    if (ty.equals(Type.getX86_FP80Ty(ty.getContext())))
       return APFloat.x87DoubleExtended;
-    if (ty.equals(LLVMContext.FP128Ty))
+    if (ty.equals(Type.getFP128Ty(ty.getContext())))
       return APFloat.IEEEquad;
 
     Util.assertion("Unknown FP format");
     return null;
   }
 
-  public static Constant get(Type ty, double v) {
+  public static Constant get(LLVMContext context, Type ty, double v) {
     APFloat fv = new APFloat(v);
     OutRef<Boolean> ignored = new OutRef<>();
     fv.convert(typeToFloatSemantics(ty.getScalarType()),
         rmNearestTiesToEven, ignored);
 
-    return get(fv);
+    return get(context, fv);
   }
 
   public static ConstantFP get(Type ty, APFloat v) {
     return new ConstantFP(ty, v);
   }
 
-  public static ConstantFP get(APFloat flt) {
+  public static ConstantFP get(LLVMContext context, APFloat flt) {
     APFloatKeyType key = new APFloatKeyType(flt);
-    return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
+    return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(context, key);
   }
 
   @Override
@@ -145,7 +145,7 @@ public class ConstantFP extends Constant {
   public static ConstantFP getNegativeZero(Type type) {
     APFloat opf = ((ConstantFP) Constant.getNullValue(type)).getValueAPF();
     opf.changeSign();
-    return get(opf);
+    return get(type.getContext(), opf);
   }
 
   public static Value getZeroValueForNegation(Type type) {

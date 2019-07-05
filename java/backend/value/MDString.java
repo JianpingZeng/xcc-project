@@ -18,6 +18,7 @@
 package backend.value;
 
 import backend.support.LLVMContext;
+import backend.type.Type;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 import static backend.value.ValueKind.MDStringVal;
@@ -29,13 +30,13 @@ import static backend.value.ValueKind.MDStringVal;
 public class MDString extends Value {
   private String name;
 
-  MDString(String str) {
-    super(LLVMContext.LabelTy, MDStringVal);
+  MDString(LLVMContext context, String str) {
+    super(Type.getMetadataTy(context), MDStringVal);
     name = str;
   }
 
-  public static MDString get(String name) {
-    return getUniqueImpl().getOrCreate(name);
+  public static MDString get(LLVMContext context, String name) {
+    return getUniqueImpl().getOrCreate(context, name);
   }
 
   public String getString() {

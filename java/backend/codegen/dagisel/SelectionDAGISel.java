@@ -1619,7 +1619,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       ArrayList<EVT> vts = new ArrayList<>();
       computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
-        Type argTy = vt.getTypeForEVT();
+        Type argTy = vt.getTypeForEVT(dag.getContext());
         ArgFlagsTy flags = new ArgFlagsTy();
         int originalAlign = td.getABITypeAlignment(argTy);
 
@@ -1647,7 +1647,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           flags.setNest();
         flags.setOrigAlign(originalAlign);
 
-        EVT registerVT = tli.getRegisterType(vt);
+        EVT registerVT = tli.getRegisterType(dag.getContext(), vt);
         int numRegs = tli.getNumRegisters(registerVT);
         for (int i = 0; i < numRegs; i++) {
           InputArg myArgs = new InputArg(flags, registerVT, isArgUseEmpty);
@@ -1679,7 +1679,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       ArrayList<EVT> vts = new ArrayList<>();
       computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
-        EVT partVT = tli.getRegisterType(vt);
+        EVT partVT = tli.getRegisterType(dag.getContext(), vt);
         int numParts = tli.getNumRegisters(partVT);
         if (!arg.isUseEmpty()) {
           int op = ISD.DELETED_NODE;

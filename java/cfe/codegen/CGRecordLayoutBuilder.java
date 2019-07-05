@@ -16,8 +16,8 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
 import backend.type.ArrayType;
+import backend.type.Type;
 import cfe.sema.ASTRecordLayout;
 import cfe.sema.Decl;
 import tools.Pair;
@@ -313,7 +313,7 @@ public class CGRecordLayoutBuilder {
   private void appendBytes(long numBytes) {
     if (numBytes <= 0)
       return;
-    backend.type.Type ty = LLVMContext.Int8Ty;
+    backend.type.Type ty = Type.getInt8Ty(types.getLLVMContext());
     if (numBytes > 1)
       ty = ArrayType.get(ty, numBytes);
 
@@ -357,7 +357,7 @@ public class CGRecordLayoutBuilder {
 
     builder.layout(d);
 
-    backend.type.Type ty = backend.type.StructType.get(builder.fieldTypes, builder.packed);
+    backend.type.Type ty = backend.type.StructType.get(types.getLLVMContext(), builder.fieldTypes, builder.packed);
     Util.assertion(types.getContext().getASTRecordLayout(d).getSize() / 8 == types.getTargetData().getTypeAllocSize(ty), "Type size mismatch");
 
 

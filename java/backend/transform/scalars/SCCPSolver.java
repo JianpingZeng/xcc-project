@@ -301,7 +301,7 @@ public class SCCPSolver implements InstVisitor<Void> {
           return res;
         } else {
           Constant cond = ls.getConstVal();
-          int targetIdx = cond.equals(ConstantInt.getFalse()) ? 1 : 0;
+          int targetIdx = cond.equals(ConstantInt.getFalse(ti.getContext())) ? 1 : 0;
           res.add(bi.getSuccessor(targetIdx));
           return res;
         }
@@ -638,7 +638,7 @@ public class SCCPSolver implements InstVisitor<Void> {
         return true;
       if (ls.isConstant()) {
         Constant cond = ls.getConstVal();
-        return bi.getSuccessor(cond.equals(ConstantInt.getFalse()) ? 1 : 0).equals(to);
+        return bi.getSuccessor(cond.equals(ConstantInt.getFalse(from.getContext())) ? 1 : 0).equals(to);
       } else
         return false;
 

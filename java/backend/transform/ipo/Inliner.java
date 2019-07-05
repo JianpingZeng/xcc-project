@@ -164,6 +164,7 @@ public abstract class Inliner extends CallGraphSCCPass {
   private static boolean inlineFunction(CallSite cs, CallGraph cg, TargetData td) {
     CallInst ci = cs.getInstruction();
     BasicBlock origBB = ci.getParent();
+    LLVMContext context = ci.getContext();
 
     Util.assertion(origBB != null && origBB.getParent() != null,
         "call instruction is not in function?");
@@ -195,7 +196,7 @@ public abstract class Inliner extends CallGraphSCCPass {
       if (cs.paramHasAttr(argIdx + 1, Attribute.ByVal) &&
           !callee.onlyReadsMemory()) {
         Type aggTy = ((PointerType) param.getType()).getElementType();
-        Type voidPtrTy = PointerType.getUnqual(LLVMContext.Int8Ty);
+        Type voidPtrTy = PointerType.getUnqual(Type.getInt8Ty(context));
 
         int align = 1;
         if (td != null)
@@ -203,20 +204,20 @@ public abstract class Inliner extends CallGraphSCCPass {
         Value newAlloca = new AllocaInst(aggTy, null, align,
             param.getName(), caller.getEntryBlock().getFirstInst());
         ;
-        Type[] tys = {LLVMContext.Int64Ty};
+        Type[] tys = {Type.getInt64Ty(context)};
 
-        Function memcpy = Intrinsic.getDeclaration(m, Intrinsic.ID.memcpy, tys);
+        Function memcpy = Intrinsic.getDeclaration(context, m, Intrinsic.ID.memcpy, tys);
         // converting the type of newAlloca and actual argument into void pointer.
         BitCastInst destPtr = new BitCastInst(newAlloca, voidPtrTy, "tmpdest", ci);
         BitCastInst srcPtr = new BitCastInst(actual, voidPtrTy, "tmpsrc", ci);
 
         Value size = null;
         if (td != null)
-          size = ConstantInt.get(LLVMContext.Int64Ty, td.getTypeAllocSize(aggTy));
+          size = ConstantInt.get(Type.getInt64Ty(context), td.getTypeAllocSize(aggTy));
         else
           size = ConstantExpr.getSizeOf(aggTy);
 
-        Value[] callArgs = {destPtr, srcPtr, size, ConstantInt.get(LLVMContext.Int32Ty, 1)};
+        Value[] callArgs = {destPtr, srcPtr, size, ConstantInt.get(Type.getInt32Ty(context), 1)};
         CallInst memcpyCallInst = new CallInst(callArgs, memcpy, "", ci);
 
         if (cg != null) {
@@ -260,8 +261,8 @@ public abstract class Inliner extends CallGraphSCCPass {
     // If the inlined code contained dynamic alloca instructions, wrap the inlined
     // code with llvm.stacksave/llvm.stackrestore intrinsics.
     if (inlinedFunctionInfo.containsDynamicAllocas) {
-      Constant stackSave = Intrinsic.getDeclaration(m, Intrinsic.ID.stacksave);
-      Constant stackRestore = Intrinsic.getDeclaration(m, Intrinsic.ID.stackrestore);
+      Constant stackSave = Intrinsic.getDeclaration(context, m, Intrinsic.ID.stacksave);
+      Constant stackRestore = Intrinsic.getDeclaration(context, m, Intrinsic.ID.stackrestore);
 
       CallGraphNode stackSaveNode = null, stackRestoreNode = null, callerNode = null;
       if (cg != null) {
@@ -350,7 +351,7 @@ public abstract class Inliner extends CallGraphSCCPass {
     // We want to clone the entire callee function into the hole between the
     // "starter" and "ender" blocks.  How we accomplish this depends on whether
     // this is an invoke instruction or a call instruction.
-    BasicBlock afterCallBlock = origBB.splitBasicBlock(ci, origBB.getName() + ".exit");
+    BasicBlock afterCallBlock = origBB.splitBasicBlock(context, ci, origBB.getName() + ".exit");
     TerminatorInst ti = origBB.getTerminator();
     Util.assertion(ti != null && ti instanceof BranchInst);
     BranchInst br = (BranchInst) ti;
@@ -364,7 +365,7 @@ public abstract class Inliner extends CallGraphSCCPass {
         retPN = new PhiNode(ci.getType(), returns.size(), "ret.phi",
             afterCallBlock.getFirstInst());
         ci.replaceAllUsesWith(retPN);
-        new ReturnInst(retPN, "phi.ret", afterCallBlock);
+        new ReturnInst(context, retPN, "phi.ret", afterCallBlock);
       }
       if (retPN != null) {
         for (Instruction ret : returns) {
@@ -388,7 +389,7 @@ public abstract class Inliner extends CallGraphSCCPass {
       // if there is not return instruction in callee, but the call to callee has been used by
       // instruction, so that we should replace call with UndefValue.
       ci.replaceAllUsesWith(UndefValue.get(ci.getType()));
-      new ReturnInst(afterCallBlock);
+      new ReturnInst(context, afterCallBlock);
     }
 
     // reaches here, we should delete the call instruction.

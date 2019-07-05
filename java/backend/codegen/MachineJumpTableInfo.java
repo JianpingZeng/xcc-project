@@ -18,7 +18,6 @@
 package backend.codegen;
 
 import backend.target.TargetData;
-import backend.type.IntegerType;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -115,7 +114,7 @@ public class MachineJumpTableInfo {
       case EK_GPRel32BlockAddress:
       case EK_LabelDifference32:
       case EK_Custom32:
-        return td.getABITypeAlignment(IntegerType.get(32));
+        return td.getABITypeAlignment(32);
       default:
         Util.shouldNotReachHere("unknown jump table encoding!");
         return ~0;

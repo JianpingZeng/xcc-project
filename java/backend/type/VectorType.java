@@ -57,7 +57,7 @@ public class VectorType extends SequentialType {
   private long numElts;
 
   protected VectorType(Type eleType, long numEles) {
-    super(VectorTyID, eleType);
+    super(eleType.getContext(), VectorTyID, eleType);
     this.numElts = numEles;
     setAbstract(eleType.isAbstract);
     Util.assertion(numEles > 0);
@@ -76,20 +76,20 @@ public class VectorType extends SequentialType {
 
   public static VectorType getInteger(VectorType vty) {
     int eltBits = vty.getElementType().getPrimitiveSizeInBits();
-    Type eleTy = IntegerType.get(eltBits);
+    Type eleTy = Type.getIntNTy(vty.getContext(), eltBits);
     return get(eleTy, vty.getNumElements());
   }
 
   public static VectorType getExtendedElementVectorType(VectorType vty) {
     int eltBits = vty.getElementType().getPrimitiveSizeInBits();
-    Type eleTy = IntegerType.get(eltBits * 2);
+    Type eleTy = Type.getIntNTy(vty.getContext(), eltBits*2);
     return get(eleTy, vty.getNumElements());
   }
 
   public static VectorType getTruncatedElementVectorType(VectorType vty) {
     int eltBits = vty.getElementType().getPrimitiveSizeInBits();
     Util.assertion((eltBits & 1) == 0);
-    Type eleTy = IntegerType.get(eltBits / 2);
+    Type eleTy = Type.getIntNTy(vty.getContext(), eltBits/2);
     return get(eleTy, vty.getNumElements());
   }
 

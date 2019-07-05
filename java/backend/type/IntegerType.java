@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import tools.APInt;
 import tools.Util;
 
@@ -30,16 +31,10 @@ public class IntegerType extends DerivedType {
   public static final int MIN_INT_BITS = 1;
   public static final int MAX_INT_BITS = (1 << 23) - 1;
 
-  private static final IntegerType Int1Ty = new IntegerType(1);
-  private static final IntegerType Int8Ty = new IntegerType(8);
-  private static final IntegerType Int16Ty = new IntegerType(16);
-  private static final IntegerType Int32Ty = new IntegerType(32);
-  private static final IntegerType Int64Ty = new IntegerType(64);
-
   private static HashMap<Integer, IntegerType> typeCaChes = new HashMap<>();
 
-  private IntegerType(int numBits) {
-    super(IntegerTyID);
+  public IntegerType(LLVMContext ctx, int numBits) {
+    super(ctx, IntegerTyID);
     this.numBits = numBits;
   }
 
@@ -47,27 +42,27 @@ public class IntegerType extends DerivedType {
     return true;
   }
 
-  public static IntegerType get(int numBits) {
+  public static IntegerType get(LLVMContext ctx, int numBits) {
     Util.assertion(numBits >= MIN_INT_BITS, "bitwidth too small!");
     Util.assertion(numBits <= MAX_INT_BITS, "bitwidth too large!");
 
     switch (numBits) {
       case 1:
-        return Int1Ty;
+        return (IntegerType) Type.getInt1Ty(ctx);
       case 8:
-        return Int8Ty;
+        return (IntegerType) Type.getInt8Ty(ctx);
       case 16:
-        return Int16Ty;
+        return (IntegerType) Type.getInt16Ty(ctx);
       case 32:
-        return Int32Ty;
+        return (IntegerType) Type.getInt32Ty(ctx);
       case 64:
-        return Int64Ty;
+        return (IntegerType) Type.getInt64Ty(ctx);
     }
 
     if (typeCaChes.containsKey(numBits))
       return typeCaChes.get(numBits);
 
-    IntegerType itt = new IntegerType(numBits);
+    IntegerType itt = new IntegerType(ctx, numBits);
     typeCaChes.put(numBits, itt);
     return itt;
   }

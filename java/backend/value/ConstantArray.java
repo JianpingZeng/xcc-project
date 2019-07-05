@@ -2,6 +2,7 @@ package backend.value;
 
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
+import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.ConstantArrayKey;
 import tools.Util;
 
@@ -47,16 +48,16 @@ public class ConstantArray extends Constant {
    * @param addNull
    * @return
    */
-  public static Constant get(String str, boolean addNull) {
+  public static Constant get(LLVMContext ctx, String str, boolean addNull) {
     ArrayList<Constant> eltVals = new ArrayList<>(32);
     for (int i = 0; i < str.length(); i++)
-      eltVals.add(ConstantInt.get(LLVMContext.Int8Ty, str.charAt(i)));
+      eltVals.add(ConstantInt.get(Type.getInt8Ty(ctx), str.charAt(i)));
 
     // Add a null terminator into eltVals if addNull is true.
     if (addNull)
-      eltVals.add(ConstantInt.get(LLVMContext.Int8Ty, 0));
+      eltVals.add(ConstantInt.get(Type.getInt8Ty(ctx), 0));
 
-    ArrayType aty = ArrayType.get(LLVMContext.Int8Ty, eltVals.size());
+    ArrayType aty = ArrayType.get(Type.getInt8Ty(ctx), eltVals.size());
     return get(aty, eltVals);
   }
 
@@ -98,7 +99,7 @@ public class ConstantArray extends Constant {
    * @return
    */
   public boolean isString() {
-    if (getType().getElementType() != LLVMContext.Int8Ty)
+    if (getType().getElementType().isIntegerTy(8))
       return false;
 
     for (int i = 0, e = getNumOfOperands(); i < e; i++)

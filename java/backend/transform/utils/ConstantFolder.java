@@ -176,9 +176,9 @@ public final class ConstantFolder {
         return Constant.getNullValue(destTy);
       return UndefValue.get(destTy);
     }
+    LLVMContext context = destTy.getContext();
 
-    if (val.getType().equals(LLVMContext.FP128Ty) ||
-        destTy.equals(LLVMContext.FP128Ty))
+    if (val.getType().isFP128Ty() || destTy.isFP128Ty())
       return null;
 
     switch (opc) {
@@ -188,13 +188,13 @@ public final class ConstantFolder {
           ConstantFP fp = (ConstantFP) val;
           OutRef<Boolean> ignored = new OutRef<>(false);
           APFloat v = fp.getValueAPF();
-          v.convert(destTy.equals(LLVMContext.FloatTy) ? APFloat.IEEEsingle :
-                  destTy.equals(LLVMContext.DoubleTy) ? APFloat.IEEEdouble :
-                      destTy.equals(LLVMContext.X86_FP80Ty) ? APFloat.x87DoubleExtended :
-                          destTy.equals(LLVMContext.FP128Ty) ? APFloat.IEEEquad :
+          v.convert(destTy.isFloatTy() ? APFloat.IEEEsingle :
+              destTy.isDoubleTy() ? APFloat.IEEEdouble :
+                  destTy.isX86_FP80Ty() ? APFloat.x87DoubleExtended :
+                      destTy.isFP128Ty() ? APFloat.IEEEquad :
                               APFloat.Bogus, APFloat.RoundingMode.rmNearestTiesToEven,
               ignored);
-          return ConstantFP.get(v);
+          return ConstantFP.get(context, v);
         }
         return null;    // can't fold.
     }
@@ -215,27 +215,28 @@ public final class ConstantFolder {
     if (c1 instanceof ConstantInt && c2 instanceof ConstantInt) {
       APInt v1 = ((ConstantInt) c1).getValue();
       APInt v2 = ((ConstantInt) c2).getValue();
+      Type int1Ty = Type.getInt1Ty(c1.getContext()); 
       switch (predicate) {
         case ICMP_EQ:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.eq(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.eq(v2) ? 1 : 0);
         case ICMP_NE:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.ne(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.ne(v2) ? 1 : 0);
         case ICMP_SLT:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.slt(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.slt(v2) ? 1 : 0);
         case ICMP_SGT:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.sgt(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.sgt(v2) ? 1 : 0);
         case ICMP_SLE:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.sle(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.sle(v2) ? 1 : 0);
         case ICMP_SGE:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.sge(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.sge(v2) ? 1 : 0);
         case ICMP_ULT:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.ult(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.ult(v2) ? 1 : 0);
         case ICMP_UGT:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.ugt(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.ugt(v2) ? 1 : 0);
         case ICMP_ULE:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.ule(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.ule(v2) ? 1 : 0);
         case ICMP_UGE:
-          return ConstantInt.get(LLVMContext.Int1Ty, v1.uge(v2) ? 1 : 0);
+          return ConstantInt.get(int1Ty, v1.uge(v2) ? 1 : 0);
       }
     }
     return null;
@@ -298,6 +299,7 @@ public final class ConstantFolder {
     // TODO constant folding on call instruction.
     String name = f.getName();
     Type ty = f.getReturnType();
+    LLVMContext context = ty.getContext();
 
     if (operands.size() == 1) {
       if (operands.get(0) instanceof ConstantFP) {
@@ -305,43 +307,43 @@ public final class ConstantFolder {
         double v = op.getValue();
         switch (name) {
           case "acos":
-            return ConstantFP.get(ty, Math.acos(v));
+            return ConstantFP.get(context, ty, Math.acos(v));
           case "asin":
-            return ConstantFP.get(ty, Math.asin(v));
+            return ConstantFP.get(context, ty, Math.asin(v));
           case "atan":
-            return ConstantFP.get(ty, Math.atan(v));
+            return ConstantFP.get(context, ty, Math.atan(v));
           case "ceil":
-            return ConstantFP.get(ty, Math.ceil(v));
+            return ConstantFP.get(context, ty, Math.ceil(v));
           case "cos":
-            return ConstantFP.get(ty, Math.cos(v));
+            return ConstantFP.get(context, ty, Math.cos(v));
           case "cosh":
-            return ConstantFP.get(ty, Math.cosh(v));
+            return ConstantFP.get(context, ty, Math.cosh(v));
           case "exp":
-            return ConstantFP.get(ty, Math.exp(v));
+            return ConstantFP.get(context, ty, Math.exp(v));
           case "fabs":
-            return ConstantFP.get(ty, Math.abs(v));
+            return ConstantFP.get(context, ty, Math.abs(v));
           case "log":
-            return ConstantFP.get(ty, Math.log(v));
+            return ConstantFP.get(context, ty, Math.log(v));
           case "log10":
-            return ConstantFP.get(ty, Math.log10(v));
+            return ConstantFP.get(context, ty, Math.log10(v));
           case "llvm.sqrt.f32":
           case "llvm.sqrt.f64":
             if (v >= -0.0)
-              return ConstantFP.get(ty, Math.sqrt(v));
+              return ConstantFP.get(context, ty, Math.sqrt(v));
             else
-              return ConstantFP.get(ty, 0.0);
+              return ConstantFP.get(context, ty, 0.0);
           case "sin":
-            return ConstantFP.get(ty, Math.sin(v));
+            return ConstantFP.get(context, ty, Math.sin(v));
           case "sinh":
-            return ConstantFP.get(ty, Math.sinh(v));
+            return ConstantFP.get(context, ty, Math.sinh(v));
           case "sqrt":
             if (v >= 0.0)
-              return ConstantFP.get(ty, Math.sqrt(v));
+              return ConstantFP.get(context, ty, Math.sqrt(v));
             break;
           case "tan":
-            return ConstantFP.get(ty, Math.tan(v));
+            return ConstantFP.get(context, ty, Math.tan(v));
           case "tanh":
-            return ConstantFP.get(ty, Math.tanh(v));
+            return ConstantFP.get(context, ty, Math.tanh(v));
           default:
             break;
         }
@@ -355,12 +357,12 @@ public final class ConstantFolder {
 
           if (name.equals("pow")) {
             double res = Math.pow(op1Val, op2Val);
-            return ConstantFP.get(ty, res);
+            return ConstantFP.get(context, ty, res);
           } else if (name.equals("fmod")) {
             // TODO fmod intrisinc function.
             return null;
           } else if (name.equals("atan2")) {
-            return ConstantFP.get(ty, Math.atan2(op1Val, op2Val));
+            return ConstantFP.get(context, ty, Math.atan2(op1Val, op2Val));
           }
         }
       }

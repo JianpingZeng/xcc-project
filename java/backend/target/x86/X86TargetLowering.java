@@ -1170,7 +1170,7 @@ public class X86TargetLowering extends TargetLowering {
 
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
     CCState ccInfo = new CCState(callingConv, varArg, getTargetMachine(),
-        argLocs);
+        argLocs, dag.getContext());
     ccInfo.analyzeFormalArguments(ins, ccAssignFnForNode(callingConv));
 
     int lastVal = ~0;
@@ -1501,7 +1501,7 @@ public class X86TargetLowering extends TargetLowering {
                              ArrayList<OutputArg> outs,
                              SelectionDAG dag) {
     ArrayList<CCValAssign> rvLocs = new ArrayList<>();
-    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs,dag.getContext());
     ccInfo.analyzeReturn(outs, RetCC_X86);
     MachineFunction mf = dag.getMachineFunction();
     if (mf.getMachineRegisterInfo().isLiveOutEmpty()) {
@@ -1595,8 +1595,7 @@ public class X86TargetLowering extends TargetLowering {
 
   @Override
   public boolean isZExtFree(Type ty1, Type ty2) {
-    return ty1.equals(LLVMContext.Int32Ty) &&
-        ty2.equals(LLVMContext.Int64Ty) && subtarget.is64Bit();
+    return ty1.isIntegerTy(32) && ty2.isIntegerTy(64) && subtarget.is64Bit();
   }
 
   @Override
@@ -1636,7 +1635,7 @@ public class X86TargetLowering extends TargetLowering {
     Util.assertion(!(isVarArg && cc == CallingConv.Fast), "Var args not supported with calling convention fastcc!");
 
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
-    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), argLocs);
+    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), argLocs, dag.getContext());
     ccInfo.analyzeCallOperands(outs, ccAssignFnForNode(cc));
 
     int numBytes = ccInfo.getNextStackOffset();
@@ -1874,7 +1873,7 @@ public class X86TargetLowering extends TargetLowering {
     if (isTailCall) {
       if (mf.getMachineRegisterInfo().isLiveOutEmpty()) {
         ArrayList<CCValAssign> rvLocs = new ArrayList<>();
-        ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+        ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs, dag.getContext());
         ccInfo.analyzeCallResult(ins, RetCC_X86);
         for (CCValAssign va : rvLocs) {
           if (va.isRegLoc())
@@ -1914,7 +1913,7 @@ public class X86TargetLowering extends TargetLowering {
                                   ArrayList<SDValue> inVals) {
     ArrayList<CCValAssign> rvLocs = new ArrayList<>();
     boolean is64Bit = subtarget.is64Bit();
-    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs);
+    CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), rvLocs, dag.getContext());
     ccInfo.analyzeCallResult(ins, RetCC_X86);
 
     for (int i = 0, e = rvLocs.size(); i < e; i++) {
@@ -3811,17 +3810,51 @@ public class X86TargetLowering extends TargetLowering {
    * @return
    */
   private SDValue lowerUINT_TO_FP_i64(SDValue op, SelectionDAG dag) {
+    // This algorithm is not obvious. Here it is in C code, more or less:
+  /*
+    double uint64_to_double( uint32_t hi, uint32_t lo ) {
+      static const __m128i exp = { 0x4330000045300000ULL, 0 };
+      static const __m128d bias = { 0x1.0p84, 0x1.0p52 };
+
+      // Copy ints to xmm registers.
+      __m128i xh = _mm_cvtsi32_si128( hi );
+      __m128i xl = _mm_cvtsi32_si128( lo );
+
+      // Combine into low half of a single xmm register.
+      __m128i x = _mm_unpacklo_epi32( xh, xl );
+      __m128d d;
+      double sd;
+
+      // Merge in appropriate exponents to give the integer bits the right
+      // magnitude.
+      x = _mm_unpacklo_epi32( x, exp );
+
+      // Subtract away the biases to deal with the IEEE-754 double precision
+      // implicit 1.
+      d = _mm_sub_pd( (__m128d) x, bias );
+
+      // All conversions up to here are exact. The correctly rounded result is
+      // calculated using the current rounding mode using the following
+      // horizontal add.
+      d = _mm_add_sd( d, _mm_unpackhi_pd( d, d ) );
+      _mm_store_sd( &sd, d );   // Because we are returning doubles in XMM, this
+                                // store doesn't really need to be here (except
+                                // maybe to zero the other double)
+      return sd;
+    }
+  */
+    LLVMContext context = dag.getContext();
     ArrayList<Constant> cs = new ArrayList<>();
-    cs.add(ConstantInt.get(new APInt(32, 0x45300000)));
-    cs.add(ConstantInt.get(new APInt(32, 0x43300000)));
-    cs.add(ConstantInt.get(new APInt(32, 0)));
-    cs.add(ConstantInt.get(new APInt(32, 0)));
+    cs.add(ConstantInt.get(context, new APInt(32, 0x45300000)));
+    cs.add(ConstantInt.get(context, new APInt(32, 0x43300000)));
+    cs.add(ConstantInt.get(context, new APInt(32, 0)));
+    cs.add(ConstantInt.get(context, new APInt(32, 0)));
     Constant cv = ConstantVector.get(cs);
     SDValue cpIdx0 = dag.getConstantPool(cv, new EVT(getPointerTy()), 16,
         0, false, 0);
     ArrayList<Constant> cv1 = new ArrayList<>();
-    cv1.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, 0x4530000000000000L))));
-    cv1.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, 0x4330000000000000L))));
+    cv1.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, 0x4530000000000000L))));
+    cv1.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, 0x4330000000000000L))));
     Constant c1 = ConstantVector.get(cv1);
     SDValue cpIdx1 = dag.getConstantPool(c1, new EVT(getPointerTy()), 16,
         0, false, 0);
@@ -3968,11 +4001,11 @@ public class X86TargetLowering extends TargetLowering {
 
     ArrayList<Constant> cs = new ArrayList<>();
     if (eltVT.equals(new EVT(MVT.f64))) {
-      ConstantFP fp = backend.value.ConstantFP.get(new APFloat(new APInt(64, ~(1L << 63))));
+      ConstantFP fp = backend.value.ConstantFP.get(dag.getContext(), new APFloat(new APInt(64, ~(1L << 63))));
       cs.add(fp);
       cs.add(fp);
     } else {
-      ConstantFP fp = backend.value.ConstantFP.get(new APFloat(new APInt(32, ~(1 << 31))));
+      ConstantFP fp = backend.value.ConstantFP.get(dag.getContext(), new APFloat(new APInt(32, ~(1 << 31))));
       cs.add(fp);
       cs.add(fp);
       cs.add(fp);
@@ -3997,11 +4030,11 @@ public class X86TargetLowering extends TargetLowering {
 
     ArrayList<Constant> cs = new ArrayList<>();
     if (eltVT.equals(new EVT(MVT.f64))) {
-      ConstantFP fp = backend.value.ConstantFP.get(new APFloat(new APInt(64, 1L << 63)));
+      ConstantFP fp = backend.value.ConstantFP.get(dag.getContext(), new APFloat(new APInt(64, 1L << 63)));
       cs.add(fp);
       cs.add(fp);
     } else {
-      ConstantFP fp = backend.value.ConstantFP.get(new APFloat(new APInt(32, 1 << 31)));
+      ConstantFP fp = backend.value.ConstantFP.get(dag.getContext(), new APFloat(new APInt(32, 1 << 31)));
       cs.add(fp);
       cs.add(fp);
       cs.add(fp);
@@ -4036,15 +4069,16 @@ public class X86TargetLowering extends TargetLowering {
       op1 = dag.getNode(ISD.FP_ROUND, vt, op1, dag.getIntPtrConstant(1));
       srcVT = vt;
     }
+    LLVMContext context = dag.getContext();
     ArrayList<Constant> cs = new ArrayList<>();
     if (srcVT.equals(new EVT(MVT.f64))) {
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, 1L << 63))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, 1L << 63))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, 0))));
     } else {
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 1 << 31))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 1 << 31))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
     }
 
     Constant c = ConstantVector.get(cs);
@@ -4063,13 +4097,13 @@ public class X86TargetLowering extends TargetLowering {
     }
     cs.clear();
     if (vt.getSimpleVT().simpleVT == MVT.f64) {
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, ~(1L << 63)))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(64, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, ~(1L << 63)))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(64, 0))));
     } else {
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, ~(1 << 31)))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
-      cs.add(backend.value.ConstantFP.get(new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, ~(1 << 31)))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
+      cs.add(backend.value.ConstantFP.get(context, new APFloat(new APInt(32, 0))));
     }
     c = ConstantVector.get(cs);
     cpIndex = dag.getConstantPool(c, new EVT(getPointerTy()), 16, 0, false, 0);
@@ -4726,7 +4760,7 @@ public class X86TargetLowering extends TargetLowering {
     Value sv = ((SrcValueSDNode) op.getOperand(2).getNode()).getValue();
     int align = (int) op.getConstantOperandVal(3);
     EVT argVT = op.getNode().getValueType(0);
-    Type argTy = argVT.getTypeForEVT();
+    Type argTy = argVT.getTypeForEVT(dag.getContext());
     int argSize = (int) getTargetData().getTypeAllocSize(argTy);
     int argNode = 0;
     if (argVT.equals(new EVT(MVT.f80))) {

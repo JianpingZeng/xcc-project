@@ -23,7 +23,6 @@ import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
-import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.transform.utils.PromoteMemToReg;
 import backend.type.ArrayType;
@@ -222,7 +221,7 @@ public final class SROA implements FunctionPass {
           } else {
             String name = gep.getName();
             ArrayList<Value> args = new ArrayList<>();
-            args.add(ConstantInt.getNullValue(LLVMContext.Int64Ty));
+            args.add(ConstantInt.getNullValue(Type.getInt64Ty(f.getContext())));
             for (int i = 3, e = gep.getNumOfOperands(); i != e; i++)
               args.add(gep.operand(i));
 

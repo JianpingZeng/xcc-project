@@ -17,6 +17,7 @@ package backend.value;
  */
 
 import backend.support.LLVMContext;
+import backend.type.Type;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -30,27 +31,28 @@ import java.util.List;
 public final class NamedMDNode extends Value {
   private Module parent;
   private ArrayList<MDNode> operands;
-  private String name;
 
-  public NamedMDNode(String name, MDNode[] elts, Module m) {
-    this(name, Arrays.asList(elts), m);
+  public NamedMDNode(LLVMContext ctx, String name, MDNode[] elts, Module m) {
+    this(ctx, name, Arrays.asList(elts), m);
   }
 
-  public NamedMDNode(String name, List<MDNode> elts, Module m) {
-    super(LLVMContext.MetadataTy, ValueKind.NamedMDNodeVal);
+  public NamedMDNode(LLVMContext ctx, String name, List<MDNode> elts, Module m) {
+    super(Type.getMetadataTy(ctx), ValueKind.NamedMDNodeVal, name);
     parent = m;
     this.name = name;
     operands = new ArrayList<>();
     operands.addAll(elts);
   }
 
-  public NamedMDNode(String name) {
-    this(name, new ArrayList<>(), null);
+  public NamedMDNode(LLVMContext ctx, String name) {
+    this(ctx, name, new ArrayList<>(), null);
   }
 
-  public static NamedMDNode create(String name, ArrayList<MDNode> elts,
+  public static NamedMDNode create(LLVMContext ctx,
+                                   String name,
+                                   ArrayList<MDNode> elts,
                                    Module m) {
-    return new NamedMDNode(name, elts, m);
+    return new NamedMDNode(ctx, name, elts, m);
   }
 
   public int getNumOfOperands() {
@@ -64,5 +66,18 @@ public final class NamedMDNode extends Value {
 
   public void addOperand(MDNode n) {
     operands.add(n);
+  }
+
+  public void setOperand(int idx, MDNode node) {
+    Util.assertion(idx >= 0 && idx < getNumOfOperands());
+    operands.set(idx, node);
+  }
+
+  public void setParent(Module module) {
+    parent = module;
+  }
+
+  public Module getParent() {
+    return parent;
   }
 }

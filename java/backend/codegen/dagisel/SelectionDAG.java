@@ -74,7 +74,8 @@ public class SelectionDAG {
   private HashMap<EVT, SDNode> extendedValueTypeNodes = new HashMap<>();
   private ArrayList<SDNode> valueTypeNodes = new ArrayList<>();
   private HashMap<String, SDNode> externalSymbols = new HashMap<>();
-
+  private LLVMContext context;
+  
   public SelectionDAG(TargetLowering tl, FunctionLoweringInfo fli) {
     target = tl.getTargetMachine();
     tli = tl;
@@ -87,6 +88,10 @@ public class SelectionDAG {
     entryNode = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
     root = getEntryNode();
     add(entryNode);
+  }
+
+  public LLVMContext getContext() {
+    return context;
   }
 
   private void add(SDNode n) {
@@ -119,6 +124,7 @@ public class SelectionDAG {
   public void init(MachineFunction mf, MachineModuleInfo mmi) {
     this.mmi = mmi;
     this.mf = mf;
+    context = mf.getFunction().getContext();
   }
 
   public TargetMachine getTarget() {
@@ -212,13 +218,13 @@ public class SelectionDAG {
           node = new SDNode(opc, vtList, ops);
           break;
         case 1:
-          node = new SDNode.UnarySDNode(opc, vtList, ops[0]);
+          node = new UnarySDNode(opc, vtList, ops[0]);
           break;
         case 2:
-          node = new SDNode.BinarySDNode(opc, vtList, ops[0], ops[1]);
+          node = new BinarySDNode(opc, vtList, ops[0], ops[1]);
           break;
         case 3:
-          node = new SDNode.TernarySDNode(opc, vtList, ops[0], ops[1],
+          node = new TernarySDNode(opc, vtList, ops[0], ops[1],
               ops[2]);
           break;
       }
@@ -229,13 +235,13 @@ public class SelectionDAG {
           node = new SDNode(opc, vtList, ops);
           break;
         case 1:
-          node = new SDNode.UnarySDNode(opc, vtList, ops[0]);
+          node = new UnarySDNode(opc, vtList, ops[0]);
           break;
         case 2:
-          node = new SDNode.BinarySDNode(opc, vtList, ops[0], ops[1]);
+          node = new BinarySDNode(opc, vtList, ops[0], ops[1]);
           break;
         case 3:
-          node = new SDNode.TernarySDNode(opc, vtList, ops[0], ops[1],
+          node = new TernarySDNode(opc, vtList, ops[0], ops[1],
               ops[2]);
           break;
       }
@@ -530,10 +536,10 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new SDNode.UnarySDNode(opc, vts, op0);
+      node = new UnarySDNode(opc, vts, op0);
       cseMap.put(id, node);
     } else
-      node = new SDNode.UnarySDNode(opc, vts, op0);
+      node = new UnarySDNode(opc, vts, op0);
     add(node);
     return new SDValue(node, 0);
   }
@@ -798,10 +804,10 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new SDNode.BinarySDNode(opc, vts, op0, op1);
+      node = new BinarySDNode(opc, vts, op0, op1);
       cseMap.put(id, node);
     } else
-      node = new SDNode.BinarySDNode(opc, vts, op0, op1);
+      node = new BinarySDNode(opc, vts, op0, op1);
     add(node);
     return new SDValue(node, 0);
   }
@@ -886,10 +892,10 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new SDNode.TernarySDNode(opc, vts, op0, op1, op2);
+      node = new TernarySDNode(opc, vts, op0, op1, op2);
       cseMap.put(id, node);
     } else
-      node = new SDNode.TernarySDNode(opc, vts, op0, op1, op2);
+      node = new TernarySDNode(opc, vts, op0, op1, op2);
     add(node);
     return new SDValue(node, 0);
   }
@@ -951,7 +957,7 @@ public class SelectionDAG {
   }
 
   public SDValue getConstant(APInt val, EVT vt, boolean isTarget) {
-    return getConstant(ConstantInt.get(val), vt, isTarget);
+    return getConstant(ConstantInt.get(context, val), vt, isTarget);
   }
 
   public SDValue getTargetConstant(long val, EVT vt) {
@@ -1034,7 +1040,7 @@ public class SelectionDAG {
   }
 
   public SDValue getConstantFP(APFloat apf, EVT vt, boolean isTarget) {
-    return getConstantFP(ConstantFP.get(apf), vt, isTarget);
+    return getConstantFP(ConstantFP.get(context, apf), vt, isTarget);
   }
 
   public SDValue getConstantFP(ConstantFP val, EVT vt, boolean isTarget) {
@@ -1124,33 +1130,33 @@ public class SelectionDAG {
       case ISD.GlobalAddress:
       case ISD.TargetGlobalTLSAddress:
       case ISD.GlobalTLSAddress: {
-        SDNode.GlobalAddressSDNode addrNode = (SDNode.GlobalAddressSDNode) node;
+        GlobalAddressSDNode addrNode = (GlobalAddressSDNode) node;
         id.addInteger(addrNode.getGlobalValue().hashCode());
         id.addInteger(addrNode.getOffset());
         id.addInteger(addrNode.getTargetFlags());
         break;
       }
       case ISD.BasicBlock:
-        id.addInteger(((SDNode.BasicBlockSDNode) node).getBasicBlock().hashCode());
+        id.addInteger(((BasicBlockSDNode) node).getBasicBlock().hashCode());
         break;
       case ISD.Register:
-        id.addInteger(((SDNode.RegisterSDNode) node).getReg());
+        id.addInteger(((RegisterSDNode) node).getReg());
         break;
       case ISD.MEMOPERAND:
-        MachineMemOperand mo = ((SDNode.MemOperandSDNode) node).getMachineMemOperand();
+        MachineMemOperand mo = ((MemOperandSDNode) node).getMachineMemOperand();
         mo.profile(id);
         break;
       case ISD.FrameIndex:
       case ISD.TargetFrameIndex:
-        id.addInteger(((SDNode.FrameIndexSDNode) node).getFrameIndex());
+        id.addInteger(((FrameIndexSDNode) node).getFrameIndex());
         break;
       case ISD.JumpTable:
       case ISD.TargetJumpTable:
-        id.addInteger(((SDNode.JumpTableSDNode) node).getJumpTableIndex());
+        id.addInteger(((JumpTableSDNode) node).getJumpTableIndex());
         break;
       case ISD.ConstantPool:
       case ISD.TargetConstantPool: {
-        SDNode.ConstantPoolSDNode pool = (SDNode.ConstantPoolSDNode) node;
+        ConstantPoolSDNode pool = (ConstantPoolSDNode) node;
         id.addInteger(pool.getAlign());
         id.addInteger(pool.getOffset());
         if (pool.isMachineConstantPoolValue())
@@ -1161,13 +1167,13 @@ public class SelectionDAG {
         break;
       }
       case ISD.LOAD: {
-        SDNode.LoadSDNode load = (SDNode.LoadSDNode) node;
+        LoadSDNode load = (LoadSDNode) node;
         id.addInteger(load.getMemoryVT().getRawBits().hashCode());
         id.addInteger(load.getRawSubclassData());
         break;
       }
       case ISD.STORE: {
-        SDNode.StoreSDNode store = (SDNode.StoreSDNode) node;
+        StoreSDNode store = (StoreSDNode) node;
         id.addInteger(store.getMemoryVT().getRawBits().hashCode());
         id.addInteger(store.getRawSubclassData());
         break;
@@ -1184,7 +1190,7 @@ public class SelectionDAG {
       case ISD.ATOMIC_LOAD_MAX:
       case ISD.ATOMIC_LOAD_UMIN:
       case ISD.ATOMIC_LOAD_UMAX: {
-        SDNode.AtomicSDNode atomNode = (SDNode.AtomicSDNode) node;
+        AtomicSDNode atomNode = (AtomicSDNode) node;
         id.addInteger(atomNode.getMemoryVT().getRawBits().hashCode());
         id.addInteger(atomNode.getRawSubclassData());
         break;
@@ -1996,7 +2002,7 @@ public class SelectionDAG {
       return result;
 
     // emit a library call.
-    Type intPtrty = tli.getTargetData().getIntPtrType();
+    Type intPtrty = tli.getTargetData().getIntPtrType(context);
     ArrayList<ArgListEntry> args = new ArrayList<>();
     ArgListEntry entry = new ArgListEntry();
     entry.node = dst;
@@ -2010,7 +2016,7 @@ public class SelectionDAG {
 
     entry = new ArgListEntry();
     entry.node = src;
-    entry.ty = LLVMContext.Int32Ty;
+    entry.ty = Type.getInt32Ty(context);
     entry.isSExt = true;
     args.add(entry);
     entry = new ArgListEntry();
@@ -2020,7 +2026,7 @@ public class SelectionDAG {
     args.add(entry);
 
     Pair<SDValue, SDValue> callResult =
-        tli.lowerCallTo(chain, LLVMContext.VoidTy,
+        tli.lowerCallTo(context, chain, Type.getVoidTy(context),
             false, false, false, false, 0,
             tli.getLibCallCallingConv(RTLIB.MEMSET),
             false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMSET),
@@ -2867,7 +2873,7 @@ public class SelectionDAG {
   }
 
   public SDValue getSrcValue(Value val) {
-    Util.assertion(val == null || val.getType() instanceof backend.type.PointerType, "SrcValue is not a pointer!");
+    Util.assertion(val == null || val.getType() instanceof PointerType, "SrcValue is not a pointer!");
 
     FoldingSetNodeID compute = new FoldingSetNodeID();
     addNodeToIDNode(compute, ISD.SRCVALUE, getVTList(new EVT(MVT.Other)),
@@ -2930,7 +2936,7 @@ public class SelectionDAG {
   public SDValue createStackTemporary(EVT vt, int minAlign) {
     MachineFrameInfo mfi = mf.getFrameInfo();
     int byteSize = vt.getStoreSizeInBits() / 8;
-    Type ty = vt.getTypeForEVT();
+    Type ty = vt.getTypeForEVT(context);
     int stackAlign = Math
         .max(tli.getTargetData().getPrefTypeAlignment(ty), minAlign);
     int fi = mfi.createStackObject(byteSize, stackAlign);
@@ -2940,8 +2946,8 @@ public class SelectionDAG {
   public SDValue createStackTemporary(EVT vt1, EVT vt2) {
     int bytes = Math.max(vt1.getStoreSizeInBits(), vt2.getStoreSizeInBits())
         / 8;
-    Type t1 = vt1.getTypeForEVT();
-    Type t2 = vt2.getTypeForEVT();
+    Type t1 = vt1.getTypeForEVT(context);
+    Type t2 = vt2.getTypeForEVT(context);
     TargetData td = getTarget().getTargetData();
     int align = Math.max(td.getPrefTypeAlignment(t1), td.getPrefTypeAlignment(t2));
     MachineFrameInfo frameInfo = getMachineFunction().getFrameInfo();
@@ -3024,8 +3030,8 @@ public class SelectionDAG {
 
   private int getEVTAlignment(EVT vt) {
     Type ty = vt.equals(new EVT(MVT.iPTR)) ?
-        PointerType.get(LLVMContext.Int8Ty, 0) :
-        vt.getTypeForEVT();
+        PointerType.get(Type.getInt8Ty(context), 0) :
+        vt.getTypeForEVT(context);
     return tli.getTargetData().getABITypeAlignment(ty);
   }
 
@@ -3241,22 +3247,22 @@ public class SelectionDAG {
     ArrayList<ArgListEntry> args = new ArrayList<>();
 
     ArgListEntry entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = dst;
     args.add(entry);
 
     entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = src;
     args.add(entry);
 
     entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = size;
     args.add(entry);
 
-    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(chain,
-        LLVMContext.VoidTy,
+    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(context, chain,
+        Type.getVoidTy(context),
         false, false, false, false, 0,
         tli.getLibCallCallingConv(RTLIB.MEMCPY), false,
         false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMCPY),
@@ -3293,21 +3299,21 @@ public class SelectionDAG {
     // emit a library call.
     ArrayList<ArgListEntry> args = new ArrayList<>();
     ArgListEntry entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = dst;
     args.add(entry);
 
     entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = src;
     args.add(entry);
 
     entry = new ArgListEntry();
-    entry.ty = tli.getTargetData().getIntPtrType();
+    entry.ty = tli.getTargetData().getIntPtrType(context);
     entry.node = size;
     args.add(entry);
 
-    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(chain, LLVMContext.VoidTy,
+    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(context, chain, Type.getVoidTy(context),
         false, false, false, false, 0, tli.getLibCallCallingConv(RTLIB.MEMMOVE),
         false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMMOVE),
             new EVT(tli.getPointerTy())), args, this);
@@ -3396,7 +3402,7 @@ public class SelectionDAG {
             dstVal, (int) (dstValOff + dstValOff),
             false, destAlign);
       } else {
-        EVT nvt = tli.getTypeToTransformTo(vt);
+        EVT nvt = tli.getTypeToTransformTo(context, vt);
         Util.assertion(nvt.bitsGE(vt));
         value = getExtLoad(LoadExtType.EXTLOAD, nvt, chain,
             getMemBasePlusOffset(src, srcOffset),
@@ -3473,7 +3479,7 @@ public class SelectionDAG {
     EVT vt = tli.getOptimalMemOpType(size, destAlign, isSrcConst, isSrcStr.get(), this);
     boolean allowUnalign = tli.allowsUnalignedMemoryAccesses(vt);
     if (!vt.equals(new EVT(MVT.iAny))) {
-      Type ty = vt.getTypeForEVT();
+      Type ty = vt.getTypeForEVT(context);
       int newAlign = tli.getTargetData().getABITypeAlignment(ty);
       if (newAlign > destAlign && (isSrcConst || allowUnalign)) {
         if (dst.getOpcode() != ISD.FrameIndex) {
@@ -3594,7 +3600,7 @@ public class SelectionDAG {
         return false;
 
       ArrayType at = (ArrayType) pty.getElementType();
-      if (!at.getElementType().equals(LLVMContext.Int8Ty))
+      if (!at.getElementType().equals(Type.getInt8Ty(context)))
         return false;
 
       if (!(gep.operand(1) instanceof ConstantInt))
@@ -3627,7 +3633,7 @@ public class SelectionDAG {
     if (!(init instanceof ConstantArray))
       return false;
     ConstantArray ca = (ConstantArray) init;
-    if (!ca.getType().getElementType().equals(LLVMContext.Int8Ty))
+    if (!ca.getType().getElementType().equals(Type.getInt8Ty(context)))
       return false;
 
     long numElts = ca.getType().getNumElements();

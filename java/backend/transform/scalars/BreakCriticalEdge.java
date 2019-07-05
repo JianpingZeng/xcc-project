@@ -164,6 +164,7 @@ public final class BreakCriticalEdge implements FunctionPass {
 
     // create a new block, linking it into the CFG.
     BasicBlock newBB = BasicBlock.createBasicBlock(
+        f.getContext(),
         tibb.getName() + "." + destBB.getName() + "_crit_edge",
         f);
     BranchInst br = new BranchInst(destBB, newBB);

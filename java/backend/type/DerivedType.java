@@ -31,8 +31,8 @@ public class DerivedType extends Type {
    */
   private Type forwardType;
 
-  protected DerivedType(int typeID) {
-    super(typeID);
+  protected DerivedType(LLVMContext ctx, int typeID) {
+    super(ctx, typeID);
   }
 
   protected void notifyUsesThatTypeBecameConcrete() {
@@ -64,10 +64,10 @@ public class DerivedType extends Type {
 
   public void dropAllTypeUses() {
     if (getNumContainedTypes() > 0) {
-      containedTys[0] = new PATypeHandle(OpaqueType.get(), this);
+      containedTys[0] = new PATypeHandle(OpaqueType.get(getContext()), this);
 
       for (int i = 0, e = getNumContainedTypes(); i < e; i++)
-        containedTys[i] = new PATypeHandle(LLVMContext.Int32Ty, this);
+        containedTys[i] = new PATypeHandle(Type.getInt32Ty(getContext()), this);
     }
   }
 

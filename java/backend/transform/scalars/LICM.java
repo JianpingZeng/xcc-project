@@ -13,7 +13,6 @@ import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.support.CallSite;
-import backend.support.LLVMContext;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
@@ -335,7 +334,7 @@ public final class LICM implements LoopPass {
 
       // Firstly, we create a stack object to hold the value.
       AllocaInst ai = null;
-      if (!inst.getType().equals(LLVMContext.VoidTy)) {
+      if (!inst.getType().isVoidType()) {
         ai = new AllocaInst(inst.getType(), null, 0, inst.getName(),
             inst.getParent().getParent().getEntryBlock().getFirstInst());
         curAST.add(ai);

@@ -17,6 +17,7 @@
 
 package cfe.codegen;
 
+import backend.support.LLVMContext;
 import backend.value.Value;
 import cfe.sema.ASTContext;
 import cfe.type.QualType;
@@ -45,14 +46,14 @@ public class DefaultABIInfo implements ABIInfo {
   }
 
   @Override
-  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx) {
+  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx, LLVMContext vmContext) {
     fi.setReturnInfo(classifyReturnType(fi.getReturnType()));
     for (int i = 0, e = fi.getNumOfArgs(); i < e; i++)
       fi.setArgInfo(i, classifyArgumentType(fi.getArgInfoAt(i).type));
   }
 
   @Override
-  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf) {
+  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf, LLVMContext ctx) {
     return null;
   }
 }

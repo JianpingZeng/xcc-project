@@ -70,8 +70,8 @@ public class StructType extends CompositeType {
   private static StructType PlaceHolderType;
   private String name;
 
-  private StructType() {
-    super(StructTyID);
+  private StructType(LLVMContext ctx) {
+    super(ctx, StructTyID);
     packed = false;
     hasBody = false;
     literal = false;
@@ -79,28 +79,28 @@ public class StructType extends CompositeType {
   }
 
   public static boolean isValidElementType(Type elemTy) {
-    return !elemTy.equals(LLVMContext.VoidTy) && !elemTy.equals(LLVMContext.LabelTy);
+    return !elemTy.isVoidType() && !elemTy.isLabelTy();
   }
 
-  public static StructType create() {
-    return create("");
+  public static StructType create(LLVMContext ctx) {
+    return create(ctx, "");
   }
 
-  public static StructType create(String name) {
-    StructType st = new StructType();
+  public static StructType create(LLVMContext ctx, String name) {
+    StructType st = new StructType(ctx);
     if (name != null && !name.isEmpty())
       st.setName(name);
     return st;
   }
 
-  public static StructType create(ArrayList<Type> elementTypes, String name) {
-    return create(elementTypes, name, false);
+  public static StructType create(LLVMContext ctx, ArrayList<Type> elementTypes, String name) {
+    return create(ctx, elementTypes, name, false);
   }
 
-  public static StructType create(ArrayList<Type> elementTypes, String name, boolean isPacked) {
+  public static StructType create(LLVMContext ctx, ArrayList<Type> elementTypes, String name, boolean isPacked) {
     Util.assertion(elementTypes != null && !elementTypes.isEmpty(),
         "this method may not be invoked with an empty list");
-    StructType st = create(name);
+    StructType st = create(ctx, name);
     st.setBody(elementTypes, isPacked);
     return st;
   }
@@ -111,13 +111,13 @@ public class StructType extends CompositeType {
    * @param isPacked
    * @return
    */
-  public static StructType get(ArrayList<Type> memberTypes, boolean isPacked) {
+  public static StructType get(LLVMContext ctx, ArrayList<Type> memberTypes, boolean isPacked) {
     StructValType svt = new StructValType(memberTypes, isPacked);
     StructType st = structTypes.get(svt);
     if (st != null)
       return st;
 
-    st = new StructType();
+    st = new StructType(ctx);
     structTypes.put(svt, st);
     st.literal = true;
     st.setBody(memberTypes, isPacked);
@@ -137,23 +137,23 @@ public class StructType extends CompositeType {
     setAbstract(isAbstract);
   }
 
-  public static StructType get(boolean packed) {
-    return get(new ArrayList<>(), packed);
+  public static StructType get(LLVMContext ctx, boolean packed) {
+    return get(ctx, new ArrayList<>(), packed);
   }
 
-  public static StructType get(Type... tys) {
+  public static StructType get(LLVMContext ctx, Type... tys) {
     ArrayList<Type> elts = new ArrayList<>(Arrays.asList(tys));
-    return get(elts, false);
+    return get(ctx, elts, false);
   }
 
-  public static StructType get() {
-    return get(false);
+  public static StructType get(LLVMContext ctx) {
+    return get(ctx, false);
   }
 
   @Override
   public Type getTypeAtIndex(Value v) {
     Util.assertion(v instanceof Constant);
-    Util.assertion(v.getType() == LLVMContext.Int32Ty);
+    Util.assertion(v.getType().isIntegerTy(32));
     int idx = (int) ((ConstantInt) v).getZExtValue();
     Util.assertion(idx < containedTys.length);
     Util.assertion(indexValid(v));
@@ -163,7 +163,7 @@ public class StructType extends CompositeType {
   @Override
   public boolean indexValid(Value v) {
     if (!(v instanceof Constant)) return false;
-    if (v.getType() != LLVMContext.Int32Ty) return false;
+    if (!v.getType().isIntegerTy(32)) return false;
     int idx = (int) ((ConstantInt) v).getZExtValue();
 
     return idx < containedTys.length;
@@ -176,7 +176,7 @@ public class StructType extends CompositeType {
 
   @Override
   public Type getIndexType() {
-    return LLVMContext.Int32Ty;
+    return Type.getInt32Ty(getContext());
   }
 
   public int getNumOfElements() {

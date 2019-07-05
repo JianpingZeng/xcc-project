@@ -65,7 +65,7 @@ import static backend.value.GlobalValue.LinkageType.*;
  * @author Jianping Zeng
  * @version 1.0
  */
-public class HIRModuleGenerator {
+public class CodeGenModule {
   private List<GlobalVariable> vars;
   private List<Function> functions;
   private Function memCpyFn;
@@ -93,13 +93,14 @@ public class HIRModuleGenerator {
 
   private HashMap<String, Decl> deferredDecls = new HashMap<>();
   private ArrayList<Decl> deferredDeclToEmit = new ArrayList<>();
-  private LangOptions langOptions;
+  private LangOptions langOptions; 
+  private LLVMContext vmContext;
 
-  public HIRModuleGenerator(ASTContext context,
-                            CompileOptions compOpts,
-                            Module m,
-                            TargetData td,
-                            Diagnostic diags) {
+  public CodeGenModule(ASTContext context,
+                       CompileOptions compOpts,
+                       Module m,
+                       TargetData td,
+                       Diagnostic diags) {
     ctx = context;
     compileOptions = compOpts;
     this.m = m;
@@ -111,6 +112,7 @@ public class HIRModuleGenerator {
     constantStringMap = new HashMap<>();
     globalDeclMaps = new HashMap<>();
     langOptions = context.getLangOptions();
+    vmContext = m.getContext();
   }
 
   public CodeGenTypes getCodeGenTypes() {
@@ -416,7 +418,7 @@ public class HIRModuleGenerator {
     // type is an incomplete struct). Use a fake type instead.
     boolean isIncompleteFunction = false;
     if (!(type instanceof FunctionType)) {
-      type = FunctionType.get(LLVMContext.VoidTy, new ArrayList<>(), false);
+      type = FunctionType.get(Type.getVoidTy(vmContext), new ArrayList<>(), false);
       isIncompleteFunction = true;
     }
 
@@ -564,7 +566,7 @@ public class HIRModuleGenerator {
       Value[] args = new Value[argNo];
       argList.toArray(args);
       CallInst newCI = new CallInst(args, newFn, "", ci);
-      if (!newCI.getType().equals(LLVMContext.VoidTy))
+      if (!newCI.getType().equals(Type.getVoidTy(old.getContext())))
         newCI.setName(ci.getName());
 
       newCI.setCallingConv(ci.getCallingConv());
@@ -717,7 +719,7 @@ public class HIRModuleGenerator {
           return null;
         case LValue: {
           backend.type.Type destTy = getCodeGenTypes().convertType(ty);
-          Constant offset = ConstantInt.get(LLVMContext.Int64Ty,
+          Constant offset = ConstantInt.get(Type.getInt64Ty(vmContext),
               result.getValue().getLValueOffset());
           Constant c;
           Expr LVBase = result.getValue().getLValueBase();
@@ -727,7 +729,7 @@ public class HIRModuleGenerator {
             // apply offset if necessary.
             if (!offset.isNullValue()) {
               backend.type.Type type = PointerType.get(
-                  LLVMContext.Int8Ty, ty.getAddressSpace());
+                  Type.getInt8Ty(vmContext), ty.getAddressSpace());
               Constant casted = getBitCast(c, type);
               ArrayList<Constant> indices = new ArrayList<>();
               indices.add(offset);
@@ -755,8 +757,8 @@ public class HIRModuleGenerator {
         }
 
         case Int: {
-          Constant c = ConstantInt.get(result.getValue().getInt());
-          if (c.getType() == LLVMContext.Int1Ty) {
+          Constant c = ConstantInt.get(vmContext, result.getValue().getInt());
+          if (c.getType().isIntegerTy(1)) {
             backend.type.Type boolTy =
                 getCodeGenTypes().convertTypeForMem(expr.getType());
             c = getZExt(c, boolTy);
@@ -765,24 +767,24 @@ public class HIRModuleGenerator {
         }
         case ComplexInt: {
           Constant complex[] = new Constant[2];
-          complex[0] = ConstantInt.get(result.getValue().getComplexIntReal());
-          complex[1] = ConstantInt.get(result.getValue().getComplexIntImag());
-          return ConstantStruct.get(complex, false);
+          complex[0] = ConstantInt.get(vmContext, result.getValue().getComplexIntReal());
+          complex[1] = ConstantInt.get(vmContext, result.getValue().getComplexIntImag());
+          return ConstantStruct.get(vmContext, complex, false);
         }
         case ComplexFloat: {
           Constant complex[] = new Constant[2];
           complex[0] = ConstantFP.get(result.getValue().getComplexIntReal());
           complex[1] = ConstantFP.get(result.getValue().getComplexIntImag());
-          return ConstantStruct.get(complex, false);
+          return ConstantStruct.get(vmContext, complex, false);
         }
         case Float: {
-          return ConstantFP.get(result.getValue().getFloat());
+          return ConstantFP.get(vmContext, result.getValue().getFloat());
         }
       }
     }
 
     Constant c = new ConstExprEmitter(this, cgf).visit(expr);
-    if (c != null && c.getType() == LLVMContext.Int1Ty) {
+    if (c != null && c.getType().isIntegerTy(1)) {
       backend.type.Type boolTy = getCodeGenTypes().convertTypeForMem(expr.getType());
       getZExt(c, boolTy);
     }
@@ -795,12 +797,12 @@ public class HIRModuleGenerator {
   }
 
   public Function getIntrinsic(Intrinsic.ID id, ArrayList<backend.type.Type> types) {
-    return Intrinsic.getDeclaration(getModule(), id, types);
+    return Intrinsic.getDeclaration(vmContext, getModule(), id, types);
   }
 
   public Function getMemCpyFn() {
     if (memCpyFn != null) return memCpyFn;
-    backend.type.Type intPtr = td.getIntPtrType();
+    backend.type.Type intPtr = td.getIntPtrType(vmContext);
     ArrayList<backend.type.Type> types = new ArrayList<>();
     types.add(intPtr);
     return (memCpyFn = getIntrinsic(Intrinsic.ID.memcpy, types));
@@ -808,7 +810,7 @@ public class HIRModuleGenerator {
 
   public Function getMemMoveFn() {
     if (memMoveFn != null) return memMoveFn;
-    backend.type.Type intPtr = td.getIntPtrType();
+    backend.type.Type intPtr = td.getIntPtrType(vmContext);
     ArrayList<backend.type.Type> types = new ArrayList<>();
     types.add(intPtr);
     return (memMoveFn = getIntrinsic(Intrinsic.ID.memmove, types));
@@ -816,7 +818,7 @@ public class HIRModuleGenerator {
 
   public Function getMemSetFn() {
     if (memSetFn != null) return memSetFn;
-    backend.type.Type intPtr = td.getIntPtrType();
+    backend.type.Type intPtr = td.getIntPtrType(vmContext);
     ArrayList<backend.type.Type> types = new ArrayList<>();
     types.add(intPtr);
     return (memSetFn = getIntrinsic(Intrinsic.ID.memset, types));
@@ -871,10 +873,10 @@ public class HIRModuleGenerator {
    */
   public static Constant generateStringLiteral(String str,
                                                boolean constant,
-                                               HIRModuleGenerator genModule,
+                                               CodeGenModule genModule,
                                                String globalName) {
     // Create a constant for this string literal.
-    Constant c = ConstantArray.get(str, false);
+    Constant c = ConstantArray.get(genModule.vmContext, str, false);
     // Create a global variable for this string.
     return new GlobalVariable(genModule.getModule(),
         c.getType(), constant,

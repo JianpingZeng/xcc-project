@@ -22,6 +22,7 @@ import backend.pass.FunctionPass;
 import backend.support.LLVMContext;
 import backend.transform.utils.ConstantFolder;
 import backend.type.PointerType;
+import backend.type.Type;
 import backend.utils.SuccIterator;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -44,6 +45,7 @@ import static backend.transform.utils.ConstantFolder.*;
  */
 public final class CFGSimplifyPass implements FunctionPass {
   private AnalysisResolver resolver;
+  private LLVMContext context;
 
   @Override
   public void setAnalysisResolver(AnalysisResolver resolver) {
@@ -98,6 +100,8 @@ public final class CFGSimplifyPass implements FunctionPass {
   public boolean runOnFunction(Function f) {
     if (f == null || f.empty())
       return false;
+    context = f.getContext();
+
     boolean everChanged = removeUnreachableBlocksFromFn(f);
     everChanged |= simplifyCFG(f);
     if (!everChanged) return false;
@@ -127,7 +131,7 @@ public final class CFGSimplifyPass implements FunctionPass {
       BasicBlock succ = succItr.next();
       succ.removePredecessor(parent);
     }
-    new UnreachableInst(inst);
+    new UnreachableInst(context, inst);
     for (int i = inst.getIndexToBB(), e = parent.size(); i < e; i++) {
       Instruction curInst = parent.getInstAt(i);
       if (!curInst.isUseEmpty())
@@ -484,7 +488,7 @@ public final class CFGSimplifyPass implements FunctionPass {
     if (rt1.getNumOfOperands() == 0) {
       retBB1.removePredecessor(curBB);
       retBB2.removePredecessor(curBB);
-      new ReturnInst(null, "", br);
+      new ReturnInst(br.getContext(), null, "", br);
       eraseTerminatorInstAndDCECond(br);
       return true;
     }
@@ -516,8 +520,8 @@ public final class CFGSimplifyPass implements FunctionPass {
           trueVal = falseVal;
       }
     }
-    Instruction retInst = trueVal != null ? new ReturnInst(trueVal, "ret", br)
-        : new ReturnInst(br);
+    Instruction retInst = trueVal != null ? new ReturnInst(br.getContext(), trueVal, "ret", br)
+        : new ReturnInst(br.getContext(), br);
     if (Util.DEBUG) {
       System.err.println("Change branch to two return block with: ");
       System.err.print("New Inst: ");
@@ -811,12 +815,12 @@ public final class CFGSimplifyPass implements FunctionPass {
       BasicBlock singlePred = bb.getSinglePredecessor();
       if (singlePred != null) {
         boolean condIsTrue = predBR.getSuccessor(0) == bb;
-        br.setCondition(condIsTrue ? ConstantInt.getTrue() : ConstantInt.getFalse());
+        br.setCondition(condIsTrue ? ConstantInt.getTrue(br.getContext()) : ConstantInt.getFalse(br.getContext()));
         return true;
       }
 
       if (blockIsSimpleEnoughToThreadThrough(bb)) {
-        PhiNode newPHI = new PhiNode(LLVMContext.Int1Ty, cond.getName() + ".pr", bb.getFirstInst());
+        PhiNode newPHI = new PhiNode(Type.getInt1Ty(br.getContext()), cond.getName() + ".pr", bb.getFirstInst());
         for (Iterator<BasicBlock> itr = bb.predIterator(); itr.hasNext(); ) {
           BasicBlock pred = itr.next();
           BranchInst brInt = pred.getTerminator() instanceof BranchInst ?
@@ -825,7 +829,7 @@ public final class CFGSimplifyPass implements FunctionPass {
               brInt.isConditional() && !brInt.equals(br) &&
               brInt.getSuccessor(0) != brInt.getSuccessor(1)) {
             boolean condIsTrue = brInt.getSuccessor(0) == bb;
-            newPHI.addIncoming(condIsTrue ? ConstantInt.getTrue() : ConstantInt.getFalse(),
+            newPHI.addIncoming(condIsTrue ? ConstantInt.getTrue(br.getContext()) : ConstantInt.getFalse(br.getContext()),
                 pred);
           } else {
             newPHI.addIncoming(brInt.getCondition(), pred);
@@ -882,7 +886,7 @@ public final class CFGSimplifyPass implements FunctionPass {
     //  bb    |
     //   |---->
     if (otherDest == bb) {
-      BasicBlock infLoopBlock = BasicBlock.createBasicBlock("infloop", bb.getParent());
+      BasicBlock infLoopBlock = BasicBlock.createBasicBlock(bb.getContext(), "infloop", bb.getParent());
       new BranchInst(infLoopBlock, infLoopBlock);
       otherDest = infLoopBlock;
     }
@@ -1073,7 +1077,7 @@ public final class CFGSimplifyPass implements FunctionPass {
 
     for (int i = 0, e = pn.getNumberIncomingValues(); i < e; i++) {
       Value val = pn.getIncomingValue(i);
-      if (val instanceof ConstantInt && val.getType() == LLVMContext.Int1Ty) {
+      if (val instanceof ConstantInt && val.getType().isIntegerTy(1)) {
         ConstantInt ci = (ConstantInt) val;
         BasicBlock predBlock = pn.getIncomingBlock(i);
         BasicBlock realDest = br.getSuccessor(ci.getZExtValue() != 0 ? 0 : 1);
@@ -1082,6 +1086,7 @@ public final class CFGSimplifyPass implements FunctionPass {
         if (realDest == bb) continue;
 
         BasicBlock edgeBB = BasicBlock.createBasicBlock(
+            br.getContext(),
             realDest.getName() + ".critedge",
             realDest.getParent(), realDest);
         // insert a branch targeting to realDest in the end of edgeBB.
@@ -1480,7 +1485,7 @@ public final class CFGSimplifyPass implements FunctionPass {
         for (int i = 0, e = si.getNumOfSuccessors(); i < e; i++) {
           if (si.getSuccessor(i) == tiBB) {
             if (infLoopBlock == null) {
-              infLoopBlock = BasicBlock.createBasicBlock("infloop", tiBB.getParent());
+              infLoopBlock = BasicBlock.createBasicBlock(ti.getContext(), "infloop", tiBB.getParent());
               new BranchInst(infLoopBlock, infLoopBlock);
             }
             si.setSuccessor(i, infLoopBlock);
@@ -1793,7 +1798,7 @@ public final class CFGSimplifyPass implements FunctionPass {
 
     Instruction inst = bb1.getInstAt(i).clone();
     parentBB.insertBefore(inst, br);
-    if (inst.getType() != LLVMContext.VoidTy) {
+    if (!inst.getType().isVoidType()) {
       bb1.getInstAt(i).replaceAllUsesWith(inst);
       bb2.getInstAt(j).replaceAllUsesWith(inst);
       inst.setName(bb1.getInstAt(i).getName());

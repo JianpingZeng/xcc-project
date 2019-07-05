@@ -130,11 +130,11 @@ public final class UniqueConstantValueImpl {
    * @param key
    * @return
    */
-  public ConstantFP getOrCreate(APFloatKeyType key) {
+  public ConstantFP getOrCreate(LLVMContext context, APFloatKeyType key) {
     if (FPConstants.containsKey(key))
       return FPConstants.get(key);
 
-    Type ty = floatSemanticsToType(key.flt.getSemantics());
+    Type ty = floatSemanticsToType(context, key.flt.getSemantics());
     ConstantFP flt = new ConstantFP(ty, key.flt);
     FPConstants.put(key, flt);
     return flt;
@@ -188,7 +188,7 @@ public final class UniqueConstantValueImpl {
     return cs;
   }
 
-  public MDNode getOrCreate(MDNodeKeyType key, MDNode.FunctionLocalness fl) {
+  public MDNode getOrCreate(LLVMContext context, MDNodeKeyType key, MDNode.FunctionLocalness fl) {
     if (MDNodeConstants.containsKey(key))
       return MDNodeConstants.get(key);
 
@@ -212,32 +212,32 @@ public final class UniqueConstantValueImpl {
         break;
     }
 
-    MDNode node = new MDNode(key.elts, isFunctionLocal);
+    MDNode node = new MDNode(context, key.elts, isFunctionLocal);
     MDNodeConstants.put(key, node);
     return node;
   }
 
-  public MDString getOrCreate(String key) {
+  public MDString getOrCreate(LLVMContext context, String key) {
     Util.assertion(key != null);
     if (MDStringConstants.containsKey(key))
       return MDStringConstants.get(key);
 
-    MDString md = new MDString(key);
+    MDString md = new MDString(context, key);
     MDStringConstants.put(key, md);
     return md;
   }
 
-  private static Type floatSemanticsToType(FltSemantics semantics) {
+  private static Type floatSemanticsToType(LLVMContext context, FltSemantics semantics) {
     if (semantics == APFloat.IEEEsingle)
-      return LLVMContext.FloatTy;
+      return Type.getFloatTy(context);
     if (semantics == APFloat.IEEEdouble)
-      return LLVMContext.DoubleTy;
+      return Type.getDoubleTy(context);
     if (semantics == APFloat.x87DoubleExtended)
-      return LLVMContext.X86_FP80Ty;
+      return Type.getX86_FP80Ty(context);
     if (semantics == APFloat.IEEEquad)
-      return LLVMContext.FP128Ty;
+      return Type.getFP128Ty(context);
 
-    Util.assertion(false, "Unknown FP format");
+    Util.assertion("Unknown FP format");
     return null;
   }
 

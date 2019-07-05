@@ -526,7 +526,7 @@ public class BitcodeWriter {
         records.add(ve.getValueID(node.getOperand(i)));
       }
       else {
-        records.add(ve.getTypeID(LLVMContext.VoidTy));
+        records.add(ve.getTypeID(Type.getVoidTy(node.getContext())));
         records.add(0);
       }
     }

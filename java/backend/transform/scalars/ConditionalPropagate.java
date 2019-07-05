@@ -148,7 +148,7 @@ public class ConditionalPropagate implements FunctionPass {
         bb.getInstList().addAll(succ.getInstList());
 
         succ.replaceAllUsesWith(bb);
-        new UnreachableInst(succ);
+        new UnreachableInst(bb.getContext(), succ);
         deadBlocks.add(succ);
         madeChange = true;
       }

@@ -4,8 +4,6 @@ import backend.type.Type;
 import tools.FltSemantics;
 import tools.Util;
 
-import java.util.ArrayList;
-
 /**
  * @author Jianping Zeng
  * @version 0.4

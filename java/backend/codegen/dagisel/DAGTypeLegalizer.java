@@ -104,7 +104,7 @@ public class DAGTypeLegalizer {
   }
 
   private LegalizeAction getTypeAction(EVT vt) {
-    switch (valueTypeActions.getTypeAction(vt)) {
+    switch (valueTypeActions.getTypeAction(dag.getContext(), vt)) {
       default:
         Util.assertion(false, "Unknown legalize action!");
         return null;
@@ -126,7 +126,7 @@ public class DAGTypeLegalizer {
           if (vt.isInteger())
             return LegalizeAction.ExpandInteger;
           else if (vt.getSizeInBits() ==
-              tli.getTypeToTransformTo(vt).getSizeInBits())
+              tli.getTypeToTransformTo(dag.getContext(), vt).getSizeInBits())
             return LegalizeAction.SoftenFloat;
           else
             return LegalizeAction.ExpandFloat;
@@ -138,7 +138,7 @@ public class DAGTypeLegalizer {
   }
 
   private boolean isTypeLegal(EVT vt) {
-    return valueTypeActions.getTypeAction(vt) ==
+    return valueTypeActions.getTypeAction(dag.getContext(), vt) ==
         TargetLowering.LegalizeAction.Legal;
   }
 
@@ -442,13 +442,13 @@ public class DAGTypeLegalizer {
 
   private SDValue bitConvertToInteger(SDValue op) {
     int bitWidth = op.getValueType().getSizeInBits();
-    return dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(bitWidth), op);
+    return dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(dag.getContext(), bitWidth), op);
   }
 
   private SDValue bitConvertVectorToIntegerVector(SDValue op) {
     Util.assertion(op.getValueType().isVector(), "Only applies to vectors!");
     int eltWidth = op.getValueType().getVectorElementType().getSizeInBits();
-    EVT eltVT = EVT.getIntegerVT(eltWidth);
+    EVT eltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
     int numElts = op.getValueType().getVectorNumElements();
     return dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(eltVT, numElts),
         op);
@@ -493,7 +493,7 @@ public class DAGTypeLegalizer {
 
   private SDValue joinIntegers(SDValue lo, SDValue hi) {
     EVT loVT = lo.getValueType(), hiVT = hi.getValueType();
-    EVT nvt = EVT.getIntegerVT(loVT.getSizeInBits() + hiVT.getSizeInBits());
+    EVT nvt = EVT.getIntegerVT(dag.getContext(), loVT.getSizeInBits() + hiVT.getSizeInBits());
     lo = dag.getNode(ISD.ZERO_EXTEND, nvt, lo);
     hi = dag.getNode(ISD.ANY_EXTEND, nvt, hi);
     hi = dag.getNode(ISD.SHL, nvt, hi, dag.getConstant(loVT.getSizeInBits(),
@@ -564,7 +564,7 @@ public class DAGTypeLegalizer {
    * @return
    */
   private SDValue[] splitInteger(SDValue op) {
-    EVT halfVT = EVT.getIntegerVT(op.getValueType().getSizeInBits() / 2);
+    EVT halfVT = EVT.getIntegerVT(dag.getContext(), op.getValueType().getSizeInBits() / 2);
     return splitInteger(op, halfVT, halfVT);
   }
 
@@ -796,9 +796,9 @@ public class DAGTypeLegalizer {
   private SDValue promoteIntResBitConvert(SDNode n) {
     SDValue inOp = n.getOperand(0);
     EVT inVT = inOp.getValueType();
-    EVT ninVT = tli.getTypeToTransformTo(inVT);
+    EVT ninVT = tli.getTypeToTransformTo(dag.getContext(), inVT);
     EVT outVT = n.getValueType(0);
-    EVT noutVT = tli.getTypeToTransformTo(outVT);
+    EVT noutVT = tli.getTypeToTransformTo(dag.getContext(), outVT);
     switch (getTypeAction(inVT)) {
       default:
         Util.assertion(false, "Unknown type action!");
@@ -827,7 +827,7 @@ public class DAGTypeLegalizer {
           hi = temp;
         }
         inOp = dag.getNode(ISD.ANY_EXTEND,
-            EVT.getIntegerVT(noutVT.getSizeInBits()),
+            EVT.getIntegerVT(dag.getContext(), noutVT.getSizeInBits()),
             joinIntegers(lo, hi));
         return dag.getNode(ISD.BIT_CONVERT, noutVT, inOp);
       }
@@ -851,7 +851,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteIntResBuildPair(SDNode n) {
-    return dag.getNode(ISD.ANY_EXTEND, tli.getTypeToTransformTo(n.getValueType(0)),
+    return dag.getNode(ISD.ANY_EXTEND, tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)),
         joinIntegers(n.getOperand(0), n.getOperand(1)));
   }
 
@@ -859,7 +859,7 @@ public class DAGTypeLegalizer {
     EVT vt = n.getValueType(0);
     int opc = vt.isByteSized() ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND;
     return dag.getNode(opc,
-        tli.getTypeToTransformTo(vt),
+        tli.getTypeToTransformTo(dag.getContext(), vt),
         new SDValue(n, 0));
   }
 
@@ -868,7 +868,7 @@ public class DAGTypeLegalizer {
     Util.assertion(cc == CvtCode.CVT_SS || cc == CvtCode.CVT_SU || cc == CvtCode.CVT_US || cc == CvtCode.CVT_UU ||
         cc == CvtCode.CVT_SF || cc == CvtCode.CVT_UF);
 
-    EVT outVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT outVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     return dag.getConvertRndSat(outVT,
         n.getOperand(0), n.getOperand(1),
         n.getOperand(2),
@@ -905,13 +905,13 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteIntResExtractVectorElt(SDNode n) {
-    EVT outVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT outVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     return dag.getNode(ISD.EXTRACT_VECTOR_ELT, outVT,
         n.getOperand(0), n.getOperand(1));
   }
 
   private SDValue promoteIntResFPToXInt(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int newOpc = n.getOpcode();
     if (n.getOpcode() == ISD.FP_TO_UINT &&
         !tli.isOperationLegal(ISD.FP_TO_UINT, nvt) &&
@@ -924,7 +924,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteIntResIntExtend(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     if (getTypeAction(n.getOperand(0).getValueType()) == LegalizeAction.PromotedInteger) {
       SDValue res = getPromotedInteger(n.getOperand(0));
       Util.assertion(res.getValueType().bitsLE(nvt), "Extension doesn't make sense!");
@@ -944,7 +944,7 @@ public class DAGTypeLegalizer {
 
   private SDValue promoteIntResLoad(LoadSDNode n) {
     Util.assertion(n.isUNINDEXEDLoad(), "Indexed load during type legalization!");
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     LoadExtType ext = n.isNONExtLoad() ? LoadExtType.EXTLOAD : n.getExtensionType();
     SDValue res = dag.getExtLoad(ext,
         nvt, n.getChain(), n.getBasePtr(), n.getSrcValue(),
@@ -956,7 +956,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteIntResOverflow(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(1));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(1));
     EVT[] valueVTs = {n.getValueType(0), nvt};
     SDValue[] ops = {n.getOperand(0), n.getOperand(1)};
     SDValue res = dag.getNode(n.getOpcode(), dag.getVTList(valueVTs), ops);
@@ -1010,13 +1010,13 @@ public class DAGTypeLegalizer {
     Util.assertion(isTypeLegal(svt), "Illegal SetCC type!");
     SDValue setcc = dag.getNode(ISD.SETCC, svt, n.getOperand(0),
         n.getOperand(1), n.getOperand(2));
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     Util.assertion(nvt.bitsLE(svt), "Integer type overpromoted!");
     return dag.getNode(ISD.TRUNCATE, nvt, setcc);
   }
 
   private SDValue promoteIntResSHL(SDNode n) {
-    return dag.getNode(ISD.SHL, tli.getTypeToTransformTo(n.getValueType(0)),
+    return dag.getNode(ISD.SHL, tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)),
         getPromotedInteger(n.getOperand(0)), n.getOperand(1));
   }
 
@@ -1039,13 +1039,13 @@ public class DAGTypeLegalizer {
 
   private SDValue promoteIntResSRL(SDNode n) {
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue res = zextPromotedInteger(n.getOperand(0));
     return dag.getNode(ISD.SRL, nvt, res, n.getOperand(1));
   }
 
   private SDValue promoteIntResTruncate(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue res = new SDValue();
     switch (getTypeAction(n.getOperand(0).getValueType())) {
       default:
@@ -1088,14 +1088,14 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteIntResUNDEF(SDNode n) {
-    return dag.getUNDEF(tli.getTypeToTransformTo(n.getValueType(0)));
+    return dag.getUNDEF(tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)));
   }
 
   private SDValue promoteIntResVAARG(SDNode n) {
     SDValue chain = n.getOperand(0);
     SDValue ptr = n.getOperand(1);
     EVT vt = n.getValueType(0);
-    EVT regVT = tli.getRegisterType(vt);
+    EVT regVT = tli.getRegisterType(dag.getContext(), vt);
     int numRegs = tli.getNumRegisters(vt);
 
     SDValue[] parts = new SDValue[numRegs];
@@ -1107,7 +1107,7 @@ public class DAGTypeLegalizer {
     if (tli.isBigEndian()) {
       Util.reverse(parts);
     }
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue res = dag.getNode(ISD.ZERO_EXTEND, nvt, parts[0]);
     for (int i = 1; i < numRegs; i++) {
       SDValue part = dag.getNode(ISD.ZERO_EXTEND, nvt, parts[i]);
@@ -1423,7 +1423,7 @@ public class DAGTypeLegalizer {
   }
 
   private void setExpandedIntegers(SDValue op, SDValue lo, SDValue hi) {
-    Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType())) && hi.getValueType().equals(lo.getValueType()), "Invalid type for expanded integer");
+    Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(dag.getContext(), op.getValueType())) && hi.getValueType().equals(lo.getValueType()), "Invalid type for expanded integer");
 
     lo = analyzeNewValue(lo);
     hi = analyzeNewValue(hi);
@@ -1570,7 +1570,7 @@ public class DAGTypeLegalizer {
 
   private SDValue[] expandIntResAnyExtend(SDNode n) {
     SDValue[] res = new SDValue[2];
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = n.getOperand(0);
     if (op.getValueType().bitsLE(nvt)) {
       res[0] = dag.getNode(ISD.ANY_EXTEND, nvt, op);
@@ -1596,7 +1596,7 @@ public class DAGTypeLegalizer {
 
     if (nvtBits < evtBits)
       res[1] = dag.getNode(ISD.AssertSext,
-          nvt, res[1], dag.getValueType(EVT.getIntegerVT(
+          nvt, res[1], dag.getValueType(EVT.getIntegerVT(dag.getContext(), 
               evtBits - nvtBits)));
     else {
       res[0] = dag.getNode(ISD.AssertSext, nvt, res[0], dag.getValueType(evt));
@@ -1617,7 +1617,7 @@ public class DAGTypeLegalizer {
 
     if (nvtBits < evtBits)
       res[1] = dag.getNode(ISD.AssertZext,
-          nvt, res[1], dag.getValueType(EVT.getIntegerVT(
+          nvt, res[1], dag.getValueType(EVT.getIntegerVT(dag.getContext(), 
               evtBits - nvtBits)));
     else {
       res[0] = dag.getNode(ISD.AssertZext, nvt, res[0], dag.getValueType(evt));
@@ -1627,7 +1627,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandIntResConstant(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int nvtBits = nvt.getSizeInBits();
     APInt cst = ((ConstantSDNode) n).getAPIntValue();
     SDValue[] res = new SDValue[2];
@@ -1683,7 +1683,7 @@ public class DAGTypeLegalizer {
     Util.assertion(n.isUNINDEXEDLoad(), "indexed load during type legalization!");
 
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue ch = n.getChain();
     SDValue ptr = n.getBasePtr();
     LoadExtType ext = n.getExtensionType();
@@ -1712,7 +1712,7 @@ public class DAGTypeLegalizer {
       lo = dag.getLoad(nvt, ch, ptr, n.getSrcValue(), svOffset, isVolatile,
           alignment);
       int excessBits = n.getMemoryVT().getSizeInBits() - nvt.getSizeInBits();
-      EVT nevt = EVT.getIntegerVT(excessBits);
+      EVT nevt = EVT.getIntegerVT(dag.getContext(), excessBits);
       int incrementSize = nvt.getSizeInBits() / 8;
       ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
           dag.getIntPtrConstant(incrementSize));
@@ -1728,12 +1728,12 @@ public class DAGTypeLegalizer {
       int excessBits = (ebytes - increemntSize) << 3;
 
       hi = dag.getExtLoad(ext, nvt, ch, ptr, n.getSrcValue(), svOffset,
-          EVT.getIntegerVT(evt.getSizeInBits() - excessBits),
+          EVT.getIntegerVT(dag.getContext(), evt.getSizeInBits() - excessBits),
           isVolatile, alignment);
       ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, dag.getIntPtrConstant(increemntSize));
       lo = dag.getExtLoad(LoadExtType.ZEXTLOAD, nvt, ch, ptr, n.getSrcValue(),
           svOffset + increemntSize,
-          EVT.getIntegerVT(excessBits),
+          EVT.getIntegerVT(dag.getContext(), excessBits),
           isVolatile, Util.minAlign(alignment, increemntSize));
 
       ch = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo.getValue(1),
@@ -1757,16 +1757,16 @@ public class DAGTypeLegalizer {
     for (int i = 0; i < ops.length; i++) {
       ArgListEntry entry = new ArgListEntry();
       entry.node = ops[i];
-      entry.ty = entry.node.getValueType().getTypeForEVT();
+      entry.ty = entry.node.getValueType().getTypeForEVT(dag.getContext());
       entry.isSExt = isSigned;
       entry.isZExt = !isSigned;
       args.add(entry);
     }
     SDValue callee = dag.getExternalSymbol(tli.getLibCallName(libCall),
         new EVT(tli.getPointerTy()));
-    Type retTy = retVT.getTypeForEVT();
+    Type retTy = retVT.getTypeForEVT(dag.getContext());
     Pair<SDValue, SDValue> callInfo =
-        tli.lowerCallTo(dag.getEntryNode(), retTy, isSigned,
+        tli.lowerCallTo(dag.getContext(), dag.getEntryNode(), retTy, isSigned,
             !isSigned, false, false, 0,
             tli.getLibCallCallingConv(libCall), false, true,
             callee, args, dag);
@@ -1774,7 +1774,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandIntResSignExtend(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = n.getOperand(0);
     SDValue lo, hi;
     if (op.getValueType().bitsLE(nvt)) {
@@ -1791,7 +1791,7 @@ public class DAGTypeLegalizer {
       hi = t[1];
       int excessBits = op.getValueType().getSizeInBits() - nvt.getSizeInBits();
       hi = dag.getNode(ISD.SIGN_EXTEND_INREG, hi.getValueType(),
-          hi, dag.getValueType(EVT.getIntegerVT(excessBits)));
+          hi, dag.getValueType(EVT.getIntegerVT(dag.getContext(), excessBits)));
     }
     return new SDValue[]{lo, hi};
   }
@@ -1809,13 +1809,13 @@ public class DAGTypeLegalizer {
     } else {
       int excessBits = vt.getSizeInBits() - res[0].getValueType().getSizeInBits();
       res[1] = dag.getNode(ISD.SIGN_EXTEND_INREG, res[1].getValueType(),
-          res[1], dag.getValueType(EVT.getIntegerVT(excessBits)));
+          res[1], dag.getValueType(EVT.getIntegerVT(dag.getContext(), excessBits)));
     }
     return res;
   }
 
   private SDValue[] expandIntResTruncate(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue lo, hi;
     lo = dag.getNode(ISD.TRUNCATE, nvt, n.getOperand(0));
     hi = dag.getNode(ISD.SRL, n.getOperand(0).getValueType(), n.getOperand(0),
@@ -1825,7 +1825,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandIntResZeroExtend(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = n.getOperand(0);
     SDValue lo, hi;
     if (op.getValueType().bitsLE(nvt)) {
@@ -1840,7 +1840,7 @@ public class DAGTypeLegalizer {
       lo = t[0];
       hi = t[1];
       int excessBits = op.getValueType().getSizeInBits() - nvt.getSizeInBits();
-      hi = dag.getZeroExtendInReg(hi, EVT.getIntegerVT(excessBits));
+      hi = dag.getZeroExtendInReg(hi, EVT.getIntegerVT(dag.getContext(), excessBits));
     }
     return new SDValue[]{lo, hi};
   }
@@ -1880,7 +1880,7 @@ public class DAGTypeLegalizer {
     SDValue[] hiOps = {lhsT[1], rhsT[1], null};
 
     boolean hasCarry = tli.isOperationLegalOrCustom(n.getOpcode() == ISD.ADD ?
-        ISD.ADDC : ISD.SUBC, tli.getTypeToExpandTo(nvt));
+        ISD.ADDC : ISD.SUBC, tli.getTypeToExpandTo(dag.getContext(), nvt));
     if (hasCarry) {
       SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Glue));
       if (n.getOpcode() == ISD.ADD) {
@@ -1968,7 +1968,7 @@ public class DAGTypeLegalizer {
 
   private SDValue[] expandIntResMul(SDNode n) {
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     boolean hasMULHS = tli.isOperationLegal(ISD.MULHS, nvt);
     boolean hasMULHU = tli.isOperationLegal(ISD.MULHU, nvt);
     boolean hasSMUL_LOHI = tli.isOperationLegal(ISD.SMUL_LOHI, nvt);
@@ -2158,7 +2158,7 @@ public class DAGTypeLegalizer {
       partsOpc = ISD.SRA_PARTS;
     }
 
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     TargetLowering.LegalizeAction action = tli.getOperationAction(partsOpc, nvt);
     if ((action == TargetLowering.LegalizeAction.Legal && tli.isTypeLegal(nvt)) ||
         action == Custom) {
@@ -2256,7 +2256,7 @@ public class DAGTypeLegalizer {
         res[0] = dag.getConstant(0, nvt, false);
         res[1] = t[0];
       } else if (amt == 1 && tli.isOperationLegal(ISD.ADDC,
-          tli.getTypeToExpandTo(nvt))) {
+          tli.getTypeToExpandTo(dag.getContext(), nvt))) {
         SDVTList vts = dag.getVTList(nvt, new EVT(MVT.Glue));
         SDValue[] ops = {t[0], t[0]};
         res[0] = dag.getNode(ISD.ADDC, vts, ops);
@@ -2310,7 +2310,7 @@ public class DAGTypeLegalizer {
 
   private boolean expandShiftWithKnownAmountBit(SDNode n, SDValue[] res) {
     SDValue amt = n.getOperand(1);
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     EVT shTy = amt.getValueType();
     int shBits = shTy.getSizeInBits();
     int nvtBits = nvt.getSizeInBits();
@@ -2351,7 +2351,7 @@ public class DAGTypeLegalizer {
 
   private boolean expandShiftWithUnknownAmountBit(SDNode n, SDValue[] res) {
     SDValue amt = n.getOperand(1);
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     EVT shTy = amt.getValueType();
     int nvtBits = nvt.getSizeInBits();
     Util.assertion(Util.isPowerOf2(nvtBits), "Expanded integer type size not a power of two!");
@@ -2558,7 +2558,7 @@ public class DAGTypeLegalizer {
     Util.assertion(opNo == 1, "Can only expand the stored value so far?");
 
     EVT vt = n.getOperand(1).getValueType();
-    EVT evt = tli.getTypeToTransformTo(vt);
+    EVT evt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue ch = n.getChain();
     SDValue ptr = n.getBasePtr();
     int svOffset = n.getSrcValueOffset();
@@ -2579,7 +2579,7 @@ public class DAGTypeLegalizer {
       lo = dag.getStore(ch, lo, ptr, n.getSrcValue(), svOffset,
           isVolatile, alignment);
       int excessBit = n.getMemoryVT().getSizeInBits() - evt.getSizeInBits();
-      EVT nevt = EVT.getIntegerVT(excessBit);
+      EVT nevt = EVT.getIntegerVT(dag.getContext(), excessBit);
 
       int incrementSize = evt.getSizeInBits() / 8;
       ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
@@ -2596,7 +2596,7 @@ public class DAGTypeLegalizer {
       int bytes = extVT.getStoreSizeInBits() / 8;
       int incrementSize = evt.getSizeInBits() / 8;
       int excessBits = (bytes - incrementSize) * 8;
-      EVT hiVT = EVT.getIntegerVT(extVT.getSizeInBits() - excessBits);
+      EVT hiVT = EVT.getIntegerVT(dag.getContext(), extVT.getSizeInBits() - excessBits);
 
       if (excessBits < evt.getSizeInBits()) {
         hi = dag.getNode(ISD.SHL, evt, hi, dag.getConstant(evt.getSizeInBits()
@@ -2608,7 +2608,7 @@ public class DAGTypeLegalizer {
       hi = dag.getTruncStore(ch, hi, ptr, n.getSrcValue(), svOffset, hiVT, isVolatile, alignment);
       ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, dag.getIntPtrConstant(incrementSize));
       lo = dag.getTruncStore(ch, lo, ptr, n.getSrcValue(), svOffset + incrementSize,
-          EVT.getIntegerVT(excessBits), isVolatile, Util.minAlign(alignment, incrementSize));
+          EVT.getIntegerVT(dag.getContext(), excessBits), isVolatile, Util.minAlign(alignment, incrementSize));
       return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);
     }
   }
@@ -2647,7 +2647,7 @@ public class DAGTypeLegalizer {
       SDValue signSet = dag.getSetCC(new EVT(tli.getSetCCResultType(hi.getValueType())),
           hi, dag.getConstant(0, hi.getValueType(), false),
           CondCode.SETLT);
-      SDValue fudgePtr = dag.getConstantPool(ConstantInt.get(ff.zext(64)),
+      SDValue fudgePtr = dag.getConstantPool(ConstantInt.get(dag.getContext(), ff.zext(64)),
           new EVT(tli.getPointerTy()), 0, 0, false, 0);
 
       SDValue zero = dag.getIntPtrConstant(0);
@@ -2777,7 +2777,7 @@ public class DAGTypeLegalizer {
   }
 
   private void setSoftenedFloat(SDValue op, SDValue result) {
-    Util.assertion(result.getValueType().equals(tli.getTypeToTransformTo(op.getValueType())));
+    Util.assertion(result.getValueType().equals(tli.getTypeToTransformTo(dag.getContext(), op.getValueType())));
     result = analyzeNewValue(result);
 
     Util.assertion(!softenedFloats.containsKey(op), "Node already converted to integer!");
@@ -2917,14 +2917,14 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_BUILD_PAIR(SDNode n) {
     return dag.getNode(ISD.BUILD_PAIR,
-        tli.getTypeToTransformTo(n.getValueType(0)),
+        tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)),
         bitConvertToInteger(n.getOperand(0)),
         bitConvertToInteger(n.getOperand(1)));
   }
 
   private SDValue softenFloatRes_ConstantFP(ConstantFPSDNode n) {
     return dag.getConstant(n.getValueAPF().bitcastToAPInt(),
-        tli.getTypeToTransformTo(n.getValueType(0)), false);
+        tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)), false);
   }
 
   private SDValue softenFloatRes_EXTRACT_VECTOR_ELT(SDNode n) {
@@ -2935,7 +2935,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FABS(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int size = nvt.getSizeInBits();
 
     SDValue mask = dag.getConstant(APInt.getAllOnesValue(size).clear(size - 1),
@@ -2955,7 +2955,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FADD(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
         getSoftenedFloat(n.getOperand(1))};
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -2967,7 +2967,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FCEIL(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3010,7 +3010,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FCOS(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.COS_F32,
@@ -3021,7 +3021,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FDIV(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
         getSoftenedFloat(n.getOperand(1))};
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3033,7 +3033,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FEXP(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3045,7 +3045,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FEXP2(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3057,7 +3057,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FFLOOR(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3069,7 +3069,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FLOG(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3081,7 +3081,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FLOG2(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3093,7 +3093,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FLOG10(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3105,7 +3105,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FMUL(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(0)),
         getSoftenedFloat(n.getOperand(1))};
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3117,7 +3117,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FNEARBYINT(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = getSoftenedFloat(n.getOperand(0));
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3129,7 +3129,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FNEG(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {dag.getConstantFP(-0.0, n.getValueType(0), false),
         getSoftenedFloat(n.getOperand(0))};
 
@@ -3143,7 +3143,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FP_EXTEND(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = n.getOperand(0);
     RTLIB lc = tli.getFPEXT(op.getValueType(), n.getValueType(0));
     Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL);
@@ -3151,7 +3151,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FP_ROUND(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue op = n.getOperand(0);
     RTLIB lc = tli.getFPROUND(op.getValueType(), n.getValueType(0));
     Util.assertion(lc != RTLIB.UNKNOWN_LIBCALL);
@@ -3159,7 +3159,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FPOW(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
         getSoftenedFloat(n.getOperand(0))};
 
@@ -3174,7 +3174,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FPOWI(SDNode n) {
     Util.assertion(n.getOperand(1).getValueType().getSimpleVT().simpleVT == MVT.i32);
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
         getSoftenedFloat(n.getOperand(0))};
 
@@ -3188,7 +3188,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FREM(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
         getSoftenedFloat(n.getOperand(0))};
 
@@ -3202,7 +3202,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FRINT(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3215,7 +3215,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FSIN(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3228,7 +3228,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FSQRT(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3241,7 +3241,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FSUB(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
         getSoftenedFloat(n.getOperand(0))};
 
@@ -3255,7 +3255,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_FTRUNC(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
@@ -3270,7 +3270,7 @@ public class DAGTypeLegalizer {
   private SDValue softenFloatRes_LOAD(SDNode n) {
     LoadSDNode ld = (LoadSDNode) n;
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
 
     SDValue newL = new SDValue();
     if (ld.getExtensionType() == LoadExtType.NON_EXTLOAD) {
@@ -3305,14 +3305,14 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue softenFloatRes_UNDEF(SDNode n) {
-    return dag.getUNDEF(tli.getTypeToTransformTo(n.getValueType(0)));
+    return dag.getUNDEF(tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0)));
   }
 
   private SDValue softenFloatRes_VAARG(SDNode n) {
     SDValue chain = n.getOperand(0);
     SDValue ptr = n.getOperand(1);
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue newVAARG = dag.getVAArg(nvt, chain, ptr, n.getOperand(2));
 
     replaceValueWith(new SDValue(n, 1), newVAARG.getValue(1));
@@ -3336,7 +3336,7 @@ public class DAGTypeLegalizer {
     Util.assertion(lib != RTLIB.UNKNOWN_LIBCALL);
     SDValue op = dag.getNode(signed ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND,
         nvt, n.getOperand(0));
-    return makeLibCall(lib, tli.getTypeToTransformTo(rvt),
+    return makeLibCall(lib, tli.getTypeToTransformTo(dag.getContext(), rvt),
         new SDValue[]{op}, false);
   }
 
@@ -3588,7 +3588,7 @@ public class DAGTypeLegalizer {
   }
 
   private void setExpandedFloat(SDValue op, SDValue lo, SDValue hi) {
-    Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(op.getValueType())) && hi.getValueType().equals(lo.getValueType()),
+    Util.assertion(lo.getValueType().equals(tli.getTypeToTransformTo(dag.getContext(), op.getValueType())) && hi.getValueType().equals(lo.getValueType()),
         "Invalid type for expanded float!");
 
     lo = analyzeNewValue(lo);
@@ -3723,7 +3723,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandFloatRes_ConstantFP(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     Util.assertion(nvt.getSizeInBits() == 64, "Don't know how to expand this float constant!");
 
     APInt c = ((ConstantFPSDNode) n).getValueAPF().bitcastToAPInt();
@@ -3836,7 +3836,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandFloatRes_FP_EXTEND(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue hi = dag.getNode(ISD.FP_EXTEND, nvt, n.getOperand(0));
     SDValue lo = dag.getConstantFP(new APFloat(new APInt(nvt.getSizeInBits(), 0)), nvt, false);
     return new SDValue[]{lo, hi};
@@ -3894,7 +3894,7 @@ public class DAGTypeLegalizer {
     SDValue chain = ld.getChain();
     SDValue ptr = ld.getBasePtr();
 
-    EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), ld.getValueType(0));
     Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
     Util.assertion(ld.getMemoryVT().bitsLE(nvt), "Float type not round!");
 
@@ -3911,7 +3911,7 @@ public class DAGTypeLegalizer {
     Util.assertion(n.getValueType(0).getSimpleVT().simpleVT == MVT.ppcf128, "Unsupported UINT_TO_FP or SINT_TO_FP?");
 
     EVT vt = n.getValueType(0);
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue src = n.getOperand(0);
     EVT srcVT = src.getValueType();
     boolean isSigned = n.getOpcode() == ISD.SINT_TO_FP;
@@ -4136,7 +4136,7 @@ public class DAGTypeLegalizer {
     SDValue chain = n.getChain();
     SDValue ptr = n.getBasePtr();
 
-    EVT nvt = tli.getTypeToTransformTo(n.getValue().getValueType());
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValue().getValueType());
     Util.assertion(nvt.isByteSized(), "Expanded type not byte sized!");
     Util.assertion(n.getMemoryVT().bitsLE(nvt), "Float type not round!");
 
@@ -4716,8 +4716,8 @@ public class DAGTypeLegalizer {
         return new SDValue[]{lo, hi};
       }
     }
-    EVT loIntVT = EVT.getIntegerVT(loVT.getSizeInBits());
-    EVT hiIntVT = EVT.getIntegerVT(hiVT.getSizeInBits());
+    EVT loIntVT = EVT.getIntegerVT(dag.getContext(), loVT.getSizeInBits());
+    EVT hiIntVT = EVT.getIntegerVT(dag.getContext(), hiVT.getSizeInBits());
     if (tli.isBigEndian()) {
       EVT temp = loIntVT;
       loIntVT = hiIntVT;
@@ -4885,7 +4885,7 @@ public class DAGTypeLegalizer {
     SDValue store = dag.getStore(dag.getEntryNode(), vec, stackPtr, null, 0, false, 0);
 
     SDValue eltPtr = getVectorElementPointer(stackPtr, eltVT, idx);
-    int alignment = tli.getTargetData().getPrefTypeAlignment(vecVT.getTypeForEVT());
+    int alignment = tli.getTargetData().getPrefTypeAlignment(vecVT.getTypeForEVT(dag.getContext()));
     store = dag.getTruncStore(store, elt, eltPtr, null, 0, eltVT);
 
     lo = dag.getLoad(lo.getValueType(), store, stackPtr, null, 0);
@@ -5218,7 +5218,7 @@ public class DAGTypeLegalizer {
   }
 
   private void setWidenedVector(SDValue op, SDValue result) {
-    Util.assertion(result.getValueType().equals(tli.getTypeToTransformTo(op.getValueType())), "Invalid type for widened vector!");
+    Util.assertion(result.getValueType().equals(tli.getTypeToTransformTo(dag.getContext(), op.getValueType())), "Invalid type for widened vector!");
 
     result = analyzeNewValue(result);
     Util.assertion(!widenedVectors.containsKey(op));
@@ -5343,7 +5343,7 @@ public class DAGTypeLegalizer {
     SDValue inOp = n.getOperand(0);
     EVT inVT = inOp.getValueType();
     EVT vt = n.getValueType(0);
-    EVT widenVT = tli.getTypeToTransformTo(vt);
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), vt);
 
     switch (getTypeAction(inVT)) {
       default:
@@ -5404,7 +5404,7 @@ public class DAGTypeLegalizer {
     EVT eltVT = vt.getVectorElementType();
     int numElts = vt.getVectorNumElements();
 
-    EVT widenVT = tli.getTypeToTransformTo(vt);
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), vt);
     int widenNumElts = widenVT.getVectorNumElements();
 
     ArrayList<SDValue> newOps = new ArrayList<>();
@@ -5418,7 +5418,7 @@ public class DAGTypeLegalizer {
 
   private SDValue widenVecRes_CONCAT_VECTORS(SDNode n) {
     EVT inVT = n.getOperand(0).getValueType();
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int widenNumElts = widenVT.getVectorNumElements();
     int numOperands = n.getNumOperands();
 
@@ -5437,7 +5437,7 @@ public class DAGTypeLegalizer {
       }
     } else {
       inputWidened = true;
-      if (widenVT.equals(tli.getTypeToTransformTo(inVT))) {
+      if (widenVT.equals(tli.getTypeToTransformTo(dag.getContext(), inVT))) {
         int i;
         for (i = 1; i < numOperands; i++)
           if (n.getOperand(i).getOpcode() != ISD.UNDEF)
@@ -5483,7 +5483,7 @@ public class DAGTypeLegalizer {
     SDValue rndOp = n.getOperand(3);
     SDValue satOp = n.getOperand(4);
 
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int widenNumElts = widenVT.getVectorNumElements();
 
     EVT inVT = inOp.getValueType();
@@ -5548,7 +5548,7 @@ public class DAGTypeLegalizer {
 
   private SDValue widenVecRes_EXTRACT_SUBVECTOR(SDNode n) {
     EVT vt = n.getValueType(0);
-    EVT widenVT = tli.getTypeToTransformTo(vt);
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), vt);
     int widenNumElts = widenVT.getVectorNumElements();
     SDValue inOp = n.getOperand(0);
     SDValue idx = n.getOperand(1);
@@ -5603,7 +5603,7 @@ public class DAGTypeLegalizer {
 
   private SDValue widenVecRes_LOAD(SDNode n) {
     LoadSDNode ld = (LoadSDNode) n;
-    EVT widenVT = tli.getTypeToTransformTo(ld.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), ld.getValueType(0));
     EVT ldVT = ld.getMemoryVT();
     Util.assertion(ldVT.isVector() && widenVT.isVector());
 
@@ -5662,12 +5662,12 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_SCALAR_TO_VECTOR(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     return dag.getNode(ISD.SCALAR_TO_VECTOR, widenVT, n.getOperand(0));
   }
 
   private SDValue widenVecRes_SELECT(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int widenNumElts = widenVT.getVectorNumElements();
 
     SDValue cond = n.getOperand(0);
@@ -5697,13 +5697,13 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_UNDEF(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     return dag.getUNDEF(widenVT);
   }
 
   private SDValue widenVecRes_VECTOR_SHUFFLE(ShuffleVectorSDNode n) {
     EVT vt = n.getValueType(0);
-    EVT widenVT = tli.getTypeToTransformTo(vt);
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), vt);
     int numElts = vt.getVectorNumElements();
     int widenNumElts = widenVT.getVectorNumElements();
 
@@ -5725,7 +5725,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_VSETCC(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
 
     int widenNumElts = widenVT.getVectorNumElements();
     SDValue inOp1 = n.getOperand(0);
@@ -5741,7 +5741,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_Binary(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue inOp1 = getWidenedVector(n.getOperand(0));
     SDValue inOp2 = getWidenedVector(n.getOperand(1));
     return dag.getNode(n.getOpcode(), widenVT, inOp1, inOp2);
@@ -5749,7 +5749,7 @@ public class DAGTypeLegalizer {
 
   private SDValue widenVecRes_Convert(SDNode n) {
     SDValue inOp = n.getOperand(0);
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     int widenNumElts = widenVT.getVectorNumElements();
 
     EVT inVT = inOp.getValueType();
@@ -5798,7 +5798,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_Shift(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue inOp = getWidenedVector(n.getOperand(0));
     SDValue shOp = n.getOperand(1);
 
@@ -5816,7 +5816,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue widenVecRes_Unary(SDNode n) {
-    EVT widenVT = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT widenVT = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue inOp = getWidenedVector(n.getOperand(0));
     return dag.getNode(n.getOpcode(), widenVT, inOp);
   }
@@ -5999,7 +5999,7 @@ public class DAGTypeLegalizer {
       do {
         Util.assertion(eltWidth > 0);
         eltWidth = 1 << Util.log2(eltWidth - 1);
-        newEltVT = EVT.getIntegerVT(eltWidth);
+        newEltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
         int numElts = vecVT.getSizeInBits() / eltWidth;
         newVecVT = EVT.getVectorVT(newEltVT, numElts);
       } while (!tli.isTypeLegal(newVecVT) || vecVT.getSizeInBits() !=
@@ -6008,7 +6008,7 @@ public class DAGTypeLegalizer {
       do {
         Util.assertion(eltWidth > 0);
         eltWidth = 1 << Util.log2(eltWidth - 1);
-        newEltVT = EVT.getIntegerVT(eltWidth);
+        newEltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
         int numElts = vecVT.getSizeInBits() / eltWidth;
         newVecVT = EVT.getVectorVT(newEltVT, numElts);
       } while (!tli.isTypeLegal(newEltVT) || vecVT.getSizeInBits() !=
@@ -6210,7 +6210,7 @@ public class DAGTypeLegalizer {
   private EVT[] getSplitDestVTs(EVT inVT) {
     EVT loVT, hiVT;
     if (!inVT.isVector()) {
-      loVT = hiVT = tli.getTypeToTransformTo(inVT);
+      loVT = hiVT = tli.getTypeToTransformTo(dag.getContext(), inVT);
     } else {
       int numElts = inVT.getVectorNumElements();
       Util.assertion((numElts & 1) == 0, "Splitting vector, but not in half!");
@@ -6226,7 +6226,7 @@ public class DAGTypeLegalizer {
    * @param pair
    */
   private SDValue[] getPairElements(SDValue pair) {
-    EVT nvt = tli.getTypeToTransformTo(pair.getValueType());
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), pair.getValueType());
     SDValue lo = dag.getNode(ISD.EXTRACT_ELEMENT, nvt, pair,
         dag.getIntPtrConstant(0));
     SDValue hi = dag.getNode(ISD.EXTRACT_ELEMENT, nvt, pair,
@@ -6302,7 +6302,7 @@ public class DAGTypeLegalizer {
   // Generic Result Expansion.
   private SDValue[] expandRes_BIT_CONVERT(SDNode n) {
     EVT outVT = n.getValueType(0);
-    EVT nOutVT = tli.getTypeToTransformTo(outVT);
+    EVT nOutVT = tli.getTypeToTransformTo(dag.getContext(), outVT);
     SDValue inOp = n.getOperand(0);
     EVT inVT = inOp.getValueType();
 
@@ -6382,7 +6382,7 @@ public class DAGTypeLegalizer {
 
     Util.assertion(nOutVT.isByteSized(), "Expanded type not byte sized!");
 
-    int alignment = tli.getTargetData().getPrefTypeAlignment(nOutVT.getTypeForEVT());
+    int alignment = tli.getTargetData().getPrefTypeAlignment(nOutVT.getTypeForEVT(dag.getContext()));
     SDValue stackPtr = dag.createStackTemporary(inVT, alignment);
     int fi = ((FrameIndexSDNode) stackPtr.getNode()).getFrameIndex();
     Value sv = PseudoSourceValue.getFixedStack(fi);
@@ -6418,7 +6418,7 @@ public class DAGTypeLegalizer {
     SDValue oldVec = n.getOperand(0);
     int oldElts = oldVec.getValueType().getVectorNumElements();
     EVT oldVT = n.getValueType(0);
-    EVT newVT = tli.getTypeToTransformTo(oldVT);
+    EVT newVT = tli.getTypeToTransformTo(dag.getContext(), oldVT);
 
     SDValue newVec = dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(newVT, 2 * oldElts),
         oldVec);
@@ -6442,7 +6442,7 @@ public class DAGTypeLegalizer {
   private SDValue[] expandRes_NormalLoad(SDNode n) {
     Util.assertion(n.isNormalLoad(), "This method only for normal load!");
     LoadSDNode ld = (LoadSDNode) n;
-    EVT nvt = tli.getTypeToTransformTo(ld.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), ld.getValueType(0));
     SDValue chain = ld.getChain();
     SDValue ptr = ld.getBasePtr();
     int svOffset = ld.getSrcValueOffset();
@@ -6471,7 +6471,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue[] expandRes_VAARG(SDNode n) {
-    EVT nvt = tli.getTypeToTransformTo(n.getValueType(0));
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
     SDValue chain = n.getOperand(0);
     SDValue ptr = n.getOperand(1);
     SDValue lo = dag.getVAArg(nvt, chain, ptr, n.getOperand(2));
@@ -6490,7 +6490,7 @@ public class DAGTypeLegalizer {
   private SDValue expandOp_BIT_CONVERT(SDNode n) {
     if (n.getValueType(0).isVector()) {
       EVT ovt = n.getOperand(0).getValueType();
-      EVT nvt = EVT.getVectorVT(tli.getTypeToTransformTo(ovt), 2);
+      EVT nvt = EVT.getVectorVT(tli.getTypeToTransformTo(dag.getContext(), ovt), 2);
 
       if (isTypeLegal(nvt)) {
         SDValue[] parts = getExpandedOp(n.getOperand(0));
@@ -6511,7 +6511,7 @@ public class DAGTypeLegalizer {
     EVT vecVT = n.getValueType(0);
     int numElts = vecVT.getVectorNumElements();
     EVT oldVT = n.getOperand(0).getValueType();
-    EVT newVT = tli.getTypeToTransformTo(oldVT);
+    EVT newVT = tli.getTypeToTransformTo(dag.getContext(), oldVT);
 
     Util.assertion(oldVT.equals(vecVT.getVectorElementType()), "BUILD_VECTOR operand type doesn't match vector element tyep!");
 
@@ -6542,7 +6542,7 @@ public class DAGTypeLegalizer {
     int numElts = vecVT.getVectorNumElements();
     SDValue val = n.getOperand(1);
     EVT oldVT = val.getValueType();
-    EVT newVT = tli.getTypeToTransformTo(oldVT);
+    EVT newVT = tli.getTypeToTransformTo(dag.getContext(), oldVT);
 
     Util.assertion(oldVT.equals(vecVT.getVectorElementType()));
 
@@ -6580,7 +6580,7 @@ public class DAGTypeLegalizer {
     Util.assertion(n.isNormalStore(), "This method only can be for normal store!");
     Util.assertion(opNo == 1);
     StoreSDNode st = (StoreSDNode) n;
-    EVT nvt = tli.getTypeToTransformTo(st.getValue().getValueType());
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), st.getValue().getValueType());
     SDValue chain = st.getChain();
     SDValue ptr = st.getBasePtr();
     int svOffset = st.getSrcValueOffset();

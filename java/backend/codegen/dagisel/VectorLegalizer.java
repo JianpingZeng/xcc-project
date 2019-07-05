@@ -253,7 +253,7 @@ public class VectorLegalizer {
   private SDValue promoteVectorOp(SDValue op) {
     EVT vt = op.getValueType();
     Util.assertion(op.getNode().getNumValues() == 1, "Can't promote a vector with multiple results!");
-    EVT nvt = tli.getTypeToTransformTo(vt);
+    EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue[] ops = new SDValue[op.getNumOperands()];
     for (int j = 0, e = op.getNumOperands(); j < e; j++) {
       if (op.getOperand(j).getValueType().isVector())

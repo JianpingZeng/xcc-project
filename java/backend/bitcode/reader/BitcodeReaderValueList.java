@@ -27,7 +27,6 @@ package backend.bitcode.reader;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.*;
 import tools.Pair;
@@ -54,7 +53,7 @@ public class BitcodeReaderValueList {
     protected ConstantPlaceHolder(Type ty) {
       super(ty, Operator.UserOp1);
       reserve(1);
-      setOperand(0, UndefValue.get(LLVMContext.Int32Ty));
+      setOperand(0, UndefValue.get(Type.getInt32Ty(ty.getContext())));
     }
   }
 
@@ -220,7 +219,7 @@ public class BitcodeReaderValueList {
         }
         else if (userC instanceof ConstantStruct) {
           ConstantStruct st = (ConstantStruct) userC;
-          newC = ConstantStruct.get(newOps, st.getType().isPacked());
+          newC = ConstantStruct.get(st.getContext(), newOps, st.getType().isPacked());
         }
         else if (userC instanceof ConstantVector) {
           newC = ConstantVector.get(newOps);

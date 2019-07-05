@@ -37,6 +37,7 @@ public final class PerFunctionState {
   private TreeMap<String, Pair<Value, SMLoc>> forwardRefVals;
   private TreeMap<Integer, Pair<Value, SMLoc>> forwardRefValIDs;
   private ArrayList<Value> numberedVals;
+  private LLVMContext context;
 
   public PerFunctionState(LLParser p, Function f) {
     parser = p;
@@ -44,7 +45,8 @@ public final class PerFunctionState {
     forwardRefVals = new TreeMap<>();
     forwardRefValIDs = new TreeMap<>();
     numberedVals = new ArrayList<>();
-
+    context = f.getContext();
+    
     // insert unnamed arguments into the numberedVals list.
     for (Argument arg : fn.getArgumentList()) {
       if (!arg.hasName())
@@ -90,12 +92,12 @@ public final class PerFunctionState {
   }
 
   public BasicBlock getBB(String name, SMLoc loc) {
-    Value val = getVal(name, LLVMContext.LabelTy, loc);
+    Value val = getVal(name, Type.getLabelTy(context), loc);
     return val instanceof BasicBlock ? (BasicBlock) val : null;
   }
 
   public BasicBlock getBB(int id, SMLoc loc) {
-    Value val = getVal(id, LLVMContext.LabelTy, loc);
+    Value val = getVal(id, Type.getLabelTy(context), loc);
     return val instanceof BasicBlock ? (BasicBlock) val : null;
   }
 
@@ -111,7 +113,7 @@ public final class PerFunctionState {
    */
   public boolean setInstName(int nameID, String nameStr, SMLoc nameLoc,
                              Instruction inst) {
-    if (inst.getType().equals(LLVMContext.VoidTy)) {
+    if (inst.getType().equals(Type.getVoidTy(context))) {
       if (nameID != -1 || (nameStr != null && !nameStr.isEmpty()))
         return parser.error(nameLoc, "instruction returning void can't have a name");
       return false;
@@ -171,7 +173,7 @@ public final class PerFunctionState {
 
     if (val != null) {
       if (val.getType().equals(ty)) return val;
-      if (ty.equals(LLVMContext.LabelTy))
+      if (ty.equals(Type.getLabelTy(context)))
         parser.error(loc, String
             .format("'%%%d' is not a basic block", id).toString());
       else
@@ -181,7 +183,7 @@ public final class PerFunctionState {
     }
 
     if (!ty.isFirstClassType() && !(ty instanceof OpaqueType) &&
-        !ty.equals(LLVMContext.LabelTy)) {
+        !ty.equals(Type.getLabelTy(context))) {
       parser.error(loc, "invalid use of a non-first class type");
       return null;
     }
@@ -189,8 +191,8 @@ public final class PerFunctionState {
 
     // Otherwise, create a new forward reference for this value and remember it.
     Value fwdVal;
-    if (ty.equals(LLVMContext.LabelTy))
-      fwdVal = BasicBlock.createBasicBlock("", fn);
+    if (ty.equals(Type.getLabelTy(context)))
+      fwdVal = BasicBlock.createBasicBlock(context, "", fn);
     else
       fwdVal = new Argument(ty, "", fn);
 
@@ -208,7 +210,7 @@ public final class PerFunctionState {
 
     if (val != null) {
       if (val.getType().equals(ty)) return val;
-      if (ty.equals(LLVMContext.LabelTy))
+      if (ty.equals(Type.getLabelTy(context)))
         parser.error(loc, String
             .format("'%%%s' is not a basic block", name).toString());
       else
@@ -218,17 +220,17 @@ public final class PerFunctionState {
     }
 
     if (!ty.isFirstClassType() && !(ty instanceof OpaqueType) &&
-        !ty.equals(LLVMContext.LabelTy)) {
+        !ty.equals(Type.getLabelTy(context))) {
       parser.error(loc, "invalid use of a non-first class type");
       return null;
     }
 
     // Otherwise, create a new forward reference for this value and remember it.
     Value fwdVal;
-    if (ty.equals(LLVMContext.LabelTy)) {
+    if (ty.equals(Type.getLabelTy(context))) {
       // just create a new block but not insert it into the basic blocks list of function
       // so as to preserve the block order as input file.
-      fwdVal = BasicBlock.createBasicBlock(name, (Function) null);
+      fwdVal = BasicBlock.createBasicBlock(context, name, (Function) null);
       // fn.getValueSymbolTable().createValueName(name, fwdVal);
     }
     else

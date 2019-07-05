@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.support.LLVMContext;
+import backend.type.Type;
 import backend.utils.BackwardIterator;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -31,9 +32,6 @@ import java.util.*;
  * @see Instruction
  */
 public final class BasicBlock extends Value implements Iterable<Instruction> {
-  public static final BasicBlock USELESS_BLOCK =
-      new BasicBlock("useless", null);
-
   /**
    * Unique id id for this basic block.
    */
@@ -186,10 +184,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
    * A private constructor for entry node
    */
   private BasicBlock(
+      LLVMContext ctx,
       String bbName,
       Function newParent,
       BasicBlock insertBefore) {
-    super(LLVMContext.LabelTy, ValueKind.BasicBlockVal);
+    super(Type.getLabelTy(ctx), ValueKind.BasicBlockVal);
     this.idNumber = 0;
     this.instructions = new LinkedList<>();
     if (insertBefore != null) {
@@ -202,31 +201,34 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
   }
 
   private BasicBlock(
+      LLVMContext ctx,
       String bbName,
       Function parent) {
-    this(bbName, parent, null);
+    this(ctx, bbName, parent, null);
   }
 
   /**
    * Create new internal basic block.
    */
   public static BasicBlock createBasicBlock(
+      LLVMContext ctx,
       String bbName,
       Function parent, BasicBlock before) {
-    return new BasicBlock(bbName, parent, before);
+    return new BasicBlock(ctx, bbName, parent, before);
   }
 
   /**
    * create new internal basic block.
    */
   public static BasicBlock createBasicBlock(
+      LLVMContext ctx,
       String bbName,
       Function parent) {
-    return new BasicBlock(bbName, parent);
+    return new BasicBlock(ctx, bbName, parent);
   }
 
-  public static BasicBlock createBasicBlock(String bbName, BasicBlock insertBefore) {
-    return new BasicBlock(bbName, null, insertBefore);
+  public static BasicBlock createBasicBlock(LLVMContext ctx, String bbName, BasicBlock insertBefore) {
+    return new BasicBlock(ctx, bbName, null, insertBefore);
   }
 
   public static BasicBlock createBasicBlock() {
@@ -659,10 +661,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
    * @param name
    * @return
    */
-  public BasicBlock splitBasicBlock(Instruction splitPosition, String name) {
+  public BasicBlock splitBasicBlock(LLVMContext ctx, Instruction splitPosition, String name) {
     int startIdx = indexOf(splitPosition);
     Util.assertion(startIdx >= 0, "illegal split position");
-    BasicBlock res = BasicBlock.createBasicBlock(name, (Function) null);
+    BasicBlock res = BasicBlock.createBasicBlock(ctx, name, (Function) null);
     getParent().addBasicBlockAfter(this, res);
 
     LinkedList<Instruction> worklist = new LinkedList<>();

@@ -82,10 +82,10 @@ public class EVT implements Comparable<EVT> {
     return new EVT(MVT.getFloatingPointVT(bitWidth));
   }
 
-  public static EVT getIntegerVT(int bitWidth) {
+  public static EVT getIntegerVT(LLVMContext context, int bitWidth) {
     MVT m = MVT.getIntegerVT(bitWidth);
     if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
-      return getExtendedIntegerVT(bitWidth);
+      return getExtendedIntegerVT(context, bitWidth);
     else
       return new EVT(m);
   }
@@ -170,13 +170,13 @@ public class EVT implements Comparable<EVT> {
     return getStoreSizeInBits() * 8;
   }
 
-  public EVT getRoundIntegerType() {
+  public EVT getRoundIntegerType(LLVMContext context) {
     Util.assertion(isInteger() && !isVector(), "Invalid integer type!");
     int bitwidth = getSizeInBits();
     if (bitwidth <= 8)
       return new EVT(i8);
     else
-      return getIntegerVT(1 << Util.log2(bitwidth));
+      return getIntegerVT(context, 1 << Util.log2(bitwidth));
   }
 
   public boolean isPow2VectorType() {
@@ -297,80 +297,80 @@ public class EVT implements Comparable<EVT> {
    *
    * @return
    */
-  public Type getTypeForEVT() {
+  public Type getTypeForEVT(LLVMContext context) {
     switch (v.simpleVT) {
       default:
         Util.assertion(isExtended(), "Type is not extended!");
         Util.assertion("Vector type currently not supported");
         return llvmTy;
       case isVoid:
-        return LLVMContext.VoidTy;
+        return Type.getVoidTy(context);
       case i1:
-        return LLVMContext.Int1Ty;
+        return Type.getInt1Ty(context);
       case i8:
-        return LLVMContext.Int8Ty;
+        return Type.getInt8Ty(context);
       case i16:
-        return LLVMContext.Int16Ty;
+        return Type.getInt16Ty(context);
       case i32:
-        return LLVMContext.Int32Ty;
+        return Type.getInt32Ty(context);
       case i64:
-        return LLVMContext.Int64Ty;
+        return Type.getInt64Ty(context);
       case i128:
-        return IntegerType.get(128);
+        return Type.getIntNTy(context, 128);
       case f32:
-        return LLVMContext.FloatTy;
+        return Type.getFloatTy(context);
       case f64:
-        return LLVMContext.DoubleTy;
+        return Type.getDoubleTy(context);
       case f80:
-        return LLVMContext.X86_FP80Ty;
+        return Type.getX86_FP80Ty(context);
       case f128:
-        return LLVMContext.FP128Ty;
+        return Type.getFP128Ty(context);
       case ppcf128:
         return null;
       case v2i8:
-        return VectorType.get(LLVMContext.Int8Ty, 2);
+        return VectorType.get(Type.getInt8Ty(context), 2);
       case v4i8:
-        return VectorType.get(LLVMContext.Int8Ty, 4);
+        return VectorType.get(Type.getInt8Ty(context), 4);
       case v8i8:
-        return VectorType.get(LLVMContext.Int8Ty, 8);
+        return VectorType.get(Type.getInt8Ty(context), 8);
       case v16i8:
-        return VectorType.get(LLVMContext.Int8Ty, 16);
+        return VectorType.get(Type.getInt8Ty(context), 16);
       case v32i8:
-        return VectorType.get(LLVMContext.Int8Ty, 32);
+        return VectorType.get(Type.getInt8Ty(context), 32);
       case v2i16:
-        return VectorType.get(LLVMContext.Int16Ty, 2);
+        return VectorType.get(Type.getInt16Ty(context), 2);
       case v4i16:
-        return VectorType.get(LLVMContext.Int16Ty, 4);
+        return VectorType.get(Type.getInt16Ty(context), 4);
       case v8i16:
-        return VectorType.get(LLVMContext.Int16Ty, 8);
+        return VectorType.get(Type.getInt16Ty(context), 8);
       case v16i16:
-        return VectorType.get(LLVMContext.Int16Ty, 16);
+        return VectorType.get(Type.getInt16Ty(context), 16);
       case v2i32:
-        return VectorType.get(LLVMContext.Int32Ty, 2);
+        return VectorType.get(Type.getInt32Ty(context), 2);
       case v4i32:
-        return VectorType.get(LLVMContext.Int32Ty, 4);
+        return VectorType.get(Type.getInt32Ty(context), 4);
       case v8i32:
-        return VectorType.get(LLVMContext.Int32Ty, 8);
+        return VectorType.get(Type.getInt32Ty(context), 8);
       case v1i64:
-        return VectorType.get(LLVMContext.Int64Ty, 1);
+        return VectorType.get(Type.getInt64Ty(context), 1);
       case v2i64:
-        return VectorType.get(LLVMContext.Int64Ty, 2);
+        return VectorType.get(Type.getInt64Ty(context), 2);
       case v4i64:
-        return VectorType.get(LLVMContext.Int64Ty, 4);
+        return VectorType.get(Type.getInt64Ty(context), 4);
       case v2f32:
-        return VectorType.get(LLVMContext.FloatTy, 2);
+        return VectorType.get(Type.getFloatTy(context), 2);
       case v4f32:
-        return VectorType.get(LLVMContext.FloatTy, 4);
+        return VectorType.get(Type.getFloatTy(context), 4);
       case v8f32:
-        return VectorType.get(LLVMContext.FloatTy, 8);
+        return VectorType.get(Type.getFloatTy(context), 8);
       case v16f32:
-        return VectorType.get(LLVMContext.FloatTy, 16);
+        return VectorType.get(Type.getFloatTy(context), 16);
       case v2f64:
-        return VectorType.get(LLVMContext.DoubleTy, 2);
+        return VectorType.get(Type.getDoubleTy(context), 2);
       case v4f64:
-        return VectorType.get(LLVMContext.DoubleTy, 4);
+        return VectorType.get(Type.getDoubleTy(context), 4);
       case v8f64:
-        return VectorType.get(LLVMContext.DoubleTy, 8);
+        return VectorType.get(Type.getDoubleTy(context), 8);
     }
   }
 
@@ -396,7 +396,7 @@ public class EVT implements Comparable<EVT> {
       case VoidTyID:
         return new EVT(isVoid);
       case IntegerTyID:
-        return getIntegerVT(((IntegerType) (ty)).getBitWidth());
+        return getIntegerVT(ty.getContext(), ((IntegerType) (ty)).getBitWidth());
       case FloatTyID:
         return new EVT(new MVT(f32));
       case DoubleTyID:
@@ -420,9 +420,9 @@ public class EVT implements Comparable<EVT> {
     return getEVTString();
   }
 
-  private static EVT getExtendedIntegerVT(int bitWidth) {
+  private static EVT getExtendedIntegerVT(LLVMContext context, int bitWidth) {
     EVT vt = new EVT();
-    vt.llvmTy = IntegerType.get(bitWidth);
+    vt.llvmTy = Type.getIntNTy(context, bitWidth);
     Util.assertion(vt.isExtended(), "Type is not extended!");
     return vt;
   }

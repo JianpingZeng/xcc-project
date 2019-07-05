@@ -20,7 +20,6 @@ package backend.codegen.dagisel;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.support.CallingConv;
-import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
@@ -97,7 +96,7 @@ public class SelectionDAGLegalizer {
   }
 
   public TargetLowering.LegalizeAction getTypeAction(EVT vt) {
-    return valueTypeAction.getTypeAction(vt);
+    return valueTypeAction.getTypeAction(dag.getContext(), vt);
   }
 
   public boolean isTypeLegal(EVT vt) {
@@ -371,7 +370,7 @@ public class SelectionDAGLegalizer {
               Util.shouldNotReachHere("This action is unsupported yet!");
             case Legal:
               if (!tli.allowsUnalignedMemoryAccesses(ld.getMemoryVT())) {
-                Type ty = ld.getMemoryVT().getTypeForEVT();
+                Type ty = ld.getMemoryVT().getTypeForEVT(dag.getContext());
                 int abiAlign = tli.getTargetData().getABITypeAlignment(ty);
                 if (ld.getAlignment() < abiAlign) {
                   result = expandUnalignedLoad((LoadSDNode) result.getNode(),
@@ -415,7 +414,7 @@ public class SelectionDAGLegalizer {
               (srcVT.getSimpleVT().simpleVT != MVT.i1 ||
                   tli.getLoadExtAction(extType, new EVT(MVT.i1)) == TargetLowering.LegalizeAction.Promote)) {
             int newWidth = srcVT.getStoreSizeInBits();
-            EVT nvt = EVT.getIntegerVT(newWidth);
+            EVT nvt = EVT.getIntegerVT(dag.getContext(), newWidth);
             SDValue ch = new SDValue();
             LoadExtType newExtType = extType == LoadExtType.ZEXTLOAD ?
                 LoadExtType.ZEXTLOAD : EXTLOAD;
@@ -443,8 +442,8 @@ public class SelectionDAGLegalizer {
             Util.assertion(extraWidth < roundWidth);
             Util.assertion((roundWidth & 7) == 0 && (extraWidth & 7) == 0, "Load size not an integeral number of bytes!");
 
-            EVT roundVT = EVT.getIntegerVT(roundWidth);
-            EVT extraVT = EVT.getIntegerVT(extraWidth);
+            EVT roundVT = EVT.getIntegerVT(dag.getContext(),roundWidth);
+            EVT extraVT = EVT.getIntegerVT(dag.getContext(),extraWidth);
             SDValue lo, hi, ch;
             int incrementSize = 0;
             if (tli.isLittleEndian()) {
@@ -506,7 +505,7 @@ public class SelectionDAGLegalizer {
                   }
                 } else {
                   if (!tli.allowsUnalignedMemoryAccesses(ld.getMemoryVT())) {
-                    Type ty = ld.getMemoryVT().getTypeForEVT();
+                    Type ty = ld.getMemoryVT().getTypeForEVT(dag.getContext());
                     int abiAlign = tli.getTargetData().getABITypeAlignment(ty);
                     if (ld.getAlignment() < abiAlign) {
                       result = expandUnalignedLoad((LoadSDNode) result.getNode(),
@@ -579,7 +578,7 @@ public class SelectionDAGLegalizer {
               Util.shouldNotReachHere("This action isn't supported yet!");
             case Legal:
               if (!tli.allowsUnalignedMemoryAccesses(st.getMemoryVT())) {
-                Type ty = st.getMemoryVT().getTypeForEVT();
+                Type ty = st.getMemoryVT().getTypeForEVT(dag.getContext());
                 int abiAlign = tli.getTargetData().getABITypeAlignment(ty);
                 if (st.getAlignment() < abiAlign) {
                   result = expandUnalignedStore((StoreSDNode) result.getNode(),
@@ -606,7 +605,7 @@ public class SelectionDAGLegalizer {
           EVT stVT = st.getMemoryVT();
           int stWidth = stVT.getSizeInBits();
           if (stWidth != stVT.getStoreSizeInBits()) {
-            EVT nvt = EVT.getIntegerVT(stVT.getStoreSizeInBits());
+            EVT nvt = EVT.getIntegerVT(dag.getContext(),stVT.getStoreSizeInBits());
             temp3 = dag.getZeroExtendInReg(temp3, stVT);
             result = dag.getTruncStore(temp1, temp3, temp2,
                 st.getSrcValue(), svOffset, nvt, isVolatile,
@@ -620,8 +619,8 @@ public class SelectionDAGLegalizer {
             Util.assertion(extraWidth < roundWidth);
             Util.assertion((roundWidth & 7) == 0 && (extraWidth & 7) == 0, "Store size not an integral number of bytes!");
 
-            EVT roundVT = EVT.getIntegerVT(roundWidth);
-            EVT extraVT = EVT.getIntegerVT(extraWidth);
+            EVT roundVT = EVT.getIntegerVT(dag.getContext(),roundWidth);
+            EVT extraVT = EVT.getIntegerVT(dag.getContext(),extraWidth);
 
             SDValue lo, hi;
             int incrementSize;
@@ -666,7 +665,7 @@ public class SelectionDAGLegalizer {
                 Util.shouldNotReachHere("This action is unsupported yet!");
               case Legal:
                 if (!tli.allowsUnalignedMemoryAccesses(st.getMemoryVT())) {
-                  Type ty = st.getMemoryVT().getTypeForEVT();
+                  Type ty = st.getMemoryVT().getTypeForEVT(dag.getContext());
                   int abiAlign = tli.getTargetData().getABITypeAlignment(ty);
                   if (st.getAlignment() < abiAlign) {
                     result = expandUnalignedStore((StoreSDNode) result.getNode(),
@@ -717,14 +716,14 @@ public class SelectionDAGLegalizer {
     boolean isVolatile = st.isVolatile();
     if (st.getMemoryVT().isFloatingPoint() ||
         st.getMemoryVT().isVector()) {
-      EVT inVT = EVT.getIntegerVT(vt.getSizeInBits());
+      EVT inVT = EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits());
       if (tli.isTypeLegal(inVT)) {
         SDValue result = dag.getNode(ISD.BIT_CONVERT, inVT, val);
         return dag.getStore(chain, result, ptr, st.getSrcValue(),
             svOffset, isVolatile, alignment);
       } else {
         EVT storedVT = st.getMemoryVT();
-        EVT regVT = tli.getRegisterType(EVT.getIntegerVT(storedVT.getSizeInBits()));
+        EVT regVT = tli.getRegisterType(EVT.getIntegerVT(dag.getContext(), storedVT.getSizeInBits()).getSimpleVT());
         int storedBytes = storedVT.getSizeInBits() / 8;
         int regBytes = regVT.getSizeInBits() / 8;
         int numRegs = (storedBytes + regBytes - 1) / regBytes;
@@ -745,7 +744,7 @@ public class SelectionDAGLegalizer {
           ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
         }
 
-        EVT memVT = EVT.getIntegerVT(8 * (storedBytes - offset));
+        EVT memVT = EVT.getIntegerVT(dag.getContext(),8 * (storedBytes - offset));
         SDValue load = dag.getExtLoad(EXTLOAD, regVT, store, stackPtr, null, 0, memVT);
         stores.add(dag.getTruncStore(load.getValue(1), load, ptr, st.getSrcValue(),
             svOffset + offset, memVT, isVolatile, Util.minAlign(alignment, offset)));
@@ -778,7 +777,7 @@ public class SelectionDAGLegalizer {
     EVT vt = ld.getValueType(0);
     EVT loadedVT = ld.getMemoryVT();
     if (vt.isFloatingPoint() || vt.isVector()) {
-      EVT intVT = EVT.getIntegerVT(loadedVT.getSizeInBits());
+      EVT intVT = EVT.getIntegerVT(dag.getContext(),loadedVT.getSizeInBits());
       if (tli.isTypeLegal(intVT)) {
         SDValue newLoad = dag.getLoad(intVT, chain, ptr, ld.getSrcValue(),
             svOffset, ld.isVolatile(), ld.getAlignment());
@@ -788,7 +787,7 @@ public class SelectionDAGLegalizer {
         SDValue[] ops = {result, chain};
         return dag.getMergeValues(ops);
       } else {
-        EVT regVT = tli.getRegisterType(intVT);
+        EVT regVT = tli.getRegisterType(dag.getContext(), intVT);
         int loadedBytes = loadedVT.getSizeInBits() / 8;
         int regBytes = regVT.getSizeInBits() / 8;
         int numRegs = (loadedBytes + regBytes - 1) / regBytes;
@@ -807,7 +806,7 @@ public class SelectionDAGLegalizer {
           ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
           stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr, increment);
         }
-        EVT memVT = EVT.getIntegerVT(8 * (loadedBytes - offset));
+        EVT memVT = EVT.getIntegerVT(dag.getContext(),8 * (loadedBytes - offset));
         SDValue load = dag.getExtLoad(EXTLOAD, regVT, chain, ptr, ld.getSrcValue(),
             svOffset + offset, memVT, ld.isVolatile(),
             Util.minAlign(ld.getAlignment(), offset));
@@ -822,7 +821,7 @@ public class SelectionDAGLegalizer {
     Util.assertion(loadedVT.isInteger() && !loadedVT.isVector(), "Unaligned load of unsupported type!");
 
     int numBits = loadedVT.getSizeInBits();
-    EVT newLoadedVT = EVT.getIntegerVT(numBits / 2);
+    EVT newLoadedVT = EVT.getIntegerVT(dag.getContext(),numBits / 2);
     numBits >>= 1;
 
     int alignment = ld.getAlignment();
@@ -1139,7 +1138,7 @@ public class SelectionDAGLegalizer {
   private SDValue emitStackConvert(SDValue srcOp, EVT slotVT,
                                    EVT destVT) {
     int srcAlign = tli.getTargetData().getPrefTypeAlignment(
-        srcOp.getValueType().getTypeForEVT());
+        srcOp.getValueType().getTypeForEVT(dag.getContext()));
     SDValue ptr = dag.createStackTemporary(slotVT, srcAlign);
 
     FrameIndexSDNode stackPtrFI = (FrameIndexSDNode) ptr.getNode();
@@ -1149,7 +1148,7 @@ public class SelectionDAGLegalizer {
     int srcSize = srcOp.getValueType().getSizeInBits();
     int slotSize = slotVT.getSizeInBits();
     int destSize = destVT.getSizeInBits();
-    int destAlign = tli.getTargetData().getPrefTypeAlignment(destVT.getTypeForEVT());
+    int destAlign = tli.getTargetData().getPrefTypeAlignment(destVT.getTypeForEVT(dag.getContext()));
 
     SDValue store;
     if (srcSize > slotSize)
@@ -1217,7 +1216,7 @@ public class SelectionDAGLegalizer {
           cv.add(cnt.getConstantIntValue());
         } else {
           Util.assertion(op.getOpcode() == ISD.UNDEF);
-          Type opTy = opVT.getTypeForEVT();
+          Type opTy = opVT.getTypeForEVT(dag.getContext());
           cv.add(Value.UndefValue.get(opTy));
         }
       }
@@ -1390,7 +1389,7 @@ public class SelectionDAGLegalizer {
     if (tli.isLittleEndian()) {
       ff <<= 32;
     }
-    Constant fudgeFactor = ConstantInt.get(LLVMContext.Int64Ty, ff);
+    Constant fudgeFactor = ConstantInt.get(Type.getInt64Ty(dag.getContext()), ff);
     SDValue cpIdx = dag.getConstantPool(fudgeFactor, new EVT(tli.getPointerTy()),
         0, 0, false, 0);
     int align = ((ConstantPoolSDNode) cpIdx.getNode()).getAlign();
@@ -1676,8 +1675,9 @@ public class SelectionDAGLegalizer {
         // if this operation is unsurpported, lower it to abort call.
         ArrayList<ArgListEntry> args = new ArrayList<>();
         Pair<SDValue, SDValue> callResult =
-            tli.lowerCallTo(node.getOperand(0),
-                LLVMContext.VoidTy,
+            tli.lowerCallTo(dag.getContext(),
+                node.getOperand(0),
+                Type.getVoidTy(dag.getContext()),
                 false, false, false,
                 false, 0,
                 CallingConv.C, false,
@@ -1758,7 +1758,7 @@ public class SelectionDAGLegalizer {
             temp1, temp2, v, 0);
         temp3 = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()),
             valist, dag.getConstant(tli.getTargetData()
-                    .getTypeAllocSize(vt.getTypeForEVT()),
+                    .getTypeAllocSize(vt.getTypeForEVT(dag.getContext())),
                 new EVT(tli.getPointerTy()),
                 false));
         temp3 = dag.getStore(valist.getValue(1), temp3, temp2, v, 0, false, 0);
@@ -2105,8 +2105,8 @@ public class SelectionDAGLegalizer {
           bottomHalf = dag.getNode(ops[isSigned][1], dag.getVTList(vt, vt), lhs,
               rhs);
           topHalf = bottomHalf.getValue(1);
-        } else if (tli.isTypeLegal(EVT.getIntegerVT(vt.getSizeInBits() * 2))) {
-          EVT WideVT = EVT.getIntegerVT(vt.getSizeInBits() * 2);
+        } else if (tli.isTypeLegal(EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits() * 2))) {
+          EVT WideVT = EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits() * 2);
           lhs = dag.getNode(ops[isSigned][2], WideVT, lhs);
           rhs = dag.getNode(ops[isSigned][2], WideVT, rhs);
           temp1 = dag.getNode(ISD.MUL, WideVT, lhs, rhs);
@@ -2171,7 +2171,7 @@ public class SelectionDAGLegalizer {
             index, dag.getConstant(EntrySize, pty, false));
         SDValue addr = dag.getNode(ISD.ADD, pty, index, table);
 
-        EVT memVT = EVT.getIntegerVT(EntrySize * 8);
+        EVT memVT = EVT.getIntegerVT(dag.getContext(),EntrySize * 8);
         SDValue ld = dag.getExtLoad(SEXTLOAD, pty, chain, addr,
             PseudoSourceValue.getJumpTable(), 0, memVT,
             false, 0);
@@ -2334,7 +2334,7 @@ public class SelectionDAGLegalizer {
       if (fp.isValueValidForType(svt, fp.getValueAPF()) &&
           tli.isLoadExtLegal(EXTLOAD, svt) &&
           tli.shouldShrinkFPConstant(origVT)) {
-        Type sty = svt.getTypeForEVT();
+        Type sty = svt.getTypeForEVT(dag.getContext());
         Constant cst = ConstantExpr.getFPTrunc(c, sty);
         c = cst instanceof ConstantFP ? (ConstantFP) cst : null;
 
@@ -2413,7 +2413,7 @@ public class SelectionDAGLegalizer {
     for (int i = 0, e = node.getNumOperands(); i < e; i++) {
       ArgListEntry entry = new ArgListEntry();
       EVT argVT = node.getOperand(i).getValueType();
-      Type argTy = argVT.getTypeForEVT();
+      Type argTy = argVT.getTypeForEVT(dag.getContext());
       entry.node = node.getOperand(i);
       entry.ty = argTy;
       entry.isSExt = isSigned;
@@ -2423,8 +2423,9 @@ public class SelectionDAGLegalizer {
 
     SDValue callee = dag.getExternalSymbol(tli.getLibCallName(lc),
         new EVT(tli.getPointerTy()));
-    Type retTy = node.getValueType(0).getTypeForEVT();
-    Pair<SDValue, SDValue> callInfo = tli.lowerCallTo(inChain, retTy,
+    Type retTy = node.getValueType(0).getTypeForEVT(dag.getContext());
+    Pair<SDValue, SDValue> callInfo = tli.lowerCallTo(dag.getContext(),
+        inChain, retTy,
         isSigned, !isSigned, false, false,
         0, tli.getLibCallCallingConv(lc),
         false, true, callee, args, dag);

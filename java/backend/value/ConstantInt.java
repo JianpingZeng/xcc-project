@@ -55,7 +55,7 @@ public class ConstantInt extends Constant {
   }
 
   public static ConstantInt get(IntegerType ty, APInt val) {
-    IntegerType ity = IntegerType.get(ty.getBitWidth());
+    IntegerType ity = (IntegerType) Type.getIntNTy(ty.getContext(), ty.getBitWidth());
     APIntKeyType key = new APIntKeyType(val, ity);
     return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
   }
@@ -68,23 +68,23 @@ public class ConstantInt extends Constant {
     return get((IntegerType) ty, val, isSigned);
   }
 
-  public static ConstantInt get(APInt val) {
-    IntegerType ity = IntegerType.get(val.getBitWidth());
+  public static ConstantInt get(LLVMContext ctx, APInt val) {
+    IntegerType ity = (IntegerType) Type.getIntNTy(ctx, val.getBitWidth());
     APIntKeyType key = new APIntKeyType(val, ity);
     return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
   }
 
-  public static ConstantInt getTrue() {
+  public static ConstantInt getTrue(LLVMContext ctx) {
     if (TRUE != null)
       return TRUE;
-    TRUE = get(LLVMContext.Int1Ty, 1, false);
+    TRUE = get(Type.getInt1Ty(ctx), 1, false);
     return TRUE;
   }
 
-  public static ConstantInt getFalse() {
+  public static ConstantInt getFalse(LLVMContext ctx) {
     if (FALSE != null)
       return FALSE;
-    return (FALSE = get(LLVMContext.Int1Ty, 0, false));
+    return (FALSE = get(Type.getInt1Ty(ctx), 0, false));
   }
 
   public boolean isMaxValue(boolean isSigned) {

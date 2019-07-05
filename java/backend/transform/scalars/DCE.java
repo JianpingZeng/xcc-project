@@ -139,7 +139,7 @@ public class DCE implements FunctionPass {
           // and nearest dominate block.
           if (inst instanceof BranchInst) {
             BasicBlock nearestDom = findNearestUsefulPostDom(BB);
-            if (nearestDom == BasicBlock.USELESS_BLOCK)
+            if (nearestDom == null)
               continue;
 
             BranchInst go = new BranchInst(nearestDom, "gotoInst");
@@ -214,7 +214,7 @@ public class DCE implements FunctionPass {
         return currBB;
       worklist.addLast(currDOM.getIDom());
     }
-    return BasicBlock.USELESS_BLOCK;
+    return null;
   }
 
   /**

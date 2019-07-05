@@ -18,6 +18,7 @@
 package backend.value;
 
 import backend.support.LLVMContext;
+import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
 import tools.Util;
 
@@ -35,7 +36,12 @@ import static backend.value.ValueKind.MDNodeVal;
 public class MDNode extends Value {
   private ArrayList<Value> nodes;
   private boolean functionLocal;
-  private int numOperands;
+  private int slotID;
+
+  /**
+   * A flag indicates whether this MDNode is created for upward reference.
+   */
+  private boolean isTemporary;
 
   // FunctionLocal enums.
   enum FunctionLocalness {
@@ -44,31 +50,37 @@ public class MDNode extends Value {
     FL_Yes
   }
 
-  MDNode(List<Value> vals, boolean isFunctionLocal) {
-    super(LLVMContext.MetadataTy, MDNodeVal);
+  MDNode(LLVMContext ctx, List<Value> vals, boolean isFunctionLocal) {
+    super(Type.getMetadataTy(ctx), MDNodeVal);
     nodes = new ArrayList<>();
     nodes.addAll(vals);
     functionLocal = isFunctionLocal;
   }
 
-  public static MDNode get(List<Value> vals) {
-    return get(vals, FunctionLocalness.FL_Unknown);
+  public static MDNode get(LLVMContext context, List<Value> vals) {
+    return get(context, vals, FunctionLocalness.FL_Unknown);
   }
 
-  public static MDNode get(Value[] vals) {
-    return get(Arrays.asList(vals));
+  public static MDNode get(LLVMContext context, Value[] vals) {
+    return get(context, Arrays.asList(vals));
   }
 
-  public static MDNode get(List<Value> vals, FunctionLocalness fl) {
+  public static MDNode get(LLVMContext context, List<Value> vals, FunctionLocalness fl) {
     MDNodeKeyType key = new MDNodeKeyType(vals);
-    return getUniqueImpl().getOrCreate(key, fl);
+    return getUniqueImpl().getOrCreate(context, key, fl);
   }
 
-  public static MDNode get(List<Value> vals, boolean isFunctionLocal) {
-    return get(vals, isFunctionLocal ? FunctionLocalness.FL_Yes : FunctionLocalness.FL_No);
+  public static MDNode get(LLVMContext context, List<Value> vals, boolean isFunctionLocal) {
+    return get(context, vals, isFunctionLocal ? FunctionLocalness.FL_Yes : FunctionLocalness.FL_No);
   }
 
-  public static boolean isFunctionLocalValue(Value v) {
+  public static MDNode getTemporary(LLVMContext context, Value[] vals) {
+    MDNode res = new MDNode(context, vals!=null ? Arrays.asList(vals) : new ArrayList<>(), false);
+    res.isTemporary = true;
+    return res;
+  }
+
+  static boolean isFunctionLocalValue(Value v) {
     return v instanceof Instruction || v instanceof Argument ||
         v instanceof BasicBlock || (v instanceof MDNode && ((MDNode)v).isFunctionLocal());
   }
@@ -117,4 +129,17 @@ public class MDNode extends Value {
     Util.assertion(index >= 0 && index < getNumOperands());
     return nodes.get(index);
   }
+
+  public void setOperand(int idx, MDNode node) {
+    Util.assertion(idx >= 0 && idx < getNumOperands());
+    nodes.set(idx, node);
+  }
+
+  public boolean isTemporary() {
+    return isTemporary;
+  }
+
+  public void setSlotID(int slotID) { this.slotID = slotID; }
+
+  public int getSlotID() { return slotID; }
 }

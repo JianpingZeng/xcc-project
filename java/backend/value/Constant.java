@@ -16,9 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
 import backend.type.IntegerType;
-import backend.type.PointerType;
 import backend.type.Type;
 import tools.APInt;
 import tools.Util;
@@ -39,13 +37,12 @@ public abstract class Constant extends User {
     switch (type.getTypeID()) {
       case Type.IntegerTyID:
         return ConstantInt.get((IntegerType) type, 0);
-
       case Type.FloatTyID:
-        return ConstantFP.get(LLVMContext.FloatTy, 0);
+        return ConstantFP.get(type.getContext(), type, 0);
       case Type.DoubleTyID:
-        return ConstantFP.get(LLVMContext.DoubleTy, 0);
+        return ConstantFP.get(type.getContext(), type, 0);
       case Type.PointerTyID:
-        return ConstantPointerNull.get((PointerType) type);
+        return ConstantPointerNull.get(type);
       case Type.StructTyID:
       case Type.ArrayTyID:
         return ConstantAggregateZero.get(type);
@@ -59,7 +56,7 @@ public abstract class Constant extends User {
   public static Constant getAllOnesValue(Type ty) {
     if (ty instanceof IntegerType) {
       APInt val = APInt.getAllOnesValue(((IntegerType) ty).getBitWidth());
-      return ConstantInt.get(val);
+      return ConstantInt.get(ty.getContext(), val);
     }
     return null;
   }

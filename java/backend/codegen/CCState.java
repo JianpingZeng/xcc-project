@@ -18,6 +18,7 @@ package backend.codegen;
 
 import backend.codegen.CCValAssign.LocInfo;
 import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
@@ -41,11 +42,13 @@ public class CCState {
 
   private int stackOffset;
   private int[] usedRegs;
+  private LLVMContext context;
 
-  public CCState(backend.support.CallingConv cc,
+  public CCState(CallingConv cc,
                  boolean isVarArg,
                  TargetMachine tm,
-                 ArrayList<CCValAssign> locs) {
+                 ArrayList<CCValAssign> locs,
+                 LLVMContext ctx) {
     callingConv = cc;
     this.isVarArg = isVarArg;
     this.tm = tm;
@@ -53,6 +56,7 @@ public class CCState {
     this.locs = locs;
     stackOffset = 0;
     usedRegs = new int[(tri.getNumRegs() + 31) / 32];
+    context = ctx;
   }
 
   public void addLoc(CCValAssign V) {
@@ -259,5 +263,9 @@ public class CCState {
       for (int alias : aliases)
         usedRegs[alias / 32] = usedRegs[alias / 32] | (1 << (alias % 32));
     }
+  }
+
+  public LLVMContext getContext() {
+    return context;
   }
 }

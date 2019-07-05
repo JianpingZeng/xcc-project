@@ -20,7 +20,6 @@ package backend.transform.scalars.instructionCombine;
 import backend.ir.AllocationInst;
 import backend.ir.MallocInst;
 import backend.ir.SelectInst;
-import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.transform.scalars.InstructionCombine;
 import backend.type.*;
@@ -104,7 +103,7 @@ public class Combiner implements InstVisitor<Instruction> {
           amt = numElements;
         else {
           // If the allocation size is constant, form a constant mul expression
-          amt = ConstantInt.get(LLVMContext.Int32Ty, scale);
+          amt = ConstantInt.get(Type.getInt32Ty(inst.getContext()), scale);
           if (numElements instanceof ConstantInt) {
             amt = ConstantExpr.getMul((ConstantInt) amt, (ConstantInt) numElements);
           } else {
@@ -248,7 +247,7 @@ public class Combiner implements InstVisitor<Instruction> {
                                    TargetData td) {
     if (td == null || !ty.isSized()) return null;
 
-    Type intPtrTy = td.getIntPtrType();
+    Type intPtrTy = td.getIntPtrType(ty.getContext());
     long firstIdx = 0;
     long tySize = td.getTypeAllocSize(ty);
     if (tySize != 0) {
@@ -272,7 +271,7 @@ public class Combiner implements InstVisitor<Instruction> {
         Util.assertion(offset < layout.getSizeInBits(),
             "Offset must stay within the indexed type");
         int elt = layout.getElementContainingOffset(offset);
-        newIndices.add(ConstantInt.get(LLVMContext.Int32Ty, elt));
+        newIndices.add(ConstantInt.get(Type.getInt32Ty(ty.getContext()), elt));
         offset -= layout.getElementOffset(elt);
         ty = sty.getElementType(elt);
       } else if (ty instanceof ArrayType) {
@@ -291,7 +290,7 @@ public class Combiner implements InstVisitor<Instruction> {
 
   private Value emitGEPOffset(GetElementPtrInst gep,
                               Instruction inst) {
-    Type intPtrTy = td.getIntPtrType();
+    Type intPtrTy = td.getIntPtrType(gep.getContext());
     GEPTypeIterator gepItr = new GEPTypeIterator(gep);
 
     Value result = ConstantInt.getNullValue(intPtrTy);
@@ -312,7 +311,7 @@ public class Combiner implements InstVisitor<Instruction> {
 
           if (result instanceof ConstantInt) {
             ConstantInt rc = (ConstantInt) result;
-            result = ConstantInt.get(rc.getValue().add(new APInt(intPtrWidth, size)));
+            result = ConstantInt.get(gep.getContext(), rc.getValue().add(new APInt(intPtrWidth, size)));
           } else {
             result = BinaryOperator.createAdd(result, ConstantInt.get(intPtrTy, size),
                 gep.getName() + ".offs", gep);
@@ -453,10 +452,10 @@ public class Combiner implements InstVisitor<Instruction> {
         ConstantInt ci = (ConstantInt) rhs;
         if (lhs instanceof ZExtInst &&
             ((ZExtInst) lhs).operand(0).hasOneUses() &&
-            ((ZExtInst) lhs).operand(0).getType() == LLVMContext.Int1Ty) {
+            ((ZExtInst) lhs).operand(0).getType().isIntegerTy(1)) {
           Value cond = ((ZExtInst) lhs).operand(0);
           return com.replaceInstUsesWith(binOps, new SelectInst(cond,
-              ConstantExpr.getAdd(ci, ConstantInt.getTrue()), ci, "", binOps));
+              ConstantExpr.getAdd(ci, ConstantInt.getTrue(lhs.getContext())), ci, "", binOps));
         }
       }
       if (lhs instanceof Constant) {

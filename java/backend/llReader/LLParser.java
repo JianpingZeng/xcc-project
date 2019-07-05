@@ -87,6 +87,36 @@ public final class LLParser {
   }
 
   /**
+   * This class is used to deal with upward reference to MDNode in NamedNode's operand list.
+   * The upward reference to MDNode in NamedNode should be resolved when that
+   * MDNode is complete.
+   */
+  private static class NamedMDNodeOpRecord {
+    /**
+     * The named metadata node where the metadata node is used.
+     */
+    NamedMDNode mdnode;
+    /**
+     * The index to the offset in operand list.
+     */
+    int idx;
+
+    NamedMDNodeOpRecord(NamedMDNode nmd, int i) {
+      mdnode = nmd;
+      idx = i;
+    }
+  }
+
+  private static class MDNodeOpRecord {
+    MDNode node;
+    int idx;
+    MDNodeOpRecord(MDNode n, int i) {
+      node = n;
+      idx = i;
+    }
+  }
+
+  /**
    * Each instruction parsing routine can return with a
    * normal result, an error result, or return having eaten an extra comma.
    */
@@ -98,7 +128,7 @@ public final class LLParser {
   private TIntObjectHashMap<Pair<Type, SMLoc>> forwardRefTypeIDs;
   private ArrayList<Type> numberedTypes;
   private ArrayList<MDNode> numberedMetadata;
-  private TIntObjectHashMap<Pair<MDNode, SMLoc>> forwardRefMDNodes;
+  private TreeMap<Integer, Pair<MDNode, SMLoc>> forwardRefMDNodes;
   private ArrayList<UpRefRecord> upRefs;
 
   private TreeMap<String, Pair<GlobalValue, SMLoc>> forwardRefVals;
@@ -106,6 +136,9 @@ public final class LLParser {
   private ArrayList<GlobalValue> numberedVals;
   private HashMap<Instruction, ArrayList<MDRef>> forwardRefInstMetadata;
   private LLVMContext context;
+  private TreeMap<Integer, ArrayList<NamedMDNodeOpRecord>> namedMDNodeOpRecordMap;
+  private TreeMap<Integer, ArrayList<MDNodeOpRecord>> mdNodeOpRecordMap;
+
   /**
    * This stub function is used to auto upgrade malloc instruction to a call
    * to the mallocF.
@@ -114,13 +147,13 @@ public final class LLParser {
 
   public LLParser(MemoryBuffer buf, SourceMgr smg, Module m,
                   OutRef<SMDiagnostic> diag, LLVMContext ctx) {
-    lexer = new LLLexer(buf, smg, diag);
+    lexer = new LLLexer(buf, smg, diag, ctx);
     this.m = m;
     forwardRefTypes = new TreeMap<>();
     forwardRefTypeIDs = new TIntObjectHashMap<>();
     numberedTypes = new ArrayList<>();
     numberedMetadata = new ArrayList<MDNode>();
-    forwardRefMDNodes = new TIntObjectHashMap<>();
+    forwardRefMDNodes = new TreeMap<>();
     upRefs = new ArrayList<>();
     forwardRefVals = new TreeMap<>();
     forwardRefValIDs = new TIntObjectHashMap<>();
@@ -128,6 +161,8 @@ public final class LLParser {
     forwardRefInstMetadata = new HashMap<>();
     context = ctx;
     mallocF = null;
+    namedMDNodeOpRecordMap = new TreeMap<>();
+    mdNodeOpRecordMap = new TreeMap<>();
   }
 
   /**
@@ -291,17 +326,22 @@ public final class LLParser {
         parseToken(lbrace, "Expected '{' here"))
       return true;
 
-    ArrayList<MDNode> elts = new ArrayList<>();
-    OutRef<MDNode> node = new OutRef<>();
     NamedMDNode nmd = m.getOrCreateNamedMetadata(name);
     if (lexer.getTokKind() != rbrace) {
+      int idx = 0;
       do {
         if (parseToken(exclaim, "expected '!' here"))
           return true;
 
         OutRef<MDNode> n = new OutRef<>(null);
-        if (parseMDNodeID(n)) return true;
+        OutRef<Integer> slotNo = new OutRef<>(0);
+        if (parseMDNodeID(n, slotNo)) return true;
         nmd.addOperand(n.get());
+        if (n.get().isTemporary()) {
+          if (!namedMDNodeOpRecordMap.containsKey(slotNo.get()))
+            namedMDNodeOpRecordMap.put(slotNo.get(), new ArrayList<>());
+          namedMDNodeOpRecordMap.get(slotNo.get()).add(new NamedMDNodeOpRecord(nmd, idx++));
+        }
       }while (eatIfPresent(comma));
     }
 
@@ -333,20 +373,43 @@ public final class LLParser {
         parseToken(rbrace, "expected end of metadata node"))
       return true;
 
-    MDNode init = MDNode.get(elts);
+    MDNode init = MDNode.get(context, elts);
+    init.setSlotID(metadataID.get());
+    for (int i = 0, e = init.getNumOperands(); i < e; i++) {
+      if (init.getOperand(i) instanceof MDNode) {
+        MDNode n = (MDNode) init.getOperand(i);
+        if (n.isTemporary()) {
+          if (!mdNodeOpRecordMap.containsKey(n.getSlotID()))
+            mdNodeOpRecordMap.put(n.getSlotID(), new ArrayList<>());
+          mdNodeOpRecordMap.get(n.getSlotID()).add((new MDNodeOpRecord(init, i)));
+        }
+      }
+    }
+
+    if (namedMDNodeOpRecordMap.containsKey(metadataID.get())) {
+      ArrayList<NamedMDNodeOpRecord> records = namedMDNodeOpRecordMap.get(metadataID.get());
+      records.forEach(record -> record.mdnode.setOperand(record.idx, init));
+      namedMDNodeOpRecordMap.remove(metadataID.get());
+    }
+
+    if (mdNodeOpRecordMap.containsKey(metadataID.get())) {
+      ArrayList<MDNodeOpRecord> records = mdNodeOpRecordMap.get(metadataID.get());
+      records.forEach(record -> record.node.setOperand(record.idx, init));
+      mdNodeOpRecordMap.remove(metadataID.get());
+    }
 
     if (forwardRefMDNodes.containsKey(metadataID.get())) {
       MDNode fwdNode = forwardRefMDNodes.get(metadataID.get()).first;
       fwdNode.replaceAllUsesWith(init);
       forwardRefMDNodes.remove(metadataID.get());
-    } else {
-      if (metadataID.get() >= numberedMetadata.size()) {
-        for (int i = numberedMetadata.size(); i < metadataID.get()+1; i++)
-          numberedMetadata.add(null);
-      }
-
-      numberedMetadata.set(metadataID.get(), init);
     }
+
+    if (metadataID.get() >= numberedMetadata.size()) {
+      for (int i = numberedMetadata.size(); i < metadataID.get()+1; i++)
+        numberedMetadata.add(null);
+    }
+    numberedMetadata.set(metadataID.get(), init);
+
     return false;
   }
 
@@ -455,7 +518,7 @@ public final class LLParser {
                                         String name,
                                         OutRef<Type> resultTy) {
     if (eatIfPresent(kw_opaque)) {
-      resultTy.set(OpaqueType.get());
+      resultTy.set(OpaqueType.get(context));
       return false;
     }
 
@@ -472,7 +535,7 @@ public final class LLParser {
       return parseType(resultTy, false);
     }
 
-    StructType sty = StructType.create(name);
+    StructType sty = StructType.create(context, name);
 
     ArrayList<Type> body = new ArrayList<>();
     if (parseStructBody(body) ||
@@ -505,7 +568,7 @@ public final class LLParser {
     if (parseType(ty, false))
       return true;
 
-    if (ty.get().equals(LLVMContext.VoidTy))
+    if (ty.get().isVoidType())
       return error(eleTyLoc, "struct element can not have void type");
     if (!StructType.isValidElementType(ty.get()))
       return error(eleTyLoc, "invalid element type for struct");
@@ -517,7 +580,7 @@ public final class LLParser {
       if (parseType(ty, false))
         return true;
 
-      if (ty.get().equals(LLVMContext.VoidTy))
+      if (ty.get().isVoidType())
         return error(eleTyLoc, "struct element can not have void type");
       if (!StructType.isValidElementType(ty.get()))
         return error(eleTyLoc, "invalid element type for struct");
@@ -691,7 +754,7 @@ public final class LLParser {
     Constant init = c.get();
     boolean isConstant = val3.get();
 
-    if (globalTy instanceof FunctionType || globalTy.equals(LLVMContext.LabelTy)) {
+    if (globalTy instanceof FunctionType || globalTy.isLabelTy()) {
       return error(tyLoc, "invalid type for global variable");
     }
     GlobalVariable gv = null;
@@ -897,7 +960,7 @@ public final class LLParser {
 
     AttrList alist = new AttrList(attrs);
 
-    if (alist.paramHasAttr(1, Attribute.StructRet) && !resultTy.get().equals(LLVMContext.VoidTy)) {
+    if (alist.paramHasAttr(1, Attribute.StructRet) && !resultTy.get().isVoidType()) {
       return error(retTypeLoc,
           "function with 'sret' argument must return void");
     }
@@ -1362,7 +1425,7 @@ public final class LLParser {
     if (!upRefs.isEmpty())
       return error(upRefs.get(upRefs.size() - 1).loc,
           "invalid unresolved type upward reference");
-    if (!allowVoid && result.get().equals(LLVMContext.VoidTy))
+    if (!allowVoid && result.get().isVoidType())
       return error(typeLoc, "void type only allowed for function results");
     return false;
   }
@@ -1376,7 +1439,7 @@ public final class LLParser {
         lexer.lex();
         break;
       case kw_opaque:
-        result.set(OpaqueType.get());
+        result.set(OpaqueType.get(context));
         lexer.lex();
         break;
       case lbrace:
@@ -1405,7 +1468,7 @@ public final class LLParser {
         if (ty != null)
           result.set(ty);
         else {
-          result.set(OpaqueType.get());
+          result.set(OpaqueType.get(context));
           forwardRefTypes.put(lexer.getStrVal(),
               Pair.get(result.get(), lexer.getLoc()));
           m.addTypeName(lexer.getStrVal(), result.get());
@@ -1421,7 +1484,7 @@ public final class LLParser {
           if (forwardRefTypeIDs.containsKey(typeId)) {
             result.set(forwardRefTypeIDs.get(typeId).first);
           } else {
-            result.set(OpaqueType.get());
+            result.set(OpaqueType.get(context));
             forwardRefTypeIDs.put(typeId,
                 Pair.get(result.get(), lexer.getLoc()));
           }
@@ -1434,7 +1497,7 @@ public final class LLParser {
         OutRef<Integer> val = new OutRef<>(0);
         if (parseInt32(val))
           return true;
-        OpaqueType ot = OpaqueType.get();
+        OpaqueType ot = OpaqueType.get(context);
         upRefs.add(new UpRefRecord(lexer.getLoc(), val.get(), ot));
         result.set(ot);
         break;
@@ -1449,9 +1512,9 @@ public final class LLParser {
 
         // TypeRec ::= TypeRec '*'
         case star:
-          if (result.get().equals(LLVMContext.LabelTy))
+          if (result.get().isLabelTy())
             return tokError("basic block pointers are invalid");
-          if (result.get().equals(LLVMContext.VoidTy))
+          if (result.get().isVoidType())
             return tokError(
                 "pointers to void are invalid, use i8* instead");
           if (!PointerType.isValidElementType(result.get()))
@@ -1461,9 +1524,9 @@ public final class LLParser {
           break;
         case kw_addrspace:
           // TypeRec ::= TypeRec 'addrspace' '(' uint32 ')' '*'
-          if (result.get().equals(LLVMContext.LabelTy))
+          if (result.get().isLabelTy())
             return tokError("basic block pointers are invalid");
-          if (result.get().equals(LLVMContext.VoidTy))
+          if (result.get().isVoidType())
             return tokError(
                 "pointers to void are invalid, use i8* instead");
           if (!PointerType.isValidElementType(result.get()))
@@ -1586,7 +1649,7 @@ public final class LLParser {
           || parseOptionalAttrs(attr, 0))
         return true;
 
-      if (argTy.get().equals(LLVMContext.VoidTy))
+      if (argTy.get().isVoidType())
         return error(typeLoc, "argument can not have void type");
 
       if (lexer.getTokKind() == LocalVar
@@ -1613,7 +1676,7 @@ public final class LLParser {
             || parseOptionalAttrs(attr, 0))
           return true;
 
-        if (argTy.get().equals(LLVMContext.VoidTy))
+        if (argTy.get().isVoidType())
           return error(typeLoc, "argument can not have void type");
 
         if (lexer.getTokKind() == LocalVar
@@ -1644,7 +1707,7 @@ public final class LLParser {
     if (parseStructBody(body))
       return true;
 
-    result.set(StructType.get(body, packed));
+    result.set(StructType.get(context, body, packed));
     return false;
   }
 
@@ -1707,7 +1770,7 @@ public final class LLParser {
       return true;
 
     SMLoc typeLoc = lexer.getLoc();
-    OutRef<Type> eltTy = new OutRef<>(LLVMContext.VoidTy);
+    OutRef<Type> eltTy = new OutRef<>(backend.type.Type.getVoidTy(context));
     if (parseTypeRec(eltTy))
       return error(typeLoc, "array and vector element type can't be void");
 
@@ -1872,7 +1935,7 @@ public final class LLParser {
             InstError :
             InstResult.InstNormal;
       case kw_unwind:
-        inst.set(new UnWindInst());
+        inst.set(new UnWindInst(context));
         return InstResult.InstNormal;
       case kw_invoke:
         return tokError("currently, invoke is not supported")?
@@ -1883,7 +1946,7 @@ public final class LLParser {
             InstError :
             InstResult.InstNormal;
       case kw_unreachable:
-        inst.set(new UnreachableInst());
+        inst.set(new UnreachableInst(context));
         return InstResult.InstNormal;
       case kw_ret:
         return parseRet(inst, bb, pfs);
@@ -2469,7 +2532,7 @@ public final class LLParser {
     if (parseType(condTy, false))
       return true;
 
-    if (!condTy.get().equals(LLVMContext.Int1Ty))
+    if (!condTy.get().isIntegerTy(1))
       return error(typeLoc, "the type of condition in select instruction must be i1");
     OutRef<Value> cond = new OutRef<>();
     OutRef<Type> trueType = new OutRef<>();
@@ -2517,7 +2580,7 @@ public final class LLParser {
     if (parseToken(lsquare, "expected '[' at beginning of phi op") ||
         parseValue(ty.get(), val, pfs) ||
         parseToken(comma, "expected ',' in phi value list")
-        || parseValue(LLVMContext.LabelTy, val2, pfs) ||
+        || parseValue(backend.type.Type.getLabelTy(context), val2, pfs) ||
         parseToken(rsquare, "expected ']' at end of phi op"))
       return InstError;
 
@@ -2536,7 +2599,7 @@ public final class LLParser {
       if (parseToken(lsquare, "expected '[' at beginning of phi op") ||
           parseValue(ty.get(), val, pfs) ||
           parseToken(comma, "expected ',' in phi value list")
-          || parseValue(LLVMContext.LabelTy, val2, pfs) ||
+          || parseValue(backend.type.Type.getLabelTy(context), val2, pfs) ||
           parseToken(rsquare, "expected ']' at end of phi op"))
         return InstError;
 
@@ -2637,8 +2700,8 @@ public final class LLParser {
     OutRef<Type> retTy = new OutRef<>();
     if (parseType(retTy, true/*allow void type*/))
       return InstError;
-    if (retTy.get().equals(LLVMContext.VoidTy)) {
-      inst.set(new ReturnInst());
+    if (retTy.get().isVoidType()) {
+      inst.set(new ReturnInst(context));
       return InstResult.InstNormal;
     }
 
@@ -2673,7 +2736,7 @@ public final class LLParser {
         }
       }
     }
-    inst.set(new ReturnInst(rv.get()));
+    inst.set(new ReturnInst(context, rv.get()));
     return extraComma ? InstResult.InstExtraComma : InstResult.InstNormal;
   }
 
@@ -2748,11 +2811,11 @@ public final class LLParser {
         id.kind = ValID.ValIDKind.t_APFloat;
         break;
       case kw_true:
-        id.constantVal = ConstantInt.getTrue();
+        id.constantVal = ConstantInt.getTrue(context);
         id.kind = ValID.ValIDKind.t_Constant;
         break;
       case kw_false:
-        id.constantVal = ConstantInt.getFalse();
+        id.constantVal = ConstantInt.getFalse(context);
         id.kind = ValID.ValIDKind.t_Constant;
         break;
       case kw_null:
@@ -2772,7 +2835,7 @@ public final class LLParser {
             "expected '}' at end of struct constant"))
           return true;
 
-        id.constantVal = ConstantStruct.get(elts, false);
+        id.constantVal = ConstantStruct.get(context, elts, false);
         id.kind = ValID.ValIDKind.t_Constant;
         return false;
       }
@@ -2792,7 +2855,7 @@ public final class LLParser {
         }
 
         if (isPackedStruct) {
-          id.constantVal = ConstantStruct.get(elts, true);
+          id.constantVal = ConstantStruct.get(context, elts, true);
           id.kind = ValID.ValIDKind.t_Constant;
           return false;
         }
@@ -2856,7 +2919,7 @@ public final class LLParser {
       case kw_c:
         // c "foo"
         lexer.lex();
-        id.constantVal = ConstantArray.get(unEscapeLexed(lexer.getStrVal()), false);
+        id.constantVal = ConstantArray.get(context, unEscapeLexed(lexer.getStrVal()), false);
         if (parseToken(StringConstant, "expected string"))
           return true;
         id.kind = ValID.ValIDKind.t_Constant;
@@ -3158,7 +3221,7 @@ public final class LLParser {
   private boolean parseMDString(OutRef<MDString> md) {
     OutRef<String> name = new OutRef<>();
     if (parseStringConstant(name)) return true;
-    md.set(MDString.get(name.get()));
+    md.set(MDString.get(context, name.get()));
     return false;
   }
 
@@ -3221,7 +3284,7 @@ public final class LLParser {
           return error(id.loc, "integer constant must have integer type");
         }
         id.apsIntVal.extOrTrunc(ty.getPrimitiveSizeInBits());
-        val.set(ConstantInt.get(id.apsIntVal));
+        val.set(ConstantInt.get(context, id.apsIntVal));
         return false;
       case t_APFloat:
         if (!ty.isFloatingPointType() ||
@@ -3229,12 +3292,12 @@ public final class LLParser {
           return error(id.loc, "floating point constant invalid for type");
 
         if (id.apFloatVal.getSemantics() == tools.APFloat.IEEEdouble &&
-            ty.equals(LLVMContext.FloatTy)) {
+            ty.isFloatTy()) {
           id.apFloatVal.convert(tools.APFloat.IEEEsingle,
               tools.APFloat.RoundingMode.rmNearestTiesToEven,
               new OutRef<>(false));
         }
-        val.set(ConstantFP.get(id.apFloatVal));
+        val.set(ConstantFP.get(context, id.apFloatVal));
         if (!val.get().getType().equals(ty))
           return error(id.loc, "floating point constant does not have"
               + " type '" + ty.getDescription() + "'");
@@ -3245,7 +3308,7 @@ public final class LLParser {
         val.set(ConstantPointerNull.get((PointerType) ty));
         return false;
       case t_Undef:
-        if ((!ty.isFirstClassType() || ty.equals(LLVMContext.LabelTy)) &&
+        if ((!ty.isFirstClassType() || ty.equals(backend.type.Type.getLabelTy(context))) &&
             !(ty instanceof OpaqueType)) {
           return error(id.loc, "invalid type for undef constant");
         }
@@ -3257,7 +3320,7 @@ public final class LLParser {
         val.set(Value.UndefValue.get(ty));
         return false;
       case t_Zero:
-        if (!ty.isFirstClassType() || ty.equals(LLVMContext.LabelTy))
+        if (!ty.isFirstClassType() || ty.equals(backend.type.Type.getLabelTy(context)))
           return error(id.loc, "invalid type for null constant");
         val.set(Constant.getNullValue(ty));
         return false;
@@ -3585,7 +3648,7 @@ public final class LLParser {
         if (!ty.isIntegerTy())
           return error(id.loc, "integer constant must have integer type");
         id.apsIntVal = id.apsIntVal.extOrTrunc(ty.getPrimitiveSizeInBits());
-        val.set(ConstantInt.get(id.apsIntVal));
+        val.set(ConstantInt.get(context, id.apsIntVal));
         return false;
       case t_APFloat:
         if (!ty.isFloatingPointType() || !ConstantFP.isValueValidForType(ty,
@@ -3598,7 +3661,7 @@ public final class LLParser {
                 ignores);
           }
 
-          val.set(ConstantFP.get(id.apFloatVal));
+          val.set(ConstantFP.get(context, id.apFloatVal));
           if (!val.get().getType().equals(ty))
             return error(id.loc, String.format("floating point constant doesn't have type '%s'", ty.toString()));
 
@@ -3683,7 +3746,7 @@ public final class LLParser {
       return false;
     }
 
-    if (!cond.getType().equals(LLVMContext.Int1Ty)) {
+    if (!cond.getType().isIntegerTy(1)) {
       return error(loc1.get(), "branch condition must have 'i1' type");
     }
 
@@ -3878,9 +3941,9 @@ public final class LLParser {
           String.format("use of undefined value'@%d'", itr.key()));
     }
     if (!forwardRefMDNodes.isEmpty()) {
-      TIntObjectIterator<Pair<MDNode, SMLoc>> itr = forwardRefMDNodes.iterator();
-      return error(itr.value().second,
-          String.format("use of undefined metadata '!%d'", itr.key()));
+      Map.Entry<Integer, Pair<MDNode, SMLoc>> first = forwardRefMDNodes.entrySet().iterator().next();
+      return error(first.getValue().second,
+          String.format("use of undefined metadata '!%d'", first.getKey()));
     }
 
     // Look for intrinsic functions and CallInst that need to be upgraded
@@ -3927,7 +3990,7 @@ public final class LLParser {
       } else {
         // Encounter a forward reference metadata with a MD id.
         OutRef<Integer> nodeId = new OutRef<>(0);
-        if (parseMDNodeID(node, nodeId))
+        if (parseMDNodeID2(node, nodeId))
           return true;
         if (node.get() != null)
           inst.setMetadata(mdk, node.get());
@@ -3943,25 +4006,19 @@ public final class LLParser {
     return false;
   }
 
-  /**
-   * This version of ParseMDNodeID returns the slot number and null in the case
-   * of a forward reference.
-   *
-   * @param result
-   * @return
-   */
-  private boolean parseMDNodeID(OutRef<MDNode> result) {
+  private boolean parseMDNodeID(OutRef<MDNode> result, OutRef<Integer> slotNo) {
     // !{ ..., !42, ... }
-    OutRef<Integer> slotNo = new OutRef<>(0);
-    if (parseMDNodeID(result, slotNo))
+    slotNo.set(0);
+    if (parseMDNodeID2(result, slotNo))
       return true;
 
     if (result.get() != null)
       return false;
 
     // create a temporary object
-    MDNode fwdNode = MDNode.get(new ArrayList<>());
+    MDNode fwdNode = MDNode.getTemporary(context, null);
     forwardRefMDNodes.put(slotNo.get(), Pair.get(fwdNode, lexer.getLoc()));
+    fwdNode.setSlotID(slotNo.get());
 
     if (slotNo.get() >= numberedMetadata.size()) {
       for (int i = numberedMetadata.size(); i < slotNo.get()+1; i++)
@@ -3973,7 +4030,18 @@ public final class LLParser {
     return false;
   }
 
-  private boolean parseMDNodeID(OutRef<MDNode> result, OutRef<Integer> slotNo) {
+  /**
+   * This version of ParseMDNodeID returns the slot number and null in the case
+   * of a forward reference.
+   *
+   * @param result
+   * @return
+   */
+  private boolean parseMDNodeID(OutRef<MDNode> result) {
+    return parseMDNodeID(result, new OutRef<>());
+  }
+
+  private boolean parseMDNodeID2(OutRef<MDNode> result, OutRef<Integer> slotNo) {
     if (parseInt32(slotNo)) return true;
 
     if (slotNo.get() < numberedMetadata.size() && numberedMetadata.get(slotNo.get()) != null)
@@ -3992,7 +4060,7 @@ public final class LLParser {
         parseToken(rbrace, "expected end of metadata node"))
       return true;
 
-    id.mdNodeVal = MDNode.get(elts);
+    id.mdNodeVal = MDNode.get(context, elts);
     id.kind = ValID.ValIDKind.t_MDNode;
     return false;
   }
@@ -4005,7 +4073,7 @@ public final class LLParser {
    */
   private boolean parseVAArg(OutRef<Instruction> inst, PerFunctionState pfs) {
     OutRef<Value> op = new OutRef<>();
-    OutRef<Type> eltTy = new OutRef<>(LLVMContext.VoidTy);
+    OutRef<Type> eltTy = new OutRef<>(backend.type.Type.getVoidTy(context));
     OutRef<SMLoc> typeLoc = new OutRef<>();
     if (parseTypeAndValue(op, pfs) ||
         parseToken(comma, "expected ',' after vaarg operand") ||

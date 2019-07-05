@@ -20,7 +20,6 @@ import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
-import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -92,16 +91,16 @@ public final class UnifyFunctionExitNodes implements FunctionPass {
     // Otherwise, there are multiple basic block where return inst lives in.
     // We need to insert PHI node in the new created unified return block
     // for merging multiple incomging value from each return block.
-    BasicBlock unifiedBB = BasicBlock.createBasicBlock("UnifiedReturnBlock", f);
+    BasicBlock unifiedBB = BasicBlock.createBasicBlock(f.getContext(), "UnifiedReturnBlock", f);
     PhiNode pn = null;
 
     // If the function has returned of void type.
-    if (f.getReturnType().equals(LLVMContext.VoidTy))
-      new ReturnInst(null, "UnifiedRetVal", unifiedBB);
+    if (f.getReturnType().isVoidType())
+      new ReturnInst(f.getContext(), null, "UnifiedRetVal", unifiedBB);
     else {
       pn = new PhiNode(f.getReturnType(), returnBlocks.size(), "UnifiedRetVal");
       unifiedBB.appendInst(pn);
-      new ReturnInst(pn, "UnifiedRetVal", unifiedBB);
+      new ReturnInst(f.getContext(), pn, "UnifiedRetVal", unifiedBB);
     }
 
     // Fills value in the new created PHI node.

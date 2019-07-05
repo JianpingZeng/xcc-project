@@ -87,10 +87,10 @@ public class X86_64ABIInfo implements ABIInfo {
   private TargetInfo target;
 
   @Override
-  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx) {
+  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx, LLVMContext vmContext) {
     target = ctx.getTargetInfo();
     // set the return argument info.
-    ABIArgInfo retInfo = classifyReturnType(fi.getReturnType(), ctx);
+    ABIArgInfo retInfo = classifyReturnType(fi.getReturnType(), ctx, vmContext);
     fi.setReturnInfo(retInfo);
 
     // records the number of available registers.
@@ -106,7 +106,7 @@ public class X86_64ABIInfo implements ABIInfo {
       OutRef<Integer> needsIntRegs = new OutRef<>(0);
       OutRef<Integer> needsSSERegs = new OutRef<>(0);
       ABIArgInfo info = classifyArgumentType(fi.getArgInfoAt(i).type,
-          ctx, needsIntRegs, needsSSERegs);
+          ctx, needsIntRegs, needsSSERegs, vmContext);
 
       if (freeIntRegisters >= needsIntRegs.get() &&
           freeSSERegisters >= needsSSERegs.get()) {
@@ -120,7 +120,8 @@ public class X86_64ABIInfo implements ABIInfo {
 
   private ABIArgInfo classifyArgumentType(QualType argType, ASTContext ctx,
                                           OutRef<Integer> needsIntRegs,
-                                          OutRef<Integer> needsSSERegs) {
+                                          OutRef<Integer> needsSSERegs,
+                                          LLVMContext vmContext) {
     Pair<Integer, Integer> resClass = classify(argType, 0, ctx);
     int hi = resClass.first, lo = resClass.second;
     Util.assertion(hi != Class.MEMORY || lo == Class.MEMORY, "unknown memory class");
@@ -136,15 +137,15 @@ public class X86_64ABIInfo implements ABIInfo {
         return getIndirectResult(argType, ctx);
       case Class.INTEGER:
         needsIntRegs.set(needsIntRegs.get() + 1);
-        resType = LLVMContext.Int64Ty;
+        resType = Type.getInt64Ty(vmContext);
         break;
       case Class.SSE:
         needsSSERegs.set(needsSSERegs.get() + 1);
-        resType = LLVMContext.DoubleTy;
+        resType = Type.getDoubleTy(vmContext);
         break;
       case Class.SSEUP:
       case Class.X87UP:
-        Util.assertion(false, "invalid classification for lo word!");
+        Util.assertion("invalid classification for lo word!");
       default:
         Util.shouldNotReachHere("SEEUp and X87_UP should not be setted as high");
     }
@@ -158,12 +159,12 @@ public class X86_64ABIInfo implements ABIInfo {
       case Class.NO_CLASS:
         break;  // handled previously.
       case Class.INTEGER:
-        resType = StructType.get(resType, LLVMContext.Int64Ty);
+        resType = StructType.get(vmContext, resType, Type.getInt64Ty(vmContext));
         needsIntRegs.set(needsIntRegs.get() + 1);
         break;
       case Class.X87UP:
       case Class.SSE:
-        resType = StructType.get(resType, LLVMContext.DoubleTy);
+        resType = StructType.get(vmContext, resType, Type.getDoubleTy(vmContext));
         needsSSERegs.set(needsSSERegs.get() + 1);
         break;
       case Class.SSEUP:
@@ -176,7 +177,7 @@ public class X86_64ABIInfo implements ABIInfo {
   }
 
   @Override
-  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf) {
+  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf, LLVMContext vmContext) {
     // Assume that va_list type is correct; should be pointer to LLVM type:
     // struct {
     //   i32 gp_offset;
@@ -425,7 +426,7 @@ public class X86_64ABIInfo implements ABIInfo {
     return Class.SSE;
   }
 
-  private ABIArgInfo classifyReturnType(QualType retType, ASTContext ctx) {
+  private ABIArgInfo classifyReturnType(QualType retType, ASTContext ctx, LLVMContext vmContext) {
     Pair<Integer, Integer> resClass = classify(retType, 0, ctx);
     int hi = resClass.first, lo = resClass.second;
     Util.assertion(hi != Class.MEMORY || lo == Class.MEMORY, "unknown memory class");
@@ -438,16 +439,16 @@ public class X86_64ABIInfo implements ABIInfo {
       case Class.MEMORY:
         return getIndirectResult(retType, ctx);
       case Class.INTEGER:
-        resType = LLVMContext.Int64Ty;
+        resType = Type.getInt64Ty(vmContext);
         break;
       case Class.SSE:
-        resType = LLVMContext.DoubleTy;
+        resType = Type.getDoubleTy(vmContext);
         break;
       case Class.X87:
-        resType = LLVMContext.X86_FP80Ty;
+        resType = Type.getX86_FP80Ty(vmContext);
         break;
       case Class.COMPLEX_X87:
-        resType = StructType.get(LLVMContext.X86_FP80Ty, LLVMContext.X86_FP80Ty);
+        resType = StructType.get(vmContext, Type.getX86_FP80Ty(vmContext), Type.getX86_FP80Ty(vmContext));
         break;
       default:
         Util.shouldNotReachHere("SEEUp and X87_UP should not be setted as high");
@@ -461,17 +462,17 @@ public class X86_64ABIInfo implements ABIInfo {
       case Class.COMPLEX_X87:
         break;  // handled previously.
       case Class.INTEGER:
-        resType = StructType.get(resType, LLVMContext.Int64Ty);
+        resType = StructType.get(vmContext, resType, Type.getInt64Ty(vmContext));
         break;
       case Class.SSE:
-        resType = StructType.get(resType, LLVMContext.DoubleTy);
+        resType = StructType.get(vmContext, resType, Type.getDoubleTy(vmContext));
         break;
       case Class.SSEUP:
         resType = VectorType.get(resType, 2);
         break;
       case Class.X87UP:
         if (lo != Class.X87)
-          resType = StructType.get(resType, LLVMContext.DoubleTy);
+          resType = StructType.get(vmContext, resType, Type.getDoubleTy(vmContext));
         break;
     }
     Util.assertion(resType != null);
@@ -479,11 +480,11 @@ public class X86_64ABIInfo implements ABIInfo {
   }
 
   private ABIArgInfo getCoerseResult(QualType retType, Type coerseTo, ASTContext ctx) {
-    if (coerseTo.equals(LLVMContext.Int64Ty)) {
+    if (coerseTo.isIntegerTy(64)) {
       if (retType.isIntegralType() || retType.isPointerType())
         return retType.isPromotableIntegerType() ?
             ABIArgInfo.getExtend() : ABIArgInfo.getDirect();
-    } else if (coerseTo.equals(LLVMContext.DoubleTy)) {
+    } else if (coerseTo.isDoubleTy()) {
       QualType cty = ctx.getCanonicalType(retType);
       if (cty.equals(ctx.FloatTy) || cty.equals(ctx.DoubleTy))
         return ABIArgInfo.getDirect();

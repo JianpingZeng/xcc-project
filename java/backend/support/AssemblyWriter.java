@@ -26,13 +26,11 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.value.Module;
-import gnu.trove.iterator.TObjectIntIterator;
-import gnu.trove.procedure.TObjectIntProcedure;
 import tools.*;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.function.BiConsumer;
 
 import static backend.support.AssemblyWriter.PrefixType.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -444,7 +442,7 @@ public class AssemblyWriter {
                                            TypePrinting printer, SlotTracker tracker) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
-      if (ci.getType().equals(LLVMContext.Int1Ty)) {
+      if (ci.getType().isIntegerTy(1)) {
         out.print(ci.getZExtValue() != 0 ? "true" : "false");
         return;
       }
@@ -637,7 +635,7 @@ public class AssemblyWriter {
                                            Module context) {
     ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt) cv : null;
     if (ci != null) {
-      if (ci.getType().equals(LLVMContext.Int1Ty)) {
+      if (ci.getType().isIntegerTy(1)) {
         out.print(ci.getZExtValue() != 0 ? "true" : "false");
         return;
       }
@@ -1145,7 +1143,7 @@ public class AssemblyWriter {
     if (inst.hasName()) {
       printLLVMName(out, inst);
       out.printf(" = ");
-    } else if (!inst.getType().equals(LLVMContext.VoidTy)) {
+    } else if (!inst.getType().isVoidType()) {
       int slot = slotTracker.getLocalSlot(inst);
       if (slot == -1) {
         out.print("<badref> = ");
@@ -1443,18 +1441,13 @@ public class AssemblyWriter {
       if (i != 0) out.print(", ");
       out.printf("!%d", slotTracker.getMetadataSlot(md.getOperand(i)));
     }
-    out.println();
+    out.println("}");
   }
 
   private void writeAllMDNodes() {
     MDNode[] nodes = new MDNode[slotTracker.getMdnMap().size()];
-    slotTracker.getMdnMap().forEachEntry(new TObjectIntProcedure<Value>() {
-      @Override
-      public boolean execute(Value key, int value) {
-        nodes[value] = (MDNode) key;
-        return false;
-      }
-    });
+    slotTracker.getMdnMap().forEach((value, id) -> nodes[id] = (MDNode) value);
+
     for (int i = 0, e = nodes.length; i < e; i++) {
       out.printf("!%d = metadata ", i);
       writeMDNodeBody(nodes[i]);
@@ -1593,10 +1586,12 @@ public class AssemblyWriter {
                                   SlotTracker slotTable,
                                   Module context) {
     MDNode[] nodes = new MDNode[slotTable.getMdnMap().size()];
-    TObjectIntIterator<Value> itr = slotTable.getMdnMap().iterator();
-    while (itr.hasNext()) {
-      nodes[itr.value()] = (MDNode) itr.key();
-    }
+    slotTable.getMdnMap().forEach(new BiConsumer<Value, Integer>() {
+      @Override
+      public void accept(Value value, Integer id) {
+        nodes[id] = (MDNode) value;
+      }
+    });
 
     for (int i = 0; i < nodes.length; i++) {
       os.printf("!%d = metadata ", i);

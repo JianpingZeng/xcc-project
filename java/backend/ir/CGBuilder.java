@@ -30,7 +30,7 @@ import java.util.LinkedList;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
- * This file defines a class "HIRBuilder" that responsible for converting each
+ * This file defines a class "CGBuilder" that responsible for converting each
  * kind of AST node (Expression or Statement) into LLVM IR code. For instance,
  * converting all of statement (except for expression statement) into control
  * flow IR, e.g. br, icmp, fcmp, goto etc. In the another greatly important aspect,
@@ -40,19 +40,23 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  * @author Jianping Zeng
  * @version 0.4
  */
-public class HIRBuilder {
+public class CGBuilder {
   /**
    * The basic block where all instruction will be inserted.
    */
   private BasicBlock curBB;
 
   private Instruction insertPtr;
+  private LLVMContext context;
 
-  public HIRBuilder() {
+  public CGBuilder(LLVMContext ctx) {
     super();
+    context = ctx;
   }
 
-  public HIRBuilder(BasicBlock bb) {
+  public LLVMContext getLLVMContext() { return context; }
+
+  public CGBuilder(BasicBlock bb) {
     setInsertPoint(bb);
   }
 
@@ -731,8 +735,8 @@ public class HIRBuilder {
 
   public Value createStructGEP32Inbounds(Value base, int idx1, int idx2, String name) {
     ArrayList<Value> indices = new ArrayList<>();
-    indices.add(ConstantInt.get(LLVMContext.Int32Ty, idx1));
-    indices.add(ConstantInt.get(LLVMContext.Int32Ty, idx2));
+    indices.add(ConstantInt.get(Type.getInt32Ty(base.getContext()), idx1));
+    indices.add(ConstantInt.get(Type.getInt32Ty(base.getContext()), idx2));
     GetElementPtrInst gep = new GetElementPtrInst(base, indices, "");
     gep.setIsInBounds(true);
     return insert(gep, name);
@@ -744,8 +748,8 @@ public class HIRBuilder {
 
   public Value createStructGEP64Inbounds(Value base, long idx1, long idx2, String name) {
     ArrayList<Value> indices = new ArrayList<>();
-    indices.add(ConstantInt.get(LLVMContext.Int64Ty, idx1));
-    indices.add(ConstantInt.get(LLVMContext.Int64Ty, idx2));
+    indices.add(ConstantInt.get(Type.getInt64Ty(base.getContext()), idx1));
+    indices.add(ConstantInt.get(Type.getInt64Ty(base.getContext()), idx2));
     GetElementPtrInst gep = new GetElementPtrInst(base, indices, "");
     gep.setIsInBounds(true);
     return insert(gep, name);
@@ -758,8 +762,8 @@ public class HIRBuilder {
    * @param value
    * @return
    */
-  public ReturnInst createRet(Value value) {
-    return insert(new ReturnInst(value));
+  public ReturnInst createRet(LLVMContext context, Value value) {
+    return insert(new ReturnInst(context, value));
   }
 
   /**
@@ -767,8 +771,8 @@ public class HIRBuilder {
    *
    * @return
    */
-  public ReturnInst createRetVoid() {
-    return insert(new ReturnInst());
+  public ReturnInst createRetVoid(LLVMContext context) {
+    return insert(new ReturnInst(context));
   }
 
   /**
@@ -785,7 +789,7 @@ public class HIRBuilder {
   }
 
   public UnreachableInst createUnreachable() {
-    return insert(new UnreachableInst());
+    return insert(new UnreachableInst(context));
   }
 
   public PhiNode createPhiNode(Type type, int numVals, String name) {

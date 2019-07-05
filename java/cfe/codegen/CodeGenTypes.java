@@ -142,7 +142,7 @@ public class CodeGenTypes {
     int size;
   }
 
-  private HIRModuleGenerator builder;
+  private CodeGenModule builder;
 
   /**
    * This is a cache diagMapping jlang type to backend type.
@@ -191,7 +191,7 @@ public class CodeGenTypes {
 
   private TIntObjectHashMap<CGFunctionInfo> functionInfos;
 
-  public CodeGenTypes(HIRModuleGenerator moduleBuilder, TargetData td) {
+  public CodeGenTypes(CodeGenModule moduleBuilder, TargetData td) {
     builder = moduleBuilder;
     typeCaches = new HashMap<>();
     recordBeingLaidOut = new HashSet<>();
@@ -259,13 +259,13 @@ public class CodeGenTypes {
         break;
       }
       case Indirect: {
-        restType = LLVMContext.VoidTy;
+        restType = Type.getVoidTy(getLLVMContext());
         Type ty = convertType(retTy);
         argTypes.add(PointerType.get(ty, retTy.getAddressSpace()));
         break;
       }
       case Ignore: {
-        restType = LLVMContext.VoidTy;
+        restType = Type.getVoidTy(getLLVMContext());
         break;
       }
       case Coerce: {
@@ -347,22 +347,22 @@ public class CodeGenTypes {
     backend.type.Type res = convertType(t);
 
     // If this is a non-bool type, don't map it.
-    if (!res.equals(LLVMContext.Int1Ty))
+    if (!res.isIntegerTy(1))
       return res;
 
-    return backend.type.IntegerType.get((int) builder.getASTContext().getTypeSize(t));
+    return backend.type.IntegerType.get(getLLVMContext(), (int) builder.getASTContext().getTypeSize(t));
   }
 
   private backend.type.Type getTypeForFormat(FltSemantics flt) {
     if (flt.equals(APFloat.IEEEsingle))
-      return LLVMContext.FloatTy;
+      return Type.getFloatTy(getLLVMContext());
     if (flt.equals(APFloat.IEEEdouble))
-      return LLVMContext.DoubleTy;
+      return Type.getDoubleTy(getLLVMContext());
     if (flt.equals(APFloat.IEEEquad))
-      return LLVMContext.FP128Ty;
+      return Type.getFP128Ty(getLLVMContext());
     if (flt.equals(APFloat.x87DoubleExtended))
-      return LLVMContext.X86_FP80Ty;
-    Util.assertion(false, "Unknown float format!");
+      return Type.getX86_FP80Ty(getLLVMContext());
+    Util.assertion("Unknown float format!");
     return null;
   }
 
@@ -404,7 +404,7 @@ public class CodeGenTypes {
       return tagDeclTypes.get(key);
 
     if (!td.isCompleteDefinition()) {
-      backend.type.Type res = OpaqueType.get();
+      backend.type.Type res = OpaqueType.get(getLLVMContext());
       tagDeclTypes.put(key, res);
       return res;
     }
@@ -414,7 +414,7 @@ public class CodeGenTypes {
       return convertTypeRecursive(((Decl.EnumDecl) td).getIntegerType());
     }
 
-    OpaqueType placeHolderType = OpaqueType.get();
+    OpaqueType placeHolderType = OpaqueType.get(getLLVMContext());
     tagDeclTypes.put(key, placeHolderType);
 
     Decl.RecordDecl rd = (Decl.RecordDecl) td;
@@ -434,9 +434,9 @@ public class CodeGenTypes {
       case Void:
         // LLVM void type can only be used as the result of a function call.
         // just map to the same as char.
-        return backend.type.IntegerType.get(8);
+        return backend.type.IntegerType.get(getLLVMContext(), 8);
       case Bool:
-        return LLVMContext.Int1Ty;
+        return Type.getInt1Ty(getLLVMContext());
       case Char_U:
       case UShort:
       case UInt:
@@ -447,7 +447,7 @@ public class CodeGenTypes {
       case Int:
       case Long:
       case LongLong:
-        return backend.type.IntegerType.get((int) context.getTypeSize(t));
+        return backend.type.IntegerType.get(getLLVMContext(), (int) context.getTypeSize(t));
       case Float:
       case Double:
       case LongDouble:
@@ -455,13 +455,13 @@ public class CodeGenTypes {
 
       case Complex: {
         // TODO 9/26
-        Util.assertion(false, "ComplexType is not supported");
+        Util.assertion("ComplexType is not supported");
         break;
       }
       case Pointer: {
         cfe.type.PointerType pt = ty.getAsPointerType();
         QualType qualType = pt.getPointeeType();
-        OpaqueType pointeeType = OpaqueType.get();
+        OpaqueType pointeeType = OpaqueType.get(getLLVMContext());
         pointersToResolve.add(Pair.get(qualType, pointeeType));
         return backend.type.PointerType.get(pointeeType, qualType.getAddressSpace());
       }
@@ -482,7 +482,7 @@ public class CodeGenTypes {
         // unsized (e.g. an incomplete struct) just use [0 x i8].
         Type eltTy = convertTypeForMemRecursive(a.getElementType());
         if (!eltTy.isSized()) {
-          eltTy = LLVMContext.Int8Ty;
+          eltTy = Type.getInt8Ty(getLLVMContext());
         }
         return backend.type.ArrayType.get(eltTy, 0);
       }
@@ -494,7 +494,7 @@ public class CodeGenTypes {
         // concrete type.
         if (!eltTy.isSized()) {
           skipLayout = true;
-          eltTy = LLVMContext.Int8Ty;
+          eltTy = Type.getInt8Ty(getLLVMContext());
         }
         return backend.type.ArrayType.get(eltTy, a.getSize().getZExtValue());
       }
@@ -508,7 +508,7 @@ public class CodeGenTypes {
         if (tt != null) {
           convertTagDeclType(tt.getDecl());
 
-          Type resultType = OpaqueType.get();
+          Type resultType = OpaqueType.get(getLLVMContext());
           functionTypes.put(ty, resultType);
           return resultType;
         }
@@ -540,7 +540,7 @@ public class CodeGenTypes {
       }
     }
 
-    return OpaqueType.get();
+    return OpaqueType.get(getLLVMContext());
   }
 
   private backend.type.Type convertTypeRecursive(QualType ty) {
@@ -556,8 +556,8 @@ public class CodeGenTypes {
 
   public backend.type.Type convertTypeForMemRecursive(QualType ty) {
     backend.type.Type resType = convertTypeRecursive(ty);
-    if (resType.equals(LLVMContext.Int1Ty))
-      return IntegerType.get((int) context.getTypeSize(ty));
+    if (resType.isIntegerTy(1))
+      return IntegerType.get(getLLVMContext(), (int) context.getTypeSize(ty));
 
     return resType;
   }
@@ -614,7 +614,7 @@ public class CodeGenTypes {
 
     StructType ty = recordDeclTypes.get(key);
     if (ty == null || !recordDeclTypes.containsKey(key)) {
-      ty = StructType.get();
+      ty = StructType.get(getLLVMContext());
       recordDeclTypes.put(key, ty);
       addRecordTypeName(decl, ty, "");
     }
@@ -812,7 +812,7 @@ public class CodeGenTypes {
     functionInfos.put(hash, fi);
 
     // Compute ABI information.
-    getABIInfo().computeInfo(fi, context);
+    getABIInfo().computeInfo(fi, context, getLLVMContext());
 
     // Compute ABI information.
     return fi;
@@ -849,6 +849,10 @@ public class CodeGenTypes {
 
   public ASTContext getContext() {
     return context;
+  }
+
+  public LLVMContext getLLVMContext() {
+    return theModule.getContext();
   }
 
   public TargetData getTargetData() {

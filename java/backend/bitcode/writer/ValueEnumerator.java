@@ -9,7 +9,6 @@
 package backend.bitcode.writer;
 
 import backend.support.AttrList;
-import backend.support.LLVMContext;
 import backend.support.ValueSymbolTable;
 import backend.type.Type;
 import backend.value.*;
@@ -19,7 +18,10 @@ import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class ValueEnumerator {
   private TObjectIntHashMap<Type> typeMap;
@@ -385,7 +387,7 @@ public class ValueEnumerator {
           enumerateValue(v);
       }
       else
-        enumerateType(LLVMContext.VoidTy);
+        enumerateType(Type.getVoidTy(n.getContext()));
     }
   }
   private void enumerateMetadata(Value md) {

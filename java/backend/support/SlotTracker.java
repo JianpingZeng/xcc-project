@@ -17,11 +17,11 @@ package backend.support;
  */
 
 import backend.value.*;
-import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Enumerates slot number for unnamed values.
@@ -53,7 +53,7 @@ public final class SlotTracker {
   /**
    * The mapping from Value to its slot number in module level.
    */
-  private TObjectIntHashMap<Value> mMap;
+  private HashMap<Value, Integer> mMap;
   /**
    * The next slot number of value in module level.
    */
@@ -61,53 +61,53 @@ public final class SlotTracker {
   /**
    * The mapping from Value to its slot number in function level.
    */
-  private TObjectIntHashMap<Value> fMap;
+  private HashMap<Value, Integer> fMap;
   /**
    * The next slot number of value in function level.
    */
   private int fNext;
 
-  private TObjectIntHashMap<Value> mdnMap;
+  private HashMap<Value, Integer> mdnMap;
   private int mdnNext;
 
   public SlotTracker(Module m) {
     theModule = m;
-    mdnMap = new TObjectIntHashMap<>();
-    mMap = new TObjectIntHashMap<>();
-    fMap = new TObjectIntHashMap<>();
+    mdnMap = new HashMap<>();
+    mMap = new HashMap<>();
+    fMap = new HashMap<>();
   }
 
   public SlotTracker(Function f) {
     this.theFunction = f;
-    mdnMap = new TObjectIntHashMap<>();
-    mMap = new TObjectIntHashMap<>();
-    fMap = new TObjectIntHashMap<>();
+    mdnMap = new HashMap<>();
+    mMap = new HashMap<>();
+    fMap = new HashMap<>();
   }
 
   public SlotTracker(MDNode mnode) {
     mNode = mnode;
-    mdnMap = new TObjectIntHashMap<>();
-    mMap = new TObjectIntHashMap<>();
-    fMap = new TObjectIntHashMap<>();
+    mdnMap = new HashMap<>();
+    mMap = new HashMap<>();
+    fMap = new HashMap<>();
   }
 
   public SlotTracker(NamedMDNode nnode) {
     nNode = nnode;
-    mdnMap = new TObjectIntHashMap<>();
-    mMap = new TObjectIntHashMap<>();
-    fMap = new TObjectIntHashMap<>();
+    mdnMap = new HashMap<>();
+    mMap = new HashMap<>();
+    fMap = new HashMap<>();
   }
 
   public int getLocalSlot(Value v) {
     Util.assertion(!(v instanceof Constant),
         "Can't get a constant or global slot with this!");
     initialize();
-    return fMap.containsKey(v) ? fMap.get(v) : -1;
+    return fMap.getOrDefault(v, -1);
   }
 
   public int getGlobalSlot(GlobalValue gv) {
     initialize();
-    return mMap.containsKey(gv) ? mMap.get(gv) : -1;
+    return mMap.getOrDefault(gv, -1);
   }
 
   public void incorporateFunction(Function f) {
@@ -128,15 +128,19 @@ public final class SlotTracker {
 
   private void createMetadataSlot(MDNode node) {
     Util.assertion(node != null, "Can't insert a null value into slotTracker!");
-    if (mdnMap.containsKey(node))
-      return;
+    // Don't insert if N is a function-local metadata, these are always printed
+    // inline.
+    if (!node.isFunctionLocal()) {
+      if (mdnMap.containsKey(node))
+        return;
 
-    int slot = mdnNext++;
-    mdnMap.put(node, slot);
+      int slot = mdnNext++;
+      mdnMap.put(node, slot);
+    }
 
     for (int i = 0, e = node.getNumOperands(); i < e; i++) {
       Value val = node.getOperand(i);
-      if (val != null && val instanceof MDNode)
+      if (val instanceof MDNode)
         createMetadataSlot((MDNode) val);
     }
   }
@@ -150,9 +154,9 @@ public final class SlotTracker {
   private void processNamedMDNode() {
     mdnNext = 0;
     for (int i = 0, e = nNode.getNumOfOperands(); i < e; i++) {
-      Value val = nNode.getOperand(i);
-      if (val instanceof MDNode)
-        createMetadataSlot((MDNode) val);
+      MDNode val = nNode.getOperand(i);
+      if (val != null)
+        createMetadataSlot(val);
     }
     nNode = null;
   }
@@ -169,7 +173,7 @@ public final class SlotTracker {
 
   private void createModuleSlot(GlobalValue gv) {
     Util.assertion(gv != null);
-    Util.assertion(!gv.getType().equals(LLVMContext.VoidTy));
+    Util.assertion(!gv.getType().isVoidType());
     Util.assertion(!gv.hasName());
 
     int destSlot = mNext++;
@@ -178,7 +182,7 @@ public final class SlotTracker {
 
   private void createFunctionSlot(Value v) {
     Util.assertion(v != null);
-    Util.assertion(!v.getType().equals(LLVMContext.VoidTy));
+    Util.assertion(!v.getType().isVoidType());
     Util.assertion(!v.hasName());
 
     int destSlot = fNext++;
@@ -221,7 +225,7 @@ public final class SlotTracker {
         createFunctionSlot(bb);
       }
       for (Instruction inst : bb) {
-        if (!inst.getType().equals(LLVMContext.VoidTy) && !inst.hasName())
+        if (!inst.getType().isVoidType() && !inst.hasName())
           createFunctionSlot(inst);
 
         // Intrinsics can directly use metadata.  We allow direct calls to any
@@ -251,10 +255,10 @@ public final class SlotTracker {
 
   public int getMetadataSlot(MDNode node) {
     initialize();
-    return mdnMap.containsKey(node) ? mdnMap.get(node) : -1;
+    return mdnMap.getOrDefault(node, -1);
   }
 
-  public TObjectIntHashMap<Value> getMdnMap() {
+  public HashMap<Value, Integer> getMdnMap() {
     return mdnMap;
   }
 }

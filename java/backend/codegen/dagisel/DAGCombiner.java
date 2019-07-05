@@ -523,7 +523,7 @@ public class DAGCombiner {
       if (newLoad) {
         // Check the resultant load doesn't need a higher alignment than the
         // original load.
-        int newAlign = tli.getTargetData().getABITypeAlignment(lvt.getTypeForEVT());
+        int newAlign = tli.getTargetData().getABITypeAlignment(lvt.getTypeForEVT(dag.getContext()));
         if (newAlign > align || !tli.isOperationLegalOrCustom(ISD.LOAD, lvt))
           return new SDValue();
 
@@ -638,11 +638,11 @@ public class DAGCombiner {
       int shAmt = imm.countTrailingZeros();
       int msb = bitwidth - imm.countLeadingZeros() - 1;
       int newBW = (int) Util.nextPowerOf2(msb - shAmt);
-      EVT newVT = EVT.getIntegerVT(newBW);
+      EVT newVT = EVT.getIntegerVT(dag.getContext(), newBW);
       while (newBW < bitwidth && !(tli.isOperationLegalOrCustom(opc, newVT) &&
           tli.isNarrowingProfitable(vt, newVT))) {
         newBW = (int) Util.nextPowerOf2(newBW);
-        newVT = EVT.getIntegerVT(newBW);
+        newVT = EVT.getIntegerVT(dag.getContext(), newBW);
       }
       if (newBW >= bitwidth)
         return new SDValue();
@@ -663,7 +663,7 @@ public class DAGCombiner {
         }
         int newAlign = Util.minAlign(ld.getAlignment(), (int) ptrOff);
         if (newAlign < tli.getTargetData().getABITypeAlignment(
-            newVT.getTypeForEVT()))
+            newVT.getTypeForEVT(dag.getContext())))
           return new SDValue();
 
         SDValue newPtr = dag.getNode(ISD.ADD, ptr.getValueType(),
@@ -712,7 +712,7 @@ public class DAGCombiner {
         st.isUnindexed()) {
       int originAlign = st.getAlignment();
       EVT vt = value.getOperand(0).getValueType();
-      int align = tli.getTargetData().getABITypeAlignment(vt.getTypeForEVT());
+      int align = tli.getTargetData().getABITypeAlignment(vt.getTypeForEVT(dag.getContext()));
       if (align == originAlign && ((!legalOprations && !st.isVolatile()) ||
           tli.isOperationLegalOrCustom(ISD.STORE, vt))) {
         return dag.getStore(chain, value.getOperand(0),
@@ -1791,7 +1791,7 @@ public class DAGCombiner {
         tli.isConsecutiveLoad(ld2, ld1, ld1VT.getSizeInBits() / 8, 1, mfi)) {
       int align = ld1.getAlignment();
       int newAlign = tli.getTargetData().getABITypeAlignment(
-          vt.getTypeForEVT());
+          vt.getTypeForEVT(dag.getContext()));
       if (newAlign <= align &&
           (!legalOprations ||
               tli.isOperationLegal(ISD.LOAD, vt))) {
@@ -3772,7 +3772,7 @@ public class DAGCombiner {
         EVT extVT = new EVT(MVT.Other);
         int activeBits = c1.getAPIntValue().getActiveBits();
         if (activeBits > 0 && APInt.isMask(activeBits, c1.getAPIntValue())) {
-          extVT = EVT.getIntegerVT(activeBits);
+          extVT = EVT.getIntegerVT(dag.getContext(), activeBits);
         }
         EVT loadedVT = ld.getMemoryVT();
         if (!extVT.equals(new EVT(MVT.Other)) && loadedVT.bitsGT(extVT) &&

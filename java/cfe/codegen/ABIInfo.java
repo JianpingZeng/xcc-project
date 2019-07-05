@@ -16,6 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Value;
 import cfe.sema.ASTContext;
 import cfe.type.QualType;
@@ -28,7 +29,7 @@ import cfe.type.QualType;
  * @version 0.4
  */
 public interface ABIInfo {
-  void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx);
+  void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx, LLVMContext vmContext);
 
   /**
    * Emit the target dependent code to load a value of type {@code ty} from
@@ -39,5 +40,5 @@ public interface ABIInfo {
    * @param cgf
    * @return
    */
-  Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf);
+  Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf, LLVMContext vmContext);
 }

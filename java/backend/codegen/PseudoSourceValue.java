@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.support.LLVMContext;
+import backend.type.Type;
 import backend.value.Value;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import tools.FormattedOutputStream;
@@ -23,7 +24,7 @@ public class PseudoSourceValue extends Value {
   private static TIntObjectHashMap<PseudoSourceValue> fsValueMap = new TIntObjectHashMap<>();
 
   public PseudoSourceValue() {
-    super(LLVMContext.Int8Ty, PseudoSourceValueVal);
+    super(Type.getInt8Ty(LLVMContext.getGlobalContext()), PseudoSourceValueVal);
   }
 
   @Override

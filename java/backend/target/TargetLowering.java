@@ -22,6 +22,7 @@ import backend.codegen.dagisel.SDNode.*;
 import backend.intrinsic.Intrinsic;
 import backend.mc.*;
 import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;
@@ -147,7 +148,7 @@ public abstract class TargetLowering {
       if (!Util.isPowerOf2(smallVTBits))
         smallVTBits = Util.nextPowerOf2(smallVTBits);
       for (; smallVTBits < bitwidth; smallVTBits = Util.nextPowerOf2(smallVTBits)) {
-        EVT smallVT = EVT.getIntegerVT((int) smallVTBits);
+        EVT smallVT = EVT.getIntegerVT(dag.getContext(), (int) smallVTBits);
         if (tli.isTruncateFree(op.getValueType(), smallVT) &&
             tli.isZExtFree(smallVT, op.getValueType())) {
           SDValue x = dag.getNode(op.getOpcode(), smallVT,
@@ -847,12 +848,11 @@ public abstract class TargetLowering {
     return vt.isSimple() && registerClassForVT[vt.getSimpleVT().simpleVT] != null;
   }
 
-  public EVT getTypeToTransformTo(EVT vt) {
+  public EVT getTypeToTransformTo(LLVMContext context, EVT vt) {
     if (vt.isSimple()) {
       Util.assertion(vt.getSimpleVT().simpleVT < transformToType.length);
       EVT nvt = transformToType[vt.getSimpleVT().simpleVT];
-      Util.assertion(getTypeAction(nvt) != Promote, "Promote may not follow expand or promote");
-
+      Util.assertion(getTypeAction(context, nvt) != Promote, "Promote may not follow expand or promote");
       return nvt;
     }
 
@@ -866,36 +866,35 @@ public abstract class TargetLowering {
       }
 
       // Promote to a power of two size, avoiding multi-step promotions.
-      return getTypeAction(nvt) == Promote ?
-          getTypeToTransformTo(nvt) :
+      return getTypeAction(context, nvt) == Promote ?
+          getTypeToTransformTo(context, nvt) :
           nvt;
     } else if (vt.isInteger()) {
-      EVT nvt = vt.getRoundIntegerType();
+      EVT nvt = vt.getRoundIntegerType(context);
       if (nvt.equals(vt)) {
         // Size is a power of two, expand to half the size.
-        return EVT.getIntegerVT(vt.getSizeInBits() / 2);
+        return EVT.getIntegerVT(context, vt.getSizeInBits() / 2);
       } else {
         // Promote to a power of two size, avoiding multi-step promotion.
-        return getTypeAction(nvt) == Promote ?
-            getTypeToTransformTo(nvt) :
-            nvt;
+        return getTypeAction(context, nvt) == Promote ?
+            getTypeToTransformTo(context, nvt) : nvt;
       }
     }
-    Util.assertion(false, "Unsupported extended type!");
+    Util.assertion("Unsupported extended type!");
     return new EVT(new MVT(MVT.Other));
   }
 
-  public EVT getTypeToExpandTo(EVT vt) {
+  public EVT getTypeToExpandTo(LLVMContext context, EVT vt) {
     Util.assertion(!vt.isVector());
     while (true) {
-      switch (getTypeAction(vt)) {
+      switch (getTypeAction(context, vt)) {
         case Legal:
           return vt;
         case Expand:
-          vt = getTypeToTransformTo(vt);
+          vt = getTypeToTransformTo(context, vt);
           break;
         default:
-          Util.assertion(false, "Type is illegal or to be expanded!");
+          Util.assertion("Type is illegal or to be expanded!");
           return vt;
       }
     }
@@ -910,8 +909,8 @@ public abstract class TargetLowering {
    * @param nvt
    * @return
    */
-  private LegalizeAction getTypeAction(EVT nvt) {
-    return valueTypeAction.getTypeAction(nvt);
+  private LegalizeAction getTypeAction(LLVMContext context, EVT nvt) {
+    return valueTypeAction.getTypeAction(context, nvt);
   }
 
   public MCRegisterClass getRegClassFor(EVT vt) {
@@ -938,7 +937,8 @@ public abstract class TargetLowering {
     registerClassForVT[vt] = regClass;
   }
 
-  public int getVectorTypeBreakdown(EVT vt,
+  public int getVectorTypeBreakdown(LLVMContext context,
+                                    EVT vt,
                                     OutRef<EVT> intermediateVT,
                                     OutRef<Integer> numIntermediates,
                                     OutRef<EVT> registerVT) {
@@ -964,7 +964,7 @@ public abstract class TargetLowering {
     }
     intermediateVT.set(newVT);
 
-    EVT destVT = getRegisterType(newVT);
+    EVT destVT = getRegisterType(context, newVT);
     registerVT.set(destVT);
     if (destVT.bitsLT(newVT)) {
       return numVectorRegs * (newVT.getSizeInBits() / destVT.getSizeInBits());
@@ -975,21 +975,26 @@ public abstract class TargetLowering {
     }
   }
 
-  public EVT getRegisterType(EVT valueVT) {
+  public EVT getRegisterType(MVT vt) {
+    Util.assertion(vt.simpleVT < registerTypeForVT.length);
+    return registerTypeForVT[vt.simpleVT];
+  }
+
+  public EVT getRegisterType(LLVMContext context, EVT valueVT) {
     if (valueVT.isSimple()) {
       Util.assertion(valueVT.getSimpleVT().simpleVT < registerTypeForVT.length);
       return registerTypeForVT[valueVT.getSimpleVT().simpleVT];
     }
     if (valueVT.isVector()) {
       OutRef<EVT> registerVT = new OutRef<>();
-      getVectorTypeBreakdown(valueVT, new OutRef<>(),
+      getVectorTypeBreakdown(context, valueVT, new OutRef<>(),
           new OutRef<>(), registerVT);
       return registerVT.get();
     }
     if (valueVT.isInteger()) {
-      return getRegisterType(getTypeToTransformTo(valueVT));
+      return getRegisterType(context, getTypeToTransformTo(context, valueVT));
     }
-    Util.assertion(false, "Unsupported extended type!");
+    Util.assertion("Unsupported extended type!");
     return new EVT(MVT.Other);
   }
 
@@ -1024,7 +1029,7 @@ public abstract class TargetLowering {
     }
     intermediateVT.set(newVT);
 
-    EVT destVT = tli.getRegisterType(new EVT(newVT));
+    EVT destVT = tli.getRegisterType(newVT);
     registerVT.set(destVT);
     if (destVT.bitsLT(new EVT(newVT))) {
       return numVectorRegs * (newVT.getSizeInBits() / destVT.getSizeInBits());
@@ -1225,7 +1230,8 @@ public abstract class TargetLowering {
                                       ArrayList<OutputArg> outs,
                                       SelectionDAG dag);
 
-  public Pair<SDValue, SDValue> lowerCallTo(SDValue chain,
+  public Pair<SDValue, SDValue> lowerCallTo(LLVMContext context,
+                                            SDValue chain,
                                             Type retTy,
                                             boolean retSExt,
                                             boolean retZExt,
@@ -1245,7 +1251,7 @@ public abstract class TargetLowering {
       computeValueVTs(this, args.get(i).ty, valueVTs);
       for (int j = 0, sz = valueVTs.size(); j < sz; j++) {
         EVT vt = valueVTs.get(j);
-        Type argTy = vt.getTypeForEVT();
+        Type argTy = vt.getTypeForEVT(dag.getContext());
         SDValue op = new SDValue(args.get(i).node.getNode(),
             args.get(i).node.getResNo() + j);
 
@@ -1275,7 +1281,7 @@ public abstract class TargetLowering {
 
         flags.setOrigAlign(originalAlignment);
 
-        EVT partVT = getRegisterType(vt);
+        EVT partVT = getRegisterType(context, vt);
         int numParts = getNumRegisters(vt);
         SDValue[] parts = new SDValue[numParts];
         int extendKind = ISD.ANY_EXTEND;
@@ -1304,7 +1310,7 @@ public abstract class TargetLowering {
 
     computeValueVTs(this, retTy, retTys);
     for (EVT vt : retTys) {
-      EVT registerVT = getRegisterType(vt);
+      EVT registerVT = getRegisterType(context, vt);
       int numRegs = getNumRegisters(vt);
       for (int i = 0; i < numRegs; i++) {
         InputArg input = new InputArg();
@@ -1342,7 +1348,7 @@ public abstract class TargetLowering {
     ArrayList<SDValue> returnValues = new ArrayList<>();
     int curReg = 0;
     for (EVT vt : retTys) {
-      EVT registerVT = getRegisterType(vt);
+      EVT registerVT = getRegisterType(context, vt);
       int numRegs = getNumRegisters(vt);
       SDValue[] temp = new SDValue[numRegs];
       for (int i = 0; i < numRegs; i++)
@@ -1756,7 +1762,7 @@ public abstract class TargetLowering {
           }
         }
         if (bestWidth != 0) {
-          EVT newVT = EVT.getIntegerVT(bestWidth);
+          EVT newVT = EVT.getIntegerVT(dag.getContext(), bestWidth);
           if (newVT.isRound()) {
             EVT ptrType = ld.getOperand(1).getValueType();
             SDValue ptr = ld.getBasePtr();

@@ -21,7 +21,6 @@ import backend.codegen.EVT;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
-import backend.support.LLVMContext;
 import backend.target.*;
 import backend.type.ArrayType;
 import backend.type.StructType;
@@ -270,7 +269,7 @@ public class FunctionLoweringInfo {
       }
       return;
     }
-    if (ty.equals(LLVMContext.VoidTy))
+    if (ty.isVoidType())
       return;
     // Non-aggragate type
     valueVTs.add(tli.getValueType(ty));
@@ -293,7 +292,7 @@ public class FunctionLoweringInfo {
 
     int firstReg = 0;
     for (EVT valueVT : valueVTs) {
-      EVT registerVT = tli.getRegisterType(valueVT);
+      EVT registerVT = tli.getRegisterType(v.getContext(), valueVT);
 
       int numRegs = tli.getNumRegisters(valueVT);
       for (; numRegs != 0; --numRegs) {
@@ -381,7 +380,7 @@ public class FunctionLoweringInfo {
     if (tli.getNumRegisters(intVT) != 1)
       return;
 
-    intVT = tli.getTypeToTransformTo(intVT);
+    intVT = tli.getTypeToTransformTo(ty.getContext(), intVT);
     int bitWidth = intVT.getSizeInBits();
     int destReg = valueMap.get(pn);
     if (!TargetRegisterInfo.isVirtualRegister(destReg))

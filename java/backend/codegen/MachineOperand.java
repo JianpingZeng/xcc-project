@@ -1,6 +1,5 @@
 package backend.codegen;
 
-import backend.support.LLVMContext;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.ConstantFP;
@@ -318,7 +317,7 @@ public class MachineOperand {
         os.print(getImm());
         break;
       case MO_FPImmediate:
-        if (getFPImm().getType().equals(LLVMContext.FloatTy))
+        if (getFPImm().getType().isFloatTy())
           os.print(getFPImm().getValueAPF().convertToFloat());
         else
           os.print(getFPImm().getValueAPF().convertToDouble());

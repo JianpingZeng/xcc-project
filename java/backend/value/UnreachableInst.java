@@ -17,6 +17,8 @@
 
 package backend.value;
 
+import backend.support.LLVMContext;
+import backend.type.Type;
 import tools.Util;
 
 /**
@@ -24,16 +26,16 @@ import tools.Util;
  * @version 0.4
  */
 public class UnreachableInst extends Instruction.TerminatorInst {
-  public UnreachableInst(BasicBlock insertAtEnd) {
-    super(Operator.Unreachable, "", insertAtEnd);
+  public UnreachableInst(LLVMContext context, BasicBlock insertAtEnd) {
+    super(Type.getVoidTy(context), Operator.Unreachable, "", insertAtEnd);
   }
 
-  public UnreachableInst(Instruction insertBefore) {
-    super(Operator.Unreachable, "", insertBefore);
+  public UnreachableInst(LLVMContext context, Instruction insertBefore) {
+    super(Type.getVoidTy(context), Operator.Unreachable, "", insertBefore);
   }
 
-  public UnreachableInst() {
-    this((Instruction) null);
+  public UnreachableInst(LLVMContext context) {
+    this(context, (Instruction) null);
   }
 
   @Override

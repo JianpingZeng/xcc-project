@@ -130,7 +130,7 @@ public final class ScalarEvolution implements FunctionPass {
    * @return
    */
   public SCEV getSCEV(Value val) {
-    Util.assertion(!val.getType().equals(LLVMContext.VoidTy), "Cannot analyze void expression");
+    Util.assertion(!val.getType().isVoidType(), "Cannot analyze void expression");
     if (scalars.containsKey(val))
       return scalars.get(val);
     SCEV newOne = createSCEV(val);
@@ -727,7 +727,7 @@ public final class ScalarEvolution implements FunctionPass {
       boolean isTrue = cond.equalsInt(1);
       if (isTrue == exitOnTrue) {
         constantEvolutionLoopExitValue.put(pn, phiVal);
-        return SCEVConstant.get(ConstantInt.get(LLVMContext.Int32Ty, iterationNum));
+        return SCEVConstant.get(ConstantInt.get(Type.getInt32Ty(condVal.getContext()), iterationNum));
       }
 
       // Compute the value of the PHI node for the next iteration.
@@ -793,7 +793,7 @@ public final class ScalarEvolution implements FunctionPass {
     if (val == 0)
       c = Constant.getNullValue(ty);
     else if (ty.isFloatingPointType())
-      c = ConstantFP.get(ty, val);
+      c = ConstantFP.get(ty.getContext(), ty, val);
     else {
       Util.assertion(ty.isIntegral(), "Integral type is required.");
       c = ConstantInt.get(ty, val);
@@ -850,9 +850,9 @@ public final class ScalarEvolution implements FunctionPass {
       return srcTy;
     Util.assertion(srcTy.isPointerType(), "Unexpected non-pointer type!");
     if (td != null)
-      return td.getIntPtrType();
+      return td.getIntPtrType(srcTy.getContext());
 
-    return LLVMContext.Int64Ty;
+    return Type.getInt64Ty(srcTy.getContext());
   }
 
   /**
@@ -1000,6 +1000,8 @@ public final class ScalarEvolution implements FunctionPass {
    */
   private boolean isImpliedCond(Value condValue, Predicate pred,
                                 SCEV lhs, SCEV rhs, boolean inverse) {
+    LLVMContext context = condValue.getContext();
+
     // Recursively handle And and Or conditions.
     if (condValue instanceof BinaryOperator) {
       BinaryOperator bo = (BinaryOperator) condValue;
@@ -1061,7 +1063,7 @@ public final class ScalarEvolution implements FunctionPass {
         case ICMP_UGE:
           if (ra.decrease().isMinValue()) {
             pred = Predicate.ICMP_NE;
-            rhs = SCEVConstant.get(ra.decrease());
+            rhs = SCEVConstant.get(context, ra.decrease());
             break;
           }
           if (ra.isMaxValue()) {
@@ -1073,7 +1075,7 @@ public final class ScalarEvolution implements FunctionPass {
         case ICMP_ULE:
           if (ra.increase().isMaxValue()) {
             pred = Predicate.ICMP_NE;
-            rhs = SCEVConstant.get(ra.increase());
+            rhs = SCEVConstant.get(context, ra.increase());
             break;
           }
           if (ra.isMinValue()) {
@@ -1085,7 +1087,7 @@ public final class ScalarEvolution implements FunctionPass {
         case ICMP_SGE:
           if (ra.decrease().isMinSignedValue()) {
             pred = Predicate.ICMP_NE;
-            rhs = SCEVConstant.get(ra.decrease());
+            rhs = SCEVConstant.get(context, ra.decrease());
             break;
           }
           if (ra.isMaxSignedValue()) {
@@ -1097,7 +1099,7 @@ public final class ScalarEvolution implements FunctionPass {
         case ICMP_SLE:
           if (ra.increase().isMaxSignedValue()) {
             pred = Predicate.ICMP_NE;
-            rhs = SCEVConstant.get(ra.increase());
+            rhs = SCEVConstant.get(context, ra.increase());
             break;
           }
           if (ra.isMinSignedValue()) {
@@ -1113,7 +1115,7 @@ public final class ScalarEvolution implements FunctionPass {
           }
           if (ra.increase().isMaxValue()) {
             pred = Predicate.ICMP_EQ;
-            rhs = SCEVConstant.get(ra.increase());
+            rhs = SCEVConstant.get(context, ra.increase());
             break;
           }
           if (ra.isMaxValue()) return false;
@@ -1125,7 +1127,7 @@ public final class ScalarEvolution implements FunctionPass {
           }
           if (ra.decrease().isMinValue()) {
             pred = Predicate.ICMP_EQ;
-            rhs = SCEVConstant.get(ra.decrease());
+            rhs = SCEVConstant.get(context, ra.decrease());
             break;
           }
           if (ra.isMinValue()) return false;
@@ -1137,7 +1139,7 @@ public final class ScalarEvolution implements FunctionPass {
           }
           if (ra.increase().isMaxSignedValue()) {
             pred = Predicate.ICMP_EQ;
-            rhs = SCEVConstant.get(ra.increase());
+            rhs = SCEVConstant.get(context, ra.increase());
             break;
           }
           if (ra.isMaxSignedValue()) return false;
@@ -1149,7 +1151,7 @@ public final class ScalarEvolution implements FunctionPass {
           }
           if (ra.decrease().isMinSignedValue()) {
             pred = Predicate.ICMP_EQ;
-            rhs = SCEVConstant.get(ra.decrease());
+            rhs = SCEVConstant.get(context, ra.decrease());
             break;
           }
           if (ra.isMinSignedValue()) return false;
@@ -1562,6 +1564,10 @@ public final class ScalarEvolution implements FunctionPass {
                                 LinkedList<Instruction> worklist) {
     inst.getUseList().forEach(
         u -> worklist.add((Instruction) u.getUser()));
+  }
+
+  public LLVMContext getContext() {
+    return f.getContext();
   }
 }
 

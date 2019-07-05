@@ -248,7 +248,7 @@ public class Value implements Cloneable {
   public void setName(String newName) {
     // Name of void return is not needed.
     if (newName == null || newName.isEmpty() ||
-        getType().equals(LLVMContext.VoidTy))
+        getType().equals(Type.getVoidTy(getContext())))
       return;
     if (newName.equals(getName()))
       return;

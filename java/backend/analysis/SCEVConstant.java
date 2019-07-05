@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.ConstantInt;
@@ -33,8 +34,8 @@ public final class SCEVConstant extends SCEV {
     return scevConstantMap.get(val);
   }
 
-  public static SCEV get(APInt val) {
-    return get(ConstantInt.get(val));
+  public static SCEV get(LLVMContext context, APInt val) {
+    return get(ConstantInt.get(context, val));
   }
 
   public ConstantInt getValue() {

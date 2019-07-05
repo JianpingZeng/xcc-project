@@ -86,8 +86,7 @@ public class DebugLoc {
       ConstantInt ci = (ConstantInt) n.getOperand(1);
       colNo = (int) ci.getZExtValue();
     }
-    MDNode ia = n.getOperand(3) instanceof MDNode ?
-        (MDNode)n.getOperand(3) : null;
+    MDNode ia = n.getOperand(3) != null && n.getOperand(3) instanceof MDNode ? (MDNode)n.getOperand(3) : null;
     return get(lineNo, colNo, scope, ia);
   }
 
@@ -168,7 +167,7 @@ public class DebugLoc {
         scope.get(),
         ia.get()
     };
-    return MDNode.get(elts);
+    return MDNode.get(ctx2, elts);
   }
 
   @Override

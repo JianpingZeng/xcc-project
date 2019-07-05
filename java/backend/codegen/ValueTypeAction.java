@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.target.TargetLowering.LegalizeAction;
 import tools.Util;
 
@@ -38,14 +39,14 @@ public class ValueTypeAction {
     valueTypeAction[2] = valueTypeAction[3] = 0;
   }
 
-  public LegalizeAction getTypeAction(EVT vt) {
+  public LegalizeAction getTypeAction(LLVMContext context, EVT vt) {
     if (vt.isExtended()) {
       if (vt.isVector()) {
         return vt.isPow2VectorType() ? Expand : Promote;
       }
       if (vt.isInteger()) {
         // First promote to a power-of-two size, then expand if necessary.
-        return vt.equals(vt.getRoundIntegerType()) ? Expand : Promote;
+        return vt.equals(vt.getRoundIntegerType(context)) ? Expand : Promote;
       }
       Util.assertion(false, "Unsupported extended type!");
       return Legal;

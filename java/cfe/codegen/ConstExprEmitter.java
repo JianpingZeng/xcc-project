@@ -25,10 +25,10 @@ import cfe.ast.Tree;
  * @version 0.4
  */
 public class ConstExprEmitter extends StmtVisitor<Constant> {
-  private HIRModuleGenerator generator;
+  private CodeGenModule generator;
   private CodeGenFunction cgf;
 
-  public ConstExprEmitter(HIRModuleGenerator genModule, CodeGenFunction cgf) {
+  public ConstExprEmitter(CodeGenModule genModule, CodeGenFunction cgf) {
     generator = genModule;
     this.cgf = cgf;
   }

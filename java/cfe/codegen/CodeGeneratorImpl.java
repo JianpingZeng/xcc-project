@@ -18,7 +18,7 @@ public class CodeGeneratorImpl implements CodeGenerator {
   private CompileOptions compOpts;
   private Module m;
   private ASTContext ctx;
-  private HIRModuleGenerator builder;
+  private CodeGenModule builder;
   private TargetData td;
 
   public CodeGeneratorImpl(Diagnostic diags, String moduleName,
@@ -39,7 +39,7 @@ public class CodeGeneratorImpl implements CodeGenerator {
     m.setTargetTriple(ctx.target.getTargetTriple());
     m.setDataLayout(ctx.target.getTargetDescription());
     td = new TargetData(ctx.target.getTargetDescription());
-    builder = new HIRModuleGenerator(context, compOpts, m, td, diags);
+    builder = new CodeGenModule(context, compOpts, m, td, diags);
   }
 
   @Override

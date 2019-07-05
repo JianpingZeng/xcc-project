@@ -64,7 +64,7 @@ public class RegsForValue {
     for (int i = 0, e = valueVTs.size(); i < e; i++) {
       EVT valueVT = valueVTs.get(i);
       int numRegs = tli.getNumRegisters(valueVT);
-      EVT registerVT = tli.getRegisterType(valueVT);
+      EVT registerVT = tli.getRegisterType(ty.getContext(), valueVT);
       for (int j = 0; j < numRegs; j++)
         regs.add(reg + j);
       regVTs.add(registerVT);
@@ -225,10 +225,10 @@ public class RegsForValue {
         int roundParts = (numParts & (numParts - 1)) != 0 ?
             1 << Util.log2(numParts) : numParts;
         int roundBits = partBits * roundParts;
-        EVT roundVT = roundBits == valueBits ? valueVT : EVT.getIntegerVT(roundBits);
+        EVT roundVT = roundBits == valueBits ? valueVT : EVT.getIntegerVT(dag.getContext(), roundBits);
         SDValue lo, hi;
 
-        EVT halfVT = EVT.getIntegerVT(roundBits / 2);
+        EVT halfVT = EVT.getIntegerVT(dag.getContext(), roundBits / 2);
         if (roundParts > 2) {
           SDValue[] temps = new SDValue[roundParts / 2];
           System.arraycopy(parts, 0, temps, 0, roundParts / 2);
@@ -247,7 +247,7 @@ public class RegsForValue {
         val = dag.getNode(ISD.BUILD_PAIR, roundVT, lo, hi);
         if (roundParts < numParts) {
           int oddParts = numParts - roundParts;
-          EVT oddVT = EVT.getIntegerVT(oddParts * partBits);
+          EVT oddVT = EVT.getIntegerVT(dag.getContext(), oddParts * partBits);
           SDValue[] temps = new SDValue[oddParts];
           System.arraycopy(parts, roundParts, temps, 0, oddParts);
           hi = getCopyFromParts(dag, temps, partVT, oddVT);
@@ -258,7 +258,7 @@ public class RegsForValue {
             lo = hi;
             hi = temp;
           }
-          EVT totalVT = EVT.getIntegerVT(numParts * partBits);
+          EVT totalVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
           hi = dag.getNode(ISD.ANY_EXTEND, totalVT, hi);
           hi = dag.getNode(ISD.SHL, totalVT, hi,
               dag.getConstant(lo.getValueType().getSizeInBits(),
@@ -271,7 +271,7 @@ public class RegsForValue {
             registerVT = new OutRef<>();
         OutRef<Integer> numIntermidates = new OutRef<>(0);
 
-        int numRegs = tli.getVectorTypeBreakdown(valueVT, intermediateVT,
+        int numRegs = tli.getVectorTypeBreakdown(dag.getContext(), valueVT, intermediateVT,
             numIntermidates, registerVT);
         Util.assertion(numRegs == numParts);
         numParts = numRegs;
@@ -311,7 +311,7 @@ public class RegsForValue {
         val = dag.getNode(ISD.BUILD_VECTOR, valueVT, lo, hi);
       } else {
         Util.assertion(valueVT.isFloatingPoint() && partVT.isInteger() && !partVT.isVector());
-        EVT intVT = EVT.getIntegerVT(valueVT.getSizeInBits());
+        EVT intVT = EVT.getIntegerVT(dag.getContext(), valueVT.getSizeInBits());
         SDValue[] temp = new SDValue[numParts];
         System.arraycopy(parts, 0, temp, 0, numParts);
         val = getCopyFromParts(dag, temp, partVT, intVT);
@@ -385,7 +385,7 @@ public class RegsForValue {
           Util.assertion(numParts == 1);
           val = dag.getNode(ISD.FP_EXTEND, partVT, val);
         } else if (partVT.isInteger() && valueVT.isInteger()) {
-          valueVT = EVT.getIntegerVT(numParts * partBits);
+          valueVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
           val = dag.getNode(extendKind, valueVT, val);
         } else {
           Util.shouldNotReachHere("Unknown mismatch!");
@@ -395,7 +395,7 @@ public class RegsForValue {
         val = dag.getNode(ISD.BIT_CONVERT, partVT, val);
       } else if (numParts * partBits < valueVT.getSizeInBits()) {
         if (partVT.isInteger() && valueVT.isInteger()) {
-          valueVT = EVT.getIntegerVT(numParts * partBits);
+          valueVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
           val = dag.getNode(ISD.TRUNCATE, valueVT, val);
         } else
           Util.shouldNotReachHere("Unknown mismatch!");
@@ -429,16 +429,16 @@ public class RegsForValue {
           }
 
           numParts = roundParts;
-          valueVT = EVT.getIntegerVT(numParts * numParts);
+          valueVT = EVT.getIntegerVT(dag.getContext(), numParts * numParts);
           val = dag.getNode(ISD.TRUNCATE, valueVT, val);
         }
 
-        parts[0] = dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(valueVT.getSizeInBits()),
+        parts[0] = dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(dag.getContext(), valueVT.getSizeInBits()),
             val);
         for (int stepSize = numParts; stepSize > 1; stepSize /= 2) {
           for (int i = 0; i < numParts; i += stepSize) {
             int thisBits = stepSize * partBits / 2;
-            EVT thisVT = EVT.getIntegerVT(thisBits);
+            EVT thisVT = EVT.getIntegerVT(dag.getContext(), thisBits);
             SDValue part0 = parts[i];
             SDValue part1 = parts[i + stepSize / 2];
 
@@ -486,7 +486,7 @@ public class RegsForValue {
     OutRef<EVT> intermidiateVT = new OutRef<>(),
         registerVT = new OutRef<>();
     OutRef<Integer> numIntermediates = new OutRef<>(0);
-    int numRegs = tli.getVectorTypeBreakdown(valueVT, intermidiateVT, numIntermediates,
+    int numRegs = tli.getVectorTypeBreakdown(dag.getContext(), valueVT, intermidiateVT, numIntermediates,
         registerVT);
 
     int numElts = valueVT.getVectorNumElements();

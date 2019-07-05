@@ -17,7 +17,6 @@ package backend.value;
  */
 
 import backend.ir.SelectInst;
-import backend.support.LLVMContext;
 import backend.transform.utils.ConstantFolder;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -64,11 +63,10 @@ public abstract class ConstantExpr extends Constant {
 
   public static Constant getSizeOf(Type ty) {
     ArrayList<Constant> index = new ArrayList<>();
-    index.add(ConstantInt.get(LLVMContext.Int32Ty, 1));
+    index.add(ConstantInt.get(Type.getInt32Ty(ty.getContext()), 1));
 
-    Constant gep = getGetElementPtr(Constant.getNullValue
-        (PointerType.getUnqual(ty)), index);
-    return getCast(Operator.PtrToInt, gep, LLVMContext.Int64Ty);
+    Constant gep = getGetElementPtr(Constant.getNullValue(PointerType.getUnqual(ty)), index);
+    return getCast(Operator.PtrToInt, gep, Type.getInt64Ty(ty.getContext()));
   }
 
   public static Constant getCast(Operator op, Constant c, Type ty) {

@@ -20,11 +20,10 @@ package backend.target.x86;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
+import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
-import backend.support.LLVMContext;
 import backend.support.MachineFunctionPass;
-import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.utils.SuccIterator;
 import backend.value.BasicBlock;
@@ -101,9 +100,9 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
           PhiNode inst;
           for (int j = 0, sz = succBB.size(); j < sz && succBB.getInstAt(j) instanceof PhiNode; j++) {
             inst = (PhiNode) succBB.getInstAt(j);
-            if (inst.getType().equals(LLVMContext.X86_FP80Ty) ||
-                (!subtarget.hasSSE1() && inst.getType().isFloatingPointType()) ||
-                (!subtarget.hasSSE2() && inst.getType().equals(LLVMContext.DoubleTy))) {
+            if (inst.getType().isX86_FP80Ty() ||
+                (!subtarget.hasSSE1() && inst.getType().isFloatTy()) ||
+                (!subtarget.hasSSE2() && inst.getType().isDoubleTy())) {
               containsFPCode = true;
               break;
             }

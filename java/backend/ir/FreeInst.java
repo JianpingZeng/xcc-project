@@ -17,7 +17,7 @@
 
 package backend.ir;
 
-import backend.support.LLVMContext;
+import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
 import backend.value.Operator;
@@ -36,12 +36,12 @@ public class FreeInst extends Instruction.UnaryInstruction {
   }
 
   public FreeInst(Value ptr, Instruction insertBefore) {
-    super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertBefore);
+    super(Type.getVoidTy(ptr.getContext()), Operator.Free, ptr, "", insertBefore);
     assertOK();
   }
 
   public FreeInst(Value ptr, BasicBlock insertAtEnd) {
-    super(LLVMContext.VoidTy, Operator.Free, ptr, "", insertAtEnd);
+    super(Type.getVoidTy(ptr.getContext()), Operator.Free, ptr, "", insertAtEnd);
     assertOK();
   }
 

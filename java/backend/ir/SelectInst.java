@@ -17,7 +17,6 @@
 
 package backend.ir;
 
-import backend.support.LLVMContext;
 import backend.type.VectorType;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
@@ -87,7 +86,7 @@ public final class SelectInst extends Instruction {
     if (op0.getType() instanceof VectorType) {
       VectorType vty = (VectorType) op0.getType();
       // vector select.
-      if (!vty.getElementType().equals(LLVMContext.Int1Ty))
+      if (!vty.getElementType().isIntegerTy(1))
         return "vector select condition element type must be i1";
       if (!(op1.getType() instanceof VectorType))
         return "selected values for vector selection must be vector type";
@@ -95,7 +94,7 @@ public final class SelectInst extends Instruction {
       if (et.getNumElements() != vty.getNumElements())
         return "vector select requires selected vectors to have the same vector length as select condition";
     }
-    else if (!op0.getType().equals(LLVMContext.Int1Ty))
+    else if (!op0.getType().isIntegerTy(1))
       return "select condition must be i1 or <n x i1>";
 
     return null;

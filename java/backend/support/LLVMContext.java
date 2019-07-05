@@ -32,19 +32,19 @@ import java.util.*;
  * @version 0.4
  */
 public class LLVMContext {
-  public static final Type VoidTy = new Type(LLVMTypeID.VoidTyID);
-  public static final Type LabelTy = new Type(LLVMTypeID.LabelTyID);
-  public static final Type MetadataTy = new Type(LLVMTypeID.MetadataTyID);
-  public static final IntegerType Int1Ty = IntegerType.get(1);
-  public static final IntegerType Int8Ty = IntegerType.get(8);
-  public static final IntegerType Int16Ty = IntegerType.get(16);
-  public static final IntegerType Int32Ty = IntegerType.get(32);
-  public static final IntegerType Int64Ty = IntegerType.get(64);
-  public static final Type FloatTy = new Type(LLVMTypeID.FloatTyID);
-  public static final Type DoubleTy = new Type(LLVMTypeID.DoubleTyID);
-  public static final Type FP128Ty = new Type(LLVMTypeID.FP128TyID);
-  public static final Type X86_FP80Ty = new Type(LLVMTypeID.X86_FP80TyID);
-  public static final Type PPC_FP128Ty = new Type(LLVMTypeID.PPC_FP128TyID);
+  public final Type VoidTy;
+  public final Type LabelTy;
+  public final Type MetadataTy;
+  public final IntegerType Int1Ty;
+  public final IntegerType Int8Ty;
+  public final IntegerType Int16Ty;
+  public final IntegerType Int32Ty;
+  public final IntegerType Int64Ty;
+  public final Type FloatTy;
+  public final Type DoubleTy;
+  public final Type FP128Ty;
+  public final Type X86_FP80Ty;
+  public final Type PPC_FP128Ty;
 
   // Pinned metadata names, which always have the same value. This is a compile-time performance
   // optimization, not a correctness optimization.
@@ -65,6 +65,20 @@ public class LLVMContext {
     scopeRecords = new ArrayList<>();
     scopeRecordIdx = new TObjectIntHashMap<>();
     metadataStore = new HashMap<>();
+
+    VoidTy = new Type(this, LLVMTypeID.VoidTyID);
+    LabelTy = new Type(this, LLVMTypeID.LabelTyID);
+    MetadataTy = new Type(this, LLVMTypeID.MetadataTyID);
+    Int1Ty = new IntegerType(this, 1);
+    Int8Ty = new IntegerType(this, 8);
+    Int16Ty = new IntegerType(this, 16);
+    Int32Ty = new IntegerType(this, 32);
+    Int64Ty = new IntegerType(this, 64);
+    FloatTy = new Type(this, LLVMTypeID.FloatTyID);
+    DoubleTy = new Type(this, LLVMTypeID.DoubleTyID);
+    FP128Ty = new Type(this, LLVMTypeID.FP128TyID);
+    X86_FP80Ty = new Type(this, LLVMTypeID.X86_FP80TyID);
+    PPC_FP128Ty = new Type(this, LLVMTypeID.PPC_FP128TyID);
   }
 
   public int getMDKindID(String name) {

@@ -73,7 +73,7 @@ public final class TailCallElim implements FunctionPass {
                 (ci.getNumOfOperands() == 0 || ri.getReturnValue().equals(ci))) {
               if (oldEntry == null) {
                 oldEntry = f.getEntryBlock();
-                BasicBlock newEntry = BasicBlock.createBasicBlock("tailrecur", oldEntry);
+                BasicBlock newEntry = BasicBlock.createBasicBlock(f.getContext(), "tailrecur", oldEntry);
                 newEntry.appendInst(new BranchInst(oldEntry));
 
                 Instruction insertBefore = oldEntry.getFirstInst();

@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.StructType;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.ConstantStructKey;
@@ -74,22 +75,22 @@ public class ConstantStruct extends Constant {
     return get(type, Arrays.asList(elts));
   }
 
-  public static Constant get(Constant[] elts, boolean packed) {
+  public static Constant get(LLVMContext context, Constant[] elts, boolean packed) {
     ArrayList<Type> eltTypes = new ArrayList<>();
     ArrayList<Constant> indices = new ArrayList<>();
     for (Constant c : elts) {
       eltTypes.add(c.getType());
       indices.add(c);
     }
-    return get(StructType.get(eltTypes, packed), indices);
+    return get(StructType.get(context, eltTypes, packed), indices);
   }
 
-  public static Constant get(List<Constant> elts, boolean packed) {
+  public static Constant get(LLVMContext context, List<Constant> elts, boolean packed) {
     ArrayList<Type> eltTypes = new ArrayList<>();
     for (Constant c : elts) {
       eltTypes.add(c.getType());
     }
-    return get(StructType.get(eltTypes, packed), elts);
+    return get(StructType.get(context, eltTypes, packed), elts);
   }
 
   @Override

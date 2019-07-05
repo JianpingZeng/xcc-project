@@ -32,8 +32,8 @@ import backend.value.Value;
 public abstract class SequentialType extends CompositeType {
   protected int numElts;
 
-  protected SequentialType(int primitiveID, Type elemType) {
-    super(primitiveID);
+  protected SequentialType(LLVMContext ctx, int primitiveID, Type elemType) {
+    super(ctx, primitiveID);
     containedTys = new PATypeHandle[1];
     containedTys[0] = new PATypeHandle(elemType, this);
     numElts = 1;
@@ -73,6 +73,6 @@ public abstract class SequentialType extends CompositeType {
 
   @Override
   public Type getIndexType() {
-    return LLVMContext.Int64Ty;
+    return Type.getInt64Ty(getContext());
   }
 }

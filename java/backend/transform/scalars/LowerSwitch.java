@@ -125,7 +125,7 @@ public final class LowerSwitch implements FunctionPass {
 
     // create a new,empty default block so that the new hierachy of if-then
     // statements go to this and phi node are happy.
-    BasicBlock newDefaultBB = BasicBlock.createBasicBlock("newDefault", f, null);
+    BasicBlock newDefaultBB = BasicBlock.createBasicBlock(f.getContext(), "newDefault", f, null);
     f.getBasicBlockList().add(f.getBasicBlockList().indexOf(defaultBB), newDefaultBB);
     BranchInst inst = new BranchInst(defaultBB, newDefaultBB);
 
@@ -225,7 +225,7 @@ public final class LowerSwitch implements FunctionPass {
     // create a new node that checks if the value is < pivot. Go to the
     // left branch if it is and right branch if not.
     Function f = origin.getParent();
-    BasicBlock newNode = BasicBlock.createBasicBlock("NodeBlock", f, null);
+    BasicBlock newNode = BasicBlock.createBasicBlock(f.getContext(), "NodeBlock", f, null);
     int idx = f.getBasicBlockList().indexOf(origin);
     f.getBasicBlockList().add(++idx, newNode);
 
@@ -252,7 +252,7 @@ public final class LowerSwitch implements FunctionPass {
                                   BasicBlock origBlock,
                                   BasicBlock defaultBB) {
     Function f = origBlock.getParent();
-    BasicBlock newLeaf = BasicBlock.createBasicBlock("leafBlock", f, null);
+    BasicBlock newLeaf = BasicBlock.createBasicBlock(f.getContext(), "leafBlock", f, null);
     int idx = f.getBasicBlockList().indexOf(origBlock);
     f.getBasicBlockList().add(++idx, newLeaf);
 

@@ -36,7 +36,7 @@ public abstract class Instruction extends User {
    */
   protected BasicBlock parent;
 
-  protected boolean hasMetadata;
+  protected boolean hasMetadataHashEntry;
 
   protected DebugLoc dbgLoc;
 
@@ -46,6 +46,7 @@ public abstract class Instruction extends User {
                      Instruction insertBefore) {
     super(ty, ValueKind.InstructionVal + opc.index);
     opcode = opc;
+    dbgLoc = new DebugLoc();
     if (insertBefore != null) {
       Util.assertion((insertBefore.getParent() != null), "Instruction to insert before is not in a basic block");
 
@@ -63,6 +64,7 @@ public abstract class Instruction extends User {
     super(ty, ValueKind.InstructionVal + opc.index);
     opcode = opc;
     parent = insertAtEnd;
+    dbgLoc = new DebugLoc();
     setName(name);
     // append this instruction into the basic block
     Util.assertion((insertAtEnd != null), "Basic block to append to may not be NULL!");
@@ -309,22 +311,16 @@ public abstract class Instruction extends User {
   }
 
   private static boolean isAssociative(Operator op, Type ty) {
-    if (ty == LLVMContext.Int1Ty || ty.equals(LLVMContext.Int8Ty) || ty.equals(
-        LLVMContext.Int16Ty)
-        || ty.equals(LLVMContext.Int32Ty) || ty.equals(
-        LLVMContext.Int64Ty)) {
-      switch (op) {
-        case Add:
-        case Mul:
-        case And:
-        case Or:
-        case Xor:
-          return true;
-        default:
-          return false;
-      }
-    } else
-      return false;
+    switch (op) {
+      case Add:
+      case Mul:
+      case And:
+      case Or:
+      case Xor:
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**
@@ -428,11 +424,68 @@ public abstract class Instruction extends User {
 
   /**
    * set the metadata of the specified kind to the specified node.
-   * @param mdk
+   * @param mdKind
    * @param node
    */
-  public void setMetadata(int mdk, MDNode node) {
-    // TODO, fake 12/19/2018
+  public void setMetadata(int mdKind, MDNode node) {
+    if (node == null && !hasMetadata()) return;
+
+    if (mdKind == LLVMContext.MD_dbg) {
+      dbgLoc = DebugLoc.getFromDILocation(node);
+      return;
+    }
+
+    // handle the case when we are adding/updating metadata on an instruction.
+    if (node != null) {
+      Util.assertion(getContext().metadataStore.containsKey(this) &&
+          !getContext().metadataStore.get(this).isEmpty() == hasMetadataHashEntry(),
+          "hasMetadataHashEntry bit goes wrong!");
+      if (!getContext().metadataStore.containsKey(this))
+        getContext().metadataStore.put(this, new ArrayList<>());
+
+      ArrayList<Pair<Integer, MDNode>> entries = getContext().metadataStore.get(this);
+      if (entries.isEmpty()) {
+        setHasMetadataHashEntry(true);
+      }
+      else {
+        // update/replace existing one.
+        for (int i = 0, e = entries.size(); i < e; i++) {
+          if (entries.get(i).first == mdKind) {
+            entries.get(i).second = node;
+            return;
+          }
+        }
+      }
+
+      // no replacement, just add it to the list.
+      entries.add(Pair.get(mdKind, node));
+      return;
+    }
+
+    // otherwise, we are going to remove metadata from an instruction.
+    Util.assertion(hasMetadataHashEntry() && getContext().metadataStore.containsKey(this),
+        "hasMetadataHashEntry bit out of date!");
+
+    ArrayList<Pair<Integer, MDNode>> entries = getContext().metadataStore.get(this);
+    if (entries.size() == 1 && entries.get(0).first == mdKind) {
+      getContext().metadataStore.remove(this);
+      setHasMetadataHashEntry(false);
+      return;
+    }
+
+    // handle removal of an existing value.
+    for (int i = 0, e = entries.size(); i < e; i++) {
+      if (entries.get(i).first == mdKind) {
+        entries.set(i, entries.get(e - 1));
+        entries.remove(e - 1);
+        Util.assertion(!entries.isEmpty(), "Removing last entry should be handled above!");
+        return;
+      }
+    }
+  }
+
+  private boolean hasMetadata() {
+    return !dbgLoc.isUnknown() || hasMetadataHashEntry();
   }
 
   public boolean hasMetadataOtherThanDebugLoc() {
@@ -440,7 +493,11 @@ public abstract class Instruction extends User {
   }
 
   public boolean hasMetadataHashEntry() {
-    return hasMetadata;
+    return hasMetadataHashEntry;
+  }
+
+  public void setHasMetadataHashEntry(boolean b) {
+    hasMetadataHashEntry = b;
   }
 
   public void setDebugLoc(DebugLoc loc) {
@@ -465,7 +522,7 @@ public abstract class Instruction extends User {
   }
 
   public void getAllMetadata(ArrayList<Pair<Integer, MDNode>> result) {
-    if (hasMetadata) {
+    if (hasMetadataHashEntry) {
       result.clear();
       // Handle 'dbg' as a special case since it is not stored in the hash table.
       if (!dbgLoc.isUnknown()) {
@@ -1824,7 +1881,7 @@ public abstract class Instruction extends User {
 
     public FCmpInst(Predicate pred, Value lhs,
                     Value rhs, String name, Instruction insertBefore) {
-      super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, insertBefore);
+      super(Type.getInt1Ty(lhs.getContext()), FCmp, pred, lhs, rhs, name, insertBefore);
       Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE) <= 0, "Invalid FCmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to FCmp instruction are not of the same type!");
@@ -1835,7 +1892,7 @@ public abstract class Instruction extends User {
 
     public FCmpInst(Predicate pred, Value lhs,
                     Value rhs, String name, BasicBlock insertAtEnd) {
-      super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, insertAtEnd);
+      super(Type.getInt1Ty(lhs.getContext()), FCmp, pred, lhs, rhs, name, insertAtEnd);
       Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE) <= 0, "Invalid FCmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to FCmp instruction are not of the same type!");
@@ -1845,7 +1902,7 @@ public abstract class Instruction extends User {
     }
 
     public FCmpInst(Predicate pred, Value lhs, Value rhs) {
-      super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, "", (Instruction) null);
+      super(Type.getInt1Ty(lhs.getContext()), FCmp, pred, lhs, rhs, "", (Instruction) null);
       Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE) <= 0, "Invalid FCmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to FCmp instruction are not of the same type!");
@@ -1855,7 +1912,7 @@ public abstract class Instruction extends User {
     }
 
     public FCmpInst(Predicate pred, Value lhs, Value rhs, String name) {
-      super(LLVMContext.Int1Ty, FCmp, pred, lhs, rhs, name, (Instruction) null);
+      super(Type.getInt1Ty(lhs.getContext()), FCmp, pred, lhs, rhs, name, (Instruction) null);
       Util.assertion(pred.compareTo(Predicate.LAST_FCMP_PREDICATE) <= 0, "Invalid FCmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to FCmp instruction are not of the same type!");
@@ -1899,7 +1956,7 @@ public abstract class Instruction extends User {
   public static class ICmpInst extends CmpInst {
     public ICmpInst(Predicate pred, Value lhs,
                     Value rhs, String name, Instruction insertBefore) {
-      super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, insertBefore);
+      super(Type.getInt1Ty(lhs.getContext()), ICmp, pred, lhs, rhs, name, insertBefore);
       Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE) <= 0, "Invalid ICmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
@@ -1910,7 +1967,7 @@ public abstract class Instruction extends User {
 
     public ICmpInst(Predicate pred, Value lhs,
                     Value rhs, String name, BasicBlock insertAtEnd) {
-      super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, insertAtEnd);
+      super(Type.getInt1Ty(lhs.getContext()), ICmp, pred, lhs, rhs, name, insertAtEnd);
       Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE) <= 0, "Invalid ICmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
@@ -1921,7 +1978,7 @@ public abstract class Instruction extends User {
 
     public ICmpInst(Predicate pred, Value lhs,
                     Value rhs) {
-      super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, "", (Instruction) null);
+      super(Type.getInt1Ty(lhs.getContext()), ICmp, pred, lhs, rhs, "", (Instruction) null);
       Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE) <= 0, "Invalid ICmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
@@ -1932,7 +1989,7 @@ public abstract class Instruction extends User {
 
     public ICmpInst(Predicate pred, Value lhs,
                     Value rhs, String name) {
-      super(LLVMContext.Int1Ty, ICmp, pred, lhs, rhs, name, (Instruction) null);
+      super(Type.getInt1Ty(lhs.getContext()), ICmp, pred, lhs, rhs, name, (Instruction) null);
       Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE) <= 0, "Invalid ICmp predicate value");
 
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
@@ -2066,13 +2123,6 @@ public abstract class Instruction extends User {
    * @version 0.4
    */
   public static abstract class TerminatorInst extends Instruction {
-    TerminatorInst(
-        Operator opcode,
-        String instName,
-        Instruction insertBefore) {
-      super(LLVMContext.VoidTy, opcode, instName, insertBefore);
-    }
-
     TerminatorInst(Type ty,
                    Operator opcode,
                    String instName,
@@ -2081,10 +2131,11 @@ public abstract class Instruction extends User {
     }
 
 
-    TerminatorInst(Operator opcode,
+    TerminatorInst(Type ty,
+                   Operator opcode,
                    String instName,
                    BasicBlock insertAtEnd) {
-      super(LLVMContext.VoidTy, opcode, instName, insertAtEnd);
+      super(ty, opcode, instName, insertAtEnd);
     }
 
     /**
@@ -2125,13 +2176,13 @@ public abstract class Instruction extends User {
      * @param insertBefore
      */
     public BranchInst(BasicBlock ifTrue, Instruction insertBefore) {
-      super(Operator.Br, "", insertBefore);
+      super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertBefore);
       reserve(1);
       setOperand(0, ifTrue, this);
     }
 
     public BranchInst(BasicBlock ifTrue, String name, Instruction insertBefore) {
-      super(Operator.Br, name, insertBefore);
+      super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, name, insertBefore);
       reserve(1);
       setOperand(0, ifTrue, this);
     }
@@ -2172,7 +2223,7 @@ public abstract class Instruction extends User {
      */
     public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
                       Instruction insertBefore) {
-      super(Operator.Br, "", insertBefore);
+      super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertBefore);
       reserve(3);
       setOperand(0, ifTrue, this);
       setOperand(1, ifFalse, this);
@@ -2181,7 +2232,7 @@ public abstract class Instruction extends User {
 
     public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
                       BasicBlock insertAtEnd) {
-      super(Operator.Br, "", insertAtEnd);
+      super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertAtEnd);
 
       setOperand(0, ifTrue, this);
       setOperand(1, ifFalse, this);
@@ -2195,7 +2246,7 @@ public abstract class Instruction extends User {
      * @param insertAtEnd
      */
     public BranchInst(BasicBlock ifTrue, BasicBlock insertAtEnd) {
-      super(Operator.Br, "", insertAtEnd);
+      super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertAtEnd);
       setOperand(0, ifTrue, this);
     }
 
@@ -2286,12 +2337,12 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class ReturnInst extends TerminatorInst {
-    public ReturnInst() {
-      this(null, "", (Instruction) null);
+    public ReturnInst(LLVMContext ctx) {
+      this(ctx, null, "", (Instruction) null);
     }
 
-    public ReturnInst(Value val) {
-      this(val, "", (Instruction) null);
+    public ReturnInst(LLVMContext ctx, Value val) {
+      this(ctx, val, "", (Instruction) null);
     }
 
     /**
@@ -2300,16 +2351,16 @@ public abstract class Instruction extends User {
      * @param retValue The return inst produce for this instruction, return
      *                 void if ret is {@code null}.
      */
-    public ReturnInst(Value retValue, String name, Instruction insertBefore) {
-      super(Operator.Ret, name, insertBefore);
+    public ReturnInst(LLVMContext ctx, Value retValue, String name, Instruction insertBefore) {
+      super(Type.getVoidTy(ctx), Operator.Ret, name, insertBefore);
       if (retValue != null) {
         reserve(1);
         setOperand(0, retValue, this);
       }
     }
 
-    public ReturnInst(Value retValue, String name, BasicBlock insertAtEnd) {
-      super(Operator.Ret, name, insertAtEnd);
+    public ReturnInst(LLVMContext ctx, Value retValue, String name, BasicBlock insertAtEnd) {
+      super(Type.getVoidTy(ctx), Operator.Ret, name, insertAtEnd);
       if (retValue != null) {
         reserve(1);
         setOperand(0, retValue, this);
@@ -2348,15 +2399,15 @@ public abstract class Instruction extends User {
    */
   public static class UnWindInst extends TerminatorInst {
 
-    public UnWindInst(Instruction insertBefore) {
-      super(Unwind, "", insertBefore);
+    public UnWindInst(LLVMContext ctx, Instruction insertBefore) {
+      super(Type.getVoidTy(ctx), Unwind, "", insertBefore);
     }
-    public UnWindInst() {
-      this((Instruction)null);
+    public UnWindInst(LLVMContext ctx) {
+      this(ctx, (Instruction)null);
     }
 
-    public UnWindInst(BasicBlock insertAtEnd) {
-      super(Unwind, "", insertAtEnd);
+    public UnWindInst(LLVMContext ctx, BasicBlock insertAtEnd) {
+      super(Type.getVoidTy(ctx), Unwind, "", insertAtEnd);
     }
 
     @Override
@@ -2795,7 +2846,7 @@ public abstract class Instruction extends User {
                       int numCases,
                       String name,
                       Instruction insertBefore) {
-      super(Operator.Switch, name, insertBefore);
+      super(Type.getVoidTy(condV.getContext()), Operator.Switch, name, insertBefore);
       init(condV, defaultBB, numCases * 2);
     }
 
@@ -3137,11 +3188,10 @@ public abstract class Instruction extends User {
                       String name,
                       Instruction insertBefore) {
       super(ty, Operator.Alloca,
-          arraySize == null ? ConstantInt.get(LLVMContext.Int32Ty, 1) :
+          arraySize == null ? ConstantInt.get(Type.getInt32Ty(ty.getContext()), 1) :
               arraySize, alignment, name, insertBefore);
-
-      Util.assertion(getArraySize().getType() == LLVMContext.Int32Ty, "Alloca array getNumOfSubLoop != UnsignedIntTy");
-
+      Util.assertion(getArraySize().getType() == Type.getInt32Ty(ty.getContext()),
+          "Alloca array getNumOfSubLoop != UnsignedIntTy");
     }
 
     public AllocaInst(Type ty, Value arraySize, int alignment) {
@@ -3167,7 +3217,7 @@ public abstract class Instruction extends User {
      * @return
      */
     public boolean isArrayAllocation() {
-      return !operand(0).equals(ConstantInt.get(LLVMContext.Int32Ty, 1));
+      return !operand(0).equals(ConstantInt.get(Type.getInt32Ty(getContext()), 1));
     }
 
     public Type getAllocatedType() {
@@ -3208,7 +3258,7 @@ public abstract class Instruction extends User {
 
     public StoreInst(Value value, Value ptr, boolean isVolatile,
                      int align, String name, Instruction insertBefore) {
-      super(LLVMContext.VoidTy, Operator.Store, name, insertBefore);
+      super(Type.getVoidTy(value.getContext()), Operator.Store, name, insertBefore);
       init(value, ptr);
       setIsVolatile(isVolatile);
       setAlignment(align);
@@ -3244,7 +3294,7 @@ public abstract class Instruction extends User {
                      Value ptr,
                      String name,
                      BasicBlock insertAtEnd) {
-      super(LLVMContext.VoidTy, Operator.Store, name, insertAtEnd);
+      super(Type.getVoidTy(value.getContext()), Operator.Store, name, insertAtEnd);
       setIsVolatile(false);
       setAlignment(0);
       init(value, ptr);

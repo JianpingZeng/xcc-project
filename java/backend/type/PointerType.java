@@ -16,7 +16,6 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
 import tools.TypeMap;
 import tools.Util;
 
@@ -34,7 +33,7 @@ public class PointerType extends SequentialType {
   private int addressSpace;
 
   protected PointerType(Type elemType, int addrSpace) {
-    super(PointerTyID, elemType);
+    super(elemType.getContext(), PointerTyID, elemType);
     addressSpace = addrSpace;
 
     setAbstract(elemType.isAbstract());
@@ -63,7 +62,7 @@ public class PointerType extends SequentialType {
   }
 
   public static boolean isValidElementType(Type eleTy) {
-    return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
+    return !(eleTy.isVoidType() || eleTy.isLabelTy());
   }
 
   public int getAddressSpace() {

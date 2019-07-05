@@ -48,7 +48,7 @@ public final class BasicBlockUtil {
                                                   ArrayList<BasicBlock> preds, String suffix,
                                                   Pass pass) {
     // create a new basic block, insert it right before the original block.
-    BasicBlock newBB = BasicBlock.createBasicBlock(bb.getName() + suffix, bb.getParent());
+    BasicBlock newBB = BasicBlock.createBasicBlock(bb.getContext(), bb.getName() + suffix, bb.getParent());
 
     // the new block have a unconditional branch to the origin block.
     BranchInst bi = new BranchInst(bb, newBB);

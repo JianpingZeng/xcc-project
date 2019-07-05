@@ -475,7 +475,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         cs.getAttributes().getRetAttribute(), tli))
       isTailCall = false;
 
-    Pair<SDValue, SDValue> result = tli.lowerCallTo(getRoot(), cs.getType(),
+    Pair<SDValue, SDValue> result = tli.lowerCallTo(dag.getContext(), getRoot(), cs.getType(),
         cs.paramHasAttr(0, Attribute.SExt),
         cs.paramHasAttr(0, Attribute.ZExt), fty.isVarArg(),
         cs.paramHasAttr(0, Attribute.InReg), fty.getNumParams(),
@@ -758,13 +758,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           extendKind = ISD.ZERO_EXTEND;
 
         if (extendKind != ISD.ANY_EXTEND && vt.isInteger()) {
-          EVT minVT = tli.getRegisterType(new EVT(MVT.i32));
+          EVT minVT = tli.getRegisterType(dag.getContext(), new EVT(MVT.i32));
           if (vt.bitsLT(minVT))
             vt = minVT;
         }
 
         int numParts = tli.getNumRegisters(vt);
-        EVT partVT = tli.getRegisterType(vt);
+        EVT partVT = tli.getRegisterType(dag.getContext(), vt);
         SDValue[] parts = new SDValue[numParts];
         getCopyToParts(dag,
             new SDValue(retOp.getNode(), retOp.getResNo() + j),
@@ -838,7 +838,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         switchCases.clear();
       }
     }
-    CaseBlock cb = new CaseBlock(CondCode.SETEQ, condVal, ConstantInt.getTrue(),
+    CaseBlock cb = new CaseBlock(CondCode.SETEQ, condVal, ConstantInt.getTrue(dag.getContext()),
         null, succ0MBB, succ1MBB, curMBB);
     visitSwitchCase(cb);
     return null;
@@ -943,7 +943,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
     }
 
-    CaseBlock cb = new CaseBlock(CondCode.SETEQ, cond, ConstantInt.getTrue(),
+    CaseBlock cb = new CaseBlock(CondCode.SETEQ, cond, ConstantInt.getTrue(dag.getContext()),
         null, tbb, fbb, curBB);
     switchCases.add(cb);
   }
@@ -965,10 +965,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue cond;
     SDValue condLHS = getValue(cb.cmpLHS);
     if (cb.cmpMHS == null) {
-      if (cb.cmpRHS.equals(ConstantInt.getTrue()) && cb.cc == CondCode.SETEQ) {
+      if (cb.cmpRHS.equals(ConstantInt.getTrue(dag.getContext())) && cb.cc == CondCode.SETEQ) {
         cond = condLHS;
       }
-      else if (cb.cmpRHS.equals(ConstantInt.getFalse()) & cb.cc == CondCode.SETEQ) {
+      else if (cb.cmpRHS.equals(ConstantInt.getFalse(dag.getContext())) & cb.cc == CondCode.SETEQ) {
         SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
         cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, one);
       } else {
@@ -2298,7 +2298,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           info.offset, info.align, info.vol, info.readMem, info.writeMem);
     } else if (!hasChain)
       result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, vts, ops);
-    else if (!ci.getType().equals(LLVMContext.VoidTy))
+    else if (!ci.getType().isVoidType())
       result = dag.getNode(ISD.INTRINSIC_W_CHAIN, vts, ops);
     else
       result = dag.getNode(ISD.INTRINSIC_VOID, vts, ops);
@@ -2310,7 +2310,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       else
         dag.setRoot(chain);
     }
-    if (!ci.getType().equals(LLVMContext.VoidTy)) {
+    if (!ci.getType().isVoidType()) {
       setValue(ci, result);
     }
   }

@@ -16,7 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.ir.HIRBuilder;
+import backend.ir.CGBuilder;
 import backend.support.AttrList;
 import backend.support.AttributeWithIndex;
 import backend.support.CallSite;
@@ -58,7 +58,7 @@ import static cfe.codegen.RValue.*;
  * @version 0.4
  */
 public final class CodeGenFunction {
-  private HIRModuleGenerator generator;
+  private CodeGenModule generator;
   private TargetInfo target;
   private FunctionDecl curFnDecl;
   private Function curFn;
@@ -81,7 +81,7 @@ public final class CodeGenFunction {
    */
   private Instruction allocaInstPtr;
 
-  HIRBuilder builder;
+  CGBuilder builder;
 
   /**
    * Indicates if code generation of this function has finished.
@@ -135,16 +135,19 @@ public final class CodeGenFunction {
    */
   private BasicBlock caseRangeBlock;
 
-  public CodeGenFunction(HIRModuleGenerator generator) {
+  private LLVMContext vmContext;
+  
+  public CodeGenFunction(CodeGenModule generator) {
     this.generator = generator;
     target = generator.getASTContext().target;
-    builder = new HIRBuilder();
+    builder = new CGBuilder(generator.getModule().getContext());
     localVarMaps = new HashMap<>();
     labelMap = new HashMap<>();
     vlaSizeMap = new HashMap<>();
     breakContinueStack = new Stack<>();
     pointerWidth = target.getPointerWidth(0);
     BACKEND_INTTy = convertType(getContext().IntTy);
+    vmContext = generator.getModule().getContext();
   }
 
   public ASTContext getContext() {
@@ -219,8 +222,8 @@ public final class CodeGenFunction {
     // create a marker to make it easy to insert allocas into the entryblock
     // later.  Don't create this with the builder, because we don't want it
     // folded.
-    Value undef = Value.UndefValue.get(LLVMContext.Int32Ty);
-    allocaInstPtr = new BitCastInst(undef, LLVMContext.Int32Ty, "allocapt", entryBB);
+    Value undef = Value.UndefValue.get(Type.getInt32Ty(vmContext));
+    allocaInstPtr = new BitCastInst(undef, Type.getInt32Ty(vmContext), "allocapt", entryBB);
 
     returnBlock = createBasicBlock("return");
     builder.setInsertPoint(entryBB);
@@ -923,7 +926,7 @@ public final class CodeGenFunction {
       // return expression due to side effect.
       if (resultVal != null)
         emitAnyExpr(resultVal);
-      builder.createRetVoid();
+      builder.createRetVoid(vmContext);
     } else if (resultVal == null) {
       // Do nothing.
     } else if (!hasAggregateLLVMType(resultVal.getType())) {
@@ -1179,9 +1182,9 @@ public final class CodeGenFunction {
       Value vlaSize = emitVLASize(ty);
 
       // downcast the VLA getNumOfSubLoop expression.
-      vlaSize = builder.createIntCast(vlaSize, LLVMContext.Int32Ty, false, "");
+      vlaSize = builder.createIntCast(vlaSize, Type.getInt32Ty(vmContext), false, "");
       // allocate an array with variable getNumOfSubLoop.
-      Value vla = builder.createAlloca(LLVMContext.Int8Ty, vlaSize, "vla");
+      Value vla = builder.createAlloca(Type.getInt8Ty(vmContext), vlaSize, "vla");
 
       // convert the pointer to array into regular pointer.
       declPtr = builder.createBitCast(vla, elemPtrTy, "temp");
@@ -1306,7 +1309,7 @@ public final class CodeGenFunction {
     //     a = b;     // convert to memcpy calling in LLVM IR.
     // }
     //
-    Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
+    Type bp = PointerType.getUnqual(Type.getInt8Ty(vmContext));
     if (destPtr.getType() != bp)
       destPtr = builder.createBitCast(destPtr, bp, "tmp");
     if (srcPtr.getType() != bp)
@@ -1316,13 +1319,13 @@ public final class CodeGenFunction {
     Pair<Long, Integer> typeInfo = getContext().getTypeInfo(ty);
 
     // Handle variable sized types.
-    Type intPtr = IntegerType.get(pointerWidth);
+    Type intPtr = IntegerType.get(vmContext, pointerWidth);
 
     // TODO we need to use a differnt call here.  We use isVolatile to
     // indicate when either the source or the destination is volatile.
     builder.createCall4(generator.getMemCpyFn(), destPtr, srcPtr,
         ConstantInt.get(intPtr, typeInfo.first / 8),
-        ConstantInt.get(LLVMContext.Int32Ty, typeInfo.second / 8));
+        ConstantInt.get(Type.getInt32Ty(vmContext), typeInfo.second / 8));
   }
 
 
@@ -1591,9 +1594,9 @@ public final class CodeGenFunction {
     }
 
     if (rv != null)
-      builder.createRet(rv);
+      builder.createRet(vmContext, rv);
     else
-      builder.createRetVoid();
+      builder.createRetVoid(vmContext);
   }
 
   /**
@@ -1655,7 +1658,7 @@ public final class CodeGenFunction {
     BasicBlock caseDest = builder.getInsertBlock();
 
     APSInt caseVal = s.getCondExpr().evaluateAsInt(getContext());
-    switchInst.addCase(ConstantInt.get(caseVal), caseDest);
+    switchInst.addCase(ConstantInt.get(vmContext, caseVal), caseDest);
 
     // Recursively emitting the statement is acceptable, but is not wonderful for
     // code where we have many case statements nested together, i.e.:
@@ -1671,7 +1674,7 @@ public final class CodeGenFunction {
     while (nextCase != null) {
       curCase = nextCase;
       caseVal = curCase.getCondExpr().evaluateKnownConstInt();
-      switchInst.addCase(ConstantInt.get(caseVal), caseDest);
+      switchInst.addCase(ConstantInt.get(vmContext, caseVal), caseDest);
       nextCase = (CaseStmt) curCase.getSubStmt();
     }
 
@@ -1693,7 +1696,7 @@ public final class CodeGenFunction {
 
   private BasicBlock createBasicBlock(String name, Function parent,
                                       BasicBlock before) {
-    return BasicBlock.createBasicBlock(name, parent, before);
+    return BasicBlock.createBasicBlock(vmContext, name, parent, before);
   }
 
   public LValue emitUnSupportedLValue(Expr expr, String msg) {
@@ -1761,8 +1764,8 @@ public final class CodeGenFunction {
     Value v = builder.createLoad(addr, isVolatile, "tmp");
     // Bool can have different representation in memory than in registers.
     if (ty.isBooleanType())
-      if (v.getType() != LLVMContext.Int1Ty)
-        v = builder.createTrunc(v, LLVMContext.Int1Ty, "tobool");
+      if (!v.getType().isIntegerTy(1))
+        v = builder.createTrunc(v, Type.getInt1Ty(vmContext), "tobool");
     return v;
   }
 
@@ -1832,8 +1835,7 @@ public final class CodeGenFunction {
           "bf.to");
 
     // Mask off unused bits.
-    Constant lowMask = ConstantInt
-        .get(APInt.getLowBitsSet(eltTySize, lowBits));
+    Constant lowMask = ConstantInt.get(vmContext, APInt.getLowBitsSet(eltTySize, lowBits));
 
     val = builder.createAnd(val, lowMask, "bf.to.cleared");
 
@@ -1983,7 +1985,7 @@ public final class CodeGenFunction {
       ensureInsertPoint();
       return getUndefRValue(retType);
     }
-    if (ci.getType() != LLVMContext.VoidTy)
+    if (!ci.getType().isVoidType())
       ci.setName("call");
 
     switch (retAI.getKind()) {
@@ -2193,11 +2195,11 @@ public final class CodeGenFunction {
     int idxBitwidth = ((IntegerType) idx.getType()).getBitWidth();
     if (idxBitwidth < pointerWidth) {
       if (idxSigned)
-        idx = builder.createSExt(idx, IntegerType.get(pointerWidth), "sext");
+        idx = builder.createSExt(idx, IntegerType.get(vmContext, pointerWidth), "sext");
       else
-        idx = builder.createZExt(idx, IntegerType.get(pointerWidth), "zext");
+        idx = builder.createZExt(idx, IntegerType.get(vmContext, pointerWidth), "zext");
     } else if (idxBitwidth > pointerWidth) {
-      idx = builder.createTrunc(idx, IntegerType.get(pointerWidth), "trunc");
+      idx = builder.createTrunc(idx, IntegerType.get(vmContext, pointerWidth), "trunc");
     }
 
     // We know that the pointer points to a type of the correct getNumOfSubLoop,
@@ -2295,7 +2297,7 @@ public final class CodeGenFunction {
     PointerType baseType = (PointerType) baseValue.getType();
     baseValue = builder.createBitCast(baseValue, PointerType.getUnqual(fieldType), "tmp");
 
-    Value idx = ConstantInt.get(LLVMContext.Int32Ty, info.fieldNo);
+    Value idx = ConstantInt.get(Type.getInt32Ty(vmContext), info.fieldNo);
     Value v = builder.createGEP(baseValue, idx, "tmp");
 
     return LValue.makeBitfield(v, info.start, info.size,
@@ -2360,7 +2362,7 @@ public final class CodeGenFunction {
   }
 
   public void emitMemSetToZero(Value address, QualType ty) {
-    Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
+    Type bp = PointerType.getUnqual(Type.getInt8Ty(vmContext));
     if (address.getType() != bp)
       address = builder.createBitCast(address, bp, "bitcast.tmp");
 
@@ -2372,13 +2374,13 @@ public final class CodeGenFunction {
       return;
 
     // handle variable sized type.
-    Type intPtr = IntegerType.get(pointerWidth);
+    Type intPtr = IntegerType.get(vmContext, pointerWidth);
 
     builder.createCall4(generator.getMemSetFn(),
         address,
-        Constant.getNullValue(LLVMContext.Int8Ty),
+        Constant.getNullValue(Type.getInt8Ty(vmContext)),
         ConstantInt.get(intPtr, typeInfo.first / 8),
-        ConstantInt.get(LLVMContext.Int32Ty, typeInfo.second / 8),
+        ConstantInt.get(Type.getInt32Ty(vmContext), typeInfo.second / 8),
         "intrinsic.memset");
   }
 }

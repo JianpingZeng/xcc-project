@@ -332,8 +332,8 @@ public class TargetData implements ImmutablePass {
     pointerABIAlign = td.pointerABIAlign;
   }
 
-  public IntegerType getIntPtrType() {
-    return IntegerType.get(getPointerSizeInBits());
+  public IntegerType getIntPtrType(LLVMContext ctx) {
+    return (IntegerType) Type.getIntNTy(ctx, getPointerSizeInBits());
   }
 
   public int getPointerSizeInBits() {
@@ -634,6 +634,10 @@ public class TargetData implements ImmutablePass {
     return getAlignment(ty, true);
   }
 
+  public int getABITypeAlignment(int bitwidth) {
+    return getAlignmentInfo(INTEGER_ALIGN, bitwidth, true, null);
+  }
+
   public static long roundUpAlignment(long val, long aligment) {
     Util.assertion((aligment & (aligment - 1)) == 0, "Alignment must be power of 2!");
     return (val + aligment - 1) & ~(aligment - 1);
@@ -687,7 +691,7 @@ public class TargetData implements ImmutablePass {
     for (int idx = 0, e = indices.size(); idx < e; ++idx) {
       if (ty instanceof StructType) {
         StructType sty = (StructType) ty;
-        Util.assertion(indices.get(idx).getType().equals(LLVMContext.Int32Ty));
+        Util.assertion(indices.get(idx).getType().isIntegerTy(32));
         long fieldNo = ((ConstantInt) indices.get(idx)).getZExtValue();
         StructLayout layout = getStructLayout(sty);
         result += layout.getElementOffset(fieldNo);

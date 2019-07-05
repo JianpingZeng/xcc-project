@@ -16,7 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.ir.HIRBuilder;
+import backend.ir.CGBuilder;
 import backend.support.LLVMContext;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
@@ -58,9 +58,10 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
   }
 
   private CodeGenFunction cgf;
-  private HIRBuilder builder;
+  private CGBuilder builder;
   private boolean ignoreResultAssign;
-
+  private LLVMContext vmContext;
+  
   public ScalarExprEmitter(CodeGenFunction cgf) {
     this(cgf, false);
   }
@@ -69,6 +70,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     this.cgf = cgf;
     builder = cgf.builder;
     this.ignoreResultAssign = ignoreResultAssign;
+    vmContext = cgf.builder.getLLVMContext();
   }
 
   /**
@@ -93,7 +95,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     // Optimize this common case.
     if (v instanceof Instruction.ZExtInst) {
       Instruction.ZExtInst zi = (Instruction.ZExtInst) v;
-      if (zi.operand(0).getType() == LLVMContext.Int1Ty) {
+      if (zi.operand(0).getType().isIntegerTy(1)) {
         Value result = zi.operand(0);
 
         // If there aren't any more uses, zap the instruction to save space.
@@ -152,7 +154,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
 
       // First, convert to the correct width so that we control the kind of
       // extension.
-      backend.type.Type middleTy = IntegerType.get(cgf.pointerWidth);
+      backend.type.Type middleTy = IntegerType.get(vmContext, cgf.pointerWidth);
       boolean inputSigned = srcTy.isSignedIntegerType();
       Value intResult = builder.createIntCast(v, middleTy, inputSigned, "conv");
 
@@ -298,7 +300,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     if (width < cgf.pointerWidth) {
       // Zero or sign extend the pointer value based on whether the index is
       // signed or not.
-      Type idxType = IntegerType.get(cgf.pointerWidth);
+      Type idxType = IntegerType.get(vmContext, cgf.pointerWidth);
       if (idxExpr.getType().isSignedIntegerType())
         idx = builder.createSExt(idx, idxType, "idx.sext");
       else
@@ -311,7 +313,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     // extensions. The GNU void* casts amount to no-ops since our void*
     // type is i8*, but this is future proof.
     if (eltType.isVoidType() || eltType.isFunctionType()) {
-      Type i8Ty = PointerType.get(LLVMContext.Int8Ty, eltType.getAddressSpace());
+      Type i8Ty = PointerType.get(Type.getInt8Ty(vmContext), eltType.getAddressSpace());
       Value casted = builder.createBitCast(ptr, i8Ty, "bitcast");
       Value res = builder.createGEP(casted, idx, "add.ptr");
       return builder.createBitCast(res, ptr.getType(), "bitcast");
@@ -342,7 +344,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
       if (width < cgf.pointerWidth) {
         // zero or signe extend the pointer value based whether the
         // index is signed or not.
-        Type idxType = IntegerType.get(cgf.pointerWidth);
+        Type idxType = IntegerType.get(vmContext, cgf.pointerWidth);
         if (rhsType.isSignedIntegerType())
           idx = builder.createSExt(idx, idxType, "idx.sext");
         else
@@ -354,7 +356,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
       // extensions. The GNU void* casts amount to no-ops since our
       // void* type is i8*, but this is future proof.
       if (lhsEltType.isVoidType() || lhsEltType.isFunctionType()) {
-        Type i8Ty = PointerType.get(LLVMContext.Int8Ty, lhsEltType.getAddressSpace());
+        Type i8Ty = PointerType.get(Type.getInt8Ty(vmContext), lhsEltType.getAddressSpace());
         Value lhsCasted = builder.createBitCast(info.lhs, i8Ty, "sub.ptr.bitcast");
         Value res = builder.createGEP(lhsCasted, idx, "sub.ptr");
         return builder.createBitCast(res, info.lhs.getType(), "bitcast");
@@ -528,9 +530,9 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     // Any edges into the ContBlock are now from an (indeterminate number of)
     // edges from this first condition.  All of these values will be false.  Star
     // setting up the PHI node in the endBlock for this.
-    PhiNode phiNode = new PhiNode(LLVMContext.Int1Ty, 2, "phi", endBlock);
+    PhiNode phiNode = new PhiNode(Type.getInt1Ty(vmContext), 2, "phi", endBlock);
     for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext(); ) {
-      phiNode.addIncoming(ConstantInt.getFalse(), predItr.next());
+      phiNode.addIncoming(ConstantInt.getFalse(vmContext), predItr.next());
     }
 
     cgf.emitBlock(rhsBlock);
@@ -576,9 +578,9 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     // Any edges into the endBlock are now from an (indeterminate number of)
     // edges from this first condition.  All of these values will be true.  Star
     // setting up the PHI node in the end Block for this.
-    PhiNode phiNode = new PhiNode(LLVMContext.Int1Ty, 2, "phi", endBlock);
+    PhiNode phiNode = new PhiNode(Type.getInt1Ty(vmContext), 2, "phi", endBlock);
     for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext(); ) {
-      phiNode.addIncoming(ConstantInt.getTrue(), predItr.next());
+      phiNode.addIncoming(ConstantInt.getTrue(vmContext), predItr.next());
     }
 
     // emit the rhs condition as a bool value.
@@ -787,12 +789,12 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
 
   @Override
   public Value visitIntegerLiteral(Tree.IntegerLiteral expr) {
-    return backend.value.ConstantInt.get(expr.getValue());
+    return backend.value.ConstantInt.get(vmContext, expr.getValue());
   }
 
   @Override
   public Value visitFloatLiteral(Tree.FloatingLiteral expr) {
-    return backend.value.ConstantFP.get(expr.getValue());
+    return backend.value.ConstantFP.get(vmContext, expr.getValue());
   }
 
   @Override
@@ -805,7 +807,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
   public Value visitDeclRefExpr(Tree.DeclRefExpr expr) {
     if (expr.getDecl() instanceof Decl.EnumConstantDecl) {
       Decl.EnumConstantDecl ec = (Decl.EnumConstantDecl) expr.getDecl();
-      return ConstantInt.get(ec.getInitValue());
+      return ConstantInt.get(vmContext, ec.getInitValue());
     }
     return emitLoadOfLValue(expr);
   }
@@ -940,24 +942,24 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
     // handle pointer type ++, --.
     if (inVal.getType() instanceof PointerType) {
       PointerType pt = (PointerType) inVal.getType();
-      Constant inc = ConstantInt.get(LLVMContext.Int32Ty, amountVal);
+      Constant inc = ConstantInt.get(Type.getInt32Ty(vmContext), amountVal);
       if (!(pt.getElementType() instanceof FunctionType)) {
         QualType ptee = valTy.getPointeeType();
         nextVal = builder.createGEP(inVal, inc, "ptrincdec");
       } else {
-        Type i8Ty = PointerType.get(LLVMContext.Int8Ty, ((PointerType) inVal.getType()).getAddressSpace());
+        Type i8Ty = PointerType.get(Type.getInt8Ty(vmContext), ((PointerType) inVal.getType()).getAddressSpace());
         nextVal = builder.createBitCast(inVal, i8Ty, "tmp");
         nextVal = builder.createGEP(nextVal, inc, "ptrincdec");
         ;
         nextVal = builder.createBitCast(nextVal, inVal.getType(), "");
       }
-    } else if (inVal.getType() == LLVMContext.Int1Ty && isInc) {
+    } else if (inVal.getType() == Type.getInt1Ty(vmContext) && isInc) {
       // Bool++ is an interesting case, due to promotion rules, we get:
       // Bool++ -> Bool = Bool+1 -> Bool = (int)Bool+1 ->
       // Bool = ((int)Bool+1) != 0
       // An interesting aspect of this is that increment is always true.
       // Decrement does not have this property.
-      nextVal = ConstantInt.getTrue();
+      nextVal = ConstantInt.getTrue(vmContext);
     } else if (inVal.getType() instanceof IntegerType) {
       nextVal = backend.value.ConstantInt.get(inVal.getType(), amountVal);
 
@@ -968,9 +970,9 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
       nextVal = builder.createAdd(inVal, nextVal, isInc ? "inc" : "dece");
     } else {
       // Add the inc/dec to the real part.
-      Util.assertion((inVal.getType() == LLVMContext.FloatTy || inVal.getType() == LLVMContext.DoubleTy));
+      Util.assertion(inVal.getType().isFloatTy() || inVal.getType().isDoubleTy());
 
-      nextVal = ConstantFP.get(new APFloat(amountVal));
+      nextVal = ConstantFP.get(vmContext, new APFloat(amountVal));
       nextVal = builder.createFAdd(inVal, nextVal, isInc ? "inc" : "dec");
     }
 

@@ -16,17 +16,19 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
 public class OpaqueType extends DerivedType {
-  private OpaqueType() {
-    super(OpaqueTyID);
+  private OpaqueType(LLVMContext context) {
+    super(context, OpaqueTyID);
     setAbstract(true);
   }
 
-  public static OpaqueType get() {
-    return new OpaqueType();
+  public static OpaqueType get(LLVMContext context) {
+    return new OpaqueType(context);
   }
 }

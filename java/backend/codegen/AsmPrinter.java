@@ -21,13 +21,11 @@ import backend.analysis.MachineLoopInfo;
 import backend.mc.*;
 import backend.mc.MCAsmInfo.MCSymbolAttr;
 import backend.pass.AnalysisUsage;
-import backend.support.LLVMContext;
 import backend.support.MachineFunctionPass;
 import backend.support.NameMangler;
 import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
-import backend.value.Module;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 import tools.*;
@@ -1046,7 +1044,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         // Handle casts to pointers by changing them into casts to the appropriate
         // integer type.  This promotes constant folding and simplifies this code.
         Constant op = ce.operand(0);
-        op = ConstantExpr.getIntegerCast(op, td.getIntPtrType(), false/*ZExt*/);
+        op = ConstantExpr.getIntegerCast(op, td.getIntPtrType(c.getContext()), false/*ZExt*/);
         return lowerConstant(op);
       }
 
@@ -1293,7 +1291,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
     if (gv.hasInitializer()) {
       // Always round up alignment of global doubles to 8 bytes.
-      if (gv.getType().getElementType() == LLVMContext.DoubleTy && align < 3)
+      if (gv.getType().getElementType().isDoubleTy() && align < 3)
         align = 3;
       if (align < 4) {
         // If the global is not external, see if it is large.  If so, give it a

@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Value;
 
 /**
@@ -25,8 +26,8 @@ import backend.value.Value;
  * @version 0.4
  */
 public abstract class CompositeType extends Type {
-  protected CompositeType(int typeID) {
-    super(typeID);
+  protected CompositeType(LLVMContext ctx, int typeID) {
+    super(ctx, typeID);
   }
 
   public abstract Type getTypeAtIndex(Value v);

@@ -358,7 +358,7 @@ public final class InductionVarSimplify implements LoopPass {
           opcode = iv.factor.getType().isFloatingPointType() ?
               Operator.FSub : Operator.Sub;
           Constant factor = constantFoldBinaryInstruction(opcode,
-              ConstantInt.getFalse(), iv.factor);
+              ConstantInt.getFalse(op1.getContext()), iv.factor);
           Util.assertion(factor != null);
 
           opcode = diff.getType().isFloatingPointType() ? Operator.FSub : Operator.Sub;
@@ -404,8 +404,8 @@ public final class InductionVarSimplify implements LoopPass {
              * 						tj = tj + db;
              */
             Type kind = r2.div.getType();
-            AllocaInst tj = new AllocaInst(kind, ConstantInt.getTrue(), "%tj");
-            AllocaInst db = new AllocaInst(r2.factor.getType(), ConstantInt.getTrue(), "%db");
+            AllocaInst tj = new AllocaInst(kind, ConstantInt.getTrue(preheaderBB.getContext()), "%tj");
+            AllocaInst db = new AllocaInst(r2.factor.getType(), ConstantInt.getTrue(preheaderBB.getContext()), "%db");
 
             int i = ((Instruction) r2.div).getParent().getID();
             int j = ((Instruction) r2.div).id;

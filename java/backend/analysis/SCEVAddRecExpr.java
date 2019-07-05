@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.*;
 import tools.APInt;
@@ -139,7 +140,7 @@ public class SCEVAddRecExpr extends SCEV {
       APInt result = init;
       for (; numSteps != 0; numSteps--)
         result.mulAssign(result.sub(new APInt(32, numSteps - 1)));
-      Constant res = ConstantInt.get(result);
+      Constant res = ConstantInt.get(ty.getContext(), result);
       return SCEVUnknown.get(ConstantExpr.getCast(Operator.BitCast, res, ty));
     }
 
@@ -200,12 +201,12 @@ public class SCEVAddRecExpr extends SCEV {
     if (range.isFullSet())
       return SCEVCouldNotCompute.getInstance();
 
+    LLVMContext context = getType().getContext();
     // If the start is a non-zero constant, shift the range to simplify things.
     if (getStart() instanceof SCEVConstant) {
       SCEVConstant sc = (SCEVConstant) getStart();
       if (!sc.getValue().isZero()) {
-        ArrayList<SCEV> newOps = new ArrayList<>();
-        newOps.addAll(operands);
+        ArrayList<SCEV> newOps = new ArrayList<>(operands);
         newOps.set(0, ScalarEvolution.getIntegerSCEV(0, sc.getType()));
 
         SCEV shiftedRec = get(newOps, getLoop());
@@ -239,7 +240,7 @@ public class SCEVAddRecExpr extends SCEV {
 
       // compute the (end/first) =>(end + first - 1)/first.
       APInt exitItrNum = end.add(first).udiv(first);
-      ConstantInt exitValue = ConstantInt.get(exitItrNum);
+      ConstantInt exitValue = ConstantInt.get(context, exitItrNum);
 
       // Evaluate at the exit value.  If we really did fall out of the valid
       // range, then we computed our trip count, otherwise wrap around or other
@@ -249,16 +250,16 @@ public class SCEVAddRecExpr extends SCEV {
         return SCEVCouldNotCompute.getInstance();
 
       // Ensure that the previous value is in the range.
-      Util.assertion(range.contains(evaluateConstantChrecAtConstant(this, ConstantInt.get(exitItrNum.sub(1))).getValue()), "Linear scev computation is off in a bad way!");
+      Util.assertion(range.contains(evaluateConstantChrecAtConstant(this,
+          ConstantInt.get(context, exitItrNum.sub(1))).getValue()), "Linear scev computation is off in a bad way!");
 
       return SCEVConstant.get(exitValue);
     } else if (isQuadratic()) {
       // If this is a quadratic AddRecExpr {L, +, M, N}, find out the roots
       // of quadratic equation to solve it.
-      ArrayList<SCEV> newOps = new ArrayList<>();
-      newOps.addAll(operands);
+      ArrayList<SCEV> newOps = new ArrayList<>(operands);
       newOps.set(0, ScalarEvolution.getNegativeSCEV(
-          SCEVConstant.get(ConstantInt.get(range.getLower()))));
+          SCEVConstant.get(ConstantInt.get(context, range.getLower()))));
       SCEV newAddRecExpr = SCEVAddRecExpr.get(newOps, loop);
 
       /// Next, solve the quadratic equation.
@@ -283,7 +284,7 @@ public class SCEVAddRecExpr extends SCEV {
           // out of the range.
           if (range.contains(r1Value.getValue())) {
             /// The next iteration must be out of the range.
-            ConstantInt r1AddOne = ConstantInt.get(r1.getValue().getValue().increase());
+            ConstantInt r1AddOne = ConstantInt.get(context, r1.getValue().getValue().increase());
             r1Value = evaluateConstantChrecAtConstant(this, r1AddOne);
             if (!range.contains(r1Value.getValue()))
               return SCEVConstant.get(r1AddOne);
@@ -295,7 +296,7 @@ public class SCEVAddRecExpr extends SCEV {
           // value.
           // But we must ensure that the r1Value-1 must in the range for
           // sanity check.
-          ConstantInt r1SubOne = ConstantInt.get(r1Value.getValue().decrease());
+          ConstantInt r1SubOne = ConstantInt.get(context, r1Value.getValue().decrease());
           r1Value = evaluateConstantChrecAtConstant(this, r1SubOne);
           if (range.contains(r1Value.getValue()))
             return r1;
@@ -329,6 +330,7 @@ public class SCEVAddRecExpr extends SCEV {
       return new Pair<>(temp, temp);
     }
 
+    LLVMContext context = addRec.getType().getContext();
     SCEVConstant lc = (SCEVConstant) c1;
     SCEVConstant lm = (SCEVConstant) c2;
     SCEVConstant ln = (SCEVConstant) c3;
@@ -366,8 +368,8 @@ public class SCEVAddRecExpr extends SCEV {
 
     APInt sqrtVal = new APInt(sqrtTerm.sqrt());
 
-    ConstantInt r1 = ConstantInt.get(negativeB.sub(sqrtVal).sdiv(towA));
-    ConstantInt r2 = ConstantInt.get(negativeB.add(sqrtVal).sdiv(towA));
+    ConstantInt r1 = ConstantInt.get(context, negativeB.sub(sqrtVal).sdiv(towA));
+    ConstantInt r2 = ConstantInt.get(context, negativeB.add(sqrtVal).sdiv(towA));
     return Pair.get(SCEVConstant.get(r1), SCEVConstant.get(r2));
   }
 

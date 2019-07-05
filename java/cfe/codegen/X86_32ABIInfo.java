@@ -17,7 +17,7 @@
 
 package cfe.codegen;
 
-import backend.ir.HIRBuilder;
+import backend.ir.CGBuilder;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
@@ -180,7 +180,7 @@ public class X86_32ABIInfo implements ABIInfo {
     return true;
   }
 
-  private ABIArgInfo classifyReturnType(QualType retType) {
+  private ABIArgInfo classifyReturnType(QualType retType, LLVMContext ctx) {
     if (retType.isVoidType())
       return ABIArgInfo.getIgnore();
     else if (CodeGenFunction.hasAggregateLLVMType(retType)) {
@@ -199,18 +199,18 @@ public class X86_32ABIInfo implements ABIInfo {
         if (bt != null) {
           if (bt.isIntegerType()) {
             long size = context.getTypeSize(retType);
-            return ABIArgInfo.getCoerce(IntegerType.get((int) size));
+            return ABIArgInfo.getCoerce(IntegerType.get(ctx, (int) size));
           } else if (bt.getTypeClass() == TypeClass.Float) {
             Util.assertion(context.getTypeSize(seltTy) == context.getTypeSize(retType), "Unexpect single element structure size!");
 
-            return ABIArgInfo.getCoerce(LLVMContext.FloatTy);
+            return ABIArgInfo.getCoerce(Type.getFloatTy(ctx));
           } else if (bt.getTypeClass() == TypeClass.Double) {
             Util.assertion(context.getTypeSize(seltTy) == context.getTypeSize(retType), "Unexpect single element structure size!");
 
-            return ABIArgInfo.getCoerce(LLVMContext.DoubleTy);
+            return ABIArgInfo.getCoerce(Type.getDoubleTy(ctx));
           }
         } else if (seltTy.isPointerType()) {
-          Type ptrTy = PointerType.getUnqual(LLVMContext.Int8Ty);
+          Type ptrTy = PointerType.getUnqual(Type.getInt8Ty(ctx));
           return ABIArgInfo.getCoerce(ptrTy);
         }
       }
@@ -219,7 +219,7 @@ public class X86_32ABIInfo implements ABIInfo {
       // in a register.
       if (shouldReturnTypeInRegister(retType, context)) {
         long size = context.getTypeSize(retType);
-        return ABIArgInfo.getCoerce(IntegerType.get((int) size));
+        return ABIArgInfo.getCoerce(IntegerType.get(ctx, (int) size));
       }
 
       return ABIArgInfo.getIndirect(0);
@@ -255,18 +255,18 @@ public class X86_32ABIInfo implements ABIInfo {
   }
 
   @Override
-  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx) {
-    fi.setReturnInfo(classifyReturnType(fi.getReturnType()));
+  public void computeInfo(CodeGenTypes.CGFunctionInfo fi, ASTContext ctx, LLVMContext vmContext) {
+    fi.setReturnInfo(classifyReturnType(fi.getReturnType(), vmContext));
     for (int i = 0, e = fi.getNumOfArgs(); i < e; i++)
       fi.setArgInfo(i, classifyArgumentType(fi.getArgInfoAt(i).type));
   }
 
   @Override
-  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf) {
-    backend.type.Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
+  public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf, LLVMContext vmContext) {
+    backend.type.Type bp = PointerType.getUnqual(Type.getInt8Ty(vmContext));
     backend.type.Type bpp = PointerType.getUnqual(bp);
 
-    HIRBuilder builder = cgf.builder;
+    CGBuilder builder = cgf.builder;
     Value valistAddrAsBPP = builder.createBitCast(vaListAddr, bp, "ap");
 
     Value addr = builder.createLoad(valistAddrAsBPP, false, "ap.cur");
@@ -274,7 +274,7 @@ public class X86_32ABIInfo implements ABIInfo {
     Value addrTyped = builder.createBitCast(addr, pty);
 
     long offset = Util.roundUp(cgf.getContext().getTypeSize(ty) / 8, 4);
-    Value nextAddr = builder.createGEP(addr, ConstantInt.get(LLVMContext.Int32Ty, offset), "ap.next");
+    Value nextAddr = builder.createGEP(addr, ConstantInt.get(Type.getInt32Ty(vmContext), offset), "ap.next");
     builder.createStore(nextAddr, valistAddrAsBPP);
 
     return addrTyped;

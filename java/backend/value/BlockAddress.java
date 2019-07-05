@@ -9,8 +9,8 @@
 
 package backend.value;
 
-import backend.support.LLVMContext;
 import backend.type.PointerType;
+import backend.type.Type;
 import tools.Pair;
 import tools.Util;
 
@@ -28,7 +28,7 @@ public class BlockAddress extends Constant {
    * Constructs a new instruction representing the specified constants.
    */
   private BlockAddress(Function f, BasicBlock bb) {
-    super(PointerType.getUnqual(LLVMContext.Int8Ty), ValueKind.BlockAddressVal);
+    super(PointerType.getUnqual(Type.getInt8Ty(f.getContext())), ValueKind.BlockAddressVal);
     reserve(2);
     setOperand(0, f);
     setOperand(1, bb);

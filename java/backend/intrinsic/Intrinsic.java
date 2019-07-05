@@ -916,11 +916,11 @@ public class Intrinsic {
     return result.toString();
   }
 
-  public static backend.type.FunctionType getType(ID id) {
-    return getType(id, null);
+  public static backend.type.FunctionType getType(LLVMContext ctx, ID id) {
+    return getType(ctx, id, null);
   }
 
-  public static backend.type.FunctionType getType(ID id, ArrayList<Type> types) {
+  public static backend.type.FunctionType getType(LLVMContext ctx, ID id, ArrayList<Type> types) {
     backend.type.Type resultTy = null;
     ArrayList<Type> argTys = new ArrayList<>();
     boolean isVararg = false;
@@ -928,26 +928,26 @@ public class Intrinsic {
       case memcpy:
       case memmove: 
         // llvm.memcpy llvm.memmove
-        resultTy = LLVMContext.VoidTy;
-        argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
-        argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+        resultTy = Type.getVoidTy(ctx);
+        argTys.add(PointerType.getUnqual(Type.getInt8Ty(ctx)));
+        argTys.add(PointerType.getUnqual(Type.getInt8Ty(ctx)));
         argTys.add(types.get(0));
-        argTys.add(LLVMContext.Int32Ty);
+        argTys.add(Type.getInt32Ty(ctx));
         break;
       case memset: 
         // llvm.memset
-        resultTy = LLVMContext.VoidTy;
-        argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
-        argTys.add(LLVMContext.Int8Ty);
+        resultTy = Type.getVoidTy(ctx);
+        argTys.add(PointerType.getUnqual(Type.getInt8Ty(ctx)));
+        argTys.add(Type.getInt8Ty(ctx));
         argTys.add(types.get(0));
-        argTys.add(LLVMContext.Int32Ty);
+        argTys.add(Type.getInt32Ty(ctx));
         break;
       case stacksave:
-        resultTy = PointerType.getUnqual(LLVMContext.Int8Ty);
+        resultTy = PointerType.getUnqual(Type.getInt8Ty(ctx));
         break;
       case stackrestore:
-        resultTy = LLVMContext.VoidTy;
-        argTys.add(PointerType.getUnqual(LLVMContext.Int8Ty));
+        resultTy = Type.getVoidTy(ctx);
+        argTys.add(PointerType.getUnqual(Type.getInt8Ty(ctx)));
         break;
       default:
         Util.shouldNotReachHere("Unknown intrinsic function!");
@@ -956,18 +956,18 @@ public class Intrinsic {
     return FunctionType.get(resultTy, argTys, isVararg);
   }
 
-  public static Function getDeclaration(Module m, ID id, ArrayList<Type> types) { 
+  public static Function getDeclaration(LLVMContext ctx, Module m, ID id, ArrayList<Type> types) {
     // We must to ensure that the intrinsic function can have only one global declaration.
-    return (Function) m.getOrInsertFunction(getName(id, types), getType(id, types));
+    return (Function) m.getOrInsertFunction(getName(id, types), getType(ctx, id, types));
   }
 
-  public static Function getDeclaration(Module m, ID id, Type[] tys) {
+  public static Function getDeclaration(LLVMContext ctx, Module m, ID id, Type[] tys) {
     ArrayList<Type> res = new ArrayList<>(Arrays.asList(tys));
-    return (Function) m.getOrInsertFunction(getName(id, res), getType(id, res));
+    return (Function) m.getOrInsertFunction(getName(id, res), getType(ctx, id, res));
   }
 
-  public static Function getDeclaration(Module m, ID id) {
-    return (Function) m.getOrInsertFunction(getName(id), getType(id));
+  public static Function getDeclaration(LLVMContext ctx, Module m, ID id) {
+    return (Function) m.getOrInsertFunction(getName(id), getType(ctx, id));
   }
 
   public static AttrList getAttributes(ID id) {

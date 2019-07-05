@@ -16,7 +16,6 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
 import tools.TypeMap;
 import tools.Util;
 
@@ -69,7 +68,7 @@ public class FunctionType extends DerivedType {
 
   private FunctionType(Type retType, final ArrayList<Type> argsType,
                        boolean isVarArgs) {
-    super(FunctionTyID);
+    super(retType.getContext(), FunctionTyID);
     containedTys = new PATypeHandle[argsType.size() + 1];
     containedTys[0] = new PATypeHandle(retType, this);
     this.isVarArgs = isVarArgs;
@@ -102,7 +101,7 @@ public class FunctionType extends DerivedType {
 
   public static boolean isValidArgumentType(Type argTy) {
     return argTy.isFirstClassType() || (argTy instanceof OpaqueType)
-        || argTy == LLVMContext.VoidTy;
+        || argTy.isVoidType();
   }
 
   public static boolean isValidReturnType(Type retType) {
@@ -110,7 +109,7 @@ public class FunctionType extends DerivedType {
       return true;
     }
 
-    if (retType == LLVMContext.VoidTy || retType instanceof OpaqueType)
+    if (retType.isVoidType() || retType instanceof OpaqueType)
       return true;
 
     if (!(retType instanceof StructType) || ((StructType) retType).getNumOfElements() == 0)

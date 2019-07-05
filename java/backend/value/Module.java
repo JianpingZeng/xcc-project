@@ -315,7 +315,8 @@ public final class Module implements Iterable<Function> {
     if (namedMDSymTab.containsKey(name))
       return namedMDSymTab.get(name);
 
-    NamedMDNode res = new NamedMDNode(name);
+    NamedMDNode res = new NamedMDNode(context, name);
+    res.setParent(this);
     namedMDSymTab.put(name, res);
     namedMDList.add(res);
     return res;

@@ -16,7 +16,6 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
 import tools.TypeMap;
 import tools.Util;
 
@@ -58,7 +57,7 @@ public final class ArrayType extends SequentialType {
   }
 
   protected ArrayType(Type elemType, int numElts) {
-    super(ArrayTyID, elemType);
+    super(elemType.getContext(), ArrayTyID, elemType);
     this.numElts = numElts;
     setAbstract(elemType.isAbstract());
   }
@@ -82,7 +81,7 @@ public final class ArrayType extends SequentialType {
   }
 
   public static boolean isValidElementType(Type eleTy) {
-    return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
+    return !(eleTy.isVoidType() || eleTy.isLabelTy());
   }
 
   @Override

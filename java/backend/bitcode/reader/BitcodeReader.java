@@ -62,6 +62,7 @@ import static backend.support.AutoUpgrade.upgradeIntrinsicFunction;
  */
 public class BitcodeReader implements GVMaterializer {
   private Module theModule;
+  private LLVMContext context;
 
   @Override
   public boolean isMaterializable(GlobalValue gv) {
@@ -646,6 +647,7 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private boolean parseBitcodeInfo(Module m) {
+    context = m.getContext();
     theModule = null;
     bitStream = null;
     if ((buffer.length() & 3) != 0) {
@@ -1252,7 +1254,7 @@ public class BitcodeReader implements GVMaterializer {
     if (!isTypeTable) return null;
 
     while (typeList.size() <= id)
-      typeList.add(OpaqueType.get());
+      typeList.add(OpaqueType.get(context));
     return typeList.get(typeList.size()-1);
 
   }
@@ -1315,7 +1317,7 @@ public class BitcodeReader implements GVMaterializer {
 
     ArrayList<Long> record = new ArrayList<>();
     // read all the records for this value table.
-    Type curTy = LLVMContext.Int32Ty;
+    Type curTy = Type.getInt32Ty(context);
     int nextCstNo = valueList.size();
     while (true) {
       long code = readCode();
@@ -1372,7 +1374,7 @@ public class BitcodeReader implements GVMaterializer {
           ArrayList<Long> words = new ArrayList<>();
           for (int i = 0; i < numWords; i++)
             words.add(decodeSignRotatedValue(record.get(i)));
-          v = ConstantInt.get(new APInt(((IntegerType)curTy).getBitWidth(), words));
+          v = ConstantInt.get(context, new APInt(((IntegerType)curTy).getBitWidth(), words));
           break;
         }
         case CST_CODE_FLOAT: {
@@ -1380,24 +1382,24 @@ public class BitcodeReader implements GVMaterializer {
           if (record.isEmpty())
             return error("Invalid CST_CODE_FLOAT");
           if (curTy.isFloatTy())
-            v = ConstantFP.get(new APFloat(new APInt(32, record.get(0).intValue())));
+            v = ConstantFP.get(context, new APFloat(new APInt(32, record.get(0).intValue())));
           else if (curTy.isDoubleTy())
-            v = ConstantFP.get(new APFloat(new APInt(64, record.get(0))));
+            v = ConstantFP.get(context, new APFloat(new APInt(64, record.get(0))));
           else if (curTy.isX86_FP80Ty()) {
             // bits are not stored the same way as a normal i80 APInt, compensate.
             long[] rearrange = new long[] {
               (record.get(1) & 0xFFFFL) | (record.get(0) << 16),
               record.get(0) >>> 48
             };
-            v = ConstantFP.get(new APFloat(new APInt(80, rearrange)));
+            v = ConstantFP.get(context, new APFloat(new APInt(80, rearrange)));
           }
           else if (curTy.isFP128Ty()) {
             long[] rearrange = new long[] {record.get(0), record.get(1)};
-            v = ConstantFP.get(new APFloat(new APInt(128, rearrange), true));
+            v = ConstantFP.get(context, new APFloat(new APInt(128, rearrange), true));
           }
           else if (curTy.isPPC_FP128Ty()) {
             long[] rearrange = new long[] {record.get(0), record.get(1)};
-            v = ConstantFP.get(new APFloat(new APInt(128, rearrange)));
+            v = ConstantFP.get(context, new APFloat(new APInt(128, rearrange)));
           }
           else
             v = Value.UndefValue.get(curTy);
@@ -1521,7 +1523,7 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() < 3)
             return error("Invalid CSE_CODE_CE_SELECT record");
           v = ConstantExpr.getSelect(
-              valueList.getConstantFwdRefs(record.get(0).intValue(), LLVMContext.Int1Ty),
+              valueList.getConstantFwdRefs(record.get(0).intValue(), Type.getInt1Ty(context)),
               valueList.getConstantFwdRefs(record.get(1).intValue(), curTy),
               valueList.getConstantFwdRefs(record.get(2).intValue(), curTy));
           break;
@@ -1544,7 +1546,7 @@ public class BitcodeReader implements GVMaterializer {
           VectorType opTy = (VectorType) curTy;
           Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
           Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy.getElementType());
-          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), LLVMContext.Int32Ty);
+          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), Type.getInt32Ty(context));
           v = ConstantExpr.getInsertElement(op0, op1, op2);
           break;
         }
@@ -1554,7 +1556,7 @@ public class BitcodeReader implements GVMaterializer {
           VectorType opTy = (VectorType) curTy;
           Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
           Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
-          Type shufTy = VectorType.get(LLVMContext.Int32Ty, opTy.getNumElements());
+          Type shufTy = VectorType.get(Type.getInt32Ty(context), opTy.getNumElements());
           Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
           v = ConstantExpr.getShuffleVector(op0, op1, op2);
           break;
@@ -1570,7 +1572,7 @@ public class BitcodeReader implements GVMaterializer {
 
           Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
           Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
-          Type shufTy = VectorType.get(LLVMContext.Int32Ty, rty.getNumElements());
+          Type shufTy = VectorType.get(Type.getInt32Ty(context), rty.getNumElements());
           Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
           v = ConstantExpr.getShuffleVector(op0, op1, op2);
           break;
@@ -1627,7 +1629,7 @@ public class BitcodeReader implements GVMaterializer {
             return error("Invalid CE_BLOCKADDRESS record");
           Function fn = (Function) val;
           GlobalVariable fwdRef = new GlobalVariable(fn.getParent(),
-              LLVMContext.Int8Ty, false,
+              Type.getInt8Ty(context), false,
               GlobalValue.LinkageType.InternalLinkage,
               null, "", null, 0);
 
@@ -1834,36 +1836,36 @@ public class BitcodeReader implements GVMaterializer {
           typeList.ensureCapacity(Math.toIntExact(record.get(0)));
           continue;
         case TYPE_CODE_VOID:
-          resultTy = LLVMContext.VoidTy;
+          resultTy = Type.getVoidTy(context);
           break;
         case TYPE_CODE_FLOAT:
-          resultTy = LLVMContext.FloatTy;
+          resultTy = Type.getFloatTy(context);
           break;
         case TYPE_CODE_DOUBLE:
-          resultTy = LLVMContext.DoubleTy;
+          resultTy = Type.getDoubleTy(context);
           break;
         case TYPE_CODE_X86_FP80:
-          resultTy = LLVMContext.X86_FP80Ty;
+          resultTy = Type.getX86_FP80Ty(context);
           break;
         case TYPE_CODE_FP128:
-          resultTy = LLVMContext.FP128Ty;
+          resultTy = Type.getFP128Ty(context);
           break;
         case TYPE_CODE_PPC_FP128:
-          resultTy = LLVMContext.PPC_FP128Ty;
+          resultTy = Type.getPPC_FP128Ty(context);
           break;
         case TYPE_CODE_LABEL:
-          resultTy = LLVMContext.LabelTy;
+          resultTy = Type.getLabelTy(context);
           break;
         case TYPE_CODE_OPAQUE:
           resultTy = null;
           break;
         case TYPE_CODE_METADATA:
-          resultTy = LLVMContext.MetadataTy;
+          resultTy = Type.getMetadataTy(context);
           break;
         case TYPE_CODE_INTEGER:
           if (record.isEmpty())
             return error("Invalid Integer type record");
-          resultTy = IntegerType.get(record.get(0).intValue());
+          resultTy = IntegerType.get(context, record.get(0).intValue());
           break;
         case TYPE_CODE_POINTER: {
           // POINTER: [pointee type] or
@@ -1898,7 +1900,7 @@ public class BitcodeReader implements GVMaterializer {
           ArrayList<Type> eltTys = new ArrayList<>();
           for (int i = 1, e = record.size(); i < e; i++)
             eltTys.add(getTypeByID(record.get(i).intValue(), true));
-          resultTy = StructType.get(eltTys, record.get(0) != 0);
+          resultTy = StructType.get(context, eltTys, record.get(0) != 0);
           break;
         }
         case TYPE_CODE_ARRAY:
@@ -1922,7 +1924,7 @@ public class BitcodeReader implements GVMaterializer {
       if (numRecords == typeList.size()) {
         // if this is a new type slot, just append it to the
         // tail of typeList.
-        typeList.add(resultTy != null ? resultTy : OpaqueType.get());;
+        typeList.add(resultTy != null ? resultTy : OpaqueType.get(context));;
         ++numRecords;
       }
       else if (resultTy == null) {
