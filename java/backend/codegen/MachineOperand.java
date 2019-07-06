@@ -4,6 +4,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
+import backend.value.MDNode;
 import tools.FormattedOutputStream;
 import tools.Util;
 
@@ -54,6 +55,7 @@ public class MachineOperand {
     int Dead = 0x10;
     int Undef = 0x20;
     int EarlyClobber = 0x40;
+    int Debug = 0x80;
     int ImplicitDefine = Implicit | Define;
     int ImplicitKill = Implicit | Kill;
   }
@@ -873,5 +875,10 @@ public class MachineOperand {
     op.setOffset(offset);
     op.setTargetFlags(targetFlags);
     return op;
+  }
+
+  public static MachineOperand createMetadata(MDNode md) {
+   MachineOperand op = new MachineOperand(MO_Metadata);
+   op
   }
 }

@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetOpcodes;
@@ -65,6 +66,8 @@ public class MachineInstr implements Cloneable {
    */
   private int totalOperands;
 
+  private DebugLoc debugLoc;
+
   /**
    * Return true if it's illegal to add a new operand.
    *
@@ -77,12 +80,13 @@ public class MachineInstr implements Cloneable {
     return false;
   }
 
-  public MachineInstr(MCInstrDesc tid) {
-    this(tid, false);
+  public MachineInstr(MCInstrDesc tid, DebugLoc dl) {
+    this(tid, dl, false);
   }
 
-  public MachineInstr(MCInstrDesc tid, boolean noImp) {
+  public MachineInstr(MCInstrDesc tid, DebugLoc dl, boolean noImp) {
     this.tid = tid;
+    debugLoc = dl;
     if (!noImp && tid.getImplicitDefs() != null) {
       numImplicitOps += tid.getImplicitDefs().length;
     }
@@ -95,6 +99,9 @@ public class MachineInstr implements Cloneable {
     if (!noImp)
       addImplicitDefUseOperands();
   }
+
+  public DebugLoc getDebugLoc() { return debugLoc; }
+
 
   public void addImplicitDefUseOperands() {
     if (tid.implicitDefs != null) {
@@ -843,7 +850,7 @@ public class MachineInstr implements Cloneable {
 
   @Override
   public MachineInstr clone() {
-    MachineInstr res = new MachineInstr(tid);
+    MachineInstr res = new MachineInstr(tid, getDebugLoc());
     res.numImplicitOps = 0;
     res.parent = null;
 

@@ -2432,7 +2432,7 @@ public final class LLParser {
 
     AttrList alist = new AttrList(attrs);
 
-    CallInst ci = new CallInst(callee.get(), args);
+    CallInst ci = CallInst.create(callee.get(), args, "", (Instruction) null);
     ci.setTailCall(isTail);
     ci.setCallingConv(cc.get());
     ci.setAttributes(alist);

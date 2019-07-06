@@ -6,8 +6,9 @@
  * for details.
  */
 
-package backend.support;
+package backend.debug;
 
+import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.MDNode;

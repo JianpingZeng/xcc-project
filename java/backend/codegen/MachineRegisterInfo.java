@@ -35,7 +35,7 @@ import static backend.target.TargetRegisterInfo.NoRegister;
  * @version 0.4
  */
 public final class MachineRegisterInfo {
-  public static class DefUseChainIterator {
+    public static class DefUseChainIterator {
     private MachineOperand op;
     private boolean returnUses;
     private boolean returnDefs;
@@ -438,5 +438,18 @@ public final class MachineRegisterInfo {
       itr.next();
     }
     updateRegUseDefListHead(defReg, newDef);
+  }
+
+  /**
+   * If VReg is a live-in virtual register, return the
+   * corresponding live-in physical register.
+   * @param vreg
+   * @return
+   */
+  public int getliveInPhysReg(int vreg) {
+    for (Pair<Integer, Integer> entry : getLiveIns())
+      if (entry.second == vreg)
+        return entry.first;
+    return 0;
   }
 }

@@ -20,6 +20,7 @@ package backend.codegen.dagisel;
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
 import backend.support.LLVMContext;
@@ -75,7 +76,8 @@ public class SelectionDAG {
   private ArrayList<SDNode> valueTypeNodes = new ArrayList<>();
   private HashMap<String, SDNode> externalSymbols = new HashMap<>();
   private LLVMContext context;
-  
+  private SDDbgInfo dbgInfo;
+
   public SelectionDAG(TargetLowering tl, FunctionLoweringInfo fli) {
     target = tl.getTargetMachine();
     tli = tl;
@@ -86,6 +88,7 @@ public class SelectionDAG {
     condCodeNodes = new ArrayList<>();
     cseMap = new TIntObjectHashMap<>();
     entryNode = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
+    dbgInfo = new SDDbgInfo();
     root = getEntryNode();
     add(entryNode);
   }
@@ -2146,6 +2149,35 @@ public class SelectionDAG {
     int bitWidth = op.getValueType().getScalarType().getSizeInBits();
     APInt imm = APInt.getLowBitsSet(bitWidth, vt.getSizeInBits());
     return getNode(ISD.AND, op.getValueType(), op, getConstant(imm, op.getValueType(), false));
+  }
+
+  public SDDbgValue getDbgValue(MDNode mdPtr,
+                                SDNode n,
+                                int r,
+                                long offset,
+                                DebugLoc dl,
+                                int o) {
+    return new SDDbgValue(mdPtr, n, r, offset, dl, o);
+  }
+
+  public SDDbgValue getDbgValue(MDNode mdPtr,
+                                int fi,
+                                long offset,
+                                DebugLoc dl,
+                                int o) {
+    return new SDDbgValue(mdPtr, fi, offset, dl, o);
+  }
+
+  public SDDbgValue getDbgValue(MDNode mdPtr,
+                                Value c, long offset,
+                                DebugLoc dl, int o) {
+    return new SDDbgValue(mdPtr, c, offset, dl, o);
+  }
+
+  public void addDbgValue(SDDbgValue db, SDNode sd, boolean isParameter) {
+    dbgInfo.add(db, sd,isParameter);
+    if (sd != null)
+      sd.setHasDebugValue(true);
   }
 
   static class UseMemo {

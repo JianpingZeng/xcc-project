@@ -17,10 +17,7 @@
 
 package backend.codegen.dagisel;
 
-import backend.codegen.EVT;
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineRegisterInfo;
+import backend.codegen.*;
 import backend.target.*;
 import backend.type.ArrayType;
 import backend.type.StructType;
@@ -47,7 +44,7 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
  * @version 0.4
  */
 public class FunctionLoweringInfo {
-  public static class LiveOutInfo {
+    public static class LiveOutInfo {
     public int numSignBits;
     public boolean isValid;
     public APInt knownOne, knownZero;
@@ -65,6 +62,7 @@ public class FunctionLoweringInfo {
   public Function fn;
   public MachineFunction mf;
   public MachineRegisterInfo mri;
+  public MachineBasicBlock mbb;
 
   /**
    * A mapping from LLVM basic block to their machine code entry.
@@ -94,6 +92,10 @@ public class FunctionLoweringInfo {
    */
   public HashSet<BasicBlock> visitedBBs;
 
+  private HashMap<Argument, Integer> byValArgFrameIndexMap;
+
+  public ArrayList<MachineInstr> argDbgValues;
+
   public FunctionLoweringInfo(TargetLowering tli) {
     this.tli = tli;
     mbbmap = new HashMap<>();
@@ -102,6 +104,8 @@ public class FunctionLoweringInfo {
     staticAllocaMap = new HashMap<>();
     liveOutRegInfo = new HashMap<>();
     visitedBBs = new HashSet<>();
+    byValArgFrameIndexMap = new HashMap<>();
+    argDbgValues = new ArrayList<>();
   }
 
   /**
@@ -492,5 +496,13 @@ public class FunctionLoweringInfo {
     loi.numSignBits = numSignBits;
     loi.knownOne = knownOne;
     loi.knownZero = knownZero;
+  }
+
+  public int getByValArgumentFrameIndex(Argument arg) {
+    Util.assertion(arg.hasByValAttr(), "Argument doesn't have byval attribute");
+    if (byValArgFrameIndexMap.containsKey(arg))
+        return byValArgFrameIndexMap.get(arg);
+
+    return 0;
   }
 }

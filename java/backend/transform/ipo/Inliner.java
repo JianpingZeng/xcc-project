@@ -218,7 +218,7 @@ public abstract class Inliner extends CallGraphSCCPass {
           size = ConstantExpr.getSizeOf(aggTy);
 
         Value[] callArgs = {destPtr, srcPtr, size, ConstantInt.get(Type.getInt32Ty(context), 1)};
-        CallInst memcpyCallInst = new CallInst(callArgs, memcpy, "", ci);
+        CallInst memcpyCallInst = CallInst.create(memcpy, callArgs, "", ci);
 
         if (cg != null) {
           CallGraphNode memcpyNode = cg.getOrInsertFunction(memcpy);
@@ -271,7 +271,7 @@ public abstract class Inliner extends CallGraphSCCPass {
         callerNode = cg.getNode(caller);
       }
 
-      CallInst savePtr = new CallInst(stackSave, null, "savestack", firstNewBlock.getFirstInst());
+      CallInst savePtr = CallInst.create(stackSave, (Value[])null, "savestack", firstNewBlock.getFirstInst());
       if (cg != null)
         callerNode.addCalledFunction(savePtr, stackSaveNode);
 
@@ -279,7 +279,7 @@ public abstract class Inliner extends CallGraphSCCPass {
       // inlined function.
       for (Instruction ret : returns) {
         Value[] args = {savePtr};
-        CallInst restorePtr = new CallInst(args, stackRestore, "restorestack", ret);
+        CallInst restorePtr = CallInst.create(stackRestore, args, "restorestack", ret);
         if (cg != null)
           callerNode.addCalledFunction(restorePtr, stackRestoreNode);
       }

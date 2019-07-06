@@ -1,5 +1,6 @@
 package backend.value;
 
+import backend.debug.DebugLoc;
 import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.*;
@@ -2439,20 +2440,20 @@ public abstract class Instruction extends User {
     private boolean tailCall;
     private AttrList attributes;
 
-    public CallInst(Value[] args, Value target) {
+    protected CallInst(Value[] args, Value target) {
       this(args, target, "");
     }
 
-    public CallInst(Value callee, List<Value> args) {
+    protected CallInst(Value callee, List<Value> args) {
       this(callee, args, "");
     }
 
-    public CallInst(Value callee, List<Value> args,
+    protected CallInst(Value callee, List<Value> args,
                     String name) {
       this(callee, args, name, null);
     }
 
-    public CallInst(Value callee, List<Value> args,
+    protected CallInst(Value callee, List<Value> args,
                     String name, Instruction insertBefore) {
       super(((FunctionType) ((PointerType) callee.getType()).
               getElementType()).getReturnType(),
@@ -2474,7 +2475,7 @@ public abstract class Instruction extends User {
      * @param args   The input arguments.
      * @param target The called method.
      */
-    public CallInst(Value[] args, Value target, String name) {
+    protected CallInst(Value[] args, Value target, String name) {
       this(args, target, name, (Instruction) null);
     }
 
@@ -2484,7 +2485,7 @@ public abstract class Instruction extends User {
      * @param args   The input arguments.
      * @param target The called method.
      */
-    public CallInst(Value[] args, Value target,
+    protected CallInst(Value[] args, Value target,
                     String name, Instruction insertBefore) {
       super(((FunctionType) ((PointerType) target.getType()).
               getElementType()).getReturnType(),
@@ -2492,12 +2493,42 @@ public abstract class Instruction extends User {
       init(target, args);
     }
 
-    public CallInst(Value[] args, Value target,
+    protected CallInst(Value[] args, Value target,
                     String name, BasicBlock insertAtEnd) {
       super(((FunctionType) ((PointerType) target.getType()).
               getElementType()).getReturnType(),
           Operator.Call, name, insertAtEnd);
       init(target, args);
+    }
+
+    public static CallInst create(Value target, Value[] args, String name, Instruction insertBefore) {
+      Util.assertion(target instanceof Function);
+      Function fn = (Function) target;
+      if (fn.isIntrinsicID())
+        return IntrinsicInst.create(target, args, name, insertBefore);
+      else
+        return new CallInst(args, target, name, insertBefore);
+    }
+
+    public static CallInst create(Value target, List<Value> args, String name, Instruction insertBefore) {
+      Value[] arr = new Value[args.size()];
+      args.toArray(arr);
+      return create(target, arr, name, insertBefore);
+    }
+
+    public static CallInst create(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+      Util.assertion(target instanceof Function);
+      Function fn = (Function) target;
+      if (fn.isIntrinsicID())
+        return IntrinsicInst.create(target, args, name, insertAtEnd);
+      else
+        return new CallInst(args, target, name, insertAtEnd);
+    }
+
+    public static CallInst create(Value target, List<Value> args, String name, BasicBlock insertAtEnd) {
+      Value[] arr = new Value[args.size()];
+      args.toArray(arr);
+      return create(target, arr, name, insertAtEnd);
     }
 
     public static Instruction createMalloc(BasicBlock insertAtEnd,

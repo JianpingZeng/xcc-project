@@ -83,7 +83,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   protected int dagSize;
   protected CodeGenOpt optLevel;
   protected MachineFunction mf;
-  protected MachineBasicBlock mbb;
   protected TargetMachine tm;
   protected AliasAnalysis aa;
   protected int iselPosition;
@@ -165,7 +164,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     ArrayList<BasicBlock> blocks = DepthFirstOrder.reversePostOrder(fn.getEntryBlock());
     for (BasicBlock llvmBB : blocks) {
       // First, clear the locaValueMap.
-      mbb = funcInfo.mbbmap.get(llvmBB);
+      funcInfo.mbb = funcInfo.mbbmap.get(llvmBB);
 
       boolean allPredsVisited = true;
       for (int i = 0, e = llvmBB.getNumPredecessors(); i < e; i++) {
@@ -200,7 +199,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         System.err.println("========Instructions============");
       }
 
-      sdl.setCurrentBasicBlock(mbb);
+      sdl.setCurrentBasicBlock(funcInfo.mbb);
 
       for (; bi != end && !sdl.hasTailCall(); ++bi) {
         Instruction inst = llvmBB.getInstAt(bi);
@@ -283,7 +282,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       System.err.println("Instruction Selection");
 
     String blockName = mf.getFunction().getName() + ":" +
-        mbb.getBasicBlock().getName();
+        funcInfo.mbb.getBasicBlock().getName();
 
     if (ViewDAGBeforeCodeGen.value) {
       curDAG.viewGraph("dag-input-combine-first for " + blockName);
@@ -373,11 +372,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     }
 
     ScheduleDAG scheduler = createScheduler(this, optLevel);
-    scheduler.run(curDAG, mbb, mbb.size());
+    scheduler.run(curDAG, funcInfo.mbb, funcInfo.mbb.size());
     if (ViewDAGAfterSched.value) {
       scheduler.viewGraph("dag-after-sched for " + blockName);
     }
-    mbb = scheduler.emitSchedule();
+    funcInfo.mbb = scheduler.emitSchedule();
   }
 
   private void instructionSelect() {
@@ -1720,7 +1719,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   private void finishBasicBlock() {
     if (Util.DEBUG) {
       System.err.println("Target-post-processed machine code:");
-      mbb.dump();
+      funcInfo.mbb.dump();
 
       System.err.printf("Total mount of phi nodes to update: %d%n",
           sdl.phiNodesToUpdate.size());
@@ -1738,15 +1737,15 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a phi node!");
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
-        phi.addOperand(MachineOperand.createMBB(mbb, 0));
+        phi.addOperand(MachineOperand.createMBB(funcInfo.mbb, 0));
       }
       sdl.phiNodesToUpdate.clear();
       return;
     }
     for (int i = 0, e = sdl.bitTestCases.size(); i < e; i++) {
       if (!sdl.bitTestCases.get(i).emitted) {
-        mbb = sdl.bitTestCases.get(i).parentMBB;
-        sdl.setCurrentBasicBlock(mbb);
+        funcInfo.mbb = sdl.bitTestCases.get(i).parentMBB;
+        sdl.setCurrentBasicBlock(funcInfo.mbb);
         sdl.visitBitTestHeader(sdl.bitTestCases.get(i));
         curDAG.setRoot(sdl.getRoot());
         codeGenAndEmitInst();
@@ -1754,8 +1753,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       }
 
       for (int j = 0, sz = sdl.bitTestCases.get(i).cases.size(); j < sz; j++) {
-        mbb = (sdl.bitTestCases.get(i).cases.get(j)).thisMBB;
-        sdl.setCurrentBasicBlock(mbb);
+        funcInfo.mbb = (sdl.bitTestCases.get(i).cases.get(j)).thisMBB;
+        sdl.setCurrentBasicBlock(funcInfo.mbb);
 
         if (j + 1 < sz) {
           sdl.visitBitTestCase(sdl.bitTestCases.get(i).cases.get(j + 1).thisMBB,
@@ -1799,8 +1798,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     for (int i = 0, e = sdl.jtiCases.size(); i < e; i++) {
       if (!sdl.jtiCases.get(i).first.emitted) {
-        mbb = sdl.jtiCases.get(i).first.headerBB;
-        sdl.setCurrentBasicBlock(mbb);
+        funcInfo.mbb = sdl.jtiCases.get(i).first.headerBB;
+        sdl.setCurrentBasicBlock(funcInfo.mbb);
         sdl.visitJumpTableHeader(sdl.jtiCases.get(i).second,
             sdl.jtiCases.get(i).first);
         curDAG.setRoot(sdl.getRoot());
@@ -1808,8 +1807,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         sdl.clear();
       }
 
-      mbb = sdl.jtiCases.get(i).second.mbb;
-      sdl.setCurrentBasicBlock(mbb);
+      funcInfo.mbb = sdl.jtiCases.get(i).second.mbb;
+      sdl.setCurrentBasicBlock(funcInfo.mbb);
 
       sdl.visitJumpTable(sdl.jtiCases.get(i).second);
       curDAG.setRoot(sdl.getRoot());
@@ -1825,10 +1824,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
               false, false));
           phi.addOperand(MachineOperand.createMBB(sdl.jtiCases.get(i).first.headerBB, 0));
         }
-        if (mbb.getSuccessors().contains(phiMBB)) {
+        if (funcInfo.mbb.getSuccessors().contains(phiMBB)) {
           phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
               false, false));
-          phi.addOperand(MachineOperand.createMBB(mbb, 0));
+          phi.addOperand(MachineOperand.createMBB(funcInfo.mbb, 0));
         }
       }
     }
@@ -1837,26 +1836,26 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++) {
       MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
       Util.assertion(phi.getOpcode() == TargetOpcodes.PHI);
-      if (mbb.isSuccessor(phi.getParent())) {
+      if (funcInfo.mbb.isSuccessor(phi.getParent())) {
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
-        phi.addOperand(MachineOperand.createMBB(mbb, 0));
+        phi.addOperand(MachineOperand.createMBB(funcInfo.mbb, 0));
       }
     }
 
     for (int i = 0, e = sdl.switchCases.size(); i < e; i++) {
-      mbb = sdl.switchCases.get(i).thisMBB;
-      sdl.setCurrentBasicBlock(mbb);
+      funcInfo.mbb = sdl.switchCases.get(i).thisMBB;
+      sdl.setCurrentBasicBlock(funcInfo.mbb);
 
       sdl.visitSwitchCase(sdl.switchCases.get(i));
       curDAG.setRoot(sdl.getRoot());
       codeGenAndEmitInst();
       sdl.clear();
 
-      while ((mbb = sdl.switchCases.get(i).trueMBB) != null) {
-        for (int pi = 0, sz = mbb.size(); pi < sz &&
-            mbb.getInstAt(pi).getOpcode() == TargetOpcodes.PHI; ++pi) {
-          MachineInstr phi = mbb.getInstAt(pi);
+      while ((funcInfo.mbb = sdl.switchCases.get(i).trueMBB) != null) {
+        for (int pi = 0, sz = funcInfo.mbb.size(); pi < sz &&
+            funcInfo.mbb.getInstAt(pi).getOpcode() == TargetOpcodes.PHI; ++pi) {
+          MachineInstr phi = funcInfo.mbb.getInstAt(pi);
           for (int pn = 0; ; ++pn) {
             Util.assertion(pn != sdl.phiNodesToUpdate.size(), "Didn't find PHI entry!");
             if (sdl.phiNodesToUpdate.get(pn).first.equals(phi)) {
@@ -1868,7 +1867,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           }
         }
 
-        if (mbb.equals(sdl.switchCases.get(i).falseMBB))
+        if (funcInfo.mbb.equals(sdl.switchCases.get(i).falseMBB))
           sdl.switchCases.get(i).falseMBB = null;
 
         sdl.switchCases.get(i).trueMBB = sdl.switchCases.get(i).falseMBB;

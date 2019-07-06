@@ -1,9 +1,11 @@
 package backend.codegen;
 
 import backend.codegen.MachineOperand.RegState;
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
+import backend.value.MDNode;
 import tools.Util;
 
 import static backend.codegen.MachineMemOperand.MOLoad;
@@ -239,8 +241,12 @@ public final class MachineInstrBuilder {
     return new MachineInstrBuilder(mi);
   }
 
+  public static MachineInstrBuilder buildMI(MCInstrDesc desc, DebugLoc dl) {
+    return new MachineInstrBuilder(new MachineInstr(desc, dl));
+  }
+
   public static MachineInstrBuilder buildMI(MCInstrDesc desc) {
-    return new MachineInstrBuilder(new MachineInstr(desc));
+    return buildMI(desc, new DebugLoc());
   }
 
   public static MachineInstrBuilder buildMI(MCInstrDesc desc, int destReg) {
@@ -271,5 +277,10 @@ public final class MachineInstrBuilder {
 
   public static int getUndefRegState(boolean b) {
     return b ? RegState.Undef : 0;
+  }
+
+  public MachineInstrBuilder addMetadata(MDNode md) {
+    mi.addOperand(MachineOperand.createMetadata(md));
+    return this;
   }
 }

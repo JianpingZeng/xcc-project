@@ -697,7 +697,7 @@ public class CGBuilder {
       Value arg3,
       Value arg4) {
     Value[] args = {arg1, arg2, arg3, arg4};
-    return insert(new CallInst(args, callee));
+    return insert(CallInst.create(callee, args, "", (Instruction)null));
   }
 
   /**
@@ -720,13 +720,13 @@ public class CGBuilder {
       Value arg4,
       String name) {
     Value[] args = {arg1, arg2, arg3, arg4};
-    return insert(new CallInst(args, callee), name);
+    return insert(CallInst.create(callee, args, "", (Instruction)null), name);
   }
 
   public CallInst createCall(Value callee, LinkedList<Value> args) {
     Value[] temp = new Value[args.size()];
     args.toArray(temp);
-    return insert(new CallInst(temp, callee));
+    return insert(CallInst.create(callee, temp, "", (Instruction)null));
   }
 
   public Value createStructGEPInbounds(Value base, int idx, String name) {

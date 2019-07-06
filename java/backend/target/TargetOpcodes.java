@@ -51,4 +51,12 @@ public interface TargetOpcodes {
   /// instructions are insufficient. The actual MachineInstrs to perform
   /// the copy are emitted with the RISCVGenInstrInfo::copyRegToReg hook.
   int COPY_TO_REGCLASS = 10;
+  /**
+   * a mapping of the llvm.dbg.value intrinsic
+   */
+  int DBG_VALUE = 11;
+
+  int REG_SEQUENCE = 12;
+
+  int COPY = 13;
 }

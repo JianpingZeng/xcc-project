@@ -565,7 +565,7 @@ public class CodeGenModule {
 
       Value[] args = new Value[argNo];
       argList.toArray(args);
-      CallInst newCI = new CallInst(args, newFn, "", ci);
+      CallInst newCI = CallInst.create(newFn, args, "", ci);
       if (!newCI.getType().equals(Type.getVoidTy(old.getContext())))
         newCI.setName(ci.getName());
 

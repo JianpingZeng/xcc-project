@@ -16,7 +16,9 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.Attribute;
 import backend.type.Type;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
@@ -41,5 +43,22 @@ public class Argument extends Value {
 
   public void setParent(Function bb) {
     parent = bb;
+  }
+
+  public boolean hasByValAttr() {
+    if (!getType().isPointerType()) return false;
+    return getParent().paramHasAttr(getArgNo() + 1, Attribute.ByVal);
+  }
+
+  private int getArgNo() {
+    Function f = getParent();
+    Util.assertion(f != null);
+    int argIdx = 0;
+    for (Argument arg : f.getArgumentList()) {
+      if (arg == this)
+        return argIdx;
+      ++argIdx;
+    }
+    return argIdx;
   }
 }

@@ -21,7 +21,10 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.analysis.aa.AliasResult;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
+import backend.debug.DIVariable;
+import backend.debug.DebugLoc;
 import backend.intrinsic.Intrinsic;
+import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.target.*;
 import backend.type.*;
@@ -29,6 +32,8 @@ import backend.utils.InstVisitor;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
+import backend.value.IntrinsicInst.DbgDeclareInst;
+import backend.value.IntrinsicInst.DbgValueInst;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -53,6 +58,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   HashMap<Value, SDValue> nodeMap;
   ArrayList<SDValue> pendingLoads;
   ArrayList<SDValue> pendingExports;
+  private int sdNodeOrder;
+  private DebugLoc curDebugLoc;
+  /**
+   * Maps argument value for unused arguments. This is used
+   * to preserve debug information for incoming arguments.
+   */
+  private HashMap<Value, SDValue> unusedArgNodeMap;
+  private HashMap<Value, DanglingDebugInfo> danglingDebugInfoMap;
 
   public boolean hasTailCall() {
     return hasTailCall;
@@ -79,6 +92,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   public MachineBasicBlock getCurrentBasicBlock() {
     return curMBB;
+  }
+
+  public DebugLoc getCurDebugLoc() {
+    return curDebugLoc;
   }
 
   static class Case implements Comparable<Case> {
@@ -264,6 +281,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     switchCases = new ArrayList<>();
     jtiCases = new ArrayList<>();
     bitTestCases = new ArrayList<>();
+    unusedArgNodeMap = new HashMap<>();
+    danglingDebugInfoMap = new HashMap<>();
   }
 
   public void init(AliasAnalysis aa) {
@@ -277,6 +296,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     pendingLoads.clear();
     dag.clear();
     hasTailCall = false;
+    curDebugLoc = new DebugLoc();
+    unusedArgNodeMap.clear();
+    danglingDebugInfoMap.clear();
   }
 
   public SDValue getRoot() {
@@ -548,7 +570,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   @Override
   public Void visit(Instruction inst) {
+    curDebugLoc = inst.getDebugLoc();
     visit(inst.getOpcode(), inst);
+    curDebugLoc = new DebugLoc();
     return null;
   }
 
@@ -2079,6 +2103,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
    * @return
    */
   private String visitIntrinsicCall(CallInst ci, Intrinsic.ID iid) {
+    DebugLoc dl = getCurDebugLoc();
+
     switch (iid) {
       default:
         // turns on call to intrinsic to target specified handler.
@@ -2102,13 +2128,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             getValue(ci.operand(1))));
         return null;
       case setjmp:
-        return "_setjmp" + (tli.isUseUnderscoreSetJmp()?"0":"1");
+        return "_setjmp" + (tli.isUseUnderscoreSetJmp() ? "0" : "1");
       case longjmp:
-        return "_longjmp" + (tli.isUseUnderscoreLongJmp()?"0":"1");
+        return "_longjmp" + (tli.isUseUnderscoreLongJmp() ? "0" : "1");
       case memset: {
         // Assert for address < 256 since we support only user defined address
         // spaces.
-        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256, "Unknown address space" );
+        Util.assertion(((PointerType) ci.getArgOperand(0).getType()).getAddressSpace() < 256, "Unknown address space");
 
         SDValue op1 = getValue(ci.getArgOperand(0));
         SDValue op2 = getValue(ci.getArgOperand(1));
@@ -2121,14 +2147,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case memcpy: {
         // Assert for address < 256 since we support only user defined address
         // spaces.
-        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
-            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+        Util.assertion(((PointerType) ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType) ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space");
 
         SDValue op1 = getValue(ci.getArgOperand(0));
         SDValue op2 = getValue(ci.getArgOperand(1));
         SDValue op3 = getValue(ci.getArgOperand(2));
         int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
-        boolean isVolatile = ((ConstantInt)ci.getArgOperand(4)).getZExtValue() == 1;
+        boolean isVolatile = ((ConstantInt) ci.getArgOperand(4)).getZExtValue() == 1;
         dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
             align, false, ci.getArgOperand(0),
             0, ci.getArgOperand(1), 0));
@@ -2138,8 +2164,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case memmove: {
         // Assert for address < 256 since we support only user defined address
         // spaces.
-        Util.assertion(((PointerType)ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
-            ((PointerType)ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space" );
+        Util.assertion(((PointerType) ci.getArgOperand(0).getType()).getAddressSpace() < 256 &&
+            ((PointerType) ci.getArgOperand(1).getType()).getAddressSpace() < 256, "Unknown address space");
 
         SDValue op1 = getValue(ci.getArgOperand(0));
         SDValue op2 = getValue(ci.getArgOperand(1));
@@ -2150,10 +2176,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         // lower memmove as memcpy.
         long size = -1;
         if (op3.getNode() instanceof SDNode.ConstantSDNode) {
-          size = ((SDNode.ConstantSDNode)op3.getNode()).getZExtValue();
+          size = ((SDNode.ConstantSDNode) op3.getNode()).getZExtValue();
         }
-        if (aa != null && aa.alias(ci.getArgOperand(0), (int)size,
-            ci.getArgOperand(1), (int)size) == AliasResult.NoAlias) {
+        if (aa != null && aa.alias(ci.getArgOperand(0), (int) size,
+            ci.getArgOperand(1), (int) size) == AliasResult.NoAlias) {
           dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.getArgOperand(0),
               0, ci.getArgOperand(1), 0));
           return null;
@@ -2243,7 +2269,188 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case invariant_end:
       case lifetime_end:
         return null;
+      case dbg_declare: {
+        DbgDeclareInst di = (DbgDeclareInst) ci;
+        MDNode variable = di.getVariable();
+        Value address = di.getAddress();
+        if (address == null || !new DIVariable(di.getVariable()).verify())
+          return null;
+
+        // Build an entry in DbgOrdering.  Debug info input nodes get an SDNodeOrder
+        // but do not always have a corresponding SDNode built.  The SDNodeOrder
+        // absolute, but not relative, values are different depending on whether
+        // debug info exists.
+        ++sdNodeOrder;
+
+        if (address instanceof Value.UndefValue ||
+            (address.isUseEmpty() && !(address instanceof Argument))) {
+          // dbg declare for an undef value, just return a null.
+          SDDbgValue sdv = dag.getDbgValue(variable, Value.UndefValue.get(address.getType()),
+              0, dl, sdNodeOrder);
+          dag.addDbgValue(sdv, null, false);
+          return null;
+        }
+
+        if ((!nodeMap.containsKey(address) || nodeMap.get(address).getNode() == null) &&
+            address instanceof Argument)
+          nodeMap.put(address, unusedArgNodeMap.containsKey(address) ?
+              unusedArgNodeMap.get(address) : new SDValue());
+        SDDbgValue sdv;
+        SDValue n = nodeMap.get(address);
+        if (n.getNode() != null) {
+          // Parameters are handled specially.
+          boolean isParameter = new DIVariable(variable).getTag() == Dwarf.DW_TAG_arg_variable;
+          if (address instanceof BitCastInst)
+            address = ((BitCastInst) address).operand(0);
+
+          if (isParameter && !(address instanceof AllocationInst)) {
+            if (n.getNode() instanceof SDNode.FrameIndexSDNode) {
+              SDNode.FrameIndexSDNode fiNode = (SDNode.FrameIndexSDNode) n.getNode();
+              sdv = dag.getDbgValue(variable, fiNode.getFrameIndex(), 0, dl, sdNodeOrder);
+            } else {
+              // Can't do anything with other non-AI cases yet.  This might be a
+              // parameter of a callee function that got inlined, for example.
+              return null;
+            }
+          } else if (address instanceof AllocationInst) {
+            sdv = dag.getDbgValue(variable, n.getNode(), n.getResNo(), 0, dl, sdNodeOrder);
+          } else
+            return null;
+          dag.addDbgValue(sdv, n.getNode(), isParameter);
+        } else {
+          // If Address is an arugment then try to emits its dbg value using
+          // virtual register info from the FuncInfo.ValueMap. Otherwise add undef
+          // to help track missing debug info.
+          if (!emitFuncArgumentDbgValue(address, variable, 0, n)) {
+            sdv = dag.getDbgValue(variable, Value.UndefValue.get(address.getType()),
+                0, dl, sdNodeOrder);
+            dag.addDbgValue(sdv, null, false);
+          }
+        }
+        return null;
+      }
+      case dbg_value: {
+        DbgValueInst di = (DbgValueInst)ci;
+        if (!new DIVariable(di.getVariable()).verify())
+          return null;
+
+        MDNode variable = di.getVariable();
+        long offset = di.getOffset();
+        Value v = di.getValue();
+        if (v == null) return null;
+
+        // Build an entry in DbgOrdering.  Debug info input nodes get an SDNodeOrder
+        // but do not always have a corresponding SDNode built.  The SDNodeOrder
+        // absolute, but not relative, values are different depending on whether
+        // debug info exists.
+        ++sdNodeOrder;
+        SDDbgValue sdv;
+        if (v instanceof ConstantInt || v instanceof ConstantFP) {
+          sdv = dag.getDbgValue(variable, v, offset, dl, sdNodeOrder);
+          dag.addDbgValue(sdv, null, false);
+        }
+        else {
+          // Do not use getValue() in here; we don't want to generate code at
+          // this point if it hasn't been done yet.
+          SDValue n = nodeMap.get(v);
+          if (n.getNode() == null && v instanceof Argument) {
+            n = unusedArgNodeMap.get(v);
+          }
+          if (n.getNode() != null) {
+            if (!emitFuncArgumentDbgValue(v, variable, offset, n)) {
+              sdv = dag.getDbgValue(variable, n.getNode(), n.getResNo(),
+                  offset, dl, sdNodeOrder);
+              dag.addDbgValue(sdv, n.getNode(), false);
+            }
+          }
+          else if (v instanceof PhiNode && !v.isUseEmpty()) {
+            // Do not call getValue(V) yet, as we don't want to generate code.
+            // Remember it for later.
+            DanglingDebugInfo ddi = new DanglingDebugInfo(di, dl, sdNodeOrder);
+            danglingDebugInfoMap.put(v, ddi);
+          }
+          else {
+            // We may expand this to cover more cases.  One case where we have no
+            // data available is an unreferenced parameter; we need this fallback.
+            sdv = dag.getDbgValue(variable, Value.UndefValue.get(v.getType()),
+                offset, dl, sdNodeOrder);
+            dag.addDbgValue(sdv, null, false);
+          }
+        }
+
+        // build a debug info table entry.
+        if (v instanceof BitCastInst)
+          v = ((BitCastInst)v).operand(0);
+        // don't handle byval struct arguments or VLAs.
+        if (!(v instanceof AllocaInst))
+          return null;
+
+        AllocaInst ai = (AllocaInst) v;
+        if (!funcInfo.staticAllocaMap.containsKey(ai))
+          return null;
+
+        int fi = funcInfo.staticAllocaMap.get(ai);
+        MachineModuleInfo mmi = dag.getMachineModuleInfo();
+        if (!di.getDebugLoc().isUnknown() && mmi.hasDebugInfo())
+          mmi.setVariableDgbInfo(variable, fi, di.getDebugLoc());
+        return null;
+      }
     }
+  }
+
+  /**
+   * If the DbgValueInst is a dbg_value of a function
+   * argument, create the corresponding DBG_VALUE machine instruction for it now.
+   * At the end of instruction selection, they will be inserted to the entry BB.
+   * @param value
+   * @param variable
+   * @param offset
+   * @param n
+   * @return
+   */
+  private boolean emitFuncArgumentDbgValue(Value value, MDNode variable,
+                                           long offset, SDValue n) {
+    if (!(value instanceof Argument))
+      return false;
+    Argument arg = (Argument) value;
+    MachineFunction mf = dag.getMachineFunction();
+    DIVariable dv = new DIVariable(variable);
+    if (!dv.isInlinedFnArgument(mf.getFunction()))
+      return false;
+    MachineBasicBlock mbb = funcInfo.mbb;
+    if (mbb.equals(mf.getEntryBlock()))
+      return false;
+
+    int reg = 0;
+    if (arg.hasByValAttr()) {
+      // Byval arguments' frame index is recorded during argument lowering.
+      // Use this info directly.
+      TargetRegisterInfo tri = dag.getTarget().getRegisterInfo();
+      reg = tri.getFrameRegister(mf);
+      offset = funcInfo.getByValArgumentFrameIndex(arg);
+    }
+
+    if (n.getNode() != null && n.getOpcode() == ISD.CopyFromReg) {
+      reg = ((RegisterSDNode)n.getOperand(1).getNode()).getReg();
+      if (reg != 0 && TargetRegisterInfo.isVirtualRegister(reg)) {
+        MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+        int pr = mri.getliveInPhysReg(reg);
+        if (pr != 0) reg = pr;
+      }
+    }
+
+    if (reg == 0) {
+      if (!funcInfo.valueMap.containsKey(value))
+        return false;
+      reg = funcInfo.valueMap.get(value);
+    }
+
+    TargetInstrInfo tii = dag.getTarget().getInstrInfo();
+    MachineInstrBuilder mib = MachineInstrBuilder.buildMI(tii.get(TargetOpcodes.DBG_VALUE),
+        getCurDebugLoc()).addReg(reg, MachineOperand.RegState.Debug)
+        .addImm(offset).addMetadata(variable);
+    funcInfo.argDbgValues.add(mib.getMInstr());
+    return false;
   }
 
   private void visitVACopy(CallInst ci) {

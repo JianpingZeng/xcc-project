@@ -11,6 +11,7 @@ package backend.bitcode.writer;
 import backend.bitcode.reader.BitcodeReader;
 import backend.bitcode.reader.BitcodeReader.BitCodeAbbrev;
 import backend.bitcode.reader.BitcodeReader.BitCodeAbbrevOp;
+import backend.debug.DebugLoc;
 import backend.support.*;
 import backend.type.*;
 import backend.value.*;

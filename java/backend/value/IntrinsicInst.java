@@ -17,24 +17,68 @@ package backend.value;
  */
 
 import backend.intrinsic.Intrinsic;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
 public class IntrinsicInst extends Instruction.CallInst {
-  public IntrinsicInst() {
-    super((Value[]) null, null);
+  protected IntrinsicInst(Value target, Value[] args, String name, Instruction insertBefore) {
+    super(args, target, name, insertBefore);
+  }
+
+  protected IntrinsicInst(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+    super(args, target, name, insertAtEnd);
   }
 
   public Intrinsic.ID getIntrinsicID() {
     return getCalledFunction().getIntrinsicID();
   }
 
+  public static IntrinsicInst create(Value target, Value[] args, String name, Instruction insertBefore) {
+    Util.assertion(target instanceof Function);
+    Function fn = (Function) target;
+    Util.assertion(fn.isIntrinsicID());
+    switch (fn.getIntrinsicID()) {
+      case dbg_declare:
+        return new DbgDeclareInst(target, args, name, insertBefore);
+      case dbg_value:
+        return new DbgValueInst(target, args, name, insertBefore);
+      default:
+        Util.shouldNotReachHere("Unknown intrinsic function ID!");
+        return null;
+    }
+  }
+
+  public static IntrinsicInst create(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+    Util.assertion(target instanceof Function);
+    Function fn = (Function) target;
+    Util.assertion(fn.isIntrinsicID());
+    switch (fn.getIntrinsicID()) {
+      case dbg_declare:
+        return new DbgDeclareInst(target, args, name, insertAtEnd);
+      case dbg_value:
+        return new DbgValueInst(target, args, name, insertAtEnd);
+      default:
+        Util.shouldNotReachHere("Unknown intrinsic function ID!");
+        return null;
+    }
+  }
+
+
   /**
    * A common base class for llvm debug information.
    */
   public static abstract class DbgInfoIntrinsic extends IntrinsicInst {
+    protected DbgInfoIntrinsic(Value target, Value[] args, String name, Instruction insertBefore) {
+      super(target, args, name, insertBefore);
+    }
+
+    protected DbgInfoIntrinsic(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+      super(target, args, name, insertAtEnd);
+    }
+
     public static Value castOperand(Value val) {
       if (val instanceof ConstantExpr) {
         ConstantExpr ce = (ConstantExpr) val;
@@ -58,5 +102,36 @@ public class IntrinsicInst extends Instruction.CallInst {
       }
       return res;
     }
+  }
+
+  public static class DbgDeclareInst extends DbgInfoIntrinsic {
+    private DbgDeclareInst(Value target, Value[] args, String name, Instruction insertBefore) {
+      super(target, args, name, insertBefore);
+    }
+
+    private DbgDeclareInst(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+      super(target, args, name, insertAtEnd);
+    }
+
+    public MDNode getVariable() { return (MDNode) getArgOperand(1); }
+    public Value getAddress() {
+      return getArgOperand(0) instanceof MDNode ? getArgOperand(0) : null;
+    }
+  }
+
+  public static class DbgValueInst extends DbgInfoIntrinsic {
+    private DbgValueInst(Value target, Value[] args, String name, Instruction insertBefore) {
+      super(target, args, name, insertBefore);
+    }
+
+    private DbgValueInst(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
+      super(target, args, name, insertAtEnd);
+    }
+
+    public Value getValue() {
+      return ((MDNode)getArgOperand(0)).getOperand(0);
+    }
+    public long getOffset() { return ((ConstantInt)getArgOperand(1)).getZExtValue(); }
+    public MDNode getVariable() { return (MDNode) getArgOperand(2); }
   }
 }

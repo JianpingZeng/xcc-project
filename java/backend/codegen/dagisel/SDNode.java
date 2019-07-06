@@ -52,6 +52,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   protected ArrayList<SDUse> useList;
   private static HashMap<EVT, TreeSet<EVT>> evts = new HashMap<>();
   private static EVT[] vts = new EVT[MVT.LAST_VALUETYPE];
+  private boolean hasDebugValue;
 
   private static EVT getValueTypeList(EVT vt) {
     if (vt.isExtended()) {
@@ -1012,6 +1013,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     oldOpcode = opcode;
     setOpcode(ISD.DELETED_NODE);
   }
+
+  public void setHasDebugValue(boolean b) {
+    hasDebugValue = b;
+  }
+
+  public boolean getHasDebugValue() { return hasDebugValue; }
 
   public static class SDVTList {
     EVT[] vts;

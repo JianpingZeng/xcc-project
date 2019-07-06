@@ -36,7 +36,7 @@ public class PresumedLoc {
     includeLoc = IL;
   }
 
-  /// isInvalid - Return true if this object is invalid or uninitialized. This
+  /// isInvalidated - Return true if this object is invalid or uninitialized. This
   /// occurs when created with invalid source locations or when walking off
   /// the top of a #include stack.
   public boolean isInvalid() {
