@@ -315,14 +315,14 @@ public class CallingConvEmitter extends TableGenBackend {
           os.printf("%d, ", size);
         else
           os.printf("\n%s\t(int)state.getTarget().getTargetData()" +
-                  ".getTypeAllocSize(locVT.getTypeForEVT()), ",
+                  ".getTypeAllocSize(locVT.getTypeForEVT(state.getContext())), ",
               indentStr);
 
         if (align != 0)
           os.printf("%d", align);
         else
           os.printf("\n%s\tstate.getTarget().getTargetData()" +
-                  ".getABITypeAlignment(locVT.getTypeForEVT())\n",
+                  ".getABITypeAlignment(locVT.getTypeForEVT(state.getContext()))\n",
               indentStr);
         os.printf(");\n%s", indentStr);
         os.print(indentStr);
