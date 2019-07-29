@@ -37,20 +37,20 @@ public class DILexicalBlock extends DIScope {
   public DILexicalBlock(MDNode n) {
     super(n);
   }
-  public DIScope getContext() { return (DIScope) getDescriptorField(1); }
+  public DIScope getContext() { return new DIScope(getDescriptorField(1).getDbgNode()); }
   public int getLineNumber() { return getUnsignedField(2); }
   public int getColumnNumber() { return getUnsignedField(3); }
 
   @Override
   protected String getStringField(int elt) {
-    DIFile f = (DIFile) getDescriptorField(4);
+    DIFile f = new DIFile(getDescriptorField(4).getDbgNode());
     String filename = f.getFilename();
     return filename.isEmpty() ?  getContext().getFilename() : filename;
   }
 
   @Override
   public String getDirectory() {
-    DIFile f = (DIFile) getDescriptorField(4);
+    DIFile f = new DIFile(getDescriptorField(4).getDbgNode());
     String dir = f.getDirectory();
     return dir.isEmpty() ?  getContext().getDirectory() : dir;
   }

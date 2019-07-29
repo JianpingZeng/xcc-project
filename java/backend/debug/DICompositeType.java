@@ -43,9 +43,9 @@ public class DICompositeType extends DIDerivedType {
       dbgNode = null;
   }
 
-  public DIArray getTypeArray() { return (DIArray) getDescriptorField(10); }
+  public DIArray getTypeArray() { return new DIArray(getDescriptorField(10).getDbgNode()); }
   public int getRuntimeLang() { return getUnsignedField(11); }
-  public DICompositeType getContainingType() { return (DICompositeType) getDescriptorField(12); }
+  public DICompositeType getContainingType() { return new DICompositeType(getDescriptorField(12).getDbgNode()); }
   public boolean verify() {
     if (dbgNode == null) return false;
     if (!getContext().verify()) return false;

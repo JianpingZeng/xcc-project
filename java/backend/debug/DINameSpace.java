@@ -39,7 +39,7 @@ public class DINameSpace extends DIScope {
   public DINameSpace(MDNode dbgNode) {
     super(dbgNode);
   }
-  public DIScope getContext() { return (DIScope) getDescriptorField(1); }
+  public DIScope getContext() { return new DIScope(getDescriptorField(1).getDbgNode()); }
   public String getName() { return getStringField(2); }
   @Override
   public String getFilename() { return getContext().getFilename(); }
@@ -47,8 +47,8 @@ public class DINameSpace extends DIScope {
   public String getDirectory() { return getContext().getDirectory(); }
   public DICompileUnit getCompileUnit() {
     if (getVersion() == LLVMDebugVersion7)
-      return (DICompileUnit) getDescriptorField(3);
-    DIFile f = (DIFile) getDescriptorField(3);
+      return new DICompileUnit(getDescriptorField(3).getDbgNode());
+    DIFile f = new DIFile(getDescriptorField(3).getDbgNode());
     return f.getCompileUnit();
   }
   public int getLineNumber() { return getUnsignedField(4); }

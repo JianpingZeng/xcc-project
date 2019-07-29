@@ -50,18 +50,18 @@ public class DISubprogram extends DIScope {
     return false;
   }
 
-  public DIScope getContext() { return (DIScope) getDescriptorField(2); }
+  public DIScope getContext() { return new DIScope(getDescriptorField(2).getDbgNode()); }
   public String getName() { return getStringField(3); }
   public String getDisplayName() { return getStringField(4); }
   public String getLinkageName() { return getStringField(5); }
   public DICompileUnit getCompileUnit() {
     if (getVersion() == Dwarf.LLVMDebugVersion7)
-      return (DICompileUnit) getDescriptorField(6);
-    DIFile di = (DIFile) getDescriptorField(6);
+      return new DICompileUnit(getDescriptorField(6).getDbgNode());
+    DIFile di = new DIFile(getDescriptorField(6).getDbgNode());
     return di.getCompileUnit();
   }
   public int getLineNumber() { return getUnsignedField(7); }
-  public DICompositeType getType() { return (DICompositeType) getDescriptorField(8); }
+  public DICompositeType getType() { return new DICompositeType(getDescriptorField(8).getDbgNode()); }
   public String getReturnTypeName() {
     DICompositeType dct = getType();
     if (dct.verify()) {
@@ -81,7 +81,7 @@ public class DISubprogram extends DIScope {
   public int isDefinition() { return getUnsignedField(10); }
   public int getVirtuality() { return getUnsignedField(11); }
   public int getVirtualIndex() { return getUnsignedField(12); }
-  public DICompositeType getContainingType() { return (DICompositeType) getDescriptorField(13); }
+  public DICompositeType getContainingType() { return new DICompositeType(getDescriptorField(13).getDbgNode()); }
   public int isArtificial() { return getUnsignedField(14); }
   public int isOptimized() {
     Util.assertion(dbgNode != null, "Invalid subprogram descriptor!");
@@ -95,7 +95,7 @@ public class DISubprogram extends DIScope {
     if (getVersion() == Dwarf.LLVMDebugVersion7)
       return getCompileUnit().getFilename();
 
-    DIFile f = (DIFile) getDescriptorField(6);
+    DIFile f = new DIFile(getDescriptorField(6).getDbgNode());
     return f.getFilename();
   }
 
@@ -104,7 +104,7 @@ public class DISubprogram extends DIScope {
     if (getVersion() == Dwarf.LLVMDebugVersion7)
       return getCompileUnit().getDirectory();
 
-    DIFile f = (DIFile) getDescriptorField(6);
+    DIFile f = new DIFile(getDescriptorField(6).getDbgNode());
     return f.getDirectory();
   }
 

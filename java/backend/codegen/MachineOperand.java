@@ -846,9 +846,9 @@ public abstract class MachineOperand {
     return false;
   }
 
-  public void changeToRegister(int reg,
-                               boolean isDef) {
-    changeToRegister(reg, isDef, false, false, false, false);
+  public MachineOperand changeToRegister(int reg,
+                                         boolean isDef) {
+    return changeToRegister(reg, isDef, false, false, false, false);
   }
 
   /**
@@ -863,34 +863,34 @@ public abstract class MachineOperand {
    * @param isDead
    * @param isUndef
    */
-  public void changeToRegister(int reg,
-                               boolean isDef,
-                               boolean isImp,
-                               boolean isKill,
-                               boolean isDead,
-                               boolean isUndef) {
+  public MachineOperand changeToRegister(int reg,
+                                         boolean isDef,
+                                         boolean isImp,
+                                         boolean isKill,
+                                         boolean isDead,
+                                         boolean isUndef) {
     if (isRegister()) {
       Util.assertion(!isEarlyClobber());
       setReg(reg);
+      return this;
     } else {
-      opKind = MO_Register;
-      ((RegisterMO)this).reg = new RegOp(reg);
+      RegisterMO res = new RegisterMO(getParent(), reg);
+      res.isDef = isDef;
+      res.isImp = isImp;
+      res.isKill = isKill;
+      res.isDead = isDead;
+      res.isUndef = isUndef;
+      res.isEarlyClobber = false;
+      res.subReg = 0;
 
       MachineFunction mf;
       if (getParent() != null) {
         if (parentMI.getParent() != null)
           if ((mf = parentMI.getParent().getParent()) != null)
-            addRegOperandToRegInfo(mf.getMachineRegisterInfo());
+            res.addRegOperandToRegInfo(mf.getMachineRegisterInfo());
       }
+      return res;
     }
-
-    getAsRegOp().isDef = isDef;
-    getAsRegOp().isImp = isImp;
-    getAsRegOp().isKill = isKill;
-    getAsRegOp().isDead = isDead;
-    getAsRegOp().isUndef = isUndef;
-    getAsRegOp().isEarlyClobber = false;
-    getAsRegOp().subReg = 0;
   }
 
   /**

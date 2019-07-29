@@ -42,5 +42,5 @@ public class DIFile extends DIScope {
 
   public String getFilename() { return getStringField(1); }
   public String getDirectory() { return getStringField(2); }
-  public DICompileUnit getCompileUnit() { return (DICompileUnit) getDescriptorField(3); }
+  public DICompileUnit getCompileUnit() { return new DICompileUnit(getDescriptorField(3).getDbgNode()); }
 }

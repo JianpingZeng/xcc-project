@@ -42,16 +42,16 @@ public class DIVariable extends DIDescriptor {
     super(n);
   }
 
-  public DIScope getContext() { return (DIScope)getDescriptorField(1); }
+  public DIScope getContext() { return new DIScope(getDescriptorField(1).getDbgNode()); }
   public String getName() { return getStringField(2); }
   public DICompileUnit getCompileUnit() {
     if (getVersion() == LLVMDebugVersion7)
-      return (DICompileUnit) getDescriptorField(3);
-    DIFile f = (DIFile) getDescriptorField(3);
+      return new DICompileUnit(getDescriptorField(3).getDbgNode());
+    DIFile f = new DIFile(getDescriptorField(3).getDbgNode());
     return f.getCompileUnit();
   }
   public int getLineNumber() { return getUnsignedField(4); }
-  public DIType getType() { return (DIType) getDescriptorField(5); }
+  public DIType getType() { return new DIType(getDescriptorField(5).getDbgNode()); }
   public boolean verify() {
     if (dbgNode == null) return false;
     if (!getContext().verify()) return false;

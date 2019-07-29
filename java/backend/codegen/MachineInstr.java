@@ -223,6 +223,15 @@ public class MachineInstr implements Cloneable {
     return operands.get(index);
   }
 
+  public void setOperand(int index, MachineOperand mo) {
+    Util.assertion(index >= 0 && index < getNumOperands(),
+        String.format("%d out of bound %d", index, getNumOperands()));
+    if (mo == operands.get(index))
+      return;
+
+    operands.set(index, mo);
+  }
+
   public int getExplicitOperands() {
     int numOperands = tid.getNumOperands();
     if (!tid.isVariadic())

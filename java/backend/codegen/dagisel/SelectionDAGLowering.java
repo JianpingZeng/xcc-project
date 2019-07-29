@@ -2297,7 +2297,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
               unusedArgNodeMap.get(address) : new SDValue());
         SDDbgValue sdv;
         SDValue n = nodeMap.get(address);
-        if (n.getNode() != null) {
+        if (n != null && n.getNode() != null) {
           // Parameters are handled specially.
           boolean isParameter = new DIVariable(variable).getTag() == Dwarf.DW_TAG_arg_variable;
           if (address instanceof BitCastInst)

@@ -133,7 +133,7 @@ public class X86MCInstLower {
       expr = X86MCTargetExpr.create(sym, refKind, ctx);
     }
 
-    if (!mo.isJumpTableIndex() && mo.getOffset() != 0)
+    if (mo.isJumpTableIndex() && mo.getOffset() != 0)
       expr = MCBinaryExpr.createAdd(expr,
         MCConstantExpr.create(mo.getOffset(), ctx),
     ctx);

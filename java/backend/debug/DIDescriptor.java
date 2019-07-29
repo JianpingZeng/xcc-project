@@ -50,10 +50,10 @@ public class DIDescriptor {
     }
     return "";
   }
-  protected int getUnsignedField(int elt) {
+  int getUnsignedField(int elt) {
     return (int)getInt64Field(elt);
   }
-  protected long getInt64Field(int elt) {
+  long getInt64Field(int elt) {
     if (dbgNode == null) return 0;
 
     if (elt < dbgNode.getNumOperands()) {
@@ -100,7 +100,7 @@ public class DIDescriptor {
   }
 
   public DIDescriptor() {dbgNode = null;}
-  public DIDescriptor(MDNode n) {dbgNode = n; }
+  public DIDescriptor(MDNode n) { dbgNode = n; }
   public DIDescriptor(DIFile f) { dbgNode = f.dbgNode; }
   public DIDescriptor(DISubprogram f) { dbgNode = f.dbgNode; }
   public DIDescriptor(DILexicalBlock f) { dbgNode = f.dbgNode; }

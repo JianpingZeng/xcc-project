@@ -40,7 +40,7 @@ public class DIDerivedType extends DIType {
   public DIDerivedType(MDNode dbgNode) {
     super(dbgNode, true, true);
   }
-  public DIType getTypeDerivedFrom() { return (DIType) getDescriptorField(9); }
+  public DIType getTypeDerivedFrom() { return new DIType(getDescriptorField(9).getDbgNode()); }
 
   public long getOriginalTypeSize() {
     int tag = getTag();

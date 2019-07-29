@@ -758,7 +758,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     else
       basePtr = tli.hasFP(mf) ? framePtr : stackPtr;
 
-    mi.getOperand(i).changeToRegister(basePtr, false);
+    mi.setOperand(i, mi.getOperand(i).changeToRegister(basePtr, false));
     if (mi.getOperand(i + 3).isImm()) {
       int offset = getFrameIndexOffset(mf, frameIndex) + (int) mi
           .getOperand(i + 3).getImm();
