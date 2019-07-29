@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
 import backend.codegen.dagisel.SDNode.LoadSDNode;
+import backend.debug.DebugLoc;
 import tools.Util;
 
 import java.util.Objects;
@@ -236,5 +237,9 @@ public class SDValue implements Comparable<SDValue>, Cloneable {
     res.node = node;
     res.resNo = resNo;
     return res;
+  }
+
+  public DebugLoc getDebugLoc() {
+    return node.getDebugLoc();
   }
 }

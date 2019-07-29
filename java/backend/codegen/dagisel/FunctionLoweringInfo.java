@@ -18,6 +18,7 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.target.*;
 import backend.type.ArrayType;
 import backend.type.StructType;
@@ -217,6 +218,7 @@ public class FunctionLoweringInfo {
         if (!(inst instanceof PhiNode) || inst.isUseEmpty())
           continue;
         pn = (PhiNode) inst;
+        DebugLoc dl = pn.getDebugLoc();
         Util.assertion(valueMap.containsKey(pn), "PhiNode must be assigned with a virtual register!");
         int vreg = valueMap.get(pn);
         ArrayList<EVT> vts = new ArrayList<>();
@@ -224,7 +226,7 @@ public class FunctionLoweringInfo {
         for (EVT vt : vts) {
           int num = tli.getNumRegisters(vt);
           for (int i = 0; i < num; i++)
-            buildMI(mbb, tii.get(TargetOpcodes.PHI), vreg + i);
+            buildMI(mbb, dl, tii.get(TargetOpcodes.PHI), vreg + i);
           vreg += num;
         }
       }

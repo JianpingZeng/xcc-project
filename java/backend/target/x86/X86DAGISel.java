@@ -20,6 +20,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.support.Attribute;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
@@ -1663,7 +1664,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
   protected void emitSpecialCodeForMain(MachineBasicBlock mbb, MachineFrameInfo mfi) {
     TargetInstrInfo tii = tm.getInstrInfo();
     if (subtarget.isTargetCygMing()) {
-      buildMI(mbb, tii.get(X86GenInstrNames.CALLpcrel32)).addExternalSymbol("__main");
+      buildMI(mbb, new DebugLoc(), tii.get(X86GenInstrNames.CALLpcrel32)).addExternalSymbol("__main");
     }
   }
 

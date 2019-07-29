@@ -41,10 +41,9 @@ public final class MachineInstrBuilder {
    * @param offset
    * @return
    */
-  public static MachineInstrBuilder addFrameReference(
-      MachineInstrBuilder mib,
-      int fi,
-      int offset) {
+  public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
+                                                      int fi,
+                                                      int offset) {
     MachineInstr mi = mib.getMInstr();
     MachineFunction mf = mi.getParent().getParent();
     MachineFrameInfo mfi = mf.getFrameInfo();
@@ -64,7 +63,8 @@ public final class MachineInstrBuilder {
     return addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
   }
 
-  private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, long offset) {
+  private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib,
+                                                  long offset) {
     return mib.addImm(1).addReg(0).addImm(offset);
   }
 
@@ -73,24 +73,25 @@ public final class MachineInstrBuilder {
     return addLeaOffset(mib, offset).addReg(0);
   }
 
-  public static MachineInstrBuilder addRegOffset(
-      MachineInstrBuilder mib,
-      int reg, boolean isKill, long offset) {
+  public static MachineInstrBuilder addRegOffset(MachineInstrBuilder mib,
+                                                 int reg,
+                                                 boolean isKill,
+                                                 long offset) {
     return addOffset(mib.addReg(reg, getKillRegState(isKill)), offset);
   }
 
-  public static MachineInstrBuilder addLeaRegOffset(
-      MachineInstrBuilder mib,
-      int reg, boolean isKill, long offset) {
+  public static MachineInstrBuilder addLeaRegOffset(MachineInstrBuilder mib,
+                                                    int reg,
+                                                    boolean isKill,
+                                                    long offset) {
     return addLeaOffset(mib.addReg(reg, getKillRegState(isKill)), offset);
   }
 
-  public static MachineInstrBuilder addRegReg(
-      MachineInstrBuilder mib,
-      int reg1,
-      boolean isKill1,
-      int reg2,
-      boolean isKill2) {
+  public static MachineInstrBuilder addRegReg(MachineInstrBuilder mib,
+                                              int reg1,
+                                              boolean isKill1,
+                                              int reg2,
+                                              boolean isKill2) {
     return mib.addReg(reg1, getKillRegState(isKill1))
         .addImm(1)
         .addReg(reg2, getKillRegState(isKill2))
@@ -111,8 +112,10 @@ public final class MachineInstrBuilder {
    * @param opFlags
    * @return
    */
-  public static MachineInstrBuilder addConstantPoolReference(
-      MachineInstrBuilder mib, int cpi, int globalBaseReg, int opFlags) {
+  public static MachineInstrBuilder addConstantPoolReference(MachineInstrBuilder mib,
+                                                             int cpi,
+                                                             int globalBaseReg,
+                                                             int opFlags) {
     return mib.addReg(globalBaseReg).addImm(1).addReg(0).
         addConstantPoolIndex(cpi, 0, opFlags).
         addReg(0);
@@ -208,8 +211,9 @@ public final class MachineInstrBuilder {
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
       int insertPos,
+      DebugLoc dl,
       MCInstrDesc tid) {
-    MachineInstr mi = new MachineInstr(tid);
+    MachineInstr mi = new MachineInstr(tid, dl);
     mbb.insert(insertPos, mi);
     return new MachineInstrBuilder(mi);
   }
@@ -217,31 +221,33 @@ public final class MachineInstrBuilder {
   public static MachineInstrBuilder buildMI(
       MachineBasicBlock mbb,
       int insertPos,
+      DebugLoc dl,
       MCInstrDesc tid,
       int destReg) {
-    MachineInstr mi = new MachineInstr(tid);
+    MachineInstr mi = new MachineInstr(tid, dl);
     mbb.insert(insertPos, mi);
     return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
   }
 
-  public static MachineInstrBuilder buildMI(
-      MachineBasicBlock mbb,
-      MCInstrDesc tid,
-      int destReg) {
-    MachineInstr mi = new MachineInstr(tid);
+  public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+                                            DebugLoc dl,
+                                            MCInstrDesc tid,
+                                            int destReg) {
+    MachineInstr mi = new MachineInstr(tid, dl);
     mbb.addLast(mi);
     return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
   }
 
-  public static MachineInstrBuilder buildMI(
-      MachineBasicBlock mbb,
-      MCInstrDesc tid) {
-    MachineInstr mi = new MachineInstr(tid);
+  public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+                                            DebugLoc dl,
+                                            MCInstrDesc tid) {
+    MachineInstr mi = new MachineInstr(tid, dl);
     mbb.addLast(mi);
     return new MachineInstrBuilder(mi);
   }
 
-  public static MachineInstrBuilder buildMI(MCInstrDesc desc, DebugLoc dl) {
+  public static MachineInstrBuilder buildMI(MCInstrDesc desc,
+                                            DebugLoc dl) {
     return new MachineInstrBuilder(new MachineInstr(desc, dl));
   }
 
@@ -249,8 +255,10 @@ public final class MachineInstrBuilder {
     return buildMI(desc, new DebugLoc());
   }
 
-  public static MachineInstrBuilder buildMI(MCInstrDesc desc, int destReg) {
-    return new MachineInstrBuilder(new MachineInstr(desc)).
+  public static MachineInstrBuilder buildMI(MCInstrDesc desc,
+                                            DebugLoc dl,
+                                            int destReg) {
+    return new MachineInstrBuilder(new MachineInstr(desc, dl)).
         addReg(destReg, RegState.Define);
   }
 

@@ -10,6 +10,7 @@
 package backend.target.x86;
 
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.support.Attribute;
 import backend.target.TargetData;
 import backend.target.TargetFrameLowering;
@@ -87,9 +88,9 @@ public class X86FrameLowering extends TargetFrameLowering {
       stackSize += 32;
       mfi.setStackSize(stackSize);
     }
-
+    DebugLoc dl = mbb.getInstAt(mbbi).getDebugLoc();
     if (tailCallReturnAddrDelta < 0) {
-      mi = buildMI(mbb, mbbi, tii.get(is64Bit ? SUB64ri32 : SUB32ri),
+      mi = buildMI(mbb, mbbi, dl, tii.get(is64Bit ? SUB64ri32 : SUB32ri),
           stackPtr).addReg(stackPtr).addImm(-tailCallReturnAddrDelta).getMInstr();
       mi.getOperand(3).setIsDead(true);   // The EFLAGS implicit def is dead.
     }
@@ -111,10 +112,10 @@ public class X86FrameLowering extends TargetFrameLowering {
       numBytes = frameSize - x86FI.getCalleeSavedFrameSize();
       mfi.setOffsetAdjustment(-numBytes);
 
-      buildMI(mbb, mbbi++, tii.get(is64Bit ? PUSH64r : PUSH32r))
+      buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? PUSH64r : PUSH32r))
           .addReg(framePtr, MachineOperand.RegState.Kill);
       // update EBP with new base value
-      buildMI(mbb, mbbi++, tii.get(is64Bit ? MOV64rr : MOV32rr), framePtr)
+      buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? MOV64rr : MOV32rr), framePtr)
           .addReg(stackPtr);
 
       // mark the frameptr as live-in in every block excepts the entry.
@@ -123,7 +124,7 @@ public class X86FrameLowering extends TargetFrameLowering {
 
         // realign stack.
         if (tri.needsStackRealignment(mf)) {
-          mi = buildMI(mbb, mbbi++,
+          mi = buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(),
               tii.get(is64Bit ? AND64ri32 : AND32ri), stackPtr)
               .addReg(stackPtr).addImm(-maxAlign).getMInstr();
           mi.getOperand(3).setIsDead(true);
@@ -147,18 +148,17 @@ public class X86FrameLowering extends TargetFrameLowering {
         isEAXLive = reg == EAX || reg == AX || reg == AH || reg == AL;
       }
       if (!isEAXLive) {
-        buildMI(mbb, mbbi++, tii.get(MOV32ri), EAX).addImm(numBytes);
-        buildMI(mbb, mbbi++, tii.get(CALLpcrel32))
+        buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(MOV32ri), EAX).addImm(numBytes);
+        buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(CALLpcrel32))
             .addExternalSymbol("_alloca", 0, 0);
       } else {
-        buildMI(mbb, mbbi++, tii.get(PUSH32r)).addReg(EAX, MachineOperand.RegState.Kill);
-        buildMI(mbb, mbbi++, tii.get(MOV32ri), EAX).addImm(numBytes - 4);
-        buildMI(mbb, mbbi++, tii.get(CALLpcrel32))
-            .addExternalSymbol("_alloca", 0, 0);
+        buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(PUSH32r)).addReg(EAX, MachineOperand.RegState.Kill);
+        buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(MOV32ri), EAX).addImm(numBytes - 4);
+        buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(CALLpcrel32)).addExternalSymbol("_alloca", 0, 0);
 
-        mi = addRegOffset(buildMI(tii.get(MOV32rm), EAX), stackPtr,
+        mi = addRegOffset(buildMI(tii.get(MOV32rm), mbb.getInstAt(mbbi).getDebugLoc(), EAX), stackPtr,
             false, numBytes - 4).getMInstr();
-        mbb.insert(mbbi++, mi);
+        mbb.insert(mbbi, mi);
       }
     } else if (numBytes != 0) {
       OutRef<Integer> x = new OutRef<>(mbbi);
@@ -173,11 +173,10 @@ public class X86FrameLowering extends TargetFrameLowering {
     }
   }
 
-  private int mergeSPUpdates(
-      MachineBasicBlock mbb,
-      OutRef<Integer> mbbi,
-      int stackPtr,
-      boolean doMergeWithPrevious) {
+  private int mergeSPUpdates(MachineBasicBlock mbb,
+                             OutRef<Integer> mbbi,
+                             int stackPtr,
+                             boolean doMergeWithPrevious) {
     if ((doMergeWithPrevious && mbbi.get() == 0) ||
         (!doMergeWithPrevious && mbbi.get() == mbb.size())) {
       return 0;
@@ -205,11 +204,10 @@ public class X86FrameLowering extends TargetFrameLowering {
     return offset;
   }
 
-  private void mergeSPUpdatesDown(
-      MachineBasicBlock mbb,
-      int mbbi,
-      int stackPtr,
-      OutRef<Integer> numBytes) {
+  private void mergeSPUpdatesDown(MachineBasicBlock mbb,
+                                  int mbbi,
+                                  int stackPtr,
+                                  OutRef<Integer> numBytes) {
     // FIXME, not run!
   }
 
@@ -232,6 +230,7 @@ public class X86FrameLowering extends TargetFrameLowering {
     while (offset != 0) {
       long thisVal = (offset > chunk) ? chunk : offset;
       MachineInstr mi = buildMI(mbb, mbbi,
+          mbb.getInstAt(mbbi).getDebugLoc(),
           tii.get(opc), stackPtr).addReg(stackPtr)
           .addImm(thisVal).getMInstr();
       mi.getOperand(3).setIsDead(true);
@@ -297,7 +296,7 @@ public class X86FrameLowering extends TargetFrameLowering {
       numBytes = frameSize - cssSize;
 
       // Pop EBP.
-      buildMI(mbb, mbbi++, tii.get(is64Bit ? POP64r : POP32r), framePtr);
+      buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? POP64r : POP32r), framePtr);
     }
     else {
       numBytes = stackSize - cssSize;
@@ -328,18 +327,18 @@ public class X86FrameLowering extends TargetFrameLowering {
         mbbi = lastCSPop-1;
       }
 
-      buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rr : MOV32rr), stackPtr).addReg(framePtr);
+      buildMI(mbb, mbbi, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? MOV64rr : MOV32rr), stackPtr).addReg(framePtr);
     }
     else if (mfi.hasVarSizedObjects()) {
       if (cssSize != 0) {
         int opc = is64Bit ? LEA64r : LEA32r;
-        MachineInstrBuilder mib = new MachineInstrBuilder(new MachineInstr(tii.get(opc)));
+        MachineInstrBuilder mib = new MachineInstrBuilder(new MachineInstr(tii.get(opc), mbb.getInstAt(mbbi).getDebugLoc()));
         mib.addReg(stackPtr);
         MachineInstr mi = addRegOffset(mib, framePtr, false, -cssSize).getMInstr();
         mbb.insert(mbbi, mi);
       }
       else {
-        buildMI(mbb, mbbi, tii.get(is64Bit ? MOV64rr : MOV32rr), stackPtr).addReg(framePtr);
+        buildMI(mbb, mbbi, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? MOV64rr : MOV32rr), stackPtr).addReg(framePtr);
       }
     }
     else if (numBytes != 0) {

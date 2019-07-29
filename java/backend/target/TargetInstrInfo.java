@@ -13,6 +13,7 @@ import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SelectionDAG;
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrInfo;
 import backend.mc.MCRegisterClass;
 import gnu.trove.list.array.TIntArrayList;
@@ -247,7 +248,8 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
   public int insertBranch(MachineBasicBlock mbb,
                           MachineBasicBlock tbb,
                           MachineBasicBlock fbb,
-                          ArrayList<MachineOperand> cond) {
+                          ArrayList<MachineOperand> cond,
+                          DebugLoc dl) {
     Util.assertion(false, "Target didn't implement RISCVGenInstrInfo::InsertBranch!");
     return 0;
   }

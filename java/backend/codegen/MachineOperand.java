@@ -1,7 +1,9 @@
 package backend.codegen;
 
+import backend.mc.MCSymbol;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
+import backend.value.BlockAddress;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 import backend.value.MDNode;
@@ -47,7 +49,7 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
  * @version 0.4
  */
 
-public class MachineOperand {
+public abstract class MachineOperand {
   public interface RegState {
     int Define = 0x2;             /// This machine operand is only written by the instruction
     int Implicit = 0x4;
@@ -71,7 +73,8 @@ public class MachineOperand {
     MO_ExternalSymbol,          // Name of external global symbol
     MO_GlobalAddress,           // Address of a global value
     MO_BlockAddress,            // Address of a basic block
-    MO_Metadata                 // Metadata reference (for debug)
+    MO_Metadata,                 // Metadata reference (for debug)
+    MO_MCSymbol                  // MCSymbol reference (for debug/eh info)
   }
 
   // Bit fields of the flags variable used for different operand properties
@@ -87,16 +90,7 @@ public class MachineOperand {
     int USEDEFMASK = 0x03;
   }
 
-  // ConstantVal for a non-address immediate.
-  // Virtual register for an SSA operand,
-  //   including hidden operands required for
-  //   the generated machine code.
-  // LLVM global for MO_GlobalAddress.
-
-  private long immVal;        // Constant value for an explicit ant
-  private MachineBasicBlock mbb;     // For MO_MachineBasicBlock type
-  // For constant FP.
-  private ConstantFP cfp;
+  public abstract MachineOperand clone();
 
   static class RegOp {
     int regNo;
@@ -120,96 +114,261 @@ public class MachineOperand {
     }
   }
 
-  // For register operand.
-  RegOp reg;
+  private static class RegisterMO extends MachineOperand {
+    /**
+     * Virtual register for an SSA operand, including hidden operands
+     * required for the generated machine code.
+     */
+    RegOp reg;
+    int subReg;
+    /**
+     * This flag indicates if this machine operand is a definition register.
+     */
+    protected boolean isDef;
+    /**
+     * This flag indicates if this machine operand is a implicit operand.
+     */
+    protected boolean isImp;
+    /**
+     * This flag indicates if this machine operand is the last use of the specified register.
+     */
+    protected boolean isKill;
+    /**
+     * This flag indicates if this machine operand is definition of the register without
+     * subsequent use.
+     */
+    protected boolean isDead;
+    /**
+     * This flag indicates if this machine operand is a register def/use of "undef",
+     * for example, register defined by IMPLICIT_DEF. this is only valid on register.
+     */
+    protected boolean isUndef;
 
-  private static class Val {
+    /**
+     * True if this MO_Register 'def' operand is written to
+     * by the MachineInstr before all input registers are read.  This is used to
+     * model the GCC inline asm '&' constraint modifier.
+     */
+    protected boolean isEarlyClobber;
+    /**
+     * Indicates if the machine operand is used in debug pseudo, not a real instruction.
+     * Such users should be ignored during codegen.
+     */
+    protected boolean isDebug;
+    /**
+     * The machine instruction in which this machine operand is embedded.
+     */
+    RegisterMO(MachineInstr mi, int r, int subReg) {
+      super(MO_Register, mi);
+      reg = new RegOp(r);
+      this.subReg = subReg;
+    }
+
+    RegisterMO(MachineInstr mi, int r) {
+      this(mi, r, 0);
+    }
+
+    @Override
+    public MachineOperand clone() {
+      RegisterMO res = new RegisterMO(getParent(), reg.regNo, subReg);
+      res.targetFlags = getTargetFlags();
+      res.isDef = isDef;
+      res.isImp = isImp;
+      res.isKill = isKill;
+      res.isDead = isDead;
+      res.isUndef = isUndef;
+      res.isEarlyClobber = isEarlyClobber;
+      res.isDebug = isDebug;
+      return res;
+    }
+  }
+
+  private static class ImmediateMO extends MachineOperand {
+    // ConstantVal for a non-address immediate.
+    long immVal;        // Constant value for an explicit ant
+    ImmediateMO(MachineInstr mi, long val) {
+      super(MO_Immediate, mi);
+      immVal = val;
+    }
+
+    @Override
+    public MachineOperand clone() {
+      ImmediateMO res = new ImmediateMO(getParent(), immVal);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
+
+  private static class FPImmediateMO extends MachineOperand {
+    // For constant FP.
+    ConstantFP cfp;
+    FPImmediateMO(MachineInstr mi, ConstantFP fp) {
+      super(MO_FPImmediate, mi);
+      cfp = fp;
+    }
+
+    @Override
+    public MachineOperand clone() {
+      FPImmediateMO res = new FPImmediateMO(getParent(), cfp);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
+
+  private static class MachineBasicBlockMO extends MachineOperand {
+    // For MO_MachineBasicBlock type
+    MachineBasicBlock mbb;
+    MachineBasicBlockMO(MachineInstr mi, MachineBasicBlock mbb) {
+      super(MO_MachineBasicBlock, mi);
+      this.mbb = mbb;
+    }
+
+    @Override
+    public MachineOperand clone() {
+      MachineBasicBlockMO res = new MachineBasicBlockMO(getParent(), mbb);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
+
+  private static class IndexMO extends MachineOperand {
+    /**
+     * For MO_FrameIndex.
+     */
     int index;
-    String symbolName;
-    GlobalValue gv;
-
-    public Val() {
-      index = 0;
-      symbolName = "";
-      gv = null;
-    }
-  }
-
-  // For Offset and an object identifier. this represent the object as with
-  // an optional offset from it.
-  private static class OffsetInfo {
-    Val val;
+    /**
+     * The offset from the object.
+     */
     long offset;
+    private IndexMO(MachineOperandType k, MachineInstr mi,
+                    int index, long offset) {
+      super(k, mi);
+      this.index = index;
+      this.offset = offset;
+    }
 
-    OffsetInfo() {
-      val = new Val();
-      offset = 0;
+    @Override
+    public MachineOperand clone() {
+      IndexMO res = new IndexMO(getType(), getParent(), index, offset);
+      res.targetFlags = getTargetFlags();
+      return res;
     }
   }
 
-  private OffsetInfo offsetInfo;
+  private static class FrameIndexMO extends IndexMO {
+    FrameIndexMO(MachineInstr mi, int idx, long offset) {
+      super(MO_FrameIndex, mi, idx, offset);
+    }
+  }
 
-  private MachineOperandType opKind;  // Pack into 8 bits efficiently after flags.
+  private static class ConstantPoolIndexMO extends IndexMO {
+    ConstantPoolIndexMO(MachineInstr mi, int idx, long offset) {
+      super(MO_ConstantPoolIndex, mi, idx, offset);
+    }
+  }
 
-  private int subReg;
+  private static class JumpTableIndexMO extends IndexMO {
+    JumpTableIndexMO(MachineInstr mi, int idx, long offset) {
+      super(MO_JumpTableIndex, mi, idx, offset);
+    }
+  }
 
-  private int targetFlags;
+  private static class ExternalSymbolMO extends MachineOperand {
+    String symbolName;
+    long offset;
+    ExternalSymbolMO(MachineInstr mi, String sym, long offset) {
+      super(MO_ExternalSymbol, mi);
+      symbolName = sym;
+      this.offset = offset;
+    }
 
-  private boolean isDef;
+    @Override
+    public MachineOperand clone() {
+      ExternalSymbolMO res = new ExternalSymbolMO(getParent(), symbolName, offset);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
 
-  private boolean isImp;
+  private static class GlobalAddressMO extends MachineOperand {
+    GlobalValue gv;
+    long offset;
+    // LLVM global for MO_GlobalAddress.
+    GlobalAddressMO(MachineInstr mi, GlobalValue gv, long offset) {
+      super(MO_GlobalAddress, mi);
+      this.gv = gv;
+      this.offset = offset;
+    }
 
-  private boolean isKill;
+    @Override
+    public MachineOperand clone() {
+      GlobalAddressMO res = new GlobalAddressMO(getParent(), gv, offset);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
 
-  private boolean isDead;
+  private static class BlockAddresssMO extends MachineOperand {
+    BlockAddress ba;
+    long offset;
+    BlockAddresssMO(MachineInstr mi, BlockAddress ba, long offset) {
+      super(MO_BlockAddress, mi);
+      this.ba = ba;
+      this.offset = offset;
+    }
 
-  private boolean isUndef;
+    @Override
+    public MachineOperand clone() {
+      BlockAddresssMO res = new BlockAddresssMO(getParent(), ba, offset);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
+
+  private static class MetadataMO extends MachineOperand {
+    MDNode md;
+    MetadataMO(MachineInstr mi, MDNode node) {
+      super(MO_Metadata, mi);
+      md = node;
+    }
+
+    @Override
+    public MachineOperand clone() {
+      MetadataMO res = new MetadataMO(getParent(), md);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
+
+  private static class MCSymbolMO extends MachineOperand {
+    MCSymbol sym;
+    MCSymbolMO(MachineInstr mi, MCSymbol sym) {
+      super(MO_MCSymbol, mi);
+      this.sym = sym;
+    }
+
+    @Override
+    public MachineOperand clone() {
+      MCSymbolMO res = new MCSymbolMO(getParent(), sym);
+      res.targetFlags = getTargetFlags();
+      return res;
+    }
+  }
 
   /**
-   * True if this MO_Register 'def' operand is written to
-   * by the MachineInstr before all input registers are read.  This is used to
-   * model the GCC inline asm '&' constraint modifier.
+   * Which kind of this machine operand.
    */
-  private boolean isEarlyClobber;
-
+  protected MachineOperandType opKind;
   /**
-   * The machine instruction in which this machine operand is embedded.
+   * This is a set of target-specific flags.
    */
-  private MachineInstr parentMI;
+  protected int targetFlags;
+  protected MachineInstr parentMI;
 
   // will be set for a value after reg allocation
-  private MachineOperand(MachineOperandType k) {
+  private MachineOperand(MachineOperandType k, MachineInstr mi) {
     opKind = k;
-    parentMI = null;
-    offsetInfo = new MachineOperand.OffsetInfo();
-  }
-
-  @Override
-  public MachineOperand clone() {
-    switch (getType()) {
-      case MO_Register:
-        return createReg(reg.regNo,isDef, isImp, isKill, isDead,
-            isUndef,isEarlyClobber, subReg);
-      case MO_Immediate:
-        return createImm(immVal);
-      case MO_FPImmediate:
-        return createFPImm(cfp);
-      case MO_MachineBasicBlock:
-        return createMBB(mbb, targetFlags);
-      case MO_FrameIndex:
-        return createFrameIndex(getIndex());
-      case MO_ConstantPoolIndex:
-        return createConstantPoolIndex(getIndex(), getOffset(), targetFlags);
-      case MO_JumpTableIndex:
-        return createJumpTableIndex(getIndex(), getTargetFlags());
-      case MO_ExternalSymbol:
-        return createExternalSymbol(getSymbolName(), getOffset(), getTargetFlags());
-      case MO_GlobalAddress:
-        return createGlobalAddress(getGlobal(), getOffset(), getTargetFlags());
-      default:
-        Util.shouldNotReachHere("Unknown machine operand type!");
-        return null;
-    }
+    parentMI = mi;
   }
 
   // Accessor methods.  Caller is responsible for checking the
@@ -217,10 +376,6 @@ public class MachineOperand {
   //
   public MachineOperandType getType() {
     return opKind;
-  }
-
-  public void setOpKind(MachineOperandType newTy) {
-    opKind = newTy;
   }
 
   public int getTargetFlags() {
@@ -398,52 +553,61 @@ public class MachineOperand {
 
   public int getReg() {
     Util.assertion(isRegister(), "This is not a register operand!");
-    return reg.regNo;
+    return ((RegisterMO)this).reg.regNo;
+  }
+
+  public RegOp getRegOp() {
+    Util.assertion(isRegister(), "This is not a register operand!");
+    return ((RegisterMO)this).reg;
   }
 
   public int getSubReg() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return subReg;
+    return ((RegisterMO)this).subReg;
   }
 
+  private RegisterMO getAsRegOp() {
+    Util.assertion(isRegister(), "Wrong MachineOperand accessor");
+    return (RegisterMO)this;
+  }
   public boolean isUse() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return !isDef;
+    return !getAsRegOp().isDef;
   }
 
   public boolean isDef() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isDef;
+    return getAsRegOp().isDef;
   }
 
   public boolean isImplicit() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isImp;
+    return getAsRegOp().isImp;
   }
 
   public boolean isDead() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isDead;
+    return getAsRegOp().isDead;
   }
 
   public boolean isKill() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isKill;
+    return getAsRegOp().isKill;
   }
 
   public boolean isUndef() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isUndef;
+    return getAsRegOp().isUndef;
   }
 
   public boolean isEarlyClobber() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return isEarlyClobber;
+    return getAsRegOp().isEarlyClobber;
   }
 
   public MachineOperand getNextOperandForReg() {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    return reg.next;
+    return ((RegisterMO)this).reg.next;
   }
 
   public void setReg(int reg) {
@@ -460,7 +624,7 @@ public class MachineOperand {
         MachineFunction mf = mbb.getParent();
         if (mf != null) {
           removeRegOperandFromRegInfo();
-          this.reg.regNo = reg;
+          ((RegisterMO)this).reg.regNo = reg;
           addRegOperandToRegInfo(mf.getMachineRegisterInfo());
           return;
         }
@@ -468,107 +632,106 @@ public class MachineOperand {
     }
 
     // Otherwise, just change the register, no problem.  :)
-    this.reg.regNo = reg;
+    ((RegisterMO)this).reg.regNo = reg;
   }
 
   public void setSubreg(int subreg) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    this.subReg = subreg;
+    ((RegisterMO)this).subReg = subreg;
   }
 
   public void setIsUse(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isDef = !val;
+    getAsRegOp().isDef = !val;
   }
 
   public void setIsDef(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isDef = val;
+    getAsRegOp().isDef = val;
   }
 
   public void setImplicit(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isImp = val;
+    getAsRegOp().isImp = val;
   }
 
   public void setIsKill(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isKill = val;
+    getAsRegOp().isKill = val;
   }
 
   public void setIsDead(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isDead = val;
+    getAsRegOp().isDead = val;
   }
 
   public void setIsUndef(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isUndef = val;
+    getAsRegOp().isUndef = val;
   }
 
   public void setIsEarlyClobber(boolean val) {
     Util.assertion(isRegister(), "Wrong MachineOperand accessor");
-    isEarlyClobber = val;
+    getAsRegOp().isEarlyClobber = val;
   }
 
   public long getImm() {
     Util.assertion(isImm(), "Wrong MachineOperand accessor");
-    return immVal;
+    return ((ImmediateMO)this).immVal;
   }
 
   public ConstantFP getFPImm() {
     Util.assertion(isFPImm(), "Wrong MachineOperand accessor");
-    return cfp;
+    return ((FPImmediateMO)this).cfp;
   }
 
   public MachineBasicBlock getMBB() {
     Util.assertion(isMBB(), "Can't get mbb in non-mbb operand!");
-    return mbb;
+    return ((MachineBasicBlockMO)this).mbb;
   }
 
   public int getIndex() {
     Util.assertion(isFrameIndex() || isConstantPoolIndex() ||
         isJumpTableIndex(), "Wrong MachineOperand accessor");
-    return offsetInfo.val.index;
+    return ((IndexMO)this).index;
   }
 
   public long getOffset() {
     Util.assertion(isGlobalAddress() || isExternalSymbol() ||
         isConstantPoolIndex(), "Wrong MachineOperand accessor");
-
-    return offsetInfo.offset;
+    return ((IndexMO)this).offset;
   }
 
   public GlobalValue getGlobal() {
     Util.assertion(isGlobalAddress(), "Wrong MachineOperand accessor");
-    return offsetInfo.val.gv;
+    return ((GlobalAddressMO)this).gv;
   }
 
   public String getSymbolName() {
     Util.assertion(isExternalSymbol(), "Wrong MachineOperand accessor");
-    return offsetInfo.val.symbolName;
+    return ((ExternalSymbolMO)this).symbolName;
   }
 
   public void setImm(long imm) {
     Util.assertion(isImm(), "Wrong MachineOperand accessor");
-    immVal = imm;
+    ((ImmediateMO)this).immVal = imm;
   }
 
   public void setOffset(long offset) {
     Util.assertion(isGlobalAddress() || isExternalSymbol() ||
         isConstantPoolIndex(), "Wrong MachineOperand accessor");
-    offsetInfo.offset = offset;
+    ((IndexMO)this).offset = offset;
   }
 
   public void setIndex(int idx) {
     Util.assertion(isFrameIndex() || isConstantPoolIndex() ||
         isJumpTableIndex(), "Wrong MachineOperand accessor");
-    offsetInfo.val.index = idx;
+    ((IndexMO)this).index = idx;
   }
 
   public void setMBB(MachineBasicBlock mbb) {
     Util.assertion(isMBB(), "Wrong MachineOperand accessor");
-    this.mbb = mbb;
+    ((MachineBasicBlockMO)this).mbb = mbb;
   }
 
   /**
@@ -623,45 +786,46 @@ public class MachineOperand {
         && getParent().getParent().getParent() != null)
       removeRegOperandFromRegInfo();
     opKind = MO_Immediate;
-    this.immVal = immVal;
+    ((ImmediateMO)this).immVal = immVal;
   }
 
   public void removeRegOperandFromRegInfo() {
     // Unlink this reg operand from reg def-use linked list.
     Util.assertion(isOnRegUseList(), "Reg operand is not on a use list");
     MachineRegisterInfo regInfo = parentMI.getRegInfo();
-    MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
+    RegisterMO regMO = ((RegisterMO)this);
+    MachineOperand head = regInfo.getRegUseDefListHead(regMO.reg.regNo);
     if (head.equals(this)) {
-      if (head.reg.next != null) {
-        head.reg.next.reg.prev = head.reg.prev;
-        if (head.reg.prev != null)
-          head.reg.prev.reg.next = head.reg.next;
+      if (((RegisterMO)head).reg.next != null) {
+        ((RegisterMO)(((RegisterMO)head).reg.next)).reg.prev = ((RegisterMO)head).reg.prev;
+        if (((RegisterMO)head).reg.prev != null)
+          ((RegisterMO)((RegisterMO)head).reg.prev).reg.next = ((RegisterMO)head).reg.next;
 
-        regInfo.updateRegUseDefListHead(getReg(), head.reg.next);
-        head.reg.next = null;
+        regInfo.updateRegUseDefListHead(getReg(), ((RegisterMO)head).reg.next);
+        ((RegisterMO)head).reg.next = null;
       }
-      else if (head.reg.prev != null) {
-        regInfo.updateRegUseDefListHead(getReg(), head.reg.prev);
-        head.reg.prev.reg.next = head.reg.next;
-        head.reg.prev = null;
+      else if (((RegisterMO)head).reg.prev != null) {
+        regInfo.updateRegUseDefListHead(getReg(), ((RegisterMO)head).reg.prev);
+        ((RegisterMO)((RegisterMO)head).reg.prev).reg.next = ((RegisterMO)head).reg.next;
+        ((RegisterMO)head).reg.prev = null;
       }
       else
         regInfo.updateRegUseDefListHead(getReg(), null);
 
     } else {
-      if (reg.prev != null) {
-        Util.assertion(reg.prev.getReg() == getReg(), "Corrupt reg use/def chain!");
+      if (regMO.reg.prev != null) {
+        Util.assertion(regMO.reg.prev.getReg() == getReg(), "Corrupt reg use/def chain!");
 
-        reg.prev.reg.next = reg.next;
+        ((RegisterMO)regMO.reg.prev).reg.next = regMO.reg.next;
       }
-      if (reg.next != null) {
-        Util.assertion(reg.next.getReg() == getReg(), "Corrupt reg use/def chain!");
+      if (regMO.reg.next != null) {
+        Util.assertion(regMO.reg.next.getReg() == getReg(), "Corrupt reg use/def chain!");
 
-        reg.next.reg.prev = reg.prev;
+        ((RegisterMO)regMO.reg.next).reg.prev = regMO.reg.prev;
       }
     }
-    reg.prev = null;
-    reg.next = null;
+    regMO.reg.prev = null;
+    regMO.reg.next = null;
   }
 
   /**
@@ -675,7 +839,7 @@ public class MachineOperand {
     Util.assertion(isRegister(), "Can only add reg operand to use lists");
     if (parentMI != null) {
       MachineRegisterInfo regInfo = parentMI.getRegInfo();
-      MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
+      MachineOperand head = regInfo.getRegUseDefListHead(((RegisterMO)this).reg.regNo);
       if (head != null)
         return true;
     }
@@ -706,11 +870,11 @@ public class MachineOperand {
                                boolean isDead,
                                boolean isUndef) {
     if (isRegister()) {
-      Util.assertion(!isEarlyClobber);
+      Util.assertion(!isEarlyClobber());
       setReg(reg);
     } else {
       opKind = MO_Register;
-      this.reg = new RegOp(reg);
+      ((RegisterMO)this).reg = new RegOp(reg);
 
       MachineFunction mf;
       if (getParent() != null) {
@@ -720,13 +884,13 @@ public class MachineOperand {
       }
     }
 
-    this.isDef = isDef;
-    this.isImp = isImp;
-    this.isKill = isKill;
-    this.isDead = isDead;
-    this.isUndef = isUndef;
-    this.isEarlyClobber = false;
-    this.subReg = 0;
+    getAsRegOp().isDef = isDef;
+    getAsRegOp().isImp = isImp;
+    getAsRegOp().isKill = isKill;
+    getAsRegOp().isDead = isDead;
+    getAsRegOp().isUndef = isUndef;
+    getAsRegOp().isEarlyClobber = false;
+    getAsRegOp().subReg = 0;
   }
 
   /**
@@ -743,16 +907,16 @@ public class MachineOperand {
     // If the reginfo pointer is null, just explicitly null out or next/prev
     // pointers, to ensure they are not garbage.
     if (regInfo == null) {
-      reg.prev = null;
-      reg.next = null;
+      ((RegisterMO)this).reg.prev = null;
+      ((RegisterMO)this).reg.next = null;
       return;
     }
     // Otherwise, add this operand to the head of the registers use/def list.
     MachineOperand head = regInfo.getRegUseDefListHead(getReg());
     if (head == null) {
       // If the head node is null, set current op as head node.
-      this.reg.prev = null;
-      this.reg.next = null;
+      ((RegisterMO)this).reg.prev = null;
+      ((RegisterMO)this).reg.next = null;
       regInfo.updateRegUseDefListHead(getReg(), this);
       return;
     }
@@ -760,9 +924,9 @@ public class MachineOperand {
     if (isDef()) {
       if (!head.isDef()) {
         // insert the current node as head
-        reg.next = head;
-        reg.prev = null;
-        head.reg.prev = this;
+        ((RegisterMO)this).reg.next = head;
+        ((RegisterMO)this).reg.prev = null;
+        ((RegisterMO)head).reg.prev = this;
         regInfo.updateRegUseDefListHead(getReg(), this);
         return;
       }
@@ -775,24 +939,20 @@ public class MachineOperand {
     MachineOperand cur = head, prev = head;
     while (cur != null) {
       prev = cur;
-      cur = cur.reg.next;
+      cur = ((RegisterMO)cur).reg.next;
     }
 
-    prev.reg.next = this;
-    this.reg.prev = prev;
-    this.reg.next = null;
+    ((RegisterMO)prev).reg.next = this;
+    ((RegisterMO)this).reg.prev = prev;
+    ((RegisterMO)this).reg.next = null;
   }
 
   public static MachineOperand createImm(long val) {
-    MachineOperand op = new MachineOperand(MO_Immediate);
-    op.setImm(val);
-    return op;
+    return new ImmediateMO(null, val);
   }
 
   public static MachineOperand createFPImm(ConstantFP fp) {
-    MachineOperand op = new MachineOperand(MO_FPImmediate);
-    op.cfp = fp;
-    return op;
+    return new FPImmediateMO(null, fp);
   }
 
   public static MachineOperand createReg(int reg,
@@ -810,20 +970,19 @@ public class MachineOperand {
                                          boolean isUndef,
                                          boolean isEarlyClobber,
                                          int subreg) {
-    MachineOperand op = new MachineOperand(MO_Register);
-    op.isDef = isDef;
-    op.isImp = isImp;
-    op.isKill = isKill;
-    op.isDead = isDead;
-    op.isUndef = isUndef;
-    op.isEarlyClobber = isEarlyClobber;
-    op.reg = new RegOp(reg);
-    op.subReg = subreg;
+
+    MachineOperand op = new RegisterMO(null, reg, subreg);
+    op.getAsRegOp().isDef = isDef;
+    op.getAsRegOp().isImp = isImp;
+    op.getAsRegOp().isKill = isKill;
+    op.getAsRegOp().isDead = isDead;
+    op.getAsRegOp().isUndef = isUndef;
+    op.getAsRegOp().isEarlyClobber = isEarlyClobber;
     return op;
   }
 
   public static MachineOperand createMBB(MachineBasicBlock mbb, int targetFlags) {
-    MachineOperand op = new MachineOperand(MO_MachineBasicBlock);
+    MachineOperand op = new MachineBasicBlockMO(null, mbb);
     op.setMBB(mbb);
     op.setTargetFlags(targetFlags);
     return op;
@@ -831,26 +990,19 @@ public class MachineOperand {
 
 
   public static MachineOperand createFrameIndex(int idx) {
-    MachineOperand op = new MachineOperand(MO_FrameIndex);
-    op.offsetInfo = new OffsetInfo();
-    op.setIndex(idx);
-    return op;
+    return new FrameIndexMO(null, idx, 0);
   }
 
   public static MachineOperand createConstantPoolIndex(int idx,
                                                        long offset,
                                                        int targetFlags) {
-    MachineOperand op = new MachineOperand(MO_ConstantPoolIndex);
-    op.offsetInfo = new OffsetInfo();
-    op.setIndex(idx);
-    op.setOffset(offset);
+    MachineOperand op = new ConstantPoolIndexMO(null, idx, offset);
     op.setTargetFlags(targetFlags);
     return op;
   }
 
   public static MachineOperand createJumpTableIndex(int idx, int targetFlags) {
-    MachineOperand op = new MachineOperand(MO_JumpTableIndex);
-    op.setIndex(idx);
+    MachineOperand op = new JumpTableIndexMO(null, idx, 0);
     op.setTargetFlags(targetFlags);
     return op;
   }
@@ -858,10 +1010,7 @@ public class MachineOperand {
   public static MachineOperand createGlobalAddress(GlobalValue gv,
                                                    long offset,
                                                    int targetFlags) {
-    MachineOperand op = new MachineOperand(MO_GlobalAddress);
-    op.offsetInfo = new OffsetInfo();
-    op.offsetInfo.val.gv = gv;
-    op.setOffset(offset);
+    MachineOperand op = new GlobalAddressMO(null, gv, offset);
     op.setTargetFlags(targetFlags);
     return op;
   }
@@ -869,16 +1018,16 @@ public class MachineOperand {
   public static MachineOperand createExternalSymbol(String symName,
                                                     long offset,
                                                     int targetFlags) {
-    MachineOperand op = new MachineOperand(MO_ExternalSymbol);
-    op.offsetInfo = new OffsetInfo();
-    op.offsetInfo.val.symbolName = symName;
-    op.setOffset(offset);
+    MachineOperand op = new ExternalSymbolMO(null, symName, offset);
     op.setTargetFlags(targetFlags);
     return op;
   }
 
   public static MachineOperand createMetadata(MDNode md) {
-   MachineOperand op = new MachineOperand(MO_Metadata);
-   op
+    return new MetadataMO(null, md);
+  }
+
+  public static MachineOperand createMCSymbol(MCSymbol sym) {
+    return new MCSymbolMO(null, sym);
   }
 }

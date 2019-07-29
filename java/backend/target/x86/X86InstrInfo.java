@@ -6,6 +6,7 @@ import backend.codegen.MachineOperand.RegState;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAG;
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCOperandInfo;
 import backend.mc.MCRegisterClass;
@@ -762,7 +763,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       mbb.insert(insertPos, mi);
       newMI = mi;
     } else {
-      newMI = buildMI(mbb, insertPos, get(opc), destReg).addImm(0).getMInstr();
+      newMI = buildMI(mbb, insertPos, origin.getDebugLoc(), get(opc), destReg).addImm(0).getMInstr();
     }
 
     newMI.getOperand(0).setSubreg(subIdx);
@@ -920,14 +921,14 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           int leaInReg = regInfo.createVirtualRegister(GR32RegisterClass);
           int leaOutReg = regInfo.createVirtualRegister(GR32RegisterClass);
 
-          buildMI(mbb, insertPos, get(IMPLICIT_DEF), leaInReg);
-          MachineInstr insMI = buildMI(mbb, insertPos, get(INSERT_SUBREG), leaInReg)
+          buildMI(mbb, insertPos, mi.getDebugLoc(), get(IMPLICIT_DEF), leaInReg);
+          buildMI(mbb, insertPos, mi.getDebugLoc(), get(INSERT_SUBREG), leaInReg)
               .addReg(leaInReg)
               .addReg(src, getKillRegState(isKill))
               .addImm(SUBREG_16BIT)
               .getMInstr();
 
-          MachineInstr extMI = buildMI(mbb, insertPos, get(EXTRACT_SUBREG))
+          MachineInstr extMI = buildMI(mbb, insertPos, mi.getDebugLoc(), get(EXTRACT_SUBREG))
               .addReg(dest, Define | getDeadRegState(isDead))
               .addReg(leaOutReg, Kill)
               .addImm(SUBREG_16BIT)
@@ -1613,21 +1614,22 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public int insertBranch(MachineBasicBlock mbb, MachineBasicBlock tbb,
-                          MachineBasicBlock fbb, ArrayList<MachineOperand> cond) {
+  public int insertBranch(MachineBasicBlock mbb,
+                          MachineBasicBlock tbb,
+                          MachineBasicBlock fbb,
+                          ArrayList<MachineOperand> cond,
+                          DebugLoc dl) {
     // FIXME this should probably have a DebugLoc operand
     // DebugLoc dl = DebugLoc::getUnknownLoc();
     // Shouldn't be a fall through.
     Util.assertion(tbb != null, "insertBranch must not be told to insert a fallthrough");
-
     Util.assertion((cond.size() == 1 || cond.size() == 0), "X86 branch conditions have one component!");
-
 
     if (cond.isEmpty()) {
       // Unconditional branch?
       Util.assertion(fbb == null, "Unconditional branch with multiple successors!");
 
-      buildMI(mbb, get(JMP)).addMBB(tbb);
+      buildMI(mbb, dl, get(JMP)).addMBB(tbb);
       return 1;
     }
 
@@ -1637,27 +1639,27 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     switch ((int) cc) {
       case COND_NP_OR_E:
         // Synthesize NP_OR_E with two branches.
-        buildMI(mbb, get(JNP)).addMBB(tbb);
+        buildMI(mbb, dl, get(JNP)).addMBB(tbb);
         ++count;
-        buildMI(mbb, get(JE)).addMBB(tbb);
+        buildMI(mbb, dl, get(JE)).addMBB(tbb);
         ++count;
         break;
       case COND_NE_OR_P:
         // Synthesize NE_OR_P with two branches.
-        buildMI(mbb, get(JNE)).addMBB(tbb);
+        buildMI(mbb, dl, get(JNE)).addMBB(tbb);
         ++count;
-        buildMI(mbb, get(JP)).addMBB(tbb);
+        buildMI(mbb, dl, get(JP)).addMBB(tbb);
         ++count;
         break;
       default: {
         int opc = getCondBranchFromCond(cc);
-        buildMI(mbb, get(opc)).addMBB(tbb);
+        buildMI(mbb, dl, get(opc)).addMBB(tbb);
         ++count;
       }
     }
     if (fbb != null) {
       // Two-way Conditional branch. Insert the second branch.
-      buildMI(mbb, get(JMP)).addMBB(fbb);
+      buildMI(mbb, dl, get(JMP)).addMBB(fbb);
       ++count;
     }
     return count;
@@ -1674,8 +1676,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                               int srcReg,
                               MCRegisterClass destRC,
                               MCRegisterClass srcRC) {
-    // DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (mi != mbb.end()) DL = mi.getDebugLoc();
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (index != mbb.size())
+      dl = mbb.getInstAt(index).getDebugLoc();
 
     // Determine if DstRC and srcRC have a common superclass in common.
     MCRegisterClass commonRC = destRC;
@@ -1755,7 +1758,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       } else {
         return false;
       }
-      buildMI(mbb, index, get(opc), destReg).addReg(srcReg);
+      buildMI(mbb, index, dl, get(opc), destReg).addReg(srcReg);
       return true;
     }
 
@@ -1764,26 +1767,26 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       if (srcReg != EFLAGS)
         return false;
       if (destRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
-        buildMI(mbb, index, get(PUSHFQ));
-        buildMI(mbb, index, get(POP64r), destReg);
+        buildMI(mbb, index, dl, get(PUSHFQ));
+        buildMI(mbb, index, dl, get(POP64r), destReg);
         return true;
       } else if (destRC == GR32RegisterClass
           || destRC == GR32_NOSPRegisterClass) {
-        buildMI(mbb, index, get(PUSHFD));
-        buildMI(mbb, index, get(POP32r), destReg);
+        buildMI(mbb, index, dl, get(PUSHFD));
+        buildMI(mbb, index, dl, get(POP32r), destReg);
         return true;
       }
     } else if (destRC == CCRRegisterClass) {
       if (destReg != EFLAGS)
         return false;
       if (srcRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
-        buildMI(mbb, index, get(PUSH64r)).addReg(srcReg);
-        buildMI(mbb, index, get(POPFQ));
+        buildMI(mbb, index, dl, get(PUSH64r)).addReg(srcReg);
+        buildMI(mbb, index, dl, get(POPFQ));
         return true;
       } else if (srcRC == GR32RegisterClass
           || destRC == GR32_NOSPRegisterClass) {
-        buildMI(mbb, index, get(PUSH32r)).addReg(srcReg);
-        buildMI(mbb, index, get(POPFD));
+        buildMI(mbb, index, dl, get(PUSH32r)).addReg(srcReg);
+        buildMI(mbb, index, dl, get(POPFD));
         return true;
       }
     }
@@ -1805,7 +1808,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           return false;
         opc = isST0 ? FpGET_ST0_80 : FpGET_ST1_80;
       }
-      buildMI(mbb, index, get(opc), destReg);
+      buildMI(mbb, index, dl, get(opc), destReg);
       return true;
     }
 
@@ -1826,7 +1829,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           return false;
         opc = isST0 ? FpSET_ST0_80 : FpSET_ST1_80;
       }
-      buildMI(mbb, index, get(opc)).addReg(srcReg);
+      buildMI(mbb, index, dl, get(opc)).addReg(srcReg);
       return true;
     }
 
@@ -1859,7 +1862,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8_ABCD_LRegisterClass) {
       opc = MOV8mr;
     } else if (rc == GR8_ABCD_HRegisterClass) {
-      if (((X86Subtarget) tm.getSubtarget()).is64Bit())
+      if (tm.getSubtarget().is64Bit())
         opc = MOV8mr_NOREX;
       else
         opc = MOV8mr;
@@ -1901,18 +1904,22 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                                   int frameIndex,
                                   MCRegisterClass rc) {
     MachineFunction MF = mbb.getParent();
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (index != mbb.size())
+      dl = mbb.getInstAt(index).getDebugLoc();
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(MF);
     int opc = getStoreRegOpcode(srcReg, rc, isAligned, tm);
-    //DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (mi != mbb.end()) DL = mi.getDebugLoc();
-    addFrameReference(buildMI(mbb, index, get(opc)), frameIndex)
+    addFrameReference(buildMI(mbb, index, dl, get(opc)), frameIndex)
         .addReg(srcReg, getKillRegState(isKill));
   }
 
-  void storeRegToAddr(MachineFunction mf, int SrcReg, boolean isKill,
-                      ArrayList<MachineOperand> addr, MCRegisterClass rc,
+  void storeRegToAddr(MachineFunction mf,
+                      int SrcReg,
+                      boolean isKill,
+                      ArrayList<MachineOperand> addr,
+                      MCRegisterClass rc,
                       ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
@@ -1926,8 +1933,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     newMIs.add(mib.getMInstr());
   }
 
-  static int getLoadRegOpcode(int destReg, MCRegisterClass rc,
-                              boolean isStackAligned, TargetMachine tm) {
+  static int getLoadRegOpcode(int destReg,
+                              MCRegisterClass rc,
+                              boolean isStackAligned,
+                              TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
       opc = MOV64rm;
@@ -1938,7 +1947,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8RegisterClass) {
       // Copying to or from a physical H register on x86-64 requires a NOREX
       // move.  Otherwise use a normal move.
-      if (isHReg(destReg) && ((X86Subtarget) tm.getSubtarget()).is64Bit())
+      if (isHReg(destReg) && tm.getSubtarget().is64Bit())
         opc = MOV8rm_NOREX;
       else
         opc = MOV8rm;
@@ -1951,7 +1960,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8_ABCD_LRegisterClass) {
       opc = MOV8rm;
     } else if (rc == GR8_ABCD_HRegisterClass) {
-      if (((X86Subtarget) tm.getSubtarget()).is64Bit())
+      if (tm.getSubtarget().is64Bit())
         opc = MOV8rm_NOREX;
       else
         opc = MOV8rm;
@@ -1986,41 +1995,46 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return opc;
   }
 
-  public void loadRegFromStackSlot(MachineBasicBlock mbb, int index,
-                                   int destReg, int frameIndex, MCRegisterClass rc) {
+  public void loadRegFromStackSlot(MachineBasicBlock mbb,
+                                   int index,
+                                   int destReg,
+                                   int frameIndex,
+                                   MCRegisterClass rc) {
     MachineFunction mf = mbb.getParent();
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
     int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
-    //DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (index != mbb.size()) DL = mi.getDebugLoc();
-    addFrameReference(buildMI(mbb, index, get(opc), destReg), frameIndex);
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (index != mbb.size())
+      dl = mbb.getInstAt(index).getDebugLoc();
+    addFrameReference(buildMI(mbb, index, dl, get(opc), destReg), frameIndex);
   }
 
-  public void loadRegFromAddr(MachineFunction mf, int destReg,
-                              ArrayList<MachineOperand> addr, MCRegisterClass rc,
+  public void loadRegFromAddr(MachineFunction mf,
+                              int destReg,
+                              ArrayList<MachineOperand> addr,
+                              MCRegisterClass rc,
                               ArrayList<MachineInstr> newMIs) {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
     int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
-    // DebugLoc DL = DebugLoc::getUnknownLoc();
-    MachineInstrBuilder mib = buildMI(get(opc), destReg);
+    MachineInstrBuilder mib = buildMI(get(opc), DebugLoc.getUnknownLoc(), destReg);
     for (int i = 0, e = addr.size(); i != e; ++i)
       mib.addOperand(addr.get(i));
     newMIs.add(mib.getMInstr());
   }
 
-  public boolean spillCalleeSavedRegisters(
-      MachineBasicBlock mbb,
-      int index,
-      ArrayList<CalleeSavedInfo> csi) {
+  public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb,
+                                           int index,
+                                           ArrayList<CalleeSavedInfo> csi) {
     if (csi.isEmpty())
       return false;
 
-    //DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (mi != mbb.end()) DL = mi.getDebugLoc();
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (index != mbb.size())
+      dl = mbb.getInstAt(index).getDebugLoc();
 
     boolean is64Bit = tm.getSubtarget().is64Bit();
     boolean isWin64 = tm.getSubtarget().isTargetWin64();
@@ -2043,7 +2057,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         continue;
       if (RegisterClass != VR128RegisterClass && !isWin64) {
         calleeFrameSize += slotSize;
-        buildMI(mbb, index, get(opc)).addReg(Reg, RegState.Kill);
+        buildMI(mbb, index, dl, get(opc)).addReg(Reg, RegState.Kill);
       } else {
         storeRegToStackSlot(mbb, index, Reg, true,
             csi.get(i - 1).getFrameIdx(), RegisterClass);
@@ -2054,13 +2068,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return true;
   }
 
-  public boolean restoreCalleeSavedRegisters(MachineBasicBlock mbb, int index,
+  public boolean restoreCalleeSavedRegisters(MachineBasicBlock mbb,
+                                             int index,
                                              ArrayList<CalleeSavedInfo> csi) {
     if (csi.isEmpty())
       return false;
 
-    //DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (mi != mbb.end()) DL = mi.getDebugLoc();
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (index != mbb.size())
+      dl = mbb.getInstAt(index).getDebugLoc();
 
     MachineFunction MF = mbb.getParent();
     int FPReg = getRegisterInfo().getFrameRegister(MF);
@@ -2074,7 +2090,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         continue;
       MCRegisterClass RegisterClass = csi.get(i).getRegisterClass();
       if (RegisterClass != VR128RegisterClass && !isWin64) {
-        buildMI(mbb, index, get(opc), Reg);
+        buildMI(mbb, index, dl, get(opc), Reg);
       } else {
         loadRegFromStackSlot(mbb, index, Reg, csi.get(i).getFrameIdx(),
             RegisterClass);
@@ -2083,8 +2099,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return true;
   }
 
-  static MachineInstr FuseTwoAddrInst(MachineFunction mf, int opcode,
-                                      ArrayList<MachineOperand> mos, MachineInstr mi, TargetInstrInfo tii) {
+  static MachineInstr FuseTwoAddrInst(MachineFunction mf,
+                                      int opcode,
+                                      ArrayList<MachineOperand> mos,
+                                      MachineInstr mi,
+                                      TargetInstrInfo tii) {
     // create the base instruction with the memory operand as the first part.
     MachineInstrBuilder mib = buildMI(tii.get(opcode));
 
@@ -2107,8 +2126,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return mib.getMInstr();
   }
 
-  static MachineInstr FuseInst(MachineFunction mf, int Opcode, int opNo,
-                               ArrayList<MachineOperand> mos, MachineInstr mi, TargetInstrInfo tii) {
+  static MachineInstr FuseInst(MachineFunction mf,
+                               int Opcode,
+                               int opNo,
+                               ArrayList<MachineOperand> mos,
+                               MachineInstr mi,
+                               TargetInstrInfo tii) {
     MachineInstrBuilder mib = buildMI(tii.get(Opcode));
 
     for (int i = 0, e = mi.getNumOperands(); i != e; ++i) {
@@ -2127,8 +2150,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return mib.getMInstr();
   }
 
-  static MachineInstr MakeM0Inst(TargetInstrInfo tii, int opcode,
-                                 ArrayList<MachineOperand> mos, MachineInstr mi) {
+  static MachineInstr MakeM0Inst(TargetInstrInfo tii,
+                                 int opcode,
+                                 ArrayList<MachineOperand> mos,
+                                 MachineInstr mi) {
     MachineFunction MF = mi.getParent().getParent();
     MachineInstrBuilder mib = buildMI(tii.get(opcode));
 
@@ -2142,7 +2167,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   @Override
   protected MachineInstr foldMemoryOperandImpl(MachineFunction mf,
-                                               MachineInstr mi, int i, ArrayList<MachineOperand> mos, int align) {
+                                               MachineInstr mi,
+                                               int i,
+                                               ArrayList<MachineOperand> mos,
+                                               int align) {
     TIntObjectHashMap<Pair<Integer, Integer>> opcodeTablePtr = null;
     boolean isTwoAddrFold = false;
     int numOps = mi.getDesc().getNumOperands();
@@ -2204,7 +2232,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   @Override
   public MachineInstr foldMemoryOperandImpl(MachineFunction mf,
-                                            MachineInstr mi, TIntArrayList ops, int frameIndex) {
+                                            MachineInstr mi,
+                                            TIntArrayList ops,
+                                            int frameIndex) {
     // Check switch flag
     if (NoFusing.value)
       return null;
@@ -2242,7 +2272,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   @Override
   public MachineInstr foldMemoryOperandImpl(MachineFunction mf,
-                                            MachineInstr mi, TIntArrayList ops, MachineInstr loadMI) {
+                                            MachineInstr mi,
+                                            TIntArrayList ops,
+                                            MachineInstr loadMI) {
     // Check switch flag
     if (NoFusing.value)
       return null;
@@ -2382,8 +2414,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public boolean unfoldMemoryOperand(MachineFunction mf, MachineInstr mi,
-                                     int reg, boolean unfoldLoad, boolean unfoldStore,
+  public boolean unfoldMemoryOperand(MachineFunction mf,
+                                     MachineInstr mi,
+                                     int reg,
+                                     boolean unfoldLoad,
+                                     boolean unfoldStore,
                                      ArrayList<MachineInstr> newMIs) {
 
     if (!memOp2RegOpTable.containsKey(mi.getOpcode()))
@@ -2498,9 +2533,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public boolean unfoldMemoryOperand(
-      SelectionDAG dag, SDNode node,
-      ArrayList<SDNode> newNodes) {
+  public boolean unfoldMemoryOperand(SelectionDAG dag,
+                                     SDNode node,
+                                     ArrayList<SDNode> newNodes) {
     if (!node.isMachineOpecode())
       return false;
 
@@ -2583,7 +2618,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public int getOpcodeAfterMemoryUnfold(int opc, boolean unfoldLoad,
+  public int getOpcodeAfterMemoryUnfold(int opc,
+                                        boolean unfoldLoad,
                                         boolean unfoldStore) {
     if (!memOp2RegOpTable.containsKey(opc))
       return 0;
@@ -2881,7 +2917,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return FinalSize;
   }
 
-  static int getMemModRMByteSize(MachineInstr mi, int Op, boolean IsPIC,
+  static int getMemModRMByteSize(MachineInstr mi,
+                                 int Op,
+                                 boolean IsPIC,
                                  boolean Is64BitMode) {
     MachineOperand Op3 = mi.getOperand(Op + 3);
     int DispVal = 0;
@@ -2956,8 +2994,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return FinalSize;
   }
 
-  static int getInstSizeWithDesc(MachineInstr mi, MCInstrDesc desc,
-                                 boolean isPIC, boolean is64BitMode) {
+  static int getInstSizeWithDesc(MachineInstr mi,
+                                 MCInstrDesc desc,
+                                 boolean isPIC,
+                                 boolean is64BitMode) {
 
     int opcode = desc.getOpcode();
     int finalSize = 0;
@@ -3303,39 +3343,39 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
    */
   public int getGlobalBaseReg(MachineFunction mf) {
     Util.assertion(!tm.getSubtarget().is64Bit(), "X86-64 PIC uses RIP relative addressing");
-
-
-    X86MachineFunctionInfo X86FI = (X86MachineFunctionInfo) mf.getInfo();
-    int GlobalBaseReg = X86FI.getGlobalBaseReg();
-    if (GlobalBaseReg != 0)
-      return GlobalBaseReg;
+    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
+    int globalBaseReg = x86FI.getGlobalBaseReg();
+    if (globalBaseReg != 0)
+      return globalBaseReg;
 
     // Insert the set of globalBaseReg into the first mbb of the function
-    MachineBasicBlock FirstMBB = mf.getEntryBlock();
-    int MBBI = 0;
-    //DebugLoc DL = DebugLoc::getUnknownLoc();
-    //if (MBBI != FirstMBB.end()) DL = MBBI.getDebugLoc();
-    MachineRegisterInfo RegInfo = mf.getMachineRegisterInfo();
-    int PC = RegInfo.createVirtualRegister(GR32RegisterClass);
+    MachineBasicBlock firstMBB = mf.getEntryBlock();
+    int mbbi = 0;
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (mbbi != firstMBB.size())
+      dl = firstMBB.getInstAt(mbbi).getDebugLoc();
+
+    MachineRegisterInfo regInfo = mf.getMachineRegisterInfo();
+    int pc = regInfo.createVirtualRegister(GR32RegisterClass);
 
     // Operand of MovePCtoStack is completely ignored by asm printer. It's
     // only used in JIT code emission as displacement to pc.
-    buildMI(FirstMBB, MBBI, get(MOVPC32r), PC).addImm(0);
+    buildMI(firstMBB, mbbi, dl, get(MOVPC32r), pc).addImm(0);
 
     // If we're using vanilla 'GOT' PIC style, we should use relative addressing
     // not to pc, but to _GLOBAL_OFFSET_TABLE_ external.
     if (tm.getSubtarget().isPICStyleGOT()) {
-      GlobalBaseReg = RegInfo.createVirtualRegister(GR32RegisterClass);
+      globalBaseReg = regInfo.createVirtualRegister(GR32RegisterClass);
       // Generate addl $__GLOBAL_OFFSET_TABLE_ + [.-piclabel], %some_register
-      buildMI(FirstMBB, MBBI, get(ADD32ri), GlobalBaseReg).addReg(PC)
+      buildMI(firstMBB, mbbi, dl, get(ADD32ri), globalBaseReg).addReg(pc)
           .addExternalSymbol("_GLOBAL_OFFSET_TABLE_", 0,
               X86II.MO_GOT_ABSOLUTE_ADDRESS);
     } else {
-      GlobalBaseReg = PC;
+      globalBaseReg = pc;
     }
 
-    X86FI.setGlobalBaseReg(GlobalBaseReg);
-    return GlobalBaseReg;
+    x86FI.setGlobalBaseReg(globalBaseReg);
+    return globalBaseReg;
   }
 
   public int getBaseOpcodeFor(MCInstrDesc tid) {
@@ -3408,15 +3448,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         int align = mf.getTarget().getFrameLowering().getStackAlignment();
         amount = Util.roundUp(amount, align);
 
-        // stack setup pseudo instrcution.
+        // stack setup pseudo instruction.
         if (old.getOpcode() == getCallFrameSetupOpcode()) {
-          newOne = buildMI(get(is64Bit ? SUB64ri32 : SUB32ri),
-              stackPtr).
-              addReg(stackPtr).
-              addImm(amount).getMInstr();
+          newOne = buildMI(get(is64Bit ? SUB64ri32 : SUB32ri), old.getDebugLoc(), stackPtr)
+              .addReg(stackPtr).addImm(amount).getMInstr();
         } else {
           Util.assertion(old.getOpcode() == getCallFrameDestroyOpcode());
-
           long calleeAmt = old.getOperand(1).getImm();
           amount -= calleeAmt;
           if (amount != 0) {
@@ -3424,9 +3461,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
                 (is64Bit ? ADD64ri8 : ADD32ri8) :
                 (is64Bit ? ADD64ri32 : ADD32ri);
             // stack destroy pseudo instruction.
-            newOne = buildMI(get(opc), stackPtr).
-                addReg(stackPtr).
-                addImm(amount).getMInstr();
+            newOne = buildMI(get(opc), old.getDebugLoc(), stackPtr)
+                .addReg(stackPtr).addImm(amount).getMInstr();
           }
         }
         if (newOne != null) {
@@ -3446,9 +3482,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         int opc = (calleeAmt < 128) ?
             (is64Bit ? SUB64ri8 : SUB32ri8) :
             (is64Bit ? SUB64ri32 : SUB32ri);
-        newOne = buildMI(get(opc), stackPtr).
-            addReg(stackPtr).addImm(calleeAmt).
-            getMInstr();
+        newOne = buildMI(get(opc), old.getDebugLoc(), stackPtr)
+            .addReg(stackPtr).addImm(calleeAmt).getMInstr();
 
         // The EFLAGS implicit def is dead.
         newOne.getOperand(3).setIsDead(true);

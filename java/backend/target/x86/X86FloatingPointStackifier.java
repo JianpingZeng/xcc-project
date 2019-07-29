@@ -20,6 +20,7 @@ package backend.target.x86;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
@@ -179,6 +180,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     if (isAtTop(regNo))
       return insertPos;
 
+    DebugLoc dl = insertPos == mbb.size() ? new DebugLoc() :
+        mbb.getInstAt(insertPos).getDebugLoc();
     int streg = getSTReg(regNo);
     int regOnTop = getStackEntry(0);
 
@@ -194,7 +197,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     stack[stackTop - 1] = t;
 
     // Emit an fxch to update the runtime processors version of the state.
-    buildMI(mbb, insertPos++, tii.get(XCH_F)).addReg(streg);
+    buildMI(mbb, insertPos++, dl, tii.get(XCH_F)).addReg(streg);
     NumFXCH.inc();
     return insertPos;
   }
@@ -202,7 +205,9 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private void duplicateToTop(int regNo, int asReg, int mi) {
     int stReg = getSTReg(regNo);
     pushReg(asReg);
-    buildMI(mbb, mi, tii.get(LD_Frr)).addReg(stReg);
+    DebugLoc dl = mi == mbb.size() ? new DebugLoc() :
+        mbb.getInstAt(mi).getDebugLoc();
+    buildMI(mbb, mi, dl, tii.get(LD_Frr)).addReg(stReg);
   }
 
   private void duplicatePendingSTBeforeKill(int regNo, int mi) {
@@ -264,6 +269,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     MachineInstr mi = mbb.getInstAt(pos);
     if (stackTop == 0)
       llvmReportError("Can't pop empty stack!");
+
+    DebugLoc dl = mi.getDebugLoc();
     regMap[stack[--stackTop]] = ~0;
 
     int opc = lookup(popTable, mi.getOpcode());
@@ -273,7 +280,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         mi.removeOperand(0);
       return pos;
     } else {
-      buildMI(mbb, ++pos, tii.get(ST_FPrr)).addReg(X86GenRegisterNames.ST0);
+      buildMI(mbb, ++pos, dl, tii.get(ST_FPrr)).addReg(X86GenRegisterNames.ST0);
       return pos;
     }
   }
@@ -287,6 +294,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   }
 
   private int freeStackSlotBefore(int pos, int fpRegNo) {
+    DebugLoc dl = pos == mbb.size() ? new DebugLoc() : mbb.getInstAt(pos).getDebugLoc();
     int stReg = getSTReg(fpRegNo);
     int oldSlot = getSlot(fpRegNo);
     int topReg = stack[stackTop - 1];
@@ -294,7 +302,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     regMap[topReg] = oldSlot;
     regMap[fpRegNo] = ~0;
     stack[--stackTop] = ~0;
-    buildMI(mbb, pos, tii.get(ST_FPrr)).addReg(stReg);
+    buildMI(mbb, pos, dl, tii.get(ST_FPrr)).addReg(stReg);
     return pos;
   }
 
@@ -312,6 +320,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   }
 
   private void adjustLiveRegs(int mask, int insertPos) {
+    DebugLoc dl = insertPos == mbb.size() ? new DebugLoc() :
+        mbb.getInstAt(insertPos).getDebugLoc();
     int defs = mask;
     int kills = 0;
     for (int i = 0; i < stackTop; i++) {
@@ -359,7 +369,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
 
     while (defs != 0) {
       int dreg = Util.countTrailingZeros(defs);
-      buildMI(mbb, insertPos, tii.get(LD_F0));
+      buildMI(mbb, insertPos, dl, tii.get(LD_F0));
       pushReg(dreg);
       defs &= ~(1 << dreg);
     }
@@ -702,6 +712,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
 
   private int handleTwoArgFP(int itr) {
     MachineInstr mi = mbb.getInstAt(itr);
+    DebugLoc dl = mi.getDebugLoc();
 
     int numOperands = mi.getDesc().getNumOperands();
     Util.assertion(numOperands == 3, "Illegal twoArgFP instruction!");
@@ -749,7 +760,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     Util.assertion(opcode != -1, "Unknown TwoArgFP pseudo instruction!");
     int notTOS = (tos == op0) ? op1 : op0;
     mi.removeFromParent();
-    buildMI(mbb, itr, tii.get(opcode)).addReg(getSTReg(notTOS));
+    buildMI(mbb, itr, dl, tii.get(opcode)).addReg(getSTReg(notTOS));
     if (killsOp0 && killsOp1 && op0 != op1) {
       Util.assertion(!updateST0, "Should have updated other operand!");
       itr = popStackAfter(itr);
@@ -843,7 +854,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
       case FpSET_ST1_64:
       case FpSET_ST1_80:
         if (stackTop == 1) {
-          buildMI(mbb, itr, tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
+          buildMI(mbb, itr, mi.getDebugLoc(), tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
           NumFXCH.inc();
           stackTop = 0;
           break;
@@ -874,7 +885,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         } else if (mo0.getReg() == X86GenRegisterNames.ST1 && srcReg == 1) {
           Util.assertion(mo1.isKill());
           if (stackTop == 1) {
-            buildMI(mbb, itr, tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
+            buildMI(mbb, itr, mi.getDebugLoc(), tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
             NumFXCH.inc();
             stackTop = 0;
             break;
@@ -971,7 +982,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         int reg = mi.getOperand(0).getReg() - X86GenRegisterNames.FP0;
         if (Util.DEBUG)
           System.err.printf("Emitting LD_F0 for implicit FP%d%n", reg);
-        buildMI(mbb, itr, tii.get(LD_F0));
+        buildMI(mbb, itr, mi.getDebugLoc(), tii.get(LD_F0));
         pushReg(reg);
         break;
       }

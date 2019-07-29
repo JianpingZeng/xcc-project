@@ -18,6 +18,7 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.type.Type;
@@ -53,6 +54,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   private static HashMap<EVT, TreeSet<EVT>> evts = new HashMap<>();
   private static EVT[] vts = new EVT[MVT.LAST_VALUETYPE];
   private boolean hasDebugValue;
+  private DebugLoc debugLoc;
 
   private static EVT getValueTypeList(EVT vt) {
     if (vt.isExtended()) {
@@ -1019,6 +1021,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public boolean getHasDebugValue() { return hasDebugValue; }
+
+  public DebugLoc getDebugLoc() {
+    return debugLoc;
+  }
 
   public static class SDVTList {
     EVT[] vts;

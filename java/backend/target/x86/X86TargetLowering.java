@@ -19,6 +19,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.mc.MCAsmInfo;
 import backend.mc.MCExpr;
 import backend.mc.MCRegisterClass;
@@ -2068,10 +2069,10 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   @Override
-  public MachineBasicBlock emitInstrWithCustomInserter(
-      MachineInstr mi,
-      MachineBasicBlock mbb) {
+  public MachineBasicBlock emitInstrWithCustomInserter(MachineInstr mi,
+                                                       MachineBasicBlock mbb) {
     TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    DebugLoc dl = mi.getDebugLoc();
     switch (mi.getOpcode()) {
       case X86GenInstrNames.CMOV_V1I64:
       case X86GenInstrNames.CMOV_FR32:
@@ -2095,7 +2096,7 @@ public class X86TargetLowering extends TargetLowering {
         MachineBasicBlock sinkMBB = mf.createMachineBasicBlock(llvmBB);
 
         int opc = X86InstrInfo.getCondBranchFromCond(mi.getOperand(3).getImm());
-        buildMI(mbb, tii.get(opc)).addMBB(sinkMBB);
+        buildMI(mbb, dl, tii.get(opc)).addMBB(sinkMBB);
         mf.insert(insertPos, copy0MBB);
         mf.insert(insertPos, sinkMBB);
 
@@ -2106,7 +2107,7 @@ public class X86TargetLowering extends TargetLowering {
         mbb.addSuccessor(sinkMBB);
 
         mbb = sinkMBB;
-        buildMI(mbb, tii.get(X86GenInstrNames.PHI), mi.getOperand(0).getReg())
+        buildMI(mbb, dl, tii.get(X86GenInstrNames.PHI), mi.getOperand(0).getReg())
             .addReg(mi.getOperand(1).getReg()).addMBB(copy0MBB)
             .addReg(mi.getOperand(2).getReg()).addMBB(sinkMBB);
         mf.deleteMachineInstr(mi);
@@ -2123,15 +2124,15 @@ public class X86TargetLowering extends TargetLowering {
       case X86GenInstrNames.FP80_TO_INT64_IN_MEM: {
         MachineFunction mf = mbb.getParent();
         int cwFrameIndex = mf.getFrameInfo().createStackObject(2, 2);
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FNSTCW16m)), cwFrameIndex);
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.FNSTCW16m)), cwFrameIndex);
 
         int oldCW = mf.getMachineRegisterInfo().createVirtualRegister(X86GenRegisterInfo.GR16RegisterClass);
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16rm), oldCW), cwFrameIndex);
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.MOV16rm), oldCW), cwFrameIndex);
 
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16mi)), cwFrameIndex)
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.MOV16mi)), cwFrameIndex)
             .addImm(0xC7F);
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.MOV16mr)), cwFrameIndex)
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.MOV16mr)), cwFrameIndex)
             .addReg(oldCW);
 
         int opc = -1;
@@ -2188,9 +2189,9 @@ public class X86TargetLowering extends TargetLowering {
         } else {
           am.disp = (int) op.getImm();
         }
-        addFullAddress(buildMI(mbb, tii.get(opc)), am)
+        addFullAddress(buildMI(mbb, dl, tii.get(opc)), am)
             .addReg(mi.getOperand(X86AddrNumOperands).getReg());
-        addFrameReference(buildMI(mbb, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
+        addFrameReference(buildMI(mbb, dl, tii.get(X86GenInstrNames.FLDCW16m)), cwFrameIndex);
         mf.deleteMachineInstr(mi);
         return mbb;
       }
@@ -2388,10 +2389,13 @@ public class X86TargetLowering extends TargetLowering {
     }
   }
 
-  private MachineBasicBlock emitPCMP(MachineInstr mi, MachineBasicBlock mbb,
-                                     int numArgs, boolean memArgs) {
+  private MachineBasicBlock emitPCMP(MachineInstr mi,
+                                     MachineBasicBlock mbb,
+                                     int numArgs,
+                                     boolean memArgs) {
     MachineFunction mf = mbb.getParent();
     TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    DebugLoc dl = mi.getDebugLoc();
 
     int opc;
     if (memArgs) {
@@ -2402,14 +2406,14 @@ public class X86TargetLowering extends TargetLowering {
           X86GenInstrNames.PCMPESTRM128rr;
     }
 
-    MachineInstrBuilder mib = buildMI(mbb, tii.get(opc));
+    MachineInstrBuilder mib = buildMI(mbb, dl, tii.get(opc));
     for (int i = 0; i < numArgs; i++) {
       MachineOperand mo = mi.getOperand(i);
       if (!(mo.isRegister() && mo.isImplicit()))
         mib.addOperand(mo);
     }
 
-    buildMI(mbb, tii.get(X86GenInstrNames.MOVAPSrr), mi.getOperand(0).getReg())
+    buildMI(mbb, dl, tii.get(X86GenInstrNames.MOVAPSrr), mi.getOperand(0).getReg())
         .addReg(X86GenRegisterNames.XMM0);
     mf.deleteMachineInstr(mi);
     return mbb;
@@ -2430,17 +2434,17 @@ public class X86TargetLowering extends TargetLowering {
         loadOpc, cxchgOpc, copyOpc, notOpc, eaxReg, rc, false);
   }
 
-  private MachineBasicBlock emitAtomicBitwiseWithCustomInserter(
-      MachineInstr mi, MachineBasicBlock mbb,
-      int regOpc,
-      int immOpc,
-      int loadOpc,
-      int cxchgOpc,
-      int copyOpc,
-      int notOpc,
-      int eaxReg,
-      MCRegisterClass rc,
-      boolean invSrc) {
+  private MachineBasicBlock emitAtomicBitwiseWithCustomInserter(MachineInstr mi,
+                                                                MachineBasicBlock mbb,
+                                                                int regOpc,
+                                                                int immOpc,
+                                                                int loadOpc,
+                                                                int cxchgOpc,
+                                                                int copyOpc,
+                                                                int notOpc,
+                                                                int eaxReg,
+                                                                MCRegisterClass rc,
+                                                                boolean invSrc) {
     // For the atomic bitwise operator, we generate
     //   thisMBB:
     //   newMBB:
@@ -2451,6 +2455,7 @@ public class X86TargetLowering extends TargetLowering {
     //     bz  newMBB
     //     fallthrough -->nextMBB
     TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    DebugLoc dl = mi.getDebugLoc();
     BasicBlock llvmBB = mbb.getBasicBlock();
     int itr = 1;
     // First build the CFG.
@@ -2480,13 +2485,13 @@ public class X86TargetLowering extends TargetLowering {
     int valArgIndex = lastAddrIndex + 1;
 
     int t1 = mf.getMachineRegisterInfo().createVirtualRegister(rc);
-    MachineInstrBuilder mib = buildMI(newMBB, tii.get(loadOpc), t1);
+    MachineInstrBuilder mib = buildMI(newMBB, dl, tii.get(loadOpc), t1);
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
 
     int tt = mf.getMachineRegisterInfo().createVirtualRegister(rc);
     if (invSrc)
-      mib = buildMI(newMBB, tii.get(notOpc), tt).addReg(t1);
+      mib = buildMI(newMBB, dl, tii.get(notOpc), tt).addReg(t1);
     else
       tt = t1;
 
@@ -2495,36 +2500,35 @@ public class X86TargetLowering extends TargetLowering {
 
 
     if (argOps[valArgIndex].isRegister())
-      mib = buildMI(newMBB, tii.get(regOpc), t2);
+      mib = buildMI(newMBB, dl, tii.get(regOpc), t2);
     else
-      mib = buildMI(newMBB, tii.get(immOpc), t2);
+      mib = buildMI(newMBB, dl, tii.get(immOpc), t2);
 
     mib.addReg(tt);
     mib.addOperand(argOps[valArgIndex]);
 
-    mib = buildMI(newMBB, tii.get(copyOpc), eaxReg).addReg(t1);
-    mib = buildMI(newMBB, tii.get(cxchgOpc));
+    mib = buildMI(newMBB, dl, tii.get(copyOpc), eaxReg).addReg(t1);
+    mib = buildMI(newMBB, dl, tii.get(cxchgOpc));
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
     mib.addReg(t2);
     Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand!");
     mib.addMemOperand(mi.getMemOperand(0));
 
-    mib = buildMI(newMBB, tii.get(copyOpc), destOp.getReg()).addReg(eaxReg);
+    mib = buildMI(newMBB, dl, tii.get(copyOpc), destOp.getReg()).addReg(eaxReg);
     // insert branch.
-    buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
 
-  private MachineBasicBlock emitAtomicBit6432WithCustomInserter(
-      MachineInstr mi,
-      MachineBasicBlock mbb,
-      int regOpcL,
-      int regOpcH,
-      int immOpcL,
-      int immOpcH,
-      boolean invSrc) {
+  private MachineBasicBlock emitAtomicBit6432WithCustomInserter(MachineInstr mi,
+                                                                MachineBasicBlock mbb,
+                                                                int regOpcL,
+                                                                int regOpcH,
+                                                                int immOpcL,
+                                                                int immOpcH,
+                                                                boolean invSrc) {
     // For the atomic bitwise operator, we generate
     //   thisMBB (instructions are in pairs, except cmpxchg8b)
     //     ld t1,t2 = [bitinstr.addr]
@@ -2540,6 +2544,7 @@ public class X86TargetLowering extends TargetLowering {
     //     result in out1, out2
     //     fallthrough -->nextMBB
     MCRegisterClass rc = X86GenRegisterInfo.GR32RegisterClass;
+    DebugLoc dl = mi.getDebugLoc();
     int loadOpc = X86GenInstrNames.MOV32rm;
     int copyOpc = X86GenInstrNames.MOV32rr;
     int notOpc = X86GenInstrNames.NOT32r;
@@ -2564,12 +2569,12 @@ public class X86TargetLowering extends TargetLowering {
 
     int lastAddrIndex = X86AddrNumOperands - 1;
     int t1 = mri.createVirtualRegister(rc);
-    MachineInstrBuilder mib = buildMI(mbb, tii.get(loadOpc), t1);
+    MachineInstrBuilder mib = buildMI(mbb, dl, tii.get(loadOpc), t1);
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
 
     int t2 = mri.createVirtualRegister(rc);
-    mib = buildMI(mbb, tii.get(loadOpc), t2);
+    mib = buildMI(mbb, dl, tii.get(loadOpc), t2);
     for (int i = 0; i <= lastAddrIndex - 2; i++)
       mib.addOperand(argOps[i]);
 
@@ -2583,16 +2588,16 @@ public class X86TargetLowering extends TargetLowering {
 
     int t3 = mri.createVirtualRegister(rc);
     int t4 = mri.createVirtualRegister(rc);
-    buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest1Op.getReg())
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.PHI), dest1Op.getReg())
         .addReg(t1).addMBB(mbb).addReg(t3).addMBB(newMBB);
-    buildMI(newMBB, tii.get(X86GenInstrNames.PHI), dest2Op.getReg())
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.PHI), dest2Op.getReg())
         .addReg(t2).addMBB(mbb).addReg(t4).addMBB(newMBB);
 
     int tt1 = mri.createVirtualRegister(rc);
     int tt2 = mri.createVirtualRegister(rc);
     if (invSrc) {
-      buildMI(newMBB, tii.get(notOpc), tt1).addReg(t1);
-      buildMI(newMBB, tii.get(notOpc), tt2).addReg(t2);
+      buildMI(newMBB, dl, tii.get(notOpc), tt1).addReg(t1);
+      buildMI(newMBB, dl, tii.get(notOpc), tt2).addReg(t2);
     } else {
       tt1 = t1;
       tt2 = t2;
@@ -2604,9 +2609,9 @@ public class X86TargetLowering extends TargetLowering {
     int t5 = mri.createVirtualRegister(rc);
     int t6 = mri.createVirtualRegister(rc);
     if (argOps[valArgIndex].isRegister())
-      mib = buildMI(newMBB, tii.get(regOpcL), t5);
+      mib = buildMI(newMBB, dl, tii.get(regOpcL), t5);
     else
-      mib = buildMI(newMBB, tii.get(immOpcL), t5);
+      mib = buildMI(newMBB, dl, tii.get(immOpcL), t5);
 
     if (regOpcL != X86GenInstrNames.MOV32rr)
       mib.addReg(tt1);
@@ -2615,38 +2620,37 @@ public class X86TargetLowering extends TargetLowering {
     Util.assertion(argOps[valArgIndex + 1].isImm() || argOps[valArgIndex].isImm());
 
     if (argOps[valArgIndex + 1].isRegister())
-      mib = buildMI(newMBB, tii.get(regOpcH), t6);
+      mib = buildMI(newMBB, dl, tii.get(regOpcH), t6);
     else
-      mib = buildMI(newMBB, tii.get(immOpcH), t6);
+      mib = buildMI(newMBB, dl, tii.get(immOpcH), t6);
 
     if (regOpcH != X86GenInstrNames.MOV32rr)
       mib.addReg(tt2);
 
     mib.addOperand(argOps[valArgIndex + 1]);
-    buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EAX).addReg(t1);
-    buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EDX).addReg(t2);
-    buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.EBX).addReg(t5);
-    buildMI(newMBB, tii.get(copyOpc), X86GenRegisterNames.ECX).addReg(t6);
+    buildMI(newMBB, dl, tii.get(copyOpc), X86GenRegisterNames.EAX).addReg(t1);
+    buildMI(newMBB, dl, tii.get(copyOpc), X86GenRegisterNames.EDX).addReg(t2);
+    buildMI(newMBB, dl, tii.get(copyOpc), X86GenRegisterNames.EBX).addReg(t5);
+    buildMI(newMBB, dl, tii.get(copyOpc), X86GenRegisterNames.ECX).addReg(t6);
 
-    mib = buildMI(newMBB, tii.get(X86GenInstrNames.LCMPXCHG8B));
+    mib = buildMI(newMBB, dl, tii.get(X86GenInstrNames.LCMPXCHG8B));
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
 
     Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand!");
     mib.addMemOperand(mi.getMemOperand(0));
-    buildMI(newMBB, tii.get(copyOpc), t3).addReg(X86GenRegisterNames.EAX);
-    buildMI(newMBB, tii.get(copyOpc), t4).addReg(X86GenRegisterNames.EDX);
+    buildMI(newMBB, dl, tii.get(copyOpc), t3).addReg(X86GenRegisterNames.EAX);
+    buildMI(newMBB, dl, tii.get(copyOpc), t4).addReg(X86GenRegisterNames.EDX);
 
     // insert branch.
-    buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
 
-  private MachineBasicBlock emitAtomicMinMaxWithCustomInserter(
-      MachineInstr mi,
-      MachineBasicBlock mbb,
-      int cmovOpc) {
+  private MachineBasicBlock emitAtomicMinMaxWithCustomInserter(MachineInstr mi,
+                                                               MachineBasicBlock mbb,
+                                                               int cmovOpc) {
     // For the atomic min/max operator, we generate
     //   thisMBB:
     //   newMBB:
@@ -2660,6 +2664,7 @@ public class X86TargetLowering extends TargetLowering {
     //     fallthrough -->nextMBB
     //
     TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    DebugLoc dl = mi.getDebugLoc();
     BasicBlock llvmBB = mbb.getBasicBlock();
     int itr = 1;
     // First build the CFG.
@@ -2691,7 +2696,7 @@ public class X86TargetLowering extends TargetLowering {
     int valArgIndex = lastAddrIndex + 1;
 
     int t1 = mri.createVirtualRegister(rc);
-    MachineInstrBuilder mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rm), t1);
+    MachineInstrBuilder mib = buildMI(newMBB, dl, tii.get(X86GenInstrNames.MOV32rm), t1);
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
 
@@ -2700,21 +2705,21 @@ public class X86TargetLowering extends TargetLowering {
     int t2 = mri.createVirtualRegister(rc);
     // FIXME, redundant if condition?  2018/5/6
     if (argOps[valArgIndex].isRegister())
-      mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), t2);
+      mib = buildMI(newMBB, dl, tii.get(X86GenInstrNames.MOV32rr), t2);
     else
-      mib = buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), t2);
+      mib = buildMI(newMBB, dl, tii.get(X86GenInstrNames.MOV32rr), t2);
 
     mib.addOperand(argOps[valArgIndex]);
 
-    buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), X86GenRegisterNames.EAX).addReg(t1);
-    buildMI(newMBB, tii.get(X86GenInstrNames.CMP32rr)).addReg(t1).addReg(t2);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.MOV32rr), X86GenRegisterNames.EAX).addReg(t1);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.CMP32rr)).addReg(t1).addReg(t2);
 
     // generate cmov
     int t3 = mri.createVirtualRegister(rc);
-    buildMI(newMBB, tii.get(cmovOpc), t3).addReg(t2).addReg(t1);
+    buildMI(newMBB, dl, tii.get(cmovOpc), t3).addReg(t2).addReg(t1);
 
     // cmp and exchange if none has modified the memory location.
-    mib = buildMI(newMBB, tii.get(X86GenInstrNames.LCMPXCHG32));
+    mib = buildMI(newMBB, dl, tii.get(X86GenInstrNames.LCMPXCHG32));
     for (int i = 0; i <= lastAddrIndex; i++)
       mib.addOperand(argOps[i]);
 
@@ -2722,18 +2727,17 @@ public class X86TargetLowering extends TargetLowering {
     Util.assertion(mi.hasOneMemOperand(), "Unexpected number of memoperand");
     mib.addMemOperand(mi.getMemOperand(0));
 
-    buildMI(newMBB, tii.get(X86GenInstrNames.MOV32rr), destOp.getReg())
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.MOV32rr), destOp.getReg())
         .addReg(X86GenRegisterNames.EAX);
 
     // insert branch.
-    buildMI(newMBB, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
 
-  private MachineBasicBlock emitVAStartSaveXMMRegsWithCustomInserter(
-      MachineInstr mi,
-      MachineBasicBlock mbb) {
+  private MachineBasicBlock emitVAStartSaveXMMRegsWithCustomInserter(MachineInstr mi,
+                                                                     MachineBasicBlock mbb) {
     // Emit code to save XMM registers to the stack. The ABI says that the
     // number of registers to save is given in %al, so it's theoretically
     // possible to do an indirect jump trick to avoid saving all of them,
@@ -2745,7 +2749,7 @@ public class X86TargetLowering extends TargetLowering {
     // create the new basic blocks. One block contains all the XMM stores,
     // and one block is the final destination regardless of whether any
     // stores were performed.
-
+    DebugLoc dl = mi.getDebugLoc();
     BasicBlock llvmBB = mbb.getBasicBlock();
     MachineFunction mf = mbb.getParent();
     int itr = 1;
@@ -2765,16 +2769,16 @@ public class X86TargetLowering extends TargetLowering {
 
     if (!subtarget.isTargetWin64()) {
       // If %al is 0, branch around the XMM save block.
-      buildMI(mbb, tii.get(X86GenInstrNames.TEST8ri)).addReg(countReg)
+      buildMI(mbb, dl, tii.get(X86GenInstrNames.TEST8ri)).addReg(countReg)
           .addReg(countReg);
-      buildMI(mbb, tii.get(X86GenInstrNames.JE)).addMBB(endMBB);
+      buildMI(mbb, dl, tii.get(X86GenInstrNames.JE)).addMBB(endMBB);
       mbb.addSuccessor(endMBB);
     }
 
     // In the XMM save block, save all the XMM argument registers.
     for (int i = 3, e = mi.getNumOperands(); i < e; i++) {
       long offset = (i - 3) * 16 + varArgsFPOffset;
-      buildMI(xmmSavedMBB, tii.get(X86GenInstrNames.MOVAPSmr))
+      buildMI(xmmSavedMBB, dl, tii.get(X86GenInstrNames.MOVAPSmr))
           .addFrameIndex(this.regSaveFrameIndex)
           .addImm(1)  // scale
           .addReg(0)  // indexReg

@@ -20,6 +20,7 @@ package backend.target.x86;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
@@ -110,7 +111,7 @@ public class X86FloatingPointRegKill extends MachineFunctionPass {
         }
       }
       if (containsFPCode) {
-        buildMI(mbb, mbb.getFirstTerminator(), tii.get(FP_REG_KILL));
+        buildMI(mbb, mbb.getFirstTerminator(), new DebugLoc(), tii.get(FP_REG_KILL));
         NumFPKills.inc();
         changed = true;
       }

@@ -39,6 +39,8 @@ public class DebugLoc {
     scopeIdx = 0;
   }
 
+  public static DebugLoc getUnknownLoc() { return new DebugLoc(); }
+
   public static DebugLoc get(int line, int col,
                              MDNode scope) {
     return get(line, col, scope, null);

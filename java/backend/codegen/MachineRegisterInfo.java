@@ -24,6 +24,7 @@ import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.TreeMap;
 
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.NoRegister;
@@ -91,7 +92,7 @@ public final class MachineRegisterInfo {
    */
   private ArrayList<Pair<MCRegisterClass, MachineOperand>> vregInfo;
 
-  private ArrayList<TIntArrayList> regClass2VRegMap;
+  private TreeMap<Integer, TIntArrayList> regClass2VRegMap;
 
   private ArrayList<Pair<Integer, Integer>> regAllocHints;
 
@@ -116,7 +117,7 @@ public final class MachineRegisterInfo {
 
   public MachineRegisterInfo(TargetRegisterInfo tri) {
     vregInfo = new ArrayList<>();
-    regClass2VRegMap = new ArrayList<>();
+    regClass2VRegMap = new TreeMap<>();
     regAllocHints = new ArrayList<>();
 
     // create physical register def/use chain.
@@ -408,7 +409,7 @@ public final class MachineRegisterInfo {
    * @return
    */
   public TIntArrayList getRegClassVirReg(MCRegisterClass rc) {
-    if (rc == null || !regClass2VRegMap.contains(rc.getID()))
+    if (rc == null || !regClass2VRegMap.containsKey(rc.getID()))
       return new TIntArrayList();
 
     return regClass2VRegMap.get(rc.getID());
@@ -426,14 +427,15 @@ public final class MachineRegisterInfo {
       if (mi.equals(oldMI)) {
         MachineOperand mo = itr.getOpearnd();
         // unlink this def reg and link the new def register into def/use chain.
-        newDef.reg.next = mo.reg.next;
-        if (mo.reg.next != null)
-          newDef.reg.next.reg.prev = newDef;
+        newDef.getRegOp().next = mo.getRegOp().next;
+        newDef.getRegOp().next = mo.getRegOp().next;
+        if (mo.getRegOp().next != null)
+          newDef.getRegOp().next.getRegOp().prev = newDef;
 
-        if (mo.reg.prev != null)
-          mo.reg.prev.reg.next = newDef;
-        newDef.reg.prev = mo.reg.prev;
-        mo.reg.clear();
+        if (mo.getRegOp().prev != null)
+          mo.getRegOp().prev.getRegOp().next = newDef;
+        newDef.getRegOp().prev = mo.getRegOp().prev;
+        mo.getRegOp().clear();
       }
       itr.next();
     }
