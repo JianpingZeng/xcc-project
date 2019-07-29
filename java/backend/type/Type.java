@@ -340,7 +340,16 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
 
   @Override
   public void refineAbstractType(DerivedType oldTy, Type newTy) {
-    Util.shouldNotReachHere("Attempting to refine a derived type!");
+    Util.assertion(oldTy != newTy);
+    if (newTy.isOpaqueTy())
+      newTy = newTy.getForwardType();
+
+    for (int i = 0, e = getNumContainedTypes(); i < e; i++) {
+      if (containedTys[i].getType() == oldTy)
+        containedTys[i].setType(newTy);
+    }
+    oldTy.abstractTypeUsers.remove(this);
+    isAbstract = false;
   }
 
   @Override

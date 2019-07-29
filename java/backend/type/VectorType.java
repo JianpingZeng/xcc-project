@@ -107,12 +107,6 @@ public class VectorType extends SequentialType {
   }
 
   @Override
-  public void refineAbstractType(DerivedType oldTy, Type newTy) {
-    // TODO: 18-6-24
-    super.refineAbstractType(oldTy, newTy);
-  }
-
-  @Override
   public void typeBecameConcrete(DerivedType absTy) {
     // TODO: 18-6-24
     super.typeBecameConcrete(absTy);

@@ -2353,10 +2353,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           // Do not use getValue() in here; we don't want to generate code at
           // this point if it hasn't been done yet.
           SDValue n = nodeMap.get(v);
-          if (n.getNode() == null && v instanceof Argument) {
+          if ((n == null || n.getNode() == null) && v instanceof Argument) {
             n = unusedArgNodeMap.get(v);
           }
-          if (n.getNode() != null) {
+          if (n != null && n.getNode() != null) {
             if (!emitFuncArgumentDbgValue(v, variable, offset, n)) {
               sdv = dag.getDbgValue(variable, n.getNode(), n.getResNo(),
                   offset, dl, sdNodeOrder);

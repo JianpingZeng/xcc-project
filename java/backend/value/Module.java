@@ -225,8 +225,12 @@ public final class Module implements Iterable<Function> {
    * @return
    */
   public boolean addTypeName(String name, Type type) {
+    return addTypeName(name, type, false);
+  }
+
+  public boolean addTypeName(String name, Type type, boolean update) {
     TreeMap<String, Type> st = getTypeSymbolTable();
-    if (st.containsKey(name)) return true;
+    if (st.containsKey(name) && !update) return true;
 
     st.put(name, type);
     return false;

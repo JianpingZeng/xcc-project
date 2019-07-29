@@ -2846,6 +2846,7 @@ public abstract class Instruction extends User {
   public static class SwitchInst extends TerminatorInst {
     private int lowKey, highKey;
     private final int offset = 2;
+    private int numCases;
 
     /**
      * Constructs a new SwitchInst instruction with specified inst jlang.type.
@@ -2881,7 +2882,6 @@ public abstract class Instruction extends User {
       init(condV, defaultBB, numCases * 2);
     }
 
-
     /**
      * Initialize some arguments, like add switch value and default into
      * Operand list.
@@ -2891,14 +2891,14 @@ public abstract class Instruction extends User {
       reserve(offset + numCases);
       setOperand(0, cond, this);
       setOperand(1, defaultBB, this);
-      numOps = 2;
+      this.numCases = 1;
     }
 
     public void addCase(Constant caseVal, BasicBlock targetBB) {
       int opNo = getNumOfCases();
       setOperand(opNo*2, caseVal, this);
       setOperand(opNo*2 + 1, targetBB, this);
-      numOps += 2;
+      ++numCases;
     }
 
     public void removeCase(int idx) {
@@ -2909,6 +2909,7 @@ public abstract class Instruction extends User {
       if (getNumOfOperands() - idx * 2 + 2 >= 0)
         System.arraycopy(operandList, idx * 2 + 2, operandList, idx * 2 + 2 - 2, getNumOfOperands() - idx * 2 + 2);
       numOps -= 2;
+      --numCases;
     }
 
     /**
@@ -2930,7 +2931,7 @@ public abstract class Instruction extends User {
     }
 
     public int getNumOfCases() {
-      return getNumOfOperands() >> 1;
+      return numCases;
     }
 
     /**

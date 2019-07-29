@@ -478,13 +478,14 @@ public final class LLParser {
     SMLoc nameLoc = lexer.getLoc();
     lexer.lex();    // eat LocalVar
 
-    OutRef<Type> result = new OutRef<>();
+    OutRef<Type> result = new OutRef<Type>(backend.type.Type.getVoidTy(context));
     if (parseToken(equal, "expected '=' after name") ||
-        parseToken(kw_type, "expected 'type' after '='"))
+        parseToken(kw_type, "expected 'type' after '='") ||
+        parseType(result, false))
       return true;
 
-    if (parseStructDefinition(nameLoc, name, result))
-      return true;
+    //if (parseStructDefinition(nameLoc, name, result))
+    //  return true;
 
     // set the type name, checking for conflicts as we do so.
     if (!m.addTypeName(name, result.get()))
@@ -505,8 +506,11 @@ public final class LLParser {
 
     // Otherwise, this is an attempt to redefine a type. That's okay if
     // the redefinition is identical to the original.
-    if (existing.equals(result.get()))
+    if (existing.equals(result.get())) {
+      if (result.get().isOpaqueTy())
+        m.addTypeName(name, result.get().getForwardType(), true);
       return false;
+    }
 
     // Any other kind of (non-equivalent) redefinition is an error.
     return error(nameLoc, String

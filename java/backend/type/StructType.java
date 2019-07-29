@@ -207,13 +207,6 @@ public class StructType extends CompositeType {
   }
 
   @Override
-  public void refineAbstractType(DerivedType oldTy, Type newTy) {
-    for (StructValType svt : structTypes.keySet()) {
-      // TODO: 17-6-11
-    }
-  }
-
-  @Override
   public void typeBecameConcrete(DerivedType absTy) {
     // TODO: 17-6-11
     super.typeBecameConcrete(absTy);
