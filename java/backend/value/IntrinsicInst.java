@@ -46,7 +46,7 @@ public class IntrinsicInst extends Instruction.CallInst {
       case dbg_value:
         return new DbgValueInst(target, args, name, insertBefore);
       default:
-        Util.shouldNotReachHere("Unknown intrinsic function ID!");
+        //Util.shouldNotReachHere("Unknown intrinsic function ID!");
         return null;
     }
   }
@@ -61,7 +61,7 @@ public class IntrinsicInst extends Instruction.CallInst {
       case dbg_value:
         return new DbgValueInst(target, args, name, insertAtEnd);
       default:
-        Util.shouldNotReachHere("Unknown intrinsic function ID!");
+        //Util.shouldNotReachHere("Unknown intrinsic function ID!");
         return null;
     }
   }

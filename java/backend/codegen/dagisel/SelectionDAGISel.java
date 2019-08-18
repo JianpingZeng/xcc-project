@@ -49,7 +49,7 @@ import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.codegen.dagisel.SelectionDAGISel.ChainResult.CR_InducesCycle;
 import static backend.support.BackendCmdOptions.createScheduler;
-import static backend.support.ErrorHandling.llvmReportError;
+import static backend.support.ErrorHandling.reportFatalError;
 import static backend.target.TargetOptions.*;
 
 /**
@@ -2048,11 +2048,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     os.print("Cannot yet selectCommonCode: ");
     n.print(os, curDAG);
     os.close();
-    llvmReportError(baos.toString());
+    reportFatalError(baos.toString());
   }
 
   public void cannotYetSelectIntrinsic(SDNode n) {
-    llvmReportError("Cannot yet selectCommonCode intrinsic function.");
+    reportFatalError("Cannot yet selectCommonCode intrinsic function.");
   }
 
   private void computeLiveOutVRegInfo() {

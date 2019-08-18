@@ -49,7 +49,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import static backend.support.ErrorHandling.llvmReportError;
+import static backend.support.ErrorHandling.reportFatalError;
 import static backend.target.TargetMachine.CodeGenFileType.CGFT_AssemblyFile;
 import static backend.target.TargetMachine.CodeGenFileType.CGFT_ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
@@ -194,7 +194,7 @@ public class BackendConsumer implements ASTConsumer {
     createPass();
     OutRef<String> error = new OutRef<>("");
     if (!addEmitPasses(error)) {
-      llvmReportError("UNKNOWN: " + error.get());
+      reportFatalError("UNKNOWN: " + error.get());
     }
 
     // Run passes. For now we do all passes at once.
@@ -330,7 +330,7 @@ public class BackendConsumer implements ASTConsumer {
         MachineCodeEmitter mce = null;
         CodeGenFileType cft = action == Backend_EmitAssembly ? CGFT_AssemblyFile : CGFT_ObjectFile;
         if (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel)) {
-          llvmReportError("Unsupport to generate this kind of file!");
+          reportFatalError("Unsupport to generate this kind of file!");
         }
         return true;
       }

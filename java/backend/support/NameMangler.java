@@ -16,9 +16,9 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import backend.mc.MCSymbol;
 import backend.type.Type;
 import backend.value.*;
-import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
@@ -64,10 +64,12 @@ public class NameMangler {
 
   private int acceptableChars[];
   private static int globalID = 0;
-
-  public NameMangler(Module m, String globalPrefix,
+  private final MCSymbol.MCContext context;
+  public NameMangler(MCSymbol.MCContext ctx, Module m,
+                     String globalPrefix,
                      String privateGlobalPrefix,
                      String linkerPrivateGlobalPrefix) {
+    context = ctx;
     this.prefix = globalPrefix;
     this.privatePrefix = privateGlobalPrefix;
     this.linkerPrivatePrefix = linkerPrivateGlobalPrefix;
@@ -131,6 +133,11 @@ public class NameMangler {
     return e;
   }
 
+  public MCSymbol getSymbol(GlobalValue gv) {
+    String name = getMangledNameWithPrefix(gv, false);
+    return context.getOrCreateSymbol(name);
+  }
+
   public enum ManglerPrefixTy {
     /**
      * Emit default string before each symbol.
@@ -148,7 +155,7 @@ public class NameMangler {
 
   public String getMangledName(GlobalValue gv, String suffix, boolean forceprivate) {
     Util.assertion(!(gv instanceof Function) || !((Function) gv).isIntrinsicID(),
-        "Intrinsic function shouldn't be mangled!");
+        String.format("Intrinsic function '%s' shouldn't be mangled!", gv.getName()));
     ManglerPrefixTy prefixTy =
         (gv.hasPrivateLinkage() || forceprivate) ? ManglerPrefixTy.Private
             : gv.hasLinkerPrivateLinkage() ? ManglerPrefixTy.LinkerPrivate :

@@ -2504,10 +2504,10 @@ public abstract class Instruction extends User {
     public static CallInst create(Value target, Value[] args, String name, Instruction insertBefore) {
       Util.assertion(target instanceof Function);
       Function fn = (Function) target;
+      CallInst ci = null;
       if (fn.isIntrinsicID())
-        return IntrinsicInst.create(target, args, name, insertBefore);
-      else
-        return new CallInst(args, target, name, insertBefore);
+        ci = IntrinsicInst.create(target, args, name, insertBefore);
+      return ci == null ? new CallInst(args, target, name, insertBefore) : ci;
     }
 
     public static CallInst create(Value target, List<Value> args, String name, Instruction insertBefore) {
@@ -2519,10 +2519,10 @@ public abstract class Instruction extends User {
     public static CallInst create(Value target, Value[] args, String name, BasicBlock insertAtEnd) {
       Util.assertion(target instanceof Function);
       Function fn = (Function) target;
+      CallInst ci = null;
       if (fn.isIntrinsicID())
-        return IntrinsicInst.create(target, args, name, insertAtEnd);
-      else
-        return new CallInst(args, target, name, insertAtEnd);
+        ci = IntrinsicInst.create(target, args, name, insertAtEnd);
+      return ci != null ? ci: new CallInst(args, target, name, insertAtEnd);
     }
 
     public static CallInst create(Value target, List<Value> args, String name, BasicBlock insertAtEnd) {

@@ -2395,6 +2395,19 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           mmi.setVariableDgbInfo(variable, fi, di.getDebugLoc());
         return null;
       }
+      case objectsize: {
+        ConstantInt ci2 = (ConstantInt) ci.getArgOperand(1);
+        Util.assertion(ci2 != null, "non-constant type in __builtin_object_size?");
+        SDValue arg = getValue(ci.getCalledValue());
+        EVT ty = arg.getValueType();
+        SDValue res = null;
+        if (ci2.isZero())
+          res = dag.getConstant(-1L, ty, false);
+        else
+          res = dag.getConstant(0, ty, false);
+        setValue(ci, res);
+        return null;
+      }
     }
   }
 
@@ -2455,9 +2468,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   private void visitVACopy(CallInst ci) {
     dag.setRoot(dag.getNode(ISD.VACOPY, new EVT(MVT.Other), getRoot(),
-        getValue(ci.operand(0)), getValue(ci.operand(2)),
-        dag.getSrcValue(ci.operand(1)),
-        dag.getSrcValue(ci.operand(2))));
+        getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)),
+        dag.getSrcValue(ci.getArgOperand(0)),
+        dag.getSrcValue(ci.getArgOperand(1))));
   }
 
   private void visitVAEnd(CallInst ci) {

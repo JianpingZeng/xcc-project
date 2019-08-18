@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * This file defines a class used for writing a specific kind graph
@@ -153,10 +152,8 @@ public final class GraphWriter {
         res = p.waitFor();
         if (res != 0)
           System.err.printf("Error viewing graph %s.\n", pdfFilename);
-        else {
+        else
           filename.delete();
-          Files.delete(Paths.get(pdfFilename));
-        }
       }
     }
   }

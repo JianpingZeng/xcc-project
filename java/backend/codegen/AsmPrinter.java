@@ -124,7 +124,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   @Override
   public boolean doInitialization(Module m) {
-    mangler = new NameMangler(m, mai.getGlobalPrefix(),
+    mangler = new NameMangler(outContext, m, mai.getGlobalPrefix(),
         mai.getPrivateGlobalPrefix(),
         mai.getLinkerPrivateGlobalPrefix());
 

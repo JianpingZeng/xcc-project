@@ -83,14 +83,16 @@ public class X86TargetLowering extends TargetLowering {
   private static TargetLoweringObjectFile createTLOF(X86TargetMachine tm) {
     X86Subtarget subtarget = tm.getSubtarget();
     boolean is64Bit = subtarget.is64Bit();
-    Util.assertion(subtarget.isTargetELF(), "only ELF supported current");
-    /*if (subtarget.isTargetDarwin()) {
-      if (in64BitMode) return X86_64MachoTargetObjectFile();
+    if (subtarget.isTargetDarwin()) {
+      if (is64Bit) return new X86_64MachoTargetObjectFile();
       return new TargetLoweringObjectFileMachO();
     }
-    */
-    return is64Bit ? new X86_64ELFTargetObjectFile(tm) :
-        new X86_32ELFTargetObjectFile(tm);
+    else if (subtarget.isTargetELF()) {
+      return is64Bit ? new X86_64ELFTargetObjectFile(tm) :
+          new X86_32ELFTargetObjectFile(tm);
+    }
+    Util.assertion("unknown target, only ELF and Mach-O supported current");
+    return null;
   }
 
   public X86TargetLowering(X86TargetMachine tm) {

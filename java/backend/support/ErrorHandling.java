@@ -30,7 +30,7 @@ public class ErrorHandling {
   private static LLVMErrorHandler errorHandler;
   private static Diagnostic diagEngineer;
 
-  public static void llvmReportError(String msg) {
+  public static void reportFatalError(String msg) {
     if (errorHandler != null)
       errorHandler.apply(diagEngineer, msg);
     else

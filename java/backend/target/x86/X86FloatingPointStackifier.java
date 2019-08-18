@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.support.ErrorHandling.llvmReportError;
+import static backend.support.ErrorHandling.reportFatalError;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.RFP80RegisterClass;
 
@@ -129,7 +129,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private void pushReg(int reg) {
     Util.assertion(reg < NumFPRegs, "Register number out of range!");
     if (stackTop >= 8)
-      llvmReportError("Stack overflow!");
+      reportFatalError("Stack overflow!");
     stack[stackTop] = reg;
     regMap[reg] = stackTop++;
   }
@@ -159,7 +159,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
 
   public int getStackEntry(int sti) {
     if (sti >= stackTop)
-      llvmReportError("Access past stack top!");
+      reportFatalError("Access past stack top!");
     return stack[stackTop - 1 - sti];
   }
 
@@ -191,7 +191,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     regMap[regOnTop] = t;
 
     if (regMap[regOnTop] >= stackTop)
-      llvmReportError("Access past stack top!");
+      reportFatalError("Access past stack top!");
     t = stack[regMap[regOnTop]];
     stack[regMap[regOnTop]] = stack[stackTop - 1];
     stack[stackTop - 1] = t;
@@ -268,7 +268,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private int popStackAfter(int pos) {
     MachineInstr mi = mbb.getInstAt(pos);
     if (stackTop == 0)
-      llvmReportError("Can't pop empty stack!");
+      reportFatalError("Can't pop empty stack!");
 
     DebugLoc dl = mi.getDebugLoc();
     regMap[stack[--stackTop]] = ~0;
@@ -621,7 +621,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         mi.getOpcode() == ISTT_FP64m ||
         mi.getOpcode() == ST_FP80m) {
       if (stackTop == 0)
-        llvmReportError("Stack empty");
+        reportFatalError("Stack empty");
       --stackTop;
     } else if (killsSrc)
       insertPos = popStackAfter(insertPos);
@@ -637,7 +637,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
       duplicatePendingSTBeforeKill(reg, insertPos);
       insertPos = moveToTop(reg, insertPos);
       if (stackTop == 0)
-        llvmReportError("Stack can't be empty!");
+        reportFatalError("Stack can't be empty!");
       --stackTop;
       pushReg(getFPReg(mi.getOperand(0)));
     } else {
@@ -987,7 +987,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         break;
       }
       case TargetOpcodes.INLINEASM: {
-        llvmReportError("inline asm not supported yet!");
+        reportFatalError("inline asm not supported yet!");
         break;
       }
       case RET:

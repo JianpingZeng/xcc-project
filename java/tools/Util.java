@@ -93,7 +93,7 @@ public class Util {
   }
 
   public static void shouldNotReachHere(String msg) {
-    Util.assertion(false, "should not reach here, " + msg);
+    Util.assertion("should not reach here, " + msg);
   }
 
   public static void unimplemented() {

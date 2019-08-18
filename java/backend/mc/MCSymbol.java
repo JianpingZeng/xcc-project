@@ -123,6 +123,7 @@ public class MCSymbol {
     private TreeMap<String, MCSection> sections;
     private TreeMap<String, MCSymbol> symbols;
     private TreeMap<String, MCSectionELF> ELFUniqueMap;
+    private TreeMap<String, MCSectionMachO> MachOUniqueMap;
     private TreeMap<String, MCSectionCOFF> COFFUniqueMap;
 
     public MCContext() {
@@ -192,6 +193,37 @@ public class MCSymbol {
       MCSectionELF result = new MCSectionELF(sectionName, type, flags, kind, isExplicit, entrySize);
       ELFUniqueMap.put(sectionName, result);
       return result;
+    }
+
+    public MCSectionMachO getMachOSection(String segment,
+                                     String section,
+                                     int typeAndAttributes,
+                                     int reserved2,
+                                     SectionKind kind) {
+      // create the map if it doesn't exist.
+      if (MachOUniqueMap == null)
+        MachOUniqueMap = new TreeMap<>();
+      // form the name to look up.
+      StringBuilder name = new StringBuilder();
+      name.append(segment);
+      name.append(',');
+      name.append(section);
+      if (MachOUniqueMap.containsKey(name.toString()) &&
+          MachOUniqueMap.get(name.toString()) != null)
+        return MachOUniqueMap.get(name.toString());
+
+      // Otherwise, create a new one.
+      MCSectionMachO sec = new MCSectionMachO(segment, section, typeAndAttributes,
+          reserved2, kind);
+      MachOUniqueMap.put(name.toString(), sec);
+      return sec;
+    }
+
+    public MCSection getMachOSection(String segment,
+                                     String section,
+                                     int typeAndAttributes,
+                                     SectionKind kind) {
+      return getMachOSection(segment, section, typeAndAttributes, 0, kind);
     }
   }
 }

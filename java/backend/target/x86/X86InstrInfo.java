@@ -29,7 +29,7 @@ import static backend.codegen.MachineInstrBuilder.*;
 import static backend.codegen.MachineOperand.RegState.Define;
 import static backend.codegen.MachineOperand.RegState.Kill;
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
-import static backend.support.ErrorHandling.llvmReportError;
+import static backend.support.ErrorHandling.reportFatalError;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.x86.CondCode.*;
 import static backend.target.x86.X86GenInstrNames.*;
@@ -3317,7 +3317,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       PrintStream os = new PrintStream(baos);
       os.printf("Cannot determine size: ");
       mi.print(os, null);
-      llvmReportError(baos.toString());
+      reportFatalError(baos.toString());
     }
 
     return finalSize;
