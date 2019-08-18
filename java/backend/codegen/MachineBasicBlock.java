@@ -13,6 +13,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Objects;
 
+import static backend.support.AssemblyWriter.writeAsOperand;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -381,8 +383,9 @@ public class MachineBasicBlock {
     os.printf("BB#%d: ", getNumber());
     String comma = "";
     if (bb != null) {
-      comma = ",";
-      os.printf("derived from LLVM BB %%%s\n", bb.getName());
+      os.printf(",derived from LLVM BB ");
+      writeAsOperand(os, bb, false, null);
+      comma = ", ";
     }
 
     if (isLandingPad()) {
@@ -391,7 +394,7 @@ public class MachineBasicBlock {
     }
     if (hasAddressTaken()) {
       os.printf("%sADDRESS TAKEN", comma);
-      // comma = ", ";
+      comma = ", ";
     }
 
     TargetRegisterInfo tri = getParent().getTarget().getRegisterInfo();

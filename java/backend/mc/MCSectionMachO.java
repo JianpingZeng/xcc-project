@@ -239,7 +239,7 @@ public class MCSectionMachO extends MCSection {
       sectionAttrs &= ~SectionAttrDescriptors[i].attrFlag;
       os.print(separator);
       if (SectionAttrDescriptors[i].assemblyName != null)
-        os.print(SectionAttrDescriptors[i].assemblyName != null);
+        os.print(SectionAttrDescriptors[i].assemblyName);
       else
         os.printf("<<%s>>", SectionTypeDescriptors[i].enumName);
       separator = '+';
