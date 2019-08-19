@@ -2853,9 +2853,9 @@ public final class LLParser {
         SMLoc firstEltLoc = lexer.getLoc();
 
         if (parseGlobalValueVector(elts) || (isPackedStruct && parseToken(rbrace,
-            "expected '}' at end of packed struct")) || parseToken(
-            greater, "expected '>' at end of vector")) {
-          return true;
+              "expected '}' at end of packed struct")) || parseToken(
+              greater, "expected '>' at end of vector")) {
+            return true;
         }
 
         if (isPackedStruct) {
@@ -3239,7 +3239,7 @@ public final class LLParser {
   private boolean parseGlobalValueVector(ArrayList<Constant> elts) {
     // empty list
     LLTokenKind tok = lexer.getTokKind();
-    if (tok == lbrace || tok == lsquare || tok == lparen || tok == less)
+    if (tok == rbrace || tok == rsquare || tok == rparen || tok == greater)
       return false;
 
     OutRef<Constant> c = new OutRef<>();
@@ -3908,7 +3908,6 @@ public final class LLParser {
    * @return
    */
   private boolean validateEndOfModule() {
-
     if (!forwardRefInstMetadata.isEmpty()) {
       for (Map.Entry<Instruction, ArrayList<MDRef>> entry : forwardRefInstMetadata.entrySet()) {
         Instruction inst = entry.getKey();

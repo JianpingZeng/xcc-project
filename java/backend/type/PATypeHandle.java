@@ -59,7 +59,10 @@ public class PATypeHandle {
   }
 
   public Type getType() {
-    return ty;
+    Type res = ty;
+    while (res != null && res instanceof OpaqueType)
+      res = res.getForwardType();
+    return res;
   }
 
   public void setType(Type newTy) {

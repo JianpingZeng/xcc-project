@@ -216,9 +216,14 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
         !name.startsWith("llvm"))
       return Intrinsic.ID.not_intrinsic;
 
-    for (Intrinsic.ID id : Intrinsic.ID.values())
-      if (name.startsWith(id.name))
+    for (Intrinsic.ID id : Intrinsic.ID.values()) {
+      if (id.name.equals(name))
         return id;
+      if (name.startsWith(id.name) && name.length() > id.name.length()) {
+        if (name.substring(id.name.length()).startsWith("."))
+          return id;
+      }
+    }
     return Intrinsic.ID.not_intrinsic;
   }
 

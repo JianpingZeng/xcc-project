@@ -166,6 +166,7 @@ public final class LLLexer {
 
     keywords.put("noinline", kw_noinline);
     keywords.put("alwaysinline", kw_alwaysinline);
+    keywords.put("inlinehint", kw_inlinehint);
     keywords.put("optsize", kw_optsize);
     keywords.put("ssp", kw_ssp);
     keywords.put("sspreq", kw_sspreq);

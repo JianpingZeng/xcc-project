@@ -19,6 +19,8 @@ package backend.type;
 import tools.TypeMap;
 import tools.Util;
 
+import java.util.Objects;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -76,9 +78,9 @@ public class PointerType extends SequentialType {
     if (getClass() != obj.getClass())
       return false;
     PointerType ty = (PointerType) obj;
-    return numElts == ty.getNumContainedTypes() && isAbstract == ty.isAbstract
+    return numElts == ty.getNumContainedTypes() //&& isAbstract == ty.isAbstract
         && getAddressSpace() == ty.getAddressSpace() &&
-        (getElementType() == ty.getElementType() || getElementType().equals(ty.getElementType()));
+        (getElementType() == ty.getElementType() || Objects.equals(getElementType(), ty.getElementType()));
   }
 
   @Override

@@ -1,13 +1,10 @@
-2. In buffer, at backend.codegen.dagisel.SelectionDAG.assignTopologicalOrder(SelectionDAG.java:2408)
-7. flag, LLParser failed to parse the given ll file
-8. hash, uncoginized keyword in ll file
-10. linenoise, LLParser failure
-11. list, LLParser failure in test.c
-12. logfmt, LLParser failure
-13. parson, LLParser failure
-14. readline, LLParser failure
-15. red-black-tree, LLParser failure and bug in DAGCombiner
-16. rgba, LLParser failure
-17. rle, LLParser failure
-19. sds, LLParser failure
-20. sqlite3, LLParser failure
+1. In buffer, linker error
+2. flag, LLParser crashed for null pointer
+3. linenoise, LLParser crashed for null pointer.
+4. list, LLParser crashed for null pointer.
+5. logfmt, LLParser crashed for null pointer.
+6. parson, LLParser crashed for null pointer.
+7. red-black-tree, LLParser crashed for null pointer.
+8. rle, LLParser crashed for null pointer.
+9. sds, crash for LowerSubregInstruction
+10. sqlite3, LLParser failure

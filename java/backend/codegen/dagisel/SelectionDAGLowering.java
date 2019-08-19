@@ -2199,13 +2199,24 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case cos:
         setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.operand(1)).getValueType(),
             getValue(ci.operand(1))));
+        return null;
       case log:
+        visitLog(ci);
+        return null;
       case log2:
+        visitLog2(ci);
+        return null;
       case log10:
+        visitLog10(ci);
+        return null;
       case exp:
+        visitExp(ci);
+        return null;
       case exp2:
+        visitExp2(ci);
+        return null;
       case pow:
-        Util.shouldNotReachHere("unimplemented math function!");
+        visitPow(ci);
         return null;
       case pcmarker:
         SDValue tmp = getValue(ci.operand(1));
@@ -2408,7 +2419,52 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         setValue(ci, res);
         return null;
       }
+      case expect:
+        setValue(ci, getValue(ci.getArgOperand(0)));
+        return null;
     }
+  }
+
+  /**
+   * Lower an exponent intrinsic. It handles the special sequences for limited-precision mode.
+   * @param ci
+   */
+  private void visitExp(CallInst ci) {
+    SDValue result;
+    DebugLoc dl = getCurDebugLoc();
+    result = dag.getNode(ISD.FEXP, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
+  }
+
+  private void visitLog(CallInst ci) {
+    SDValue result = dag.getNode(ISD.FLOG, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
+  }
+
+  private void visitLog2(CallInst ci) {
+    SDValue result = dag.getNode(ISD.FLOG2, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
+  }
+
+  private void visitLog10(CallInst ci) {
+    SDValue result = dag.getNode(ISD.FLOG10, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
+  }
+
+  private void visitExp2(CallInst ci) {
+    SDValue result = dag.getNode(ISD.FEXP2, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
+  }
+
+  private void visitPow(CallInst ci) {
+    SDValue result = dag.getNode(ISD.FPOW, getValue(ci.getArgOperand(0)).getValueType(),
+        getValue(ci.getArgOperand(0)));
+    setValue(ci, result);
   }
 
   /**

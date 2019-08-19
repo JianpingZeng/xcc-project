@@ -174,6 +174,7 @@ public class Intrinsic {
     eh_unwind_init("llvm.eh.unwind.init"),
     exp("llvm.exp"),
     exp2("llvm.exp2"),
+    expect("llvm.expect"),
     flt_rounds("llvm.flt.rounds"),
     frameaddress("llvm.frameaddress"),
     gcread("llvm.gcread"),

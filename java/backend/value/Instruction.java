@@ -438,8 +438,8 @@ public abstract class Instruction extends User {
 
     // handle the case when we are adding/updating metadata on an instruction.
     if (node != null) {
-      Util.assertion(getContext().metadataStore.containsKey(this) &&
-          !getContext().metadataStore.get(this).isEmpty() == hasMetadataHashEntry(),
+      Util.assertion((getContext().metadataStore.containsKey(this) &&
+          !getContext().metadataStore.get(this).isEmpty())  == hasMetadataHashEntry(),
           "hasMetadataHashEntry bit goes wrong!");
       if (!getContext().metadataStore.containsKey(this))
         getContext().metadataStore.put(this, new ArrayList<>());

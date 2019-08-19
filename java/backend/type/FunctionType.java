@@ -20,6 +20,7 @@ import tools.TypeMap;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng
@@ -137,5 +138,29 @@ public class FunctionType extends DerivedType {
 
   public int getNumParams() {
     return containedTys.length - 1;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (this == obj) return true;
+    if (getClass() != obj.getClass()) return false;
+    FunctionType fty = (FunctionType) obj;
+    if (getTypeID() != fty.getTypeID() ||
+        isVarArg() != fty.isVarArg() ||
+        getNumContainedTypes() != fty.getNumContainedTypes()) return false;
+    for (int i = 0, e = getNumContainedTypes(); i < e; i++)
+      if (!Objects.equals(getContainedType(i), fty.getContainedType(i)))
+        return false;
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int code = getNumContainedTypes();
+    for (int i = 0, e = getNumContainedTypes(); i < e; i++)
+      code |= getContainedType(i).hashCode();
+    code |= getTypeID() | (isVarArg() ? 1 : 0);
+    return code;
   }
 }

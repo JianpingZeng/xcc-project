@@ -25,6 +25,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng
@@ -43,7 +44,12 @@ public class StructType extends CompositeType {
 
     @Override
     public int hashCode() {
-      return elemTypes.hashCode() << 23 + elemTypes.size() << 11 + (packed ? 1 : 0);
+      int code = 1;
+      for (Type ty : elemTypes)
+        code |= ty.hashCode();
+
+      code |= elemTypes.size() << 11 | (packed ? 1 : 0);
+      return code;
     }
 
     @Override
@@ -53,8 +59,13 @@ public class StructType extends CompositeType {
       if (getClass() != obj.getClass()) return false;
 
       StructValType svt = (StructValType) obj;
+      if (elemTypes.size() != svt.elemTypes.size() ||
+          packed != svt.packed) return false;
+      for (int i = 0, e = elemTypes.size(); i < e; i++)
+        if (!Objects.equals(elemTypes.get(i), svt.elemTypes.get(i)))
+          return false;
 
-      return elemTypes.equals(svt.elemTypes) && packed == svt.packed;
+      return true;
     }
   }
 
@@ -135,6 +146,7 @@ public class StructType extends CompositeType {
       containedTys[i] = new PATypeHandle(eltTypes.get(i), this);
     }
     setAbstract(isAbstract);
+    this.packed = isPacked;
   }
 
   public static StructType get(LLVMContext ctx, boolean packed) {

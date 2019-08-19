@@ -698,7 +698,7 @@ public abstract class MachineOperand {
 
   public long getOffset() {
     Util.assertion(isGlobalAddress() || isExternalSymbol() ||
-        isConstantPoolIndex(), "Wrong MachineOperand accessor");
+        isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
     if (this instanceof IndexMO)
       return ((IndexMO)this).offset;
     else
@@ -722,7 +722,7 @@ public abstract class MachineOperand {
 
   public void setOffset(long offset) {
     Util.assertion(isGlobalAddress() || isExternalSymbol() ||
-        isConstantPoolIndex(), "Wrong MachineOperand accessor");
+        isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
     if (this instanceof IndexMO)
       ((IndexMO)this).offset = offset;
     else

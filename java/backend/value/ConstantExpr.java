@@ -70,7 +70,7 @@ public abstract class ConstantExpr extends Constant {
   }
 
   public static Constant getCast(Operator op, Constant c, Type ty) {
-    Util.assertion(op.isComparison(), "opcode out of range");
+    Util.assertion(op.isCastOps(), "opcode out of range");
     Util.assertion(c != null && ty != null, "Null arguments to getCast");
     Util.assertion(ty.isFirstClassType(), "Cannot cast to an aggregate type!");
 

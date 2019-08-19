@@ -25,6 +25,7 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
@@ -49,8 +50,8 @@ public class ConstantStruct extends Constant {
     reserve(vals.size());
     int idx = 0;
     for (Constant c : vals) {
-      Util.assertion(c.getType() == ty.getElementType(idx), "Initializer for struct element doesn't match struct element type!");
-
+      Util.assertion(Objects.equals(c.getType(), ty.getElementType(idx)),
+          "Initializer for struct element doesn't match struct element type!");
       setOperand(idx++, c, this);
     }
   }
