@@ -372,8 +372,8 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   public Type getContainedType(int idx) {
     Util.assertion(containedTys != null && idx >= 0 && idx < containedTys.length);
     Type ty = containedTys[idx].getType();
-    if (ty.isOpaqueTy()) {
-      return ((OpaqueType)ty).getForwardType();
+    if (ty != null && ty.isOpaqueTy()) {
+      return ty.getForwardType();
     }
     return ty;
   }

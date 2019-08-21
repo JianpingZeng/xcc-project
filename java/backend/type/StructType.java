@@ -20,11 +20,11 @@ import backend.support.LLVMContext;
 import backend.value.Constant;
 import backend.value.ConstantInt;
 import backend.value.Value;
-import tools.TypeMap;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Objects;
 
 /**
@@ -73,7 +73,7 @@ public class StructType extends CompositeType {
   private boolean hasBody;
   private boolean literal;
 
-  private static TypeMap<StructValType, StructType> structTypes = new TypeMap<>();
+  private static HashMap<StructValType, StructType> structTypes = new HashMap<>();
 
   /**
    * A place holder type.

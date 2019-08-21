@@ -124,12 +124,10 @@ public final class LLParser {
 
   private LLLexer lexer;
   private Module m;
-  private TreeMap<String, Pair<Type, SMLoc>> forwardRefTypes;
-  private TIntObjectHashMap<Pair<Type, SMLoc>> forwardRefTypeIDs;
-  private ArrayList<Type> numberedTypes;
+  private ArrayList<Pair<Type, SMLoc>> numberedTypes;
+  private TypeMap<String, Pair<Type, SMLoc>> namedTypes;
   private ArrayList<MDNode> numberedMetadata;
   private TreeMap<Integer, Pair<MDNode, SMLoc>> forwardRefMDNodes;
-  private ArrayList<UpRefRecord> upRefs;
 
   private TreeMap<String, Pair<GlobalValue, SMLoc>> forwardRefVals;
   private TIntObjectHashMap<Pair<GlobalValue, SMLoc>> forwardRefValIDs;
@@ -149,12 +147,10 @@ public final class LLParser {
                   OutRef<SMDiagnostic> diag, LLVMContext ctx) {
     lexer = new LLLexer(buf, smg, diag, ctx);
     this.m = m;
-    forwardRefTypes = new TreeMap<>();
-    forwardRefTypeIDs = new TIntObjectHashMap<>();
     numberedTypes = new ArrayList<>();
+    namedTypes = new TypeMap<>();
     numberedMetadata = new ArrayList<MDNode>();
     forwardRefMDNodes = new TreeMap<>();
-    upRefs = new ArrayList<>();
     forwardRefVals = new TreeMap<>();
     forwardRefValIDs = new TIntObjectHashMap<>();
     numberedVals = new ArrayList<>();
@@ -478,68 +474,75 @@ public final class LLParser {
     SMLoc nameLoc = lexer.getLoc();
     lexer.lex();    // eat LocalVar
 
-    OutRef<Type> result = new OutRef<Type>(backend.type.Type.getVoidTy(context));
     if (parseToken(equal, "expected '=' after name") ||
-        parseToken(kw_type, "expected 'type' after '='") ||
-        parseType(result, false))
+        parseToken(kw_type, "expected 'type' after '='"))
       return true;
 
-    //if (parseStructDefinition(nameLoc, name, result))
-    //  return true;
-
-    // set the type name, checking for conflicts as we do so.
-    if (!m.addTypeName(name, result.get()))
-      return false;
-    if (forwardRefTypes.containsKey(name)) {
-      Pair<Type, SMLoc> itr = forwardRefTypes.get(name);
-      if (itr.first.equals(result.get()))
-        return error(nameLoc, "self referential type is invalid");
-
-      ((DerivedType) itr.first).refineAbstractTypeTo(result.get());
-      result.set(itr.first);
-      forwardRefTypes.remove(name);
+    OutRef<Type> result = new OutRef<>(null);
+    if (!namedTypes.containsKey(name)) {
+      namedTypes.put(name, Pair.get(null, new SMLoc()));
     }
 
-    // Inserting a name that is already defined, get the existing name.
-    Type existing = m.getTypeByName(name);
-    Util.assertion(existing != null, "conflict but no matching name");
+    if (parseStructDefinition(nameLoc, name, namedTypes.get(name), result))
+      return true;
 
-    // Otherwise, this is an attempt to redefine a type. That's okay if
-    // the redefinition is identical to the original.
-    if (existing.equals(result.get())) {
-      if (result.get().isOpaqueTy())
-        m.addTypeName(name, result.get().getForwardType(), true);
-      return false;
+    if (!(result.get() instanceof StructType)) {
+      if (namedTypes.get(name).first != null)
+        return error(nameLoc, "non-struct types may not be recursive");
+      namedTypes.get(name).first = result.get();
+      namedTypes.get(name).second = new SMLoc();
     }
-
-    // Any other kind of (non-equivalent) redefinition is an error.
-    return error(nameLoc, String
-        .format("redefinition of type named '%s' of type '%s'", name,
-            result.get().getDescription()));
+    return false;
   }
 
+  /**
+   * This method is used to parse a struct definition in a 'type' definition.
+   * @param typeLoc The source level location of the keyword 'type'.
+   * @param name  The name of this struct definition.
+   * @param entry  An entry in the {{@link #numberedTypes}}.
+   * @param resultTy  The result type definition would be returned.
+   * @return
+   */
   private boolean parseStructDefinition(SMLoc typeLoc,
                                         String name,
+                                        Pair<Type, SMLoc> entry,
                                         OutRef<Type> resultTy) {
+    if (entry.first != null && !entry.second.isValid())
+      return error(typeLoc, "redefinition of type");
+
+    // if we have an opaque, just return without filling the definition for the
+    // struct.
     if (eatIfPresent(kw_opaque)) {
-      resultTy.set(OpaqueType.get(context));
+      entry.second = new SMLoc();
+      if (entry.first == null)
+        entry.first = StructType.create(context, name);
+      resultTy.set(entry.first);
       return false;
     }
 
+    // If the type starts with '<', then it is either a packed struct or a vector.
     boolean isPacked = eatIfPresent(less);
 
     // If we don't have a struct, then we have a random type alias, which we
     // accept for compatibility with old files.  These types are not allowed to be
     // forward referenced and not allowed to be recursive.
     if (lexer.getTokKind() != lbrace) {
-      error(typeLoc, "forward references to non-struct type");
+      if (entry.first != null)
+        error(typeLoc, "forward references to non-struct type");
+
       resultTy.set(null);
       if (isPacked)
         return parseArrayVectorType(resultTy, true);
       return parseType(resultTy, false);
     }
 
-    StructType sty = StructType.create(context, name);
+    // This type is being defined,so clear the location information.
+    entry.second = new SMLoc();
+
+    if (entry.first == null)
+      entry.first = StructType.create(context, name);
+
+    StructType sty = (StructType) entry.first;
 
     ArrayList<Type> body = new ArrayList<>();
     if (parseStructBody(body) ||
@@ -547,7 +550,7 @@ public final class LLParser {
       return true;
 
     sty.setBody(body, isPacked);
-    resultTy.set(handleUpRefs(sty));
+    resultTy.set(sty);
     return false;
   }
 
@@ -601,38 +604,29 @@ public final class LLParser {
    * @return
    */
   private boolean parseUnnamedType() {
-    int typeID = numberedTypes.size();
-    // handle localVarID form.
-    if (lexer.getTokKind() == LocalVarID) {
-      if (lexer.getIntVal() != typeID)
-        return tokError(String
-            .format("type expected to be numbered '%d'", typeID));
-      lexer.lex();
-
-      if (parseToken(equal, "expected '=' after name"))
-        return true;
-    }
-    Util.assertion(lexer.getTokKind() == kw_type);
-
     SMLoc typeLoc = lexer.getLoc();
+    int typeID = lexer.getIntVal();
     lexer.lex();
 
-    OutRef<Type> result = new OutRef<>();
-    if (parseType(result, false))
+    if (parseToken(equal, "expected '=' after name") ||
+        parseToken(kw_type, "expected 'type' after '='"))
       return true;
 
-    // see if this type was previously referenced.
-    if (forwardRefTypeIDs.containsKey(typeID)) {
-      Pair<Type, SMLoc> itr = forwardRefTypeIDs.get(typeID);
-      if (!itr.first.equals(result.get()))
-        return error(typeLoc, "self referential type is invalid");
-
-      ((DerivedType) itr.first).refineAbstractTypeTo(result.get());
-      result.set(itr.first);
-      forwardRefTypeIDs.remove(typeID);
+    if (typeID >= numberedTypes.size()) {
+      for (int i = numberedTypes.size(); i <= typeID; i++)
+        numberedTypes.add(Pair.get(null, new SMLoc()));
     }
 
-    numberedTypes.add(result.get());
+    OutRef<Type> result = new OutRef<>();
+    if (parseStructDefinition(typeLoc, "", numberedTypes.get(typeID), result))
+      return true;
+
+    if (!(result.get() instanceof StructType)) {
+      if (numberedTypes.get(typeID).first != null)
+        return error(typeLoc, "non-struct type are may not be recursive!");
+      numberedTypes.get(typeID).first = result.get();
+      numberedTypes.get(typeID).second = new SMLoc();
+    }
     return false;
   }
 
@@ -1421,20 +1415,12 @@ public final class LLParser {
     return parseType(result, allowVoid);
   }
 
-  private boolean parseType(OutRef<Type> result, boolean allowVoid) {
-    SMLoc typeLoc = lexer.getLoc();
-    if (parseTypeRec(result))
-      return true;
-
-    if (!upRefs.isEmpty())
-      return error(upRefs.get(upRefs.size() - 1).loc,
-          "invalid unresolved type upward reference");
-    if (!allowVoid && result.get().isVoidType())
-      return error(typeLoc, "void type only allowed for function results");
-    return false;
+  private boolean parseType(OutRef<Type> result) {
+    return parseType(result, false);
   }
 
-  private boolean parseTypeRec(OutRef<Type> result) {
+  private boolean parseType(OutRef<Type> result, boolean allowVoid) {
+    SMLoc typeLoc = lexer.getLoc();
     switch (lexer.getTokKind()) {
       default:
         return tokError("expected type");
@@ -1466,45 +1452,40 @@ public final class LLParser {
           return true;
         break;
       case LocalVar:
-      case StringConstant:
+      case StringConstant: {
         // TypeRec ::= %bar
-        Type ty = m.getTypeByName(lexer.getStrVal());
-        if (ty != null)
-          result.set(ty);
-        else {
-          result.set(OpaqueType.get(context));
-          forwardRefTypes.put(lexer.getStrVal(),
-              Pair.get(result.get(), lexer.getLoc()));
-          m.addTypeName(lexer.getStrVal(), result.get());
+        if (!namedTypes.containsKey(lexer.getStrVal()))
+          namedTypes.put(lexer.getStrVal(), Pair.get(null,new SMLoc()));
+
+        Pair<Type, SMLoc> entry = namedTypes.get(lexer.getStrVal());
+        // If the type hasn't been defined yet, create a forward definition and
+        // remember where that forward def'n was seen (in case it never is defined).
+        if (entry.first == null) {
+          entry.first = StructType.create(context, lexer.getStrVal());
+          entry.second = lexer.getLoc();
         }
+        result.set(entry.first);
         lexer.lex();
         break;
-      case LocalVarID:
+      }
+      case LocalVarID: {
         // TypeRec ::= %4
         int typeId = lexer.getIntVal();
-        if (typeId < numberedTypes.size())
-          result.set(numberedTypes.get(typeId));
-        else {
-          if (forwardRefTypeIDs.containsKey(typeId)) {
-            result.set(forwardRefTypeIDs.get(typeId).first);
-          } else {
-            result.set(OpaqueType.get(context));
-            forwardRefTypeIDs.put(typeId,
-                Pair.get(result.get(), lexer.getLoc()));
-          }
+        if (typeId >= numberedTypes.size()) {
+          for (int i = numberedTypes.size(); i < typeId; i++)
+            numberedTypes.add(Pair.get(null, new SMLoc()));
         }
+        Pair<Type, SMLoc> entry = numberedTypes.get(typeId);
+        // If the type hasn't been defined yet, create a forward definition and
+        // remember where that forward def'n was seen (in case it never is defined).
+        if (entry.first == null) {
+          entry.first = StructType.create(context);
+          entry.second = lexer.getLoc();
+        }
+        result.set(entry.first);
         lexer.lex();
         break;
-      case backslash:
-        // TypeRec ::= '\' 4
-        lexer.lex();
-        OutRef<Integer> val = new OutRef<>(0);
-        if (parseInt32(val))
-          return true;
-        OpaqueType ot = OpaqueType.get(context);
-        upRefs.add(new UpRefRecord(lexer.getLoc(), val.get(), ot));
-        result.set(ot);
-        break;
+      }
     }
 
     // parse type suffixes.
@@ -1512,6 +1493,8 @@ public final class LLParser {
       switch (lexer.getTokKind()) {
         // end of type
         default:
+          if (!allowVoid && result.get().isVoidType())
+            return error(typeLoc, "void type only allowed for function results");
           return false;
 
         // TypeRec ::= TypeRec '*'
@@ -1523,7 +1506,7 @@ public final class LLParser {
                 "pointers to void are invalid, use i8* instead");
           if (!PointerType.isValidElementType(result.get()))
             return tokError("pointer to this type is invalid");
-          result.set(handleUpRefs(PointerType.getUnqual(result.get())));
+          result.set(PointerType.getUnqual(result.get()));
           lexer.lex();
           break;
         case kw_addrspace:
@@ -1541,8 +1524,7 @@ public final class LLParser {
               "expected '*' in address space"))
             return true;
 
-          result.set(handleUpRefs(
-              PointerType.get(result.get(), addrSpace.get())));
+          result.set(PointerType.get(result.get(), addrSpace.get()));
           lexer.lex();
           break;
         case lparen:
@@ -1614,9 +1596,7 @@ public final class LLParser {
 
     ArrayList<Type> argListTy = new ArrayList<>();
     argListTy.addAll(argList.stream().map(x -> x.type).collect(Collectors.toList()));
-
-    result.set(handleUpRefs(
-        FunctionType.get(result.get(), argListTy, isVarArg.get())));
+    result.set(FunctionType.get(result.get(), argListTy, isVarArg.get()));
     return false;
   }
 
@@ -1649,8 +1629,7 @@ public final class LLParser {
       String name = "";
       OutRef<Integer> attr = new OutRef<>();
       OutRef<backend.type.Type> argTy = new OutRef<>();
-      if ((inType ? parseTypeRec(argTy) : parseType(argTy, false))
-          || parseOptionalAttrs(attr, 0))
+      if ((parseType(argTy, inType)) || parseOptionalAttrs(attr, 0))
         return true;
 
       if (argTy.get().isVoidType())
@@ -1676,8 +1655,7 @@ public final class LLParser {
 
         // otherwise must be an argument type.
         typeLoc = lexer.getLoc();
-        if ((inType ? parseTypeRec(argTy) : parseType(argTy, false))
-            || parseOptionalAttrs(attr, 0))
+        if ((parseType(argTy, inType)) || parseOptionalAttrs(attr, 0))
           return true;
 
         if (argTy.get().isVoidType())
@@ -1715,41 +1693,6 @@ public final class LLParser {
     return false;
   }
 
-  private Type handleUpRefs(Type ty) {
-    if (!ty.isAbstract() || upRefs.isEmpty())
-      return ty;
-
-    OpaqueType typeToResolve = null;
-
-    for (int i = 0, e = upRefs.size(); i < e; i++) {
-      boolean containedType = false;
-      for (int j = 0, sz = ty.getNumContainedTypes(); j < sz; j++) {
-        if (upRefs.get(i).lastContainedTy.equals(ty.getContainedType(j))) {
-          containedType = true;
-          break;
-        }
-      }
-      if (!containedType)
-        continue;
-
-      int level = --upRefs.get(i).nestedLevel;
-      upRefs.get(i).lastContainedTy = ty;
-
-      if (level != 0)
-        continue;
-      if (typeToResolve == null)
-        typeToResolve = upRefs.get(i).upRefTy;
-      else
-        upRefs.get(i).upRefTy.refineAbstractTypeTo(typeToResolve);
-      upRefs.remove(i);
-      --i;
-      --e;
-    }
-    if (typeToResolve != null)
-      typeToResolve.refineAbstractTypeTo(ty);
-    return ty;
-  }
-
   /**
    * <pre>
    * TypeRec
@@ -1775,7 +1718,7 @@ public final class LLParser {
 
     SMLoc typeLoc = lexer.getLoc();
     OutRef<Type> eltTy = new OutRef<>(backend.type.Type.getVoidTy(context));
-    if (parseTypeRec(eltTy))
+    if (parseType(eltTy))
       return error(typeLoc, "array and vector element type can't be void");
 
     if (parseToken(isVector ? greater : rsquare,
@@ -1791,7 +1734,7 @@ public final class LLParser {
     } else {
       if (!ArrayType.isValidElementType(eltTy.get()))
         return error(typeLoc, "invalid array element type");
-      result.set(handleUpRefs(ArrayType.get(eltTy.get(), (int) size)));
+      result.set(ArrayType.get(eltTy.get(), (int) size));
     }
     return false;
   }
@@ -2606,8 +2549,6 @@ public final class LLParser {
           || parseValue(backend.type.Type.getLabelTy(context), val2, pfs) ||
           parseToken(rsquare, "expected ']' at end of phi op"))
         return InstError;
-
-      elts.add(Pair.get(val.get(), (BasicBlock) val2.get()));
     }
 
     PhiNode pn = new PhiNode(ty.get(), elts.size(), "");
@@ -2838,9 +2779,12 @@ public final class LLParser {
         if (parseGlobalValueVector(elts) || parseToken(rbrace,
             "expected '}' at end of struct constant"))
           return true;
-
-        id.constantVal = ConstantStruct.get(context, elts, false);
-        id.kind = ValID.ValIDKind.t_Constant;
+        id.constantStructElts = new Constant[elts.size()];
+        Constant[] eltsArray = new Constant[elts.size()];
+        elts.toArray(eltsArray);
+        id.constantStructElts = eltsArray;
+        id.kind = ValID.ValIDKind.t_ConstantStruct;
+        id.intVal = eltsArray.length;
         return false;
       }
       case less: {
@@ -2859,17 +2803,21 @@ public final class LLParser {
         }
 
         if (isPackedStruct) {
-          id.constantVal = ConstantStruct.get(context, elts, true);
-          id.kind = ValID.ValIDKind.t_Constant;
+          id.constantStructElts = new Constant[elts.size()];
+          elts.toArray(id.constantStructElts);
+          id.kind = ValID.ValIDKind.t_PackedConstantStruct;
+          id.intVal = elts.size();
           return false;
         }
 
         if (elts.isEmpty())
           return error(id.loc, "constant vector must not be empty");
 
-        if (!elts.get(0).getType().isIntegerTy() && elts.get(0).getType().isFloatingPointType())
+        if (!elts.get(0).getType().isIntegerTy() &&
+            elts.get(0).getType().isFloatingPointType()) {
           return error(firstEltLoc,
               "vector elements must have integer or floating point");
+        }
 
         // verify that all the vector elements have the same type.
         Type firstEltType = elts.get(0).getType();
@@ -2880,8 +2828,7 @@ public final class LLParser {
                     + firstEltType.getDescription() + "'");
         }
 
-        id.constantVal = null;
-        tokError("vector type not supported");
+        id.constantVal = ConstantVector.get(elts);
         id.kind = ValID.ValIDKind.t_Constant;
         return false;
       }
@@ -2908,7 +2855,6 @@ public final class LLParser {
         ArrayType at = ArrayType.get(elts.get(0).getType(), elts.size());
 
         // verify all elements have same type.
-
         for (int i = 1, e = elts.size(); i < e; i++) {
           if (!elts.get(i).getType().equals(firsEltType))
             return error(firstEltLoc,
@@ -3333,6 +3279,29 @@ public final class LLParser {
           return error(id.loc, "constant expression type mismatch");
         val.set(id.constantVal);
         return false;
+      case t_ConstantStruct:
+      case t_PackedConstantStruct: {
+        StructType st = ty instanceof StructType ? (StructType)ty : null;
+        if (st != null) {
+          if (st.getNumOfElements() != id.constantStructElts.length)
+            return error(id.loc, "initializer with struct type has wrong # elements");
+
+          if (st.isPacked() != (id.kind == t_PackedConstantStruct))
+            return error(id.loc, "packedness of initializer and type don't match");
+
+          // verify that the elements are compatible with the member of struct tyep.
+          for (int i = 0, e = id.constantStructElts.length; i < e; i++) {
+            if (!id.constantStructElts[i].getType().equals(st.getElementType(i)))
+              return error(id.loc,
+                  String.format("element %d of struct initializer doesn't match struct element type", i));
+          }
+          val.set(ConstantStruct.get(st, id.constantStructElts));
+          return false;
+        }
+        else {
+          return error(id.loc, "constant expression type mismatch");
+        }
+      }
     }
   }
 
@@ -3923,16 +3892,6 @@ public final class LLParser {
       forwardRefInstMetadata.clear();
     }
 
-    if (!forwardRefTypes.isEmpty()) {
-      Map.Entry<String, Pair<Type, SMLoc>> itr = forwardRefTypes.entrySet().iterator().next();
-      return error(itr.getValue().second,
-          String.format("use of undefined type name '%s'", itr.getKey()));
-    }
-    if (!forwardRefTypeIDs.isEmpty()) {
-      TIntObjectIterator<Pair<Type, SMLoc>> itr = forwardRefTypeIDs.iterator();
-      return error(itr.value().second,
-          String.format("use of undefined type '%%%d'", itr.key()));
-    }
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<GlobalValue, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
       return error(itr.getValue().second,

@@ -16,9 +16,9 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.TypeMap;
 import tools.Util;
 
+import java.util.HashMap;
 import java.util.Objects;
 
 /**
@@ -26,10 +26,10 @@ import java.util.Objects;
  * @version 0.4
  */
 public class PointerType extends SequentialType {
-  private static TypeMap<Type, PointerType> pointerTypes;
+  private static HashMap<Type, PointerType> pointerTypes;
 
   static {
-    pointerTypes = new TypeMap<>();
+    pointerTypes = new HashMap<>();
   }
 
   private int addressSpace;
@@ -81,6 +81,17 @@ public class PointerType extends SequentialType {
     return numElts == ty.getNumContainedTypes() //&& isAbstract == ty.isAbstract
         && getAddressSpace() == ty.getAddressSpace() &&
         (getElementType() == ty.getElementType() || Objects.equals(getElementType(), ty.getElementType()));
+  }
+
+  @Override
+  public int hashCode() {
+    int code = getAddressSpace();
+    for (int i = 0, e = getNumContainedTypes(); i < e; i++) {
+      if (getContainedType(i) != null)
+        code |= getContainedType(i).hashCode();
+    }
+    code |= getNumContainedTypes();
+    return code;
   }
 
   @Override

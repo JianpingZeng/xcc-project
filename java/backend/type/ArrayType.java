@@ -16,8 +16,9 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.TypeMap;
 import tools.Util;
+
+import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
@@ -50,10 +51,10 @@ public final class ArrayType extends SequentialType {
     }
   }
 
-  private static TypeMap<ArrayValType, ArrayType> arrayTypes;
+  private static HashMap<ArrayValType, ArrayType> arrayTypes;
 
   static {
-    arrayTypes = new TypeMap<>();
+    arrayTypes = new HashMap<>();
   }
 
   protected ArrayType(Type elemType, int numElts) {

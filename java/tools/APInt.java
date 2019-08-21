@@ -1563,13 +1563,13 @@ public class APInt implements Cloneable {
   }
 
   public static boolean add(long[] dest, long[] x, long[] y, int len) {
-    boolean carray = false;
+    int carray = 0;
     for (int i = 0; i < len; i++) {
       long temp = Math.min(x[i], y[i]);
-      dest[i] = x[i] + y[i] + (carray ? 1 : 0);
-      carray = dest[i] < temp || (carray && dest[i] == temp);
+      dest[i] = x[i] + y[i] + carray;
+      carray = (Long.compareUnsigned(dest[i], temp) < 0 || (carray != 0 && dest[i] == temp)) ? 1: 0;
     }
-    return carray;
+    return carray != 0;
   }
 
   /**
@@ -1634,18 +1634,17 @@ public class APInt implements Cloneable {
       dest[i] = carry + lx * ly;
 
       // Determine if the add above introduces carry.
-      hasCarry = (dest[i] < carry) ? 1 : 0;
-      carry = hx * hy + (dest[i] >>> 32) + (hasCarry != 0 ? (1 << 32) : 0);
+      hasCarry = Long.compareUnsigned(dest[i], carry) < 0 ? 1 : 0;
+      carry = hx * ly + (dest[i] >>> 32) + (hasCarry != 0 ? (1L << 32) : 0);
 
       // The upper limit of carry can be (2^32 - 1)(2^32 - 1) +
       // (2^32 - 1) + 2^32 = 2^64.
       hasCarry = (carry == 0 && hasCarry != 0) ? 1 : (carry == 0 ? 2 : 0);
 
-      carry += (lx * ly) * 0xffffffffL;
+      carry += (lx * hy) & 0xffffffffL;
       dest[i] = (carry << 32) | (dest[i] & 0xffffffffL);
       carry = (((carry == 0 && hasCarry != 2) || hasCarry == 1) ?
-          (1L << 32) :
-          0) + (carry >> 32) + ((lx * hy) >> 32) + hx * hy;
+          (1L << 32) : 0) + (carry >>> 32) + ((lx * hy) >>> 32) + hx * hy;
     }
     return carry;
   }
@@ -1678,19 +1677,15 @@ public class APInt implements Cloneable {
         // hasCarry == 2, no carry and the calculation result == 0.
         int hasCarry = 0;
         long result = carry + lx * ly;
-        hasCarry = (result < carry) ? 1 : 0;
-        carry = (hasCarry != 0 ? (1L << 32) : 0);
-        hasCarry = (carry == 0 && hasCarry != 0) ?
-            1 :
-            (carry == 0 ? 2 : 0);
+        hasCarry = Long.compareUnsigned(result, carry) < 0 ? 1 : 0;
+        carry = (hasCarry != 0 ? (1L << 32) : 0) + hx * ly + (result >>> 32);
+        hasCarry = (carry == 0 && hasCarry != 0) ? 1 : (carry == 0 ? 2 : 0);
 
         carry += (lx * hy) & 0xffffffffL;
         result = (carry << 32) | (result & 0xffffffffL);
-        dest[i + j] = result;
-        carry = (((carry == 0 && hasCarry != 2) || hasCarry == 1) ?
-            (1L << 32) :
-            0) + (carry >> 32) + (dest[i + j] < result ? 1 : 0) + (
-            (lx * hy) >> 32) + hx * hy;
+        dest[i + j] += result;
+        carry = (((carry == 0 && hasCarry != 2) || hasCarry == 1) ? (1L << 32) : 0) +
+            (carry >> 32) + (dest[i + j] < result ? 1 : 0) + ((lx * hy) >> 32) + hx * hy;
       }
       dest[i + lenX] = carry;
     }
@@ -1769,24 +1764,10 @@ public class APInt implements Cloneable {
   public APInt addAssign(final APInt rhs) {
     Util.assertion(bitWidth == rhs.bitWidth, "Bit width must be same!");
 
-    if (isSingleWord()) {
+    if (isSingleWord())
       val += rhs.val;
-      return this;
-    }
-
-    int lhsBits = getActiveBits();
-    int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
-    if (lhsWords == 0)
-      //　0 + X = X;
-      return this;
-
-    int rhsBits = rhs.getActiveBits();
-    int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
-    if (rhsWords == 0)
-      //X + 0 = X;
-      return this;
-
-    add(pVal, pVal, rhs.pVal, getNumWords());
+    else
+      add(pVal, pVal, rhs.pVal, getNumWords());
     return clearUnusedBits();
   }
 
@@ -1835,7 +1816,7 @@ public class APInt implements Cloneable {
       // 0 * x = 0.
       return this;
 
-    int rhsBits = getActiveBits();
+    int rhsBits = rhs.getActiveBits();
     int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
     if (rhsWords == 0)
       // X * 0 = 0.
@@ -1849,7 +1830,7 @@ public class APInt implements Cloneable {
     clear();
     int wordsToCopy = destWords >= getNumWords() ? getNumWords() : destWords;
     System.arraycopy(dest, 0, pVal, 0, wordsToCopy);
-    dest = null;
+    clearUnusedBits();
     return this;
   }
 

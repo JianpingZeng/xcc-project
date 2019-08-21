@@ -2502,10 +2502,8 @@ public abstract class Instruction extends User {
     }
 
     public static CallInst create(Value target, Value[] args, String name, Instruction insertBefore) {
-      Util.assertion(target instanceof Function);
-      Function fn = (Function) target;
       CallInst ci = null;
-      if (fn.isIntrinsicID())
+      if (target instanceof Function && ((Function)target).isIntrinsicID())
         ci = IntrinsicInst.create(target, args, name, insertBefore);
       return ci == null ? new CallInst(args, target, name, insertBefore) : ci;
     }
@@ -2633,16 +2631,11 @@ public abstract class Instruction extends User {
     private void init(Value target, Value[] args) {
       reserve(ArgumentOffset + args.length);
       Util.assertion((getNumOfOperands() == ArgumentOffset + args.length), "NumOperands not set up?");
-
-      Util.assertion(target instanceof Function, "Callee is not Function?");
-      Function fn = (Function) target;
       setOperand(0, target, this);
       int idx = ArgumentOffset;
       for (Value arg : args) {
         setOperand(idx++, arg, this);
       }
-      callingConv = fn.getCallingConv();
-      attributes = fn.getAttributes();
     }
 
     public int getNumsOfArgs() {

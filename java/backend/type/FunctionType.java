@@ -16,10 +16,10 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import tools.TypeMap;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Objects;
 
 /**
@@ -65,7 +65,7 @@ public class FunctionType extends DerivedType {
 
   private boolean isVarArgs;
 
-  private static TypeMap<FunctionValType, FunctionType> functionTypes = new TypeMap<>();
+  private static HashMap<FunctionValType, FunctionType> functionTypes = new HashMap<>();
 
   private FunctionType(Type retType, final ArrayList<Type> argsType,
                        boolean isVarArgs) {
