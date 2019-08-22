@@ -2501,6 +2501,7 @@ public abstract class TargetLowering {
                                          SDValue op2,
                                          SDValue op3,
                                          int align,
+                                         boolean isVolatile,
                                          Value dstSV,
                                          long dstOff) {
     return new SDValue();

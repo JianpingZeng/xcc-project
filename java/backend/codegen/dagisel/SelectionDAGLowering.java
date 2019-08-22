@@ -2140,8 +2140,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         SDValue op2 = getValue(ci.getArgOperand(1));
         SDValue op3 = getValue(ci.getArgOperand(2));
         int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
-        dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3,
-            align, ci.getArgOperand(0), 0));
+        boolean isVolatile = ((ConstantInt) ci.getArgOperand(4)).getZExtValue() == 1;
+        dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3, align, isVolatile, ci.getArgOperand(0), 0));
         return null;
       }
       case memcpy: {

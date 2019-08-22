@@ -1233,7 +1233,14 @@ public class SelectionDAG {
   public void clear() {
     allNodes.clear();
     cseMap.clear();
+    targetExternalSymbols.clear();
+    externalSymbols.clear();
+    vtlist.clear();
     Collections.fill(condCodeNodes, null);
+    Collections.fill(valueTypeNodes, null);
+    extendedValueTypeNodes.clear();
+    dbgInfo.clear();
+
     entryNode.useList = null;
     add(entryNode);
     root = getEntryNode();
@@ -1986,6 +1993,7 @@ public class SelectionDAG {
                            SDValue src,
                            SDValue size,
                            int align,
+                           boolean isVolatile,
                            Value destSV,
                            long dstSVOff) {
     if (size.getNode() instanceof ConstantSDNode) {
@@ -1999,8 +2007,8 @@ public class SelectionDAG {
         return result;
     }
 
-    SDValue result = tli.emitTargetCodeForMemset(this, chain, dst, src, size,
-        align, destSV, dstSVOff);
+    SDValue result = tli.emitTargetCodeForMemset(this, chain, dst, src,
+        size, align, isVolatile, destSV, dstSVOff);
     if (result.getNode() != null)
       return result;
 
@@ -2028,12 +2036,12 @@ public class SelectionDAG {
     entry.isSExt = false;
     args.add(entry);
 
-    Pair<SDValue, SDValue> callResult =
-        tli.lowerCallTo(context, chain, Type.getVoidTy(context),
-            false, false, false, false, 0,
-            tli.getLibCallCallingConv(RTLIB.MEMSET),
-            false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMSET),
-                new EVT(tli.getPointerTy())), args, this);
+    Pair<SDValue, SDValue> callResult = tli.lowerCallTo(context, chain,
+        Type.getVoidTy(context),
+        false, false, false, false, 0,
+        tli.getLibCallCallingConv(RTLIB.MEMSET),
+        false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMSET),
+            new EVT(tli.getPointerTy())), args, this);
 
     return callResult.second;
   }
@@ -2441,6 +2449,7 @@ public class SelectionDAG {
         }
       }
     }
+
     SDNode firstNode = allNodes.get(0);
     SDNode lastNode = allNodes.get(allNodes.size() - 1);
     Util.assertion(insertPos == allNodes.size(), "Topological incomplete!");

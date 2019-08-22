@@ -5755,14 +5755,137 @@ public class X86TargetLowering extends TargetLowering {
   @Override
   public SDValue emitTargetCodeForMemset(SelectionDAG dag,
                                          SDValue chain,
-                                         SDValue op1,
-                                         SDValue op2,
-                                         SDValue op3,
+                                         SDValue dest,
+                                         SDValue src,
+                                         SDValue size,
                                          int align,
+                                         boolean isVolatile,
                                          Value dstSV,
                                          long dstOff) {
-    // TODO, 2/1/2019
-    return super.emitTargetCodeForMemset(dag, chain, op1,op2, op3, align,dstSV,dstOff);
+    ConstantSDNode constantSize = size.getNode() instanceof ConstantSDNode ?
+        (ConstantSDNode) size.getNode() : null;
+    // if to a segment-relative address space, use the default lowering.
+    if (dstOff >= 256)
+      return new SDValue();
+
+    if ((align & 3) != 0 || constantSize == null ||
+        constantSize.getZExtValue() > subtarget.getMaxInlineSizeThreshold()) {
+      SDValue inFlag = new SDValue(null, 0);
+      // check to see if there is a specialized entry-point for memory zeroing.
+      ConstantSDNode v = src.getNode() instanceof ConstantSDNode ?
+          (ConstantSDNode)src.getNode() : null;
+      String bzeroEntry = v != null && v.isNullValue() ? subtarget.getBZeroEntry() : null;
+      if (bzeroEntry != null) {
+        EVT intPtr = new EVT(getPointerTy());
+        Type intPtrTy = getTargetData().getIntPtrType(dag.getContext());
+        ArrayList<ArgListEntry> args = new ArrayList<>();
+        ArgListEntry entry = new ArgListEntry();
+        entry.node = dest;
+        entry.ty = intPtrTy;
+        args.add(entry);
+        Pair<SDValue, SDValue> callResult = lowerCallTo(dag.getContext(),
+            chain, Type.getVoidTy(dag.getContext()),
+            false, false, false, false, 0, CallingConv.C, false, false,
+            dag.getExternalSymbol(bzeroEntry, intPtr), args, dag);
+        return callResult.second;
+      }
+      // otherwise, emit a target-independent call.
+      return new SDValue();
+    }
+
+    long sizeVal = constantSize.getZExtValue();
+    SDValue inFlag = new SDValue(null, 0);
+    EVT avt = new EVT();
+    SDValue count = new SDValue();
+    ConstantSDNode valC = src.getNode() instanceof ConstantSDNode ?
+        (ConstantSDNode)src.getNode() : null;
+    int byteleft = 0;
+    boolean twoRepStos = false;
+    if (valC != null) {
+      int valReg = 0;
+      long val = valC.getZExtValue() & 255;
+      switch (align & 3) {
+        case 2: // word aligned.
+          avt = new EVT(MVT.i16);
+          valReg = X86GenRegisterNames.AX;
+          val = (val << 8) | val;
+          break;
+        case 0: // dword aligned.
+          avt = new EVT(MVT.i32);
+          valReg = X86GenRegisterNames.EAX;
+          val = (val << 8) | val;
+          val = (val << 16) | val;
+          if (subtarget.is64Bit() && (align & 0x7) == 0) {
+            // qword aligned.
+            avt = new EVT(MVT.i64);
+            valReg = X86GenRegisterNames.RAX;
+            val = (val << 32) | val;
+          }
+          break;
+        default:
+          // byte aligned.
+          avt = new EVT(MVT.i8);
+          valReg = X86GenRegisterNames.AL;
+          count = dag.getIntPtrConstant(sizeVal);
+          break;
+      }
+      if (avt.bitsGT(new EVT(MVT.i8))) {
+        int ubytes = avt.getSizeInBits()/8;
+        count = dag.getIntPtrConstant(sizeVal/ubytes);
+        byteleft = (int) (sizeVal % ubytes);
+      }
+      chain = dag.getCopyToReg(chain, valReg, dag.getConstant(val, avt, false), inFlag);
+      inFlag = chain.getValue(1);
+    }
+    else {
+      avt = new EVT(MVT.i8);
+      count = dag.getIntPtrConstant(sizeVal);
+      chain = dag.getCopyToReg(chain, X86GenRegisterNames.AL, src, inFlag);
+      inFlag = chain.getValue(1);
+    }
+
+    chain = dag.getCopyToReg(chain, subtarget.is64Bit() ?
+        X86GenRegisterNames.RCX :
+        X86GenRegisterNames.ECX, count, inFlag);
+    inFlag = chain.getValue(1);
+    chain = dag.getCopyToReg(chain, subtarget.is64Bit()?
+        X86GenRegisterNames.RDI :
+        X86GenRegisterNames.EDI, dest, inFlag);
+    inFlag = chain.getValue(1);
+
+    SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
+    SDValue[] ops = new SDValue[] {chain, dag.getValueType(avt), inFlag};
+    chain = dag.getNode(X86ISD.REP_STOS, vts, ops);
+    if (twoRepStos) {
+      inFlag = chain.getValue(1);
+      count = size;
+      EVT cvt = count.getValueType();
+      SDValue left = dag.getNode(ISD.AND, cvt, count,
+          dag.getConstant(avt.equals(new EVT(MVT.i64)) ? 7 : 3, cvt, false));
+      chain = dag.getCopyToReg(chain, avt.equals(new EVT(MVT.i64)) ?
+          X86GenRegisterNames.RCX :
+          X86GenRegisterNames.ECX, left, inFlag);
+      inFlag = chain.getValue(1);
+      vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
+      ops = new SDValue[] {chain, dag.getValueType(new EVT(MVT.i8)), inFlag};
+      chain = dag.getNode(X86ISD.REP_STOS, vts, ops);
+    }
+    else if (byteleft != 0) {
+      // handle the last 1 - 7 bytes.
+      int offset = (int) (sizeVal - byteleft);
+      EVT addrVT = dest.getValueType();
+      EVT sizeVT = size.getValueType();
+
+      chain = dag.getMemset(chain, dag.getNode(ISD.ADD, addrVT, dest,
+          dag.getConstant(offset, addrVT, false)),
+          src,
+          dag.getConstant(byteleft, sizeVT, false),
+          align,
+          isVolatile,
+          dstSV,
+          offset);
+    }
+    return chain;
   }
 
   @Override
