@@ -407,7 +407,7 @@ public class FunctionLoweringInfo {
       APInt val = ci.getValue().zextOrTrunc(bitWidth);
       destLOI.numSignBits = val.getNumSignBits();
       destLOI.knownZero = val.not();
-      destLOI.knownOne = val;
+      destLOI.knownOne = val.clone();
     }
     else {
       Util.assertion(valueMap.containsKey(v), "V should have been placed in ValueMap when its CopyToReg node was created!");
@@ -442,7 +442,7 @@ public class FunctionLoweringInfo {
         APInt val = ci.getValue().zextOrTrunc(bitWidth);
         destLOI.numSignBits = Math.min(destLOI.numSignBits, val.getNumSignBits());
         destLOI.knownZero.andAssign(val.not());
-        destLOI.knownOne.andAssign(val);
+        destLOI.knownOne.andAssign(val.clone());
         continue;
       }
 

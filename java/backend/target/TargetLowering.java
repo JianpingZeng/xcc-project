@@ -1896,7 +1896,7 @@ public abstract class TargetLowering {
 
       if (cc == SETGE || cc == SETUGE) {
         if (c.eq(minVal)) return dag.getConstant(1, vt, false);
-        return dag.getSetCC(vt, lhs, dag.getConstant(c.decrease(),
+        return dag.getSetCC(vt, lhs, dag.getConstant(c.clone().decrease(),
             rhs.getValueType(), false), cc == SETGE ? SETGT : SETUGT);
       }
 
@@ -2162,7 +2162,8 @@ public abstract class TargetLowering {
   }
 
   private static boolean valueHasExactlyOneBitSet(SDValue val, SelectionDAG dag) {
-    if (val.getNode().getOperand(0).getNode() instanceof ConstantSDNode) {
+    if (val.getNode().getNumOperands() > 0 &&
+        val.getNode().getOperand(0).getNode() instanceof ConstantSDNode) {
       ConstantSDNode c = (ConstantSDNode) val.getNode().getOperand(0).getNode();
       if (c.getAPIntValue().eq(1) && val.getOpcode() == ISD.SHL)
         return true;

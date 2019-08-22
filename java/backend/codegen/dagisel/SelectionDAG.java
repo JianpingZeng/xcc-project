@@ -2445,12 +2445,9 @@ public class SelectionDAG {
     SDNode lastNode = allNodes.get(allNodes.size() - 1);
     Util.assertion(insertPos == allNodes.size(), "Topological incomplete!");
     Util.assertion(firstNode.getOpcode() == ISD.EntryToken, "First node in allNode is not a entry token!");
-
     Util.assertion(firstNode.getNodeID() == 0, "First node in allNode does't have zero id!");
-
-    Util.assertion(lastNode.getNodeID() == allNodes.size() - 1, "Last node in topological doesn't have " + (allNodes.size() - 1)
-        + " id!");
-
+    Util.assertion(lastNode.getNodeID() == allNodes.size() - 1,
+        "Last node in topological doesn't have " + (allNodes.size() - 1) + " id!");
     Util.assertion(lastNode.isUseEmpty(), "Last node in topological shouldn't have use");
     Util.assertion(dagSize == allNodes.size(), "Node count mismatch!");
     return dagSize;

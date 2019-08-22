@@ -1683,7 +1683,7 @@ public class X86TargetLowering extends TargetLowering {
           arg = dag.getNode(ISD.SIGN_EXTEND, regVT, arg);
           break;
         case ZExt:
-          arg = dag.getNode(ISD.SIGN_EXTEND, regVT, arg);
+          arg = dag.getNode(ISD.ZERO_EXTEND, regVT, arg);
           break;
         case AExt:
           if (regVT.isVector() && regVT.getSizeInBits() == 128) {

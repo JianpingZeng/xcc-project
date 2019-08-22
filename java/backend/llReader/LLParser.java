@@ -2113,6 +2113,7 @@ public final class LLParser {
     OutRef<Integer> align = new OutRef<>(0);
     OutRef<Boolean> needConsiderComma = new OutRef<>(false);
 
+    isVolatile = eatIfPresent(kw_volatile);
     if (parseTypeAndValue(val, valLoc, pfs) || parseToken(comma,
         "expected a ',' in store instruction") || parseTypeAndValue(ptr,
         ptrLoc, pfs) || parseOptionalCommaAlign(align, needConsiderComma))

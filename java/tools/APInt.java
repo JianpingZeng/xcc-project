@@ -214,10 +214,8 @@ public class APInt implements Cloneable {
    */
   private void fromString(int numBits, String str, int radix) {
     Util.assertion(!str.isEmpty(), "Invalid string length");
-    Util.assertion((radix == 10 || radix == 8
-            || radix == 2 || radix == 16),
+    Util.assertion((radix == 10 || radix == 8 || radix == 2 || radix == 16),
         "Radix should be 2, 8, 10, or 16!");
-
 
     int slen = str.length();
     char[] arr = str.toCharArray();
@@ -231,11 +229,8 @@ public class APInt implements Cloneable {
 
     Util.assertion(slen < numBits || radix != 2, "Insufficient bit width");
     Util.assertion((slen - 1) * 3 <= numBits || radix != 8, "Insufficient bit width");
-
     Util.assertion((slen - 1) * 4 <= numBits || radix != 16, "Insufficient bit width");
-
     Util.assertion(((slen - 1) * 64) / 22 <= numBits || radix != 10, "Insufficient bit width");
-
 
     // Allocate memory.
     if (!isSingleWord())

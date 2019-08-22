@@ -163,9 +163,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     // Iterate over all basic blocks in the function in the post traversal order
     ArrayList<BasicBlock> blocks = DepthFirstOrder.reversePostOrder(fn.getEntryBlock());
     for (BasicBlock llvmBB : blocks) {
-      // First, clear the locaValueMap.
+      // First, clear the localValueMap.
       funcInfo.mbb = funcInfo.mbbmap.get(llvmBB);
-
       boolean allPredsVisited = true;
       for (int i = 0, e = llvmBB.getNumPredecessors(); i < e; i++) {
         BasicBlock predBB = llvmBB.predAt(i);
@@ -203,7 +202,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
       for (; bi != end && !sdl.hasTailCall(); ++bi) {
         Instruction inst = llvmBB.getInstAt(bi);
-        Util.Debug(inst.toString());
+        if (Util.DEBUG) System.err.println(inst.toString());
+
         if (!(inst instanceof TerminatorInst))
           sdl.visit(inst);
       }
