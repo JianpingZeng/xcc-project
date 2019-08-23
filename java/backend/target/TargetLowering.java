@@ -2313,7 +2313,8 @@ public abstract class TargetLowering {
           return tlo.combineTo(op, op.getOperand(0));
 
         APInt inSignBit = APInt.getSignBit(vt.getSizeInBits());
-        inSignBit.zext(bitwidth);
+        inSignBit = inSignBit.zext(bitwidth);
+
         APInt inputDemandedBits = APInt.getLowBitsSet(bitwidth,
             vt.getSizeInBits()).and(newMask);
         inputDemandedBits.orAssign(inSignBit);
@@ -2600,7 +2601,7 @@ public abstract class TargetLowering {
     if (created != null)
       created.add(q.getNode());
 
-    if (magics.a) {
+    if (!magics.a) {
       Util.assertion(magics.s < n1C.getAPIntValue().getBitWidth());
       return dag.getNode(ISD.SRL, vt, q,
           dag.getConstant(magics.s, new EVT(getShiftAmountTy()), false));

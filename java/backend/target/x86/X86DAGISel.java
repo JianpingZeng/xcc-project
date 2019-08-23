@@ -63,7 +63,9 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     Function f = mf.getFunction();
     optForSize = f.hasFnAttr(Attribute.OptimizeForSize);
     if (optLevel != TargetMachine.CodeGenOpt.None)
-      preprocessForFPConvert();
+      preprocessForRMW();
+
+    preprocessForFPConvert();
   }
 
   public static X86DAGISel createX86DAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt level) {
@@ -1102,6 +1104,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         am.get().indexReg = neg;
         am.get().scale = 1;
 
+        // FIXME, we have to comment the following code for two reasons
+        // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+        // 2. it is unnecessary to keep the topological order.
+        // 8/22/2019.
+        /*
         if (zero.getNode().getNodeID() == -1 ||
             zero.getNode().getNodeID() > n.getNode().getNodeID()) {
           curDAG.repositionNode(n.getNode(), zero.getNode());
@@ -1111,7 +1118,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             neg.getNode().getNodeID() > n.getNode().getNodeID()) {
           curDAG.repositionNode(n.getNode(), neg.getNode());
           neg.getNode().setNodeID(n.getNode().getNodeID());
-        }
+        }*/
         return false;
       }
       case ISD.ADD: {
@@ -1181,7 +1188,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             SDValue shlCount = curDAG.getConstant(scaleLog, new EVT(MVT.i8), false);
             SDValue shl = curDAG.getNode(ISD.SHL, n.getValueType(), and, shlCount);
 
-            if (eight.getNode().getNodeID() == -1 ||
+            // FIXME, we have to comment the following code for two reasons
+            // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+            // 2. it is unnecessary to keep the topological order.
+            // 8/22/2019.
+            /*if (eight.getNode().getNodeID() == -1 ||
                 eight.getNode().getNodeID() > x.getNode().getNodeID()) {
               curDAG.repositionNode(x.getNode(), eight.getNode());
               eight.getNode().setNodeID(x.getNode().getNodeID());
@@ -1210,7 +1221,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 shl.getNode().getNodeID() > n.getNode().getNodeID()) {
               curDAG.repositionNode(n.getNode(), shl.getNode());
               shl.getNode().setNodeID(n.getNode().getNodeID());
-            }
+            }*/
             curDAG.replaceAllUsesWith(n, shl, null);
             am.get().indexReg = and;
             am.get().scale = 1 << scaleLog;
@@ -1233,7 +1244,11 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         SDValue newShift = curDAG.getNode(ISD.SHL, n.getValueType(),
             newAnd, new SDValue(c1, 0));
 
-        if (c1.getNodeID() > x.getNode().getNodeID()) {
+        // FIXME, we have to comment the following code for two reasons
+        // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+        // 2. it is unnecessary to keep the topological order.
+        // 8/22/2019.
+        /*if (c1.getNodeID() > x.getNode().getNodeID()) {
           curDAG.repositionNode(x.getNode(), c1);
           c1.setNodeID(x.getNode().getNodeID());
         }
@@ -1251,7 +1266,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             newShift.getNode().getNodeID() > n.getNode().getNodeID()) {
           curDAG.repositionNode(n.getNode(), newShift.getNode());
           newShift.getNode().setNodeID(n.getNode().getNodeID());
-        }
+        }*/
         curDAG.replaceAllUsesWith(n, newShift, null);
         am.get().scale = 1 << shiftCst;
         am.get().indexReg = newAnd;
@@ -1436,7 +1451,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
-  protected void preprocessForRMW() {
+  private void preprocessForRMW() {
     OutRef<SDValue> x = new OutRef<>();
     for (SDNode node : curDAG.allNodes) {
       if (node.getOpcode() == X86ISD.CALL) {
@@ -1628,8 +1643,12 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     curDAG.updateNodeOperands(call, ops);
   }
 
-  protected void preprocessForFPConvert() {
-    for (SDNode node : curDAG.allNodes) {
+  /**
+   * Lower the FP_EXTEND and FP_ROUND operation to store-load.
+   */
+  private void preprocessForFPConvert() {
+    for (int i = 0; i < curDAG.allNodes.size(); i++) {
+      SDNode node = curDAG.allNodes.get(i);
       if (node.getOpcode() != ISD.FP_ROUND && node.getOpcode() != ISD.FP_EXTEND)
         continue;
 
@@ -1641,6 +1660,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         continue;
 
       if (!srcIsSSE && !dstIsSSE) {
+        // If this is an FPStack extension, it is a noop.
         if (node.getOpcode() == ISD.FP_EXTEND)
           continue;
         if (node.getConstantOperandVal(1) != 0)
@@ -1658,6 +1678,13 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           memTmp, null, 0, memVT);
       SDValue result = curDAG.getExtLoad(EXTLOAD, dstVT, store, memTmp,
           null, 0, memVT);
+
+      curDAG.replaceAllUsesOfValueWith(new SDValue(node, 0), result);
+      curDAG.deleteNode(node);
+
+      // delete the node from allNodes list.
+      curDAG.allNodes.remove(i);
+      --i;
     }
   }
 

@@ -381,31 +381,41 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
   private void instructionSelect() {
     Util.assertion(matcherTable != null, "MatchTable should be initialized before calling instructionSelect");
-    dagSize = curDAG.assignTopologicalOrder();
 
-    SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(curDAG.getRoot());
-    iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
-    Util.assertion(iselPosition != -1, "Specified root node not exists in allNodes!");
-    iselPosition++;
-    while (iselPosition != 0) {
-      SDNode node = curDAG.allNodes.get(--iselPosition);
-      if (node.isUseEmpty() || node.isDeleted() || node.isMachineOpecode())
-        continue;
+    // call the target hook to do some preparation work.
+    preprocessISelDAG();
+    boolean changed;
+    do {
+      changed = false;
+      dagSize = curDAG.assignTopologicalOrder();
+      SDNode.HandleSDNode dummy = new SDNode.HandleSDNode(curDAG.getRoot());
+      iselPosition = curDAG.allNodes.indexOf(curDAG.getRoot().getNode());
+      Util.assertion(iselPosition != -1, "Specified root node not exists in allNodes!");
+      iselPosition++;
+      while (iselPosition != 0) {
+        SDNode node = curDAG.allNodes.get(--iselPosition);
+        if (node.isUseEmpty() || node.isDeleted() || node.isMachineOpecode())
+          continue;
 
-      SDNode resNode = select(node);
-      if (Objects.equals(resNode, node))
-        continue;
-      if (resNode != null)
-        replaceUses(node, resNode);
+        SDNode resNode = select(node);
+        if (Objects.equals(resNode, node))
+          continue;
 
-      if (node.isUseEmpty())
-        // we just mark node and all SDNode which can be reached from node as
-        // DELETED_NODE instead of erasing it from allNodes.
-        curDAG.collectDeadNode(node);
-    }
-    curDAG.setRoot(dummy.getValue());
-    dummy.dropOperands();
-    curDAG.removeDeadNodes();
+        if (resNode != null) {
+          changed = true;
+          replaceUses(node, resNode);
+        }
+        if (node.isUseEmpty())
+          // we just mark node and all SDNode which can be reached from node as
+          // DELETED_NODE instead of erasing it from allNodes.
+          curDAG.collectDeadNode(node);
+      }
+      curDAG.setRoot(dummy.getValue());
+      dummy.dropOperands();
+      curDAG.removeDeadNodes();
+    }while (changed);
+
+    postprocessISelDAG();
   }
 
   private long getVBR(long val, OutRef<Integer> idx) {

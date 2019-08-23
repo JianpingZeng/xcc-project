@@ -1641,7 +1641,7 @@ public class SelectionDAG {
           }
         }
         break;
-      case ISD.SIGN_EXTEND_INREG: {
+      /*case ISD.SIGN_EXTEND_INREG: {
         EVT vt = ((VTSDNode) op.getOperand(1).getNode()).getVT();
         int bits = vt.getSizeInBits();
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - bits).and(mask);
@@ -1664,7 +1664,7 @@ public class SelectionDAG {
           knownVals[1].andAssign(newBits.not());
         }
         break;
-      }
+      }*/
       case ISD.CTTZ:
       case ISD.CTLZ:
       case ISD.CTPOP: {
@@ -4137,7 +4137,7 @@ public class SelectionDAG {
     GraphWriter.viewGraph(title, filename, trait);
   }
 
-  public void repositionNode(SDNode position, SDNode n) {
+  /*public void repositionNode(SDNode position, SDNode n) {
     Util.assertion(position != null);
     if (position.equals(n))
       return;
@@ -4149,7 +4149,7 @@ public class SelectionDAG {
     if (index < nIdx)
       ++nIdx;
     allNodes.remove(nIdx);
-  }
+  }*/
 
   public SDNode getNodeIfExists(int opc, SDVTList vts, SDValue[] ops) {
     if (!vts.vts[vts.vts.length - 1].equals(new EVT(MVT.Glue))) {

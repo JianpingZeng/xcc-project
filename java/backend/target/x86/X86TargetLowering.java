@@ -513,16 +513,25 @@ public class X86TargetLowering extends TargetLowering {
       {
         OutRef<Boolean> ignored = new OutRef<>(false);
 
-        APFloat TmpFlt = new APFloat(+0.0);
-        TmpFlt.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
-        addLegalFPImmediate(TmpFlt);  // FLD0
-        TmpFlt.changeSign();
-        addLegalFPImmediate(TmpFlt);  // FLD0/FCHS
-        APFloat TmpFlt2 = new APFloat(+1.0);
-        TmpFlt2.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
-        addLegalFPImmediate(TmpFlt2);  // FLD1
-        TmpFlt2.changeSign();
-        addLegalFPImmediate(TmpFlt2);  // FLD1/FCHS
+        APFloat tmpFlt = new APFloat(+0.0);
+        tmpFlt.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
+        addLegalFPImmediate(tmpFlt);  // FLD0  (+0.0)
+
+        // we don't have to change sign of the original FP.
+        tmpFlt = tmpFlt.clone();
+        tmpFlt.changeSign();
+        // -0.0
+        addLegalFPImmediate(tmpFlt);  // FLD0/FCHS
+
+        // +1.0
+        APFloat tmpFlt2 = new APFloat(+1.0);
+        tmpFlt2.convert(x87DoubleExtended, rmNearestTiesToEven, ignored);
+        addLegalFPImmediate(tmpFlt2);  // FLD1
+
+        // -1.0
+        tmpFlt2 = tmpFlt2.clone();
+        tmpFlt2.changeSign();
+        addLegalFPImmediate(tmpFlt2);  // FLD1/FCHS
       }
 
       if (!EnableUnsafeFPMath.value) {
@@ -1399,7 +1408,7 @@ public class X86TargetLowering extends TargetLowering {
     }
   }
 
-  static boolean argsAreStructReturn(ArrayList<InputArg> ins) {
+  private static boolean argsAreStructReturn(ArrayList<InputArg> ins) {
     if (ins.isEmpty()) return false;
 
     return ins.get(0).flags.isSRet();
@@ -1633,9 +1642,10 @@ public class X86TargetLowering extends TargetLowering {
     MachineFunction mf = dag.getMachineFunction();
     boolean is64Bit = subtarget.is64Bit();
     boolean isStructRet = callIsStructReturn(outs);
-    Util.assertion(!isTailCall || (cc == CallingConv.Fast && EnablePerformTailCallOpt.value), "isEligibleForTailCallOptimization missed a case!");
-
-    Util.assertion(!(isVarArg && cc == CallingConv.Fast), "Var args not supported with calling convention fastcc!");
+    Util.assertion(!isTailCall || (cc == CallingConv.Fast && EnablePerformTailCallOpt.value),
+        "isEligibleForTailCallOptimization missed a case!");
+    Util.assertion(!(isVarArg && cc == CallingConv.Fast),
+        "Var args not supported with calling convention fastcc!");
 
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
     CCState ccInfo = new CCState(cc, isVarArg, getTargetMachine(), argLocs, dag.getContext());

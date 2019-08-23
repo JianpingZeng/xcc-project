@@ -40,14 +40,14 @@ public class TargetData implements ImmutablePass {
 
   public static class TargetAlignElem {
     public AlignTypeEnum alignType;
-    public byte abiAlign;
-    public byte prefAlign;
+    public int abiAlign;
+    public int prefAlign;
     public int typeBitWidth;
 
     public static TargetAlignElem get(
         AlignTypeEnum alignType,
-        byte abiAlign,
-        byte prefAlign,
+        int abiAlign,
+        int prefAlign,
         int typeBitWidth) {
       Util.assertion(abiAlign <= prefAlign, "Preferred alignment worse than ABI");
       TargetAlignElem elem = new TargetAlignElem();
@@ -200,16 +200,16 @@ public class TargetData implements ImmutablePass {
     pointerABIAlign = pointerPrefAlign = 8;
 
     // Default alignments.
-    setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 1, (byte) 1, (byte) 1); // i1
-    setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 1, (byte) 1, (byte) 8); // i8
-    setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 2, (byte) 2, (byte) 16); // i16
-    setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 4, (byte) 4, (byte) 32); // i32
-    setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 8, (byte) 8, (byte) 64); // i64
-    setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 4, (byte) 4, (byte) 32); // f32
-    setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 8, (byte) 64); // f64
-    setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 8, (byte) 8, (byte) 64); // v2i32, v1i64
-    setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 16, (byte) 16, (byte) 128); // v16i8, v8i16, v4i32,...
-    setAlignment(AGGREGATE_ALIGN, (byte) 0, (byte) 8, (byte) 0); // struct
+    setAlignment(AlignTypeEnum.INTEGER_ALIGN, 1, 1, 1); // i1
+    setAlignment(AlignTypeEnum.INTEGER_ALIGN, 1, 1, 8); // i8
+    setAlignment(AlignTypeEnum.INTEGER_ALIGN, 2, 2, 16); // i16
+    setAlignment(AlignTypeEnum.INTEGER_ALIGN, 4, 4, 32); // i32
+    setAlignment(AlignTypeEnum.INTEGER_ALIGN, 8, 8, 64); // i64
+    setAlignment(AlignTypeEnum.FLOAT_ALIGN, 4, 4, 32); // f32
+    setAlignment(AlignTypeEnum.FLOAT_ALIGN, 8, 8, 64); // f64
+    setAlignment(AlignTypeEnum.VECTOR_ALIGN, 8, 8, 64); // v2i32, v1i64
+    setAlignment(AlignTypeEnum.VECTOR_ALIGN, 16, 16, 128); // v16i8, v8i16, v4i32,...
+    setAlignment(AGGREGATE_ALIGN, 0, 8, 0); // struct
 
     while (temp.length() != 0) {
 
@@ -256,12 +256,10 @@ public class TargetData implements ImmutablePass {
               break;
           }
 
-          int size = arg0.length() <= 1 ? 0 :
-              Integer.parseInt(String.valueOf(arg0.charAt(1)));
-          byte abiAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / (byte) 8);
-          byte prefAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / 8);
-          if (prefAlign == 0)
-            prefAlign = abiAlign;
+          int size = arg0.length() <= 1 ? 0 : Integer.parseInt(arg0.substring(1));
+          int abiAlign = (Integer.parseUnsignedInt(getToken(token2, ":")) / 8);
+          int prefAlign = (Integer.parseUnsignedInt(getToken(token2, ":")) / 8);
+          if (prefAlign == 0) prefAlign = abiAlign;
           setAlignment(alignType, abiAlign, prefAlign, size);
           break;
         }
@@ -285,7 +283,7 @@ public class TargetData implements ImmutablePass {
     return result;
   }
 
-  private void setAlignment(AlignTypeEnum alignType, byte abiAlign, byte prefAlign, int bitWidth) {
+  private void setAlignment(AlignTypeEnum alignType, int abiAlign, int prefAlign, int bitWidth) {
     Util.assertion(abiAlign <= prefAlign, "Preferred alignment worse than abi alignemnt.");
     for (int i = 0, e = alignments.size(); i < e; ++i) {
       if (alignments.get(i).alignType == alignType

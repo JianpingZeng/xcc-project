@@ -964,6 +964,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         CaseBlock cb = new CaseBlock(c, ci.operand(0), ci.operand(1),
             null, tbb, fbb, curBB);
         switchCases.add(cb);
+        return;
       }
     }
 
@@ -1031,7 +1032,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       MachineBasicBlock temp = cb.trueMBB;
       cb.trueMBB = cb.falseMBB;
       cb.falseMBB = temp;
-      SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
+      SDValue one = dag.getConstant(1, cond.getValueType(), false);
       cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, one);
     }
 

@@ -869,8 +869,15 @@ public class RegAllocLocal extends MachineFunctionPass {
     virRegModified = new boolean[lastVirReg - FirstVirtualRegister + 1];
     usedInMultipleBlocks = new boolean[lastVirReg - FirstVirtualRegister + 1];
 
-    for (MachineBasicBlock mbb : mf.getBasicBlocks())
+    if (mf.getFunction().getName().equals("sqlite3VXPrintf")) {
+      mf.dump();
+    }
+
+    for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
+      if (mf.getFunction().getName().equals("sqlite3VXPrintf"))
+        System.err.println(mf.getBasicBlocks().indexOf(mbb));
       allocateBasicBlock(mbb);
+    }
 
     stackSlotForVirReg.clear();
     return true;

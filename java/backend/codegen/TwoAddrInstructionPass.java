@@ -248,7 +248,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
                 && isProfitableToReMat(regB, rc, mbb.getInstAt(i), defMI, mbb,
                 i + 1, distanceMap)) {
               if (Util.DEBUG) {
-                System.err.printf("2addr: Rematting: ");
+                System.err.print("2addr: Rematting: ");
                 defMI.print(System.err, null);
                 System.err.print("\n");
               }
@@ -565,6 +565,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     for (DefUseChainIterator itr = mri.getUseIterator(reg); itr.hasNext(); ) {
       MachineOperand useMO = itr.getOpearnd();
       MachineInstr useMI = itr.getMachineInstr();
+      itr.next();
       MachineBasicBlock useBB = useMI.getParent();
       if (useBB.equals(mbb)) {
         int idx = useMI.getIndexInMBB();

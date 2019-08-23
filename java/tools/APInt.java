@@ -327,7 +327,7 @@ public class APInt implements Cloneable {
     else {
       pVal = new long[getNumWords()];
       int words = Math.min(len, getNumWords());
-      System.arraycopy(bigVal, 0, pVal, 0, words * APINT_WORD_SIZE);
+      System.arraycopy(bigVal, 0, pVal, 0, words);
     }
     clearUnusedBits();
   }
@@ -340,7 +340,7 @@ public class APInt implements Cloneable {
     else {
       pVal = new long[getNumWords()];
       int words = Math.min(bigVal.size(), getNumWords());
-      System.arraycopy(bigVal.toArray(), 0, pVal, 0, words * APINT_WORD_SIZE);
+      System.arraycopy(bigVal.toArray(), 0, pVal, 0, words);
     }
     clearUnusedBits();
   }

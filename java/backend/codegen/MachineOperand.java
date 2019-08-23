@@ -701,6 +701,8 @@ public abstract class MachineOperand {
         isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
     if (this instanceof IndexMO)
       return ((IndexMO)this).offset;
+    else if (this instanceof ExternalSymbolMO)
+      return ((ExternalSymbolMO)this).offset;
     else
       return ((GlobalAddressMO)this).offset;
   }
@@ -725,6 +727,8 @@ public abstract class MachineOperand {
         isConstantPoolIndex() || isJumpTableIndex(), "Wrong MachineOperand accessor");
     if (this instanceof IndexMO)
       ((IndexMO)this).offset = offset;
+    else if (this instanceof ExternalSymbolMO)
+      ((ExternalSymbolMO)this).offset = offset;
     else
       ((GlobalAddressMO)this).offset = offset;
   }
