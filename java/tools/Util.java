@@ -329,7 +329,7 @@ public class Util {
       };
 
   public static int countTrailingZeros(long value) {
-    return mod67Position[(int) ((-value & value) % 67)];
+    return mod67Position[(int) Long.remainderUnsigned(-value & value, 67)];
   }
 
   public static int countTrailingOnes(long value) {

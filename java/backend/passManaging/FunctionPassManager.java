@@ -33,6 +33,53 @@ public class FunctionPassManager implements PassManagerBase {
    * @return
    */
   public boolean run(Function f) {
+    switch (f.getName()) {
+       // sign_extend_inreg can't be selected.
+      case "sqlite3CreateIndex":
+
+        // can't select
+      case "sqlite3CreateForeignKey":
+      case "sqlite3Update":
+      case "sqlite3BtreeMovetoUnpacked":
+      case "sqlite3PagerSharedLock":
+
+        // dead loop
+      case "sqlite3AtoF":
+      case "sqlite3Select":
+
+        // topological incomplete!
+      case "sqlite3JoinType":
+
+        // unable to issue a copy.
+      case "sqlite3Pragma":
+      case "fkLookupParent":
+
+        // bit width must be same in handleJTSwitchCase
+      case "sqlite3ExprAffinity":
+      case "sqlite3ExprCollSeq":
+
+        // illegal status in topological order
+      case "resolveAlias":
+      case "sqlite3TableAffinity":
+      case "exprTableRegister":
+      case "multiSelectOrderByKeyInfo":
+      case "sqlite3VdbeExec":
+      case "sqlite3VdbeHalt":
+
+        // unknown opcode!
+      case "whereLoopAddVirtual":
+        // type cast error
+      case "whereLoopAddBtreeIndex":
+        // APInt size doesn't match type size!
+      case "exprAnalyze":
+        // unknown node ID!
+      case "moveToChild":
+      case "balance":
+
+      case "getOverflowPage":
+        return false;
+    }
+
     return fpm.run(f);
   }
 

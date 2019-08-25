@@ -1005,7 +1005,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       APInt low = ((ConstantInt) cb.cmpLHS).getValue();
       APInt high = ((ConstantInt) cb.cmpRHS).getValue();
 
-      SDValue cmpOp = getValue(cb.cmpRHS);
+      SDValue cmpOp = getValue(cb.cmpMHS);
       EVT vt = cmpOp.getValueType();
 
       if (((ConstantInt) cb.cmpLHS).isMinValue(true)) {

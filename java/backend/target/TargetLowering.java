@@ -2240,7 +2240,7 @@ public abstract class TargetLowering {
     Util.assertion(depth >= 0);
     int bitwidth = demandedMask.getBitWidth();
     Util.assertion(op.getValueSizeInBits() == bitwidth, "Mask size mismatches value type size!");
-    APInt newMask = demandedMask;
+    APInt newMask = demandedMask.clone();
     res[0] = new APInt(bitwidth, 0);
     res[1] = new APInt(bitwidth, 0);
     if (!op.getNode().hasOneUse()) {

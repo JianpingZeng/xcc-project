@@ -438,7 +438,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         MCRegisterClass rc = tli.getRegClassFor(op.getValueType());
         vreg = mri.createVirtualRegister(rc);
       }
-      buildMI(mbb, op.getDebugLoc(), tii.get(TargetOpcodes.IMPLICIT_DEF), vreg);
+      buildMI(mbb, insertPos++, op.getDebugLoc(), tii.get(TargetOpcodes.IMPLICIT_DEF), vreg);
       return vreg;
     }
 

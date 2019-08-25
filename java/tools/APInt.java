@@ -1127,7 +1127,7 @@ public class APInt implements Cloneable {
    * value for the APInt's bit width.
    */
   public boolean isMinSignedValue() {
-    return bitWidth == 1 ? val == 1 : isNegative();
+    return bitWidth == 1 ? val == 1 : isNegative() && isPowerOf2();
   }
 
   /**

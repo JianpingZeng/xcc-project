@@ -1852,9 +1852,9 @@ public class DAGCombiner {
     int n0Opc = n0.getOpcode();
     if (n0Opc == ISD.ZERO_EXTEND || n0Opc == ISD.SIGN_EXTEND ||
         n0Opc == ISD.ANY_EXTEND) {
-      if (n0.getOperand(0).getValueType().bitsGT(vt))
+      if (n0.getOperand(0).getValueType().bitsLT(vt))
         return dag.getNode(n0.getOpcode(), vt, n0.getOperand(0));
-      else if (n0.getOperand(0).getValueType().bitsGE(vt))
+      else if (n0.getOperand(0).getValueType().bitsGT(vt))
         return dag.getNode(ISD.TRUNCATE, vt, n0.getOperand(0));
       else
         return n0.getOperand(0);
@@ -4162,6 +4162,7 @@ public class DAGCombiner {
       // fold (mul x, -(1 << c)) -> -(x << c) or (-x) << c
       long log2Val = c2.getAPIntValue().negative().logBase2();
       return dag.getNode(ISD.SUB, vt,
+          dag.getConstant(0, vt, false),
           dag.getNode(ISD.SHL, vt, n0,
               dag.getConstant(log2Val, vt, false)));
     }

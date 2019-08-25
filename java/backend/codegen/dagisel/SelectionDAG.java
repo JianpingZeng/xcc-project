@@ -594,7 +594,9 @@ public class SelectionDAG {
       default:
         break;
       case ISD.TokenFactor:
-        Util.assertion(vt.equals(new EVT(MVT.Other)) && op0.getValueType().equals(new EVT(MVT.Other)) && op1.getValueType().equals(new EVT(MVT.Other)));
+        Util.assertion(vt.equals(new EVT(MVT.Other)) &&
+            op0.getValueType().equals(new EVT(MVT.Other)) &&
+            op1.getValueType().equals(new EVT(MVT.Other)));
 
         // fold trivial token factors.
         if (op0.getOpcode() == ISD.EntryToken)
@@ -1106,7 +1108,7 @@ public class SelectionDAG {
   public static void addNodeToID(FoldingSetNodeID id, SDNode node) {
     addNodeToIDNode(id, node.getOpcode(), node.getValueList(), null, 0);
     for (SDUse use : node.getOperandList()) {
-      id.addInteger(use.getNode().hashCode());
+      id.addInteger(use.getNode() == null ? 0 : use.getNode().hashCode());
       id.addInteger(use.getResNo());
     }
     addCustomToIDNode(id, node);
@@ -1679,7 +1681,7 @@ public class SelectionDAG {
           EVT vt = ld.getMemoryVT();
           int memBits = vt.getSizeInBits();
           knownVals[0].orAssign(
-              APInt.getHighBitsSet(bitwidth, bitwidth - memBits)).and(mask);
+              APInt.getHighBitsSet(bitwidth, bitwidth - memBits).and(mask));
         }
         break;
       }

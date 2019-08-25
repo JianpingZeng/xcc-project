@@ -338,7 +338,7 @@ public class DAGTypeLegalizer {
         newOps.add(op);
       else if (!op.equals(origOp)) {
         for (int j = 0; j < i; j++)
-          newOps.add(op.getOperand(j));
+          newOps.add(n.getOperand(j));
         newOps.add(op);
       }
     }

@@ -263,7 +263,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public SDValue getOperand(int num) {
-    Util.assertion(num <= getNumOperands() && num >= 0);
+    Util.assertion(num < getNumOperands() && num >= 0);
     return operandList[num].val;
   }
 
