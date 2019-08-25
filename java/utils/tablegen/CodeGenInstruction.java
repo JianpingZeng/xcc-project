@@ -280,12 +280,52 @@ public final class CodeGenInstruction {
       if (!sub.isEmpty()) {
         // Make sure the constraints list for each operand is large enough to hold
         // constraint info, even if none is present.
-        for (int i = 0, e = inst.operandList.size(); i != e; i++) {
-          for (int j = 0; j < inst.operandList.get(i).miNumOperands; j++)
-            inst.operandList.get(i).constraints.add("");
-        }
+        parseConstraint(sub, inst);
       }
     }
+  }
+
+  private static void parseConstraint(String constraintStr, CodeGenInstruction inst) {
+    // FIXME, only support TIED_IO as yet.
+    int eqIdx = constraintStr.indexOf('=');
+    Util.assertion(eqIdx != -1, "Unrecognized constraint");
+    int start = Util.findFirstNonOf(constraintStr, " \t");
+    String name = constraintStr.substring(start, eqIdx);
+
+    // TIED_TO: $src1 = $dst
+    int wpos = Util.findFirstOf(name, " \t", 0);
+    if (wpos == -1)
+      Util.shouldNotReachHere(String.format("Illegal format for tied-to constraint: '%s'", constraintStr));
+
+    String destOpName = name.substring(0, wpos);
+    Pair<Integer, Integer> destOp = inst.parseOperandName(destOpName, false);
+
+    name = constraintStr.substring(eqIdx + 1);
+    wpos = Util.findFirstNonOf(name, " \t");
+    if (wpos == -1)
+      Util.shouldNotReachHere(String.format("Illegal format for tied-to constraint: '%s'", constraintStr));
+
+    Pair<Integer, Integer> srcOp = inst.parseOperandName(name.substring(wpos), false);
+    if (srcOp.first > destOp.first || srcOp.second > destOp.second)
+      Util.shouldNotReachHere(String.format("Illegal format for tied-to constraint: '%s'", constraintStr));
+
+    int flatOp = inst.getFlattenedOperandNumber(srcOp);
+    // build the string for the operand.
+    String opConstraints = String.format("((%d << 16)) | 1 << TIED_TO", flatOp);
+
+    if (!inst.operandList.get(destOp.first).constraints.get(destOp.second).isEmpty())
+      Util.shouldNotReachHere(String.format("Operand '%s' can't have multiple constraints", destOpName));
+
+    inst.operandList.get(destOp.first).constraints.set(destOp.second, opConstraints);
+  }
+
+  /**
+   * Flatten an operand/suboperand pair into a flat machineinstr operand number.
+   * @param op
+   * @return
+   */
+  private int getFlattenedOperandNumber(Pair<Integer, Integer> op) {
+    return operandList.get(op.first).miOperandNo + op.second;
   }
 
   private Pair<Integer, Integer> parseOperandName(String opName) {

@@ -52,10 +52,20 @@ public class RegAllocLocal extends MachineFunctionPass {
    * value greater than 0 is the virtual register associated with this.
    */
   private int[] phyRegUsed;
-
+  /**
+   * A bitmap for keeping track of if a virtual register is used outside of the
+   * definition block.
+   */
   private boolean[] usedInMultipleBlocks;
 
   private MachineRegisterInfo mri;
+
+  /**
+   * A list contains all being used physical register, from first one to last
+   * one, corresponding from least used to most used. It is greatly useful to
+   * sacrifice a physical register for holding another high priority virtual reg.
+   */
+  private LinkedList<Integer> phyRegsUseOrder = new LinkedList<>();
 
   /**
    * Statics data for performance evaluation.
@@ -64,7 +74,11 @@ public class RegAllocLocal extends MachineFunctionPass {
       new IntStatistic("NumSpilled", "Number of spilled code");
   public static final IntStatistic NumReloaded =
       new IntStatistic("NumReloaded", "Number of reloaded code");
-
+  /**
+   * This is bitmap used to keep track of some information for a virtual register whose
+   * value is spilled out to memory. So that we can test if we need it back from memory
+   * when it is impossible to rematerialize it.
+   */
   private boolean[] virRegModified;
 
   public RegAllocLocal() {
@@ -94,7 +108,6 @@ public class RegAllocLocal extends MachineFunctionPass {
    */
   private void assignVirToPhyReg(int virReg, int phyReg) {
     Util.assertion(phyRegUsed[phyReg] == -1, "phyreg is already assigned!");
-
     phyRegUsed[phyReg] = virReg;
     virToPhyRegMap.put(virReg, phyReg);
     markPhyRegRecentlyUsed(phyReg);
@@ -191,20 +204,29 @@ public class RegAllocLocal extends MachineFunctionPass {
       markPhyRegRecentlyUsed(phyReg);
       mf.getMachineRegisterInfo().setPhysRegUsed(phyReg);
       mi.setMachineOperandReg(numOps, phyReg);
+      setVirtRegLastUse(virReg, mi.getOperand(numOps));
       return;
     }
-    int phyReg = getReg(mi, virReg);
 
     MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     int frameIdx = getStackSlotForVirReg(virReg, rc);
+    int phyReg = getFreeReg(rc);
+    if (phyReg != 0) {
+      // sucessfully assign a free register to the specified virtual register.
+      assignVirToPhyReg(virReg, phyReg);
+    }
+    else {
+      // if there is no free register, just force a LRU register spill back
+      // to the memory.
+      phyReg = getReg(mi, virReg);
+    }
 
     // note that this reg is just reloaded.
     markVirRegModified(virReg, false);
-
     instrInfo.loadRegFromStackSlot(mi.getParent(), mi.getParent().getIndexOf(mi), phyReg, frameIdx, rc);
-    markPhyRegRecentlyUsed(phyReg);
     mf.getMachineRegisterInfo().setPhysRegUsed(phyReg);
     mi.setMachineOperandReg(numOps, phyReg);
+    setVirtRegLastUse(virReg, mi.getOperand(numOps));
 
     // add the count for reloaded.
     NumReloaded.inc();
@@ -271,6 +293,19 @@ public class RegAllocLocal extends MachineFunctionPass {
   }
 
   /**
+   * Map the virtual register to the machine operand which used it before.
+   */
+  private MachineOperand[] virt2LastUseMap;
+  private MachineOperand getVirtRegLastUse(int virtReg) {
+    Util.assertion(TargetRegisterInfo.isVirtualRegister(virtReg));
+    return virt2LastUseMap[virtReg - TargetRegisterInfo.FirstVirtualRegister];
+  }
+
+  private void setVirtRegLastUse(int virtReg, MachineOperand op) {
+    Util.assertion(TargetRegisterInfo.isVirtualRegister(virtReg));
+    virt2LastUseMap[virtReg - TargetRegisterInfo.FirstVirtualRegister] = op;
+  }
+  /**
    * Spill the specified virtual reg into stack slot associated.
    *
    * @param insertPos
@@ -293,16 +328,16 @@ public class RegAllocLocal extends MachineFunctionPass {
       // add count for spilled.
       NumSpilled.inc();
     }
+    else {
+      // because the register is just used as a temporary register to hold the value
+      // reloaded from memory.
+      MachineOperand op = getVirtRegLastUse(virReg);
+      if (op != null)
+        op.setIsKill(true);
+    }
     virToPhyRegMap.remove(virReg, phyReg);
     removePhyReg(phyReg);
   }
-
-  /**
-   * A list contains all being used physical register, from first one to last
-   * one, corresponding from least used to most used. It is greatly useful to
-   * sacrifice a physical register for holding another high priority virtual reg.
-   */
-  private LinkedList<Integer> phyRegsUseOrder = new LinkedList<>();
 
   /**
    * Returns true if they are equal or if the {@code reg1} is in the
@@ -341,15 +376,13 @@ public class RegAllocLocal extends MachineFunctionPass {
     for (int i = phyRegsUseOrder.size() - 1; i >= 0; i--) {
       // Check if reg is  or sub-reg of or same as element in phyRegsUseOrder
       if (areRegEqual(reg, phyRegsUseOrder.get(i))) {
-        int regMatch = phyRegsUseOrder.get(i);
         phyRegsUseOrder.remove(i);
-        // add it to the end of the list which indicates reg is most
-        // recently used.
-        phyRegsUseOrder.addLast(reg);
-        if (regMatch == reg)
-          return;  // found a exact match, return early.
       }
     }
+
+    // add it to the end of the list which indicates reg is most
+    // recently used.
+    phyRegsUseOrder.addLast(reg);
   }
 
   /**
@@ -750,6 +783,8 @@ public class RegAllocLocal extends MachineFunctionPass {
           mf.getMachineRegisterInfo().setPhysRegUsed(destPhyReg);
           markVirRegModified(destVirReg, true);
           mi.setMachineOperandReg(j, destPhyReg);
+          // set the lateest use of the destVirReg is null.
+          setVirtRegLastUse(destVirReg, null);
         }
       }
 
@@ -868,14 +903,9 @@ public class RegAllocLocal extends MachineFunctionPass {
     }
     virRegModified = new boolean[lastVirReg - FirstVirtualRegister + 1];
     usedInMultipleBlocks = new boolean[lastVirReg - FirstVirtualRegister + 1];
-
-    if (mf.getFunction().getName().equals("sqlite3VXPrintf")) {
-      mf.dump();
-    }
+    virt2LastUseMap = new MachineOperand[lastVirReg - FirstVirtualRegister + 1];
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
-      if (mf.getFunction().getName().equals("sqlite3VXPrintf"))
-        System.err.println(mf.getBasicBlocks().indexOf(mbb));
       allocateBasicBlock(mbb);
     }
 

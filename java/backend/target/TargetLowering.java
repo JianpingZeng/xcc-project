@@ -663,8 +663,8 @@ public abstract class TargetLowering {
   }
 
   public boolean isOperationLegalOrCustom(int opc, EVT vt) {
-    return (vt.getSimpleVT().simpleVT == MVT.Other || isTypeLegal(vt))
-        && (getOperationAction(opc, vt) == Legal ||
+    return (vt.equals(new EVT(MVT.Other)) || isTypeLegal(vt)) &&
+        (getOperationAction(opc, vt) == Legal ||
         getOperationAction(opc, vt) == Custom);
   }
 

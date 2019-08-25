@@ -108,7 +108,9 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     mmi = null;
     outContext = ctx;
     outStreamer = streamer;
-    verboseAsm = streamer.isVerboseAsm();
+    // FIXME, disable verbose output by default for avoiding a bug of
+    // printing out a double value.
+    verboseAsm = false; //streamer.isVerboseAsm();
   }
 
   @Override

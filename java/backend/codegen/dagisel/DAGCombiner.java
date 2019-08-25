@@ -673,7 +673,7 @@ public class DAGCombiner {
             ld.isVolatile(), newAlign);
         SDValue newVal = dag.getNode(opc, newVT, newLD,
             dag.getConstant(newImm, newVT, false));
-        SDValue newST = dag.getStore(chain, newVal, newPtr,
+        SDValue newST = dag.getStore(newLD.getValue(1), newVal, newPtr,
             st.getSrcValue(), st.getSrcValueOffset(),
             false, newAlign);
 
