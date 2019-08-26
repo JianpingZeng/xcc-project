@@ -63,6 +63,11 @@ public abstract class MachineFunctionPass implements FunctionPass {
    */
   @Override
   public boolean runOnFunction(Function f) {
+    // We don't have to emit code for any function with available external link because it is defined outside
+    // the current compilation unit.
+    if (f.hasAvailableExternallyLinkage())
+      return false;
+
     MachineFunction mf = f.getMachineFunc();
     Util.assertion(mf != null, "Instruction selector did not be runned?");
     return runOnMachineFunction(mf);

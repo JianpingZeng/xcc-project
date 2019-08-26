@@ -1074,15 +1074,31 @@ public final class LLParser {
         linkage.set(LinkageType.InternalLinkage);
         break;
       case kw_weak:
+        linkage.set(LinkageType.WeakAnyLinkage);
+        break;
       case kw_weak_odr:
+        linkage.set(LinkageType.WeakODRLinkage);
+        break;
       case kw_linkonce:
+        linkage.set(LinkageType.LinkOnceAnyLinkage);
+        break;
       case kw_linkonce_odr:
+        linkage.set(LinkageType.LinkOnceODRLinkage);
+        break;
       case kw_available_externally:
+        linkage.set(LinkageType.AvailableExternallyLinkage);
+        break;
       case kw_appending:
+        linkage.set(LinkageType.AppendingLinkage);
+        break;
       case kw_dllexport:
+        linkage.set(LinkageType.DLLExportLinkage);
+        break;
       case kw_dllimport:
+        linkage.set(LinkageType.DLLImportLinkage);
+        break;
       case kw_extern_weak:
-        Util.assertion("Unsupported linkage type 'weak'");
+        linkage.set(LinkageType.ExternalWeakLinkage);
         break;
       case kw_external:
         linkage.set(LinkageType.ExternalLinkage);

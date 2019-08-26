@@ -355,9 +355,8 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
         Util.assertion(emitUniquedSection);
         prefix = getSectionPrefixForGlobal(kind);
       }
-      String name = mang.getMangledNameWithPrefix(gv, false);
-      MCSymbol sym = getContext().createSymbol(name);
-      name = prefix + name;
+      MCSymbol sym = mang.getSymbol(gv);
+      String name = prefix + sym.getName();
       return getContext().getELFSection(name, getELFSectionType(name, kind),
           getELFSectionFlags(kind), kind);
     }

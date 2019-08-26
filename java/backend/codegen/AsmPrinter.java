@@ -382,34 +382,37 @@ public abstract class AsmPrinter extends MachineFunctionPass {
                              MCSymbol sym) {
     switch (linkage) {
       case CommonLinkage:
-      case LinkerPrivateLinkage:
+      case LinkOnceAnyLinkage:
+      case LinkOnceODRLinkage:
+      case WeakAnyLinkage:
+      case WeakODRLinkage:
+      case LinkerPrivateWeakLinkage:
+      case LinkerPrivateWeakDefAutoLinkage:
         if (mai.getWeakDefDirective() != null) {
           // .globl _foo
           outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);
-          ;
           // .weak_definition _foo
           outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_WeakDefinition);
-          ;
         } else if (mai.getLinkOnceDirective() != null) {
           String linkOnce = mai.getLinkOnceDirective();
           // .globl _foo
           outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);
-          ;
           os.print(linkOnce);
         } else {
           // .weak _foo
           outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Weak);
-          ;
         }
         break;
+      case DLLExportLinkage:
+      case AppendingLinkage:
       case ExternalLinkage:
         // if the external or appending declare as a global symbol,.
         // .globl _foo
         outStreamer.emitSymbolAttribute(sym, MCSymbolAttr.MCSA_Global);
-        ;
         break;
       case PrivateLinkage:
       case InternalLinkage:
+      case LinkerPrivateLinkage:
         break;
       default:
         Util.shouldNotReachHere("Unknown linkage type!");

@@ -68,8 +68,12 @@ public class MachineFunctionAnalysis implements FunctionPass {
 
   @Override
   public boolean runOnFunction(Function f) {
-    Util.assertion(f.getMachineFunc() == null, "MachineFunctionAnalysis already initialized!");
+    // We don't have to emit code for any function with available external link because it is defined outside
+    // the current compilation unit.
+    if (f.hasAvailableExternallyLinkage())
+      return false;
 
+    Util.assertion(f.getMachineFunc() == null, "MachineFunctionAnalysis already initialized!");
     new MachineFunction(f, tm, nextFnNumber++);
     return false;
   }
