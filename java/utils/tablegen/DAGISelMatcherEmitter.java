@@ -831,8 +831,8 @@ public class DAGISelMatcherEmitter {
   private static int index = 0;
 
   private static void printMatcherTable(String table, long totalSize, PrintStream os) {
-    os.printf("  private static int[] initTable%d() {\n", index++);
-    os.println("    return new int[]{");
+    os.printf("  private static void initTable%d(int[] matcherTable) {\n", index++);
+    os.println("    int[] table = new int[]{");
     String completeMark = "OPC_CompleteMatch";
     String morphMark = "OPC_MorphNodeTo";
     for (int i = 0, size = table.length(); i < size; ) {
@@ -883,12 +883,14 @@ public class DAGISelMatcherEmitter {
 
       // Create a new initializing sub-routines.
       os.println("    };");
+      os.println("    System.arraycopy(table, 0, matcherTable, index, table.length);");
+      os.println("    index += table.length;");
       os.println("  }");
 
       // Checks if it is needed to create a new initializing functions.
       if (i < size) {
-        os.printf("  private static int[] initTable%d() {\n", index++);
-        os.println("    return new int[]{");
+        os.printf("  private static void initTable%d(int[] matcherTable) {\n", index++);
+        os.println("    int[] table = new int[]{");
       }
     }
     os.printf("  // Matcher Table size is %d bytes\n", totalSize);
@@ -905,7 +907,6 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.MVT;");
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");
-    os.println("import backend.target.TargetInstrInfo;");
     os.println("import backend.codegen.dagisel.SDNode;");
     os.println("import backend.target.TargetMachine.CodeModel;");
     os.println("import backend.target.TargetMachine.RelocModel;");
@@ -914,10 +915,8 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.value.Value;");
     os.println("import tools.Util;");
     os.println();
-    os.println("import static backend.codegen.dagisel.BuiltinOpcodes.*;");
     os.println("import static backend.codegen.dagisel.SDNode.*;");
     os.println();
-    os.println("import java.lang.reflect.Method;");
     os.println("import java.util.ArrayList;");
     os.println("import java.util.Arrays;");
     os.println();
@@ -925,6 +924,8 @@ public class DAGISelMatcherEmitter {
     String className = targetName + "GenDAGISel";
     os.printf("public final class %s extends %sDAGISel {%n",
         className, targetName);
+
+    os.println("  private static int index = 0;");
 
     DAGISelMatcherEmitter emitter = new DAGISelMatcherEmitter(cdp.getTarget().getName());
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -941,19 +942,10 @@ public class DAGISelMatcherEmitter {
         targetName, targetName);
     os.println("    super(tm, optLevel);");
     os.printf("    matcherTable = new int[%d];\n", totalSize);
-    os.printf("    try {\n" +
-        "      Class dagisel = this.getClass();\n" +
-        "      int index = 0;\n" +
-        "      for (int i = 0; i < %d; i++) {\n" +
-        "        Method m = dagisel.getDeclaredMethod(\"initTable\"+i);\n" +
-        "        int[] table = (int[])m.invoke(null, (Object[]) null);\n" +
-        "        System.arraycopy(table, 0, matcherTable, index, table.length);\n" +
-        "        index += table.length;\n" +
-        "      }\n" +
-        "      Util.assertion(index == %d, \"Inconsistency number of items in matcher table\");\n" +
-        "    } catch (Exception e) {\n" +
-        "      e.printStackTrace();\n" +
-        "    }\n", index, totalSize);
+    for (int i = 0; i < index; i++) {
+      os.printf("    initTable%d(matcherTable);\n", i);
+    }
+    os.printf("    Util.assertion(index == %d, \"Inconsistency number of items in matcher table\");\n", totalSize);
     os.println("  }");
     os.println("}");
   }

@@ -111,6 +111,17 @@ if ((XCC_TARGETS_TO_BUILD_STREQUAL "") OR (XCC_TARGETS_TO_BUILD STREQUAL "all"))
     set(XCC_TARGETS_TO_BUILD ${XCC_ALL_TARGETS})
 endif()
 
+set(XCC_ENUM_TARGETS "")
+foreach(c ${XCC_TARGETS_TO_BUILD})
+  list(FIND XCC_ALL_TARGETS ${c} idx)
+  if( idx LESS 0 )
+    message(FATAL_ERROR "The target `${c}' does not exist.
+    It should be one of\n${XCC_ALL_TARGETS}")
+  else()
+    set(XCC_ENUM_TARGETS "${XCC_ENUM_TARGETS}\n\t\t\t\t\"${c}\",")
+  endif()
+endforeach(c)
+
 set(XCC_TARGET_ARCH "host"
   CACHE STRING "Set target to use for XCC or use \"host\" for automatic detection.")
 
@@ -129,8 +140,9 @@ set(CPUInfoUtility_PATH "${OUT_LIB_DIR}")
 set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
-# Produce ${GEN_SOURCES_DIR}/config/Config.java
+# Produce ${GEN_SOURCES_DIR}/config/Config.java and Targets.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
+set(TARGETS_SRC  "${GEN_SOURCES_DIR}/config/Targets.java")
 
 add_custom_target(XccConfig
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
@@ -161,9 +173,16 @@ configure_file(
   )
 
 configure_file(
+  ${XCC_SOURCE_DIR}/config/Targets.java.in
+  ${TARGETS_SRC}
+)
+
+configure_file(
   ${XCC_SOURCE_DIR}/config/version.h.in
   ${OUT_INCLUDE_DIR}/version.h
 )
+
+
 
 # Verify that we can find a Python 2 interpreter.  Python 3 is unsupported.
 set(Python_ADDITIONAL_VERSIONS 2.7)

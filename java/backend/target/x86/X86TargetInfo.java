@@ -32,7 +32,7 @@ public class X86TargetInfo {
   private static Target theX86_32Target = new Target();
   private static Target theX86_64Target = new Target();
 
-  static void InitializeX86TargetInfo() {
+  public static void InitializeX86TargetInfo() {
     TargetRegistry.registerTarget(theX86_32Target, "x86",
         "32-bit X86: Pentium-Pro and above",
         Triple.ArchType.x86, false);
@@ -77,7 +77,7 @@ public class X86TargetInfo {
     // TODO X86 sytle asm printer not supported;
   };
 
-  public static void LLVMInitiliazeX86Target() {
+  public static void InitiliazeX86Target() {
     TargetRegistry.registerTargetMachine(theX86_32Target, X86_32TargetMachineMaker);
     TargetRegistry.registerTargetMachine(theX86_64Target, X86_64TargetMachineMaker);
 

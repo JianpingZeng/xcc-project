@@ -21,7 +21,6 @@ import backend.codegen.RegAllocLocal;
 import backend.codegen.RegisterRegAlloc;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
-import backend.pass.PassRegisterationUtility;
 import backend.passManaging.FunctionPassManager;
 import backend.support.BackendCmdOptions;
 import backend.support.LLVMContext;
@@ -165,12 +164,8 @@ public class LLC {
 
   public static void main(String[] args) throws IOException {
     // Initialize Target machine
-    TargetSelect ts = TargetSelect.create();
-    ts.InitializeTargetInfo();
-    ts.LLVMInitializeTarget();
-
-    // Before parse command line options, register passes.
-    PassRegisterationUtility.registerPasses();
+    TargetSelect.InitializeAllTargetInfo();
+    TargetSelect.InitializeAllTarget();
 
     CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
 

@@ -18,46 +18,43 @@
 package backend.target;
 
 import backend.pass.PassRegisterationUtility;
+import backend.target.x86.X86TargetInfo;
+import config.Targets;
+import tools.Util;
 
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
 public class TargetSelect {
-  protected TargetSelect() {
-    super();
-  }
-
-  public static TargetSelect create() {
-    // TODO. 2017.8.12
-    TargetSelect ts = null;
-    try {
-      String targetName = "X86";
-      String className = "";
-      if (targetName.equals("X86")) {
-        className += "backend.target." +
-            targetName.toLowerCase() +
-            "." + targetName;
-      }
-      className += "TargetSelect";
-      Class<?> klass = Class.forName(className);
-      ts = (TargetSelect) klass.newInstance();
-    } catch (IllegalAccessException | InstantiationException | ClassNotFoundException e) {
-      e.printStackTrace();
-    }
-    return ts;
-  }
-
-  public void InitializeTargetInfo() {
-  }
-
-  public void LLVMInitializeTarget() {
-  }
-
-  /**
-   * This method must be called to register all of passes.
-   */
-  public void registerAllPasses() {
+  static{
+    /**
+     * This static method block must be called to register all of passes.
+     */
     PassRegisterationUtility.registerPasses();
+  }
+
+  public static void InitializeAllTargetInfo() {
+    for (String t : Targets.TargetNames) {
+      switch (t) {
+        case "X86":
+          X86TargetInfo.InitializeX86TargetInfo();
+          break;
+        default:
+          Util.shouldNotReachHere(String.format("Unknown target name '%s'!", t));
+      }
+    }
+  }
+
+  public static void InitializeAllTarget() {
+    for (String t : Targets.TargetNames) {
+      switch (t) {
+        case "X86":
+          X86TargetInfo.InitiliazeX86Target();
+          break;
+        default:
+          Util.shouldNotReachHere(String.format("Unknown target name '%s'!", t));
+      }
+    }
   }
 }

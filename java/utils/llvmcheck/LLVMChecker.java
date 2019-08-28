@@ -27,7 +27,6 @@ package utils.llvmcheck;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.pass.PassRegisterationUtility;
 import backend.support.AssemblerAnnotationWriter;
 import backend.support.LLVMContext;
 import backend.target.TargetSelect;
@@ -79,12 +78,9 @@ public class LLVMChecker {
 
   public static void main(String[] args) {
     // Initialize Target machine
-    TargetSelect ts = TargetSelect.create();
-    ts.InitializeTargetInfo();
-    ts.LLVMInitializeTarget();
-
-    // Before parse command line options, register passes.
-    PassRegisterationUtility.registerPasses();
+    // Initialize Target machine
+    TargetSelect.InitializeAllTargetInfo();
+    TargetSelect.InitializeAllTarget();
 
     CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
 

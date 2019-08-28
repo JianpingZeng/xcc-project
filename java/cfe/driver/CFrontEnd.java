@@ -1148,11 +1148,10 @@ public class CFrontEnd implements DiagnosticFrontendKindsTag {
    */
   public int compile(String[] args) {
     // Initialize Target machine
-    TargetSelect ts = TargetSelect.create();
-    ts.InitializeTargetInfo();
-    ts.LLVMInitializeTarget();
-    // Register pass
-    ts.registerAllPasses();
+    // Initialize Target machine
+    TargetSelect.InitializeAllTargetInfo();
+    TargetSelect.InitializeAllTarget();
+
     // Retrieve the global LLVMContext.
     LLVMContext ctx = LLVMContext.getGlobalContext();
 
