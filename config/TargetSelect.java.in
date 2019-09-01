@@ -18,9 +18,6 @@
 package backend.target;
 
 import backend.pass.PassRegisterationUtility;
-import backend.target.x86.X86TargetInfo;
-import config.Targets;
-import tools.Util;
 
 /**
  * @author Jianping Zeng
@@ -34,27 +31,9 @@ public class TargetSelect {
     PassRegisterationUtility.registerPasses();
   }
 
-  public static void InitializeAllTargetInfo() {
-    for (String t : Targets.TargetNames) {
-      switch (t) {
-        case "X86":
-          X86TargetInfo.InitializeX86TargetInfo();
-          break;
-        default:
-          Util.shouldNotReachHere(String.format("Unknown target name '%s'!", t));
-      }
-    }
+  public static void InitializeAllTargetInfo() {@XCC_INIT_TARGET_INFO@
   }
 
-  public static void InitializeAllTarget() {
-    for (String t : Targets.TargetNames) {
-      switch (t) {
-        case "X86":
-          X86TargetInfo.InitiliazeX86Target();
-          break;
-        default:
-          Util.shouldNotReachHere(String.format("Unknown target name '%s'!", t));
-      }
-    }
+  public static void InitializeAllTarget() {@XCC_INIT_TARGET@
   }
 }

@@ -24,7 +24,6 @@ import cfe.support.SourceLocation;
 
 import java.io.PrintStream;
 
-import static cfe.driver.CFrontEnd.printMacroDefinition;
 import static tools.TextUtils.isPrintable;
 
 /**
@@ -57,6 +56,52 @@ public class PrintPPOutputPPCallbacks implements PPCallBack {
     emittedTokensOnThisLine = false;
     fileType = CharacteristicKind.C_User;
     initialized = false;
+  }
+
+  /**
+   * Print a macro definition in a form that will be properly accepted back
+   * as a definition.
+   *
+   * @param ii
+   * @param mi
+   * @param pp
+   * @param os
+   */
+  public static void printMacroDefinition(IdentifierInfo ii, MacroInfo mi,
+                                          Preprocessor pp, PrintStream os) {
+    os.printf("#define %s", ii.getName());
+
+    if (mi.isFunctionLike()) {
+      os.print("(");
+      if (mi.getNumArgs() <= 0) ;
+      else if (mi.getNumArgs() == 1)
+        os.print(mi.getArgAt(0).getName());
+      else {
+        os.print(mi.getArgAt(0).getName());
+        for (int i = 1, e = mi.getNumArgs(); i != e; i++)
+          os.printf(",%s", mi.getArgAt(i).getName());
+      }
+
+      if (mi.isVariadic()) {
+        if (mi.getNumArgs() != 0)
+          os.print(",");
+        os.print("...");
+      }
+      os.print(")");
+    }
+
+    // GCC always emits a space, even if the macro body is empty.  However, do not
+    // want to emit two spaces if the first token has a leading space.
+    if (mi.getNumTokens() == 0 || !mi.getReplacementToken(0).hasLeadingSpace())
+      os.print(' ');
+
+    for (Token tok : mi.getReplacementTokens()) {
+      if (tok.hasLeadingSpace())
+        os.print(' ');
+
+      String str = pp.getSpelling(tok);
+      os.print(str);
+    }
   }
 
   public void setEmittedTokensOnThisLine() {

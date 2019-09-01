@@ -111,14 +111,17 @@ if ((XCC_TARGETS_TO_BUILD_STREQUAL "") OR (XCC_TARGETS_TO_BUILD STREQUAL "all"))
     set(XCC_TARGETS_TO_BUILD ${XCC_ALL_TARGETS})
 endif()
 
-set(XCC_ENUM_TARGETS "")
+set(XCC_INIT_TARGET "")
+set(XCC_INIT_TARGET_INFO "")
 foreach(c ${XCC_TARGETS_TO_BUILD})
   list(FIND XCC_ALL_TARGETS ${c} idx)
   if( idx LESS 0 )
     message(FATAL_ERROR "The target `${c}' does not exist.
     It should be one of\n${XCC_ALL_TARGETS}")
   else()
-    set(XCC_ENUM_TARGETS "${XCC_ENUM_TARGETS}\n\t\t\t\t\"${c}\",")
+    string(TOLOWER ${c} LOWER_TARGET)
+    set(XCC_INIT_TARGET "${XCC_INIT_TARGET}\n\t\tbackend.target.${LOWER_TARGET}.${c}TargetInfo.Initiliaze${c}Target();")
+    set(XCC_INIT_TARGET_INFO "${XCC_INIT_TARGET_INFO}\n\t\tbackend.target.${LOWER_TARGET}.${c}TargetInfo.Initialize${c}TargetInfo();")
   endif()
 endforeach(c)
 
@@ -142,7 +145,11 @@ set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
 # Produce ${GEN_SOURCES_DIR}/config/Config.java and Targets.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
-set(TARGETS_SRC  "${GEN_SOURCES_DIR}/config/Targets.java")
+set(TARGET_SELECT_SRC "${GEN_SOURCES_DIR}/backend/target/TargetSelect.java")
+set(TARGET_SELECT_DEPENDS_ON_SRC "${SRC_DIR}/cfe/driver/CFrontEnd.java"
+"${SRC_DIR}/cfe/driver/PreprocessorFactory.java"
+"${SRC_DIR}/utils/llc/LLC.java"
+"${SRC_DIR}/utils/llvmcheck/LLVMChecker.java")
 
 add_custom_target(XccConfig
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
@@ -173,16 +180,14 @@ configure_file(
   )
 
 configure_file(
-  ${XCC_SOURCE_DIR}/config/Targets.java.in
-  ${TARGETS_SRC}
+  ${XCC_SOURCE_DIR}/config/TargetSelect.java.in
+  ${TARGET_SELECT_SRC}
 )
 
 configure_file(
   ${XCC_SOURCE_DIR}/config/version.h.in
   ${OUT_INCLUDE_DIR}/version.h
 )
-
-
 
 # Verify that we can find a Python 2 interpreter.  Python 3 is unsupported.
 set(Python_ADDITIONAL_VERSIONS 2.7)
@@ -203,7 +208,7 @@ set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
 add_custom_target(GenCpuInfoHeader
     COMMAND javah -cp ${XCC_BINARY_DIR}/classes -d ${XCC_BINARY_DIR}/include tools.CPUInfoUtility
     DEPENDS XccConfig
-    COMMENT "Generating header file for GetCpuIDAndInfo...")
+    COMMENT "Building XccConfig and Generating header file for GetCpuIDAndInfo...")
 
 # Add sources file to be compiled.
 file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
@@ -229,8 +234,11 @@ foreach (file ${SRCS_NO_TARGET})
     if ("${file}" MATCHES "(.*)${EXCLUDE_XCC_DRIVER}(.*)")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
-
 endforeach()
+
+# Exclude the TargetSelect.java from source files list as yet.
+list(REMOVE_ITEM SRCS_NO_TARGET ${TARGET_SELECT_SRC})
+list(REMOVE_ITEM SRCS_NO_TARGET ${TARGET_SELECT_DEPENDS_ON_SRC})
 
 #file(GLOB_RECURSE TROVE_SRCS "${XCC_SOURCE_DIR}/external/trove/*.java")
 file(GLOB TROVE_SRCS
@@ -266,6 +274,7 @@ file(MAKE_DIRECTORY ${CLASSES_DIR})
 add_custom_target(CommonBackend
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
     DEPENDS XccConfig
+    COMMENT "Building CommonBackend"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
 # Set the root node of make target dependency graph
@@ -308,7 +317,12 @@ macro(add_gen_tblgen target_name)
     if (TABLEGEN_OUTPUT)
         add_custom_target(${target_name}
             COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
-            ${TABLEGEN_OUTPUT} ${TARGET_SRCS} ${XCC_DRIVER_SRCS}
+            ${TABLEGEN_OUTPUT}
+            ${TARGET_SRCS}
+            ${TARGETS_SRC}
+            ${TARGET_SELECT_SRC}
+            ${TARGET_SELECT_DEPENDS_ON_SRC}
+            ${XCC_DRIVER_SRCS}
             ${GEN_OPTIONS_SRCS}/OptionID.java
             ${GEN_OPTIONS_SRCS}/OptionKind.java
             ${GEN_OPTIONS_SRCS}/Group.java
