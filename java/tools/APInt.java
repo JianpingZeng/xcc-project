@@ -628,14 +628,14 @@ public class APInt implements Cloneable {
 
     // if the sign bits of this is not set, this is the zext.
     if (!isNegative()) {
-      zext(width);
-      return this;
+      return zext(width);
     }
     // the sign bit is set.
+    APInt result = new APInt(this);
     int wordsBefore = getNumWords();
     int wordBits = bitWidth % APINT_BITS_PER_WORD;
-    bitWidth = width;
-    int wordsAfter = getNumWords();
+    result.bitWidth = width;
+    int wordsAfter = result.getNumWords();
 
     if (wordsBefore == wordsAfter) {
       int newWordBits = width % APINT_BITS_PER_WORD;
@@ -644,10 +644,10 @@ public class APInt implements Cloneable {
         mask >>>= APINT_BITS_PER_WORD - newWordBits;
       mask <<= wordBits;
       if (wordsBefore == 1)
-        val |= mask;
+        result.val |= mask;
       else
-        pVal[wordsBefore-1] |= mask;
-      return clearUnusedBits();
+        result.pVal[wordsBefore-1] |= mask;
+      return result.clearUnusedBits();
     }
 
     long mask = wordBits == 0 ? 0 : ~0L << wordBits;
@@ -659,8 +659,8 @@ public class APInt implements Cloneable {
       newVal[wordsBefore-1] |= mask;
     }
     Arrays.fill(newVal, wordsBefore, wordsAfter, -1L);
-    pVal = newVal;
-    return clearUnusedBits();
+    result.pVal = newVal;
+    return result.clearUnusedBits();
   }
 
   public boolean intersects(APInt rhs) {

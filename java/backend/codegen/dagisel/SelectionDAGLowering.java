@@ -1498,10 +1498,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   }
 
   private static APInt computeRange(APInt first, APInt last) {
-    APInt lastExt = new APInt(last), firstExt = new APInt(first);
     int bitWidth = Math.max(last.getBitWidth(), first.getBitWidth()) + 1;
-    lastExt.sext(bitWidth);
-    firstExt.sext(bitWidth);
+    APInt lastExt = last.sext(bitWidth), firstExt = first.sext(bitWidth);
     return lastExt.sub(firstExt).add(1);
   }
 

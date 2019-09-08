@@ -1359,7 +1359,7 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue promoteOpStore(StoreSDNode node, int opNo) {
-    Util.assertion(node.isUNINDEXEDLoad());
+    Util.assertion(node.isUNINDEXEDStore(), "Indexed store during type legalizer?");
     SDValue ch = node.getChain(), ptr = node.getBasePtr();
     int svOffset = node.getSrcValueOffset();
     int alignment = node.getAlignment();
