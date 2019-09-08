@@ -1126,7 +1126,7 @@ public class DAGTypeLegalizer {
 
   private boolean promoteIntegerOperand(SDNode node, int opNo) {
     if (Util.DEBUG) {
-      System.err.printf("Promote integer operand: ");
+      System.err.print("Promote integer operand: ");
       node.dump(dag);
       System.err.println();
     }
@@ -1212,7 +1212,7 @@ public class DAGTypeLegalizer {
 
     Util.assertion(res.getValueType().equals(node.getValueType(0)) && node.getNumValues() == 1);
 
-    replaceValueWith(new SDValue(node, 0), res);
+    replaceValueWith(new SDValue(node, opNo), res);
     return false;
   }
 

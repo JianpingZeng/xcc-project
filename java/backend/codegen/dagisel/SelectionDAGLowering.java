@@ -1434,7 +1434,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       APInt lend = cr.caseRanges.get(i).high.getValue();
       APInt rbegin = cr.caseRanges.get(j).low.getValue();
       APInt range = computeRange(lend, rbegin);
-      Util.assertion(range.sub(2).isNonNegative());
+      Util.assertion(range.sub(2).isNonNegative(),
+          String.format("Assertion fails on function '%s'", mf.getFunction().getName()));
 
       double ldensity = lsize / (lend.sub(first).add(1)).roundToDouble();
       double rdensity = rsize / (last.sub(rbegin).add(1)).roundToDouble();
@@ -2759,7 +2760,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     if (ty instanceof StructType) {
       StructType sty = (StructType) ty;
       for (int i = 0, e = sty.getNumOfElements(); i < e; i++) {
-        if (indices != null && indices[indexBegin] == e - i)
+        if (indices != null && indices[indexBegin] == i)
           return computeLinearIndex(sty.getElementType(i), indices, indexBegin+1, indexEnd, curIndex);
         curIndex = computeLinearIndex(sty.getElementType(i), null, 0, 0, curIndex);
       }

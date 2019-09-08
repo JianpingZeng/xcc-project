@@ -50,10 +50,6 @@ public class FunctionPassManager implements PassManagerBase {
         // topological incomplete!
       case "sqlite3JoinType":
 
-        // unable to issue a copy.
-      case "sqlite3Pragma":
-      case "fkLookupParent":
-
         // bit width must be same in handleJTSwitchCase
       case "sqlite3ExprAffinity":
       case "sqlite3ExprCollSeq":
@@ -70,8 +66,7 @@ public class FunctionPassManager implements PassManagerBase {
       case "whereLoopAddVirtual":
         // type cast error
       case "whereLoopAddBtreeIndex":
-        // APInt size doesn't match type size!
-      case "exprAnalyze":
+
         // unknown node ID!
       case "moveToChild":
       case "balance":

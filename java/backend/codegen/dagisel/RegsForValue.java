@@ -93,9 +93,9 @@ public class RegsForValue {
       for (int i = 0; i < numRegs; i++) {
         SDValue p;
         if (flag == null)
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + value), registerVT);
+          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT);
         else {
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + value), registerVT, flag.get());
+          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT, flag.get());
           flag.set(p.getValue(2));
         }
         chain.set(p.getValue(1));
@@ -103,12 +103,12 @@ public class RegsForValue {
 
         // If the source register was virtual and if we know something about it,
         // add an assert node.
-        if (!TargetRegisterInfo.isVirtualRegister(regs.get(part + value)) ||
+        if (!TargetRegisterInfo.isVirtualRegister(regs.get(part + i)) ||
             !registerVT.isInteger() || registerVT.isVector())
           continue;
 
         FunctionLoweringInfo fli = dag.getFunctionLoweringInfo();
-        FunctionLoweringInfo.LiveOutInfo loi = fli.getLiveOutInfo(regs.get(part + value));
+        FunctionLoweringInfo.LiveOutInfo loi = fli.getLiveOutInfo(regs.get(part + i));
         if (loi == null)
           continue;
 
@@ -116,8 +116,8 @@ public class RegsForValue {
         int numSignBits = loi.numSignBits;
         int numZeroBits = loi.knownZero.countLeadingOnes();
 
-        boolean isSExt = true;
-        EVT fromVT = new EVT(MVT.Other);
+        boolean isSExt;
+        EVT fromVT;
         if (numSignBits == regSize) {
           isSExt = true;
           fromVT = new EVT(MVT.i1);

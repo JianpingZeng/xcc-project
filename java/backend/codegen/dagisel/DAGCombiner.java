@@ -2081,7 +2081,7 @@ public class DAGCombiner {
         x = dag.getNode(ISD.TRUNCATE, vt, x);
 
       APInt mask = ((ConstantSDNode) n0.getOperand(1).getNode()).getAPIntValue();
-      mask.zext(vt.getSizeInBits());
+      mask = mask.zext(vt.getSizeInBits());
       return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
     }
 
@@ -2201,7 +2201,7 @@ public class DAGCombiner {
       else if (x.getValueType().bitsGT(vt))
         x = dag.getNode(ISD.TRUNCATE, vt, x);
       APInt mask = ((ConstantSDNode) n0.getOperand(1).getNode()).getAPIntValue();
-      mask.zext(vt.getSizeInBits());
+      mask = mask.zext(vt.getSizeInBits());
       return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
     }
 

@@ -1410,7 +1410,7 @@ public class SelectionDAG {
       return;
     if (oldNode.getNode().getNumValues() == 1) {
       // handle trivial case
-      replaceAllUsesWith(oldNode.getNode(), newNode.getNode(), listener);
+      replaceAllUsesWith(oldNode, newNode, listener);
       return;
     }
 
@@ -2302,17 +2302,13 @@ public class SelectionDAG {
     if (Objects.equals(oldNode, newNode))
       return;
 
-    ArrayList<SDUse> temps = new ArrayList<>();
-    temps.addAll(oldNode.getUseList());
+    ArrayList<SDUse> temps = new ArrayList<>(oldNode.getUseList());
     int i = 0, e = temps.size();
 
     while (i < e) {
       SDUse u = temps.get(i);
       SDNode user = u.user;
       removeNodeFromCSEMaps(user);
-
-      // FIXME, fix this bug that adjust the list when iterating on it.
-      // FIXME 6/30/2018
       do {
         u = temps.get(i);
         ++i;
@@ -2335,18 +2331,13 @@ public class SelectionDAG {
       return;
     }
 
-    ArrayList<SDUse> temps = new ArrayList<>();
-    temps.addAll(from.useList);
-
+    ArrayList<SDUse> temps = new ArrayList<>(from.useList);
     int i = 0, e = temps.size();
 
     while (i < e) {
       SDUse u = temps.get(i);
       SDNode user = u.user;
       removeNodeFromCSEMaps(user);
-
-      // FIXME, fix this bug that adjust the list when iterating on it.
-      // FIXME 6/30/2018
       do {
         u = temps.get(i);
         ++i;
@@ -2360,22 +2351,15 @@ public class SelectionDAG {
                                  DAGUpdateListener listener) {
     SDNode from = oldNode.getNode();
     Util.assertion(from.getNumValues() == 1 && oldNode.getResNo() == 0, "Can't replace with this method!");
-
     Util.assertion(!Objects.equals(from, newNode.getNode()), "Can't replace uses of with self!");
 
-
-    ArrayList<SDUse> temps = new ArrayList<>();
-    temps.addAll(from.useList);
-
+    ArrayList<SDUse> temps = new ArrayList<>(from.useList);
     int i = 0, e = temps.size();
 
     while (i < e) {
       SDUse u = temps.get(i);
       SDNode user = u.user;
       removeNodeFromCSEMaps(user);
-
-      // FIXME, fix this bug that adjust the list when iterating on it.
-      // FIXME 6/30/2018
       do {
         u = temps.get(i);
         ++i;
