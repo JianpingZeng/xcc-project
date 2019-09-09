@@ -33,6 +33,8 @@ public class FunctionPassManager implements PassManagerBase {
    * @return
    */
   public boolean run(Function f) {
+    if (!f.getName().equals("moveToChild"))
+      return false;
     switch (f.getName()) {
        // sign_extend_inreg can't be selected.
       case "sqlite3CreateIndex":
@@ -62,14 +64,12 @@ public class FunctionPassManager implements PassManagerBase {
       case "sqlite3VdbeExec":
       case "sqlite3VdbeHalt":
 
-        // unknown opcode!
-      case "whereLoopAddVirtual":
         // type cast error
       case "whereLoopAddBtreeIndex":
 
         // unknown node ID!
-      case "moveToChild":
-      case "balance":
+      // case "moveToChild":
+      // case "balance":
 
       case "getOverflowPage":
         return false;

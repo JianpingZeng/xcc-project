@@ -116,7 +116,6 @@ public class SelectionDAGLegalizer {
       Util.assertion(isTypeLegal(node.getOperand(i).getValueType()) || node.getOperand(i).getOpcode() == ISD.TargetConstant,
           "Unexpected illegal type!");
 
-
     if (legalizeNodes.containsKey(val))
       return legalizeNodes.get(val);
 
@@ -1727,7 +1726,7 @@ public class SelectionDAGLegalizer {
         results.add(temp1);
         break;
       }
-      case ISD.FP_TO_SINT: {
+      case ISD.FP_TO_UINT: {
         SDValue trueVal, falseVal;
         EVT vt = node.getOperand(0).getValueType();
         EVT nvt = node.getValueType(0);
