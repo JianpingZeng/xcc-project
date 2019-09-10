@@ -283,8 +283,10 @@ public class DAGTypeLegalizer {
       n.setNodeID(Processed);
       for (SDUse use : n.useList) {
         SDNode user = use.getUser();
-        int nodeId = user.getNodeID();
+        if (user.isDeleted())
+          continue;
 
+        int nodeId = user.getNodeID();
         if (nodeId > 0) {
           user.setNodeID(nodeId - 1);
           if (nodeId - 1 == ReadyToProcess)
@@ -296,7 +298,8 @@ public class DAGTypeLegalizer {
         if (nodeId == NewNode)
           continue;
 
-        Util.assertion(nodeId == Unanalyzed, "Unknown node ID!");
+        Util.assertion(nodeId == Unanalyzed, String.format("Unknown node ID in function '%s'!",
+            dag.getMachineFunction().getFunction().getName()));
         user.setNodeID(user.getNumOperands() - 1);
 
         if (user.getNumOperands() == 1)

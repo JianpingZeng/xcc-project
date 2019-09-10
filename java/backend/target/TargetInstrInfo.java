@@ -142,13 +142,13 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * performed, otherwise it returns the last new instruction.
    *
    * @param mbb
-   * @param idxOfInst
+   * @param mbbi
    * @param lv
    * @return
    */
   public MachineInstr convertToThreeAddress(
       MachineBasicBlock mbb,
-      int idxOfInst,
+      OutRef<Integer> mbbi,
       LiveVariables lv) {
     return null;
   }

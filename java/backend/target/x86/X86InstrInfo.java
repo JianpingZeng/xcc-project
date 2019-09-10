@@ -836,14 +836,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
    * </p>
    *
    * @param mbb
-   * @param insertPos
+   * @param mbbi
    * @param lv
    * @return
    */
   public MachineInstr convertToThreeAddress(
       MachineBasicBlock mbb,
-      int insertPos,
+      OutRef<Integer> mbbi,
       LiveVariables lv) {
+    int insertPos = mbbi.get();
     MachineInstr mi = mbb.getInstAt(insertPos);
 
     // All instructions input are two-addr instructions.  Get the known operands.
@@ -921,14 +922,20 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           int leaInReg = regInfo.createVirtualRegister(GR32RegisterClass);
           int leaOutReg = regInfo.createVirtualRegister(GR32RegisterClass);
 
-          buildMI(mbb, insertPos, mi.getDebugLoc(), get(IMPLICIT_DEF), leaInReg);
-          buildMI(mbb, insertPos, mi.getDebugLoc(), get(INSERT_SUBREG), leaInReg)
+          buildMI(mbb, insertPos++, mi.getDebugLoc(), get(IMPLICIT_DEF), leaInReg);
+          MachineInstr instMI = buildMI(mbb, insertPos++, mi.getDebugLoc(), get(INSERT_SUBREG), leaInReg)
               .addReg(leaInReg)
               .addReg(src, getKillRegState(isKill))
               .addImm(SUBREG_16BIT)
               .getMInstr();
 
-          MachineInstr extMI = buildMI(mbb, insertPos, mi.getDebugLoc(), get(EXTRACT_SUBREG))
+          newMI = buildMI(mbb, insertPos++, mi.getDebugLoc(), get(opc), leaOutReg)
+              .addReg(0).addImm(1 << shAmt)
+              .addReg(leaInReg, getKillRegState(true))
+              .addImm(0)
+              .getMInstr();
+
+          MachineInstr extMI = buildMI(mbb, insertPos++, mi.getDebugLoc(), get(EXTRACT_SUBREG))
               .addReg(dest, Define | getDeadRegState(isDead))
               .addReg(leaOutReg, Kill)
               .addImm(SUBREG_16BIT)
@@ -937,10 +944,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
             lv.getVarInfo(leaInReg).kills.add(newMI);
             lv.getVarInfo(leaOutReg).kills.add(extMI);
             if (isKill)
-              lv.replaceKillInstruction(src, mi, newMI);
+              lv.replaceKillInstruction(src, mi, instMI);
             if (isDead)
               lv.replaceKillInstruction(dest, mi, extMI);
           }
+          mbbi.set(insertPos);
           return extMI;
         } else {
           newMI = buildMI(get(LEA16r))
@@ -1098,6 +1106,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     }
 
     mbb.insert(insertPos, newMI);
+    mbbi.set(insertPos);
     return newMI;
   }
 
