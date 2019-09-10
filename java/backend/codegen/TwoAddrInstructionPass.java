@@ -193,7 +193,10 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
                   }
 
                   MachineInstr oldMI = mbb.getInstAt(i);
-                  MachineInstr newMI = tii.convertToThreeAddress(mbb, i, lv);
+                  OutRef<Integer> mbbi = new OutRef<>(i);
+                  MachineInstr newMI = tii.convertToThreeAddress(mbb, mbbi, lv);
+                  i = mbbi.get();
+
                   if (newMI != null) {
                     if (Util.DEBUG) {
                       System.err.print("2addr: CONVERTING 2-ADDR: ");
