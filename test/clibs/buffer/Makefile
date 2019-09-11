@@ -2,8 +2,9 @@ include ../config/make.common
 
 SRCS=$(wildcard *.c)
 ASMS=$(SRCS:.c=.s)
+LLS=$(SRCS:.c=.ll)
 
-all: clean buffer
+all: clean buffer $(LLS)
 
 buffer: $(ASMS)
 	$(GCC) $^ -o $@
