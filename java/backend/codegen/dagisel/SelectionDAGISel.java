@@ -217,7 +217,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         sdl.visit(llvmBB.getTerminator());
       }
 
-      System.err.println(funcInfo.mbb.getNumber());
       curDAG.setRoot(sdl.getControlRoot());
       codeGenAndEmitInst();
       sdl.clear();

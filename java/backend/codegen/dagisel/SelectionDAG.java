@@ -42,6 +42,7 @@ import tools.*;
 import java.util.*;
 
 import static backend.codegen.MachineMemOperand.*;
+import static backend.codegen.dagisel.ISD.EXTRACT_VECTOR_ELT;
 import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
@@ -641,25 +642,212 @@ public class SelectionDAG {
           return op0;
         break;
       case ISD.MUL:
-        Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType().isInteger(), "Binary operator types must match!");
+      case ISD.UDIV:
+      case ISD.UREM:
+      case ISD.MULHU:
+      case ISD.MULHS:
+      case ISD.SDIV:
+      case ISD.SREM:
+        Util.assertion(vt.isInteger() &&
+            op0.getValueType().isInteger() &&
+            op1.getValueType().isInteger(), "Binary operator types must match!");
 
         // X * 0 == 0
-        if (cn1 != null && cn1.isNullValue())
+        if (opc == ISD.MUL && cn1 != null && cn1.isNullValue())
           return op0;
+        break;
+      case ISD.FADD:
+      case ISD.FSUB:
+      case ISD.FMUL:
+      case ISD.FDIV:
+      case ISD.FREM: {
+        if (EnableUnsafeFPMath.value) {
+          if (opc == ISD.FADD) {
+            // 0 + x --> x
+            if (op0.getNode() instanceof ConstantFPSDNode) {
+              ConstantFPSDNode cfp = (ConstantFPSDNode) op0.getNode();
+              if (cfp.getValueAPF().isZero())
+                return op1;
+            }
+            // x + 0 --> x
+            if (op1.getNode() instanceof ConstantFPSDNode) {
+              ConstantFPSDNode cfp = (ConstantFPSDNode) op1.getNode();
+              if (cfp.getValueAPF().isZero())
+                return op0;
+            }
+          }
+          else if (opc == ISD.FSUB) {
+            if (op1.getNode() instanceof ConstantFPSDNode) {
+              ConstantFPSDNode cfp = (ConstantFPSDNode) op1.getNode();
+              if (cfp.getValueAPF().isZero())
+                return op0;
+            }
+          }
+        }
+        Util.assertion(vt.isFloatingPoint(), "This operator only applies to FP types!");
+        Util.assertion(op0.getValueType().equals(op1.getValueType()) &&
+            op0.getValueType().equals(vt), "Binary operator types must match!");
+        break;
+      }
+      case ISD.FCOPYSIGN:
+        // op0 and result must match and op0 and op1 doesn't need to be matched.
+        Util.assertion(op0.getValueType().equals(vt) &&
+            op0.getValueType().isFloatingPoint() &&
+            op1.getValueType().isFloatingPoint(), "Invalid FCOPYSIGN");
         break;
       case ISD.SHL:
       case ISD.SRA:
       case ISD.SRL:
       case ISD.ROTL:
       case ISD.ROTR:
-        Util.assertion(vt.equals(op0.getValueType()), "Shift operators return tyep must be the same as their arg");
-
-        Util.assertion(vt.isInteger() && op1.getValueType().isInteger(), "Shift operator only works on integer type!");
-
-
+        Util.assertion(vt.equals(op0.getValueType()),
+            "Shift operators return tyep must be the same as their arg");
+        Util.assertion(vt.isInteger() && op1.getValueType().isInteger(),
+            "Shift operator only works on integer type!");
         if (vt.equals(new EVT(MVT.i1)))
           return op0;
         break;
+      case ISD.FP_ROUND_INREG: {
+        EVT evt = ((VTSDNode)op1.getNode()).getVT();
+        Util.assertion(vt.equals(op0.getValueType()), "Not a inreg round!");
+        Util.assertion(vt.isFloatingPoint() && evt.isFloatingPoint(), "Can't FP_ROUND_INREG integer types");
+        Util.assertion(evt.isVector() == vt.isVector(), "FP_ROUND_INREG type should be vector iff the operand type is vector");
+        Util.assertion(!evt.isVector() || evt.getVectorNumElements() == vt.getVectorNumElements(),
+            "Vector element counts must match in FP_ROUND_INREG");
+        Util.assertion(evt.bitsLE(vt), "Not rounding down!");
+        if (((VTSDNode)op1.getNode()).getVT().equals(vt))
+          return op0;
+        break;
+      }
+      case ISD.FP_ROUND:
+        Util.assertion(vt.isFloatingPoint() &&
+            op0.getValueType().isFloatingPoint() &&
+            vt.bitsLE(op0.getValueType()) &&
+            op1.getNode() instanceof ConstantFPSDNode, "Invalid FP_ROUND");
+        if (op0.getValueType().equals(vt))
+          return op0;
+        break;
+      case ISD.AssertSext:
+      case ISD.AssertZext: {
+        EVT evt = ((VTSDNode)op1.getNode()).getVT();
+        Util.assertion(vt.equals(op0.getValueType()), "Not an inreg extend");
+        Util.assertion(vt.isInteger() && evt.isInteger(), "Can't *_EXTEND_INREG FP types");
+        Util.assertion(!evt.isVector(), "AssertSExt/AssertZExt type should be the vector element type rather than the vector type");
+        Util.assertion(evt.bitsLE(vt), "Not extending");
+        if (vt.equals(evt)) return op0;
+        break;
+      }
+      case ISD.SIGN_EXTEND_INREG: {
+        EVT evt = ((VTSDNode)op1.getNode()).getVT();
+        Util.assertion(vt.equals(op0.getValueType()), "Not an inreg extend");
+        Util.assertion(vt.isInteger() && evt.isInteger(), "Can't *_EXTEND_INREG FP types");
+        Util.assertion(vt.isVector() == evt.isVector(), "SIGN_EXTEND_INREG type should be vector iff the operand type is vector");
+        Util.assertion(!evt.isVector() || evt.getVectorNumElements() == vt.getVectorNumElements(),
+            "Vector element counts match in SIGN_EXTEND_INREG");
+        Util.assertion(evt.bitsLE(vt), "Not extending");
+        if (evt.equals(vt)) return op0;
+        if (cn0 != null) {
+          APInt val = cn0.getAPIntValue();
+          int fromBits = evt.getScalarType().getSizeInBits();
+          val.shlAssign(val.getBitWidth() - fromBits);
+          val.ashrAssign(val.getBitWidth() - fromBits);
+          return getConstant(val, vt, false);
+        }
+        break;
+      }
+      case EXTRACT_VECTOR_ELT: {
+        // EXTRACT_VECTOR_ELT of an UNDEF is an UNDEF.
+        if (op0.getOpcode() == ISD.UNDEF)
+          return getUNDEF(vt);
+
+        // EXTRACT_VECTOR_ELT of CONCAT_VECTORS is often formed while lowering is
+        // expanding copies of large vectors from registers.
+        if (cn1 != null && op0.getOpcode() == ISD.CONCAT_VECTORS &&
+            op0.getNumOperands() > 0) {
+          int factor = op0.getOperand(0).getValueType().getVectorNumElements();
+          return getNode(ISD.EXTRACT_VECTOR_ELT, vt,
+              op0.getOperand((int) (cn1.getZExtValue()/factor)),
+              getConstant(cn1.getZExtValue() % factor, op1.getValueType(), false));
+        }
+
+        // EXTRACT_VECTOR_ELT of BUILD_VECTOR is often formed while lowering is
+        // expanding large vector constants.
+        if (cn1 != null && op0.getOpcode() == ISD.BUILD_VECTOR) {
+          SDValue elt = op0.getOperand((int) cn1.getZExtValue());
+          EVT eletTy = op0.getValueType().getVectorElementType();
+          if (!elt.getValueType().equals(eletTy)) {
+            // If the vector element type is not legal, the BUILD_VECTOR operands
+            // are promoted and implicitly truncated.  Make that explicit here.
+            elt = getNode(ISD.TRUNCATE, eletTy, elt);
+          }
+          if (!vt.equals(eletTy)) {
+            // If the vector element type is not legal, the EXTRACT_VECTOR_ELT
+            // result is implicitly extended.
+            elt = getNode(ISD.ANY_EXTEND, vt, elt);
+          }
+          return elt;
+        }
+        // EXTRACT_VECTOR_ELT of INSERT_VECTOR_ELT is often formed when vector
+        // operations are lowered to scalars.
+        if (op0.getOpcode() == ISD.INSERT_VECTOR_ELT) {
+          // If the indices are the same, return the inserted element else
+          // if the indices are known different, extract the element from
+          // the original vector.
+          SDValue op0Op2 = op0.getOperand(2);
+          ConstantSDNode op0Op2C = op0Op2.getNode() instanceof ConstantSDNode ?
+              (ConstantSDNode)op0Op2.getNode() : null;
+          if (op0Op2C != null && cn1 != null) {
+            if (op0Op2C.getZExtValue() == cn1.getZExtValue()) {
+              if (vt.equals(op0.getOperand(1).getValueType()))
+                return op0.getOperand(1);
+              else
+                return getSExtOrTrunc(op0.getOperand(1), vt);
+            }
+
+            return getNode(ISD.EXTRACT_VECTOR_ELT, vt, op0.getOperand(0), op1);
+          }
+        }
+        break;
+      }
+      case ISD.EXTRACT_ELEMENT: {
+        Util.assertion(cn1 != null && cn1.getZExtValue() < 2, "Bad EXTRACT_ELEMENT");
+        Util.assertion(!op0.getValueType().isVector() && !vt.isVector() &&
+            op0.getValueType().isInteger() == vt.isInteger() &&
+            !op0.getValueType().equals(vt), "Wrong types for EXTRACT_ELEMENT");
+        // EXTRACT_ELEMENT of BUILD_PAIR is often formed while legalize is expanding
+        // 64-bit integers into 32-bit parts.  Instead of building the extract of
+        // the BUILD_PAIR, only to have legalize rip it apart, just do it now.
+        if (op0.getOpcode() == ISD.BUILD_PAIR)
+          return op0.getOperand((int) cn1.getZExtValue());
+
+        // EXTRACT_ELEMENT of a constant int is also very common.
+        if (cn1 != null) {
+          int elementSize = vt.getSizeInBits();
+          int shift = (int) (elementSize * cn1.getZExtValue());
+          APInt shiftedVal = cn1.getAPIntValue().lshr(shift);
+          return getConstant(shiftedVal.trunc(elementSize), vt, false);
+        }
+        break;
+      }
+      case ISD.EXTRACT_SUBVECTOR: {
+        SDValue index = op1;
+        if (vt.isSimple() && op0.getValueType().isSimple()) {
+          Util.assertion(vt.isVector() && op0.getValueType().isVector(),
+              "Extract subvector VTs must be a vectors!");
+          Util.assertion(vt.getVectorElementType().equals(op0.getValueType().getVectorElementType()),
+              "Extract subvector VTs must have the same element type!");
+          Util.assertion(vt.getSimpleVT().simpleVT <= op0.getValueType().getSimpleVT().simpleVT,
+              "Extract subvector must be from larger vector to smaller vector!");
+          if (index.getNode() instanceof ConstantSDNode) {
+            Util.assertion(vt.getVectorNumElements() +
+                ((ConstantSDNode)index.getNode()).getZExtValue() <=
+                op0.getValueType().getVectorNumElements(), "extract subvector overflow!");
+          }
+          if (vt.getSimpleVT().equals(op0.getValueType().getSimpleVT()))
+            return op0;
+          break;
+        }
+      }
     }
 
     if (cn0 != null) {
@@ -2095,6 +2283,8 @@ public class SelectionDAG {
     }
     return value;
   }
+
+  public boolean signBitIsZero(SDValue n) { return signBitIsZero(n, 0); }
 
   public boolean signBitIsZero(SDValue n, int depth) {
     if (n.getValueType().isVector())

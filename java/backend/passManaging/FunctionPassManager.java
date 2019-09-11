@@ -34,9 +34,6 @@ public class FunctionPassManager implements PassManagerBase {
    */
   public boolean run(Function f) {
     switch (f.getName()) {
-       // sign_extend_inreg can't be selected.
-      case "sqlite3CreateIndex":
-
         // can't select
       case "sqlite3CreateForeignKey":
       case "sqlite3Update":
@@ -61,9 +58,12 @@ public class FunctionPassManager implements PassManagerBase {
 
         // type cast error
       case "whereLoopAddBtreeIndex":
+
+        // simplifyDemandedBits
+      case "getOverflowPage":
         return false;
     }
-
+    System.err.println(f.getName());
     return fpm.run(f);
   }
 

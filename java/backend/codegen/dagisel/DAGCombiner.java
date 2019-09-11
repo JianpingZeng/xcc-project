@@ -2391,10 +2391,19 @@ public class DAGCombiner {
           ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition(), true);
       if (scc.getNode() != null)
         return scc;
+
+      EVT setCCTy = new EVT(tli.getSetCCResultType(vt));
+      if (!legalOprations || tli.isOperationLegal(ISD.SETCC, setCCTy)) {
+        return dag.getNode(ISD.SELECT, vt,
+            dag.getSetCC(setCCTy, n0.getOperand(0),
+                n0.getOperand(1), ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition()),
+            negOne, dag.getConstant(0, vt, false));
+      }
     }
 
+    // fold (sext x) -> (zext x) if the sign bit is known zero.
     if ((!legalOprations || tli.isOperationLegal(ISD.ZERO_EXTEND, vt)) &&
-        dag.signBitIsZero(n0, 0))
+        dag.signBitIsZero(n0))
       return dag.getNode(ISD.ZERO_EXTEND, vt, n0);
 
     return new SDValue();
