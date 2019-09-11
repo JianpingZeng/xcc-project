@@ -1143,7 +1143,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     }
   }
 
-  protected void initOperands(SDValue... vals) {
+  void initOperands(SDValue... vals) {
     if (vals == null || vals.length <= 0)
       return;
     operandList = new SDUse[vals.length];
@@ -1156,9 +1156,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
 
   public void dropOperands() {
     if (operandList != null && operandList.length > 0) {
-      for (SDUse anOperandList : operandList) {
-        anOperandList.set(new SDValue());
+      for (SDUse op : operandList) {
+        if (op.get().getNode() != null)
+          op.get().getNode().removeUse(op);
       }
+      operandList = null;
     }
   }
 

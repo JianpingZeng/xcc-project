@@ -239,7 +239,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       // No need to insert an identify copy instruction.
       // Watch out for case like this:
       // %RAX<def> = ...
-      // %RAX<def> = SUBREG_TO_REG 0, %EAX:3<kill>, 3
+      // %RAX<def> = SUBREG_TO_REG 0, %EAX:4<kill>, 4
       // The first def is defining RAX, not EAX so the top bits were not
       // zero extended.
       --curPos;

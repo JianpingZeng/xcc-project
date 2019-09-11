@@ -33,9 +33,6 @@ public class FunctionPassManager implements PassManagerBase {
    * @return
    */
   public boolean run(Function f) {
-    if (!f.getName().equals("moveToChild"))
-      return false;
-
     switch (f.getName()) {
        // sign_extend_inreg can't be selected.
       case "sqlite3CreateIndex":
@@ -47,11 +44,8 @@ public class FunctionPassManager implements PassManagerBase {
       case "sqlite3PagerSharedLock":
 
         // dead loop
-      case "sqlite3AtoF":
-      case "sqlite3Select":
-
-        // topological incomplete!
-      case "sqlite3JoinType":
+      case "sqlite3AtoF": //stuck at point of mbb number is 40
+      case "sqlite3Select": //stuck at point of mbb number is 436
 
         // bit width must be same in handleJTSwitchCase
       case "sqlite3ExprAffinity":
@@ -67,8 +61,6 @@ public class FunctionPassManager implements PassManagerBase {
 
         // type cast error
       case "whereLoopAddBtreeIndex":
-
-      case "getOverflowPage":
         return false;
     }
 
