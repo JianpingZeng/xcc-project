@@ -216,7 +216,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         handlePhiNodeInSuccessorBlocks(llvmBB);
         sdl.visit(llvmBB.getTerminator());
       }
-
       curDAG.setRoot(sdl.getControlRoot());
       codeGenAndEmitInst();
       sdl.clear();

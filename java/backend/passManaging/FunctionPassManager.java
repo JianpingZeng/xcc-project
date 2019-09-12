@@ -34,12 +34,6 @@ public class FunctionPassManager implements PassManagerBase {
    */
   public boolean run(Function f) {
     switch (f.getName()) {
-        // can't select
-      case "sqlite3CreateForeignKey":
-      case "sqlite3Update":
-      case "sqlite3BtreeMovetoUnpacked":
-      case "sqlite3PagerSharedLock":
-
         // dead loop
       case "sqlite3AtoF": //stuck at point of mbb number is 40
       case "sqlite3Select": //stuck at point of mbb number is 436
@@ -55,9 +49,6 @@ public class FunctionPassManager implements PassManagerBase {
       case "multiSelectOrderByKeyInfo":
       case "sqlite3VdbeExec":
       case "sqlite3VdbeHalt":
-
-        // type cast error
-      case "whereLoopAddBtreeIndex":
 
         // simplifyDemandedBits
       case "getOverflowPage":

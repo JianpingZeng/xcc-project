@@ -89,6 +89,11 @@ public class MachineFrameInfo {
   private boolean hasCalls;
 
   /**
+   * the frame index for the stack protector.
+   */
+  private int stackProtectorIdx;
+
+  /**
    * This contains the getNumOfSubLoop of largest call frame if the target
    * uses frame setup/destroy instruction.  This information is important for frame pointer
    * elimination.  If is only valid during and after prolog/epilog code
@@ -256,6 +261,14 @@ public class MachineFrameInfo {
 
   public void setHasCalls(boolean V) {
     hasCalls = V;
+  }
+
+  public int getStackProtectorIndex() {
+    return stackProtectorIdx;
+  }
+
+  public void setStackProtectorIndex(int idx) {
+    this.stackProtectorIdx = idx;
   }
 
   /**

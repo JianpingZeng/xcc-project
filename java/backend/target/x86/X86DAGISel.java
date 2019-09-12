@@ -822,21 +822,22 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
-  private boolean matchSegmentBaseAddress(SDValue val, X86ISelAddressMode am) {
-    Util.assertion(val.getOpcode() == X86ISD.SegmentBaseAddress);
-    SDValue segment = val.getOperand(0);
-    if (am.segment.getNode() == null) {
-      am.segment = segment;
-      return false;
+  private boolean matchLoadInAddress(LoadSDNode n, X86ISelAddressMode am) {
+    SDValue address = n.getOperand(1);
+    // load gs:0 -> GS segment register.
+    // load fs:0 -> FS segment register.
+    //
+    // This optimization is valid because the GNU TLS model defines that
+    // gs:0 (or fs:0 on X86-64) contains its own address.
+    // For more information see http://people.redhat.com/drepper/tls.pdf
+    if (address.getNode() instanceof ConstantSDNode) {
+      ConstantSDNode c = (ConstantSDNode) address.getNode();
+      if (c.getSExtValue() == 0 && am.segment.getNode() == null &&
+          subtarget.isTargetELF()) {
+        Util.shouldNotReachHere("Don't support address space!");
+        return false;
+      }
     }
-    return true;
-  }
-
-  private boolean matchLoad(SDValue val, X86ISelAddressMode am) {
-    SDValue address = val.getOperand(1);
-    if (address.getOpcode() == X86ISD.SegmentBaseAddress &&
-        !matchSegmentBaseAddress(address, am))
-      return false;
 
     return true;
   }
@@ -930,6 +931,33 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return false;
   }
 
+  private static boolean isDispSafeFroFrameIndex(long val) {
+    // On 64-bit platforms, we can run into an issue where a frame index
+    // includes a displacement that, when added to the explicit displacement,
+    // will overflow the displacement field. Assuming that the frame index
+    // displacement fits into a 31-bit integer  (which is only slightly more
+    // aggressive than the current fundamental assumption that it fits into
+    // a 32-bit integer), a 31-bit disp should always be safe.
+    return Util.isInt32(val);
+  }
+
+  private boolean foldOffsetIntoAddress(long offset,
+                                        X86ISelAddressMode am) {
+    long val = am.disp + offset;
+    CodeModel cm = tm.getCodeModel();
+    if (subtarget.is64Bit()) {
+      if (!X86.isOffsetSuitableForCodeModel(val, cm, am.hasSymbolicDisplacement()))
+        return true;
+
+      // In addition to the checks required for a register base, check that
+      // we do not try to use an unsafe Disp with a frame index.
+      if (am.baseType == FrameIndexBase && !isDispSafeFroFrameIndex(val))
+        return true;
+    }
+    am.disp = (int) val;
+    return false;
+  }
+
   private boolean matchAddressRecursively(SDValue n,
                                           OutRef<X86ISelAddressMode> am,
                                           int depth) {
@@ -958,15 +986,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         break;
       case ISD.Constant: {
         long val = ((ConstantSDNode) n.getNode()).getSExtValue();
-        if (!is64Bit || X86.isOffsetSuitableForCodeModel(am.get().disp + val,
-            m, am.get().hasSymbolicDisplacement())) {
-          am.get().disp += val;
-          return false;
-        }
-        break;
-      }
-      case X86ISD.SegmentBaseAddress: {
-        if (!matchSegmentBaseAddress(n, am.get()))
+        if (!foldOffsetIntoAddress(val, am.get()))
           return false;
         break;
       }
@@ -977,7 +997,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         break;
       }
       case ISD.LOAD:
-        if (!matchLoad(n, am.get()))
+        if (!matchLoadInAddress((LoadSDNode) n.getNode(), am.get()))
           return false;
         break;
       case ISD.FrameIndex:
@@ -1128,12 +1148,12 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           return false;
         }
 
-        am.set(backup);
+        am.set(backup.clone());
         if (!matchAddressRecursively(n.getOperand(1), am, depth + 1) &&
             !matchAddressRecursively(n.getOperand(0), am, depth + 1))
           return false;
 
-        am.set(backup);
+        am.set(backup.clone());
 
         if (am.get().baseType == RegBase &&
             am.get().base.reg.getNode() == null &&

@@ -7,9 +7,11 @@ import tools.Util;
 
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import static backend.support.AssemblyWriter.*;
+import static backend.value.Operator.BitCast;
 
 /**
  * @author Jianping Zeng
@@ -339,6 +341,40 @@ public class Value implements Cloneable {
 
   public LLVMContext getContext() {
     return getType().getContext();
+  }
+
+  public Value stripPointerCasts() {
+    if (!getType().isPointerType())
+      return this;
+
+    HashSet<Value> visited = new HashSet<>();
+    Value v = this;
+    visited.add(v);
+    do {
+      if (v instanceof GEPOperator) {
+        GEPOperator gep = (GEPOperator) v;
+        if (!gep.hasAllZeroIndices())
+          return v;
+
+        v = gep.getPointerOperand();
+      }
+      else if (v instanceof Instruction && ((Instruction)v).getOpcode() == BitCast)
+        v = ((Instruction)v).operand(0);
+      else if (v instanceof ConstantExpr && ((ConstantExpr)v).getOpcode() == BitCast)
+        v = ((ConstantExpr)v).operand(0);
+      else if (v instanceof GlobalAlias) {
+        GlobalAlias ga = (GlobalAlias) v;
+        if (ga.maybeOverridden())
+          return v;
+        v = ga.getAliasee();
+      }
+      else {
+        return v;
+      }
+      Util.assertion(v.getType().isPointerType(), "Unexpected operand type");
+    }while (visited.add(v));
+
+    return v;
   }
 
   /**

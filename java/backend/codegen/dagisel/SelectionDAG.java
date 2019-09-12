@@ -2143,13 +2143,24 @@ public class SelectionDAG {
     deleteNodeNotInCSEMap(node);
   }
 
+
+  public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+                                     SDValue[] ops,
+                                     EVT memVT, Value srcVal,
+                                     int offset, int align,
+                                     boolean vol, boolean readMem,
+                                     boolean writeMem) {
+    ArrayList<SDValue> temp = new ArrayList<>(Arrays.asList(ops));
+    return getMemIntrinsicNode(opc, vts, temp, memVT, srcVal, offset, align, vol, readMem, writeMem);
+  }
+
   public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
                                      ArrayList<SDValue> ops,
                                      EVT memVT, Value srcVal,
                                      int offset, int align,
                                      boolean vol, boolean readMem,
                                      boolean writeMem) {
-    MemIntrinsicSDNode n = null;
+    MemIntrinsicSDNode n;
     SDValue[] temp = new SDValue[ops.size()];
     ops.toArray(temp);
     int Flags = 0;

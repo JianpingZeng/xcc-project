@@ -1998,11 +1998,12 @@ public class DAGCombiner {
       }
     }
 
-    // fold (sext_inreg (extload x)) -> (sextload x)
+    // fold (sext_inreg (extload x)) -> (sextload x) iff load has only one use
     if (n0.getNode().isExtLoad() && n0.getNode().isUNINDEXEDLoad() &&
+        n0.getNode().hasOneUse() &&
         srcVT.equals(((LoadSDNode) n0.getNode()).getMemoryVT()) &&
-        ((!legalOprations && !((LoadSDNode) n0.getNode()).isVolatile())) ||
-        tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT)) {
+        ((!legalOprations && !((LoadSDNode) n0.getNode()).isVolatile()) ||
+        tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT))) {
       LoadSDNode ld = (LoadSDNode) n0.getNode();
       SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, destVT,
           ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),

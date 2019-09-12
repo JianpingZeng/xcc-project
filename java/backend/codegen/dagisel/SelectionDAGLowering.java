@@ -67,6 +67,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   private HashMap<Value, SDValue> unusedArgNodeMap;
   private HashMap<Value, DanglingDebugInfo> danglingDebugInfoMap;
 
+  private LLVMContext context;
+
   public boolean hasTailCall() {
     return hasTailCall;
   }
@@ -283,6 +285,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     bitTestCases = new ArrayList<>();
     unusedArgNodeMap = new HashMap<>();
     danglingDebugInfoMap = new HashMap<>();
+    context = dag.getContext();
   }
 
   public void init(AliasAnalysis aa) {
@@ -2260,6 +2263,74 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             res));
         return null;
       }
+      case stackprotector: {
+        // Emit code into the DAG to store the stack guard onto the stack.
+        // emit code into the dag to store the stack guard onto the stack.
+        MachineFunction mf = dag.getMachineFunction();
+        MachineFrameInfo mfi = mf.getFrameInfo();
+        EVT ptrTy = new EVT(tli.getPointerTy());
+        // the guard's value.
+        SDValue src = getValue(ci.getArgOperand(0));
+        AllocaInst slot = (AllocaInst)ci.getArgOperand(1);
+        int fi = funcInfo.staticAllocaMap.get(slot);
+        mfi.setStackProtectorIndex(fi);
+
+        SDValue fin = dag.getFrameIndex(fi, ptrTy, false);
+        SDValue res = dag.getStore(getRoot(), src, fin,
+            PseudoSourceValue.getFixedStack(fi), 0,
+            false, 0);
+        setValue(ci, res);
+        dag.setRoot(res);
+        return null;
+      }
+      case var_annotation:
+        // discard it!
+        return null;
+      case init_trampoline: {
+        Function f = (Function) ci.getArgOperand(1).stripPointerCasts();
+        SDValue[] ops = new SDValue[] {getRoot(),
+            getValue(ci.getArgOperand(0)),
+            getValue(ci.getArgOperand(1)),
+            getValue(ci.getArgOperand(2)),
+            dag.getSrcValue(ci.getArgOperand(0)),
+            dag.getSrcValue(f)};
+        Util.shouldNotReachHere("Unsupport init_trampoline!");
+        return null;
+      }
+      case gcroot: {
+        // dscard it.
+        return null;
+      }
+      case gcread:
+      case gcwrite:
+        Util.shouldNotReachHere("GC failed to lower gcread/gcwrite intrinsics!");
+        return null;
+      case trap: {
+        dag.setRoot(dag.getNode(ISD.TRAP, new EVT(MVT.Other), getRoot()));
+        return null;
+      }
+      case prefetch: {
+        int rw = (int) ((ConstantInt)ci.getArgOperand(1)).getZExtValue();
+        SDValue[] ops = new SDValue[] {
+            getRoot(),
+            getValue(ci.getArgOperand(0)),
+            getValue(ci.getArgOperand(1)),
+            getValue(ci.getArgOperand(2)),
+            getValue(ci.getArgOperand(3))
+        };
+        dag.setRoot(dag.getMemIntrinsicNode(ISD.PREFETCH,
+            dag.getVTList(new EVT(MVT.Other)),
+            ops,
+            EVT.getIntegerVT(context, 8),
+            ci.getArgOperand(0), // source value
+            0, // align
+            0, // offset
+            false, // volatile
+            rw == 0, // read
+            rw == 1 // write
+            ));
+        return null;
+      }
       case uadd_with_overflow:
         return implVisitAluOverflow(ci, ISD.UADDO);
       case sadd_with_overflow:
@@ -2279,6 +2350,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       case invariant_end:
       case lifetime_end:
+        // Discard region information.
         return null;
       case dbg_declare: {
         DbgDeclareInst di = (DbgDeclareInst) ci;
@@ -2422,6 +2494,19 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case expect:
         setValue(ci, getValue(ci.getArgOperand(0)));
         return null;
+      case convert_to_fp16:
+      case convert_from_fp16:
+        Util.shouldNotReachHere("Unknown intrinsic call!");
+        return null;
+      case readcyclecounter:
+        SDValue op = getRoot();
+        SDValue res = dag.getNode(ISD.READCYCLECOUNTER,
+            dag.getVTList(new EVT(MVT.i64), new EVT(MVT.Other)),
+            op);
+        setValue(ci, res);
+        dag.setRoot(res.getValue(1));
+        return null;
+
     }
   }
 

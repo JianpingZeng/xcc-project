@@ -424,7 +424,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       }
       case ISD.INTRINSIC_VOID:
       case ISD.INTRINSIC_W_CHAIN: {
-        long iid = ((ConstantSDNode) getOperand(0).getNode()).getZExtValue();
+        //long iid = ((ConstantSDNode) getOperand(0).getNode()).getZExtValue();
         Util.assertion(false, "Intrinsic function not supported!");
       }
 
