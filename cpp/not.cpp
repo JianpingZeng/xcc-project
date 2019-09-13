@@ -21,6 +21,8 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <stdlib.h>
+#include <errno.h>
 
 using namespace std;
 
@@ -30,7 +32,7 @@ static bool findProgramByName(string& progName)
         return true;
 
     std::vector<string> paths;
-    if (char* pathEvn = std::getenv("PATH"))
+    if (char* pathEvn = getenv("PATH"))
     {
         char* ptr = strtok(pathEvn, ":");
         while (ptr != NULL)
@@ -39,9 +41,10 @@ static bool findProgramByName(string& progName)
             ptr = strtok(NULL, ":");
         }
     }
-
-    for (auto path : paths)
+    std::vector<string>::iterator itr = paths.begin(), end = paths.end();
+    for (; itr != end; ++itr)
     {
+        std::string path = *itr;
         if (path.empty()) continue;
 
         string filePath = path + progName;

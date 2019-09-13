@@ -39,16 +39,11 @@ using namespace std;
 JNIEnv* createVM(char* cmdPath)
 {
 #ifdef PATH_MAX
-        char absolute[PATH_MAX] = {0};
+    char absolute[PATH_MAX] = {0};
 #else
-        char absolute[4086] = {0};
+    char absolute[4086] = {0};
 #endif
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result" 
     realpath(cmdPath, absolute);
-#pragma GCC diagnostic pop
-
 #ifdef DEBUG
     fprintf(stderr, "%s\n", absolute);
 #endif
@@ -96,7 +91,7 @@ void invokeClass(char* cmdPath, const char* mainClassName, int argc, char** argv
 
 	jclass mainClass;
 	mainClass = env->FindClass(mainClassName);
-	if (mainClass == nullptr)
+	if (!mainClass)
     {
 	    cerr << "ERROR: class '" + string(mainClassName) + "' not found"<<endl;
 	    exit(0);
@@ -106,7 +101,7 @@ void invokeClass(char* cmdPath, const char* mainClassName, int argc, char** argv
         jmethodID mainMethod;
     	jobjectArray applicationArgs;
         mainMethod = env->GetStaticMethodID(mainClass, "main", "([Ljava/lang/String;)V");
-        if (mainMethod == nullptr)
+        if (!mainMethod)
         {
             cerr<<"ERROR: main method not found."<<endl;
             exit(0);
