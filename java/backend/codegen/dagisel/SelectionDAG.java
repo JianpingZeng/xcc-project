@@ -576,9 +576,18 @@ public class SelectionDAG {
         return getConstant(c1.or(c2), vt, false);
       case ISD.XOR:
         return getConstant(c1.xor(c2), vt, false);
-      //todo case ISD.SRA: return getConstant(c1.sra(c2), vt, false);
       case ISD.SHL:
         return getConstant(c1.shl(c2), vt, false);
+      case ISD.SRL:
+        return getConstant(c1.lshr(c2), vt, false);
+      case ISD.SRA:
+        return getConstant(c1.ashr(c2), vt, false);
+      case ISD.ROTL:
+        return getConstant(c1.rotl(c2), vt, false);
+      case ISD.ROTR:
+        return getConstant(c1.rotr(c2), vt, false);
+      default:
+        break;
     }
     return new SDValue();
   }

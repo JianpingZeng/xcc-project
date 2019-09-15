@@ -34,10 +34,6 @@ public class FunctionPassManager implements PassManagerBase {
    */
   public boolean run(Function f) {
     switch (f.getName()) {
-        // dead loop
-      case "sqlite3AtoF": //stuck at point of mbb number is 40
-      case "sqlite3Select": //stuck at point of mbb number is 436
-
         // bit width must be same in handleJTSwitchCase
       case "sqlite3ExprAffinity":
       case "sqlite3ExprCollSeq":
@@ -54,7 +50,6 @@ public class FunctionPassManager implements PassManagerBase {
       case "getOverflowPage":
         return false;
     }
-    System.err.println(f.getName());
     return fpm.run(f);
   }
 
