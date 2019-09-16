@@ -1354,7 +1354,7 @@ public class APInt implements Cloneable {
       if (shiftAmt == bitWidth)
         return new APInt(bitWidth, 0);
       else
-        return new APInt(bitWidth, val >> shiftAmt);
+        return new APInt(bitWidth, val >>> shiftAmt);
     }
 
     // If all the bits were shifted out, the result is 0. This avoids issues
@@ -1375,7 +1375,7 @@ public class APInt implements Cloneable {
     if (shiftAmt < APINT_BITS_PER_WORD) {
       long carray = 0;
       for (int i = getNumWords() - 1; i >= 0; i--) {
-        valPtr[i] = (pVal[i] >> shiftAmt) | carray;
+        valPtr[i] = (pVal[i] >>> shiftAmt) | carray;
         carray = pVal[i] << (APINT_BITS_PER_WORD - shiftAmt);
       }
 
@@ -1398,12 +1398,12 @@ public class APInt implements Cloneable {
     int breakWord = getNumWords() - offset - 1;
     for (int i = 0; i < breakWord; i++) {
       valPtr[i] =
-          (pVal[i + offset] >> wordShift) | (pVal[i + offset + 1] << (
+          (pVal[i + offset] >>> wordShift) | (pVal[i + offset + 1] << (
               APINT_BITS_PER_WORD - wordShift));
     }
 
     // Shift the break word.
-    valPtr[breakWord] = pVal[breakWord + offset] >> wordShift;
+    valPtr[breakWord] = pVal[breakWord + offset] >>> wordShift;
 
     // Remaining words are 0.
     for (int i = breakWord + 1; i < getNumWords(); i++)
@@ -2434,7 +2434,7 @@ public class APInt implements Cloneable {
 
     if (numBits < APINT_BITS_PER_WORD)
       return new APInt(numBits, (1L << loBitsSet) - 1);
-    return new APInt(numBits, 0).lshr(numBits - loBitsSet);
+    return new APInt(numBits, 0).not().lshr(numBits - loBitsSet);
   }
 
   public static APInt getBitsSet(int numBits, int loBit, int hiBit) {
@@ -3391,7 +3391,7 @@ public class APInt implements Cloneable {
   public APInt abs() {
     if (isNegative())
       return negative();
-    return this;
+    return clone();
   }
 
   public APInt.MU magic() {

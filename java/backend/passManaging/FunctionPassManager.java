@@ -38,14 +38,6 @@ public class FunctionPassManager implements PassManagerBase {
       case "sqlite3ExprAffinity":
       case "sqlite3ExprCollSeq":
 
-        // illegal status in topological order
-      case "resolveAlias":
-      case "sqlite3TableAffinity":
-      case "exprTableRegister":
-      case "multiSelectOrderByKeyInfo":
-      case "sqlite3VdbeExec":
-      case "sqlite3VdbeHalt":
-
         // simplifyDemandedBits
       case "getOverflowPage":
         return false;

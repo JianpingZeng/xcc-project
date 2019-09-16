@@ -1896,7 +1896,7 @@ public abstract class TargetLowering {
 
         if (cc == SETGE || cc == SETUGE) {
           if (c.eq(minVal)) return dag.getConstant(1, vt, false);
-          return dag.getSetCC(vt, lhs, dag.getConstant(c.clone().decrease(),
+          return dag.getSetCC(vt, lhs, dag.getConstant(c.sub(1),
               rhs.getValueType(), false), cc == SETGE ? SETGT : SETUGT);
         }
 

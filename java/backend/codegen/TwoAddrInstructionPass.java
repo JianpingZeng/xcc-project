@@ -114,7 +114,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     TIntIntHashMap distanceMap = new TIntIntHashMap();
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       distanceMap.clear();
-      for (int i = 0, e = mbb.size(); i < e; ) {
+      for (int i = 0; i < mbb.size(); ) {
         MachineInstr mi = mbb.getInstAt(i);
         int nmi = i + 1;
         MCInstrDesc tid = mbb.getInstAt(i).getDesc();

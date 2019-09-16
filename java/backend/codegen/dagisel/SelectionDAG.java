@@ -1998,18 +1998,19 @@ public class SelectionDAG {
           ConstantSDNode cn = (ConstantSDNode) op.getOperand(1).getNode();
           APInt ra = cn.getAPIntValue();
           if (ra.isPowerOf2() || ra.negative().isPowerOf2()) {
-            APInt lowBits = ra.isStrictlyPositive() ?
-                ra.decrease() :
-                ra.not();
+            APInt lowBits = ra.isStrictlyPositive() ? ra.sub(1) : ra.not();
             APInt mask2 = lowBits.or(APInt.getSignBit(bitwidth));
-            computeMaskedBits(op.getOperand(0), mask2, knownVals2,
-                depth + 1);
+            computeMaskedBits(op.getOperand(0), mask2, knownVals2, depth + 1);
 
+            // If the first operand is non-negative or has all low bits zero, then
+            // the upper bits are all zero.
             if (knownVals2[0].get(bitwidth - 1) || knownVals2[0].and(lowBits).eq(lowBits))
               knownVals2[0].orAssign(lowBits.not());
 
+            // If the first operand is negative and not all low bits are zero, then
+            // the upper bits are all one.
             knownVals[0].orAssign(knownVals2[0].and(mask));
-            Util.assertion(knownVals[0].and(knownVals[1]).eq(0));
+            Util.assertion(knownVals[0].and(knownVals[1]).eq(0), "Bits known to be one AND zero?");
           }
         }
         break;
@@ -2019,7 +2020,7 @@ public class SelectionDAG {
           ConstantSDNode cn = (ConstantSDNode) op.getOperand(1).getNode();
           APInt ra = cn.getAPIntValue();
           if (ra.isPowerOf2()) {
-            APInt lowBits = ra.decrease();
+            APInt lowBits = ra.sub(1);
             APInt mask2 = lowBits.and(mask);
             knownVals[0].orAssign(lowBits.negative().and(mask));
             computeMaskedBits(op.getOperand(0), mask2, knownVals,

@@ -63,7 +63,7 @@ public final class MachineRegisterInfo {
     }
 
     public boolean atEnd() {
-      return op != null;
+      return op == null;
     }
 
     public MachineOperand getOpearnd() {

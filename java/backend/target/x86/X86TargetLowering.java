@@ -1592,6 +1592,14 @@ public class X86TargetLowering extends TargetLowering {
     return subtarget.is64Bit() || numBit1 < 64;
   }
 
+  /**
+   * Test if it is free to truncate a larger type to a smaller one.
+   * e.g. On x86 it's free to truncate a i32 value in
+   * register EAX to i16 by referencing its sub-register AX.
+   * @param vt1
+   * @param vt2
+   * @return
+   */
   @Override
   public boolean isTruncateFree(EVT vt1, EVT vt2) {
     if (!vt1.isInteger() || !vt2.isInteger())
@@ -1599,14 +1607,14 @@ public class X86TargetLowering extends TargetLowering {
 
     int numBits1 = vt1.getSizeInBits();
     int numBits2 = vt2.getSizeInBits();
-    if (numBits1 <= numBits2)
-      return false;
-
-    return subtarget.is64Bit() || numBits1 < 64;
+    // X86-64 doesn't require truncate if the source type is smaller than
+    // destination type.
+    return numBits1 > numBits2;
   }
 
   @Override
   public boolean isZExtFree(Type ty1, Type ty2) {
+    // in X86-64, it is not requeried to zero extended a i32 to i64.
     return ty1.isIntegerTy(32) && ty2.isIntegerTy(64) && subtarget.is64Bit();
   }
 
