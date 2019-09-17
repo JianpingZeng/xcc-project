@@ -2,15 +2,9 @@ include ../config/make.common
 
 all: example
 
-example: console-colors.s test/example.s
-	$(GCC) $^ -o $@
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i
-	$(CLANG) $< -o $@
-%.i: %.c
-	$(GCC) -E $< > $@
+example: console-colors.c test/example.c
+	$(GCC) $^ -o $@ -std=c99
 
 clean:
-	$(RM) console-colors.s test/example.s example
+	$(RM) console-colors.s test/example.s example *.s *.o *.ll
 	

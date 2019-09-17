@@ -5,15 +5,8 @@ ASMS=$(SRCS:.c=.s)
 
 all: strsplit
 
-strsplit: $(ASMS)
-	$(GCC) $^ -o $@
-
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i
-	$(CLANG) $< -o $@
-%.i: %.c	
-	$(GCC) $< -E $(CFLAGS) > $@
+strsplit: $(SRCS)
+	$(GCC) $^ -o $@ $(CFLAGS)
 
 clean:
 	rm -f strsplit *.s *.o *.ll *.i

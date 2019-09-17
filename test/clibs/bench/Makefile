@@ -10,15 +10,9 @@ endif
 all: clean test
 
 clean:
-	rm -f bench *.s *.ll *.i
+	rm -f bench *.s *.ll *.i *.o
 
-test: test.s
+test: test.c
 	$(GCC) $^ -o bench $(LDFLAGS)
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i
-	$(CLANG) $< -o $@
-%.i: %.c
-	$(GCC) -E $< > $@
 
 .PHONY: all clean test

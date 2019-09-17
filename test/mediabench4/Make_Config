@@ -1,0 +1,12 @@
+#ARCH=ARM
+ARCH=X86
+OPT_LEVEL=-O2
+COMPILER=/home/jpzeng/Development/Compiler/xcc/java/utils/gcc-driver/gcc.sh
+
+LDFLAGS=-static ${OPT_LEVEL}
+# Tools
+IDEM_LINKER=gcc
+IDEM_AR=ar
+IDEM_RANLIB=ranlib
+
+

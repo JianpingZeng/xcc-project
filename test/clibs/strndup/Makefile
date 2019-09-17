@@ -3,15 +3,8 @@ CFLAGS = -std=c99 -Wall -Wextra
 
 all: test
 
-test: strndup.s test.s
-	$(GCC) $^ -o $@
-
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i
-	$(CLANG) $< -o $@
-%.i: %.c	
-	$(GCC) $< -E $(CFLAGS) > $@
+test: strndup.c test.c
+	$(GCC) $^ -o $@ $(CFLAGS)
 
 clean:
 	rm -f test *.s *.o *.ll *.i

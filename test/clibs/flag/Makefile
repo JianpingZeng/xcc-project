@@ -2,24 +2,17 @@ include ../config/make.common
 SRC = $(wildcard deps/*/*.c)
 SRC += flag.c
 ASMS=$(SRC:.c=.s)
-LLS=${SRC:.c=.ll}
-CFLAGS = -std=c99 -I deps -g
+CFLAGS = -std=c99 -I deps
 
 all: test ${LLS}
 
-test: $(ASMS) flag_test.s
-	@$(GCC) $^ -o $@
+test: $(SRC) flag_test.c
+	$(GCC) $^ -o $@ $(CFLAGS)
 
-example: $(SRC) flag_example.s
-	@$(GCC) $^ -o $@
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.c
-	$(CLANG) $< -o $@ $(CFLAGS)
-%.i: %.c
-	$(GCC) -E $(CFLAGS) $< > $@
+example: $(SRC) flag_example.c
+	$(GCC) $^ -o $@ $(CFLAGS)
 
 clean:
-	rm -fr test example *.dSYM *.s *.o *.ll *.s
+	rm -fr test example *.dSYM *.s *.o *.ll *.s *.i
 
 .PHONY: clean

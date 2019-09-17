@@ -2,19 +2,13 @@ include ../config/make.common
 BIN=chfreq
 all: $(BIN) test
 
-$(BIN): main.s chfreq.s
-	$(GCC) $^  -o $@
+$(BIN): main.c chfreq.c
+	$(GCC) $^ -o $@ -std=c99
 
-test: test.s chfreq.s
-	$(GCC) $^ -o $@
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i 
-	$(CLANG) $< -o $@
-%.i: %.c 
-	$(GCC) -E $< > $@
+test: test.c chfreq.c
+	$(GCC) $^ -o $@ -std=c99
 
 clean:
-	rm -f test $(BIN) *.s *.i *.ll
+	rm -f test $(BIN) *.s *.i *.ll *.o
 
 .PHONY: test

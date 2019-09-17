@@ -1,5 +1,1 @@
-CLANG=$(HOME)/Downloads/clang+llvm-3.0-x86_64-apple-darwin11/bin/clang -cc1 -S -emit-llvm -O2 -fblocks
-#CLANG=${HOME}/Documents/development/Compiler/llvm/cmake-build-debug/bin/clang -cc1 -S -emit-llvm -O2 -fcolor-diagnostics
-LLC=$(HOME)/Documents/development/Compiler/xcc/cmake-build-debug/bin/llc -O0 -filetype=asm
-#GCC=${HOME}/Documents/development/Compiler/llvm/cmake-build-debug/bin/clang
-GCC=$(HOME)/Downloads/clang+llvm-3.0-x86_64-apple-darwin11/bin/clang 
+GCC=../../../java/utils/gcc-driver/gcc.sh

@@ -1,1 +1,105 @@
-2. sqlite3, LLParser failure
+1. flag
+/home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc flag.ll -o flag.s -march=x86-64
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
+	at java.util.ArrayList.rangeCheck(ArrayList.java:657)
+	at java.util.ArrayList.get(ArrayList.java:433)
+	at backend.llReader.LLParser.parseType(LLParser.java:1494)
+	at backend.llReader.LLParser.parseType(LLParser.java:1435)
+	at backend.llReader.LLParser.parseArrayVectorType(LLParser.java:1737)
+	at backend.llReader.LLParser.parseType(LLParser.java:1457)
+	at backend.llReader.LLParser.parseStructBody(LLParser.java:587)
+	at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
+	at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
+	at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
+	at backend.llReader.LLParser.run(LLParser.java:175)
+	at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
+	at utils.llc.LLC.main(LLC.java:174)
+
+2. graph
+
+Compiling src/graph.ll --> src/graph.s
+>> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc src/graph.ll -o src/graph.s -march=x86-64
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 2, Size: 2
+	at java.util.ArrayList.rangeCheck(ArrayList.java:657)
+	at java.util.ArrayList.get(ArrayList.java:433)
+	at backend.llReader.LLParser.parseType(LLParser.java:1494)
+	at backend.llReader.LLParser.parseStructBody(LLParser.java:575)
+	at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
+	at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
+	at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
+	at backend.llReader.LLParser.run(LLParser.java:175)
+	at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
+	at utils.llc.LLC.main(LLC.java:174)
+
+3. linenoise
+
+Compiling linenoise.ll --> linenoise.s
+>> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc linenoise.ll -o linenoise.s -march=x86-64
+Exception in thread "main" java.lang.RuntimeException: Can't replace with this method!
+	at tools.Util.assertion(Util.java:638)
+	at backend.codegen.dagisel.SelectionDAG.replaceAllUsesWith(SelectionDAG.java:2564)
+	at backend.codegen.dagisel.SelectionDAG.replaceAllUsesOfValueWith(SelectionDAG.java:1610)
+	at backend.codegen.dagisel.DAGTypeLegalizer.replaceValueWithHelper(DAGTypeLegalizer.java:541)
+	at backend.codegen.dagisel.DAGTypeLegalizer.replaceValueWith(DAGTypeLegalizer.java:531)
+	at backend.codegen.dagisel.DAGTypeLegalizer.promoteIntegerOperand(DAGTypeLegalizer.java:1218)
+	at backend.codegen.dagisel.DAGTypeLegalizer.run(DAGTypeLegalizer.java:224)
+	at backend.codegen.dagisel.SelectionDAG.legalizeTypes(SelectionDAG.java:3911)
+	at backend.codegen.dagisel.SelectionDAGISel.codeGenAndEmitInst(SelectionDAGISel.java:301)
+	at backend.codegen.dagisel.SelectionDAGISel.selectAllBasicBlocks(SelectionDAGISel.java:219)
+	at backend.codegen.dagisel.SelectionDAGISel.runOnMachineFunction(SelectionDAGISel.java:138)
+	at backend.support.MachineFunctionPass.runOnFunction(MachineFunctionPass.java:73)
+	at backend.passManaging.FPPassManager.runOnFunction(FPPassManager.java:67)
+	at backend.passManaging.FunctionPassManagerImpl.run(FunctionPassManagerImpl.java:105)
+	at backend.passManaging.FunctionPassManager.run(FunctionPassManager.java:45)
+	at utils.llc.LLC.main(LLC.java:275)
+
+4. logfmt
+
+Compiling utils.ll --> utils.s
+>> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc utils.ll -o utils.s -march=x86-64
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
+        at java.util.ArrayList.rangeCheck(ArrayList.java:657)
+        at java.util.ArrayList.get(ArrayList.java:433)
+        at backend.llReader.LLParser.parseType(LLParser.java:1494)
+        at backend.llReader.LLParser.parseStructBody(LLParser.java:587)
+        at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
+        at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
+        at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
+        at backend.llReader.LLParser.run(LLParser.java:175)
+        at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
+        at utils.llc.LLC.main(LLC.java:174)
+
+5. parson
+
+Compiling parson.ll --> parson.s
+>> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc parson.ll -o parson.s -march=x86-64
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 0, Size: 0
+        at java.util.LinkedList.checkElementIndex(LinkedList.java:555)
+        at java.util.LinkedList.get(LinkedList.java:476)
+        at backend.codegen.MachineBasicBlock.getInstAt(MachineBasicBlock.java:85)
+        at backend.target.x86.X86FrameLowering.emitPrologue(X86FrameLowering.java:91)
+        at backend.codegen.PrologEpilogInserter.insertPrologEpilogCode(PrologEpilogInserter.java:1428)
+        at backend.codegen.PrologEpilogInserter.runOnMachineFunction(PrologEpilogInserter.java:165)
+        at backend.support.MachineFunctionPass.runOnFunction(MachineFunctionPass.java:73)
+        at backend.passManaging.FPPassManager.runOnFunction(FPPassManager.java:67)
+        at backend.passManaging.FunctionPassManagerImpl.run(FunctionPassManagerImpl.java:105)
+        at backend.passManaging.FunctionPassManager.run(FunctionPassManager.java:45)
+        at utils.llc.LLC.main(LLC.java:275)
+
+6. sqlite3
+
+Compiling sqlite3.ll --> sqlite3.s
+>> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc sqlite3.ll -o sqlite3.s -march=x86-64
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 6, Size: 6
+        at java.util.ArrayList.rangeCheck(ArrayList.java:657)
+        at java.util.ArrayList.get(ArrayList.java:433)
+        at backend.llReader.LLParser.parseType(LLParser.java:1494)
+        at backend.llReader.LLParser.parseStructBody(LLParser.java:575)
+        at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
+        at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
+        at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
+        at backend.llReader.LLParser.run(LLParser.java:175)
+        at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
+        at utils.llc.LLC.main(LLC.java:174)
+
+

@@ -16,14 +16,8 @@ build/lib/libgraph.a: $(OBJS)
 	mkdir -p build/lib
 	$(AR) -crs $@ $^
 
-%.i: %.c
-	$(GCC) $(CFLAGS) -E $< > $@
-%.ll: %.i
-	$(CLANG) $(CFLAGS) $< -o $@
-%.s: %.ll
-	$(LLC) $< -o $@
-%.o: %.s
-	$(GCC) -c $< -o $@
+%.o: %.c
+	$(GCC) -c $< -o $@ ${CFLAGS}
 
 #example: build
 #	$(GCC) $(CFLAGS) -Ibuild/include -o example example.c -Lbuild/lib -lgraph

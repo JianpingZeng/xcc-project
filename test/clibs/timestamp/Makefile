@@ -6,14 +6,8 @@ all: test
 check: test
 	./test
 
-test: test.s timestamp.s
-	$(GCC) $^ -o $@
-%.s: %.ll
-	$(LLC) $< -o $@
-%.ll: %.i
-	$(CLANG) $< -o $@ $(CFLAGS)
-%.i: %.c
-	$(GCC) $< -E $(CFLAGS) > $@
+test: test.c timestamp.c
+	$(GCC) $^ -o $@ $(CFLAGS)
 
 clean:
 	rm -f test *.o *.s *.ll *.i
