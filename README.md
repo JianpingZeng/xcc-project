@@ -33,7 +33,7 @@ Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 1. 64 bit Ubuntu 14.04 or 16.04 OS.
 2. Install [OracleJDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
-3. Install any version of GCC supports c++ 11 features or latest version of [Clang](https://apt.llvm.org/).
+3. Install any version of G++ or Clang++ compiler.
 4. If you run the native executable instead of jar package on Modern MacOSX (>= 10.8) and newer
    JDK(>= 1.7), the legacy JDK support must be installed before running native launcher.
    
@@ -41,15 +41,15 @@ or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
 
 ### Build
 1. Clone this repository into your local directory.
-2. Build this project with following command.
+2. Build this project with the following command.
    ````bash
     cd xcc
     mkdir build && cd build
     cmake ../ -DXCC_TARGETS_TO_BUILD=X86
     make all [-j8 depends on number of CPU cores in your local machine]
    ````
-3. Using Clang 3.0 to generate a LLVM IR file from C source file. 
-Save the following code into a c file called hello.c
+3. Using the Clang 3.0 to generate a LLVM IR file from C source file. 
+Save the following code into a c file named hello.c
 ```c
 #include <stdio.h>
 int main() {
@@ -57,7 +57,7 @@ int main() {
   return 0;
 }
 ```
-generating LLVM IR from hello.c with the command "clang -cc1 -S -emit-llvm -O2 hello.c -o hello.ll". 
+generating LLVM IR from the hello.c with the command "clang -cc1 -S -emit-llvm -O2 hello.c -o hello.ll". 
 ```llvm
 ; ModuleID = 'hello.c'
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-s0:64:64-f80:128:128-n8:16:32:64-S128"
@@ -74,8 +74,7 @@ entry:
 declare i32 @puts(i8* nocapture) nounwind
 ```
 
-with the following command to call llc provided by XCC to generate assembly code instead of using 
-LLVM official llc tool.
+with the following command to call llc provided by XCC to generate assembly code instead of using LLVM official llc tool.
 
 ```sbtshell
 llc -filetype=asm hello.ll
