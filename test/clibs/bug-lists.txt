@@ -1,36 +1,3 @@
-1. flag
-/home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc flag.ll -o flag.s -march=x86-64
-Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
-	at java.util.ArrayList.rangeCheck(ArrayList.java:657)
-	at java.util.ArrayList.get(ArrayList.java:433)
-	at backend.llReader.LLParser.parseType(LLParser.java:1494)
-	at backend.llReader.LLParser.parseType(LLParser.java:1435)
-	at backend.llReader.LLParser.parseArrayVectorType(LLParser.java:1737)
-	at backend.llReader.LLParser.parseType(LLParser.java:1457)
-	at backend.llReader.LLParser.parseStructBody(LLParser.java:587)
-	at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
-	at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
-	at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
-	at backend.llReader.LLParser.run(LLParser.java:175)
-	at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
-	at utils.llc.LLC.main(LLC.java:174)
-
-2. graph
-
-Compiling src/graph.ll --> src/graph.s
->> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc src/graph.ll -o src/graph.s -march=x86-64
-Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 2, Size: 2
-	at java.util.ArrayList.rangeCheck(ArrayList.java:657)
-	at java.util.ArrayList.get(ArrayList.java:433)
-	at backend.llReader.LLParser.parseType(LLParser.java:1494)
-	at backend.llReader.LLParser.parseStructBody(LLParser.java:575)
-	at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
-	at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
-	at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
-	at backend.llReader.LLParser.run(LLParser.java:175)
-	at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
-	at utils.llc.LLC.main(LLC.java:174)
-
 3. linenoise
 
 Compiling linenoise.ll --> linenoise.s
@@ -53,22 +20,6 @@ Exception in thread "main" java.lang.RuntimeException: Can't replace with this m
 	at backend.passManaging.FunctionPassManager.run(FunctionPassManager.java:45)
 	at utils.llc.LLC.main(LLC.java:275)
 
-4. logfmt
-
-Compiling utils.ll --> utils.s
->> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc utils.ll -o utils.s -march=x86-64
-Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
-        at java.util.ArrayList.rangeCheck(ArrayList.java:657)
-        at java.util.ArrayList.get(ArrayList.java:433)
-        at backend.llReader.LLParser.parseType(LLParser.java:1494)
-        at backend.llReader.LLParser.parseStructBody(LLParser.java:587)
-        at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
-        at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
-        at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
-        at backend.llReader.LLParser.run(LLParser.java:175)
-        at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
-        at utils.llc.LLC.main(LLC.java:174)
-
 5. parson
 
 Compiling parson.ll --> parson.s
@@ -89,17 +40,24 @@ Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 0, Size: 
 6. sqlite3
 
 Compiling sqlite3.ll --> sqlite3.s
->> /home/jpzeng/Development/Compiler/xcc/cmake-build-debug/bin/llc sqlite3.ll -o sqlite3.s -march=x86-64
-Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 6, Size: 6
-        at java.util.ArrayList.rangeCheck(ArrayList.java:657)
-        at java.util.ArrayList.get(ArrayList.java:433)
-        at backend.llReader.LLParser.parseType(LLParser.java:1494)
-        at backend.llReader.LLParser.parseStructBody(LLParser.java:575)
-        at backend.llReader.LLParser.parseStructDefinition(LLParser.java:548)
-        at backend.llReader.LLParser.parseUnnamedType(LLParser.java:621)
-        at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:223)
-        at backend.llReader.LLParser.run(LLParser.java:175)
-        at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
-        at utils.llc.LLC.main(LLC.java:174)
-
+>> /home/xlous/Development/Compiler/xcc/cmake-build-debug/bin/llc sqlite3.ll -o sqlite3.s -march=x86-64
+Exception in thread "main" java.lang.RuntimeException: Too many bits for long
+	at tools.Util.assertion(Util.java:638)
+	at tools.APInt.getZExtValue(APInt.java:1253)
+	at backend.value.UniqueConstantValueImpl$APIntKeyType.hashCode(UniqueConstantValueImpl.java:340)
+	at java.util.HashMap.hash(HashMap.java:339)
+	at java.util.HashMap.containsKey(HashMap.java:596)
+	at backend.value.UniqueConstantValueImpl.getOrCreate(UniqueConstantValueImpl.java:118)
+	at backend.value.ConstantInt.get(ConstantInt.java:73)
+	at backend.llReader.LLParser.convertValIDToValue(LLParser.java:3642)
+	at backend.llReader.LLParser.parseValue(LLParser.java:2721)
+	at backend.llReader.LLParser.parseLogical(LLParser.java:2636)
+	at backend.llReader.LLParser.parseInstruction(LLParser.java:1987)
+	at backend.llReader.LLParser.parseBasicBlock(LLParser.java:1843)
+	at backend.llReader.LLParser.parseFunctionBody(LLParser.java:1790)
+	at backend.llReader.LLParser.parseDefine(LLParser.java:1769)
+	at backend.llReader.LLParser.parseTopLevelEntities(LLParser.java:203)
+	at backend.llReader.LLParser.run(LLParser.java:175)
+	at backend.llReader.Parser.parseAssemblyFile(Parser.java:47)
+	at utils.llc.LLC.main(LLC.java:174)
 

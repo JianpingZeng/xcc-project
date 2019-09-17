@@ -197,33 +197,33 @@ public class NameMangler {
   private String makeNameProper(String origin, ManglerPrefixTy prefixTy) {
     Util.assertion(!origin.isEmpty(), "Can't mangle an empty string");
 
-    String result = "";
+    StringBuilder result = new StringBuilder();
     if (!useQuotes) {
       int i = 0;
       boolean needsPrefix = true;
-      if (origin.charAt(i) == '1') {
+      if (origin.startsWith("\\01")) {
         needsPrefix = false;
-        ++i;
+        i += 3;
       }
       // Mangle the first letter specially, don't allow numbers.
       if (origin.charAt(i) >= '0' && origin.charAt(i) <= '9')
-        result += mangleLetter(origin.charAt(i++));
+        result.append(mangleLetter(origin.charAt(i++)));
 
       for (; i < origin.length(); i++) {
         char ch = origin.charAt(i);
         if (!isCharAcceptable(ch))
-          result += mangleLetter(ch);
+          result.append(mangleLetter(ch));
         else
-          result += ch;
+          result.append(ch);
       }
       if (needsPrefix) {
-        result = prefix + result;
+        result.insert(0, prefix);
         if (prefixTy == ManglerPrefixTy.Private)
-          result = privatePrefix + result;
+          result.insert(0, privatePrefix);
         else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
-          result = linkerPrivatePrefix + result;
+          result.insert(0, linkerPrivatePrefix);
       }
-      return result;
+      return result.toString();
     }
     boolean needsPrefix = true;
     boolean needsQuotes = false;
@@ -251,37 +251,37 @@ public class NameMangler {
       if (!needsPrefix)
         return origin.substring(1);
 
-      result = prefix + origin;
+      result = new StringBuilder(prefix + origin);
       if (prefixTy == ManglerPrefixTy.Private)
-        result = privatePrefix + result;
+        result.insert(0, privatePrefix);
       else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
-        result = linkerPrivatePrefix + result;
+        result.insert(0, linkerPrivatePrefix);
 
-      return result;
+      return result.toString();
     }
 
     if (needsPrefix)
-      result = origin.substring(0, i);
+      result = new StringBuilder(origin.substring(0, i));
 
     // Otherwise, construct the string in expensive way.
     for (; i < origin.length(); i++) {
       char ch = origin.charAt(i);
       if (ch == '"')
-        result += "_QQ_";
+        result.append("_QQ_");
       else if (ch == '\n')
-        result += "_NL_";
+        result.append("_NL_");
       else
-        result += ch;
+        result.append(ch);
     }
     if (needsPrefix) {
-      result = prefix + result;
+      result.insert(0, prefix);
       if (prefixTy == ManglerPrefixTy.Private)
-        result = privatePrefix + result;
+        result.insert(0, privatePrefix);
       else if (prefixTy == ManglerPrefixTy.LinkerPrivate)
-        result = linkerPrivatePrefix + result;
+        result.insert(0, linkerPrivatePrefix);
     }
-    result = '"' + result + '"';
-    return result;
+    result = new StringBuilder('"' + result.toString() + '"');
+    return result.toString();
   }
 
   private void markCharAcceptable(char x) {

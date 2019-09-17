@@ -1488,9 +1488,10 @@ public final class LLParser {
         // TypeRec ::= %4
         int typeId = lexer.getIntVal();
         if (typeId >= numberedTypes.size()) {
-          for (int i = numberedTypes.size(); i < typeId; i++)
+          for (int i = numberedTypes.size(); i <= typeId; i++)
             numberedTypes.add(Pair.get(null, new SMLoc()));
         }
+        Util.assertion(typeId>= 0 && typeId < numberedTypes.size(), "Out of bound index access!");
         Pair<Type, SMLoc> entry = numberedTypes.get(typeId);
         // If the type hasn't been defined yet, create a forward definition and
         // remember where that forward def'n was seen (in case it never is defined).
