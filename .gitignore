@@ -20,7 +20,6 @@ cmake_install.cmake
 CMakeCache.txt
 *.s
 *.iml
-*.s
 *.ll
 *.o
 *.i
