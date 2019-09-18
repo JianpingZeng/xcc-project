@@ -337,7 +337,7 @@ public final class UniqueConstantValueImpl {
     @Override
     public int hashCode() {
       FoldingSetNodeID id = new FoldingSetNodeID();
-      id.addInteger(val.getZExtValue());
+      id.addInteger(val.hashCode());
       id.addInteger(type.hashCode());
       return id.computeHash();
     }

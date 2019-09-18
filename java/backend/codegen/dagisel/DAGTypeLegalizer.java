@@ -1215,7 +1215,7 @@ public class DAGTypeLegalizer {
 
     Util.assertion(res.getValueType().equals(node.getValueType(0)) && node.getNumValues() == 1);
 
-    replaceValueWith(new SDValue(node, opNo), res);
+    replaceValueWith(new SDValue(node, 0), res);
     return false;
   }
 

@@ -160,6 +160,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
   private void selectAllBasicBlocks(Function fn) {
+    System.err.println(fn.getName());
+
     // Iterate over all basic blocks in the function in the post traversal order
     ArrayList<BasicBlock> blocks = DepthFirstOrder.reversePostOrder(fn.getEntryBlock());
     for (BasicBlock llvmBB : blocks) {

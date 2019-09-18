@@ -3750,8 +3750,9 @@ public class DAGCombiner {
       if (tmp.getNode() != null) return tmp;
     }
 
-    if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
-      return new SDValue(n, 0);
+    // TODO 9/18/2019, this is a bug so comment it!!!
+    //if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
+    //  return new SDValue(n, 0);
 
     // fold (zext_inreg (extload x)) -> (zextload x)
     if (op0.getNode().isExtLoad() && op0.getNode().isUNINDEXEDLoad()) {
@@ -4447,8 +4448,9 @@ public class DAGCombiner {
             dag.getNode(ISD.ADD, vt, t1, t3));
       }
     }
-    if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
-      return new SDValue(n, 0);
+    // TODO 9/18/2019, this is a bug so comment it!!!
+    //if (!vt.isVector() && simplifyDemandedBits(new SDValue(n, 0)))
+    //  return new SDValue(n, 0);
 
     // fold (a+b) -> (a|b) iff a and b share no bits.
     if (vt.isInteger() && !vt.isVector()) {

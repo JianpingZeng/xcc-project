@@ -39,7 +39,26 @@ public class FunctionPassManager implements PassManagerBase {
       case "sqlite3ExprCollSeq":
 
         // simplifyDemandedBits
-      case "getOverflowPage":
+//      case "getOverflowPage":
+//      case "sqlite3VXPrintf":
+//      case "sqlite3_backup_step":
+
+        // Exception in thread "main" java.lang.RuntimeException: Unsupported extended type!
+      case "destroyRootPage":
+      case "sqlite3NestedParse":
+      case "sqlite3Reindex":
+      case "sqlite3Pragma":
+      case "sqlite3GenerateRowDelete":
+      case "sqlite3CodeRowTriggerDirect":
+      case "getRowTrigger":
+      case "sqlite3DeleteFrom":
+      case "sqlite3Insert":
+      case "codeTriggerProgram":
+      case "sqlite3FkActions":
+      case "sqlite3GenerateConstraintChecks":
+      case "sqlite3Update":
+      case "sqlite3FkCheck":
+      case "sqlite3LocateTable":
         return false;
     }
     return fpm.run(f);

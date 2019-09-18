@@ -88,7 +88,8 @@ public class X86FrameLowering extends TargetFrameLowering {
       stackSize += 32;
       mfi.setStackSize(stackSize);
     }
-    DebugLoc dl = mbb.getInstAt(mbbi).getDebugLoc();
+
+    DebugLoc dl = mbbi != mbb.size() ? mbb.getInstAt(mbbi).getDebugLoc() : new DebugLoc();
     if (tailCallReturnAddrDelta < 0) {
       mi = buildMI(mbb, mbbi, dl, tii.get(is64Bit ? SUB64ri32 : SUB32ri),
           stackPtr).addReg(stackPtr).addImm(-tailCallReturnAddrDelta).getMInstr();
@@ -136,8 +137,8 @@ public class X86FrameLowering extends TargetFrameLowering {
 
     boolean pushedRegs = false;
     int stackOffset = 2 * stackGrowth;
-    while (mbbi < mbb.size() && mbb.getInstAt(mbbi).getOpcode() == PUSH32r
-        || mbb.getInstAt(mbbi).getOpcode() == PUSH64r) {
+    while (mbbi < mbb.size() && (mbb.getInstAt(mbbi).getOpcode() == PUSH32r
+        || mbb.getInstAt(mbbi).getOpcode() == PUSH64r)) {
       pushedRegs = true;
       ++mbbi;
     }
@@ -229,8 +230,8 @@ public class X86FrameLowering extends TargetFrameLowering {
     long chunk = (1L << 31) - 1;
     while (offset != 0) {
       long thisVal = (offset > chunk) ? chunk : offset;
-      MachineInstr mi = buildMI(mbb, mbbi,
-          mbb.getInstAt(mbbi).getDebugLoc(),
+      DebugLoc dl = mbbi != mbb.size() ? mbb.getInstAt(mbbi).getDebugLoc() : new DebugLoc() ;
+      MachineInstr mi = buildMI(mbb, mbbi, dl,
           tii.get(opc), stackPtr).addReg(stackPtr)
           .addImm(thisVal).getMInstr();
       mi.getOperand(3).setIsDead(true);

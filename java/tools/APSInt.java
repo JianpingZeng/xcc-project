@@ -326,4 +326,18 @@ public class APSInt extends APInt {
     return new APSInt(isUnsigned ? APInt.getMinValue(numBits)
         : APInt.getSignedMinValue(numBits), isUnsigned);
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode() | (isSigned() ? 1 :0);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (obj == this) return true;
+    if (getClass() != obj.getClass()) return false;
+    APSInt rhs = (APSInt) obj;
+    return isSigned() == rhs.isSigned() && super.eq(rhs);
+  }
 }

@@ -3445,4 +3445,25 @@ public class APInt implements Cloneable {
   public int getNumSignBits() {
     return isNegative() ? countLeadingOnes() : countLeadingZeros();
   }
+
+  @Override
+  public int hashCode() {
+    if (isSingleWord()) {
+        return (int)((val >>> 32) | ( val & 0xFFFFFFFFL));
+    }
+    int res = (int)((pVal[0] >>> 32) | (val & 0xFFFFFFFFL));
+    for (int i = 0, e = getNumWords(); i < e; i++) {
+      res |= (int)((pVal[i] >>> 32) | (val & 0xFFFFFFFFL));
+    }
+    return res;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (this == obj) return true;
+    if (getClass() != obj.getClass()) return false;
+    APInt rhs = (APInt) obj;
+    return eq(rhs);
+  }
 }
