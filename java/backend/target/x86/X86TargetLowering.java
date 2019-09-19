@@ -5612,9 +5612,9 @@ public class X86TargetLowering extends TargetLowering {
       return new SDValue();
 
     EVT vt = n.getValueType(0);
-    if (vt.getSimpleVT().simpleVT != MVT.v2i64 &&
-        vt.getSimpleVT().simpleVT != MVT.v4i32 &&
-        vt.getSimpleVT().simpleVT != MVT.v8i16)
+    if (!vt.equals(new EVT(MVT.v2i64)) &&
+        !vt.equals(new EVT(MVT.v4i32)) &&
+        !vt.equals(new EVT(MVT.v8i16)))
       return new SDValue();
 
     SDValue shAmtOP = n.getOperand(0);

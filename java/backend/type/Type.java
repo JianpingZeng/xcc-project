@@ -128,12 +128,21 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == IntegerTyID;
   }
 
-  public boolean isIntOrVectorTy() {
-    if (isIntegerTy()) return true;
-    if (id != VectorTyID) return false;
+  /**
+   * Return true if this type is an integer type or a vector type whose element is integer type.
+   * @return
+   */
+  public boolean isIntOrIntVectorTy() {
+    if (isIntegerTy())
+      return true;
+    if (getTypeID() != VectorTyID) return false;
     return ((VectorType)this).getElementType().isIntegerTy();
   }
 
+  /**
+   * Return true if this type is a float point type or a vector type whose element is float point type.
+   * @return
+   */
   public boolean isFPOrFPVectorTy() {
     if (isFloatingPointType())
       return true;
@@ -203,8 +212,9 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public boolean isFloatingPointType() {
-    return id == FloatTyID || id == DoubleTyID
-        || id == X86_FP80TyID || id == FP128TyID;
+    return id == FloatTyID || id == DoubleTyID ||
+        id == X86_FP80TyID || id == FP128TyID ||
+        id == PPC_FP128TyID;
   }
 
   public boolean isFloatTy() {

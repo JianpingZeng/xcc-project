@@ -22,6 +22,8 @@ import backend.type.Type;
 import backend.type.VectorType;
 import tools.Util;
 
+import java.util.Objects;
+
 import static backend.codegen.MVT.*;
 import static backend.type.LLVMTypeID.*;
 
@@ -55,7 +57,7 @@ public class EVT implements Comparable<EVT> {
     EVT other = (EVT) obj;
     if (v.simpleVT == other.v.simpleVT) {
       if (v.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
-        return llvmTy == other.llvmTy;
+        return Objects.equals(llvmTy, other.llvmTy);
       return true;
     }
     return false;
@@ -90,18 +92,18 @@ public class EVT implements Comparable<EVT> {
       return new EVT(m);
   }
 
-  public static EVT getVectorVT(EVT vt, int numElts) {
+  public static EVT getVectorVT(LLVMContext context, EVT vt, int numElts) {
     MVT m = MVT.getVectorVT(vt.v, numElts);
     if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
-      return getExtendedVectorVT(vt, numElts);
+      return getExtendedVectorVT(context, vt, numElts);
     else
       return new EVT(m);
   }
 
-  public static EVT getIntVectorWithNumElements(int numElts) {
+  public static EVT getIntVectorWithNumElements(LLVMContext context, int numElts) {
     MVT m = MVT.getIntVectorWithNumElements(numElts);
     if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
-      return getVectorVT(new EVT(i8), numElts);
+      return getVectorVT(context, new EVT(i8), numElts);
     else
       return new EVT(m);
   }
@@ -111,7 +113,7 @@ public class EVT implements Comparable<EVT> {
   }
 
   public boolean isExtended() {
-    return !isSimple();
+    return !isSimple() && llvmTy != null;
   }
 
   public boolean isFloatingPoint() {
@@ -176,7 +178,7 @@ public class EVT implements Comparable<EVT> {
     if (bitwidth <= 8)
       return new EVT(i8);
     else
-      return getIntegerVT(context, 1 << Util.log2(bitwidth));
+      return getIntegerVT(context, 1 << Util.log2Ceil(bitwidth));
   }
 
   public boolean isPow2VectorType() {
@@ -192,11 +194,11 @@ public class EVT implements Comparable<EVT> {
       return getExtendedVectorNumElements();
   }
 
-  public EVT getPow2VectorType() {
+  public EVT getPow2VectorType(LLVMContext context) {
     if (!isPow2VectorType()) {
       int numElts = getExtendedVectorNumElements();
       int pow2NumElts = 1 << Util.log2(numElts);
-      return EVT.getVectorVT(getExtendedVectorElementType(), pow2NumElts);
+      return EVT.getVectorVT(context, getExtendedVectorElementType(), pow2NumElts);
     } else
       return this;
   }
@@ -210,10 +212,9 @@ public class EVT implements Comparable<EVT> {
     switch (v.simpleVT) {
       default:
         if (isVector()) {
-          return new StringBuilder().append("v")
-              .append(getExtendedVectorNumElements())
-              .append(getExtendedVectorElementType().toString())
-              .toString();
+          return "v" +
+              getExtendedVectorNumElements() +
+              getExtendedVectorElementType().toString();
         }
         if (isInteger())
           return "i" + getSizeInBits();
@@ -427,30 +428,26 @@ public class EVT implements Comparable<EVT> {
     return vt;
   }
 
-  private static EVT getExtendedVectorVT(EVT vt, int numElements) {
-    Util.assertion(false, "Should not reaching here!");
-    return null;
+  private static EVT getExtendedVectorVT(LLVMContext context, EVT vt, int numElements) {
+    EVT resultVT = new EVT();
+    resultVT.llvmTy = VectorType.get(vt.getTypeForEVT(context), numElements);
+    Util.assertion(resultVT.isExtended(), "Type is not extended!");
+    return resultVT;
   }
 
   private boolean isExtendedFloatingPoint() {
     Util.assertion(isExtended(), "Type is not extended");
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    return false;
-    //return llvmTy.isFPOrFPVector();
+    return llvmTy.isFPOrFPVectorTy();
   }
 
   private boolean isExtendedInteger() {
     Util.assertion(isExtended(), "Type is not extended");
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    return false;
-    //return llvmTy.isIntOrIntVector();
+    return llvmTy.isIntOrIntVectorTy();
   }
 
   private boolean isExtendedVector() {
     Util.assertion(isExtended(), "Type is not extended");
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    return false;
-    //return llvmTy instanceof VectorType;
+    return llvmTy.isVectorTy();
   }
 
   private boolean isExtended64BitVector() {
@@ -467,16 +464,12 @@ public class EVT implements Comparable<EVT> {
 
   private EVT getExtendedVectorElementType() {
     Util.assertion(isExtended(), "Type is not extended!");
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    return null;
-    //return EVT.getEVT(((VectorType)llvmTy).getElementType());
+    return getEVT(((VectorType)llvmTy).getElementType());
   }
 
   private int getExtendedVectorNumElements() {
     Util.assertion(isExtended(), "Type is not extended!");
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    return -1;
-    //return ((VectorType)llvmTy).getNumElements();
+    return (int) ((VectorType)llvmTy).getNumElements();
   }
 
   private int getExtendedSizeInBits() {
@@ -484,14 +477,11 @@ public class EVT implements Comparable<EVT> {
     if (llvmTy instanceof IntegerType) {
       return ((IntegerType) llvmTy).getBitWidth();
     }
-        /*
-        if (llvmTy instanceof VectorType)
-        {
-            return ((VectorType)llvmTy).getBitWidth();
-        }
-        */
-    // FIXME: 17-7-1 Vector type is not supported currently.
-    Util.assertion(false, "Unrecognized extended type!");
+    else if (llvmTy instanceof VectorType)
+    {
+        return (int) ((VectorType)llvmTy).getBitWidth();
+    }
+    Util.assertion("Extended type is not supported currently.");
     return 0;
   }
 

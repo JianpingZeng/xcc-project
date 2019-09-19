@@ -830,16 +830,15 @@ public class SelectionDAG {
           return op0.getOperand((int) cn1.getZExtValue());
 
         // EXTRACT_ELEMENT of a constant int is also very common.
-        if (cn1 != null) {
+        if (cn0 != null) {
           int elementSize = vt.getSizeInBits();
           int shift = (int) (elementSize * cn1.getZExtValue());
-          APInt shiftedVal = cn1.getAPIntValue().lshr(shift);
+          APInt shiftedVal = cn0.getAPIntValue().lshr(shift);
           return getConstant(shiftedVal.trunc(elementSize), vt, false);
         }
         break;
       }
       case ISD.EXTRACT_SUBVECTOR: {
-        SDValue index = op1;
         if (vt.isSimple() && op0.getValueType().isSimple()) {
           Util.assertion(vt.isVector() && op0.getValueType().isVector(),
               "Extract subvector VTs must be a vectors!");
@@ -847,9 +846,9 @@ public class SelectionDAG {
               "Extract subvector VTs must have the same element type!");
           Util.assertion(vt.getSimpleVT().simpleVT <= op0.getValueType().getSimpleVT().simpleVT,
               "Extract subvector must be from larger vector to smaller vector!");
-          if (index.getNode() instanceof ConstantSDNode) {
+          if (op1.getNode() instanceof ConstantSDNode) {
             Util.assertion(vt.getVectorNumElements() +
-                ((ConstantSDNode)index.getNode()).getZExtValue() <=
+                ((ConstantSDNode) op1.getNode()).getZExtValue() <=
                 op0.getValueType().getVectorNumElements(), "extract subvector overflow!");
           }
           if (vt.getSimpleVT().equals(op0.getValueType().getSimpleVT()))
@@ -1216,7 +1215,7 @@ public class SelectionDAG {
     int opc = isTarget ? ISD.TargetConstant : ISD.Constant;
     FoldingSetNodeID id = new FoldingSetNodeID();
     addNodeToIDNode(id, opc, getVTList(eltVT), null, 0);
-    id.addInteger(ci.getZExtValue());
+    id.addInteger(ci.hashCode());
     int hash = id.computeHash();
     SDNode n = null;
     if (cseMap.containsKey(hash)) {
@@ -2456,7 +2455,7 @@ public class SelectionDAG {
   }
 
   private static boolean doNotCSE(SDNode node) {
-    if (node.getValueType(0).getSimpleVT().simpleVT == MVT.Glue)
+    if (node.getValueType(0).equals(new EVT(MVT.Glue)))
       return true;
 
     switch (node.getOpcode()) {
@@ -2471,7 +2470,7 @@ public class SelectionDAG {
     }
 
     for (int i = 0, e = node.getNumValues(); i < e; i++) {
-      if (node.getValueType(i).getSimpleVT().simpleVT == MVT.Glue)
+      if (node.getValueType(i).equals(new EVT(MVT.Glue)))
         return true;
     }
     return false;
@@ -3666,7 +3665,7 @@ public class SelectionDAG {
       EVT eltVT = vt.getVectorElementType().equals(new EVT(MVT.f32))
           ? new EVT(MVT.i32) : new EVT(MVT.i64);
       return getNode(ISD.BIT_CONVERT, vt,
-          getConstant(0, EVT.getVectorVT(eltVT, numElts), false));
+          getConstant(0, EVT.getVectorVT(context, eltVT, numElts), false));
     }
     Util.assertion(!vt.isVector(), "Can't handle vector type here!");
     int numBits = vt.getSizeInBits();

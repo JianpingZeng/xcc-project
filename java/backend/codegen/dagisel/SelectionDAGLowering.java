@@ -790,7 +790,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             vt = minVT;
         }
 
-        int numParts = tli.getNumRegisters(vt);
+        int numParts = tli.getNumRegisters(dag.getContext(), vt);
         EVT partVT = tli.getRegisterType(dag.getContext(), vt);
         SDValue[] parts = new SDValue[numParts];
         getCopyToParts(dag,
@@ -1628,19 +1628,37 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op0 = getValue(inst.operand(0));
     SDValue op1 = getValue(inst.operand(1));
     int opc = getSDOpc(op);
-    Util.assertion(opc >= 0);
-    if (op.isShift()) {
-      if (!op1.getValueType().getSimpleVT().equals(tli.getShiftAmountTy())) {
-        EVT pty = new EVT(tli.getPointerTy());
-        EVT sty = new EVT(tli.getShiftAmountTy());
-        if (sty.bitsGT(op1.getValueType()))
-          op1 = dag.getNode(ISD.ANY_EXTEND, sty, op1);
-        else if (sty.getSizeInBits() >= Util.log2Ceil(op1.getValueType().getSizeInBits())) {
-          op1 = dag.getNode(ISD.TRUNCATE, sty, op1);
-        } else if (pty.bitsLT(op1.getValueType()))
-          op1 = dag.getNode(ISD.TRUNCATE, pty, op1);
-        else if (pty.bitsGT(op1.getValueType()))
-          op1 = dag.getNode(ISD.ANY_EXTEND, pty, op1);
+    setValue(inst, dag.getNode(opc, op0.getValueType(), op0, op1));
+    return null;
+  }
+
+  @Override
+  public Void visitShift(User inst) {
+    SDValue op0 = getValue(inst.operand(0));
+    SDValue op1 = getValue(inst.operand(1));
+    Operator op = inst instanceof Instruction ?
+        ((Instruction) inst).getOpcode() : ((ConstantExpr) inst).getOpcode();
+    int opc = getSDOpc(op);
+    EVT shiftTy = new EVT(tli.getShiftAmountTy());
+    if (!inst.getType().isVectorTy() && !op1.getValueType().equals(shiftTy)) {
+      // coerse the shift amount to the right type if we can.
+      int shiftSize = shiftTy.getSizeInBits();
+      int op1Size = op1.getValueType().getSizeInBits();
+
+      // if trhe operand is smaller than the shift count type, promote it.
+      if (op1Size < shiftSize)
+          op1 = dag.getNode(ISD.ZERO_EXTEND, shiftTy, op1);
+
+        // If the operand is larger than the shift count type but the shift
+        // count type has enough bits to represent any shift value, truncate
+        // it now. This is a common case and it exposes the truncate to
+        // optimization early.
+      else if (shiftSize >= Util.log2Ceil(op1.getValueType().getSizeInBits())) {
+        op1 = dag.getNode(ISD.TRUNCATE, shiftTy, op1);
+      }
+      else {
+        // Otherwise, we will need to temporarily settle for some other convenient type.
+        op1 = dag.getZExtOrTrunc(op1, new EVT(MVT.i32));
       }
     }
     setValue(inst, dag.getNode(opc, op0.getValueType(), op0, op1));

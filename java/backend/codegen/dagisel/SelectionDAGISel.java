@@ -160,8 +160,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
   private void selectAllBasicBlocks(Function fn) {
-    System.err.println(fn.getName());
-
     // Iterate over all basic blocks in the function in the post traversal order
     ArrayList<BasicBlock> blocks = DepthFirstOrder.reversePostOrder(fn.getEntryBlock());
     for (BasicBlock llvmBB : blocks) {
@@ -266,7 +264,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         ArrayList<EVT> vts = new ArrayList<>();
         computeValueVTs(tli, pn.getType(), vts);
         for (EVT vt : vts) {
-          int numberRegs = tli.getNumRegisters(vt);
+          int numberRegs = tli.getNumRegisters(curDAG.getContext(), vt);
           for (int k = 0; k < numberRegs; k++) {
             sdl.phiNodesToUpdate.add(Pair.get(succMBB.getInstAt(instItr++), reg + k));
           }
@@ -1657,7 +1655,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         flags.setOrigAlign(originalAlign);
 
         EVT registerVT = tli.getRegisterType(dag.getContext(), vt);
-        int numRegs = tli.getNumRegisters(registerVT);
+        int numRegs = tli.getNumRegisters(curDAG.getContext(), registerVT);
         for (int i = 0; i < numRegs; i++) {
           InputArg myArgs = new InputArg(flags, registerVT, isArgUseEmpty);
           if (numRegs > 1 && i == 0) {
@@ -1689,7 +1687,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
         EVT partVT = tli.getRegisterType(dag.getContext(), vt);
-        int numParts = tli.getNumRegisters(partVT);
+        int numParts = tli.getNumRegisters(curDAG.getContext(), partVT);
         if (!arg.isUseEmpty()) {
           int op = ISD.DELETED_NODE;
           if (fn.paramHasAttr(idx, Attribute.SExt))

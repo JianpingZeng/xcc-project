@@ -575,6 +575,17 @@ public class Util {
     }
   }
 
+  public static void reverse(Object[] arrays, int begin, int end) {
+    if (arrays == null || arrays.length == 0)
+      return;
+    Util.assertion(begin >= 0 && begin < end && end <= arrays.length);
+    for (int i = begin; i < (end - begin) / 2; ++i) {
+      Object t = arrays[i];
+      arrays[i] = arrays[end - 1 - (i - begin)];
+      arrays[end - 1 - (i - begin)] = t;
+    }
+  }
+
   public static int minAlign(int a, int b) {
     return (a | b) & -(a | b);
   }

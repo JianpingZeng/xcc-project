@@ -224,7 +224,7 @@ public class FunctionLoweringInfo {
         ArrayList<EVT> vts = new ArrayList<>();
         computeValueVTs(tli, pn.getType(), vts);
         for (EVT vt : vts) {
-          int num = tli.getNumRegisters(vt);
+          int num = tli.getNumRegisters(fn.getContext(), vt);
           for (int i = 0; i < num; i++)
             buildMI(mbb, dl, tii.get(TargetOpcodes.PHI), vreg + i);
           vreg += num;
@@ -299,8 +299,7 @@ public class FunctionLoweringInfo {
     int firstReg = 0;
     for (EVT valueVT : valueVTs) {
       EVT registerVT = tli.getRegisterType(v.getContext(), valueVT);
-
-      int numRegs = tli.getNumRegisters(valueVT);
+      int numRegs = tli.getNumRegisters(v.getContext(), valueVT);
       for (; numRegs != 0; --numRegs) {
         int r = makeReg(registerVT);
         if (firstReg == 0)
@@ -383,7 +382,7 @@ public class FunctionLoweringInfo {
     Util.assertion(valueVTs.size() == 1, "PHIs with non-vector integer types should have a single VT.");
     EVT intVT = valueVTs.get(0);
 
-    if (tli.getNumRegisters(intVT) != 1)
+    if (tli.getNumRegisters(fn.getContext(), intVT) != 1)
       return;
 
     intVT = tli.getTypeToTransformTo(ty.getContext(), intVT);

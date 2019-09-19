@@ -223,6 +223,10 @@ public interface InstVisitor<RetTy> {
     return visitBinaryOp(inst);
   }
 
+  default RetTy visitShift(User inst) {
+    return visitBinaryOp(inst);
+  }
+
   //===============================================//
   // comparison instr.
   //===============================================//

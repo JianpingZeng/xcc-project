@@ -453,7 +453,7 @@ public class DAGTypeLegalizer {
     int eltWidth = op.getValueType().getVectorElementType().getSizeInBits();
     EVT eltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
     int numElts = op.getValueType().getVectorNumElements();
-    return dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(eltVT, numElts),
+    return dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(dag.getContext(), eltVT, numElts),
         op);
   }
 
@@ -1099,7 +1099,7 @@ public class DAGTypeLegalizer {
     SDValue ptr = n.getOperand(1);
     EVT vt = n.getValueType(0);
     EVT regVT = tli.getRegisterType(dag.getContext(), vt);
-    int numRegs = tli.getNumRegisters(vt);
+    int numRegs = tli.getNumRegisters(dag.getContext(), vt);
 
     SDValue[] parts = new SDValue[numRegs];
     for (int i = 0; i < numRegs; i++) {
@@ -2499,13 +2499,35 @@ public class DAGTypeLegalizer {
   }
 
   private SDValue expandIntOpBuildVector(SDNode n) {
-    Util.assertion(false, "Unimplemented!");
-    return null;
+    // The vector type is legal but the element type needs expansion.
+    EVT vecVT = n.getValueType(0);
+    int numElts = vecVT.getVectorNumElements();
+    EVT oldVT = n.getOperand(0).getValueType();
+    EVT newVT = tli.getTypeToTransformTo(dag.getContext(), oldVT);
+    Util.assertion(oldVT.equals(vecVT.getVectorElementType()),
+        "BUILD_VECTOR operand type doesn't match vector element type!");
+
+    // Build a vector of twice the length out of the expanded elements.
+    // For example <3 x i64> -> <6 x i32>.
+    SDValue[] newElts = new SDValue[numElts*2];
+    for (int i = 0; i < numElts; i++) {
+      SDValue[] res = getExpandedOp(n.getOperand(i));
+      if (tli.isBigEndian())
+        Util.reverse(res);
+
+      System.arraycopy(res, 0, newElts, i, 2);
+    }
+
+    SDValue newVec = dag.getNode(ISD.BUILD_VECTOR,
+        EVT.getVectorVT(dag.getContext(), newVT, newElts.length),
+        newElts);
+    // convert the new vector to the old vector type.
+    return dag.getNode(ISD.BIT_CONVERT, vecVT, newVec);
   }
 
   private SDValue expandIntOpExtractElement(SDNode n) {
-    Util.assertion(false, "Unimplemented!");
-    return null;
+    SDValue[] res = getExpandedOp(n.getOperand(0));
+    return ((ConstantSDNode)n.getOperand(1).getNode()).getZExtValue() != 0 ? res[1] : res[0];
   }
 
   private SDValue expandIntOpSelectCC(SDNode n) {
@@ -4647,7 +4669,7 @@ public class DAGTypeLegalizer {
     EVT inVT = n.getOperand(0).getValueType();
     switch (getTypeAction(inVT)) {
       case Legal: {
-        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+        EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
             loVT.getVectorNumElements());
         lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
             dag.getIntPtrConstant(0));
@@ -4663,7 +4685,7 @@ public class DAGTypeLegalizer {
       }
       case WidenVector: {
         SDValue inOp = getWidenedVector(n.getOperand(0));
-        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+        EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
             loVT.getVectorNumElements());
         lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
             dag.getIntPtrConstant(0));
@@ -4803,7 +4825,7 @@ public class DAGTypeLegalizer {
     EVT inVT = n.getOperand(0).getValueType();
     switch (getTypeAction(inVT)) {
       case Legal: {
-        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+        EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
             loVT.getVectorNumElements());
         vLo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
             dag.getIntPtrConstant(0));
@@ -4819,7 +4841,7 @@ public class DAGTypeLegalizer {
       }
       case WidenVector: {
         SDValue inOp = getWidenedVector(n.getOperand(0));
-        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+        EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
             loVT.getVectorNumElements());
         vLo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
             dag.getIntPtrConstant(0));
@@ -4947,7 +4969,7 @@ public class DAGTypeLegalizer {
 
     EVT inVT = n.getOperand(0).getValueType();
     SDValue ll, lh, rl, rh;
-    EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+    EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
         loVT.getVectorNumElements());
     ll = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, n.getOperand(0),
         dag.getIntPtrConstant(0));
@@ -5104,7 +5126,7 @@ public class DAGTypeLegalizer {
     SDValue[] t = getSplitVector(n.getOperand(0));
     EVT inVT = t[0].getValueType();
 
-    EVT outVT = EVT.getVectorVT(resVT.getVectorElementType(),
+    EVT outVT = EVT.getVectorVT(dag.getContext(), resVT.getVectorElementType(),
         inVT.getVectorNumElements());
     SDValue lo = dag.getNode(n.getOpcode(), outVT, t[0]);
     SDValue hi = dag.getNode(n.getOpcode(), outVT, t[1]);
@@ -5380,9 +5402,9 @@ public class DAGTypeLegalizer {
       int newNumElts = widenSize / inSize;
       if (inVT.isVector()) {
         EVT inEltVT = inVT.getVectorElementType();
-        newInVT = EVT.getVectorVT(inEltVT, widenSize / inEltVT.getSizeInBits());
+        newInVT = EVT.getVectorVT(dag.getContext(), inEltVT, widenSize / inEltVT.getSizeInBits());
       } else {
-        newInVT = EVT.getVectorVT(inVT, newNumElts);
+        newInVT = EVT.getVectorVT(dag.getContext(), inVT, newNumElts);
       }
       if (tli.isTypeLegal(newInVT)) {
         SDValue[] ops = new SDValue[newNumElts];
@@ -5491,7 +5513,7 @@ public class DAGTypeLegalizer {
 
     EVT inVT = inOp.getValueType();
     EVT inEltVT = inVT.getVectorElementType();
-    EVT inWidenVT = EVT.getVectorVT(inEltVT, widenNumElts);
+    EVT inWidenVT = EVT.getVectorVT(dag.getContext(), inEltVT, widenNumElts);
 
     SDValue dtyOp = dag.getValueType(widenVT);
     SDValue styOp = dag.getValueType(inWidenVT);
@@ -5677,7 +5699,7 @@ public class DAGTypeLegalizer {
     EVT condVT = cond.getValueType();
     if (condVT.isVector()) {
       EVT convEltVT = condVT.getVectorElementType();
-      EVT condWidenVT = EVT.getVectorVT(convEltVT, widenNumElts);
+      EVT condWidenVT = EVT.getVectorVT(dag.getContext(), convEltVT, widenNumElts);
       if (getTypeAction(condVT) == LegalizeAction.WidenVector)
         cond = getWidenedVector(cond);
 
@@ -5734,7 +5756,7 @@ public class DAGTypeLegalizer {
     SDValue inOp1 = n.getOperand(0);
     EVT inVT = inOp1.getValueType();
     Util.assertion(inVT.isVector(), "Can't widen not vector type!");
-    EVT widenInVT = EVT.getVectorVT(inVT.getVectorElementType(), widenNumElts);
+    EVT widenInVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(), widenNumElts);
     inOp1 = getWidenedVector(inOp1);
     SDValue inOp2 = getWidenedVector(n.getOperand(1));
 
@@ -5757,7 +5779,7 @@ public class DAGTypeLegalizer {
 
     EVT inVT = inOp.getValueType();
     EVT inEltVT = inVT.getVectorElementType();
-    EVT inWidenVT = EVT.getVectorVT(inEltVT, widenNumElts);
+    EVT inWidenVT = EVT.getVectorVT(dag.getContext(), inEltVT, widenNumElts);
 
     int opc = n.getOpcode();
     int inVTNumElts = inVT.getVectorNumElements();
@@ -5811,7 +5833,7 @@ public class DAGTypeLegalizer {
       shVT = shOp.getValueType();
     }
 
-    EVT shWidenVT = EVT.getVectorVT(shVT.getVectorElementType(),
+    EVT shWidenVT = EVT.getVectorVT(dag.getContext(), shVT.getVectorElementType(),
         widenVT.getVectorNumElements());
     if (!shVT.equals(shWidenVT))
       shOp = modifyToType(shOp, shWidenVT);
@@ -5886,7 +5908,7 @@ public class DAGTypeLegalizer {
     int size = vt.getSizeInBits();
     if ((inWidenSize % size) == 0 && !vt.isVector()) {
       int newNumElts = inWidenSize / size;
-      EVT newVT = EVT.getVectorVT(vt, newNumElts);
+      EVT newVT = EVT.getVectorVT(dag.getContext(), vt, newNumElts);
       if (tli.isTypeLegal(newVT)) {
         SDValue bitOp = dag.getNode(ISD.BIT_CONVERT, newVT, inOp);
         return dag.getNode(ISD.EXTRACT_VECTOR_ELT, vt, bitOp,
@@ -6004,7 +6026,7 @@ public class DAGTypeLegalizer {
         eltWidth = 1 << Util.log2(eltWidth - 1);
         newEltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
         int numElts = vecVT.getSizeInBits() / eltWidth;
-        newVecVT = EVT.getVectorVT(newEltVT, numElts);
+        newVecVT = EVT.getVectorVT(dag.getContext(), newEltVT, numElts);
       } while (!tli.isTypeLegal(newVecVT) || vecVT.getSizeInBits() !=
           newVecVT.getSizeInBits());
     } else {
@@ -6013,7 +6035,7 @@ public class DAGTypeLegalizer {
         eltWidth = 1 << Util.log2(eltWidth - 1);
         newEltVT = EVT.getIntegerVT(dag.getContext(), eltWidth);
         int numElts = vecVT.getSizeInBits() / eltWidth;
-        newVecVT = EVT.getVectorVT(newEltVT, numElts);
+        newVecVT = EVT.getVectorVT(dag.getContext(), newEltVT, numElts);
       } while (!tli.isTypeLegal(newEltVT) || vecVT.getSizeInBits() !=
           newVecVT.getSizeInBits());
     }
@@ -6217,7 +6239,7 @@ public class DAGTypeLegalizer {
     } else {
       int numElts = inVT.getVectorNumElements();
       Util.assertion((numElts & 1) == 0, "Splitting vector, but not in half!");
-      loVT = hiVT = EVT.getVectorVT(inVT.getVectorElementType(), numElts / 2);
+      loVT = hiVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(), numElts / 2);
     }
     return new EVT[]{loVT, hiVT};
   }
@@ -6350,7 +6372,7 @@ public class DAGTypeLegalizer {
       case WidenVector:
         Util.assertion((inVT.getVectorNumElements() & 1) == 0, "Unsupported BIT_CONVERT!");
         inOp = getWidenedVector(inOp);
-        EVT inNVT = EVT.getVectorVT(inVT.getVectorElementType(),
+        EVT inNVT = EVT.getVectorVT(dag.getContext(), inVT.getVectorElementType(),
             inVT.getVectorNumElements() / 2);
         lo = dag.getNode(ISD.EXTRACT_SUBVECTOR, inNVT, inOp,
             dag.getIntPtrConstant(0));
@@ -6367,7 +6389,7 @@ public class DAGTypeLegalizer {
     }
 
     if (inVT.isVector() && outVT.isInteger()) {
-      EVT nvt = EVT.getVectorVT(nOutVT, 2);
+      EVT nvt = EVT.getVectorVT(dag.getContext(), nOutVT, 2);
       if (isTypeLegal(nvt)) {
         SDValue castInOp = dag.getNode(ISD.BIT_CONVERT, nvt, inOp);
         lo = dag.getNode(ISD.EXTRACT_VECTOR_ELT, nOutVT, castInOp,
@@ -6423,7 +6445,7 @@ public class DAGTypeLegalizer {
     EVT oldVT = n.getValueType(0);
     EVT newVT = tli.getTypeToTransformTo(dag.getContext(), oldVT);
 
-    SDValue newVec = dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(newVT, 2 * oldElts),
+    SDValue newVec = dag.getNode(ISD.BIT_CONVERT, EVT.getVectorVT(dag.getContext(), newVT, 2 * oldElts),
         oldVec);
     SDValue idx = n.getOperand(1);
     if (idx.getValueType().bitsLT(new EVT(tli.getPointerTy())))
@@ -6493,7 +6515,7 @@ public class DAGTypeLegalizer {
   private SDValue expandOp_BIT_CONVERT(SDNode n) {
     if (n.getValueType(0).isVector()) {
       EVT ovt = n.getOperand(0).getValueType();
-      EVT nvt = EVT.getVectorVT(tli.getTypeToTransformTo(dag.getContext(), ovt), 2);
+      EVT nvt = EVT.getVectorVT(dag.getContext(), tli.getTypeToTransformTo(dag.getContext(), ovt), 2);
 
       if (isTypeLegal(nvt)) {
         SDValue[] parts = getExpandedOp(n.getOperand(0));
@@ -6530,7 +6552,7 @@ public class DAGTypeLegalizer {
     }
 
     SDValue newVec = dag.getNode(ISD.BUILD_VECTOR,
-        EVT.getVectorVT(newVT, 2 * numElts), elts);
+        EVT.getVectorVT(dag.getContext(), newVT, 2 * numElts), elts);
     return dag.getNode(ISD.BIT_CONVERT, vecVT, newVec);
   }
 
@@ -6549,7 +6571,7 @@ public class DAGTypeLegalizer {
 
     Util.assertion(oldVT.equals(vecVT.getVectorElementType()));
 
-    EVT newVecVT = EVT.getVectorVT(newVT, numElts * 2);
+    EVT newVecVT = EVT.getVectorVT(dag.getContext(), newVT, numElts * 2);
     SDValue newVec = dag.getNode(ISD.BIT_CONVERT, newVecVT, n.getOperand(0));
 
     SDValue[] t = getExpandedOp(val);

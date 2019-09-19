@@ -858,12 +858,12 @@ public abstract class TargetLowering {
     }
 
     if (vt.isVector()) {
-      EVT nvt = vt.getPow2VectorType();
+      EVT nvt = vt.getPow2VectorType(context);
       if (nvt.equals(vt)) {
         // Vector length is a power of 2, split to half the size.
         int numElts = vt.getVectorNumElements();
         EVT eltVT = vt.getVectorElementType();
-        return numElts == 1 ? eltVT : EVT.getVectorVT(eltVT, numElts / 2);
+        return numElts == 1 ? eltVT : EVT.getVectorVT(context, eltVT, numElts / 2);
       }
 
       // Promote to a power of two size, avoiding multi-step promotions.
@@ -999,9 +999,29 @@ public abstract class TargetLowering {
     return new EVT(MVT.Other);
   }
 
-  public int getNumRegisters(EVT valueVT) {
-    Util.assertion(valueVT.getSimpleVT().simpleVT < numRegistersForVT.length);
-    return numRegistersForVT[valueVT.getSimpleVT().simpleVT];
+  /**
+   * Computes how many physical should be used for storing a value of the specified type.
+   * For non-regular type, such as i192, it requires 4 64-bit registers in the X86-64 platform.
+   * @param valueVT
+   * @return
+   */
+  public int getNumRegisters(LLVMContext context, EVT valueVT) {
+    if (valueVT.isSimple()) {
+      Util.assertion(valueVT.getSimpleVT().simpleVT < numRegistersForVT.length);
+      return numRegistersForVT[valueVT.getSimpleVT().simpleVT];
+    }
+    if (valueVT.isVector()) {
+      OutRef<EVT> vt1 = new OutRef<>(), vt2 = new OutRef<>();
+      OutRef<Integer> numIntermidates = new OutRef<>();
+      return getVectorTypeBreakdown(context, valueVT, vt1, numIntermidates, vt2);
+    }
+    if (valueVT.isInteger()) {
+      int bitwidth = valueVT.getSizeInBits();
+      int regWidth = getRegisterType(context, valueVT).getSizeInBits();
+      return (bitwidth + regWidth - 1) / regWidth;
+    }
+    Util.assertion("Unsupported extended type!");
+    return 0;
   }
 
   private static int getVectorTypeBreakdownMVT(MVT vt,
@@ -1283,7 +1303,7 @@ public abstract class TargetLowering {
         flags.setOrigAlign(originalAlignment);
 
         EVT partVT = getRegisterType(context, vt);
-        int numParts = getNumRegisters(vt);
+        int numParts = getNumRegisters(context, vt);
         SDValue[] parts = new SDValue[numParts];
         int extendKind = ISD.ANY_EXTEND;
 
@@ -1312,7 +1332,7 @@ public abstract class TargetLowering {
     computeValueVTs(this, retTy, retTys);
     for (EVT vt : retTys) {
       EVT registerVT = getRegisterType(context, vt);
-      int numRegs = getNumRegisters(vt);
+      int numRegs = getNumRegisters(context, vt);
       for (int i = 0; i < numRegs; i++) {
         InputArg input = new InputArg();
         input.vt = registerVT;
@@ -1350,7 +1370,7 @@ public abstract class TargetLowering {
     int curReg = 0;
     for (EVT vt : retTys) {
       EVT registerVT = getRegisterType(context, vt);
-      int numRegs = getNumRegisters(vt);
+      int numRegs = getNumRegisters(context, vt);
       SDValue[] temp = new SDValue[numRegs];
       for (int i = 0; i < numRegs; i++)
         temp[i] = inVals.get(curReg + i);
