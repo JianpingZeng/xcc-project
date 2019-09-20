@@ -323,7 +323,7 @@ public class MCAsmStreamer extends MCStreamer {
 
     if (data.length() == 1) {
       fos.print(mai.getData8bitsDirective(addrSpace));
-      fos.print(data.charAt(0));
+      fos.print((int)data.charAt(0));
       emitEOL();
       return;
     }

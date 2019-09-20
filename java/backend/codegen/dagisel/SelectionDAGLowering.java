@@ -1100,10 +1100,44 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           mbb));
     }
     // sort the case in order of low value of lhs less than high value of rhs.
-    cases.sort((c1, c2) -> {
-      long res = c1.low.getValue().sub(c2.high.getValue()).getSExtValue();
-      return res == 0 ? 0 : res < 0 ? -1 : 1;
-    });
+    // sort the list with insertion sort method.
+    // |<------------------->|<---------------------->|
+    // 0                     j                        i
+    //        ordered        |   not ordered
+    for (int i = 1, e = cases.size(); i < e; i++) {
+      Case c = cases.get(i);
+      int j = i - 1;
+
+      // if the element 'c' is not less than the greatest element in the ordered part,
+      // we don't have to go through preceding ordered part.
+      if (!c.low.getValue().slt(cases.get(j).high.getValue()))
+        continue;
+
+      for (; j >= 0; --j) {
+        if (c.low.getValue().slt(cases.get(j).high.getValue())) {
+          // move the element in the ordered part of list backward.
+          cases.set(j+1, cases.get(j));
+        }
+        else {
+          // get out of the loop because we find an element which is not less than the specified 'c'.
+          break;
+        }
+      }
+      cases.set(j+1, c);
+    }
+
+    // FIXME, the Java built-in sort function will result in an incorrect result. I don't know why?
+    /*Collections.sort(cases, new Comparator<Case>() {
+      @Override
+      public int compare(Case c1, Case c2) {
+        if (c1.low.getValue().slt(c2.high.getValue()))
+          return 1;
+        else if (c1.low.getValue().eq(c2.high.getValue()))
+          return 0;
+        else
+          return -1;
+      }
+    });*/
 
     // merge case into cluster.
     if (cases.size() >= 2) {

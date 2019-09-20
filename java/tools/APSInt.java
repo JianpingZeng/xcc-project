@@ -17,6 +17,8 @@
 
 package tools;
 
+import java.io.PrintStream;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -339,5 +341,15 @@ public class APSInt extends APInt {
     if (getClass() != obj.getClass()) return false;
     APSInt rhs = (APSInt) obj;
     return isSigned() == rhs.isSigned() && super.eq(rhs);
+  }
+
+  @Override
+  public void print(PrintStream os) {
+    print(os, isSigned());
+  }
+
+  @Override
+  public void print(FormattedOutputStream os) {
+    print(os, isSigned());
   }
 }

@@ -33,13 +33,6 @@ public class FunctionPassManager implements PassManagerBase {
    * @return
    */
   public boolean run(Function f) {
-    switch (f.getName()) {
-        // bit width must be same in handleJTSwitchCase
-      case "sqlite3ExprAffinity":
-      case "sqlite3ExprCollSeq":
-        return false;
-    }
-    System.err.println(f.getName());
     return fpm.run(f);
   }
 

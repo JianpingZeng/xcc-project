@@ -692,7 +692,7 @@ public class APInt implements Cloneable {
       return zext(width);
     if (bitWidth > width)
       return trunc(width);
-    return this;
+    return this.clone();
   }
 
   public APInt sextOrTrunc(int width) {
@@ -700,7 +700,7 @@ public class APInt implements Cloneable {
       return sext(width);
     if (bitWidth > width)
       return trunc(width);
-    return this;
+    return this.clone();
   }
 
   public long[] getRawData() {
@@ -750,36 +750,30 @@ public class APInt implements Cloneable {
   public boolean slt(final APInt rhs) {
     Util.assertion(bitWidth == rhs.bitWidth, "Bit width must be same for comparison");
 
-    if (isSingleWord()) {
-      return val < rhs.val;
+    APInt _lhs = new APInt(this);
+    APInt _rhs = new APInt(rhs);
+    boolean lhsNeg = _lhs.isNegative();
+    boolean rhsNeg = _rhs.isNegative();
+    if (lhsNeg && !rhsNeg)
+      return true;
+    if (!lhsNeg && rhsNeg)
+      return false;
+    if (!lhsNeg && !rhsNeg) {
+      return _lhs.ult(_rhs);
     }
 
-    boolean lhsNeg = isNegative();
-    boolean rhsNeg = rhs.isNegative();
+    // if we reach here, both lhs and rhs must be negative.
+    // Sign bit is set so perform two's completion to make it positive.
+    _lhs.flip();
+    _rhs.increase();
 
-    if (lhsNeg) {
-      // Sign bit is set so perform two's completion to make it positive.
-      flip();
-      increase();
-    }
-
-    if (rhsNeg) {
-      // Sign bit is set so perform two's complement to make it positive
-      rhs.flip();
-      rhs.increase();
-    }
+    // Sign bit is set so perform two's complement to make it positive
+    _rhs.flip();
+    _rhs.increase();
 
     // Now we have  values to compare so do the comparison if necessary
     // based on the negativeness of the values.
-    if (lhsNeg)
-      if (rhsNeg)
-        return ugt(rhs);
-      else
-        return true;
-    else if (rhsNeg)
-      return false;
-    else
-      return ult(rhs);
+    return _lhs.ugt(_rhs);
   }
 
   /**
@@ -3455,6 +3449,7 @@ public class APInt implements Cloneable {
     for (int i = 0, e = getNumWords(); i < e; i++) {
       res |= (int)((pVal[i] >>> 32) | (val & 0xFFFFFFFFL));
     }
+    res |= isSigned() ? 1 : 0;
     return res;
   }
 
@@ -3464,6 +3459,14 @@ public class APInt implements Cloneable {
     if (this == obj) return true;
     if (getClass() != obj.getClass()) return false;
     APInt rhs = (APInt) obj;
-    return eq(rhs);
+    return eq(rhs) && isSigned() == rhs.isSigned();
+  }
+
+  public boolean isSigned() {
+    return false;
+  }
+
+  public boolean isUnsigned() {
+    return !isSigned();
   }
 }

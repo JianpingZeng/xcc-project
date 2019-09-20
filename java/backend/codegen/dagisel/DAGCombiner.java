@@ -4069,7 +4069,7 @@ public class DAGCombiner {
       return new SDValue();
     }
     // fold (sdiv c1, c2) -> c1/c2
-    if (c1 != null && !c2.isNullValue()) {
+    if (c1 != null && c2 != null && !c2.isNullValue()) {
       return dag.foldConstantArithmetic(ISD.SDIV, vt, c1, c2);
     }
     // fold (sdiv c1, 1) --> c1

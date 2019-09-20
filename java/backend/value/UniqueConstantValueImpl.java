@@ -338,6 +338,7 @@ public final class UniqueConstantValueImpl {
     public int hashCode() {
       FoldingSetNodeID id = new FoldingSetNodeID();
       id.addInteger(val.hashCode());
+      id.addBoolean(val.isSigned());
       id.addInteger(type.hashCode());
       return id.computeHash();
     }
@@ -352,7 +353,7 @@ public final class UniqueConstantValueImpl {
         return false;
 
       APIntKeyType key = (APIntKeyType) obj;
-      return val.eq(key.val) && type.equals(key.type);
+      return val.equals(key.val) && type.equals(key.type);
     }
   }
 
