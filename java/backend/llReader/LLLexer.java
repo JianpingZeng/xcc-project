@@ -97,6 +97,8 @@ public final class LLLexer {
 
     keywords.put("private", kw_private);
     keywords.put("linker_private", kw_linker_private);
+    keywords.put("linker_private_weak", kw_linker_private_weak);
+    keywords.put("linker_private_weak_def_auto", kw_linker_private_weak_def_auto);
     keywords.put("internal", kw_internal);
     keywords.put("available_externally", kw_available_externally);
     keywords.put("linkonce", kw_linkonce);
@@ -156,6 +158,7 @@ public final class LLLexer {
     keywords.put("sret", kw_sret);
     keywords.put("nounwind", kw_nounwind);
     keywords.put("uwtable", kw_uwtable);
+    keywords.put("returns_twice", kw_returns_twice);
     keywords.put("noreturn", kw_noreturn);
     keywords.put("noalias", kw_noalias);
     keywords.put("nocapture", kw_nocapture);
@@ -173,6 +176,7 @@ public final class LLLexer {
     keywords.put("noredzone", kw_noredzone);
     keywords.put("noimplicitfloat", kw_noimplicitfloat);
     keywords.put("naked", kw_naked);
+    keywords.put("nonlazybind", kw_nonlazybind);
 
     keywords.put("type", kw_type);
     keywords.put("opaque", kw_opaque);
@@ -254,7 +258,7 @@ public final class LLLexer {
     opcKeywords.put("invoke", Pair.get(Invoke, kw_invoke));
     opcKeywords.put("unwind", Pair.get(Unwind, kw_unwind));
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));
-
+    opcKeywords.put("malloc", Pair.get(Malloc, kw_malloc));
     opcKeywords.put("alloca", Pair.get(Alloca, kw_alloca));
     opcKeywords.put("load", Pair.get(Load, kw_load));
     opcKeywords.put("store", Pair.get(Store, kw_store));

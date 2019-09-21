@@ -247,6 +247,8 @@ public final class LLParser {
 
         case kw_private:
         case kw_linker_private:
+        case kw_linker_private_weak:
+        case kw_linker_private_weak_def_auto:
         case kw_internal:
         case kw_weak:
         case kw_weak_odr:
@@ -1070,6 +1072,12 @@ public final class LLParser {
       case kw_linker_private:
         linkage.set(LinkageType.LinkerPrivateLinkage);
         break;
+      case kw_linker_private_weak:
+        linkage.set(LinkageType.LinkerPrivateWeakLinkage);
+        break;
+      case kw_linker_private_weak_def_auto:
+        linkage.set(LinkageType.LinkerPrivateWeakDefAutoLinkage);
+        break;
       case kw_internal:
         linkage.set(LinkageType.InternalLinkage);
         break;
@@ -1336,6 +1344,9 @@ public final class LLParser {
           break;
         case kw_uwtable:
           attr |= Attribute.UWTable;
+          break;
+        case kw_returns_twice:
+          attr |=Attribute.ReturnsTwice;
           break;
         case kw_noinline:
           attr |= Attribute.NoInline;
