@@ -2428,7 +2428,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       }
       case stacksave: {
-        SDValue op = getValue(ci.operand(1));
+        SDValue op = getRoot();
         SDValue res = dag.getNode(ISD.STACKSAVE,
             dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other)), op);
         setValue(ci, res);
