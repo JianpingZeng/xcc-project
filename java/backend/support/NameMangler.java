@@ -48,12 +48,6 @@ public class NameMangler {
    * of escape the space character. By default, this is false.
    */
   private boolean useQuotes;
-  /**
-   * Memorize the asmName that we assign a value.
-   */
-  private HashMap<Value, String> memo;
-
-  private int count;
 
   private TObjectIntHashMap<Type> typeMap;
   private int typeCount;
@@ -63,8 +57,13 @@ public class NameMangler {
   private HashSet<GlobalValue> mangledGlobals;
 
   private int acceptableChars[];
-  private static int globalID = 0;
   private final MCSymbol.MCContext context;
+  /**
+   * This hashmap is used to keep track the unique ID for each annotated global variable.
+   */
+  private HashMap<GlobalValue, Integer> annoGlobalIDs;
+  private int nextAnnonGlobalId;
+
   public NameMangler(MCSymbol.MCContext ctx, Module m,
                      String globalPrefix,
                      String privateGlobalPrefix,
@@ -74,12 +73,12 @@ public class NameMangler {
     this.privatePrefix = privateGlobalPrefix;
     this.linkerPrivatePrefix = linkerPrivateGlobalPrefix;
     useQuotes = false;
-    memo = new HashMap<>();
-    count = 0;
     typeMap = new TObjectIntHashMap<>();
     typeCount = 0;
     mangledGlobals = new HashSet<>();
     acceptableChars = new int[256 / 32];
+    annoGlobalIDs = new HashMap<>();
+    nextAnnonGlobalId = 0;
 
     // Letters and numbers are acceptable.
     for (char x = 'a'; x <= 'z'; x++)
@@ -160,12 +159,23 @@ public class NameMangler {
         (gv.hasPrivateLinkage() || forceprivate) ? ManglerPrefixTy.Private
             : gv.hasLinkerPrivateLinkage() ? ManglerPrefixTy.LinkerPrivate :
             ManglerPrefixTy.Default;
+    String resName;
     if (gv.hasName())
-      return makeNameProper(gv.getName() + suffix, prefixTy);
-
-    int typeUniqueID = getTypeID(gv.getType());
-    String name = "__unnamed_" + typeUniqueID + "_" + globalID++;
-    return makeNameProper(name + suffix, prefixTy);
+      resName = makeNameProper(gv.getName() + suffix, prefixTy);
+    else {
+      // get the unique ID for the annotated variable.
+      int id;
+      if (annoGlobalIDs.containsKey(gv))
+        id = annoGlobalIDs.get(gv);
+      else {
+        id = nextAnnonGlobalId++;
+        annoGlobalIDs.put(gv, id);
+      }
+      // must mangle the global into an unique id.
+      resName = getMangledNameWithPrefix("__unnamed_" + id, prefixTy);
+    }
+    // if we are supposed to add a microsoft-style suffix for stdcall/fastcall, add it.
+    return resName;
   }
 
   public String getMangledName(GlobalValue gv) {
