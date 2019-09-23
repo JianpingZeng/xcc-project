@@ -4111,13 +4111,14 @@ public final class LLParser {
    * @return
    */
   private InstResult parseInsertValue(OutRef<Instruction> inst, PerFunctionState pfs) {
-    OutRef<SMLoc> loc = new OutRef<>();
+    OutRef<SMLoc> loc = new OutRef<>(), eltLoc = new OutRef<>();
     OutRef<Value> vec = new OutRef<>(), elt = new OutRef<>();
-    OutRef<Integer> idx = new OutRef<>(0);
     TIntArrayList indices = new TIntArrayList();
     OutRef<Boolean> ateExtraComma = new OutRef<>(false);
 
     if (parseTypeAndValue(vec, loc, pfs) ||
+        parseToken(comma, "expected a ','") ||
+        parseTypeAndValue(elt, eltLoc, pfs) ||
         parseIndexList(indices, ateExtraComma))
       return InstError;
 
@@ -4128,6 +4129,9 @@ public final class LLParser {
     if (ExtractValueInst.getIndexedType(vec.get().getType(), indices.toArray()) == null)
       return error(loc.get(), "invalid indices for insertvalue instruction")
           ? InstError : InstNormal;
+    Type expectedEltType = ExtractValueInst.getIndexedType(vec.get().getType(), indices.toArray());
+    if (expectedEltType == null || !expectedEltType.equals(elt.get().getType()))
+      return error(eltLoc.get(), "invalid value type to insert!") ? InstError : InstNormal;
 
     inst.set(new InsertValueInst(vec.get(), elt.get(), indices.toArray()));
     return ateExtraComma.get() ? InstExtraComma : InstNormal;

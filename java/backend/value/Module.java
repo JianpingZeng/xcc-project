@@ -304,10 +304,10 @@ public final class Module implements Iterable<Function> {
   }
 
   public void addGlobalVariable(GlobalVariable gv) {
-    Util.assertion(gv != null && !globalVariableList.contains(gv) &&
-        gv.getName() != null && !gv.getName().isEmpty());
+    Util.assertion(gv != null && !globalVariableList.contains(gv));
     globalVariableList.add(gv);
-    valSymTable.createValueName(gv.getName(), gv);
+    if (gv.getName() != null && !gv.getName().isEmpty())
+      valSymTable.createValueName(gv.getName(), gv);
     gv.setParent(this);
   }
 

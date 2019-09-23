@@ -732,7 +732,7 @@ public class SelectionDAG {
         Util.assertion(vt.isFloatingPoint() &&
             op0.getValueType().isFloatingPoint() &&
             vt.bitsLE(op0.getValueType()) &&
-            op1.getNode() instanceof ConstantFPSDNode, "Invalid FP_ROUND");
+            op1.getNode() instanceof ConstantSDNode, "Invalid FP_ROUND");
         if (op0.getValueType().equals(vt))
           return op0;
         break;
@@ -2398,6 +2398,41 @@ public class SelectionDAG {
     dbgInfo.add(db, sd,isParameter);
     if (sd != null)
       sd.setHasDebugValue(true);
+  }
+
+  /**
+   * Returns the scalar element that will make up the i'th element of the result of the vector shuffle.
+   * @param n
+   * @param index
+   * @return
+   */
+  public SDValue getShuffleScalarElt(ShuffleVectorSDNode n, int index) {
+    EVT vt = n.getValueType(0);
+    if (n.getMaskElt(index) < 0)
+      return getUNDEF(vt.getVectorElementType());
+
+    int i = n.getMaskElt(index);
+    int numElts = vt.getVectorNumElements();
+    SDValue v = (i < numElts) ? n.getOperand(0) : n.getOperand(1);
+    i %= numElts;
+
+
+    if (v.getOpcode() == ISD.BIT_CONVERT) {
+      v = v.getOperand(0);
+      EVT vvt = v.getValueType();
+      if (!vvt.isVector() || vvt.getVectorNumElements() != numElts)
+        return new SDValue();
+    }
+
+    if (v.getOpcode() == ISD.SCALAR_TO_VECTOR)
+      return i == 0 ? v.getOperand(0) :getUNDEF(vt.getVectorElementType());
+
+    if (v.getOpcode() == ISD.BUILD_VECTOR)
+      return v.getOperand(i);
+
+    if (v.getNode() instanceof ShuffleVectorSDNode)
+      return getShuffleScalarElt((ShuffleVectorSDNode) v.getNode(), i);
+    return new SDValue();
   }
 
   static class UseMemo {
@@ -4145,8 +4180,87 @@ public class SelectionDAG {
     }
 
     // Canonicalize shuffle undef, v -> v, undef.  Commute the shuffle mask.
-    Util.shouldNotReachHere("Not implemented!");
-    return null;
+    if (op0.getOpcode() == ISD.UNDEF)
+      commuteShuffle(op0, op1, maskVec);
+
+    // Canonicalize all index into lhs, -> shuffle lhs, undef
+    // Canonicalize all index into rhs, -> shuffle rhs, undef
+    boolean allLHS = true, allRHS = true;
+    boolean op1Undef = op1.getOpcode() == ISD.UNDEF;
+    for (int i = 0; i < numElts; ++i) {
+      if (maskVec.get(i) >= numElts) {
+        if (op1Undef)
+          maskVec.set(i, -1);
+        else
+          allLHS = false;
+      }
+      else if (maskVec.get(i) >= 0) {
+        allRHS = false;
+      }
+    }
+
+    if (allLHS && allRHS)
+      return getUNDEF(vt);
+    if (allLHS && !op1Undef)
+      op1 = getUNDEF(vt);
+    if (allRHS) {
+      op0 = getUNDEF(vt);
+      commuteShuffle(op0, op1, maskVec);
+    }
+
+    // If Identity shuffle, or all shuffle in to undef, return that node.
+    boolean allUndef = true;
+    boolean identity = true;
+    for (int i = 0; i < numElts; ++i) {
+      if (maskVec.get(i) >= 0 && maskVec.get(i) != i) identity = false;
+      if (maskVec.get(i) >= 0) allUndef = false;
+    }
+
+    if (identity && numElts == op0.getValueType().getVectorNumElements())
+      return op0;
+    if (allUndef)
+      return getUNDEF(vt);
+
+    FoldingSetNodeID id = new FoldingSetNodeID();
+    SDValue[] ops = new SDValue[] {op0, op1};
+    addNodeToIDNode(id, ISD.VECTOR_SHUFFLE, getVTList(vt), ops);
+    for (int i = 0; i <numElts; ++i)
+      id.addInteger(maskVec.get(i));
+
+    int key = id.computeHash();
+    if (cseMap.containsKey(key))
+      return new SDValue(cseMap.get(key), 0);
+
+    int[] masks = maskVec.toArray();
+    ShuffleVectorSDNode n = new ShuffleVectorSDNode(getVTList(vt), op0, op1, masks);
+    cseMap.put(key, n);
+    allNodes.add(n);
+    return new SDValue(n, 0);
+  }
+
+  /**
+   * Swaps the values of n1 and n2 to swap all indices in the shuffle mask mask that point at
+   * n1 to point a n2 and indices that point n2 to point at n1.
+   * @param n1
+   * @param n2
+   * @param mask
+   */
+  private static void commuteShuffle(SDValue n1, SDValue n2, TIntArrayList mask) {
+    SDNode t = n1.getNode();
+    int resNo = n1.getResNo();
+    n1.setNode(n2.getNode());
+    n1.setResNo(n2.getResNo());
+    n2.setNode(t);
+    n2.setResNo(resNo);
+
+    int numElts = mask.size();
+    for (int i = 0; i < numElts; ++i) {
+      int e = mask.get(i);
+      if (e >= numElts)
+        mask.set(i, e - numElts);
+      else if (e >= 0)
+        mask.set(i, e + numElts);
+    }
   }
 
   public SDValue getShiftAmountOperand(SDValue op) {

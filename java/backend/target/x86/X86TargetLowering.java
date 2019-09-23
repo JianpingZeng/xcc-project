@@ -3492,8 +3492,565 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag) {
-    Util.shouldNotReachHere("Vector shuffle not supported!");
+    ShuffleVectorSDNode svOp = (ShuffleVectorSDNode) op.getNode();
+    SDValue v1 = op.getOperand(0);
+    SDValue v2 = op.getOperand(1);
+    EVT vt = op.getValueType();
+    DebugLoc dl = op.getDebugLoc();
+    int numElts = vt.getVectorNumElements();
+    boolean isMMX = vt.getSizeInBits() == 64;
+    boolean v1IsUndef = v1.getOpcode() == ISD.UNDEF;
+    boolean v2IsUndef = v2.getOpcode() == ISD.UNDEF;
+    boolean v1IsSplat = false;
+    boolean v2IsSplat = false;
+
+    if (isZeroShuffle(svOp))
+      return getZeroVector(vt, subtarget.hasSSE2(), dag);
+
+    // promote splats to v4f32.
+    if (svOp.isSplat()) {
+      if (isMMX || numElts < 4)
+        return op;
+      return promoteSplat(svOp, dag, subtarget.hasSSE2());
+    }
+
+    // If the shuffle can be profitably rewritten as a narrower shuffle, then
+    // do it!
+    if (vt.equals(new EVT(MVT.v8i16)) || vt.equals(new EVT(MVT.v16i8))) {
+      SDValue newOp = rewriteAsNarrowerShuffle(svOp, dag, this, dl);
+      if (newOp.getNode() != null)
+        return dag.getNode(ISD.BIT_CONVERT, vt, lowerVECTOR_SHUFFLE(newOp, dag));
+    }
+    else if ((vt.equals(new EVT(MVT.v4i32)) || vt.equals(new EVT(MVT.v4f32))) && subtarget.hasSSE2()) {
+      // Try to make use of movq to zero out the top part.
+      if (ISD.isBuildVectorAllZeros(v2.getNode())) {
+        SDValue newOp = rewriteAsNarrowerShuffle(svOp, dag, this, dl);
+        if (newOp.getNode() != null && isCommutedMOVL((ShuffleVectorSDNode) newOp.getNode(), true, false)) {
+            return getVZextMovL(vt, newOp.getValueType(), newOp.getOperand(0), dag, subtarget, svOp.getDebugLoc());
+        }
+      }
+      else if (ISD.isBuildVectorAllZeros(v1.getNode())) {
+        SDValue newOp = rewriteAsNarrowerShuffle(svOp, dag, this, dl);
+        if (newOp.getNode() != null && X86.isMOVLMask((ShuffleVectorSDNode) newOp.getNode())) {
+          return getVZextMovL(vt, newOp.getValueType(), newOp.getOperand(1), dag, subtarget, dl);
+        }
+      }
+    }
+
+    if (X86.isPSHUFDMask(svOp))
+      return op;
+
+    // Check if this can be converted into a logical shift.
+    OutRef<Boolean> isLeft = new OutRef<>(false);
+    OutRef<Integer> shAmt = new OutRef<>(0);
+    OutRef<SDValue> shVal = new OutRef<>();
+    boolean isShift = subtarget.hasSSE2() && isVectorShift(svOp, dag, isLeft, shVal, shAmt);
+    if (isShift && shVal.get().hasOneUse()) {
+      // if the shifted value has multiple uses, it may be cheaper to use v_set0 + movlhps or movhlps,ettc.
+      EVT evt = vt.getVectorElementType();
+      return getVShift(isLeft.get(), vt, shVal.get(), shAmt.get() * evt.getSizeInBits(), dag, this);
+    }
+
+    if (X86.isMOVLMask(svOp)) {
+      if (v1IsUndef)
+        return v2;
+      if (ISD.isBuildVectorAllZeros(v1.getNode()))
+        return getVZextMovL(vt, vt, v2, dag, subtarget, dl);
+      if (!isMMX)
+        return op;
+    }
+
+    if (!isMMX && (X86.isMOVSHDUPMask(svOp) ||
+        X86.isMOVSLDUPMask(svOp) ||
+        X86.isMOVHLPSMask(svOp) ||
+        X86.isMOVHPMask(svOp) ||
+        X86.isMOVLPMask(svOp)))
+      return op;
+
+    if (shouldXfromToMOVHLPS(svOp) || shouldXformToMOVLP(v1.getNode(), v2.getNode(), svOp))
+      return commuteVectorShuffle(svOp, dag);
+
+    if (isShift) {
+      // nop better options, use a vshl/vsrl.
+      EVT evt = vt.getVectorElementType();
+      return getVShift(isLeft.get(), vt, shVal.get(), shAmt.get() * evt.getSizeInBits(), dag, this);
+    }
+
+    boolean commuted = false;
+    v1IsSplat = isSplatVector(v1.getNode());
+    v2IsSplat = isSplatVector(v2.getNode());
+
+    // Canonicalize the splat or undef, if present, to be on the RHS.
+    if ((v1IsSplat || v1IsUndef) && !(v2IsSplat || v2IsUndef)) {
+      op = commuteVectorShuffle(svOp, dag);
+      svOp = (ShuffleVectorSDNode) op.getNode();
+      v1 = svOp.getOperand(0);
+      v2 = svOp.getOperand(1);
+      boolean temp = v1IsSplat;
+      v1IsSplat = v2IsSplat;
+      v2IsSplat = temp;
+
+      temp = v1IsUndef;
+      v1IsUndef= v2IsUndef;
+      v2IsUndef = temp;
+      commuted = true;
+    }
+
+    if (isCommutedMOVL(svOp, v2IsSplat, v2IsUndef)) {
+      // Shuffling low element of v1 into undef, just return v1.
+      if (v2IsUndef)
+        return v1;
+
+      // If V2 is a splat, the mask may be malformed such as <4,3,3,3>, which
+      // the instruction selector will not match, so get a canonical MOVL with
+      // swapped operands to undo the commute.
+      return getMOVL(dag, vt, v2, v1);
+    }
+
+    if (X86.isUNPCKL_v_undef_Mask(svOp) ||
+        X86.isUNPCKH_v_undef_Mask(svOp) ||
+        X86.isUNPCKLMask(svOp) ||
+        X86.isUNPCKHMask(svOp)) {
+      return op;
+    }
+
+    if (v2IsSplat) {
+      // Normalize mask so all entries that point to V2 points to its first
+      // element then try to match unpck{h|l} again. If match, return a
+      // new vector_shuffle with the corrected mask.
+      SDValue newMask = normalizedMask(svOp, dag);
+      ShuffleVectorSDNode nsvOp = (ShuffleVectorSDNode) newMask.getNode();
+      if (!svOp.equals(nsvOp)) {
+        if (X86.isUNPCKLMask(nsvOp, true) || X86.isUNPCKHMask(nsvOp, true))
+          return newMask;
+      }
+    }
+
+    if (commuted) {
+      // Commute is back and try unpck* again.
+      SDValue newOp = commuteVectorShuffle(svOp, dag);
+      ShuffleVectorSDNode newSVOp = (ShuffleVectorSDNode) newOp.getNode();
+      if (X86.isUNPCKL_v_undef_Mask(newSVOp) ||
+          X86.isUNPCKH_v_undef_Mask(newSVOp) ||
+          X86.isUNPCKLMask(newSVOp) ||
+          X86.isUNPCKHMask(newSVOp))
+        return newOp;
+    }
+
+    // Normalize the node to match x86 shuffle ops if needed
+    if (!isMMX && v2.getOpcode() != ISD.UNDEF && isCommutedSHUFP(svOp)) {
+      return commuteVectorShuffle(svOp, dag);
+    }
+
+    // // Check for legal shuffle and return?
+    TIntArrayList permMask = new TIntArrayList();
+    svOp.getMask(permMask);
+    if (isShuffleMaskLegal(permMask, vt))
+      return op;
+
+    // Handle v8i16 specifically since SSE can do byte extraction and insertion.
+    if (vt.equals(new EVT(MVT.v8i16))) {
+      SDValue newOp = lowerVECTOR_SHUFFLEv8i16(svOp, dag, this);
+      if (newOp.getNode() != null)
+        return newOp;
+    }
+
+    if (vt.equals(new EVT(MVT.v16i8))) {
+      SDValue newOp = lowerVECTOR_SHUFFLEv16i8(svOp, dag, this);
+      if (newOp.getNode() != null)
+        return newOp;
+    }
+
+    // Handle all 4 wide cases with a number of shuffles except for MMX.
+    if (numElts == 4 && !isMMX)
+      return lowerVECTOR_SHUFFLE_4wide(svOp, dag);
+
     return new SDValue();
+  }
+
+  private static SDValue lowerVECTOR_SHUFFLE_4wide(ShuffleVectorSDNode svOp, SelectionDAG dag) {
+    Util.shouldNotReachHere("lowerVECTOR_SHUFFLE_4wide is not implemented!");
+    return null;
+  }
+
+  private static SDValue lowerVECTOR_SHUFFLEv8i16(ShuffleVectorSDNode svOp, SelectionDAG dag, X86TargetLowering tli) {
+    Util.shouldNotReachHere("lowerVECTOR_SHUFFLEv8i16 is not implemented!");
+    return null;
+  }
+
+  private static SDValue lowerVECTOR_SHUFFLEv16i8(ShuffleVectorSDNode svOp, SelectionDAG dag, X86TargetLowering tli) {
+    Util.shouldNotReachHere("lowerVECTOR_SHUFFLEv16i8 is not implemented!");
+    return null;
+  }
+
+  /**
+   * v2 is a splat, modify the mask as appropriate so as ensure all elements that point to v2
+   * points to its first element.
+   * @param svOp
+   * @param dag
+   * @return
+   */
+  private static SDValue normalizedMask(ShuffleVectorSDNode svOp, SelectionDAG dag) {
+    EVT vt = svOp.getValueType(0);
+    int numElts = vt.getVectorNumElements();
+
+    boolean changed = false;
+    TIntArrayList maskVec = new TIntArrayList();
+    svOp.getMask(maskVec);
+
+    for (int i = 0; i < numElts; i++) {
+      if (maskVec.get(i) > numElts) {
+        maskVec.set(i, numElts);
+        changed = true;
+      }
+    }
+    if (changed)
+      return dag.getVectorShuffle(vt, svOp.getOperand(0), svOp.getOperand(1), maskVec.toArray());
+
+    return new SDValue(svOp, 0);
+  }
+
+  /**
+   * Returns true if node is a BUILD_VECTOR node whose elements are all the zero.
+   * @param node
+   * @return
+   */
+  private static boolean isSplatVector(SDNode node) {
+    if (node.getOpcode() != ISD.BUILD_VECTOR)
+      return false;
+
+    SDValue splatValue = node.getOperand(0);
+    for (int i = 1, e = node.getNumOperands(); i < e; i++)
+      if (!node.getOperand(i).equals(splatValue))
+        return false;
+    return true;
+  }
+
+  /**
+   * Swap the vector_shuffle operands as well as values in their permute mask.
+   * @param svOp
+   * @param dag
+   * @return
+   */
+  private static SDValue commuteVectorShuffle(ShuffleVectorSDNode svOp, SelectionDAG dag) {
+    EVT vt = svOp.getValueType(0);
+    int numElts = vt.getVectorNumElements();
+    TIntArrayList maskVec = new TIntArrayList();
+
+    for (int i = 0; i < numElts; ++i) {
+      int idx = svOp.getMaskElt(i);
+      if (idx < 0)
+        maskVec.add(idx);
+      else if (idx < numElts)
+        maskVec.add(idx + numElts);
+      else
+        maskVec.add(idx - numElts);
+    }
+    return dag.getVectorShuffle(vt, svOp.getOperand(1), svOp.getOperand(0), maskVec.toArray());
+  }
+
+  /**
+   * Return true if the node should be transformed to
+   * match movlp{s|d}. The lower half elements should come from lower half of
+   * V1 (and in order), and the upper half elements should come from the upper
+   * half of V2 (and in order). And since V1 will become the source of the
+   * MOVLP, it must be either a vector load or a scalar load to vector.
+   * @param v1
+   * @param v2
+   * @param op
+   * @return
+   */
+  private static boolean shouldXformToMOVLP(SDNode v1, SDNode v2, ShuffleVectorSDNode op) {
+    if (!v1.isNONExtLoad() && isScalarLoadToVector(v1) == null)
+      return false;
+
+    // is v2 is a vector load, don't do this transformation. we will try to use load folding shufps o.
+    if (v2.isNONExtLoad())
+      return false;
+
+    int numElts = op.getValueType(0).getVectorNumElements();
+    if (numElts != 2 && numElts != 4)
+      return false;
+
+    for (int i = 0, e = numElts/2; i < e; i++) {
+      if (!isUnderOrEqual(op.getMaskElt(i), i))
+        return false;
+    }
+    for (int i = numElts / 2; i < numElts; ++i) {
+      if (!isUnderOrEqual(op.getMaskElt(i), i + numElts))
+        return false;
+    }
+    return true;
+  }
+
+  /**
+   * Return true if the node should be transformed to
+   * match movhlps. The lower half elements should come from upper half of
+   * V1 (and in order), and the upper half elements should come from the upper
+   * half of V2 (and in order).
+   * @param op
+   * @return
+   */
+  private static boolean shouldXfromToMOVHLPS(ShuffleVectorSDNode op) {
+    if (op.getValueType(0).getVectorNumElements() != 4)
+      return false;
+
+    for (int i = 0; i < 2; ++i) {
+      if (!isUnderOrEqual(op.getMaskElt(i), i + 2))
+        return false;
+    }
+    for (int i = 2; i < 4; ++i) {
+      if (!isUnderOrEqual(op.getMaskElt(i), i+4))
+        return false;
+    }
+    return true;
+  }
+
+  /**
+   * Returns true if the shuffle can be implemented as a logical left or right shift of a vector.
+   * @param svOp
+   * @param dag
+   * @param isLeft
+   * @param shVal
+   * @param shAmt
+   * @return
+   */
+  private static boolean isVectorShift(ShuffleVectorSDNode svOp,
+                                       SelectionDAG dag,
+                                       OutRef<Boolean> isLeft,
+                                       OutRef<SDValue> shVal,
+                                       OutRef<Integer> shAmt) {
+    int numElts = svOp.getValueType(0).getVectorNumElements();
+    isLeft.set(true);
+
+    int numZeros = getNumOfConsecutiveZeros(svOp, numElts, true, dag);
+    if (numZeros == 0) {
+      isLeft.set(false);
+      numZeros = getNumOfConsecutiveZeros(svOp, numElts, false, dag);
+      if (numZeros == 0)
+        return false;
+    }
+
+    boolean seenV1 = false;
+    boolean seenV2 = false;
+    for (int i = numZeros; i < numElts; ++i) {
+      int val = isLeft.get() ? (i - numZeros) : i;
+      int idx = svOp.getMaskElt(isLeft.get() ? i : i - numZeros);
+      if (idx < 0)
+        continue;
+
+      if (idx < numElts)
+        seenV1 = true;
+      else {
+        idx -= numElts;
+        seenV2 = true;
+      }
+      if (idx != val)
+        return false;
+    }
+
+    if (seenV1 && seenV2)
+      return false;
+
+    shVal.set(seenV1 ? svOp.getOperand(0) : svOp.getOperand(1));
+    shAmt.set(numZeros);
+    return true;
+  }
+
+  private static int getNumOfConsecutiveZeros(ShuffleVectorSDNode svOp,
+                                              int numElts,
+                                              boolean low,
+                                              SelectionDAG dag) {
+    int numZeros = 0;
+    for (int i = 0; i < numElts; ++i) {
+      int index = low ? i : numElts - 1;
+      int idx = svOp.getMaskElt(index);
+      if (idx < 0) {
+        ++numZeros;
+        continue;
+      }
+      SDValue elt = dag.getShuffleScalarElt(svOp, index);
+      if (elt.getNode() != null && X86.isZeroMode(elt))
+        ++numElts;
+      else
+        break;
+    }
+
+    return numZeros;
+  }
+
+  /**
+   * Return a zero-extendeing vector mvoe low node.
+   * @param vt
+   * @param opVT
+   * @param srcOp
+   * @param dag
+   * @param subtarget
+   * @param dl
+   * @return
+   */
+  private static SDValue getVZextMovL(EVT vt,
+                               EVT opVT,
+                               SDValue srcOp,
+                               SelectionDAG dag,
+                               X86Subtarget subtarget,
+                               DebugLoc dl) {
+    if (vt.equals(new EVT(MVT.v2f64)) || vt.equals(new EVT(MVT.v4f32))) {
+      LoadSDNode ld = isScalarLoadToVector(srcOp.getNode());
+      if (ld == null)
+        ld = srcOp.getNode() instanceof LoadSDNode ? (LoadSDNode) srcOp.getNode() : null;
+      if (ld == null) {
+        // movssrr and movsdrr do not clear top bits. Try to use movd, movq
+        // instead.
+        EVT extVT = opVT.equals(new EVT(MVT.v2f64)) ? new EVT(MVT.i64) : new EVT(MVT.i32);
+        if ((extVT.getSimpleVT().simpleVT != MVT.i64 || subtarget.is64Bit()) &&
+        srcOp.getOpcode() == ISD.SCALAR_TO_VECTOR &&
+        srcOp.getOperand(0).getOpcode() == ISD.BIT_CONVERT &&
+        srcOp.getOperand(0).getOperand(0).getValueType().equals(extVT)) {
+          opVT = opVT.equals(new EVT(MVT.v2f64)) ? new EVT(MVT.v2i64) : new EVT(MVT.v4i32);
+          return dag.getNode(ISD.BIT_CONVERT, vt,
+              dag.getNode(X86ISD.VZEXT_MOVL, opVT,
+                  dag.getNode(ISD.SCALAR_TO_VECTOR, opVT, srcOp.getOperand(0).getOperand(0))));
+        }
+      }
+    }
+    return dag.getNode(ISD.BIT_CONVERT, vt, dag.getNode(X86ISD.VZEXT_MOVL, opVT,
+        dag.getNode(ISD.BIT_CONVERT, opVT, srcOp)));
+  }
+
+  /**
+   * Return the LoadSDNode if the node is a scalar load that is promoted to a vector.
+   * @param node
+   * @return
+   */
+  private static LoadSDNode isScalarLoadToVector(SDNode node) {
+    if (node.getOpcode() != ISD.SCALAR_TO_VECTOR)
+      return null;
+    node = node.getOperand(0).getNode();
+    if (node.isNONExtLoad())
+      return null;
+    return (LoadSDNode)node;
+  }
+
+  /**
+   * Try rewriting v8i16 and v16i8 shuffles as 4 wide ones, or rewriting v4i32 / v2f32 as
+   * 2 wide ones if possible. This can be done when every pair / quad of shuffle mask elements
+   * point to elements in the right sequence. e.g. vector_shuffle <>, <>, < 3, 4, | 10, 11, | 0, 1, | 14, 15>
+   * @param sv
+   * @param dag
+   * @param tli
+   * @param dl
+   * @return
+   */
+  private static SDValue rewriteAsNarrowerShuffle(ShuffleVectorSDNode sv,
+                                                  SelectionDAG dag,
+                                                  X86TargetLowering tli,
+                                                  DebugLoc dl) {
+    EVT vt = sv.getValueType(0);
+    SDValue v1 = sv.getOperand(0);
+    SDValue v2 = sv.getOperand(1);
+    int numElts = vt.getVectorNumElements();
+    int newWidth = numElts == 4 ? 2 : 4;
+    EVT maskVT = new EVT(MVT.getIntVectorWithNumElements(newWidth));
+    EVT maskEltVT = maskVT.getVectorElementType();
+    EVT newVT = maskVT;
+    switch (vt.getSimpleVT().simpleVT) {
+      case MVT.v4f32: newVT = new EVT(MVT.v2f64); break;
+      case MVT.v4i32: newVT = new EVT(MVT.v2i64); break;
+      case MVT.v8i16: newVT = new EVT(MVT.v4i32); break;
+      case MVT.v16i8: newVT = new EVT(MVT.v4i32); break;
+    }
+
+    if (newWidth == 2) {
+      if (vt.isInteger())
+        newVT = new EVT(MVT.v1i64);
+      else
+        newVT = new EVT(MVT.v2f64);
+    }
+
+    int scale = numElts / newWidth;
+    TIntArrayList maskVec = new TIntArrayList();
+    for (int i = 0; i < numElts; i += scale) {
+      int startIdx = -1;
+      for (int j = 0; j < scale; j++) {
+        int eltIdx = sv.getMaskElt(i+j);
+        if (eltIdx < 0)
+          continue;
+
+        if (startIdx == -1)
+          startIdx = eltIdx - (eltIdx % scale);
+        if (eltIdx != startIdx + j)
+          return new SDValue();
+      }
+      if (startIdx == -1)
+        maskVec.add(-1);
+      else
+        maskVec.add(startIdx / scale);
+    }
+
+    v1 = dag.getNode(ISD.BIT_CONVERT, newVT, v1);
+    v2 = dag.getNode(ISD.BIT_CONVERT, newVT, v2);
+    return dag.getVectorShuffle(newVT, v1, v2, maskVec.toArray());
+  }
+
+  /**
+   * Promote a splat of v4f32, v8i16 or v16i8 to v4i32.
+   * @param sv
+   * @param dag
+   * @param hasSSE2
+   * @return
+   */
+  private static SDValue promoteSplat(ShuffleVectorSDNode sv, SelectionDAG dag, boolean hasSSE2) {
+    if (sv.getValueType(0).getVectorNumElements() <= 4)
+      return new SDValue(sv, 0);
+
+    EVT pvt = new EVT(MVT.v4f32);
+    EVT vt = sv.getValueType(0);
+    DebugLoc dl = sv.getDebugLoc();
+    SDValue v1 = sv.getOperand(0);
+    int numElts = vt.getVectorNumElements();
+    int eltNo = sv.getSplatIndex();
+
+    // unpack the elements to the correct location.
+    while (numElts < 4) {
+      if (eltNo < numElts / 2) {
+        v1 = getUnpackl(dag, vt, v1, v1);
+      }
+      else {
+        v1 = getUnpackh(dag, vt, v1, v1);
+        eltNo -= numElts / 2;
+      }
+      numElts >>>= 1;
+    }
+    // perform the splat.
+    int[] splatMask = new int[] {eltNo, eltNo, eltNo, eltNo};
+    v1 = dag.getNode(ISD.BIT_CONVERT, pvt, v1);
+    v1 = dag.getVectorShuffle(pvt, v1, dag.getUNDEF(pvt), splatMask);
+    return dag.getNode(ISD.BIT_CONVERT, vt, v1);
+  }
+
+  private static boolean isZeroShuffle(ShuffleVectorSDNode n) {
+    SDValue v1 = n.getOperand(0);
+    SDValue v2 = n.getOperand(1);
+    int numElts = n.getValueType(0).getVectorNumElements();
+    for (int i = 0; i < numElts; ++i) {
+      int idx = n.getMaskElt(i);
+      if (idx >= numElts) {
+        int opc = v2.getOpcode();
+        if (opc == ISD.UNDEF || ISD.isBuildVectorAllZeros(v2.getNode()))
+          continue;
+        if (opc != ISD.BUILD_VECTOR || !X86.isZeroMode(v2.getOperand(idx-numElts)))
+          return false;
+      }
+      else if (idx >= 0) {
+        int opc = v1.getOpcode();
+        if (opc == ISD.UNDEF || ISD.isBuildVectorAllZeros(v1.getNode()))
+          continue;
+        if (opc != ISD.BUILD_VECTOR || !X86.isZeroMode(v1.getOperand(idx)))
+          return false;
+      }
+    }
+    return true;
   }
 
   private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag) {

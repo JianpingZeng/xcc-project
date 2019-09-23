@@ -1905,6 +1905,70 @@ public class SelectionDAGLegalizer {
         results.add(expandFPLibCall(node, RTLIB.SQRT_F32, RTLIB.SQRT_F64,
             RTLIB.SQRT_F80, RTLIB.SQRT_PPCF128));
         break;
+      case ISD.FSIN:
+        results.add(expandFPLibCall(node, RTLIB.SIN_F32, RTLIB.SIN_F64,
+            RTLIB.SIN_F80, RTLIB.SIN_PPCF128));
+        break;
+      case ISD.FCOS:
+        results.add(expandFPLibCall(node, RTLIB.COS_F32, RTLIB.COS_F64,
+            RTLIB.COS_F80, RTLIB.COS_PPCF128));
+        break;
+      case ISD.FLOG:
+        results.add(expandFPLibCall(node, RTLIB.LOG_F32, RTLIB.LOG_F64,
+            RTLIB.LOG_F80, RTLIB.LOG_PPCF128));
+        break;
+      case ISD.FLOG2:
+        results.add(expandFPLibCall(node, RTLIB.LOG2_F32, RTLIB.LOG2_F64,
+            RTLIB.LOG2_F80, RTLIB.LOG2_PPCF128));
+        break;
+      case ISD.FLOG10:
+        results.add(expandFPLibCall(node, RTLIB.LOG10_F32, RTLIB.LOG10_F64,
+            RTLIB.LOG10_F80, RTLIB.LOG10_PPCF128));
+        break;
+      case ISD.FEXP:
+        results.add(expandFPLibCall(node, RTLIB.EXP_F32, RTLIB.EXP_F64,
+            RTLIB.EXP_F80, RTLIB.EXP_PPCF128));
+          break;
+      case ISD.FEXP2:
+        results.add(expandFPLibCall(node, RTLIB.EXP2_F32, RTLIB.EXP2_F64,
+            RTLIB.EXP2_F80, RTLIB.EXP2_PPCF128));
+        break;
+      case ISD.FTRUNC:
+        results.add(expandFPLibCall(node, RTLIB.TRUNC_F32, RTLIB.TRUNC_F64,
+            RTLIB.TRUNC_F80, RTLIB.TRUNC_PPCF128));
+          break;
+      case ISD.FFLOOR:
+        results.add(expandFPLibCall(node, RTLIB.FLOOR_F32, RTLIB.FLOOR_F64,
+            RTLIB.FLOOR_F80, RTLIB.FLOOR_PPCF128));
+        break;
+      case ISD.FCEIL:
+        results.add(expandFPLibCall(node, RTLIB.CEIL_F32, RTLIB.CEIL_F64,
+            RTLIB.CEIL_F80, RTLIB.CEIL_PPCF128));
+        break;
+      case ISD.FRINT:
+        results.add(expandFPLibCall(node, RTLIB.RINT_F32, RTLIB.RINT_F64,
+            RTLIB.RINT_F80, RTLIB.RINT_PPCF128));
+        break;
+      case ISD.FNEARBYINT:
+        results.add(expandFPLibCall(node, RTLIB.NEARBYINT_F32, RTLIB.NEARBYINT_F64,
+            RTLIB.NEARBYINT_F80, RTLIB.NEARBYINT_PPCF128));
+        break;
+      case ISD.FPOW:
+        results.add(expandFPLibCall(node, RTLIB.POW_F32, RTLIB.POW_F64,
+            RTLIB.POW_F80, RTLIB.POW_PPCF128));
+        break;
+      case ISD.FPOWI:
+        results.add(expandFPLibCall(node, RTLIB.POWI_F32, RTLIB.POWI_F64,
+            RTLIB.POWI_F80, RTLIB.POWI_PPCF128));
+        break;
+      case ISD.FDIV:
+        results.add(expandFPLibCall(node, RTLIB.DIV_F32, RTLIB.DIV_F64,
+            RTLIB.DIV_F80, RTLIB.DIV_PPCF128));
+        break;
+      case ISD.FREM:
+        results.add(expandFPLibCall(node, RTLIB.REM_F32, RTLIB.REM_F64,
+            RTLIB.REM_F80, RTLIB.REM_PPCF128));
+        break;
       case ISD.ConstantFP: {
         ConstantFPSDNode fp = (ConstantFPSDNode) node;
         boolean isLegal = false;
@@ -2372,7 +2436,6 @@ public class SelectionDAGLegalizer {
         break;
       default:
         Util.shouldNotReachHere("Unexpected request for libcall!");
-        ;
     }
     return expandLibCall(lc, node, false);
   }
@@ -2405,7 +2468,7 @@ public class SelectionDAGLegalizer {
   }
 
   private SDValue expandLibCall(RTLIB lc, SDNode node, boolean isSigned) {
-    Util.assertion(isLegalizingCall, "Can't overlap legalization of calle!");
+    Util.assertion(!isLegalizingCall, "Can't overlap legalization of calls!");
     SDValue inChain = dag.getEntryNode();
 
     ArrayList<ArgListEntry> args = new ArrayList<>();

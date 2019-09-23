@@ -21,6 +21,7 @@ import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
+import static backend.codegen.MachineInstrBuilder.addLeaRegOffset;
 import static backend.codegen.MachineInstrBuilder.addRegOffset;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetOptions.DisableFPElim;
@@ -297,7 +298,8 @@ public class X86FrameLowering extends TargetFrameLowering {
       numBytes = frameSize - cssSize;
 
       // Pop EBP.
-      buildMI(mbb, mbbi++, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? POP64r : POP32r), framePtr);
+      buildMI(mbb, mbbi, mbb.getInstAt(mbbi).getDebugLoc(), tii.get(is64Bit ? POP64r : POP32r), framePtr);
+      ++mbbi;
     }
     else {
       numBytes = stackSize - cssSize;
@@ -334,8 +336,9 @@ public class X86FrameLowering extends TargetFrameLowering {
       if (cssSize != 0) {
         int opc = is64Bit ? LEA64r : LEA32r;
         MachineInstrBuilder mib = new MachineInstrBuilder(new MachineInstr(tii.get(opc), mbb.getInstAt(mbbi).getDebugLoc()));
+        // add a destination register.
         mib.addReg(stackPtr);
-        MachineInstr mi = addRegOffset(mib, framePtr, false, -cssSize).getMInstr();
+        MachineInstr mi = addLeaRegOffset(mib, framePtr, false, -cssSize).getMInstr();
         mbb.insert(mbbi, mi);
       }
       else {

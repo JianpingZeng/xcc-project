@@ -903,6 +903,10 @@ public class Intrinsic {
     return id.name;
   }
 
+  public static String getName(int id) {
+    return getID(id).name;
+  }
+
   public static String getName(ID id, ArrayList<Type> types) {
     if (types.isEmpty())
       return id.name;

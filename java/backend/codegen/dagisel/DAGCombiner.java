@@ -1410,6 +1410,8 @@ public class DAGCombiner {
     if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
       return dag.getNode(ISD.FP_EXTEND, vt, n0);
 
+    // Turn fp_extend(fp_round(X, 1)) -> x since the fp_round doesn't affect the
+    // value of X.
     if (n0.getOpcode() == ISD.FP_ROUND &&
         n0.getNode().getConstantOperandVal(1) == 1) {
       SDValue in = n0.getOperand(0);

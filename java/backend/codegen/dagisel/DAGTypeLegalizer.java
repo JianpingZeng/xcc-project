@@ -996,7 +996,7 @@ public class DAGTypeLegalizer {
   private SDValue promoteIntResSELECT(SDNode n) {
     SDValue lhs = getPromotedInteger(n.getOperand(1));
     SDValue rhs = getPromotedInteger(n.getOperand(2));
-    return dag.getNode(ISD.SETCC, lhs.getValueType(),
+    return dag.getNode(ISD.SELECT, lhs.getValueType(),
         n.getOperand(0), lhs, rhs);
   }
 

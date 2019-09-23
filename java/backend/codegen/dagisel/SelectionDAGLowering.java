@@ -43,7 +43,7 @@ import java.util.*;
 
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
-import static backend.intrinsic.Intrinsic.ID.not_intrinsic;
+import static backend.intrinsic.Intrinsic.ID.*;
 import static backend.target.TargetOptions.DisableJumpTables;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.value.Operator.And;
@@ -1884,7 +1884,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitFPTrunc(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.FP_ROUND, destVT, op1));
+    setValue(inst, dag.getNode(ISD.FP_ROUND, destVT, op1, dag.getIntPtrConstant(0)));
     return null;
   }
 
@@ -2244,6 +2244,129 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             align, ci.getArgOperand(0), 0, ci.getArgOperand(1), 0));
         return null;
       }
+      case eh_exception: {
+        // insert the EXCEPTIONADDR instruction.
+        Util.assertion(funcInfo.mbb.isLandingPad(), "Call to eh.exception not in landing pad!");
+        SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
+        SDValue[] ops = new SDValue[] {dag.getRoot()};
+        SDValue op = dag.getNode(ISD.EXCEPTIONADDR, vts, ops);
+        setValue(ci, op);
+        dag.setRoot(op.getValue(1));
+        return null;
+      }
+      case eh_selector: {
+        Util.assertion("eh_selector is not supported as yet!");
+        MachineBasicBlock callMBB = funcInfo.mbb;
+        MachineModuleInfo mmi = dag.getMachineModuleInfo();
+        if (callMBB.isLandingPad()) {
+          // addCatchInfo(ci, mmi, callMBB);
+        }
+        else {
+          // mark the exception selector register as live in.
+          int reg = tli.getExceptionSelectorRegister();
+          if (reg != 0)
+            funcInfo.mbb.addLiveIn(reg);
+        }
+        // insert the EHSELECTION instruction.
+        SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
+        SDValue[] ops = new SDValue[] {getValue(ci.getArgOperand(0)), getRoot()};
+        SDValue op = dag.getNode(ISD.EHSELECTION, vts, ops);
+        dag.setRoot(op.getValue(1));
+        setValue(ci, dag.getSExtOrTrunc(op, new EVT(MVT.i32)));
+        return null;
+      }
+      case eh_typeid_for:
+      case eh_return_i32:
+      case eh_return_i64:
+      case eh_unwind_init:
+      case eh_dwarf_cfa:
+      case eh_sjlj_callsite:
+      case eh_sjlj_setjmp:
+      case eh_sjlj_longjmp: {
+        // find the type_id for the given typeinfo.
+        Util.assertion(String.format("%s is not supported yet!", iid.name));
+        return null;
+      }
+      case x86_mmx_pslli_w:
+      case x86_mmx_pslli_d:
+      case x86_mmx_pslli_q:
+      case x86_mmx_psrli_w:
+      case x86_mmx_psrli_d:
+      case x86_mmx_psrli_q:
+      case x86_mmx_psrai_w:
+      case x86_mmx_psrai_d: {
+        SDValue shAmt = getValue(ci.getArgOperand(1));
+        if (shAmt.getNode() instanceof SDNode.ConstantSDNode) {
+          visitTargetIntrinsic(ci, iid);
+          return null;
+        }
+
+        Intrinsic.ID newIntrinsic = null;
+        EVT shmAmtVT = new EVT(MVT.v2i32);
+        switch (iid) {
+          case x86_mmx_pslli_w:
+            newIntrinsic = x86_mmx_psll_w;
+            break;
+          case x86_mmx_pslli_d:
+            newIntrinsic = x86_mmx_psll_w;
+            break;
+          case x86_mmx_pslli_q:
+            newIntrinsic = x86_mmx_psll_q;
+            break;
+          case x86_mmx_psrli_w:
+            newIntrinsic = x86_mmx_psrl_w;
+            break;
+          case x86_mmx_psrli_d:
+            newIntrinsic = x86_mmx_psrl_d;
+            break;
+          case x86_mmx_psrli_q:
+            newIntrinsic = x86_mmx_psrl_q;
+            break;
+          case x86_mmx_psrai_w:
+            newIntrinsic = x86_mmx_psra_w;
+            break;
+          case x86_mmx_psrai_d:
+            newIntrinsic = x86_mmx_psra_d;
+            break;
+          default:
+            Util.assertion("Impossible intrinsic");
+        }
+
+        // The vector shift intrinsics with scalars uses 32b shift amounts but
+        // the sse2/mmx shift instructions reads 64 bits. Set the upper 32 bits
+        // to be zero.
+        // We must do this early because v2i32 is not a legal type.
+        SDValue[] shOps = new SDValue[] {shAmt, dag.getConstant(0, new EVT(MVT.i32), false)};
+        shAmt = dag.getNode(ISD.BUILD_VECTOR, shmAmtVT, shOps);
+        EVT destVT = tli.getValueType(ci.getType());
+        shAmt = dag.getNode(ISD.BIT_CONVERT, destVT, shAmt);
+        SDValue result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, destVT,
+            dag.getConstant(newIntrinsic.ordinal(), new EVT(MVT.i32), false),
+            getValue(ci.getArgOperand(0)), shAmt);
+        setValue(ci, result);
+        return null;
+      }
+      case convertff:
+      case convertfsi:
+      case convertfui:
+      case convertsif:
+      case convertuif:
+      case convertss:
+      case convertsu:
+      case convertus:
+      case convertuu: {
+        CvtCode code = CvtCode.values()[iid.ordinal() - convertff.ordinal()];
+        EVT destVT = tli.getValueType(ci.getType());
+        Value arg1 = ci.getArgOperand(0);
+        SDValue result = dag.getConvertRndSat(destVT, getValue(arg1),
+            dag.getValueType(destVT),
+            dag.getValueType(getValue(arg1).getValueType()),
+            getValue(ci.getArgOperand(1)),
+            getValue(ci.getArgOperand(2)),
+            code);
+        setValue(ci, result);
+        return null;
+      }
       case sqrt:
         setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.operand(1)).getValueType(),
             getValue(ci.operand(1))));
@@ -2272,6 +2395,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       case pow:
         visitPow(ci);
+        return null;
+      case powi:
+        setValue(ci, expandPowI(getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)), dag));
         return null;
       case pcmarker:
         SDValue tmp = getValue(ci.operand(1));
@@ -2560,6 +2686,68 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
 
     }
+  }
+
+  /**
+   * A function is used to lower the llvm.powi intrinsic function.
+   * @param lhs
+   * @param rhs
+   * @param dag
+   * @return
+   */
+  private static SDValue expandPowI(SDValue lhs, SDValue rhs, SelectionDAG dag) {
+    // If RHS is a constant, we can expand this out to a multiplication tree,
+    // otherwise we end up lowering to a call to __powidf2 (for example).  When
+    // optimizing for size, we only want to do this if the expansion would produce
+    // a small number of multiplies, otherwise we do the full expansion.
+    if (rhs.getNode() instanceof SDNode.ConstantSDNode) {
+      SDNode.ConstantSDNode rhsc = (SDNode.ConstantSDNode) rhs.getNode();
+      // get the exponent as a positive value.
+      int val = (int) rhsc.getSExtValue();
+
+      // powi(x, 0) -> 1.0
+      if (val == 0)
+        return dag.getConstantFP(1.0, lhs.getValueType(), false);
+
+      // powi(x, 1) --> x
+      if (val == 1)
+        return lhs;
+
+      // powi(x, -1) --> 1/x
+      if (val == -1)
+        return dag.getNode(ISD.FDIV, lhs.getValueType(),
+            dag.getConstantFP(1.0, lhs.getValueType(), false),
+            lhs);
+
+      if (val < 0) val = -val;
+
+      Function f = dag.getMachineFunction().getFunction();
+      if (!f.hasFnAttr(Attribute.OptimizeForSize) ||
+          Util.countPoplutation(val) + Util.log2(val) < 7) {
+        // If optimizing for size, don't insert too many multiplies.  This
+        // inserts up to 5 multiplies.
+        SDValue res = null;
+        SDValue curSquare = lhs;
+        while (val != 0) {
+          if ((val & 1) != 0) {
+            if (res != null)
+              res = dag.getNode(ISD.FMUL, res.getValueType(), res, curSquare);
+            else
+              res = curSquare; // equivalent to 1.0*lhs
+          }
+          curSquare = dag.getNode(ISD.FMUL, curSquare.getValueType(), curSquare, curSquare);
+          val >>= 1;
+        }
+
+        // If the original was negative, invert the result, producing 1/(x*x*x).
+        if (rhsc.getSExtValue() < 0)
+          return dag.getNode(ISD.FDIV, lhs.getValueType(),
+              dag.getConstantFP(1.0, lhs.getValueType(), false),
+              res);
+      }
+    }
+    // otherwise, generate a library call.
+    return dag.getNode(ISD.FPOWI, lhs.getValueType(), lhs, rhs);
   }
 
   /**

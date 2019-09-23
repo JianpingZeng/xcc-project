@@ -273,16 +273,18 @@ public class RegAllocLocal extends MachineFunctionPass {
    * @param phyReg
    */
   private void spillVirRegAfter(MachineBasicBlock parent,
-                           int index,
-                           int virReg,
-                           int phyReg) {
+                                int index,
+                                int virReg,
+                                int phyReg) {
     if (virReg == 0) return;
 
     // We just spill those modified virtual register into memory cell.
     if (isVirRegModified(virReg)) {
       MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
       int frameIdx = getStackSlotForVirReg(virReg, rc);
-      boolean isKilled = !parent.getInstAt(index-1).readsRegister(phyReg, regInfo);
+      boolean isKilled = false;
+      if (index > 1)
+        isKilled = !parent.getInstAt(index - 1).readsRegister(phyReg, regInfo);
       instrInfo.storeRegToStackSlot(parent, index, phyReg, isKilled, frameIdx, rc);
 
       // add count for spilled.

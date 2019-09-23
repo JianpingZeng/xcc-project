@@ -128,7 +128,6 @@ public class MachineInstr implements Cloneable {
     boolean isImpReg = mo.isRegister() && mo.isImplicit();
     Util.assertion(isImpReg || !operandsComplete(), "Try to add an operand to a machine instr that is already done!");
 
-
     MachineRegisterInfo regInfo = getRegInfo();
     // If we are adding the operand to the end of the list, our job is simpler.
     // This is true most of the time, so this is a reasonable optimization.

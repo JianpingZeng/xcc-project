@@ -5,31 +5,24 @@ import backend.type.Type;
 import backend.value.Function;
 import backend.value.Module;
 
-public class TargetIntrinsicInfo {
+public abstract class TargetIntrinsicInfo {
   private String[] intrinsics;
 
   public TargetIntrinsicInfo(String[] info) {
     intrinsics = info;
   }
 
-  public int getNumIntrinsics() {
-    return intrinsics != null ? intrinsics.length : 0;
-  }
+  public abstract int getNumIntrinsics();
 
-  public Function getDeclaration(Module m, String builtinName) {
-    return null;
-  }
+  public abstract Function getDeclaration(Module m, String builtinName);
 
-  public Function getDeclaration(Module m, String builtinName,
-                                 Type[] tys) {
-    return null;
-  }
+  public abstract Function getDeclaration(Module m, String builtinName, Type[] tys);
 
-  public boolean isOverloaded(Module m, String[] builtinName) {
-    return false;
-  }
+  public abstract boolean isOverloaded(Module m, String[] builtinName);
 
   public Intrinsic.ID getIntrinsicID(Function f) {
     return Intrinsic.ID.not_intrinsic;
   }
+
+  public abstract String getName(int iid, Type... tys);
 }

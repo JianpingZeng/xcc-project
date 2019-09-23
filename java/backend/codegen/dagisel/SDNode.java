@@ -19,7 +19,9 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.debug.DebugLoc;
+import backend.intrinsic.Intrinsic;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetIntrinsicInfo;
 import backend.target.TargetLowering;
 import backend.type.Type;
 import backend.value.*;
@@ -27,10 +29,7 @@ import gnu.trove.list.array.TIntArrayList;
 import tools.*;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.TreeSet;
+import java.util.*;
 
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.support.AssemblyWriter.writeAsOperand;
@@ -418,14 +417,19 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
         return "ConstantPool";
       case ISD.ExternalSymbol:
         return "ExternalSymbol";
-      case ISD.INTRINSIC_WO_CHAIN: {
-        long iid = ((ConstantSDNode) getOperand(0).getNode()).getZExtValue();
-        Util.assertion(false, "Intrinsic function not supported!");
-      }
+
+      case ISD.INTRINSIC_WO_CHAIN:
       case ISD.INTRINSIC_VOID:
       case ISD.INTRINSIC_W_CHAIN: {
-        //long iid = ((ConstantSDNode) getOperand(0).getNode()).getZExtValue();
-        Util.assertion(false, "Intrinsic function not supported!");
+        int opNo = opcode == ISD.INTRINSIC_WO_CHAIN ? 0 : 1;
+        int iid = (int)((ConstantSDNode) getOperand(opNo).getNode()).getZExtValue();
+        if (iid < Intrinsic.ID.num_intrinsics.ordinal())
+          return Intrinsic.getName(iid);
+        else if (dag.getTarget().getIntrinsinsicInfo() != null) {
+          TargetIntrinsicInfo tii = dag.getTarget().getIntrinsinsicInfo();
+          return tii.getName(iid);
+        }
+        Util.assertion("Invalid Intrinsic ID!");
       }
 
       case ISD.BUILD_VECTOR:
@@ -1700,9 +1704,18 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public static class ShuffleVectorSDNode extends SDNode {
     private int[] mask;
 
-    public ShuffleVectorSDNode(SDVTList vts, ArrayList<SDValue> ops,
+    public ShuffleVectorSDNode(SDVTList vts,
+                               ArrayList<SDValue> ops,
                                int[] mask) {
       super(ISD.VECTOR_SHUFFLE, vts, ops);
+      this.mask = mask;
+    }
+
+    public ShuffleVectorSDNode(SDVTList vts,
+                               SDValue op0,
+                               SDValue op1,
+                               int[] mask) {
+      super(ISD.VECTOR_SHUFFLE, vts, new SDValue[] {op0, op1});
       this.mask = mask;
     }
 

@@ -3215,8 +3215,7 @@ public abstract class Instruction extends User {
       super(ty, Operator.Alloca,
           arraySize == null ? ConstantInt.get(Type.getInt32Ty(ty.getContext()), 1) :
               arraySize, alignment, name, insertBefore);
-      Util.assertion(getArraySize().getType() == Type.getInt32Ty(ty.getContext()),
-          "Alloca array getNumOfSubLoop != UnsignedIntTy");
+      Util.assertion(getArraySize().getType().isIntegral(), "The type of allocated size is not i32");
     }
 
     public AllocaInst(Type ty, Value arraySize, int alignment) {
@@ -3922,10 +3921,9 @@ public abstract class Instruction extends User {
     private int[] indices;
 
     private void init(Value agg, Value val, int[] idxs, String name) {
-      Util.assertion(idxs.length == 2, "the number of operands must be two!");
       reserve(2);
-      setOperand(0, agg);
-      setOperand(1, val);
+      setOperand(0, agg, this);
+      setOperand(1, val, this);
       setName(name);
       indices = idxs;
     }

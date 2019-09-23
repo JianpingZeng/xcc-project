@@ -65,6 +65,10 @@ public class SDValue implements Comparable<SDValue>, Cloneable {
     return resNo;
   }
 
+  public void setResNo(int no) {
+    this.resNo = no;
+  }
+
   /**
    * get the SDNode which holds the desired result
    *
