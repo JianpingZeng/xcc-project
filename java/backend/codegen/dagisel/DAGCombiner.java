@@ -4132,7 +4132,9 @@ public class DAGCombiner {
     ArrayList<SDNode> nodes = new ArrayList<>();
     SDValue s = tli.buildSDIV(n, dag, nodes);
 
-    nodes.stream().forEach(op -> addToWorkList(op));
+    for (SDNode node : nodes) {
+      addToWorkList(node);
+    }
     return s;
   }
 

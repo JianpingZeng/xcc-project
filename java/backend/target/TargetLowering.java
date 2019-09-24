@@ -2564,19 +2564,21 @@ public abstract class TargetLowering {
       return new SDValue();
 
     APInt d = ((ConstantSDNode) n.getOperand(1).getNode()).getAPIntValue();
-    APInt.MU magics = d.magic();
+    APInt.MS magics = d.magic();
 
     SDValue q;
     if (isOperationLegalOrCustom(ISD.MULHS, vt))
       q = dag.getNode(ISD.MULHS, vt, n.getOperand(0),
           dag.getConstant(magics.m, vt, false));
-    else if (isOperationLegalOrCustom(ISD.SMUL_LOHI, vt))
+    else if (isOperationLegalOrCustom(ISD.SMUL_LOHI, vt)) {
       q = new SDValue(dag.getNode(ISD.SMUL_LOHI,
           dag.getVTList(vt, vt),
           n.getOperand(0),
           dag.getConstant(magics.m, vt, false)).getNode(), 1);
-    else
+    }
+    else {
       q = new SDValue();
+    }
     if (d.isStrictlyPositive() && magics.m.isNegative()) {
       q = dag.getNode(ISD.ADD, vt, q, n.getOperand(0));
       if (created != null)
@@ -2587,6 +2589,7 @@ public abstract class TargetLowering {
       if (created != null)
         created.add(q.getNode());
     }
+    // Shift right algebraic if shift value is nonzero
     if (magics.s > 0) {
       q = dag.getNode(ISD.SRA, vt, q, dag.getConstant(magics.s,
           new EVT(getShiftAmountTy()), false));

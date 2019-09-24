@@ -88,6 +88,19 @@ public class APInt implements Cloneable {
   }
 
   /**
+   * Magic data for optimizing signed division by a constant.
+   */
+  public static class MS {
+    /**
+     * magic number.
+     */
+    public APInt m;
+    /**
+     * shift amount.
+     */
+    public int s;
+  }
+  /**
    * THe number of bits in this {@linkplain APInt}.
    */
   private int bitWidth;
@@ -358,7 +371,7 @@ public class APInt implements Cloneable {
       return new APInt(bitWidth, 0);
 
     if (shiftAmt == 0)
-      return this;
+      return this.clone();
 
     long[] val = new long[getNumWords()];
 
@@ -1361,7 +1374,7 @@ public class APInt implements Cloneable {
     // issues with shifting by the getNumOfSubLoop of the integer type, which produces
     // undefined results in the code below. This is also an optimization.
     if (shiftAmt == 0)
-      return this;
+      return this.clone();
 
     long[] valPtr = new long[getNumWords()];
 
@@ -1836,7 +1849,7 @@ public class APInt implements Cloneable {
     // first, deal with the easy case.
     if (isSingleWord()) {
       Util.assertion(rhs.val != 0, "Divide by zero?");
-      return new APInt(bitWidth, val / rhs.val);
+      return new APInt(bitWidth, Long.divideUnsigned(val, rhs.val));
     }
 
     // Get some facts about the LHS and RHS number of bits and words
@@ -1858,7 +1871,7 @@ public class APInt implements Cloneable {
       return new APInt(bitWidth, 1);
     } else if (lhsWords == 1 && rhsWords == 1) {
       // All high words are zero, just use native div
-      return new APInt(bitWidth, pVal[0] / rhs.pVal[0]);
+      return new APInt(bitWidth, Long.divideUnsigned(pVal[0], rhs.pVal[0]));
     }
 
     // We have to compute it the hard way. Call the Knuth div algorithm.
@@ -1910,14 +1923,14 @@ public class APInt implements Cloneable {
     // can't use 64-bit operands here because we don't have native results of
     // 128-bits. Furthermore, casting the 64-bit values to 32-bit values won't
     // work on large-endian machines.
-    long mask = ~0L >> 32;
+    long mask = ~0L >>> 32;
     int n = rhsWords * 2;
     int m = (lhsWords * 2) - n;
 
     // Allocate space for the temporary values we need either on the stack, if
     // it will fit, or on the heap if it won't.
     int space[] = new int[128];
-    int u[] = null, v[] = null, q[] = null, r[] = null;
+    int u[], v[], q[], r[] = null;
 
     if ((remainder.get().ne(0) ? 4 : 3) * n + 2 * m + 1 <= 128) {
       u = space;
@@ -1985,7 +1998,7 @@ public class APInt implements Cloneable {
       int divisor = v[0];
       int rem = 0;
       for (int i = m + n - 1; i >= 0; i--) {
-        long partial_div = (long) rem << 32 | u[i];
+        long partial_div = ((long)rem << 32) | u[i];
         if (partial_div == 0) {
           q[i] = 0;
           rem = 0;
@@ -1996,7 +2009,7 @@ public class APInt implements Cloneable {
           q[i] = 1;
           rem = 0;
         } else {
-          q[i] = (int) (partial_div / divisor);
+          q[i] = (int) (Long.divideUnsigned(partial_div, divisor));
           rem = (int) (partial_div - q[i] * divisor);
         }
       }
@@ -2075,12 +2088,6 @@ public class APInt implements Cloneable {
         }
       }
     }
-
-    // clean up the memory.
-    u = null;
-    v = null;
-    q = null;
-    r = null;
   }
 
   /**
@@ -2255,7 +2262,7 @@ public class APInt implements Cloneable {
     Util.assertion(bitWidth == rhs.bitWidth, "Bit width must be same!");
     if (isSingleWord()) {
       Util.assertion(rhs.val != 0, "Remainder by zero?");
-      return new APInt(bitWidth, val % rhs.val);
+      return new APInt(bitWidth, Long.remainderUnsigned(val, rhs.val));
     }
 
     int lhsBits = getActiveBits();
@@ -2270,13 +2277,13 @@ public class APInt implements Cloneable {
       return new APInt(bitWidth, 0);
     } else if (lhsWords < rhsWords || ult(rhs)) {
       // X % Y => X, iff X<Y.
-      return this;
+      return this.clone();
     } else if (this.eq(rhs)) {
       // X % X = 0.
       return new APInt(bitWidth, 0);
     } else if (lhsWords == 1) {
       // All high words are zero, just use native rem
-      return new APInt(bitWidth, pVal[0] % rhs.pVal[0]);
+      return new APInt(bitWidth, Long.remainderUnsigned(pVal[0], rhs.pVal[0]));
     }
 
     APInt rem = new APInt(1, 0);
@@ -3339,8 +3346,15 @@ public class APInt implements Cloneable {
         val.eq(APInt.getLowBitsSet(val.getBitWidth(), numBits));
   }
 
+  /**
+   * Calculate the magic numbers required to implement an unsigned integer
+   * division by a constant as a sequence of multiplies, adds and shifts.
+   * Requires that the divisor not be 0.  Taken from "Hacker's Delight", Henry
+   * S. Warren, Jr., chapter 10.
+   * @return
+   */
   public MU magicu() {
-    APInt d = this;
+    APInt d = this.clone();
     int p;
     MU magu = new MU();
     magu.a = false;
@@ -3354,7 +3368,7 @@ public class APInt implements Cloneable {
     APInt r1 = signedMin.sub(q1.mul(nc));
     APInt q2 = signedMax.udiv(d);
     APInt r2 = signedMax.sub(q2.mul(d));
-    APInt delta = new APInt();
+    APInt delta;
     do {
       ++p;
       if (r1.uge(nc.sub(r1))) {
@@ -3388,11 +3402,18 @@ public class APInt implements Cloneable {
     return clone();
   }
 
-  public APInt.MU magic() {
-    APInt d = this;
+  /**
+   * Calculate the magic numbers required to implement a signed integer division
+   * by a constant as a sequence of multiplies, adds and shifts.  Requires that
+   * the divisor not be 0, 1, or -1.  Taken from "Hacker's Delight", Henry S.
+   * Warren, Jr., chapter 10.
+   * @return
+   */
+  public APInt.MS magic() {
+    APInt d = this.clone();
     int p;
-    MU magu = new MU();
-    magu.a = false;
+    MS mag = new MS();
+
     APInt allOnes = APInt.getAllOnesValue(d.getBitWidth());
     APInt signedMin = APInt.getSignedMinValue(d.getBitWidth());
     APInt signedMax = APInt.getSignedMaxValue(d.getBitWidth());
@@ -3406,7 +3427,7 @@ public class APInt implements Cloneable {
     APInt q2 = signedMin.udiv(ad);
     APInt r2 = signedMin.sub(q2.mul(ad));
 
-    APInt delta = new APInt();
+    APInt delta;
     do {
       ++p;
       q1 = q1.shl(1);
@@ -3424,12 +3445,13 @@ public class APInt implements Cloneable {
       delta = ad.sub(r2);
     }
     while (q1.ule(delta) || (q1.eq(delta) && r1.eq(0)));
-    magu.m = q2.add(1);
-    if (d.isNegative())
-      magu.m = magu.m.negative();
 
-    magu.s = p - d.getBitWidth();
-    return magu;
+    mag.m = q2.add(1);
+    if (d.isNegative())
+      mag.m = mag.m.negative();
+
+    mag.s = p - d.getBitWidth();
+    return mag;
   }
 
   /**
