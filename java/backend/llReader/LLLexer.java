@@ -202,6 +202,7 @@ public final class LLLexer {
     keywords.put("ueq", kw_ueq);
     keywords.put("une", kw_une);
     keywords.put("x", kw_x);
+    keywords.put("blockaddress", kw_blockaddress);
   }
 
   private void initTypeKeywords() {
@@ -255,6 +256,7 @@ public final class LLLexer {
     opcKeywords.put("ret", Pair.get(Ret, kw_ret));
     opcKeywords.put("br", Pair.get(Br, kw_br));
     opcKeywords.put("switch", Pair.get(Switch, kw_switch));
+    opcKeywords.put("indirectbr", Pair.get(IndirectBr, kw_indirectbr));
     opcKeywords.put("invoke", Pair.get(Invoke, kw_invoke));
     opcKeywords.put("unwind", Pair.get(Unwind, kw_unwind));
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));

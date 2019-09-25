@@ -2754,7 +2754,7 @@ public class DAGCombiner {
           Constant ca = ConstantArray.get(ArrayType.get(fpTy, 2), elts);
           SDValue cpIdx = dag.getConstantPool(ca, new EVT(tli.getPointerTy()),
               td.getPrefTypeAlignment(fpTy), 0, false, 0);
-          int alignment = ((ConstantPoolSDNode) cpIdx.getNode()).getAlign();
+          int alignment = ((ConstantPoolSDNode) cpIdx.getNode()).getAlignment();
 
           SDValue zero = dag.getIntPtrConstant(0);
           long eltSize = td.getTypeAllocSize(elts[0].getType());

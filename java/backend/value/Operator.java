@@ -15,7 +15,8 @@ public enum Operator {
   Ret("ret", 0, 0),
   Br("br", Ret.index + 1, 0),
   Switch("switch", Br.index + 1, 0),
-  Unreachable("unreachable", Switch.index + 1, 0),
+  IndirectBr("indirectbr", Switch.index + 1, 0),
+  Unreachable("unreachable", IndirectBr.index + 1, 0),
   // binary operator
 
   // add

@@ -198,7 +198,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       }
 
       sdl.setCurrentBasicBlock(funcInfo.mbb);
-
       for (; bi != end && !sdl.hasTailCall(); ++bi) {
         Instruction inst = llvmBB.getInstAt(bi);
         if (Util.DEBUG) System.err.println(inst.toString());
@@ -286,7 +285,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       curDAG.viewGraph("dag-input-combine-first for " + blockName);
     }
 
-    // combine
+    // The first combination before the first legalization phase.
     curDAG.combine(CombineLevel.Unrestricted, aa, optLevel);
     if (Util.DEBUG) {
       for (SDNode n : curDAG.allNodes) {
@@ -298,6 +297,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       curDAG.viewGraph("dag-before-legalize for " + blockName);
     }
 
+    // #1 The first legalization phase.
     boolean changed = curDAG.legalizeTypes();
     if (changed && Util.DEBUG) {
       for (SDNode n : curDAG.allNodes) {
@@ -318,29 +318,32 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       if (false) {
         curDAG.viewGraph("dag-after-second-combines for " + blockName);
       }
+    }
 
-      //changed = curDAG.legalizeVectors();
-      if (changed) {
-        changed = curDAG.legalizeTypes();
-        if (changed && Util.DEBUG) {
-          for (SDNode n : curDAG.allNodes) {
-            Util.assertion(!n.isDeleted());
-          }
-        }
-      }
-      if (changed) {
-        curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
-        if (Util.DEBUG) {
-          for (SDNode n : curDAG.allNodes) {
-            Util.assertion(!n.isDeleted());
-          }
+    // #2 The second legalization steps for vector type.
+    changed = curDAG.legalizeVectors();
+    if (changed) {
+      changed = curDAG.legalizeTypes();
+      if (changed && Util.DEBUG) {
+        for (SDNode n : curDAG.allNodes) {
+          Util.assertion(!n.isDeleted());
         }
       }
     }
+    if (changed) {
+      curDAG.combine(CombineLevel.NoIllegalOperations, aa, optLevel);
+      if (Util.DEBUG) {
+        for (SDNode n : curDAG.allNodes) {
+          Util.assertion(!n.isDeleted());
+        }
+      }
+    }
+
     if (false) {
       curDAG.viewGraph("dag-after-combine2 for " + blockName);
     }
 
+    // #3 The third legalization phase.
     curDAG.legalize(false, optLevel);
     if (Util.DEBUG) {
       for (SDNode n : curDAG.allNodes) {
@@ -358,11 +361,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     }
 
     // For virtual register info.
-    computeLiveOutVRegInfo();
+    if (optLevel != CodeGenOpt.None)
+      computeLiveOutVRegInfo();
 
     if (ViewDAGBeforeISel.value) {
       curDAG.viewGraph("dag-before-isel for " + blockName);
     }
+
     instructionSelect();
 
     if (ViewDAGBeforeSched.value) {
@@ -938,6 +943,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       case ISD.TargetConstantPool:
       case ISD.TargetFrameIndex:
       case ISD.TargetExternalSymbol:
+      case ISD.TargetBlockAddress:
       case ISD.TargetJumpTable:
       case ISD.TargetGlobalAddress:
       case ISD.TargetGlobalTLSAddress:

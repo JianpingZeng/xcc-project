@@ -74,7 +74,8 @@ def i64immSExt32  : PatLeaf<(i64 imm), [{
 def i64immZExt32  : PatLeaf<(i64 imm), [{
   // i64immZExt32 predicate - True if the 64-bit immediate fits in a 32-bit
   // unsignedsign extended field.
-  return n.getZExtValue() == (int)n.getZExtValue();
+  long imm = n.getZExtValue();
+  return n.getZExtValue() == (imm & ((1L << 32) - 1));
 }]>;
 
 def sextloadi64i8  : PatFrag<(ops node:$ptr), (i64 (sextloadi8 node:$ptr))>;
@@ -2037,3 +2038,68 @@ let isTwoAddress = 1 in {
 }
 
 defm PINSRQ      : SS41I_insert64<0x22, "pinsrq">;
+
+def : Pat<(store (i32 (X86Wrapper tblockaddress:$src)), addr:$dst),
+        (MOV32mi addr:$dst, tblockaddress:$src)>;
+
+// ConstantPool GlobalAddress, ExternalSymbol, and JumpTable when not in small
+// code model mode, should use 'movabs'.  FIXME: This is really a hack, the
+//  'movabs' predicate should handle this sort of thing.
+def : Pat<(i64 (X86Wrapper tconstpool  :$dst)),
+          (MOV64ri tconstpool  :$dst)>, Requires<[FarData]>;
+def : Pat<(i64 (X86Wrapper tjumptable  :$dst)),
+          (MOV64ri tjumptable  :$dst)>, Requires<[FarData]>;
+def : Pat<(i64 (X86Wrapper tglobaladdr :$dst)),
+          (MOV64ri tglobaladdr :$dst)>, Requires<[FarData]>;
+def : Pat<(i64 (X86Wrapper texternalsym:$dst)),
+          (MOV64ri texternalsym:$dst)>, Requires<[FarData]>;
+def : Pat<(i64 (X86Wrapper tblockaddress:$dst)),
+          (MOV64ri tblockaddress:$dst)>, Requires<[FarData]>;
+
+
+// In static codegen with small code model, we can get the address of a label
+// into a register with 'movl'.  FIXME: This is a hack, the 'imm' predicate of
+// the MOV64ri64i32 should accept these.
+def : Pat<(i64 (X86Wrapper tconstpool  :$dst)),
+          (MOV64ri64i32 tconstpool  :$dst)>, Requires<[SmallCode]>;
+def : Pat<(i64 (X86Wrapper tjumptable  :$dst)),
+          (MOV64ri64i32 tjumptable  :$dst)>, Requires<[SmallCode]>;
+def : Pat<(i64 (X86Wrapper tglobaladdr :$dst)),
+          (MOV64ri64i32 tglobaladdr :$dst)>, Requires<[SmallCode]>;
+def : Pat<(i64 (X86Wrapper texternalsym:$dst)),
+          (MOV64ri64i32 texternalsym:$dst)>, Requires<[SmallCode]>;
+def : Pat<(i64 (X86Wrapper tblockaddress:$dst)),
+          (MOV64ri64i32 tblockaddress:$dst)>, Requires<[SmallCode]>;
+
+// In kernel code model, we can get the address of a label
+// into a register with 'movq'.  FIXME: This is a hack, the 'imm' predicate of
+// the MOV64ri32 should accept these.
+def : Pat<(i64 (X86Wrapper tconstpool  :$dst)),
+          (MOV64ri32 tconstpool  :$dst)>, Requires<[KernelCode]>;
+def : Pat<(i64 (X86Wrapper tjumptable  :$dst)),
+          (MOV64ri32 tjumptable  :$dst)>, Requires<[KernelCode]>;
+def : Pat<(i64 (X86Wrapper tglobaladdr :$dst)),
+          (MOV64ri32 tglobaladdr :$dst)>, Requires<[KernelCode]>;
+def : Pat<(i64 (X86Wrapper texternalsym:$dst)),
+          (MOV64ri32 texternalsym:$dst)>, Requires<[KernelCode]>;
+def : Pat<(i64 (X86Wrapper tblockaddress:$dst)),
+          (MOV64ri32 tblockaddress:$dst)>, Requires<[KernelCode]>;
+
+// If we have small model and -static mode, it is safe to store global addresses
+// directly as immediates.  FIXME: This is really a hack, the 'imm' predicate
+// for MOV64mi32 should handle this sort of thing.
+def : Pat<(store (i64 (X86Wrapper tconstpool:$src)), addr:$dst),
+          (MOV64mi32 addr:$dst, tconstpool:$src)>,
+          Requires<[NearData, IsStatic]>;
+def : Pat<(store (i64 (X86Wrapper tjumptable:$src)), addr:$dst),
+          (MOV64mi32 addr:$dst, tjumptable:$src)>,
+          Requires<[NearData, IsStatic]>;
+def : Pat<(store (i64 (X86Wrapper tglobaladdr:$src)), addr:$dst),
+          (MOV64mi32 addr:$dst, tglobaladdr:$src)>,
+          Requires<[NearData, IsStatic]>;
+def : Pat<(store (i64 (X86Wrapper texternalsym:$src)), addr:$dst),
+          (MOV64mi32 addr:$dst, texternalsym:$src)>,
+          Requires<[NearData, IsStatic]>;
+def : Pat<(store (i64 (X86Wrapper tblockaddress:$src)), addr:$dst),
+          (MOV64mi32 addr:$dst, tblockaddress:$src)>,
+          Requires<[NearData, IsStatic]>;

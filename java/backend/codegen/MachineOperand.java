@@ -3,10 +3,7 @@ package backend.codegen;
 import backend.mc.MCSymbol;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.value.BlockAddress;
-import backend.value.ConstantFP;
-import backend.value.GlobalValue;
-import backend.value.MDNode;
+import backend.value.*;
 import tools.FormattedOutputStream;
 import tools.Util;
 
@@ -744,6 +741,14 @@ public abstract class MachineOperand {
     ((MachineBasicBlockMO)this).mbb = mbb;
   }
 
+  public BlockAddress getBlockAddress() {
+    Util.assertion(isBlockAddress(), "Wrong MachineOperand accessor");
+    return ((BlockAddresssMO)this).ba;
+  }
+
+  public boolean isBlockAddress() {
+    return opKind == MO_BlockAddress;
+  }
   /**
    * Return true if this operand is identical to the specified
    * operand. Note: This method ignores isDeclare and isDead properties.
@@ -1031,6 +1036,11 @@ public abstract class MachineOperand {
     MachineOperand op = new ExternalSymbolMO(null, symName, offset);
     op.setTargetFlags(targetFlags);
     return op;
+  }
+
+  public static MachineOperand createBlockAddress(BlockAddress ba,
+                                                  int targetFlags) {
+    return new BlockAddresssMO(null, ba, targetFlags);
   }
 
   public static MachineOperand createMetadata(MDNode md) {

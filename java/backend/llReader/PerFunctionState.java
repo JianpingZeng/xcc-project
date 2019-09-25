@@ -38,14 +38,16 @@ public final class PerFunctionState {
   private TreeMap<Integer, Pair<Value, SMLoc>> forwardRefValIDs;
   private ArrayList<Value> numberedVals;
   private LLVMContext context;
+  private int functionNumber;
 
-  public PerFunctionState(LLParser p, Function f) {
+  public PerFunctionState(LLParser p, Function f, int fnNumber) {
     parser = p;
     fn = f;
     forwardRefVals = new TreeMap<>();
     forwardRefValIDs = new TreeMap<>();
     numberedVals = new ArrayList<>();
     context = f.getContext();
+    functionNumber = fnNumber;
     
     // insert unnamed arguments into the numberedVals list.
     for (Argument arg : fn.getArgumentList()) {
@@ -57,6 +59,28 @@ public final class PerFunctionState {
   public Function getFunction() { return fn; }
 
   public boolean verifyFunctionComplete() {
+    // check to see if someone took the address of labels in this block.
+    if (!parser.forwardRefBlockAddresses.isEmpty()) {
+      ValID funcID = new ValID();
+      if (!fn.getName().isEmpty()) {
+        funcID.kind = ValID.ValIDKind.t_GlobalName;
+        funcID.strVal = fn.getName();
+      }
+      else {
+        funcID.kind = ValID.ValIDKind.t_GlobalID;
+        funcID.intVal = functionNumber;
+      }
+
+      if (parser.forwardRefBlockAddresses.containsKey(funcID)) {
+        // resolve all these references.
+        if (parser.resolveForwardRefBlockAddresses(fn,
+            parser.forwardRefBlockAddresses.get(funcID), this))
+          return true;
+
+        parser.forwardRefBlockAddresses.remove(funcID);
+      }
+    }
+
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<Value, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
       return parser.error(itr.getValue().second,

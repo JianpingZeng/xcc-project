@@ -2124,7 +2124,7 @@ public abstract class Instruction extends User {
    * @version 0.4
    */
   public static abstract class TerminatorInst extends Instruction {
-    TerminatorInst(Type ty,
+    protected TerminatorInst(Type ty,
                    Operator opcode,
                    String instName,
                    Instruction insertBefore) {
@@ -2132,7 +2132,7 @@ public abstract class Instruction extends User {
     }
 
 
-    TerminatorInst(Type ty,
+    protected TerminatorInst(Type ty,
                    Operator opcode,
                    String instName,
                    BasicBlock insertAtEnd) {

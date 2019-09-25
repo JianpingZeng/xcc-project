@@ -264,6 +264,11 @@ def externalsym : SDNode<"ISD.ExternalSymbol",       SDTPtrLeaf, [],
                          "ExternalSymbolSDNode">;
 def texternalsym: SDNode<"ISD.TargetExternalSymbol", SDTPtrLeaf, [],
                          "ExternalSymbolSDNode">;
+def blockaddress : SDNode<"ISD.BlockAddress",        SDTPtrLeaf, [],
+                      "BlockAddressSDNode">;
+def tblockaddress: SDNode<"ISD.TargetBlockAddress",  SDTPtrLeaf, [],
+                      "BlockAddressSDNode">;
+
 
 def add        : SDNode<"ISD.ADD"       , SDTIntBinOp   ,
                         [SDNPCommutative, SDNPAssociative]>;

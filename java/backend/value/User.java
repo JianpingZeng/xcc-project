@@ -101,7 +101,8 @@ public abstract class User extends Value {
    * @return
    */
   public int getNumOfOperands() {
-    return operandList != null ? operandList.length : 0;
+    return numOps;
+    // return operandList != null ? operandList.length : 0;
   }
 
   /**

@@ -20,6 +20,10 @@ import backend.value.Value;
 import tools.FoldingSetNodeID;
 import tools.Util;
 
+import java.io.PrintStream;
+
+import static backend.support.AssemblyWriter.writeAsOperand;
+
 /**
  * A description of a memory reference used in the backend.
  * /// Instead of holding a StoreInst or LoadInst, this class holds the address
@@ -97,5 +101,37 @@ public class MachineMemOperand {
     id.addInteger(size);
     id.addInteger(val.hashCode());
     id.addInteger(flags);
+  }
+
+  public void print(PrintStream os) {
+    Util.assertion(isLoad() || isStore(), "SV has to be a load or store");
+
+    if (isVolatile())
+      os.print("Volatile ");
+
+    if (isLoad())
+      os.print("LD ");
+    if (isStore())
+      os.print("ST ");
+    os.print(getSize());
+
+    // print the address information.
+    os.print("[");
+    if (getValue() == null)
+      os.print("<unknown>");
+    else {
+      writeAsOperand(os, getValue(), /*printtype*/false, null);
+    }
+
+    // If the alignment of the memory reference itself differs from the alignment
+    // of the base pointer, print the base alignment explicitly, next to the base
+    // pointer.
+    if (getAlignment() != 0)
+      os.printf("(align=%d)", getAlignment());
+
+    if (getOffset() != 0)
+      os.printf("+%d", getOffset());
+
+    os.print("]");
   }
 }

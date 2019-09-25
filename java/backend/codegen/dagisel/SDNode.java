@@ -417,6 +417,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
         return "ConstantPool";
       case ISD.ExternalSymbol:
         return "ExternalSymbol";
+      case ISD.BlockAddress:
+        return "BlockAddress";
 
       case ISD.INTRINSIC_WO_CHAIN:
       case ISD.INTRINSIC_VOID:
@@ -450,7 +452,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
         return "TargetConstantPool";
       case ISD.TargetExternalSymbol:
         return "TargetExternalSymbol";
-
+      case ISD.TargetBlockAddress:
+        return "TargetBlockAddress";
       case ISD.CopyToReg:
         return "CopyToReg";
       case ISD.CopyFromReg:
@@ -782,7 +785,18 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public void printDetails(PrintStream os, SelectionDAG dag) {
-    if (!isTargetOpcode() && getOpcode() == ISD.VECTOR_SHUFFLE) {
+    if (this instanceof MachineSDNode) {
+      MachineSDNode memSD = (MachineSDNode) this;
+      os.print("<Mem:");
+      int i = 0;
+      for (MachineMemOperand mmo : memSD.memRefs) {
+        mmo.print(os);
+        if (i < memSD.memRefs.length - 1)
+          os.print(" ");
+      }
+      os.print(">");
+    }
+    else if (isTargetOpcode() && getOpcode() == ISD.VECTOR_SHUFFLE) {
       ShuffleVectorSDNode svn = (ShuffleVectorSDNode) this;
       os.print("<");
       for (int i = 0, e = valueList[0].getVectorNumElements(); i < e; i++) {
@@ -795,8 +809,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       }
       os.print(">");
     }
-
-    if (this instanceof ConstantSDNode) {
+    else if (this instanceof ConstantSDNode) {
       os.print("<");
       ((ConstantSDNode) this).getAPIntValue().print(os);
       os.print(">");
@@ -949,6 +962,17 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       if (at.isVolatile())
         os.print(" <volatile>");
       os.printf(" alignment=%d", at.getAlignment());
+    }
+    else if (this instanceof BlockAddressSDNode) {
+      BlockAddressSDNode ba = (BlockAddressSDNode) this;
+      os.print("<");
+      writeAsOperand(os, ba.getBlockAddress().getFunction(), false, null);
+      os.print(",");
+      writeAsOperand(os, ba.getBlockAddress().getBasicBlock(), false, null);
+      os.print(">");
+      int tf = ba.getTargetFlags();
+      if (tf != 0)
+        os.printf("[TF=%d]", tf);
     }
   }
 
@@ -1483,7 +1507,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       return offset;
     }
 
-    public int getAlign() {
+    public int getAlignment() {
       return align;
     }
 
@@ -1549,6 +1573,20 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     public int getLabelID() {
       return labelID;
     }
+  }
+
+  public static class BlockAddressSDNode extends SDNode {
+    private BlockAddress ba;
+    private int targetFlags;
+
+    protected BlockAddressSDNode(int opc, EVT vt, BlockAddress ba, int ts) {
+      super(opc, getSDVTList(vt));
+      this.ba = ba;
+      targetFlags = ts;
+    }
+
+    public BlockAddress getBlockAddress() { return ba; }
+    public int getTargetFlags() { return targetFlags; }
   }
 
   public static class ExternalSymbolSDNode extends SDNode {

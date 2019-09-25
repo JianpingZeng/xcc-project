@@ -89,7 +89,9 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       case ISD.JumpTable:
       case ISD.TargetJumpTable:
       case ISD.ExternalSymbol:
+      case ISD.BlockAddress:
       case ISD.TargetExternalSymbol:
+      case ISD.TargetBlockAddress:
       case ISD.MEMOPERAND:
       case ISD.EntryToken:
         return true;
@@ -494,7 +496,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     } else if (op.getNode() instanceof ConstantPoolSDNode) {
       ConstantPoolSDNode cp = (ConstantPoolSDNode) op.getNode();
       int offset = cp.getOffset();
-      int align = cp.getAlign();
+      int align = cp.getAlignment();
       Type ty = cp.getType();
       if (align == 0) {
         align = tm.getTargetData().getPrefTypeAlignment(ty);
@@ -513,7 +515,12 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       ExternalSymbolSDNode es = (ExternalSymbolSDNode) op.getNode();
       mi.addOperand(MachineOperand.createExternalSymbol(es.getExtSymol(),
           0, es.getTargetFlags()));
-    } else {
+    }
+    else if (op.getNode() instanceof BlockAddressSDNode) {
+      BlockAddressSDNode ba = (BlockAddressSDNode) op.getNode();
+      mi.addOperand(MachineOperand.createBlockAddress(ba.getBlockAddress(), ba.getTargetFlags()));
+    }
+    else {
       Util.assertion(!op.getValueType().equals(new EVT(MVT.Other)) &&
           !op.getValueType().equals(new EVT(MVT.Glue)));
       addRegisterOperand(mi, op, iiOpNum, tid, vrBaseMap);

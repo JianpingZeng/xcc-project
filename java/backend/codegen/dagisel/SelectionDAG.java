@@ -1358,7 +1358,7 @@ public class SelectionDAG {
       case ISD.ConstantPool:
       case ISD.TargetConstantPool: {
         ConstantPoolSDNode pool = (ConstantPoolSDNode) node;
-        id.addInteger(pool.getAlign());
+        id.addInteger(pool.getAlignment());
         id.addInteger(pool.getOffset());
         if (pool.isMachineConstantPoolValue())
           pool.getMachineConstantPoolValue().addSelectionDAGCSEId(id);
@@ -2435,6 +2435,31 @@ public class SelectionDAG {
     return new SDValue();
   }
 
+  public SDValue getBlockAddress(BlockAddress ba, EVT vt) {
+    return getBlockAddress(ba, vt, false);
+  }
+
+  public SDValue getBlockAddress(BlockAddress ba, EVT vt, boolean isTarget) {
+    return getBlockAddress(ba, vt, isTarget, 0);
+  }
+
+  public SDValue getBlockAddress(BlockAddress ba, EVT vt, boolean isTarget, int targetFlags) {
+    int opc = isTarget ? ISD.TargetBlockAddress : ISD.BlockAddress;
+    FoldingSetNodeID id = new FoldingSetNodeID();
+    addNodeToIDNode(id, opc, getVTList(vt));
+    id.addInteger(ba.hashCode());
+    id.addInteger(targetFlags);
+
+    int hash = id.computeHash();
+    if (cseMap.containsKey(hash))
+      return new SDValue(cseMap.get(hash), 0);
+
+    SDNode n = new BlockAddressSDNode(opc, vt, ba, targetFlags);
+    cseMap.put(hash, n);
+    allNodes.add(n);
+    return new SDValue(n, 0);
+  }
+
   static class UseMemo {
     SDNode user;
     int index;
@@ -3043,6 +3068,22 @@ public class SelectionDAG {
 
   public SDValue getTargetJumpTable(int jti, EVT vt, int targetFlags) {
     return getJumpTable(jti, vt, true, targetFlags);
+  }
+
+  public SDValue getConstantPool(Constant c, EVT vt) {
+    return getConstantPool(c, vt, 0);
+  }
+
+  public SDValue getConstantPool(Constant c, EVT vt, int align) {
+    return getConstantPool(c, vt, align, align);
+  }
+
+  public SDValue getConstantPool(Constant c, EVT vt, int align, int offset) {
+    return getConstantPool(c, vt, align, offset, false);
+  }
+
+  public SDValue getConstantPool(Constant c, EVT vt, int align, int offset, boolean isTarget) {
+    return getConstantPool(c, vt, align, offset, isTarget, 0);
   }
 
   public SDValue getConstantPool(Constant c, EVT vt, int align, int offset,

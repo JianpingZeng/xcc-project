@@ -30,8 +30,8 @@ public class BlockAddress extends Constant {
   private BlockAddress(Function f, BasicBlock bb) {
     super(PointerType.getUnqual(Type.getInt8Ty(f.getContext())), ValueKind.BlockAddressVal);
     reserve(2);
-    setOperand(0, f);
-    setOperand(1, bb);
+    setOperand(0, f, this);
+    setOperand(1, bb, this);
   }
 
   public static BlockAddress get(Function f, BasicBlock bb) {
@@ -50,10 +50,10 @@ public class BlockAddress extends Constant {
   }
 
   public Function getFunction() {
-    return (Function)getOperand(1).getValue();
+    return (Function)getOperand(0).getValue();
   }
   public BasicBlock getBasicBlock() {
-    return (BasicBlock)getOperand(0).getValue();
+    return (BasicBlock)getOperand(1).getValue();
   }
 
   @Override

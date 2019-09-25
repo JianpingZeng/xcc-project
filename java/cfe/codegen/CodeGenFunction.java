@@ -1510,7 +1510,6 @@ public final class CodeGenFunction {
   public void finishFunction(SourceLocation endLoc) {
     Util.assertion(breakContinueStack.isEmpty(), "mismatched push/pop in break/continue stack!");
 
-
     // emit function epilogue (to return).
     emitReturnBlock();
 

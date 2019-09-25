@@ -25,6 +25,7 @@ import backend.debug.DIVariable;
 import backend.debug.DebugLoc;
 import backend.intrinsic.Intrinsic;
 import backend.ir.AllocationInst;
+import backend.ir.IndirectBrInst;
 import backend.support.*;
 import backend.target.*;
 import backend.type.*;
@@ -437,6 +438,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return dag.getMergeValues(constants);
       }
 
+      if (cnt instanceof BlockAddress) {
+        BlockAddress ba = (BlockAddress) cnt;
+        return dag.getBlockAddress(ba, vt);
+      }
+
       Util.shouldNotReachHere("Vector type not supported!");
       return null;
     }
@@ -756,10 +762,33 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitInsertValueInst(u);
         break;
       case Invoke:
+      case IndirectBr:
+        visitIndirectBr(u);
+        break;
       default:
         // TODO 1/16/2019
-        Util.shouldNotReachHere("Unknown operator!");
+        Util.shouldNotReachHere(String.format("Unknown operator '%s'!", opc.opName));
     }
+  }
+
+  @Override
+  public Void visitIndirectBr(User inst) {
+    MachineBasicBlock indirectBrMBB = funcInfo.mbb;
+    IndirectBrInst indbr = (IndirectBrInst) inst;
+
+    // unique the destination block.
+    HashSet<BasicBlock> succs = new HashSet<>();
+    for (int i = 0, e = indbr.getNumOfSuccessors(); i < e; i++)
+      succs.add(indbr.getSuccessor(i));
+
+    for (BasicBlock bb : succs) {
+      MachineBasicBlock mbb = funcInfo.mbbmap.get(bb);
+      indirectBrMBB.addSuccessor(mbb);
+    }
+
+    dag.setRoot(dag.getNode(ISD.BRIND, new EVT(MVT.Other), getControlRoot(),
+        getValue(indbr.getAddress())));
+    return null;
   }
 
   @Override

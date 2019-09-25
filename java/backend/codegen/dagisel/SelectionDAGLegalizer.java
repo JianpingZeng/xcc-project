@@ -1219,6 +1219,12 @@ public class SelectionDAGLegalizer {
           cv.add(Value.UndefValue.get(opTy));
         }
       }
+      // create a constant pool value which is loaded from memory by load instruction instead of using BUILD_VECTOR.
+      Constant cp = ConstantVector.get(cv);
+      SDValue cpIdx = dag.getConstantPool(cp, new EVT(tli.getPointerTy()));
+      int alignment = ((ConstantPoolSDNode)cpIdx.getNode()).getAlignment();
+      return dag.getLoad(vt, dag.getEntryNode(), cpIdx, PseudoSourceValue.getConstantPool(), 0,
+          false, alignment);
     }
 
     if (!moreThanTwoValues) {
@@ -1235,9 +1241,12 @@ public class SelectionDAGLegalizer {
         SDValue vec2 = value2.getNode() != null ?
             dag.getNode(ISD.SCALAR_TO_VECTOR, vt, value2) :
             dag.getUNDEF(vt);
+
+        // Return shuffle(LowValVec, undef, <0,0,0,0>)
         return dag.getVectorShuffle(vt, vec1, vec2, shuffleNums.toArray());
       }
     }
+    // Otherwise, we can't handle this case efficiently.
     return expandVectorBuildThroughStack(node);
   }
 
@@ -1391,7 +1400,7 @@ public class SelectionDAGLegalizer {
     Constant fudgeFactor = ConstantInt.get(Type.getInt64Ty(dag.getContext()), ff);
     SDValue cpIdx = dag.getConstantPool(fudgeFactor, new EVT(tli.getPointerTy()),
         0, 0, false, 0);
-    int align = ((ConstantPoolSDNode) cpIdx.getNode()).getAlign();
+    int align = ((ConstantPoolSDNode) cpIdx.getNode()).getAlignment();
     cpIdx = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
     align = Math.min(align, 4);
     SDValue fudgeInReg;
@@ -2408,7 +2417,7 @@ public class SelectionDAGLegalizer {
 
     SDValue cpIdx = dag.getConstantPool(c, new EVT(tli.getPointerTy()), 0, 0,
         false, 0);
-    int alignment = ((ConstantPoolSDNode) cpIdx.getNode()).getAlign();
+    int alignment = ((ConstantPoolSDNode) cpIdx.getNode()).getAlignment();
     if (extend) {
       return dag.getExtLoad(EXTLOAD, origVT, dag.getEntryNode(),
           cpIdx, PseudoSourceValue.getConstantPool(),

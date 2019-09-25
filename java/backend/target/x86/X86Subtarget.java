@@ -829,4 +829,21 @@ public abstract class X86Subtarget extends TargetSubtarget {
         return false;
     }
   }
+
+  /**
+   * Classify a blockaddress reference for the
+   * current subtarget according to how we should reference it in a non-pcrel context.
+   * @return
+   */
+  public int classifyBlockAddressReference() {
+    // 32 bit ELF target.
+    if (isPICStyleGOT())
+      return X86II.MO_GOTOFF;
+
+    // darwin/32 in PIC mode
+    if (isPICStyleStubPIC())
+      return X86II.MO_PIC_BASE_OFFSET;
+    // direct static reference to label.
+    return X86II.MO_NO_FLAG;
+  }
 }

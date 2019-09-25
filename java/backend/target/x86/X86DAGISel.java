@@ -862,7 +862,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         long offset = am.disp + cp.getOffset();
         if (!X86.isOffsetSuitableForCodeModel(offset, model)) return true;
         am.cp = cp.getConstantValue();
-        am.align = cp.getAlign();
+        am.align = cp.getAlignment();
         am.disp = (int) offset;
         am.symbolFlags = cp.getTargetFlags();
       } else if (n0.getNode() instanceof ExternalSymbolSDNode) {
@@ -889,7 +889,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
       } else if (n0.getNode() instanceof ConstantPoolSDNode) {
         ConstantPoolSDNode cp = (ConstantPoolSDNode) n0.getNode();
         am.cp = cp.getConstantValue();
-        am.align = cp.getAlign();
+        am.align = cp.getAlignment();
         am.disp += cp.getOffset();
         am.symbolFlags = cp.getTargetFlags();
       } else if (n0.getNode() instanceof ExternalSymbolSDNode) {

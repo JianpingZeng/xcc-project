@@ -18,6 +18,7 @@
 package backend.llReader;
 
 import backend.ir.FreeInst;
+import backend.ir.IndirectBrInst;
 import backend.ir.SelectInst;
 import backend.support.*;
 import backend.type.*;
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
 
 import static backend.llReader.LLParser.InstResult.*;
 import static backend.llReader.LLTokenKind.*;
-import static backend.llReader.ValID.ValIDKind.t_PackedConstantStruct;
+import static backend.llReader.ValID.ValIDKind.*;
 import static tools.Util.unEscapeLexed;
 
 /**
@@ -138,6 +139,12 @@ public final class LLParser {
   private TreeMap<Integer, ArrayList<MDNodeOpRecord>> mdNodeOpRecordMap;
 
   /**
+   * References to block addresses. The key is the function val id and the value is a list of
+   * references to blocks in that function.
+   */
+  HashMap<ValID, ArrayList<Pair<ValID, GlobalValue>>> forwardRefBlockAddresses;
+
+  /**
    * This stub function is used to auto upgrade malloc instruction to a call
    * to the mallocF.
    */
@@ -159,6 +166,7 @@ public final class LLParser {
     mallocF = null;
     namedMDNodeOpRecordMap = new TreeMap<>();
     mdNodeOpRecordMap = new TreeMap<>();
+    forwardRefBlockAddresses = new HashMap<>();
   }
 
   /**
@@ -1796,7 +1804,11 @@ public final class LLParser {
     }
     lexer.lex();
 
-    PerFunctionState fs = new PerFunctionState(this, f.get());
+    int functionNumber = -1;
+    if (!f.get().hasName())
+      functionNumber = numberedVals.size() - 1;
+
+    PerFunctionState fs = new PerFunctionState(this, f.get(), functionNumber);
     while (lexer.getTokKind() != rbrace)
       if (parseBasicBlock(fs))
         return true;
@@ -1917,9 +1929,7 @@ public final class LLParser {
             InstError :
             InstResult.InstNormal;
       case kw_indirectbr:
-        return tokError("currently, indirectbr is not supported")?
-            InstError :
-            InstResult.InstNormal;
+        return parseIndirectBr(inst, pfs) ? InstError : InstResult.InstNormal;
       case kw_unreachable:
         inst.set(new UnreachableInst(context));
         return InstResult.InstNormal;
@@ -2656,6 +2666,61 @@ public final class LLParser {
   }
 
   /**
+   * IndirectBr ::= 'indirectbr' TypeAndValue ',' '[' LabeList ']'
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseIndirectBr(OutRef<Instruction> inst,
+                                     PerFunctionState pfs) {
+    OutRef<SMLoc> addrLoc = new OutRef<>();
+    OutRef<Value> addr = new OutRef<>();
+    if (parseTypeAndValue(addr, addrLoc, pfs) ||
+        parseToken(comma, "expected ',' after indirectbr address") ||
+        parseToken(lsquare, "expected '[' with indirectbr"))
+      return true;
+
+    if (!addr.get().getType().isPointerType())
+      return error(addrLoc.get(), "indirectbr adddress must have pointer type");
+
+    // parse the destination list.
+    ArrayList<BasicBlock> destList = new ArrayList<>();
+    if (lexer.getTokKind() != rsquare) {
+      BasicBlock destBB = parseTypeAndBasicBlock(pfs);
+      if (destBB == null) return true;
+
+      destList.add(destBB);
+      while (eatIfPresent(comma)) {
+        destBB = parseTypeAndBasicBlock(pfs);
+        if (destBB == null) return true;
+        destList.add(destBB);
+      }
+    }
+
+    if (parseToken(rsquare, "expected ']' at end of block list"))
+      return true;
+
+    IndirectBrInst br = IndirectBrInst.create(addr.get(), destList.size());
+    for (BasicBlock bb : destList)
+      br.addDestination(bb);
+
+    inst.set(br);
+    return false;
+  }
+
+  private BasicBlock parseTypeAndBasicBlock(PerFunctionState pfs) {
+    SMLoc loc = lexer.getLoc();
+    OutRef<Value> val = new OutRef<>();
+    if (parseTypeAndValue(val, pfs)) return null;
+    if (!(val.get() instanceof BasicBlock)) {
+      error(loc, "expected a basic block");
+      return null;
+    }
+    return (BasicBlock) val.get();
+
+  }
+
+  /**
    * Parse a return instruction.
    * <pre>
    * ret ::= 'ret' void
@@ -2905,6 +2970,29 @@ public final class LLParser {
         return false;
       case kw_asm:
         return tokError("inline asm not supported");
+      case kw_blockaddress: {
+        // ValID ::= 'blockaddress' '(' @foo ','  %bar' ')'
+        lexer.lex();
+
+        ValID fn = new ValID(), label = new ValID();
+        if (parseToken(lparen, "expected '(' in block address expression") ||
+            parseValID(fn) ||
+            parseToken(comma, "expected ',' in block address expression") ||
+            parseValID(label) ||
+            parseToken(rparen, "expected ')' in block address expression"))
+          return true;
+
+        // make a global variable as a placeholder for this reference.
+        GlobalVariable fwdRef = new GlobalVariable(m, backend.type.Type.getInt8Ty(context),
+            false, LinkageType.InternalLinkage, null, "", null, 0);
+        if (!forwardRefBlockAddresses.containsKey(fn))
+          forwardRefBlockAddresses.put(fn, new ArrayList<>());
+
+        forwardRefBlockAddresses.get(fn).add(Pair.get(label, fwdRef));
+        id.constantVal = fwdRef;
+        id.kind = t_Constant;
+        return false;
+      }
       case kw_trunc:
       case kw_zext:
       case kw_sext:
@@ -3921,6 +4009,24 @@ public final class LLParser {
       forwardRefInstMetadata.clear();
     }
 
+    // If there are entries in ForwardRefBlockAddresses at this point, they are
+    // references after the function was defined.  Resolve those now.
+    for (Map.Entry<ValID, ArrayList<Pair<ValID, GlobalValue>>> entry : forwardRefBlockAddresses.entrySet()) {
+      Function theFn = null;
+      ValID fn = entry.getKey();
+      if (fn.kind == t_GlobalName)
+        theFn = m.getFunction(fn.strVal);
+      else if (fn.intVal < numberedVals.size())
+        theFn = (Function) numberedVals.get(fn.intVal);
+
+      if (theFn == null)
+        return error(fn.loc, "unknown function referenced by blockaddress");
+
+      // resolve all references.
+      if (resolveForwardRefBlockAddresses(theFn, entry.getValue(), null))
+        return true;
+    }
+
     if (!forwardRefVals.isEmpty()) {
       Map.Entry<String, Pair<GlobalValue, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
       return error(itr.getValue().second,
@@ -3941,6 +4047,38 @@ public final class LLParser {
     // for (Function f : m.getFunctionList())
     //upgradeCallsToIntrinsic(f);
 
+    return false;
+  }
+
+  boolean resolveForwardRefBlockAddresses(Function theFn,
+                                                  ArrayList<Pair<ValID, GlobalValue>> refs,
+                                                  PerFunctionState pfs) {
+    // loop over all references, resolving it.
+    for (Pair<ValID, GlobalValue> entry : refs) {
+      BasicBlock res;
+      if (pfs != null) {
+        if (entry.first.kind == t_LocalName)
+          res = pfs.getBB(entry.first.strVal, entry.first.loc);
+        else
+          res = pfs.getBB(entry.first.intVal, entry.first.loc);
+      }
+      else if (entry.first.kind == t_LocalID) {
+        return error(entry.first.loc, "can't take address of numeric label after the function is defined");
+      }
+      else {
+        Value temp = theFn.getValueSymbolTable().getValue(entry.first.strVal);
+        res = temp instanceof BasicBlock ? (BasicBlock)temp : null;
+      }
+
+      if (res == null) {
+        return error(entry.first.loc, "referenced value is not a basic block");
+      }
+
+      // get the BlockAddress for this and update referneces to use it.
+      BlockAddress ba = BlockAddress.get(theFn, res);
+      entry.second.replaceAllUsesWith(ba);
+      entry.second.eraseFromParent();
+    }
     return false;
   }
 

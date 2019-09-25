@@ -328,11 +328,14 @@ public class X86TargetLowering extends TargetLowering {
     if (subtarget.is64Bit())
       setOperationAction(ISD.GlobalTLSAddress, MVT.i64, Custom);
     setOperationAction(ISD.ExternalSymbol, MVT.i32, Custom);
+    setOperationAction(ISD.BlockAddress, MVT.i32, Custom);
+
     if (subtarget.is64Bit()) {
       setOperationAction(ISD.ConstantPool, MVT.i64, Custom);
       setOperationAction(ISD.JumpTable, MVT.i64, Custom);
       setOperationAction(ISD.GlobalAddress, MVT.i64, Custom);
       setOperationAction(ISD.ExternalSymbol, MVT.i64, Custom);
+      setOperationAction(ISD.BlockAddress, MVT.i64, Custom);
     }
     // 64-bit addm sub, shl, sra, srl (iff 32-bit x86)
     setOperationAction(ISD.SHL_PARTS, MVT.i32, Custom);
@@ -4090,7 +4093,7 @@ public class X86TargetLowering extends TargetLowering {
     else if (subtarget.isPICStyleStubPIC())
       opFlag = X86II.MO_PIC_BASE_OFFSET;
     SDValue result = dag.getTargetConstantPool(cpn.getConstantValue(),
-        new EVT(getPointerTy()), cpn.getAlign(), cpn.getOffset(), opFlag);
+        new EVT(getPointerTy()), cpn.getAlignment(), cpn.getOffset(), opFlag);
     result = dag.getNode(wrapperKind, new EVT(getPointerTy()), result);
     if (opFlag != 0) {
       result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
@@ -5834,6 +5837,8 @@ public class X86TargetLowering extends TargetLowering {
         return lowerGlobalTLSAddress(op, dag);
       case ISD.ExternalSymbol:
         return lowerExternalSymbol(op, dag);
+      case ISD.BlockAddress:
+        return lowerBlockAddress(op, dag);
       case ISD.SHL_PARTS:
       case ISD.SRA_PARTS:
       case ISD.SRL_PARTS:
@@ -5903,6 +5908,26 @@ public class X86TargetLowering extends TargetLowering {
         Util.shouldNotReachHere("Should not custom lower this!");
         return new SDValue();
     }
+  }
+
+  private SDValue lowerBlockAddress(SDValue op, SelectionDAG dag) {
+    // create a TargetBlockAddress node.
+    int flags = subtarget.classifyBlockAddressReference();
+    TargetMachine.CodeModel cm = getTargetMachine().getCodeModel();
+    BlockAddress ba = ((BlockAddressSDNode)op.getNode()).getBlockAddress();
+    SDValue result = dag.getBlockAddress(ba, new EVT(getPointerTy()), true, flags);
+
+    if (subtarget.isPICStyleRIPRel() && (cm == Small || cm == Kernel))
+      result = dag.getNode(X86ISD.WrapperRIP, new EVT(getPointerTy()), result);
+    else
+      result = dag.getNode(X86ISD.Wrapper, new EVT(getPointerTy()), result);
+
+    // with PIC, the address is acctually $g + offset.
+    if (isGlobalRelativeToPICBase(flags))
+      result = dag.getNode(ISD.ADD, new EVT(getPointerTy()),
+          dag.getNode(X86ISD.GlobalBaseReg, new EVT(getPointerTy())),
+          result);
+    return result;
   }
 
   private Pair<SDValue, SDValue> FPToIntHelper(SDValue op,

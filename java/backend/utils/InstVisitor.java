@@ -132,11 +132,21 @@ public interface InstVisitor<RetTy> {
   //==============================================//
   // branch instr.
   //==============================================//
-  RetTy visitRet(User inst);
+  default RetTy visitRet(User inst) {
+    return visit((Instruction) inst);
+  }
 
-  RetTy visitBr(User inst);
+  default RetTy visitBr(User inst) {
+    return visit((Instruction) inst);
+  }
 
-  RetTy visitSwitch(User inst);
+  default RetTy visitSwitch(User inst) {
+    return visit((Instruction) inst);
+  }
+
+  default RetTy visitIndirectBr(User inst) {
+    return visit((Instruction) inst);
+  }
 
   //===============================================//
   // arithmetic instr.

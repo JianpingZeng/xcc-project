@@ -2684,7 +2684,7 @@ public class DAGTypeLegalizer {
       }
       SDValue offset = dag.getNode(ISD.SELECT, zero.getValueType(), signSet,
           zero, four);
-      int alignment = ((ConstantPoolSDNode) fudgePtr.getNode()).getAlign();
+      int alignment = ((ConstantPoolSDNode) fudgePtr.getNode()).getAlignment();
       fudgePtr = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), fudgePtr, offset);
       alignment = Math.min(alignment, 4);
 

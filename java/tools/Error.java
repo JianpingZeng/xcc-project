@@ -29,7 +29,7 @@ public final class Error {
   public static SourceMgr sgr;
 
   public static void printMessage(SMLoc loc, String msg, DiagKind kind) {
-    sgr.getMessage(loc, msg, kind).print("llvm-tblgen", System.err);
+    sgr.getMessage(loc, msg, kind).print("xcc-tblgen", System.err);
   }
 
   public static void printMessage(MemoryBuffer loc, String msg, DiagKind kind) {

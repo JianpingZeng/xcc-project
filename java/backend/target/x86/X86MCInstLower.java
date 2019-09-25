@@ -630,8 +630,8 @@ public class X86MCInstLower {
         case MO_ConstantPoolIndex:
           mcOp = lowerSymbolOperand(mo, asmPrinter.getCPISymbol(mo.getIndex()));
           break;
-        /*case MO_BlockAddress:
-          mcOp = lowerSymbolOperand(mo, asmPrinter.getBlockAddressSymbol(mo.getBlockAddress()));*/
+        case MO_BlockAddress:
+          mcOp = lowerSymbolOperand(mo, asmPrinter.getBlockAddressSymbol(mo.getBlockAddress()));
       }
       outMI.addOperand(mcOp);
     }
