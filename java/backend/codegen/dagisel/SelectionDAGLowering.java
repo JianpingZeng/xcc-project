@@ -392,7 +392,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         nodeMap.put(val, n);
         return n;
       }
-      if (cnt instanceof Value.UndefValue) {
+      if (cnt instanceof Value.UndefValue && !cnt.getType().isStructType()) {
         SDValue n = dag.getUNDEF(vt);
         nodeMap.put(val, n);
         return n;
@@ -416,8 +416,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
 
       if (cnt.getType() instanceof StructType || cnt.getType() instanceof ArrayType) {
-        Util.assertion(cnt instanceof ConstantAggregateZero || cnt instanceof Value.UndefValue, "Unknown struct or array constant!");
-
+        Util.assertion(cnt instanceof ConstantAggregateZero ||
+            cnt instanceof Value.UndefValue, "Unknown struct or array constant!");
 
         ArrayList<EVT> valueVTs = new ArrayList<>();
         computeValueVTs(tli, cnt.getType(), valueVTs);
@@ -443,8 +443,30 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return dag.getBlockAddress(ba, vt);
       }
 
-      Util.shouldNotReachHere("Vector type not supported!");
-      return null;
+      VectorType vecTy = (VectorType) val.getType();
+      long numElts = vecTy.getNumElements();
+      // Now that we know the number and type of each elements, get the element into the ops array.
+      SDValue[] ops = new SDValue[(int) numElts];
+      if (cnt instanceof ConstantVector) {
+        ConstantVector cv = (ConstantVector) cnt;
+        for (int i = 0; i < numElts; i++)
+          ops[i] = getValue(cv.operand(i));
+      }
+      else {
+        Util.assertion(cnt instanceof ConstantAggregateZero, "Unknown vector constant!");
+        EVT eltVT = tli.getValueType(vecTy.getElementType());
+        SDValue op;
+        if (eltVT.isFloatingPoint())
+          op = dag.getConstantFP(0.0, eltVT, false);
+        else
+          op = dag.getConstant(0, eltVT, false);
+
+        // fill the ops array with the same element.
+        Arrays.fill(ops, 0, ops.length, op);
+      }
+      SDValue res = dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+      nodeMap.put(val, res);
+      return res;
     }
     if (val instanceof AllocaInst) {
       if (funcInfo.staticAllocaMap.containsKey(val))
@@ -1675,9 +1697,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case Shl:
         return ISD.SHL;
       case AShr:
-        return ISD.SRL;
-      case LShr:
         return ISD.SRA;
+      case LShr:
+        return ISD.SRL;
       default:
         Util.assertion("Unknown binary operator!");
         return -1;

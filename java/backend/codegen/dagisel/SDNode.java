@@ -82,7 +82,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public boolean isTargetOpcode() {
-    return opcode >= NodeType.BUILTIN_OP_END.ordinal();
+    return opcode >= ISD.BUILTIN_OP_END;
   }
 
   public boolean isMachineOpecode() {
@@ -787,14 +787,16 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public void printDetails(PrintStream os, SelectionDAG dag) {
     if (this instanceof MachineSDNode) {
       MachineSDNode memSD = (MachineSDNode) this;
-      os.print("<Mem:");
-      int i = 0;
-      for (MachineMemOperand mmo : memSD.memRefs) {
-        mmo.print(os);
-        if (i < memSD.memRefs.length - 1)
-          os.print(" ");
+      if (memSD.memRefs != null) {
+        os.print("<Mem:");
+        int i = 0;
+        for (MachineMemOperand mmo : memSD.memRefs) {
+          mmo.print(os);
+          if (i < memSD.memRefs.length - 1)
+            os.print(" ");
+        }
+        os.print(">");
       }
-      os.print(">");
     }
     else if (isTargetOpcode() && getOpcode() == ISD.VECTOR_SHUFFLE) {
       ShuffleVectorSDNode svn = (ShuffleVectorSDNode) this;

@@ -24,20 +24,20 @@ import tools.Util;
  */
 public class ISD {
   //===--------------------------------------------------------------------===//
-  /// ISD::NodeType enum - This enum defines the target-independent operators
-  /// for a SelectionDAG.
-  ///
-  /// Targets may also define target-dependent operator codes for SDNodes. For
-  /// example, on x86, these are the enum values in the X86ISD namespace.
-  /// Targets should aim to use target-independent operators to model their
-  /// instruction sets as much as possible, and only use target-dependent
-  /// operators when they have special requirements.
-  ///
-  /// Finally, during and after selection proper, SNodes may use special
-  /// operator codes that correspond directly with MachineInstr opcodes. These
-  /// are used to represent selected instructions. See the isMachineOpcode()
-  /// and getMachineOpcode() member functions of SDNode.
-  ///
+  /*
+   * This enum defines the target-independent operators for a SelectionDAG.
+
+   * Targets may also define target-dependent operator codes for SDNodes. For
+   * example, on x86, these are the enum values in the X86ISD namespace.
+   * Targets should aim to use target-independent operators to model their
+   * instruction sets as much as possible, and only use target-dependent
+   * operators when they have special requirements.
+   *
+   * Finally, during and after selection proper, SNodes may use special
+   * operator codes that correspond directly with MachineInstr opcodes. These
+   * are used to represent selected instructions. See the isMachineOpcode()
+   * and getMachineOpcode() member functions of SDNode.
+  */
 
   // Conversion operators.  These are all single input single output
   // operations.  For all of these, the result type must be strictly

@@ -488,7 +488,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     int vt = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     EVT actualVT = ((SDNode.VTSDNode) n.getNode()).getVT();
-    if (actualVT.getSimpleVT().simpleVT == vt)
+    if (actualVT.equals(new EVT(vt)))
       return true;
 
     return vt == MVT.iPTR && actualVT.equals(new EVT(tli.getPointerTy()));
