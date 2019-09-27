@@ -106,7 +106,7 @@ public class DAGTypeLegalizer {
   private LegalizeAction getTypeAction(EVT vt) {
     switch (valueTypeActions.getTypeAction(dag.getContext(), vt)) {
       default:
-        Util.assertion(false, "Unknown legalize action!");
+        Util.assertion("Unknown legalize action!");
         return null;
       case Legal:
         return LegalizeAction.Legal;
@@ -180,7 +180,7 @@ public class DAGTypeLegalizer {
             EVT resultVT = n.getValueType(i);
             switch (getTypeAction(resultVT)) {
               default:
-                Util.assertion(false, "Unknown action!");
+                Util.assertion("Unknown action!");
                 break;
               case Legal:
                 break;
@@ -804,7 +804,7 @@ public class DAGTypeLegalizer {
     EVT noutVT = tli.getTypeToTransformTo(dag.getContext(), outVT);
     switch (getTypeAction(inVT)) {
       default:
-        Util.assertion(false, "Unknown type action!");
+        Util.assertion("Unknown type action!");
         break;
       case Legal:
       case ExpandInteger:

@@ -783,13 +783,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case InsertValue:
         visitInsertValueInst(u);
         break;
-      case Invoke:
       case IndirectBr:
         visitIndirectBr(u);
         break;
+      case Invoke:
       default:
         // TODO 1/16/2019
-        Util.shouldNotReachHere(String.format("Unknown operator '%s'!", opc.opName));
+        Util.shouldNotReachHere(String.format("Unknown operator '%s'", opc.opName));
     }
   }
 
