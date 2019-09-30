@@ -61,6 +61,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
   private Loop outLoop;
 
   /**
+   * Indicate this block is a target of indirect branch.
+   */
+  private boolean hasAddrTaken;
+
+  /**
    * Obtains a loop containing this basic block.
    *
    * @return
@@ -679,5 +684,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
     getInstList().removeLast();
     new BranchInst(res, this);
     return res;
+  }
+
+  public boolean isHasAddrTaken() { return hasAddrTaken;}
+
+  public void setHasAddrTaken(boolean val) {
+    hasAddrTaken = val;
   }
 }

@@ -125,10 +125,16 @@ public class MCSymbol {
     private TreeMap<String, MCSectionELF> ELFUniqueMap;
     private TreeMap<String, MCSectionMachO> MachOUniqueMap;
     private TreeMap<String, MCSectionCOFF> COFFUniqueMap;
+    private MCAsmInfo mai;
+    private MCRegisterInfo mri;
+    private int nextUniqueID;
 
-    public MCContext() {
+    public MCContext(MCAsmInfo mai, MCRegisterInfo mri) {
       sections = new TreeMap<>();
       symbols = new TreeMap<>();
+      this.mai = mai;
+      this.mri = mri;
+      nextUniqueID = 0;
     }
 
     public MCSymbol createSymbol(String name) {
@@ -148,7 +154,7 @@ public class MCSymbol {
       return sym;
     }
     public MCSymbol createTemporarySymbol() {
-      return createTemporarySymbol("");
+      return createTemporarySymbol(mai.getPrivateGlobalPrefix() + "tmp" + nextUniqueID++);
     }
     public MCSymbol createTemporarySymbol(String name) {
       // If unnamed, just create a symbol.

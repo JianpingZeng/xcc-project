@@ -32,6 +32,7 @@ public class BlockAddress extends Constant {
     reserve(2);
     setOperand(0, f, this);
     setOperand(1, bb, this);
+    bb.setHasAddrTaken(true);
   }
 
   public static BlockAddress get(Function f, BasicBlock bb) {

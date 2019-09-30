@@ -33,6 +33,7 @@ import tools.*;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import static backend.support.AssemblyWriter.writeAsOperand;
@@ -95,6 +96,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   private TargetSubtarget subtarget;
   public MachineFunction mf;
   protected MachineModuleInfo mmi;
+  private HashMap<BasicBlock, MCSymbol> addrLabelSymbols;
 
   protected AsmPrinter(OutputStream os, TargetMachine tm,
                        MCSymbol.MCContext ctx,
@@ -105,7 +107,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     this.mai = mai;
     this.tri = tm.getRegisterInfo();
     subtarget = tm.getSubtarget();
-    mmi = null;
+
     outContext = ctx;
     outStreamer = streamer;
     // FIXME, disable verbose output by default for avoiding a bug of
@@ -595,6 +597,18 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   private void emitFunctionBodyEnd() {
   }
 
+  private MCSymbol getAddrLabelSymbol(BasicBlock bb) {
+    if (addrLabelSymbols == null)
+      addrLabelSymbols = new HashMap<>();
+
+    if (addrLabelSymbols.containsKey(bb))
+      return addrLabelSymbols.get(bb);
+
+    MCSymbol sym = outContext.createTemporarySymbol();
+    addrLabelSymbols.put(bb, sym);
+    return sym;
+  }
+
   /**
    * This method prints the label for the specified basic block.
    * An alignment and a comment describing it if appropriate.
@@ -615,7 +629,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       if (verboseAsm) {
         outStreamer.addComment("Block address taken");
       }
-      Util.shouldNotReachHere("Address taken not supported yet!");
+      outStreamer.emitLabel(getAddrLabelSymbol(bb));
     }
     // Print the main label for the block.
     if (mbb.getNumPredecessors() == 0/* || isBlockOnlyReachableByFallThrough(mbb)*/) {
@@ -1490,16 +1504,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   }
 
   public MCSymbol getBlockAddressSymbol(BlockAddress ba) {
-    Function f = ba.getFunction();
-    BasicBlock bb = ba.getBasicBlock();
-
-    Util.assertion(bb.hasName(), "address of anonymous basic blokck not supoorted");
-    String fnName = mangler.getMangledNameWithPrefix(f, false);
-    String name = mangler.getMangledNameWithPrefix(
-        "BA" + fnName.length() + '_' + fnName
-            + "_" + bb.getName(),
-        NameMangler.ManglerPrefixTy.Private);
-    return outContext.getOrCreateSymbol(name);
+    return getAddrLabelSymbol(ba.getBasicBlock());
   }
 
   /**

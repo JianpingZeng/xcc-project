@@ -153,7 +153,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
       return true;
     }
 
-    MCContext ctx = new MCContext();
+    MCContext ctx = new MCContext(getMCAsmInfo(), getRegisterInfo());
     MCStreamer streamer = null;
     PrintStream legacyOutput = null;
 
