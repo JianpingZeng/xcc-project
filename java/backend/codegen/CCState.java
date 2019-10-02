@@ -168,7 +168,7 @@ public class CCState {
     for (int i = 0; i != regs.length; ++i)
       if (!isAllocated(regs[i]))
         return i;
-    return -1;
+    return regs.length;
   }
 
   /// allocateReg - Attempt to allocate one register.  If it is not available,
@@ -195,7 +195,7 @@ public class CCState {
   /// marking it and any aliases as allocated.
   public int allocateReg(int[] regs) {
     int FirstUnalloc = getFirstUnallocated(regs);
-    if (FirstUnalloc < 0)
+    if (FirstUnalloc == regs.length)
       return 0;    // Didn't find the reg.
 
     // Mark the register and any aliases as allocated.
@@ -207,7 +207,7 @@ public class CCState {
   /// Version of allocateReg with list of registers to be shadowed.
   public int allocateReg(int[] regs, int[] shadowRegs) {
     int FirstUnalloc = getFirstUnallocated(regs);
-    if (FirstUnalloc < 0)
+    if (FirstUnalloc == regs.length)
       return 0;    // Didn't find the reg.
 
     // Mark the register and any aliases as allocated.
