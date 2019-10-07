@@ -365,8 +365,11 @@ public class MachineInstr implements Cloneable {
       int moreg = mo.getReg();
       if (moreg == 0)
         continue;
-      if (moreg == reg || (tri != null && isPhysicalRegister(moreg))
-          && isPhysicalRegister(reg)) {
+      if (moreg == reg ||
+          (tri != null &&
+              isPhysicalRegister(moreg) &&
+              isPhysicalRegister(reg) &&
+              tri.isSubRegister(moreg, reg))) {
         if (!isKill || mo.isKill())
           return i;
       }

@@ -1551,8 +1551,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         nodeStack.addAll(lastScope.nodeStack);
         n = nodeStack.peek();
 
-        if (lastScope.numMatchedMemRefs != matchedMemRefs.size())
-          matchedMemRefs.ensureCapacity(lastScope.numMatchedMemRefs);
+        if (lastScope.numMatchedMemRefs != matchedMemRefs.size()) {
+          Util.assertion(matchedMemRefs.size() > lastScope.numMatchedMemRefs);
+          while (matchedMemRefs.size() != lastScope.numMatchedMemRefs)
+            matchedMemRefs.remove(matchedMemRefs.size() - 1);
+        }
         matcherIndex = lastScope.failIndex;
 
         inputChain = lastScope.inputChain;

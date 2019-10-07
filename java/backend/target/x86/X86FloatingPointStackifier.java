@@ -202,23 +202,25 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     return insertPos;
   }
 
-  private void duplicateToTop(int regNo, int asReg, int mi) {
+  private int duplicateToTop(int regNo, int asReg, int mi) {
     int stReg = getSTReg(regNo);
     pushReg(asReg);
     DebugLoc dl = mi == mbb.size() ? new DebugLoc() :
         mbb.getInstAt(mi).getDebugLoc();
     buildMI(mbb, mi, dl, tii.get(LD_Frr)).addReg(stReg);
+    return mi+1;
   }
 
-  private void duplicatePendingSTBeforeKill(int regNo, int mi) {
+  private int duplicatePendingSTBeforeKill(int regNo, int mi) {
     for (int i = 0; i < numPendingSTs; i++) {
       if (pendingST[i] != regNo)
         continue;
 
       int sr = getScratchReg();
-      duplicateToTop(regNo, sr, mi);
+      mi = duplicateToTop(regNo, sr, mi);
       pendingST[i] = sr;
     }
+    return mi;
   }
 
   // Efficient lookup Table support.
@@ -594,7 +596,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     int reg = getFPReg(mi.getOperand(numOps - 1));
     boolean killsSrc = mi.killsRegister(X86GenRegisterNames.FP0 + reg);
     if (killsSrc)
-      duplicatePendingSTBeforeKill(reg, insertPos);
+      insertPos = duplicatePendingSTBeforeKill(reg, insertPos);
 
     if (!killsSrc && (mi.getOpcode() == IST_Fp64m32
         || mi.getOpcode() == ISTT_Fp16m32
@@ -609,7 +611,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         || mi.getOpcode() == ISTT_Fp32m80
         || mi.getOpcode() == ISTT_Fp64m80
         || mi.getOpcode() == ST_FpP80m))
-      duplicateToTop(reg, getScratchReg(), insertPos);
+      insertPos = duplicateToTop(reg, getScratchReg(), insertPos);
     else
       insertPos = moveToTop(reg, insertPos);
 
@@ -634,14 +636,14 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
     int reg = getFPReg(mi.getOperand(1));
     boolean killsSrc = mi.killsRegister(X86GenRegisterNames.FP0 + reg);
     if (killsSrc) {
-      duplicatePendingSTBeforeKill(reg, insertPos);
+      insertPos = duplicatePendingSTBeforeKill(reg, insertPos);
       insertPos = moveToTop(reg, insertPos);
       if (stackTop == 0)
         reportFatalError("Stack can't be empty!");
       --stackTop;
       pushReg(getFPReg(mi.getOperand(0)));
     } else {
-      duplicateToTop(reg, getFPReg(mi.getOperand(0)), insertPos);
+      insertPos = duplicateToTop(reg, getFPReg(mi.getOperand(0)), insertPos);
     }
 
     mi.removeOperand(1);
@@ -732,12 +734,12 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         itr = moveToTop(op1, itr);
         tos = op1;
       } else {
-        duplicateToTop(op0, dest, itr);
+        itr = duplicateToTop(op0, dest, itr);
         op0 = tos = dest;
         killsOp0 = true;
       }
     } else if (!killsOp0 && !killsOp1) {
-      duplicateToTop(op0, dest, itr);
+      itr = duplicateToTop(op0, dest, itr);
       op0 = tos = dest;
       killsOp0 = true;
     }
@@ -844,7 +846,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         int op0 = getFPReg(mi.getOperand(0));
 
         if (!mi.killsRegister(X86GenRegisterNames.FP0 + op0)) {
-          duplicateToTop(0, 7, itr);
+          itr = duplicateToTop(0, 7, itr);
         } else {
           itr = moveToTop(op0, itr);
         }
@@ -902,7 +904,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
           stack[slot] = destReg;
           regMap[destReg] = slot;
         } else {
-          duplicateToTop(srcReg, destReg, itr++);
+          itr = duplicateToTop(srcReg, destReg, itr++);
         }
         break;
       }
@@ -1035,7 +1037,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
               "Stack misconfiguration for RET!");
 
           int newReg = getScratchReg();
-          duplicateToTop(firstFPRegOp, newReg, itr);
+          itr = duplicateToTop(firstFPRegOp, newReg, itr);
           firstFPRegOp = newReg;
         }
 
