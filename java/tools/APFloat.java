@@ -472,8 +472,10 @@ public class APFloat implements Cloneable {
     } else if (category == fcNaN) {
       int shift = toSem.precision - semantics.precision;
       FltSemantics oldSemantics = semantics;
+      semantics = toSem;
       loseInfo.set(false);
 
+      // no normalization here, just trruncate.
       if (shift > 0) {
         int ushift = -shift;
 
@@ -485,7 +487,23 @@ public class APFloat implements Cloneable {
           loseInfo.set(true);
         APInt.tcShiftRight(significandParts(), newPartCount, ushift);
       }
+      else if (shift < 0) {
+        int ushift = -shift;
+        // Figure out if we are losing information.  This happens
+        // if are shifting out something other than 0s, or if the x87 long
+        // double input did not have its integer bit set (pseudo-NaN), or if the
+        // x87 long double input did not have its QNan bit set (because the x87
+        // hardware sets this bit when converting a lower-precision NaN to
+        // x87 long double).
+        if (APInt.tcLSB(significandParts(), newPartCount) < ushift)
+          loseInfo.set(true);
+        if (oldSemantics == x87DoubleExtended &&
+            ((significandParts()[0] & 0x8000000000000000L) == 0 ||
+            (significandParts()[0] & 0x4000000000000000L) == 0))
+          loseInfo.set(true);
 
+        APInt.tcShiftRight(significandParts(), newPartCount, ushift);
+      }
       // gcc forces the Quiet bit on, which means (float)(double)(float_sNan)
       // does not give you back the same bits.  This is dubious, and we
       // don't currently do it.  You're really supposed to get

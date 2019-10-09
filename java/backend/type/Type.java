@@ -18,9 +18,9 @@ package backend.type;
 
 import backend.support.LLVMContext;
 import backend.support.TypePrinting;
-import backend.value.Module;
 import tools.Util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -98,13 +98,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public void dump() {
-    dump(null);
-  }
-
-  public void dump(Module context) {
-    // TODO: 17-6-11 writeTypeSymbolic(System.err, this, context);
-    //
-    System.err.println();
+    print(System.err);
   }
 
   public String getDescription() {
@@ -397,6 +391,14 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   private Type getPointerTo(int as) { return PointerType.get(this, as); }
+
+  @Override
+  public String toString() {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    PrintStream os = new PrintStream(baos);
+    print(os);
+    return baos.toString();
+  }
 
   public static Type getVoidTy(LLVMContext ctx) { return ctx.VoidTy; }
   public static Type getLabelTy(LLVMContext ctx) { return ctx.LabelTy; }
