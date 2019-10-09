@@ -996,6 +996,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
         os.printf(":%d", resNo);
     }
     printDetails(os, dag);
+    os.println();
   }
 
   public void printr(PrintStream os, SelectionDAG dag) {

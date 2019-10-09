@@ -163,7 +163,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           os.print("\n\t\t");
         ++i;
       }
-      os.printf("\n\t};\n");
+      os.println("\n\t};");
     }
   }
 
@@ -346,7 +346,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         empty = false;
       }
       os.printf("%s", empty ? "" : ", ");
-      os.printf("\n\t};\n\t");
+      os.print("\n\t};\n\t");
     }
 
     for (int i = 0, e = regClasses.size(); i != e; i++) {
@@ -364,7 +364,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       }
 
       os.printf("%s", empty ? "" : ", ");
-      os.printf("\n\t};\n\n");
+      os.print("\n\t};\n\n");
     }
 
     // Output RegisterClass array.
@@ -790,7 +790,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     os.printf("\t}\n\n");
 
     // emit the fields and constructors for *Target* GenRegisterInfo.
-    os.printf("public %s(%sTargetMachine tm, int mode) {\n" +
+    os.printf("\tpublic %s(%sTargetMachine tm, int mode) {\n" +
         "    super(tm);\n" +
         "    initMCRegisterInfo(registerDescriptors, registerClasses,\n" +
         "\t\t\t\tSubregHashTable, SubregHashTableSize,\n" +
@@ -798,7 +798,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         "\t\t\t\tAliasesHashTable, AliasesHashTableSize,\n" +
         "\t\t\t\tRegClassInfos, mode);\n" +
         "  }", className, targetName);
-    os.println("}");
+    os.println("\n}");
   }
 
   private static void addSubSuperReg(Record r, Record s,

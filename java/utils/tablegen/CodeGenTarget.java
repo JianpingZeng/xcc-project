@@ -94,9 +94,9 @@ public final class CodeGenTarget {
    * rc1 is a sub-class of rc2 if it is a valid replacement for any
    * instruction operand where an rc2 register is required. It must satisfy
    * these conditions:
-   * 1. All RC2 registers are also in RC.
-   * 2. The RC2 spill size must not be smaller that the RC spill size.
-   * 3.RC2 spill alignment must be compatible with RC.
+   * 1. All rc1 registers are also in rc2.
+   * 2. The rc2 spill size must not be smaller that the rc1 spill size.
+   * 3. rc2 spill alignment must be compatible with rc1.
    * <p>
    * Sub-classes are used to determine if a virtual register can be used
    * as an instruction operand, or if it must be copied first.
@@ -116,9 +116,9 @@ public final class CodeGenTarget {
   private void computeSubClasses() {
     for (int i = 0, e = registerClasses.size(); i < e; i++) {
       CodeGenRegisterClass rc = registerClasses.get(i);
-      // every reg class is the sub class of itself.
-      rc.subClasses.add(rc);
-      for (int j = i + 1; j < e; j++) {
+      for (int j = 0; j < e; j++) {
+        // don't add itself to the sub-classes list.
+        if (j == i) continue;
         CodeGenRegisterClass rc2 = registerClasses.get(j);
         if (rc.subClasses.contains(rc2))
           continue;

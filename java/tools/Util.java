@@ -658,8 +658,7 @@ public class Util {
   }
 
   public static <T> void unique(List<T> list) {
-    HashSet<T> unique = new HashSet<>();
-    unique.addAll(list);
+    HashSet<T> unique = new HashSet<>(list);
     list.clear();
     list.addAll(unique);
   }

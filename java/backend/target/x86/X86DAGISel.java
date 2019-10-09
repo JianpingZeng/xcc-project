@@ -649,7 +649,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return resNode;
   }
 
-  protected SDNode selectAtomic64(SDNode node, int opc) {
+  private SDNode selectAtomic64(SDNode node, int opc) {
     SDValue chain = node.getOperand(0);
     SDValue in1 = node.getOperand(1);
     SDValue in2 = node.getOperand(2);

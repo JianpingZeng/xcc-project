@@ -545,11 +545,10 @@ public class SelectionDAGLegalizer {
                 temp2 = legalizeOp(result.getValue(1));
               }
             }
-
-            addLegalizedOperand(new SDValue(node, 0), temp1);
-            addLegalizedOperand(new SDValue(node, 1), temp2);
-            return val.getResNo() != 0 ? temp2 : temp1;
           }
+          addLegalizedOperand(new SDValue(node, 0), temp1);
+          addLegalizedOperand(new SDValue(node, 1), temp2);
+          return val.getResNo() != 0 ? temp2 : temp1;
         }
       }
       case ISD.STORE: {

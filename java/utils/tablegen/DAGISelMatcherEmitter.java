@@ -274,7 +274,7 @@ public class DAGISelMatcherEmitter {
         }
 
         if (!OmitComments.value)
-          os.printf("/*%d*/", numCases);
+          os.printf("/*%d cases*/", numCases);
         os.print(",");
         ++currentIdx;
         for (int i = 0; i < numCases; i++) {
@@ -290,7 +290,7 @@ public class DAGISelMatcherEmitter {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             FormattedOutputStream fos = new FormattedOutputStream(baos);
             childSize = emitMatcherList(child, indent + 1,
-                currentIdx + vbrSize, fos);
+                currentIdx + vbrSize + 1, fos);
             tempBuf = baos.toString();
           } while (getVBRSize(childSize) != vbrSize);
 

@@ -1339,7 +1339,9 @@ public class DAGTypeLegalizer {
     Util.assertion(opNo == 0);
     SDValue lhs = node.getOperand(0);
     SDValue rhs = node.getOperand(1);
-    promoteSetCCOperands(lhs, rhs, ((CondCodeSDNode) node.getOperand(2).getNode()).getCondition());
+    SDValue[] res = promoteSetCCOperands(lhs, rhs, ((CondCodeSDNode) node.getOperand(2).getNode()).getCondition());
+    lhs = res[0];
+    rhs = res[1];
     return dag.updateNodeOperands(new SDValue(node, 0), lhs, rhs,
         node.getOperand(2));
   }

@@ -1885,7 +1885,7 @@ public class DAGCombiner {
     LoadExtType extType = LoadExtType.NON_EXTLOAD;
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
-    EVT evt = new EVT(vt.getSimpleVT().simpleVT);
+    EVT evt = vt;
 
     if (vt.isVector())
       return new SDValue();
@@ -2577,7 +2577,7 @@ public class DAGCombiner {
 
     // fold (select X, X, Y) -> (or X, Y)
     // fold (select X, 1, Y) -> (or X, Y)
-    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n1) ||
+    if (vt.equals(new EVT(MVT.i1)) && (n0.equals(n1) ||
         (n1.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)))) {
       return dag.getNode(ISD.OR, vt, n0, n2);
@@ -2585,7 +2585,7 @@ public class DAGCombiner {
 
     // fold (select X, Y, X) -> (and X, Y)
     // fold (select X, Y, 0) -> (and X, Y)
-    if (vt.getSimpleVT().simpleVT == MVT.i1 && (n0.equals(n2) ||
+    if (vt.equals(new EVT(MVT.i1)) && (n0.equals(n2) ||
         (n2.getNode() instanceof ConstantSDNode &&
             ((ConstantSDNode) n2.getNode()).isNullValue()))) {
       return dag.getNode(ISD.AND, vt, n0, n1);

@@ -2134,7 +2134,7 @@ public abstract class TargetLowering {
     }
 
     SDValue temp;
-    if (lhs.getValueType().getSimpleVT().simpleVT == MVT.i1 && foldBooleans) {
+    if (lhs.getValueType().equals(new EVT(MVT.i1)) && foldBooleans) {
       switch (cc) {
         default:
           Util.shouldNotReachHere("Unknown integer setcc!");
