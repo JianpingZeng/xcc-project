@@ -119,7 +119,7 @@ public final class CodeGenInstruction {
   boolean isTerminator;
   boolean isReMaterializable;
   boolean hasDelaySlot;
-  boolean usesCustomDAGSchedInserter;
+  boolean UsesCustomInserter;
   boolean isVariadic;
   boolean hasCtrlDep;
   boolean isNotDuplicable;
@@ -151,8 +151,8 @@ public final class CodeGenInstruction {
     isTerminator = r.getValueAsBit("isTerminator");
     isReMaterializable = r.getValueAsBit("isReMaterializable");
     hasDelaySlot = r.getValueAsBit("hasDelaySlot");
-    usesCustomDAGSchedInserter = r
-        .getValueAsBit("usesCustomDAGSchedInserter");
+    UsesCustomInserter = r
+        .getValueAsBit("UsesCustomInserter");
     hasCtrlDep = r.getValueAsBit("hasCtrlDep");
     isNotDuplicable = r.getValueAsBit("isNotDuplicable");
     hasSideEffects = r.getValueAsBit("hasSideEffects");

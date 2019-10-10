@@ -290,7 +290,7 @@ def pshuflw : PatFrag<(ops node:$lhs, node:$rhs),
 // CMOV* - Used to implement the SSE SELECT DAG operation.  Expanded by the
 // scheduler into a branch sequence.
 // These are expanded by the scheduler.
-let Uses = [EFLAGS], usesCustomDAGSchedInserter = 1 in {
+let Uses = [EFLAGS], UsesCustomInserter = 1 in {
   def CMOV_FR32 : I<0, Pseudo,
                     (outs FR32:$dst), (ins FR32:$t, FR32:$f, i8imm:$cond),
                     "#CMOV_FR32 PSEUDO!",
@@ -3748,7 +3748,7 @@ let Constraints = "$src1 = $dst" in {
 }
 
 // String/text processing instructions.
-let Defs = [EFLAGS], usesCustomDAGSchedInserter = 1 in {
+let Defs = [EFLAGS], UsesCustomInserter = 1 in {
 def PCMPISTRM128REG : SS42AI<0, Pseudo, (outs VR128:$dst),
 			(ins VR128:$src1, VR128:$src2, i8imm:$src3),
 		    "#PCMPISTRM128rr PSEUDO!",
@@ -3776,7 +3776,7 @@ def PCMPISTRM128rm : SS42AI<0x62, MRMSrcMem, (outs),
 }
 
 let Defs = [EFLAGS], Uses = [EAX, EDX],
-	usesCustomDAGSchedInserter = 1 in {
+	UsesCustomInserter = 1 in {
 def PCMPESTRM128REG : SS42AI<0, Pseudo, (outs VR128:$dst),
 			(ins VR128:$src1, VR128:$src3, i8imm:$src5),
 		    "#PCMPESTRM128rr PSEUDO!",

@@ -43,7 +43,7 @@ public interface TID {
   int UnmodelSideEffects = 14;
   int Commutable = 15;
   int ConvertibleTo3Addr = 16;
-  int UsesCustomDAGSchedInserter = 17;
+  int UsesCustomInserter = 17;
   int Rematerializable = 18;
   int CheapAsAMove = 19;
 }

@@ -2778,10 +2778,12 @@ public class X86TargetLowering extends TargetLowering {
     int itr = 1;
     MachineBasicBlock xmmSavedMBB = mf.createMachineBasicBlock(llvmBB);
     MachineBasicBlock endMBB = mf.createMachineBasicBlock(llvmBB);
-    mf.insert(itr, xmmSavedMBB);
+    mf.insert(itr++, xmmSavedMBB);
     mf.insert(itr, endMBB);
 
-    endMBB.transferSuccessor(mbb);
+    // remove the reminder of mbb and insert those instructions to the beginning of endMBB.
+    endMBB.splice(0, mbb, mi.getIndexInMBB()+1, mbb.size());
+    endMBB.transferSuccessorsAndUpdatePHIs(mbb);
     mbb.addSuccessor(xmmSavedMBB);
     xmmSavedMBB.addSuccessor(endMBB);
 
@@ -2801,6 +2803,9 @@ public class X86TargetLowering extends TargetLowering {
     // In the XMM save block, save all the XMM argument registers.
     for (int i = 3, e = mi.getNumOperands(); i < e; i++) {
       long offset = (i - 3) * 16 + varArgsFPOffset;
+      MachineMemOperand mmo = new MachineMemOperand(
+          PseudoSourceValue.getFixedStack(this.regSaveFrameIndex),
+          MachineMemOperand.MOStore, offset, 16/*size*/, 16/*align*/);
       buildMI(xmmSavedMBB, dl, tii.get(X86GenInstrNames.MOVAPSmr))
           .addFrameIndex(this.regSaveFrameIndex)
           .addImm(1)  // scale
@@ -2808,11 +2813,7 @@ public class X86TargetLowering extends TargetLowering {
           .addImm(offset) // disp
           .addReg(0)  // segment
           .addReg(mi.getOperand(i).getReg())
-          .addMemOperand(new MachineMemOperand(
-              PseudoSourceValue.getFixedStack(
-                  this.regSaveFrameIndex),
-              MachineMemOperand.MOStore,
-              offset, 16, 16));
+          .addMemOperand(mmo);
     }
     mf.deleteMachineInstr(mi);
     return endMBB;
