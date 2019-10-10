@@ -254,7 +254,7 @@ public class MachineInstr implements Cloneable {
     return true;
   }
 
-  public MachineInstr removeFromParent() {
+  public void removeFromParent() {
     Util.assertion(getParent() != null);
     for (int i = 0, e = getNumOperands(); i < e; i++) {
       MachineOperand mo = getOperand(i);
@@ -263,7 +263,6 @@ public class MachineInstr implements Cloneable {
       }
     }
     parent.remove(this);
-    return this;
   }
 
   public boolean isLabel() {
@@ -836,6 +835,17 @@ public class MachineInstr implements Cloneable {
     for (int i = 0, e = operands.size(); i != e; i++) {
       if (operands.get(i).isRegister())
         operands.get(i).addRegOperandToRegInfo(regInfo);
+    }
+  }
+
+  /**
+   * Remove all register operands of the current machine instruction from the
+   * corresponding use list.
+   */
+  public void removeRegOperandsFromUseLists() {
+    for (MachineOperand mo : operands) {
+      if (mo.isRegister())
+        mo.removeRegOperandFromRegInfo();
     }
   }
 

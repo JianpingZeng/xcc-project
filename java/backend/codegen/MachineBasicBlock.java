@@ -275,7 +275,7 @@ public class MachineBasicBlock {
 
   public void remove(int indexToDel) {
     Util.assertion(indexToDel >= 0 && indexToDel < size());
-    insts.remove(indexToDel);
+    remove(getInstAt(indexToDel));
   }
 
   /**
@@ -403,9 +403,9 @@ public class MachineBasicBlock {
       os.printf("    Live Ins:");
       for (int i = 0, e = liveIns.size(); i < e; i++)
         outputReg(os, liveIns.get(i), tri);
-
-      os.println();
     }
+
+    os.println();
 
     // Print the preds of this block according to the CFGs.
     if (predecessors != null && !predecessors.isEmpty()) {
@@ -465,10 +465,52 @@ public class MachineBasicBlock {
       fromMBB.getSuccessors().clear();
   }
 
+  public void transferSuccessorsAndUpdatePHIs(MachineBasicBlock fromMBB) {
+    if (this == fromMBB)
+      return;
+
+    while (!fromMBB.succIsEmpty()) {
+      MachineBasicBlock succ = fromMBB.suxAt(0);
+      addSuccessor(succ);
+      fromMBB.removeSuccessor(0);
+
+      // fix up any PHI nodes in the successor.
+      for (int i = 0, e = succ.size(); i < e && succ.getInstAt(i).isPHI(); i++) {
+        MachineInstr mi = succ.getInstAt(i);
+        for (int j = 2, sz = mi.getNumOperands(); j <= sz; j += 2) {
+          if (mi.getOperand(j).getMBB().equals(fromMBB))
+            mi.getOperand(j).setMBB(this);
+        }
+      }
+    }
+  }
+
   public MCSymbol getSymbol(MCSymbol.MCContext ctx) {
     MachineFunction mf = getParent();
     String name = mf.getTarget().getMCAsmInfo().getPrivateGlobalPrefix() +
         mf.getFunctionNumber() + "_" + getNumber();
     return ctx.getOrCreateSymbol(name);
+  }
+
+  public void splice(int insertAfter, MachineBasicBlock fromMBB, int start, int end) {
+    Util.assertion(start <= end && start >= 0, "illegal instruction range in from MBB!");
+    Util.assertion((size() == 0 && insertAfter == 0) ||
+        (insertAfter >= 0 && insertAfter < size()), "illegal insertion position!" );
+
+    if (fromMBB == null || start == end) return;
+    Util.assertion(fromMBB != this, "can't splice the same block!");
+
+    ArrayList<MachineInstr> toDelete = new ArrayList<>();
+    for (int i = start; i < end; i++)
+      toDelete.add(fromMBB.getInstAt(i));
+
+    toDelete.forEach(MachineInstr::removeFromParent);
+
+    int i = insertAfter;
+    if (!isEmpty()) ++i;
+
+    for (MachineInstr mi : toDelete) {
+      insert(i++, mi);
+    }
   }
 }

@@ -241,8 +241,8 @@ public class MCInstrDesc {
     return (flags & (1 << TID.ConvertibleTo3Addr)) != 0;
   }
 
-  public boolean useCustomDAGSchedInsertionHook() {
-    return (flags & (1 << TID.UsesCustomDAGSchedInserter)) != 0;
+  public boolean usesCustomInsertionHook() {
+    return (flags & (1 << TID.UsesCustomInserter)) != 0;
   }
 
   public boolean isRematerializable() {

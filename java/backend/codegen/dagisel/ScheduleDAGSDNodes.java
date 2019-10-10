@@ -137,17 +137,12 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   }
 
   public static int countOperands(SDNode node) {
-    int n = computeMemOperandEnd(node);
-    while (n > 0 && node.getOperand(n - 1).getNode() instanceof MemOperandSDNode)
-      --n;
-    return n;
-  }
-
-  public static int computeMemOperandEnd(SDNode node) {
     int n = node.getNumOperands();
     while (n > 0 && node.getOperand(n - 1).getValueType().getSimpleVT().simpleVT == MVT.Glue)
       --n;
     if (n > 0 && node.getOperand(n - 1).getValueType().getSimpleVT().simpleVT == MVT.Other)
+      --n;
+    while (n > 0 && node.getOperand(n - 1).getNode() instanceof MemOperandSDNode)
       --n;
     return n;
   }
@@ -179,7 +174,6 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       MCInstrDesc tid = tii.get(opc);
       int numResults = countResults(node);
       int nodeOperands = countOperands(node);
-      int memOperandsEnd = computeMemOperandEnd(node);
       boolean hasPhysRegOuts = numResults > tid.getNumDefs() &&
           tid.getImplicitDefs() != null &&
           tid.getImplicitDefs().length > 0;
@@ -200,10 +194,10 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       }
 
       // emit all memory operand.
-      if (tid.useCustomDAGSchedInsertionHook()) {
+      /*if (tid.usesCustomInsertionHook()) {
         mbb = tli.emitInstrWithCustomInserter(mi, mbb);
         insertPos = mbb.size();
-      } else {
+      } else */{
         mbb.insert(insertPos++, mi);
       }
 

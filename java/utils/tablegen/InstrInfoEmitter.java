@@ -199,8 +199,8 @@ public final class InstrInfoEmitter extends TableGenBackend {
     if (inst.isReMaterializable) os.printf("|(1<<TID.Rematerializable)");
     if (inst.isNotDuplicable) os.printf("|(1<<TID.NotDuplicable)");
     if (inst.hasOptionalDef) os.printf("|(1<<TID.HasOptionalDef)");
-    if (inst.usesCustomDAGSchedInserter)
-      os.printf("|(1<<TID.UsesCustomDAGSchedInserter)");
+    if (inst.UsesCustomInserter)
+      os.printf("|(1<<TID.UsesCustomInserter)");
     if (inst.isVariadic)
       os.printf("|(1<<TID.Variadic)");
     if (inst.hasSideEffects)

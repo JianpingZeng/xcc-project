@@ -16,10 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.LowerSubregInstructionPass;
-import backend.codegen.MachineCodeEmitter;
-import backend.codegen.MachineFunctionAnalysis;
-import backend.codegen.RearrangementMBB;
+import backend.codegen.*;
 import backend.mc.MCAsmInfo;
 import backend.mc.MCAsmStreamer;
 import backend.mc.MCInstPrinter;
@@ -102,6 +99,9 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     // Ask the target for an isel.
     if (addInstSelector(pm, level))
       return true;
+
+    // Expand the pseudo instructions generated in isel phase.
+    pm.add(ExpandISelPseudo.createExpandISelPseudoPass());
 
     if (!DisableRearrangementMBB.value) {
       // Before instruction selection, rearragement blocks.

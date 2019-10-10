@@ -2104,8 +2104,8 @@ public class X86TargetLowering extends TargetLowering {
       case X86GenInstrNames.CMOV_V2F64:
       case X86GenInstrNames.CMOV_V2I64: {
         BasicBlock llvmBB = mbb.getBasicBlock();
-        int insertPos = 1;
-
+        // The position to insert two created basic blocks.
+        int insertPos = mbb.getParent().getIndexOfMBB(mbb) + 1;
 
         //  thisMBB:
         //  ...
@@ -2113,28 +2113,42 @@ public class X86TargetLowering extends TargetLowering {
         //   cmpTY ccX, r1, r2
         //   bCC copy1MBB
         //   fallthrough --> copy0MBB
-        MachineBasicBlock thisMBB = mbb;
-        MachineFunction mf = thisMBB.getParent();
+        MachineFunction mf = mbb.getParent();
         MachineBasicBlock copy0MBB = mf.createMachineBasicBlock(llvmBB);
         MachineBasicBlock sinkMBB = mf.createMachineBasicBlock(llvmBB);
+        mf.insert(insertPos++, copy0MBB);
+        mf.insert(insertPos, sinkMBB);
+
+        // If the EFLAGS register isn't dead in the terminator, then claim that it's
+        // live into the sink and copy blocks.
+        if (!mi.killsRegister(X86GenRegisterNames.EFLAGS)) {
+          copy0MBB.addLiveIn(X86GenRegisterNames.EFLAGS);
+          sinkMBB.addLiveIn(X86GenRegisterNames.EFLAGS);
+        }
+
+        sinkMBB.splice(0, mbb, mi.getIndexInMBB()+1, mbb.size());
+        sinkMBB.transferSuccessorsAndUpdatePHIs(mbb);
+
+        // Add two successors for the mbb.
+        mbb.addSuccessor(sinkMBB);
+        mbb.addSuccessor(sinkMBB);
 
         int opc = X86InstrInfo.getCondBranchFromCond(mi.getOperand(3).getImm());
         buildMI(mbb, dl, tii.get(opc)).addMBB(sinkMBB);
-        mf.insert(insertPos, copy0MBB);
-        mf.insert(insertPos, sinkMBB);
 
-        mbb.transferSuccessor(mbb);
-        mbb.addSuccessor(sinkMBB);
+        //  copy0MBB:
+        //   %FalseValue = ...
+        //   # fallthrough to sinkMBB
+        copy0MBB.addSuccessor(sinkMBB);
 
-        mbb = copy0MBB;
-        mbb.addSuccessor(sinkMBB);
-
-        mbb = sinkMBB;
-        buildMI(mbb, dl, tii.get(X86GenInstrNames.PHI), mi.getOperand(0).getReg())
+        //  sinkMBB:
+        //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
+        //  ...
+        buildMI(sinkMBB, 0, dl, tii.get(X86GenInstrNames.PHI), mi.getOperand(0).getReg())
             .addReg(mi.getOperand(1).getReg()).addMBB(copy0MBB)
-            .addReg(mi.getOperand(2).getReg()).addMBB(sinkMBB);
-        mf.deleteMachineInstr(mi);
-        return mbb;
+            .addReg(mi.getOperand(2).getReg()).addMBB(mbb);
+        mi.removeFromParent();
+        return sinkMBB;
       }
       case X86GenInstrNames.FP32_TO_INT16_IN_MEM:
       case X86GenInstrNames.FP32_TO_INT32_IN_MEM:
@@ -2778,10 +2792,12 @@ public class X86TargetLowering extends TargetLowering {
     int itr = 1;
     MachineBasicBlock xmmSavedMBB = mf.createMachineBasicBlock(llvmBB);
     MachineBasicBlock endMBB = mf.createMachineBasicBlock(llvmBB);
-    mf.insert(itr, xmmSavedMBB);
+    mf.insert(itr++, xmmSavedMBB);
     mf.insert(itr, endMBB);
 
-    endMBB.transferSuccessor(mbb);
+    // remove the reminder of mbb and insert those instructions to the beginning of endMBB.
+    endMBB.splice(0, mbb, mi.getIndexInMBB()+1, mbb.size());
+    endMBB.transferSuccessorsAndUpdatePHIs(mbb);
     mbb.addSuccessor(xmmSavedMBB);
     xmmSavedMBB.addSuccessor(endMBB);
 
@@ -2801,6 +2817,9 @@ public class X86TargetLowering extends TargetLowering {
     // In the XMM save block, save all the XMM argument registers.
     for (int i = 3, e = mi.getNumOperands(); i < e; i++) {
       long offset = (i - 3) * 16 + varArgsFPOffset;
+      MachineMemOperand mmo = new MachineMemOperand(
+          PseudoSourceValue.getFixedStack(this.regSaveFrameIndex),
+          MachineMemOperand.MOStore, offset, 16/*size*/, 16/*align*/);
       buildMI(xmmSavedMBB, dl, tii.get(X86GenInstrNames.MOVAPSmr))
           .addFrameIndex(this.regSaveFrameIndex)
           .addImm(1)  // scale
@@ -2808,11 +2827,7 @@ public class X86TargetLowering extends TargetLowering {
           .addImm(offset) // disp
           .addReg(0)  // segment
           .addReg(mi.getOperand(i).getReg())
-          .addMemOperand(new MachineMemOperand(
-              PseudoSourceValue.getFixedStack(
-                  this.regSaveFrameIndex),
-              MachineMemOperand.MOStore,
-              offset, 16, 16));
+          .addMemOperand(mmo);
     }
     mf.deleteMachineInstr(mi);
     return endMBB;
