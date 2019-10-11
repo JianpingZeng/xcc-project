@@ -269,17 +269,8 @@ public class MachineBasicBlock {
   public int remove(MachineInstr miToDelete) {
     int index = insts.indexOf(miToDelete);
     insts.remove(miToDelete);
-    miToDelete.removeRegOperandsFromUseLists();
     miToDelete.setParent(null);
     return index;
-  }
-
-  public void removeAll(ArrayList<MachineInstr> miToDelete) {
-    for (MachineInstr mi : miToDelete) {
-      insts.remove(mi);
-      mi.removeRegOperandsFromUseLists();
-      mi.setParent(null);
-    }
   }
 
   public void remove(int indexToDel) {
