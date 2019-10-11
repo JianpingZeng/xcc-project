@@ -839,6 +839,17 @@ public class MachineInstr implements Cloneable {
     }
   }
 
+  /**
+   * Remove all register operands of the current machine instruction from the
+   * corresponding use list.
+   */
+  public void removeRegOperandsFromUseLists() {
+    for (MachineOperand mo : operands) {
+      if (mo.isRegister())
+        mo.removeRegOperandFromRegInfo();
+    }
+  }
+
   public MachineBasicBlock getParent() {
     return parent;
   }
