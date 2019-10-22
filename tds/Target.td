@@ -161,7 +161,6 @@ class RegisterClass<string namespace, list<ValueType> regTypes, int alignment,
 
   list<RegisterClass> SubRegClassList = [];
 
-  code MethodProtos = [{}];
   code MethodBodies = [{}];
 }
 

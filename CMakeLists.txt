@@ -103,6 +103,7 @@ message(STATUS "JDK_INCLUDES: ${JDK_INCLUDES}")
 
 set(XCC_ALL_TARGETS
     X86
+    ARM
     RISCV
 )
 

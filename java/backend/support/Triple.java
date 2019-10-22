@@ -58,6 +58,7 @@ public class Triple {
 
     x86,    // X86: i[3-9]86
     x86_64, // amd64, x86_64
+    arm, // arm
 
     InvalidArch,
   }

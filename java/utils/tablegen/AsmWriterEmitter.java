@@ -378,7 +378,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     String targetName = target.getName();
     String lowerTargetName = targetName.toLowerCase();
 
-    os.println("package backend.target.x86;");
+    os.printf("package backend.target.%s;\n", lowerTargetName);
     os.println("import backend.mc.MCAsmInfo;");
     os.println("import backend.mc.MCInst;");
     os.println("import tools.Util;");
