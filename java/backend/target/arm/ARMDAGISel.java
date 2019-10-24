@@ -33,6 +33,8 @@ import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAGISel;
 import backend.pass.FunctionPass;
+import backend.pass.Pass;
+import backend.pass.RegisterPass;
 import backend.target.TargetMachine;
 import tools.Util;
 
@@ -46,6 +48,13 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
 
   protected ARMDAGISel(ARMTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
+    try {
+      new RegisterPass("Instruction Selector based on DAG covering", "dag-isel",
+          Class.forName("backend.target.arm.ARMGenDAGISel").asSubclass(Pass.class));
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+
     tli = tm.getTargetLowering();
     subtarget = tm.getSubtarget();
   }

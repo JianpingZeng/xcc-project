@@ -17,11 +17,13 @@ package backend.passManaging;
  */
 
 import backend.pass.*;
+import backend.target.TargetOptions;
 import backend.value.Function;
 import backend.value.Module;
 import tools.Util;
 
 import static backend.passManaging.PMDataManager.PassDebuggingString.*;
+import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 
 /**
  * FPPassManager itself is a ModulePass, which manages BBPassManagers and FunctionPasses.
@@ -65,6 +67,13 @@ public final class FPPassManager extends PMDataManager implements ModulePass {
 
       initializeAnalysisImpl(fp);
       changed |= fp.runOnFunction(f);
+
+      if (TargetOptions.PrintMachineCode.value &&
+          fp.getPassInfo() != null &&
+          !fp.getPassInfo().isAnalysis()) {
+        createMachineFunctionPrinterPass(System.err,
+            String.format("# *** IR dump after %s ***", fp.getPassName())).runOnFunction(f);
+      }
 
       if (changed) {
         dumpPassInfo(fp, MODIFICATION_MSG, ON_FUNCTION_MSG, f.getName());

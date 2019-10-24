@@ -21,8 +21,10 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.debug.DebugLoc;
-import backend.support.Attribute;
 import backend.mc.MCRegisterClass;
+import backend.pass.Pass;
+import backend.pass.RegisterPass;
+import backend.support.Attribute;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
@@ -50,6 +52,13 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
   public X86DAGISel(X86TargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
+    try {
+      new RegisterPass("Instruction Selector based on DAG covering", "dag-isel",
+          Class.forName("backend.target.x86.X86GenDAGISel").asSubclass(Pass.class));
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+
     subtarget = tm.getSubtarget();
     tli = tm.getTargetLowering();
   }

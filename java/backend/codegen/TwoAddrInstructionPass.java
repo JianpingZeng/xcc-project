@@ -347,7 +347,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
     if (TargetOptions.PrintMachineCode.value) {
       PrintMachineFunctionPass printer = createMachineFunctionPrinterPass(
           System.err,
-          "# *** IR dump after 2-Addr instruction Pass ***:\n");
+          "# *** IR dump after 2-Addr instruction Pass ***");
       printer.runOnMachineFunction(mf);
     }
     return madeChange;

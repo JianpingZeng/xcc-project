@@ -92,14 +92,6 @@ public final class PassRegisterationUtility {
     new RegisterPass("Machine Module Information", "machine-module=info", MachineModuleInfo.class);
     new RegisterPass("Rearragement machine basic blocks in Function to reduce useless branch", "rearragementmbbs", RearrangementMBB.class);
 
-    // Register X86 dag isel by reflect mechanism.
-    try {
-      new RegisterPass("Instruction Selector based on DAG covering", "dag-isel",
-          Class.forName("backend.target.x86.X86GenDAGISel").asSubclass(Pass.class));
-    } catch (ClassNotFoundException e) {
-      ErrorHandling.reportFatalError("Fail to register X86GenDAGISel pass");
-    }
-
     new RegisterRegAlloc("linearscan", "Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);
     new RegisterRegAlloc("local", "Local register allocator", RegAllocLocal::createLocalRegAllocator);
     new RegisterRegAlloc("pbqp", "PBQP Register Allocator", RegAllocPBQP::createPBQPRegisterAllocator);

@@ -30,13 +30,8 @@ import tools.Util;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.support.BackendCmdOptions.DisableRearrangementMBB;
-import static backend.support.BackendCmdOptions.PrintAfterAll;
-import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
-import static backend.target.TargetOptions.PrintMachineCode;
-import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;
 
 /**
@@ -55,25 +50,6 @@ public abstract class LLVMTargetMachine extends TargetMachine {
   private void initAsmInfo(Target target, String triple) {
     asmInfo = target.createAsmInfo(triple);
     Util.assertion(asmInfo != null, "Must initialize the MCAsmInfo for AsmPrinter!");
-  }
-
-  private static void printAndVerify(PassManagerBase pm,
-                                     boolean allowDoubleDefs, String banner) {
-    if (PrintMachineCode.value || PrintAfterAll.value)
-      pm.add(createMachineFunctionPrinterPass(System.err, banner));
-
-    if (VerifyMachineCode.value)
-      pm.add(createMachineVerifierPass(allowDoubleDefs));
-  }
-
-  private static void printAndVerify(
-      PassManagerBase pm,
-      boolean allowDoubleDefs) {
-    if (PrintMachineCode.value)
-      pm.add(createMachineFunctionPrinterPass(System.err));
-
-    if (VerifyMachineCode.value)
-      pm.add(createMachineVerifierPass(allowDoubleDefs));
   }
 
   /**
@@ -106,32 +82,20 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (!DisableRearrangementMBB.value) {
       // Before instruction selection, rearragement blocks.
       pm.add(RearrangementMBB.createRearrangeemntPass());
-      printAndVerify(pm, true,
-          "# *** IR dump after RearragementMBB pass ***:\n");
     }
 
     if (addPreRegAlloc(pm, level))
       return true;
 
-    printAndVerify(pm, true,
-        "# *** IR dump after Pre-Register allocation ***:\n");
-
     // Perform register allocation to convert to a concrete x86 representation
     pm.add(BackendCmdOptions.createRegisterAllocator());
-    // Print machine code after register allocation.
-    printAndVerify(pm, false,
-        "# *** IR dump after Register Allocator ***:\n");
 
     if (addPostRegAlloc(pm, level))
-      printAndVerify(pm, false, "# *** IR dump after Post-Register allocation ***:\n");
+      return true;
 
     pm.add(LowerSubregInstructionPass.createLowerSubregPass());
-    printAndVerify(pm, false,
-        "# *** IR dump after Subregister lowering ***:\n");
 
     pm.add(createPrologEpilogEmitter());
-    printAndVerify(pm, false,
-        "# *** IR Dump After Prologue/Epilogue Insertion & Frame Finalization ***:\n");
     return false;
   }
 
@@ -142,16 +106,8 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addCommonCodeGenPasses(pm, optLevel))
       return true;
 
-    if (PrintMachineCode.value) {
-      pm.add(createMachineFunctionPrinterPass(System.err,
-          "# *** IR dump before emitting code ***:\n"));
-    }
-
-    if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value) {
-      pm.add(createMachineFunctionPrinterPass(System.err,
-          "# *** IR dump after emitting code ***:\n"));
+    if (addPreEmitPass(pm, optLevel))
       return true;
-    }
 
     MCContext ctx = new MCContext(getMCAsmInfo(), getRegisterInfo());
     MCStreamer streamer = null;

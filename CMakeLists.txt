@@ -220,19 +220,21 @@ file(GLOB_RECURSE XCC_DRIVER_SRCS ${SRC_DIR}/driver/*.java)
 # Collects targets to be excluded.
 foreach(t ${XCC_ALL_TARGETS})
     string(TOLOWER ${t} LOWER_TARGET)
-    set(EXCLUDE_TARGET "${EXCLUDE_TARGET}|${LOWER_TARGET}")
+	set(EXCLUDE_TARGET "${EXCLUDE_TARGET}|${TARGET_DIRECTORY}/${LOWER_TARGET}")
 endforeach()
 
 set(TMP_TARGET "${EXCLUDE_TARGET}")
+# replace the leading '\' with space
 string(REGEX REPLACE "^\\|" "" EXCLUDE_TARGET ${TMP_TARGET})
 
 # Remove target-specific or xcc driver related source files.
 foreach (file ${SRCS_NO_TARGET})
-    if ("${file}" MATCHES "(.*)${EXCLUDE_TARGET}(.*)")
-        #message(STATUS "Remove Item from List:${file}")
+	if ("${file}" MATCHES "(.*)${EXCLUDE_TARGET}(.*)")
+		#message(STATUS "Remove Item from List:${file}")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
     if ("${file}" MATCHES "(.*)${EXCLUDE_XCC_DRIVER}(.*)")
+		#message(STATUS "Remove Item from List:${file}")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
 endforeach()

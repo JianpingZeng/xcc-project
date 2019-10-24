@@ -50,7 +50,7 @@ public final class PhiElimination extends MachineFunctionPass {
 
     if (PrintMachineCode.value) {
       PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
-          "# *** IR dump after PHI elimination ***:\n")
+          "# *** IR dump after PHI elimination ***")
           .runOnMachineFunction(mf);
     }
     return changed;
