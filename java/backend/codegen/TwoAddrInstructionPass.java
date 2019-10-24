@@ -26,10 +26,8 @@ import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
-import backend.support.PrintMachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetOptions;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
@@ -38,7 +36,6 @@ import tools.OutRef;
 import tools.Util;
 
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
-import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetOpcodes.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
@@ -342,13 +339,6 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
           defMI.removeFromParent();
       }
       vreg = reMatRegs.findNext(vreg+1);
-    }
-
-    if (TargetOptions.PrintMachineCode.value) {
-      PrintMachineFunctionPass printer = createMachineFunctionPrinterPass(
-          System.err,
-          "# *** IR dump after 2-Addr instruction Pass ***");
-      printer.runOnMachineFunction(mf);
     }
     return madeChange;
   }

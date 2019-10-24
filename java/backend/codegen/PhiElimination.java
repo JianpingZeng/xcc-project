@@ -6,7 +6,6 @@ import backend.analysis.MachineLoopInfo;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
-import backend.support.PrintMachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetOpcodes;
 import backend.target.TargetRegisterInfo;
@@ -15,7 +14,6 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
@@ -46,12 +44,6 @@ public final class PhiElimination extends MachineFunctionPass {
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       changed |= eliminatePHINodes(mbb);
-    }
-
-    if (PrintMachineCode.value) {
-      PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
-          "# *** IR dump after PHI elimination ***")
-          .runOnMachineFunction(mf);
     }
     return changed;
   }
