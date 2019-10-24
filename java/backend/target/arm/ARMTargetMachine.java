@@ -27,42 +27,81 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.MachineCodeEmitter;
+import backend.passManaging.FunctionPassManager;
+import backend.passManaging.PassManagerBase;
 import backend.target.*;
+
+import java.io.PrintStream;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMTargetMachine extends TargetMachine {
+public class ARMTargetMachine extends LLVMTargetMachine {
+  private ARMFrameLowering frameInfo;
+  private ARMSubtarget subtarget;
+  private ARMTargetLowering tli;
+  private TargetData dataLayout;
+
   /**
    * Can only called by subclass.
    *
-   * @param target
+   * @param t
    * @param triple
    * @param cpu
    * @param features
    */
-  protected ARMTargetMachine(Target target, String triple, String cpu, String features) {
-    super(target);
+  protected ARMTargetMachine(Target t, String triple, String cpu, String features) {
+    super(t, triple);
+    subtarget = new ARMSubtarget(this, triple, cpu, features, false);
+    frameInfo = new ARMFrameLowering(this, subtarget);
+    dataLayout = new TargetData(subtarget.getDataLayout());
+    tli = new ARMTargetLowering(this);
   }
 
   @Override
   public TargetInstrInfo getInstrInfo() {
-    return null;
+    return subtarget.getInstrInfo();
   }
 
   @Override
   public TargetRegisterInfo getRegisterInfo() {
-    return null;
+    return subtarget.getRegisterInfo();
   }
 
   @Override
   public TargetFrameLowering getFrameLowering() {
-    return null;
+    return frameInfo;
   }
 
   @Override
   public TargetLowering getTargetLowering() {
-    return null;
+    return tli;
+  }
+
+  @Override
+  public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
+    return super.addInstSelector(pm, level);
+  }
+
+  @Override
+  public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return super.addPreRegAlloc(pm, level);
+  }
+
+  @Override
+  public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    return super.addPostRegAlloc(pm, level);
+  }
+
+  @Override
+  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level, MachineCodeEmitter mce) {
+    return super.addSimpleCodeEmitter(pm, level, mce);
+  }
+
+  @Override
+  public MachineCodeEmitter addELFWriter(FunctionPassManager pm, PrintStream os) {
+    return super.addELFWriter(pm, os);
   }
 }

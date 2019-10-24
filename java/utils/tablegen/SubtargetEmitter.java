@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Objects;
 
 import static utils.tablegen.Record.LessRecord;
 
@@ -453,13 +454,13 @@ public class SubtargetEmitter extends TableGenBackend {
       String value = r.getValueAsString("Value");
       String attribute = r.getValueAsString("Attribute");
 
-      if (value.equals("true") || value.equals("false")) {
+      if (Objects.equals(value, "true") || Objects.equals(value, "false")) {
         os.printf("\t\tif ((bits & %s) != 0)\n", instance);
-        os.printf("\t\t\t%s = %s;\n", attribute, value);
+        os.printf("\t\t\tsubtarget.%s = %s;\n", attribute, value);
       } else {
-        os.printf("\t\tif ((bits & %s) != 0 && %s.compareTo(%s) < 0)\n",
+        os.printf("\t\tif ((bits & %s) != 0 && subtarget.%s.compareTo(%s) < 0)\n",
             instance, attribute, value);
-        os.printf("\t\t\t%s = %s;\n", attribute, value);
+        os.printf("\t\t\tsubtarget.%s = %s;\n", attribute, value);
       }
     }
 
@@ -512,12 +513,12 @@ public class SubtargetEmitter extends TableGenBackend {
       emitSourceFileHeaderComment("Subtarget Enumeration Source Fragment", os);
       String className = targetName + "GenSubtarget";
 
-      os.printf("import backend.target.SubtargetFeatureKV;\n"
-              + "import backend.target.SubtargetFeatures;\n\n",
-          targetName.toLowerCase(), targetName);
+      os.println("import backend.target.SubtargetFeatureKV;");
+      os.println("import backend.target.SubtargetFeatures;");
+      os.println("import backend.target.TargetSubtarget;");
+      os.println();
 
-      String superClass = targetName + "Subtarget";
-      os.printf("public final class %s extends %s {\n", className, superClass);
+      os.printf("public abstract class %s extends TargetSubtarget {\n", className);
 
       enumeration(os, "FuncUnit", true);
       os.println();
@@ -535,13 +536,10 @@ public class SubtargetEmitter extends TableGenBackend {
       emitHwModeCheck(os);
 
       // Emit constructor method.
-      os.printf("public %s(%sTargetMachine tm, String tt,String cpu,\n" +
-          "                         String fs, int stackAlignOverride, boolean isIn64BitMode) {\n" +
-          "\t\tsuper(tm, tt, cpu, fs, stackAlignOverride, isIn64BitMode);\n" +
+      os.printf("\tprotected %sSubtarget subtarget;\n", targetName);
+      os.printf("\tpublic %s(String tt, String cpu, String fs) {\n" +
           "\t\tinitMCSubtargetInfo(tt, cpu, fs, featureKV, subTypeKV, null, null, null, null);\n" +
-          "\t}", className, targetName);
-
-      os.print("}");
+          "\t}\n}", className);
     }
   }
 }

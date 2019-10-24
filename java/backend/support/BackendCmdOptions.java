@@ -35,7 +35,6 @@ import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
 import static backend.support.BackendCmdOptions.AliasAnalyzerKind.*;
 import static backend.support.BackendCmdOptions.InstructionSelectorKind.DAGISel;
-import static backend.support.BackendCmdOptions.InstructionSelectorKind.MacroExpandISel;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -178,7 +177,6 @@ public class BackendCmdOptions {
    * Define an enumeration for telling user there are many selector available.
    */
   public enum InstructionSelectorKind {
-    MacroExpandISel,
     DAGISel
   }
 
@@ -187,7 +185,6 @@ public class BackendCmdOptions {
           optionName("isel"),
           desc("Instruction Selector to use: (default = dagisel)"),
           new ValueClass<>(
-              new ValueClass.Entry<>(MacroExpandISel, "macroexpandisel", "Macro expanding based selector(experimental)"),
               new ValueClass.Entry<>(DAGISel, "dagisel", "DAG covering based selector")),
           init(DAGISel));
 

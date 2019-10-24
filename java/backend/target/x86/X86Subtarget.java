@@ -19,13 +19,11 @@ package backend.target.x86;
 import backend.support.CallingConv;
 import backend.support.Triple;
 import backend.target.TargetMachine;
-import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
 import tools.CPUInfoUtility;
 import tools.Util;
 
 import static backend.target.x86.X863DNowEnum.*;
-import static backend.target.x86.X86GenSubtarget.*;
 import static backend.target.x86.X86SSEEnum.*;
 import static backend.target.x86.X86Subtarget.TargetType.*;
 
@@ -33,7 +31,7 @@ import static backend.target.x86.X86Subtarget.TargetType.*;
  * @author Jianping Zeng
  * @version 0.4
  */
-public abstract class X86Subtarget extends TargetSubtarget {
+public class X86Subtarget extends X86GenSubtarget {
   public enum PICStyle {
     /**
      * sed on i386-darwin in -fPIC mode.
@@ -164,11 +162,10 @@ public abstract class X86Subtarget extends TargetSubtarget {
   private X86TargetMachine tm;
   private Triple targetTriple;
 
-  protected X86Subtarget(X86TargetMachine tm,
-                         String tt,String cpu,
-                         String fs,
-                         int stackAlignOverride,
-                         boolean is64Bit) {
+  protected X86Subtarget(X86TargetMachine tm, String tt, String cpu,
+                         String fs, int stackAlignOverride, boolean is64Bit) {
+    super(tt, cpu, fs);
+    subtarget = this;
     this.tm = tm;
     picStyle = PICStyle.None;
     x86SSELevel = NoMMXSSE;

@@ -37,7 +37,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
                           String cpu, String fs,
                           boolean is64Bit) {
     super(t, triple);
-    subtarget = new X86GenSubtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);
+    subtarget = new X86Subtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);
     dataLayout = new TargetData(subtarget.getDataLayout());
     frameInfo = new X86FrameLowering(this, subtarget);
     tli = new X86TargetLowering(this);
@@ -152,9 +152,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
     //pm.add(createX86FastISel(this, level));
     switch (InstructionSelector.value) {
-      case MacroExpandISel:
-        Util.shouldNotReachHere("MacroExpandISel is experimental, should not be used!");
-        break;
       case DAGISel:
         pm.add(X86DAGISel.createX86DAGISel(this, level));
         break;
