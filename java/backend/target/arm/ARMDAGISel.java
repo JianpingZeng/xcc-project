@@ -30,14 +30,15 @@ package backend.target.arm;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAGISel;
+import backend.pass.FunctionPass;
 import backend.target.TargetMachine;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMDAGISel extends SelectionDAGISel {
-  protected ARMDAGISel(TargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
+public abstract class ARMDAGISel extends SelectionDAGISel {
+  protected ARMDAGISel(ARMTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
   }
 
@@ -48,5 +49,9 @@ public class ARMDAGISel extends SelectionDAGISel {
 
   protected boolean selectAddrRegImm(SDNode root, SDValue n, SDValue[] tmp) {
     return false;
+  }
+
+  public static FunctionPass createARMISelDAG(ARMTargetMachine tm, TargetMachine.CodeGenOpt level) {
+    return new ARMGenDAGISel(tm, level);
   }
 }

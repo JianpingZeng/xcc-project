@@ -34,6 +34,8 @@ import backend.target.*;
 
 import java.io.PrintStream;
 
+import static backend.target.arm.ARMDAGISel.createARMISelDAG;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
@@ -56,7 +58,7 @@ public class ARMTargetMachine extends LLVMTargetMachine {
     super(t, triple);
     subtarget = new ARMSubtarget(this, triple, cpu, features, false);
     frameInfo = new ARMFrameLowering(this, subtarget);
-    dataLayout = new TargetData(subtarget.getDataLayout());
+    dataLayout = subtarget.getDataLayout();
     tli = new ARMTargetLowering(this);
   }
 
@@ -82,7 +84,8 @@ public class ARMTargetMachine extends LLVMTargetMachine {
 
   @Override
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
-    return super.addInstSelector(pm, level);
+    pm.add(createARMISelDAG(this, level));
+    return false;
   }
 
   @Override

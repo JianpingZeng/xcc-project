@@ -27,11 +27,22 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.target.TargetData;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class ARMSubtarget extends ARMGenSubtarget {
+  public enum TargetType {
+    isELF, isDarwin
+  }
+
+  public enum TargetABI {
+    ARM_ABI_APCS,
+    ARM_ABI_AAPCS // ARM EABI
+  }
+
   protected boolean slowFPVMLx;
   protected boolean hasVFPv2;
   protected boolean hasV4TOps;
@@ -41,19 +52,35 @@ public class ARMSubtarget extends ARMGenSubtarget {
   protected int stackAlignment;
   protected boolean isThumb;
   protected ARMTargetMachine tm;
+  private TargetData datalayout;
+  private TargetType targetType;
+  private TargetABI targetABI;
 
   public ARMSubtarget(ARMTargetMachine tm, String tt, String cpu, String fs, boolean isThumb) {
     super(tt, cpu, fs);
     subtarget = this;
     this.tm = tm;
     this.isThumb = isThumb;
+    datalayout = new TargetData(subtarget.isAPCS_ABI() ?
+        "e-p:32:32-f64:32:64-i64:32:64-v128:32:128-v64:32:64-n32-S32" :
+        subtarget.isAAPCS_ABI() ?
+            "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S64" :
+            "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S32");
   }
 
   public int getStackAlignment() {
     return stackAlignment;
   }
 
-  public String getDataLayout() {
-    return null;
+  public TargetData getDataLayout() {
+    return datalayout;
+  }
+
+  public boolean isAPCS_ABI() {
+    return targetABI == TargetABI.ARM_ABI_APCS;
+  }
+
+  public boolean isAAPCS_ABI() {
+    return targetABI == TargetABI.ARM_ABI_APCS;
   }
 }
