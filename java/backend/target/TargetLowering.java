@@ -1203,20 +1203,26 @@ public abstract class TargetLowering {
     return null;
   }
 
-  public abstract SDValue lowerFormalArguments(SDValue root,
-                                               CallingConv callingConv,
-                                               boolean varArg,
-                                               ArrayList<InputArg> ins,
-                                               SelectionDAG dag,
-                                               ArrayList<SDValue> inVals);
+  public SDValue lowerFormalArguments(SDValue chain,
+                                      CallingConv callingConv,
+                                      boolean varArg,
+                                      ArrayList<InputArg> ins,
+                                      SelectionDAG dag,
+                                      ArrayList<SDValue> inVals) {
+    Util.shouldNotReachHere("Target doesn't implement the function lowerFormalArguments");
+    return null;
+  }
 
-  public abstract SDValue lowerMemArgument(SDValue chain,
+  public SDValue lowerMemArgument(SDValue chain,
                                            CallingConv cc,
                                            ArrayList<InputArg> argInfo,
                                            SelectionDAG dag,
                                            CCValAssign va,
                                            MachineFrameInfo mfi,
-                                           int i);
+                                           int i) {
+    Util.shouldNotReachHere("Target doesn't implement the function lowerMemArgument");
+    return null;
+  }
 
   public void computeMaskedBitsForTargetNode(SDValue op,
                                              APInt mask,
@@ -1245,11 +1251,14 @@ public abstract class TargetLowering {
     return 1;
   }
 
-  public abstract SDValue lowerReturn(SDValue chain,
+  public SDValue lowerReturn(SDValue chain,
                                       CallingConv cc,
                                       boolean isVarArg,
                                       ArrayList<OutputArg> outs,
-                                      SelectionDAG dag);
+                                      SelectionDAG dag) {
+    Util.shouldNotReachHere("Target doesn't implement the function lowerReturn");
+    return null;
+  }
 
   public Pair<SDValue, SDValue> lowerCallTo(LLVMContext context,
                                             SDValue chain,
@@ -1400,10 +1409,13 @@ public abstract class TargetLowering {
     return false;
   }
 
-  public abstract SDValue lowerCall(SDValue chain, SDValue callee,
-                                    CallingConv cc, boolean isVarArg, boolean isTailCall,
-                                    ArrayList<OutputArg> outs, ArrayList<InputArg> ins,
-                                    SelectionDAG dag, ArrayList<SDValue> inVals);
+  public SDValue lowerCall(SDValue chain, SDValue callee,
+                           CallingConv cc, boolean isVarArg, boolean isTailCall,
+                           ArrayList<OutputArg> outs, ArrayList<InputArg> ins,
+                           SelectionDAG dag, ArrayList<SDValue> inVals) {
+    Util.shouldNotReachHere("Target doesn't implement the function lowerCall");
+    return null;
+  }
 
   public boolean isTruncateFree(Type ty1, Type ty2) {
     return false;
@@ -1678,6 +1690,10 @@ public abstract class TargetLowering {
 
   public CondCode getCmpLibCallCC(RTLIB lc) {
     return cmpLibCallCCs[lc.ordinal()];
+  }
+
+  public void setCmpLibCallCC(RTLIB lc, CondCode cc) {
+    cmpLibCallCCs[lc.ordinal()] = cc;
   }
 
   public String getLibCallName(RTLIB lc) {
@@ -2761,7 +2777,7 @@ public abstract class TargetLowering {
   }
 
   public MCExpr getPICJumpTableRelocBaseExpr(MachineFunction mf, int jti, MCSymbol.MCContext ctx) {
-    return MCSymbolRefExpr.create(mf.getJTISymbol(jti, ctx, false), ctx);
+    return MCSymbolRefExpr.create(mf.getJTISymbol(jti, ctx, false));
   }
 
   public MCExpr lowerJumpTableEntry(MachineJumpTableInfo jumpTable,

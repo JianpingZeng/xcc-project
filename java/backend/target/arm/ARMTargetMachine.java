@@ -44,7 +44,6 @@ public class ARMTargetMachine extends LLVMTargetMachine {
   private ARMFrameLowering frameInfo;
   private ARMSubtarget subtarget;
   private ARMTargetLowering tli;
-  private TargetData dataLayout;
 
   /**
    * Can only called by subclass.
@@ -58,28 +57,37 @@ public class ARMTargetMachine extends LLVMTargetMachine {
     super(t, triple);
     subtarget = new ARMSubtarget(this, triple, cpu, features, false);
     frameInfo = new ARMFrameLowering(this, subtarget);
-    dataLayout = subtarget.getDataLayout();
     tli = new ARMTargetLowering(this);
   }
 
   @Override
-  public TargetInstrInfo getInstrInfo() {
+  public TargetData getTargetData() {
+    return subtarget.getDataLayout();
+  }
+
+  @Override
+  public ARMInstrInfo getInstrInfo() {
     return subtarget.getInstrInfo();
   }
 
   @Override
-  public TargetRegisterInfo getRegisterInfo() {
+  public ARMRegisterInfo getRegisterInfo() {
     return subtarget.getRegisterInfo();
   }
 
   @Override
-  public TargetFrameLowering getFrameLowering() {
+  public ARMFrameLowering getFrameLowering() {
     return frameInfo;
   }
 
   @Override
-  public TargetLowering getTargetLowering() {
+  public ARMTargetLowering getTargetLowering() {
     return tli;
+  }
+
+  @Override
+  public ARMSubtarget getSubtarget() {
+    return subtarget;
   }
 
   @Override
@@ -99,8 +107,8 @@ public class ARMTargetMachine extends LLVMTargetMachine {
   }
 
   @Override
-  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level, MachineCodeEmitter mce) {
-    return super.addSimpleCodeEmitter(pm, level, mce);
+  public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level, MachineCodeEmitter mce) {
+    return super.addCodeEmitter(pm, level, mce);
   }
 
   @Override

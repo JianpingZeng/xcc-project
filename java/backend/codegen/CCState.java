@@ -34,6 +34,14 @@ import java.util.ArrayList;
  * @version 0.4
  */
 public class CCState {
+  /**
+   * This enum tracks whether calling convention lowering is in
+   * the context of prologue or call generation. Not all backends make use of
+   * this information.
+   */
+  public enum ParmContext{ Unknown, Prologue, Call }
+
+
   private CallingConv callingConv;
   private boolean isVarArg;
   private TargetMachine tm;
@@ -43,6 +51,8 @@ public class CCState {
   private int stackOffset;
   private int[] usedRegs;
   private LLVMContext context;
+
+  protected ParmContext callOrPrologue;
 
   public CCState(CallingConv cc,
                  boolean isVarArg,
@@ -57,6 +67,7 @@ public class CCState {
     stackOffset = 0;
     usedRegs = new int[(tri.getNumRegs() + 31) / 32];
     context = ctx;
+    callOrPrologue = ParmContext.Unknown;
   }
 
   public void addLoc(CCValAssign V) {

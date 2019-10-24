@@ -27,17 +27,100 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCInstrDesc;
+import backend.codegen.MachineBasicBlock;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineInstr;
+import backend.codegen.MachineOperand;
+import backend.debug.DebugLoc;
+import backend.mc.MCRegisterClass;
+import backend.target.TargetInstrInfo;
+import gnu.trove.list.array.TIntArrayList;
+import tools.OutRef;
+import tools.Util;
+
+import java.util.ArrayList;
+import java.util.Objects;
+
+import static backend.codegen.MachineInstrBuilder.buildMI;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMInstrInfo {
-  public ARMInstrInfo(ARMTargetMachine tm) {
+public abstract class ARMInstrInfo  extends TargetInstrInfo {
+  protected ARMInstrInfo(ARMTargetMachine tm) {
+    super(ARMGenInstrNames.ADJCALLSTACKDOWN, ARMGenInstrNames.ADJCALLSTACKUP);
+  }
+
+  public static TargetInstrInfo createARMInstrInfo(ARMTargetMachine tm) {
+    return new ARMGenInstrInfo(tm);
+  }
+
+  @Override
+  public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg, int subIdx, MachineInstr origin) {
 
   }
 
-  static void initMCInstrInfo(MCInstrDesc[] armInsts) {
+  @Override
+  public MachineInstr commuteInstruction(MachineInstr mi, boolean newMI) {
+    return null;
+  }
+
+  @Override
+  public boolean findCommutedOpIndices(MachineInstr mi, OutRef<Integer> srcOpIdx1, OutRef<Integer> srcOpIdx2) {
+    return false;
+  }
+
+  @Override
+  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, int frameIndex) {
+    return null;
+  }
+
+  @Override
+  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, MachineInstr loadMI) {
+    return null;
+  }
+
+  @Override
+  public void insertNoop(MachineBasicBlock mbb, int pos) {
+
+  }
+
+  @Override
+  public boolean isUnpredicatedTerminator(MachineInstr mi) {
+    return false;
+  }
+
+  @Override
+  public boolean predicateInstruction(MachineInstr mi, ArrayList<MachineOperand> pred) {
+    return false;
+  }
+
+  @Override
+  public boolean isDeadInstruction(MachineInstr mi) {
+    return false;
+  }
+
+  @Override
+  public int getFunctionSizeInBytes(MachineFunction mf) {
+    return 0;
+  }
+
+  @Override
+  public boolean copyRegToReg(MachineBasicBlock mbb,
+                              int insertPos,
+                              int dstReg,
+                              int srcReg,
+                              MCRegisterClass dstRC,
+                              MCRegisterClass srcRC) {
+    DebugLoc dl = DebugLoc.getUnknownLoc();
+    if (insertPos != mbb.size())
+      dl = mbb.getInstAt(insertPos).getDebugLoc();
+
+    // Determine if DstRC and srcRC have a common superclass in common.
+    Util.assertion(Objects.equals(srcRC, dstRC) && dstRC.equals(ARMGenRegisterInfo.IntRegsRegisterClass));
+    int opc = ARMGenInstrNames.movrr;
+    buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+    return true;
   }
 }

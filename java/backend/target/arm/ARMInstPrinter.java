@@ -27,9 +27,9 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCAsmInfo;
-import backend.mc.MCInst;
-import backend.mc.MCInstPrinter;
+import backend.mc.*;
+import tools.OutRef;
+import tools.Util;
 
 import java.io.PrintStream;
 
@@ -37,24 +37,44 @@ import java.io.PrintStream;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMInstPrinter extends MCInstPrinter {
+public abstract class ARMInstPrinter extends MCInstPrinter {
   public ARMInstPrinter(PrintStream os, MCAsmInfo mai) {
     super(os, mai);
   }
 
   public static MCInstPrinter createARMInstPrinter(PrintStream os, MCAsmInfo mai) {
-    return new ARMInstPrinter(os, mai);
+    return new ARMGenInstPrinter(os, mai);
   }
 
-  @Override
-  public void printInst(MCInst inst) {
+  public abstract String getRegisterName(int regNo);
 
+  public abstract String getInstructionName(int opc);
+
+  protected void printOperand(MCInst mi, int opIdx) {
+    MCOperand op = mi.getOperand(opIdx);
+    if (op.isReg())
+      os.printf("%s", getRegisterName(op.getReg()));
+    else if (op.isImm()) {
+      os.printf("#%d", op.getImm());
+      if (commentStream != null && (op.getImm() > 255 || op.getImm() < -256))
+        commentStream.printf("imm = 0x%%%x\n", op.getImm());
+    } else {
+      Util.assertion(op.isExpr(), "unknown operand kind in printOperand");
+      MCConstantExpr branchTarget = op.getExpr() instanceof MCConstantExpr ?
+          (MCConstantExpr) op.getExpr() : null;
+      OutRef<Long> address = new OutRef<>(0L);
+      if (branchTarget != null && branchTarget.evaluateAsAbsolute(address)) {
+        os.printf("0x%x", address.get());
+      }
+      else {
+        op.getExpr().print(os);
+      }
+    }
   }
 
-
-  protected void printOperand(MCInst mi, int i) {
-  }
-
-  protected void printMemRegImm(MCInst mi, int i) {
+  protected void printMemRegImm(MCInst mi, int opIdx) {
+    printOperand(mi, opIdx+1);
+    os.print(',');
+    printOperand(mi, opIdx);
   }
 }

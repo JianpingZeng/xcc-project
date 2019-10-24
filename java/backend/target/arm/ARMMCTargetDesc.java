@@ -27,27 +27,17 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCAsmInfo;
+import tools.Util;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMELFMCAsmInfo extends MCAsmInfo {
-  public ARMELFMCAsmInfo() {
-    // ".comm align is in bytes but .align is pow-2."
-    AlignmentIsInBytes = false;
-
-    Data64bitsDirective = null;
-    CommentString = "@";
-    PrivateGlobalPrefix = ".L";
-    Code16Directive = ".code\t16";
-    Code32Directive = ".code\t32";
-    WeakDefDirective = "\t.weak\t";
-    HasLEB128 = true;
-    SupportsDebugInformation = true;
-
-    // Exception handling.
-    ExceptionsType = ExceptionHandlingType.ARM;
+public class ARMMCTargetDesc {
+  public static String parseARMTriple(String tt) {
+    // Set the boolean corresponding to the current target triple, or the default
+    // if one cannot be determined, to true.
+    Util.shouldNotReachHere();
+    return "";
   }
 }

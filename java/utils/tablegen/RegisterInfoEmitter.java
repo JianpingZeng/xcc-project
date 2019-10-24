@@ -545,33 +545,33 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     if (SuperregHashTableSize != 0) {
       //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
 
-      os.printf("\tpublic final static int[] SuperregHashTable = {\n");
+      os.println("\tpublic final static int[] SuperregHashTable = {");
       for (int i = 0; i < SuperregHashTableSize - 1; ++i) {
         // Insert spaces for nice formatting.
-        os.printf("\t\t");
+        os.print("\t\t");
 
         if (SuperregHashTable[2 * i] != ~0) {
-          os.printf(regs.get(SuperregHashTable[2 * i]).theDef.getName() + ", "
-              + regs.get(SuperregHashTable[2 * i + 1]).theDef.getName() + ", \n");
+          os.println(regs.get(SuperregHashTable[2 * i]).theDef.getName() + ", "
+              + regs.get(SuperregHashTable[2 * i + 1]).theDef.getName() + ",");
         } else {
-          os.printf("NoRegister,  NoRegister,\n");
+          os.println("NoRegister,  NoRegister,");
         }
       }
 
       int Idx = SuperregHashTableSize * 2 - 2;
       if (SuperregHashTable[Idx] != ~0) {
-        os.printf("\t\t");
-        os.printf(regs.get(SuperregHashTable[Idx]).theDef.getName() + ", "
-            + regs.get(SuperregHashTable[Idx + 1]).theDef.getName() + " };\n");
+        os.print("\t\t");
+        os.println(regs.get(SuperregHashTable[Idx]).theDef.getName() + ", "
+            + regs.get(SuperregHashTable[Idx + 1]).theDef.getName());
       } else {
-        os.printf("\t\tNoRegister,  NoRegister\n");
+        os.println("\t\tNoRegister,  NoRegister");
       }
-      os.printf("\t};\n");
+      os.println("\t};");
 
       os.printf("\tpublic static final int SuperregHashTableSize = %d;\n", SuperregHashTableSize);
     } else {
-      os.printf("\tpublic static final int[] SuperregHashTable = { ~0, ~0 };\n"
-          + "\tpublic static final int SuperregHashTableSize = 1;\n");
+      os.println("\tpublic static final int[] SuperregHashTable = { ~0, ~0 };\n"
+          + "\tpublic static final int SuperregHashTableSize = 1;");
     }
 
     // Print the AliasHashTable, a simple quadratically probed
@@ -639,7 +639,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       int Idx = AliasesHashTableSize * 2 - 2;
       if (AliasesHashTable[Idx] != ~0) {
         os.printf("\t\t" + regs.get(AliasesHashTable[Idx]).theDef.getName() + ", "
-            + regs.get(AliasesHashTable[Idx + 1]).theDef.getName() + " };\n");
+            + regs.get(AliasesHashTable[Idx + 1]).theDef.getName() + "\n");
       } else {
         os.printf("\t\tNoRegister,  NoRegister,\n");
       }

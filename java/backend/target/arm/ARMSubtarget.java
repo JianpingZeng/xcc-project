@@ -55,17 +55,55 @@ public class ARMSubtarget extends ARMGenSubtarget {
   private TargetData datalayout;
   private TargetType targetType;
   private TargetABI targetABI;
+  private String cpuString;
+  private String targetTriple;
+  private boolean useThumbBacktraces;
+  private boolean isR9Reserved;
 
   public ARMSubtarget(ARMTargetMachine tm, String tt, String cpu, String fs, boolean isThumb) {
     super(tt, cpu, fs);
     subtarget = this;
     this.tm = tm;
     this.isThumb = isThumb;
+    stackAlignment = 4;
     datalayout = new TargetData(subtarget.isAPCS_ABI() ?
         "e-p:32:32-f64:32:64-i64:32:64-v128:32:128-v64:32:64-n32-S32" :
         subtarget.isAAPCS_ABI() ?
             "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S64" :
             "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S32");
+    targetType = TargetType.isELF;
+    cpuString = cpu;
+    // the abi default to ARM_ABI_APCS
+    targetABI = TargetABI.ARM_ABI_APCS;
+    instrInfo = ARMInstrInfo.createARMInstrInfo(tm);
+    regInfo = ARMRegisterInfo.createARMRegisterInfo(tm, getHwMode());
+
+    if (cpuString == null || cpuString.isEmpty())
+      cpuString = "generic";
+
+    // TODO
+    // Insert the architecture feature derived from the target triple into the
+    // feature string. This is important for setting features that are implied
+    // based on the architecture version.
+
+    // parse subtarget features.
+    parseSubtargetFeatures(fs, cpuString);
+
+    if (tt.length() > 5) {
+      if (tt.contains("-darwin"))
+        targetType = TargetType.isDarwin;
+    }
+
+    if (tt.contains("eabi"))
+      targetABI = TargetABI.ARM_ABI_AAPCS;
+
+    if (isAAPCS_ABI())
+      stackAlignment = 8;
+
+    if (isTargetDarwin()) {
+      useThumbBacktraces = true;
+      isR9Reserved = true;
+    }
   }
 
   public int getStackAlignment() {
@@ -83,4 +121,21 @@ public class ARMSubtarget extends ARMGenSubtarget {
   public boolean isAAPCS_ABI() {
     return targetABI == TargetABI.ARM_ABI_APCS;
   }
+
+  @Override
+  public ARMInstrInfo getInstrInfo() {
+    return (ARMInstrInfo) super.getInstrInfo();
+  }
+
+  @Override
+  public ARMRegisterInfo getRegisterInfo() {
+    return (ARMRegisterInfo)super.getRegisterInfo();
+  }
+
+  public boolean isThumb() { return isThumb; }
+  public boolean hasV4TOps() { return hasV4TOps; }
+  public boolean hasV5TOps() { return hasV5TOps; }
+  public boolean hasV5TEOps() { return hasV5TEOps; }
+  public boolean hasV6Ops() { return hasV6Ops; }
+  public boolean hasVFPV2() { return hasVFPv2; }
 }

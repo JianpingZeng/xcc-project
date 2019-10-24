@@ -242,7 +242,6 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
   @Override
   public SDNode select(SDNode node) {
-    // TODO 11/19/2018
     EVT nvt = node.getValueType(0);
     int opc, mopc;
     int opcode = node.getOpcode();

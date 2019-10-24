@@ -31,12 +31,19 @@
 //===----------------------------------------------------------------------===//
 
 // Registers are identified with 4-bit ID numbers.
-class ARMReg<bits<4> num, string n> : Register<n> {
+class ARMReg<bits<4> num, string n, list<Register> subregs = []> : Register<n> {
   field bits<4> Num;
   let Namespace = "ARM";
+  let SubRegs = subregs;
 }
 
  // Integer registers
+class ARMFReg<bits<5> num, string n> : Register<n> {
+  field bits<5> Num;
+  let Namespace = "ARM";
+}
+
+// Integer registers
 def R0  : ARMReg< 0, "r0">,  DwarfRegNum<[0]>;
 def R1  : ARMReg< 1, "r1">,  DwarfRegNum<[1]>;
 def R2  : ARMReg< 2, "r2">,  DwarfRegNum<[2]>;
@@ -50,38 +57,85 @@ def R9  : ARMReg< 9, "r9">,  DwarfRegNum<[9]>;
 def R10 : ARMReg<10, "r10">, DwarfRegNum<[10]>;
 def R11 : ARMReg<11, "r11">, DwarfRegNum<[11]>;
 def R12 : ARMReg<12, "r12">, DwarfRegNum<[12]>;
-def R13 : ARMReg<13, "R13">, DwarfRegNum<[13]>;
-def R14 : ARMReg<14, "R14">, DwarfRegNum<[14]>;
-def R15 : ARMReg<15, "R15">, DwarfRegNum<[15]>;
+def SP  : ARMReg<13, "sp">,  DwarfRegNum<[13]>;
+def LR  : ARMReg<14, "lr">,  DwarfRegNum<[14]>;
+def PC  : ARMReg<15, "pc">,  DwarfRegNum<[15]>;
+
+// Float registers
+def S0  : ARMFReg< 0, "s0">;  def S1  : ARMFReg< 1, "s1">;
+def S2  : ARMFReg< 2, "s2">;  def S3  : ARMFReg< 3, "s3">;
+def S4  : ARMFReg< 4, "s4">;  def S5  : ARMFReg< 5, "s5">;
+def S6  : ARMFReg< 6, "s6">;  def S7  : ARMFReg< 7, "s7">;
+def S8  : ARMFReg< 8, "s8">;  def S9  : ARMFReg< 9, "s9">;
+def S10 : ARMFReg<10, "s10">; def S11 : ARMFReg<11, "s11">;
+def S12 : ARMFReg<12, "s12">; def S13 : ARMFReg<13, "s13">;
+def S14 : ARMFReg<14, "s14">; def S15 : ARMFReg<15, "s15">;
+def S16 : ARMFReg<16, "s16">; def S17 : ARMFReg<17, "s17">;
+def S18 : ARMFReg<18, "s18">; def S19 : ARMFReg<19, "s19">;
+def S20 : ARMFReg<20, "s20">; def S21 : ARMFReg<21, "s21">;
+def S22 : ARMFReg<22, "s22">; def S23 : ARMFReg<23, "s23">;
+def S24 : ARMFReg<24, "s24">; def S25 : ARMFReg<25, "s25">;
+def S26 : ARMFReg<26, "s26">; def S27 : ARMFReg<27, "s27">;
+def S28 : ARMFReg<28, "s28">; def S29 : ARMFReg<29, "s29">;
+def S30 : ARMFReg<30, "s30">; def S31 : ARMFReg<31, "s31">;
+
+// Aliases of the F* registers used to hold 64-bit fp values (doubles)
+def D0  : ARMReg< 0,  "d0", [S0,   S1]>;
+def D1  : ARMReg< 1,  "d1", [S2,   S3]>;
+def D2  : ARMReg< 2,  "d2", [S4,   S5]>;
+def D3  : ARMReg< 3,  "d3", [S6,   S7]>;
+def D4  : ARMReg< 4,  "d4", [S8,   S9]>;
+def D5  : ARMReg< 5,  "d5", [S10, S11]>;
+def D6  : ARMReg< 6,  "d6", [S12, S13]>;
+def D7  : ARMReg< 7,  "d7", [S14, S15]>;
+def D8  : ARMReg< 8,  "d8", [S16, S17]>;
+def D9  : ARMReg< 9,  "d9", [S18, S19]>;
+def D10 : ARMReg<10, "d10", [S20, S21]>;
+def D11 : ARMReg<11, "d11", [S22, S23]>;
+def D12 : ARMReg<12, "d12", [S24, S25]>;
+def D13 : ARMReg<13, "d13", [S26, S27]>;
+def D14 : ARMReg<14, "d14", [S28, S29]>;
+def D15 : ARMReg<15, "d15", [S30, S31]>;
+
+// Current Program Status Register.
+def CPSR    : ARMReg<0, "cpsr">;
+def APSR    : ARMReg<1, "apsr">;
+def SPSR    : ARMReg<2, "spsr">;
+def FPSCR   : ARMReg<3, "fpscr">;
+def ITSTATE : ARMReg<4, "itstate">;
+
+// Special Registers - only available in privileged mode.
+def FPSID   : ARMReg<0, "fpsid">;
+def FPEXC   : ARMReg<8, "fpexc">;
 
  // Register classes.
  //
  // FIXME: the register order should be defined in terms of the preferred
  // allocation order...
  //
- def IntRegs : RegisterClass<"ARM", [i32], 32, [R0, R1, R2, R3, R4, R5, R6,
- 	                                            R7, R8, R9, R10, R11, R12,
-                                                R13, R14, R15]> {
-  let MethodBodies = [{
-    // r15 == Program Counter
-    // r14 == Link Register
-    // r13 == Stack Pointer
-    // r12 == ip (scratch)
-    // r11 == Frame Pointer
-    // r10 == Stack Limit
-   private final int[] ARM_GPR =
-   {
-     R0, R1, R2, R3,
-     R12, R14,
-     R4, R5, R6, R7,
-     R8, R9, R10,
-     R11
-    };
+def IntRegs : RegisterClass<"ARM", [i32], 32, [R0, R1, R2, R3, R4, R5, R6,
+                                               R7, R8, R9, R10, R11, R12,
+                                               SP, LR, PC]> {
+ let MethodBodies = [{
+   // r15 == Program Counter
+   // r14 == Link Register
+   // r13 == Stack Pointer
+   // r12 == ip (scratch)
+   // r11 == Frame Pointer
+   // r10 == Stack Limit
+  private final int[] ARM_GPR =
+  {
+    R0, R1, R2, R3,
+    R12, LR,
+    R4, R5, R6, R7,
+    R8, R9, R10,
+    R11
+  };
 
-    @Override
-    public int[] getAllocableRegs(MachineFunction mf)
-    {
-        return ARM_GPR;
-    }
-  }];
- }
+   @Override
+   public int[] getAllocableRegs(MachineFunction mf)
+   {
+       return ARM_GPR;
+   }
+ }];
+}

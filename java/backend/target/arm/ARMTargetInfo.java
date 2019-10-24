@@ -56,8 +56,9 @@ public class ARMTargetInfo {
 
   private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
   {
-    Triple theTriple = new Triple(triple);
-    return new ARMELFMCAsmInfo(theTriple);
+    //Triple theTriple = new Triple(triple);
+    // only arm on ELF target.
+    return new ARMELFMCAsmInfo();
   };
 
   private static Target.AsmPrinterCtor createARMAsmPrinter = (os, tm, ctx, streamer, mai) -> {

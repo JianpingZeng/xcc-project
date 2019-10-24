@@ -27,27 +27,42 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCAsmInfo;
+import backend.codegen.TargetLoweringObjectFileELF;
+import backend.mc.MCSection;
+import backend.mc.MCSectionELF;
+import backend.mc.MCSymbol;
+import backend.target.SectionKind;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMELFMCAsmInfo extends MCAsmInfo {
-  public ARMELFMCAsmInfo() {
-    // ".comm align is in bytes but .align is pow-2."
-    AlignmentIsInBytes = false;
-
-    Data64bitsDirective = null;
-    CommentString = "@";
-    PrivateGlobalPrefix = ".L";
-    Code16Directive = ".code\t16";
-    Code32Directive = ".code\t32";
-    WeakDefDirective = "\t.weak\t";
-    HasLEB128 = true;
-    SupportsDebugInformation = true;
-
-    // Exception handling.
-    ExceptionsType = ExceptionHandlingType.ARM;
+public class ARMELFTargetObjectFile extends TargetLoweringObjectFileELF {
+  private MCSection attributeSection;
+  public ARMELFTargetObjectFile() {
+    super();
+    attributeSection = null;
   }
+
+  public void initialize(MCSymbol.MCContext ctx, ARMTargetMachine tm) {
+    super.initialize(ctx, tm);
+    if (tm.getSubtarget().isAAPCS_ABI()) {
+      StaticCtorSection = getContext().getELFSection(".init_array",
+          MCSectionELF.SHT_INIT_ARRAY,
+          MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
+          SectionKind.getDataRel());
+
+      StaticDtorSection = getContext().getELFSection(".fnit_array",
+          MCSectionELF.SHT_FINI_ARRAY,
+          MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
+          SectionKind.getDataRel());
+      LSDASection = null;
+    }
+    attributeSection = getContext().getELFSection(".ARM.attributes",
+        MCSectionELF.SHT_ARM_ATTRIBUTES,
+        0,
+        SectionKind.getMetadata());
+  }
+
+  public MCSection getAttributeSection() { return attributeSection; }
 }

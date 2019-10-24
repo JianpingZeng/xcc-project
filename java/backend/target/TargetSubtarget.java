@@ -67,7 +67,7 @@ public abstract class TargetSubtarget extends MCSubtargetInfo {
     return instrInfo;
   }
 
-  public abstract String parseSubtargetFeatures(String fs, String cpu);
+  public abstract void parseSubtargetFeatures(String fs, String cpu);
 
   public boolean is64Bit() {
     return false;

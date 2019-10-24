@@ -44,58 +44,107 @@
  //register plus scaled register
  //def raddr  : ComplexPattern<iPTR, 2, "SelectAddrRegReg", []>;
 
- //===----------------------------------------------------------------------===//
- // Instructions
- //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Instructions
+//===----------------------------------------------------------------------===//
 
- class InstARM<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction {
-   let Namespace = "ARM";
-   dag OutOperandList = outs;
-   dag InOperandList = ins;
-   let AsmString   = asmstr;
-   let Pattern = pattern;
- }
+class InstARM<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction {
+  let Namespace = "ARM";
+  dag OutOperandList = outs;
+  dag InOperandList = ins;
+  let AsmString   = asmstr;
+  let Pattern = pattern;
+}
 
- def SDT_ARMCallSeq : SDTypeProfile<0, 1, [ SDTCisVT<0, i32> ]>;
- def callseq_start  : SDNode<"ISD.CALLSEQ_START", SDT_ARMCallSeq, [SDNPHasChain]>;
- def callseq_end    : SDNode<"ISD.CALLSEQ_END",   SDT_ARMCallSeq, [SDNPHasChain]>;
+def SDT_ARMCallSeq : SDTypeProfile<0, 1, [ SDTCisVT<0, i32> ]>;
+def callseq_start  : SDNode<"ISD.CALLSEQ_START", SDT_ARMCallSeq, [SDNPHasChain]>;
+def callseq_end    : SDNode<"ISD.CALLSEQ_END",   SDT_ARMCallSeq, [SDNPHasChain]>;
 
- def SDT_ARMcall    : SDTypeProfile<0, -1, [SDTCisInt<0>]>;
- def ARMcall        : SDNode<"ARMISD.CALL", SDT_ARMcall,
-                            [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+def SDT_ARMcall    : SDTypeProfile<0, -1, [SDTCisInt<0>]>;
+def ARMcall        : SDNode<"ARMISD.CALL", SDT_ARMcall,
+                           [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
 
- def ADJCALLSTACKUP : InstARM<(outs), (ins i32imm:$amt),
-                             "@ADJCALLSTACKUP $amt",
-                             [(callseq_end imm:$amt)]>;
+def ARMretflag     : SDNode<"ARMISD.RET_FLAG", SDTNone,
+                           [SDNPHasChain, SDNPOptInFlag]>;
 
- def ADJCALLSTACKDOWN : InstARM<(outs), (ins i32imm:$amt),
-                                "@ADJCALLSTACKDOWN $amt",
-                                [(callseq_start imm:$amt)]>;
 
- let isReturn = 1 in {
-   def bx: InstARM<(outs), (ins IntRegs:$dst), "bx $dst", [(brind IntRegs:$dst)]>;
- }
+//===----------------------------------------------------------------------===//
+// ARM Instruction Predicate Definitions.
+//
+def HasV4T           : Predicate<"subtarget.hasV4TOps()">;
+def NoV4T            : Predicate<"!subtarget.hasV4TOps()">;
+def HasV5T           : Predicate<"subtarget.hasV5TOps()">;
+def HasV5TE          : Predicate<"subtarget.hasV5TEOps()">;
+def HasV6            : Predicate<"subtarget.hasV6Ops()">;
+def NoV6             : Predicate<"!subtarget.hasV6Ops()">;
+def NoVFP            : Predicate<"!subtarget.hasVFP2()">;
+def HasVFP2          : Predicate<"subtarget.hasVFP2()">;
+def IsThumb          : Predicate<"subtarget.isThumb()">;
+def IsARM            : Predicate<"!subtarget.isThumb()">;
+def IsDarwin         : Predicate<"subtarget.isTargetDarwin()">;
+def IsNotDarwin      : Predicate<"!subtarget.isTargetDarwin()">;
 
- def bl: InstARM<(outs), (ins i32imm:$func, variable_ops), "bl $func", [(ARMcall tglobaladdr:$func)]>;
 
- def ldr   : InstARM<(outs IntRegs:$dst), (ins memri:$addr),
-                      "ldr $dst, [$addr]",
-                      [(set IntRegs:$dst, (load iaddr:$addr))]>;
+def ADJCALLSTACKUP : InstARM<(outs), (ins i32imm:$amt),
+                            "@ADJCALLSTACKUP $amt",
+                            [(callseq_end imm:$amt)]>;
 
- def str  : InstARM<(outs), (ins IntRegs:$src, IntRegs:$addr),
-                     "str $src, [$addr]",
-                     [(store IntRegs:$src, IntRegs:$addr)]>;
+def ADJCALLSTACKDOWN : InstARM<(outs), (ins i32imm:$amt),
+                               "@ADJCALLSTACKDOWN $amt",
+                               [(callseq_start imm:$amt)]>;
 
- def movrr   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$src),
-                        "mov $dst, $src", []>;
+let isReturn = 1 in {
+  def bx: InstARM<(outs), (ins IntRegs:$dst), "bx $dst", [(brind IntRegs:$dst)]>;
+}
 
- def movri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$src),
-                        "mov $dst, $src", [(set IntRegs:$dst, imm:$src)]>;
+def bl: InstARM<(outs), (ins i32imm:$func, variable_ops), "bl $func", [(ARMcall tglobaladdr:$func)]>;
 
- def addri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, i32imm:$b),
-                        "add $dst, $a, $b",
- 		       [(set IntRegs:$dst, (add IntRegs:$a, imm:$b))]>;
+def ldr   : InstARM<(outs IntRegs:$dst), (ins memri:$addr),
+                     "ldr $dst, [$addr]",
+                     [(set IntRegs:$dst, (load iaddr:$addr))]>;
 
- def subri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, i32imm:$b),
-                        "sub $dst, $a, $b",
- 		       [(set IntRegs:$dst, (sub IntRegs:$a, imm:$b))]>;
+def str  : InstARM<(outs), (ins IntRegs:$src, IntRegs:$addr),
+                    "str $src, [$addr]",
+                    [(store IntRegs:$src, IntRegs:$addr)]>;
+
+def movrr   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$src),
+                       "mov $dst, $src", []>;
+
+def movri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$src),
+                       "mov $dst, $src", [(set IntRegs:$dst, imm:$src)]>;
+
+def addri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, i32imm:$b),
+                       "add $dst, $a, $b",
+                       [(set IntRegs:$dst, (add IntRegs:$a, imm:$b))]>;
+
+def addrr   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, IntRegs:$b),
+                       "add $dst, $a, $b",
+                       [(set IntRegs:$dst, (add IntRegs:$a, IntRegs:$b))]>;
+
+def subri   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, i32imm:$b),
+                       "sub $dst, $a, $b",
+                       [(set IntRegs:$dst, (sub IntRegs:$a, imm:$b))]>;
+
+def subrr   : InstARM<(outs IntRegs:$dst), (ins IntRegs:$a, IntRegs:$b),
+                       "sub $dst, $a, $b",
+                       [(set IntRegs:$dst, (sub IntRegs:$a, IntRegs:$b))]>;
+
+
+//===----------------------------------------------------------------------===//
+//  Control Flow Instructions.
+//
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
+  // ARMV4T and above
+  def BX_RET : InstARM<(outs), (ins),
+                  "bx lr", [(ARMretflag)]>,
+               Requires<[IsARM, HasV4T]> {
+  }
+
+  // ARMV4 only
+  def MOVPCLR : InstARM<(outs), (ins),
+                  "mov lr, pc\n\tbx lr",
+                  [(ARMretflag)]>,
+               Requires<[IsARM, NoV4T]> {
+  }
+}

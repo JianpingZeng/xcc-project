@@ -27,27 +27,68 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCAsmInfo;
+import backend.mc.MCExpr;
+import backend.mc.MCTargetExpr;
+import backend.mc.MCValue;
+import tools.OutRef;
+import tools.Util;
+
+import java.io.PrintStream;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMELFMCAsmInfo extends MCAsmInfo {
-  public ARMELFMCAsmInfo() {
-    // ".comm align is in bytes but .align is pow-2."
-    AlignmentIsInBytes = false;
+public class ARMExpr extends MCTargetExpr {
+  public interface VariantKind {
+    int VK_ARM_None = 0;
+    int VK_ARM_HI16 = 1;  // The R_ARM_MOVT_ABS relocation (:upper16: in the .s file)
+    int VK_ARM_LO16 = 2;   // The R_ARM_MOVW_ABS_NC relocation (:lower16: in the .s file)
+  }
 
-    Data64bitsDirective = null;
-    CommentString = "@";
-    PrivateGlobalPrefix = ".L";
-    Code16Directive = ".code\t16";
-    Code32Directive = ".code\t32";
-    WeakDefDirective = "\t.weak\t";
-    HasLEB128 = true;
-    SupportsDebugInformation = true;
+  private int kind;
+  private MCExpr expr;
 
-    // Exception handling.
-    ExceptionsType = ExceptionHandlingType.ARM;
+  private ARMExpr(int kind, MCExpr expr) {
+    this.kind = kind;
+    this.expr = expr;
+  }
+
+  public static ARMExpr create(int kind,
+                        MCExpr expr) {
+    return new ARMExpr(kind, expr);
+  }
+
+  public static ARMExpr createExprLower16(MCExpr expr) {
+    return create(VariantKind.VK_ARM_LO16, expr);
+  }
+
+  public static ARMExpr createExprUpper16(MCExpr expr) {
+    return create(VariantKind.VK_ARM_HI16, expr);
+  }
+
+
+  public int getKind() { return kind; }
+
+  public MCExpr getSubExpr() { return expr; }
+
+  @Override
+  public void print(PrintStream os) {
+    switch (kind) {
+      default: Util.assertion("Invalid kind");
+      case VariantKind.VK_ARM_LO16: os.print(":lower16:"); break;
+      case VariantKind.VK_ARM_HI16: os.print(":upper16:"); break;
+    }
+    MCExpr expr = getSubExpr();
+    if (expr.getKind() != ExprKind.SymbolRef)
+      os.print("(");
+    expr.print(os);
+    if (expr.getKind() != ExprKind.SymbolRef)
+      os.print(")");
+  }
+
+  @Override
+  public boolean evaluateAsRelocable(OutRef<MCValue> res) {
+    return false;
   }
 }

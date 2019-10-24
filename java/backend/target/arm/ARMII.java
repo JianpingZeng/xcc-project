@@ -27,27 +27,48 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.mc.MCAsmInfo;
-
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMELFMCAsmInfo extends MCAsmInfo {
-  public ARMELFMCAsmInfo() {
-    // ".comm align is in bytes but .align is pow-2."
-    AlignmentIsInBytes = false;
+public interface ARMII {
+  //===------------------------------------------------------------------===//
+  // ARM Specific MachineOperand flags.
 
-    Data64bitsDirective = null;
-    CommentString = "@";
-    PrivateGlobalPrefix = ".L";
-    Code16Directive = ".code\t16";
-    Code32Directive = ".code\t32";
-    WeakDefDirective = "\t.weak\t";
-    HasLEB128 = true;
-    SupportsDebugInformation = true;
+  int MO_NO_FLAG = 0;
 
-    // Exception handling.
-    ExceptionsType = ExceptionHandlingType.ARM;
-  }
+  /// MO_LO16 - On a symbol operand, this represents a relocation containing
+  /// lower 16 bit of the address. Used only via movw instruction.
+  int MO_LO16 = 1;
+
+  /// MO_HI16 - On a symbol operand, this represents a relocation containing
+  /// higher 16 bit of the address. Used only via movt instruction.
+  int MO_HI16 = 2;
+
+  /// MO_LO16_NONLAZY - On a symbol operand "FOO", this represents a
+  /// relocation containing lower 16 bit of the non-lazy-ptr indirect symbol,
+  /// i.e. "FOO$non_lazy_ptr".
+  /// Used only via movw instruction.
+  int MO_LO16_NONLAZY = 3;
+
+  /// MO_HI16_NONLAZY - On a symbol operand "FOO", this represents a
+  /// relocation containing lower 16 bit of the non-lazy-ptr indirect symbol,
+  /// i.e. "FOO$non_lazy_ptr". Used only via movt instruction.
+  int MO_HI16_NONLAZY = 4;
+
+  /// MO_LO16_NONLAZY_PIC - On a symbol operand "FOO", this represents a
+  /// relocation containing lower 16 bit of the PC relative address of the
+  /// non-lazy-ptr indirect symbol, i.e. "FOO$non_lazy_ptr - LABEL".
+  /// Used only via movw instruction.
+  int MO_LO16_NONLAZY_PIC = 5;
+
+  /// MO_HI16_NONLAZY_PIC - On a symbol operand "FOO", this represents a
+  /// relocation containing lower 16 bit of the PC relative address of the
+  /// non-lazy-ptr indirect symbol, i.e. "FOO$non_lazy_ptr - LABEL".
+  /// Used only via movt instruction.
+  int MO_HI16_NONLAZY_PIC = 6;
+
+  /// MO_PLT - On a symbol operand, this represents an ELF PLT reference on a
+  /// call operand.
+  int MO_PLT = 7;
 }

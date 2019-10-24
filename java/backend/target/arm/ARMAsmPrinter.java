@@ -29,9 +29,9 @@ package backend.target.arm;
 
 import backend.codegen.AsmPrinter;
 import backend.codegen.MachineInstr;
-import backend.mc.MCAsmInfo;
-import backend.mc.MCStreamer;
-import backend.mc.MCSymbol;
+import backend.codegen.MachineOperand;
+import backend.mc.*;
+import tools.Util;
 
 import java.io.PrintStream;
 
@@ -40,17 +40,59 @@ import java.io.PrintStream;
  * @version 0.4
  */
 public class ARMAsmPrinter extends AsmPrinter {
-  public ARMAsmPrinter(PrintStream os, ARMTargetMachine tm, MCSymbol.MCContext ctx, MCStreamer streamer, MCAsmInfo mai) {
+  private ARMMCInstLower instLowering;
+  public ARMAsmPrinter(PrintStream os,
+                       ARMTargetMachine tm,
+                       MCSymbol.MCContext ctx,
+                       MCStreamer streamer,
+                       MCAsmInfo mai) {
     super(os, tm, ctx, streamer, mai);
   }
 
   @Override
   protected void emitInstruction(MachineInstr mi) {
+    if (instLowering == null)
+      instLowering = new ARMMCInstLower(outContext, mangler, this);
 
+    MCInst inst = new MCInst();
+    instLowering.lower(mi, inst);
+    outStreamer.emitInstruction(inst);
   }
 
   @Override
   public String getPassName() {
-    return null;
+    return "ARM Assembly Printer";
+  }
+
+  public MCOperand getSymbolRef(MachineOperand mo, MCSymbol symbol) {
+    MCExpr expr;
+    switch (mo.getTargetFlags()) {
+      default:{
+        expr = MCSymbolRefExpr.create(symbol, MCSymbolRefExpr.VariantKind.VK_None);
+        switch (mo.getTargetFlags()) {
+          default:
+            Util.shouldNotReachHere("Unknown target flag on symbol operand");
+          case 0:
+            break;
+          case ARMII.MO_LO16:
+            expr = MCSymbolRefExpr.create(symbol, MCSymbolRefExpr.VariantKind.VK_None);
+            expr = ARMExpr.createExprLower16(expr);
+            break;
+          case ARMII.MO_HI16:
+            expr = MCSymbolRefExpr.create(symbol, MCSymbolRefExpr.VariantKind.VK_None);
+            expr = ARMExpr.createExprUpper16(expr);
+            break;
+        }
+      }
+      break;
+
+      case ARMII.MO_PLT:
+        expr = MCSymbolRefExpr.create(symbol, MCSymbolRefExpr.VariantKind.VK_ARM_PLT);
+        break;
+    }
+    if (!mo.isJumpTableIndex() && mo.getOffset() != 0)
+      expr = MCBinaryExpr.createAdd(expr, MCConstantExpr.create(mo.getOffset(), outContext), outContext);
+
+    return MCOperand.createExpr(expr);
   }
 }

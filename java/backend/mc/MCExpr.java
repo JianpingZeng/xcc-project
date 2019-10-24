@@ -13,18 +13,18 @@ import tools.OutRef;
 import java.io.PrintStream;
 
 public abstract class MCExpr {
-  public enum ExprKind {
-    Binary,
-    Constant,
-    SymbolRef,
-    Unary,
-    Target
+  public interface ExprKind {
+    int Binary = 0;
+    int Constant = 1;
+    int SymbolRef = 2;
+    int Unary = 3;
+    int Target = 4;
   }
 
-  private ExprKind kind;
-  protected MCExpr(ExprKind k) { kind = k; }
+  private int kind;
+  protected MCExpr(int k) { kind = k; }
 
-  public ExprKind getKind() {
+  public int getKind() {
     return kind;
   }
 

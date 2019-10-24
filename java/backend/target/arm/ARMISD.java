@@ -37,4 +37,5 @@ public class ARMISD {
   // Start the numbering where the builtin ops leave off.
   public static final int FIRST_NUMBER = ISD.BUILTIN_OP_END;
   public static final int CALL = FIRST_NUMBER + 1;
+  public static final int RET_FLAG = CALL + 1;     // Return with a flag operand.
 }

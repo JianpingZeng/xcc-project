@@ -530,7 +530,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           if (!emittedSets.add(mbb))
             continue;
 
-          MCExpr lhs = MCSymbolRefExpr.create(mbb.getSymbol(outContext), outContext);
+          MCExpr lhs = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
           outStreamer.emitAssignment(getJTSetSymbol(jti, mbb.getNumber()),
               MCBinaryExpr.createSub(lhs, base, outContext));
         }
@@ -562,14 +562,14 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       case EK_BlockAddress:
         // EK_BlockAddress - Each entry is a plain address of block, e.g.:
         //     .word LBB123
-        value = MCSymbolRefExpr.create(mbb.getSymbol(outContext), outContext);
+        value = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
         break;
       case EK_GPRel32BlockAddress:
         // EK_GPRel32BlockAddress - Each entry is an address of block, encoded
         // with a relocation as gp-relative, e.g.:
         //     .gprel32 LBB123
         MCSymbol mbbSym = mbb.getSymbol(outContext);
-        outStreamer.emitGPRel32Value(MCSymbolRefExpr.create(mbbSym, outContext));
+        outStreamer.emitGPRel32Value(MCSymbolRefExpr.create(mbbSym));
         break;
       case EK_LabelDifference32:
         // EK_LabelDifference32 - Each entry is the address of the block minus
@@ -580,11 +580,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         //      .set L4_5_set_123, LBB123 - LJTI1_2
         //      .word L4_5_set_123
         if (mai.hasSetDirective()) {
-          value = MCSymbolRefExpr.create(getJTSetSymbol(jti, mbb.getNumber()), outContext);
+          value = MCSymbolRefExpr.create(getJTSetSymbol(jti, mbb.getNumber()));
           break;
         }
-        value = MCSymbolRefExpr.create(mbb.getSymbol(outContext), outContext);
-        MCExpr jtiSym = MCSymbolRefExpr.create(getJTISymbol(jti, false), outContext);
+        value = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
+        MCExpr jtiSym = MCSymbolRefExpr.create(getJTISymbol(jti, false));
         value = MCBinaryExpr.createSub(value, jtiSym, outContext);
         break;
       default:
@@ -1013,11 +1013,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       return MCConstantExpr.create(((ConstantInt) c).getZExtValue(), ctx);
 
     if (c instanceof GlobalValue) {
-      return MCSymbolRefExpr.create(getGlobalValueSymbol((GlobalValue) c), ctx);
+      return MCSymbolRefExpr.create(getGlobalValueSymbol((GlobalValue) c));
     }
 
     if (c instanceof BlockAddress)
-      return MCSymbolRefExpr.create(getBlockAddressSymbol((BlockAddress) c), ctx);
+      return MCSymbolRefExpr.create(getBlockAddressSymbol((BlockAddress) c));
 
     if (!(c instanceof ConstantExpr)) {
       Util.shouldNotReachHere("unknown constant value to lower!");
@@ -1539,7 +1539,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return outContext.getOrCreateSymbol(name);
   }
 
-  protected MCSymbol getExternalSymbolSymbol(String sym) {
+  public MCSymbol getExternalSymbolSymbol(String sym) {
     String name = mangler.getMangledNameWithPrefix(sym);
     return outContext.getOrCreateSymbol(name);
   }

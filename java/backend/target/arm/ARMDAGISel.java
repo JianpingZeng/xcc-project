@@ -27,28 +27,79 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.EVT;
+import backend.codegen.MVT;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAGISel;
 import backend.pass.FunctionPass;
 import backend.target.TargetMachine;
+import tools.Util;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public abstract class ARMDAGISel extends SelectionDAGISel {
+  protected ARMTargetLowering tli;
+  protected ARMSubtarget subtarget;
+
   protected ARMDAGISel(ARMTargetMachine tm, TargetMachine.CodeGenOpt optLevel) {
     super(tm, optLevel);
+    tli = tm.getTargetLowering();
+    subtarget = tm.getSubtarget();
   }
 
   @Override
-  public SDNode select(SDNode nodeToMatch) {
-    return null;
+  public String getPassName() {
+    return "ARM Instruction Selection";
   }
 
+  @Override
+  public SDNode select(SDNode node) {
+    EVT nvt = node.getValueType(0);
+    int opcode = node.getOpcode();
+
+    if (Util.DEBUG) {
+      System.err.print("Selecting: ");
+      node.dump(curDAG);
+      System.err.println();
+    }
+    if (node.isMachineOpecode()) {
+      // Already been selected.
+      return null;
+    }
+
+    SDNode resNode = selectCommonCode(node);
+    if (Util.DEBUG) {
+      System.err.print("=> ");
+      if (resNode == null || resNode.equals(node))
+        node.dump(curDAG);
+      else
+        resNode.dump(curDAG);
+      System.err.println();
+    }
+    return resNode;
+  }
+
+  /**
+   * register +- 12 bit offset.
+   * @param root
+   * @param n
+   * @param tmp
+   * @return
+   */
   protected boolean selectAddrRegImm(SDNode root, SDValue n, SDValue[] tmp) {
-    return false;
+    // temp = {offset, base}
+    tmp[0] = curDAG.getTargetConstant(0, new EVT(MVT.i32));
+    if (n.getNode() instanceof SDNode.FrameIndexSDNode) {
+      SDNode.FrameIndexSDNode fi = (SDNode.FrameIndexSDNode) n.getNode();
+      tmp[1] = curDAG.getTargetFrameIndex(fi.getFrameIndex(), n.getValueType());
+    }
+    else
+      tmp[1] = n;
+    // any address fits in a register.
+    return true;
   }
 
   public static FunctionPass createARMISelDAG(ARMTargetMachine tm, TargetMachine.CodeGenOpt level) {

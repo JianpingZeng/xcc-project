@@ -125,7 +125,7 @@ public class X86AsmPrinter extends AsmPrinter {
         //     popl %esi
         MCSymbol picBase = InstLowering.getPICBaseSymbol();
         inst.setOpcode(X86GenInstrNames.CALLpcrel32);
-        inst.addOperand(MCOperand.createExpr(MCSymbolRefExpr.create(picBase, outContext)));
+        inst.addOperand(MCOperand.createExpr(MCSymbolRefExpr.create(picBase)));
 
         outStreamer.emitInstruction(inst);
         outStreamer.emitLabel(picBase);
@@ -152,11 +152,10 @@ public class X86AsmPrinter extends AsmPrinter {
 
         // Now that we have emitted the label, lower the complex operand expression.
         MCSymbol opSym = InstLowering.getSymbolFromOperand(mi.getOperand(2));
-        MCExpr dotExpr = MCSymbolRefExpr.create(dotSym, outContext);
-        MCExpr picBase = MCSymbolRefExpr.create(InstLowering.getPICBaseSymbol(), outContext);
+        MCExpr dotExpr = MCSymbolRefExpr.create(dotSym);
+        MCExpr picBase = MCSymbolRefExpr.create(InstLowering.getPICBaseSymbol());
         dotExpr = MCBinaryExpr.createSub(dotExpr, picBase, outContext);
-        dotExpr = MCBinaryExpr.createAdd(MCSymbolRefExpr.create(opSym, outContext),
-            dotExpr, outContext);
+        dotExpr = MCBinaryExpr.createAdd(MCSymbolRefExpr.create(opSym), dotExpr, outContext);
 
         MCInst inst = new MCInst();
         inst.setOpcode(X86GenInstrNames.ADD32ri);

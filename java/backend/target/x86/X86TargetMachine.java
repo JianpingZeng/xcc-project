@@ -179,8 +179,8 @@ public class X86TargetMachine extends LLVMTargetMachine {
   }
 
   @Override
-  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
-                                      MachineCodeEmitter mce) {
+  public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+                                MachineCodeEmitter mce) {
     pm.add(createX86CodeEmitterPass(this, mce));
     return false;
   }

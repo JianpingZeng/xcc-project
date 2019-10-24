@@ -27,28 +27,53 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineInstr;
+import backend.codegen.RegScavenger;
 import backend.mc.MCRegisterClass;
-import backend.mc.MCRegisterDesc;
-import backend.target.RegClassInfo;
+import backend.target.TargetRegisterInfo;
+import tools.BitMap;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMRegisterInfo {
-  public ARMRegisterInfo(ARMTargetMachine tm) {
+public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
+  protected ARMRegisterInfo(ARMTargetMachine tm) {
 
   }
 
-  static void initMCRegisterInfo(MCRegisterDesc[] registerDescriptors,
-                                  MCRegisterClass[] registerClasses,
-                                  int[] subregHashTable,
-                                  int subregHashTableSize,
-                                  int[] superregHashTable,
-                                  int superregHashTableSize,
-                                  int[] aliasesHashTable,
-                                  int aliasesHashTableSize,
-                                  RegClassInfo[] regClassInfos,
-                                  int mode) {
+  public static TargetRegisterInfo createARMRegisterInfo(ARMTargetMachine tm, int mode) {
+    return new ARMGenRegisterInfo(tm, mode);
+  }
+
+  @Override
+  public int[] getCalleeSavedRegs(MachineFunction mf) {
+    return new int[0];
+  }
+
+  @Override
+  public MCRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
+    return new MCRegisterClass[0];
+  }
+
+  @Override
+  public BitMap getReservedRegs(MachineFunction mf) {
+    return null;
+  }
+
+  @Override
+  public int getSubReg(int regNo, int index) {
+    return 0;
+  }
+
+  @Override
+  public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs) {
+
+  }
+
+  @Override
+  public int getFrameRegister(MachineFunction mf) {
+    return 0;
   }
 }

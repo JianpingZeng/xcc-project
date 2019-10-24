@@ -20,7 +20,7 @@ import static backend.mc.MCAsmInfo.MCSymbolAttr.MCSA_Protected;
  */
 public class MCAsmInfo {
   public enum ExceptionHandlingType {
-    None, Dwarf, SjLj
+    None, Dwarf, SjLj, ARM
   }
 
   public enum MCSymbolAttr {
@@ -146,6 +146,13 @@ public class MCAsmInfo {
   protected String Data16bitsDirective;         // Defaults to "\t.short\t"
   protected String Data32bitsDirective;         // Defaults to "\t.long\t"
   protected String Data64bitsDirective;         // Defaults to "\t.quad\t"
+
+  /// Code16Directive, Code32Directive, Code64Directive - These are assembly
+  /// directives that tells the assembler to interpret the following
+  /// instructions differently.
+  protected String Code16Directive;             // Defaults to ".code16"
+  protected String Code32Directive;             // Defaults to ".code32"
+  protected String Code64Directive;             // Defaults to ".code64"
 
   /// GPRel32Directive - if non-null, a directive that is used to emit a word
   /// which should be relocated as a 32-bit GP-relative offset, e.g. .gpword
@@ -314,6 +321,9 @@ public class MCAsmInfo {
     Data16bitsDirective = "\t.short\t";
     Data32bitsDirective = "\t.long\t";
     Data64bitsDirective = "\t.quad\t";
+    Code16Directive = "\t.code16\t";
+    Code32Directive = "\t.code32\t";
+    Code64Directive = "\t.code64\t";
     SunStyleELFSectionSwitchSyntax = false;
     UsesELFSectionDirectiveForBSS = false;
     AlignDirective = "\t.align\t";

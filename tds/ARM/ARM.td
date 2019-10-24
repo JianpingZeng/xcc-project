@@ -111,6 +111,8 @@ def : ProcNoItin<"mpcore",          [HasV6Ops, FeatureVFP2,
 
  include "ARMRegisterInfo.td"
 
+ include "ARMCallingConv.td"
+
  //===----------------------------------------------------------------------===//
  // Instruction Descriptions
  //===----------------------------------------------------------------------===//

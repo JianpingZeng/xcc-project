@@ -199,34 +199,6 @@ public abstract class TargetLoweringObjectFileELF extends TargetLoweringObjectFi
     return entry;
   }
 
-  public void Initialize(MCContext Ctx, TargetMachine TM) {
-    if (uniqueMap != null)
-      uniqueMap.clear();
-
-    super.initialize(Ctx, TM);
-    BSSSection = getELFSection(".bss", MCSectionELF.SHT_NOBITS,
-        MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
-        SectionKind.getBSS());
-    TextSection = getELFSection(".text",
-        MCSectionELF.SHT_PROGBITS,
-        MCSectionELF.SHF_EXECINSTR | MCSectionELF.SHF_ALLOC,
-        SectionKind.getText());
-    DataSection = getELFSection(".data",
-        MCSectionELF.SHT_PROGBITS,
-        MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
-        SectionKind.getDataRel());
-
-    ReadOnlySection = getELFSection(".rodata",
-        MCSectionELF.SHT_PROGBITS,
-        MCSectionELF.SHF_TLS | MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
-        SectionKind.getBSS());
-    tlsDataSection = getELFSection(".tbss",
-        MCSectionELF.SHT_NOBITS,
-        MCSectionELF.SHF_TLS | MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,
-        SectionKind.getBSS());
-
-  }
-
   public MCSection getDataRelSection() {
     return DataRelSection;
   }

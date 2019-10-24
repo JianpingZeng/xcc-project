@@ -218,8 +218,8 @@ public abstract class LLVMTargetMachine extends TargetMachine {
    * @param mce
    * @return
    */
-  public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
-                                      MachineCodeEmitter mce) {
+  public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+                                MachineCodeEmitter mce) {
     return true;
   }
 }

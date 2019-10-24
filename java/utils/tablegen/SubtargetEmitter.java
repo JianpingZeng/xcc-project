@@ -440,13 +440,11 @@ public class SubtargetEmitter extends TableGenBackend {
     ArrayList<Record> features = records.getAllDerivedDefinition("SubtargetFeature");
     features.sort(LessRecord);
 
-    os.printf("\t/**\n");
-    os.printf("\t * Parses features string setting specified subtarget options.\n");
+    os.print("\t/**\n");
+    os.println("\t * Parses features string setting specified subtarget options.");
     os.println("\t */");
-    os.println("\tpublic String parseSubtargetFeatures(String fs, String cpu) {");
-    os.println("\t\tSubtargetFeatures features = new SubtargetFeatures(fs);");
-    os.println("\t\tfeatures.setCPUIfNone(cpu);");
-    os.println("\t\tlong bits = features.getBits(subTypeKV,featureKV);");
+    os.println("\tpublic void parseSubtargetFeatures(String fs, String cpu) {");
+    os.println("\t\tlong bits = reInitMCSubtargetInfo(cpu, fs);");
 
     for (int i = 0; i < features.size(); i++) {
       Record r = features.get(i);
@@ -471,7 +469,7 @@ public class SubtargetEmitter extends TableGenBackend {
           "\t\tInstrItins = instrItineraryData(stages, operandCycles, itinerary);\n");
     }
 
-    os.printf("\t\treturn features.getCPU();\n\t}\n\n");
+    os.print("\n\t}\n\n");
   }
 
   public SubtargetEmitter(RecordKeeper r) {

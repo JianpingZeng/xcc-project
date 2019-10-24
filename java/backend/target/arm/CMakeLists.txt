@@ -9,7 +9,7 @@ tablegen(ARMGenRegisterNames.java -gen-register-names)
 tablegen(ARMGenInstrInfo.java -gen-instr-info)
 tablegen(ARMGenInstrNames.java -gen-instr-names)
 tablegen(ARMGenSubtarget.java -gen-subtarget)
-#tablegen(ARMGenCallingConv.java -gen-callingconv)
+tablegen(ARMGenCallingConv.java -gen-callingconv)
 TableGen(ARMGenDAGISel.java -gen-dag-isel)
 
 add_public_tablegen_target(ARMCommonTableGen)

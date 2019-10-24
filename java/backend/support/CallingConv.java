@@ -55,7 +55,24 @@ public enum CallingConv {
    * in ECX:EDX registers, others - via stack. Callee is responsible for
    * stack cleaning.
    */
-  X86_FastCall(65);
+  X86_FastCall(65),
+
+  /**
+   * ARM Procedure Calling Standard calling convention (obsolete,
+   * but still used on some targets).
+   */
+  ARM_APCS(66),
+
+  /**
+   * ARM Architecture Procedure Calling Standard calling
+   * convention (aka EABI). Soft float variant.
+   */
+  ARM_AAPCS(67),
+
+  /**
+   * Same as ARM_AAPCS, but uses hard floating point ABI.
+   */
+  ARM_AAPCS_VFP(68);
 
   public final int enumValue;
   CallingConv(int id) {

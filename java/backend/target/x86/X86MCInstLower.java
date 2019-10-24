@@ -118,17 +118,17 @@ public class X86MCInstLower {
       case X86II.MO_PIC_BASE_OFFSET:
       case X86II.MO_DARWIN_NONLAZY_PIC_BASE:
       case X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
-        expr = MCSymbolRefExpr.create(sym, ctx);
+        expr = MCSymbolRefExpr.create(sym);
         // Subtract the pic base.
         expr = MCBinaryExpr.createSub(expr,
-          MCSymbolRefExpr.create(getPICBaseSymbol(), ctx),
+          MCSymbolRefExpr.create(getPICBaseSymbol()),
         ctx);
         break;
     }
 
     if (expr == null) {
       if (refKind == X86MCTargetExpr.VariantKind.Invalid)
-        expr = MCSymbolRefExpr.create(sym, ctx);
+        expr = MCSymbolRefExpr.create(sym);
     else
       expr = X86MCTargetExpr.create(sym, refKind, ctx);
     }
@@ -616,7 +616,7 @@ public class X86MCInstLower {
           break;
         case MO_MachineBasicBlock:
           mcOp = MCOperand.createExpr(MCSymbolRefExpr.create(
-              mo.getMBB().getSymbol(ctx), ctx));
+              mo.getMBB().getSymbol(ctx)));
           break;
         case MO_GlobalAddress:
           mcOp = lowerSymbolOperand(mo, getSymbolFromOperand(mo));
