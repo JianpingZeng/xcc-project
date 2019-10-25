@@ -4,6 +4,7 @@ import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
+import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
@@ -82,6 +83,7 @@ public class RegAllocLocal extends MachineFunctionPass {
   private boolean[] virRegModified;
 
   public RegAllocLocal() {
+    new RegisterPass("Local register allocator", "local", RegAllocLocal.class);
     stackSlotForVirReg = new TIntIntHashMap();
     virToPhyRegMap = new HashMap<>();
   }

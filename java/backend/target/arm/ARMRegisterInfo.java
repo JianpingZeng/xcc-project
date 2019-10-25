@@ -33,6 +33,7 @@ import backend.codegen.RegScavenger;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import tools.BitMap;
+import tools.Util;
 
 /**
  * @author Jianping Zeng.
@@ -75,5 +76,22 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   @Override
   public int getFrameRegister(MachineFunction mf) {
     return 0;
+  }
+
+  @Override
+  public boolean isMoveInstr(MachineInstr mi, int[] regs) {
+    switch (mi.getOpcode()) {
+      default: return false;
+      case ARMGenInstrNames.movrr:
+        Util.assertion(mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister() &&
+                mi.getOperand(1).isRegister(),
+            "invalid register-register move instruction");
+
+        regs[0] = mi.getOperand(1).getReg();
+        regs[1] = mi.getOperand(0).getReg();
+        regs[2] = mi.getOperand(1).getSubReg();
+        regs[3] = mi.getOperand(0).getSubReg();
+        return true;
+    }
   }
 }
