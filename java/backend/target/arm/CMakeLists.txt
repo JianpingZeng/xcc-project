@@ -10,10 +10,19 @@ tablegen(ARMGenInstrInfo.java -gen-instr-info)
 tablegen(ARMGenInstrNames.java -gen-instr-names)
 tablegen(ARMGenSubtarget.java -gen-subtarget)
 tablegen(ARMGenCallingConv.java -gen-callingconv)
-TableGen(ARMGenDAGISel.java -gen-dag-isel)
+tablegen(ARMGenDAGISel.java -gen-dag-isel)
 
 add_public_tablegen_target(ARMCommonTableGen)
 
-set(LOCAL_TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} PARENT_SCOPE)
-set(LOCAL_TARGET_SRCS ${TARGET_SRCS} PARENT_SCOPE)
-set(LOCAL_BACKEND_TARGET ARMCommonTableGen PARENT_SCOPE)
+# Compiling collection of generated java source code by TableGen tool.
+macro(compile_arm_srcs target_name)
+	add_custom_target(${target_name}
+	COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
+	${TABLEGEN_OUTPUT}
+	${TARGET_SRCS}
+	DEPENDS ${BACKEND_TARGET} ARMCommonTableGen
+	COMMENT "Building ARM backend")
+endmacro(compile_arm_srcs)
+
+compile_arm_srcs(ARMBackend)
+set(BACKEND_TARGET ${BACKEND_TARGET} ARMBackend PARENT_SCOPE)

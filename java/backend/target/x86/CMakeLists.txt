@@ -10,10 +10,19 @@ tablegen(X86GenInstrInfo.java -gen-instr-info)
 tablegen(X86GenInstrNames.java -gen-instr-names)
 tablegen(X86GenSubtarget.java -gen-subtarget)
 tablegen(X86GenCallingConv.java -gen-callingconv)
-TableGen(X86GenDAGISel.java -gen-dag-isel)
+tablegen(X86GenDAGISel.java -gen-dag-isel)
 
 add_public_tablegen_target(X86CommonTableGen)
 
-set(LOCAL_TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} PARENT_SCOPE)
-set(LOCAL_TARGET_SRCS ${TARGET_SRCS} PARENT_SCOPE)
-set(LOCAL_BACKEND_TARGET X86CommonTableGen PARENT_SCOPE)
+# Compiling collection of generated java source code by TableGen tool.
+macro(compile_x86_srcs target_name)
+    add_custom_target(${target_name}
+    COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
+    ${TABLEGEN_OUTPUT}
+    ${TARGET_SRCS}
+    DEPENDS ${BACKEND_TARGET} X86CommonTableGen
+    COMMENT "Building X86 backend")
+endmacro(compile_x86_srcs)
+
+compile_x86_srcs(X86Backend)
+set(BACKEND_TARGET ${BACKEND_TARGET} X86Backend PARENT_SCOPE)

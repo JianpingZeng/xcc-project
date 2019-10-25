@@ -143,8 +143,8 @@ function(add_public_tablegen_target target)
   # Creates a target for publicly exporting tablegen dependencies.
   if( TABLEGEN_OUTPUT )
     add_custom_target(${target}
-      DEPENDS ${TABLEGEN_OUTPUT})
-    add_dependencies(${target} ${XCC_COMMON_DEPENDS})
+	  DEPENDS ${TABLEGEN_OUTPUT})
+    add_dependencies(${target} CommonBackend)
     set_target_properties(${target} PROPERTIES FOLDER "Tablegenning")
   endif( TABLEGEN_OUTPUT )
 endfunction()

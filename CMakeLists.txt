@@ -40,7 +40,7 @@ set(OUT_INCLUDE_DIR "${XCC_BINARY_DIR}/include")
 set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
-set(GEN_OPTIONS_SRCS "${GEN_SOURCES_DIR}/driver")
+set(GEN_OPTIONS_DIR "${GEN_SOURCES_DIR}/driver")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
@@ -296,64 +296,42 @@ endforeach()
 # Generates TableGen files for each target
 add_subdirectory(java/backend/target)
 
-#message(STATUS "${TARGET_SRCS}")
-#message(STATUS "${TABLEGEN_OUTPUT}")
-
 # Generates xcc options for xcc driver.
-file(MAKE_DIRECTORY ${GEN_OPTIONS_SRCS})
-macro(XCCTableGen ofn)
-  set(local_tds "${XCC_SOURCE_DIR}/java/driver")
-  add_custom_command(OUTPUT ${GEN_OPTIONS_SRCS}/${ofn}
-  COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
-  -o ${GEN_OPTIONS_SRCS}/${ofn} ${ARGN} -I ${local_tds} ${local_tds}/Options.td
-  DEPENDS CommonBackend
-  COMMENT "Building ${ofn}...")
-  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${GEN_OPTIONS_SRCS}/${ofn}
-  )
-endmacro(XCCTableGen)
+file(MAKE_DIRECTORY ${GEN_OPTIONS_DIR})
 
-XCCTableGen(OptionInfo.java -gen-xcc-options)
-add_public_tablegen_target(XCCOptionsTableGen)
+set(local_tds "${XCC_SOURCE_DIR}/java/driver")
+add_custom_command(OUTPUT ${GEN_OPTIONS_DIR}/OptionInfo.java
+  COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
+  -o ${GEN_OPTIONS_DIR}/OptionInfo.java -gen-xcc-options -I ${local_tds} ${local_tds}/Options.td
+  DEPENDS ${BACKEND_TARGET}
+  COMMENT "Building OptionInfo.java..."
+)
+
+add_custom_target(XCCOptionsTableGen
+  COMMENT "Building XCCOptionsTableGen"
+  DEPENDS ${GEN_OPTIONS_DIR}/OptionInfo.java
+)
 
 # Compiling collection of generated java source code by TableGen tool.
-macro(add_gen_tblgen target_name)
-    if (TABLEGEN_OUTPUT)
-        add_custom_target(${target_name}
-            COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
-            ${TABLEGEN_OUTPUT}
-            ${TARGET_SRCS}
-            ${TARGETS_SRC}
-            ${TARGET_SELECT_SRC}
-            ${TARGET_SELECT_DEPENDS_ON_SRC}
-            ${XCC_DRIVER_SRCS}
-            ${GEN_OPTIONS_SRCS}/OptionID.java
-            ${GEN_OPTIONS_SRCS}/OptionKind.java
-            ${GEN_OPTIONS_SRCS}/Group.java
-            ${GEN_OPTIONS_SRCS}/GroupID.java
-        DEPENDS ${BACKEND_TARGET} XCCOptionsTableGen
-        COMMENT "Compiling taraget-specific source files")
-    else()
-        message(FATAL "failed to generate code via llvm-tblgen according to td file")
-    endif(TABLEGEN_OUTPUT)
-endmacro(add_gen_tblgen)
-
-#message(STATUS "TABLEGEN_OUTPUT: ${TABLEGEN_OUTPUT}")
-add_gen_tblgen(BuildTargetSpecific)
-
-# A macro for creating jar package from class files.
-macro (add_gen_jar)
-    if (NOT EXISTS ${OUT_LIB_DIR})
-        file(MAKE_DIRECTORY ${OUT_LIB_DIR})
-    endif()
-    add_custom_target(jar ALL
-        COMMAND ${JAVA_ARCHIVE} -cf "${OUT_LIB_DIR}/${XCC_JAR}" -C ${CLASSES_DIR} .
-        DEPENDS BuildTargetSpecific
-        WORKING_DIRECTORY ${CLASSES_DIR}
-        COMMENT "Building jar")
-endmacro(add_gen_jar)
+add_custom_target(BuildXCCOptions
+	COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
+    ${TARGET_SELECT_SRC}
+    ${TARGET_SELECT_DEPENDS_ON_SRC}
+    ${XCC_DRIVER_SRCS}
+	${GEN_OPTIONS_DIR}/*.java
+	DEPENDS XCCOptionsTableGen
+    COMMENT "Compiling taraget-specific source files"
+)
 
 # Generating jar and resides it into out/lib directory.
-add_gen_jar()
+file(MAKE_DIRECTORY ${OUT_LIB_DIR})
+add_custom_target(jar ALL
+    COMMAND ${JAVA_ARCHIVE} -cf "${OUT_LIB_DIR}/${XCC_JAR}" -C ${CLASSES_DIR} .
+    DEPENDS BuildXCCOptions
+    WORKING_DIRECTORY ${CLASSES_DIR}
+    COMMENT "Building jar"
+)
+
 
 set(COM_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/cpp/NativeLauncher.cpp)
 set(XCC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/xcc.cpp)
