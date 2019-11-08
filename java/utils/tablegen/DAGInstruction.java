@@ -25,7 +25,7 @@ import java.util.ArrayList;
  * @version 0.4
  */
 public final class DAGInstruction {
-  private TreePatternNode sourcePattern;
+  private TreePattern pattern;
   private ArrayList<Record> results;
   private ArrayList<Record> operands;
   private ArrayList<Record> impResults;
@@ -36,25 +36,23 @@ public final class DAGInstruction {
                         ArrayList<Record> operands,
                         ArrayList<Record> impResults,
                         ArrayList<Record> impOperands) {
-    this(results, operands, impResults, impOperands, null, null);
+    this(results, operands, impResults, impOperands, null);
   }
 
   public DAGInstruction(ArrayList<Record> results,
                         ArrayList<Record> operands,
                         ArrayList<Record> impResults,
                         ArrayList<Record> impOperands,
-                        TreePatternNode srcPattern,
-                        TreePatternNode dstPattern) {
+                        TreePattern pattern) {
     this.results = results;
     this.operands = operands;
     this.impResults = impResults;
     this.impOperands = impOperands;
-    sourcePattern = srcPattern;
-    resultPattern = dstPattern;
+    this.pattern = pattern;
   }
 
-  public TreePatternNode getSrcPattern() {
-    return sourcePattern;
+  public TreePattern getPattern() {
+    return pattern;
   }
 
   public int getNumResults() {

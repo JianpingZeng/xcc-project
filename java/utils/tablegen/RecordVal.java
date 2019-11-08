@@ -94,7 +94,7 @@ public final class RecordVal {
 
   @Override
   public RecordVal clone() {
-    RecordVal rv = (RecordVal) new RecordVal(name, ty, prefix);
+    RecordVal rv = new RecordVal(name, ty, prefix);
     rv.value = value.clone();
     return rv;
   }

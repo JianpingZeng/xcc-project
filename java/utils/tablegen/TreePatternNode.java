@@ -29,7 +29,6 @@ import static backend.codegen.MVT.getEnumName;
 import static backend.codegen.MVT.iPTR;
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.SDNP.SDNPCommutative;
-import static utils.tablegen.SDNP.SDNPHasChain;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
 
 /**
@@ -275,6 +274,10 @@ public final class TreePatternNode implements Cloneable {
       rc = operand;
     else if (operand.isSubClassOf("RegisterOperand"))
       rc = operand.getValueAsDef("RegClass");
+    else if (operand.getName().equals("unknown")){
+      // Nothing to do!
+      return false;
+    }
     else {
       operand.dump();
       tp.dump();
@@ -366,13 +369,13 @@ public final class TreePatternNode implements Cloneable {
         madeChanged = getChild(i).applyTypeConstraints(tp, notRegisters);
       }
       return madeChanged;
-    } else if (getOperator().getName().equals("COPY_TO_REGCLASS")) {
+    }/* else if (getOperator().getName().equals("COPY_TO_REGCLASS")) {
       boolean madeChanged;
       madeChanged = getChild(0).applyTypeConstraints(tp, notRegisters);
       madeChanged |= getChild(1).applyTypeConstraints(tp, notRegisters);
       madeChanged |= updateNodeType(0, getChild(1).getExtType(0), tp);
       return madeChanged;
-    } else if ((intrinsic = getIntrinsicInfo(cdp)) != null) {
+    }*/ else if ((intrinsic = getIntrinsicInfo(cdp)) != null) {
       boolean madeChange = false;
 
       int numRetVTs = intrinsic.is.retVTs.size();
@@ -408,12 +411,11 @@ public final class TreePatternNode implements Cloneable {
         return false;
       }
 
-      boolean madeChanged = false;
-
+      boolean madeChanged = ni.applyTypeConstraints(this, tp);
       for (int i = 0, e = getNumChildren(); i != e; ++i) {
         madeChanged |= getChild(i).applyTypeConstraints(tp, notRegisters);
       }
-      madeChanged |= ni.applyTypeConstraints(this, tp);
+
       return madeChanged;
     } else if (getOperator().isSubClassOf("Instruction")) {
       // FIXME, 9/28/2018, PseudoCall should be following::
@@ -523,7 +525,10 @@ public final class TreePatternNode implements Cloneable {
           madeChanged |= child.updateNodeType(0, vts, tp);
         } else if (operandNode.isSubClassOf("PointerLikeRegClass")) {
           madeChanged |= child.updateNodeType(0, iPTR, tp);
-        } else {
+        } else if (operandNode.getName().equals("unknown")) {
+          // Nothing to do!
+        }
+        else {
           Util.assertion("Undefined operand type!");
           System.exit(0);
         }
@@ -581,6 +586,8 @@ public final class TreePatternNode implements Cloneable {
     }
     if (r.isSubClassOf("RegisterClass")) {
       Util.assertion(resNo == 0, "Register class ref only has one result!");
+      // An unnamed register class represents itself as an i32 immediate, for
+      // example on a COPY_TO_REGCLASS instruction.
       if (unNamed)
         return new TypeSetByHwMode(MVT.i32);
 
@@ -600,7 +607,12 @@ public final class TreePatternNode implements Cloneable {
 
       CodeGenTarget target = tp.getDAGPatterns().getTarget();
       return new TypeSetByHwMode(target.getRegisterVTs(r));
-    } else if (r.isSubClassOf("ValueType")) {
+    } else if (r.isSubClassOf("SubRegIndex")) {
+      // The type of sub register index must be i32.
+      Util.assertion(resNo == 0, "SubRegIndex only produces one result!");
+      return new TypeSetByHwMode(MVT.i32);
+    }
+    else if (r.isSubClassOf("ValueType")) {
       Util.assertion(resNo == 0, "ValueType only has one result!");
       // Using a VTSDNode or CondCodeSDNode.
       if (unNamed)
@@ -969,14 +981,17 @@ public final class TreePatternNode implements Cloneable {
       return false;
     }
 
-    if (prop != SDNPHasChain) {
-      CodeGenIntrinsic cgi = getIntrinsicInfo(cdp);
-      if (cgi != null)
-        return cgi.hasProperty(prop);
+    Record operator = getOperator();
+    if (!operator.isSubClassOf("SDNode")) return false;
+    if (cdp.getSDNodeInfo(operator).hasProperty(prop))
+      return true;
+
+    for (int i = 0, e = getNumChildren(); i < e; ++i) {
+      TreePatternNode child = getChild(i);
+      if (child.hasProperty(prop, cdp))
+        return true;
     }
-    if (!operator.isSubClassOf("SDPatternOperator"))
-      return false;
-    return cdp.getSDNodeInfo(operator).hasProperty(prop);
+    return false;
   }
 
   public ComplexPattern getComplexPatternInfo(CodeGenDAGPatterns cdp) {

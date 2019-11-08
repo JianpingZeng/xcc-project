@@ -296,7 +296,7 @@ public class TypeInfer {
       return false;
     boolean changed = false;
     if (vec.isEmpty())
-      changed |= enforceVector(vec);
+      changed = enforceVector(vec);
     if (elt.isEmpty())
       changed |= enforceScalar(elt);
 

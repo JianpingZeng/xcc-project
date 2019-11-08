@@ -49,6 +49,53 @@ public final class CodeGenInstruction {
    */
   String asmString;
 
+  enum CIKind {
+    None, EarlyClobber, Tied
+  }
+
+  static class ConstraintInfo {
+    CIKind kind;
+    int otherTiedOperand;
+
+    ConstraintInfo() { kind = CIKind.None; otherTiedOperand = 0; }
+    static ConstraintInfo getEarlyClobber() {
+      ConstraintInfo ci = new ConstraintInfo();
+      ci.kind = CIKind.EarlyClobber;
+      return ci;
+    }
+
+    static ConstraintInfo getTied(int op) {
+      ConstraintInfo ci = new ConstraintInfo();
+      ci.kind = CIKind.Tied;
+      ci.otherTiedOperand = op;
+      return ci;
+    }
+
+    static ConstraintInfo getNone() {
+      return new ConstraintInfo();
+    }
+
+    boolean isNone() { return kind == CIKind.None; }
+    boolean isEarlyClobber() { return kind == CIKind.EarlyClobber; }
+    boolean isTied() { return kind == CIKind.Tied; }
+    int getTiedOperand() {
+      Util.assertion(isTied());
+      return otherTiedOperand;
+    }
+
+    @Override
+    public String toString() {
+      if (isNone())
+        return "0";
+      else if (isEarlyClobber())
+        return "(1 << EARLY_CLOBBER)";
+      else {
+        Util.assertion(isTied());
+        return String.format("((%d << 16) | (1 << TIED_TO))", getTiedOperand());
+      }
+    }
+  }
+
   static class OperandInfo implements Cloneable {
     Record rec;
 
@@ -64,7 +111,7 @@ public final class CodeGenInstruction {
     /**
      * Constraint information for this operand.
      */
-    ArrayList<String> constraints;
+    ArrayList<ConstraintInfo> constraints;
     public ArrayList<Boolean> doNotEncode;
 
     OperandInfo(Record r, String name, String printerMethodName,
@@ -105,31 +152,32 @@ public final class CodeGenInstruction {
   boolean isReturn;
   boolean isBranch;
   boolean isIndirectBranch;
+  boolean isCompare;
+  boolean isMoveImm;
+  boolean isBitcast;
   boolean isBarrier;
   boolean isCall;
   boolean canFoldAsLoad;
   boolean isPredicable;
   boolean mayLoad;
-  boolean mayLoadUnset;
   boolean mayStore;
-  boolean mayStoreUnset;
-  boolean isTwoAddress;
   boolean isConvertibleToThreeAddress;
   boolean isCommutable;
   boolean isTerminator;
   boolean isReMaterializable;
   boolean hasDelaySlot;
-  boolean UsesCustomInserter;
-  boolean isVariadic;
+  boolean usesCustomInserter;
+  boolean hasPostISelHook;
   boolean hasCtrlDep;
   boolean isNotDuplicable;
-  boolean hasOptionalDef;
   boolean hasSideEffects;
-  boolean mayHaveSideEffects;
-  boolean haveSideEffectsUnset;
   boolean neverHasSideEffects;
   boolean isAsCheapAsAMove;
-  boolean noResults;
+  boolean hasExtraSrcRegAllocReq; // Sources have special regalloc requirement?
+  boolean hasExtraDefRegAllocReq;
+  boolean isPseudo;
+  boolean hasOptionalDef;
+  boolean isVariadic;
 
   CodeGenInstruction(Record r, String asmStr) {
     theDef = r;
@@ -140,34 +188,32 @@ public final class CodeGenInstruction {
     isReturn = r.getValueAsBit("isReturn");
     isBranch = r.getValueAsBit("isBranch");
     isIndirectBranch = r.getValueAsBit("isIndirectBranch");
+    isCompare = r.getValueAsBit("isCompare");
+    isMoveImm = r.getValueAsBit("isMoveImm");
+    isBitcast = r.getValueAsBit("isBitcast");
     isBarrier = r.getValueAsBit("isBarrier");
     isCall = r.getValueAsBit("isCall");
     canFoldAsLoad = r.getValueAsBit("canFoldAsLoad");
+    isPredicable = r.getValueAsBit("isPredicable");
     mayLoad = r.getValueAsBit("mayLoad");
     mayStore = r.getValueAsBit("mayStore");
-    isTwoAddress = r.getValueAsBit("isTwoAddress");
     isConvertibleToThreeAddress = r.getValueAsBit("isConvertibleToThreeAddress");
     isCommutable = r.getValueAsBit("isCommutable");
     isTerminator = r.getValueAsBit("isTerminator");
     isReMaterializable = r.getValueAsBit("isReMaterializable");
     hasDelaySlot = r.getValueAsBit("hasDelaySlot");
-    UsesCustomInserter = r
-        .getValueAsBit("UsesCustomInserter");
+    usesCustomInserter = r.getValueAsBit("usesCustomInserter");
+    hasPostISelHook = r.getValueAsBit("hasPostISelHook");
     hasCtrlDep = r.getValueAsBit("hasCtrlDep");
     isNotDuplicable = r.getValueAsBit("isNotDuplicable");
     hasSideEffects = r.getValueAsBit("hasSideEffects");
-    mayHaveSideEffects = r.getValueAsBit("mayHaveSideEffects");
     neverHasSideEffects = r.getValueAsBit("neverHasSideEffects");
     isAsCheapAsAMove = r.getValueAsBit("isAsCheapAsAMove");
-    hasOptionalDef = false; //r.getValueAsBit("hasOptionalDef");
-    //noResults = r.getValueAsBit("noResults");
-    isVariadic = false;
-
+    hasExtraSrcRegAllocReq = r.getValueAsBit("hasExtraSrcRegAllocReq");
+    hasExtraDefRegAllocReq = r.getValueAsBit("hasExtraDefRegAllocReq");
+    isPseudo = r.getValueAsBit("isPseudo");
     implicitDefs = r.getValueAsListOfDefs("Defs");
     implicitUses = r.getValueAsListOfDefs("Uses");
-
-    if ((mayHaveSideEffects ? 1 : 0) + (neverHasSideEffects ? 1 : 0) + (hasSideEffects ? 1 : 0) > 1)
-      Error.printFatalError(r.getName() + ": multiple conflicting side effect flags-set!");
 
     DagInit di = r.getValueAsDag("OutOperandList");
     numDefs = di.getNumArgs();
@@ -189,7 +235,6 @@ public final class CodeGenInstruction {
       DagInit miOpInfo = null;
       if (rec.isSubClassOf("Operand")) {
         PrintMethod = rec.getValueAsString("PrintMethod");
-        //numOps = rec.getValueAsInt("NumMIOperands");
         miOpInfo = rec.getValueAsDag("MIOperandInfo");
 
         if (!(miOpInfo.getOperator() instanceof DefInit) ||
@@ -233,22 +278,9 @@ public final class CodeGenInstruction {
 
     // Parse the constraints.
     parseConstraints(r.getValueAsString("Constraints"), this);
-
-    if (isTwoAddress) {
-      if (!operandList.get(1).constraints.get(0).isEmpty())
-        Error.printFatalError(r.getName() + ": cannot use isTwoAddress property: instruction " +
-            " already has constraint set!");
-      operandList.get(1).constraints.set(0, "((0 << 16) | (1 << TIED_TO))");
-    }
-
-    for (int op = 0, e = operandList.size(); op != e; op++) {
-      for (int j = 0, ee = (int) operandList.get(op).miNumOperands; j != ee; j++) {
-        if (operandList.get(op).constraints.get(j).isEmpty())
-          operandList.get(op).constraints.set(j, "0");
-      }
-    }
-
     String disableEncoding = r.getValueAsString("DisableEncoding");
+    Util.assertion(disableEncoding != null);
+
     while (true) {
       String[] opNames = disableEncoding.split(",\t");
 
@@ -257,8 +289,7 @@ public final class CodeGenInstruction {
 
       String opName = opNames[0];
       Pair<Integer, Integer> op = parseOperandName(opName, false);
-
-      //if (op.second >= operandList.get(op.first).doNotEncode.size())
+      Util.assertion(op != null);
       operandList.get(op.first).doNotEncode.add(true);
     }
   }
@@ -269,7 +300,7 @@ public final class CodeGenInstruction {
     // constraint info, even if none is present.
     for (int i = 0, e = inst.operandList.size(); i != e; i++) {
       for (int j = 0; j < inst.operandList.get(i).miNumOperands; j++)
-        inst.operandList.get(i).constraints.add("");
+        inst.operandList.get(i).constraints.add(ConstraintInfo.getNone());
     }
 
     if (constraints.isEmpty())
@@ -286,14 +317,34 @@ public final class CodeGenInstruction {
   }
 
   private static void parseConstraint(String constraintStr, CodeGenInstruction inst) {
+    int wpos = Util.findFirstOf(constraintStr, " \t", 0);
+    int start = Util.findFirstNonOf(constraintStr, " \t", 0);
+    if (start <= wpos) {
+      String tok = constraintStr.substring(start, wpos);
+      if (tok.equals("@earlyclobber")) {
+        String name = constraintStr.substring(wpos + 1);
+        wpos = Util.findFirstNonOf(name, " \t", 0);
+        Util.assertion(wpos != -1, String.format("Illegal format for @earlyclobber constraint: '%s'", constraintStr));
+        name = name.substring(wpos);
+        Pair<Integer, Integer> op = inst.parseOperandName(name, false);
+        Util.assertion(op != null);
+
+        // build the string ror the operand.
+        if (!inst.operandList.get(op.first).constraints.get(op.second).isNone())
+          Util.assertion(String.format("Operand '%s' can not have multiple constraints!", name));
+        inst.operandList.get(op.first).constraints.set(op.second, ConstraintInfo.getEarlyClobber());
+        return;
+      }
+    }
+
     // FIXME, only support TIED_IO as yet.
     int eqIdx = constraintStr.indexOf('=');
     Util.assertion(eqIdx != -1, "Unrecognized constraint");
-    int start = Util.findFirstNonOf(constraintStr, " \t");
+    start = Util.findFirstNonOf(constraintStr, " \t");
     String name = constraintStr.substring(start, eqIdx);
 
     // TIED_TO: $src1 = $dst
-    int wpos = Util.findFirstOf(name, " \t", 0);
+    wpos = Util.findFirstOf(name, " \t", 0);
     if (wpos == -1)
       Util.shouldNotReachHere(String.format("Illegal format for tied-to constraint: '%s'", constraintStr));
 
@@ -311,12 +362,10 @@ public final class CodeGenInstruction {
 
     int flatOp = inst.getFlattenedOperandNumber(srcOp);
     // build the string for the operand.
-    String opConstraints = String.format("((%d << 16)) | 1 << TIED_TO", flatOp);
-
-    if (!inst.operandList.get(destOp.first).constraints.get(destOp.second).isEmpty())
+    if (!inst.operandList.get(destOp.first).constraints.get(destOp.second).isNone())
       Util.shouldNotReachHere(String.format("Operand '%s' can't have multiple constraints", destOpName));
 
-    inst.operandList.get(destOp.first).constraints.set(destOp.second, opConstraints);
+    inst.operandList.get(destOp.first).constraints.set(destOp.second, ConstraintInfo.getTied(flatOp));
   }
 
   /**

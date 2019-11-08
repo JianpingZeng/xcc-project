@@ -20,7 +20,6 @@ import tools.Error;
 
 import java.util.ArrayList;
 
-import static utils.tablegen.ComplexPattern.CPAttr.CPAttrParentAsRoot;
 import static utils.tablegen.SDNP.*;
 
 /**
@@ -46,10 +45,6 @@ public final class ComplexPattern {
    * Node properties.
    */
   private int properties;
-  /**
-   * Pattern attributes.
-   */
-  private int attributes;
 
   public ComplexPattern() {
     super();
@@ -80,23 +75,17 @@ public final class ComplexPattern {
         case "SDNPMemOperand":
           properties |= 1 << SDNPMemOperand;
           break;
+        case "SDNPWantRoot":
+          properties |= 1 << SDNPWantRoot;
+          break;
+        case "SDNPWantParent":
+          properties |= 1 << SDNPWantParent;
+          break;
         default: {
           Error.printFatalError(r.getLoc(),
               String.format("Unsupported SD Node property '%s' " +
                   "on ComplexPattern '%s'!\n", prop.getName(), r.getName()));
         }
-      }
-    }
-
-    // Parse the attributes.
-    attributes = 0;
-    propList = r.getValueAsListOfDefs("Attributes");
-    for (Record attr : propList) {
-      if (attr.getName().equals("CPAttrParentAsRoot"))
-        attributes |= 1 << CPAttrParentAsRoot;
-      else {
-        Error.printFatalError(String.format("Unsupported pattern attribute '%s' " +
-            "on ComplexPattern '%s'!\n", attr.getName(), r.getName()));
       }
     }
   }
@@ -119,9 +108,5 @@ public final class ComplexPattern {
 
   public boolean hasProperty(int prop) {
     return (properties & (1 << prop)) != 0;
-  }
-
-  public boolean hasAttribute(int attr) {
-    return (attributes & (1 << attr)) != 0;
   }
 }

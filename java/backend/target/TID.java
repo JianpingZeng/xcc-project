@@ -26,24 +26,32 @@ package backend.target;
  * @version 0.4
  */
 public interface TID {
-  int Variadic = 0;
-  int hasOptionalDef = 1;
-  int Return = 2;
-  int Call = 3;
-  int Barrier = 4;
-  int Terminator = 5;
-  int Branch = 6;
-  int IndirectBranch = 7;
-  int Predicable = 8;
-  int NotDuplicable = 9;
-  int DelaySlot = 10;
-  int FoldableAsLoad = 11;
-  int MayLoad = 12;
-  int MayStore = 13;
-  int UnmodelSideEffects = 14;
-  int Commutable = 15;
-  int ConvertibleTo3Addr = 16;
+  int Return = 0;
+  int Branch = 1;
+  int IndirectBranch = 2;
+  int Compare = 3;
+  int MoveImm = 4;
+  int Bitcast = 5;
+  int Barrier = 6;
+  int Call = 7;
+  int FoldAsLoad = 8;
+  int Predicable = 9;
+  int MayLoad = 10;
+  int MayStore = 11;
+  int ConvertibleToThreeAddress = 12;
+  int Commutable = 13;
+  int Terminator = 14;
+  int ReMaterializable = 15;
+  int DelaySlot = 16;
   int UsesCustomInserter = 17;
-  int Rematerializable = 18;
-  int CheapAsAMove = 19;
+  int PostISelHook = 18;
+  int CtrlDep = 19;
+  int NotDuplicable = 20;
+  int SideEffects = 21;
+  int CheapAsAMove = 22;
+  int ExtraSrcRegAllocReq = 23; // Sources have special regalloc requirement?
+  int ExtraDefRegAllocReq = 24;
+  int Pseudo = 25;
+  int OptionalDef = 26;
+  int Variadic = 27;
 }

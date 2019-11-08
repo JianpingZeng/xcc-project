@@ -130,7 +130,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
           emitRecord(targetName, numberedInstrs.get(i), i, instrInfo,
               emittedLists, barriersMap, operandInfoIDs, os);
         }
-        os.printf("\t}\n");
+        os.println("\t}");
       }
 
       int remainded = numberedInstrs.size() % NUM;
@@ -140,13 +140,13 @@ public final class InstrInfoEmitter extends TableGenBackend {
           emitRecord(targetName, numberedInstrs.get(i), i, instrInfo,
               emittedLists, barriersMap, operandInfoIDs, os);
         }
-        os.printf("\t}\n");
+        os.println("\t}");
       }
 
-      os.printf("\tstatic \n\t{\n");
+      os.println("\tstatic \n\t{");
       for (int i = 0; i <= x; i++)
         os.printf("\t\tinit%sInsts%d();\n", targetName, i);
-      os.printf("\t}\n");
+      os.println("\t}");
 
       os.printf("  public %sGenInstrInfo(%sTargetMachine tm) {%n", targetName, targetName);
       os.println("    super(tm);");
@@ -183,69 +183,74 @@ public final class InstrInfoEmitter extends TableGenBackend {
         inst.theDef.getName());
 
     // Emit all of the target independent flags.
-    if (inst.isReturn) os.printf("|(1<<TID.Return)");
-    if (inst.isBranch) os.printf("|(1<<TID.Branch)");
-    if (inst.isIndirectBranch) os.printf("|(1<<TID.IndirectBranch)");
-    if (inst.isBarrier) os.printf("|(1<<TID.Barrier)");
-    if (inst.hasDelaySlot) os.printf("|(1<<TID.DelaySlot)");
-    if (inst.isCall) os.printf("|(1<<TID.Call)");
-    if (inst.canFoldAsLoad) os.printf("|(1<<TID.FoldableAsLoad)");
-    if (inst.mayLoad) os.printf("|(1<<TID.MayLoad)");
-    if (inst.mayStore) os.printf("|(1<<TID.MayStore)");
-    if (inst.isPredicable) os.printf("|(1<<TID.Predicable)");
-    if (inst.isConvertibleToThreeAddress) os.printf("|(1<<TID.ConvertibleTo3Addr)");
-    if (inst.isCommutable) os.printf("|(1<<TID.Commutable)");
-    if (inst.isTerminator) os.printf("|(1<<TID.Terminator)");
-    if (inst.isReMaterializable) os.printf("|(1<<TID.Rematerializable)");
-    if (inst.isNotDuplicable) os.printf("|(1<<TID.NotDuplicable)");
-    if (inst.hasOptionalDef) os.printf("|(1<<TID.HasOptionalDef)");
-    if (inst.UsesCustomInserter)
-      os.printf("|(1<<TID.UsesCustomInserter)");
-    if (inst.isVariadic)
-      os.printf("|(1<<TID.Variadic)");
-    if (inst.hasSideEffects)
-      os.printf("|(1<<TID.UnmodelSideEffects)");
-    if (inst.isAsCheapAsAMove)
-      os.printf("|(1<<TID.CheapAsAMove)");
+    if (inst.isReturn) os.print("|(1<<TID.Return)");
+    if (inst.isBranch) os.print("|(1<<TID.Branch)");
+    if (inst.isIndirectBranch) os.print("|(1<<TID.IndirectBranch)");
+    if (inst.isCompare) os.print("|(1<<TID.IsCompare)");
+    if (inst.isMoveImm) os.print("|(1<<TID.IsMoveImm)");
+    if (inst.isBitcast) os.print("|(1<<TID.IsBitcast)");
+    if (inst.isBarrier) os.print("|(1<<TID.Barrier)");
+    if (inst.hasDelaySlot) os.print("|(1<<TID.DelaySlot)");
+    if (inst.isCall) os.print("|(1<<TID.Call)");
+    if (inst.canFoldAsLoad) os.print("|(1<<TID.FoldableAsLoad)");
+    if (inst.isPredicable) os.print("|(1<<TID.IsPredicble)");
+    if (inst.mayLoad) os.print("|(1<<TID.MayLoad)");
+    if (inst.mayStore) os.print("|(1<<TID.MayStore)");
+    if (inst.isPredicable) os.print("|(1<<TID.Predicable)");
+    if (inst.isConvertibleToThreeAddress) os.print("|(1<<TID.ConvertibleTo3Addr)");
+    if (inst.isCommutable) os.print("|(1<<TID.Commutable)");
+    if (inst.isTerminator) os.print("|(1<<TID.Terminator)");
+    if (inst.isReMaterializable) os.print("|(1<<TID.Rematerializable)");
+    if (inst.isNotDuplicable) os.print("|(1<<TID.NotDuplicable)");
+    if (inst.hasOptionalDef) os.print("|(1<<TID.HasOptionalDef)");
+    if (inst.usesCustomInserter) os.print("|(1<<TID.usesCustomInserter)");
+    if (inst.hasPostISelHook) os.print("|(1<<TID.HasPostISelHook)");
+    if (inst.hasCtrlDep) os.print("|(1<<TID.HasCtrlDep)");
+    if (inst.isVariadic) os.print("|(1<<TID.Variadic)");
+    if (inst.isNotDuplicable) os.print("|(1<<TID.IsNotDuplicable)");
+    if (inst.hasSideEffects) os.print("|(1<<TID.HasSideEffects)");
+    if (inst.isAsCheapAsAMove) os.print("|(1<<TID.CheapAsAMove)");
+    if (inst.hasExtraSrcRegAllocReq) os.print("|(TID.HasExtraSrcRegAllocReq)");
+    if (inst.hasExtraDefRegAllocReq) os.print("|(1<<TID.HasExtraDefRegAllocReq)");
+    if (inst.isPseudo) os.print("(|(1<<TID.IsPseudo))");
 
-    os.printf(", 0");
+    os.print(", 0");
 
     // Emit all of the target-specific flags...
-    Init.ListInit li = instrInfo.getValueAsListInit("TSFlagsFields");
-    Init.ListInit shift = instrInfo.getValueAsListInit("TSFlagsShifts");
-    if (li.getSize() != shift.getSize())
-      Error.printFatalError("Lengths of " + instrInfo.getName()
-          + ":(TargetInfoFields, TargetInfoPositions) must be equal!");
-
-    for (int i = 0, e = li.getSize(); i != e; i++) {
-      emitShiftedValue(inst.theDef, (Init.StringInit) li.getElement(i),
-          (Init.IntInit) shift.getElement(i), os);
+    Init.BitsInit li = inst.theDef.getValueAsBitsInit("TSFlags");
+    long value = 0;
+    for (int i = 0, e = li.getNumBits(); i != e; i++) {
+      Init ii = li.getBit(i);
+      if (ii instanceof Init.BitInit)
+        value |= (((Init.BitInit)ii).getValue() ? 1L : 0L) << i;
+      else
+        Util.assertion(String.format("Invalid TSFlag bit in %s", inst.theDef.getName()));
     }
 
-    os.printf(", ");
+    os.printf(", %dL, ", value);
 
     // Emit the implicit uses and defs list.
     ArrayList<Record> uses = inst.theDef.getValueAsListOfDefs("Uses");
     if (uses.isEmpty())
-      os.printf("null, ");
+      os.print("null, ");
     else
       os.printf("implicitList%d, ", emittedLists.get(uses));
 
     ArrayList<Record> defs = inst.theDef.getValueAsListOfDefs("Defs");
     if (defs.isEmpty())
-      os.printf("null, ");
+      os.print("null, ");
     else
       os.printf("implicitList%d, ", emittedLists.get(defs));
 
     if (!barriersMap.containsKey(inst.theDef))
-      os.printf("null, ");
+      os.print("null, ");
     else
       os.printf("barriers%d, ", barriersMap.get(inst.theDef));
 
     // Emit the operand info.
     ArrayList<String> operandInfo = getOperandInfo(inst);
     if (operandInfo.isEmpty())
-      os.printf("null");
+      os.print("null");
     else
       os.printf("operandInfo%d", opInfo.get(operandInfo));
 
@@ -264,15 +269,18 @@ public final class InstrInfoEmitter extends TableGenBackend {
       switch (r.getName()) {
         case "PHI":
         case "INLINEASM":
-        case "DBG_LABEL":
+        case "PROLOG_LABEL":
         case "EH_LABEL":
         case "GC_LABEL":
-        case "DECLARE":
+        case "KILL":
         case "EXTRACT_SUBREG":
         case "INSERT_SUBREG":
         case "IMPLICIT_DEF":
         case "SUBREG_TO_REG":
         case "COPY_TO_REGCLASS":
+        case "DBG_VALUE":
+        case "REG_SEQUENCE":
+        case "COPY":
           return;
         default:
           Error.printFatalError(r.getName() + " doesn't have a field named '"
@@ -343,7 +351,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         for (int i = 1; i < e; i++)
           os.printf(",\n\t\tnew MCOperandInfo(%s)", operandInfo.get(i));
       }
-      os.printf("\n\t};\n");
+      os.print("\n\t};");
     }
   }
 
@@ -373,7 +381,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         if (opr.isSubClassOf("RegisterClass"))
           res.append(opr.getName()).append("RegClassID, ");
         else if (opr.isSubClassOf("PointerLikeRegClass"))
-          res.append(opr.getValueAsInt("RegClassKind") + ", ");
+          res.append(opr.getValueAsInt("RegClassKind")).append(", ");
         else
           res.append("0, ");
 
@@ -388,7 +396,10 @@ public final class InstrInfoEmitter extends TableGenBackend {
         if (instr.operandList.get(i).rec.isSubClassOf("OptionalDefOperand"))
           res.append("|(1<<OptionalDef)");
 
-        res.append(", ").append(instr.operandList.get(i).constraints.get(j));
+        res.append(", ");
+        CodeGenInstruction.ConstraintInfo ci = instr.operandList.get(i).constraints.get(j);
+        res.append(ci.toString());
+
         result.add(res.toString());
       }
     }
@@ -428,7 +439,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         os.printf(", %s", uses.get(i).getName());
       }
     }
-    os.printf("};\n");
+    os.println("};");
   }
 
   private static void printBarriers(ArrayList<Record> barriers, int num, PrintStream os) {
@@ -440,7 +451,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         os.printf(", %sRegisterClass", barriers.get(i).getName());
       }
     }
-    os.printf("};\n");
+    os.println("};");
   }
 
   private void gatherItinClasses() {
@@ -465,7 +476,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
    *
    * @param outputFile
    */
-  public void runEnums(String outputFile) {
+  void runEnums(String outputFile) {
     try (PrintStream os = outputFile.equals("-") ? System.out :
         new PrintStream(new FileOutputStream(outputFile))) {
       emitSourceFileHeaderComment("Target Instruction Enum Values", os);
@@ -485,7 +496,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
 
       os.printf("\tint INSTRUCTION_LIST_END = %d;\n", numberedInstrs.size());
 
-      os.printf("}");
+      os.print("}");
     } catch (FileNotFoundException e) {
       System.err.printf("File %s dose not exist", outputFile);
       System.exit(1);

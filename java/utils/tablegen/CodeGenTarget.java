@@ -24,8 +24,6 @@ import java.util.HashSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import static backend.codegen.MVT.Other;
-
 /**
  * This class corresponds to the Target class in .td file.
  *
@@ -34,8 +32,6 @@ import static backend.codegen.MVT.Other;
  */
 public final class CodeGenTarget {
   private Record targetRec;
-  private ArrayList<Record> calleeSavedRegisters;
-  private int pointerType;
   private TreeMap<String, CodeGenInstruction> insts;
   private ArrayList<CodeGenRegister> registers;
   private ArrayList<CodeGenRegisterClass> registerClasses;
@@ -44,7 +40,6 @@ public final class CodeGenTarget {
   private RecordKeeper keeper;
 
   public CodeGenTarget(RecordKeeper keeper) {
-    pointerType = Other;
     legalValueTypes = new ArrayList<>();
     this.keeper = keeper;
     hwModes = new CodeGenHwModes(keeper);
@@ -56,18 +51,12 @@ public final class CodeGenTarget {
       Error.printFatalError("Error: Multiple subclasses of Target defined!");
 
     targetRec = targets.get(0);
-
-    // LLVM 1.0 introduced which is removed in LLVM 2.6.
-    // calleeSavedRegisters = targetRec.getValueAsListOfDefs("CalleeSavedRegisters");
-    // pointerType = getValueType(targetRec.getValueAsDef("PointerType"));
-
     readRegisters();
-
     // Read register classes description information from records.
     readRegisterClasses();
   }
 
-  public CodeGenHwModes getHwModes() {
+  CodeGenHwModes getHwModes() {
     return hwModes;
   }
 
@@ -147,17 +136,16 @@ public final class CodeGenTarget {
     if (instrs.size() <= 2)
       Error.printFatalError("No 'Instruction' subclasses defined!");
 
-    String instFormatName = getAsmWriter().getValueAsString("InstFormatName");
     insts = new TreeMap<>();
     for (Record inst : instrs) {
-      String asmStr = inst.getValueAsString(instFormatName);
+      String asmStr = inst.getName();
       insts.put(inst.getName(), new CodeGenInstruction(inst, asmStr));
     }
   }
 
-  public static int AsmWriterNum = 0;
+  private static int AsmWriterNum = 0;
 
-  public Record getAsmWriter() {
+  Record getAsmWriter() {
     ArrayList<Record> li = targetRec.getValueAsListOfDefs("AssemblyWriters");
     if (AsmWriterNum >= li.size())
       Error.printFatalError("Target does not have an AsmWriter #" + AsmWriterNum + "!");
@@ -172,19 +160,11 @@ public final class CodeGenTarget {
     return targetRec.getName();
   }
 
-  public ArrayList<Record> getCalleeSavedRegisters() {
-    return calleeSavedRegisters;
-  }
-
-  public int getPointerType() {
-    return pointerType;
-  }
-
   Record getInstructionSet() {
     return targetRec.getValueAsDef("InstructionSet");
   }
 
-  public ArrayList<CodeGenRegisterClass> getRegisterClasses() {
+  ArrayList<CodeGenRegisterClass> getRegisterClasses() {
     return registerClasses;
   }
 
@@ -204,20 +184,23 @@ public final class CodeGenTarget {
    *
    * @param numberedInstructions
    */
-  public void getInstructionsByEnumValue(
+  void getInstructionsByEnumValue(
       ArrayList<CodeGenInstruction> numberedInstructions) {
     String[] firstPriority = {
         "PHI",
         "INLINEASM",
-        "DBG_LABEL",
+        "PROLOG_LABEL",
         "EH_LABEL",
         "GC_LABEL",
-        "DECLARE",
+        "KILL",
         "EXTRACT_SUBREG",
         "INSERT_SUBREG",
         "IMPLICIT_DEF",
         "SUBREG_TO_REG",
-        "COPY_TO_REGCLASS"
+        "COPY_TO_REGCLASS",
+        "DBG_VALUE",
+        "REG_SEQUENCE",
+        "COPY"
     };
     TreeSet<String> names = new TreeSet<>();
     for (String instr : firstPriority) {
@@ -238,7 +221,7 @@ public final class CodeGenTarget {
 
   public CodeGenInstruction getInstruction(String name) {
     insts = getInstructions();
-    Util.assertion(insts.containsKey(name), "Not an instruction!");
+    Util.assertion(insts.containsKey(name), String.format("The '%s' is not an instruction!", name));
     return insts.get(name);
   }
 
@@ -254,7 +237,7 @@ public final class CodeGenTarget {
     return (int) rec.getValueAsInt("Value");
   }
 
-  public void readLegalValueTypes() {
+  private void readLegalValueTypes() {
     ArrayList<CodeGenRegisterClass> rcs = getRegisterClasses();
     for (CodeGenRegisterClass rc : rcs) {
       for (int i = 0, e = rc.vts.size(); i != e; i++)
@@ -262,26 +245,24 @@ public final class CodeGenTarget {
     }
 
     // Remove duplicates.
-    HashSet<ValueTypeByHwMode> set = new HashSet<>();
-    for (int i = 0; i != legalValueTypes.size(); i++)
-      set.add(legalValueTypes.get(i));
+    HashSet<ValueTypeByHwMode> set = new HashSet<>(legalValueTypes);
 
     legalValueTypes.clear();
     legalValueTypes.addAll(set);
   }
 
-  public ArrayList<ValueTypeByHwMode> getLegalValueTypes() {
+  ArrayList<ValueTypeByHwMode> getLegalValueTypes() {
     if (legalValueTypes.isEmpty()) readLegalValueTypes();
 
     return legalValueTypes;
   }
 
-  public CodeGenRegisterClass getRegisterClass(Record r) {
+  CodeGenRegisterClass getRegisterClass(Record r) {
     for (CodeGenRegisterClass rc : registerClasses)
       if (rc.theDef.equals(r))
         return rc;
 
-    Util.assertion(false, "Didn't find the register class!");
+    Util.assertion("Didn't find the register class!");
     return null;
   }
 
@@ -295,7 +276,7 @@ public final class CodeGenTarget {
    * @param r
    * @return
    */
-  public CodeGenRegisterClass getRegisterClassForRegister(Record r) {
+  CodeGenRegisterClass getRegisterClassForRegister(Record r) {
     ArrayList<CodeGenRegisterClass> rcs = getRegisterClasses();
     CodeGenRegisterClass foundRC = null;
     for (int i = 0, e = rcs.size(); i != e; ++i) {
@@ -338,7 +319,7 @@ public final class CodeGenTarget {
    * @param r
    * @return
    */
-  public ArrayList<ValueTypeByHwMode> getRegisterVTs(Record r) {
+  ArrayList<ValueTypeByHwMode> getRegisterVTs(Record r) {
     ArrayList<ValueTypeByHwMode> res = new ArrayList<>();
     for (CodeGenRegisterClass rc : registerClasses) {
       if (rc.contains(r)) {

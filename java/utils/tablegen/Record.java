@@ -40,7 +40,7 @@ public final class Record implements Cloneable {
   /**
    * Sorting predicate to sort record by namespace.
    */
-  public static final Comparator<Record> LessRecord = (o1, o2) -> o1.getName().compareTo(o2.getName());
+  static final Comparator<Record> LessRecord = (o1, o2) -> o1.getName().compareTo(o2.getName());
   /**
    * Sorting predicate to sort the record by theire namespace field.
    */
@@ -89,7 +89,7 @@ public final class Record implements Cloneable {
     }
   }
 
-  public ArrayList<String> getTemplateArgs() {
+  ArrayList<String> getTemplateArgs() {
     return templateArgs;
   }
 
@@ -97,11 +97,11 @@ public final class Record implements Cloneable {
     return values;
   }
 
-  public ArrayList<Record> getSuperClasses() {
+  ArrayList<Record> getSuperClasses() {
     return superClasses;
   }
 
-  public boolean isTemplateArg(String name) {
+  boolean isTemplateArg(String name) {
     return templateArgs.contains(name);
   }
 
@@ -111,17 +111,17 @@ public final class Record implements Cloneable {
     return null;
   }
 
-  public void addTemplateArg(String name) {
+  void addTemplateArg(String name) {
     Util.assertion(!isTemplateArg(name), "Template arg already defined!");
     templateArgs.add(name);
   }
 
-  public void addValue(RecordVal rv) {
+  void addValue(RecordVal rv) {
     Util.assertion(getValue(rv.getName()) == null, "Value already defined!");
     values.add(rv.clone());
   }
 
-  public void removeValue(String name) {
+  void removeValue(String name) {
     Util.assertion(getValue(name) != null, "Cannot remove a no existing value");
     for (Iterator<RecordVal> itr = values.iterator(); itr.hasNext(); ) {
       RecordVal rv = itr.next();
@@ -130,12 +130,12 @@ public final class Record implements Cloneable {
         return;
       }
     }
-    Util.assertion(false, "Name does not exist in record!");
+    Util.assertion("Name does not exist in record!");
   }
 
   public boolean isSubClassOf(Record r) {
-    for (Record R : superClasses)
-      if (r == R) return true;
+    for (Record sc : superClasses)
+      if (r.getName().equals(sc.getName())) return true;
     return false;
   }
 
@@ -145,18 +145,17 @@ public final class Record implements Cloneable {
     return false;
   }
 
-  public void addSuperClass(Record r) {
+  void addSuperClass(Record r) {
     Util.assertion(!isSubClassOf(r), "Already subclass record!");
     superClasses.add(r);
   }
 
-  public void resolveReferences() {
+  void resolveReferences() {
     resolveReferencesTo(null);
   }
 
-  public void resolveReferencesTo(RecordVal rv) {
-    for (int i = 0, e = values.size(); i < e; i++) {
-      RecordVal val = values.get(i);
+  void resolveReferencesTo(RecordVal rv) {
+    for (RecordVal val : values) {
       Init v = val.getValue();
       if (v != null) {
         Init res = v.resolveReferences(this, rv);
@@ -188,22 +187,21 @@ public final class Record implements Cloneable {
     ArrayList<Record> sc = r.getSuperClasses();
     if (!sc.isEmpty()) {
       os.print("  //");
-      for (int i = 0, e = sc.size(); i < e; i++)
-        os.printf(" %s", sc.get(i).getName());
+      for (Record aSc : sc) os.printf(" %s", aSc.getName());
     }
     os.println();
 
     ArrayList<RecordVal> vals = r.getValues();
-    for (int i = 0, e = vals.size(); i < e; i++) {
-      if (vals.get(i).getPrefix() != 0 && !r.isTemplateArg(vals.get(i).getName())) {
-        os.printf("  ");
-        vals.get(i).print(os, true);
+    for (RecordVal val : vals) {
+      if (val.getPrefix() != 0 && !r.isTemplateArg(val.getName())) {
+        os.print("  ");
+        val.print(os, true);
       }
     }
-    for (int i = 0, e = vals.size(); i < e; i++) {
-      if (vals.get(i).getPrefix() == 0 && !r.isTemplateArg(vals.get(i).getName())) {
-        os.printf("  ");
-        vals.get(i).print(os);
+    for (RecordVal val : vals) {
+      if (val.getPrefix() == 0 && !r.isTemplateArg(val.getName())) {
+        os.print("  ");
+        val.print(os);
       }
     }
     os.println("}");
@@ -220,7 +218,7 @@ public final class Record implements Cloneable {
    * @param fieldName
    * @return
    */
-  public Init getValueInit(String fieldName) {
+  Init getValueInit(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
@@ -252,7 +250,6 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
   public BitsInit getValueAsBitsInit(String fieldName) {
     RecordVal rv = getValue(fieldName);
@@ -272,9 +269,8 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
-  public ListInit getValueAsListInit(String fieldName) {
+  ListInit getValueAsListInit(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
@@ -293,10 +289,10 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
   public ArrayList<Record> getValueAsListOfDefs(String fieldName) {
     ListInit list = getValueAsListInit(fieldName);
+    Util.assertion(list != null, "must have the member named the '" + fieldName + "'");
     ArrayList<Record> defs = new ArrayList<>();
     for (int i = 0; i < list.getSize(); i++) {
       Init ii = list.getElement(i);
@@ -315,7 +311,6 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
   public Record getValueAsDef(String fieldName) {
     RecordVal rv = getValue(fieldName);
@@ -335,12 +330,11 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
-  public boolean getValueAsBit(String fieldName) {
+  boolean getValueAsBit(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
-        "Reord '" + getName() + "' does not have a field" +
+        "Record '" + getName() + "' does not have a field" +
             " named '" + fieldName + "'!\n");
     Util.assertion(rv.getValue() instanceof BitInit,
         "Record `" + getName() + "', field `" + fieldName +
@@ -355,7 +349,6 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
   public long getValueAsInt(String fieldName) {
     RecordVal rv = getValue(fieldName);
@@ -375,9 +368,8 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
-  public Init.DagInit getValueAsDag(String fieldName) {
+  Init.DagInit getValueAsDag(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
@@ -395,9 +387,8 @@ public final class Record implements Cloneable {
    *
    * @param fieldName
    * @return
-   * @throws Exception
    */
-  public String getValueAsCode(String fieldName) {
+  String getValueAsCode(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
         "Reord '" + getName() + "' does not have a field"
@@ -408,7 +399,7 @@ public final class Record implements Cloneable {
     return ((CodeInit) rv.getValue()).getValue();
   }
 
-  public TIntArrayList getValueAsListOfInts(String fieldName) {
+  TIntArrayList getValueAsListOfInts(String fieldName) {
     ListInit list = getValueAsListInit(fieldName);
     Util.assertion(list != null);
     TIntArrayList res = new TIntArrayList();
@@ -431,22 +422,21 @@ public final class Record implements Cloneable {
 
   @Override
   public Record clone() {
-    try {
-      Object obj = super.clone();
+    Record r = new Record(name, loc);
+    ArrayList<String> t = new ArrayList<>(templateArgs);
+    ArrayList<RecordVal> t2 = new ArrayList<>();
+    values.forEach(v -> {
+      t2.add(v.clone());
+    });
 
-      Record r = (Record) obj;
-      r.name = name;
-      r.loc = loc;
-      ArrayList<String> t = new ArrayList<>(templateArgs);
-      ArrayList<RecordVal> t2 = new ArrayList<>(values);
-      ArrayList<Record> s = new ArrayList<>(superClasses);
-      r.templateArgs = t;
-      r.values = t2;
-      r.superClasses = s;
-      return r;
-    } catch (CloneNotSupportedException e) {
-      return null;
-    }
+    ArrayList<Record> s = new ArrayList<>();
+    superClasses.forEach(sc-> {
+      s.add(sc.clone());
+    });
+    r.templateArgs = t;
+    r.values = t2;
+    r.superClasses = s;
+    return r;
   }
 
   /**

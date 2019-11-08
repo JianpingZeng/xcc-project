@@ -138,7 +138,7 @@ public class MCInstrDesc {
   }
 
   public boolean hasOptionalDef() {
-    return (flags & (1 << TID.hasOptionalDef)) != 0;
+    return (flags & (1 << TID.OptionalDef)) != 0;
   }
 
   public int[] getImplicitUses() {
@@ -218,7 +218,7 @@ public class MCInstrDesc {
   }
 
   public boolean canFoldAsLoad() {
-    return (flags & (1 << TID.FoldableAsLoad)) != 0;
+    return (flags & (1 << TID.FoldAsLoad)) != 0;
   }
 
   public boolean mayLoad() {
@@ -230,7 +230,7 @@ public class MCInstrDesc {
   }
 
   public boolean hasUnmodeledSideEffects() {
-    return (flags & (1 << TID.UnmodelSideEffects)) != 0;
+    return (flags & (1 << TID.SideEffects)) != 0;
   }
 
   public boolean isCommutable() {
@@ -238,7 +238,7 @@ public class MCInstrDesc {
   }
 
   public boolean isConvertibleTo3Addr() {
-    return (flags & (1 << TID.ConvertibleTo3Addr)) != 0;
+    return (flags & (1 << TID.ConvertibleToThreeAddress)) != 0;
   }
 
   public boolean usesCustomInsertionHook() {
@@ -246,7 +246,7 @@ public class MCInstrDesc {
   }
 
   public boolean isRematerializable() {
-    return (flags & (1 << TID.Rematerializable)) != 0;
+    return (flags & (1 << TID.ReMaterializable)) != 0;
   }
 
   public boolean isAsCheapAsAMove() {

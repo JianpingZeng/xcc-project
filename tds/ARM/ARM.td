@@ -29,31 +29,126 @@
  include "../Target.td"
 
 //===----------------------------------------------------------------------===//
+// ARM Subtarget state.
+//
+
+def ModeThumb  : SubtargetFeature<"thumb-mode", "InThumbMode", "true",
+                                  "Thumb mode">;
+
+def ModeNaCl   : SubtargetFeature<"nacl-mode", "InNaClMode", "true",
+                                  "Native client mode">;
+
+//===----------------------------------------------------------------------===//
 // ARM Subtarget features.
 //
 
-def FeatureVFP2 : SubtargetFeature<"vfp2", "hasVFPv2", "true",
+def FeatureVFP2 : SubtargetFeature<"vfp2", "HasVFPv2", "true",
                                    "Enable VFP2 instructions">;
-// ARM ISAs.
-def HasV4TOps   : SubtargetFeature<"v4t", "hasV4TOps", "true",
-                                   "Support ARM v4T instructions">;
-def HasV5TOps   : SubtargetFeature<"v5t", "hasV5TOps", "true",
-                                   "Support ARM v5T instructions",
-                                   [HasV4TOps]>;
-def HasV5TEOps  : SubtargetFeature<"v5te", "hasV5TEOps", "true",
-                             "Support ARM v5TE, v5TEj, and v5TExp instructions",
-                                   [HasV5TOps]>;
-def HasV6Ops    : SubtargetFeature<"v6", "hasV6Ops", "true",
-                                   "Support ARM v6 instructions",
-                                   [HasV5TEOps]>;
+def FeatureVFP3 : SubtargetFeature<"vfp3", "HasVFPv3", "true",
+                                   "Enable VFP3 instructions",
+                                   [FeatureVFP2]>;
+def FeatureNEON : SubtargetFeature<"neon", "HasNEON", "true",
+                                   "Enable NEON instructions",
+                                   [FeatureVFP3]>;
+def FeatureThumb2 : SubtargetFeature<"thumb2", "HasThumb2", "true",
+                                     "Enable Thumb2 instructions">;
+def FeatureNoARM  : SubtargetFeature<"noarm", "NoARM", "true",
+                                     "Does not support ARM mode execution">;
+def FeatureFP16   : SubtargetFeature<"fp16", "HasFP16", "true",
+                                     "Enable half-precision floating point">;
+def FeatureD16    : SubtargetFeature<"d16", "HasD16", "true",
+                                     "Restrict VFP3 to 16 double registers">;
+def FeatureHWDiv  : SubtargetFeature<"hwdiv", "HasHardwareDivide", "true",
+                                     "Enable divide instructions">;
+def FeatureT2XtPk : SubtargetFeature<"t2xtpk", "HasT2ExtractPack", "true",
+                                 "Enable Thumb2 extract and pack instructions">;
+def FeatureDB     : SubtargetFeature<"db", "HasDataBarrier", "true",
+                                   "Has data barrier (dmb / dsb) instructions">;
+def FeatureSlowFPBrcc : SubtargetFeature<"slow-fp-brcc", "SlowFPBrcc", "true",
+                                         "FP compare + branch is slow">;
+def FeatureVFPOnlySP : SubtargetFeature<"fp-only-sp", "FPOnlySP", "true",
+                          "Floating point unit supports single precision only">;
+
 // Some processors have FP multiply-accumulate instructions that don't
 // play nicely with other VFP / NEON instructions, and it's generally better
 // to just not use them.
-def FeatureHasSlowFPVMLx : SubtargetFeature<"slowfpvmlx", "slowFPVMLx", "true",
+def FeatureHasSlowFPVMLx : SubtargetFeature<"slowfpvmlx", "SlowFPVMLx", "true",
                                          "Disable VFP / NEON MAC instructions">;
 
+// Cortex-A8 / A9 Advanced SIMD has multiplier accumulator forwarding.
+def FeatureVMLxForwarding : SubtargetFeature<"vmlx-forwarding",
+                                       "HasVMLxForwarding", "true",
+                                       "Has multiplier accumulator forwarding">;
+
+// Some processors benefit from using NEON instructions for scalar
+// single-precision FP operations.
+def FeatureNEONForFP : SubtargetFeature<"neonfp", "UseNEONForSinglePrecisionFP",
+                                        "true",
+                                        "Use NEON for single precision FP">;
+
+// Disable 32-bit to 16-bit narrowing for experimentation.
+def FeaturePref32BitThumb : SubtargetFeature<"32bit", "Pref32BitThumb", "true",
+                                             "Prefer 32-bit Thumb instrs">;
+
+/// Some instructions update CPSR partially, which can add false dependency for
+/// out-of-order implementation, e.g. Cortex-A9, unless each individual bit is
+/// mapped to a separate physical register. Avoid partial CPSR update for these
+/// processors.
+def FeatureAvoidPartialCPSR : SubtargetFeature<"avoid-partial-cpsr",
+                                               "AvoidCPSRPartialUpdate", "true",
+                                 "Avoid CPSR partial update for OOO execution">;
+
+/// Some M architectures don't have the DSP extension (v7E-M vs. v7M)
+def FeatureDSPThumb2 : SubtargetFeature<"t2dsp", "Thumb2DSP", "true",
+                                 "Supports v7 DSP instructions in Thumb2">;
+
+// Multiprocessing extension.
+def FeatureMP : SubtargetFeature<"mp", "HasMPExtension", "true",
+                                 "Supports Multiprocessing extension">;
+
+// M-series ISA?
+def FeatureMClass : SubtargetFeature<"mclass", "IsMClass", "true",
+                                     "Is microcontroller profile ('M' series)">;
+
+// ARM ISAs.
+def HasV4TOps   : SubtargetFeature<"v4t", "HasV4TOps", "true",
+                                   "Support ARM v4T instructions">;
+def HasV5TOps   : SubtargetFeature<"v5t", "HasV5TOps", "true",
+                                   "Support ARM v5T instructions",
+                                   [HasV4TOps]>;
+def HasV5TEOps  : SubtargetFeature<"v5te", "HasV5TEOps", "true",
+                             "Support ARM v5TE, v5TEj, and v5TExp instructions",
+                                   [HasV5TOps]>;
+def HasV6Ops    : SubtargetFeature<"v6", "HasV6Ops", "true",
+                                   "Support ARM v6 instructions",
+                                   [HasV5TEOps]>;
+def HasV6T2Ops  : SubtargetFeature<"v6t2", "HasV6T2Ops", "true",
+                                   "Support ARM v6t2 instructions",
+                                   [HasV6Ops, FeatureThumb2]>;
+def HasV7Ops    : SubtargetFeature<"v7", "HasV7Ops", "true",
+                                   "Support ARM v7 instructions",
+                                   [HasV6T2Ops]>;
+
+//===----------------------------------------------------------------------===//
+// ARM Processors supported.
+//
+
+include "ARMSchedule.td"
+
+// ARM processor families.
+def ProcA8      : SubtargetFeature<"a8", "ARMProcFamily", "CortexA8",
+                                   "Cortex-A8 ARM processors",
+                                   [FeatureSlowFPBrcc, FeatureNEONForFP,
+                                    FeatureHasSlowFPVMLx, FeatureVMLxForwarding,
+                                    FeatureT2XtPk]>;
+def ProcA9      : SubtargetFeature<"a9", "ARMProcFamily", "CortexA9",
+                                   "Cortex-A9 ARM processors",
+                                   [FeatureVMLxForwarding,
+                                    FeatureT2XtPk, FeatureFP16,
+                                    FeatureAvoidPartialCPSR]>;
+
 class ProcNoItin<string Name, list<SubtargetFeature> Features>
- : Processor<Name, NoItineraries, Features>;
+ : Processor<Name, GenericItineraries, Features>;
 
 // V4 Processors.
 def : ProcNoItin<"generic",         []>;
@@ -94,32 +189,66 @@ def : ProcNoItin<"xscale",          [HasV5TEOps]>;
 def : ProcNoItin<"iwmmxt",          [HasV5TEOps]>;
 
 // V6 Processors.
-def : ProcNoItin<"arm1136j-s",      [HasV6Ops]>;
-def : ProcNoItin<"arm1136jf-s",     [HasV6Ops, FeatureVFP2,
-                                     FeatureHasSlowFPVMLx]>;
-def : ProcNoItin<"arm1176jz-s",     [HasV6Ops]>;
-def : ProcNoItin<"arm1176jzf-s",    [HasV6Ops, FeatureVFP2,
-                                     FeatureHasSlowFPVMLx]>;
-def : ProcNoItin<"mpcorenovfp",     [HasV6Ops]>;
-def : ProcNoItin<"mpcore",          [HasV6Ops, FeatureVFP2,
-                                     FeatureHasSlowFPVMLx]>;
+def : Processor<"arm1136j-s",       ARMV6Itineraries, [HasV6Ops]>;
+def : Processor<"arm1136jf-s",      ARMV6Itineraries, [HasV6Ops, FeatureVFP2,
+                                                       FeatureHasSlowFPVMLx]>;
+def : Processor<"arm1176jz-s",      ARMV6Itineraries, [HasV6Ops]>;
+def : Processor<"arm1176jzf-s",     ARMV6Itineraries, [HasV6Ops, FeatureVFP2,
+                                                       FeatureHasSlowFPVMLx]>;
+def : Processor<"mpcorenovfp",      ARMV6Itineraries, [HasV6Ops]>;
+def : Processor<"mpcore",           ARMV6Itineraries, [HasV6Ops, FeatureVFP2,
+                                                       FeatureHasSlowFPVMLx]>;
 
+// V6M Processors.
+def : Processor<"cortex-m0",        ARMV6Itineraries, [HasV6Ops, FeatureNoARM,
+                                                       FeatureDB, FeatureMClass]>;
 
- //===----------------------------------------------------------------------===//
- // Register File Description
- //===----------------------------------------------------------------------===//
+// V6T2 Processors.
+def : Processor<"arm1156t2-s",      ARMV6Itineraries, [HasV6T2Ops,
+                                                       FeatureDSPThumb2]>;
+def : Processor<"arm1156t2f-s",     ARMV6Itineraries, [HasV6T2Ops, FeatureVFP2,
+                                                       FeatureHasSlowFPVMLx,
+                                                       FeatureDSPThumb2]>;
 
- include "ARMRegisterInfo.td"
+// V7a Processors.
+def : Processor<"cortex-a8",        CortexA8Itineraries,
+                                    [ProcA8, HasV7Ops, FeatureNEON, FeatureDB,
+                                     FeatureDSPThumb2]>;
+def : Processor<"cortex-a9",        CortexA9Itineraries,
+                                    [ProcA9, HasV7Ops, FeatureNEON, FeatureDB,
+                                     FeatureDSPThumb2]>;
+def : Processor<"cortex-a9-mp",     CortexA9Itineraries,
+                                    [ProcA9, HasV7Ops, FeatureNEON, FeatureDB,
+                                     FeatureDSPThumb2, FeatureMP]>;
 
- include "ARMCallingConv.td"
+// V7M Processors.
+def : ProcNoItin<"cortex-m3",       [HasV7Ops,
+                                     FeatureThumb2, FeatureNoARM, FeatureDB,
+                                     FeatureHWDiv, FeatureMClass]>;
 
- //===----------------------------------------------------------------------===//
- // Instruction Descriptions
- //===----------------------------------------------------------------------===//
+// V7EM Processors.
+def : ProcNoItin<"cortex-m4",       [HasV7Ops,
+                                     FeatureThumb2, FeatureNoARM, FeatureDB,
+                                     FeatureHWDiv, FeatureDSPThumb2,
+                                     FeatureT2XtPk, FeatureVFP2,
+                                     FeatureVFPOnlySP, FeatureMClass]>;
 
- include "ARMInstrInfo.td"
+//===----------------------------------------------------------------------===//
+// Register File Description
+//===----------------------------------------------------------------------===//
 
- def ARMInstrInfo : InstrInfo;
+include "ARMRegisterInfo.td"
+
+include "ARMCallingConv.td"
+
+//===----------------------------------------------------------------------===//
+// Instruction Descriptions
+//===----------------------------------------------------------------------===//
+
+include "ARMInstrInfo.td"
+
+def ARMInstrInfo : InstrInfo;
+
 
 //===----------------------------------------------------------------------===//
 // Assembly printer
@@ -131,13 +260,13 @@ def ARMAsmWriter : AsmWriter {
   bit isMCAsmWriter = 1;
 }
 
+//===----------------------------------------------------------------------===//
+// Declare the target which we are implementing
+//===----------------------------------------------------------------------===//
 
- //===----------------------------------------------------------------------===//
- // Declare the target which we are implementing
- //===----------------------------------------------------------------------===//
+def ARM : Target {
+  // Pull in Instruction Info:
+  let InstructionSet = ARMInstrInfo;
 
- def ARM : Target {
-   // Pull in Instruction Info:
-   let InstructionSet = ARMInstrInfo;
-   let AssemblyWriters = [ARMAsmWriter];
- }
+  let AssemblyWriters = [ARMAsmWriter];
+}

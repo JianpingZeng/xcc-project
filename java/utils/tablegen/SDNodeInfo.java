@@ -211,16 +211,6 @@ public final class SDNodeInfo {
                                        SDNodeInfo nodeInfo,
                                        TreePattern tp) {
       int numResults = nodeInfo.getNumResults();
-      Util.assertion((numResults <= 1),
-          "We only work which nodes with zero or result so far!");
-
-      if (nodeInfo.getNumOperands() >= 0) {
-        if (node.getNumChildren() != nodeInfo.getNumOperands())
-          tp.error(node.getOperator().getName() +
-              " node requires exactly "
-              + nodeInfo.getNumOperands() + " operands");
-      }
-
       TypeInfer infer = tp.getTypeInfer();
       CodeGenTarget cgt = tp.getDAGPatterns().getTarget();
       int[] tempResNo = new int[1];
@@ -295,19 +285,20 @@ public final class SDNodeInfo {
                                          TreePatternNode node,
                                          int numResults,
                                          int[] resNo) {
-      Util.assertion(numResults <= 1, "We only work with nodes with zero or one result so far!");
-      if (opNo >= (numResults + node.getNumChildren())) {
-        System.err.printf("Invalid operand number %d ", opNo);
+      if (opNo < numResults) {
+        resNo[0] = opNo;
+        return node;
+      }
+
+      opNo -= numResults;
+
+      if (opNo >= node.getNumChildren()) {
+        System.err.printf("Invalid operand number %d ", opNo + numResults);
         node.dump();
         System.err.println();
         System.exit(1);
       }
-
-      if (opNo < numResults) {
-        resNo[0] = opNo;
-        return node;
-      } else
-        return node.getChild(opNo - numResults);
+      return node.getChild(opNo);
     }
   }
 }

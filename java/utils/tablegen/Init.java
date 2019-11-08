@@ -706,8 +706,6 @@ public abstract class Init {
       NAMECONCAT, EQ, NE, LT, LE, GT, GE, ADD, AND
     }
 
-    ;
-
     private BinaryOp opc;
     private Init lhs, rhs;
 
@@ -803,7 +801,7 @@ public abstract class Init {
             long result;
             switch (getOpcode()) {
               default:
-                Util.assertion(false, "Bad opcode!");
+                Util.assertion("Bad opcode!");
               case SHL:
                 result = lhsv << rhsv;
                 break;
@@ -837,7 +835,7 @@ public abstract class Init {
             boolean result;
             switch (getOpcode()) {
               default:
-                Util.assertion(false, "Bad opcode!");
+                Util.assertion("Bad opcode!");
               case EQ:
                 result = lhsv == rhsv;
                 break;
@@ -904,7 +902,7 @@ public abstract class Init {
               return new DefInit(r);
 
             System.err.println("Variable not defined in !nameconcat: '" + name + "'");
-            Util.assertion(false, "Variable not found in !nameconcat");
+            Util.assertion("Variable not found in !nameconcat");
             return null;
           }
         }
@@ -982,8 +980,31 @@ public abstract class Init {
           result.append("!nameconcat<").append(getType().toString())
               .append(">");
           break;
+        case EQ:
+          result.append("!eq");
+          break;
+        case NE:
+          result.append("!ne");
+          break;
+        case LT:
+          result.append("!lt");
+          break;
+        case LE:
+          result.append("!le");
+          break;
+        case GT:
+          result.append("!gt");
+          break;
+        case GE:
+          result.append("!ge");
+          break;
+        case ADD:
+          result.append("!add");
+          break;
+        case AND:
+          result.append("!and");
+          break;
       }
-
       return result.append("(").append(lhs.toString()).append(", ")
           .append(rhs.toString()).append(")").toString();
     }
@@ -1488,7 +1509,7 @@ public abstract class Init {
       Util.assertion(bit < bi.getNumBits(), "Bit reference out of range!");
       Init b = bi.getBit(bit);
 
-      if (!(b instanceof UnsetInit))
+      if (rval != null || !(b instanceof UnsetInit))
         return b;
       return null;
     }
@@ -1557,7 +1578,7 @@ public abstract class Init {
     @Override
     public Init resolveReferences(Record r, RecordVal rval) {
       RecordVal val = r.getValue(varName);
-      if (rval == val || (rval == null && !(val.getValue() instanceof UnsetInit)))
+      if (val != null && (rval == val || (rval == null && !(val.getValue() instanceof UnsetInit))))
         return val.getValue();
       return this;
     }

@@ -267,7 +267,7 @@ public class MachineInstr implements Cloneable {
 
   public boolean isLabel() {
     int op = getOpcode();
-    return op == TargetOpcodes.DBG_LABEL || op == TargetOpcodes.EH_LABEL
+    return op == TargetOpcodes.PROLOG_LABEL || op == TargetOpcodes.EH_LABEL
         || op == TargetOpcodes.GC_LABEL;
   }
 
@@ -279,8 +279,8 @@ public class MachineInstr implements Cloneable {
     return getOpcode() == TargetOpcodes.EH_LABEL;
   }
 
-  public boolean isDebugLabel() {
-    return getOpcode() == TargetOpcodes.DBG_LABEL;
+  public boolean isPrologLabel() {
+    return getOpcode() == TargetOpcodes.PROLOG_LABEL;
   }
 
   public boolean isPHI() {
@@ -293,10 +293,6 @@ public class MachineInstr implements Cloneable {
 
   public boolean isCall() {
     return getDesc().isCall();
-  }
-
-  public boolean isDeclare() {
-    return getOpcode() == TargetOpcodes.DECLARE;
   }
 
   public boolean isImplicitDef() {

@@ -24,10 +24,10 @@ def SDNPMayLoad     : SDNodeProperty;   // May read memory, sets 'mayLoad'.
 def SDNPSideEffect  : SDNodeProperty;   // Sets 'HasUnmodelledSideEffects'.
 def SDNPMemOperand  : SDNodeProperty;   // Touches memory, has assoc MemOperand
 def SDNPVariadic    : SDNodeProperty;   // Node has variable arguments.
+def SDNPWantRoot    : SDNodeProperty;   // ComplexPattern gets the root of match
+def SDNPWantParent  : SDNodeProperty;   // ComplexPattern gets the parent
 
 //===----------------------------------------------------------------------===//
 // Selection DAG Pattern operations.
 //
-class SDPatternOperator {
-  list<SDNodeProperty> Properties = [];
-}
+class SDPatternOperator;

@@ -21,6 +21,9 @@ import tools.SourceMgr;
 import tools.Util;
 import tools.commandline.*;
 
+import java.io.PrintStream;
+import java.util.ArrayList;
+
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.FormattingFlags.Prefix;
@@ -50,6 +53,7 @@ public final class TableGen {
     GenFastISel,
     GenSubtarget,
     GenXCCOptions,
+    PrintSets,
   }
 
   private static Opt<ActionType> action = new Opt<ActionType>(
@@ -78,7 +82,9 @@ public final class TableGen {
           new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
               "Generate subtarget enumerations"),
           new ValueClass.Entry<>(GenXCCOptions, "gen-xcc-options",
-              "Generate XCC C Compiler options")
+              "Generate XCC C Compiler options"),
+          new ValueClass.Entry<>(PrintSets, "print-sets",
+              "Print expanded sets for testing DAG exps")
       ));
 
   private static StringOpt outputFileName = new StringOpt(
@@ -147,6 +153,21 @@ public final class TableGen {
           break;
         case GenXCCOptions:
           new XCCOptionsEmitter(records).run(outputFile);
+          break;
+        case PrintSets:
+          SetTheory sets = new SetTheory();
+          sets.addFieldExpander("Set", "Elements");
+          ArrayList<Record> recs = records.getAllDerivedDefinition("Set");
+          try (PrintStream os = outputFile.equals("-") ? System.out : new PrintStream(outputFile)) {
+            for (Record rec : recs) {
+              os.printf("%s = [", rec.getName());
+              ArrayList<Record> elts = sets.expand(rec);
+              elts.forEach(e -> {
+                os.printf(" %s", e.getName());
+              });
+              os.println(" ]");
+            }
+          }
           break;
         default:
           Util.assertion(false, "Invalid action type!");

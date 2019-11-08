@@ -567,7 +567,7 @@ def ADJCALLSTACKUP32   : I<0, Pseudo, (outs), (ins i32imm:$amt1, i32imm:$amt2),
 }
 
 // x86-64 va_start lowering magic.
-let UsesCustomInserter = 1 in
+let usesCustomInserter = 1 in
 def VASTART_SAVE_XMM_REGS : I<0, Pseudo,
                               (outs),
                               (ins GR8:$al,
@@ -3433,7 +3433,7 @@ def LOCK_DEC32m : I<0xFF, MRM1m, (outs), (ins i32mem:$dst),
 
 // Atomic exchange, and, or, xor
 let Constraints = "$opc = $dst", Defs = [EFLAGS],
-                  UsesCustomInserter = 1 in {
+                  usesCustomInserter = 1 in {
 def ATOMAND32 : I<0, Pseudo, (outs GR32:$dst),(ins i32mem:$ptr, GR32:$opc),
                "#ATOMAND32 PSEUDO!", 
                [(set GR32:$dst, (atomic_load_and_32 addr:$ptr, GR32:$opc))]>;
@@ -3502,7 +3502,7 @@ let Constraints = "$val1 = $dst1, $val2 = $dst2",
                   Defs = [EFLAGS, EAX, EBX, ECX, EDX],
                   Uses = [EAX, EBX, ECX, EDX],
                   mayLoad = 1, mayStore = 1,
-                  UsesCustomInserter = 1 in {
+                  usesCustomInserter = 1 in {
 def ATOMAND6432 : I<0, Pseudo, (outs GR32:$dst1, GR32:$dst2),
                                (ins i64mem:$ptr, GR32:$val1, GR32:$val2),
                "#ATOMAND6432 PSEUDO!", []>;

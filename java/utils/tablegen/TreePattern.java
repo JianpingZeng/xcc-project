@@ -287,6 +287,7 @@ public final class TreePattern {
 
   public void dump() {
     print(System.err);
+    System.err.println();
   }
 
   /**

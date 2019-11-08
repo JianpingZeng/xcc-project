@@ -122,10 +122,10 @@ public final class CodeGenDAGPatterns {
 
   private void verifyInstrTypes() {
     for (PatternToMatch tp : patternsToMatch) {
-      boolean succ = true;
-      succ &= verifyPatternNodeType(tp.getSrcPattern(), true);
+      boolean succ = verifyPatternNodeType(tp.getSrcPattern(), true);
       succ &= verifyPatternNodeType(tp.getDstPattern(), true);
       if (!succ) {
+        System.err.println();
         tp.dump();
         System.err.println();
         Util.assertion("There must is only one type remained");
@@ -133,7 +133,7 @@ public final class CodeGenDAGPatterns {
     }
   }
 
-  public TypeSetByHwMode getLegalValueTypes() {
+  TypeSetByHwMode getLegalValueTypes() {
     return legalValueTypes;
   }
 
@@ -750,6 +750,23 @@ public final class CodeGenDAGPatterns {
         iterateInference |= result.getTree(0).
             updateNodeType(k, pattern.getTree(0).getExtType(k), result);
       }
+
+      // If our iteration has converged and the input pattern's types are fully
+      // resolved but the result pattern is not fully resolved, we may have a
+      // situation where we have two instructions in the result pattern and
+      // the instructions require a common register class, but don't care about
+      // what actual MVT is used.  This is actually a bug in our modelling:
+      // output patterns should have register classes, not MVTs.
+      //
+      // In any case, to handle this, we just go through and disambiguate some
+      // arbitrary types to the result pattern's nodes.
+
+      // for example:
+      // Pattern: (scalar_to_vector:{ *:[v16i8]} GPR:{ *:[i32]}:$src)
+      // Result:(INSERT_SUBREG:{ *:[v16i8]} (IMPLICIT_DEF:{ *:[v16i8]}), (VSETLNi8:{ *:[f64, v8i8, v4i16, v2i32, v1i64, v2f32]} (IMPLICIT_DEF:{ *:[v8i8]}), GPR:{ *:[i32]}:$src, 0:{ *:[i32]}), dsub_0:{ *:[i32]})
+      if (!iterateInference && inferredAllPatternTypes && !inferredAllResultTypes) {
+        iterateInference = forceArbitraryInstResultType(result.getTree(0), result);
+      }
     } while (iterateInference);
 
     if (!inferredAllPatternTypes)
@@ -791,6 +808,38 @@ public final class CodeGenDAGPatterns {
         pattern.getTree(0),
         temp.getOnlyTree(), instImpResults,
         (int) theDef.getValueAsInt("AddedComplexity")));
+  }
+
+  /**
+   * Given a pattern result with an unresolved type, see if we can find one
+   * instruction with an unresolved result type.  Force this result type to an
+   * arbitrary element if it's possible types to converge results.
+   * @param n
+   * @param tp
+   * @return
+   */
+  private static boolean forceArbitraryInstResultType(TreePatternNode n, TreePattern tp) {
+    if (n.isLeaf()) return false;
+
+    // Analyze children.
+    for (int i = 0, e = n.getNumChildren(); i < e; ++i)
+      if (forceArbitraryInstResultType(n.getChild(i), tp))
+        return true;
+
+    if (!n.getOperator().isSubClassOf("Instruction"))
+      return false;
+
+    // If this type is already concrete or completely unknown, we can't do anything.
+    TypeInfer infer = tp.getTypeInfer();
+    for (int i = 0, e = n.getNumTypes(); i < e; ++i) {
+      if (n.getExtType(i).isEmpty() || infer.isConcrete(n.getExtType(i), false))
+        continue;
+
+      // Otherwise, force its type to an arbitrary choice.
+      if (infer.forceArbitrary(n.getExtType(0)))
+        return true;
+    }
+    return false;
   }
 
   /**
@@ -1000,13 +1049,24 @@ public final class CodeGenDAGPatterns {
     for (Map.Entry<Record, DAGInstruction> pair : instructions.entrySet()) {
       Record instr = pair.getKey();
       DAGInstruction theInst = pair.getValue();
-      TreePatternNode srcPattern = theInst.getSrcPattern();
-      TreePatternNode dstPattern = theInst.getResultPattern();
-      if (srcPattern != null && dstPattern != null) {
-        TreePattern src = new TreePattern(instr, srcPattern, true, this);
-        TreePattern result = new TreePattern(instr, dstPattern, true, this);
-        parseOnePattern(instr, src, result, theInst.getImpResults());
-      }
+      TreePattern tp = theInst.getPattern();
+      // no pattern.
+      if (tp == null) continue;
+
+      TreePatternNode pattern = tp.getTree(0);
+      TreePatternNode srcPattern;
+      if (pattern.getOperator().getName().equals("set"))
+        srcPattern = pattern.getChild(pattern.getNumChildren()-1).clone();
+      else
+        srcPattern = pattern;
+
+      addPatternsToMatch(new PatternToMatch(
+          instr,
+          makePredList(instr.getValueAsListInit("Predicates")),
+          srcPattern,
+          theInst.getResultPattern(),
+          theInst.getImpResults(),
+          (int)instr.getValueAsInt("AddedComplexity")));
     }
   }
 
@@ -1021,6 +1081,10 @@ public final class CodeGenDAGPatterns {
                                        TreeMap<Record, DAGInstruction> dagInstrs) {
     Util.assertion(!dagInstrs.containsKey(cgi.theDef), "Instruction has been parsed");
     TreePattern tp = new TreePattern(cgi.theDef, pat, true, this);
+    tp.inlinePatternFragments();
+    if (!tp.inferAllTypes())
+      tp.error("Could not infer all types in pattern!");
+
     TreeMap<String, TreePatternNode> instInputs = new TreeMap<>();
     TreeMap<String, TreePatternNode> instResults = new TreeMap<>();
     ArrayList<Record> instImpResults = new ArrayList<>();
@@ -1156,20 +1220,18 @@ public final class CodeGenDAGPatterns {
       resultPattern.setType(i, resNodes.get(i).getExtType(0));
     }
 
-    TreePatternNode pattern = tp.getTree(0);
-    TreePatternNode srcPattern;
-    if (pattern.getOperator().getName().equals("set"))
-      srcPattern = pattern.getChild(pattern.getNumChildren() - 1).clone();
-    else
-      srcPattern = pattern;
-
     // Create and insert the instruction.
-    // FIXME: InstImpResults and InstImpInputs should not be part of
-    // DAGInstruction.
     Record r = tp.getRecord();
     DAGInstruction theInst = new DAGInstruction(results, operands,
-        instImpResults, instImpInputs, srcPattern, resultPattern);
+        instImpResults, instImpInputs, tp);
     dagInstrs.put(r, theInst);
+
+    // Use a temporary tree pattern to infer all types and make sure that
+    // the constructed result is correct. This depends on the instruction
+    // already beging inserted into the instructions map.
+    TreePattern temp = new TreePattern(r, resultPattern, false, this);
+    temp.inferAllTypes(tp.getNamedNodes());
+    theInst.setResultPattern(temp.getOnlyTree());
 
     if (TableGen.DEBUG)
       tp.dump();
@@ -1216,9 +1278,9 @@ public final class CodeGenDAGPatterns {
                   + defaultOps[itr].get(i).getName() + "' doesn't have concrete type!");
             }
           }
-
-          defaultOperands.put(defaultOps[itr].get(i), defaultOpInfo);
+          defaultOpInfo.defaultOps.add(node);
         }
+        defaultOperands.put(defaultOps[itr].get(i), defaultOpInfo);
       }
     }
   }

@@ -218,11 +218,11 @@ class SDCallSeqEnd<list<SDTypeConstraint> constraints> :
 // Selection DAG Node definitions.
 //
 class SDNode<string opcode, SDTypeProfile typeprof,
-             list<SDNodeProperty> props = [], string sdclass = "SDNode"> :
-             SDPatternOperator {
+             list<SDNodeProperty> props = [], string sdclass = "SDNode">
+             : SDPatternOperator {
   string Opcode  = opcode;
   string SDClass = sdclass;
-  let Properties = props;
+  list<SDNodeProperty> Properties = props;
   SDTypeProfile TypeProfile = typeprof;
 }
 
@@ -339,6 +339,8 @@ def sint_to_fp : SDNode<"ISD.SINT_TO_FP" , SDTIntToFPOp>;
 def uint_to_fp : SDNode<"ISD.UINT_TO_FP" , SDTIntToFPOp>;
 def fp_to_sint : SDNode<"ISD.FP_TO_SINT" , SDTFPToIntOp>;
 def fp_to_uint : SDNode<"ISD.FP_TO_UINT" , SDTFPToIntOp>;
+def f16_to_f32 : SDNode<"ISD::FP16_TO_FP32", SDTIntToFPOp>;
+def f32_to_f16 : SDNode<"ISD::FP32_TO_FP16", SDTFPToIntOp>;
 
 def setcc      : SDNode<"ISD.SETCC"      , SDTSetCC>;
 def select     : SDNode<"ISD.SELECT"     , SDTSelect>;
@@ -405,7 +407,14 @@ def vector_extract : SDNode<"ISD.EXTRACT_VECTOR_ELT",
     SDTypeProfile<1, 2, [SDTCisPtrTy<2>]>, []>;
 def vector_insert : SDNode<"ISD.INSERT_VECTOR_ELT",
     SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>, SDTCisPtrTy<3>]>, []>;
-    
+
+// This operator does not do subvector type checking.  The ARM
+// backend, at least, needs it.
+def vector_extract_subvec : SDNode<"ISD::EXTRACT_SUBVECTOR",
+    SDTypeProfile<1, 2, [SDTCisInt<2>, SDTCisVec<1>, SDTCisVec<0>]>,
+    []>;
+
+
 // Nodes for intrinsics, you should use the intrinsic itself and let tblgen use
 // these internally.  Don't reference these directly.
 def intrinsic_void : SDNode<"ISD.INTRINSIC_VOID",
@@ -980,14 +989,12 @@ def CPAttrParentAsRoot : CPAttribute;
 // e.g. X86 addressing mode - def addr : ComplexPattern<4, "selectAddr", [add]>;
 //
 class ComplexPattern<ValueType ty, int numops, string fn,
-                     list<SDNode> roots = [], list<SDNodeProperty> props = [],
-                     list<CPAttribute> attrs = []> {
+                     list<SDNode> roots = [], list<SDNodeProperty> props = []> {
   ValueType Ty = ty;
   int NumOperands = numops;
   string SelectFunc = fn;
   list<SDNode> RootNodes = roots;
   list<SDNodeProperty> Properties = props;
-  list<CPAttribute> Attributes = attrs;
 }
 
 //===----------------------------------------------------------------------===//

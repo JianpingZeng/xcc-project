@@ -95,7 +95,7 @@ public final class PatternToMatch {
     if (opc.isSubClassOf("Instruction")) {
       ++cost;
       CodeGenInstruction cgInst = cgp.getTarget().getInstruction(opc.getName());
-      if (cgInst.UsesCustomInserter)
+      if (cgInst.usesCustomInserter)
         cost += 10;
     }
     for (int i = 0, e = inst.getNumChildren(); i < e; i++)

@@ -35,6 +35,7 @@ def v8i32  : ValueType<256, 26>;   //  8 x i32 vector value
 def v1i64  : ValueType<64 , 27>;   //  1 x i64 vector value
 def v2i64  : ValueType<128, 28>;   //  2 x i64 vector value
 def v4i64  : ValueType<256, 29>;   //  4 x f64 vector value
+def v8i64  : ValueType<512, 27>;   //  8 x i64 vector value
 
 def v2f16  : ValueType<32,  30>;   // 2 x f16 vector type.
 def v4f16  : ValueType<64,  31>;   // 4 x f16 vector type

@@ -19,10 +19,10 @@ public interface TargetOpcodes {
    */
   int PHI = 0;
   int INLINEASM = 1;
-  int DBG_LABEL = 2;
+  int PROLOG_LABEL = 2;
   int EH_LABEL = 3;
   int GC_LABEL = 4;
-  int DECLARE = 5;
+  int KILL = 5;
   /// EXTRACT_SUBREG - This instruction takes two operands: a register
   /// that has subregisters, and a subregister index. It returns the
   /// extracted subregister value. This is commonly used to implement

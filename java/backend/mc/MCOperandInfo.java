@@ -23,7 +23,8 @@ public class MCOperandInfo {
   }
 
   public interface OperandConstraint {
-    int TIED_TO = 0;
+    int EARLY_CLOBBER = 0;
+    int TIED_TO = 1;
   }
 
   public int regClass;

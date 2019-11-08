@@ -18,7 +18,6 @@ package utils.tablegen;
 
 import cfe.support.MemoryBuffer;
 import tools.Error;
-import tools.Pair;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;
 import tools.Util;
@@ -38,7 +37,7 @@ public final class TGLexer {
     minus, plus,        // - +
     l_square, r_square, // [ ]
     l_brace, r_brace,   // { }
-    l_paren, r_parne,   // ( )
+    l_paren, r_paren,   // ( )
     less, greater,      // < >
     colon, semi,        // : ;
     comma, dot,         // , .
@@ -55,9 +54,6 @@ public final class TGLexer {
 
     // Integer value.
     IntVal,
-
-    // Binary integer.
-    BinaryIntVal,
 
     // String valued tokens.
     Id, StrVal, VarName, CodeFragment
@@ -164,7 +160,7 @@ public final class TGLexer {
         case '(':
           return TokKind.l_paren;
         case ')':
-          return TokKind.r_parne;
+          return TokKind.r_paren;
         case '#':
           return TokKind.paste;
 
@@ -537,8 +533,8 @@ public final class TGLexer {
           return returnError(mb2, "Invalid binary number!");
         }
         try {
-          curIntVal = Integer.parseInt(curBuf.getSubString(numStart, curPtr), 2);
-          return TokKind.BinaryIntVal;
+          curIntVal = Long.parseLong(curBuf.getSubString(numStart, curPtr), 2);
+          return TokKind.IntVal;
         } catch (NumberFormatException e) {
           MemoryBuffer mb2 = curBuf.clone();
           mb2.setBufferStart(tokStart);
@@ -668,8 +664,8 @@ public final class TGLexer {
    *
    * @return
    */
-  public Pair<Long, Integer> getCurBinaryIntVal() {
+  /*public Pair<Long, Integer> getCurBinaryIntVal() {
     Util.assertion(getCode() == TokKind.BinaryIntVal);
     return Pair.get(curIntVal, curPtr - tokStart - 2);
-  }
+  }*/
 }

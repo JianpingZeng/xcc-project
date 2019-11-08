@@ -101,7 +101,7 @@ public final class CodeGenIntrinsic {
    * Memory mod/ref behavior of this intrinsic.
    */
   enum ModRefType {
-    NoMem, ReadArgMem, ReadMem, WriteArgMem, WriteMem
+    NoMem, ReadArgMem, ReadMem, WriteArgMem, WriteMem, IntrReadWriteArgMem
   }
 
   ModRefType modRef;
@@ -122,12 +122,6 @@ public final class CodeGenIntrinsic {
   }
 
   ArrayList<Pair<Integer, ArgAttribute>> argumentAttributes = new ArrayList<>();
-
-  /**
-   * A bitwise of all properties.
-   */
-  private int properties;
-
   public CodeGenIntrinsic(Record r) {
     theDef = r;
     is = new IntrinsicSignature();
@@ -145,13 +139,15 @@ public final class CodeGenIntrinsic {
       gccBuiltinName = r.getValueAsString("GCCBuiltinName");
 
     targetPrefix = r.getValueAsString("TargetPrefix");
+    Util.assertion(targetPrefix != null);
     name = r.getValueAsString("LLVMName");
+    Util.assertion(name != null);
 
     if (name.isEmpty()) {
       name += "llvm.";
 
       for (int i = 0, e = enumName.length(); i < e; i++)
-        name += enumName.charAt(i) == '_' ? '.' : enumName.charAt(i);
+        name = String.format("%s%s", name, enumName.charAt(i) == '_' ? '.' : enumName.charAt(i));
     } else {
       // Verify it starts with "llvm.".
       if (name.length() <= 5 || !name.substring(0, 5).equals("llvm."))
@@ -189,8 +185,8 @@ public final class CodeGenIntrinsic {
         vt = getValueType(tyElt.getValueAsDef("VT"));
       }
 
-      if (vt == MVT.isVoid)
-        Error.printFatalError("Intrinsic '" + defName + " has void in result type list!");
+      /*if (vt == MVT.isVoid)
+        Error.printFatalError("Intrinsic '" + defName + "' has void in result type list!");*/
 
       if (new EVT(vt).isOverloaded()) {
         overloadedVTs.add(vt);
@@ -226,7 +222,7 @@ public final class CodeGenIntrinsic {
 
       // Reject invalid types.
       if (vt == MVT.isVoid && i != e - 1 /*void at end means varargs*/)
-        Error.printFatalError("Intrinsic '" + defName + " has void in result type list!");
+        Error.printFatalError("Intrinsic '" + defName + "' has void in parameter type list!");
 
       if (new EVT(vt).isOverloaded()) {
         overloadedVTs.add(vt);
@@ -237,11 +233,10 @@ public final class CodeGenIntrinsic {
     }
 
     // Parse the intrinsic properties.
-    Init.ListInit propList = r.getValueAsListInit("IntrProperties");
+    Init.ListInit propList = r.getValueAsListInit("Properties");
     Util.assertion(propList != null, "Intrinsic should have the member named Properties");
     for (int i = 0, e = propList.getSize(); i != e; i++) {
       Record property = propList.getElementAsRecord(i);
-//      Util.assertion(property.isSubClassOf("IntrinsicProperty"), "Expected a property!");
       switch (property.getName()) {
         case "IntrNoMem":
           modRef = ModRefType.NoMem;
@@ -261,25 +256,22 @@ public final class CodeGenIntrinsic {
         case "Commutative":
           isCommutative = true;
           break;
+        case "IntrReadWriteArgMem":
+          modRef = ModRefType.IntrReadWriteArgMem;
+          break;
         default: {
           if (property.isSubClassOf("NoCapture")) {
             int argNo = (int) property.getValueAsInt("ArgNo");
             argumentAttributes.add(Pair.get(argNo, ArgAttribute.NoCapture));
             break;
           } else
-            Util.assertion(false, "Unknown property!");
+            Util.assertion("Unknown property!");
         }
       }
     }
-    // Record the SDPatternOperator properties.
-    properties = SDNodeProperties.parseSDPatternOperatorProperties(r);
   }
 
   private int getValueType(Record record) {
     return (int) record.getValueAsInt("Value");
-  }
-
-  public boolean hasProperty(int prop) {
-    return (properties & (1 << prop)) != 0;
   }
 }

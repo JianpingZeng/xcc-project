@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
 import utils.tablegen.Init.*;
 
 import java.io.ByteArrayOutputStream;
@@ -80,7 +81,15 @@ public abstract class RecTy {
   }
 
   public Init convertValue(BinOpInit ui) {
-    return null;
+    return convertValue((TypedInit) ui);
+  }
+
+  public Init convertValue(UnOpInit ui) {
+    return convertValue((TypedInit) ui);
+  }
+
+  public Init convertValue(TernOpInit ti) {
+    return convertValue((TypedInit) ti);
   }
 
   public Init convertValue(CodeInit ci) {
@@ -183,7 +192,17 @@ public abstract class RecTy {
 
     @Override
     public Init convertValue(BinOpInit ui) {
-      return null;
+      return super.convertValue(ui);
+    }
+
+    @Override
+    public Init convertValue(UnOpInit ui) {
+      return super.convertValue(ui);
+    }
+
+    @Override
+    public Init convertValue(TernOpInit ti) {
+      return super.convertValue(ti);
     }
 
     @Override
@@ -308,6 +327,15 @@ public abstract class RecTy {
     }
 
     /**
+     * Check if the given value can fit in the specified number of bits.
+     * @param value
+     * @param numBits
+     * @return
+     */
+    private static boolean canFitInBItfield(long value, int numBits) {
+      return numBits >= 64 || (value >> numBits) == 0 || (value >> (numBits - 1) == -1);
+    }
+    /**
      * convertValue from Int initializer to bits type: Split the integer up into the
      * appropriate bits.
      *
@@ -317,13 +345,8 @@ public abstract class RecTy {
     @Override
     public Init convertValue(IntInit ii) {
       long val = ii.getValue();
-      if (val >= 0) {
-        if ((val & ~((1L << size) - 1)) != 0)
-          return null;
-      } else {
-        if ((val >> size) != -1 || ((val & (1L << (size - 1)))) != 0)
-          return null;
-      }
+      if (!canFitInBItfield(val, size))
+        return null;
 
       BitsInit ret = new BitsInit(size);
       for (int i = 0; i < size; i++)
@@ -382,6 +405,45 @@ public abstract class RecTy {
         ret.setBit(0, ti);
         return ret;
       }
+
+      if (ti instanceof TernOpInit) {
+        TernOpInit tern = (TernOpInit) ti;
+        if (tern.getOpcode() == TernOpInit.TernaryOp.IF) {
+          Init lhs = tern.getLhs();
+          Init mhs = tern.getMhs();
+          Init rhs = tern.getRhs();
+
+          if (mhs instanceof IntInit && rhs instanceof IntInit) {
+            IntInit mhsI = (IntInit) mhs;
+            IntInit rhsI = (IntInit) rhs;
+            long mhsVal = mhsI.getValue(), rhsVal = rhsI.getValue();
+            if (canFitInBItfield(mhsVal, size) && canFitInBItfield(rhsVal, size)) {
+              BitsInit ret = new BitsInit(size);
+
+              for (int i = 0; i < size; i++) {
+                ret.setBit(i, new TernOpInit(TernOpInit.TernaryOp.IF, lhs,
+                    new IntInit((mhsVal & (1L << i)) != 0 ? 1 : 0),
+                    new IntInit((rhsVal & (1L << i)) != 0 ? 1 : 0),
+                    ti.getType()));
+              }
+              return ret;
+            }
+          }
+          else {
+            if (mhs instanceof BitsInit && rhs instanceof BitsInit) {
+              BitsInit mhsBI = (BitsInit) mhs;
+              BitsInit rhsBI = (BitsInit) rhs;
+              BitsInit ret = new BitsInit(size);
+              for (int i = 0; i < size; ++i) {
+                ret.setBit(i, new TernOpInit(TernOpInit.TernaryOp.IF, lhs,
+                    mhsBI.getBit(i), rhsBI.getBit(i), ti.getType()));
+              }
+              return ret;
+            }
+          }
+        }
+      }
+
       return null;
     }
 
@@ -537,6 +599,7 @@ public abstract class RecTy {
 
     @Override
     public boolean typeIsConvertiableTo(RecTy rhs) {
+      Util.assertion(rhs != null);
       return rhs.baseClassOf(this);
     }
 
@@ -1038,8 +1101,27 @@ public abstract class RecTy {
       return null;
     }
 
+    public Init convertValue(UnOpInit ui) {
+      if (ui.getOpcode() == UnOpInit.UnaryOp.CAST) {
+        Init init = ui.getOperand().convertInitializerTo(this);
+        if (init == null) return null;
+        if (!init.equals(ui.getOperand()))
+          return new UnOpInit(UnOpInit.UnaryOp.CAST, init, new DagRecTy());
+        return ui;
+      }
+      return null;
+    }
+
     @Override
     public Init convertValue(BinOpInit ui) {
+      if (ui.getOpcode() == BinOpInit.BinaryOp.CONCAT) {
+        Init lhs = ui.getLhs().convertInitializerTo(this);
+        Init rhs = ui.getRhs().convertInitializerTo(this);
+        if (lhs == null || rhs == null) return null;
+        if (!lhs.equals(ui.getLhs()) || !rhs.equals(ui.getRhs()))
+          return new BinOpInit(BinOpInit.BinaryOp.CONCAT, lhs, rhs, new DagRecTy());
+        return ui;
+      }
       return null;
     }
 

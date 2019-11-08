@@ -108,7 +108,7 @@ public class X86AsmPrinter extends AsmPrinter {
   protected void emitInstruction(MachineInstr mi) {
     X86MCInstLower InstLowering = new X86MCInstLower(outContext, mangler, this);
     switch (mi.getOpcode()) {
-      case TargetOpcodes.DBG_LABEL: {
+      case TargetOpcodes.PROLOG_LABEL: {
         if (!verboseAsm)
           return;
 

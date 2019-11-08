@@ -2038,11 +2038,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         n.getValueType());
   }
 
-  public SDNode select_DBG_LABEL(SDValue n) {
+  public SDNode select_PROLOG_LABEL(SDValue n) {
     SDValue chain = n.getOperand(0);
     int c = ((LabelSDNode) n.getNode()).getLabelID();
     SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.DBG_LABEL,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.PROLOG_LABEL,
         new EVT(MVT.Other), tmp, chain);
   }
 

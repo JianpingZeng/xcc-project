@@ -95,14 +95,12 @@ public final class RecordKeeper {
     Record klass = getClass(className);
     Util.assertion(klass != null,
         "UNKNOWN: Couldn't find the `" + className + "' class!\n");
-    ArrayList<Record> defs = new ArrayList<>();
 
     List<Record> res = orderedDefs.stream().filter(val ->
         val.isSubClassOf(klass)
     ).collect(Collectors.toList());
 
-    defs.addAll(res);
-    return defs;
+    return new ArrayList<>(res);
   }
 
   public void dump() {

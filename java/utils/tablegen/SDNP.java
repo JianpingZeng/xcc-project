@@ -36,4 +36,6 @@ public interface SDNP {
   int SDNPSideEffect = 8;
   int SDNPMemOperand = 9;
   int SDNPVariadic = 10;
+  int SDNPWantRoot = 11;     // ComplexPattern gets the root of match
+  int SDNPWantParent = 12;   // ComplexPattern gets the parent
 }

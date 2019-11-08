@@ -68,7 +68,7 @@ public class SubtargetEmitter extends TableGenBackend {
     featureList.sort(LessRecord);
 
     // Begin feature table
-    os.printf("\t// Sorted (by key) array of values for CPU features.\n"
+    os.print("\t// Sorted (by key) array of values for CPU features.\n"
         + "\tpublic static final SubtargetFeatureKV[] featureKV = {\n");
 
     for (int i = 0, e = featureList.size(); i != e; i++) {
@@ -78,7 +78,7 @@ public class SubtargetEmitter extends TableGenBackend {
       String commandLineName = feature.getValueAsString("Name");
       String desc = feature.getValueAsString("Desc");
 
-      if (commandLineName.isEmpty())
+      if (commandLineName == null || commandLineName.isEmpty())
         continue;
 
       // Emit as { "feature", "description", featureEnum, i1 | i2 | ... | in }
@@ -88,23 +88,23 @@ public class SubtargetEmitter extends TableGenBackend {
 
       ArrayList<Record> impliesList = feature.getValueAsListOfDefs("Implies");
       if (impliesList.isEmpty())
-        os.printf("0");
+        os.print("0");
       else {
         for (int j = 0, sz = impliesList.size(); j != sz; j++) {
-          os.printf(impliesList.get(j).getName());
-          if (j < sz - 1) os.printf(" | ");
+          os.print(impliesList.get(j).getName());
+          if (j < sz - 1) os.print(" | ");
         }
       }
 
       os.print(")");
 
-      if (i < e - 1) os.printf(",");
+      if (i < e - 1) os.print(",");
 
       os.println();
     }
 
     // End of feature table.
-    os.printf("\t};\n");
+    os.print("\t};\n");
   }
 
   /**
@@ -117,7 +117,7 @@ public class SubtargetEmitter extends TableGenBackend {
 
     processorList.sort(LessRecord);
 
-    os.printf("\t// Sorted (by key) array of values for CPU subtype.\n" +
+    os.print("\t// Sorted (by key) array of values for CPU subtype.\n" +
         "\tpublic static final SubtargetFeatureKV[] subTypeKV = {\n");
 
     // For each processor.
@@ -134,15 +134,15 @@ public class SubtargetEmitter extends TableGenBackend {
         os.print("0");
       else {
         for (int j = 0, sz = featureList.size(); j != sz; j++) {
-          os.printf(featureList.get(j).getName());
-          if (j < sz - 1) os.printf(" | ");
+          os.print(featureList.get(j).getName());
+          if (j < sz - 1) os.print(" | ");
         }
       }
 
       // The "0" is for the "implies" section of this data structure.
-      os.printf(", 0)");
+      os.print(", 0)");
 
-      if (i < e - 1) os.printf(",");
+      if (i < e - 1) os.print(",");
       os.println();
     }
 
@@ -265,7 +265,7 @@ public class SubtargetEmitter extends TableGenBackend {
 
       ArrayList<Record> itinDataList = proc.getValueAsListOfDefs("IID");
 
-      for (int j = 0, m = itinDataList.size(); i != m; i++) {
+      for (int j = 0, m = itinDataList.size(); j != m; j++) {
         Record itinData = itinDataList.get(j);
 
         String itinStageString;
@@ -332,12 +332,12 @@ public class SubtargetEmitter extends TableGenBackend {
     operandCycleTable += "};\n";
 
     // Emit tables.
-    os.printf(stageTable.toString());
+    os.print(stageTable.toString());
     os.print(operandCycleTable);
   }
 
   private void emitProcessorData(PrintStream os, ArrayList<ArrayList<InstrItinerary>> procList) {
-    ArrayList<Record> itins = records.getAllDerivedDefinition("ProcessItineraries");
+    ArrayList<Record> itins = records.getAllDerivedDefinition("ProcessorItineraries");
 
     Iterator<ArrayList<InstrItinerary>> procListItr = procList.iterator();
 
@@ -353,8 +353,8 @@ public class SubtargetEmitter extends TableGenBackend {
       for (int j = 0, m = itinList.size(); j != m; j++) {
         InstrItinerary itinerary = itinList.get(j);
 
-        if (itinerary.firstStage == 0)
-          os.printf("new InstrItinerary(0, 0, 0)");
+        if (itinerary == null || itinerary.firstStage == 0)
+          os.print("new InstrItinerary(0, 0, 0)");
         else {
           os.printf("\tnew InstrItinerary(%d, %d, %d, %d)",
               itinerary.firstStage,
@@ -364,13 +364,13 @@ public class SubtargetEmitter extends TableGenBackend {
         }
 
         if (j < m - 1)
-          os.printf(",");
+          os.print(",");
 
         os.printf("\t// %d\n", j);
       }
 
       // End processor itinerary table
-      os.printf("};\n");
+      os.print("};\n");
     }
   }
 
@@ -385,7 +385,7 @@ public class SubtargetEmitter extends TableGenBackend {
     processorList.sort(LessRecord);
 
     os.println();
-    os.printf("// Sorted (by key) array of itineraries for CPU subtype.\n" +
+    os.print("// Sorted (by key) array of itineraries for CPU subtype.\n" +
         "public static final SubtargetInfoKV[] procItinKV = {\n");
 
     // For each processor

@@ -444,7 +444,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           emitComments(mi, outStreamer.getCommentOS());
 
         switch (mi.getOpcode()) {
-          case TargetOpcodes.DBG_LABEL:
+          case TargetOpcodes.PROLOG_LABEL:
           case TargetOpcodes.EH_LABEL:
           case TargetOpcodes.GC_LABEL:
             printLabel(mi);
@@ -455,8 +455,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           case TargetOpcodes.IMPLICIT_DEF:
             printImplicitDef(mi);
             break;
-          case TargetOpcodes.DECLARE:
-            printDeclare(mi);
+          case TargetOpcodes.KILL:
+            printKill(mi);
             break;
           default:
             emitInstruction(mi);
@@ -1480,7 +1480,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    *
    * @param mi
    */
-  public void printDeclare(MachineInstr mi) {
+  public void printKill(MachineInstr mi) {
     Util.shouldNotReachHere("Exception handling not supported!");
   }
 

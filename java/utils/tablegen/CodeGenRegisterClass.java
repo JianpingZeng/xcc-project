@@ -22,6 +22,7 @@ import utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 import static utils.tablegen.CodeGenHwModes.DefaultMode;
 import static utils.tablegen.ValueTypeByHwMode.getValueTypeByHwMode;
@@ -35,12 +36,17 @@ public final class CodeGenRegisterClass {
   ArrayList<CodeGenRegister> members;
   ArrayList<ValueTypeByHwMode> vts;
   RegSizeInfoByHwMode regInfos;
-  String methodBodies;
   long copyCost;
   ArrayList<Record> subRegClasses;
 
   HashSet<CodeGenRegisterClass> subClasses;
   HashSet<CodeGenRegisterClass> superClasses;
+  /**
+   * An alternative register allocation order index if the user requests.
+   */
+  String altOrderSelect;
+  // Allocation orders. Order[0] always contains all def2RegMap in Members.
+  ArrayList<Record>[] orders;
 
   public String getName() {
     return theDef.getName();
@@ -54,7 +60,7 @@ public final class CodeGenRegisterClass {
     return vts.size();
   }
 
-  public ValueTypeByHwMode getValueTypeAt(int idx) {
+  ValueTypeByHwMode getValueTypeAt(int idx) {
     Util.assertion(idx >= 0 && idx < vts.size());
     return vts.get(idx);
   }
@@ -68,6 +74,7 @@ public final class CodeGenRegisterClass {
     theDef = r;
     subClasses = new HashSet<>();
     superClasses = new HashSet<>();
+    altOrderSelect = "";
 
     // Rename the anonymous register class.
     if (r.getName().length() > 9 && r.getName().charAt(9) == '.')
@@ -83,18 +90,49 @@ public final class CodeGenRegisterClass {
 
     Util.assertion(!vts.isEmpty());
 
-    ArrayList<Record> regList = r.getValueAsListOfDefs("MemberList");
+    // Allocation order 0 is the full set. altOrders provides others.
+    altOrderSelect = r.getValueAsCode("AltOrderSelect");
+    Init.ListInit altOrders = r.getValueAsListInit("AltOrders");
+    orders = new ArrayList[altOrders.getSize() + 1];
+
+    // default allocation order always contains all def2RegMap.
+    SetTheory st = new SetTheory();
+    st.addFieldExpander("RegisterClass", "MemberList");
+    ArrayList<Record> regList = st.expand(r);
     for (Record reg : regList) {
       if (!reg.isSubClassOf("Register"))
         Error.printFatalError("Register Class member '" + reg.getName() +
             "' does not derive from the Register class!");
-      members.add(new CodeGenRegister(reg));
+      members.add(CodeGenRegBank.getReg(reg));
+      orders[0] = new ArrayList<>();
+      orders[0].add(reg);
+    }
+
+    // Alternative allocation order might be subsets.
+    LinkedHashSet<Record> temp = new LinkedHashSet<>();
+    for (int i = 0, e = altOrders.getSize(); i < e; ++i) {
+      st.evaluate(altOrders.getElement(i), temp);
+      orders[i+1] = new ArrayList<>();
+      orders[i+1].addAll(temp);
+      // verify that all altOrder members are regclass members.
+      for (Record reg : temp) {
+        if (!members.contains(CodeGenRegBank.getReg(reg)))
+          Util.assertion(String.format("AltOrder register %s is not a class member", reg.getName()));
+      }
+      temp.clear();
     }
 
     // Obtains the information about SubRegisterClassList.
-    ArrayList<Record> subRegClassList = r.getValueAsListOfDefs("SubRegClassList");
-
-    for (Record subReg : subRegClassList) {
+    Init.ListInit li = r.getValueAsListInit("SubRegClasses");
+    Util.assertion(li != null);
+    for (int i = 0, e = li.getSize(); i < e; ++i) {
+      Init ii = li.getElement(i);
+      if (!(ii instanceof Init.DagInit))
+        Error.printFatalError(String.format("SubRegClasses '%s' must be a dag initializer", ii.toString()));
+      Init.DagInit di = (Init.DagInit) ii;
+      if (!(di.getOperator() instanceof DefInit))
+        Error.printFatalError(String.format("The operator of SubRegClasses '%s' must be a def initializer", ii.toString()));
+      Record subReg = ((DefInit)di.getOperator()).getDef();
       if (!subReg.isSubClassOf("RegisterClass"))
         Error.printFatalError("Register class member '" + subReg.getName()
             + "' doest not derive from the RegisterClass class!");
@@ -111,8 +149,7 @@ public final class CodeGenRegisterClass {
       regInfos = new RegSizeInfoByHwMode(((DefInit) regInfoRec.getValue()).getDef(), cgh);
 
     long size = r.getValueAsInt("Size");
-    Util.assertion(size != 0 || (regInfos != null &&
-            regInfos.hasDefault()) || vts.get(0).isSimple(),
+    Util.assertion(size != 0 || regInfos.hasDefault() || vts.get(0).isSimple(),
         "Impossible to determine the register size");
 
     // add a register info by default mode.
@@ -124,18 +161,25 @@ public final class CodeGenRegisterClass {
       regInfos.map.put(DefaultMode, ri);
     }
     copyCost = r.getValueAsInt("CopyCost");
-    methodBodies = r.getValueAsCode("MethodBodies");
   }
 
   public boolean contains(Record r) {
     return members.contains(new CodeGenRegister(r));
   }
 
-  public boolean hasSubClass(CodeGenRegisterClass rc) {
+  boolean hasSubClass(CodeGenRegisterClass rc) {
     return subClasses.contains(rc);
   }
 
-  public boolean hasSupClass(CodeGenRegisterClass rc) {
+  boolean hasSupClass(CodeGenRegisterClass rc) {
     return superClasses.contains(rc);
+  }
+
+  public int getNumOrders() {
+    return orders.length;
+  }
+
+  public ArrayList<Record> getOrder(int idx) {
+    return orders[idx];
   }
 }

@@ -101,7 +101,7 @@ public final class TGParser {
    * This method is called when an error needed to be reported.
    */
   private boolean tokError(String msg) {
-    Error.printError(msg);
+    Error.printError(lexer.getLoc(), msg);
     return true;
   }
 
@@ -138,7 +138,7 @@ public final class TGParser {
 
   private void addSuperClass(Record rc) {
     if (curRec.isSubClassOf(rc)) {
-      tokError("Already subclass of '" + rc.getName() + "'!\u005cn");
+      tokError("Already subclass of '" + rc.getName() + "'!\n");
       System.exit(-1);
     }
     curRec.addSuperClass(rc);
@@ -290,14 +290,18 @@ public final class TGParser {
     return parser.parse();
   }
 
+  private boolean parseObjectList() {
+    return parseObjectList(null);
+  }
+
   /**
    * ObjectList:=     Object*
    *
    * @return
    */
-  private boolean parseObjectList() {
+  private boolean parseObjectList(MultiClass curMultiClass) {
     while (isObjectStart(lexer.getCode())) {
-      if (parseObject())
+      if (parseObject(curMultiClass))
         return true;
     }
     return false;
@@ -333,17 +337,17 @@ public final class TGParser {
    *
    * @return
    */
-  private boolean parseObject() {
+  private boolean parseObject(MultiClass mc) {
     switch (lexer.getCode()) {
       default:
-        Util.assertion(false, "This is not an object");
+        Util.assertion("This is not an object");
         return false;
       case Let:
-        return parseTopLevelLet();
+        return parseTopLevelLet(mc);
       case Def:
-        return parseDef(null) == null;
+        return parseDef(mc);
       case Defm:
-        return parseDefm();
+        return parseDefm(mc);
       case Class:
         return parseClass();
       case Multiclass:
@@ -361,7 +365,7 @@ public final class TGParser {
    *
    * @return
    */
-  private boolean parseTopLevelLet() {
+  private boolean parseTopLevelLet(MultiClass curMultiClass) {
     Util.assertion(lexer.getCode() == TGLexer.TokKind.Let, "Unexpected token");
     lexer.lex();
 
@@ -376,13 +380,13 @@ public final class TGParser {
     lexer.lex();
 
     if (lexer.getCode() != TGLexer.TokKind.l_brace) {
-      if (parseObject())
+      if (parseObject(curMultiClass))
         return true;
     } else {
       SourceMgr.SMLoc braceLoc = lexer.getLoc();
       lexer.lex();
 
-      if (parseObjectList())
+      if (parseObjectList(curMultiClass))
         return true;
 
       if (lexer.getCode() != TGLexer.TokKind.r_brace) {
@@ -715,7 +719,7 @@ public final class TGParser {
       default:
         tokError("Unknown token when parsing a value");
         break;
-      case BinaryIntVal: {
+      /*case BinaryIntVal: {
         Pair<Long, Integer> binaryVal = lexer.getCurBinaryIntVal();
         Init[] bits = new Init[binaryVal.second];
         for (int i = 0; i < binaryVal.second; i++)
@@ -723,7 +727,7 @@ public final class TGParser {
         res = BitsInit.get(bits);
         lexer.lex();
         break;
-      }
+      }*/
       case IntVal:
         res = new Init.IntInit(lexer.getCurIntVal());
         lexer.lex();
@@ -974,12 +978,12 @@ public final class TGParser {
         }
 
         ArrayList<Pair<Init, String>> dagArgs = new ArrayList<>();
-        if (lexer.getCode() != TGLexer.TokKind.r_parne) {
+        if (lexer.getCode() != TGLexer.TokKind.r_paren) {
           dagArgs = parseDagArgList(curRec);
           if (dagArgs.isEmpty()) return null;
         }
 
-        if (lexer.getCode() != TGLexer.TokKind.r_parne) {
+        if (lexer.getCode() != TGLexer.TokKind.r_paren) {
           tokError("expected ')' in dag init");
           return null;
         }
@@ -1061,7 +1065,8 @@ public final class TGParser {
    * @return
    */
   private Init parseOperation(Record curRec) {
-    switch (lexer.getCode()) {
+    TGLexer.TokKind code = lexer.getCode();
+    switch (code) {
       default:
         tokError("unknown operation");
         return null;
@@ -1167,7 +1172,7 @@ public final class TGParser {
           }
         }
 
-        if (lexer.getCode() != TGLexer.TokKind.r_parne) {
+        if (lexer.getCode() != TGLexer.TokKind.r_paren) {
           tokError("expected ')' in unary operator");
           return null;
         }
@@ -1198,13 +1203,14 @@ public final class TGParser {
         // Value ::= !binop '(' Value ',' Value ')'
         BinaryOp opc;
         RecTy type = null;
+        SourceMgr.SMLoc opLoc = lexer.getLoc();
 
         switch (lexer.getCode()) {
           default:
             Util.assertion(false, "Unhandled code!");
           case XConcat:
             lexer.lex();
-            opc = BinaryOp.STRCONCAT;
+            opc = BinaryOp.CONCAT;
             type = new RecTy.DagRecTy();
             break;
           case XSRA:
@@ -1242,9 +1248,17 @@ public final class TGParser {
           case XLt:
           case XLe:
           case XGt:
-          case XGe:
+          case XGe: {
+            int idx = BinaryOp.EQ.ordinal() +
+                lexer.getCode().ordinal() -
+                TGLexer.TokKind.XEq.ordinal();
+            lexer.lex();  // ignores relational operation.
+            opc = BinaryOp.values()[idx];
+            type = new RecTy.BitRecTy();
+            break;
+          }
           case XAdd:
-          case XAnd:
+          case XAnd: {
             int idx = BinaryOp.EQ.ordinal() +
                 lexer.getCode().ordinal() -
                 TGLexer.TokKind.XEq.ordinal();
@@ -1252,6 +1266,7 @@ public final class TGParser {
             opc = BinaryOp.values()[idx];
             type = new RecTy.IntRecTy();
             break;
+          }
         }
         if (lexer.getCode() != TGLexer.TokKind.l_paren) {
           tokError("expected '(' after binary operator");
@@ -1264,19 +1279,18 @@ public final class TGParser {
         Init lhs = parseValue(curRec);
         if (lhs == null)
           return null;
-
-        if (lexer.getCode() != TGLexer.TokKind.comma) {
-          tokError("expected ',' in binary operator");
-          return null;
+        LinkedList<Init> initList = new LinkedList<>();
+        initList.add(lhs);
+        while (lexer.getCode() == TGLexer.TokKind.comma) {
+          // eat the ','
+          lexer.lex();
+          Init res = parseValue(curRec);
+          if (res == null)
+            return null;
+          initList.add(res);
         }
 
-        // eat the ','
-        lexer.lex();
-
-        Init rhs = parseValue(curRec);
-        if (rhs == null) return null;
-
-        if (lexer.getCode() != TGLexer.TokKind.r_parne) {
+        if (lexer.getCode() != TGLexer.TokKind.r_paren) {
           tokError("expected ')' in binary operator");
           return null;
         }
@@ -1284,7 +1298,19 @@ public final class TGParser {
         // eat the ')'.
         lexer.lex();
 
-        return new BinOpInit(opc, lhs, rhs, type);
+        // We allow to concate multiple strings.
+        if (code == TGLexer.TokKind.XStrConcat && initList.size() >= 2) {
+          Init temp = initList.removeFirst();
+          while (!initList.isEmpty()) {
+            temp = new BinOpInit(opc, temp, initList.removeFirst(), type);
+          }
+          return temp;
+        }
+        if (initList.size() == 2)
+          return new BinOpInit(opc, initList.get(0), initList.get(1), type);
+        else
+          error(opLoc, "expected two operands to operator");
+        return null;
       }
       case XIf:
       case XForEach:
@@ -1344,7 +1370,7 @@ public final class TGParser {
         if (rhs == null)
           return null;
 
-        if (lexer.getCode() != TGLexer.TokKind.r_parne) {
+        if (lexer.getCode() != TGLexer.TokKind.r_paren) {
           tokError("expected ')' at end of ternary operator");
           return null;
         }
@@ -1591,6 +1617,7 @@ public final class TGParser {
     int argN = 0;
     if (argsRec != null && eltTy == null) {
       ArrayList<String> targs = argsRec.getTemplateArgs();
+      Util.assertion(targs.size() > argN);
       RecordVal rv = argsRec.getValue(targs.get(argN));
       Util.assertion(rv != null, "Template argument record not found?");
       itemType = rv.getType();
@@ -1680,10 +1707,10 @@ public final class TGParser {
    *   DefInst ::= DEF ObjectName ObjectBody
    * </pre>
    *
-   * @param klass
+   * @param curMultiClass
    * @return
    */
-  private Record parseDef(MultiClass klass) {
+  private boolean parseDef(MultiClass curMultiClass) {
     SourceMgr.SMLoc loc = lexer.getLoc();
     Util.assertion(lexer.getCode() == TGLexer.TokKind.Def,
         "Unknown tok");
@@ -1692,29 +1719,37 @@ public final class TGParser {
     if (curMultiClass == null) {
       if (records.getDef(curRec.getName()) != null) {
         error(loc, "def '" + curRec.getName() + "' already defined");
-        return null;
+        return true;
       }
       records.addDef(curRec);
     } else {
       for (int i = 0, e = curMultiClass.defProtoTypes.size(); i < e; i++) {
         if (curMultiClass.defProtoTypes.get(i).getName().equals(curRec.getName())) {
           error(loc, "def '" + curRec.getName() + "' already defined in this multiclass");
-          return null;
+          return true;
         }
       }
       curMultiClass.defProtoTypes.add(curRec);
     }
 
     if (parseObjectBody(curRec))
-      return null;
+      return true;
 
     if (curMultiClass == null)
       curRec.resolveReferences();
 
     Util.assertion(curRec.getTemplateArgs().isEmpty(), "How does this get template args?");
-    //if (TableGen.DEBUG)
-    //    curRec.dump();
-    return curRec;
+
+    if (curMultiClass != null) {
+      // Copy the template arguments for the multiclass into the def.
+      ArrayList<String> targs = curMultiClass.rec.getTemplateArgs();
+      targs.forEach(ta-> {
+        RecordVal rv = curMultiClass.rec.getValue(ta);
+        Util.assertion(rv != null, "Template doesn't exist?");
+        curRec.addValue(rv);
+      });
+    }
+    return false;
   }
 
   /**
@@ -1742,7 +1777,7 @@ public final class TGParser {
    *
    * @return
    */
-  private boolean parseDefm() {
+  private boolean parseDefm(MultiClass curMultiClass) {
     Util.assertion(lexer.getCode() == TGLexer.TokKind.Defm,
         "Unexpected token!");
     lexer.lex(); // consume 'defm' keyword.
@@ -1753,6 +1788,10 @@ public final class TGParser {
       return tokError("expected ':' after defm identifier");
 
     lexer.lex(); // eat ':'
+
+    ArrayList<Record> newRecRefs = new ArrayList<>();
+    boolean inheritFromClass = false;
+
     SourceMgr.SMLoc subClassLoc = lexer.getLoc();
     SubClassReference ref = parseSubClassReference(null, true);
 
@@ -1770,22 +1809,23 @@ public final class TGParser {
             "more template args specified than multiclass expects");
       }
 
+      // Loop over all the def's in the multiclass, instantiating each one.
       for (int i = 0, e = mc.defProtoTypes.size(); i < e; i++) {
         Record defProto = mc.defProtoTypes.get(i);
 
         String defName = defProto.getName();
         if (defName.contains("#NAME#"))
-          defName.replace("#NAME#", defmPrefix);
+          defName = defName.replace("#NAME#", defmPrefix);
         else {
+          // Add the suffix to the defm name to get the new name.
           defName = defmPrefix + defName;
         }
 
         Record curRec = new Record(defName, defmPrefixLoc);
-
-        ref = new SubClassReference();
-        ref.loc = defmPrefixLoc;
-        ref.rec = defProto;
-        addSubClass(curRec, ref);
+        SubClassReference subRef = new SubClassReference();
+        subRef.loc = defmPrefixLoc;
+        subRef.rec = defProto;
+        addSubClass(curRec, subRef);
 
         for (int j = 0, sz = targs.size(); j < sz; j++) {
           if (j < templateVals.size()) {
@@ -1819,8 +1859,29 @@ public final class TGParser {
               "' already defined, instantiating defm with subdef '"
               + defProto.getName() + "'");
         }
-        records.addDef(curRec);
-        curRec.resolveReferences();
+
+        // Don't create a top level definition for defm inside multiclasses,
+        // instead, only update the prototypes and bind the template args
+        // with the new created definition.
+        if (this.curMultiClass != null) {
+          for (int ii = 0, sz = this.curMultiClass.defProtoTypes.size(); ii < sz; ++ii) {
+            if (this.curMultiClass.defProtoTypes.get(ii).getName().equals(curRec.getName()))
+              return error(defmPrefixLoc, String.format("defm '%s' already defined in this multiclass", curRec.getName()));
+            this.curMultiClass.defProtoTypes.add(curRec);
+
+            ArrayList<String> ta = this.curMultiClass.rec.getTemplateArgs();
+            ta.forEach(a -> {
+              RecordVal rv = this.curMultiClass.rec.getValue(a);
+              Util.assertion(rv != null, "Template arg doesn't exist?");
+              curRec.addValue(rv);
+            });
+          }
+        }
+        else {
+          records.addDef(curRec);
+        }
+
+        newRecRefs.add(curRec);
       }
 
       if (lexer.getCode() != TGLexer.TokKind.comma)
@@ -1828,7 +1889,55 @@ public final class TGParser {
       lexer.lex();
 
       subClassLoc = lexer.getLoc();
+
+      // A defm can inherit from regular classes (non-multiclass) as
+      // long as they come in the end of the inheritance list.
+      inheritFromClass = records.getClass(lexer.getCurStrVal()) != null;
+      if (inheritFromClass)
+        break;
+
       ref = parseSubClassReference(null, true);
+    }
+
+    if (inheritFromClass) {
+      // Process all the classes to inherit as if they were part of a
+      // regular 'def' and inherit all record values.
+      SubClassReference subClass = parseSubClassReference(null, false);
+      while (true) {
+        // check for error.
+        if (subClass.rec == null) return true;
+
+        // Get the expanded definition prototypes and teach them about
+        // the record values the current class to inherit has
+        for (int i = 0, e = newRecRefs.size(); i < e; i++) {
+          Record curRec = newRecRefs.get(i);
+          // add it.
+          if (addSubClass(curRec, subClass))
+            return true;
+
+          // Process any variables on the let stack.
+          for (int j = 0, sz = letStack.size(); j < sz; j++) {
+            for (int k = 0, size = letStack.get(j).size(); k < size; k++) {
+              if (setValue(curRec, letStack.get(j).get(k).loc, letStack.get(j).get(k).name,
+                  letStack.get(j).get(k).bits, letStack.get(j).get(k).value));
+              return true;
+            }
+          }
+        }
+
+        if (lexer.getCode() != TGLexer.TokKind.comma) break;
+        lexer.lex();  // eat the ','
+        subClass = parseSubClassReference(null, false);
+      }
+    }
+
+    if (curMultiClass == null) {
+      newRecRefs.forEach(curRec-> {
+        // See Record::setName().  This resolve step will see any new
+        // name for the def that might have been created when resolving
+        // inheritance, values and arguments above.
+        curRec.resolveReferences();
+      });
     }
 
     if (lexer.getCode() != TGLexer.TokKind.semi)
@@ -2276,8 +2385,16 @@ public final class TGParser {
         return tokError("multiclass must contains at least one def");
       }
       while (lexer.getCode() != TGLexer.TokKind.r_brace) {
-        if (parseMultiClassDef(curMultiClass))
-          return true;
+        switch (lexer.getCode()) {
+          default:
+            return tokError("expected 'let', 'def', or 'defm' in multiclass body");
+          case Let:
+          case Def:
+          case Defm:
+            if (parseObject(curMultiClass))
+              return true;
+            break;
+        }
       }
 
       lexer.lex();
@@ -2288,34 +2405,6 @@ public final class TGParser {
     // Clear the current being parsed multiclass for avoiding make effect
     // on subsequent parsing.
     curMultiClass = null;
-    return false;
-  }
-
-  /**
-   * Parse a def in a multiclass context.
-   * <pre>
-   *  MultiClassDef ::= DefInst
-   * </pre>
-   *
-   * @param curMC
-   * @return
-   */
-  private boolean parseMultiClassDef(MultiClass curMC) {
-    if (lexer.getCode() != TGLexer.TokKind.Def)
-      return tokError("expected 'def' in multiclass body");
-
-    Record d = parseDef(curMC);
-    if (d == null) return true;
-
-    ArrayList<String> targs = curMC.rec.getTemplateArgs();
-
-    targs.forEach(arg ->
-    {
-      RecordVal rv = curMC.rec.getValue(arg);
-      Util.assertion(rv != null, "Template arg doesn't exist?");
-      d.addValue(rv);
-    });
-
     return false;
   }
 

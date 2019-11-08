@@ -20,7 +20,6 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Error;
-import tools.Pair;
 import tools.Util;
 
 import java.io.FileNotFoundException;
@@ -51,13 +50,13 @@ public final class RegisterInfoEmitter extends TableGenBackend {
    * different with {@linkplain #run(String)}. This method just make
    * register namespace enumeration set.
    */
-  public void runEnums(String outputFile) throws FileNotFoundException {
+  void runEnums(String outputFile) throws FileNotFoundException {
     // The file path where all enum values would be written.
     String className = targetName + "GenRegisterNames";
     try (PrintStream os = outputFile.equals("-") ?
         System.out : new PrintStream(outputFile)) {
       ArrayList<Record> registers = records.getAllDerivedDefinition("Register");
-      if (registers == null || registers.isEmpty())
+      if (registers.isEmpty())
         Error.printFatalError("No 'Register' subclasses defined in td file!");
 
       os.printf("package backend.target.%s;\n", targetName.toLowerCase());
@@ -194,9 +193,9 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.printf("%s, ", getEnumName(vt));
 
         if (i != 0 && i % 10 == 0)
-          os.printf("\n\t\t");
+          os.print("\n\t\t");
       }
-      os.printf("\n\t};\n");
+      os.println("\n\t};");
     });
 
   }
@@ -209,11 +208,12 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     os.println("\n\t// Defines the Register Class ID.");
     for (CodeGenRegisterClass rc : regClasses) {
       os.printf("\tpublic static final int %sRegClassID", rc.getName());
-      os.printf(" = %d;\n", (idx + 1));
+      os.printf(" = %d;\n", idx);
       ++idx;
     }
 
-    os.printf("\n\n");
+    os.println();
+    os.println();
 
     os.println("\t// Register Class declaration");
     for (CodeGenRegisterClass rc : regClasses) {
@@ -226,7 +226,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     os.println();
     // print a static code block to initialize register class instance.
-    os.printf("\t{\n");
+    os.println("\t{");
     for (CodeGenRegisterClass rc : regClasses) {
       String name = rc.getName();
       os.printf("\t\t// Register class initialization for %sRegisterClass.%n", name);
@@ -236,7 +236,16 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("\t\t%sRegisterClass.setSuperRegClasses(%sSuperRegClasses);%n", name, name);
       os.println();
     }
-    os.printf("\t}\n");
+    os.println("\t}");
+
+    // Output an array containing all Register Class instances.
+    os.println();
+    os.printf("\t// %sMCRegisterClasses array.\n", targetName);
+    os.printf("\tMCRegisterClass[] %sMCRegisterClasses = {\n", targetName);
+    for (CodeGenRegisterClass rc : regClasses) {
+      os.printf("\t\t%sClass,\n", rc.getName());
+    }
+    os.println("\t}");
 
     // Output register class define.
     for (CodeGenRegisterClass rc : regClasses) {
@@ -260,12 +269,46 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           rc.copyCost,
           rc.getName());
 
-      os.println(rc.methodBodies);
+      // Output the alternative register allocation order.
+      if (!rc.altOrderSelect.isEmpty()) {
+        os.println();
+        os.println("\t\tprivate static int altOrderSelect(MachineFunction mf) {");
+        os.printf("\t\t\t%s\t\n\t\t}\n", rc.altOrderSelect);
+
+        int e = rc.getNumOrders();
+        for (int i = 0; i < e; ++i) {
+          ArrayList<Record> order = rc.getOrder(i);
+          os.printf("\t\tprivate static final int[] altOrder%d = {", i);
+          for (int elt = 0, sz = order.size(); elt < sz; ++elt) {
+            os.print((elt != 0 ? ", " : " "));
+            os.print(order.get(elt).getName());
+          }
+          os.println("};");
+        }
+        os.println();
+
+        os.println("\t\t@Override");
+        os.println("\t\tpublic int[] getRawAllocationOrder(MachineFunction mf) {");
+        os.printf("\t\t\tMCRegisterClass mcr = %sMCRegisterClasses[%sRegClassID];\n", targetName, rc.getName());
+        os.printf("\t\t\tint[][] order = new int[%d][] {\n", e+1);
+        os.println("\t\t\t\tmcr.getRegs(),");
+        for (int i = 0; i < e; ++i) {
+          os.printf("\t\t\t\taltOrder%d,\n", i);
+        }
+        os.println("\t\t\t}");
+        os.println("\t\t\tint select = altOrderSelect(mf);");
+        os.printf("\t\t\tUtil.assertion(select < %d);\n", e);
+        os.println("\t\t\treturn order[select];");
+        os.println("\t\t}");
+      }
+      else
+        os.println();
+
       os.println("\t}");
     }
 
     // Emit the sub-register classes for each RegisterClass.
-    TIntObjectHashMap<TIntHashSet> superClassMap = new TIntObjectHashMap<>();
+    //TIntObjectHashMap<TIntHashSet> superClassMap = new TIntObjectHashMap<>();
     TIntObjectHashMap<TIntHashSet> superRegClassMap = new TIntObjectHashMap<>();
 
     os.println();
@@ -285,7 +328,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
           CodeGenRegisterClass rc2 = regClasses.get(i);
           if (subReg.getName().equals(rc2.getName())) {
             if (!empty)
-              os.printf(", ");
+              os.print(", ");
             os.printf("%sRegisterClass", rc2.theDef.getName());
             empty = false;
 
@@ -331,9 +374,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
 
     // Emit the sub-classes array for each RegisterClass
-    for (int i = 0, e = regClasses.size(); i < e; ++i) {
-      CodeGenRegisterClass rc = regClasses.get(i);
-
+    for (CodeGenRegisterClass rc : regClasses) {
       String name = rc.theDef.getName();
 
       os.printf("\t// %s Register Class sub-classes...\n", name);
@@ -379,7 +420,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     HashMap<Record, TreeSet<Record>> registerSubRegs = new HashMap<>();
     HashMap<Record, TreeSet<Record>> registerSuperRegs = new HashMap<>();
     HashMap<Record, TreeSet<Record>> registerAlias = new HashMap<>();
-    HashMap<Record, ArrayList<Pair<Integer, Record>>> subRegList = new HashMap<>();
 
     ArrayList<CodeGenRegister> regs = target.getRegisters();
     regs.sort((r1, r2) -> r1.getName().compareTo(r2.getName()));
@@ -387,8 +427,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     for (CodeGenRegister cgr : regs) {
       Record r = cgr.theDef;
       ArrayList<Record> li = r.getValueAsListOfDefs("Aliases");
-      for (int i = 0, e = li.size(); i < e; i++) {
-        Record reg = li.get(i);
+      for (Record reg : li) {
         if (!registerAlias.containsKey(r))
           registerAlias.put(r, new TreeSet<>(Record.LessRecord));
 
@@ -465,16 +504,16 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     if (SubregHashTableSize != 0) {
       //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
 
-      os.printf("\tpublic static final int[] SubregHashTable = {\n");
+      os.println("\tpublic static final int[] SubregHashTable = {");
       for (int i = 0; i < SubregHashTableSize - 1; ++i) {
         // Insert spaces for nice formatting.
-        os.printf("\t\t");
+        os.print("\t\t");
 
         if (SubregHashTable[2 * i] != ~0) {
           os.printf("%s, %s, \n", regs.get(SubregHashTable[2 * i]).theDef.getName(),
               regs.get(SubregHashTable[2 * i + 1]).theDef.getName());
         } else {
-          os.printf("NoRegister, NoRegister, \n");
+          os.println("NoRegister, NoRegister, ");
         }
       }
 
@@ -484,15 +523,15 @@ public final class RegisterInfoEmitter extends TableGenBackend {
             regs.get(SubregHashTable[Idx]).theDef.getName(),
             regs.get(SubregHashTable[Idx + 1]).theDef.getName());
       } else {
-        os.printf("\t\tNoRegister, NoRegister, \n");
+        os.print("\t\tNoRegister, NoRegister, ");
       }
 
-      os.printf("\t};\n");
+      os.println("\t};");
 
       os.printf("\tpublic static final int SubregHashTableSize = %d;\n", SubregHashTableSize);
     } else {
-      os.printf("\tpublic static final int[] SubregHashTable = { ~0, ~0 };\n "
-          + "public static final int SubregHashTableSize = 1;\n");
+      os.println("\tpublic static final int[] SubregHashTable = { ~0, ~0 };\n "
+          + "public static final int SubregHashTableSize = 1;");
     }
 
 
@@ -622,29 +661,29 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     if (AliasesHashTableSize != 0) {
       //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
 
-      os.printf("\tpublic final static int AliasesHashTable[] = {\n");
+      os.println("\tpublic final static int AliasesHashTable[] = {");
       for (int i = 0; i < AliasesHashTableSize - 1; ++i) {
 
         // Insert spaces for nice formatting.
-        os.printf("\t\t");
+        os.print("\t\t");
 
         if (AliasesHashTable[2 * i] != ~0) {
-          os.printf(regs.get(AliasesHashTable[2 * i]).theDef.getName() + ", "
-              + regs.get(AliasesHashTable[2 * i + 1]).theDef.getName() + ", \n");
+          os.println(regs.get(AliasesHashTable[2 * i]).theDef.getName() + ", "
+              + regs.get(AliasesHashTable[2 * i + 1]).theDef.getName() + ", ");
         } else {
-          os.printf("NoRegister,  NoRegister,\n");
+          os.println("NoRegister,  NoRegister,");
         }
       }
 
       int Idx = AliasesHashTableSize * 2 - 2;
       if (AliasesHashTable[Idx] != ~0) {
-        os.printf("\t\t" + regs.get(AliasesHashTable[Idx]).theDef.getName() + ", "
+        os.print("\t\t" + regs.get(AliasesHashTable[Idx]).theDef.getName() + ", "
             + regs.get(AliasesHashTable[Idx + 1]).theDef.getName() + "\n");
       } else {
-        os.printf("\t\tNoRegister,  NoRegister,\n");
+        os.print("\t\tNoRegister,  NoRegister,\n");
       }
 
-      os.printf("\t};\n");
+      os.print("\t};\n");
 
       os.printf("\tpublic final static int AliasesHashTableSize = %d;\n", AliasesHashTableSize);
     } else {
@@ -654,63 +693,63 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
 
     if (!registerAlias.isEmpty())
-      os.printf("\n\n\t// Register Alias Sets...\n");
+      os.print("\n\n\t// Register Alias Sets...\n");
 
     // Emit the empty alias list
-    os.printf("\tpublic static final int[] Empty_AliasSet = { };\n");
+    os.print("\tpublic static final int[] Empty_AliasSet = { };\n");
     // Loop over all of the registers which have aliases, emitting the alias list
     // to memory.
     for (Map.Entry<Record, TreeSet<Record>> pair : registerAlias.entrySet()) {
-      os.printf("\tpublic static final int[] " + pair.getKey().getName() + "_AliasSet = { ");
-      pair.getValue().forEach(val -> os.printf(val.getName() + ", "));
-      os.printf("};\n");
+      os.print("\tpublic static final int[] " + pair.getKey().getName() + "_AliasSet = { ");
+      pair.getValue().forEach(val -> os.print(val.getName() + ", "));
+      os.print("};\n");
     }
 
     if (!registerSubRegs.isEmpty())
-      os.printf("\n\n\t// Register Sub-registers Sets...\n");
+      os.print("\n\n\t// Register Sub-registers Sets...\n");
 
     // Emit the empty sub-registers list
-    os.printf("\tpublic static final int[] Empty_SubRegsSet = {};\n");
+    os.print("\tpublic static final int[] Empty_SubRegsSet = {};\n");
     // Loop over all of the registers which have sub-registers, emitting the
     // sub-registers list to memory.
     for (Map.Entry<Record, TreeSet<Record>> pair : registerSubRegs.entrySet()) {
-      os.printf("\tpublic static final int[] " + pair.getKey().getName() + "_SubRegsSet = { ");
+      os.print("\tpublic static final int[] " + pair.getKey().getName() + "_SubRegsSet = { ");
 
       ArrayList<Record> SubRegsVector = new ArrayList<>(pair.getValue());
       RegisterSorter RS = new RegisterSorter(registerSubRegs);
       SubRegsVector.sort(RS);
 
       for (int i = 0, e = SubRegsVector.size(); i != e; ++i)
-        os.printf(SubRegsVector.get(i).getName() + ", ");
+        os.print(SubRegsVector.get(i).getName() + ", ");
 
-      os.printf("};\n");
+      os.print("};\n");
     }
 
     if (!registerSuperRegs.isEmpty())
-      os.printf("\n\n\t// Register Super-registers Sets...\n");
+      os.print("\n\n\t// Register Super-registers Sets...\n");
 
     // Emit the empty super-registers list
-    os.printf("\tpublic static final int[] Empty_SuperRegsSet = { 0 };\n");
+    os.print("\tpublic static final int[] Empty_SuperRegsSet = { 0 };\n");
     // Loop over all of the registers which have super-registers, emitting the
     // super-registers list to memory.
 
     for (Map.Entry<Record, TreeSet<Record>> pair : registerSuperRegs.entrySet()) {
-      os.printf("\tpublic static final int[] " + pair.getKey().getName() + "_SuperRegsSet = { ");
+      os.print("\tpublic static final int[] " + pair.getKey().getName() + "_SuperRegsSet = { ");
 
       ArrayList<Record> SuperRegsVector = new ArrayList<>(pair.getValue());
 
       RegisterSorter RS = new RegisterSorter(registerSubRegs);
       SuperRegsVector.sort(RS);
       for (int i = 0, e = SuperRegsVector.size(); i != e; ++i)
-        os.printf(SuperRegsVector.get(i).getName() + ", ");
-      os.printf("};\n");
+        os.print(SuperRegsVector.get(i).getName() + ", ");
+      os.print("};\n");
     }
 
     // Now that register alias and sub-registers sets have been emitted, emit the
     // register descriptors now.
 
-    os.printf("\n\tpublic static final MCRegisterDesc[] registerDescriptors = {// Descriptor\n");
-    os.printf("\t\tnew MCRegisterDesc(\"NOREG\", \"NOREG\", null, null, null),\n");
+    os.print("\n\tpublic static final MCRegisterDesc[] registerDescriptors = {// Descriptor\n");
+    os.print("\t\tnew MCRegisterDesc(\"NOREG\", \"NOREG\", null, null, null),\n");
 
     // Now that register alias sets have been emitted, emit the register
     // descriptors now.
@@ -727,68 +766,65 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.printf("\"%s\", ", reg.getName());
 
         if (registerAlias.containsKey(reg.theDef))
-          os.printf(reg.getName() + "_AliasSet, ");
+          os.print(reg.getName() + "_AliasSet, ");
         else
-          os.printf("Empty_AliasSet, ");
+          os.print("Empty_AliasSet, ");
 
         if (registerSubRegs.containsKey(reg.theDef))
           os.printf("%s_SubRegsSet, ", reg.getName());
         else
-          os.printf("Empty_SubRegsSet, ");
+          os.print("Empty_SubRegsSet, ");
 
         if (registerSuperRegs.containsKey(reg.theDef))
           os.printf("%s_SuperRegsSet", reg.getName());
         else
-          os.printf("Empty_SuperRegsSet");
-        os.printf("),\n");
+          os.print("Empty_SuperRegsSet");
+        os.print("),\n");
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
     os.println("\t};\n"); // The end of register descriptor.
 
-    String className = targetName + "GenRegisterInfo";
-
-    ArrayList<Record> subRegs = records.getAllDerivedDefinition("SubRegSet");
-    for (int i = 0, e = subRegs.size(); i != e; i++) {
-      int subRegIdx = (int) subRegs.get(i).getValueAsInt("index");
-      ArrayList<Record> from = subRegs.get(i).getValueAsListOfDefs("From");
-      ArrayList<Record> to = subRegs.get(i).getValueAsListOfDefs("To");
-      if (from.size() != to.size()) {
-        System.err.println("Error: register list and sub-register not of equal length in SubRegSet");
-        ;
-        System.exit(1);
+    // Outputs an enumarate for the sub register index.
+    ArrayList<Record> subRegIndices = CodeGenRegBank.getSubRegIndices();
+    if (!subRegIndices.isEmpty()) {
+      os.println("\t// Sub register indices.");
+      os.println("\tpublic static final int NoSubRegister = 0;");
+      for (int i = 0, e = subRegIndices.size(); i < e; ++i) {
+        Record ind = subRegIndices.get(i);
+        os.printf("\tpublic static final int %s = %d;\n", ind.getName(), i+1);
       }
-
-      for (int ii = 0, ee = from.size(); ii < ee; ii++) {
-        if (!subRegList.containsKey(from.get(ii)))
-          subRegList.put(from.get(ii), new ArrayList<>());
-
-        subRegList.get(from.get(ii)).add(Pair.get(subRegIdx, to.get(ii)));
-        ;
-      }
+      os.println("\tpublic static final int NUM_TARGET_NAMED_SUBREGS = 31;");
+      os.println();
     }
-
 
     // Emit the subregister + index mapping function based on the information
     // calculated above.
-    os.printf("\tpublic int getSubReg(int regNo, int index)\n\t{\n\t");
-    os.printf("\tswitch(regNo)\n\t\t{\n\t\t\t");
-    os.printf("default: return 0;\n");
+    os.print("\tpublic int getSubReg(int regNo, int index)\n\t{\n\t");
+    os.print("\tswitch(regNo)\n\t\t{\n\t\t\t");
+    os.print("default: return 0;\n");
 
-    for (Map.Entry<Record, ArrayList<Pair<Integer, Record>>> pair : subRegList.entrySet()) {
-      os.printf("\t\t\tcase %s:\n", pair.getKey().getName());
-      os.printf("\t\t\t switch (index) {\n");
-      os.printf("\t\t\tdefault: return 0;\n");
-      for (int i = 0, e = pair.getValue().size(); i != e; i++) {
-        os.printf("\t\t\t\tcase %d: return %s;\n", pair.getValue().get(i).first,
-            pair.getValue().get(i).second.getName());
+    for (CodeGenRegister reg : regs) {
+      HashMap<Record, CodeGenRegister> subRegMap = reg.getSubRegs();
+      if (subRegMap.isEmpty())
+        continue;
+
+      os.printf("\t\t\tcase %s:\n", reg.theDef.getName());
+      os.println("\t\t\tswitch (index) {");
+      os.println("\t\t\tdefault: return 0:");
+      for (Map.Entry<Record, CodeGenRegister> entry : subRegMap.entrySet()) {
+        os.printf("\t\t\tcase %s: return %s;\n", entry.getKey().getName(), entry.getValue().theDef.getName());
       }
-      os.printf("\t\t\t}\n\t\t\t\n");
+      os.println("\t\t\t}");
+      os.println("\t\t\t");
     }
-    os.printf("\t\t}\n");
-    os.printf("\t}\n\n");
 
+    os.print("\t\t}\n");
+    os.print("\t}\n\n");
+
+
+    String className = targetName + "GenRegisterInfo";
     // emit the fields and constructors for *Target* GenRegisterInfo.
     os.printf("\tpublic %s(%sTargetMachine tm, int mode) {\n" +
         "    super(tm);\n" +
