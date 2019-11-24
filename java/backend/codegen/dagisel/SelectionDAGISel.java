@@ -1751,7 +1751,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         sdl.bitTestCases.isEmpty()) {
       for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a phi node!");
+        Util.assertion(phi.getOpcode() == TargetOpcode.PHI, "This is not a phi node!");
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
         phi.addOperand(MachineOperand.createMBB(funcInfo.mbb, 0));
@@ -1789,7 +1789,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
         MachineBasicBlock mbb = phi.getParent();
-        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a phi node!");
+        Util.assertion(phi.getOpcode() == TargetOpcode.PHI, "This is not a phi node!");
 
         if (mbb.equals(sdl.bitTestCases.get(i).defaultMBB)) {
           phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
@@ -1835,7 +1835,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       for (int pi = 0, pe = sdl.phiNodesToUpdate.size(); pi < pe; pi++) {
         MachineInstr phi = sdl.phiNodesToUpdate.get(pi).first;
         MachineBasicBlock phiMBB = phi.getParent();
-        Util.assertion(phi.getOpcode() == TargetOpcodes.PHI, "This is not a PHI node!");
+        Util.assertion(phi.getOpcode() == TargetOpcode.PHI, "This is not a PHI node!");
         if (phiMBB.equals(sdl.jtiCases.get(i).second.defaultMBB)) {
           phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(pi).second,
               false, false));
@@ -1852,7 +1852,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     for (int i = 0, e = sdl.phiNodesToUpdate.size(); i < e; i++) {
       MachineInstr phi = sdl.phiNodesToUpdate.get(i).first;
-      Util.assertion(phi.getOpcode() == TargetOpcodes.PHI);
+      Util.assertion(phi.getOpcode() == TargetOpcode.PHI);
       if (funcInfo.mbb.isSuccessor(phi.getParent())) {
         phi.addOperand(MachineOperand.createReg(sdl.phiNodesToUpdate.get(i).second,
             false, false));
@@ -1871,7 +1871,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
       while ((funcInfo.mbb = sdl.switchCases.get(i).trueMBB) != null) {
         for (int pi = 0, sz = funcInfo.mbb.size(); pi < sz &&
-            funcInfo.mbb.getInstAt(pi).getOpcode() == TargetOpcodes.PHI; ++pi) {
+            funcInfo.mbb.getInstAt(pi).getOpcode() == TargetOpcode.PHI; ++pi) {
           MachineInstr phi = funcInfo.mbb.getInstAt(pi);
           for (int pn = 0; ; ++pn) {
             Util.assertion(pn != sdl.phiNodesToUpdate.size(), "Didn't find PHI entry!");
@@ -2034,7 +2034,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   }
 
   public SDNode select_UNDEF(SDValue n) {
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.IMPLICIT_DEF,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcode.IMPLICIT_DEF,
         n.getValueType());
   }
 
@@ -2042,7 +2042,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     SDValue chain = n.getOperand(0);
     int c = ((LabelSDNode) n.getNode()).getLabelID();
     SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.PROLOG_LABEL,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcode.PROLOG_LABEL,
         new EVT(MVT.Other), tmp, chain);
   }
 
@@ -2050,7 +2050,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     SDValue chain = n.getOperand(0);
     int c = ((LabelSDNode) n.getNode()).getLabelID();
     SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcodes.EH_LABEL,
+    return curDAG.selectNodeTo(n.getNode(), TargetOpcode.EH_LABEL,
         new EVT(MVT.Other), tmp, chain);
   }
 

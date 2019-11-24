@@ -226,7 +226,7 @@ public class FunctionLoweringInfo {
         for (EVT vt : vts) {
           int num = tli.getNumRegisters(fn.getContext(), vt);
           for (int i = 0; i < num; i++)
-            buildMI(mbb, dl, tii.get(TargetOpcodes.PHI), vreg + i);
+            buildMI(mbb, dl, tii.get(TargetOpcode.PHI), vreg + i);
           vreg += num;
         }
       }

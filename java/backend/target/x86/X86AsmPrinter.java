@@ -23,7 +23,7 @@ import backend.support.CallingConv;
 import backend.support.IntStatistic;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import backend.type.FunctionType;
 import backend.type.Type;
@@ -108,7 +108,7 @@ public class X86AsmPrinter extends AsmPrinter {
   protected void emitInstruction(MachineInstr mi) {
     X86MCInstLower InstLowering = new X86MCInstLower(outContext, mangler, this);
     switch (mi.getOpcode()) {
-      case TargetOpcodes.PROLOG_LABEL: {
+      case TargetOpcode.PROLOG_LABEL: {
         if (!verboseAsm)
           return;
 

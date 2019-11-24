@@ -32,62 +32,62 @@
 // ARM Subtarget state.
 //
 
-def ModeThumb  : SubtargetFeature<"thumb-mode", "InThumbMode", "true",
+def ModeThumb  : SubtargetFeature<"thumb-mode", "inThumbMode", "true",
                                   "Thumb mode">;
 
-def ModeNaCl   : SubtargetFeature<"nacl-mode", "InNaClMode", "true",
+def ModeNaCl   : SubtargetFeature<"nacl-mode", "inNaClMode", "true",
                                   "Native client mode">;
 
 //===----------------------------------------------------------------------===//
 // ARM Subtarget features.
 //
 
-def FeatureVFP2 : SubtargetFeature<"vfp2", "HasVFPv2", "true",
+def FeatureVFP2 : SubtargetFeature<"vfp2", "hasVFPv2", "true",
                                    "Enable VFP2 instructions">;
-def FeatureVFP3 : SubtargetFeature<"vfp3", "HasVFPv3", "true",
+def FeatureVFP3 : SubtargetFeature<"vfp3", "hasVFPv3", "true",
                                    "Enable VFP3 instructions",
                                    [FeatureVFP2]>;
-def FeatureNEON : SubtargetFeature<"neon", "HasNEON", "true",
+def FeatureNEON : SubtargetFeature<"neon", "hasNEON", "true",
                                    "Enable NEON instructions",
                                    [FeatureVFP3]>;
-def FeatureThumb2 : SubtargetFeature<"thumb2", "HasThumb2", "true",
+def FeatureThumb2 : SubtargetFeature<"thumb2", "hasThumb2", "true",
                                      "Enable Thumb2 instructions">;
-def FeatureNoARM  : SubtargetFeature<"noarm", "NoARM", "true",
+def FeatureNoARM  : SubtargetFeature<"noarm", "noARM", "true",
                                      "Does not support ARM mode execution">;
-def FeatureFP16   : SubtargetFeature<"fp16", "HasFP16", "true",
+def FeatureFP16   : SubtargetFeature<"fp16", "hasFP16", "true",
                                      "Enable half-precision floating point">;
-def FeatureD16    : SubtargetFeature<"d16", "HasD16", "true",
+def FeatureD16    : SubtargetFeature<"d16", "hasD16", "true",
                                      "Restrict VFP3 to 16 double registers">;
-def FeatureHWDiv  : SubtargetFeature<"hwdiv", "HasHardwareDivide", "true",
+def FeatureHWDiv  : SubtargetFeature<"hwdiv", "hasHardwareDivide", "true",
                                      "Enable divide instructions">;
-def FeatureT2XtPk : SubtargetFeature<"t2xtpk", "HasT2ExtractPack", "true",
+def FeatureT2XtPk : SubtargetFeature<"t2xtpk", "hasT2ExtractPack", "true",
                                  "Enable Thumb2 extract and pack instructions">;
-def FeatureDB     : SubtargetFeature<"db", "HasDataBarrier", "true",
+def FeatureDB     : SubtargetFeature<"db", "hasDataBarrier", "true",
                                    "Has data barrier (dmb / dsb) instructions">;
-def FeatureSlowFPBrcc : SubtargetFeature<"slow-fp-brcc", "SlowFPBrcc", "true",
+def FeatureSlowFPBrcc : SubtargetFeature<"slow-fp-brcc", "slowFPBrcc", "true",
                                          "FP compare + branch is slow">;
-def FeatureVFPOnlySP : SubtargetFeature<"fp-only-sp", "FPOnlySP", "true",
+def FeatureVFPOnlySP : SubtargetFeature<"fp-only-sp", "fpOnlySP", "true",
                           "Floating point unit supports single precision only">;
 
 // Some processors have FP multiply-accumulate instructions that don't
 // play nicely with other VFP / NEON instructions, and it's generally better
 // to just not use them.
-def FeatureHasSlowFPVMLx : SubtargetFeature<"slowfpvmlx", "SlowFPVMLx", "true",
+def FeatureHasSlowFPVMLx : SubtargetFeature<"slowfpvmlx", "slowFPVMLx", "true",
                                          "Disable VFP / NEON MAC instructions">;
 
 // Cortex-A8 / A9 Advanced SIMD has multiplier accumulator forwarding.
 def FeatureVMLxForwarding : SubtargetFeature<"vmlx-forwarding",
-                                       "HasVMLxForwarding", "true",
+                                       "hasVMLxForwarding", "true",
                                        "Has multiplier accumulator forwarding">;
 
 // Some processors benefit from using NEON instructions for scalar
 // single-precision FP operations.
-def FeatureNEONForFP : SubtargetFeature<"neonfp", "UseNEONForSinglePrecisionFP",
+def FeatureNEONForFP : SubtargetFeature<"neonfp", "useNEONForSinglePrecisionFP",
                                         "true",
                                         "Use NEON for single precision FP">;
 
 // Disable 32-bit to 16-bit narrowing for experimentation.
-def FeaturePref32BitThumb : SubtargetFeature<"32bit", "Pref32BitThumb", "true",
+def FeaturePref32BitThumb : SubtargetFeature<"32bit", "pref32BitThumb", "true",
                                              "Prefer 32-bit Thumb instrs">;
 
 /// Some instructions update CPSR partially, which can add false dependency for
@@ -95,37 +95,37 @@ def FeaturePref32BitThumb : SubtargetFeature<"32bit", "Pref32BitThumb", "true",
 /// mapped to a separate physical register. Avoid partial CPSR update for these
 /// processors.
 def FeatureAvoidPartialCPSR : SubtargetFeature<"avoid-partial-cpsr",
-                                               "AvoidCPSRPartialUpdate", "true",
+                                               "avoidCPSRPartialUpdate", "true",
                                  "Avoid CPSR partial update for OOO execution">;
 
 /// Some M architectures don't have the DSP extension (v7E-M vs. v7M)
-def FeatureDSPThumb2 : SubtargetFeature<"t2dsp", "Thumb2DSP", "true",
+def FeatureDSPThumb2 : SubtargetFeature<"t2dsp", "thumb2DSP", "true",
                                  "Supports v7 DSP instructions in Thumb2">;
 
 // Multiprocessing extension.
-def FeatureMP : SubtargetFeature<"mp", "HasMPExtension", "true",
+def FeatureMP : SubtargetFeature<"mp", "hasMPExtension", "true",
                                  "Supports Multiprocessing extension">;
 
 // M-series ISA?
-def FeatureMClass : SubtargetFeature<"mclass", "IsMClass", "true",
+def FeatureMClass : SubtargetFeature<"mclass", "isMClass", "true",
                                      "Is microcontroller profile ('M' series)">;
 
 // ARM ISAs.
-def HasV4TOps   : SubtargetFeature<"v4t", "HasV4TOps", "true",
+def HasV4TOps   : SubtargetFeature<"v4t", "hasV4TOps", "true",
                                    "Support ARM v4T instructions">;
-def HasV5TOps   : SubtargetFeature<"v5t", "HasV5TOps", "true",
+def HasV5TOps   : SubtargetFeature<"v5t", "hasV5TOps", "true",
                                    "Support ARM v5T instructions",
                                    [HasV4TOps]>;
-def HasV5TEOps  : SubtargetFeature<"v5te", "HasV5TEOps", "true",
+def HasV5TEOps  : SubtargetFeature<"v5te", "hasV5TEOps", "true",
                              "Support ARM v5TE, v5TEj, and v5TExp instructions",
                                    [HasV5TOps]>;
-def HasV6Ops    : SubtargetFeature<"v6", "HasV6Ops", "true",
+def HasV6Ops    : SubtargetFeature<"v6", "hasV6Ops", "true",
                                    "Support ARM v6 instructions",
                                    [HasV5TEOps]>;
-def HasV6T2Ops  : SubtargetFeature<"v6t2", "HasV6T2Ops", "true",
+def HasV6T2Ops  : SubtargetFeature<"v6t2", "hasV6T2Ops", "true",
                                    "Support ARM v6t2 instructions",
                                    [HasV6Ops, FeatureThumb2]>;
-def HasV7Ops    : SubtargetFeature<"v7", "HasV7Ops", "true",
+def HasV7Ops    : SubtargetFeature<"v7", "hasV7Ops", "true",
                                    "Support ARM v7 instructions",
                                    [HasV6T2Ops]>;
 
@@ -136,12 +136,12 @@ def HasV7Ops    : SubtargetFeature<"v7", "HasV7Ops", "true",
 include "ARMSchedule.td"
 
 // ARM processor families.
-def ProcA8      : SubtargetFeature<"a8", "ARMProcFamily", "CortexA8",
+def ProcA8      : SubtargetFeature<"a8", "ARMProcFamily", "ARMProcFamilyEnum.CortexA8",
                                    "Cortex-A8 ARM processors",
                                    [FeatureSlowFPBrcc, FeatureNEONForFP,
                                     FeatureHasSlowFPVMLx, FeatureVMLxForwarding,
                                     FeatureT2XtPk]>;
-def ProcA9      : SubtargetFeature<"a9", "ARMProcFamily", "CortexA9",
+def ProcA9      : SubtargetFeature<"a9", "ARMProcFamily", "ARMProcFamilyEnum.CortexA9",
                                    "Cortex-A9 ARM processors",
                                    [FeatureVMLxForwarding,
                                     FeatureT2XtPk, FeatureFP16,

@@ -186,35 +186,31 @@ public final class InstrInfoEmitter extends TableGenBackend {
     if (inst.isReturn) os.print("|(1<<TID.Return)");
     if (inst.isBranch) os.print("|(1<<TID.Branch)");
     if (inst.isIndirectBranch) os.print("|(1<<TID.IndirectBranch)");
-    if (inst.isCompare) os.print("|(1<<TID.IsCompare)");
-    if (inst.isMoveImm) os.print("|(1<<TID.IsMoveImm)");
-    if (inst.isBitcast) os.print("|(1<<TID.IsBitcast)");
+    if (inst.isCompare) os.print("|(1<<TID.Compare)");
+    if (inst.isMoveImm) os.print("|(1<<TID.MoveImm)");
+    if (inst.isBitcast) os.print("|(1<<TID.Bitcast)");
     if (inst.isBarrier) os.print("|(1<<TID.Barrier)");
     if (inst.hasDelaySlot) os.print("|(1<<TID.DelaySlot)");
     if (inst.isCall) os.print("|(1<<TID.Call)");
-    if (inst.canFoldAsLoad) os.print("|(1<<TID.FoldableAsLoad)");
-    if (inst.isPredicable) os.print("|(1<<TID.IsPredicble)");
+    if (inst.canFoldAsLoad) os.print("|(1<<TID.FoldAsLoad)");
     if (inst.mayLoad) os.print("|(1<<TID.MayLoad)");
     if (inst.mayStore) os.print("|(1<<TID.MayStore)");
     if (inst.isPredicable) os.print("|(1<<TID.Predicable)");
-    if (inst.isConvertibleToThreeAddress) os.print("|(1<<TID.ConvertibleTo3Addr)");
+    if (inst.isConvertibleToThreeAddress) os.print("|(1<<TID.ConvertibleToThreeAddress)");
     if (inst.isCommutable) os.print("|(1<<TID.Commutable)");
     if (inst.isTerminator) os.print("|(1<<TID.Terminator)");
-    if (inst.isReMaterializable) os.print("|(1<<TID.Rematerializable)");
+    if (inst.isReMaterializable) os.print("|(1<<TID.ReMaterializable)");
     if (inst.isNotDuplicable) os.print("|(1<<TID.NotDuplicable)");
-    if (inst.hasOptionalDef) os.print("|(1<<TID.HasOptionalDef)");
-    if (inst.usesCustomInserter) os.print("|(1<<TID.usesCustomInserter)");
-    if (inst.hasPostISelHook) os.print("|(1<<TID.HasPostISelHook)");
-    if (inst.hasCtrlDep) os.print("|(1<<TID.HasCtrlDep)");
+    if (inst.hasOptionalDef) os.print("|(1<<TID.OptionalDef)");
+    if (inst.usesCustomInserter) os.print("|(1<<TID.UsesCustomInserter)");
+    if (inst.hasPostISelHook) os.print("|(1<<TID.PostISelHook)");
+    if (inst.hasCtrlDep) os.print("|(1<<TID.CtrlDep)");
     if (inst.isVariadic) os.print("|(1<<TID.Variadic)");
-    if (inst.isNotDuplicable) os.print("|(1<<TID.IsNotDuplicable)");
-    if (inst.hasSideEffects) os.print("|(1<<TID.HasSideEffects)");
+    if (inst.hasSideEffects) os.print("|(1<<TID.SideEffects)");
     if (inst.isAsCheapAsAMove) os.print("|(1<<TID.CheapAsAMove)");
-    if (inst.hasExtraSrcRegAllocReq) os.print("|(TID.HasExtraSrcRegAllocReq)");
-    if (inst.hasExtraDefRegAllocReq) os.print("|(1<<TID.HasExtraDefRegAllocReq)");
-    if (inst.isPseudo) os.print("(|(1<<TID.IsPseudo))");
-
-    os.print(", 0");
+    if (inst.hasExtraSrcRegAllocReq) os.print("|(TID.ExtraSrcRegAllocReq)");
+    if (inst.hasExtraDefRegAllocReq) os.print("|(1<<TID.ExtraDefRegAllocReq)");
+    if (inst.isPseudo) os.print("|(1<<TID.Pseudo)");
 
     // Emit all of the target-specific flags...
     Init.BitsInit li = inst.theDef.getValueAsBitsInit("TSFlags");
@@ -227,7 +223,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         Util.assertion(String.format("Invalid TSFlag bit in %s", inst.theDef.getName()));
     }
 
-    os.printf(", %dL, ", value);
+    os.printf(", %d, ", value);
 
     // Emit the implicit uses and defs list.
     ArrayList<Record> uses = inst.theDef.getValueAsListOfDefs("Uses");

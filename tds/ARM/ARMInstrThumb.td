@@ -15,13 +15,13 @@
 // Thumb specific DAG Nodes.
 //
 
-def ARMtcall : SDNode<"ARMISD::tCALL", SDT_ARMcall,
+def ARMtcall : SDNode<"ARMISD.tCALL", SDT_ARMcall,
                       [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
                        SDNPVariadic]>;
 
 def imm_sr_XFORM: SDNodeXForm<imm, [{
   unsigned Imm = N->getZExtValue();
-  return CurDAG->getTargetConstant((Imm == 32 ? 0 : Imm), MVT::i32);
+  return curDAG.getTargetConstant((Imm == 32 ? 0 : Imm), MVT::i32);
 }]>;
 def ThumbSRImmAsmOperand: AsmOperandClass { let Name = "ImmThumbSR"; }
 def imm_sr : Operand<i32>, PatLeaf<(imm), [{
@@ -33,10 +33,10 @@ def imm_sr : Operand<i32>, PatLeaf<(imm), [{
 }
 
 def imm_neg_XFORM : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
 }]>;
 def imm_comp_XFORM : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(~((uint32_t)N->getZExtValue()), MVT::i32);
+  return curDAG.getTargetConstant(~((uint32_t)N->getZExtValue()), MVT::i32);
 }]>;
 
 def imm0_7_neg : PatLeaf<(i32 imm), [{
@@ -64,12 +64,12 @@ def thumb_immshifted : PatLeaf<(imm), [{
 
 def thumb_immshifted_val : SDNodeXForm<imm, [{
   unsigned V = ARM_AM::getThumbImmNonShiftedVal((unsigned)N->getZExtValue());
-  return CurDAG->getTargetConstant(V, MVT::i32);
+  return curDAG.getTargetConstant(V, MVT::i32);
 }]>;
 
 def thumb_immshifted_shamt : SDNodeXForm<imm, [{
   unsigned V = ARM_AM::getThumbImmValShift((unsigned)N->getZExtValue());
-  return CurDAG->getTargetConstant(V, MVT::i32);
+  return curDAG.getTargetConstant(V, MVT::i32);
 }]>;
 
 // ADR instruction labels.

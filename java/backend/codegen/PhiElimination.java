@@ -7,7 +7,7 @@ import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
 
@@ -95,7 +95,7 @@ public final class PhiElimination extends MachineFunctionPass {
   }
 
   private static boolean isDummyPhiInstr(int opcode) {
-    return opcode == TargetOpcodes.PHI;
+    return opcode == TargetOpcode.PHI;
   }
 
   /**

@@ -117,6 +117,18 @@ public abstract class MCRegisterClass {
   }
 
   /**
+   * Obtains the allocatable registers of type array.
+   * Default, returned array is as same as registers array contained in this
+   * MCRegisterClass. But it is may be altered for concrete sub class. e.g.
+   * GR32RegisterClass have more register (R8D, R9D etc) in 64bit subtarget.
+   *
+   * @return An array of allocatable registers for specified sub-target.
+   */
+  public int[] getRawAllocationOrder(MachineFunction mf) {
+    return regs;
+  }
+
+  /**
    * Return true if the specified register is included in this
    * register class.
    *

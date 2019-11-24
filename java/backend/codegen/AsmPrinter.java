@@ -444,18 +444,18 @@ public abstract class AsmPrinter extends MachineFunctionPass {
           emitComments(mi, outStreamer.getCommentOS());
 
         switch (mi.getOpcode()) {
-          case TargetOpcodes.PROLOG_LABEL:
-          case TargetOpcodes.EH_LABEL:
-          case TargetOpcodes.GC_LABEL:
+          case TargetOpcode.PROLOG_LABEL:
+          case TargetOpcode.EH_LABEL:
+          case TargetOpcode.GC_LABEL:
             printLabel(mi);
             break;
-          case TargetOpcodes.INLINEASM:
+          case TargetOpcode.INLINEASM:
             printInlineAsm(mi);
             break;
-          case TargetOpcodes.IMPLICIT_DEF:
+          case TargetOpcode.IMPLICIT_DEF:
             printImplicitDef(mi);
             break;
-          case TargetOpcodes.KILL:
+          case TargetOpcode.KILL:
             printKill(mi);
             break;
           default:

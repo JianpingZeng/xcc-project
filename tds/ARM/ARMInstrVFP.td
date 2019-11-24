@@ -10,14 +10,14 @@ def SDT_CMPFP0  : SDTypeProfile<0, 1, [SDTCisFP<0>]>;
 def SDT_VMOVDRR : SDTypeProfile<1, 2, [SDTCisVT<0, f64>, SDTCisVT<1, i32>,
                                        SDTCisSameAs<1, 2>]>;
 
-def arm_ftoui  : SDNode<"ARMISD::FTOUI",   SDT_FTOI>;
-def arm_ftosi  : SDNode<"ARMISD::FTOSI",   SDT_FTOI>;
-def arm_sitof  : SDNode<"ARMISD::SITOF",   SDT_ITOF>;
-def arm_uitof  : SDNode<"ARMISD::UITOF",   SDT_ITOF>;
-def arm_fmstat : SDNode<"ARMISD::FMSTAT",  SDTNone, [SDNPInFlag, SDNPOutFlag]>;
-def arm_cmpfp  : SDNode<"ARMISD::CMPFP",   SDT_ARMCmp, [SDNPOutFlag]>;
-def arm_cmpfp0 : SDNode<"ARMISD::CMPFPw0", SDT_CMPFP0, [SDNPOutFlag]>;
-def arm_fmdrr  : SDNode<"ARMISD::VMOVDRR", SDT_VMOVDRR>;
+def arm_ftoui  : SDNode<"ARMISD.FTOUI",   SDT_FTOI>;
+def arm_ftosi  : SDNode<"ARMISD.FTOSI",   SDT_FTOI>;
+def arm_sitof  : SDNode<"ARMISD.SITOF",   SDT_ITOF>;
+def arm_uitof  : SDNode<"ARMISD.UITOF",   SDT_ITOF>;
+def arm_fmstat : SDNode<"ARMISD.FMSTAT",  SDTNone, [SDNPInFlag, SDNPOutFlag]>;
+def arm_cmpfp  : SDNode<"ARMISD.CMPFP",   SDT_ARMCmp, [SDNPOutFlag]>;
+def arm_cmpfp0 : SDNode<"ARMISD.CMPFPw0", SDT_CMPFP0, [SDNPOutFlag]>;
+def arm_fmdrr  : SDNode<"ARMISD.VMOVDRR", SDT_VMOVDRR>;
 
 
 //===----------------------------------------------------------------------===//
@@ -36,7 +36,7 @@ def vfp_f32imm : Operand<f32>,
     }], SDNodeXForm<fpimm, [{
       APFloat InVal = N->getValueAPF();
       uint32_t enc = ARM_AM::getFP32Imm(InVal);
-      return CurDAG->getTargetConstant(enc, MVT::i32);
+      return curDAG.getTargetConstant(enc, MVT::i32);
     }]>> {
   let PrintMethod = "printFPImmOperand";
   let ParserMatchClass = FPImmOperand;
@@ -48,7 +48,7 @@ def vfp_f64imm : Operand<f64>,
     }], SDNodeXForm<fpimm, [{
       APFloat InVal = N->getValueAPF();
       uint32_t enc = ARM_AM::getFP64Imm(InVal);
-      return CurDAG->getTargetConstant(enc, MVT::i32);
+      return curDAG.getTargetConstant(enc, MVT::i32);
     }]>> {
   let PrintMethod = "printFPImmOperand";
   let ParserMatchClass = FPImmOperand;

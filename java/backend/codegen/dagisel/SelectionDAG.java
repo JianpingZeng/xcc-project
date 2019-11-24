@@ -28,7 +28,7 @@ import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.type.ArrayType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -2314,7 +2314,7 @@ public class SelectionDAG {
   }
 
   /**
-   * A convenience function for creating TargetOpcodes.EXTRACT_SUBREG nodes.
+   * A convenience function for creating TargetOpcode.EXTRACT_SUBREG nodes.
    * @param srIdx
    * @param vt
    * @param operand
@@ -2322,12 +2322,12 @@ public class SelectionDAG {
    */
   public SDValue getTargetExtractSubreg(int srIdx, EVT vt, SDValue operand) {
     SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
-    SDNode subreg = getMachineNode(TargetOpcodes.EXTRACT_SUBREG, vt, operand, srIdxVal);
+    SDNode subreg = getMachineNode(TargetOpcode.EXTRACT_SUBREG, vt, operand, srIdxVal);
     return new SDValue(subreg, 0);
   }
 
   /**
-   * A convenience function for creating TargetOpcodes.INSERT_SUBREG nodes.
+   * A convenience function for creating TargetOpcode.INSERT_SUBREG nodes.
    * @param srIdx
    * @param vt
    * @param operand
@@ -2336,7 +2336,7 @@ public class SelectionDAG {
   public SDValue getTargetInsertSubreg(int srIdx, EVT vt,
                                        SDValue operand, SDValue subreg) {
     SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
-    SDNode result = getMachineNode(TargetOpcodes.INSERT_SUBREG, vt,
+    SDNode result = getMachineNode(TargetOpcode.INSERT_SUBREG, vt,
         operand, subreg, srIdxVal);
     return new SDValue(result, 0);
   }

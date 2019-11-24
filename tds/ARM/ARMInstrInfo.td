@@ -83,143 +83,143 @@ def SDTBinaryArithWithFlagsInOut : SDTypeProfile<2, 3,
                                              SDTCisVT<1, i32>,
                                              SDTCisVT<4, i32>]>;
 // Node definitions.
-def ARMWrapper       : SDNode<"ARMISD::Wrapper",     SDTIntUnaryOp>;
-def ARMWrapperDYN    : SDNode<"ARMISD::WrapperDYN",  SDTIntUnaryOp>;
-def ARMWrapperPIC    : SDNode<"ARMISD::WrapperPIC",  SDTIntUnaryOp>;
-def ARMWrapperJT     : SDNode<"ARMISD::WrapperJT",   SDTIntBinOp>;
+def ARMWrapper       : SDNode<"ARMISD.Wrapper",     SDTIntUnaryOp>;
+def ARMWrapperDYN    : SDNode<"ARMISD.WrapperDYN",  SDTIntUnaryOp>;
+def ARMWrapperPIC    : SDNode<"ARMISD.WrapperPIC",  SDTIntUnaryOp>;
+def ARMWrapperJT     : SDNode<"ARMISD.WrapperJT",   SDTIntBinOp>;
 
 def ARMcallseq_start : SDNode<"ISD::CALLSEQ_START", SDT_ARMCallSeqStart,
                               [SDNPHasChain, SDNPOutFlag]>;
 def ARMcallseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_ARMCallSeqEnd,
                               [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
 
-def ARMcall          : SDNode<"ARMISD::CALL", SDT_ARMcall,
+def ARMcall          : SDNode<"ARMISD.CALL", SDT_ARMcall,
                               [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
                                SDNPVariadic]>;
-def ARMcall_pred    : SDNode<"ARMISD::CALL_PRED", SDT_ARMcall,
+def ARMcall_pred    : SDNode<"ARMISD.CALL_PRED", SDT_ARMcall,
                               [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
                                SDNPVariadic]>;
-def ARMcall_nolink   : SDNode<"ARMISD::CALL_NOLINK", SDT_ARMcall,
+def ARMcall_nolink   : SDNode<"ARMISD.CALL_NOLINK", SDT_ARMcall,
                               [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
                                SDNPVariadic]>;
 
-def ARMretflag       : SDNode<"ARMISD::RET_FLAG", SDTNone,
+def ARMretflag       : SDNode<"ARMISD.RET_FLAG", SDTNone,
                               [SDNPHasChain, SDNPOptInFlag]>;
 
-def ARMcmov          : SDNode<"ARMISD::CMOV", SDT_ARMCMov,
+def ARMcmov          : SDNode<"ARMISD.CMOV", SDT_ARMCMov,
                               [SDNPInFlag]>;
 
-def ARMbrcond        : SDNode<"ARMISD::BRCOND", SDT_ARMBrcond,
+def ARMbrcond        : SDNode<"ARMISD.BRCOND", SDT_ARMBrcond,
                               [SDNPHasChain, SDNPInFlag, SDNPOutFlag]>;
 
-def ARMbrjt          : SDNode<"ARMISD::BR_JT", SDT_ARMBrJT,
+def ARMbrjt          : SDNode<"ARMISD.BR_JT", SDT_ARMBrJT,
                               [SDNPHasChain]>;
-def ARMbr2jt         : SDNode<"ARMISD::BR2_JT", SDT_ARMBr2JT,
-                              [SDNPHasChain]>;
-
-def ARMBcci64        : SDNode<"ARMISD::BCC_i64", SDT_ARMBCC_i64,
+def ARMbr2jt         : SDNode<"ARMISD.BR2_JT", SDT_ARMBr2JT,
                               [SDNPHasChain]>;
 
-def ARMcmp           : SDNode<"ARMISD::CMP", SDT_ARMCmp,
+def ARMBcci64        : SDNode<"ARMISD.BCC_i64", SDT_ARMBCC_i64,
+                              [SDNPHasChain]>;
+
+def ARMcmp           : SDNode<"ARMISD.CMP", SDT_ARMCmp,
                               [SDNPOutFlag]>;
 
-def ARMcmpZ          : SDNode<"ARMISD::CMPZ", SDT_ARMCmp,
+def ARMcmpZ          : SDNode<"ARMISD.CMPZ", SDT_ARMCmp,
                               [SDNPOutFlag, SDNPCommutative]>;
 
-def ARMpic_add       : SDNode<"ARMISD::PIC_ADD", SDT_ARMPICAdd>;
+def ARMpic_add       : SDNode<"ARMISD.PIC_ADD", SDT_ARMPICAdd>;
 
-def ARMsrl_flag      : SDNode<"ARMISD::SRL_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
-def ARMsra_flag      : SDNode<"ARMISD::SRA_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
-def ARMrrx           : SDNode<"ARMISD::RRX"     , SDTIntUnaryOp, [SDNPInFlag ]>;
+def ARMsrl_flag      : SDNode<"ARMISD.SRL_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
+def ARMsra_flag      : SDNode<"ARMISD.SRA_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
+def ARMrrx           : SDNode<"ARMISD.RRX"     , SDTIntUnaryOp, [SDNPInFlag ]>;
 
-def ARMaddc          : SDNode<"ARMISD::ADDC",  SDTBinaryArithWithFlags,
+def ARMaddc          : SDNode<"ARMISD.ADDC",  SDTBinaryArithWithFlags,
                               [SDNPCommutative]>;
-def ARMsubc          : SDNode<"ARMISD::SUBC",  SDTBinaryArithWithFlags>;
-def ARMadde          : SDNode<"ARMISD::ADDE",  SDTBinaryArithWithFlagsInOut>;
-def ARMsube          : SDNode<"ARMISD::SUBE",  SDTBinaryArithWithFlagsInOut>;
+def ARMsubc          : SDNode<"ARMISD.SUBC",  SDTBinaryArithWithFlags>;
+def ARMadde          : SDNode<"ARMISD.ADDE",  SDTBinaryArithWithFlagsInOut>;
+def ARMsube          : SDNode<"ARMISD.SUBE",  SDTBinaryArithWithFlagsInOut>;
 
-def ARMthread_pointer: SDNode<"ARMISD::THREAD_POINTER", SDT_ARMThreadPointer>;
-def ARMeh_sjlj_setjmp: SDNode<"ARMISD::EH_SJLJ_SETJMP",
+def ARMthread_pointer: SDNode<"ARMISD.THREAD_POINTER", SDT_ARMThreadPointer>;
+def ARMeh_sjlj_setjmp: SDNode<"ARMISD.EH_SJLJ_SETJMP",
                                SDT_ARMEH_SJLJ_Setjmp, [SDNPHasChain]>;
-def ARMeh_sjlj_longjmp: SDNode<"ARMISD::EH_SJLJ_LONGJMP",
+def ARMeh_sjlj_longjmp: SDNode<"ARMISD.EH_SJLJ_LONGJMP",
                                SDT_ARMEH_SJLJ_Longjmp, [SDNPHasChain]>;
-def ARMeh_sjlj_dispatchsetup: SDNode<"ARMISD::EH_SJLJ_DISPATCHSETUP",
+def ARMeh_sjlj_dispatchsetup: SDNode<"ARMISD.EH_SJLJ_DISPATCHSETUP",
                                SDT_ARMEH_SJLJ_DispatchSetup, [SDNPHasChain]>;
 
 
-def ARMMemBarrier     : SDNode<"ARMISD::MEMBARRIER", SDT_ARMMEMBARRIER,
+def ARMMemBarrier     : SDNode<"ARMISD.MEMBARRIER", SDT_ARMMEMBARRIER,
                                [SDNPHasChain]>;
-def ARMMemBarrierMCR  : SDNode<"ARMISD::MEMBARRIER_MCR", SDT_ARMMEMBARRIER,
+def ARMMemBarrierMCR  : SDNode<"ARMISD.MEMBARRIER_MCR", SDT_ARMMEMBARRIER,
                                [SDNPHasChain]>;
-def ARMPreload        : SDNode<"ARMISD::PRELOAD", SDT_ARMPREFETCH,
+def ARMPreload        : SDNode<"ARMISD.PRELOAD", SDT_ARMPREFETCH,
                                [SDNPHasChain, SDNPMayLoad, SDNPMayStore]>;
 
-def ARMrbit          : SDNode<"ARMISD::RBIT", SDTIntUnaryOp>;
+def ARMrbit          : SDNode<"ARMISD.RBIT", SDTIntUnaryOp>;
 
-def ARMtcret         : SDNode<"ARMISD::TC_RETURN", SDT_ARMTCRET,
+def ARMtcret         : SDNode<"ARMISD.TC_RETURN", SDT_ARMTCRET,
                         [SDNPHasChain,  SDNPOptInFlag, SDNPVariadic]>;
 
 
-def ARMbfi           : SDNode<"ARMISD::BFI", SDT_ARMBFI>;
+def ARMbfi           : SDNode<"ARMISD.BFI", SDT_ARMBFI>;
 
 //===----------------------------------------------------------------------===//
 // ARM Instruction Predicate Definitions.
 //
-def HasV4T           : Predicate<"Subtarget->hasV4TOps()">,
+def HasV4T           : Predicate<"subtarget.hasV4TOps()">,
                                  AssemblerPredicate<"HasV4TOps">;
-def NoV4T            : Predicate<"!Subtarget->hasV4TOps()">;
-def HasV5T           : Predicate<"Subtarget->hasV5TOps()">;
-def HasV5TE          : Predicate<"Subtarget->hasV5TEOps()">,
+def NoV4T            : Predicate<"!subtarget.hasV4TOps()">;
+def HasV5T           : Predicate<"subtarget.hasV5TOps()">;
+def HasV5TE          : Predicate<"subtarget.hasV5TEOps()">,
                                  AssemblerPredicate<"HasV5TEOps">;
-def HasV6            : Predicate<"Subtarget->hasV6Ops()">,
+def HasV6            : Predicate<"subtarget.hasV6Ops()">,
                                  AssemblerPredicate<"HasV6Ops">;
-def NoV6             : Predicate<"!Subtarget->hasV6Ops()">;
-def HasV6T2          : Predicate<"Subtarget->hasV6T2Ops()">,
+def NoV6             : Predicate<"!subtarget.hasV6Ops()">;
+def HasV6T2          : Predicate<"subtarget.hasV6T2Ops()">,
                                  AssemblerPredicate<"HasV6T2Ops">;
-def NoV6T2           : Predicate<"!Subtarget->hasV6T2Ops()">;
-def HasV7            : Predicate<"Subtarget->hasV7Ops()">,
+def NoV6T2           : Predicate<"!subtarget.hasV6T2Ops()">;
+def HasV7            : Predicate<"subtarget.hasV7Ops()">,
                                  AssemblerPredicate<"HasV7Ops">;
-def NoVFP            : Predicate<"!Subtarget->hasVFP2()">;
-def HasVFP2          : Predicate<"Subtarget->hasVFP2()">,
+def NoVFP            : Predicate<"!subtarget.hasVFP2()">;
+def HasVFP2          : Predicate<"subtarget.hasVFP2()">,
                                  AssemblerPredicate<"FeatureVFP2">;
-def HasVFP3          : Predicate<"Subtarget->hasVFP3()">,
+def HasVFP3          : Predicate<"subtarget.hasVFP3()">,
                                  AssemblerPredicate<"FeatureVFP3">;
-def HasNEON          : Predicate<"Subtarget->hasNEON()">,
+def HasNEON          : Predicate<"subtarget.hasNEON()">,
                                  AssemblerPredicate<"FeatureNEON">;
-def HasFP16          : Predicate<"Subtarget->hasFP16()">,
+def HasFP16          : Predicate<"subtarget.hasFP16()">,
                                  AssemblerPredicate<"FeatureFP16">;
-def HasDivide        : Predicate<"Subtarget->hasDivide()">,
+def HasDivide        : Predicate<"subtarget.hasDivide()">,
                                  AssemblerPredicate<"FeatureHWDiv">;
-def HasT2ExtractPack : Predicate<"Subtarget->hasT2ExtractPack()">,
+def HasT2ExtractPack : Predicate<"subtarget.hasT2ExtractPack()">,
                                  AssemblerPredicate<"FeatureT2XtPk">;
-def HasThumb2DSP     : Predicate<"Subtarget->hasThumb2DSP()">,
+def HasThumb2DSP     : Predicate<"subtarget.hasThumb2DSP()">,
                                  AssemblerPredicate<"FeatureDSPThumb2">;
-def HasDB            : Predicate<"Subtarget->hasDataBarrier()">,
+def HasDB            : Predicate<"subtarget.hasDataBarrier()">,
                                  AssemblerPredicate<"FeatureDB">;
-def HasMP            : Predicate<"Subtarget->hasMPExtension()">,
+def HasMP            : Predicate<"subtarget.hasMPExtension()">,
                                  AssemblerPredicate<"FeatureMP">;
-def UseNEONForFP     : Predicate<"Subtarget->useNEONForSinglePrecisionFP()">;
-def DontUseNEONForFP : Predicate<"!Subtarget->useNEONForSinglePrecisionFP()">;
-def IsThumb          : Predicate<"Subtarget->isThumb()">,
+def UseNEONForFP     : Predicate<"subtarget.useNEONForSinglePrecisionFP()">;
+def DontUseNEONForFP : Predicate<"!subtarget.useNEONForSinglePrecisionFP()">;
+def IsThumb          : Predicate<"subtarget.isThumb()">,
                                  AssemblerPredicate<"ModeThumb">;
-def IsThumb1Only     : Predicate<"Subtarget->isThumb1Only()">;
-def IsThumb2         : Predicate<"Subtarget->isThumb2()">,
+def IsThumb1Only     : Predicate<"subtarget.isThumb1Only()">;
+def IsThumb2         : Predicate<"subtarget.isThumb2()">,
                                  AssemblerPredicate<"ModeThumb,FeatureThumb2">;
-def IsMClass         : Predicate<"Subtarget->isMClass()">,
+def IsMClass         : Predicate<"subtarget.isMClass()">,
                                  AssemblerPredicate<"FeatureMClass">;
-def IsARClass        : Predicate<"!Subtarget->isMClass()">,
+def IsARClass        : Predicate<"!subtarget.isMClass()">,
                                  AssemblerPredicate<"!FeatureMClass">;
-def IsARM            : Predicate<"!Subtarget->isThumb()">,
+def IsARM            : Predicate<"!subtarget.isThumb()">,
                                  AssemblerPredicate<"!ModeThumb">;
-def IsDarwin         : Predicate<"Subtarget->isTargetDarwin()">;
-def IsNotDarwin      : Predicate<"!Subtarget->isTargetDarwin()">;
-def IsNaCl           : Predicate<"Subtarget->isTargetNaCl()">,
+def IsDarwin         : Predicate<"subtarget.isTargetDarwin()">;
+def IsNotDarwin      : Predicate<"!subtarget.isTargetDarwin()">;
+def IsNaCl           : Predicate<"subtarget.isTargetNaCl()">,
                                  AssemblerPredicate<"ModeNaCl">;
 
 // FIXME: Eventually this will be just "hasV6T2Ops".
-def UseMovt          : Predicate<"Subtarget->useMovt()">;
-def DontUseMovt      : Predicate<"!Subtarget->useMovt()">;
-def UseFPVMLx        : Predicate<"Subtarget->useFPVMLx()">;
+def UseMovt          : Predicate<"subtarget.useMovt()">;
+def DontUseMovt      : Predicate<"!subtarget.useMovt()">;
+def UseFPVMLx        : Predicate<"subtarget.useFPVMLx()">;
 
 //===----------------------------------------------------------------------===//
 // ARM Flag Definitions.
@@ -235,13 +235,13 @@ class RegConstraint<string C> {
 // so_imm_neg_XFORM - Return a so_imm value packed into the format described for
 // so_imm_neg def below.
 def so_imm_neg_XFORM : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
 }]>;
 
 // so_imm_not_XFORM - Return a so_imm value packed into the format described for
 // so_imm_not def below.
 def so_imm_not_XFORM : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(~(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(~(int)N->getZExtValue(), MVT::i32);
 }]>;
 
 /// imm1_15 predicate - True if the 32-bit immediate is in the range [1,15].
@@ -266,12 +266,12 @@ def so_imm_not :
 
 // sext_16_node predicate - True if the SDNode is sign-extended 16 or more bits.
 def sext_16_node : PatLeaf<(i32 GPR:$a), [{
-  return CurDAG->ComputeNumSignBits(SDValue(N,0)) >= 17;
+  return curDAG.computeNumSignBits(new SDValue(n,0)) >= 17;
 }]>;
 
 /// Split a 32-bit immediate into two 16 bit parts.
 def hi16 : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((uint32_t)N->getZExtValue() >> 16, MVT::i32);
+  return curDAG.getTargetConstant((int)n.getZExtValue() >> 16, MVT::i32);
 }]>;
 
 def lo16AllZero : PatLeaf<(i32 imm), [{
@@ -410,12 +410,12 @@ def neon_vcvt_imm32 : Operand<i32> {
 
 // rot_imm: An integer that encodes a rotate amount. Must be 8, 16, or 24.
 def rot_imm_XFORM: SDNodeXForm<imm, [{
-  switch (N->getZExtValue()){
-  default: assert(0);
-  case 0:  return CurDAG->getTargetConstant(0, MVT::i32);
-  case 8:  return CurDAG->getTargetConstant(1, MVT::i32);
-  case 16: return CurDAG->getTargetConstant(2, MVT::i32);
-  case 24: return CurDAG->getTargetConstant(3, MVT::i32);
+  switch (n.getZExtValue()){
+  default: Util.assertion();
+  case 0:  return curDAG.getTargetConstant(0, MVT::i32);
+  case 8:  return curDAG.getTargetConstant(1, MVT::i32);
+  case 16: return curDAG.getTargetConstant(2, MVT::i32);
+  case 24: return curDAG.getTargetConstant(3, MVT::i32);
   }
 }]>;
 def RotImmAsmOperand : AsmOperandClass {
@@ -423,7 +423,7 @@ def RotImmAsmOperand : AsmOperandClass {
   let ParserMethod = "parseRotImm";
 }
 def rot_imm : Operand<i32>, PatLeaf<(i32 imm), [{
-    int32_t v = N->getZExtValue();
+    int v = n.getZExtValue();
     return v == 8 || v == 16 || v == 24; }],
     rot_imm_XFORM> {
   let PrintMethod = "printRotImmOperand";
@@ -448,7 +448,7 @@ def shift_imm : Operand<i32> {
 // shifter_operand operands: so_reg_reg, so_reg_imm, and so_imm.
 def ShiftedRegAsmOperand : AsmOperandClass { let Name = "RegShiftedReg"; }
 def so_reg_reg : Operand<i32>,  // reg reg imm
-                 ComplexPattern<i32, 3, "SelectRegShifterOperand",
+                 ComplexPattern<i32, 3, "selectRegShifterOperand",
                                 [shl, srl, sra, rotr]> {
   let EncoderMethod = "getSORegRegOpValue";
   let PrintMethod = "printSORegRegOperand";
@@ -459,7 +459,7 @@ def so_reg_reg : Operand<i32>,  // reg reg imm
 
 def ShiftedImmAsmOperand : AsmOperandClass { let Name = "RegShiftedImm"; }
 def so_reg_imm : Operand<i32>, // reg imm
-                 ComplexPattern<i32, 2, "SelectImmShifterOperand",
+                 ComplexPattern<i32, 2, "selectImmShifterOperand",
                                 [shl, srl, sra, rotr]> {
   let EncoderMethod = "getSORegImmOpValue";
   let PrintMethod = "printSORegImmOperand";
@@ -470,7 +470,7 @@ def so_reg_imm : Operand<i32>, // reg imm
 
 // FIXME: Does this need to be distinct from so_reg?
 def shift_so_reg_reg : Operand<i32>,    // reg reg imm
-                   ComplexPattern<i32, 3, "SelectShiftRegShifterOperand",
+                   ComplexPattern<i32, 3, "selectShiftRegShifterOperand",
                                   [shl,srl,sra,rotr]> {
   let EncoderMethod = "getSORegRegOpValue";
   let PrintMethod = "printSORegRegOperand";
@@ -480,7 +480,7 @@ def shift_so_reg_reg : Operand<i32>,    // reg reg imm
 
 // FIXME: Does this need to be distinct from so_reg?
 def shift_so_reg_imm : Operand<i32>,    // reg reg imm
-                   ComplexPattern<i32, 2, "SelectShiftImmShifterOperand",
+                   ComplexPattern<i32, 2, "selectShiftImmShifterOperand",
                                   [shl,srl,sra,rotr]> {
   let EncoderMethod = "getSORegImmOpValue";
   let PrintMethod = "printSORegImmOperand";
@@ -510,7 +510,7 @@ def so_imm2part : PatLeaf<(imm), [{
 /// arm_i32imm - True for +V6T2, or true only if so_imm2part is true.
 ///
 def arm_i32imm : PatLeaf<(imm), [{
-  if (Subtarget->hasV6T2Ops())
+  if (subtarget.hasV6T2Ops())
     return true;
   return ARM_AM::isSOImmTwoPartVal((unsigned)N->getZExtValue());
 }]>;
@@ -583,7 +583,7 @@ def bf_inv_mask_imm : Operand<i32>,
 }
 
 def imm1_32_XFORM: SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
+  return curDAG.getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
 }]>;
 def Imm1_32AsmOperand: AsmOperandClass { let Name = "Imm1_32"; }
 def imm1_32 : Operand<i32>, PatLeaf<(imm), [{
@@ -596,7 +596,7 @@ def imm1_32 : Operand<i32>, PatLeaf<(imm), [{
 }
 
 def imm1_16_XFORM: SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
+  return curDAG.getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
 }]>;
 def Imm1_16AsmOperand: AsmOperandClass { let Name = "Imm1_16"; }
 def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return Imm > 0 && Imm <= 16; }],
@@ -610,7 +610,7 @@ def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return Imm > 0 && Imm <= 16; }],
 //
 def MemImm12OffsetAsmOperand : AsmOperandClass { let Name = "MemImm12Offset"; }
 def addrmode_imm12 : Operand<i32>,
-                     ComplexPattern<i32, 2, "SelectAddrModeImm12", []> {
+                     ComplexPattern<i32, 2, "selectAddrModeImm12", []> {
   // 12-bit immediate operand. Note that instructions using this encode
   // #0 and #-0 differently. We flag #-0 as the magic value INT32_MIN. All other
   // immediate values are as normal.
@@ -625,7 +625,7 @@ def addrmode_imm12 : Operand<i32>,
 //
 def MemRegOffsetAsmOperand : AsmOperandClass { let Name = "MemRegOffset"; }
 def ldst_so_reg : Operand<i32>,
-                  ComplexPattern<i32, 3, "SelectLdStSOReg", []> {
+                  ComplexPattern<i32, 3, "selectLdStSOReg", []> {
   let EncoderMethod = "getLdStSORegOpValue";
   // FIXME: Simplify the printer
   let PrintMethod = "printAddrMode2Operand";
@@ -681,7 +681,7 @@ def postidx_reg : Operand<i32> {
 // use explicit imm vs. reg versions above (addrmode_imm12 and ldst_so_reg).
 def AddrMode2AsmOperand : AsmOperandClass { let Name = "AddrMode2"; }
 def addrmode2 : Operand<i32>,
-                ComplexPattern<i32, 3, "SelectAddrMode2", []> {
+                ComplexPattern<i32, 3, "selectAddrMode2", []> {
   let EncoderMethod = "getAddrMode2OpValue";
   let PrintMethod = "printAddrMode2Operand";
   let ParserMatchClass = AddrMode2AsmOperand;
@@ -693,7 +693,7 @@ def PostIdxRegShiftedAsmOperand : AsmOperandClass {
   let ParserMethod = "parsePostIdxReg";
 }
 def am2offset_reg : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode2OffsetReg",
+                ComplexPattern<i32, 2, "selectAddrMode2OffsetReg",
                 [], [SDNPWantRoot]> {
   let EncoderMethod = "getAddrMode2OffsetOpValue";
   let PrintMethod = "printAddrMode2OffsetOperand";
@@ -706,7 +706,7 @@ def am2offset_reg : Operand<i32>,
 // the GPR is purely vestigal at this point.
 def AM2OffsetImmAsmOperand : AsmOperandClass { let Name = "AM2OffsetImm"; }
 def am2offset_imm : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode2OffsetImm",
+                ComplexPattern<i32, 2, "selectAddrMode2OffsetImm",
                 [], [SDNPWantRoot]> {
   let EncoderMethod = "getAddrMode2OffsetOpValue";
   let PrintMethod = "printAddrMode2OffsetOperand";
@@ -721,7 +721,7 @@ def am2offset_imm : Operand<i32>,
 // FIXME: split into imm vs. reg versions.
 def AddrMode3AsmOperand : AsmOperandClass { let Name = "AddrMode3"; }
 def addrmode3 : Operand<i32>,
-                ComplexPattern<i32, 3, "SelectAddrMode3", []> {
+                ComplexPattern<i32, 3, "selectAddrMode3", []> {
   let EncoderMethod = "getAddrMode3OpValue";
   let PrintMethod = "printAddrMode3Operand";
   let ParserMatchClass = AddrMode3AsmOperand;
@@ -735,7 +735,7 @@ def AM3OffsetAsmOperand : AsmOperandClass {
   let ParserMethod = "parseAM3Offset";
 }
 def am3offset : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode3Offset",
+                ComplexPattern<i32, 2, "selectAddrMode3Offset",
                                [], [SDNPWantRoot]> {
   let EncoderMethod = "getAddrMode3OffsetOpValue";
   let PrintMethod = "printAddrMode3OffsetOperand";
@@ -754,7 +754,7 @@ def ldstm_mode : OptionalDefOperand<OtherVT, (ops i32), (ops (i32 1))> {
 //
 def AddrMode5AsmOperand : AsmOperandClass { let Name = "AddrMode5"; }
 def addrmode5 : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode5", []> {
+                ComplexPattern<i32, 2, "selectAddrMode5", []> {
   let PrintMethod = "printAddrMode5Operand";
   let EncoderMethod = "getAddrMode5OpValue";
   let DecoderMethod = "DecodeAddrMode5Operand";
@@ -766,7 +766,7 @@ def addrmode5 : Operand<i32>,
 //
 def AddrMode6AsmOperand : AsmOperandClass { let Name = "AlignedMemory"; }
 def addrmode6 : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode6", [], [SDNPWantParent]>{
+                ComplexPattern<i32, 2, "selectAddrMode6", [], [SDNPWantParent]>{
   let PrintMethod = "printAddrMode6Operand";
   let MIOperandInfo = (ops GPR:$addr, i32imm:$align);
   let EncoderMethod = "getAddrMode6AddressOpValue";
@@ -775,7 +775,7 @@ def addrmode6 : Operand<i32>,
 }
 
 def am6offset : Operand<i32>,
-                ComplexPattern<i32, 1, "SelectAddrMode6Offset",
+                ComplexPattern<i32, 1, "selectAddrMode6Offset",
                                [], [SDNPWantRoot]> {
   let PrintMethod = "printAddrMode6OffsetOperand";
   let MIOperandInfo = (ops GPR);
@@ -786,7 +786,7 @@ def am6offset : Operand<i32>,
 // Special version of addrmode6 to handle alignment encoding for VST1/VLD1
 // (single element from one lane) for size 32.
 def addrmode6oneL32 : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode6", [], [SDNPWantParent]>{
+                ComplexPattern<i32, 2, "selectAddrMode6", [], [SDNPWantParent]>{
   let PrintMethod = "printAddrMode6Operand";
   let MIOperandInfo = (ops GPR:$addr, i32imm);
   let EncoderMethod = "getAddrMode6OneLane32AddressOpValue";
@@ -795,7 +795,7 @@ def addrmode6oneL32 : Operand<i32>,
 // Special version of addrmode6 to handle alignment encoding for VLD-dup
 // instructions, specifically VLD4-dup.
 def addrmode6dup : Operand<i32>,
-                ComplexPattern<i32, 2, "SelectAddrMode6", [], [SDNPWantParent]>{
+                ComplexPattern<i32, 2, "selectAddrMode6", [], [SDNPWantParent]>{
   let PrintMethod = "printAddrMode6Operand";
   let MIOperandInfo = (ops GPR:$addr, i32imm);
   let EncoderMethod = "getAddrMode6DupAddressOpValue";
@@ -804,7 +804,7 @@ def addrmode6dup : Operand<i32>,
 // addrmodepc := pc + reg
 //
 def addrmodepc : Operand<i32>,
-                 ComplexPattern<i32, 2, "SelectAddrModePC", []> {
+                 ComplexPattern<i32, 2, "selectAddrModePC", []> {
   let PrintMethod = "printAddrModePCOperand";
   let MIOperandInfo = (ops GPR, i32imm);
 }
@@ -813,7 +813,7 @@ def addrmodepc : Operand<i32>,
 //
 def MemNoOffsetAsmOperand : AsmOperandClass { let Name = "MemNoOffset"; }
 def addr_offset_none : Operand<i32>,
-                       ComplexPattern<i32, 1, "SelectAddrOffsetNone", []> {
+                       ComplexPattern<i32, 1, "selectAddrOffsetNone", []> {
   let PrintMethod = "printAddrMode7Operand";
   let DecoderMethod = "DecodeAddrMode7Operand";
   let ParserMatchClass = MemNoOffsetAsmOperand;

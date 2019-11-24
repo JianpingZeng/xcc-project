@@ -83,7 +83,8 @@ public class Triple {
     NetBSD,
     OpenBSD,
     Solaris,
-    Win32
+    Win32,
+    NativeClient,
   }
 
   private String data;
@@ -420,6 +421,10 @@ public class Triple {
   }
 
   public boolean isDarwin() {
+    return getOS() == OSType.Darwin;
+  }
+
+  public boolean isOSDarwin() {
     return getOS() == OSType.Darwin;
   }
 }

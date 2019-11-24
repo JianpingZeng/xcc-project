@@ -102,7 +102,10 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.println("import backend.codegen.EVT;");
       os.printf("import static backend.target.%s.%sGenRegisterNames.*;\n",
           targetName.toLowerCase(), targetName);
-
+      os.printf("import static backend.target.%s.%sGenRegisterInfo.*;\n",
+          targetName.toLowerCase(), targetName);
+      os.println("import tools.Util;");
+      os.println("import java.util.ArrayList;");
 
       os.printf("public class %s extends %sRegisterInfo \n{\t",
           className, targetName);
@@ -241,11 +244,11 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     // Output an array containing all Register Class instances.
     os.println();
     os.printf("\t// %sMCRegisterClasses array.\n", targetName);
-    os.printf("\tMCRegisterClass[] %sMCRegisterClasses = {\n", targetName);
+    os.printf("\tprivate static final MCRegisterClass[] %sMCRegisterClasses = {\n", targetName);
     for (CodeGenRegisterClass rc : regClasses) {
-      os.printf("\t\t%sClass,\n", rc.getName());
+      os.printf("\t\t%sRegisterClass,\n", rc.getName());
     }
-    os.println("\t}");
+    os.println("\t};");
 
     // Output register class define.
     for (CodeGenRegisterClass rc : regClasses) {
@@ -290,15 +293,14 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.println("\t\t@Override");
         os.println("\t\tpublic int[] getRawAllocationOrder(MachineFunction mf) {");
         os.printf("\t\t\tMCRegisterClass mcr = %sMCRegisterClasses[%sRegClassID];\n", targetName, rc.getName());
-        os.printf("\t\t\tint[][] order = new int[%d][] {\n", e+1);
-        os.println("\t\t\t\tmcr.getRegs(),");
+        os.println("\t\t\tArrayList<int[]> order = new ArrayList<>();");
+        os.println("\t\t\torder.add(mcr.getRegs());");
         for (int i = 0; i < e; ++i) {
-          os.printf("\t\t\t\taltOrder%d,\n", i);
+          os.printf("\t\t\torder.add(altOrder%d);\n", i);
         }
-        os.println("\t\t\t}");
         os.println("\t\t\tint select = altOrderSelect(mf);");
         os.printf("\t\t\tUtil.assertion(select < %d);\n", e);
-        os.println("\t\t\treturn order[select];");
+        os.println("\t\t\treturn order.get(select);");
         os.println("\t\t}");
       }
       else
@@ -812,7 +814,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
       os.printf("\t\t\tcase %s:\n", reg.theDef.getName());
       os.println("\t\t\tswitch (index) {");
-      os.println("\t\t\tdefault: return 0:");
+      os.println("\t\t\tdefault: return 0;");
       for (Map.Entry<Record, CodeGenRegister> entry : subRegMap.entrySet()) {
         os.printf("\t\t\tcase %s: return %s;\n", entry.getKey().getName(), entry.getValue().theDef.getName());
       }

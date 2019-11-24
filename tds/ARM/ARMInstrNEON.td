@@ -47,17 +47,17 @@ def VectorIndex32 : Operand<i32>, ImmLeaf<i32, [{
 def SDTARMVCMP    : SDTypeProfile<1, 2, [SDTCisInt<0>, SDTCisSameAs<1, 2>]>;
 def SDTARMVCMPZ   : SDTypeProfile<1, 1, []>;
 
-def NEONvceq      : SDNode<"ARMISD::VCEQ", SDTARMVCMP>;
-def NEONvceqz     : SDNode<"ARMISD::VCEQZ", SDTARMVCMPZ>;
-def NEONvcge      : SDNode<"ARMISD::VCGE", SDTARMVCMP>;
-def NEONvcgez     : SDNode<"ARMISD::VCGEZ", SDTARMVCMPZ>;
-def NEONvclez     : SDNode<"ARMISD::VCLEZ", SDTARMVCMPZ>;
-def NEONvcgeu     : SDNode<"ARMISD::VCGEU", SDTARMVCMP>;
-def NEONvcgt      : SDNode<"ARMISD::VCGT", SDTARMVCMP>;
-def NEONvcgtz     : SDNode<"ARMISD::VCGTZ", SDTARMVCMPZ>;
-def NEONvcltz     : SDNode<"ARMISD::VCLTZ", SDTARMVCMPZ>;
-def NEONvcgtu     : SDNode<"ARMISD::VCGTU", SDTARMVCMP>;
-def NEONvtst      : SDNode<"ARMISD::VTST", SDTARMVCMP>;
+def NEONvceq      : SDNode<"ARMISD.VCEQ", SDTARMVCMP>;
+def NEONvceqz     : SDNode<"ARMISD.VCEQZ", SDTARMVCMPZ>;
+def NEONvcge      : SDNode<"ARMISD.VCGE", SDTARMVCMP>;
+def NEONvcgez     : SDNode<"ARMISD.VCGEZ", SDTARMVCMPZ>;
+def NEONvclez     : SDNode<"ARMISD.VCLEZ", SDTARMVCMPZ>;
+def NEONvcgeu     : SDNode<"ARMISD.VCGEU", SDTARMVCMP>;
+def NEONvcgt      : SDNode<"ARMISD.VCGT", SDTARMVCMP>;
+def NEONvcgtz     : SDNode<"ARMISD.VCGTZ", SDTARMVCMPZ>;
+def NEONvcltz     : SDNode<"ARMISD.VCLTZ", SDTARMVCMPZ>;
+def NEONvcgtu     : SDNode<"ARMISD.VCGTU", SDTARMVCMP>;
+def NEONvtst      : SDNode<"ARMISD.VTST", SDTARMVCMP>;
 
 // Types for vector shift by immediates.  The "SHX" version is for long and
 // narrow operations where the source and destination vectors have different
@@ -69,85 +69,85 @@ def SDTARMVSHX    : SDTypeProfile<1, 2, [SDTCisInt<0>, SDTCisInt<1>,
 def SDTARMVSHINS  : SDTypeProfile<1, 3, [SDTCisInt<0>, SDTCisSameAs<0, 1>,
                                          SDTCisSameAs<0, 2>, SDTCisVT<3, i32>]>;
 
-def NEONvshl      : SDNode<"ARMISD::VSHL", SDTARMVSH>;
-def NEONvshrs     : SDNode<"ARMISD::VSHRs", SDTARMVSH>;
-def NEONvshru     : SDNode<"ARMISD::VSHRu", SDTARMVSH>;
-def NEONvshlls    : SDNode<"ARMISD::VSHLLs", SDTARMVSHX>;
-def NEONvshllu    : SDNode<"ARMISD::VSHLLu", SDTARMVSHX>;
-def NEONvshlli    : SDNode<"ARMISD::VSHLLi", SDTARMVSHX>;
-def NEONvshrn     : SDNode<"ARMISD::VSHRN", SDTARMVSHX>;
+def NEONvshl      : SDNode<"ARMISD.VSHL", SDTARMVSH>;
+def NEONvshrs     : SDNode<"ARMISD.VSHRs", SDTARMVSH>;
+def NEONvshru     : SDNode<"ARMISD.VSHRu", SDTARMVSH>;
+def NEONvshlls    : SDNode<"ARMISD.VSHLLs", SDTARMVSHX>;
+def NEONvshllu    : SDNode<"ARMISD.VSHLLu", SDTARMVSHX>;
+def NEONvshlli    : SDNode<"ARMISD.VSHLLi", SDTARMVSHX>;
+def NEONvshrn     : SDNode<"ARMISD.VSHRN", SDTARMVSHX>;
 
-def NEONvrshrs    : SDNode<"ARMISD::VRSHRs", SDTARMVSH>;
-def NEONvrshru    : SDNode<"ARMISD::VRSHRu", SDTARMVSH>;
-def NEONvrshrn    : SDNode<"ARMISD::VRSHRN", SDTARMVSHX>;
+def NEONvrshrs    : SDNode<"ARMISD.VRSHRs", SDTARMVSH>;
+def NEONvrshru    : SDNode<"ARMISD.VRSHRu", SDTARMVSH>;
+def NEONvrshrn    : SDNode<"ARMISD.VRSHRN", SDTARMVSHX>;
 
-def NEONvqshls    : SDNode<"ARMISD::VQSHLs", SDTARMVSH>;
-def NEONvqshlu    : SDNode<"ARMISD::VQSHLu", SDTARMVSH>;
-def NEONvqshlsu   : SDNode<"ARMISD::VQSHLsu", SDTARMVSH>;
-def NEONvqshrns   : SDNode<"ARMISD::VQSHRNs", SDTARMVSHX>;
-def NEONvqshrnu   : SDNode<"ARMISD::VQSHRNu", SDTARMVSHX>;
-def NEONvqshrnsu  : SDNode<"ARMISD::VQSHRNsu", SDTARMVSHX>;
+def NEONvqshls    : SDNode<"ARMISD.VQSHLs", SDTARMVSH>;
+def NEONvqshlu    : SDNode<"ARMISD.VQSHLu", SDTARMVSH>;
+def NEONvqshlsu   : SDNode<"ARMISD.VQSHLsu", SDTARMVSH>;
+def NEONvqshrns   : SDNode<"ARMISD.VQSHRNs", SDTARMVSHX>;
+def NEONvqshrnu   : SDNode<"ARMISD.VQSHRNu", SDTARMVSHX>;
+def NEONvqshrnsu  : SDNode<"ARMISD.VQSHRNsu", SDTARMVSHX>;
 
-def NEONvqrshrns  : SDNode<"ARMISD::VQRSHRNs", SDTARMVSHX>;
-def NEONvqrshrnu  : SDNode<"ARMISD::VQRSHRNu", SDTARMVSHX>;
-def NEONvqrshrnsu : SDNode<"ARMISD::VQRSHRNsu", SDTARMVSHX>;
+def NEONvqrshrns  : SDNode<"ARMISD.VQRSHRNs", SDTARMVSHX>;
+def NEONvqrshrnu  : SDNode<"ARMISD.VQRSHRNu", SDTARMVSHX>;
+def NEONvqrshrnsu : SDNode<"ARMISD.VQRSHRNsu", SDTARMVSHX>;
 
-def NEONvsli      : SDNode<"ARMISD::VSLI", SDTARMVSHINS>;
-def NEONvsri      : SDNode<"ARMISD::VSRI", SDTARMVSHINS>;
+def NEONvsli      : SDNode<"ARMISD.VSLI", SDTARMVSHINS>;
+def NEONvsri      : SDNode<"ARMISD.VSRI", SDTARMVSHINS>;
 
 def SDTARMVGETLN  : SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisInt<1>,
                                          SDTCisVT<2, i32>]>;
-def NEONvgetlaneu : SDNode<"ARMISD::VGETLANEu", SDTARMVGETLN>;
-def NEONvgetlanes : SDNode<"ARMISD::VGETLANEs", SDTARMVGETLN>;
+def NEONvgetlaneu : SDNode<"ARMISD.VGETLANEu", SDTARMVGETLN>;
+def NEONvgetlanes : SDNode<"ARMISD.VGETLANEs", SDTARMVGETLN>;
 
 def SDTARMVMOVIMM : SDTypeProfile<1, 1, [SDTCisVec<0>, SDTCisVT<1, i32>]>;
-def NEONvmovImm   : SDNode<"ARMISD::VMOVIMM", SDTARMVMOVIMM>;
-def NEONvmvnImm   : SDNode<"ARMISD::VMVNIMM", SDTARMVMOVIMM>;
+def NEONvmovImm   : SDNode<"ARMISD.VMOVIMM", SDTARMVMOVIMM>;
+def NEONvmvnImm   : SDNode<"ARMISD.VMVNIMM", SDTARMVMOVIMM>;
 
 def SDTARMVORRIMM : SDTypeProfile<1, 2, [SDTCisVec<0>, SDTCisSameAs<0, 1>,
                                            SDTCisVT<2, i32>]>;
-def NEONvorrImm   : SDNode<"ARMISD::VORRIMM", SDTARMVORRIMM>;
-def NEONvbicImm   : SDNode<"ARMISD::VBICIMM", SDTARMVORRIMM>;
+def NEONvorrImm   : SDNode<"ARMISD.VORRIMM", SDTARMVORRIMM>;
+def NEONvbicImm   : SDNode<"ARMISD.VBICIMM", SDTARMVORRIMM>;
 
-def NEONvbsl      : SDNode<"ARMISD::VBSL",
+def NEONvbsl      : SDNode<"ARMISD.VBSL",
                            SDTypeProfile<1, 3, [SDTCisVec<0>,
                                                 SDTCisSameAs<0, 1>,
                                                 SDTCisSameAs<0, 2>,
                                                 SDTCisSameAs<0, 3>]>>;
 
-def NEONvdup      : SDNode<"ARMISD::VDUP", SDTypeProfile<1, 1, [SDTCisVec<0>]>>;
+def NEONvdup      : SDNode<"ARMISD.VDUP", SDTypeProfile<1, 1, [SDTCisVec<0>]>>;
 
 // VDUPLANE can produce a quad-register result from a double-register source,
 // so the result is not constrained to match the source.
-def NEONvduplane  : SDNode<"ARMISD::VDUPLANE",
+def NEONvduplane  : SDNode<"ARMISD.VDUPLANE",
                            SDTypeProfile<1, 2, [SDTCisVec<0>, SDTCisVec<1>,
                                                 SDTCisVT<2, i32>]>>;
 
 def SDTARMVEXT    : SDTypeProfile<1, 3, [SDTCisVec<0>, SDTCisSameAs<0, 1>,
                                          SDTCisSameAs<0, 2>, SDTCisVT<3, i32>]>;
-def NEONvext      : SDNode<"ARMISD::VEXT", SDTARMVEXT>;
+def NEONvext      : SDNode<"ARMISD.VEXT", SDTARMVEXT>;
 
 def SDTARMVSHUF   : SDTypeProfile<1, 1, [SDTCisVec<0>, SDTCisSameAs<0, 1>]>;
-def NEONvrev64    : SDNode<"ARMISD::VREV64", SDTARMVSHUF>;
-def NEONvrev32    : SDNode<"ARMISD::VREV32", SDTARMVSHUF>;
-def NEONvrev16    : SDNode<"ARMISD::VREV16", SDTARMVSHUF>;
+def NEONvrev64    : SDNode<"ARMISD.VREV64", SDTARMVSHUF>;
+def NEONvrev32    : SDNode<"ARMISD.VREV32", SDTARMVSHUF>;
+def NEONvrev16    : SDNode<"ARMISD.VREV16", SDTARMVSHUF>;
 
 def SDTARMVSHUF2  : SDTypeProfile<2, 2, [SDTCisVec<0>, SDTCisSameAs<0, 1>,
                                          SDTCisSameAs<0, 2>,
                                          SDTCisSameAs<0, 3>]>;
-def NEONzip       : SDNode<"ARMISD::VZIP", SDTARMVSHUF2>;
-def NEONuzp       : SDNode<"ARMISD::VUZP", SDTARMVSHUF2>;
-def NEONtrn       : SDNode<"ARMISD::VTRN", SDTARMVSHUF2>;
+def NEONzip       : SDNode<"ARMISD.VZIP", SDTARMVSHUF2>;
+def NEONuzp       : SDNode<"ARMISD.VUZP", SDTARMVSHUF2>;
+def NEONtrn       : SDNode<"ARMISD.VTRN", SDTARMVSHUF2>;
 
 def SDTARMVMULL   : SDTypeProfile<1, 2, [SDTCisInt<0>, SDTCisInt<1>,
                                          SDTCisSameAs<1, 2>]>;
-def NEONvmulls    : SDNode<"ARMISD::VMULLs", SDTARMVMULL>;
-def NEONvmullu    : SDNode<"ARMISD::VMULLu", SDTARMVMULL>;
+def NEONvmulls    : SDNode<"ARMISD.VMULLs", SDTARMVMULL>;
+def NEONvmullu    : SDNode<"ARMISD.VMULLu", SDTARMVMULL>;
 
 def SDTARMFMAX    : SDTypeProfile<1, 2, [SDTCisVT<0, f32>, SDTCisSameAs<0, 1>,
                                          SDTCisSameAs<0, 2>]>;
-def NEONfmax      : SDNode<"ARMISD::FMAX", SDTARMFMAX>;
-def NEONfmin      : SDNode<"ARMISD::FMIN", SDTARMFMAX>;
+def NEONfmax      : SDNode<"ARMISD.FMAX", SDTARMFMAX>;
+def NEONfmin      : SDNode<"ARMISD.FMIN", SDTARMFMAX>;
 
 def NEONimmAllZerosV: PatLeaf<(NEONvmovImm (i32 timm)), [{
   ConstantSDNode *ConstVal = cast<ConstantSDNode>(N->getOperand(0));
@@ -1774,36 +1774,36 @@ def VST4LNq32Pseudo_UPD : VSTQQQQLNWBPseudo<IIC_VST4lnu>;
 // Extract D sub-registers of Q registers.
 def DSubReg_i8_reg  : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue()/8, MVT::i32);
+  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/8, MVT::i32);
 }]>;
 def DSubReg_i16_reg : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue()/4, MVT::i32);
+  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/4, MVT::i32);
 }]>;
 def DSubReg_i32_reg : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue()/2, MVT::i32);
+  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/2, MVT::i32);
 }]>;
 def DSubReg_f64_reg : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue(), MVT::i32);
 }]>;
 
 // Extract S sub-registers of Q/D registers.
 def SSubReg_f32_reg : SDNodeXForm<imm, [{
   assert(ARM::ssub_3 == ARM::ssub_0+3 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::ssub_0 + N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(ARM::ssub_0 + N->getZExtValue(), MVT::i32);
 }]>;
 
 // Translate lane numbers from Q registers to D subregs.
 def SubReg_i8_lane  : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(N->getZExtValue() & 7, MVT::i32);
+  return curDAG.getTargetConstant(N->getZExtValue() & 7, MVT::i32);
 }]>;
 def SubReg_i16_lane : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(N->getZExtValue() & 3, MVT::i32);
+  return curDAG.getTargetConstant(N->getZExtValue() & 3, MVT::i32);
 }]>;
 def SubReg_i32_lane : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant(N->getZExtValue() & 1, MVT::i32);
+  return curDAG.getTargetConstant(N->getZExtValue() & 1, MVT::i32);
 }]>;
 
 //===----------------------------------------------------------------------===//

@@ -36,7 +36,7 @@ import tools.OutRef;
 import tools.Util;
 
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
-import static backend.target.TargetOpcodes.INLINEASM;
+import static backend.target.TargetOpcode.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 

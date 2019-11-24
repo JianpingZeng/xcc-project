@@ -3,7 +3,7 @@ package backend.codegen;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.value.Value;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
-import static backend.target.TargetOpcodes.INLINEASM;
+import static backend.target.TargetOpcode.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
@@ -267,24 +267,24 @@ public class MachineInstr implements Cloneable {
 
   public boolean isLabel() {
     int op = getOpcode();
-    return op == TargetOpcodes.PROLOG_LABEL || op == TargetOpcodes.EH_LABEL
-        || op == TargetOpcodes.GC_LABEL;
+    return op == TargetOpcode.PROLOG_LABEL || op == TargetOpcode.EH_LABEL
+        || op == TargetOpcode.GC_LABEL;
   }
 
   public boolean isGCLabel() {
-    return getOpcode() == TargetOpcodes.GC_LABEL;
+    return getOpcode() == TargetOpcode.GC_LABEL;
   }
 
   public boolean isEHLabel() {
-    return getOpcode() == TargetOpcodes.EH_LABEL;
+    return getOpcode() == TargetOpcode.EH_LABEL;
   }
 
   public boolean isPrologLabel() {
-    return getOpcode() == TargetOpcodes.PROLOG_LABEL;
+    return getOpcode() == TargetOpcode.PROLOG_LABEL;
   }
 
   public boolean isPHI() {
-    return getOpcode() == TargetOpcodes.PHI;
+    return getOpcode() == TargetOpcode.PHI;
   }
 
   public boolean isReturn() {
@@ -296,19 +296,19 @@ public class MachineInstr implements Cloneable {
   }
 
   public boolean isImplicitDef() {
-    return getOpcode() == TargetOpcodes.IMPLICIT_DEF;
+    return getOpcode() == TargetOpcode.IMPLICIT_DEF;
   }
 
   public boolean isInlineAsm() {
-    return getOpcode() == TargetOpcodes.INLINEASM;
+    return getOpcode() == TargetOpcode.INLINEASM;
   }
 
   public boolean isInsertSubreg() {
-    return getOpcode() == TargetOpcodes.INSERT_SUBREG;
+    return getOpcode() == TargetOpcode.INSERT_SUBREG;
   }
 
   public boolean isSubregToReg() {
-    return getOpcode() == TargetOpcodes.SUBREG_TO_REG;
+    return getOpcode() == TargetOpcode.SUBREG_TO_REG;
   }
 
   public boolean readsRegister(int reg, TargetRegisterInfo tri) {

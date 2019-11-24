@@ -22,7 +22,7 @@ import backend.codegen.dagisel.SDNode.*;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
 import backend.type.Type;
@@ -154,19 +154,19 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     // if this is a machine instruction.
     if (node.isMachineOpecode()) {
       int opc = node.getMachineOpcode();
-      if (opc == TargetOpcodes.EXTRACT_SUBREG ||
-          opc == TargetOpcodes.INSERT_SUBREG ||
-          opc == TargetOpcodes.SUBREG_TO_REG) {
+      if (opc == TargetOpcode.EXTRACT_SUBREG ||
+          opc == TargetOpcode.INSERT_SUBREG ||
+          opc == TargetOpcode.SUBREG_TO_REG) {
         emitSubregNode(node, vrBaseMap);
         return;
       }
 
-      if (opc == TargetOpcodes.COPY_TO_REGCLASS) {
+      if (opc == TargetOpcode.COPY_TO_REGCLASS) {
         emitCopyToRegClassNode(node, vrBaseMap);
         return;
       }
 
-      if (opc == TargetOpcodes.IMPLICIT_DEF) {
+      if (opc == TargetOpcode.IMPLICIT_DEF) {
         // We just want a unique VR for each IMPLICIT_DEF use.
         return;
       }
@@ -354,9 +354,9 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       }
     }
 
-    if (opc == TargetOpcodes.EXTRACT_SUBREG) {
+    if (opc == TargetOpcode.EXTRACT_SUBREG) {
       long subIdx = ((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue();
-      MachineInstr mi = buildMI(tii.get(TargetOpcodes.EXTRACT_SUBREG)).getMInstr();
+      MachineInstr mi = buildMI(tii.get(TargetOpcode.EXTRACT_SUBREG)).getMInstr();
 
       int vreg = getVR(node.getOperand(0), vrBaseMap);
       MCRegisterClass destRC = mri.getRegClass(vreg);
@@ -371,8 +371,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       addOperand(mi, node.getOperand(0), 0, null, vrBaseMap);
       mi.addOperand(MachineOperand.createImm(subIdx));
       mbb.insert(insertPos++, mi);
-    } else if (opc == TargetOpcodes.INSERT_SUBREG ||
-        opc == TargetOpcodes.SUBREG_TO_REG) {
+    } else if (opc == TargetOpcode.INSERT_SUBREG ||
+        opc == TargetOpcode.SUBREG_TO_REG) {
       SDValue n0 = node.getOperand(0);
       SDValue n1 = node.getOperand(1);
       SDValue n2 = node.getOperand(2);
@@ -389,7 +389,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       MachineInstr mi = buildMI(tii.get(opc)).getMInstr();
       mi.addOperand(MachineOperand.createReg(vrBase, true, false));
 
-      if (opc == TargetOpcodes.SUBREG_TO_REG) {
+      if (opc == TargetOpcode.SUBREG_TO_REG) {
         ConstantSDNode sdn = (ConstantSDNode) n0.getNode();
         mi.addOperand(MachineOperand.createImm(sdn.getZExtValue()));
       } else
@@ -428,13 +428,13 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
    * specified SDValue.
    */
   private int getVR(SDValue op, TObjectIntHashMap<SDValue> vrBaseMap) {
-    if (op.isMachineOpcode() && op.getMachineOpcode() == TargetOpcodes.IMPLICIT_DEF) {
+    if (op.isMachineOpcode() && op.getMachineOpcode() == TargetOpcode.IMPLICIT_DEF) {
       int vreg = getDstOfOnlyCopyToRegUse(op.getNode(), op.getResNo());
       if (vreg == 0) {
         MCRegisterClass rc = tli.getRegClassFor(op.getValueType());
         vreg = mri.createVirtualRegister(rc);
       }
-      buildMI(mbb, insertPos++, op.getDebugLoc(), tii.get(TargetOpcodes.IMPLICIT_DEF), vreg);
+      buildMI(mbb, insertPos++, op.getDebugLoc(), tii.get(TargetOpcode.IMPLICIT_DEF), vreg);
       return vreg;
     }
 
@@ -657,7 +657,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
                                       boolean isClone,
                                       boolean isCloned,
                                       TObjectIntHashMap<SDValue> vrBaseMap) {
-    Util.assertion(node.getMachineOpcode() != TargetOpcodes.IMPLICIT_DEF);
+    Util.assertion(node.getMachineOpcode() != TargetOpcode.IMPLICIT_DEF);
     for (int i = 0; i < tid.getNumDefs(); i++) {
       int vrbase = 0;
       MCRegisterClass rc = tid.opInfo[i].getRegisterClass(tri);

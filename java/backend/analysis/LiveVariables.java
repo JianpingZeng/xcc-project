@@ -22,7 +22,7 @@ import backend.mc.MCInstrDesc;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.support.MachineFunctionPass;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -218,7 +218,7 @@ public final class LiveVariables extends MachineFunctionPass {
 
         // process all the operands.
         int numOperands = inst.getNumOperands();
-        if (inst.getOpcode() == TargetOpcodes.PHI)
+        if (inst.getOpcode() == TargetOpcode.PHI)
           numOperands = 1;
 
         TIntArrayList defRegs = new TIntArrayList();
@@ -728,7 +728,7 @@ public final class LiveVariables extends MachineFunctionPass {
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       MachineInstr mi;
       for (int i = 0, e = mbb.size(); i < e &&
-          (mi = mbb.getInstAt(i)).getOpcode() == TargetOpcodes.PHI; i++) {
+          (mi = mbb.getInstAt(i)).getOpcode() == TargetOpcode.PHI; i++) {
         for (int j = 1, sz = mi.getNumOperands(); j < sz; j += 2)
           phiVarInfo[mi.getOperand(j + 1).getMBB().getNumber()].
               add(mi.getOperand(j).getReg());

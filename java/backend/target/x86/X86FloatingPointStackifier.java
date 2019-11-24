@@ -26,7 +26,7 @@ import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
@@ -980,7 +980,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
                 }
                 break;
             }*/
-      case TargetOpcodes.IMPLICIT_DEF: {
+      case TargetOpcode.IMPLICIT_DEF: {
         int reg = mi.getOperand(0).getReg() - X86GenRegisterNames.FP0;
         if (Util.DEBUG)
           System.err.printf("Emitting LD_F0 for implicit FP%d%n", reg);
@@ -988,7 +988,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
         pushReg(reg);
         break;
       }
-      case TargetOpcodes.INLINEASM: {
+      case TargetOpcode.INLINEASM: {
         reportFatalError("inline asm not supported yet!");
         break;
       }
@@ -1092,7 +1092,7 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
       int flags = mi.getDesc().tSFlags;
 
       int fpInstClass = flags & X86II.FPTypeMask;
-      if (mi.getOpcode() == TargetOpcodes.INLINEASM)
+      if (mi.getOpcode() == TargetOpcode.INLINEASM)
         fpInstClass = X86II.SpecialFP;
 
       if (fpInstClass == X86II.NotFP)

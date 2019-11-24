@@ -9,6 +9,7 @@
 
 package backend.mc;
 
+import backend.support.Triple;
 import backend.target.InstrItinerary;
 import backend.target.SubtargetFeatureKV;
 import backend.target.SubtargetFeatures;
@@ -19,23 +20,23 @@ import tools.Util;
  * @version 0.4
  */
 public class MCSubtargetInfo {
-  private String targetTriple;
+  protected Triple targetTriple;
   private SubtargetFeatureKV[] procFeatures;
   private SubtargetFeatureKV[] procDesc;
   private SubtargetInfoKV[] procItins;
-  private InstrStage[] stages;
+  protected InstrStage[] stages;
   private int[] operandCycles;
   private int[] forwardingPathes;
   private long featureBits;
 
-  public void initMCSubtargetInfo(String tt, String cpu,
-                                  String fs,
-                                  SubtargetFeatureKV[] pf,
-                                  SubtargetFeatureKV[] pd,
-                                  SubtargetInfoKV[] pi,
-                                  InstrStage[] is,
-                                  int[] oc, int[] fp) {
-    targetTriple = tt;
+  protected void initMCSubtargetInfo(String tt, String cpu,
+                                     String fs,
+                                     SubtargetFeatureKV[] pf,
+                                     SubtargetFeatureKV[] pd,
+                                     SubtargetInfoKV[] pi,
+                                     InstrStage[] is,
+                                     int[] oc, int[] fp) {
+    targetTriple = new Triple(tt);
     procFeatures = pf;
     procDesc = pd;
     procItins = pi;
@@ -46,7 +47,7 @@ public class MCSubtargetInfo {
     featureBits = features.getBits(procDesc, procFeatures);
   }
 
-  public String getTargetTriple() {
+  public Triple getTargetTriple() {
     return targetTriple;
   }
 

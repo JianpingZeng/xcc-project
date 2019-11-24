@@ -2891,7 +2891,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     TargetInstrInfo tii = dag.getTarget().getInstrInfo();
-    MachineInstrBuilder mib = MachineInstrBuilder.buildMI(tii.get(TargetOpcodes.DBG_VALUE),
+    MachineInstrBuilder mib = MachineInstrBuilder.buildMI(tii.get(TargetOpcode.DBG_VALUE),
         getCurDebugLoc()).addReg(reg, MachineOperand.RegState.Debug)
         .addImm(offset).addMetadata(variable);
     funcInfo.argDbgValues.add(mib.getMInstr());

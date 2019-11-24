@@ -239,7 +239,6 @@ public class SubtargetEmitter extends TableGenBackend {
     if (procItinList.size() < 2) return;
 
     StringBuilder stageTable = new StringBuilder("public static final InstrStage[] stages = {\n");
-    ;
     stageTable.append("\tnew InstrStage(0, 0, 0),\t// No itinenary\n");
 
     String operandCycleTable = "public static final int[] operandCycles = {\n";
@@ -354,7 +353,7 @@ public class SubtargetEmitter extends TableGenBackend {
         InstrItinerary itinerary = itinList.get(j);
 
         if (itinerary == null || itinerary.firstStage == 0)
-          os.print("new InstrItinerary(0, 0, 0)");
+          os.print("\tnew InstrItinerary(0, 0, 0, 0)");
         else {
           os.printf("\tnew InstrItinerary(%d, %d, %d, %d)",
               itinerary.firstStage,
@@ -511,9 +510,12 @@ public class SubtargetEmitter extends TableGenBackend {
       emitSourceFileHeaderComment("Subtarget Enumeration Source Fragment", os);
       String className = targetName + "GenSubtarget";
 
+      os.println("import backend.mc.InstrStage;");
+      os.println("import backend.mc.SubtargetInfoKV;");
+      os.println("import backend.target.InstrItinerary;");
       os.println("import backend.target.SubtargetFeatureKV;");
-      os.println("import backend.target.SubtargetFeatures;");
       os.println("import backend.target.TargetSubtarget;");
+      os.printf("import static backend.target.arm.%sSubtarget.*;", targetName);
       os.println();
 
       os.printf("public abstract class %s extends TargetSubtarget {\n", className);

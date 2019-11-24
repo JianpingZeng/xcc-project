@@ -910,12 +910,13 @@ public class DAGISelMatcherEmitter {
     os.println("import backend.codegen.dagisel.SDNode;");
     os.println("import backend.target.TargetMachine.CodeModel;");
     os.println("import backend.target.TargetMachine.RelocModel;");
-    os.println("import backend.target.TargetOpcodes;");
+    os.println("import backend.target.TargetOpcode;");
     os.println("import backend.type.PointerType;");
     os.println("import backend.value.Value;");
     os.println("import tools.Util;");
     os.println();
     os.println("import static backend.codegen.dagisel.SDNode.*;");
+    os.printf("import static backend.target.%s.%sGenRegisterNames.*;\n", targetName.toLowerCase(), targetName);
     os.println();
     os.println("import java.util.ArrayList;");
     os.println("import java.util.Arrays;");

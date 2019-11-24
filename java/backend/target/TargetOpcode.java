@@ -12,7 +12,7 @@ package backend.target;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public interface TargetOpcodes {
+public interface TargetOpcode {
 
   /**
    * Invariant opcodes: All instruction sets have these as their low opcodes.

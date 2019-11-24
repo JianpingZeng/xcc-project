@@ -26,7 +26,7 @@ import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
 
@@ -60,13 +60,13 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
         curPos = i;
         MachineInstr mi = mbb.getInstAt(i);
         switch (mi.getOpcode()) {
-          case TargetOpcodes.EXTRACT_SUBREG:
+          case TargetOpcode.EXTRACT_SUBREG:
             madeChange |= lowerExtract(mi);
             break;
-          case TargetOpcodes.INSERT_SUBREG:
+          case TargetOpcode.INSERT_SUBREG:
             madeChange |= lowerInsert(mi);
             break;
-          case TargetOpcodes.SUBREG_TO_REG:
+          case TargetOpcode.SUBREG_TO_REG:
             madeChange |= lowerSubregToReg(mi);
             break;
         }
@@ -104,7 +104,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
 
     if (srcReg == destReg) {
       if (mo1.isKill()) {
-        mi.setDesc(tii.get(TargetOpcodes.IMPLICIT_DEF));
+        mi.setDesc(tii.get(TargetOpcode.IMPLICIT_DEF));
         mi.removeOperand(2);
         if (Util.DEBUG) {
           System.err.print("subreg: replace by: ");
@@ -169,7 +169,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       if (mo1.isUndef() && !mo0.isDead()) {
         MachineInstrBuilder mib = buildMI(mbb, mi.getIndexInMBB(),
             new DebugLoc(),
-            tii.get(TargetOpcodes.IMPLICIT_DEF), destReg);
+            tii.get(TargetOpcode.IMPLICIT_DEF), destReg);
         if (mo2.isUndef())
           mib.addReg(insReg, RegState.Implicit | RegState.Undef);
         else
@@ -186,7 +186,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       if (mo2.isUndef())
-        buildMI(mbb, mi.getIndexInMBB(), new DebugLoc(), tii.get(TargetOpcodes.IMPLICIT_DEF), destSubReg);
+        buildMI(mbb, mi.getIndexInMBB(), new DebugLoc(), tii.get(TargetOpcode.IMPLICIT_DEF), destSubReg);
       else {
         boolean emitted = tii.copyRegToReg(mbb, mi.getIndexInMBB(), destSubReg,
             insReg, destRC, srcRC);

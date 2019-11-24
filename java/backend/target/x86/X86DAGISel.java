@@ -28,7 +28,7 @@ import backend.support.Attribute;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
-import backend.target.TargetOpcodes;
+import backend.target.TargetOpcode;
 import backend.value.Function;
 import backend.value.GlobalValue;
 import tools.OutRef;
@@ -564,7 +564,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                   Util.shouldNotReachHere("Unsupported TEST operand type!");
               }
               SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-              reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
+              reg = new SDValue(curDAG.getMachineNode(TargetOpcode.COPY_TO_REGCLASS,
                   reg.getValueType(), reg, rc), 0);
             }
 
@@ -597,7 +597,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                 Util.shouldNotReachHere("Unsupported TEST operand type!");
             }
             SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
-            reg = new SDValue(curDAG.getMachineNode(TargetOpcodes.COPY_TO_REGCLASS,
+            reg = new SDValue(curDAG.getMachineNode(TargetOpcode.COPY_TO_REGCLASS,
                 reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
@@ -799,7 +799,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           }
         }
     }
-    SDValue undef = new SDValue(curDAG.getTargetNode(TargetOpcodes.IMPLICIT_DEF, vt), 0);
+    SDValue undef = new SDValue(curDAG.getTargetNode(TargetOpcode.IMPLICIT_DEF, vt), 0);
     SDValue memOp = curDAG.getMemOperand(((MemSDNode) node).getMemOperand());
     if (isInc || isDec) {
       SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], memOp, chain};
