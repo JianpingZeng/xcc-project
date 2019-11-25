@@ -195,7 +195,7 @@ public class SubtargetFeatures {
    * @param featureTable
    * @return
    */
-  public long getBits(SubtargetFeatureKV[] cpuTable,
+  public long getBits(String cpu, SubtargetFeatureKV[] cpuTable,
                      SubtargetFeatureKV[] featureTable) {
     Util.assertion(cpuTable != null, "missing CPU table");
     Util.assertion(featureTable != null, "missing features table");

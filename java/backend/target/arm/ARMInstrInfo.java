@@ -118,8 +118,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfo {
       dl = mbb.getInstAt(insertPos).getDebugLoc();
 
     // Determine if DstRC and srcRC have a common superclass in common.
-    Util.assertion(Objects.equals(srcRC, dstRC) && dstRC.equals(ARMGenRegisterInfo.IntRegsRegisterClass));
-    int opc = ARMGenInstrNames.movrr;
+    Util.assertion(Objects.equals(srcRC, dstRC) && dstRC.equals(ARMGenRegisterInfo.GPRRegisterClass));
+    int opc = ARMGenInstrNames.MOVr;
     buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
     return true;
   }

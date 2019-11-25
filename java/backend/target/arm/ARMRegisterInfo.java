@@ -82,7 +82,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   public boolean isMoveInstr(MachineInstr mi, int[] regs) {
     switch (mi.getOpcode()) {
       default: return false;
-      case ARMGenInstrNames.movrr:
+      case ARMGenInstrNames.MOVr:
         Util.assertion(mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister() &&
                 mi.getOperand(1).isRegister(),
             "invalid register-register move instruction");

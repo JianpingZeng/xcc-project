@@ -1301,7 +1301,7 @@ public abstract class Matcher {
 
   /**
    * Emit an operation that reads a specified recorded node and converts it
-   * from being a ISD::Constant to ISD::TargetConstant, likewise for ConstantFP.
+   * from being a ISD.Constant to ISD.TargetConstant, likewise for ConstantFP.
    */
   public static class EmitConvertToTargetMatcher extends Matcher {
 

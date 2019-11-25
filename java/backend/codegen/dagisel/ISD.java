@@ -380,13 +380,21 @@ public class ISD {
   //   2) src type (type to convert from)
   //   3) rounding imm
   //   4) saturation imm
-  //   5) ISD::CvtCode indicating the type of conversion to do
+  //   5) ISD.CvtCode indicating the type of conversion to do
   public static final int CONVERT_RNDSAT = BIT_CONVERT + 1;
+
+  // FP16_TO_FP32, FP32_TO_FP16 - These operators are used to perform
+  // promotions and truncation for half-precision (16 bit) floating
+  // numbers. We need special nodes since FP16 is a storage-only type with
+  // special semantics of operations.
+  public static final int FP16_TO_FP32 = CONVERT_RNDSAT + 1;
+  public static final int FP32_TO_FP16 = FP16_TO_FP32 + 1;
+
   // FNEG, FABS, FSQRT, FSIN, FCOS, FPOWI, FPOW,
   // FLOG, FLOG2, FLOG10, FEXP, FEXP2,
   // FCEIL, FTRUNC, FRINT, FNEARBYINT, FFLOOR - Perform various unary floating
   // point operations. These are inspired by libm.
-  public static final int FNEG = CONVERT_RNDSAT + 1;
+  public static final int FNEG = FP32_TO_FP16 + 1;
   public static final int FABS = FNEG + 1;
   public static final int FSQRT = FABS + 1;
   public static final int FSIN = FSQRT + 1;

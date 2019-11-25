@@ -27,6 +27,10 @@ package backend.target;
  */
 public final class InstrItinerary {
   /**
+   * The number of micro ops generated when this instruction is decoded.
+   */
+  public int numMicroOps;
+  /**
    * Index of first stage in itinerary
    */
   public int firstStage;
@@ -43,10 +47,15 @@ public final class InstrItinerary {
    */
   public int lastOperandCycle;
 
-  public InstrItinerary(int firstStg, int lastStg, int firstOpCycle, int lastOpCycle) {
+  public InstrItinerary(int numMicroOps, int firstStg, int lastStg, int firstOpCycle, int lastOpCycle) {
+    this.numMicroOps = numMicroOps;
     firstStage = firstStg;
     lastStage = lastStg;
     firstOperandCycle = firstOpCycle;
     lastOperandCycle = lastOpCycle;
+  }
+
+  public InstrItinerary() {
+    this(0, 0, 0, 0, 0);
   }
 }

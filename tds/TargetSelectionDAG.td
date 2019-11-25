@@ -339,8 +339,8 @@ def sint_to_fp : SDNode<"ISD.SINT_TO_FP" , SDTIntToFPOp>;
 def uint_to_fp : SDNode<"ISD.UINT_TO_FP" , SDTIntToFPOp>;
 def fp_to_sint : SDNode<"ISD.FP_TO_SINT" , SDTFPToIntOp>;
 def fp_to_uint : SDNode<"ISD.FP_TO_UINT" , SDTFPToIntOp>;
-def f16_to_f32 : SDNode<"ISD::FP16_TO_FP32", SDTIntToFPOp>;
-def f32_to_f16 : SDNode<"ISD::FP32_TO_FP16", SDTFPToIntOp>;
+def f16_to_f32 : SDNode<"ISD.FP16_TO_FP32", SDTIntToFPOp>;
+def f32_to_f16 : SDNode<"ISD.FP32_TO_FP16", SDTFPToIntOp>;
 
 def setcc      : SDNode<"ISD.SETCC"      , SDTSetCC>;
 def select     : SDNode<"ISD.SELECT"     , SDTSelect>;
@@ -410,7 +410,7 @@ def vector_insert : SDNode<"ISD.INSERT_VECTOR_ELT",
 
 // This operator does not do subvector type checking.  The ARM
 // backend, at least, needs it.
-def vector_extract_subvec : SDNode<"ISD::EXTRACT_SUBVECTOR",
+def vector_extract_subvec : SDNode<"ISD.EXTRACT_SUBVECTOR",
     SDTypeProfile<1, 2, [SDTCisInt<2>, SDTCisVec<1>, SDTCisVec<0>]>,
     []>;
 
@@ -484,17 +484,17 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
   // Is the desired pre-packaged predicate for an atomic?
   bit IsAtomic = ?;
 
-  // cast<LoadSDNode>(n)->getAddressingMode() == ISD::UNINDEXED;
-  // cast<StoreSDNode>(n)->getAddressingMode() == ISD::UNINDEXED;
+  // cast<LoadSDNode>(n)->getAddressingMode() == ISD.UNINDEXED;
+  // cast<StoreSDNode>(n)->getAddressingMode() == ISD.UNINDEXED;
   bit IsUnindexed = ?;
 
-  // cast<LoadSDNode>(n)->getExtensionType() != ISD::NON_EXTLOAD
+  // cast<LoadSDNode>(n)->getExtensionType() != ISD.NON_EXTLOAD
   bit IsNonExtLoad = ?;
-  // cast<LoadSDNode>(n)->getExtensionType() == ISD::EXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD.EXTLOAD;
   bit IsAnyExtLoad = ?;
-  // cast<LoadSDNode>(n)->getExtensionType() == ISD::SEXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD.SEXTLOAD;
   bit IsSignExtLoad = ?;
-  // cast<LoadSDNode>(n)->getExtensionType() == ISD::ZEXTLOAD;
+  // cast<LoadSDNode>(n)->getExtensionType() == ISD.ZEXTLOAD;
   bit IsZeroExtLoad = ?;
   // !cast<StoreSDNode>(n)->isTruncatingStore();
   // cast<StoreSDNode>(n)->isTruncatingStore();

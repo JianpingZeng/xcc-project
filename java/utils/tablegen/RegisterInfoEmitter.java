@@ -122,6 +122,58 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
   }
 
+  private static final int SplitThreshold = 1024;
+  private void outputLargeArray(PrintStream os, int[] table, int size,
+                                ArrayList<CodeGenRegister> regs, String tableName,
+                                ArrayList<String> generatedMtds) {
+    if (size != 0) {
+      os.printf("\tpublic static final int[] %s = new int[%d];\n", tableName, 2*size);
+      String funName = String.format("initialize%s0", tableName);
+      generatedMtds.add(funName);
+      os.printf("\tprivate static void %s() {\n", funName);
+
+      boolean newFunction = false;
+      int idx = -1;
+      for (int i = 0; i < size - 1; ++i) {
+        if (i % SplitThreshold == 0) {
+          if (newFunction) {
+            os.println("\t}");
+            os.println();
+
+            funName = String.format("initialize%s%d", tableName, i/SplitThreshold);
+            generatedMtds.add(funName);
+            os.printf("\tprivate static void %s() {\n", funName);
+          }
+          newFunction = true;
+        }
+
+        // Insert spaces for nice formatting.
+        if (table[2*i] != ~0) {
+          os.printf("\t\t%s[%d] = %s; ", tableName, ++idx, regs.get(table[2*i]).theDef.getName());
+          os.printf("%s[%d] = %s;\n", tableName, ++idx, regs.get(table[2*i + 1]).theDef.getName());
+        } else {
+          os.printf("\t\t%s[%d] = NoRegister; ", tableName, ++idx);
+          os.printf("%s[%d] = NoRegister;\n", tableName, ++idx);
+        }
+      }
+
+      int remained = size * 2 - 2;
+      if (table[remained] != ~0) {
+        os.printf("\t\t%s[%d] = %s; ", tableName, ++idx, regs.get(table[remained]).theDef.getName());
+        os.printf("%s[%d] = %s;\n", tableName, ++idx, regs.get(table[remained + 1]).theDef.getName());
+      } else {
+        os.printf("\t\t%s[%d] = NoRegister; ", tableName, ++idx);
+        os.printf("%s[%d] = NoRegister;\n", tableName, ++idx);
+      }
+      os.println("\t}");
+      os.printf("\tpublic static final int %sSize = %d;\n", tableName, size);
+    } else {
+      os.printf("\tpublic static final int[] %s = { ~0, ~0 };\n "
+          + "\tpublic static final int %sSize = 1;", tableName, tableName);
+      os.println();
+    }
+  }
+
   private void generateRegClassInfo(PrintStream os,
                                     HashMap<TIntArrayList, String> vtForRC) {
     os.println("\n\t// Register Class information");
@@ -503,39 +555,10 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     os.printf("\n\n\t// Number of hash collisions: %d\n", hashMisses);
 
-    if (SubregHashTableSize != 0) {
-      //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
-
-      os.println("\tpublic static final int[] SubregHashTable = {");
-      for (int i = 0; i < SubregHashTableSize - 1; ++i) {
-        // Insert spaces for nice formatting.
-        os.print("\t\t");
-
-        if (SubregHashTable[2 * i] != ~0) {
-          os.printf("%s, %s, \n", regs.get(SubregHashTable[2 * i]).theDef.getName(),
-              regs.get(SubregHashTable[2 * i + 1]).theDef.getName());
-        } else {
-          os.println("NoRegister, NoRegister, ");
-        }
-      }
-
-      int Idx = SubregHashTableSize * 2 - 2;
-      if (SubregHashTable[Idx] != ~0) {
-        os.printf("\t\t%s, %s };\n",
-            regs.get(SubregHashTable[Idx]).theDef.getName(),
-            regs.get(SubregHashTable[Idx + 1]).theDef.getName());
-      } else {
-        os.print("\t\tNoRegister, NoRegister, ");
-      }
-
-      os.println("\t};");
-
-      os.printf("\tpublic static final int SubregHashTableSize = %d;\n", SubregHashTableSize);
-    } else {
-      os.println("\tpublic static final int[] SubregHashTable = { ~0, ~0 };\n "
-          + "public static final int SubregHashTableSize = 1;");
-    }
-
+    // We use some initializer function to initilize a large array!!!
+    // This is a ugly way, but I can't avoid it!!!.
+    ArrayList<String> generatedInitMtds = new ArrayList<>();
+    outputLargeArray(os, SubregHashTable, SubregHashTableSize, regs, "SubregHashTable", generatedInitMtds);
 
     // Print the SuperregHashTable, a simple quadratically probed
     // hash table for determining if a register is a super-register
@@ -582,38 +605,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
 
     os.printf("\n\n\t// Number of hash collisions: %s\n", hashMisses);
+    outputLargeArray(os, SuperregHashTable, SuperregHashTableSize, regs, "SuperregHashTable", generatedInitMtds);
 
-    if (SuperregHashTableSize != 0) {
-      //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
-
-      os.println("\tpublic final static int[] SuperregHashTable = {");
-      for (int i = 0; i < SuperregHashTableSize - 1; ++i) {
-        // Insert spaces for nice formatting.
-        os.print("\t\t");
-
-        if (SuperregHashTable[2 * i] != ~0) {
-          os.println(regs.get(SuperregHashTable[2 * i]).theDef.getName() + ", "
-              + regs.get(SuperregHashTable[2 * i + 1]).theDef.getName() + ",");
-        } else {
-          os.println("NoRegister,  NoRegister,");
-        }
-      }
-
-      int Idx = SuperregHashTableSize * 2 - 2;
-      if (SuperregHashTable[Idx] != ~0) {
-        os.print("\t\t");
-        os.println(regs.get(SuperregHashTable[Idx]).theDef.getName() + ", "
-            + regs.get(SuperregHashTable[Idx + 1]).theDef.getName());
-      } else {
-        os.println("\t\tNoRegister,  NoRegister");
-      }
-      os.println("\t};");
-
-      os.printf("\tpublic static final int SuperregHashTableSize = %d;\n", SuperregHashTableSize);
-    } else {
-      os.println("\tpublic static final int[] SuperregHashTable = { ~0, ~0 };\n"
-          + "\tpublic static final int SuperregHashTableSize = 1;");
-    }
 
     // Print the AliasHashTable, a simple quadratically probed
     // hash table for determining if a register aliases another register.
@@ -659,39 +652,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     }
 
     os.printf("\n\n\t// Number of hash collisions: %s\n", hashMisses);
-
-    if (AliasesHashTableSize != 0) {
-      //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
-
-      os.println("\tpublic final static int AliasesHashTable[] = {");
-      for (int i = 0; i < AliasesHashTableSize - 1; ++i) {
-
-        // Insert spaces for nice formatting.
-        os.print("\t\t");
-
-        if (AliasesHashTable[2 * i] != ~0) {
-          os.println(regs.get(AliasesHashTable[2 * i]).theDef.getName() + ", "
-              + regs.get(AliasesHashTable[2 * i + 1]).theDef.getName() + ", ");
-        } else {
-          os.println("NoRegister,  NoRegister,");
-        }
-      }
-
-      int Idx = AliasesHashTableSize * 2 - 2;
-      if (AliasesHashTable[Idx] != ~0) {
-        os.print("\t\t" + regs.get(AliasesHashTable[Idx]).theDef.getName() + ", "
-            + regs.get(AliasesHashTable[Idx + 1]).theDef.getName() + "\n");
-      } else {
-        os.print("\t\tNoRegister,  NoRegister,\n");
-      }
-
-      os.print("\t};\n");
-
-      os.printf("\tpublic final static int AliasesHashTableSize = %d;\n", AliasesHashTableSize);
-    } else {
-      os.printf("\tpublic static final int[] AliasesHashTable = { ~0, ~0 };\n%s",
-          "\tpublic static final int AliasesHashTableSize = 1;\n");
-    }
+    outputLargeArray(os, AliasesHashTable, AliasesHashTableSize, regs, "AliasesHashTable", generatedInitMtds);
 
 
     if (!registerAlias.isEmpty())
@@ -829,13 +790,19 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     String className = targetName + "GenRegisterInfo";
     // emit the fields and constructors for *Target* GenRegisterInfo.
     os.printf("\tpublic %s(%sTargetMachine tm, int mode) {\n" +
-        "    super(tm);\n" +
-        "    initMCRegisterInfo(registerDescriptors, registerClasses,\n" +
-        "\t\t\t\tSubregHashTable, SubregHashTableSize,\n" +
-        "\t\t\t\tSuperregHashTable, SuperregHashTableSize,\n" +
-        "\t\t\t\tAliasesHashTable, AliasesHashTableSize,\n" +
-        "\t\t\t\tRegClassInfos, mode);\n" +
-        "  }", className, targetName);
+        "    super(tm);\n", className, targetName);
+    if (!generatedInitMtds.isEmpty()) {
+      generatedInitMtds.forEach(mtd-> {
+        os.printf("\t\t%s();\n", mtd);
+      });
+    }
+    os.println("\t\tinitMCRegisterInfo(registerDescriptors, registerClasses,\n" +
+               "\t\t\t\tSubregHashTable, SubregHashTableSize,\n" +
+               "\t\t\t\tSuperregHashTable, SuperregHashTableSize,\n" +
+               "\t\t\t\tAliasesHashTable, AliasesHashTableSize,\n" +
+               "\t\t\t\tRegClassInfos, mode);");
+    os.println("\t}");
+
     os.println("\n}");
   }
 

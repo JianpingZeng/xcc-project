@@ -65,13 +65,13 @@ public class ARMTargetLowering extends TargetLowering {
       Util.shouldNotReachHere("ARM on Darwin is not supported now!");
       return null;
     }
-    return new ARMELFTargetObjectFile();
+    return new backend.target.arm.ARMELFTargetObjectFile();
   }
 
   private ARMSubtarget subtarget;
   private ARMRegisterInfo regInfo;
 
-  public ARMTargetLowering(ARMTargetMachine tm) {
+  public ARMTargetLowering(backend.target.arm.ARMTargetMachine tm) {
     super(tm, createTLOF(tm));
     subtarget = tm.getSubtarget();
     regInfo = subtarget.getRegisterInfo();
@@ -82,7 +82,7 @@ public class ARMTargetLowering extends TargetLowering {
       setLibCallName(RTLIB.UINTTOFP_I64_F64, null);
 
       // Uses VFP for Thumb libfuncs if available.
-      if (subtarget.isThumb() && subtarget.hasVFPV2()) {
+      if (subtarget.isThumb() && subtarget.hasVFP2()) {
         // Single-precision floating-point arithmetic.
         setLibCallName(RTLIB.ADD_F32, "__addsf3vfp");
         setLibCallName(RTLIB.SUB_F32, "__subsf3vfp");
@@ -157,7 +157,7 @@ public class ARMTargetLowering extends TargetLowering {
       }
     }
 
-    addRegisterClass(MVT.i32, ARMGenRegisterInfo.IntRegsRegisterClass);
+    addRegisterClass(MVT.i32, ARMGenRegisterInfo.GPRRegisterClass);
     /*if (!UseSoftFloat && subtarget.hasVFP2() && !subtarget.isThumb()) {
       addRegisterClass(MVT.f32, ARM.SPRRegisterClass);
       addRegisterClass(MVT.f64, ARM.DPRRegisterClass);
@@ -328,7 +328,7 @@ public class ARMTargetLowering extends TargetLowering {
         if (!regVT.equals(new EVT(MVT.i32)))
           Util.shouldNotReachHere("float point is not supported yet!");
 
-        rc = ARMGenRegisterInfo.IntRegsRegisterClass;
+        rc = ARMGenRegisterInfo.GPRRegisterClass;
         int reg = mf.addLiveIn(va.getLocReg(), rc);
         argValue = dag.getCopyFromReg(chain, reg, regVT);
 
@@ -389,7 +389,7 @@ public class ARMTargetLowering extends TargetLowering {
       default:
         Util.shouldNotReachHere("Unknown calling convenction");
       case Fast:
-        if (subtarget.hasVFPV2() && !isVarArg) {
+        if (subtarget.hasVFP2() && !isVarArg) {
           if (!subtarget.isAAPCS_ABI())
             return isReturn ? RetFastCC_ARM_APCS : FastCC_ARM_APCS;
           // For AAPCS ABI targets, just use VFP variant of the calling convention.

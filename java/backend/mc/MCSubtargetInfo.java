@@ -29,13 +29,15 @@ public class MCSubtargetInfo {
   private int[] forwardingPathes;
   private long featureBits;
 
-  protected void initMCSubtargetInfo(String tt, String cpu,
+  protected void initMCSubtargetInfo(String tt,
+                                     String cpu,
                                      String fs,
                                      SubtargetFeatureKV[] pf,
                                      SubtargetFeatureKV[] pd,
                                      SubtargetInfoKV[] pi,
-                                     InstrStage[] is,
-                                     int[] oc, int[] fp) {
+                                     InstrStage[] is, /* Instruction pipeline stage array. */
+                                     int[] oc, /* OperandCycles array. */
+                                     int[] fp  /* ForwardingPathes array. */) {
     targetTriple = new Triple(tt);
     procFeatures = pf;
     procDesc = pd;
@@ -44,7 +46,7 @@ public class MCSubtargetInfo {
     operandCycles = oc;
     forwardingPathes = fp;
     SubtargetFeatures features = new SubtargetFeatures(fs);
-    featureBits = features.getBits(procDesc, procFeatures);
+    featureBits = features.getBits(cpu, procDesc, procFeatures);
   }
 
   public Triple getTargetTriple() {
@@ -64,7 +66,7 @@ public class MCSubtargetInfo {
    */
   public long reInitMCSubtargetInfo(String cpu, String fs) {
     SubtargetFeatures features = new SubtargetFeatures(fs);
-    featureBits = features.getBits(procDesc, procFeatures);
+    featureBits = features.getBits(cpu, procDesc, procFeatures);
     return featureBits;
   }
 

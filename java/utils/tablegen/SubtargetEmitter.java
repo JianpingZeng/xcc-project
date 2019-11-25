@@ -68,8 +68,8 @@ public class SubtargetEmitter extends TableGenBackend {
     featureList.sort(LessRecord);
 
     // Begin feature table
-    os.print("\t// Sorted (by key) array of values for CPU features.\n"
-        + "\tpublic static final SubtargetFeatureKV[] featureKV = {\n");
+    os.print("\t// Sorted (by key) array of values for CPU features.\n");
+    os.printf("\tprivate static final SubtargetFeatureKV[] %sFeatureKV = {\n", targetName);
 
     for (int i = 0, e = featureList.size(); i != e; i++) {
       Record feature = featureList.get(i);
@@ -117,8 +117,8 @@ public class SubtargetEmitter extends TableGenBackend {
 
     processorList.sort(LessRecord);
 
-    os.print("\t// Sorted (by key) array of values for CPU subtype.\n" +
-        "\tpublic static final SubtargetFeatureKV[] subTypeKV = {\n");
+    os.println("\t// Sorted (by key) array of values for CPU subtype.\n");
+    os.printf("\tprivate static final SubtargetFeatureKV[] %sSubTypeKV = {\n", targetName);
 
     // For each processor.
     for (int i = 0, e = processorList.size(); i != e; i++) {
@@ -182,30 +182,31 @@ public class SubtargetEmitter extends TableGenBackend {
    * @param itinString
    * @return
    */
-  private int formItineraryStageString(Record itinData, StringBuilder itinString) {
+  private int formItineraryStageString(String name, Record itinData, StringBuilder itinString) {
     ArrayList<Record> stageList = itinData.getValueAsListOfDefs("Stages");
 
     int n = stageList.size();
     int res = stageList.size();
 
-    for (int i = 0; i < n; ) {
+    for (int i = 0; i < n; i++) {
       Record stage = stageList.get(i);
 
       int cycles = (int) stage.getValueAsInt("Cycles");
-      itinString.append("\t{").append(cycles).append(", ");
+      itinString.append("\tnew InstrStage(").append(cycles).append(", ");
 
       ArrayList<Record> unitList = stage.getValueAsListOfDefs("Units");
 
-      for (int j = 0, m = unitList.size(); i < m; i++) {
+      for (int j = 0, m = unitList.size(); j < m; j++) {
+        itinString.append(name).append("FU.");
         itinString.append(unitList.get(j).getName());
-        if (++j < m) itinString.append(" | ");
+        if (j < m - 1) itinString.append(" | ");
       }
 
       int timeInc = (int) stage.getValueAsInt("TimeInc");
       itinString.append(", ").append(timeInc);
 
-      itinString.append(" }");
-      if (++i < n) itinString.append(", ");
+      itinString.append(" )");
+      if (i < n - 1) itinString.append(", ");
     }
     return res;
   }
@@ -230,94 +231,161 @@ public class SubtargetEmitter extends TableGenBackend {
     return operandCycleList.size();
   }
 
+  private void formItineraryBypassString(String name,
+                                        Record itinData,
+                                        StringBuilder itinString,
+                                         int nOperandCycles) {
+    ArrayList<Record> bypassList = itinData.getValueAsListOfDefs("Bypasses");
+    int i = 0, n = bypassList.size();
+    while (i < n) {
+      itinString.append(name).append("Bypass.").append(bypassList.get(i).getName());
+      if (++i < nOperandCycles) itinString.append(", ");
+    }
+    while(i < nOperandCycles) {
+      itinString.append(" 0");
+      if (++i < nOperandCycles)
+        itinString.append(", ");
+    }
+  }
+
   private void emitStageAndOperandCycleData(PrintStream os,
                                             int nItinClasses,
                                             TObjectIntHashMap<String> itinClassesMap,
-                                            ArrayList<ArrayList<InstrItinerary>> procList) {
+                                            ArrayList<Record> itinClassList,
+                                            ArrayList<InstrItinerary[]> procList) {
     ArrayList<Record> procItinList = records.getAllDerivedDefinition("ProcessorItineraries");
 
     if (procItinList.size() < 2) return;
 
-    StringBuilder stageTable = new StringBuilder("public static final InstrStage[] stages = {\n");
-    stageTable.append("\tnew InstrStage(0, 0, 0),\t// No itinenary\n");
+    // Print out the Function units table for the processor itineraries.
+    procItinList.forEach(proc -> {
+      ArrayList<Record> fu = proc.getValueAsListOfDefs("FU");
+      if (!fu.isEmpty()) {
+        String name = proc.getName();
+        os.println();
+        os.printf("\t// Functional units for itineraries \"%s\"\n", name);
+        os.printf("\tinterface %sFU {\n", name);
+        for (int j = 0, e = fu.size(); j < e; ++j) {
+          os.printf("\t\tint %s = 1 << %d;\n", fu.get(j).getName(), j);
+        }
+        os.println("\t}");
+      }
 
-    String operandCycleTable = "public static final int[] operandCycles = {\n";
-    operandCycleTable += " 0, // No itinerary\n";
+      // Print out the bypass information for the itineraries.
+      ArrayList<Record> bp = proc.getValueAsListOfDefs("BP");
+      if (!bp.isEmpty()) {
+        String name = proc.getName();
+        os.println();
+        os.printf("\t// Pipeline forwarding pathes for itineraries \"%s\"\n", name);
+        os.printf("\tinterface %sBypass {\n", name);
+        os.println("\t\tint NoBypass = 0;");
+        for (int j = 0, e = bp.size(); j < e; ++j) {
+          os.printf("\t\tint %s = 1 << %d;\n", bp.get(j).getName(), j);
+        }
+        os.println("\t}");
+      }
+    });
+
+    // Output the stage data table.
+    StringBuilder stageTable = new StringBuilder(String.format("private static final InstrStage[] %sStages = {\n", targetName));
+    stageTable.append("\tnew InstrStage(0, 0, 0),\t// No itinerary\n");
+
+    StringBuilder operandCycleTable = new StringBuilder(String.format("private static final int[] %sOperandCycles = {\n", targetName));
+    operandCycleTable.append(" 0, // No itinerary\n");
+
+    // A table for recording bypass information.
+    StringBuilder bypassTable = new StringBuilder();
+    bypassTable.append("private static final int[] ").append(targetName);
+    bypassTable.append("ForwardingPathes = {\n");
+    bypassTable.append("  0, // No Itinerary\n");
 
     int stageCount = 1, operandCycleCount = 1;
-    int itinStageEnum = 1, itinOperandCycleEnum = 1;
 
     TObjectIntHashMap<String> itinStageMap = new TObjectIntHashMap<>();
     TObjectIntHashMap<String> itinOperandCycleMap = new TObjectIntHashMap<>();
     for (int i = 0, e = procItinList.size(); i < e; i++) {
       Record proc = procItinList.get(i);
-
       String name = proc.getName();
 
+      // Skip the default itinerary.
       if (name.equals("NoItineraries")) continue;
 
-      ArrayList<InstrItinerary> itinList = new ArrayList<>();
-
-      // add nItinClasses dummmy element into itinList.
+      // Create and expand processor itinerary to cover all itinerary classes.
+      InstrItinerary[] itinList = new InstrItinerary[nItinClasses];
       for (int x = nItinClasses; x > 0; x--)
-        itinList.add(null);
+        itinList[i] = new InstrItinerary();
 
+      // Get the itinerary data list.
       ArrayList<Record> itinDataList = proc.getValueAsListOfDefs("IID");
-
+      // Iterate over it.
       for (int j = 0, m = itinDataList.size(); j != m; j++) {
         Record itinData = itinDataList.get(j);
 
-        String itinStageString;
+        // get the string and stage count.
         StringBuilder buf = new StringBuilder();
-        int nstages = formItineraryStageString(itinData, buf);
-        itinStageString = buf.toString();
+        int nstages = formItineraryStageString(name, itinData, buf);
+        String itinStageString = buf.toString();
 
         // Get string and operand cycle count
         buf = new StringBuilder();
         int nOperandCycles = formItineraryOperandCycleString(itinData, buf);
         String itinOperandCycleString = buf.toString();
 
+
+        // Get bypass string.
+        buf = new StringBuilder();
+        formItineraryBypassString(name, itinData, buf, nOperandCycles);
+        String itinBypassString = buf.toString();
+
         // Check to see if stage already exists and create if it doesn't
         int findStage = 0;
         if (nstages > 0) {
-          findStage = itinStageMap.get(itinStageString);
-          if (findStage == 0) {
-            // Emit as { cycles, u1 | u2 | ... | un, timeinc }, // index
-            stageTable.append(itinStageString).append(", // ")
-                .append(itinStageEnum).append("\n");
+          if (!itinStageMap.containsKey(itinStageString)) {
+            // Emit as {cycles, u1|u2|...|un, timinc}, // indices.
+            stageTable.append(itinStageString).append(", //").append(stageCount);
+            if (nstages > 1)
+              stageTable.append("-").append(stageCount + nstages - 1);
+            stageTable.append("\n");
+            // record the itin class number.
             findStage = stageCount;
             itinStageMap.put(itinStageString, findStage);
             stageCount += nstages;
-            itinStageEnum++;
           }
         }
 
         // Check to see if operand cycle already exists and create if it doesn't
         int findOperandCycle = 0;
         if (nOperandCycles > 0) {
-          findOperandCycle = itinOperandCycleMap.get(itinOperandCycleString);
-          if (findOperandCycle == 0) {
+          String itinOperandString = itinOperandCycleString + itinBypassString;
+          if (!itinOperandCycleMap.containsKey(itinOperandString)) {
             // Emit as  cycle, // index
-            operandCycleTable += itinOperandCycleString + ", // " + itinOperandCycleEnum + "\n";
+            operandCycleTable.append(itinOperandCycleString).append(", // ");
+            String operandIdxComment = String.format("%d", operandCycleCount);
+            if (nOperandCycles > 1)
+              operandIdxComment += "-" + (operandCycleCount + nOperandCycles - 1);
 
+            operandCycleTable.append(operandIdxComment).append('\n');
+            // Record itin class number.
             findOperandCycle = operandCycleCount;
-            itinOperandCycleMap.put(itinOperandCycleString, operandCycleCount);
-
+            itinOperandCycleMap.put(itinOperandCycleString, findOperandCycle);
+            // Emit as bypass, // index.
+            bypassTable.append(itinBypassString).append(", //")
+                .append(operandIdxComment).append("\n");
             operandCycleCount += nOperandCycles;
-            itinOperandCycleEnum++;
           }
         }
-
-        // Set up itinerary as location and location + stage count
-        InstrItinerary itinerary = new InstrItinerary(findStage, findStage + nstages,
-            findOperandCycle, findOperandCycle + nOperandCycles);
 
         // Locate where to inject into processor itinerary table
         String nameOfTheClass = itinData.getValueAsDef("TheClass").getName();
         int find = itinClassesMap.get(nameOfTheClass);
 
+        int numUops = (int) itinClassList.get(find).getValueAsInt("NumMicroOps");
+        // Set up itinerary as location and location + stage count
+        InstrItinerary itinerary = new InstrItinerary(numUops, findStage, findStage + nstages,
+            findOperandCycle, findOperandCycle + nOperandCycles);
+
         // Inject - empty slots will be 0, 0
-        itinList.set(find, itinerary);
+        itinList[find] = itinerary;
       }
 
       // Add process itinerary to list
@@ -327,18 +395,23 @@ public class SubtargetEmitter extends TableGenBackend {
     stageTable.append("\tnew InstrStage(0, 0, 0)  // End itinerary\n");
     stageTable.append("};\n");
 
-    operandCycleTable += " 0, // End of itinerary\n";
-    operandCycleTable += "};\n";
+    operandCycleTable.append(" 0, // End of itinerary\n");
+    operandCycleTable.append("};\n");
+
+    bypassTable.append("  0 // End itinerary\n");
+    bypassTable.append("};\n");
+
 
     // Emit tables.
     os.print(stageTable.toString());
     os.print(operandCycleTable);
+    os.print(bypassTable);
   }
 
-  private void emitProcessorData(PrintStream os, ArrayList<ArrayList<InstrItinerary>> procList) {
+  private void emitProcessorData(PrintStream os, ArrayList<InstrItinerary[]> procList) {
     ArrayList<Record> itins = records.getAllDerivedDefinition("ProcessorItineraries");
 
-    Iterator<ArrayList<InstrItinerary>> procListItr = procList.iterator();
+    Iterator<InstrItinerary[]> procListItr = procList.iterator();
 
     for (Record itin : itins) {
       String name = itin.getName();
@@ -346,16 +419,17 @@ public class SubtargetEmitter extends TableGenBackend {
       if (name.equals("NoItineraries")) continue;
 
       os.println();
-      os.printf("\tpublic static InstrItinerary[] %s = {\n", name);
+      os.printf("\tprivate static InstrItinerary[] %s = {\n", name);
 
-      ArrayList<InstrItinerary> itinList = procListItr.next();
-      for (int j = 0, m = itinList.size(); j != m; j++) {
-        InstrItinerary itinerary = itinList.get(j);
+      InstrItinerary[] itinList = procListItr.next();
+      for (int j = 0, m = itinList.length; j != m; j++) {
+        InstrItinerary itinerary = itinList[j];
 
         if (itinerary == null || itinerary.firstStage == 0)
-          os.print("\tnew InstrItinerary(0, 0, 0, 0)");
+          os.print("\tnew InstrItinerary(1, 0, 0, 0, 0)");
         else {
-          os.printf("\tnew InstrItinerary(%d, %d, %d, %d)",
+          os.printf("\tnew InstrItinerary(%d, %d, %d, %d, %d)",
+              itinerary.numMicroOps,
               itinerary.firstStage,
               itinerary.lastStage,
               itinerary.firstOperandCycle,
@@ -384,8 +458,8 @@ public class SubtargetEmitter extends TableGenBackend {
     processorList.sort(LessRecord);
 
     os.println();
-    os.print("// Sorted (by key) array of itineraries for CPU subtype.\n" +
-        "public static final SubtargetInfoKV[] procItinKV = {\n");
+    os.printf("// Sorted (by key) array of itineraries for CPU subtype.\n" +
+        "public static final SubtargetInfoKV[] %sProcItinKV = {\n", targetName);
 
     // For each processor
     for (int i = 0, n = processorList.size(); i != n; i++) {
@@ -412,16 +486,18 @@ public class SubtargetEmitter extends TableGenBackend {
    */
   private void emitData(PrintStream os) {
     TObjectIntHashMap<String> itinClassesMap = new TObjectIntHashMap<>();
-    ArrayList<ArrayList<InstrItinerary>> procList = new ArrayList<>();
+    ArrayList<InstrItinerary[]> procList = new ArrayList<>();
+
+    ArrayList<Record> itinClassList = records.getAllDerivedDefinition("InstrItinClass");
 
     // Enumerate all the itinerary classes
     int nitinCLasses = collectAllItinClasses(os, itinClassesMap);
     // Make sure the rest is worth the effort
-    hasItrineraries = nitinCLasses != 1;
+    hasItrineraries = nitinCLasses > 1;
 
     if (hasItrineraries) {
       // Emit the stage data
-      emitStageAndOperandCycleData(os, nitinCLasses, itinClassesMap, procList);
+      emitStageAndOperandCycleData(os, nitinCLasses, itinClassesMap, itinClassList, procList);
       // Emit the processor itinerary data
       emitProcessorData(os, procList);
       // Emit the processor lookup data
@@ -460,14 +536,6 @@ public class SubtargetEmitter extends TableGenBackend {
         os.printf("\t\t\tsubtarget.%s = %s;\n", attribute, value);
       }
     }
-
-    if (hasItrineraries) {
-      os.println();
-      os.print("\t\tInstrItinerary itinerary = (InstrItinerary)" +
-          "\t\tfeatures.getInfo(procItinKV);\n" +
-          "\t\tInstrItins = instrItineraryData(stages, operandCycles, itinerary);\n");
-    }
-
     os.print("\n\t}\n\n");
   }
 
@@ -520,26 +588,28 @@ public class SubtargetEmitter extends TableGenBackend {
 
       os.printf("public abstract class %s extends TargetSubtarget {\n", className);
 
-      enumeration(os, "FuncUnit", true);
-      os.println();
-
       enumeration(os, "SubtargetFeature", true);
       os.println();
+
       featureKeValues(os);
       os.println();
+
       cpuKeyValues(os);
       os.println();
+
       emitData(os);
       os.println();
-      parseFeaturesFunction(os);
 
+      parseFeaturesFunction(os);
       emitHwModeCheck(os);
 
       // Emit constructor method.
-      os.printf("\tprotected %sSubtarget subtarget;\n", targetName);
+      os.printf("\tprotected backend.target.%s.%sSubtarget subtarget;\n", targetName.toLowerCase(), targetName);
       os.printf("\tpublic %s(String tt, String cpu, String fs) {\n" +
-          "\t\tinitMCSubtargetInfo(tt, cpu, fs, featureKV, subTypeKV, null, null, null, null);\n" +
-          "\t}\n}", className);
+          "\t\tinitMCSubtargetInfo(tt, cpu, fs, %sFeatureKV, %sSubTypeKV, %sProcItinKV, %sStages, %sOperandCycles, %sForwardingPathes);\n",
+          className, targetName, targetName, targetName, targetName, targetName, targetName);
+
+      os.println("\t}\n}");
     }
   }
 }

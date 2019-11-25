@@ -541,14 +541,37 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
     Util.assertion(operandOffsets.size() == tableDrivenOperandPrinters.size());
 
-    os.printf("\tprivate static final long[][] opInfo = {\n");
-    for (int i = 0, e = numberedInstructions.size(); i != e; i++) {
-      os.printf("\t{0x%xL, %d},\t// %s\n",
-          opcodeInfo.get(i).first,
-          opcodeInfo.get(i).second,
-          numberedInstructions.get(i).theDef.getName());
+    int numInsts = numberedInstructions.size();
+    final int splitThreshold = 2100;
+    if (numInsts > splitThreshold) {
+      boolean enterBlock = false;
+      os.printf("\tprivate static final long[][] opInfo = new long[%d][2];\n", numInsts);
+      for (int i = 0; i != numInsts; i++) {
+        if (i % splitThreshold == 0) {
+          if (enterBlock) {
+            os.println("\t}");
+          }
+          os.println("\t{");
+          enterBlock = true;
+        }
+        os.printf("\t\topInfo[%d] = new long[]{0x%xL, %d};\t// %s\n",
+            i,
+            opcodeInfo.get(i).first,
+            opcodeInfo.get(i).second,
+            numberedInstructions.get(i).theDef.getName());
+      }
+      os.println("\t}");
     }
-    os.print("\t};\n");
+    else {
+      os.print("\tprivate static final long[][] opInfo = {\n");
+      for (int i = 0; i != numInsts; i++) {
+        os.printf("\t{0x%xL, %d},\t// %s\n",
+            opcodeInfo.get(i).first,
+            opcodeInfo.get(i).second,
+            numberedInstructions.get(i).theDef.getName());
+      }
+      os.print("\t};\n");
+    }
 
     // Emit the string itself.
     os.printf("\tprivate static final String asmStrs = \n\t\t\"");

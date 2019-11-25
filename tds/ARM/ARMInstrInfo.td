@@ -88,9 +88,9 @@ def ARMWrapperDYN    : SDNode<"ARMISD.WrapperDYN",  SDTIntUnaryOp>;
 def ARMWrapperPIC    : SDNode<"ARMISD.WrapperPIC",  SDTIntUnaryOp>;
 def ARMWrapperJT     : SDNode<"ARMISD.WrapperJT",   SDTIntBinOp>;
 
-def ARMcallseq_start : SDNode<"ISD::CALLSEQ_START", SDT_ARMCallSeqStart,
+def ARMcallseq_start : SDNode<"ISD.CALLSEQ_START", SDT_ARMCallSeqStart,
                               [SDNPHasChain, SDNPOutFlag]>;
-def ARMcallseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_ARMCallSeqEnd,
+def ARMcallseq_end   : SDNode<"ISD.CALLSEQ_END",   SDT_ARMCallSeqEnd,
                               [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
 
 def ARMcall          : SDNode<"ARMISD.CALL", SDT_ARMcall,
