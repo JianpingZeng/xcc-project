@@ -130,7 +130,7 @@ public class ARMSubtarget extends ARMGenSubtarget {
       hasV4TOps = hasV5TOps = hasV5TEOps = hasV6Ops = hasV6T2Ops = true;
 
     // Initialize scheduling itinerary for the specified CPU.
-    instrItins = getInstrItineraryForCPU(cpu);
+    instrItins = getInstrItineraryForCPU(cpuString);
 
     // After parsing itineraries, set IssueWidth.
     // computeIssueWidth();
