@@ -42,7 +42,6 @@ public final class TGLexer {
     colon, semi,        // : ;
     comma, dot,         // , .
     equal, question,    // = ?
-    paste,              // #
 
     // Keywords
     Bit, Bits, Class, Code, Dag, Def, Defm, Field, In, Int, Let, List, Multiclass, String,
@@ -126,7 +125,7 @@ public final class TGLexer {
       switch (curChar) {
         default:
           // Handle the letters: [a-zA-Z].
-          if (Character.isJavaIdentifierPart(curChar))
+          if (Character.isJavaIdentifierPart(curChar) || curChar == '#')
             return lexIdentifier();
 
           // Unknown character, emit an error.
@@ -161,8 +160,6 @@ public final class TGLexer {
           return TokKind.l_paren;
         case ')':
           return TokKind.r_paren;
-        case '#':
-          return TokKind.paste;
 
         case 0:
         case ' ':
@@ -312,11 +309,11 @@ public final class TGLexer {
     int identStart = tokStart;
 
     char ch = curBuf.getCharAt(curPtr);
-    while (Character.isJavaIdentifierPart(ch) || ch == '#') {
-      if (ch == '#') {
-        if (!curBuf.getSubString(curPtr, curPtr + 6).equals("#NAME#"))
+    while (Character.isJavaIdentifierPart(ch)) {
+      if (curBuf.getCharAt(identStart) == '#') {
+        if (!curBuf.getSubString(identStart, identStart + 6).equals("#NAME#"))
           return TokKind.Error;
-        curPtr += 6;
+        curPtr += 5;
       } else {
         ++curPtr;
       }

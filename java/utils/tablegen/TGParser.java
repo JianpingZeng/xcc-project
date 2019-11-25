@@ -641,49 +641,6 @@ public final class TGParser {
           lexer.lex();    // Eat the field namespace.
           break;
         }
-        case paste: {
-          // create an expression like strconcat operation.
-          SourceMgr.SMLoc pasteLoc = lexer.getLoc();
-          if (!(result instanceof TypedInit)) {
-            error(pasteLoc, "LHS of paste is not typed");
-            return null;
-          }
-          TypedInit lhs = (TypedInit) result;
-          if (!(lhs.getType() instanceof StringRecTy)) {
-            lhs = (TypedInit) new Init.UnOpInit(UnaryOp.CAST, lhs, new StringRecTy()).
-                fold(curRec, null);
-            if (lhs == null) {
-              error(pasteLoc, "can't cast '" + lhs.toString() + "' to string");
-              return null;
-            }
-          }
-          lexer.lex(); // eat '#'
-          TypedInit rhs = null;
-          switch (lexer.getCode()) {
-            case colon:
-            case semi:
-            case l_brace:
-              rhs = new Init.StringInit("");
-              break;
-            default:
-              Init res = parseValue(curRec, null);
-              if (!(res instanceof TypedInit)) {
-                error(pasteLoc, "RHS of paste is not typed!");
-                return null;
-              }
-              rhs = (TypedInit) res;
-              if (!(rhs.getType() instanceof StringRecTy)) {
-                rhs = (TypedInit) new Init.UnOpInit(UnaryOp.CAST, rhs, new StringRecTy()).
-                    fold(curRec, null);
-                if (rhs == null) {
-                  error(pasteLoc, "can't cast '" + rhs.toString() + "' to string");
-                  return null;
-                }
-              }
-              break;
-          }
-          result = new BinOpInit(BinaryOp.STRCONCAT, lhs, rhs, new StringRecTy());
-        }
       }
     }
   }
