@@ -37,13 +37,13 @@ def SDT_MipsExtractElementF64 : SDTypeProfile<1, 2, [SDTCisVT<0, i32>,
                                                      SDTCisVT<1, f64>,
                                                      SDTCisVT<2, i32>]>;
 
-def MipsFPCmp : SDNode<"MipsISD::FPCmp", SDT_MipsFPCmp, [SDNPOutFlag]>;
-def MipsCMovFP_T : SDNode<"MipsISD::CMovFP_T", SDT_MipsCMovFP, [SDNPInFlag]>;
-def MipsCMovFP_F : SDNode<"MipsISD::CMovFP_F", SDT_MipsCMovFP, [SDNPInFlag]>;
-def MipsFPBrcond : SDNode<"MipsISD::FPBrcond", SDT_MipsFPBrcond,
+def MipsFPCmp : SDNode<"MipsISD.FPCmp", SDT_MipsFPCmp, [SDNPOutFlag]>;
+def MipsCMovFP_T : SDNode<"MipsISD.CMovFP_T", SDT_MipsCMovFP, [SDNPInFlag]>;
+def MipsCMovFP_F : SDNode<"MipsISD.CMovFP_F", SDT_MipsCMovFP, [SDNPInFlag]>;
+def MipsFPBrcond : SDNode<"MipsISD.FPBrcond", SDT_MipsFPBrcond,
                           [SDNPHasChain, SDNPOptInFlag]>;
-def MipsBuildPairF64 : SDNode<"MipsISD::BuildPairF64", SDT_MipsBuildPairF64>;
-def MipsExtractElementF64 : SDNode<"MipsISD::ExtractElementF64",
+def MipsBuildPairF64 : SDNode<"MipsISD.BuildPairF64", SDT_MipsBuildPairF64>;
+def MipsExtractElementF64 : SDNode<"MipsISD.ExtractElementF64",
                                    SDT_MipsExtractElementF64>;
 
 // Operand for printing out a condition code.
@@ -54,10 +54,10 @@ let PrintMethod = "printFCCOperand" in
 // Feature predicates.
 //===----------------------------------------------------------------------===//
 
-def IsFP64bit        : Predicate<"Subtarget.isFP64bit()">;
-def NotFP64bit       : Predicate<"!Subtarget.isFP64bit()">;
-def IsSingleFloat    : Predicate<"Subtarget.isSingleFloat()">;
-def IsNotSingleFloat : Predicate<"!Subtarget.isSingleFloat()">;
+def IsFP64bit        : Predicate<"subtarget.isFP64bit()">;
+def NotFP64bit       : Predicate<"!subtarget.isFP64bit()">;
+def IsSingleFloat    : Predicate<"subtarget.isSingleFloat()">;
+def IsNotSingleFloat : Predicate<"!subtarget.isSingleFloat()">;
 
 //===----------------------------------------------------------------------===//
 // Instruction Class Templates

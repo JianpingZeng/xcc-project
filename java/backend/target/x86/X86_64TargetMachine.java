@@ -23,7 +23,7 @@ import backend.target.Target;
  * @version 0.4
  */
 public class X86_64TargetMachine extends X86TargetMachine {
-  public X86_64TargetMachine(Target t, String triple, String cpu, String fs) {
-    super(t, triple, cpu, fs, true);
+  public X86_64TargetMachine(Target t, String triple, String cpu, String fs, RelocModel rm, CodeModel cm) {
+    super(t, triple, cpu, fs, rm, cm, true);
   }
 }

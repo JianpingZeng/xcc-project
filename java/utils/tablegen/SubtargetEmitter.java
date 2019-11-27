@@ -583,7 +583,7 @@ public class SubtargetEmitter extends TableGenBackend {
       os.println("import backend.target.InstrItinerary;");
       os.println("import backend.target.SubtargetFeatureKV;");
       os.println("import backend.target.TargetSubtarget;");
-      os.printf("import static backend.target.arm.%sSubtarget.*;", targetName);
+      os.printf("import static backend.target.%s.%sSubtarget.*;", targetName.toLowerCase(), targetName);
       os.println();
 
       os.printf("public abstract class %s extends TargetSubtarget {\n", className);

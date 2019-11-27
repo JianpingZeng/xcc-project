@@ -50,51 +50,51 @@ def SDT_Ins : SDTypeProfile<1, 4, [SDTCisInt<0>, SDTCisSameAs<0, 1>,
                                    SDTCisSameAs<0, 4>]>;
 
 // Call
-def MipsJmpLink : SDNode<"MipsISD::JmpLink",SDT_MipsJmpLink,
+def MipsJmpLink : SDNode<"MipsISD.JmpLink",SDT_MipsJmpLink,
                          [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag,
                           SDNPVariadic]>;
 
 // Hi and Lo nodes are used to handle global addresses. Used on
 // MipsISelLowering to lower stuff like GlobalAddress, ExternalSymbol
 // static model. (nothing to do with Mips Registers Hi and Lo)
-def MipsHi    : SDNode<"MipsISD::Hi", SDTIntUnaryOp>;
-def MipsLo    : SDNode<"MipsISD::Lo", SDTIntUnaryOp>;
-def MipsGPRel : SDNode<"MipsISD::GPRel", SDTIntUnaryOp>;
+def MipsHi    : SDNode<"MipsISD.Hi", SDTIntUnaryOp>;
+def MipsLo    : SDNode<"MipsISD.Lo", SDTIntUnaryOp>;
+def MipsGPRel : SDNode<"MipsISD.GPRel", SDTIntUnaryOp>;
 
 // TlsGd node is used to handle General Dynamic TLS
-def MipsTlsGd : SDNode<"MipsISD::TlsGd", SDTIntUnaryOp>;
+def MipsTlsGd : SDNode<"MipsISD.TlsGd", SDTIntUnaryOp>;
 
 // TprelHi and TprelLo nodes are used to handle Local Exec TLS
-def MipsTprelHi    : SDNode<"MipsISD::TprelHi", SDTIntUnaryOp>;
-def MipsTprelLo    : SDNode<"MipsISD::TprelLo", SDTIntUnaryOp>;
+def MipsTprelHi    : SDNode<"MipsISD.TprelHi", SDTIntUnaryOp>;
+def MipsTprelLo    : SDNode<"MipsISD.TprelLo", SDTIntUnaryOp>;
 
 // Thread pointer
-def MipsThreadPointer: SDNode<"MipsISD::ThreadPointer", SDT_MipsThreadPointer>;
+def MipsThreadPointer: SDNode<"MipsISD.ThreadPointer", SDT_MipsThreadPointer>;
 
 // Return
-def MipsRet : SDNode<"MipsISD::Ret", SDT_MipsRet, [SDNPHasChain,
+def MipsRet : SDNode<"MipsISD.Ret", SDT_MipsRet, [SDNPHasChain,
                      SDNPOptInFlag]>;
 
 // These are target-independent nodes, but have target-specific formats.
-def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_MipsCallSeqStart,
+def callseq_start : SDNode<"ISD.CALLSEQ_START", SDT_MipsCallSeqStart,
                            [SDNPHasChain, SDNPOutFlag]>;
-def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_MipsCallSeqEnd,
+def callseq_end   : SDNode<"ISD.CALLSEQ_END", SDT_MipsCallSeqEnd,
                            [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
 
 // MAdd*/MSub* nodes
-def MipsMAdd      : SDNode<"MipsISD::MAdd", SDT_MipsMAddMSub,
+def MipsMAdd      : SDNode<"MipsISD.MAdd", SDT_MipsMAddMSub,
                            [SDNPOptInFlag, SDNPOutFlag]>;
-def MipsMAddu     : SDNode<"MipsISD::MAddu", SDT_MipsMAddMSub,
+def MipsMAddu     : SDNode<"MipsISD.MAddu", SDT_MipsMAddMSub,
                            [SDNPOptInFlag, SDNPOutFlag]>;
-def MipsMSub      : SDNode<"MipsISD::MSub", SDT_MipsMAddMSub,
+def MipsMSub      : SDNode<"MipsISD.MSub", SDT_MipsMAddMSub,
                            [SDNPOptInFlag, SDNPOutFlag]>;
-def MipsMSubu     : SDNode<"MipsISD::MSubu", SDT_MipsMAddMSub,
+def MipsMSubu     : SDNode<"MipsISD.MSubu", SDT_MipsMAddMSub,
                            [SDNPOptInFlag, SDNPOutFlag]>;
 
 // DivRem(u) nodes
-def MipsDivRem    : SDNode<"MipsISD::DivRem", SDT_MipsDivRem,
+def MipsDivRem    : SDNode<"MipsISD.DivRem", SDT_MipsDivRem,
                            [SDNPOutFlag]>;
-def MipsDivRemU   : SDNode<"MipsISD::DivRemU", SDT_MipsDivRem,
+def MipsDivRemU   : SDNode<"MipsISD.DivRemU", SDT_MipsDivRem,
                            [SDNPOutFlag]>;
 
 // Target constant nodes that are not part of any isel patterns and remain
@@ -107,31 +107,31 @@ def MipsDivRemU   : SDNode<"MipsISD::DivRemU", SDT_MipsDivRem,
 //  movn  %got(d)($gp), %got(c)($gp), $4
 // This instruction is illegal since movn can take only register operands.
 
-def MipsWrapperPIC    : SDNode<"MipsISD::WrapperPIC",  SDTIntUnaryOp>;
+def MipsWrapperPIC    : SDNode<"MipsISD.WrapperPIC",  SDTIntUnaryOp>;
 
 // Pointer to dynamically allocated stack area.
-def MipsDynAlloc  : SDNode<"MipsISD::DynAlloc", SDT_MipsDynAlloc,
+def MipsDynAlloc  : SDNode<"MipsISD.DynAlloc", SDT_MipsDynAlloc,
                            [SDNPHasChain, SDNPInFlag]>;
 
-def MipsSync : SDNode<"MipsISD::Sync", SDT_Sync, [SDNPHasChain]>;
+def MipsSync : SDNode<"MipsISD.Sync", SDT_Sync, [SDNPHasChain]>;
 
-def MipsExt :  SDNode<"MipsISD::Ext", SDT_Ext>;
-def MipsIns :  SDNode<"MipsISD::Ins", SDT_Ins>;
+def MipsExt :  SDNode<"MipsISD.Ext", SDT_Ext>;
+def MipsIns :  SDNode<"MipsISD.Ins", SDT_Ins>;
 
 //===----------------------------------------------------------------------===//
 // Mips Instruction Predicate Definitions.
 //===----------------------------------------------------------------------===//
-def HasSEInReg  : Predicate<"Subtarget.hasSEInReg()">;
-def HasBitCount : Predicate<"Subtarget.hasBitCount()">;
-def HasSwap     : Predicate<"Subtarget.hasSwap()">;
-def HasCondMov  : Predicate<"Subtarget.hasCondMov()">;
-def HasMips32    : Predicate<"Subtarget.hasMips32()">;
-def HasMips32r2  : Predicate<"Subtarget.hasMips32r2()">;
-def HasMips64    : Predicate<"Subtarget.hasMips64()">;
-def NotMips64    : Predicate<"!Subtarget.hasMips64()">;
-def HasMips64r2  : Predicate<"Subtarget.hasMips64r2()">;
-def IsN64       : Predicate<"Subtarget.isABI_N64()">;
-def NotN64      : Predicate<"!Subtarget.isABI_N64()">;
+def HasSEInReg  : Predicate<"subtarget.hasSEInReg()">;
+def HasBitCount : Predicate<"subtarget.hasBitCount()">;
+def HasSwap     : Predicate<"subtarget.hasSwap()">;
+def HasCondMov  : Predicate<"subtarget.hasCondMov()">;
+def HasMips32    : Predicate<"subtarget.hasMips32()">;
+def HasMips32r2  : Predicate<"subtarget.hasMips32r2()">;
+def HasMips64    : Predicate<"subtarget.hasMips64()">;
+def NotMips64    : Predicate<"!subtarget.hasMips64()">;
+def HasMips64r2  : Predicate<"subtarget.hasMips64r2()">;
+def IsN64       : Predicate<"subtarget.isABI_N64()">;
+def NotN64      : Predicate<"!subtarget.isABI_N64()">;
 
 //===----------------------------------------------------------------------===//
 // Mips Operand, Complex Patterns and Transformations Definitions.

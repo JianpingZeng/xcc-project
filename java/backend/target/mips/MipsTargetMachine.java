@@ -1,4 +1,4 @@
-package backend.target.arm;
+package backend.target.mips;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2019, Jianping Zeng.
@@ -28,91 +28,79 @@ package backend.target.arm;
  */
 
 import backend.codegen.MachineCodeEmitter;
-import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
 import backend.target.*;
-
-import java.io.PrintStream;
-
-import static backend.target.arm.ARMDAGISel.createARMISelDAG;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMTargetMachine extends LLVMTargetMachine {
-  private ARMFrameLowering frameInfo;
-  private ARMSubtarget subtarget;
-  private ARMTargetLowering tli;
+public class MipsTargetMachine extends LLVMTargetMachine {
+  private MipsSubtarget subtarget;
+  private TargetData dataLayout;
+  private MipsInstrInfo instrInfo;
+  private MipsRegisterInfo registerInfo;
+  private MipsFrameLowering frameLowering;
+  private MipsTargetLowering tli;
 
-  /**
-   * Can only called by subclass.
-   *
-   * @param t
-   * @param triple
-   * @param cpu
-   * @param features
-   */
-  protected ARMTargetMachine(Target t, String triple, String cpu, String features, RelocModel rm, CodeModel cm) {
-    super(t, triple);
-    subtarget = new ARMSubtarget(this, triple, cpu, features, false);
-    frameInfo = new ARMFrameLowering(this, subtarget);
-    tli = new ARMTargetLowering(this);
+  protected MipsTargetMachine(Target target, String triple,
+                              String cpu, String features,
+                              RelocModel rm, CodeModel cm,
+                              boolean isLittle) {
+    super(target, triple);
   }
 
   @Override
-  public TargetData getTargetData() {
-    return subtarget.getDataLayout();
-  }
-
-  @Override
-  public ARMInstrInfo getInstrInfo() {
-    return subtarget.getInstrInfo();
-  }
-
-  @Override
-  public ARMRegisterInfo getRegisterInfo() {
-    return subtarget.getRegisterInfo();
-  }
-
-  @Override
-  public ARMFrameLowering getFrameLowering() {
-    return frameInfo;
-  }
-
-  @Override
-  public ARMTargetLowering getTargetLowering() {
-    return tli;
-  }
-
-  @Override
-  public ARMSubtarget getSubtarget() {
+  public MipsSubtarget getSubtarget() {
     return subtarget;
   }
 
   @Override
+  public TargetInstrInfo getInstrInfo() {
+    return subtarget.getInstrInfo();
+  }
+
+  @Override
+  public TargetRegisterInfo getRegisterInfo() {
+    return subtarget.getRegisterInfo();
+  }
+
+  @Override
+  public TargetFrameLowering getFrameLowering() {
+    return frameLowering;
+  }
+
+  @Override
+  public TargetLowering getTargetLowering() {
+    return tli;
+  }
+
+  public TargetData getTargetData() {
+    return dataLayout;
+  }
+
+  @Override
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
-    pm.add(createARMISelDAG(this, level));
+    return false;
+  }
+
+  @Override
+  public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
     return false;
   }
 
   @Override
   public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level) {
-    return super.addPreRegAlloc(pm, level);
+    return false;
   }
 
   @Override
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
-    return super.addPostRegAlloc(pm, level);
+    return false;
   }
 
   @Override
   public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level, MachineCodeEmitter mce) {
-    return super.addCodeEmitter(pm, level, mce);
-  }
-
-  @Override
-  public MachineCodeEmitter addELFWriter(FunctionPassManager pm, PrintStream os) {
-    return super.addELFWriter(pm, os);
+    return false;
   }
 }

@@ -35,6 +35,7 @@ public class X86TargetMachine extends LLVMTargetMachine {
 
   public X86TargetMachine(Target t, String triple,
                           String cpu, String fs,
+                          RelocModel rm, CodeModel cm,
                           boolean is64Bit) {
     super(t, triple);
     subtarget = new X86Subtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);

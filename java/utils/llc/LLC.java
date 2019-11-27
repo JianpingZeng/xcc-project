@@ -151,6 +151,41 @@ public class LLC {
           desc("Enable output debug informaton"),
           init(false));
 
+  private static final Opt<TargetMachine.RelocModel> RelocModel = new Opt<>(
+      new Parser<>(),
+      desc("Choose relocation model"),
+      init(TargetMachine.RelocModel.Default),
+      new ValueClass<>(
+          new ValueClass.Entry<>(TargetMachine.RelocModel.Default,
+              "default", "Target default relocation model"),
+          new ValueClass.Entry<>(TargetMachine.RelocModel.Static,
+              "static", "Non-relocable code"),
+          new ValueClass.Entry<>(TargetMachine.RelocModel.PIC_,
+              "pic", "Fully relocable position independent code"),
+          new ValueClass.Entry<>(TargetMachine.RelocModel.DynamicNoPIC,
+              "dynamic-no-pic",
+              "Relocable external reference, non-relocable code")
+      )
+  );
+
+  private static final Opt<TargetMachine.CodeModel> CMModel = new Opt<>(
+      new Parser<>(),
+      desc("Choose code model"),
+      init(TargetMachine.CodeModel.Default),
+      new ValueClass<>(
+          new ValueClass.Entry<>(TargetMachine.CodeModel.Default,
+              "default", "Target default code model"),
+          new ValueClass.Entry<>(TargetMachine.CodeModel.Small,
+              "small", "Small code model"),
+          new ValueClass.Entry<>(TargetMachine.CodeModel.Kernel,
+              "kernel", "Kernel code model"),
+          new ValueClass.Entry<>(TargetMachine.CodeModel.Medium,
+              "medium", "Medium code model"),
+          new ValueClass.Entry<>(TargetMachine.CodeModel.Large,
+              "large", "Large code model")
+      )
+  );
+
   /**
    * This static code block is attempted to add some desired XCCTool command line
    * options into CommandLine DataBase.
@@ -224,7 +259,8 @@ public class LLC {
       featureStr = features.getString();
     }
 
-    TargetMachine tm = theTarget.createTargetMachine(theTriple.getTriple(), MCPU.value, featureStr);
+    TargetMachine tm = theTarget.createTargetMachine(theTriple.getTriple(), MCPU.value,
+        featureStr, RelocModel.value, CMModel.value);
     Util.assertion(tm != null, "could not allocate a target machine");
 
     // Figure out where we should write the result file

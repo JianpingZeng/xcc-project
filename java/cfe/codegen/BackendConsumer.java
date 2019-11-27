@@ -318,7 +318,8 @@ public class BackendConsumer implements ASTConsumer {
           featureStr = features.getString();
         }
 
-        TargetMachine tm = theTarget.createTargetMachine(triple, compileOptions.CPU, featureStr);
+        TargetMachine tm = theTarget.createTargetMachine(triple, compileOptions.CPU, featureStr,
+            TargetMachine.RelocModel.Default, TargetMachine.CodeModel.Default);
         tm.setAsmVerbosityDefault(true);
 
         // Set the default Register Allocator.

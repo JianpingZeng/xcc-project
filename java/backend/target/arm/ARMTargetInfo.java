@@ -51,7 +51,7 @@ public class ARMTargetInfo {
    * A function interface variable to create ARM target machine.
    */
   private static Target.TargetMachineCtor ARMTargetMachineMaker =
-      (t, triple, cpu, features) -> new ARMTargetMachine(t, triple, cpu, features);
+      (t, triple, cpu, features, rm, cm) -> new ARMTargetMachine(t, triple, cpu, features, rm, cm);
 
 
   private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
@@ -72,7 +72,7 @@ public class ARMTargetInfo {
     return ARMInstPrinter.createARMInstPrinter(os, mai);
   };
 
-  public static void InitiliazeARMTarget() {
+  public static void InitializeARMTarget() {
     TargetRegistry.registerTargetMachine(theARMTarget, ARMTargetMachineMaker);
     TargetRegistry.registerAsmInfo(theARMTarget, createTargetAsmInfo);
     TargetRegistry.registerAsmPrinter( theARMTarget, createARMAsmPrinter);

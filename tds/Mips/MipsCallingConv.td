@@ -11,7 +11,7 @@
 
 /// CCIfSubtarget - Match if the current subtarget has a feature F.
 class CCIfSubtarget<string F, CCAction A>:
-  CCIf<!strconcat("State.getTarget().getSubtarget<MipsSubtarget>().", F), A>;
+  CCIf<!strconcat("((MipsSubtarget)state.getTarget().getSubtarget()).", F), A>;
 
 //===----------------------------------------------------------------------===//
 // Mips O32 Calling Convention

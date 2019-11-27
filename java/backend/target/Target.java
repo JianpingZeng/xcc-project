@@ -51,7 +51,8 @@ public class Target {
   }
 
   public interface TargetMachineCtor {
-    TargetMachine create(Target t, String triple, String cpu, String features);
+    TargetMachine create(Target t, String triple, String cpu, String features,
+                         TargetMachine.RelocModel rm, TargetMachine.CodeModel cm);
   }
 
   public interface AsmPrinterCtor {
@@ -119,10 +120,11 @@ public class Target {
    * @param features
    * @return
    */
-  public TargetMachine createTargetMachine(String triple, String cpu, String features) {
+  public TargetMachine createTargetMachine(String triple, String cpu, String features,
+                                           TargetMachine.RelocModel rm, TargetMachine.CodeModel cm) {
     if (targetMachineCtor == null)
       return null;
-    return targetMachineCtor.create(this, triple, cpu, features);
+    return targetMachineCtor.create(this, triple, cpu, features, rm, cm);
   }
 
   /**
