@@ -60,7 +60,7 @@ public class MipsTargetInfo {
   {
     //Triple theTriple = new Triple(triple);
     // only mips on ELF target.
-    return new MipsELFMCAsmInfo();
+    return new MipsMCAsmInfo(t, triple);
   };
 
   private static Target.AsmPrinterCtor createMipsAsmPrinter = (os, tm, ctx, streamer, mai) -> {

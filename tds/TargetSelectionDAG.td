@@ -475,6 +475,7 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
   dag Operands = ops;
   dag Fragment = frag;
   code Predicate = pred;
+  code ImmediateCode = [{}];
   SDNodeXForm OperandTransform = xform;
 
   // Is the desired pre-packaged predicate for a load?
@@ -544,7 +545,7 @@ class PatLeaf<dag frag, code pred = [{}], SDNodeXForm xform = NOOP_SDNodeXForm>
 class ImmLeaf<ValueType vt, code pred, SDNodeXForm xform = NOOP_SDNodeXForm,
               SDNode ImmNode = imm>
   : PatFrag<(ops), (vt ImmNode), [{}], xform> {
-  let Predicate = pred;
+  let ImmediateCode = pred;
 
   // Is the data type of the immediate an APInt?
   bit IsAPInt = 0;

@@ -32,6 +32,12 @@ import backend.passManaging.PassManagerBase;
 import backend.target.*;
 
 /**
+ * This class is designed to contain some important data structures specific to the
+ * Mips target, such as {@linkplain MipsSubtarget}, {@linkplain TargetData},
+ * {@linkplain MipsRegisterInfo}, {@linkplain MipsInstrInfo}, {@linkplain MipsTargetLowering},
+ * and {@linkplain MipsFrameLowering}, to lower the target independent operations to
+ * the target supported instructions. This can happens on different phases, such as,
+ * {@linkplain MipsDAGISel} for lowering the DAG operation to machine instruction, etc.
  * @author Jianping Zeng.
  * @version 0.4
  */
@@ -48,6 +54,7 @@ public class MipsTargetMachine extends LLVMTargetMachine {
                               RelocModel rm, CodeModel cm,
                               boolean isLittle) {
     super(target, triple);
+    subtarget = new MipsSubtarget(this, triple, cpu, features, isLittle);
   }
 
   @Override

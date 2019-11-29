@@ -29,10 +29,6 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
     return new X86GenATTInstPrinter(os, mai);
   }
 
-  public abstract String getRegisterName(int regNo);
-
-  public abstract String getInstructionName(int opc);
-
   public void printOperand(MCInst mi, int opNo) {
     MCOperand op = mi.getOperand(opNo);
     if (op.isReg())

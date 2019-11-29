@@ -297,6 +297,8 @@ public class MCAsmInfo {
 
   protected String[] AsmTransCBE;          // Defaults to empty
 
+  protected boolean isLittleEndian;
+
   public MCAsmInfo() {
     HasSubsectionsViaSymbols = false;
     HasMachoZeroFillDirective = false;
@@ -355,6 +357,7 @@ public class MCAsmInfo {
     SupportsWeakOmittedEHFrame = true;
     DwarfSectionOffsetDirective = null;
     AsmTransCBE = null;
+    isLittleEndian = true;
   }
 
   // FIXME: move these methods to DwarfPrinter when the JIT stops using them.
@@ -629,5 +632,9 @@ public class MCAsmInfo {
 
   public String[] getAsmCBE() {
     return AsmTransCBE;
+  }
+
+  public boolean isLittleEndian() {
+    return isLittleEndian;
   }
 }

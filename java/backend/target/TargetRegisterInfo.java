@@ -179,6 +179,13 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
     eliminateFrameIndex(mf, mi, null);
   }
 
+  /**
+   * This function is used to replace the abstract frame index with a
+   * pair of stack offset and stack pointer.
+   * @param mf
+   * @param mi
+   * @param rs
+   */
   public abstract void eliminateFrameIndex(MachineFunction mf,
                                            MachineInstr mi,
                                            RegScavenger rs);

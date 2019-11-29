@@ -46,10 +46,6 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
     return new ARMGenInstPrinter(os, mai);
   }
 
-  public abstract String getRegisterName(int regNo);
-
-  public abstract String getInstructionName(int opc);
-
   protected void printOperand(MCInst mi, int opIdx) {
     MCOperand op = mi.getOperand(opIdx);
     if (op.isReg())

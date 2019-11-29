@@ -27,7 +27,10 @@ package backend.target.mips;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.EVT;
+import backend.codegen.MVT;
 import backend.codegen.dagisel.SDNode;
+import backend.codegen.dagisel.SDValue;
 import backend.codegen.dagisel.SelectionDAGISel;
 import backend.target.TargetMachine;
 
@@ -46,5 +49,22 @@ public class MipsDAGISel extends SelectionDAGISel {
   @Override
   public SDNode select(SDNode nodeToMatch) {
     return null;
+  }
+
+  protected SDValue getI32Imm(int val) {
+    return curDAG.getTargetConstant(val, new EVT(MVT.i32));
+  }
+
+  /**
+   * This function is used to read the address expression and determine what kinds of
+   * address mode could be suitable for it. The computed operand of address expression
+   * is returned in the {@arg tmp} array.
+   * @param root
+   * @param n
+   * @param tmp
+   * @return
+   */
+  protected boolean selectAddr(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
   }
 }

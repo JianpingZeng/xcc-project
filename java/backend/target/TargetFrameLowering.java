@@ -89,12 +89,12 @@ public abstract class TargetFrameLowering {
   /**
    * This method insert prologue code into the function.
    */
-  public abstract void emitPrologue(MachineFunction MF);
+  public abstract void emitPrologue(MachineFunction mf);
 
   /**
    * This method insert epilogue code into the function.
    */
-  public abstract void emitEpilogue(MachineFunction MF,
+  public abstract void emitEpilogue(MachineFunction mf,
                                     MachineBasicBlock mbb);
 
   public abstract boolean hasFP(MachineFunction mf);

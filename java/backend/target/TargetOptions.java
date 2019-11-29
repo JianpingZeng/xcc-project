@@ -16,8 +16,6 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetMachine.CodeModel;
-import backend.target.TargetMachine.RelocModel;
 import tools.commandline.*;
 
 import static tools.commandline.Desc.desc;
@@ -30,30 +28,6 @@ import static tools.commandline.OptionNameApplicator.optionName;
  * @version 0.4
  */
 public class TargetOptions {
-  public static final Opt<RelocModel> DefRelocationModel =
-      new Opt<RelocModel>(new Parser<>(),
-          optionName("relocation-model"),
-          desc("Choose relocation model"),
-          init(RelocModel.Default),
-          new ValueClass<>(
-              new ValueClass.Entry<>(RelocModel.Default, "default", "Target default relocati model"),
-              new ValueClass.Entry<>(RelocModel.Static, "static", "Non-relocatable model"),
-              new ValueClass.Entry<>(RelocModel.PIC_, "pic", "Fully relocatable position indepenent code"),
-              new ValueClass.Entry<>(RelocModel.DynamicNoPIC, "dynamic-no-pic", "Relocatable external references, on-relocatable code")));
-  ;
-
-  public static final Opt<CodeModel> DefCodeModel =
-      new Opt<CodeModel>(new Parser<>(),
-          optionName("code-mpdel"),
-          desc("Choose code model"),
-          init(CodeModel.Default),
-          new ValueClass<>(
-              new ValueClass.Entry<>(CodeModel.Default, "default", "Target default code model"),
-              new ValueClass.Entry<>(CodeModel.Small, "small", "Small code model"),
-              new ValueClass.Entry<>(CodeModel.Kernel, "kernel", "Kernel code model"),
-              new ValueClass.Entry<>(CodeModel.Medium, "medium", "Medium code model"),
-              new ValueClass.Entry<>(CodeModel.Large, "large", "Large code model")));
-
   public static final BooleanOpt EnablePerformTailCallOpt =
       new BooleanOpt(optionName("tailcallopt"),
           desc("Turn on tail call optimization"),

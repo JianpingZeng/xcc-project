@@ -45,12 +45,12 @@ public class ARMFrameLowering extends TargetFrameLowering {
   }
 
   @Override
-  public void emitPrologue(MachineFunction MF) {
+  public void emitPrologue(MachineFunction mf) {
 
   }
 
   @Override
-  public void emitEpilogue(MachineFunction MF, MachineBasicBlock mbb) {
+  public void emitEpilogue(MachineFunction mf, MachineBasicBlock mbb) {
 
   }
 

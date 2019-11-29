@@ -46,13 +46,13 @@ public class X86TargetInfo {
    * A function interface variable to create X86 32bit target machine.
    */
   private static Target.TargetMachineCtor X86_32TargetMachineMaker =
-      (t, triple, cpu, features) -> new X86_32TargetMachine(t, triple, cpu, features);
+      (t, triple, cpu, features, rm, cm) -> new X86_32TargetMachine(t, triple, cpu, features, rm, cm);
 
   /**
    * A function interface variable to create X86 64 bit target machine.
    */
   private static Target.TargetMachineCtor X86_64TargetMachineMaker =
-      (t, triple, cpu, features) -> new X86_64TargetMachine(t, triple, cpu, features);
+      (t, triple, cpu, features, rm, cm) -> new X86_64TargetMachine(t, triple, cpu, features, rm, cm);
 
   private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
   {

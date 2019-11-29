@@ -353,11 +353,11 @@ def ExtractElementF64 :
 // Floating Point Patterns
 //===----------------------------------------------------------------------===//
 def fpimm0 : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(+0.0);
+  return n.isExactlyValue(+0.0);
 }]>;
 
 def fpimm0neg : PatLeaf<(fpimm), [{
-  return N->isExactlyValue(-0.0);
+  return n.isExactlyValue(-0.0);
 }]>;
 
 def : Pat<(f32 fpimm0), (MTC1 ZERO)>;

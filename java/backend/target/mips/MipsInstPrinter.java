@@ -28,7 +28,6 @@ package backend.target.mips;
  */
 
 import backend.mc.MCAsmInfo;
-import backend.mc.MCInst;
 import backend.mc.MCInstPrinter;
 
 import java.io.PrintStream;
@@ -37,17 +36,12 @@ import java.io.PrintStream;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class MipsInstPrinter extends MCInstPrinter {
+public abstract class MipsInstPrinter extends MCInstPrinter {
   public MipsInstPrinter(PrintStream os, MCAsmInfo mai) {
     super(os, mai);
   }
 
-  public static MCInstPrinter createMipsInstPrinter(PrintStream os, MCAsmInfo mai) {
-    return null;
-  }
-
-  @Override
-  public void printInst(MCInst inst) {
-
+  static MCInstPrinter createMipsInstPrinter(PrintStream os, MCAsmInfo mai) {
+    return new MipsGenInstPrinter(os, mai);
   }
 }

@@ -892,6 +892,15 @@ public class MachineInstr implements Cloneable {
     return memOperands.get(index);
   }
 
+  public ArrayList<MachineMemOperand> getMemOperands() {
+    return memOperands;
+  }
+
+  public void setMemOperands(ArrayList<MachineMemOperand> memOperands) {
+    this.memOperands = new ArrayList<>();
+    this.memOperands.addAll(memOperands);
+  }
+
   public void setMachineOperandReg(int idx, int reg) {
     Util.assertion(idx >= 0 && idx < getNumOperands());
     //Util.assertion( isPhysicalRegister(reg));
@@ -914,5 +923,27 @@ public class MachineInstr implements Cloneable {
 
   public void clearMemOperands() {
     memOperands.clear();
+  }
+
+  public void substituteRegister(int fromReg,
+                                 int toReg,
+                                 int subIdx,
+                                 TargetRegisterInfo tri) {
+    if (TargetRegisterInfo.isPhysicalRegister(toReg)) {
+      if (subIdx != 0)
+        toReg = tri.getSubReg(toReg, subIdx);
+      for (int i = 0, e = getNumOperands(); i< e; ++i) {
+        MachineOperand mo = getOperand(i);
+        if (mo.isRegister() && mo.getReg() == fromReg)
+          mo.substPhysReg(toReg, tri);
+      }
+    }
+    else {
+      for (int i = 0, e = getNumOperands(); i < e; ++i) {
+        MachineOperand mo = getOperand(i);
+        if (mo.isRegister() && mo.getReg() == fromReg)
+          mo.substVirtReg(toReg, subIdx, tri);
+      }
+    }
   }
 }

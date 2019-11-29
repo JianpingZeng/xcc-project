@@ -89,6 +89,25 @@ public abstract class MachineOperand {
 
   public abstract MachineOperand clone();
 
+  public void substPhysReg(int reg, TargetRegisterInfo tri) {
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(reg));
+    if (getSubReg() != 0) {
+      reg = tri.getSubReg(reg, getSubReg());
+      setSubreg(0);
+    }
+    setReg(reg);
+  }
+
+  public void substVirtReg(int reg, int subIdx, TargetRegisterInfo tri) {
+    /*Util.assertion(TargetRegisterInfo.isVirtualRegister(reg));
+    if (subIdx != 0 && getSubReg() != 0)
+      subIdx = tri.composeSubRegIndices(subIdx, getSubReg());
+    setReg(reg);
+    if (subIdx != 0)
+      setSubreg(subIdx);*/
+    Util.shouldNotReachHere();
+  }
+
   static class RegOp {
     int regNo;
     MachineOperand prev;   // Access list for register.

@@ -27,11 +27,33 @@ package backend.target.mips;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.codegen.TargetLoweringObjectFileELF;
+import backend.mc.MCAsmInfo;
+import backend.support.Triple;
+import backend.target.Target;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class MipsELFTargetObjectFile extends TargetLoweringObjectFileELF {
+public class MipsMCAsmInfo extends MCAsmInfo {
+  public MipsMCAsmInfo(Target t, String tt) {
+    Triple triple = new Triple(tt);
+    if (triple.getArch() == Triple.ArchType.mips ||
+    triple.getArch() == Triple.ArchType.mips64)
+      isLittleEndian = false;
+
+    AlignmentIsInBytes = false;
+    Data16bitsDirective         = "\t.2byte\t";
+    Data32bitsDirective         = "\t.4byte\t";
+    Data64bitsDirective         = null;
+    PrivateGlobalPrefix         = "$";
+    CommentString               = "#";
+    ZeroDirective               = "\t.space\t";
+    GPRel32Directive            = "\t.gpword\t";
+    WeakRefDirective            = "\t.weak\t";
+
+    SupportsDebugInformation = true;
+    ExceptionsType = ExceptionHandlingType.Dwarf;
+    HasLEB128 = true;
+  }
 }

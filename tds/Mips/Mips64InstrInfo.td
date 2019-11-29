@@ -25,12 +25,12 @@ def uimm16_64      : Operand<i64> {
 
 // Transformation Function - get Imm - 32.
 def Subtract32 : SDNodeXForm<imm, [{
-  return getI32Imm((unsigned)N->getZExtValue() - 32);
+  return getI32Imm((int)n.getZExtValue() - 32);
 }]>;
 
 // imm32_63 predicate - True if imm is in range [32, 63].
 def imm32_63 : ImmLeaf<i64,
-                       [{return (int32_t)Imm >= 32 && (int32_t)Imm < 64;}],
+                       [{return (int)imm >= 32 && (int)imm < 64;}],
                        Subtract32>;
 
 //===----------------------------------------------------------------------===//

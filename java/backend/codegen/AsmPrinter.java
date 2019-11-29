@@ -93,7 +93,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   protected MCSymbol.MCContext outContext;
 
   protected MCStreamer outStreamer;
-  private TargetSubtarget subtarget;
+  protected TargetSubtarget subtarget;
   public MachineFunction mf;
   protected MachineModuleInfo mmi;
   private HashMap<BasicBlock, MCSymbol> addrLabelSymbols;
@@ -594,7 +594,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     outStreamer.emitValue(value, entrySize, 0);
   }
 
-  private void emitFunctionBodyEnd() {
+  protected void emitFunctionBodyEnd() {
   }
 
   private MCSymbol getAddrLabelSymbol(BasicBlock bb) {
@@ -733,7 +733,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         loop.getLoopDepth());
   }
 
-  private void emitFunctionBodyStart() {}
+  protected void emitFunctionBodyStart() {}
 
   /**
    * This should be called when a new machine function is being processed when
@@ -1543,5 +1543,4 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     String name = mangler.getMangledNameWithPrefix(sym);
     return outContext.getOrCreateSymbol(name);
   }
-
 }

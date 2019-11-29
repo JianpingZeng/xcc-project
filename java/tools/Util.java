@@ -732,6 +732,10 @@ public class Util {
     return val >= Integer.MIN_VALUE && val <= Integer.MAX_VALUE;
   }
 
+  public static boolean isInt16(long val) {
+    return val >= Short.MIN_VALUE && val <= Short.MAX_VALUE;
+  }
+
   public static char toOctal(int x) {
     x = x & 0x07;
     char[] res = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e'};

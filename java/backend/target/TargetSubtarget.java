@@ -67,6 +67,12 @@ public abstract class TargetSubtarget extends MCSubtargetInfo {
     return instrInfo;
   }
 
+  /**
+   * Parses the sub-features string specified by subtarget options.
+   * This function should by overrided by any tablegen generated sub class.
+   * @param fs
+   * @param cpu
+   */
   public abstract void parseSubtargetFeatures(String fs, String cpu);
 
   public boolean is64Bit() {

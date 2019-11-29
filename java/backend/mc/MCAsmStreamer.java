@@ -534,4 +534,9 @@ public class MCAsmStreamer extends MCStreamer {
   public void finish() {
     os.flush();
   }
+
+  @Override
+  public String getRegisterName(int reg) {
+    return instPrinter.getRegisterName(reg);
+  }
 }

@@ -7,9 +7,6 @@
  */
 package backend.mc;
 
-import backend.codegen.AsmPrinter;
-import tools.FormattedOutputStream;
-
 import java.io.PrintStream;
 
 /**
@@ -139,4 +136,8 @@ public abstract class MCStreamer {
   public abstract void emitInstruction(MCInst inst);
 
   public abstract void finish();
+
+  public String getRegisterName(int reg) {
+    return "";
+  }
 }

@@ -759,18 +759,27 @@ public class DAGISelMatcherEmitter {
         TreePattern tp = patByName.get(nodePredicates.get(i).substring("Predicate_".length()));
         Util.assertion(tp != null);
         String code = tp.getRecord().getValueAsCode("Predicate");
+        String immCode = tp.getRecord().getValueAsCode("ImmediateCode");
+
         Util.assertion(!code.isEmpty(), "No code in this predicate");
         os.printf("      case %d: { // %s%n", i, nodePredicates.get(i));
         String className;
-        if (tp.getOnlyTree().isLeaf())
-          className = "SDNode";
-        else
-          className = cgp.getSDNodeInfo(tp.getOnlyTree().getOperator()).getSDClassName();
+        // If this is immLeaf patFrag, we generate a type auto cast code.
+        if (!immCode.isEmpty()) {
+          // "    int64_t Imm = cast<ConstantSDNode>(Node)->getSExtValue();\n";
+          os.println("\t\t\t\tlong imm = ((ConstantSDNode)node).getSExtValue();");
+          os.printf("\t\t\t\t%s", immCode);
+        } else {
+          if (tp.getOnlyTree().isLeaf())
+            className = "SDNode";
+          else
+            className = cgp.getSDNodeInfo(tp.getOnlyTree().getOperator()).getSDClassName();
 
-        if (className.equals("SDNode"))
-          os.println("        SDNode n = node;");
-        else
-          os.printf("        %s n = (%s)node;", className, className);
+          if (className.equals("SDNode"))
+            os.println("        SDNode n = node;");
+          else
+            os.printf("        %s n = (%s)node;\n", className, className);
+        }
         os.printf("        %s\n", code);
         os.println("      }");
       }
@@ -904,6 +913,7 @@ public class DAGISelMatcherEmitter {
     String targetName = cdp.getTarget().getName();
     os.printf("package backend.target.%s;%n%n", targetName.toLowerCase());
 
+    os.println("import backend.codegen.EVT;");
     os.println("import backend.codegen.MVT;");
     os.println("import backend.codegen.dagisel.*;");
     os.println("import backend.target.TargetMachine;");

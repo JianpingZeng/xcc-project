@@ -28,71 +28,234 @@ package backend.target.mips;
  */
 
 import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
 import backend.codegen.MachineInstr;
-import backend.codegen.MachineOperand;
-import backend.target.TargetInstrInfo;
-import gnu.trove.list.array.TIntArrayList;
+import backend.debug.DebugLoc;
+import backend.mc.MCRegisterClass;
+import backend.target.TargetInstrInfoImpl;
 import tools.OutRef;
+import tools.Util;
 
-import java.util.ArrayList;
+import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.MachineInstrBuilder.getKillRegState;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class MipsInstrInfo extends TargetInstrInfo {
-  public MipsInstrInfo(int frameSetupOp, int frameDestroyOp) {
-    super(frameSetupOp, frameDestroyOp);
-  }
-
-  @Override
-  public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg, int subIdx, MachineInstr origin) {
-
-  }
-
-  @Override
-  public MachineInstr commuteInstruction(MachineInstr mi, boolean newMI) {
-    return null;
-  }
-
-  @Override
-  public boolean findCommutedOpIndices(MachineInstr mi, OutRef<Integer> srcOpIdx1, OutRef<Integer> srcOpIdx2) {
-    return false;
-  }
-
-  @Override
-  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, int frameIndex) {
-    return null;
-  }
-
-  @Override
-  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, MachineInstr loadMI) {
-    return null;
+public class MipsInstrInfo extends TargetInstrInfoImpl {
+  private MipsSubtarget subtarget;
+  public MipsInstrInfo(MipsTargetMachine tm) {
+    super(MipsGenInstrNames.ADJCALLSTACKDOWN,
+          MipsGenInstrNames.ADJCALLSTACKUP);
+    subtarget = tm.getSubtarget();
   }
 
   @Override
   public void insertNoop(MachineBasicBlock mbb, int pos) {
-
+    buildMI(mbb, pos, new DebugLoc(), get(MipsGenInstrNames.NOP));
   }
 
   @Override
-  public boolean isUnpredicatedTerminator(MachineInstr mi) {
+  public boolean copyRegToReg(MachineBasicBlock mbb,
+                              int insertPos,
+                              int dstReg,
+                              int srcReg,
+                              MCRegisterClass dstRC,
+                              MCRegisterClass srcRC) {
+    // Unknown debug loc.
+    DebugLoc dl = new DebugLoc();
+    if (insertPos != mbb.size()) dl = mbb.getInstAt(insertPos).getDebugLoc();
+
+    if (!dstRC.equals(srcRC)) {
+      // copy to/from FCR31 condition register.
+      if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
+          srcRC.equals(MipsGenRegisterInfo.CCRRegisterClass)) {
+        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.CFC1), dstReg).addReg(srcReg);
+      }
+      else if (dstRC.equals(MipsGenRegisterInfo.CCRRegisterClass))
+        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.CFC1), dstReg).addReg(srcReg);
+
+      // Moves between coprocessor and cpu.
+      else if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
+               srcRC.equals(MipsGenRegisterInfo.FGR32RegisterClass))
+        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.MFC1), dstReg).addReg(srcReg);
+      else if (dstRC.equals(MipsGenRegisterInfo.FGR32RegisterClass) &&
+          srcRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
+        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.MTC1), dstReg).addReg(srcReg);
+
+      // Move from/to Hi/lo registers.
+      else if (dstRC.equals(MipsGenRegisterInfo.HILORegisterClass) &&
+                srcRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass)) {
+        int opc = dstReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MTHI : MipsGenInstrNames.MTLO;
+        buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      }
+      else if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
+          srcRC.equals(MipsGenRegisterInfo.HILORegisterClass)) {
+        int opc = srcReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MFHI : MipsGenInstrNames.MFLO;
+        buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      }
+      else
+        // can't copy others.
+        return false;
+      return true;
+    }
+
+    if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
+      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.ADDu), dstReg).addReg(MipsGenRegisterNames.ZERO).addReg(srcReg);
+    else if (dstRC.equals(MipsGenRegisterInfo.FGR32RegisterClass))
+      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_S), dstReg).addReg(srcReg);
+    else if (dstRC.equals(MipsGenRegisterInfo.AFGR64RegisterClass))
+      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_D32), dstReg).addReg(srcReg);
+    else if (dstRC.equals(MipsGenRegisterInfo.FGR64RegisterClass))
+      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_D64), dstReg).addReg(srcReg);
+    else
+      return false;
+
+    return true;
+  }
+
+  @Override
+  public boolean isMoveInstr(MachineInstr mi, OutRef<Integer> srcReg,
+                             OutRef<Integer> destReg,
+                             OutRef<Integer> srcSubIdx,
+                             OutRef<Integer> destSubIdx) {
+    // no sub-registers.
+    srcSubIdx.set(0);
+    destSubIdx.set(0);
+
+    // addu $dst, $src, $zero || addu $dst, $zero, $src
+    // or   $dst, $src, $zero || or   $dst, $zero, $src
+    if (mi.getOpcode() == MipsGenInstrNames.ADDu || mi.getOpcode() == MipsGenInstrNames.OR) {
+      if (mi.getOperand(1).getReg() == MipsGenRegisterNames.ZERO) {
+        destReg.set(mi.getOperand(0).getReg());
+        srcReg.set(mi.getOperand(2).getReg());
+        return true;
+      }
+      else if (mi.getOperand(2).getReg() == MipsGenRegisterNames.ZERO) {
+        destReg.set(mi.getOperand(0).getReg());
+        srcReg.set(mi.getOperand(1).getReg());
+        return true;
+      }
+    }
+
+    // mov $fpDst, $fpSrc
+    // mfc $gpDst, $fpSrc
+    // mtc $fpDst, $gpSrc
+    if (mi.getOpcode() == MipsGenInstrNames.FMOV_S ||
+        mi.getOpcode() == MipsGenInstrNames.FMOV_D32 ||
+        mi.getOpcode() == MipsGenInstrNames.MFC1 ||
+        mi.getOpcode() == MipsGenInstrNames.MTC1 ||
+        mi.getOpcode() == MipsGenInstrNames.MOVCCRToCCR) {
+      destReg.set(mi.getOperand(0).getReg());
+      srcReg.set(mi.getOperand(1).getReg());
+      return true;
+    }
+
+    // addiu $dst, $src, 0
+    if (mi.getOpcode() == MipsGenInstrNames.ADDiu) {
+      if (mi.getOperand(2).isImm() && mi.getOperand(2).getImm() == 0) {
+        destReg.set(mi.getOperand(0).getReg());
+        srcReg.set(mi.getOperand(1).getReg());
+        return true;
+      }
+    }
     return false;
   }
 
   @Override
-  public boolean predicateInstruction(MachineInstr mi, ArrayList<MachineOperand> pred) {
-    return false;
-  }
-
-  @Override
-  public boolean isDeadInstruction(MachineInstr mi) {
-    return false;
-  }
-
-  @Override
-  public int getFunctionSizeInBytes(MachineFunction mf) {
+  public int isLoadFromStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
+    switch (mi.getOpcode()) {
+      case MipsGenInstrNames.LW:
+      case MipsGenInstrNames.LWC1:
+      case MipsGenInstrNames.LDC1:
+      case MipsGenInstrNames.LW_P8:
+      case MipsGenInstrNames.LD:
+      case MipsGenInstrNames.LD_P8:
+      case MipsGenInstrNames.LWC1_P8:
+      case MipsGenInstrNames.LDC164:
+      case MipsGenInstrNames.LDC164_P8: {
+        if (mi.getOperand(1).isFrameIndex() && // frame index
+            mi.getOperand(2).isImm() && // imm is a zero
+            mi.getOperand(2).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+      }
+    }
     return 0;
+  }
+
+  @Override
+  public int isStoreToStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
+    switch (mi.getOpcode()) {
+      case MipsGenInstrNames.SW:
+      case MipsGenInstrNames.SW_P8:
+      case MipsGenInstrNames.SD:
+      case MipsGenInstrNames.SD_P8:
+      case MipsGenInstrNames.SWC1:
+      case MipsGenInstrNames.SWC1_P8:
+      case MipsGenInstrNames.SDC1:
+      case MipsGenInstrNames.SDC164:
+      case MipsGenInstrNames.SDC164_P8:
+        if (mi.getOperand(1).isFrameIndex() && // frame index
+            mi.getOperand(2).isImm() && // imm is a zero
+            mi.getOperand(2).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+    }
+    return 0;
+  }
+
+  @Override
+  public void storeRegToStackSlot(MachineBasicBlock mbb, int pos,
+                                  int srcReg, boolean isKill,
+                                  int frameIndex, MCRegisterClass rc) {
+    DebugLoc dl = new DebugLoc();
+    if (pos != mbb.size())
+      dl = mbb.getInstAt(pos).getDebugLoc();
+
+    // determine the opcode according to the RC.
+    int opc = 0;
+    if (rc.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.SW_P8 : MipsGenInstrNames.SW;
+    else if (rc.equals(MipsGenRegisterInfo.CPU64RegsRegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.SD_P8 : MipsGenInstrNames.SD;
+    else if (rc.equals(MipsGenRegisterInfo.FGR32RegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.SWC1_P8 : MipsGenInstrNames.SWC1;
+    else if (rc.equals(MipsGenRegisterInfo.AFGR64RegisterClass))
+      opc = MipsGenInstrNames.SDC1;
+    else if (rc.equals(MipsGenRegisterInfo.FGR64RegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.SDC164_P8 : MipsGenInstrNames.SDC164;
+    else
+      Util.assertion("register class is not handled!");
+
+    buildMI(mbb, pos, dl, get(opc)).addReg(srcReg, getKillRegState(isKill)).addFrameIndex(frameIndex).addImm(0);
+  }
+
+  @Override
+  public void loadRegFromStackSlot(MachineBasicBlock mbb, int pos,
+                                   int destReg, int frameIndex,
+                                   MCRegisterClass rc) {
+    DebugLoc dl = new DebugLoc();
+    if (pos != mbb.size())
+      dl = mbb.getInstAt(pos).getDebugLoc();
+
+    // determine the opcode according to the RC.
+    int opc = 0;
+    if (rc.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.LW_P8 : MipsGenInstrNames.LW;
+    else if (rc.equals(MipsGenRegisterInfo.CPU64RegsRegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.LD_P8 : MipsGenInstrNames.LD;
+    else if (rc.equals(MipsGenRegisterInfo.FGR32RegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.LWC1_P8 : MipsGenInstrNames.LWC1;
+    else if (rc.equals(MipsGenRegisterInfo.AFGR64RegisterClass))
+      opc = MipsGenInstrNames.LDC1;
+    else if (rc.equals(MipsGenRegisterInfo.FGR64RegisterClass))
+      opc = subtarget.isABI_N64() ? MipsGenInstrNames.LDC164_P8 : MipsGenInstrNames.LDC164;
+    else
+      Util.assertion("register class is not handled!");
+
+    buildMI(mbb, pos, dl, get(opc), destReg).addFrameIndex(frameIndex).addImm(0);
   }
 }

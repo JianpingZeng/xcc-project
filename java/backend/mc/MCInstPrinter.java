@@ -40,4 +40,8 @@ public abstract class MCInstPrinter {
   }
 
   public abstract void printInst(MCInst inst);
+
+  public abstract String getRegisterName(int regNo);
+
+  public abstract String getInstructionName(int opc);
 }

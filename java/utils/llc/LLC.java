@@ -153,6 +153,7 @@ public class LLC {
 
   private static final Opt<TargetMachine.RelocModel> RelocModel = new Opt<>(
       new Parser<>(),
+      optionName("relocation-model"),
       desc("Choose relocation model"),
       init(TargetMachine.RelocModel.Default),
       new ValueClass<>(
@@ -170,6 +171,7 @@ public class LLC {
 
   private static final Opt<TargetMachine.CodeModel> CMModel = new Opt<>(
       new Parser<>(),
+      optionName("code-model"),
       desc("Choose code model"),
       init(TargetMachine.CodeModel.Default),
       new ValueClass<>(

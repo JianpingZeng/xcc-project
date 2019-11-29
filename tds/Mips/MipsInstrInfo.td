@@ -179,61 +179,61 @@ def size_ins : Operand<i32> {
 
 // Transformation Function - get the lower 16 bits.
 def LO16 : SDNodeXForm<imm, [{
-  return getI32Imm((unsigned)N->getZExtValue() & 0xFFFF);
+  return getI32Imm((int)n.getZExtValue() & 0xFFFF);
 }]>;
 
 // Transformation Function - get the higher 16 bits.
 def HI16 : SDNodeXForm<imm, [{
-  return getI32Imm((unsigned)N->getZExtValue() >> 16);
+  return getI32Imm((int)n.getZExtValue() >> 16);
 }]>;
 
 // Node immediate fits as 16-bit sign extended on target immediate.
 // e.g. addi, andi
-def immSExt16  : PatLeaf<(imm), [{ return isInt<16>(N->getSExtValue()); }]>;
+def immSExt16  : PatLeaf<(imm), [{ return Util.isInt32(n.getSExtValue()); }]>;
 
 // Node immediate fits as 16-bit zero extended on target immediate.
 // The LO16 param means that only the lower 16 bits of the node
 // immediate are caught.
 // e.g. addiu, sltiu
 def immZExt16  : PatLeaf<(imm), [{
-  if (N->getValueType(0) == MVT::i32)
-    return (uint32_t)N->getZExtValue() == (unsigned short)N->getZExtValue();
+  if (n.getValueType(0).equals(new EVT(MVT.i32)))
+    return (int)n.getZExtValue() == (short)n.getZExtValue();
   else
-    return (uint64_t)N->getZExtValue() == (unsigned short)N->getZExtValue();
+    return n.getZExtValue() == (short)n.getZExtValue();
 }], LO16>;
 
 // shamt field must fit in 5 bits.
 def immZExt5 : PatLeaf<(imm), [{
-  return N->getZExtValue() == ((N->getZExtValue()) & 0x1f) ;
+  return n.getZExtValue() == ((n.getZExtValue()) & 0x1f);
 }]>;
 
 // Mips Address Mode! SDNode frameindex could possibily be a match
 // since load and store instructions from stack used it.
-def addr : ComplexPattern<iPTR, 2, "SelectAddr", [frameindex], []>;
+def addr : ComplexPattern<iPTR, 2, "selectAddr", [frameindex], []>;
 
 //===----------------------------------------------------------------------===//
 // Pattern fragment for load/store
 //===----------------------------------------------------------------------===//
 class UnalignedLoad<PatFrag Node> : PatFrag<(ops node:$ptr), (Node node:$ptr), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  return LD->getMemoryVT().getSizeInBits()/8 > LD->getAlignment();
+  LoadSDNode ld = (LoadSDNode)n;
+  return ld.getMemoryVT().getSizeInBits()/8 > ld.getAlignment();
 }]>;
 
 class AlignedLoad<PatFrag Node> : PatFrag<(ops node:$ptr), (Node node:$ptr), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  return LD->getMemoryVT().getSizeInBits()/8 <= LD->getAlignment();
+  LoadSDNode ld = (LoadSDNode)n;
+  return ld.getMemoryVT().getSizeInBits()/8 <= ld.getAlignment();
 }]>;
 
 class UnalignedStore<PatFrag Node> : PatFrag<(ops node:$val, node:$ptr),
                                              (Node node:$val, node:$ptr), [{
-  StoreSDNode *SD = cast<StoreSDNode>(N);
-  return SD->getMemoryVT().getSizeInBits()/8 > SD->getAlignment();
+  StoreSDNode sd = (StoreSDNode)n;
+  return sd.getMemoryVT().getSizeInBits()/8 > sd.getAlignment();
 }]>;
 
 class AlignedStore<PatFrag Node> : PatFrag<(ops node:$val, node:$ptr),
                                            (Node node:$val, node:$ptr), [{
-  StoreSDNode *SD = cast<StoreSDNode>(N);
-  return SD->getMemoryVT().getSizeInBits()/8 <= SD->getAlignment();
+  StoreSDNode sd = (StoreSDNode)n;
+  return sd.getMemoryVT().getSizeInBits()/8 <= sd.getAlignment();
 }]>;
 
 // Load/Store PatFrags.

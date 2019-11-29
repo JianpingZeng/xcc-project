@@ -1491,18 +1491,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     }
   }
 
-  public boolean isUnpredicatedTerminator(MachineInstr mi) {
-    MCInstrDesc tid = mi.getDesc();
-    if (!tid.isTerminator())
-      return false;
-
-    if (tid.isBranch() && !tid.isBarrier())
-      return true;
-    if (!tid.isPredicable())
-      return true;
-    return !isPredicated(mi);
-  }
-
   public static boolean isBrAnalysisUnpredicatedTerminator(
       MachineInstr mi,
       X86InstrInfo ii) {

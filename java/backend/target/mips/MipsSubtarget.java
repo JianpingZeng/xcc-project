@@ -27,13 +27,14 @@ package backend.target.mips;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.target.TargetSubtarget;
+import backend.mc.InstrItineraryData;
+import tools.Util;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class MipsSubtarget extends TargetSubtarget {
+public class MipsSubtarget extends MipsGenSubtarget {
   public boolean hasBitCount;
   public boolean hasCondMov;
   public boolean isFP64bit;
@@ -44,21 +45,48 @@ public class MipsSubtarget extends TargetSubtarget {
   public boolean isSingleFloat;
   public boolean hasSwap;
   public boolean hasVFPU;
+  public boolean isLittle;
+  public boolean isLinux;
+  private InstrItineraryData instrItins;
+  private MipsTargetMachine tm;
 
-  public boolean isNotSingleFloat() {
-    return !isSingleFloat;
-  }
+  public MipsSubtarget(MipsTargetMachine tm, String tt, String cpu, String fs, boolean isLittle) {
+    super(tt, cpu, fs);
+    this.tm = tm;
+    mipsArchVersion = MipsArchEnum.Mips32;
+    mipsABI = MipsABIEnum.UnknownABI;
+    this.isLittle = isLittle;
+    isSingleFloat = false;
+    isFP64bit = false;
+    isGP64bit = false;
+    hasVFPU = false;
+    isLinux = true;
+    hasSEInReg = false;
+    hasCondMov = false;
+    hasMulDivAdd = false;
+    hasMinMax = false;
+    hasSwap = false;
+    hasBitCount = false;
+    subtarget = this;
 
-  public boolean isSingleFloat() {
-    return isSingleFloat;
-  }
+    String cpuName = cpu;
+    if (cpuName == null || cpuName.isEmpty())
+      cpuName = "mips32r1";
 
-  public boolean isABI_EABI() {
-    return mipsABI == MipsABIEnum.EABI;
-  }
+    parseSubtargetFeatures(cpuName, fs);
+    instrItins = getInstrItineraryForCPU(cpuName);
 
-  public boolean isABI_N32() {
-    return mipsABI == MipsABIEnum.N32;
+    // Set mips abi if it hasn't been set.
+    if (mipsABI == MipsABIEnum.UnknownABI)
+      mipsABI = hasMips64() ? MipsABIEnum.N64 : MipsABIEnum.O32;
+
+    // Check if Architecture and ABI are compatible.
+    Util.assertion(((!hasMips64() && (isABI_O32() || isABI_EABI())) ||
+        (hasMips64() && (isABI_N32() || isABI_N64()))),
+        "Invalid  Arch & ABI pair.");
+
+    if (!tt.contains("linux"))
+      isLinux = false;
   }
 
   // NOTE: O64 will not be supported.
@@ -76,44 +104,105 @@ public class MipsSubtarget extends TargetSubtarget {
   // Mips supported ABIs
   MipsABIEnum mipsABI;
 
-  @Override
-  public void parseSubtargetFeatures(String fs, String cpu) {
-
-  }
-
-  public boolean isABI_N64() {
-    return false;
-  }
-
-  public boolean hasMips64() {
-    return false;
-  }
-
   public boolean isFP64bit() {
-    return false;
+    return isFP64bit;
   }
 
+  public boolean isGP64bit() {
+    return isGP64bit;
+  }
+
+  public boolean isGP32bit() {
+    return !isGP64bit;
+  }
+
+  public boolean hasVFPU() {
+    return hasVFPU;
+  }
+
+  public boolean isLinux() {
+    return isLinux;
+  }
   public boolean hasBitCount() {
-    return false;
-  }
-
-  public boolean hasMips32r2() {
-    return false;
-  }
-
-  public boolean hasMips64r2() {
-    return false;
+    return hasBitCount;
   }
 
   public boolean hasSEInReg() {
-    return false;
+    return hasSEInReg;
   }
 
   public boolean hasSwap() {
-    return false;
+    return hasSwap;
+  }
+
+  public boolean hasCondMov() {
+    return hasCondMov;
+  }
+
+  public boolean hasMulDivAdd() {
+    return hasMulDivAdd;
+  }
+
+  public boolean hasMinMax() {
+    return hasMinMax;
   }
 
   public boolean hasMips32() {
-    return false;
+    return mipsArchVersion.compareTo(MipsArchEnum.Mips32) >= 0;
+  }
+
+  public boolean hasMips32r2() {
+    return mipsArchVersion == MipsArchEnum.Mips32r2 ||
+        mipsArchVersion == MipsArchEnum.Mips64r2;
+  }
+
+  public boolean hasMips64() {
+    return mipsArchVersion.compareTo(MipsArchEnum.Mips64) >= 0;
+  }
+
+  public boolean hasMips64r2() {
+    return mipsArchVersion == MipsArchEnum.Mips64r2;
+  }
+
+  public boolean isNotSingleFloat() {
+    return !isSingleFloat;
+  }
+
+  public boolean isSingleFloat() {
+    return isSingleFloat;
+  }
+
+  public boolean isABI_EABI() {
+    return mipsABI == MipsABIEnum.EABI;
+  }
+
+  public boolean isABI_N32() {
+    return mipsABI == MipsABIEnum.N32;
+  }
+
+  public boolean isABI_N64() {
+    return mipsABI == MipsABIEnum.N64;
+  }
+
+  public boolean isABI_O32() {
+    return mipsABI == MipsABIEnum.O32;
+  }
+
+  public MipsABIEnum getTargetABI() { return mipsABI; }
+
+  public boolean isLittleEndian() { return isLittle; }
+
+  @Override
+  public MipsInstrInfo getInstrInfo() {
+    if (instrInfo == null)
+      instrInfo = new MipsInstrInfo(tm);
+    return (MipsInstrInfo) instrInfo;
+  }
+
+  @Override
+  public MipsRegisterInfo getRegisterInfo() {
+    if (regInfo == null)
+      regInfo = MipsRegisterInfo.createMipsRegisterInfo(tm);
+    return (MipsRegisterInfo) regInfo;
   }
 }

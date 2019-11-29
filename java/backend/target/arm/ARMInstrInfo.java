@@ -28,17 +28,12 @@ package backend.target.arm;
  */
 
 import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineInstr;
-import backend.codegen.MachineOperand;
 import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import gnu.trove.list.array.TIntArrayList;
-import tools.OutRef;
+import backend.target.TargetInstrInfoImpl;
 import tools.Util;
 
-import java.util.ArrayList;
 import java.util.Objects;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
@@ -47,7 +42,7 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public abstract class ARMInstrInfo  extends TargetInstrInfo {
+public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
   protected ARMInstrInfo(ARMTargetMachine tm) {
     super(ARMGenInstrNames.ADJCALLSTACKDOWN, ARMGenInstrNames.ADJCALLSTACKUP);
   }
@@ -57,53 +52,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfo {
   }
 
   @Override
-  public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg, int subIdx, MachineInstr origin) {
-
-  }
-
-  @Override
-  public MachineInstr commuteInstruction(MachineInstr mi, boolean newMI) {
-    return null;
-  }
-
-  @Override
-  public boolean findCommutedOpIndices(MachineInstr mi, OutRef<Integer> srcOpIdx1, OutRef<Integer> srcOpIdx2) {
-    return false;
-  }
-
-  @Override
-  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, int frameIndex) {
-    return null;
-  }
-
-  @Override
-  public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi, TIntArrayList ops, MachineInstr loadMI) {
-    return null;
-  }
-
-  @Override
   public void insertNoop(MachineBasicBlock mbb, int pos) {
 
-  }
-
-  @Override
-  public boolean isUnpredicatedTerminator(MachineInstr mi) {
-    return false;
-  }
-
-  @Override
-  public boolean predicateInstruction(MachineInstr mi, ArrayList<MachineOperand> pred) {
-    return false;
-  }
-
-  @Override
-  public boolean isDeadInstruction(MachineInstr mi) {
-    return false;
-  }
-
-  @Override
-  public int getFunctionSizeInBytes(MachineFunction mf) {
-    return 0;
   }
 
   @Override
