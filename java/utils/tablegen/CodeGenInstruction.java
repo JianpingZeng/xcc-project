@@ -179,10 +179,10 @@ public final class CodeGenInstruction {
   boolean hasOptionalDef;
   boolean isVariadic;
 
-  CodeGenInstruction(Record r, String asmStr) {
+  CodeGenInstruction(Record r) {
     theDef = r;
     namespace = r.getValueAsString("Namespace");
-    asmString = asmStr;
+    asmString = r.getValueAsString("AsmString");
     operandList = new ArrayList<>();
 
     isReturn = r.getValueAsBit("isReturn");

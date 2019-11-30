@@ -138,8 +138,7 @@ public final class CodeGenTarget {
 
     insts = new TreeMap<>();
     for (Record inst : instrs) {
-      String asmStr = inst.getName();
-      insts.put(inst.getName(), new CodeGenInstruction(inst, asmStr));
+      insts.put(inst.getName(), new CodeGenInstruction(inst));
     }
   }
 

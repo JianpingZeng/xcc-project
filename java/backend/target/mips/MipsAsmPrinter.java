@@ -179,8 +179,9 @@ public class MipsAsmPrinter extends AsmPrinter {
     int returnReg = tri.getRARegister();
     int stackSize = mf.getFrameInfo().getStackSize();
 
-    String msg = String.format("\t.frame\t$%s,%d,$%s", outStreamer.getRegisterName(stackReg),
-        stackSize, outStreamer.getRegisterName(returnReg));
+    String msg = String.format("\t.frame\t$%s,%d,$%s",
+        outStreamer.getRegisterName(stackReg).toLowerCase(),
+        stackSize, outStreamer.getRegisterName(returnReg).toLowerCase());
     outStreamer.emitRawText(msg);
   }
 

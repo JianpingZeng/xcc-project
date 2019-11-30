@@ -574,7 +574,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     }
 
     // Emit the string itself.
-    os.printf("\tprivate static final String asmStrs = \n\t\t\"");
+    os.print("\tprivate static final String asmStrs = \n\t\t\"");
     escapeString(aggregateString);
     os.print(aggregateString);
     //escapeString(aggregateString);
@@ -754,8 +754,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.println("};\n");
 
     os.println("  public String getRegisterName(int regNo) {");
-    os.printf("    Util.assertion(regNo > 0 && regNo < %d, \"Invalid register number!\");\n",
-        registers.size()-1);
+    os.printf("    Util.assertion(regNo > 0 && regNo <= %d, \"Invalid register number!\");\n",
+        registers.size() - 1);
     os.println("    return RegNameStrs[regNo-1];");
     os.println("  }");
   }
