@@ -221,6 +221,12 @@ public abstract class TargetLowering {
    */
   private BooleanContent booleanContents;
 
+  /**
+   * Information about the contents of the high-bits in boolean vector values
+   * when the element type is wideer than the i1.
+   */
+  private BooleanContent booleanVectorContents;
+
   private int exceptionPointerRegister;
 
   private int exceptionSelectorRegister;
@@ -333,6 +339,7 @@ public abstract class TargetLowering {
     pow2DivIsCheap = false;
     stackPointerRegisterToSaveRestore = 0;
     booleanContents = BooleanContent.UndefinedBooleanContent;
+    booleanVectorContents = BooleanContent.UndefinedBooleanContent;
 
     initLibcallNames();
     initCmpLibcallCCs();
@@ -738,6 +745,14 @@ public abstract class TargetLowering {
 
   public BooleanContent getBooleanContents() {
     return booleanContents;
+  }
+
+  public BooleanContent getBooleanVectorContents() {
+    return booleanVectorContents;
+  }
+
+  public void setBooleanVectorContents(BooleanContent cnt) {
+    booleanVectorContents = cnt;
   }
 
   public void setBooleanContents(BooleanContent cnt) {
@@ -1203,6 +1218,17 @@ public abstract class TargetLowering {
     return null;
   }
 
+  /**
+   * This function is used for transforming physical registers into virtual registers and
+   * generate loads for the arguments placed in the stack.
+   * @param chain
+   * @param callingConv
+   * @param varArg
+   * @param ins
+   * @param dag
+   * @param inVals
+   * @return
+   */
   public SDValue lowerFormalArguments(SDValue chain,
                                       CallingConv callingConv,
                                       boolean varArg,
@@ -1251,6 +1277,15 @@ public abstract class TargetLowering {
     return 1;
   }
 
+  /**
+   * Save the returned value to the return register and generate ret instruction.
+   * @param chain
+   * @param cc
+   * @param isVarArg
+   * @param outs
+   * @param dag
+   * @return
+   */
   public SDValue lowerReturn(SDValue chain,
                                       CallingConv cc,
                                       boolean isVarArg,

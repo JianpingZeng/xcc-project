@@ -23,5 +23,5 @@ package backend.codegen;
  * @author Jianping Zeng
  * @version 0.4
  */
-public class MachineFunctionInfo {
+public interface MachineFunctionInfo {
 }

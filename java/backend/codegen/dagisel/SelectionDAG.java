@@ -2460,6 +2460,28 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
+  /**
+   * Return true if the specified operand is an {@linkplain ISD#ADD} with a {@linkplain ConstantSDNode}
+   * on the right-hand side, or if it is on {@linkplain ISD::OR} with a {@linkplain ConstantSDNode} that
+   * is guaranteed to have the same semantics as an ADD. This handles the equivalence:
+   * <code>
+   *   X|Cst == X+Cst iff X&Cst == 0
+   * </code>
+   * @param op
+   * @return
+   */
+  public boolean isBaseWithConstantOffset(SDValue op) {
+    if ((op.getOpcode() != ISD.ADD && op.getOpcode() != ISD.OR) ||
+        !(op.getOperand(1).getNode() instanceof ConstantSDNode))
+        return false;
+
+    if (op.getOpcode() == ISD.OR &&
+        !maskedValueIsZero(op.getOperand(0), ((ConstantSDNode)op.getOperand(1).getNode()).getAPIntValue()))
+      return false;
+
+    return true;
+  }
+
   static class UseMemo {
     SDNode user;
     int index;

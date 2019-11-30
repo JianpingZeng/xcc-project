@@ -58,7 +58,7 @@ public class MipsMCInstLower {
     for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
       MachineOperand mo = mi.getOperand(i);
       MCOperand mcop = lowerOperand(mo);
-      if (mcop.isValid())
+      if (mcop != null && mcop.isValid())
         outInst.addOperand(mcop);
     }
   }

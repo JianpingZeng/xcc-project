@@ -920,10 +920,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   /**
    * The entry to morphy the given SDNode and return a target-specific SDNode.
    * If match failure, return null.
-   * @param nodeToMatch
+   * @param node
    * @return
    */
-  public abstract SDNode select(SDNode nodeToMatch);
+  public abstract SDNode select(SDNode node);
 
   /**
    * The entry to common instruction selection among different targets.

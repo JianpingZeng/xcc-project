@@ -28,7 +28,7 @@ import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.None
  * @author Jianping Zeng
  * @version 0.4
  */
-public class X86MachineFunctionInfo extends MachineFunctionInfo {
+public class X86MachineFunctionInfo implements MachineFunctionInfo {
   public enum NameDecorationStyle {
     None, StdCall, FastCall
   }

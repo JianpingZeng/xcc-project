@@ -34,7 +34,9 @@ import backend.codegen.MachineInstr;
 import backend.debug.DebugLoc;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
 import tools.OutRef;
+import tools.Util;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.x86.X86FrameLowering.disableFramePointerElim;
@@ -52,7 +54,63 @@ public class MipsFrameLowering extends TargetFrameLowering {
 
   @Override
   public void emitPrologue(MachineFunction mf) {
-    // todo
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    MipsFunctionInfo mipsFuncInfo = (MipsFunctionInfo) mf.getInfo();
+    MachineBasicBlock mbb = mf.getEntryBlock();
+    int itr = 0;  // a pointer to the first instruction of mbb.
+    DebugLoc dl = itr != mbb.size() ? mbb.getInstAt(itr).getDebugLoc() : new DebugLoc();
+    boolean isPIC = mf.getTarget().getRelocationModel() == TargetMachine.RelocModel.PIC_;
+    MipsInstrInfo tii = subtarget.getInstrInfo();
+    MipsRegisterInfo regInfo = subtarget.getRegisterInfo();
+
+    // First, compute final stack size.
+    int regSize = subtarget.isGP32bit() ? 4 : 8;
+    int stackAlign = getStackAlignment();
+    int localVarAreaOffset = mipsFuncInfo.needGPSaveRestore() ?
+        mfi.getObjectOffset(mipsFuncInfo.getGPFI() + regSize) :
+        mipsFuncInfo.getMaxCallFrameSize();
+    int stackSize = Util.roundUp(localVarAreaOffset, stackAlign) +
+        Util.roundUp(mfi.getStackSize(), stackAlign);
+
+    // update stack size.
+    mfi.setStackSize(stackSize);
+
+    buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.NOREORDER));
+
+    if (isPIC && subtarget.isABI_O32())
+      buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.CPLOAD)).addReg(regInfo.getPICCallReg());
+
+    buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.NOMACRO));
+
+    // Adjust stack: addi sp, sp, (-imm)
+    buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.ADDiu), MipsGenRegisterNames.SP)
+        .addReg(MipsGenRegisterNames.SP).addImm(-stackSize);
+
+    // Save the return address only if the function isn't a leaf one.
+    // sw $ra, stack_loc($sp)
+    if (mfi.hasCalls()) {
+      buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.SW))
+          .addReg(MipsGenRegisterNames.RA)
+          .addImm(-stackSize).addReg(MipsGenRegisterNames.SP);
+    }
+
+    // if frame pointer enabled,save it and set it to point to the stack pointer.
+    if (hasFP(mf)) {
+      // "move $fp, $sp" at this location.
+      buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.ADDu), MipsGenRegisterNames.FP)
+          .addReg(MipsGenRegisterNames.SP).addReg(MipsGenRegisterNames.ZERO);
+    }
+
+    // restore GP from the saved stack location.
+    if (mipsFuncInfo.needGPSaveRestore()) {
+      int offset = mfi.getObjectOffset(mipsFuncInfo.getGPFI());
+      buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.CPRESTORE)).addImm(offset);
+
+      if (offset >= 0x8000) {
+        buildMI(mbb, itr++, dl, tii.get(MipsGenInstrNames.MACRO));
+        buildMI(mbb, itr, dl, tii.get(MipsGenInstrNames.NOMACRO));
+      }
+    }
   }
 
   /**

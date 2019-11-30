@@ -195,7 +195,7 @@ public class MipsSubtarget extends MipsGenSubtarget {
   @Override
   public MipsInstrInfo getInstrInfo() {
     if (instrInfo == null)
-      instrInfo = new MipsInstrInfo(tm);
+      instrInfo = new MipsGenInstrInfo(tm);
     return (MipsInstrInfo) instrInfo;
   }
 

@@ -55,6 +55,11 @@ public class MipsTargetMachine extends LLVMTargetMachine {
                               boolean isLittle) {
     super(target, triple);
     subtarget = new MipsSubtarget(this, triple, cpu, features, isLittle);
+    dataLayout = new TargetData(triple);
+    instrInfo = subtarget.getInstrInfo();
+    registerInfo = subtarget.getRegisterInfo();
+    frameLowering = new MipsFrameLowering(subtarget);
+    tli = new MipsTargetLowering(this);
   }
 
   @Override
@@ -64,21 +69,21 @@ public class MipsTargetMachine extends LLVMTargetMachine {
 
   @Override
   public TargetInstrInfo getInstrInfo() {
-    return subtarget.getInstrInfo();
+    return instrInfo;
   }
 
   @Override
-  public TargetRegisterInfo getRegisterInfo() {
-    return subtarget.getRegisterInfo();
+  public MipsRegisterInfo getRegisterInfo() {
+    return registerInfo;
   }
 
   @Override
-  public TargetFrameLowering getFrameLowering() {
+  public MipsFrameLowering getFrameLowering() {
     return frameLowering;
   }
 
   @Override
-  public TargetLowering getTargetLowering() {
+  public MipsTargetLowering getTargetLowering() {
     return tli;
   }
 
@@ -88,26 +93,32 @@ public class MipsTargetMachine extends LLVMTargetMachine {
 
   @Override
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
+    pm.add(MipsDAGISel.createMipsDAGISel(this, level));
     return false;
   }
 
   @Override
   public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
+
     return false;
   }
 
   @Override
   public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    if (!subtarget.hasMips64())
+      pm.add(MipsEmitGPRestorePass.createMipsEmitGPRestorePass(this));
     return false;
   }
 
   @Override
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
+    pm.add(MipsEmitGPRestorePass.createMipsEmitGPRestorePass(this));
     return false;
   }
 
   @Override
-  public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level, MachineCodeEmitter mce) {
+  public boolean addCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+                                MachineCodeEmitter mce) {
     return false;
   }
 }

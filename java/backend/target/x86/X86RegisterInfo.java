@@ -110,6 +110,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
       stackPtr = ESP;
       framePtr = EBP;
     }
+    this.ra = is64Bit ? RIP : EIP;
   }
 
   public static int getX86RegNum(int regNo) {
@@ -548,12 +549,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   public void emitCalleeSavedFrameMoves(MachineFunction mf, int labelId,
                                         int framePtr) {
     // TODO: 17-7-20
-    Util.assertion(false, "Should not reaching here");
-  }
-
-  @Override
-  public int getRARegister() {
-    return is64Bit ? RIP : EIP;
+    Util.assertion("Should not reaching here");
   }
 
   @Override

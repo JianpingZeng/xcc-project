@@ -53,6 +53,7 @@ public class MCRegisterInfo {
    */
   protected RegClassInfo[] regClassInfo;
   protected int hwMode;
+  protected int ra;
 
   public void initMCRegisterInfo(MCRegisterDesc[] desc,
                                  MCRegisterClass[] regClasses,
@@ -254,8 +255,8 @@ public class MCRegisterInfo {
    * @return
    */
   public MCRegisterClass getRegClass(int i) {
-    Util.assertion(i >= 0 && i <= regClasses.length);
-    return i != 0 ? regClasses[i - 1] : null;
+    Util.assertion(i >= 0 && i < regClasses.length);
+    return regClasses[i];
   }
   /**
    * This method should return the register where the return
@@ -264,11 +265,11 @@ public class MCRegisterInfo {
    * @return
    */
   public int getRARegister() {
-    return getRARegister();
+    return ra;
   }
 
   public RegClassInfo getRegClassInfo(MCRegisterClass rc) {
-    return regClassInfo[hwMode * getNumRegClasses() + rc.getID() - 1];
+    return regClassInfo[hwMode * getNumRegClasses() + rc.getID()];
   }
 
   public boolean hasType(MCRegisterClass rc, EVT vt) {

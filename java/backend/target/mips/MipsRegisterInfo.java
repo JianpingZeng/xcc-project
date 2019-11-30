@@ -47,6 +47,7 @@ public abstract class MipsRegisterInfo extends TargetRegisterInfo {
 
   MipsRegisterInfo(MipsTargetMachine tm) {
     subtarget = tm.getSubtarget();
+    this.ra = MipsGenRegisterNames.RA;
   }
 
   static TargetRegisterInfo createMipsRegisterInfo(MipsTargetMachine tm) {
@@ -253,5 +254,9 @@ public abstract class MipsRegisterInfo extends TargetRegisterInfo {
   @Override
   public int getFrameRegister(MachineFunction mf) {
     return mf.getTarget().getFrameLowering().hasFP(mf) ? FP : SP;
+  }
+
+  public int getPICCallReg() {
+    return MipsGenRegisterNames.T9;
   }
 }

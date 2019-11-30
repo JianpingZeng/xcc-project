@@ -409,7 +409,8 @@ public class ISD {
   public static final int FCEIL = FEXP2 + 1;
   public static final int FTRUNC = FCEIL + 1;
   public static final int FRINT = FTRUNC + 1;
-  public static final int FNEARBYINT = FRINT + 1;
+  public static final int FMA = FRINT + 1;
+  public static final int FNEARBYINT = FMA + 1;
   public static final int FFLOOR = FNEARBYINT + 1;
   // LOAD and STORE have token chains as their first operand, then the same
   // operands as an LLVM load/store instruction, then an offset node that
