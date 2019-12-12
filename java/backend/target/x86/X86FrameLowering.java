@@ -24,8 +24,6 @@ import tools.Util;
 import static backend.codegen.MachineInstrBuilder.addLeaRegOffset;
 import static backend.codegen.MachineInstrBuilder.addRegOffset;
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.target.TargetOptions.DisableFPElim;
-import static backend.target.TargetOptions.DisableFPEliMLeaf;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 
@@ -387,20 +385,6 @@ public class X86FrameLowering extends TargetFrameLowering {
         numBytes.set((int) (numBytes.get() - mi.getOperand(2).getImm()));
       mbb.remove(mbbi);
     }
-  }
-
-  /**
-   * This returns true if frame pointer elimination optimization should be
-   * turned off for the given machine function.
-   * @param mf
-   * @return
-   */
-  public static boolean disableFramePointerElim(MachineFunction mf) {
-    if (DisableFPElim.value && !DisableFPEliMLeaf.value) {
-      MachineFrameInfo mfi = mf.getFrameInfo();
-      return mfi.hasCalls();
-    }
-    return DisableFPElim.value;
   }
 
   /**

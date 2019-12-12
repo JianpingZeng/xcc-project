@@ -1,8 +1,12 @@
 package backend.target;
 
 import backend.codegen.MachineBasicBlock;
+import backend.codegen.MachineFrameInfo;
 import backend.codegen.MachineFunction;
 import tools.Pair;
+
+import static backend.target.TargetOptions.DisableFPEliMLeaf;
+import static backend.target.TargetOptions.DisableFPElim;
 
 /**
  * This class defines an interface used for obtaining stack frame layout
@@ -12,6 +16,20 @@ import tools.Pair;
  * @version 0.4
  */
 public abstract class TargetFrameLowering {
+  /**
+   * This returns true if frame pointer elimination optimization should be
+   * turned off for the given machine function.
+   * @param mf
+   * @return
+   */
+  protected static boolean disableFramePointerElim(MachineFunction mf) {
+    if (DisableFPElim.value && !DisableFPEliMLeaf.value) {
+      MachineFrameInfo mfi = mf.getFrameInfo();
+      return mfi.hasCalls();
+    }
+    return DisableFPElim.value;
+  }
+
   public enum StackDirection {
     /**
      * Adding to the stack increasing the stack address.

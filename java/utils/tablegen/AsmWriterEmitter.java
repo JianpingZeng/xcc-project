@@ -510,7 +510,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
         break;
 
       int numBits = Util.log2Ceil(uniqueOperandCommands.size());
-      Util.assertion(bitsLeft >= numBits, "Not enough bits to densely encode %d more bits\n");
+      Util.assertion(bitsLeft >= numBits, String.format("Not enough bits to densely encode %d more bits\n", bitsLeft));
       operandOffsets.add(numBits);
       for (int i = 0, e = instIdxs.size(); i != e; i++) {
         if (instIdxs.get(i) != ~0) {

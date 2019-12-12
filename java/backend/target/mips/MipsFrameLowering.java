@@ -39,7 +39,6 @@ import tools.OutRef;
 import tools.Util;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.target.x86.X86FrameLowering.disableFramePointerElim;
 
 /**
  * @author Jianping Zeng.
