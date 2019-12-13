@@ -17,7 +17,6 @@ package utils.tablegen;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Error;
 import tools.Pair;
 import tools.TextUtils;
@@ -435,8 +434,11 @@ public final class AsmWriterEmitter extends TableGenBackend {
     }
 
     // Build an aggregate string, and build a table of offsets into it.
-    TObjectIntHashMap<String> stringOffset = new TObjectIntHashMap<>();
-    StringBuilder aggregateString = new StringBuilder();
+    TreeMap<String, Integer> stringOffset = new TreeMap<>();
+
+    // A list of character consists of name of all machine instructions.
+    // each instruction name is seperated by a '\t'.
+    StringBuilder instNamesTable = new StringBuilder();
 
     /// OpcodeInfo - This encodes the index of the string to use for the first
     /// chunk of the output as well as indices used for operand printing.
@@ -457,24 +459,35 @@ public final class AsmWriterEmitter extends TableGenBackend {
         len = 0;
       } else {
         String str = awi.operands.get(0).str;
-        int entry = stringOffset.get(str);
+        int entry;
         if (!stringOffset.containsKey(str)) {
-          maxStringIdx = aggregateString.length();
+          maxStringIdx = instNamesTable.length();
           stringOffset.put(str, maxStringIdx);
           entry = maxStringIdx;
-          aggregateString.append(str);
+          instNamesTable.append(str);
+        }
+        else {
+          entry = stringOffset.get(str);
         }
         len = str.length();
         idx = entry;
 
+        // For each AsmWriterInst, it's operands consists of several operands. There are two kinds of
+        // operand, MachineInstOperand which is a function name called by TargetMCInstPrinter to print
+        // the specified operand. Second kind is LiteralTextOperand which is literal text, usually be
+        // used to print out the instruction name or ',', '\t' etc.
+
+        // The first operand of awi is usually a literal text for printing out the instruction name.
+        // Because we already record it's name information to the opcodeInfo table, so remove it.
         awi.operands.remove(0);
       }
+      // Record a pair of <start_index, len_of_asm_name> of the instruction.
       opcodeInfo.add(Pair.get(idx, len));
     }
 
     int asmStrBits = Util.log2Ceil(maxStringIdx + 1);
 
-    /**
+    /*
      * The first component of opcodeInfo is encoded as follow (from rightmost to leftmost):
      * 1. the index to asm string array.
      * 2. the index of first operand to command list
@@ -510,7 +523,12 @@ public final class AsmWriterEmitter extends TableGenBackend {
         break;
 
       int numBits = Util.log2Ceil(uniqueOperandCommands.size());
-      Util.assertion(bitsLeft >= numBits, String.format("Not enough bits to densely encode %d more bits\n", bitsLeft));
+      if (bitsLeft < numBits) {
+        if (Util.DEBUG)
+          System.out.println(String.format("Not enough bits to densely encode %d more bits\n", bitsLeft));
+        break;
+      }
+
       operandOffsets.add(numBits);
       for (int i = 0, e = instIdxs.size(); i != e; i++) {
         if (instIdxs.get(i) != ~0) {
@@ -526,10 +544,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
           if (!inst.operands.isEmpty()) {
             int numOps = numInstOpsHandled.get(instIdxs.get(j));
             Util.assertion(numOps <= inst.operands.size(), "Can't remove this many ops!");
-            for (int t = 0; t != numOps; t++) {
-              inst.operands.remove(t);
-              t--;
-              numOps--;
+            if (numOps > 0) {
+              inst.operands.subList(0, numOps).clear();
             }
           }
         }
@@ -574,31 +590,29 @@ public final class AsmWriterEmitter extends TableGenBackend {
     }
 
     // Emit the string itself.
-    os.print("\tprivate static final String asmStrs = \n\t\t\"");
-    escapeString(aggregateString);
-    os.print(aggregateString);
-    //escapeString(aggregateString);
+    os.print("\tprivate static final String asmStrs = \n\t\t\t\t\"");
+    escapeString(instNamesTable);
     int charsPrinted = 0;
-    for (int i = 0, e = aggregateString.length(); i != e; i++) {
+    for (int i = 0, e = instNamesTable.length(); i != e; i++) {
       if (charsPrinted > 70) {
         os.print("\"\n\t\t\t+ \"");
         charsPrinted = 0;
       }
-      os.print(aggregateString.charAt(i));
+      os.print(instNamesTable.charAt(i));
       ++charsPrinted;
 
-      if (aggregateString.charAt(i) == '\\') {
-        Util.assertion(i + 1 < aggregateString.length(), "Incomplete escape sequence!");
-        if (Character.isDigit(aggregateString.charAt(i + 1))) {
-          Util.assertion(Character.isDigit(aggregateString.charAt(i + 2)) &&
-              Character.isDigit(aggregateString.charAt(i + 3)), "Expected 3 digit octal escape!");
+      if (instNamesTable.charAt(i) == '\\') {
+        Util.assertion(i + 1 < instNamesTable.length(), "Incomplete escape sequence!");
+        if (Character.isDigit(instNamesTable.charAt(i + 1))) {
+          Util.assertion(Character.isDigit(instNamesTable.charAt(i + 2)) &&
+              Character.isDigit(instNamesTable.charAt(i + 3)), "Expected 3 digit octal escape!");
 
-          os.print(aggregateString.charAt(++i));
-          os.print(aggregateString.charAt(++i));
-          os.print(aggregateString.charAt(++i));
+          os.print(instNamesTable.charAt(++i));
+          os.print(instNamesTable.charAt(++i));
+          os.print(instNamesTable.charAt(++i));
           charsPrinted += 3;
         } else {
-          os.print(aggregateString.charAt(++i));
+          os.print(instNamesTable.charAt(++i));
           ++charsPrinted;
         }
       }
@@ -628,51 +642,51 @@ public final class AsmWriterEmitter extends TableGenBackend {
         asmStrBitsMask);
     os.println("\t\tString asmName = asmStrs.substring(asmStrIdx, asmStrIdx + len);");
     os.println("\t\tStringBuilder buf = new StringBuilder();\n"
-        + "\t\tfor (int i = 0, e = asmName.length(); i < e; i++)\n"
-        + "        {\n"
-        + "            if (asmName.charAt(i) == '\\\\' && i < e - 1)\n"
-        + "            {\n"
-        + "                switch (asmName.charAt(i+1))\n"
-        + "                {\n" + "                    case 't':\n"
-        + "                        buf.append('\\t');\n"
-        + "                        break;\n"
-        + "                    case 'n':\n"
-        + "                        buf.append('\\n');\n"
-        + "                        break;\n"
-        + "                    case 'v':\n"
-        + "                        buf.append(11);\n"
-        + "                    case 'a':\n"
-        + "                        buf.append(7);\n"
-        + "                        break;\n"
-        + "                    case 'f':\n"
-        + "                        buf.append('\\f');\n"
-        + "                        break;\n"
-        + "                    case 'r':\n"
-        + "                        buf.append('\\r');\n"
-        + "                        break;\n"
-        + "                    case '\\\\':\n"
-        + "                        buf.append('\\\\');\n"
-        + "                        break;\n"
-        + "                    case '\\'':\n"
-        + "                        buf.append('\\'');\n"
-        + "                        break;\n"
-        + "                    case '\"':\n"
-        + "                        buf.append('\"');\n"
-        + "                        break;\n"
-        + "                    case '?':\n"
-        + "                        buf.append('?');\n"
-        + "                        break;\n"
-        + "                    default:\n"
-        + "                        buf.append('\\\\');\n"
-        + "                        buf.append(asmName.charAt(i+1));\n"
-        + "                        break;\n" + "                }\n"
-        + "                i += 1;\n" + "                continue;\n"
-        + "            }\n"
-        + "            buf.append(asmName.charAt(i));\n" + "        }\n"
-        + "        asmName = buf.toString();");
+        + "\t\tfor (int i = 0, e = asmName.length(); i < e; i++) {\n"
+        + "\t\t\tif (asmName.charAt(i) == '\\\\' && i < e - 1) {\n"
+        + "\t\t\t\tswitch (asmName.charAt(i+1)) {\n"
+        + "\t\t\t\t\tcase 't':\n"
+        + "\t\t\t\t\t\tbuf.append('\\t');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase 'n':\n"
+        + "\t\t\t\t\t\tbuf.append('\\n');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase 'v':\n"
+        + "\t\t\t\t\t\tbuf.append(11);\n"
+        + "\t\t\t\t\tcase 'a':\n"
+        + "\t\t\t\t\t\tbuf.append(7);\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase 'f':\n"
+        + "\t\t\t\t\t\tbuf.append('\\f');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase 'r':\n"
+        + "\t\t\t\t\t\tbuf.append('\\r');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase '\\\\':\n"
+        + "\t\t\t\t\t\tbuf.append('\\\\');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase '\\'':\n"
+        + "\t\t\t\t\t\tbuf.append('\\'');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase '\"':\n"
+        + "\t\t\t\t\t\tbuf.append('\"');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tcase '?':\n"
+        + "\t\t\t\t\t\tbuf.append('?');\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t\tdefault:\n"
+        + "\t\t\t\t\t\tbuf.append('\\\\');\n"
+        + "\t\t\t\t\t\tbuf.append(asmName.charAt(i+1));\n"
+        + "\t\t\t\t\t\tbreak;\n"
+        + "\t\t\t\t}\n"
+        + "\t\t\t\ti += 1;\n"
+        + "\t\t\t\tcontinue;\n"
+        + "\t\t\t}\n"
+        + "\t\t\tbuf.append(asmName.charAt(i));\n"
+        + "\t\t}\n");
 
+    os.println("\t\tasmName = buf.toString();");
     os.println("\n\t\tos.print(asmName);");
-
     os.print("\t\tint number = 0;\n");
     os.print("\t\t// Each code fragment is just for each asm operand\n");
 
@@ -685,18 +699,18 @@ public final class AsmWriterEmitter extends TableGenBackend {
           i + 1, operandOffsets.get(i), commands.size());
 
       if (commands.size() == 2) {
-        os.printf("\t\tnumber = (int)((bits >>> 0x%x) & 0x%x);\n",
+        os.printf("\t\tnumber = (int)((bits >>> %d) & %d);\n",
             rightShiftAmt,
             (1 << numBits) - 1);
 
         os.printf("\t\tif (number != 0)\n\t\t{\n%s", commands.get(1));
         os.printf("\t\t}\n\t\telse\n\t\t{\n%s\t\t}", commands.get(0));
       } else {
-        os.printf("\t\tnumber = (int)((bits >>> 0x%x) & 0x%x);\n",
+        os.printf("\t\tnumber = (int)((bits >>> %d) & %d);\n",
             rightShiftAmt,
             (1 << numBits) - 1);
-        os.printf("\t\tswitch(number) \n\t\t{\n");
-        os.printf("\t\t\tdefault:\t// unreachable.\n");
+        os.println("\t\tswitch(number) \n\t\t{");
+        os.println("\t\t\tdefault:\t// unreachable.");
 
         // Print out all the cases.
         for (int j = 0, sz = commands.size(); j < sz; j++) {
@@ -725,7 +739,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
     Collections.reverse(instructions);
 
     if (!instructions.isEmpty()) {
-      os.print("\t\t\tswitch(mi.getOpcode()) {\n");
+      os.print("\t\tswitch(mi.getOpcode()) {\n");
       while (!instructions.isEmpty()) {
         emitInstructions(instructions, os);
       }
@@ -838,10 +852,9 @@ public final class AsmWriterEmitter extends TableGenBackend {
    * @param instIdxs
    * @param instOpsUsed
    */
-  private void findUniqueOperandCommands(
-      ArrayList<String> uniqueOperandCommands,
-      TIntArrayList instIdxs,
-      TIntArrayList instOpsUsed) {
+  private void findUniqueOperandCommands(ArrayList<String> uniqueOperandCommands,
+                                         TIntArrayList instIdxs,
+                                         TIntArrayList instOpsUsed) {
     instIdxs.fill(0, numberedInstructions.size(), ~0);
 
     // The size of instrsForCase is as same as uniqueOperandCommands.
@@ -994,7 +1007,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
       } else {
         // If this is the operand that varies between all of the instructions,
         // emit a switch for just this operand now.
-        os.print("\t\tswitch (mi.getOpcode()) {\n");
+        os.print("\t\t\t\tswitch (mi.getOpcode()) {\n");
         LinkedList<Pair<String, AsmWriterOperand>> opsToPrint = new LinkedList<>();
         opsToPrint.add(Pair.get(firstInst.cgi.theDef.getName(),
             firstInst.operands.get(i)));
@@ -1011,7 +1024,7 @@ public final class AsmWriterEmitter extends TableGenBackend {
 
         while (!opsToPrint.isEmpty())
           printCases(opsToPrint, os);
-        os.print("\t}");
+        os.print("\t\t\t\t}");
       }
       os.println();
     }
@@ -1022,14 +1035,14 @@ public final class AsmWriterEmitter extends TableGenBackend {
       LinkedList<Pair<String, AsmWriterOperand>> opsToPrint,
       PrintStream os) {
     Pair<String, AsmWriterOperand> lastOne = opsToPrint.removeLast();
-    os.printf("\tcase %s: ", lastOne.first);
+    os.printf("\t\t\t\t\tcase %s: ", lastOne.first);
     AsmWriterOperand operand = lastOne.second;
 
     ListIterator<Pair<String, AsmWriterOperand>> itr = opsToPrint.listIterator();
     while (itr.hasPrevious()) {
       lastOne = itr.previous();
       if (lastOne.second.equals(operand)) {
-        os.printf("\n\tcase %s: ", lastOne.first);
+        os.printf("\n\t\t\t\t\tcase %s: ", lastOne.first);
       }
     }
     os.printf("\t\t\t\t%s", operand.emitCode());
