@@ -42,7 +42,7 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
     super(os, mai);
   }
 
-  public static MCInstPrinter createARMInstPrinter(PrintStream os, MCAsmInfo mai) {
+  static MCInstPrinter createARMInstPrinter(PrintStream os, MCAsmInfo mai) {
     return new ARMGenInstPrinter(os, mai);
   }
 
@@ -68,9 +68,221 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
     }
   }
 
-  protected void printMemRegImm(MCInst mi, int opIdx) {
-    printOperand(mi, opIdx+1);
-    os.print(',');
-    printOperand(mi, opIdx);
+
+  protected void printT2AddrModeImm8s4OffsetOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbSRImm(MCInst mi, int opNo) {
+
+  }
+
+  protected void printShiftImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPKHASRShiftImm(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPKHLSLShiftImm(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2AddrModeImm8s4Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode3OffsetOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPostIdxRegOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPostIdxImm8Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode2OffsetOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPostIdxImm8s4Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printCoprocOptionImm(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2AddrModeImm8OffsetOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode6OffsetOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printVectorIndex(MCInst mi, int opNo) {
+
+  }
+
+  protected void printRotImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbAddrModeSPOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbAddrModeImm5S4Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbAddrModeImm5S2Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbAddrModeRROperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbAddrModeImm5S1Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbS4ImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2AddrModeImm0_1020s4Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2LdrLabelOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2SOOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printNoHashImmediate(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode6Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printNEONModImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printImmPlusOneOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode3Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode7Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode5Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printFPImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printSORegRegOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printSORegImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printBitfieldInvMaskImmOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printRegisterList(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrModeTBH(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrModeTBB(MCInst mi, int opNo) {
+
+  }
+
+  protected void printT2AddrModeSoRegOperand(MCInst mi, int opNo) {
+
+
+  }
+
+  protected void printT2AddrModeImm8Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printMSRMaskOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printCImmediate(MCInst mi, int opNo) {
+
+  }
+
+  protected void printCPSIFlag(MCInst mi, int opNo) {
+
+  }
+
+  protected void printMandatoryPredicateOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printThumbITMask(MCInst mi, int opNo) {
+
+  }
+
+  protected void printSetendOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrMode2Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printAddrModeImm12Operand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printMemBOption(MCInst mi, int opNo) {
+
+  }
+
+  protected void printCPSIMod(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPImmediate(MCInst mi, int opNo) {
+
+  }
+
+  protected void printPredicateOperand(MCInst mi, int opNo) {
+
+  }
+
+  protected void printSBitModifierOperand(MCInst mi, int opNo) {
+
   }
 }

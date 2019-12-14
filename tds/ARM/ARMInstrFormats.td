@@ -796,7 +796,7 @@ def PKHLSLAsmOperand : AsmOperandClass {
   let Name = "PKHLSLImm";
   let ParserMethod = "parsePKHLSLImm";
 }
-def pkh_lsl_amt: Operand<i32>, ImmLeaf<i32, [{ return Imm >= 0 && Imm < 32; }]>{
+def pkh_lsl_amt: Operand<i32>, ImmLeaf<i32, [{ return int >= 0 && int < 32; }]>{
   let PrintMethod = "printPKHLSLShiftImm";
   let ParserMatchClass = PKHLSLAsmOperand;
 }
@@ -804,7 +804,7 @@ def PKHASRAsmOperand : AsmOperandClass {
   let Name = "PKHASRImm";
   let ParserMethod = "parsePKHASRImm";
 }
-def pkh_asr_amt: Operand<i32>, ImmLeaf<i32, [{ return Imm > 0 && Imm <= 32; }]>{
+def pkh_asr_amt: Operand<i32>, ImmLeaf<i32, [{ return int > 0 && int <= 32; }]>{
   let PrintMethod = "printPKHASRShiftImm";
   let ParserMatchClass = PKHASRAsmOperand;
 }

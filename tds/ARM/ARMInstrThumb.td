@@ -20,38 +20,38 @@ def ARMtcall : SDNode<"ARMISD.tCALL", SDT_ARMcall,
                        SDNPVariadic]>;
 
 def imm_sr_XFORM: SDNodeXForm<imm, [{
-  unsigned Imm = N->getZExtValue();
-  return curDAG.getTargetConstant((Imm == 32 ? 0 : Imm), MVT::i32);
+  long imm = n.getZExtValue();
+  return curDAG.getTargetConstant((imm == 32 ? 0 : imm), new EVT(MVT.i32));
 }]>;
 def ThumbSRImmAsmOperand: AsmOperandClass { let Name = "ImmThumbSR"; }
 def imm_sr : Operand<i32>, PatLeaf<(imm), [{
-  uint64_t Imm = N->getZExtValue();
-  return Imm > 0 && Imm <= 32;
+  long imm = n.getZExtValue();
+  return imm > 0 && imm <= 32;
 }], imm_sr_XFORM> {
   let PrintMethod = "printThumbSRImm";
   let ParserMatchClass = ThumbSRImmAsmOperand;
 }
 
 def imm_neg_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(-(int)n.getZExtValue(), new EVT(MVT.i32));
 }]>;
 def imm_comp_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(~((uint32_t)N->getZExtValue()), MVT::i32);
+  return curDAG.getTargetConstant(~((int)n.getZExtValue()), new EVT(MVT.i32));
 }]>;
 
 def imm0_7_neg : PatLeaf<(i32 imm), [{
-  return (uint32_t)-N->getZExtValue() < 8;
+  return (int)-n.getZExtValue() < 8;
 }], imm_neg_XFORM>;
 
 def imm0_255_comp : PatLeaf<(i32 imm), [{
-  return ~((uint32_t)N->getZExtValue()) < 256;
+  return ~((int)n.getZExtValue()) < 256;
 }]>;
 
 def imm8_255 : ImmLeaf<i32, [{
-  return Imm >= 8 && Imm < 256;
+  return int >= 8 && int < 256;
 }]>;
 def imm8_255_neg : PatLeaf<(i32 imm), [{
-  unsigned Val = -N->getZExtValue();
+  long Val = -n.getZExtValue();
   return Val >= 8 && Val < 256;
 }], imm_neg_XFORM>;
 
@@ -59,17 +59,17 @@ def imm8_255_neg : PatLeaf<(i32 imm), [{
 // thumb_immshifted to match and thumb_immshifted_val and thumb_immshifted_shamt
 // to get the val/shift pieces.
 def thumb_immshifted : PatLeaf<(imm), [{
-  return ARM_AM::isThumbImmShiftedVal((unsigned)N->getZExtValue());
+  return ARM_AM.isThumbImmShiftedVal((int)n.getZExtValue());
 }]>;
 
 def thumb_immshifted_val : SDNodeXForm<imm, [{
-  unsigned V = ARM_AM::getThumbImmNonShiftedVal((unsigned)N->getZExtValue());
-  return curDAG.getTargetConstant(V, MVT::i32);
+  int V = ARM_AM.getThumbImmNonShiftedVal((int)n.getZExtValue());
+  return curDAG.getTargetConstant(V, new EVT(MVT.i32));
 }]>;
 
 def thumb_immshifted_shamt : SDNodeXForm<imm, [{
-  unsigned V = ARM_AM::getThumbImmValShift((unsigned)N->getZExtValue());
-  return curDAG.getTargetConstant(V, MVT::i32);
+  int V = ARM_AM.getThumbImmValShift((int)n.getZExtValue());
+  return curDAG.getTargetConstant(V, new EVT(MVT.i32));
 }]>;
 
 // ADR instruction labels.
@@ -125,7 +125,7 @@ def t_blxtarget : Operand<i32> {
 //
 def t_addrmode_rr_asm_operand : AsmOperandClass { let Name = "MemThumbRR"; }
 def t_addrmode_rr : Operand<i32>,
-                    ComplexPattern<i32, 2, "SelectThumbAddrModeRR", []> {
+                    ComplexPattern<i32, 2, "selectThumbAddrModeRR", []> {
   let EncoderMethod = "getThumbAddrModeRegRegOpValue";
   let PrintMethod = "printThumbAddrModeRROperand";
   let DecoderMethod = "DecodeThumbAddrModeRR";
@@ -141,7 +141,7 @@ def t_addrmode_rr : Operand<i32>,
 // as it forces tight coupling between the methods, but it's how selectiondag
 // currently works.
 def t_addrmode_rrs1 : Operand<i32>,
-                      ComplexPattern<i32, 2, "SelectThumbAddrModeRI5S1", []> {
+                      ComplexPattern<i32, 2, "selectThumbAddrModeRI5S1", []> {
   let EncoderMethod = "getThumbAddrModeRegRegOpValue";
   let PrintMethod = "printThumbAddrModeRROperand";
   let DecoderMethod = "DecodeThumbAddrModeRR";
@@ -149,7 +149,7 @@ def t_addrmode_rrs1 : Operand<i32>,
   let MIOperandInfo = (ops tGPR:$base, tGPR:$offsreg);
 }
 def t_addrmode_rrs2 : Operand<i32>,
-                      ComplexPattern<i32, 2, "SelectThumbAddrModeRI5S2", []> {
+                      ComplexPattern<i32, 2, "selectThumbAddrModeRI5S2", []> {
   let EncoderMethod = "getThumbAddrModeRegRegOpValue";
   let DecoderMethod = "DecodeThumbAddrModeRR";
   let PrintMethod = "printThumbAddrModeRROperand";
@@ -157,7 +157,7 @@ def t_addrmode_rrs2 : Operand<i32>,
   let MIOperandInfo = (ops tGPR:$base, tGPR:$offsreg);
 }
 def t_addrmode_rrs4 : Operand<i32>,
-                      ComplexPattern<i32, 2, "SelectThumbAddrModeRI5S4", []> {
+                      ComplexPattern<i32, 2, "selectThumbAddrModeRI5S4", []> {
   let EncoderMethod = "getThumbAddrModeRegRegOpValue";
   let DecoderMethod = "DecodeThumbAddrModeRR";
   let PrintMethod = "printThumbAddrModeRROperand";
@@ -169,7 +169,7 @@ def t_addrmode_rrs4 : Operand<i32>,
 //
 def t_addrmode_is4_asm_operand : AsmOperandClass { let Name = "MemThumbRIs4"; }
 def t_addrmode_is4 : Operand<i32>,
-                     ComplexPattern<i32, 2, "SelectThumbAddrModeImm5S4", []> {
+                     ComplexPattern<i32, 2, "selectThumbAddrModeImm5S4", []> {
   let EncoderMethod = "getAddrModeISOpValue";
   let DecoderMethod = "DecodeThumbAddrModeIS";
   let PrintMethod = "printThumbAddrModeImm5S4Operand";
@@ -181,7 +181,7 @@ def t_addrmode_is4 : Operand<i32>,
 //
 def t_addrmode_is2_asm_operand : AsmOperandClass { let Name = "MemThumbRIs2"; }
 def t_addrmode_is2 : Operand<i32>,
-                     ComplexPattern<i32, 2, "SelectThumbAddrModeImm5S2", []> {
+                     ComplexPattern<i32, 2, "selectThumbAddrModeImm5S2", []> {
   let EncoderMethod = "getAddrModeISOpValue";
   let DecoderMethod = "DecodeThumbAddrModeIS";
   let PrintMethod = "printThumbAddrModeImm5S2Operand";
@@ -193,7 +193,7 @@ def t_addrmode_is2 : Operand<i32>,
 //
 def t_addrmode_is1_asm_operand : AsmOperandClass { let Name = "MemThumbRIs1"; }
 def t_addrmode_is1 : Operand<i32>,
-                     ComplexPattern<i32, 2, "SelectThumbAddrModeImm5S1", []> {
+                     ComplexPattern<i32, 2, "selectThumbAddrModeImm5S1", []> {
   let EncoderMethod = "getAddrModeISOpValue";
   let DecoderMethod = "DecodeThumbAddrModeIS";
   let PrintMethod = "printThumbAddrModeImm5S1Operand";
@@ -207,7 +207,7 @@ def t_addrmode_is1 : Operand<i32>,
 // be implicit, just like in the instruction encoding itself.
 def t_addrmode_sp_asm_operand : AsmOperandClass { let Name = "MemThumbSPI"; }
 def t_addrmode_sp : Operand<i32>,
-                    ComplexPattern<i32, 2, "SelectThumbAddrModeSP", []> {
+                    ComplexPattern<i32, 2, "selectThumbAddrModeSP", []> {
   let EncoderMethod = "getAddrModeThumbSPOpValue";
   let DecoderMethod = "DecodeThumbAddrModeSP";
   let PrintMethod = "printThumbAddrModeSPOperand";

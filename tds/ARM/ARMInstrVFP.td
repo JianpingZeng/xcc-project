@@ -32,11 +32,11 @@ def FPImmOperand : AsmOperandClass {
 
 def vfp_f32imm : Operand<f32>,
                  PatLeaf<(f32 fpimm), [{
-      return ARM_AM::getFP32Imm(N->getValueAPF()) != -1;
+      return ARM_AM.getFP32Imm(n.getValueAPF()) != -1;
     }], SDNodeXForm<fpimm, [{
-      APFloat InVal = N->getValueAPF();
-      uint32_t enc = ARM_AM::getFP32Imm(InVal);
-      return curDAG.getTargetConstant(enc, MVT::i32);
+      APFloat inVal = n.getValueAPF();
+      int enc = ARM_AM.getFP32Imm(inVal);
+      return curDAG.getTargetConstant(enc, new EVT(MVT.i32));
     }]>> {
   let PrintMethod = "printFPImmOperand";
   let ParserMatchClass = FPImmOperand;
@@ -44,11 +44,11 @@ def vfp_f32imm : Operand<f32>,
 
 def vfp_f64imm : Operand<f64>,
                  PatLeaf<(f64 fpimm), [{
-      return ARM_AM::getFP64Imm(N->getValueAPF()) != -1;
+      return ARM_AM.getFP64Imm(n.getValueAPF()) != -1;
     }], SDNodeXForm<fpimm, [{
-      APFloat InVal = N->getValueAPF();
-      uint32_t enc = ARM_AM::getFP64Imm(InVal);
-      return curDAG.getTargetConstant(enc, MVT::i32);
+      APFloat inVal = n.getValueAPF();
+      int enc = ARM_AM.getFP64Imm(inVal);
+      return curDAG.getTargetConstant(enc, new EVT(MVT.i32));
     }]>> {
   let PrintMethod = "printFPImmOperand";
   let ParserMatchClass = FPImmOperand;

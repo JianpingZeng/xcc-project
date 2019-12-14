@@ -43,7 +43,7 @@ def t2_shift_imm : Operand<i32> {
 // Shifted operands. No register controlled shifts for Thumb2.
 // Note: We do not support rrx shifted operands yet.
 def t2_so_reg : Operand<i32>,    // reg imm
-                ComplexPattern<i32, 2, "SelectT2ShifterOperandReg",
+                ComplexPattern<i32, 2, "selectT2ShifterOperandReg",
                                [shl,srl,sra,rotr]> {
   let EncoderMethod = "getT2SORegOpValue";
   let PrintMethod = "printT2SOOperand";
@@ -54,12 +54,12 @@ def t2_so_reg : Operand<i32>,    // reg imm
 
 // t2_so_imm_not_XFORM - Return the complement of a t2_so_imm value
 def t2_so_imm_not_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(~((uint32_t)N->getZExtValue()), MVT::i32);
+  return curDAG.getTargetConstant(~((int)n.getZExtValue()), new EVT(MVT.i32));
 }]>;
 
 // t2_so_imm_neg_XFORM - Return the negation of a t2_so_imm value
 def t2_so_imm_neg_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(-((int)N->getZExtValue()), MVT::i32);
+  return curDAG.getTargetConstant(-((int)n.getZExtValue()), new EVT(MVT.i32));
 }]>;
 
 // t2_so_imm - Match a 32-bit immediate operand, which is an
@@ -67,7 +67,7 @@ def t2_so_imm_neg_XFORM : SDNodeXForm<imm, [{
 // immediate splatted into multiple bytes of the word.
 def t2_so_imm_asmoperand : AsmOperandClass { let Name = "T2SOImm"; }
 def t2_so_imm : Operand<i32>, ImmLeaf<i32, [{
-    return ARM_AM::getT2SOImmVal(Imm) != -1;
+    return ARM_AM.getT2SOImmVal(int) != -1;
   }]> {
   let ParserMatchClass = t2_so_imm_asmoperand;
   let EncoderMethod = "getT2SOImmOpValue";
@@ -78,36 +78,36 @@ def t2_so_imm : Operand<i32>, ImmLeaf<i32, [{
 // of a t2_so_imm.
 def t2_so_imm_not : Operand<i32>,
                     PatLeaf<(imm), [{
-  return ARM_AM::getT2SOImmVal(~((uint32_t)N->getZExtValue())) != -1;
+  return ARM_AM.getT2SOImmVal(~((int)n.getZExtValue())) != -1;
 }], t2_so_imm_not_XFORM>;
 
 // t2_so_imm_neg - Match an immediate that is a negation of a t2_so_imm.
 def t2_so_imm_neg : Operand<i32>,
                     PatLeaf<(imm), [{
-  return ARM_AM::getT2SOImmVal(-((uint32_t)N->getZExtValue())) != -1;
+  return ARM_AM.getT2SOImmVal(-((int)n.getZExtValue())) != -1;
 }], t2_so_imm_neg_XFORM>;
 
 /// imm0_4095 predicate - True if the 32-bit immediate is in the range [0.4095].
 def imm0_4095 : Operand<i32>,
                 ImmLeaf<i32, [{
-  return Imm >= 0 && Imm < 4096;
+  return int >= 0 && int < 4096;
 }]>;
 
 def imm0_4095_neg : PatLeaf<(i32 imm), [{
- return (uint32_t)(-N->getZExtValue()) < 4096;
+ return (int)(-n.getZExtValue()) < 4096;
 }], imm_neg_XFORM>;
 
 def imm0_255_neg : PatLeaf<(i32 imm), [{
-  return (uint32_t)(-N->getZExtValue()) < 255;
+  return (-n.getZExtValue()) < 255;
 }], imm_neg_XFORM>;
 
 def imm0_255_not : PatLeaf<(i32 imm), [{
-  return (uint32_t)(~N->getZExtValue()) < 255;
+  return (int)(~n.getZExtValue()) < 255;
 }], imm_comp_XFORM>;
 
 def lo5AllOne : PatLeaf<(i32 imm), [{
   // Returns true if all low 5-bits are 1.
-  return (((uint32_t)N->getZExtValue()) & 0x1FUL) == 0x1FUL;
+  return (((int)n.getZExtValue()) & 0x1FL) == 0x1FL;
 }]>;
 
 // Define Thumb2 specific addressing modes.
@@ -115,7 +115,7 @@ def lo5AllOne : PatLeaf<(i32 imm), [{
 // t2addrmode_imm12  := reg + imm12
 def t2addrmode_imm12_asmoperand : AsmOperandClass {let Name="MemUImm12Offset";}
 def t2addrmode_imm12 : Operand<i32>,
-                       ComplexPattern<i32, 2, "SelectT2AddrModeImm12", []> {
+                       ComplexPattern<i32, 2, "selectT2AddrModeImm12", []> {
   let PrintMethod = "printAddrModeImm12Operand";
   let EncoderMethod = "getAddrModeImm12OpValue";
   let DecoderMethod = "DecodeT2AddrModeImm12";
@@ -149,7 +149,7 @@ def t2addrmode_posimm8 : Operand<i32> {
 // t2addrmode_negimm8  := reg - imm8
 def MemNegImm8OffsetAsmOperand : AsmOperandClass {let Name="MemNegImm8Offset";}
 def t2addrmode_negimm8 : Operand<i32>,
-                      ComplexPattern<i32, 2, "SelectT2AddrModeImm8", []> {
+                      ComplexPattern<i32, 2, "selectT2AddrModeImm8", []> {
   let PrintMethod = "printT2AddrModeImm8Operand";
   let EncoderMethod = "getT2AddrModeImm8OpValue";
   let DecoderMethod = "DecodeT2AddrModeImm8";
@@ -160,7 +160,7 @@ def t2addrmode_negimm8 : Operand<i32>,
 // t2addrmode_imm8  := reg +/- imm8
 def MemImm8OffsetAsmOperand : AsmOperandClass { let Name = "MemImm8Offset"; }
 def t2addrmode_imm8 : Operand<i32>,
-                      ComplexPattern<i32, 2, "SelectT2AddrModeImm8", []> {
+                      ComplexPattern<i32, 2, "selectT2AddrModeImm8", []> {
   let PrintMethod = "printT2AddrModeImm8Operand";
   let EncoderMethod = "getT2AddrModeImm8OpValue";
   let DecoderMethod = "DecodeT2AddrModeImm8";
@@ -169,7 +169,7 @@ def t2addrmode_imm8 : Operand<i32>,
 }
 
 def t2am_imm8_offset : Operand<i32>,
-                       ComplexPattern<i32, 1, "SelectT2AddrModeImm8Offset",
+                       ComplexPattern<i32, 1, "selectT2AddrModeImm8Offset",
                                       [], [SDNPWantRoot]> {
   let PrintMethod = "printT2AddrModeImm8OffsetOperand";
   let EncoderMethod = "getT2AddrModeImm8OffsetOpValue";
@@ -208,7 +208,7 @@ def t2addrmode_imm0_1020s4 : Operand<i32> {
 // t2addrmode_so_reg  := reg + (reg << imm2)
 def t2addrmode_so_reg_asmoperand : AsmOperandClass {let Name="T2MemRegOffset";}
 def t2addrmode_so_reg : Operand<i32>,
-                        ComplexPattern<i32, 3, "SelectT2AddrModeSoReg", []> {
+                        ComplexPattern<i32, 3, "selectT2AddrModeSoReg", []> {
   let PrintMethod = "printT2AddrModeSoRegOperand";
   let EncoderMethod = "getT2AddrModeSORegOpValue";
   let DecoderMethod = "DecodeT2AddrModeSOReg";
@@ -1902,7 +1902,7 @@ def t2SEL : T2ThreeReg<(outs GPR:$Rd), (ins GPR:$Rn, GPR:$Rm),
   let Inst{6-4} = 0b000;
 }
 
-// A6.3.13, A6.3.14, A6.3.15 Parallel addition and subtraction (signed/unsigned)
+// A6.3.13, A6.3.14, A6.3.15 Parallel addition and subtraction (signed/int)
 // And Miscellaneous operations -- for disassembly only
 class T2I_pam<bits<3> op22_20, bits<4> op7_4, string opc,
               list<dag> pat = [/* For disassembly only; pattern left blank */],
@@ -2680,7 +2680,7 @@ def t2SMLSLDX : T2FourReg_mac<1, 0b101, 0b1101, (outs rGPR:$Ra,rGPR:$Rd),
 
 //===----------------------------------------------------------------------===//
 //  Division Instructions.
-//  Signed and unsigned division on v7-M
+//  Signed and int division on v7-M
 //
 def t2SDIV : T2ThreeReg<(outs rGPR:$Rd), (ins rGPR:$Rn, rGPR:$Rm), IIC_iALUi,
                  "sdiv", "\t$Rd, $Rn, $Rm",

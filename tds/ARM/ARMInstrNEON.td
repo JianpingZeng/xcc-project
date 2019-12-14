@@ -19,21 +19,21 @@ def VectorIndex8Operand  : AsmOperandClass { let Name = "VectorIndex8"; }
 def VectorIndex16Operand : AsmOperandClass { let Name = "VectorIndex16"; }
 def VectorIndex32Operand : AsmOperandClass { let Name = "VectorIndex32"; }
 def VectorIndex8 : Operand<i32>, ImmLeaf<i32, [{
-  return ((uint64_t)Imm) < 8;
+  return ((long)int) < 8;
 }]> {
   let ParserMatchClass = VectorIndex8Operand;
   let PrintMethod = "printVectorIndex";
   let MIOperandInfo = (ops i32imm);
 }
 def VectorIndex16 : Operand<i32>, ImmLeaf<i32, [{
-  return ((uint64_t)Imm) < 4;
+  return ((long)int) < 4;
 }]> {
   let ParserMatchClass = VectorIndex16Operand;
   let PrintMethod = "printVectorIndex";
   let MIOperandInfo = (ops i32imm);
 }
 def VectorIndex32 : Operand<i32>, ImmLeaf<i32, [{
-  return ((uint64_t)Imm) < 2;
+  return ((long)int) < 2;
 }]> {
   let ParserMatchClass = VectorIndex32Operand;
   let PrintMethod = "printVectorIndex";
@@ -150,17 +150,17 @@ def NEONfmax      : SDNode<"ARMISD.FMAX", SDTARMFMAX>;
 def NEONfmin      : SDNode<"ARMISD.FMIN", SDTARMFMAX>;
 
 def NEONimmAllZerosV: PatLeaf<(NEONvmovImm (i32 timm)), [{
-  ConstantSDNode *ConstVal = cast<ConstantSDNode>(N->getOperand(0));
-  unsigned EltBits = 0;
-  uint64_t EltVal = ARM_AM::decodeNEONModImm(ConstVal->getZExtValue(), EltBits);
-  return (EltBits == 32 && EltVal == 0);
+  ConstantSDNode constVal = (ConstantSDNode)(n.getOperand(0).getNode());
+  int eltBits = 0;
+  long eltVal = ARM_AM.decodeNEONModImm(constVal.getZExtValue(), eltBits);
+  return (eltBits == 32 && eltVal == 0);
 }]>;
 
 def NEONimmAllOnesV: PatLeaf<(NEONvmovImm (i32 timm)), [{
-  ConstantSDNode *ConstVal = cast<ConstantSDNode>(N->getOperand(0));
-  unsigned EltBits = 0;
-  uint64_t EltVal = ARM_AM::decodeNEONModImm(ConstVal->getZExtValue(), EltBits);
-  return (EltBits == 8 && EltVal == 0xff);
+  ConstantSDNode constVal = (ConstantSDNode)(n.getOperand(0).getNode());
+    int eltBits = 0;
+    long eltVal = ARM_AM.decodeNEONModImm(constVal.getZExtValue(), eltBits);
+  return (eltBits == 8 && eltVal == 0xff);
 }]>;
 
 //===----------------------------------------------------------------------===//
@@ -1773,37 +1773,37 @@ def VST4LNq32Pseudo_UPD : VSTQQQQLNWBPseudo<IIC_VST4lnu>;
 
 // Extract D sub-registers of Q registers.
 def DSubReg_i8_reg  : SDNodeXForm<imm, [{
-  assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/8, MVT::i32);
+  Util.assertion(dsub_7 == dsub_0+7, "Unexpected subreg numbering");
+  return curDAG.getTargetConstant(dsub_0 + n.getZExtValue()/8, new EVT(MVT.i32));
 }]>;
 def DSubReg_i16_reg : SDNodeXForm<imm, [{
-  assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/4, MVT::i32);
+  Util.assertion(dsub_7 == dsub_0+7, "Unexpected subreg numbering");
+  return curDAG.getTargetConstant(dsub_0 + n.getZExtValue()/4, new EVT(MVT.i32));
 }]>;
 def DSubReg_i32_reg : SDNodeXForm<imm, [{
-  assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue()/2, MVT::i32);
+  Util.assertion(dsub_7 == dsub_0+7, "Unexpected subreg numbering");
+  return curDAG.getTargetConstant(dsub_0 + n.getZExtValue()/2, new EVT(MVT.i32));
 }]>;
 def DSubReg_f64_reg : SDNodeXForm<imm, [{
-  assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return curDAG.getTargetConstant(ARM::dsub_0 + N->getZExtValue(), MVT::i32);
+  Util.assertion(dsub_7 == dsub_0+7, "Unexpected subreg numbering");
+  return curDAG.getTargetConstant(dsub_0 + n.getZExtValue(), new EVT(MVT.i32));
 }]>;
 
 // Extract S sub-registers of Q/D registers.
 def SSubReg_f32_reg : SDNodeXForm<imm, [{
-  assert(ARM::ssub_3 == ARM::ssub_0+3 && "Unexpected subreg numbering");
-  return curDAG.getTargetConstant(ARM::ssub_0 + N->getZExtValue(), MVT::i32);
+  Util.assertion(ssub_3 == ssub_0+3, "Unexpected subreg numbering");
+  return curDAG.getTargetConstant(ssub_0 + n.getZExtValue(), new EVT(MVT.i32));
 }]>;
 
 // Translate lane numbers from Q registers to D subregs.
 def SubReg_i8_lane  : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(N->getZExtValue() & 7, MVT::i32);
+  return curDAG.getTargetConstant(n.getZExtValue() & 7, new EVT(MVT.i32));
 }]>;
 def SubReg_i16_lane : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(N->getZExtValue() & 3, MVT::i32);
+  return curDAG.getTargetConstant(n.getZExtValue() & 3, new EVT(MVT.i32));
 }]>;
 def SubReg_i32_lane : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(N->getZExtValue() & 1, MVT::i32);
+  return curDAG.getTargetConstant(n.getZExtValue() & 1, new EVT(MVT.i32));
 }]>;
 
 //===----------------------------------------------------------------------===//

@@ -93,6 +93,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
 
   /**
    * register +- 12 bit offset.
+   *
    * @param root
    * @param n
    * @param tmp
@@ -104,11 +105,130 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     if (n.getNode() instanceof SDNode.FrameIndexSDNode) {
       SDNode.FrameIndexSDNode fi = (SDNode.FrameIndexSDNode) n.getNode();
       tmp[1] = curDAG.getTargetFrameIndex(fi.getFrameIndex(), n.getValueType());
-    }
-    else
+    } else
       tmp[1] = n;
     // any address fits in a register.
     return true;
+  }
+
+  protected boolean hasNoVMLxHazardUse(SDNode n) {
+    return false;
+  }
+
+  protected boolean selectRegShifterOperand(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectImmShifterOperand(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectT2ShifterOperandReg(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectShiftRegShifterOperand(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectShiftImmShifterOperand(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectLdStSOReg(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectT2AddrModeSoReg(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrModeImm12(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectT2AddrModeImm12(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectT2AddrModeImm8(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode2(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode6(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode6Offset(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrModePC(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrOffsetNone(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode3Offset(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode2OffsetReg(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode2OffsetImm(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode3(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectT2AddrModeImm8Offset(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeRI5S4(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeImm5S4(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeRI5S1(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeImm5S1(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeRI5S2(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeImm5S2(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeSP(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectAddrMode5(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
+  }
+
+  protected boolean selectThumbAddrModeRR(SDNode root, SDValue n, SDValue[] tmp) {
+    return false;
   }
 
   public static FunctionPass createARMISelDAG(ARMTargetMachine tm, TargetMachine.CodeGenOpt level) {

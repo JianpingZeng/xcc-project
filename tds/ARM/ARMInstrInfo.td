@@ -235,33 +235,33 @@ class RegConstraint<string C> {
 // so_imm_neg_XFORM - Return a so_imm value packed into the format described for
 // so_imm_neg def below.
 def so_imm_neg_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(-(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(-(int)n.getZExtValue(), new EVT(MVT.i32));
 }]>;
 
 // so_imm_not_XFORM - Return a so_imm value packed into the format described for
 // so_imm_not def below.
 def so_imm_not_XFORM : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant(~(int)N->getZExtValue(), MVT::i32);
+  return curDAG.getTargetConstant(~(int)n.getZExtValue(), new EVT(MVT.i32));
 }]>;
 
 /// imm1_15 predicate - True if the 32-bit immediate is in the range [1,15].
 def imm1_15 : ImmLeaf<i32, [{
-  return (int32_t)Imm >= 1 && (int32_t)Imm < 16;
+  return (int32_t)int >= 1 && (int32_t)int < 16;
 }]>;
 
 /// imm16_31 predicate - True if the 32-bit immediate is in the range [16,31].
 def imm16_31 : ImmLeaf<i32, [{
-  return (int32_t)Imm >= 16 && (int32_t)Imm < 32;
+  return (int32_t)int >= 16 && (int32_t)int < 32;
 }]>;
 
 def so_imm_neg :
   PatLeaf<(imm), [{
-    return ARM_AM::getSOImmVal(-(uint32_t)N->getZExtValue()) != -1;
+    return ARM_AM.getSOImmVal(-(int)n.getZExtValue()) != -1;
   }], so_imm_neg_XFORM>;
 
 def so_imm_not :
   PatLeaf<(imm), [{
-    return ARM_AM::getSOImmVal(~(uint32_t)N->getZExtValue()) != -1;
+    return ARM_AM.getSOImmVal(~(int)n.getZExtValue()) != -1;
   }], so_imm_not_XFORM>;
 
 // sext_16_node predicate - True if the SDNode is sign-extended 16 or more bits.
@@ -271,18 +271,18 @@ def sext_16_node : PatLeaf<(i32 GPR:$a), [{
 
 /// Split a 32-bit immediate into two 16 bit parts.
 def hi16 : SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant((int)n.getZExtValue() >> 16, MVT::i32);
+  return curDAG.getTargetConstant((int)n.getZExtValue() >> 16, new EVT(MVT.i32));
 }]>;
 
 def lo16AllZero : PatLeaf<(i32 imm), [{
   // Returns true if all low 16-bits are 0.
-  return (((uint32_t)N->getZExtValue()) & 0xFFFFUL) == 0;
+  return (((int)n.getZExtValue()) & 0xFFFFL) == 0;
 }], hi16>;
 
 /// imm0_65535 - An immediate is in the range [0.65535].
 def Imm0_65535AsmOperand: AsmOperandClass { let Name = "Imm0_65535"; }
 def imm0_65535 : Operand<i32>, ImmLeaf<i32, [{
-  return Imm >= 0 && Imm < 65536;
+  return int >= 0 && int < 65536;
 }]> {
   let ParserMatchClass = Imm0_65535AsmOperand;
 }
@@ -294,27 +294,27 @@ class UnOpFrag <dag res> : PatFrag<(ops node:$Src), res>;
 
 // An 'and' node with a single use.
 def and_su : PatFrag<(ops node:$lhs, node:$rhs), (and node:$lhs, node:$rhs), [{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 
 // An 'xor' node with a single use.
 def xor_su : PatFrag<(ops node:$lhs, node:$rhs), (xor node:$lhs, node:$rhs), [{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 
 // An 'fmul' node with a single use.
 def fmul_su : PatFrag<(ops node:$lhs, node:$rhs), (fmul node:$lhs, node:$rhs),[{
-  return N->hasOneUse();
+  return n.hasOneUse();
 }]>;
 
 // An 'fadd' node which checks for single non-hazardous use.
 def fadd_mlx : PatFrag<(ops node:$lhs, node:$rhs),(fadd node:$lhs, node:$rhs),[{
-  return hasNoVMLxHazardUse(N);
+  return hasNoVMLxHazardUse(n);
 }]>;
 
 // An 'fsub' node which checks for single non-hazardous use.
 def fsub_mlx : PatFrag<(ops node:$lhs, node:$rhs),(fsub node:$lhs, node:$rhs),[{
-  return hasNoVMLxHazardUse(N);
+  return hasNoVMLxHazardUse(n);
 }]>;
 
 //===----------------------------------------------------------------------===//
@@ -410,12 +410,12 @@ def neon_vcvt_imm32 : Operand<i32> {
 
 // rot_imm: An integer that encodes a rotate amount. Must be 8, 16, or 24.
 def rot_imm_XFORM: SDNodeXForm<imm, [{
-  switch (n.getZExtValue()){
-  default: Util.assertion();
-  case 0:  return curDAG.getTargetConstant(0, MVT::i32);
-  case 8:  return curDAG.getTargetConstant(1, MVT::i32);
-  case 16: return curDAG.getTargetConstant(2, MVT::i32);
-  case 24: return curDAG.getTargetConstant(3, MVT::i32);
+  switch ((int)n.getZExtValue()) {
+  default: Util.assertion("Unknown SDNodeXForm type!");
+  case 0:  return curDAG.getTargetConstant(0, new EVT(MVT.i32));
+  case 8:  return curDAG.getTargetConstant(1, new EVT(MVT.i32));
+  case 16: return curDAG.getTargetConstant(2, new EVT(MVT.i32));
+  case 24: return curDAG.getTargetConstant(3, new EVT(MVT.i32));
   }
 }]>;
 def RotImmAsmOperand : AsmOperandClass {
@@ -423,7 +423,7 @@ def RotImmAsmOperand : AsmOperandClass {
   let ParserMethod = "parseRotImm";
 }
 def rot_imm : Operand<i32>, PatLeaf<(i32 imm), [{
-    int v = n.getZExtValue();
+    long v = n.getZExtValue();
     return v == 8 || v == 16 || v == 24; }],
     rot_imm_XFORM> {
   let PrintMethod = "printRotImmOperand";
@@ -493,7 +493,7 @@ def shift_so_reg_imm : Operand<i32>,    // reg reg imm
 // 8-bit immediate rotated by an arbitrary number of bits.
 def SOImmAsmOperand: AsmOperandClass { let Name = "ARMSOImm"; }
 def so_imm : Operand<i32>, ImmLeaf<i32, [{
-    return ARM_AM::getSOImmVal(Imm) != -1;
+    return ARM_AM.getSOImmVal(int) != -1;
   }]> {
   let EncoderMethod = "getSOImmOpValue";
   let ParserMatchClass = SOImmAsmOperand;
@@ -504,7 +504,7 @@ def so_imm : Operand<i32>, ImmLeaf<i32, [{
 // bits set in them.  This uses so_imm2part to match and so_imm2part_[12] to
 // get the first/second pieces.
 def so_imm2part : PatLeaf<(imm), [{
-      return ARM_AM::isSOImmTwoPartVal((unsigned)N->getZExtValue());
+      return ARM_AM.isSOImmTwoPartVal((int)n.getZExtValue());
 }]>;
 
 /// arm_i32imm - True for +V6T2, or true only if so_imm2part is true.
@@ -512,13 +512,13 @@ def so_imm2part : PatLeaf<(imm), [{
 def arm_i32imm : PatLeaf<(imm), [{
   if (subtarget.hasV6T2Ops())
     return true;
-  return ARM_AM::isSOImmTwoPartVal((unsigned)N->getZExtValue());
+  return ARM_AM.isSOImmTwoPartVal((int)n.getZExtValue());
 }]>;
 
 /// imm0_7 predicate - Immediate in the range [0,7].
 def Imm0_7AsmOperand: AsmOperandClass { let Name = "Imm0_7"; }
 def imm0_7 : Operand<i32>, ImmLeaf<i32, [{
-  return Imm >= 0 && Imm < 8;
+  return int >= 0 && int < 8;
 }]> {
   let ParserMatchClass = Imm0_7AsmOperand;
 }
@@ -526,7 +526,7 @@ def imm0_7 : Operand<i32>, ImmLeaf<i32, [{
 /// imm0_15 predicate - Immediate in the range [0,15].
 def Imm0_15AsmOperand: AsmOperandClass { let Name = "Imm0_15"; }
 def imm0_15 : Operand<i32>, ImmLeaf<i32, [{
-  return Imm >= 0 && Imm < 16;
+  return int >= 0 && int < 16;
 }]> {
   let ParserMatchClass = Imm0_15AsmOperand;
 }
@@ -534,14 +534,14 @@ def imm0_15 : Operand<i32>, ImmLeaf<i32, [{
 /// imm0_31 predicate - True if the 32-bit immediate is in the range [0,31].
 def Imm0_31AsmOperand: AsmOperandClass { let Name = "Imm0_31"; }
 def imm0_31 : Operand<i32>, ImmLeaf<i32, [{
-  return Imm >= 0 && Imm < 32;
+  return int >= 0 && int < 32;
 }]> {
   let ParserMatchClass = Imm0_31AsmOperand;
 }
 
 /// imm0_255 predicate - Immediate in the range [0,255].
 def Imm0_255AsmOperand : AsmOperandClass { let Name = "Imm0_255"; }
-def imm0_255 : Operand<i32>, ImmLeaf<i32, [{ return Imm >= 0 && Imm < 256; }]> {
+def imm0_255 : Operand<i32>, ImmLeaf<i32, [{ return int >= 0 && int < 256; }]> {
   let ParserMatchClass = Imm0_255AsmOperand;
 }
 
@@ -560,7 +560,7 @@ def imm0_65535_expr : Operand<i32> {
 /// imm24b - True if the 32-bit immediate is encodable in 24 bits.
 def Imm24bitAsmOperand: AsmOperandClass { let Name = "Imm24bit"; }
 def imm24b : Operand<i32>, ImmLeaf<i32, [{
-  return Imm >= 0 && Imm <= 0xffffff;
+  return int >= 0 && int <= 0xffffff;
 }]> {
   let ParserMatchClass = Imm24bitAsmOperand;
 }
@@ -574,7 +574,7 @@ def BitfieldAsmOperand : AsmOperandClass {
 }
 def bf_inv_mask_imm : Operand<i32>,
                       PatLeaf<(imm), [{
-  return ARM::isBitFieldInvertedMask(N->getZExtValue());
+  return ARMISD.isBitFieldInvertedMask(n.getZExtValue());
 }] > {
   let EncoderMethod = "getBitfieldInvertedMaskOpValue";
   let PrintMethod = "printBitfieldInvMaskImmOperand";
@@ -583,12 +583,12 @@ def bf_inv_mask_imm : Operand<i32>,
 }
 
 def imm1_32_XFORM: SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
+  return curDAG.getTargetConstant((int)n.getZExtValue() - 1, new EVT(MVT.i32));
 }]>;
 def Imm1_32AsmOperand: AsmOperandClass { let Name = "Imm1_32"; }
 def imm1_32 : Operand<i32>, PatLeaf<(imm), [{
-   uint64_t Imm = N->getZExtValue();
-   return Imm > 0 && Imm <= 32;
+   long imm = n.getZExtValue();
+   return imm > 0 && imm <= 32;
  }],
     imm1_32_XFORM> {
   let PrintMethod = "printImmPlusOneOperand";
@@ -596,10 +596,10 @@ def imm1_32 : Operand<i32>, PatLeaf<(imm), [{
 }
 
 def imm1_16_XFORM: SDNodeXForm<imm, [{
-  return curDAG.getTargetConstant((int)N->getZExtValue() - 1, MVT::i32);
+  return curDAG.getTargetConstant((int)n.getZExtValue() - 1, new EVT(MVT.i32));
 }]>;
 def Imm1_16AsmOperand: AsmOperandClass { let Name = "Imm1_16"; }
-def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return Imm > 0 && Imm <= 16; }],
+def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return int > 0 && int <= 16; }],
     imm1_16_XFORM> {
   let PrintMethod = "printImmPlusOneOperand";
   let ParserMatchClass = Imm1_16AsmOperand;
@@ -3898,7 +3898,7 @@ def : ARMPat<(ARMcmpZ GPR:$src, so_reg_reg:$rhs),
 // never a "carry" when this AddWithCarry is performed (because the "carry bit"
 // parameter to AddWithCarry is defined as 0).
 //
-// When x is 0 and unsigned:
+// When x is 0 and int:
 //
 //    x = 0
 //   ~x = 0xFFFF FFFF
