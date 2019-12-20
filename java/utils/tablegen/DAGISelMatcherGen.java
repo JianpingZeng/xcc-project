@@ -469,14 +469,23 @@ public class DAGISelMatcherGen {
         return;
       }
 
-      if (rec.isSubClassOf("zero_reg")) {
+      if (rec.getName().equals("zero_reg")) {
         addMatcher(new EmitRegisterMatcher(null, n.getSimpleType(0)));
         resultOps.add(nextRecordedOperandNo++);
         return;
       }
 
+      if (rec.isSubClassOf("RegisterOperand"))
+        rec = rec.getValueAsDef("RegClass");
       if (rec.isSubClassOf("RegisterClass")) {
         String value = rec.getName() + "RegClassID";
+        addMatcher(new EmitStringIntegerMatcher(value, MVT.i32));
+        resultOps.add(nextRecordedOperandNo++);
+        return;
+      }
+
+      if (rec.isSubClassOf("SubRegIndex")) {
+        String value = rec.getName();
         addMatcher(new EmitStringIntegerMatcher(value, MVT.i32));
         resultOps.add(nextRecordedOperandNo++);
         return;

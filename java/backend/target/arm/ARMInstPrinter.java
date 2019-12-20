@@ -645,12 +645,10 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
   }
 
   protected void printSBitModifierOperand(MCInst mi, int opNo) {
-    if (opNo < mi.getNumOperands()) {
-      int reg = mi.getOperand(opNo).getReg();
-      if (reg != 0) {
-        Util.assertion(reg == ARMGenRegisterNames.CPSR, "Expect ARM CPSR register");
-        os.print('s');
-      }
+    int reg = mi.getOperand(opNo).getReg();
+    if (reg != 0) {
+      Util.assertion(reg == ARMGenRegisterNames.CPSR, "Expect ARM CPSR register");
+      os.print('s');
     }
   }
 }

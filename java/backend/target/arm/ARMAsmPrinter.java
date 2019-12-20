@@ -64,7 +64,7 @@ public class ARMAsmPrinter extends AsmPrinter {
     return "ARM Assembly Printer";
   }
 
-  public MCOperand getSymbolRef(MachineOperand mo, MCSymbol symbol) {
+  MCOperand getSymbolRef(MachineOperand mo, MCSymbol symbol) {
     MCExpr expr;
     switch (mo.getTargetFlags()) {
       default:{
