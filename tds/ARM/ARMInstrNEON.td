@@ -151,16 +151,16 @@ def NEONfmin      : SDNode<"ARMISD.FMIN", SDTARMFMAX>;
 
 def NEONimmAllZerosV: PatLeaf<(NEONvmovImm (i32 timm)), [{
   ConstantSDNode constVal = (ConstantSDNode)(n.getOperand(0).getNode());
-  int eltBits = 0;
+  tools.OutRef<Integer> eltBits = new tools.OutRef<>(0);
   long eltVal = ARM_AM.decodeNEONModImm(constVal.getZExtValue(), eltBits);
-  return (eltBits == 32 && eltVal == 0);
+  return (eltBits.get() == 32 && eltVal == 0);
 }]>;
 
 def NEONimmAllOnesV: PatLeaf<(NEONvmovImm (i32 timm)), [{
   ConstantSDNode constVal = (ConstantSDNode)(n.getOperand(0).getNode());
-    int eltBits = 0;
-    long eltVal = ARM_AM.decodeNEONModImm(constVal.getZExtValue(), eltBits);
-  return (eltBits == 8 && eltVal == 0xff);
+  tools.OutRef<Integer> eltBits = new tools.OutRef<>(0);
+  long eltVal = ARM_AM.decodeNEONModImm(constVal.getZExtValue(), eltBits);
+  return (eltBits.get() == 8 && eltVal == 0xff);
 }]>;
 
 //===----------------------------------------------------------------------===//

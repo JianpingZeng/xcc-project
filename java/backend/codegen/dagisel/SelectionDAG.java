@@ -2198,6 +2198,32 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
+  public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+                                     ArrayList<SDValue> ops,
+                                     EVT memVT, MachineMemOperand mmo) {
+    Util.assertion(opc == ISD.INTRINSIC_VOID ||
+        opc == ISD.INTRINSIC_W_CHAIN ||
+        opc == ISD.PREFETCH);
+
+    MemIntrinsicSDNode n;
+    SDValue[] temp = new SDValue[ops.size()];
+    ops.toArray(temp);
+    if (vts.vts[vts.numVTs - 1].getSimpleVT().simpleVT != MVT.Glue) {
+      FoldingSetNodeID compute = new FoldingSetNodeID();
+      addNodeToIDNode(compute, opc, vts, temp);
+      int id = compute.computeHash();
+      if (cseMap.containsKey(id))
+        return new SDValue(cseMap.get(id), 0);
+
+      n = new MemIntrinsicSDNode(opc, vts, temp, memVT, mmo);
+      cseMap.put(id, n);
+    } else {
+      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,mmo);
+    }
+    allNodes.add(n);
+    return new SDValue(n, 0);
+  }
+
   public SDValue getMemset(SDValue chain,
                            SDValue dst,
                            SDValue src,

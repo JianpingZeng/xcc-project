@@ -25,7 +25,6 @@ import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.type.PointerType;
 import backend.type.Type;
-import backend.value.Function;
 import backend.value.GlobalValue;
 import backend.value.Instruction;
 import backend.value.Value;
@@ -230,6 +229,10 @@ public abstract class TargetLowering {
   private int exceptionPointerRegister;
 
   private int exceptionSelectorRegister;
+
+  private boolean insertFencesForAtomic;
+
+  private boolean shouldFoldAtomicFences;
 
   private LegalizeAction[][] opActions;
   private LegalizeAction[][] loadExtActions;
@@ -597,7 +600,7 @@ public abstract class TargetLowering {
   }
 
   public void setOperationAction(int opc, int vt, LegalizeAction action) {
-    Util.assertion(opc < ISD.BUILTIN_OP_END && vt < MVT.LAST_VALUETYPE, "Table isn't big enough!");
+    Util.assertion(opc <= ISD.BUILTIN_OP_END && vt < MVT.LAST_VALUETYPE, "Table isn't big enough!");
     opActions[vt][opc] = action;
   }
 
@@ -757,6 +760,18 @@ public abstract class TargetLowering {
 
   public void setBooleanContents(BooleanContent cnt) {
     this.booleanContents = cnt;
+  }
+
+  public void setInsertFencesForAtomic(boolean val) {
+    insertFencesForAtomic = val;
+  }
+
+  public void setShouldFoldAtomicFences(boolean val) {
+    shouldFoldAtomicFences = val;
+  }
+
+  public boolean shouldFoldAtomicFences() {
+    return shouldFoldAtomicFences;
   }
 
   public TargetData getTargetData() {
@@ -1195,15 +1210,6 @@ public abstract class TargetLowering {
       }
     }
   }
-
-  /**
-   * Computing the assembly alignment for specified function with target-specific
-   * method.
-   *
-   * @param fn
-   * @return
-   */
-  public abstract int getFunctionAlignment(Function fn);
 
   public MVT getShiftAmountTy() {
     return shiftAmountTy;
@@ -1741,6 +1747,10 @@ public abstract class TargetLowering {
 
   public CallingConv getLibCallCallingConv(RTLIB lc) {
     return libCallCallingConv[lc.ordinal()];
+  }
+
+  public void setLibCallCallingConv(RTLIB lc, CallingConv cc) {
+    libCallCallingConv[lc.ordinal()] = cc;
   }
 
   /**

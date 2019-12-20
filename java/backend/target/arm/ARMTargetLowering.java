@@ -29,13 +29,14 @@ package backend.target.arm;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
+import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.TargetLowering;
 import backend.target.TargetLoweringObjectFile;
 import backend.target.TargetMachine;
-import backend.value.Function;
+import backend.target.TargetOptions;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -75,12 +76,9 @@ public class ARMTargetLowering extends TargetLowering {
     super(tm, createTLOF(tm));
     subtarget = tm.getSubtarget();
     regInfo = subtarget.getRegisterInfo();
+    setBooleanVectorContents(BooleanContent.ZeroOrNegativeOneBooleanContent);
 
     if (subtarget.isTargetDarwin()) {
-      // Don't have these.
-      setLibCallName(RTLIB.UINTTOFP_I64_F32, null);
-      setLibCallName(RTLIB.UINTTOFP_I64_F64, null);
-
       // Uses VFP for Thumb libfuncs if available.
       if (subtarget.isThumb() && subtarget.hasVFP2()) {
         // Single-precision floating-point arithmetic.
@@ -157,63 +155,331 @@ public class ARMTargetLowering extends TargetLowering {
       }
     }
 
-    addRegisterClass(MVT.i32, ARMGenRegisterInfo.GPRRegisterClass);
-    /*if (!UseSoftFloat && subtarget.hasVFP2() && !subtarget.isThumb()) {
-      addRegisterClass(MVT.f32, ARM.SPRRegisterClass);
-      addRegisterClass(MVT.f64, ARM.DPRRegisterClass);
-    }*/
+    // These libcalls are not available in 32-bit.
+    setLibCallName(RTLIB.SHL_I128, null);
+    setLibCallName(RTLIB.SRL_I128, null);
+    setLibCallName(RTLIB.SRA_I128, null);
+
+    if (subtarget.isAAPCS_ABI()) {
+      // Double-precision floating-point arithmetic helper functions
+      // RTABI chapter 4.1.2, Table 2
+      setLibCallName(RTLIB.ADD_F64, "__aeabi_dadd");
+      setLibCallName(RTLIB.DIV_F64, "__aeabi_ddiv");
+      setLibCallName(RTLIB.MUL_F64, "__aeabi_dmul");
+      setLibCallName(RTLIB.SUB_F64, "__aeabi_dsub");
+      setLibCallCallingConv(RTLIB.ADD_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.DIV_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.MUL_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SUB_F64, CallingConv.ARM_AAPCS);
+
+      // Double-precision floating-point comparison helper functions
+      // RTABI chapter 4.1.2, Table 3
+      setLibCallName(RTLIB.OEQ_F64, "__aeabi_dcmpeq");
+      setCmpLibCallCC(RTLIB.OEQ_F64, CondCode.SETNE);
+      setLibCallName(RTLIB.UNE_F64, "__aeabi_dcmpeq");
+      setCmpLibCallCC(RTLIB.UNE_F64, CondCode.SETEQ);
+      setLibCallName(RTLIB.OLT_F64, "__aeabi_dcmplt");
+      setCmpLibCallCC(RTLIB.OLT_F64, CondCode.SETNE);
+      setLibCallName(RTLIB.OLE_F64, "__aeabi_dcmple");
+      setCmpLibCallCC(RTLIB.OLE_F64, CondCode.SETNE);
+      setLibCallName(RTLIB.OGE_F64, "__aeabi_dcmpge");
+      setCmpLibCallCC(RTLIB.OGE_F64, CondCode.SETNE);
+      setLibCallName(RTLIB.OGT_F64, "__aeabi_dcmpgt");
+      setCmpLibCallCC(RTLIB.OGT_F64, CondCode.SETNE);
+      setLibCallName(RTLIB.UO_F64,  "__aeabi_dcmpun");
+      setCmpLibCallCC(RTLIB.UO_F64,  CondCode.SETNE);
+      setLibCallName(RTLIB.O_F64,   "__aeabi_dcmpun");
+      setCmpLibCallCC(RTLIB.O_F64,   CondCode.SETEQ);
+      setLibCallCallingConv(RTLIB.OEQ_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UNE_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OLT_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OLE_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OGE_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OGT_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UO_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.O_F64, CallingConv.ARM_AAPCS);
+
+      // Single-precision floating-point arithmetic helper functions
+      // RTABI chapter 4.1.2, Table 4
+      setLibCallName(RTLIB.ADD_F32, "__aeabi_fadd");
+      setLibCallName(RTLIB.DIV_F32, "__aeabi_fdiv");
+      setLibCallName(RTLIB.MUL_F32, "__aeabi_fmul");
+      setLibCallName(RTLIB.SUB_F32, "__aeabi_fsub");
+      setLibCallCallingConv(RTLIB.ADD_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.DIV_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.MUL_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SUB_F32, CallingConv.ARM_AAPCS);
+
+      // Single-precision floating-point comparison helper functions
+      // RTABI chapter 4.1.2, Table 5
+      setLibCallName(RTLIB.OEQ_F32, "__aeabi_fcmpeq");
+      setCmpLibCallCC(RTLIB.OEQ_F32, CondCode.SETNE);
+      setLibCallName(RTLIB.UNE_F32, "__aeabi_fcmpeq");
+      setCmpLibCallCC(RTLIB.UNE_F32, CondCode.SETEQ);
+      setLibCallName(RTLIB.OLT_F32, "__aeabi_fcmplt");
+      setCmpLibCallCC(RTLIB.OLT_F32, CondCode.SETNE);
+      setLibCallName(RTLIB.OLE_F32, "__aeabi_fcmple");
+      setCmpLibCallCC(RTLIB.OLE_F32, CondCode.SETNE);
+      setLibCallName(RTLIB.OGE_F32, "__aeabi_fcmpge");
+      setCmpLibCallCC(RTLIB.OGE_F32, CondCode.SETNE);
+      setLibCallName(RTLIB.OGT_F32, "__aeabi_fcmpgt");
+      setCmpLibCallCC(RTLIB.OGT_F32, CondCode.SETNE);
+      setLibCallName(RTLIB.UO_F32,  "__aeabi_fcmpun");
+      setCmpLibCallCC(RTLIB.UO_F32,  CondCode.SETNE);
+      setLibCallName(RTLIB.O_F32,   "__aeabi_fcmpun");
+      setCmpLibCallCC(RTLIB.O_F32,   CondCode.SETEQ);
+      setLibCallCallingConv(RTLIB.OEQ_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UNE_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OLT_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OLE_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OGE_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.OGT_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UO_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.O_F32, CallingConv.ARM_AAPCS);
+
+      // Floating-point to integer conversions.
+      // RTABI chapter 4.1.2, Table 6
+      setLibCallName(RTLIB.FPTOSINT_F64_I32, "__aeabi_d2iz");
+      setLibCallName(RTLIB.FPTOUINT_F64_I32, "__aeabi_d2uiz");
+      setLibCallName(RTLIB.FPTOSINT_F64_I64, "__aeabi_d2lz");
+      setLibCallName(RTLIB.FPTOUINT_F64_I64, "__aeabi_d2ulz");
+      setLibCallName(RTLIB.FPTOSINT_F32_I32, "__aeabi_f2iz");
+      setLibCallName(RTLIB.FPTOUINT_F32_I32, "__aeabi_f2uiz");
+      setLibCallName(RTLIB.FPTOSINT_F32_I64, "__aeabi_f2lz");
+      setLibCallName(RTLIB.FPTOUINT_F32_I64, "__aeabi_f2ulz");
+      setLibCallCallingConv(RTLIB.FPTOSINT_F64_I32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOUINT_F64_I32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOSINT_F64_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOUINT_F64_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOSINT_F32_I32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOUINT_F32_I32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOSINT_F32_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPTOUINT_F32_I64, CallingConv.ARM_AAPCS);
+
+      // Conversions between floating types.
+      // RTABI chapter 4.1.2, Table 7
+      setLibCallName(RTLIB.FPROUND_F64_F32, "__aeabi_d2f");
+      setLibCallName(RTLIB.FPEXT_F32_F64,   "__aeabi_f2d");
+      setLibCallCallingConv(RTLIB.FPROUND_F64_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.FPEXT_F32_F64, CallingConv.ARM_AAPCS);
+
+      // Integer to floating-point conversions.
+      // RTABI chapter 4.1.2, Table 8
+      setLibCallName(RTLIB.SINTTOFP_I32_F64, "__aeabi_i2d");
+      setLibCallName(RTLIB.UINTTOFP_I32_F64, "__aeabi_ui2d");
+      setLibCallName(RTLIB.SINTTOFP_I64_F64, "__aeabi_l2d");
+      setLibCallName(RTLIB.UINTTOFP_I64_F64, "__aeabi_ul2d");
+      setLibCallName(RTLIB.SINTTOFP_I32_F32, "__aeabi_i2f");
+      setLibCallName(RTLIB.UINTTOFP_I32_F32, "__aeabi_ui2f");
+      setLibCallName(RTLIB.SINTTOFP_I64_F32, "__aeabi_l2f");
+      setLibCallName(RTLIB.UINTTOFP_I64_F32, "__aeabi_ul2f");
+      setLibCallCallingConv(RTLIB.SINTTOFP_I32_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UINTTOFP_I32_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SINTTOFP_I64_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UINTTOFP_I64_F64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SINTTOFP_I32_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UINTTOFP_I32_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SINTTOFP_I64_F32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UINTTOFP_I64_F32, CallingConv.ARM_AAPCS);
+
+      // Long long helper functions
+      // RTABI chapter 4.2, Table 9
+      setLibCallName(RTLIB.MUL_I64,  "__aeabi_lmul");
+      setLibCallName(RTLIB.SDIV_I64, "__aeabi_ldivmod");
+      setLibCallName(RTLIB.UDIV_I64, "__aeabi_uldivmod");
+      setLibCallName(RTLIB.SHL_I64, "__aeabi_llsl");
+      setLibCallName(RTLIB.SRL_I64, "__aeabi_llsr");
+      setLibCallName(RTLIB.SRA_I64, "__aeabi_lasr");
+      setLibCallCallingConv(RTLIB.MUL_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SDIV_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UDIV_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SHL_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SRL_I64, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SRA_I64, CallingConv.ARM_AAPCS);
+
+      // Integer division functions
+      // RTABI chapter 4.3.1
+      setLibCallName(RTLIB.SDIV_I8,  "__aeabi_idiv");
+      setLibCallName(RTLIB.SDIV_I16, "__aeabi_idiv");
+      setLibCallName(RTLIB.SDIV_I32, "__aeabi_idiv");
+      setLibCallName(RTLIB.UDIV_I8,  "__aeabi_uidiv");
+      setLibCallName(RTLIB.UDIV_I16, "__aeabi_uidiv");
+      setLibCallName(RTLIB.UDIV_I32, "__aeabi_uidiv");
+      setLibCallCallingConv(RTLIB.SDIV_I8, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SDIV_I16, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.SDIV_I32, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UDIV_I8, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UDIV_I16, CallingConv.ARM_AAPCS);
+      setLibCallCallingConv(RTLIB.UDIV_I32, CallingConv.ARM_AAPCS);
+
+      // Memory operations
+      // RTABI chapter 4.3.4
+      setLibCallName(RTLIB.MEMCPY,  "__aeabi_memcpy");
+      setLibCallName(RTLIB.MEMMOVE, "__aeabi_memmove");
+      setLibCallName(RTLIB.MEMSET,  "__aeabi_memset");
+    }
+
+    if (subtarget.isThumb1Only())
+      addRegisterClass(MVT.i32, ARMGenRegisterInfo.tGPRRegisterClass);
+    else
+      addRegisterClass(MVT.i32, ARMGenRegisterInfo.GPRRegisterClass);
+
+    if (!TargetOptions.GenerateSoftFloatCalls.value && subtarget.hasVFP2() && !subtarget.isThumb()) {
+      addRegisterClass(MVT.f32, ARMGenRegisterInfo.SPRRegisterClass);
+      addRegisterClass(MVT.f64, ARMGenRegisterInfo.DPRRegisterClass);
+    }
+
+    if (subtarget.hasNEON()) {
+      addDRTypeForNEON(MVT.v2f32);
+      addDRTypeForNEON(MVT.v8i8);
+      addDRTypeForNEON(MVT.v4i16);
+      addDRTypeForNEON(MVT.v2i32);
+      addDRTypeForNEON(MVT.v1i64);
+
+      addQRTypeForNEON(MVT.v4f32);
+      addQRTypeForNEON(MVT.v2f64);
+      addQRTypeForNEON(MVT.v16i8);
+      addQRTypeForNEON(MVT.v8i16);
+      addQRTypeForNEON(MVT.v4i32);
+      addQRTypeForNEON(MVT.v2i64);
+
+      // v2f64 is legal so that QR subregs can be extracted as f64 elements, but
+      // neither Neon nor VFP support any arithmetic operations on it.
+      setOperationAction(ISD.FADD, MVT.v2f64, Expand);
+      setOperationAction(ISD.FSUB, MVT.v2f64, Expand);
+      setOperationAction(ISD.FMUL, MVT.v2f64, Expand);
+      setOperationAction(ISD.FDIV, MVT.v2f64, Expand);
+      setOperationAction(ISD.FREM, MVT.v2f64, Expand);
+      setOperationAction(ISD.FCOPYSIGN, MVT.v2f64, Expand);
+      setOperationAction(ISD.SETCC, MVT.v2f64, Expand);
+      setOperationAction(ISD.FNEG, MVT.v2f64, Expand);
+      setOperationAction(ISD.FABS, MVT.v2f64, Expand);
+      setOperationAction(ISD.FSQRT, MVT.v2f64, Expand);
+      setOperationAction(ISD.FSIN, MVT.v2f64, Expand);
+      setOperationAction(ISD.FCOS, MVT.v2f64, Expand);
+      setOperationAction(ISD.FPOWI, MVT.v2f64, Expand);
+      setOperationAction(ISD.FPOW, MVT.v2f64, Expand);
+      setOperationAction(ISD.FLOG, MVT.v2f64, Expand);
+      setOperationAction(ISD.FLOG2, MVT.v2f64, Expand);
+      setOperationAction(ISD.FLOG10, MVT.v2f64, Expand);
+      setOperationAction(ISD.FEXP, MVT.v2f64, Expand);
+      setOperationAction(ISD.FEXP2, MVT.v2f64, Expand);
+      setOperationAction(ISD.FCEIL, MVT.v2f64, Expand);
+      setOperationAction(ISD.FTRUNC, MVT.v2f64, Expand);
+      setOperationAction(ISD.FRINT, MVT.v2f64, Expand);
+      setOperationAction(ISD.FNEARBYINT, MVT.v2f64, Expand);
+      setOperationAction(ISD.FFLOOR, MVT.v2f64, Expand);
+
+      setTruncStoreAction(MVT.v2f64, MVT.v2f32, Expand);
+
+      // Neon does not support some operations on v1i64 and v2i64 types.
+      setOperationAction(ISD.MUL, MVT.v1i64, Expand);
+      // Custom handling for some quad-vector types to detect VMULL.
+      setOperationAction(ISD.MUL, MVT.v8i16, Custom);
+      setOperationAction(ISD.MUL, MVT.v4i32, Custom);
+      setOperationAction(ISD.MUL, MVT.v2i64, Custom);
+      // Custom handling for some vector types to avoid expensive expansions
+      setOperationAction(ISD.SDIV, MVT.v4i16, Custom);
+      setOperationAction(ISD.SDIV, MVT.v8i8, Custom);
+      setOperationAction(ISD.UDIV, MVT.v4i16, Custom);
+      setOperationAction(ISD.UDIV, MVT.v8i8, Custom);
+      setOperationAction(ISD.SETCC, MVT.v1i64, Expand);
+      setOperationAction(ISD.SETCC, MVT.v2i64, Expand);
+      // Neon does not have single instruction SINT_TO_FP and UINT_TO_FP with
+      // a destination type that is wider than the source.
+      setOperationAction(ISD.SINT_TO_FP, MVT.v4i16, Custom);
+      setOperationAction(ISD.UINT_TO_FP, MVT.v4i16, Custom);
+
+      setTargetDAGCombine(ISD.INTRINSIC_VOID);
+      setTargetDAGCombine(ISD.INTRINSIC_W_CHAIN);
+      setTargetDAGCombine(ISD.INTRINSIC_WO_CHAIN);
+      setTargetDAGCombine(ISD.SHL);
+      setTargetDAGCombine(ISD.SRL);
+      setTargetDAGCombine(ISD.SRA);
+      setTargetDAGCombine(ISD.SIGN_EXTEND);
+      setTargetDAGCombine(ISD.ZERO_EXTEND);
+      setTargetDAGCombine(ISD.ANY_EXTEND);
+      setTargetDAGCombine(ISD.SELECT_CC);
+      setTargetDAGCombine(ISD.BUILD_VECTOR);
+      setTargetDAGCombine(ISD.VECTOR_SHUFFLE);
+      setTargetDAGCombine(ISD.INSERT_VECTOR_ELT);
+      setTargetDAGCombine(ISD.STORE);
+      setTargetDAGCombine(ISD.FP_TO_SINT);
+      setTargetDAGCombine(ISD.FP_TO_UINT);
+      setTargetDAGCombine(ISD.FDIV);
+    }
+
+    computeRegisterProperties();
 
     // ARM does not have f32 extending load.
     setLoadExtAction(LoadExtType.EXTLOAD, new MVT(MVT.f32), Expand);
 
-    // ARM supports all 4 flavors of integer indexed load / store.
-    for (int i = 0,  e = MemIndexedMode.values().length; i < e; ++i) {
-      MemIndexedMode im = MemIndexedMode.values()[i];
-      if (im == MemIndexedMode.LAST_INDEXED_MODE) continue;
+    // ARM doesn't have i1 sign extending load.
+    setLoadExtAction(LoadExtType.SEXTLOAD, new MVT(MVT.i1), Promote);
 
-      setIndexedLoadAction(im,  MVT.i1,  Legal);
-      setIndexedLoadAction(im,  MVT.i8,  Legal);
-      setIndexedLoadAction(im,  MVT.i16, Legal);
-      setIndexedLoadAction(im,  MVT.i32, Legal);
-      setIndexedStoreAction(im, MVT.i1,  Legal);
-      setIndexedStoreAction(im, MVT.i8,  Legal);
-      setIndexedStoreAction(im, MVT.i16, Legal);
-      setIndexedStoreAction(im, MVT.i32, Legal);
+    if (!subtarget.isThumb1Only()) {
+      // ARM supports all 4 flavors of integer indexed load / store.
+      for (int i = 0, e = MemIndexedMode.values().length; i < e; ++i) {
+        MemIndexedMode im = MemIndexedMode.values()[i];
+        if (im == MemIndexedMode.LAST_INDEXED_MODE) continue;
+
+        setIndexedLoadAction(im, MVT.i1, Legal);
+        setIndexedLoadAction(im, MVT.i8, Legal);
+        setIndexedLoadAction(im, MVT.i16, Legal);
+        setIndexedLoadAction(im, MVT.i32, Legal);
+        setIndexedStoreAction(im, MVT.i1, Legal);
+        setIndexedStoreAction(im, MVT.i8, Legal);
+        setIndexedStoreAction(im, MVT.i16, Legal);
+        setIndexedStoreAction(im, MVT.i32, Legal);
+      }
     }
 
     // i64 operation support.
-    if (subtarget.isThumb()) {
-      setOperationAction(ISD.MUL,     MVT.i64, Expand);
-      setOperationAction(ISD.MULHU,   MVT.i32, Expand);
-      setOperationAction(ISD.MULHS,   MVT.i32, Expand);
-    } else {
-      setOperationAction(ISD.MUL,     MVT.i64, Custom);
-      setOperationAction(ISD.MULHU,   MVT.i32, Custom);
-      if (!subtarget.hasV6Ops())
-        setOperationAction(ISD.MULHS, MVT.i32, Custom);
+    setOperationAction(ISD.MUL, MVT.i64, Expand);
+    setOperationAction(ISD.MULHU, MVT.i32, Expand);
+    if (subtarget.isThumb1Only()) {
+      setOperationAction(ISD.UMUL_LOHI, MVT.i32, Expand);
+      setOperationAction(ISD.SMUL_LOHI, MVT.i32, Expand);
     }
+
+    if (subtarget.isThumb1Only() || !subtarget.hasV6Ops() ||
+        (subtarget.isThumb2() && !subtarget.hasThumb2DSP()))
+      setOperationAction(ISD.MULHS,   MVT.i32, Expand);
+
     setOperationAction(ISD.SHL_PARTS, MVT.i32, Expand);
     setOperationAction(ISD.SRA_PARTS, MVT.i32, Expand);
     setOperationAction(ISD.SRL_PARTS, MVT.i32, Expand);
     setOperationAction(ISD.SRL,       MVT.i64, Custom);
     setOperationAction(ISD.SRA,       MVT.i64, Custom);
 
+    if (!subtarget.isThumb1Only()) {
+      setOperationAction(ISD.ADDC, MVT.i32, Custom);
+      setOperationAction(ISD.ADDE, MVT.i32, Custom);
+      setOperationAction(ISD.SUBC, MVT.i32, Custom);
+      setOperationAction(ISD.SUBE, MVT.i32, Custom);
+    }
+
     // ARM does not have ROTL.
     setOperationAction(ISD.ROTL,  MVT.i32, Expand);
     setOperationAction(ISD.CTTZ , MVT.i32, Expand);
     setOperationAction(ISD.CTPOP, MVT.i32, Expand);
-    if (!subtarget.hasV5TOps() || subtarget.isThumb())
+    if (!subtarget.hasV5TOps() || subtarget.isThumb1Only())
       setOperationAction(ISD.CTLZ, MVT.i32, Expand);
 
     // Only ARMv6 has BSWAP.
     if (!subtarget.hasV6Ops())
       setOperationAction(ISD.BSWAP, MVT.i32, Expand);
 
-    // These are expanded into libcalls.
-    setOperationAction(ISD.SDIV,  MVT.i32, Expand);
-    setOperationAction(ISD.UDIV,  MVT.i32, Expand);
+    if (!subtarget.hasDivide() || !subtarget.isThumb2()) {
+      // v7M has a hardware divider
+      setOperationAction(ISD.SDIV, MVT.i32, Expand);
+      setOperationAction(ISD.UDIV, MVT.i32, Expand);
+    }
+
     setOperationAction(ISD.SREM,  MVT.i32, Expand);
     setOperationAction(ISD.UREM,  MVT.i32, Expand);
+    setOperationAction(ISD.SDIVREM, MVT.i32, Expand);
+    setOperationAction(ISD.UDIVREM, MVT.i32, Expand);
 
     // Support label based line numbers.
     setOperationAction(ISD.DEBUG_LOC, MVT.Other, Expand);
@@ -223,25 +489,89 @@ public class ARMTargetLowering extends TargetLowering {
     setOperationAction(ISD.GLOBAL_OFFSET_TABLE, MVT.i32, Custom);
     setOperationAction(ISD.GlobalTLSAddress, MVT.i32, Custom);
 
+    setOperationAction(ISD.TRAP, MVT.Other, Legal);
+
     // Use the default implementation.
-    setOperationAction(ISD.VASTART           , MVT.Other, Expand);
+    setOperationAction(ISD.VASTART           , MVT.Other, Custom);
     setOperationAction(ISD.VAARG             , MVT.Other, Expand);
     setOperationAction(ISD.VACOPY            , MVT.Other, Expand);
     setOperationAction(ISD.VAEND             , MVT.Other, Expand);
     setOperationAction(ISD.STACKSAVE,          MVT.Other, Expand);
     setOperationAction(ISD.STACKRESTORE,       MVT.Other, Expand);
     setOperationAction(ISD.DYNAMIC_STACKALLOC, MVT.i32  , Expand);
+    setOperationAction(ISD.EHSELECTION, MVT.i32, Expand);
+    setOperationAction(ISD.EXCEPTIONADDR, MVT.i32, Expand);
 
+    // ARMv6 Thumb1 (except for CPUs that support dmb / dsb) and earlier use
+    // the default expansion.
+    // FIXME: This should be checking for v6k, not just v6.
+    if (subtarget.hasDataBarrier() || (subtarget.hasV6Ops() && !subtarget.isThumb())) {
+      // membarrier needs custom lowering; the rest are legal and handled
+      // normally.
+      setOperationAction(ISD.MEMBARRIER, MVT.Other, Custom);
+      setOperationAction(ISD.ATOMIC_FENCE, MVT.Other, Custom);
+      // Custom lowering for 64-bit ops
+      setOperationAction(ISD.ATOMIC_LOAD_ADD,  MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_LOAD_SUB,  MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_LOAD_AND,  MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_LOAD_OR,   MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_LOAD_XOR,  MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_SWAP,  MVT.i64, Custom);
+      setOperationAction(ISD.ATOMIC_CMP_SWAP,  MVT.i64, Custom);
+      // Automatically insert fences (dmb ist) around ATOMIC_SWAP etc.
+      setInsertFencesForAtomic(true);
+    } else {
+      // Set them all for expansion, which will force libcalls.
+      setOperationAction(ISD.MEMBARRIER, MVT.Other, Expand);
+      setOperationAction(ISD.ATOMIC_FENCE,   MVT.Other, Expand);
+      setOperationAction(ISD.ATOMIC_CMP_SWAP,  MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_SWAP,      MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_ADD,  MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_SUB,  MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_AND,  MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_OR,   MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_XOR,  MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_NAND, MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_MIN, MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_MAX, MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_UMIN, MVT.i32, Expand);
+      setOperationAction(ISD.ATOMIC_LOAD_UMAX, MVT.i32, Expand);
+      // Mark ATOMIC_LOAD and ATOMIC_STORE custom so we can handle the
+      // Unordered/Monotonic case.
+      setOperationAction(ISD.ATOMIC_LOAD, MVT.i32, Custom);
+      setOperationAction(ISD.ATOMIC_STORE, MVT.i32, Custom);
+      // Since the libcalls include locking, fold in the fences
+      setShouldFoldAtomicFences(true);
+    }
+
+    setOperationAction(ISD.PREFETCH,         MVT.Other, Custom);
+
+
+
+    if (!TargetOptions.GenerateSoftFloatCalls.value && subtarget.hasVFP2() && !subtarget.isThumb1Only()) {
+      // Turn f64->i64 into VMOVRRD, i64 -> f64 to VMOVDRR
+      // iff target supports vfp2.
+      setOperationAction(ISD.BIT_CONVERT, MVT.i64, Custom);
+      setOperationAction(ISD.FLT_ROUNDS_, MVT.i32, Custom);
+    }
+
+    // We want to custom lower some of our intrinsics.
+    setOperationAction(ISD.INTRINSIC_WO_CHAIN, MVT.Other, Custom);
+    if (subtarget.isTargetDarwin()) {
+      /*setOperationAction(ISD.EH_SJLJ_SETJMP, MVT.i32, Custom);
+      setOperationAction(ISD.EH_SJLJ_LONGJMP, MVT.Other, Custom);
+      setOperationAction(ISD.EH_SJLJ_DISPATCHSETUP, MVT.Other, Custom);*/
+      setLibCallName(RTLIB.UNWIND_RESUME, "_Unwind_SjLj_Resume");
+    }
+
+    // Requires SXTB/SXTH, available on v6 and up in both ARM and Thumb modes.
     if (!subtarget.hasV6Ops()) {
       setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i16, Expand);
       setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i8,  Expand);
     }
     setOperationAction(ISD.SIGN_EXTEND_INREG, MVT.i1, Expand);
 
-    /*if (!UseSoftFloat && subtarget.hasVFP2() && !subtarget.isThumb())
-      // Turn f64->i64 into FMRRD iff target supports vfp2.
-      setOperationAction(ISD.BIT_CONVERT, MVT.i64, Custom);*/
-
+    
     setOperationAction(ISD.SETCC    , MVT.i32, Expand);
     setOperationAction(ISD.SETCC    , MVT.f32, Expand);
     setOperationAction(ISD.SETCC    , MVT.f64, Expand);
@@ -275,29 +605,125 @@ public class ARMTargetLowering extends TargetLowering {
     setOperationAction(ISD.FCOS     , MVT.f64, Expand);
     setOperationAction(ISD.FREM     , MVT.f64, Expand);
     setOperationAction(ISD.FREM     , MVT.f32, Expand);
-    setOperationAction(ISD.FCOPYSIGN, MVT.f64, Custom);
-    setOperationAction(ISD.FCOPYSIGN, MVT.f32, Custom);
+    if (!TargetOptions.GenerateSoftFloatCalls.value && subtarget.hasVFP2() && !subtarget.isThumb1Only()) {
+      setOperationAction(ISD.FCOPYSIGN, MVT.f64, Custom);
+      setOperationAction(ISD.FCOPYSIGN, MVT.f32, Custom);
+    }
+
+    setOperationAction(ISD.FPOW, MVT.f64, Expand);
+    setOperationAction(ISD.FPOW, MVT.f32, Expand);
+
+    setOperationAction(ISD.FMA, MVT.f64, Expand);
+    setOperationAction(ISD.FMA, MVT.f32, Expand);
 
     // int <-> fp are custom expanded into bit_convert + ARMISD ops.
-    setOperationAction(ISD.SINT_TO_FP, MVT.i32, Custom);
-    setOperationAction(ISD.UINT_TO_FP, MVT.i32, Custom);
-    setOperationAction(ISD.FP_TO_UINT, MVT.i32, Custom);
-    setOperationAction(ISD.FP_TO_SINT, MVT.i32, Custom);
+    if (!TargetOptions.GenerateSoftFloatCalls.value && !subtarget.isThumb1Only()) {
+      if (subtarget.hasVFP2()) {
+        setOperationAction(ISD.SINT_TO_FP, MVT.i32, Custom);
+        setOperationAction(ISD.UINT_TO_FP, MVT.i32, Custom);
+        setOperationAction(ISD.FP_TO_UINT, MVT.i32, Custom);
+        setOperationAction(ISD.FP_TO_SINT, MVT.i32, Custom);
+      }
+      // Specail handling for half-precision FP.
+      if (!subtarget.hasFP16()) {
+        setOperationAction(ISD.FP16_TO_FP32, MVT.f32, Expand);
+        setOperationAction(ISD.FP32_TO_FP16, MVT.i32, Expand);
+      }
+    }
+
+    // We have target-specific dag combine patterns for the following nodes:
+    // ARMISD.VMOVRRD  - No need to call setTargetDAGCombine
+    setTargetDAGCombine(ISD.ADD);
+    setTargetDAGCombine(ISD.SUB);
+    setTargetDAGCombine(ISD.MUL);
+
+    if (subtarget.hasV6T2Ops() || subtarget.hasNEON())
+      setTargetDAGCombine(ISD.OR);
+    if (subtarget.hasNEON())
+      setTargetDAGCombine(ISD.AND);
+
 
     setStackPointerRegisterToSaveRestore(ARMGenRegisterNames.SP);
 
-    //setSchedulingPreference(SchedulingForRegPressure);
-    computeRegisterProperties();
+    maxStoresPerMemcpy = 1;
+    setMinFunctionAlignment(subtarget.isThumb() ? 1 : 2);
+    benefitFromCodePlacementOpt = true;
+  }
+
+  private void addDRTypeForNEON(int vt) {
+    addRegisterClass(vt, ARMGenRegisterInfo.DPRRegisterClass);
+    addTypeForNeon(vt, MVT.f64, MVT.v2i32);
+  }
+
+  private void addQRTypeForNEON(int vt) {
+    addRegisterClass(vt, ARMGenRegisterInfo.QPRRegisterClass);
+    addTypeForNeon(vt, MVT.v2f64, MVT.v4i32);
+  }
+
+  private void addTypeForNeon(int vt, int promotedLdStVT, int promotedBitwiseVT) {
+    if (vt != promotedLdStVT) {
+      setOperationAction(ISD.LOAD, vt, Promote);
+      addPromotedToType(ISD.LOAD, vt, promotedLdStVT);
+
+      setOperationAction(ISD.STORE, vt, Promote);
+      addPromotedToType(ISD.STORE, vt, promotedLdStVT);
+    }
+
+    EVT eltTy = new EVT(vt).getVectorElementType();
+    if (!eltTy.equals(new EVT(MVT.i64)) && !eltTy.equals(new EVT(MVT.f64)))
+      setOperationAction(ISD.SETCC, vt, Custom);
+
+    setOperationAction(ISD.EXTRACT_VECTOR_ELT, vt, Custom);
+    if (!eltTy.equals(new EVT(MVT.i32))) {
+      setOperationAction(ISD.SINT_TO_FP, vt, Expand);
+      setOperationAction(ISD.UINT_TO_FP, vt, Expand);
+      setOperationAction(ISD.FP_TO_SINT, vt, Expand);
+      setOperationAction(ISD.FP_TO_UINT, vt, Expand);
+    }
+
+    setOperationAction(ISD.BUILD_VECTOR, vt, Custom);
+    setOperationAction(ISD.VECTOR_SHUFFLE, vt, Custom);
+    setOperationAction(ISD.CONCAT_VECTORS, vt, Legal);
+    setOperationAction(ISD.EXTRACT_SUBVECTOR, vt, Legal);
+    setOperationAction(ISD.SELECT, vt, Expand);
+    setOperationAction(ISD.SELECT_CC, vt, Expand);
+
+    if (new EVT(vt).isInteger()) {
+      setOperationAction(ISD.SHL, vt, Custom);
+      setOperationAction(ISD.SRA, vt, Custom);
+      setOperationAction(ISD.SRL, vt, Custom);
+      setOperationAction(ISD.SIGN_EXTEND, vt, Expand);
+      setOperationAction(ISD.ZERO_EXTEND, vt, Expand);
+      for (int innerVT = MVT.FIRST_VECTOR_VALUETYPE; innerVT <= MVT.LAST_VECTOR_VALUETYPE; ++innerVT)
+        setTruncStoreAction(vt, innerVT, Expand);
+    }
+
+    setLoadExtAction(LoadExtType.EXTLOAD, new MVT(vt), Expand);
+
+    // Promote all bit-wise operations.
+    if (new EVT(vt).isInteger() && vt != promotedBitwiseVT) {
+      setOperationAction(ISD.AND, vt, Promote);
+      addPromotedToType(ISD.AND, vt, promotedBitwiseVT);
+
+      setOperationAction(ISD.OR, vt, Promote);
+      addPromotedToType(ISD.OR, vt, promotedBitwiseVT);
+
+      setOperationAction(ISD.XOR, vt, Promote);
+      addPromotedToType(ISD.XOR, vt, promotedBitwiseVT);
+    }
+
+    // Neon does not support vector divide/remainder operations.
+    setOperationAction(ISD.SDIV, vt, Expand);
+    setOperationAction(ISD.UDIV, vt, Expand);
+    setOperationAction(ISD.FDIV, vt, Expand);
+    setOperationAction(ISD.SREM, vt, Expand);
+    setOperationAction(ISD.UREM, vt, Expand);
+    setOperationAction(ISD.FREM, vt, Expand);
   }
 
   @Override
   public MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf) {
     return null;
-  }
-
-  @Override
-  public int getFunctionAlignment(Function fn) {
-    return 0;
   }
 
   @Override
@@ -471,5 +897,223 @@ public class ARMTargetLowering extends TargetLowering {
         Util.shouldNotReachHere("Unknown arm opcode!");
         return null;
     }
+  }
+
+  private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag) {
+    return null;
+  }
+  private SDValue lowerBlockAddress(SDValue op, SelectionDAG dag) {
+    return null;
+  }
+  private SDValue lowerGlobalAddressDarwin(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerGlobalAddressELF(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerToTLSGeneralDynamicModel(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
+  private SDValue lowerToTLSExecModels(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
+  private SDValue lowerGLOBAL_OFFSET_TABLE(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerBR_JT(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerSELECT(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerSELECT_CC(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerBR_CC(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerShiftRightParts(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerShiftLeftParts(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerVASTART(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerMEMBARRIER(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerATOMIC_FENCE(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerPREFETCH(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerINT_TO_FP(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerFP_TO_INT(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerINTRINSIC_WO_CAHIN(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue expandBITCAST(SDNode n, SelectionDAG dag) { return null; }
+  private SDValue lowerShift(SDNode n, SelectionDAG dag) { return null; }
+  private SDValue lowerCTTZ(SDNode n, SelectionDAG dag) { return null; }
+  private SDValue lowerVSETCC(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerCONCAT_VECTORS(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerFLT_ROUNDS(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerMUL(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerSDIV(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerUDIV(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerADDC_ADDE_SUBC_SUBE(SDValue op, SelectionDAG dag) { return null; }
+
+  private static SDValue lowerAtomicLoadStore(SDValue op, SelectionDAG dag) {
+      Util.shouldNotReachHere();
+      return null;
+  }
+
+  private SDValue reconstructShuffle(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
+                                  CallingConv cc, boolean isVarArg,
+                                  ArrayList<InputArg> ins,
+                                  DebugLoc dl, SelectionDAG dag,
+                                  ArrayList<SDValue> inVals) { return null; }
+  private void varArgStyleRegisters(CCState ccInfo, SelectionDAG dag,
+                                    DebugLoc dl, SDValue chain, int argOffset) {}
+
+  private int[] computeRegArea(CCState ccInfo, MachineFunction mf) { return null; }
+
+  @Override
+  public SDValue lowerOperation(SDValue op, SelectionDAG dag) {
+    switch (op.getOpcode()) {
+      default:
+        Util.shouldNotReachHere("Don't know how to custom lower this!");
+        return null;
+      case ISD.ConstantPool: return lowerGlobalAddress(op, dag);
+      case ISD.BlockAddress: return lowerBlockAddress(op, dag);
+      case ISD.GlobalAddress:
+        return subtarget.isTargetWindows() ? lowerGlobalAddressDarwin(op, dag) :
+            lowerGlobalAddressELF(op, dag);
+      case ISD.GlobalTLSAddress: return lowerGlobalTLSAddress(op, dag);
+      case ISD.SELECT: return lowerSELECT(op, dag);
+      case ISD.SELECT_CC: return lowerSELECT_CC(op, dag);
+      case ISD.BR_CC: return lowerBR_CC(op, dag);
+      case ISD.BR_JT: return lowerBR_JT(op, dag);
+      case ISD.VASTART: return lowerVASTART(op, dag);
+      case ISD.MEMBARRIER: return lowerMEMBARRIER(op, dag);
+      case ISD.ATOMIC_FENCE: return lowerATOMIC_FENCE(op, dag);
+      case ISD.PREFETCH: return lowerPREFETCH(op, dag);
+      case ISD.SINT_TO_FP:
+      case ISD.UINT_TO_FP:
+        return lowerINT_TO_FP(op, dag);
+      case ISD.FP_TO_SINT:
+      case ISD.FP_TO_UINT:
+        return lowerFP_TO_INT(op, dag);
+      case ISD.FCOPYSIGN: return lowerFCOPYSIGN(op, dag);
+      case ISD.RETURNADDR: return lowerRETURNADDR(op, dag);
+      case ISD.FRAMEADDR: return lowerFRAMEADDR(op, dag);
+      case ISD.GLOBAL_OFFSET_TABLE: return lowerGLOBAL_OFFSET_TABLE(op, dag);
+      case ISD.INTRINSIC_WO_CHAIN: return lowerINTRINSIC_WO_CAHIN(op, dag);
+
+      case ISD.BIT_CONVERT: return expandBITCAST(op.getNode(), dag);
+      case ISD.SHL:
+      case ISD.SRL:
+      case ISD.SRA:
+        return lowerShift(op.getNode(), dag);
+      case ISD.SHL_PARTS:
+        return lowerShiftLeftParts(op, dag);
+      case ISD.SRL_PARTS:
+      case ISD.SRA_PARTS:
+        return lowerShiftRightParts(op, dag);
+      case ISD.CTTZ:
+        return lowerCTTZ(op.getNode(), dag);
+      case ISD.SETCC:
+        return lowerVSETCC(op, dag);
+      case ISD.BUILD_VECTOR:
+        return lowerBUILD_VECTOR(op, dag);
+      case ISD.VECTOR_SHUFFLE:
+        return lowerVECTOR_SHUFFLE(op, dag);
+      case ISD.EXTRACT_VECTOR_ELT:
+        return lowerEXTRACT_VECTOR_ELT(op, dag);
+      case ISD.CONCAT_VECTORS:
+        return lowerCONCAT_VECTORS(op, dag);
+      case ISD.FLT_ROUNDS_:
+        return lowerFLT_ROUNDS(op, dag);
+      case ISD.MUL: return lowerMUL(op, dag);
+      case ISD.SDIV: return lowerSDIV(op, dag);
+      case ISD.UDIV: return lowerUDIV(op, dag);
+      case ISD.ADDC:
+      case ISD.ADDE:
+      case ISD.SUBC:
+      case ISD.SUBE:
+        return lowerADDC_ADDE_SUBC_SUBE(op, dag);
+      case ISD.ATOMIC_LOAD:
+      case ISD.ATOMIC_STORE:
+        return lowerAtomicLoadStore(op, dag);
+    }
+  }
+
+
+  @Override
+  public void replaceNodeResults(SDNode n, ArrayList<SDValue> results, SelectionDAG dag) {
+    SDValue res = null;
+    switch (n.getOpcode()) {
+      default:
+        Util.shouldNotReachHere("Don't know how to custom expand this!");
+        break;
+      case ISD.BIT_CONVERT:
+        res = expandBITCAST(n, dag);
+        break;
+      case ISD.SRL:
+      case ISD.SRA:
+        res = expand64BitShift(n, dag);
+        break;
+      case ISD.ATOMIC_LOAD_ADD:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMADD64_DAG);
+        return;
+      case ISD.ATOMIC_LOAD_AND:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMAND64_DAG);
+        return;
+      case ISD.ATOMIC_LOAD_NAND:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMNAND64_DAG);
+        return;
+      case ISD.ATOMIC_LOAD_OR:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMOR64_DAG);
+        return;
+      case ISD.ATOMIC_LOAD_SUB:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMSUB64_DAG);
+        return;
+      case ISD.ATOMIC_LOAD_XOR:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMXOR64_DAG);
+        return;
+      case ISD.ATOMIC_SWAP:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMSWAP64_DAG);
+        return;
+      case ISD.ATOMIC_CMP_SWAP:
+        replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMCMPXCHG64_DAG);
+        return;
+    }
+    if (res != null)
+      results.add(res);
+  }
+
+  private SDValue expand64BitShift(SDNode n, SelectionDAG dag) {
+    return null;
+  }
+
+  /**
+   * Replace those ISD::ATMOC_* operations with a serial of supported
+   * operations.
+   * @param n
+   * @param results
+   * @param dag
+   * @param newOp
+   */
+  private static void replaceATOMIC_OP_64(SDNode n,
+                                          ArrayList<SDValue> results,
+                                          SelectionDAG dag,
+                                          int newOp) {
+    DebugLoc dl = n.getDebugLoc();
+    Util.assertion(n.getValueType(0).equals(new EVT(MVT.i64)), "Only know how to expand i64 atomics");
+
+    ArrayList<SDValue> ops = new ArrayList<>();
+    ops.add(n.getOperand(0)); // chain
+    ops.add(n.getOperand(1)); // ptr.
+    // low part of val1.
+    ops.add(dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+        n.getOperand(2), dag.getIntPtrConstant(0)));
+    // high part of val1.
+    ops.add(dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+        n.getOperand(2), dag.getIntPtrConstant(1)));
+
+    if (newOp == ARMISD.ATOMCMPXCHG64_DAG) {
+      // low part of val2
+      ops.add(dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+          n.getOperand(3), dag.getIntPtrConstant(0)));
+      // high part of val2
+      ops.add(dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32),
+          n.getOperand(3), dag.getIntPtrConstant(1)));
+    }
+
+    SDNode.SDVTList vts = dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32), new EVT(MVT.Other));
+    SDValue result = dag.getMemIntrinsicNode(newOp,
+        vts, ops, new EVT(MVT.i64), ((SDNode.MemSDNode)n).getMemOperand());
+    SDValue[] opsFI = {result.getValue(0), result.getValue(1)};
+    results.add(dag.getNode(ISD.BUILD_VECTOR, new EVT(MVT.i64), opsFI));
+    results.add(result.getValue(2));
   }
 }

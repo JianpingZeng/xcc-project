@@ -575,7 +575,7 @@ public class ISD {
   public static final int ATOMIC_LOAD_UMAX = ATOMIC_LOAD_UMIN + 1;
 
   // BUILTIN_OP_END - This must be the last enum value in this list.
-  public static final int BUILTIN_OP_END = ATOMIC_LOAD_UMAX;
+  public static final int BUILTIN_OP_END = ATOMIC_LOAD_UMAX + 1;
 
   public static int FIRST_TARGET_MEMORY_OPCODE = BUILTIN_OP_END+150;
 
